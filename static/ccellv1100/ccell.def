@@ -1,0 +1,26 @@
+; Definition file for Player
+; Contains all the filenames needed for the character
+; Template player 9X-09-12
+
+; Character information
+[Info]
+name    = "Cell";<-- Replace with a real name
+displayname = "Complete Cell";<-- Replace with name to display
+author = "GohanSSM2"
+;mugenversion = 4.01 & 4.14
+
+; Files for the character
+[Files]
+cmd     = ccellai.cmd     ;Command set
+cns     = ccell.cns     ;Constants
+st      = ccell.cns     ;States
+stcommon = aircodes.cns   ;Common states
+sprite  = ccell.sff     ;Sprite
+anim    = ccell.air     ;Animation
+sound   = ccell.snd     ;Sound
+pal1    = ccell.act     ;Palettes
+pal2    = ccell2.act
+pal3    = ccell3.act
+pal4    = ccell5.act
+pal5    = ccell6.act
+pal6    = ccell4.act

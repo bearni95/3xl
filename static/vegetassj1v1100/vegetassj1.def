@@ -1,0 +1,26 @@
+; Definition file for Player
+; Contains all the filenames needed for the character
+; Template player 9X-09-12
+
+; Character information
+[Info]
+name    = "Vegeta";<-- Replace with a real name
+displayname = "Vegeta SSJ1";<-- Replace with name to display
+author = "GohanSSM2"
+;mugenversion = 4.01 & 4.14
+
+; Files for the character
+[Files]
+cmd     = vegetassj1ai.cmd     ;Command set
+cns     = vegetassj1.cns     ;Constants
+st      = vegetassj1.cns     ;States
+stcommon = aircodes.cns   ;Common states
+sprite  = vegetassj1.sff     ;Sprite
+anim    = vegetassj1.air     ;Animation
+sound   = vegetassj1.snd     ;Sound
+pal1    = vegetassj1.act     ;Palettes
+pal2    = vegetassj1b.act
+pal3    = vegetassj1c.act
+pal4    = vegetassj1d.act
+pal5    = vegetassj1e.act
+pal6    = vegetassj1f.act

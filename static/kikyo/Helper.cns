@@ -1,0 +1,217 @@
+;==========================
+; Helper states for Kikyo
+;==========================
+; Spawn Point for Soul Collectors (Purification)
+[Statedef 1600]
+type    = S
+movetype= A
+physics = S
+juggle  = 1
+velset = 0,0
+anim = 1502
+ctrl = 0
+sprpriority = 3
+
+[State 1600, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 1600, Projectile]
+; Soul Collectors move out of the Spawn Point
+type = Projectile
+trigger1 = AnimElem = 3
+projanim = 1501
+projremove = 0
+projhits = 1
+projedgebound = 150
+postype = p1
+projremovetime = 30
+offset = 0,0
+velocity = 0,0
+sparkxy = 189,0
+attr = S, SP
+damage = 20,10
+animtype = heavy
+guardflag = MA
+hitflag = MAF
+hitsound = S1500, 1
+guardsound = S6, 0
+ground.type = High
+ground.slidetime = 10
+ground.hittime  = 15
+ground.velocity = -2, -2
+air.velocity = -4, -2
+guard.velocity = -4
+air.hittime = 20
+fall = 1
+air.fall = 1
+getpower = 20,10
+givepower = 4, 2
+projscale = 1,1
+hitcountpersist = 1
+
+[State 1600, DestroySelf]
+type = DestroySelf
+trigger1 = AnimTime = 0
+
+;---------------------------
+; Kikyo's Curse Deflector
+[Statedef 2100]
+type    = S
+movetype= A
+physics = S
+juggle  = 2
+velset = 0,0
+anim = 2001
+ctrl = 0
+sprpriority = 1
+
+[State 2100, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 2100, Stay In Place]
+type = BindToRoot
+trigger1 = 1
+facing = 1
+pos = 0,-54
+time = 1
+
+[State 2100, NoPush]
+; Kikyo Can't be pushed back when using
+type = PlayerPush
+trigger1 = 1
+value = 0
+
+[State 2100, AngleDraw]
+type = AngleDraw
+trigger1 = Time < 8
+trigger2 = Time > 16
+ignorehitpause = 1
+scale = 1,1
+
+[State 2100, AngleDraw]
+type = AngleDraw
+trigger1 = Time = 8
+ignorehitpause = 1
+scale = 1.125,1.125
+
+[State 2100, AngleDraw]
+type = AngleDraw
+trigger1 = Time = 10
+ignorehitpause = 1
+scale = 1.25,1.25
+
+[State 2100, AngleDraw]
+type = AngleDraw
+trigger1 = Time = 12
+ignorehitpause = 1
+scale = 1.375,1.375
+
+[State 2100, AngleDraw]
+type = AngleDraw
+trigger1 = Time = 14
+ignorehitpause = 1
+scale = 1.5,1.5
+
+[State 2100, DestroySelf]
+type = DestroySelf
+trigger1 = Time >=28
+
+;----------------------
+
+[Statedef 183]
+; Win Portrait
+type = S
+MoveType = I
+Physics = S
+sprpriority = 20
+anim = 9997
+
+[State 183, Round Aint Over Yet]
+type = AssertSpecial
+trigger1 = Time >= 0
+trigger1 = Time <= 540
+flag = RoundNotOver
+
+[State 183, Background]
+; Kikyo's "Limit Break"??
+type = Explod
+trigger1 = Time = 180
+anim = 6666
+id = 6666
+postype = left
+ontop = 1
+pos = 0,0
+sprpriority = -4
+ownpal = 1
+bindtime = -1
+removetime = -1
+
+[State 183, More Disabled Stuff]
+type = AssertSpecial
+trigger1 = Time >= 180 ; 3 seconds after Kikyo starts her win pose
+flag = NoMusic
+flag2 = NoFG
+flag3 = NoBarDisplay
+
+[State 183, Victory Music]
+type = PlaySnd
+trigger1 = Time = 180
+value = 183,0
+
+[State 183, Portrait comes in]
+type = Explod
+trigger1 = Time = 180
+anim = 9998
+pos = 0,0
+postype = left
+ontop = 1
+sprpriority = -3
+
+[State 183, Black Box comes in]
+type = Explod
+trigger1 = Time = 212
+anim = 9999
+pos = 0,0
+postype = left
+ontop = 1
+sprpriority = -2
+
+[State 183, Varset]
+type = Varrandom
+trigger1 = Time = 212
+v = 4
+range = 1,3
+
+[State 183, Quote 1]
+type = Explod
+trigger1 = Time = 224
+trigger1 = Var(4) = 1
+anim = 10000
+pos = 0,0
+postype = left
+ontop = 1
+sprpriority = -1
+
+[State 183, Quote 2]
+type = Explod
+trigger1 = Time = 224
+trigger1 = Var(4) = 2
+anim = 10001
+pos = 0,0
+postype = left
+ontop = 1
+sprpriority = -1
+
+[State 183, Quote 3]
+type = Explod
+trigger1 = Time = 224
+trigger1 = Var(4) = 3
+anim = 10002
+pos = 0,0
+postype = left
+ontop = 1
+sprpriority = -1

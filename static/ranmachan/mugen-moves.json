@@ -1,0 +1,645 @@
+{
+	"name": "Ranma by Nyan Kiryu",
+	"commands": [
+		{
+			"name": "HSH",
+			"input": "~D, DF, F, D, DF, F, a"
+		},
+		{
+			"name": "KTA",
+			"input": "~D, F, D, B, x"
+		},
+		{
+			"name": "MTB",
+			"input": "~D, DF, F, D, DF, F, x"
+		},
+		{
+			"name": "amaguri_x",
+			"input": "x, x, x"
+		},
+		{
+			"name": "amaguri_y",
+			"input": "y, y, y"
+		},
+		{
+			"name": "Hiryu_x",
+			"input": "~F, D, DF, x"
+		},
+		{
+			"name": "Hiryu_y",
+			"input": "~F, D, DF, y"
+		},
+		{
+			"name": "Mouko_x",
+			"input": "~D, DF, F, x"
+		},
+		{
+			"name": "Mouko_y",
+			"input": "~D, DF, F, y"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "xa",
+			"input": "x+a"
+		},
+		{
+			"name": "yb",
+			"input": "y+b"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		}
+	],
+	"moves": [
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 195,
+			"commands": [
+				"start"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Strong Punch",
+			"stateNo": 210,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 57,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Light Kick",
+			"stateNo": 230,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 26,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "Standing Strong Kick",
+			"stateNo": 240,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 63,
+			"anim": 240,
+			"animation": "action-240"
+		},
+		{
+			"name": "Crouching Light Punch",
+			"stateNo": 400,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouching Strong Punch",
+			"stateNo": 410,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 37,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouching Light Kick",
+			"stateNo": 430,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 28,
+			"anim": 430,
+			"animation": "action-430"
+		},
+		{
+			"name": "Crouching Strong Kick",
+			"stateNo": 440,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 72,
+			"anim": 440,
+			"animation": "action-440"
+		},
+		{
+			"name": "Jump Light Punch",
+			"stateNo": 600,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Jump Strong Punch",
+			"stateNo": 610,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 72,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Jump Light Kick",
+			"stateNo": 630,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 26,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "Jump Strong Kick",
+			"stateNo": 640,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 640,
+			"animation": "action-640"
+		},
+		{
+			"name": "y",
+			"stateNo": 800,
+			"commands": [
+				"y",
+				"holdfwd",
+				"holdback"
+			],
+			"inputs": [
+				"y",
+				"/$F",
+				"/$B"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "y",
+			"stateNo": 850,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 850,
+			"animation": "action-850"
+		},
+		{
+			"name": "xa",
+			"stateNo": 900,
+			"commands": [
+				"xa",
+				"holdfwd"
+			],
+			"inputs": [
+				"x+a",
+				"/$F"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "xa",
+			"stateNo": 901,
+			"commands": [
+				"xa",
+				"holdfwd"
+			],
+			"inputs": [
+				"x+a",
+				"/$F"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "xa",
+			"stateNo": 905,
+			"commands": [
+				"xa"
+			],
+			"inputs": [
+				"x+a"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "xa",
+			"stateNo": 910,
+			"commands": [
+				"xa",
+				"holdback"
+			],
+			"inputs": [
+				"x+a",
+				"/$B"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 910,
+			"animation": "action-910"
+		},
+		{
+			"name": "xa",
+			"stateNo": 915,
+			"commands": [
+				"xa",
+				"holdback"
+			],
+			"inputs": [
+				"x+a",
+				"/$B"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 910,
+			"animation": "action-910"
+		},
+		{
+			"name": "b",
+			"stateNo": 930,
+			"commands": [
+				"b",
+				"holdfwd"
+			],
+			"inputs": [
+				"b",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 250,
+			"animation": "action-250"
+		},
+		{
+			"name": "yb",
+			"stateNo": 950,
+			"commands": [
+				"yb"
+			],
+			"inputs": [
+				"y+b"
+			],
+			"movetype": "A",
+			"damage": 100,
+			"anim": 950,
+			"animation": "action-950"
+		},
+		{
+			"name": "yb",
+			"stateNo": 955,
+			"commands": [
+				"yb"
+			],
+			"inputs": [
+				"y+b"
+			],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 950,
+			"animation": "action-950"
+		},
+		{
+			"name": "yb",
+			"stateNo": 960,
+			"commands": [
+				"yb"
+			],
+			"inputs": [
+				"y+b"
+			],
+			"movetype": "A",
+			"damage": 100,
+			"anim": 960,
+			"animation": "action-960"
+		},
+		{
+			"name": "holddown",
+			"stateNo": 970,
+			"commands": [
+				"holddown",
+				"b"
+			],
+			"inputs": [
+				"/$D",
+				"b"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 970,
+			"animation": "action-970"
+		},
+		{
+			"name": "amaguri_x",
+			"stateNo": 1000,
+			"commands": [
+				"amaguri_x"
+			],
+			"inputs": [
+				"x, x, x"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "amaguri_y",
+			"stateNo": 1010,
+			"commands": [
+				"amaguri_y"
+			],
+			"inputs": [
+				"y, y, y"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 1010,
+			"animation": "action-1010"
+		},
+		{
+			"name": "Hiryu_x",
+			"stateNo": 1100,
+			"commands": [
+				"Hiryu_x"
+			],
+			"inputs": [
+				"~F, D, DF, x"
+			],
+			"movetype": "A",
+			"damage": 90,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "Hiryu_y",
+			"stateNo": 1110,
+			"commands": [
+				"Hiryu_y"
+			],
+			"inputs": [
+				"~F, D, DF, y"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 1110,
+			"animation": "action-1110"
+		},
+		{
+			"name": "Mouko_x",
+			"stateNo": 1200,
+			"commands": [
+				"Mouko_x"
+			],
+			"inputs": [
+				"~D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": 110,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "Mouko_y",
+			"stateNo": 1210,
+			"commands": [
+				"Mouko_y"
+			],
+			"inputs": [
+				"~D, DF, F, y"
+			],
+			"movetype": "A",
+			"damage": 110,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "HSH",
+			"stateNo": 3000,
+			"commands": [
+				"HSH"
+			],
+			"inputs": [
+				"~D, DF, F, D, DF, F, a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3000,
+			"animation": "action-3000"
+		},
+		{
+			"name": "KTA",
+			"stateNo": 3100,
+			"commands": [
+				"KTA"
+			],
+			"inputs": [
+				"~D, F, D, B, x"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 3100,
+			"animation": "action-3100"
+		},
+		{
+			"name": "MTB",
+			"stateNo": 3200,
+			"commands": [
+				"MTB"
+			],
+			"inputs": [
+				"~D, DF, F, D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 1200,
+			"animation": "action-1200"
+		}
+	]
+}

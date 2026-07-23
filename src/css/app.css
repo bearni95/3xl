@@ -1,2 +1,49 @@
 @import 'tailwindcss';
 @plugin "daisyui";
+
+/* ============================================
+   LEAFLET Z-INDEX FLATTENING
+   ============================================
+   Leaflet's CSS is imported dynamically (`await import('leaflet/dist/leaflet.css')`
+   in WorldMap.svelte), so it lands in the DOM AFTER app.css. At equal specificity
+   the later rule wins, which is why these overrides need `!important` — Leaflet
+   otherwise reinstates its defaults (`.leaflet-top` / `.leaflet-bottom` at
+   z-index 1000, popup pane at 700) and floats above DaisyUI's overlays
+   (.modal, .dropdown, .drawer, .toast, .tooltip, …). The numbers below preserve
+   Leaflet's internal stacking order but cap the whole map under z-index 10.
+
+   Each built-in pane is targeted by its specific class. Do NOT add a blanket
+   `.leaflet-pane { z-index: ... !important }` rule — it would clobber inline
+   z-index on custom panes created via `map.createPane(...)`. */
+.leaflet-top,
+.leaflet-bottom {
+	z-index: 1 !important;
+}
+.leaflet-tile-pane {
+	z-index: 2 !important;
+}
+.leaflet-overlay-pane {
+	z-index: 4 !important;
+}
+.leaflet-shadow-pane {
+	z-index: 5 !important;
+}
+.leaflet-marker-pane {
+	z-index: 6 !important;
+}
+.leaflet-tooltip-pane {
+	z-index: 7 !important;
+}
+.leaflet-popup-pane {
+	z-index: 8 !important;
+}
+.leaflet-map-pane canvas,
+.leaflet-map-pane svg {
+	z-index: 1 !important;
+}
+.leaflet-control {
+	z-index: 9 !important;
+}
+.leaflet-container {
+	z-index: 0 !important;
+}

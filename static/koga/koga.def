@@ -1,0 +1,29 @@
+;Koga Version 1.0 Por Metal Sniper 63
+
+; Informacion del perso
+[Info]
+name ="Koga"
+displayname ="Koga"
+mugenversion =01,04,2000
+author ="Metal_Sniper_63"
+versiondate=11/02/2008
+pal.defaults=1,2,3,4,5
+
+; Archivos
+[Files]
+cmd     =koga.cmd
+cns     =koga.cns
+st      =koga.cns
+stcommon =common1.cns
+sprite  =kogad.sff
+anim    =koga.air
+sound=
+pal1=koga.act
+pal2=koga2.act
+pal3=rojo.act
+pal4=azul.act
+;sound   = char.snd   ;Sound
+;pal1    = char.act   ;Palettes (can have up to 12)
+[Arcade]
+intro.storyboard=
+ending.storyboard=

@@ -1,0 +1,479 @@
+{
+	"name": "Kagura RP",
+	"commands": [
+		{
+			"name": "Desperation",
+			"input": "~B,DB,D,DF,F,a"
+		},
+		{
+			"name": "Dance_Blades_Z",
+			"input": "~D,DF,F,z"
+		},
+		{
+			"name": "Dance_Dead_Z",
+			"input": "~B,DB,D,z"
+		},
+		{
+			"name": "Dance_Dragon_Z",
+			"input": "~F,D,DF,z"
+		},
+		{
+			"name": "Kanna_X",
+			"input": "~D,D,x"
+		},
+		{
+			"name": "Kanna_Y",
+			"input": "~D,D,y"
+		},
+		{
+			"name": "Kanna_Z",
+			"input": "~D,D,z"
+		},
+		{
+			"name": "Dance_Blades_X",
+			"input": "~D,DF,F,x"
+		},
+		{
+			"name": "Dance_Blades_Y",
+			"input": "~D,DF,F,y"
+		},
+		{
+			"name": "Dance_Dead_X",
+			"input": "~B,DB,D,x"
+		},
+		{
+			"name": "Dance_Dead_Y",
+			"input": "~B,DB,D,y"
+		},
+		{
+			"name": "Dance_Dragon_X",
+			"input": "~F,D,DF,x"
+		},
+		{
+			"name": "Dance_Dragon_Y",
+			"input": "~F,D,DF,y"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "superjump",
+			"input": "$D, U"
+		},
+		{
+			"name": "superjumpforward",
+			"input": "$D, UF"
+		},
+		{
+			"name": "superjumpbackward",
+			"input": "$D, UB"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "forward",
+			"input": "F"
+		},
+		{
+			"name": "SelectRight",
+			"input": "F"
+		},
+		{
+			"name": "backward",
+			"input": "B"
+		},
+		{
+			"name": "SelectLeft",
+			"input": "B"
+		},
+		{
+			"name": "up",
+			"input": "U"
+		},
+		{
+			"name": "jump_cancel",
+			"input": "$U"
+		},
+		{
+			"name": "down",
+			"input": "D"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "holdZ",
+			"input": "/$z"
+		},
+		{
+			"name": "holdstart",
+			"input": "/$s"
+		}
+	],
+	"moves": [
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 105,
+			"animation": "run-back"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Medium Punch 1",
+			"stateNo": 210,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Strong Punch",
+			"stateNo": 230,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "T.Hold",
+			"stateNo": 240,
+			"commands": [
+				"z",
+				"holdfwd"
+			],
+			"inputs": [
+				"z",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 240,
+			"animation": "action-240"
+		},
+		{
+			"name": "Crouching Light Punch",
+			"stateNo": 400,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouching Medium Punch",
+			"stateNo": 410,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouching Light Kick",
+			"stateNo": 430,
+			"commands": [
+				"z",
+				"holddown"
+			],
+			"inputs": [
+				"z",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 430,
+			"animation": "action-430"
+		},
+		{
+			"name": "Crouching Strong Kick",
+			"stateNo": 440,
+			"commands": [
+				"z",
+				"holddown",
+				"holdfwd"
+			],
+			"inputs": [
+				"z",
+				"/$D",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 440,
+			"animation": "action-440"
+		},
+		{
+			"name": "Jump Light Attack",
+			"stateNo": 600,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Jump Medium Attack",
+			"stateNo": 610,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Jump Medium Attack 2",
+			"stateNo": 615,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 615,
+			"animation": "action-615"
+		},
+		{
+			"name": "Jump Strong Attack",
+			"stateNo": 620,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 620,
+			"animation": "action-620"
+		},
+		{
+			"name": "Dance of Blades",
+			"stateNo": 1000,
+			"commands": [
+				"Dance_Blades_X",
+				"Dance_Blades_Y",
+				"Dance_Blades_Z"
+			],
+			"inputs": [
+				"~D,DF,F,x",
+				"~D,DF,F,y",
+				"~D,DF,F,z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Kanna",
+			"stateNo": 1100,
+			"commands": [
+				"Kanna_X",
+				"Kanna_Y",
+				"Kanna_Z"
+			],
+			"inputs": [
+				"~D,D,x",
+				"~D,D,y",
+				"~D,D,z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "Dance of the Dragon",
+			"stateNo": 1190,
+			"commands": [
+				"Dance_Dragon_X",
+				"Dance_Dragon_Y",
+				"Dance_Dragon_Z"
+			],
+			"inputs": [
+				"~F,D,DF,x",
+				"~F,D,DF,y",
+				"~F,D,DF,z"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Dance of the Dead",
+			"stateNo": 1290,
+			"commands": [
+				"Dance_Dead_X",
+				"Dance_Dead_Y",
+				"Dance_Dead_Z"
+			],
+			"inputs": [
+				"~B,DB,D,x",
+				"~B,DB,D,y",
+				"~B,DB,D,z"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Sesshomaru Desperation",
+			"stateNo": 3300,
+			"commands": [
+				"Desperation"
+			],
+			"inputs": [
+				"~B,DB,D,DF,F,a"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 10,
+			"animation": "crouch-down"
+		},
+		{
+			"name": "Naraku Desperation",
+			"stateNo": 3350,
+			"commands": [
+				"Desperation"
+			],
+			"inputs": [
+				"~B,DB,D,DF,F,a"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 10,
+			"animation": "crouch-down"
+		}
+	]
+}

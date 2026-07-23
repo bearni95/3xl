@@ -1,0 +1,123 @@
+;==========================
+; Helper states for Kikyo
+;==========================
+; Spawn Point for Soul Collectors (Purification)
+[Statedef 1600]
+type    = S
+movetype= A
+physics = S
+juggle  = 1
+velset = 0,0
+anim = 1502
+ctrl = 0
+sprpriority = 3
+
+[State 1600, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 1600, Projectile]
+; Soul Collectors move out of the Spawn Point
+type = Projectile
+trigger1 = AnimElem = 3
+projanim = 1501
+projremove = 0
+projhits = 1
+projedgebound = 150
+postype = p1
+projremovetime = 10
+offset = 0,0
+velocity = 0,0
+sparkxy = 189,0
+attr = S, SP
+damage = 20,10
+animtype = heavy
+guardflag = MA
+hitflag = MAF
+hitsound = S1500, 1
+guardsound = S6, 0
+ground.type = High
+ground.slidetime = 10
+ground.hittime  = 15
+ground.velocity = -2, -2
+air.velocity = -4, -2
+guard.velocity = -4
+air.hittime = 20
+fall = 1
+air.fall = 1
+getpower = 20,10
+givepower = 4, 2
+projscale = 1,1
+hitcountpersist = 1
+
+[State 1600, DestroySelf]
+type = DestroySelf
+trigger1 = AnimTime = 0
+
+;---------------------------
+; Kikyo's Curse Deflector
+[Statedef 2100]
+type    = S
+movetype= A
+physics = S
+juggle  = 2
+velset = 0,0
+anim = 2001
+ctrl = 0
+sprpriority = 1
+
+[State 2100, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 2100, Stay In Place]
+type = BindToRoot
+trigger1 = 1
+facing = 1
+pos = 0,-54
+time = 1
+
+[State 2100, NoPush]
+; Kikyo Can't be pushed back when using
+type = PlayerPush
+trigger1 = 1
+value = 0
+
+[State 2100, AngleDraw]
+type = AngleDraw
+trigger1 = Time < 8
+trigger2 = Time > 16
+ignorehitpause = 1
+scale = 1,1
+
+[State 2100, AngleDraw]
+type = AngleDraw
+trigger1 = Time = 8
+ignorehitpause = 1
+scale = 1.125,1.125
+
+[State 2100, AngleDraw]
+type = AngleDraw
+trigger1 = Time = 10
+ignorehitpause = 1
+scale = 1.25,1.25
+
+[State 2100, AngleDraw]
+type = AngleDraw
+trigger1 = Time = 12
+ignorehitpause = 1
+scale = 1.375,1.375
+
+[State 2100, AngleDraw]
+type = AngleDraw
+trigger1 = Time = 14
+ignorehitpause = 1
+scale = 1.5,1.5
+
+[State 2100, DestroySelf]
+type = DestroySelf
+trigger1 = Time >=28
+
+;----------------------

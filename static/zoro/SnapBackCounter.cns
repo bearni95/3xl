@@ -1,0 +1,297 @@
+;SnapBack
+[Statedef 50000]
+type    = s
+movetype= a
+physics = s
+anim = 250
+;poweradd= 50
+ctrl = 0
+sprpriority = 2
+
+[state 1031,12]
+type = removeexplod
+trigger1 = time = 0
+id =225
+
+[State 7000, s1]
+type = SuperPause
+trigger1 = Animelem = 1
+time = 31
+anim = -1
+poweradd = -1000
+
+[State 7000, sn1]
+type = PlaySnd
+trigger1 = AnimElem = 2,=1
+value = s201, 1
+volumescale = 255
+
+[State 7000, se1]
+type = Explod
+trigger1 = time = 0
+anim = 6061
+pos = 20, -50
+scale = 1, 1
+supermovetime = 30
+sprpriority = 5
+removeongethit = 1
+
+[State 7000, sn1]
+type = PlaySnd
+trigger1 = AnimElem = 2,=1
+value = 0,12
+volumescale = 255
+
+[State 230, VelSet]
+type = VelSet
+trigger1 = time = 0
+trigger1 = prevstateno = 20
+x = 0
+
+[State 230, Explod]
+type = Explod
+trigger1 = abs(vel x) > 1 && time % 4 = 0
+anim = 6120
+scale = 1,1
+pos = 20,0
+sprpriority = 4
+ownpal = 1
+;pausemovetime = 9999999999
+;supermovetime = 9999999999 
+
+[State 220, PlaySnd]
+type = PlaySnd
+trigger1 =  AnimElem = 5
+value = 8400,2
+
+[state 0,sound]
+type = playsnd
+trigger1 = animelem = 5
+value = S2,1
+volumescale = 255
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = animelem = 2,=2
+x = 5
+;ignorehitpause = 
+;persistent = 
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = animelem = 4
+x = 0
+;ignorehitpause = 
+;persistent = 
+
+
+[State 220, HitDef]
+type = HitDef
+trigger1 = time = 0
+attr = S,NA
+hitflag = MAF
+guardflag = MA
+animtype = Hard
+damage = 65,0
+getpower = 50,0
+givepower = 20,0
+pausetime = 12,12
+guard.pausetime = 12,12
+sparkno = S9105
+guard.sparkno = S6000
+sparkxy = -10,-50
+hitsound = s5544,2
+guardsound = s5546,0
+ground.type = High
+ground.slidetime = 18
+ground.hittime = 20
+air.hittime = 3
+yaccel = .53
+ground.velocity = -18,-7
+air.velocity = -7,-2
+airguard.velocity = -18,-7
+fall.xvelocity = 0
+fall.yvelocity = -2
+fall = 1
+air.fall = 1
+fall.recover = 0
+;id = 4+64
+fall.envshake.time = 10
+p2facing = 1
+
+[State 0, TargetState]
+type = TargetState
+;triggerall = Target,Authorname = "mouser-MvC2" || Target,authorname = "DarkWolf13-MvC2"|| Target,authorname = "G.knux19"
+triggerall = enemy,teammode = simul || enemy,teammode = turns
+trigger1 = movehit = 1 && numtarget
+value = 50001
+
+
+[State 230, ChangeState]
+type = ChangeState
+trigger1 = animtime = 0
+value = 0
+ctrl = 1
+
+;Struck by SnapBack
+[Statedef 50001] 
+type = A
+movetype = H
+physics = N
+sprpriority = 1
+velset = -18,-12
+ctrl = 0
+anim = 5030
+
+[State 0, ScreenBound]
+type = ScreenBound
+;triggerall = Var(33)
+;triggerall = NumPartner
+trigger1 = 1
+value = ifelse(Var(30)&&numpartner,0,1)
+movecamera = 0,1
+
+
+[State 9041, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 9041, ChangeAnim2]
+type = ChangeAnim
+trigger1 = anim = 5030 && selfanimexist(5035) && animtime = 0
+value = 5035
+
+[State 9041, ChangeAnim2]
+type = ChangeAnim
+trigger1 = anim = 5030 && !selfanimexist(5035) && animtime = 0
+trigger2 = anim = 5035 && animtime = 0
+value = 5050
+
+[State 9041, VelAdd]
+type = VelAdd
+trigger1 = 1
+y = .82
+
+[State 9041, SelfState]
+type = ChangeState
+trigger1 = pos y >= 0 && vel y > 0
+value = 50002;ifelse(alive,5040,5050)
+
+[Statedef 50002] 
+type = L
+movetype= H
+physics = N
+ctrl = 0
+anim = 5110
+velset = 0,0
+
+[State 0, EnvShake]
+type = EnvShake
+trigger1 = time = 0
+time = 10
+;freq = 60
+;ampl = -4
+;phase = 90
+;ignorehitpause = 
+;persistent = 
+
+[State 7510, PlaySnd]
+type = PlaySnd
+trigger1 = time = 0
+value = 0,7
+
+[State 7100, ScreenBound]
+type = ScreenBound
+trigger1 = 1
+movecamera = 0,1
+value = ifelse(Var(30)&&numpartner,0,1)
+
+[State 7100, PlayerPush]
+type = PlayerPush
+trigger1 = 1
+value = 1
+
+[State 7510, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 7510, PosSet]
+type = PosSet
+trigger1 = time = 0
+y = 0
+
+;[State 7510, Explod]
+;type = Explod
+;trigger1 = time = 0
+;anim = 8010
+;id = 8010
+;ownpal = 1
+;sprpriority = 4
+;pos = 0,0
+
+[State 7510, ChangeState]
+type = SelfState
+trigger1 = time = 30
+value = ifelse(alive,50003,5150)
+
+[Statedef 50003]
+type    = L
+movetype= I
+physics = N
+
+[State 5120, 1a] ;Get up anim (normal)
+type = ChangeAnim
+triggerall = time = 0
+trigger1 = anim != [5111,5119]
+trigger2 = !SelfAnimExist(5120 + (anim % 10))
+value = 5120
+
+[State 5120, 1b] ;Get up anim (for hit up/diag-up)
+type = ChangeAnim
+triggerall = time = 0
+trigger1 = anim = [5111,5119]
+trigger1 = SelfAnimExist(5120 + (anim % 10))
+value = 5120 + (anim % 10)
+
+[State 5120, 2]
+type = VelSet
+trigger1 = Time = 0
+x = 0
+
+[State 5120, 3]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+time = 1
+
+[State 5120, 4]
+type = HitFallSet
+trigger1 = AnimTime = 0
+value = 1
+
+[State 5120, 5] ;Can't be thrown right after getting up
+type = NotHitBy
+trigger1 = AnimTime = 0
+value = , NT,ST,HT
+time = 12
+
+[State 5120, 6] ;Can't be hit right after getting up (short time)
+type = NotHitBy
+trigger1 = AnimTime = 0
+value2 = SCA
+time = 3
+
+[State 7100, ScreenBound]
+type = ScreenBound
+trigger1 = 1
+movecamera = 0,1
+value = ifelse(Var(30)&&numpartner,0,1)
+
+[State 5120, 7]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = ifelse(Var(30)&&numpartner,4511,0)
+ctrl = ifelse(Var(30)&&numpartner,0,1)
+

@@ -1,0 +1,439 @@
+{
+	"name": "Kuwabara Kazuma",
+	"commands": [
+		{
+			"name": "HCB_P",
+			"input": "~F, DF, D, DB, B, x"
+		},
+		{
+			"name": "QCF_K",
+			"input": "~D, DF, F, a"
+		},
+		{
+			"name": "QCB_P",
+			"input": "~D, DB, B, x"
+		},
+		{
+			"name": "QCBHCF_P",
+			"input": "~D, DB, B, DB, D, DF, F, x"
+		},
+		{
+			"name": "2xQCB_K",
+			"input": "~D, DB, B, D, DB, B, a"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		}
+	],
+	"moves": [
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 195,
+			"commands": [
+				"start"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Strong Punch",
+			"stateNo": 210,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 85,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Light Kick",
+			"stateNo": 230,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "Standing Strong Kick",
+			"stateNo": 240,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 65,
+			"anim": 240,
+			"animation": "action-240"
+		},
+		{
+			"name": "Crouching Light Punch",
+			"stateNo": 400,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouching Strong Punch",
+			"stateNo": 410,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouching Light Kick",
+			"stateNo": 430,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 430,
+			"animation": "action-430"
+		},
+		{
+			"name": "Crouching Strong Kick",
+			"stateNo": 440,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 65,
+			"anim": 440,
+			"animation": "action-440"
+		},
+		{
+			"name": "Jump Light Punch",
+			"stateNo": 600,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Jump Light Punch",
+			"stateNo": 601,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 601,
+			"animation": "action-601"
+		},
+		{
+			"name": "Jump Strong Punch",
+			"stateNo": 610,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 75,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Jump Strong Punch",
+			"stateNo": 611,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Jump Light Kick",
+			"stateNo": 630,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "Jump Light Kick",
+			"stateNo": 631,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 631,
+			"animation": "action-631"
+		},
+		{
+			"name": "Jump Strong Kick",
+			"stateNo": 640,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 640,
+			"animation": "action-640"
+		},
+		{
+			"name": "Throw",
+			"stateNo": 800,
+			"commands": [
+				"y",
+				"holdfwd",
+				"holdback"
+			],
+			"inputs": [
+				"y",
+				"/$F",
+				"/$B"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "Big Punch",
+			"stateNo": 1000,
+			"commands": [
+				"HCB_P"
+			],
+			"inputs": [
+				"~F, DF, D, DB, B, x"
+			],
+			"movetype": "A",
+			"damage": 300,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Stomp Combo",
+			"stateNo": 1100,
+			"commands": [
+				"QCF_K"
+			],
+			"inputs": [
+				"~D, DF, F, a"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "Reiken",
+			"stateNo": 1200,
+			"commands": [
+				"QCB_P"
+			],
+			"inputs": [
+				"~D, DB, B, x"
+			],
+			"movetype": "A",
+			"damage": 75,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "Spirit Club",
+			"stateNo": 3000,
+			"commands": [
+				"QCBHCF_P"
+			],
+			"inputs": [
+				"~D, DB, B, DB, D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": 180,
+			"anim": 3000,
+			"animation": "action-3000"
+		},
+		{
+			"name": "Rift Sword",
+			"stateNo": 3100,
+			"commands": [
+				"2xQCB_K"
+			],
+			"inputs": [
+				"~D, DB, B, D, DB, B, a"
+			],
+			"movetype": "A",
+			"damage": 90,
+			"anim": 3100,
+			"animation": "action-3100"
+		}
+	]
+}

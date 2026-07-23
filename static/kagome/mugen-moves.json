@@ -1,0 +1,821 @@
+{
+	"name": "Kagome",
+	"commands": [
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "holda",
+			"input": "/a"
+		},
+		{
+			"name": "holdb",
+			"input": "/b"
+		},
+		{
+			"name": "holdc",
+			"input": "/c"
+		},
+		{
+			"name": "holdx",
+			"input": "/x"
+		},
+		{
+			"name": "holdy",
+			"input": "/y"
+		},
+		{
+			"name": "holdz",
+			"input": "/z"
+		},
+		{
+			"name": "holdstart",
+			"input": "/s"
+		},
+		{
+			"name": "a2",
+			"input": "a"
+		},
+		{
+			"name": "b2",
+			"input": "b"
+		},
+		{
+			"name": "c2",
+			"input": "c"
+		},
+		{
+			"name": "x2",
+			"input": "x"
+		},
+		{
+			"name": "y2",
+			"input": "y"
+		},
+		{
+			"name": "z2",
+			"input": "z"
+		},
+		{
+			"name": "start2",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd2",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback2",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup2",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown2",
+			"input": "/$D"
+		},
+		{
+			"name": "holda2",
+			"input": "/a"
+		},
+		{
+			"name": "holdb2",
+			"input": "/b"
+		},
+		{
+			"name": "holdc2",
+			"input": "/c"
+		},
+		{
+			"name": "holdx2",
+			"input": "/x"
+		},
+		{
+			"name": "holdy2",
+			"input": "/y"
+		},
+		{
+			"name": "holdz2",
+			"input": "/z"
+		},
+		{
+			"name": "holdstart2",
+			"input": "/s"
+		},
+		{
+			"name": "recovery2",
+			"input": "x+y"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "s_arrow",
+			"input": "D,D, x"
+		},
+		{
+			"name": "arrow_shoot",
+			"input": "/F, x"
+		},
+		{
+			"name": "angry_exp",
+			"input": "/B, x"
+		}
+	],
+	"moves": [
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF",
+				"c",
+				"z"
+			],
+			"inputs": [
+				"F, F",
+				"c",
+				"z"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB",
+				"z",
+				"c"
+			],
+			"inputs": [
+				"B, B",
+				"z",
+				"c"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 105,
+			"animation": "run-back"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 200,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 28,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Standing Light Punch2",
+			"stateNo": 201,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Standing Light Punch3",
+			"stateNo": 202,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Ball Special Combo",
+			"stateNo": 203,
+			"commands": [
+				"y",
+				"b",
+				"x"
+			],
+			"inputs": [
+				"y",
+				"b",
+				"x"
+			],
+			"movetype": "A",
+			"damage": 112,
+			"anim": 203,
+			"animation": "action-203"
+		},
+		{
+			"name": "Standing Light Punch3 Dupe",
+			"stateNo": 204,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Ball Special Combo Dupe",
+			"stateNo": 206,
+			"commands": [
+				"y",
+				"b"
+			],
+			"inputs": [
+				"y",
+				"b"
+			],
+			"movetype": "A",
+			"damage": 112,
+			"anim": 203,
+			"animation": "action-203"
+		},
+		{
+			"name": "Stand Strong Punch",
+			"stateNo": 210,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Strong Punch2",
+			"stateNo": 211,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 28,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Strong Punch3",
+			"stateNo": 212,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 211,
+			"animation": "action-211"
+		},
+		{
+			"name": "Stand Strong Punch2 Dupe",
+			"stateNo": 222,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 28,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Strong Punch3 Dupe",
+			"stateNo": 224,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 211,
+			"animation": "action-211"
+		},
+		{
+			"name": "Stand Strong Punch 232",
+			"stateNo": 232,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 211,
+			"animation": "action-211"
+		},
+		{
+			"name": "Stand Strong Punch 236",
+			"stateNo": 236,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 211,
+			"animation": "action-211"
+		},
+		{
+			"name": "Standing Light Punch3 242",
+			"stateNo": 242,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Standing Light Punch3 252",
+			"stateNo": 252,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Crouch Light Punch",
+			"stateNo": 400,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 28,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouch Light Punch2",
+			"stateNo": 401,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouch Light Punch3",
+			"stateNo": 402,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 401,
+			"animation": "action-401"
+		},
+		{
+			"name": "Crouch Light Punch3 Dupe",
+			"stateNo": 404,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 401,
+			"animation": "action-401"
+		},
+		{
+			"name": "Crouch Strong Punch",
+			"stateNo": 410,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouch Strong Punch2",
+			"stateNo": 411,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 28,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouch Strong Punch3",
+			"stateNo": 412,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 411,
+			"animation": "action-411"
+		},
+		{
+			"name": "Crouch Strong Punch2 Dupe",
+			"stateNo": 422,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 28,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouch Strong Punch3 Dupe",
+			"stateNo": 424,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 411,
+			"animation": "action-411"
+		},
+		{
+			"name": "Crouch Strong Punch 432",
+			"stateNo": 432,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 411,
+			"animation": "action-411"
+		},
+		{
+			"name": "Crouch Strong Punch 436",
+			"stateNo": 436,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 411,
+			"animation": "action-411"
+		},
+		{
+			"name": "Crouch Light Punch3 442",
+			"stateNo": 442,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 401,
+			"animation": "action-401"
+		},
+		{
+			"name": "Crouch Light Punch3 452",
+			"stateNo": 452,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 14,
+			"anim": 401,
+			"animation": "action-401"
+		},
+		{
+			"name": "Osuwarii",
+			"stateNo": 517,
+			"commands": [
+				"b",
+				"holdfwd"
+			],
+			"inputs": [
+				"b",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 517,
+			"animation": "action-517"
+		},
+		{
+			"name": "Jump Light Punch",
+			"stateNo": 600,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 28,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Jump Strong Punch",
+			"stateNo": 610,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Dashfwd Punch",
+			"stateNo": 620,
+			"commands": [
+				"y",
+				"b",
+				"c",
+				"z"
+			],
+			"inputs": [
+				"y",
+				"b",
+				"c",
+				"z"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 620,
+			"animation": "action-620"
+		},
+		{
+			"name": "Dashback Punch",
+			"stateNo": 621,
+			"commands": [
+				"y",
+				"b",
+				"z",
+				"c"
+			],
+			"inputs": [
+				"y",
+				"b",
+				"z",
+				"c"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 621,
+			"animation": "action-621"
+		},
+		{
+			"name": "Backpack",
+			"stateNo": 800,
+			"commands": [
+				"b",
+				"holdfwd"
+			],
+			"inputs": [
+				"b",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "Air Throw",
+			"stateNo": 850,
+			"commands": [
+				"b",
+				"holdfwd"
+			],
+			"inputs": [
+				"b",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 849,
+			"animation": "action-849"
+		},
+		{
+			"name": "Arrow Shoot",
+			"stateNo": 1000,
+			"commands": [
+				"arrow_shoot"
+			],
+			"inputs": [
+				"/F, x"
+			],
+			"movetype": "A",
+			"damage": 126,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "AngryExp",
+			"stateNo": 1500,
+			"commands": [
+				"angry_exp"
+			],
+			"inputs": [
+				"/B, x"
+			],
+			"movetype": "A",
+			"damage": 140,
+			"anim": 1500,
+			"animation": "action-1500"
+		},
+		{
+			"name": "SuperArrow",
+			"stateNo": 2000,
+			"commands": [
+				"s_arrow"
+			],
+			"inputs": [
+				"D,D, x"
+			],
+			"movetype": "A",
+			"damage": 308,
+			"anim": 2000,
+			"animation": "action-2000"
+		},
+		{
+			"name": "AI Helper Check",
+			"stateNo": 9741,
+			"commands": [],
+			"inputs": [],
+			"movetype": "I",
+			"damage": null,
+			"anim": 9741,
+			"animation": ""
+		},
+		{
+			"name": "AI Helper Check 2",
+			"stateNo": 9742,
+			"commands": [],
+			"inputs": [],
+			"movetype": "I",
+			"damage": null,
+			"anim": 9741,
+			"animation": ""
+		}
+	]
+}

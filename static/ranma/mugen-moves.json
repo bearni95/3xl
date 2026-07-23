@@ -1,0 +1,467 @@
+{
+	"name": "Ranma",
+	"commands": [
+		{
+			"name": "Super",
+			"input": "~30$D, U, x"
+		},
+		{
+			"name": "Windupper",
+			"input": "~D, DB, B, x"
+		},
+		{
+			"name": "FireballL",
+			"input": "~D, DF, F, x"
+		},
+		{
+			"name": "FireballS",
+			"input": "~D, DF, F, y"
+		},
+		{
+			"name": "Multipunch",
+			"input": "~x,x"
+		},
+		{
+			"name": "Rollkick",
+			"input": "~x+a"
+		},
+		{
+			"name": "DU",
+			"input": "D,U"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "Airdropkick",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		}
+	],
+	"moves": [
+		{
+			"name": "Super jump",
+			"stateNo": 41,
+			"commands": [
+				"DU",
+				"holdup"
+			],
+			"inputs": [
+				"D,U",
+				"/$U"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "jump"
+		},
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 195,
+			"commands": [
+				"start"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Strong Punch",
+			"stateNo": 210,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 90,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Light Kick",
+			"stateNo": 230,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 28,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "Standing Strong Kick",
+			"stateNo": 240,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 75,
+			"anim": 240,
+			"animation": "action-240"
+		},
+		{
+			"name": "Crouching Light Punch",
+			"stateNo": 400,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouching Strong Punch",
+			"stateNo": 410,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 90,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouching Light Kick",
+			"stateNo": 430,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 430,
+			"animation": "action-430"
+		},
+		{
+			"name": "Crouching Strong Kick",
+			"stateNo": 440,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 90,
+			"anim": 440,
+			"animation": "action-440"
+		},
+		{
+			"name": "Rollkick",
+			"stateNo": 450,
+			"commands": [
+				"Rollkick"
+			],
+			"inputs": [
+				"~x+a"
+			],
+			"movetype": "A",
+			"damage": 75,
+			"anim": 450,
+			"animation": "action-450"
+		},
+		{
+			"name": "Jump Light Punch",
+			"stateNo": 600,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Jump Strong Punch",
+			"stateNo": 610,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Jump Light Kick",
+			"stateNo": 630,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "Jump Strong Kick",
+			"stateNo": 640,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 640,
+			"animation": "action-640"
+		},
+		{
+			"name": "Airdropkick",
+			"stateNo": 650,
+			"commands": [
+				"Airdropkick"
+			],
+			"inputs": [
+				"/$D,b"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 650,
+			"animation": "action-650"
+		},
+		{
+			"name": "Kung Fu Throw",
+			"stateNo": 800,
+			"commands": [
+				"y",
+				"holdfwd",
+				"holdback"
+			],
+			"inputs": [
+				"y",
+				"/$F",
+				"/$B"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "FireballL",
+			"stateNo": 1000,
+			"commands": [
+				"FireballL"
+			],
+			"inputs": [
+				"~D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "FireballS",
+			"stateNo": 1010,
+			"commands": [
+				"FireballS"
+			],
+			"inputs": [
+				"~D, DF, F, y"
+			],
+			"movetype": "A",
+			"damage": 85,
+			"anim": 1010,
+			"animation": "action-1010"
+		},
+		{
+			"name": "Windupper",
+			"stateNo": 1100,
+			"commands": [
+				"Windupper"
+			],
+			"inputs": [
+				"~D, DB, B, x"
+			],
+			"movetype": "A",
+			"damage": 125,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "Multi Punch",
+			"stateNo": 1200,
+			"commands": [
+				"Multipunch"
+			],
+			"inputs": [
+				"~x,x"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "Super",
+			"stateNo": 3000,
+			"commands": [
+				"Super"
+			],
+			"inputs": [
+				"~30$D, U, x"
+			],
+			"movetype": "A",
+			"damage": 200,
+			"anim": 3000,
+			"animation": "action-3000"
+		},
+		{
+			"name": "Striker",
+			"stateNo": 3800,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 196,
+			"animation": "action-196"
+		}
+	]
+}

@@ -1,0 +1,26 @@
+; Definition file for Player
+; Contains all the filenames needed for the character
+; Template player 9X-09-12
+
+; Character information
+[Info]
+name    = "Gohan";<-- Replace with a real name
+displayname = "Kid Gohan SSJ1";<-- Replace with name to display
+author = "GohanSSM2"
+;mugenversion = 4.01 & 4.14
+
+; Files for the character
+[Files]
+cmd     = kgohanai.cmd     ;Command set
+cns     = kgohan.cns     ;Constants
+st      = kgohan.cns     ;States
+stcommon = aircodes.cns   ;Common states
+sprite  = kgohan.sff     ;Sprite
+anim    = kgohan.air     ;Animation
+sound   = kgohan.snd     ;Sound
+pal1    = kgohan.act     ;Palettes
+pal2    = kgohan3.act
+pal3    = kgohan4.act
+pal4    = kgohan2.act
+pal5    = kgohan5.act
+pal6    = kgohan6.act

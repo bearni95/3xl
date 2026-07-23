@@ -1,0 +1,26 @@
+; Definition file for Player
+; Contains all the filenames needed for the character
+; Template player 9X-09-12
+
+; Character information
+[Info]
+name    = "Piccolo";<-- Replace with a real name
+displayname = "Piccolo sb1";<-- Replace with name to display
+author = "GohanSSM2"
+;mugenversion = 4.01 & 4.14
+
+; Files for the character
+[Files]
+cmd     = piccolo1ai.cmd     ;Command set
+cns     = piccolo1.cns     ;Constants
+st      = piccolo1.cns     ;States
+stcommon = aircodes.cns   ;Common states
+sprite  = piccolo1.sff     ;Sprite
+anim    = piccolo1.air     ;Animation
+sound   = piccolo1.snd     ;Sound
+pal1    = piccolo1.act     ;Palettes
+pal2    = piccolo1b.act
+pal3    = piccolo1c.act
+pal4    = piccolo1d.act
+pal5    = piccolo1e.act
+pal6    = piccolo1f.act

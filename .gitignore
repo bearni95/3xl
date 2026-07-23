@@ -1,5 +1,13 @@
 node_modules
 
+# MUGEN source archives (folder tracked, contents not)
+mugen-characters/*
+!mugen-characters/.gitkeep
+
+# ICGC admin divisions source download (the file we use is copied to static/geo/)
+divisions-administratives-*
+
+
 # Output
 .output
 .vercel

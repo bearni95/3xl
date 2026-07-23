@@ -1,0 +1,481 @@
+{
+	"name": "Sango",
+	"commands": [
+		{
+			"name": "blocking",
+			"input": "$F,x"
+		},
+		{
+			"name": "upper_x",
+			"input": "~F, D, DF, x"
+		},
+		{
+			"name": "upper_y",
+			"input": "~F, D, DF, y"
+		},
+		{
+			"name": "upper_xy",
+			"input": "~F, D, DF, x+y"
+		},
+		{
+			"name": "QCF_x",
+			"input": "~D, DF, F, x"
+		},
+		{
+			"name": "QCF_y",
+			"input": "~D, DF, F, y"
+		},
+		{
+			"name": "QCF_xy",
+			"input": "~D, DF, F, x+y"
+		},
+		{
+			"name": "QCB_x",
+			"input": "~D, DB, B, x"
+		},
+		{
+			"name": "QCB_y",
+			"input": "~D, DB, B, y"
+		},
+		{
+			"name": "QCB_xy",
+			"input": "~D, DB, B, x+y"
+		},
+		{
+			"name": "QCF_a",
+			"input": "~D, DF, F, a"
+		},
+		{
+			"name": "QCF_b",
+			"input": "~D, DF, F, b"
+		},
+		{
+			"name": "QCF_ab",
+			"input": "~D, DF, F, a+b"
+		},
+		{
+			"name": "FF_ab",
+			"input": "F, F, a+b"
+		},
+		{
+			"name": "FF_a",
+			"input": "F, F, a"
+		},
+		{
+			"name": "FF_b",
+			"input": "F, F, b"
+		},
+		{
+			"name": "BB_x",
+			"input": "B,B,x"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		}
+	],
+	"moves": [
+		{
+			"name": "Jump AI",
+			"stateNo": 40,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": 40,
+			"animation": "jump-start"
+		},
+		{
+			"name": "Hop Forward",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "Hop Backwards",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 105,
+			"animation": "run-back"
+		},
+		{
+			"name": "Guard AI",
+			"stateNo": 120,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-start"
+		},
+		{
+			"name": "Stand Light Slash",
+			"stateNo": 200,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Medium Slash",
+			"stateNo": 210,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Light Boomerang Hit",
+			"stateNo": 220,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 220,
+			"animation": "action-220"
+		},
+		{
+			"name": "Stand Heavy Boomerang Slash",
+			"stateNo": 230,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "Crouch Light Slash",
+			"stateNo": 400,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouch Medium Chain",
+			"stateNo": 410,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouch Light Boomerang Hit",
+			"stateNo": 420,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 420,
+			"animation": "action-420"
+		},
+		{
+			"name": "Crouch Heavy Boomerang Slash",
+			"stateNo": 430,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 430,
+			"animation": "action-430"
+		},
+		{
+			"name": "Air Chain",
+			"stateNo": 600,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Air Boomerang Hit",
+			"stateNo": 610,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Hop Forward Attack",
+			"stateNo": 620,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 620,
+			"animation": "action-620"
+		},
+		{
+			"name": "Hop Backwards Attack",
+			"stateNo": 630,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "Stand Throw Normal",
+			"stateNo": 800,
+			"commands": [
+				"holdfwd"
+			],
+			"inputs": [
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "Air Throw Normal",
+			"stateNo": 830,
+			"commands": [
+				"holdfwd"
+			],
+			"inputs": [
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 830,
+			"animation": "action-830"
+		},
+		{
+			"name": "Parry",
+			"stateNo": 900,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "Crouch Parry",
+			"stateNo": 903,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 903,
+			"animation": "action-903"
+		},
+		{
+			"name": "Throw Hiraikotsu",
+			"stateNo": 1000,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Throw Poison Cloud",
+			"stateNo": 1100,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "Kama Chain Throw",
+			"stateNo": 1200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "Summon Kirara",
+			"stateNo": 1300,
+			"commands": [
+				"BB_x"
+			],
+			"inputs": [
+				"B,B,x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1300,
+			"animation": "action-1300"
+		},
+		{
+			"name": "Miroku Assist",
+			"stateNo": 1400,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 230,
+			"animation": "action-230"
+		}
+	]
+}

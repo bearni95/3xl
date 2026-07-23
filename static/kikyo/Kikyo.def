@@ -1,0 +1,36 @@
+; Definition file for Kikyo
+; Contains all the filenames needed for the character
+
+; Player information
+[Info]
+name ="Lady_Kikyo"
+displayname ="Kikyo"
+versiondate =07,05,2007
+mugenversion =04,14,2002
+author ="RicePigeon"
+pal.defaults =1,3,2,4
+
+; Files for the player
+[Files]
+cmd     =kikyo.cmd
+cns     =kikyo.cns
+st      =Kikyo.st
+stcommon =common1.cns
+sprite  =kikyo.sff
+anim    =kikyo.air
+;sound   =kikyo.snd		;Japanese voicepack
+sound  =Kikyo-ENG.snd
+pal1=kikyo-standard.act
+pal2=Kikyo-Kagome.act
+pal3=Kikyo-FFTAlt.act
+pal4=Kikyo-Inuyasha.act
+pal5=Kikyo-Arc.act
+st1=StateOverride.cns
+st2=Helper.cns
+st3=ComboLimit.cns
+
+
+; Arcade mode
+[Arcade]
+intro.storyboard =intro.def
+ending.storyboard =

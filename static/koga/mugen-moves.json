@@ -1,0 +1,567 @@
+{
+	"name": "Koga",
+	"commands": [
+		{
+			"name": "super_golpe_a",
+			"input": "~D, DF, F, D, DF, F, a"
+		},
+		{
+			"name": "super_golpe_b",
+			"input": "~D, DF, F, D, DF, F, b"
+		},
+		{
+			"name": "super_golpe_c",
+			"input": "~D, DF, F, D, DF, F, c"
+		},
+		{
+			"name": "super_misil_x",
+			"input": "~D, DF, F, D, DF, F, x"
+		},
+		{
+			"name": "super_misil_y",
+			"input": "~D, DF, F, D, DF, F, y"
+		},
+		{
+			"name": "super_misil_z",
+			"input": "~D, DF, F, D, DF, F, z"
+		},
+		{
+			"name": "misil_x",
+			"input": "~D, DF, F, x"
+		},
+		{
+			"name": "misil_y",
+			"input": "~D, DF, F, y"
+		},
+		{
+			"name": "misil_z",
+			"input": "~D, DF, F, z"
+		},
+		{
+			"name": "super_patada",
+			"input": "/U, c"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "a+b"
+		},
+		{
+			"name": "ab",
+			"input": "a+b"
+		},
+		{
+			"name": "fwd_x",
+			"input": "/F,x"
+		},
+		{
+			"name": "fwd_y",
+			"input": "/F,y"
+		},
+		{
+			"name": "fwd_z",
+			"input": "/F,z"
+		},
+		{
+			"name": "fwd_a",
+			"input": "/F,a"
+		},
+		{
+			"name": "fwd_b",
+			"input": "/F,b"
+		},
+		{
+			"name": "fwd_c",
+			"input": "/F,c"
+		},
+		{
+			"name": "downfwd_a",
+			"input": "/DF,a"
+		},
+		{
+			"name": "downfwd_b",
+			"input": "/DF,b"
+		},
+		{
+			"name": "back_a",
+			"input": "/B,a"
+		},
+		{
+			"name": "back_b",
+			"input": "/B,b"
+		},
+		{
+			"name": "back_c",
+			"input": "/B,c"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "down_c",
+			"input": "/$D,c"
+		},
+		{
+			"name": "fwd_ab",
+			"input": "/F, a+b"
+		},
+		{
+			"name": "back_ab",
+			"input": "/B, a+b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		}
+	],
+	"moves": [
+		{
+			"name": "FF",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run"
+		},
+		{
+			"name": "BB",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "x",
+			"stateNo": 200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "y",
+			"stateNo": 210,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "z",
+			"stateNo": 220,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 220,
+			"animation": "action-220"
+		},
+		{
+			"name": "a",
+			"stateNo": 230,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "b",
+			"stateNo": 240,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 240,
+			"animation": "action-240"
+		},
+		{
+			"name": "c",
+			"stateNo": 250,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 250,
+			"animation": "action-250"
+		},
+		{
+			"name": "x",
+			"stateNo": 400,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "y",
+			"stateNo": 410,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "z",
+			"stateNo": 420,
+			"commands": [
+				"z",
+				"holddown"
+			],
+			"inputs": [
+				"z",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 420,
+			"animation": "action-420"
+		},
+		{
+			"name": "a",
+			"stateNo": 430,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 430,
+			"animation": "action-430"
+		},
+		{
+			"name": "b",
+			"stateNo": 440,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 440,
+			"animation": "action-440"
+		},
+		{
+			"name": "c",
+			"stateNo": 450,
+			"commands": [
+				"c",
+				"holddown"
+			],
+			"inputs": [
+				"c",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 450,
+			"animation": "action-450"
+		},
+		{
+			"name": "x",
+			"stateNo": 600,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "y",
+			"stateNo": 610,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "z",
+			"stateNo": 620,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 620,
+			"animation": "action-620"
+		},
+		{
+			"name": "a",
+			"stateNo": 630,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "b",
+			"stateNo": 640,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 640,
+			"animation": "action-640"
+		},
+		{
+			"name": "c",
+			"stateNo": 650,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 650,
+			"animation": "action-650"
+		},
+		{
+			"name": "Kung Fu Throw",
+			"stateNo": 800,
+			"commands": [
+				"y",
+				"holdfwd",
+				"holdback"
+			],
+			"inputs": [
+				"y",
+				"/$F",
+				"/$B"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "misil_x",
+			"stateNo": 1000,
+			"commands": [
+				"misil_x"
+			],
+			"inputs": [
+				"~D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3000,
+			"animation": "action-3000"
+		},
+		{
+			"name": "super_patada",
+			"stateNo": 1002,
+			"commands": [
+				"super_patada"
+			],
+			"inputs": [
+				"/U, c"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 1002,
+			"animation": "action-1002"
+		},
+		{
+			"name": "misil_y",
+			"stateNo": 1010,
+			"commands": [
+				"misil_y"
+			],
+			"inputs": [
+				"~D, DF, F, y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1003,
+			"animation": "action-1003"
+		},
+		{
+			"name": "misil_z",
+			"stateNo": 1020,
+			"commands": [
+				"misil_z"
+			],
+			"inputs": [
+				"~D, DF, F, z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1003,
+			"animation": "action-1003"
+		},
+		{
+			"name": "super_misil_x",
+			"stateNo": 1030,
+			"commands": [
+				"super_misil_x",
+				"super_misil_y",
+				"super_misil_z"
+			],
+			"inputs": [
+				"~D, DF, F, D, DF, F, x",
+				"~D, DF, F, D, DF, F, y",
+				"~D, DF, F, D, DF, F, z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1003,
+			"animation": "action-1003"
+		},
+		{
+			"name": "super_golpe_b",
+			"stateNo": 1810,
+			"commands": [
+				"super_golpe_b",
+				"super_golpe_c"
+			],
+			"inputs": [
+				"~D, DF, F, D, DF, F, b",
+				"~D, DF, F, D, DF, F, c"
+			],
+			"movetype": "A",
+			"damage": 200,
+			"anim": 1810,
+			"animation": "action-1810"
+		}
+	]
+}

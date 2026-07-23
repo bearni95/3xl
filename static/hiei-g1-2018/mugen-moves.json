@@ -1,0 +1,1039 @@
+{
+	"name": "Hiei_G1",
+	"commands": [
+		{
+			"name": "CPU1",
+			"input": "U,U,U,U,F,F,F,F"
+		},
+		{
+			"name": "CPU2",
+			"input": "U,D,DB,U,F,F,F,F,D"
+		},
+		{
+			"name": "CPU3",
+			"input": "U,D,F,U,F,F,F,F,U,D,U"
+		},
+		{
+			"name": "CPU4",
+			"input": "U,D,F,U,F,F,F,F,U,D,B"
+		},
+		{
+			"name": "CPU5",
+			"input": "B,D,F,U,F,F,F,F,U,D,U"
+		},
+		{
+			"name": "CPU6",
+			"input": "U,D,F,U,B,F,B,F,U,D,U"
+		},
+		{
+			"name": "CPU7",
+			"input": "F,B,F,U,B,F,B,F,U,D,U"
+		},
+		{
+			"name": "CPU8",
+			"input": "F,B,F,B,B,U,B,B,U,D,U"
+		},
+		{
+			"name": "CPU9",
+			"input": "F,B,F,B,B,U,B,B,U,D,U"
+		},
+		{
+			"name": "CPU10",
+			"input": "F,B,F,B,B,U,B,B,U,D,U"
+		},
+		{
+			"name": "CPU11",
+			"input": "F,B,F,B,B,U,B,B,U,D,U"
+		},
+		{
+			"name": "CPU12",
+			"input": "F,B,F,U,B,F,B,F,U,D,U,B,F,D,B"
+		},
+		{
+			"name": "CPU13",
+			"input": "F,B,F,U,B,F,B,F,U,D,U,B,F,D,F,DB"
+		},
+		{
+			"name": "CPU14",
+			"input": "F,B,F,U,B,F,B,F,U,D,U,B,F,D,B,DF"
+		},
+		{
+			"name": "CPU15",
+			"input": "F,B,F,U,B,F,B,F,U,D,U,B,F,D,B,DF"
+		},
+		{
+			"name": "CPU16",
+			"input": "F,B,F,U,B,F,B,F,U,D,U,B,F,D,B,DF,F"
+		},
+		{
+			"name": "CPU17",
+			"input": "F,B,F,U,B,F,B,F,U,D,U,B,F,D,B,DF,D"
+		},
+		{
+			"name": "CPU18",
+			"input": "F,B,F,U,B,F,B,F,U,D,U,B,F,D,B,DF,F"
+		},
+		{
+			"name": "CPU19",
+			"input": "F,B,F,U,B,F,B,F,U,D,U,B,F,D,B,DF,F,x"
+		},
+		{
+			"name": "CPU20",
+			"input": "F,B,F,U,B,F,B,F,U,D,U,B,F,D,B,DF,F,x"
+		},
+		{
+			"name": "CPU21",
+			"input": "F,B,F,U,B,F,B,F,U,D,U,B,F,D,B,DF,F,x"
+		},
+		{
+			"name": "tele01",
+			"input": "F,x+a"
+		},
+		{
+			"name": "tele02",
+			"input": "B,x+a"
+		},
+		{
+			"name": "zanzou(y)",
+			"input": "D, DB, B, a"
+		},
+		{
+			"name": "zanzou(b)",
+			"input": "D, DB,B, b"
+		},
+		{
+			"name": "espadaAR",
+			"input": "D,y"
+		},
+		{
+			"name": "espada01",
+			"input": "D,DB,B,x"
+		},
+		{
+			"name": "espada03",
+			"input": "D,DB,B,y"
+		},
+		{
+			"name": "espada04",
+			"input": "D,DB,B,x"
+		},
+		{
+			"name": "espada05",
+			"input": "D,DB,B,y"
+		},
+		{
+			"name": "Multiplos Chutes",
+			"input": "~D, DF, F, b"
+		},
+		{
+			"name": "CorteRapidoFrente",
+			"input": "~D,DF,F,x"
+		},
+		{
+			"name": "CorteRapidoFrente1",
+			"input": "D,DF,F,y"
+		},
+		{
+			"name": "projchamas",
+			"input": "~30$B, $F, y"
+		},
+		{
+			"name": "projchamas1",
+			"input": "~30$B, $F, x"
+		},
+		{
+			"name": "ChuteRapidoAR",
+			"input": "D,DF,F,b"
+		},
+		{
+			"name": "ChuteRapidoAR1",
+			"input": "D,DF,F,a"
+		},
+		{
+			"name": "charge",
+			"input": "/y"
+		},
+		{
+			"name": "charge 1",
+			"input": "/b"
+		},
+		{
+			"name": "Superpulo",
+			"input": "~D, U"
+		},
+		{
+			"name": "SocoChao",
+			"input": "y+b"
+		},
+		{
+			"name": "hold_s",
+			"input": "/z"
+		},
+		{
+			"name": "corte",
+			"input": "D,DF,F,D,DF,F,x"
+		},
+		{
+			"name": "dra",
+			"input": "D,DF,F,D,DF,F,y"
+		},
+		{
+			"name": "maximozanzou",
+			"input": "D,DF,F,D,DF,F,b"
+		},
+		{
+			"name": "DR",
+			"input": "D, DF, F, D, DF, F, y+b"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "hold_x",
+			"input": "/x"
+		},
+		{
+			"name": "hold_y",
+			"input": "/y"
+		},
+		{
+			"name": "hold_z",
+			"input": "/z"
+		},
+		{
+			"name": "hold_a",
+			"input": "/a"
+		},
+		{
+			"name": "hold_b",
+			"input": "/b"
+		},
+		{
+			"name": "hold_c",
+			"input": "/c"
+		},
+		{
+			"name": "hold_start",
+			"input": "/s"
+		}
+	],
+	"moves": [
+		{
+			"name": "Superpulo",
+			"stateNo": 60,
+			"commands": [
+				"Superpulo"
+			],
+			"inputs": [
+				"~D, U"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 60,
+			"animation": "action-60"
+		},
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "correndo frente ar",
+			"stateNo": 102,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 102,
+			"animation": "action-102"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "correndo traz ar",
+			"stateNo": 115,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 115,
+			"animation": "action-115"
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 195,
+			"commands": [
+				"start"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "Varios socos 200",
+			"stateNo": 200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "x",
+			"stateNo": 201,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 201,
+			"animation": "action-201"
+		},
+		{
+			"name": "varios socos 202",
+			"stateNo": 202,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Stand Strong Punch",
+			"stateNo": 210,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "y",
+			"stateNo": 211,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 211,
+			"animation": "action-211"
+		},
+		{
+			"name": "y",
+			"stateNo": 212,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 212,
+			"animation": "action-212"
+		},
+		{
+			"name": "Stand Light Kick",
+			"stateNo": 230,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "a",
+			"stateNo": 231,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 231,
+			"animation": "action-231"
+		},
+		{
+			"name": "a",
+			"stateNo": 232,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 232,
+			"animation": "action-232"
+		},
+		{
+			"name": "Standing Strong Kick",
+			"stateNo": 240,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 240,
+			"animation": "action-240"
+		},
+		{
+			"name": "b",
+			"stateNo": 241,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 241,
+			"animation": "action-241"
+		},
+		{
+			"name": "b",
+			"stateNo": 242,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 5,
+			"anim": 242,
+			"animation": "action-242"
+		},
+		{
+			"name": "Crouching Light Punch",
+			"stateNo": 400,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouching Strong Punch",
+			"stateNo": 410,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouching Light Kick",
+			"stateNo": 430,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 430,
+			"animation": "action-430"
+		},
+		{
+			"name": "Crouching Strong Kick",
+			"stateNo": 440,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 440,
+			"animation": "action-440"
+		},
+		{
+			"name": "powercharge",
+			"stateNo": 500,
+			"commands": [
+				"hold_s"
+			],
+			"inputs": [
+				"/z"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 500,
+			"animation": "action-500"
+		},
+		{
+			"name": "varios socos 202",
+			"stateNo": 600,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Hiei tele 01",
+			"stateNo": 602,
+			"commands": [
+				"tele02"
+			],
+			"inputs": [
+				"B,x+a"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 106,
+			"animation": "action-106"
+		},
+		{
+			"name": "Jump Strong Punch",
+			"stateNo": 610,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "SocoChao",
+			"stateNo": 611,
+			"commands": [
+				"SocoChao",
+				"espadaAR"
+			],
+			"inputs": [
+				"y+b",
+				"D,y"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 611,
+			"animation": "action-611"
+		},
+		{
+			"name": "Jump Light Kick",
+			"stateNo": 630,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "Jump Strong Kick",
+			"stateNo": 640,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 640,
+			"animation": "action-640"
+		},
+		{
+			"name": "espada01",
+			"stateNo": 701,
+			"commands": [
+				"espada01"
+			],
+			"inputs": [
+				"D,DB,B,x"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "action-701"
+		},
+		{
+			"name": "Hiei tele 01",
+			"stateNo": 702,
+			"commands": [
+				"tele01"
+			],
+			"inputs": [
+				"F,x+a"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 101,
+			"animation": "action-101"
+		},
+		{
+			"name": "espadaAR",
+			"stateNo": 703,
+			"commands": [
+				"espadaAR"
+			],
+			"inputs": [
+				"D,y"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 703,
+			"animation": "action-703"
+		},
+		{
+			"name": "zanzou(b)",
+			"stateNo": 704,
+			"commands": [
+				"zanzou(b)"
+			],
+			"inputs": [
+				"D, DB,B, b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 704,
+			"animation": "action-704"
+		},
+		{
+			"name": "zanzou(y)",
+			"stateNo": 708,
+			"commands": [
+				"zanzou(y)"
+			],
+			"inputs": [
+				"D, DB, B, a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 704,
+			"animation": "action-704"
+		},
+		{
+			"name": "varios socos 202",
+			"stateNo": 717,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 717,
+			"animation": "action-717"
+		},
+		{
+			"name": "Air Kick Combo",
+			"stateNo": 723,
+			"commands": [
+				"Multiplos Chutes"
+			],
+			"inputs": [
+				"~D, DF, F, b"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 723,
+			"animation": "action-723"
+		},
+		{
+			"name": "Kung Fu Throw",
+			"stateNo": 800,
+			"commands": [
+				"y",
+				"holdfwd",
+				"holdback"
+			],
+			"inputs": [
+				"y",
+				"/$F",
+				"/$B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "projchamas",
+			"stateNo": 900,
+			"commands": [
+				"projchamas"
+			],
+			"inputs": [
+				"~30$B, $F, y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "projchamas1",
+			"stateNo": 902,
+			"commands": [
+				"projchamas1"
+			],
+			"inputs": [
+				"~30$B, $F, x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "y",
+			"stateNo": 1000,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "y",
+			"stateNo": 1001,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1001,
+			"animation": "action-1001"
+		},
+		{
+			"name": "corte",
+			"stateNo": 1002,
+			"commands": [
+				"corte"
+			],
+			"inputs": [
+				"D,DF,F,D,DF,F,x"
+			],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 1002,
+			"animation": "action-1002"
+		},
+		{
+			"name": "ChuteRapidoAR",
+			"stateNo": 1200,
+			"commands": [
+				"ChuteRapidoAR"
+			],
+			"inputs": [
+				"D,DF,F,b"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "ChuteRapidoAR1",
+			"stateNo": 1203,
+			"commands": [
+				"ChuteRapidoAR1"
+			],
+			"inputs": [
+				"D,DF,F,a"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "Gram Air",
+			"stateNo": 1300,
+			"commands": [
+				"espada04"
+			],
+			"inputs": [
+				"D,DB,B,x"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 1300,
+			"animation": "action-1300"
+		},
+		{
+			"name": "Gram Air",
+			"stateNo": 1301,
+			"commands": [
+				"espada05"
+			],
+			"inputs": [
+				"D,DB,B,y"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 1301,
+			"animation": "action-1301"
+		},
+		{
+			"name": "dra",
+			"stateNo": 1500,
+			"commands": [
+				"dra"
+			],
+			"inputs": [
+				"D,DF,F,D,DF,F,y"
+			],
+			"movetype": "I",
+			"damage": 50,
+			"anim": 1500,
+			"animation": "action-1500"
+		},
+		{
+			"name": "CorteRapidoFrente",
+			"stateNo": 1600,
+			"commands": [
+				"CorteRapidoFrente"
+			],
+			"inputs": [
+				"~D,DF,F,x"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": null,
+			"animation": "action-1600"
+		},
+		{
+			"name": "CorteRapidoFrente1",
+			"stateNo": 1607,
+			"commands": [
+				"CorteRapidoFrente1"
+			],
+			"inputs": [
+				"D,DF,F,y"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 1607,
+			"animation": "action-1607"
+		},
+		{
+			"name": "Gram",
+			"stateNo": 1700,
+			"commands": [
+				"espada01"
+			],
+			"inputs": [
+				"D,DB,B,x"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1700,
+			"animation": "action-1700"
+		},
+		{
+			"name": "Gram",
+			"stateNo": 1701,
+			"commands": [
+				"espada03"
+			],
+			"inputs": [
+				"D,DB,B,y"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 1701,
+			"animation": "action-1701"
+		},
+		{
+			"name": "maximozanzou",
+			"stateNo": 3000,
+			"commands": [
+				"maximozanzou"
+			],
+			"inputs": [
+				"D,DF,F,D,DF,F,b"
+			],
+			"movetype": "I",
+			"damage": 50,
+			"anim": 3000,
+			"animation": "action-3000"
+		},
+		{
+			"name": "DR",
+			"stateNo": 13000,
+			"commands": [
+				"DR"
+			],
+			"inputs": [
+				"D, DF, F, D, DF, F, y+b"
+			],
+			"movetype": "A",
+			"damage": 5,
+			"anim": 13000,
+			"animation": "action-13000"
+		}
+	]
+}

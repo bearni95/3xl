@@ -1,0 +1,26 @@
+; Contains all the filenames needed for the character
+; Template player 9X-09-12
+
+; Character information
+[Info]
+name    = "SGoku";<-- Replace with a real name
+displayname = "SonGoku-Snk/SF";<-- Replace with name to display
+
+; Files for the character
+[Files]
+cmd     = sgoku.cmd       ;Command set
+cns     = sgoku.cns       ;Constants
+st      = sgoku.cns       ;States
+st1     = sgoku-normal.cns
+st2     = sgoku-super.cns
+stcommon = common1.cns   ;Common states
+sprite  = sgoku.sff       ;Sprite
+anim    = sgoku.air       ;Animation
+sound   = sgoku.snd              ;Sound
+pal1    = sgoku.act       ;Palettes
+pal2    = sgoku2.act
+pal3    = sgoku3.act   
+pal4    = sgoku4.act   
+pal5    = sgoku5.act
+pal6    = sgoku6.act
+pal7    = sgokufo.act

@@ -1,0 +1,2283 @@
+;***********************************************************************;
+;************************* TAG System V. 2.0 ***************************;
+;***********************************************************************;
+
+; ----------------------------------------------------------------------;
+; CREDITS:
+; Main tag code implementation and depelovement:
+; - R.o.q.u.e.
+; Slightly modified by:
+; - AeroGP
+; PLEASE GIVE CREDIT IF MODIFYING THIS!!!
+; ----------------------------------------------------------------------;
+
+;***********************************************************************;
+;***********************************************************************;
+
+;------------------------------------------------------------------------
+;TagIn
+;------------------------------------------------------------------------
+;Changes the state number of the player, and that of the player's partner.
+;
+;Required arguments:
+;  stateno = state_no (int)
+;    state_no is the number of the state to change to.
+;  partnerstateno = state_no (int)
+;    state_no is the number of the state to change the partner to.
+;  ctrl = ctrl_flag (int)
+;    Set to nonzero to have control, or 0 to disable control.
+;
+;Optional arguments:
+;  none
+;
+;Example:
+;  none
+;
+;Notes:
+;  Crashes if triggered without a partner being present.
+;
+;------------------------------------------------------------------------
+;TagIn Implementation
+;------------------------------------------------------------------------
+; - Number of vars used: 1
+; - Assigned var: var(30)
+; - Values:
+;   *var(30) = 0 --- Tag Disabled
+;   *var(30) = 1 --- Tag Enabled
+;   *var(30) = 2 --- Dual Hyper Combo performed
+;   *var(30) = 3 --- Assist attack performed (alpha assist)
+;   *var(30) = 4 --- Assist attack performed (beta assist)
+;   *var(30) = 5 --- Assist attack performed (gamma assist)
+
+;***********************************************************************;
+;***********************************************************************;
+
+;                   ********************************
+;                   *********  TAG states  *********
+;                   ********************************
+
+;***********************************************************************;
+;***********************************************************************;
+
+; Entering the screen
+;--------------------
+
+[Statedef 4500]
+type = A
+movetype = I
+physics = N
+anim = 41	; <- Jumping In (Hey, I'm gonna kick your ass!!!!)
+sprpriority = 2
+ctrl = 0
+
+; Starting position
+[State 4500, 1]
+type = PosSet
+trigger1 = time = 0
+x = -243*(facing)
+y = -150
+
+; Attack velocity
+[State 4500, 2]
+type = VelSet
+trigger1 = Time = 0
+x = 13
+y = 5
+
+[State 4500, 3a] ; the character cannot be hit until he has fully entered on the stage
+type = NotHitBy
+trigger1 = BackEdgeBodyDist <= 0
+value = SCA
+time = 2
+
+[State 4500, 3b] ; if partner was KOed, appear being invincible
+type = NotHitBy
+trigger1 = Partner, Life <= 0
+value = SCA
+time = 6
+
+[State 4500, 4] ; Prevents the camera from following the char
+type = ScreenBound
+trigger1 = 1
+value = 0
+
+[State 4500, 5a] ; the character attacks his opponent when :
+type = ChangeState
+triggerall = BackEdgeBodyDist >= 0	; he is on the stage
+trigger1 = partner, life > 0		; and his partner is alive
+;trigger1 = P2BodyDist X = [0, 50]      ; and his enemy is close
+trigger1 = !Win && !Lose
+value = 4501
+
+[State 4500, 6]
+type = VelSet
+triggerall = BackEdgeBodyDist >= 0
+trigger1 = FrontEdgeBodyDist <= 0	; he has reached the other side of the screen
+trigger2 = partner, life <= 0		; his partner has just died
+trigger2 = (Time >= 50) || (P2BodyDist X = [-100, 100])
+trigger3 = P2Dist X < 0                 ; his enemy is behind him
+trigger4 = P2BodyDist X = [-100, 100]
+trigger4 = Win
+trigger5 = Win
+trigger5 = Time >= 20
+trigger6 = Pos Y >= 0                   ; he has landed
+trigger6 = Vel Y >= 0
+x = 0
+y = 0
+
+[State 4500, 7] ; the character does not attack his opponent if:
+type = ChangeState
+triggerall = BackEdgeBodyDist >= 0
+trigger1 = FrontEdgeBodyDist <= 0	; he has reached the other side of the screen
+trigger2 = Partner, Life <= 0           ; his partner has just died
+trigger2 = (Time >= 50) || (P2BodyDist X = [-100, 100])
+trigger3 = P2Dist X < 0                 ; his enemy is behind him
+trigger4 = P2BodyDist X = [-100, 100]
+trigger4 = Win
+trigger5 = Win
+trigger5 = Time >= 20
+trigger6 = Pos Y >= 0                   ; he has landed
+trigger6 = Vel Y >= 0
+value = 52
+ctrl = 1
+
+
+; Tag attack (when partner is tagged in)
+;---------------------------------------
+[Statedef 4501]
+type = A
+movetype = A
+physics = N
+sprpriority = 2
+ctrl = 0
+
+; Tag in attack (basicaly a flying kick)
+[State 4501, 1a]
+type = ChangeAnim
+triggerall = SelfAnimExist(4501)  ; <--- check if this anim exists
+trigger1 = time = 0
+value = 4501                     ; <--- then change into it!
+
+; Alternate tag in attack
+[State 4501, 1b]
+type = ChangeAnim
+triggerall = !SelfAnimExist(4501) ; <--- if this anim DOESN'T exist
+trigger1 = SelfAnimExist(640)     ; <--- check if this anim exists
+trigger1 = time = 0
+value = 640                       ; <--- then change into it!
+
+; This can be customized if you need
+; different behaviors, alternate sounds,
+; etc. ---------------------------------
+[State 4501, 2]
+type = HitDef
+trigger1 = !TIME
+attr = A, NA
+hitflag = MAF
+guardflag = MA
+animtype = Hard
+priority = 4, Hit
+damage = 21, 0
+pausetime = 9, 9
+sparkno = s9107
+guard.sparkno = s6000
+sparkxy = -10, -66
+hitsound = s5544,2
+guardsound = S5546,0
+ground.type = High
+ground.hittime = 15
+air.hittime = 20
+ground.velocity = -1.5,-21
+air.velocity = -1.5,-21
+fall = 1
+air.fall = 1
+fall.recover = 0
+fall.yvelocity = 0
+yaccel = .6
+p2stateno = 7111
+
+[State 4501, TargetState]
+type = TargetState
+trigger1 = MoveHit = 1
+value = 4503
+ignorehitpause = 1
+persistent = 0
+
+; This MUSN'T be changed unless you change it into a ground attack
+[State 4501, 3]
+type = PosSet
+trigger1 = Pos Y >= 0
+y = 0
+
+; Finally, make a taunt when succesfull (or not XD)
+[State 4501, 4]
+type = ChangeState
+trigger1 = Pos Y >= 0
+trigger1 = Vel Y >= 0
+value = ifelse(SelfAnimExist(4502), 4502, 195) ; <--- Add your personal taunt here...
+ctrl = 1
+
+;---------------------
+; Custom Tag in Taunt
+[Statedef 4502]
+type = S
+movetype = I
+physics = S
+ctrl = 0
+velset = 0, 0
+sprpriority = 2
+facep2=  1
+
+; Tag in taunt
+[State 4502, 1]
+type = ChangeAnim
+triggerall = SelfAnimExist(4502)  ; <--- Tag in taunt anim
+trigger1 = time = 0
+value = 4502                      ; <--- ...
+
+; This can be customized depending on the char
+; --------------------------------------------
+[State 4502, 2]
+type = PlaySnd
+trigger1 = AnimElem = 3
+value = s190, 2
+
+[State 195, 1]
+type = playsnd
+trigger1 = animelem = 4
+value = s4000,3
+volume = 100
+
+[State 4502, 3]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;----------------------------------------------------------------------
+; Launched State (spinning around, VS Style)
+[Statedef 4503]
+type = A
+movetype = H
+physics = N
+ctrl = 0
+velset = 0, 0
+
+; This only uses the Hip Up anim, if it doesn't exist it will change into
+; normal falling anim
+[State 4503, 1a]
+type = ChangeAnim
+triggerall = Alive
+trigger1 = time = 0
+value = ifelse(SelfAnimExist(5250), 5250, ifelse(SelfAnimExist(5051), 5051, 5050))
+
+[State 4503, 1b]
+type = ChangeAnim
+triggerall = !Alive
+trigger1 = time = 0
+value = ifelse(SelfAnimExist(5030), 5030, ifelse(SelfAnimExist(5035), 5035, 5050))
+
+[State 4503, 2]
+type = velset
+trigger1 = time = 0
+x = gethitvar(xvel)* facing
+y = gethitvar(yvel)
+
+[State 4503, 3]
+type = VelAdd
+trigger1 = 1
+y = GetHitVar(yaccel)
+
+[State 0, ChangeState]
+type = ChangeState
+trigger1 = !alive
+value = 5090
+ctrl = 0
+
+[State 4503, 4]
+type = ChangeState
+trigger1 = Vel Y > 0
+value = 4504
+
+;---------------------------------------------------------------------------
+; Launched Part 2
+[Statedef 4504]
+type    = A
+movetype= H
+physics = N
+
+[State 4503, 1a]
+type = ChangeAnim
+triggerall = Alive
+trigger1 = time = 0
+value = ifelse(SelfAnimExist(5250), 5251, ifelse(SelfAnimExist(5061), 5061, 5050))
+
+[State 4503, 1b]
+type = ChangeAnim
+triggerall = !Alive
+trigger1 = time = 0
+value = 5050
+
+[State 4504, 2] ;Gravity
+type = VelAdd
+trigger1 = 1
+y = GetHitVar(yaccel)
+
+[State 9022, SelfState]
+type = SelfState
+trigger1 = pos y >= 0 && vel y > 0
+value = 5110
+
+; Leaving Taunt
+;--------------
+[Statedef 4510] ; Define your own taunt here
+type = S
+movetype = I
+physics = S
+sprpriority = 2
+velset = 0,0
+ctrl = 0
+
+; leaving taunt
+[State 4510, 1a]
+type = ChangeAnim
+triggerall = SelfAnimExist(4510)  ; <--- check if this anim exists
+trigger1 = time = 0
+value = 4510                      ; <--- then change into it!
+
+; leaving taunt (alt)
+[State 4510, 1b]
+type = ChangeAnim
+triggerall = !SelfAnimExist(4510)  ; <--- this anim doesn't exist...
+triggerall = SelfAnimExist(4502)    ; <--- so check if this one exists
+trigger1 = time = 0
+value = 4502                        ; <--- and change into it!
+
+; Customize this according to the
+; animation used ----------------
+[State 4502, 2]
+type = PlaySnd
+trigger1 = AnimElem = 3
+value = s190, 2
+
+[State 195, 1]
+type = playsnd
+trigger1 = animelem = 4
+value = s4000,3
+volume = 100
+
+[State 4510, 2] ; the character cannot be hit since he is leaving
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 4510, 3] ; Prevents the camera from following the char
+type = PlayerPush
+trigger1 = 1
+value = 0
+
+[State 4510, 4]
+type = ChangeState
+trigger1 = animtime = 0
+value = 4511
+
+; Leave the stage
+;----------------
+[Statedef 4511]
+type = S
+movetype = I
+physics = N
+anim = 40	; <- Jump Start (see you later!!!!)
+sprpriority = 2
+ctrl = 0
+
+; NEW !! Tag active definer
+[State 4511, 1]
+type = VarSet
+trigger1 = time = [0,1]
+var(30) = 1
+
+[State 4511, 2] ; Jump Backwards
+type = ChangeAnim
+trigger1 = AnimTime = 0
+value = 42
+
+[State 4511, 3] ; StateTypeSet changes to aerial while jumping
+type = StateTypeSet
+trigger1 = Pos Y < 0
+statetype = A
+
+[State 4511, 4]
+type = VelSet
+trigger1 = Anim = 42
+x = -12
+y = -4
+
+[State 4511, 5] ; Cannot be hurt if leaving
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 4511, 6] ; Ghost
+type = PlayerPush
+trigger1 = 1
+value = 0
+
+[State 4511, 7] ; Camera shouldn't follow him
+type = ScreenBound
+trigger1 = 1
+value = 0
+
+[State 4500, 8]
+type = VelSet
+trigger1 = BackEdgeBodyDist < -30
+x = 0
+y = 0
+
+[State 4511, 9]
+type = ChangeState
+trigger1 = BackEdgeDist < -30
+trigger2 = Time >= 30
+value = 4512
+
+; Standby (offscreen)
+;-----------------------
+[Statedef 4512]
+type = A
+movetype = I
+physics = N
+anim = 0
+velset = 0,0
+ctrl = 0
+
+[State 4512, 1]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 4512, 2]
+type = PlayerPush
+trigger1 = 1
+value = 0
+
+[State 4512, 3] ; Prevents the camera from following the char
+type = ScreenBound
+trigger1 = 1
+value = 0
+
+[State 4512, 4] ; Gains life (optional)
+type = LifeAdd
+trigger1 = (gametime%10) = 0
+value = 1
+
+[State 4512, 5] ; always face the same direction as partner
+type = turn
+trigger1 = facing != partner,facing
+
+[State 4512, 6] ; always stay behind and at the same distance of the char on the stage
+type = posset
+trigger1 = 1
+x = (partner, pos x) - 1000*facing
+y = -150
+
+[State 4512, 7] ; prevent bugs when you win or lose by time over
+type = ChangeState
+triggerall = Alive
+trigger1 = RoundState = 3
+trigger1 = time >= 20
+value = 4520
+
+
+;---------------------------------------------------------------------------
+; Jumping in (when partner is KOed)
+[Statedef 4520]
+type = S
+movetype = I
+physics = N
+anim = 42
+sprpriority = 2
+ctrl = 0
+
+[State 4520, 0]
+type = PosSet
+trigger1 = time = 0;AnimElem = 2, < 0
+x = -243*(facing)
+y = -80;0
+
+[State 4520, 1]
+type = VelSet
+trigger1 = time = 4;AnimElem = 2, = 0
+x = 12;4
+y = 5; -8.75
+
+[State 4520, 2]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+time = 6
+
+[State 4520, 3]
+type = ScreenBound
+trigger1 = 1
+value = 0
+
+;[State 4520, 8]
+;type = Gravity
+;trigger1 = time >= 4
+
+[State 4520, 9]
+type = VelSet
+trigger1 = Vel Y >= 0
+trigger1 = Pos Y >= 0
+;trigger1 = AnimElem = 2, >= 0
+x = 0
+y = 0
+
+[State 4520, 10]
+type = ChangeState
+trigger1 = Vel Y >= 0
+trigger1 = Pos Y >= 0
+;trigger1 = AnimElem = 2, >= 0
+value = 4521
+
+;---------------------------------------------------------------------------
+; Landing
+[Statedef 4521]
+type = S
+movetype = I
+physics = N
+anim = 47
+sprpriority = 2
+ctrl = 0
+
+[State 4520, 0]
+type = PosSet
+trigger1 = Time = 0
+y = 0
+
+[State 4520, 5]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+time = 6
+
+[State 4520, 10]
+type = ChangeState
+trigger1 = AnimTime >= 0
+value = 0
+ctrl = 1
+
+; Leaving Taunt (for assist attacks)
+;--------------
+[Statedef 4530]
+type = S
+movetype = I
+physics = S
+anim = 4510
+sprpriority = 2
+velset = 0,0
+ctrl = 0
+facep2=1
+
+[State 4530, s1]
+type = PlaySnd
+trigger1 = AnimElem = 2
+value = s200,0
+channel = 0
+
+[State 191, 5]
+type = playsnd
+trigger1 = animelem = 3
+value = s5544, 0
+channel = 2
+
+[State 4510, 1] ; Prevents the camera from following the char
+type = PlayerPush
+trigger1 = 1
+value = 0
+
+[State 4510, 2]
+type = ChangeState
+trigger1 = animtime = 0
+value = 4511 ; Return to your place man!!!!
+
+; =======================================================================
+; Dual Hyper Attacks section
+; If you have played MvC or MvC2, you should know how this works.
+; Basically, you perform a Hyper Move, then your partner jumps and do
+; the same, resulting on a Dual Attack. By now is intended to look
+; like it is in MvC2.
+; This section is customizable, so change it according to your needs.
+; =======================================================================
+
+; Standby onscreen for Dual Hyper Attack
+;---------------------------------------
+[Statedef 4600]
+type = S
+movetype = I
+physics = S
+sprpriority = -2
+velset = 0,0
+ctrl = 0
+
+; NEW !! Tag active definer
+[State 4600, 1]
+type = VarSet
+trigger1 = time = [0,4]
+var(30) = 2
+
+; --------------------------------------------------------------------
+; This part is customizable, you can add what you need to be done here
+
+[State 4600, 2] ; TEAM ATTACK :
+type = ChangeAnim
+trigger1 = time = 0
+trigger1 = selfanimexist(4600)	  ; <--- find first Hyper type...
+value = 4600			  ; <--- do hyper move!
+
+[State 4600, 3] ; Freeze hyper animation
+type = ChangeAnim
+trigger1 = time > 0
+value = anim
+; ---------------------------------------------------------------------
+
+[State 4600, 4] ; the character cannot be hit since he is leaving
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 4600, 5] ; Prevents the camera from following the char
+type = PlayerPush
+trigger1 = 1
+value = 0
+
+[State 4600, 6] ; Do the dual attack when partner reaches the floor
+type = ChangeState
+trigger1 = time = 8
+value = 4612
+
+; Landing on screen first (partner attack)
+;-----------------------------------------
+[Statedef 4601]
+type = A
+movetype = I
+physics = N
+anim = 42  ; <- Jumping In (Hey, I'm gonna kick your ass!!!!)
+sprpriority = 2
+ctrl = 0
+
+[State 4601, 1] ; Prevents the camera from following the char
+type = ScreenBound
+trigger1 = 1
+value = 0
+
+; Starting position
+[State 4601, 2]
+type = PosSet
+trigger1 = time = 0
+x = (partner, pos x) - (200*(facing)) ; variable pos
+y = -100
+
+; Attack velocity
+[State 4601, 3]
+type = VelSet
+trigger1 = Time = 0
+x = 28
+y = 14
+
+[State 4601, 4]
+type = PosSet
+trigger1 = Pos Y >= 0
+y = 0
+
+[State 4601, 5]
+type = ChangeState
+trigger1 = Pos Y >= 0
+trigger1 = Vel Y >= 0
+value = 4602
+ctrl = 0
+
+; Dual Hyper Attack!!! (partner)
+; ------------------------------
+[Statedef 4602]
+type = S
+movetype = A
+physics = S
+sprpriority = 2
+velset = 0, 0
+ctrl = 0
+
+[State 2xx]
+type = StateTypeSet
+trigger1 = AnimElem = 10
+movetype = I
+ignorehitpause = 1
+
+[State 4602, 1] ; HYPER ATTACK :
+type = ChangeAnim
+trigger1 = time = 0
+trigger1 = selfanimexist(4600)	  ; <--- custom Hyper Anim type...
+value = 4600			  ; <--- do hyper anim!
+
+; --------------------------------------------------------------------
+; This part is customizable, you can add what you need to be done here
+[State 1000, 2]
+type = Width
+trigger1 = time = [5,40]
+value = 5,0
+
+[State 750, Dust]
+type = Explod
+trigger1 = time = 0
+anim = 9110
+pos = 0,0
+postype = p1
+sprpriority = 5
+supermovetime = 9999
+bindtime = 1
+shadow = -1
+
+
+[state 4002, 3.2]
+type = explod
+trigger1 = animelem = 1
+anim = 9133
+id = 9003
+postype = back
+pos = 160,120
+sprpriority = -5
+ownpal = 1
+bindtime = -1
+supermovetime = 9999
+persistent = 0
+removetime = 42
+scale = 1.2,1.2
+
+[state 4002, 1]
+type = explod
+trigger1 = animelem = 1
+anim = 15605
+id = 15605
+postype = back
+pos = 0, 60
+sprpriority = -4
+ownpal = 1
+bindtime = -1
+supermovetime = 9999
+persistent = 0
+
+[state 4002, 1]
+type = explod
+trigger1 = animelem = 1
+anim = 15607
+id = 15607
+postype = back
+pos = 100, 62
+sprpriority = -3
+ownpal = 1
+bindtime = -1
+supermovetime = 9999
+persistent = 0
+
+;[state 4002, 1]
+;type = explod
+;trigger1 = animelem = 3
+;anim = 7000
+;postype = back
+;pos = 0, -11
+;sprpriority = -1
+;ownpal = 1
+;scale = 1,1.075
+;bindtime = -1
+;supermove = 1
+;removeongethit = 1
+
+[state 2000, 4]
+type = helper
+trigger1 = time = 0
+trigger1 = numhelper(9922) = 0
+stateno = 9924
+id = 9003
+name = "floor"
+pos = 0,0
+postype = p1
+ownpal = 1
+persistent = 0
+
+[state haha]
+type = superpause
+trigger1 = time = 0
+time = 39
+pos = -10,-105
+anim = s9109
+sound = s4,0
+unhittable = 3
+poweradd = -2000
+darken = 0
+persistent = 0
+
+
+[State 3000,NotHitBy]
+type = NotHitBy
+trigger1 = Time = 0
+value = SCA
+time = 66
+
+[State 720, Sho-ryuken!]
+type = PlaySnd
+trigger1 = animelem = 1
+value = s3000,1
+
+[State 720, Sho-ryuken!]
+type = PlaySnd
+trigger1 = animelem = 2
+value = s3800,0
+
+[State 720, Sho-ryuken!]
+type = PlaySnd
+trigger1 = animelem = 5
+trigger2 = animelem = 6
+trigger3 = animelem = 7
+trigger4 = animelem = 8
+trigger5 = animelem = 9
+trigger6 = animelem = 10
+value = s4000,7
+
+[State 720, Sho-ryuken!]
+type = PlaySnd
+trigger1 = animelem = 11
+value = s4000,5
+
+[State 750, Dust]
+type = Explod
+trigger1 = animelem = 5
+anim = 3003
+pos = 0,0
+removetime = 30
+postype = p1
+supermove = 1
+sprpriority = 5
+removeongethit = 1
+ignorehitpause = 0
+bindtime = 999
+shadow = -1
+
+[State 750, Dust]
+type = Explod
+trigger1 = animelem = 11
+anim = 3002
+pos = 0,-50
+postype = p1
+supermove = 1
+sprpriority = 5
+removeongethit = 1
+ignorehitpause = 0
+bindtime = 999
+shadow = -1
+
+[State 211,3]
+type = Projectile
+trigger1 = animelem = 5 || animelem = 8 
+offset = 0,-45
+projID = 1200
+projanim = 3001
+projhits = 2
+velocity = 12,0
+projheightbound = -480, 0
+projedgebound = 4000
+projstagebound = 200
+projpriority = 6
+projsprpriority = 7
+projmisstime = 2
+projscale = 0.5,0.5
+accel = 0, 0
+attr = A, HP
+damage    = 30,8
+hitflag = MAF
+guardflag = MA
+priority = 3
+pausetime = 5,6
+sparkno = S6020+(random%2)
+sparkxy = 55,-4
+hitsound   = s5545,6
+guardsound = s5546,0
+guard.sparkno = s9101
+ground.type = High
+ground.slidetime = 16
+ground.hittime = 25
+ground.velocity = -10
+air.velocity = -10
+air.juggle = 3
+;air.fall = 1
+;fall = 1
+yaccel = .6
+fall.recover = 0
+
+[State 211,3]
+type = Projectile
+trigger1 = animelem = 11
+offset = 0,-55
+projID = 1200
+projanim = 3004
+projhitanim = 1013
+velocity = 14,0
+projheightbound = -480, 0
+projedgebound = 4000
+projstagebound = 200
+projpriority = 6
+projsprpriority = 7
+projmisstime = 2
+projscale = 1.5,2.0
+accel = 0, 0
+attr = A, HP
+damage    = 60,8
+hitflag = MAF
+guardflag = MA
+priority = 3
+pausetime = 5,6
+sparkno = S6020+(random%2)
+sparkxy = 55,-4
+hitsound   = s5545,6
+guardsound = s5546,0
+guard.sparkno = s9101
+ground.type = High		
+ground.slidetime = 10
+guard.slidetime = 6
+ground.hittime = 20
+guard.hittime = 2
+ground.velocity = -26,-9
+guard.velocity = -8
+air.velocity = -26,-8
+air.type = low									
+air.hittime = 20			
+yaccel = .6
+fall.xvelocity =0
+fall.yvelocity =-2
+air.fall = 1
+fall = 1
+fall.recover = 0
+ground.cornerpush.veloff = 0
+air.cornerpush.veloff = 0
+getpower = 0,0
+givepower = 0,0
+
+[State 0, EnvColor]
+type = EnvColor
+trigger1 = projhit=1
+value = 255,255,255
+time = 1
+under = 0
+ignorehitpause = 0
+;persistent =
+
+[State 1051, 2] 
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 4604
+
+; Wait for partner to finish his move (if needed)
+; -----------------------------------------------
+[Statedef 4604]
+type = S
+movetype = I
+physics = S
+sprpriority = 2
+velset = 0, 0
+ctrl = 0
+
+[State 4603, ChangeAnim]
+type = ChangeAnim
+trigger1 = time = 0
+value = 0
+
+[State 4603, ChangeAnim]
+type = ChangeAnim
+;trigger1 = Anim = 0
+trigger1 = Animtime = 0
+value = 0
+
+[State 4602, 2]
+type = ChangeState
+trigger1 = Partner, stateno = 4512
+value = 0
+ctrl = 1
+
+; Dual Hyper Attack!!! (You)
+; ------------------------------
+[Statedef 4612]
+type = S
+movetype = A
+physics = S
+sprpriority = 2
+velset = 0, 0
+ctrl = 0
+
+[State 2xx]
+type = StateTypeSet
+trigger1 = AnimElem = 10
+movetype = I
+ignorehitpause = 1
+
+[State 4612, 1] ; HYPER ATTACK :
+type = ChangeAnim
+trigger1 = time = 0
+trigger1 = selfanimexist(4600)	  ; <--- find first Hyper Anim type...
+value = 4600			  ; <--- do hyper anim!
+
+; --------------------------------------------------------------------
+; This part is customizable, you can add what you need to be done here
+[State 1000, 2]
+type = Width
+trigger1 = time = [5,40]
+value = 5,0
+
+[State 750, Dust]
+type = Explod
+trigger1 = time = 0
+anim = 9110
+pos = 0,0
+postype = p1
+sprpriority = 5
+supermovetime = 9999
+bindtime = 1
+shadow = -1
+
+[state 4002, 1]
+type = explod
+trigger1 = animelem = 1
+anim = 15607
+id = 15607
+postype = back
+pos = -10, 62
+sprpriority = -2
+ownpal = 1
+bindtime = -1
+supermovetime = 9999
+persistent = 0
+
+;[state 4002, 1]
+;type = explod
+;trigger1 = animelem = 3
+;anim = 7000
+;postype = back
+;pos = 0, -11
+;sprpriority = -1
+;ownpal = 1
+;scale = 1,1.075
+;bindtime = -1
+;supermove = 1
+;removeongethit = 1
+
+;[state 2000, 4]
+;type = helper
+;trigger1 = animelem = 4
+;trigger1 = numhelper(9922) = 0
+;stateno = 9922
+;id = 9003
+;name = "floor"
+;pos = 0,0
+;postype = p1
+;bindtime = 0
+;ownpal = 1
+;persistent = 0
+
+
+[State 3000,NotHitBy]
+type = NotHitBy
+trigger1 = Time = 0
+value = SCA
+time = 66
+
+[State 720, Sho-ryuken!]
+type = PlaySnd
+trigger1 = animelem = 1
+value = s3000,1
+
+[State 720, Sho-ryuken!]
+type = PlaySnd
+trigger1 = animelem = 2
+value = s3800,0
+
+[State 720, Sho-ryuken!]
+type = PlaySnd
+trigger1 = animelem = 5
+trigger2 = animelem = 6
+trigger3 = animelem = 7
+trigger4 = animelem = 8
+trigger5 = animelem = 9
+trigger6 = animelem = 10
+value = s4000,7
+
+[State 720, Sho-ryuken!]
+type = PlaySnd
+trigger1 = animelem = 11
+value = s4000,5
+
+[State 750, Dust]
+type = Explod
+trigger1 = animelem = 5
+anim = 3003
+pos = 0,0
+removetime = 30
+postype = p1
+supermovetime = 9999
+sprpriority = 5
+removeongethit = 1
+ignorehitpause = 0
+bindtime = 999
+shadow = -1
+
+[State 750, Dust]
+type = Explod
+trigger1 = animelem = 11
+anim = 3002
+pos = 0,-50
+postype = p1
+supermovetime = 9999
+sprpriority = 5
+removeongethit = 1
+ignorehitpause = 0
+bindtime = 999
+shadow = -1
+
+[State 211,3]
+type = Projectile
+trigger1 = animelem = 5 || animelem = 8 
+offset = 0,-45
+projID = 1200
+projanim = 3001
+projhits = 2
+velocity = 12,0
+projheightbound = -480, 0
+projedgebound = 4000
+projstagebound = 200
+projpriority = 6
+projsprpriority = 7
+projmisstime = 2
+projscale = 0.5,0.5
+accel = 0, 0
+attr = A, HP
+damage    = 30,8
+hitflag = MAF
+guardflag = MA
+priority = 3
+pausetime = 5,6
+sparkno = S6020+(random%2)
+sparkxy = 55,-4
+hitsound   = s5545,6
+guardsound = s5546,0
+guard.sparkno = s9101
+ground.type = High
+ground.slidetime = 16
+ground.hittime = 25
+ground.velocity = -10
+air.velocity = -10
+air.juggle = 3
+;air.fall = 1
+;fall = 1
+yaccel = .6
+fall.recover = 0
+
+[State 211,3]
+type = Projectile
+trigger1 = animelem = 11
+offset = 0,-55
+projID = 1200
+projanim = 3004
+projhitanim = 1013
+velocity = 14,0
+projheightbound = -480, 0
+projedgebound = 4000
+projstagebound = 200
+projpriority = 6
+projsprpriority = 7
+projmisstime = 2
+projscale = 1.5,2.0
+accel = 0, 0
+attr = A, HP
+damage    = 60,8
+hitflag = MAF
+guardflag = MA
+priority = 3
+pausetime = 5,6
+sparkno = S6020+(random%2)
+sparkxy = 55,-4
+hitsound   = s5545,6
+guardsound = s5546,0
+guard.sparkno = s9101
+ground.type = High		
+ground.slidetime = 10
+guard.slidetime = 6
+ground.hittime = 20
+guard.hittime = 2
+ground.velocity = -26,-9
+guard.velocity = -8
+air.velocity = -26,-8
+air.type = low									
+air.hittime = 20			
+yaccel = .6
+fall.xvelocity =0
+fall.yvelocity =-2
+air.fall = 1
+fall = 1
+fall.recover = 0
+ground.cornerpush.veloff = 0
+air.cornerpush.veloff = 0
+getpower = 0,0
+givepower = 0,0
+
+[State 0, EnvColor]
+type = EnvColor
+trigger1 = projhit=1
+value = 255,255,255
+time = 1
+under = 0
+ignorehitpause = 0
+;persistent =
+
+[State 1051, 2] 
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 4511
+ctrl = 1
+
+
+; =======================================================================
+; Assist Attacks section
+; As in MvC and MvC2, you can summon your partner to make an assist
+; move, then he will taunt and leave, the basic difference between
+; MvC2 version and this one is that your can use the alpha, beta or
+; gamma assits if you hold a certain direction in the pad, so, the
+; order of the attacks are:
+; - Alpha Assist: y+b
+; - Beta Assist: y+b + holding back
+; - Gamma Assist: y+b + holding down.
+; The only thing missing is the ability of calling out your partner
+; when you are jumping (just normal jump, in super jump this is not
+; posible).
+; =======================================================================
+
+; Standby onscreen for assist
+;----------------------------
+[Statedef 4700]
+type = S
+movetype = I
+physics = S
+sprpriority = -2
+ctrl = 0
+velset = 0, 0
+
+; --------------------------------------------------------------------
+; This part is customizable, you can add what you need to be done here
+
+[State 4700, 1a] ; TAUNT A :
+type = ChangeAnim
+triggerall = time = 0
+trigger1 = selfanimexist(4700)	  ; <--- find custom taunt anim...
+value = 4700			  ; <--- do animation!
+
+[State 4700, 1b] ; TAUNT B :
+type = ChangeAnim
+triggerall = time = 0
+triggerall = !selfanimexist(4700) ; <--- if custom anim not found
+trigger1 = selfanimexist(195)	  ; <--- find normal taunt...
+value = 195			  ; <--- do animation!
+
+[State 4502, 2]
+type = PlaySnd
+trigger1 = AnimElem = 3
+value = s190, 2
+
+[State 195, 1]
+type = playsnd
+trigger1 = animelem = 4
+value = s4000,3
+volume = 100
+
+[State 4700, 2]
+type = CtrlSet
+trigger1 = AnimTime = 80
+value = 1
+
+[State 4700, 3]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+; Jumping into the screen first (partner)
+;----------------------------------------
+[Statedef 4701]
+type = A
+movetype = I
+physics = N
+anim = 42  ; <- Jumping In (Hey, I'm gonna kick your ass!!!!)
+sprpriority = 2
+ctrl = 0
+poweradd = -500
+
+; NEW !! Tag active definers --------------------------------
+[State 4701, 1a]
+type = VarSet
+trigger1 = time = [0,5]         ;Alpha Assist
+var(30) = 3
+
+[State 4701, 1b]
+type = VarSet
+trigger1 = command = "holdback" ;Beta Assist
+var(30) = 4
+
+[State 4701, 1c]
+type = VarSet
+trigger1 = command = "holddown" ;Gamma Assist
+var(30) = 5
+; -----------------------------------------------------------
+
+[State 4701, 2] ; Prevents the camera from following the char
+type = ScreenBound
+trigger1 = 1
+value = 0
+
+; Starting position
+[State 4701, 3]
+type = PosSet
+trigger1 = time = 0
+x = (partner, pos x) - (200*(facing)) ; variable pos
+y = -100
+
+; Attack velocity
+[State 4701, 4]
+type = VelSet
+trigger1 = Time = 0
+x = 15
+y = 7
+
+[State 4701, 5]
+type = PosSet
+trigger1 = Pos Y >= 0
+y = 0
+
+; --------------------------------------------------------------------
+; This part is customizable, you can add what you need to be done here
+
+; Do assist attack depending on what dir is holding the partner
+[State 4701, 6]
+type = ChangeState
+trigger1 = Pos Y >= 0
+trigger1 = Vel Y >= 0
+value = ifelse(var(30) = 4, 4712, ifelse(var(30) = 5, 4722, 4702))
+ctrl = 0
+
+
+; Assist attacks (All attacks can be customized depending on the char)
+;------------------------------------------------------------------------
+
+; Alpha
+; -------------
+[Statedef 4702]
+type = S
+movetype = A
+physics = N
+sprpriority = 1
+;poweradd = -500
+velset = 0, 0
+ctrl = 0
+facep2 =1
+
+[State 4601, 1b] ; ASSIST ATTACK :
+type = ChangeAnim
+triggerall = time = 0
+trigger1 = selfanimexist(1002)	  ; <--- find assist attack...
+value = 1002			  ; <--- do animation!
+
+; Below code must be modified if you use another type of assist attack
+; --------------------------------------------------------------------
+
+[State 4701, 2] ; Prevents the camera from following the char
+type = ScreenBound
+trigger1 = 1
+value = 1
+movecamera = 0,0
+
+[State 750, Dust]
+type = Explod
+trigger1 = Time = 0
+anim = 9110
+pos = 0,0
+postype = p1
+sprpriority = 5
+supermove = 0
+bindtime = 1
+;shadow = -1,0,0
+
+[State 1300, 2]
+type = PlaySnd
+trigger1 = animelem = 3
+value = s4000,9
+
+[State 1300, 2]
+type = PlaySnd
+trigger1 = AnimElem = 3
+value = s201,0+random%4
+
+[State 1000, 2]
+type = Width
+trigger1 = time = [5,9]
+value = 20,0
+
+[State 211,3]
+type = Projectile
+trigger1 = animelem = 3
+offset = 50,-70
+projID = 1010
+projanim = 1011
+projhitanim = 1013
+projhits = 1
+projsprpriority = 3
+velocity = 6,-4
+projheightbound = -480, 0
+projedgebound = 4000
+;projscreenbound = 4000
+projstagebound = 200
+projmisstime = 1
+accel = 0, 0
+attr = A, SP
+damage    = 40,8
+hitflag = MAF
+guardflag = MA
+priority = 3
+pausetime = 5,6
+sparkno = s9107
+sparkxy = 55,-4
+hitsound   = s5545,6
+guardsound = s5546,0
+guard.sparkno = s9101
+ground.type = low
+ground.slidetime = 25
+guard.sparkno = s6000
+ground.hittime  = 15
+air.juggle = 0
+air.fall = 1
+fall= 1
+fall.recover = 0
+ground.velocity = -12,-18
+air.velocity = -12,-18
+yaccel = .95
+
+
+[State 0, EnvColor]
+type = EnvColor
+trigger1 = projhit=1
+value = 255,255,255
+time = 1
+under = 0
+ignorehitpause = 0
+;persistent =
+
+[State 0, 1]
+type = VarSet
+trigger1 = !time
+var(7) = 0
+;ignorehitpause = 0
+;persistent = 1
+
+[state end]
+type = changestate
+trigger1 = !animtime
+value = 4511
+
+;-------------------------------
+
+; Beta
+; -------------
+[Statedef 4712]
+type = S
+movetype = A
+physics = S
+sprpriority = 1
+;poweradd = -500
+velset = 0,0
+ctrl = 0
+facep2 =1
+
+[State 4601, 1b] ; ASSIST ATTACK :
+type = ChangeAnim
+triggerall = time = 0
+trigger1 = selfanimexist(1200)	  ; <--- find assist attack...
+value = 1200			  ; <--- do animation!
+
+; Below code must be modified if you use another type of assist attack
+; --------------------------------------------------------------------
+
+[State 4701, 2] ; Prevents the camera from following the char
+type = ScreenBound
+trigger1 = 1
+value = 1
+movecamera = 0,0
+
+[State 2000, SpecialDashDust]
+type = Explod
+trigger1 = animelem = 4, >= 0
+trigger1 = animelem = 5, <= 0
+trigger1 = timemod = 6,0
+id = 6181
+anim = 6181
+pos = 0,0
+sprpriority = 5
+bindtime = 1
+supermovetime = 99999999
+pausemovetime = 99999999
+ownpal = 1
+
+[State 2000, Shadow] ; Shadows
+type = Afterimage
+trigger1 = var(19) <= 0
+trigger1 = Animelem = 4
+time = 28
+PalBright = 0, 0, 0
+PalContrast =  250,250,250
+PalAdd = 0, 0, 0
+PalMul = 1,1,1
+Length = 6
+FrameGap = 1
+
+[state 1300, Smoke FX]
+type = explod
+trigger1 = animelemtime(1)=0
+anim = 9110
+id = 9110
+pos = 0,0
+postype = P1
+sprpriority = 3
+ownpal = 1
+removetime = -2
+persistent = 0
+ignorehitpause = 1
+
+[State 0, Explod]
+type = Explod
+trigger1 = animelem = 4
+anim = 9121
+pos = 0,-40
+postype = p1  ;p2,front,back,left,right
+facing = 1
+bindtime = -1
+scale = 1.9,1
+sprpriority = 4
+ignorehitpause = 0
+
+[state 1200]
+type = varset
+trigger1 = !numhelper(3800)
+trigger1 = time = 0
+var(36) = 0
+
+[state 1200]
+type = varset
+trigger1 = numhelper(3800)
+trigger1 = time = 0
+var(36) = 1
+
+[state 3260]
+type = NotHitBy
+value = SCA,AA,AT,AP
+trigger1 = palno >= 11
+trigger2 = animelem <= 3
+
+[state 50, 1];??????????????
+type = changeanim
+trigger1 = anim = 11200
+trigger1 = var(10) = 0
+trigger1 = NumHelper(1401) = 0
+value = 1200
+elem = animelemno(0)
+
+[State 1200, ????]
+type = VarRandom
+trigger1 = time = 0
+v = 13
+range = 0,1
+
+[State 1200, ???]
+type = PlaySnd
+trigger1 = AnimElem = 4
+channel = 0
+value = s1000,2
+channel = 0
+
+[State 1200, ???]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = s950,0
+channel = 1
+
+[State 1200, ?]
+type = Width
+trigger1 = 1
+edge = 50,0
+
+[State 1200, ????]
+type = PlayerPush
+trigger1 = animelem = 4
+value = 0
+
+[State 1200, ????]
+type = Helper
+trigger1 = animelemtime(4) = 3
+ID = 7103
+name = "sissou"
+sprpriority = 4
+postype = p1
+pos = 0,5
+stateno = 7103
+keyctrl = 0
+ignorehitpause = 1
+size.xscale = 0.45 * (1 + (.3 * var(36)))
+size.yscale = 0.45 * (1 + (.3 * var(36)))
+
+[State 1200, ????]
+type = Helper
+trigger1 = animelemtime(4) = 6
+ID = 7104
+name = "sissou"
+sprpriority = 4
+postype = p1
+pos = 0,5
+stateno = 7103
+keyctrl = 0
+ignorehitpause = 1
+size.xscale = 0.45 * (1 + (.3 * var(36)))
+size.yscale = 0.45 * (1 + (.3 * var(36)))
+
+[State 1200, ????]
+type = Helper
+trigger1 = animelemtime(4) = 9
+ID = 7105
+name = "sissou"
+sprpriority = 4
+postype = p1
+pos = 0,5
+stateno = 7103
+keyctrl = 0
+ignorehitpause = 1
+size.xscale = 0.45 * (1 + (.3 * var(36)))
+size.yscale = 0.45 * (1 + (.3 * var(36)))
+
+[State 1200, ????]
+type = Helper
+trigger1 = animelemtime(4) = 12
+ID = 7106
+name = "sissou"
+sprpriority = 4
+postype = p1
+pos = 0,5
+stateno = 7103
+keyctrl = 0
+ignorehitpause = 1
+size.xscale = 0.45 * (1 + (.3 * var(36)))
+size.yscale = 0.45 * (1 + (.3 * var(36)))
+
+[State 1200, ????]
+type = Helper
+trigger1 = animelemtime(4) = 15
+ID = 7107
+name = "sissou"
+sprpriority = 4
+postype = p1
+pos = 0,5
+stateno = 7103
+keyctrl = 0
+ignorehitpause = 1
+size.xscale = 0.45 * (1 + (.3 * var(36)))
+size.yscale = 0.45 * (1 + (.3 * var(36)))
+
+[State 1200, ??]
+type = veladd
+trigger1 = time = [5,39]
+x = 0.1
+
+
+[State 1200, ??]
+type = velset
+trigger1 = animelemTime(4) = 1
+x = 40
+
+[State 1200, ??]
+type = veladd
+trigger1 = time = [22,33]
+trigger1 = (pos x <= 159 || pos x >= 159)
+x = 1
+
+[State 1200, ??]
+type = velset
+trigger1 = animelem = 5
+x = 0
+
+[state 1200]
+type = posset
+trigger1 = pos x >= 160
+x = 160
+
+[state 1200]
+type = posset
+trigger1 = pos x <= -160
+x = -160
+
+[State 1200, ??????]
+type = EnvShake
+trigger1 = AnimElem = 5
+time = 6
+ampl = -4
+freq = 120
+
+[State 1103, End]
+type = ChangeState
+trigger1 = animTime = 0
+value = 4511
+ctrl = 0
+
+;=================================
+
+;----------------------------------------------------------
+
+
+; Gamma
+; -------------
+[Statedef 4722]
+type = S
+movetype = A
+physics = S
+sprpriority = 1
+;poweradd = -500
+velset = 0,0
+ctrl = 0
+facep2 =1
+
+[State 4601, 1b] ; ASSIST ATTACK :
+type = ChangeAnim
+triggerall = time = 0
+trigger1 = selfanimexist(1400)	  ; <--- find assist attack...
+value = 1400			  ; <--- do animation!
+
+; Below code must be modified if you use another type of assist attack
+; --------------------------------------------------------------------
+
+
+[State 4701, 2] ; Prevents the camera from following the char
+type = ScreenBound
+trigger1 = 1
+value = 1
+movecamera = 0,0
+
+
+[State 1200, VelSet 1]
+type = VelSet
+trigger1 = AnimElemTime(1) = 1
+x = 3
+y = -3
+
+[State 1210, VelSet 1]
+type = VelSet
+trigger1 = AnimElemTime(1) = 1
+x = ifelse(Var(22) = 1,6,3)
+y = -3
+
+[State 1210, VelAdd]
+type = VelAdd
+trigger1 = AnimElemTime(1) = 3
+trigger2 = AnimElemTime(2) = 2
+trigger3 = AnimTime = 0
+y = 1
+
+[State 750, Dust]
+type = Explod
+trigger1 = time = 0
+anim = 9110
+pos = 0,0
+postype = p1
+supermovetime = 1
+sprpriority = 5
+bindtime = 1
+shadow = -1
+
+
+
+[State 1020, 4]
+type = PlaySnd
+trigger1 = time = 0
+value = s951,0+random%2
+
+[State 1200, ChangeState]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 4723
+
+;---------------------------------------------------------------------------
+[Statedef 4723]
+type    = A
+movetype= A
+physics = N
+juggle  = 4
+ctrl = 0
+anim = 1410
+poweradd = 0
+sprpriority = 2
+
+[State 1201, VelSet]
+type = VelSet
+trigger1 = Time = 0
+x = 6
+
+[State 750, Dust]
+type = Explod
+trigger1 = time = 0
+anim = 1405
+pos = 20,-20
+postype = p1
+supermove = 1
+sprpriority = 5
+removetime = 18
+removeongethit = 1
+ignorehitpause = 0
+bindtime = 999
+scale = 0.5,0.5
+shadow = -1
+
+[state 200, 1]
+type = playsnd
+trigger1 = animelem = 1
+trigger2 = animelem = 3
+trigger3 = animelem = 5
+trigger4 = animelem = 7
+value = s4000,6
+
+[state 200, 1]
+type = playsnd
+trigger1 = animelem = 11
+value = s4000,8
+
+[state 1003,me]
+type = hitdef
+trigger1 = timemod = 3,0
+attr = s, sa
+animtype = Light
+guardflag = MA
+hitflag = MAF
+priority = 5, Hit
+damage    = 10,5
+pausetime = 4,3
+sparkno = S6020+(random%2)
+hitsound   = s5545,4
+guard.sparkno = s6000
+sparkxy = -10,-70
+guardsound = s5546,0
+ground.type = High
+ground.slidetime = 12
+ground.hittime  = 15
+ground.velocity = -4,-2
+air.velocity = -4,-2
+fall = 1
+air.fall = 1
+
+
+[State 0, EnvColor]
+type = EnvColor
+trigger1 = movehit=1
+value = 255,255,255
+time = 1
+ignorehitpause = 0
+persistent = 1
+
+[State 1201, ChangeState]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 4724
+
+;---------------------------------------------------------------------------
+[statedef 4724]
+type    = a
+movetype= a
+physics = a
+
+[state hee]
+type = changeanim
+trigger1 = time = 0
+value = 460
+
+[state 710,5]
+type = screenbound
+trigger1 = p2stateno = [715,717]
+trigger2 = p2stateno = 328
+value = 0
+movecamera = 0,0
+
+[state hee]
+type = changeanim
+trigger1 = time = 0
+value = 460
+
+[state 460, 7]
+type = veladd
+trigger1 = var(3) = 1
+trigger1 = command = "holdback"
+trigger1 = vel x > -1.5
+x = -.15
+
+[state 460, 8]
+type = veladd
+trigger1 = var(3) = 1
+trigger1 = command = "holdfwd"
+trigger1 = vel x < 3
+x = .15
+
+[state 460, 9]
+type = veladd
+trigger1 = var(3) = 1
+y = -0.14
+
+[State 1205, var]
+type = VarSet
+trigger1 = time = 0
+v = 10
+value = 0
+
+[state 460, 1]
+type = turn
+trigger1 = p2dist x < 0
+trigger1 = var(3) = 1
+
+[State 1120, 7]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 4511
+ctrl = 0
+
+;---------------------------
+
+; =======================================================================
+; Partner Counter Move
+; This feature is already used in MvC, consists on changing your partner
+; in the middle of guarding, this costs one stock, you can call it an
+; emergency tag.
+; This section is customizable, so change it according to your needs.
+; =======================================================================
+
+; Partner Counter Move (Going Out)
+;---------------------------------------
+[Statedef 4800]
+type = S
+movetype = I
+physics = S
+sprpriority = -2
+anim = 40
+velset = 0,0
+ctrl = 0
+
+; NEW !! Tag active definer
+[State 4800, 1]
+type = VarSet
+trigger1 = time = [0,1]
+var(30) = 2
+
+[State 4800, 2]
+type = SuperPause
+trigger1 = Time = 0
+anim = -1
+pos = 0, 0
+time = 20
+unhittable = 20
+poweradd = -1000
+
+[State 4800, 3] ; the character cannot be hit since he is leaving
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 4800, 4] ; Prevents the camera from following the char
+type = PlayerPush
+trigger1 = 1
+value = 0
+
+[State 4800, 5] ; Exit screen
+type = ChangeState
+trigger1 = time = 3
+value = 4511
+
+; Landing on screen first (partner)
+;----------------------------------
+[Statedef 4801]
+type = A
+movetype = I
+physics = N
+anim = 42  ; <- Jumping In (Hey, I'm gonna kick your ass!!!!)
+sprpriority = 2
+ctrl = 0
+
+[State 4801, 1] ; Prevents the camera from following the char
+type = ScreenBound
+trigger1 = 1
+value = 0
+
+; Starting position
+[State 4801, 2]
+type = PosSet
+trigger1 = time = 0
+x = (partner, pos x) - (200*(facing)) ; variable pos
+y = -160
+
+; Attack velocity
+[State 4801, 3]
+type = VelSet
+trigger1 = Time = 0
+x = 22
+y = 18
+
+[State 4801, 4]
+type = PosSet
+trigger1 = Pos Y >= 0
+y = 0
+
+[State 4801, 5] ; the character cannot be hit since he is leaving
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 4801, 6]
+type = ChangeState
+trigger1 = Pos Y >= 0
+trigger1 = Vel Y >= 0
+value = 4802
+ctrl = 0
+
+ ;Alpha Counter
+; ---------------
+[Statedef 4802]
+type    = A
+movetype= A
+physics = N
+ctrl = 0
+anim = 1400
+poweradd = 80
+sprpriority = 2
+
+[State 4801, 5] ; the character cannot be hit since he is leaving
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 0, esquerda]
+type = explod
+trigger1 = time=0
+triggerall = TeamSide = 1 && NumExplod(8701) = 0
+anim = 8110
+ID = 8701
+postype =left
+pos = 0,80
+ontop = 1
+bindtime = -1
+removetime = 60
+supermovetime = 60
+pausemovetime = 60
+scale = .83,1
+persistent = 0
+ignorehitpause = 1
+
+[State 0, direita]
+type = explod
+trigger1 = time=0
+triggerall = TeamSide = 2 && NumExplod(8701) = 0
+anim = 8110
+ID = 8701
+postype =right
+pos = -85,80
+ontop = 1
+bindtime = -1
+removetime = 60
+supermovetime = 60
+pausemovetime = 60
+scale = .83,1
+persistent = 0
+ignorehitpause = 1
+
+[State 4082, Counter Sound]
+type = PlaySnd
+trigger1 = time = 0
+value = S230, 13
+volumescale = 100
+
+[State 1200, VelSet 1]
+type = VelSet
+trigger1 = AnimElemTime(1) = 1
+x = 3
+y = -3
+
+[State 1200, VelSet 2]
+type = VelSet
+trigger1 = AnimElemTime(1) = 2
+x = ifelse(Var(22) = 1,5,2.5)
+
+[State 1200, VelAdd]
+type = VelAdd
+trigger1 = AnimElemTime(1) = 3
+trigger2 = AnimElemTime(2) = 2
+trigger3 = AnimTime = 0
+y = 1
+
+[State 750, Dust]
+type = Explod
+trigger1 = time = 0
+anim = 9110
+pos = 0,0
+postype = p1
+supermove = 1
+sprpriority = 5
+bindtime = 1
+shadow = -1
+
+[State 1020, 4]
+type = PlaySnd
+trigger1 = time = 0
+value = s951,0+random%2
+
+[State 1200, ChangeState]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 1401
+
+;---------------------------------------------------------------------------
+[Statedef 1401]
+type    = A
+movetype= A
+physics = N
+juggle  = 4
+ctrl = 0
+anim = 1401
+poweradd = 0
+sprpriority = 2
+
+[State 750, Dust]
+type = Explod
+trigger1 = time = 0
+anim = 1405
+pos = 20,-20
+postype = p1
+supermove = 1
+sprpriority = 5
+removetime = 12
+removeongethit = 1
+ignorehitpause = 0
+bindtime = 999
+scale = 0.5,0.5
+shadow = -1
+
+[State 1201, VelSet]
+type = VelSet
+trigger1 = Time = 0
+x = 5
+
+[state 200, 1]
+type = playsnd
+trigger1 = animelem = 1
+trigger2 = animelem = 3
+trigger3 = animelem = 5
+value = s4000,6
+
+[state 200, 1]
+type = playsnd
+trigger1 = animelem = 10
+value = s4000,8
+
+[state 1003,me]
+type = hitdef
+trigger1 = timemod = 3,0
+attr = s, sa
+animtype = Light
+guardflag = MA
+hitflag = MAF
+priority = 5, Hit
+damage    = 10,5
+pausetime = 4,3
+sparkno = S6020+(random%2)
+hitsound   = s5545,4
+guard.sparkno = s6000
+sparkxy = -10,-70
+guardsound = s5546,0
+ground.type = High
+ground.slidetime = 12
+ground.hittime  = 15
+ground.velocity = -4,-2
+air.velocity = -4,-2
+fall = 1
+air.fall = 1
+
+
+[State 0, EnvColor]
+type = EnvColor
+trigger1 = movehit=1
+value = 255,255,255
+time = 1
+ignorehitpause = 0
+persistent = 1
+
+[State 1201, ChangeState]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 1402
+
+;---------------------------------------------------------------------------
+[statedef 1402]
+type    = a
+movetype= a
+physics = a
+
+[state hee]
+type = changeanim
+trigger1 = time = 0
+value = 460
+
+[state 710,5]
+type = screenbound
+trigger1 = p2stateno = [715,717]
+trigger2 = p2stateno = 328
+value = 0
+movecamera = 0,0
+
+[state hee]
+type = changeanim
+trigger1 = time = 0
+value = 460
+
+[state 460, 7]
+type = veladd
+trigger1 = var(3) = 1
+trigger1 = command = "holdback"
+trigger1 = vel x > -1.5
+x = -.15
+
+[state 460, 8]
+type = veladd
+trigger1 = var(3) = 1
+trigger1 = command = "holdfwd"
+trigger1 = vel x < 3
+x = .15
+
+[state 460, 9]
+type = veladd
+trigger1 = var(3) = 1
+y = -0.14
+
+[State 1205, var]
+type = VarSet
+trigger1 = time = 0
+v = 10
+value = 0
+
+[state 460, 1]
+type = turn
+trigger1 = p2dist x < 0
+trigger1 = var(3) = 1
+
+
+
+
+

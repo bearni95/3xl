@@ -1,0 +1,26 @@
+; Definition file for Player
+; Contains all the filenames needed for the character
+; Template player 9X-09-12
+
+; Character information
+[Info]
+name    = "Frieza";<-- Replace with a real name
+displayname = "Maximum Frieza";<-- Replace with name to display
+author = "GohanSSM2"
+;mugenversion = 4.01 & 4.14
+
+; Files for the character
+[Files]
+cmd     = mfriezaai.cmd     ;Command set
+cns     = mfrieza.cns     ;Constants
+st      = mfrieza.cns     ;States
+stcommon = aircodes.cns   ;Common states
+sprite  = mfrieza.sff     ;Sprite
+anim    = mfrieza.air     ;Animation
+sound   = mfrieza.snd     ;Sound
+pal1    = mfrieza1.act     ;Palettes
+pal2    = mfrieza3.act
+pal3    = mfrieza4.act
+pal4    = mfrieza5.act
+pal5    = mfrieza6.act
+pal6    = mfrieza2.act

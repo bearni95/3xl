@@ -1,0 +1,34 @@
+; ---- Created by Uno Tag Team Patcher ---- ;
+
+
+
+
+
+[Info]
+name ="Nami"
+displayname ="Nami"
+versiondate =01,01,2010
+mugenversion =1.0
+author ="Kenshiro99"
+pal.defaults =1,2,3,4,5,6,7,8,9,10,11,12
+
+[Files]
+sprite =Nami.sff
+anim =Nami.air
+sound =Nami.snd
+cmd =nami_unotag\Nami.cmd
+cns =nami_unotag\Nami.cns
+stcommon =common1.cns
+st =nami_unotag\Nami.cns
+pal1=Nami01.act
+pal2=Nami02.act
+pal3=Nami03.act
+pal4=Nami04.act
+pal5=Nami05.act
+pal6=Nami06.act
+st1=VS_Engine.cns
+st9=nami_unotag\tag_system.cns
+
+[Arcade]
+intro.storyboard = 
+ending.storyboard = 

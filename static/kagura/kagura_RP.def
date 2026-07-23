@@ -1,0 +1,49 @@
+
+[Info]
+name ="Kagura2"
+displayname ="Kagura RP"
+versiondate =08,01,2008
+mugenversion =04,14,2002
+author ="RicePigeon"
+pal.defaults =1,2
+
+; Files for the player
+[Files]
+cmd     =kagura.cmd
+cns     =kagura.cns
+st      =kagura.st
+stcommon =common1.cns
+sprite  =kagura.sff
+anim    =kagura.air
+sound   =kagura.snd
+pal1=pal/rice/kagura1.act
+pal2=pal/kiri/Kiri-Blueshine.act
+pal3=pal/kiri/Kiri-Brownskin.act
+pal4=pal/kiri/Kiri-CalmOrange.act
+pal5=pal/kiri/Kiri-EvilEntity.act
+pal6=pal/kiri/Kiri-Inuyasha.act
+pal7=pal/kiri/Kiri-LightGreen.act
+pal8=pal/kiri/Kiri-Luka.act
+pal9=pal/kiri/Kiri-MixedYellow.act
+pal10=pal/kiri/Kiri-Naraku.act
+pal11=pal/kiri/Kiri-PinkCloth.act
+pal12=pal/kiri/Kiri-Sesshomaru.act
+st1=override.st
+st2=helper.st
+st3=Sesshomaru.st
+st4=Naraku.st
+
+;Old Palettes:
+;
+;pal2=pal/rice/kagura2.act
+;pal3=pal/rice/kagura3.act
+;pal4=pal/rice/shiva.act
+;pal5=pal/rice/ifrit.act
+;pal6=pal/rice/omega.act
+;pal7=pal/rice/kanako.act
+
+
+; Arcade mode
+[Arcade]
+intro.storyboard =
+ending.storyboard =

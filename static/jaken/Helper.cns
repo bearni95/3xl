@@ -1,0 +1,1487 @@
+;---------------------------------------------------------------------------
+; Position Helpers
+;---------------------------------------------------------------------------
+
+;---------------------------------------------------------------------------
+; Stage Middle Helper
+[Statedef 990]
+type    = A
+movetype= I
+physics = N
+anim = 3604
+velset = 0,0
+sprpriority = 2
+
+[State 990, Offscreen]
+type = ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 990, Safety]; Just in case your opponent is very poorly coded.
+type = SelfState
+trigger1 = !IsHelper
+value = 5050
+
+[State 990, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+;---------------------------------------------------------------------------
+; RF/Shunpo Gauge, P1
+[State -2, P1 RF Stock 1,1]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 1
+anim = 987
+ID = 10010
+pos = 2, 239 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 1,2]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10010
+pos = 3, 238 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 1,3]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10010
+pos = 4, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 1,4]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10010
+pos = 5, 236 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 1,5]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10010
+pos = 6, 235 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 1,6]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 1
+anim = 989
+ID = 10010
+pos = 7, 234 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 2,1]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 1
+anim = 987
+ID = 10011
+pos = 34, 239 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 2,2]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10011
+pos = 35, 238 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 2,3]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10011
+pos = 36, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 2,4]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10011
+pos = 37, 236 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 2,5]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10011
+pos = 38, 235 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 2,6]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 1
+anim = 989
+ID = 10011
+pos = 39, 234 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 3,1]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 1
+anim = 987
+ID = 10012
+pos = 66, 239 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 3,2]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10012
+pos = 67, 238 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 3,3]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10012
+pos = 68, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 3,4]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10012
+pos = 69, 236 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 3,5]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 1
+anim = 988
+ID = 10012
+pos = 70, 235 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock 3,6]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 1
+anim = 989
+ID = 10012
+pos = 71, 234 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock Refill,1]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 1
+anim = 990
+ID = 10013
+pos = (2+(32*parent, var(11))), 239 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = (31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock Refill,2]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 1
+anim = 991
+ID = 10013
+pos = (3+(32*parent, var(11))), 238 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = (31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock Refill,3]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 1
+anim = 991
+ID = 10013
+pos = (4+(32*parent, var(11))), 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = (31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock Refill,4]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 1
+anim = 991
+ID = 10013
+pos = (5+(32*parent, var(11))), 236 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = (31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock Refill,5]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 1
+anim = 991
+ID = 10013
+pos = (6+(32*parent, var(11))), 235 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = (31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Stock Refill,6]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 1
+anim = 992
+ID = 10013
+pos = (7+(32*parent, var(11))), 234 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = (31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 RF Gauge]
+type = Explod
+;trigger1 = NumExplod(10000) = 0
+trigger1 = TeamSide = 1
+anim = 985
+ID = 10000
+pos = 0, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 3
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 Shunpo Gauge BG,1]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 1
+anim = 995
+ID = 10001
+pos = 0, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 Shunpo Gauge BG,2]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 1
+anim = 995
+ID = 10001
+pos = 32, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 Shunpo Gauge BG,3]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 1
+anim = 995
+ID = 10001
+pos = 64, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 Shunpo Stock 1]
+type = Explod
+;trigger1 = NumExplod(10020) = 0
+trigger1 = parent, var(13) > 0
+trigger1 = TeamSide = 1
+anim = 993
+ID = 10020
+pos = 7, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 26, 1
+sprpriority = 4
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 Shunpo Stock 2]
+type = Explod
+;trigger1 = NumExplod(10021) = 0
+trigger1 = parent, var(13) > 1
+trigger1 = TeamSide = 1
+anim = 993
+ID = 10021
+pos = 39, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 26, 1
+sprpriority = 4
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 Shunpo Stock 3]
+type = Explod
+;trigger1 = NumExplod(10022) = 0
+trigger1 = parent, var(13) > 2
+trigger1 = TeamSide = 1
+anim = 993
+ID = 10022
+pos = 71, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 26, 1
+sprpriority = 4
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 Shunpo Stock Refill]
+type = Explod
+;trigger1 = NumExplod(10023) = 0
+trigger1 = parent, var(13) < 3
+trigger1 = TeamSide = 1
+anim = 994
+ID = 10023
+pos = (7+(32*parent, var(13))), 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = (26*((parent, fvar(14)))/600), 1
+sprpriority = 5;2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 Shunpo Gauge,1]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 1
+anim = 986
+ID = 10001
+pos = 0, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 Shunpo Gauge,2]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 1
+anim = 986
+ID = 10001
+pos = 32, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P1 Shunpo Gauge,3]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 1
+anim = 986
+ID = 10001
+pos = 64, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = left
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+;---------------------------------------------------------------------------
+; RF/Shunpo Gauge, P2
+[State -2, P2 RF Stock 1,1]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 2
+anim = 987
+ID = 10010
+pos = -33, 239 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 1,2]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10010
+pos = -34, 238 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 1,3]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10010
+pos = -35, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 1,4]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10010
+pos = -36, 236 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 1,5]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10010
+pos = -37, 235 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 1,6]
+type = Explod
+;trigger1 = NumExplod(10010) = 0
+trigger1 = parent, var(11) > 0
+trigger1 = TeamSide = 2
+anim = 989
+ID = 10010
+pos = -38, 234 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 2,1]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 2
+anim = 987
+ID = 10011
+pos = -65, 239 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 2,2]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10011
+pos = -66, 238 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 2,3]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10011
+pos = -67, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 2,4]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10011
+pos = -68, 236 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 2,5]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10011
+pos = -69, 235 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 2,6]
+type = Explod
+;trigger1 = NumExplod(10011) = 0
+trigger1 = parent, var(11) > 1
+trigger1 = TeamSide = 2
+anim = 989
+ID = 10011
+pos = -70, 234 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 3,1]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 2
+anim = 987
+ID = 10012
+pos = -97, 239 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 3,2]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10012
+pos = -98, 238 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 3,3]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10012
+pos = -99, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 3,4]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10012
+pos = -100, 236 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 3,5]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 2
+anim = 988
+ID = 10012
+pos = -101, 235 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock 3,6]
+type = Explod
+;trigger1 = NumExplod(10012) = 0
+trigger1 = parent, var(11) > 2
+trigger1 = TeamSide = 2
+anim = 989
+ID = 10012
+pos = -102, 234 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 31, 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock Refill,1]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 2
+anim = 996
+ID = 10013
+pos = -(2+(32*parent, var(11))), 239 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = -(31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock Refill,2]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 2
+anim = 997
+ID = 10013
+pos = -(3+(32*parent, var(11))), 238 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = -(31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock Refill,3]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 2
+anim = 997
+ID = 10013
+pos = -(4+(32*parent, var(11))), 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = -(31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock Refill,4]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 2
+anim = 997
+ID = 10013
+pos = -(5+(32*parent, var(11))), 236 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = -(31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock Refill,5]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 2
+anim = 997
+ID = 10013
+pos = -(6+(32*parent, var(11))), 235 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = -(31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Stock Refill,6]
+type = Explod
+;trigger1 = NumExplod(10013) = 0
+trigger1 = parent, var(11) < 3
+trigger1 = TeamSide = 2
+anim = 998
+ID = 10013
+pos = -(7+(32*parent, var(11))), 234 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = -(31*((parent, var(10)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 RF Gauge]
+type = Explod
+;trigger1 = NumExplod(10000) = 0
+trigger1 = TeamSide = 2
+anim = 985
+ID = 10000
+pos = -1, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 3
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 Shunpo Gauge BG,1]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 2
+anim = 995
+ID = 10001
+pos = -1, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 Shunpo Gauge BG,2]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 2
+anim = 995
+ID = 10001
+pos = -33, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 Shunpo Gauge BG,3]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 2
+anim = 995
+ID = 10001
+pos = -65, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 Shunpo Stock 1]
+type = Explod
+;trigger1 = NumExplod(10020) = 0
+trigger1 = parent, var(13) > 0
+trigger1 = TeamSide = 2
+anim = 993
+ID = 10020
+pos = -33, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 26, 1
+sprpriority = 4
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 Shunpo Stock 2]
+type = Explod
+;trigger1 = NumExplod(10021) = 0
+trigger1 = parent, var(13) > 1
+trigger1 = TeamSide = 2
+anim = 993
+ID = 10021
+pos = -65, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 26, 1
+sprpriority = 4
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 Shunpo Stock 3]
+type = Explod
+;trigger1 = NumExplod(10022) = 0
+trigger1 = parent, var(13) > 2
+trigger1 = TeamSide = 2
+anim = 993
+ID = 10022
+pos = -97, 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 26, 1
+sprpriority = 4
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 Shunpo Stock Refill]
+type = Explod
+;trigger1 = NumExplod(10023) = 0
+trigger1 = parent, var(13) < 3
+trigger1 = TeamSide = 2
+anim = 999
+ID = 10023
+pos = -(7+(32*parent, var(13))), 237 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = 1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = (26*((parent, fvar(14)))/600), 1
+sprpriority = 2
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 Shunpo Gauge,1]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 2
+anim = 986
+ID = 10001
+pos = -1, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 Shunpo Gauge,2]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 2
+anim = 986
+ID = 10001
+pos = -33, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+[State -2, P2 Shunpo Gauge,3]
+type = Explod
+;trigger1 = NumExplod(10001) = 0
+trigger1 = TeamSide = 2
+anim = 986
+ID = 10001
+pos = -65, 240 - ifelse((parent, var(12)) = 2, 8, 0)
+postype = right
+facing = -1
+bindtime = -1
+removetime = 1
+supermovetime = 2147483647
+pausemovetime = 2147483647
+scale = 1, 1
+sprpriority = 5
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+
+;---------------------------------------------------------------------------
+; Ceiling Helper
+[Statedef 995]
+type    = A
+movetype= I
+physics = N
+anim = 3604
+velset = 0,0
+sprpriority = 2
+
+[State 995, Offscreen]
+type = ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 995, Safety]; Just in case your opponent is very poorly coded.
+type = SelfState
+trigger1 = !IsHelper
+value = 5050
+
+[State 995, Facing]
+type = Turn
+trigger1 = facing != parent, facing
+
+[State 995, PosAdd]
+type = PosAdd
+trigger1 = 1
+y = - ScreenPos y
+
+[State 995, PosSet]
+type = PosSet
+trigger1 = 1
+y = ifelse(pos y > - 300, -300, pos y)
+x = parent, pos x
+
+[State 995, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 995, Push]
+type = PlayerPush
+trigger1 = 1
+value = 0
+
+[State 995, ChangeAnim]
+type = ChangeAnim
+trigger1 = (parent, statetype = A) && (parent, MoveContact = 1)
+value = 960
+
+[State 995, Timer]
+type = Varset
+trigger1 = (parent, statetype = A) && (parent, MoveContact = 1)
+;trigger1 = var(33) = 0
+var(33) = parent, var(33)
+
+[State 995, ChangeAnim]
+type = ChangeAnim
+trigger1 = parent, statetype != A
+trigger2 = !(parent, MoveContact) && (var(33) + 20 <= (parent, var(33)))
+value = 3604
+
+[State 995, Timer Reset]
+type = Varset
+trigger1 = Anim != 960
+var(33) = 0

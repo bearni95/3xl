@@ -1,0 +1,1133 @@
+{
+	"name": "Roronoa Zoro",
+	"commands": [
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "undizzy",
+			"input": "~B, F, B, F, B, F, B, F"
+		},
+		{
+			"name": "guardpush",
+			"input": "x+y"
+		},
+		{
+			"name": "du",
+			"input": "~D, $U"
+		},
+		{
+			"name": "abc",
+			"input": "a+b+c"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "holda",
+			"input": "/a"
+		},
+		{
+			"name": "holdb",
+			"input": "/b"
+		},
+		{
+			"name": "holdc",
+			"input": "/c"
+		},
+		{
+			"name": "holdx",
+			"input": "/x"
+		},
+		{
+			"name": "holdy",
+			"input": "/y"
+		},
+		{
+			"name": "holdz",
+			"input": "/z"
+		},
+		{
+			"name": "holdstart",
+			"input": "/s"
+		},
+		{
+			"name": "a2",
+			"input": "a"
+		},
+		{
+			"name": "b2",
+			"input": "b"
+		},
+		{
+			"name": "c2",
+			"input": "c"
+		},
+		{
+			"name": "x2",
+			"input": "x"
+		},
+		{
+			"name": "y2",
+			"input": "y"
+		},
+		{
+			"name": "z2",
+			"input": "z"
+		},
+		{
+			"name": "start2",
+			"input": "s"
+		},
+		{
+			"name": "holddownfwd",
+			"input": "/$DF"
+		},
+		{
+			"name": "holdfwd2",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback2",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup2",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown2",
+			"input": "/$D"
+		},
+		{
+			"name": "holda2",
+			"input": "/a"
+		},
+		{
+			"name": "holdb2",
+			"input": "/b"
+		},
+		{
+			"name": "holdc2",
+			"input": "/c"
+		},
+		{
+			"name": "holdx2",
+			"input": "/x"
+		},
+		{
+			"name": "holdy2",
+			"input": "/y"
+		},
+		{
+			"name": "holdz2",
+			"input": "/z"
+		},
+		{
+			"name": "holdstart2",
+			"input": "/s"
+		},
+		{
+			"name": "recovery2",
+			"input": "x+a"
+		},
+		{
+			"name": "KTM",
+			"input": "~D, DB, B, x+y"
+		},
+		{
+			"name": "108PH",
+			"input": "~D, DF, F, x+y"
+		},
+		{
+			"name": "SS",
+			"input": "~D, DF, F, a+b"
+		},
+		{
+			"name": "HKD1",
+			"input": "~D, DB, B, a"
+		},
+		{
+			"name": "HKD2",
+			"input": "~D, DB, B, b"
+		},
+		{
+			"name": "HKD3",
+			"input": "~D, DB, B, c"
+		},
+		{
+			"name": "YD1",
+			"input": "~D, DF, F, x"
+		},
+		{
+			"name": "YD2",
+			"input": "~D, DF, F,  y"
+		},
+		{
+			"name": "YD3",
+			"input": "~D, DF, F, z"
+		},
+		{
+			"name": "RNT",
+			"input": "~F, D, DF, x"
+		},
+		{
+			"name": "NZ1",
+			"input": "~D, DF,F,a"
+		},
+		{
+			"name": "NZ2",
+			"input": "~D, DF,F,b"
+		},
+		{
+			"name": "NZ3",
+			"input": "~D, DF,F,c"
+		},
+		{
+			"name": "bwd_y",
+			"input": "/B,y"
+		},
+		{
+			"name": "hold_x",
+			"input": "/x"
+		},
+		{
+			"name": "hold_y",
+			"input": "/y"
+		},
+		{
+			"name": "hold_z",
+			"input": "/z"
+		},
+		{
+			"name": "hold_a",
+			"input": "/a"
+		},
+		{
+			"name": "hold_b",
+			"input": "/b"
+		},
+		{
+			"name": "hold_c",
+			"input": "/c"
+		},
+		{
+			"name": "up",
+			"input": "$U"
+		},
+		{
+			"name": "down",
+			"input": "$D"
+		},
+		{
+			"name": "2k",
+			"input": "a+b"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "SnapBack",
+			"input": "~D, DF, F, D, DF, F, z"
+		},
+		{
+			"name": "Tag Counter",
+			"input": "a+b+c"
+		},
+		{
+			"name": "Dual Hyper",
+			"input": "~D,DF,F,x+a"
+		}
+	],
+	"moves": [
+		{
+			"name": "State 0",
+			"stateNo": 0,
+			"commands": [],
+			"inputs": [],
+			"movetype": "H",
+			"damage": null,
+			"anim": null,
+			"animation": "idle"
+		},
+		{
+			"name": "Super Jump",
+			"stateNo": 40,
+			"commands": [
+				"abc"
+			],
+			"inputs": [
+				"a+b+c"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "jump-start"
+		},
+		{
+			"name": "Run Forward",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "run Fwd",
+			"stateNo": 102,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 110,
+			"animation": "action-110"
+		},
+		{
+			"name": "Back Dash",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 105,
+			"animation": "run-back"
+		},
+		{
+			"name": "State 120",
+			"stateNo": 120,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-start"
+		},
+		{
+			"name": "AI Guard (Standing)",
+			"stateNo": 130,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-stand"
+		},
+		{
+			"name": "AI Guard (Crouching)",
+			"stateNo": 131,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-crouch"
+		},
+		{
+			"name": "AI Guard (Air)",
+			"stateNo": 132,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-air"
+		},
+		{
+			"name": "Guard Push (Stand)",
+			"stateNo": 171,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 171,
+			"animation": "action-171"
+		},
+		{
+			"name": "Guard Push (Crouch)",
+			"stateNo": 172,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 172,
+			"animation": "action-172"
+		},
+		{
+			"name": "Guard Push (Air)",
+			"stateNo": 173,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 173,
+			"animation": ""
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 195,
+			"commands": [
+				"start"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "1",
+			"stateNo": 200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "2",
+			"stateNo": 210,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "2",
+			"stateNo": 225,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "1",
+			"stateNo": 230,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "2",
+			"stateNo": 240,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 240,
+			"animation": "action-240"
+		},
+		{
+			"name": "2",
+			"stateNo": 250,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 250,
+			"animation": "action-250"
+		},
+		{
+			"name": "Collarbone Breaker",
+			"stateNo": 260,
+			"commands": [
+				"bwd_y"
+			],
+			"inputs": [
+				"/B,y"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": null,
+			"animation": "action-260"
+		},
+		{
+			"name": "z",
+			"stateNo": 275,
+			"commands": [
+				"z",
+				"holddownfwd"
+			],
+			"inputs": [
+				"z",
+				"/$DF"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "crouching light punch",
+			"stateNo": 400,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "crouching medium punch",
+			"stateNo": 410,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "crouching strong punch",
+			"stateNo": 420,
+			"commands": [
+				"z",
+				"holddown"
+			],
+			"inputs": [
+				"z",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 420,
+			"animation": "action-420"
+		},
+		{
+			"name": "crouching light kick",
+			"stateNo": 430,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 430,
+			"animation": "action-430"
+		},
+		{
+			"name": "crouching medium kick",
+			"stateNo": 440,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 440,
+			"animation": "action-440"
+		},
+		{
+			"name": "crouching strong kick",
+			"stateNo": 450,
+			"commands": [
+				"c",
+				"holddown"
+			],
+			"inputs": [
+				"c",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 450,
+			"animation": "action-450"
+		},
+		{
+			"name": "x",
+			"stateNo": 600,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "y",
+			"stateNo": 610,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "z",
+			"stateNo": 620,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": null,
+			"animation": "idle"
+		},
+		{
+			"name": "a",
+			"stateNo": 630,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "b",
+			"stateNo": 640,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 640,
+			"animation": "action-640"
+		},
+		{
+			"name": "c",
+			"stateNo": 650,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": null,
+			"animation": "action-655"
+		},
+		{
+			"name": "Throw",
+			"stateNo": 800,
+			"commands": [
+				"z",
+				"holdfwd"
+			],
+			"inputs": [
+				"z",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "Air Throw",
+			"stateNo": 850,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 850,
+			"animation": "action-850"
+		},
+		{
+			"name": "Forward Recovery Roll",
+			"stateNo": 890,
+			"commands": [
+				"holdfwd"
+			],
+			"inputs": [
+				"/$F"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 5220,
+			"animation": "action-5220"
+		},
+		{
+			"name": "Backward Recovery Roll",
+			"stateNo": 895,
+			"commands": [
+				"holdback"
+			],
+			"inputs": [
+				"/$B"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 5220,
+			"animation": "action-5220"
+		},
+		{
+			"name": "a2",
+			"stateNo": 1000,
+			"commands": [
+				"YD1"
+			],
+			"inputs": [
+				"~D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "a2",
+			"stateNo": 1001,
+			"commands": [
+				"YD2"
+			],
+			"inputs": [
+				"~D, DF, F,  y"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1001,
+			"animation": "action-1001"
+		},
+		{
+			"name": "a2",
+			"stateNo": 1002,
+			"commands": [
+				"YD3"
+			],
+			"inputs": [
+				"~D, DF, F, z"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1002,
+			"animation": "action-1002"
+		},
+		{
+			"name": "3",
+			"stateNo": 1100,
+			"commands": [
+				"YD1"
+			],
+			"inputs": [
+				"~D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "YD2",
+			"stateNo": 1101,
+			"commands": [
+				"YD2"
+			],
+			"inputs": [
+				"~D, DF, F,  y"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 1100,
+			"animation": "action-1101"
+		},
+		{
+			"name": "YD3",
+			"stateNo": 1102,
+			"commands": [
+				"YD3"
+			],
+			"inputs": [
+				"~D, DF, F, z"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "3",
+			"stateNo": 1200,
+			"commands": [
+				"RNT"
+			],
+			"inputs": [
+				"~F, D, DF, x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "3",
+			"stateNo": 1300,
+			"commands": [
+				"NZ1"
+			],
+			"inputs": [
+				"~D, DF,F,a"
+			],
+			"movetype": "I",
+			"damage": 40,
+			"anim": 1300,
+			"animation": "action-1300"
+		},
+		{
+			"name": "NZ2",
+			"stateNo": 1310,
+			"commands": [
+				"NZ2"
+			],
+			"inputs": [
+				"~D, DF,F,b"
+			],
+			"movetype": "I",
+			"damage": 40,
+			"anim": 1300,
+			"animation": "action-1300"
+		},
+		{
+			"name": "NZ3",
+			"stateNo": 1320,
+			"commands": [
+				"NZ3"
+			],
+			"inputs": [
+				"~D, DF,F,c"
+			],
+			"movetype": "I",
+			"damage": 40,
+			"anim": 1300,
+			"animation": "action-1300"
+		},
+		{
+			"name": "3",
+			"stateNo": 1400,
+			"commands": [
+				"HKD1"
+			],
+			"inputs": [
+				"~D, DB, B, a"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 1400,
+			"animation": "action-1400"
+		},
+		{
+			"name": "HKD2",
+			"stateNo": 1410,
+			"commands": [
+				"HKD2"
+			],
+			"inputs": [
+				"~D, DB, B, b"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 1400,
+			"animation": "action-1410"
+		},
+		{
+			"name": "3",
+			"stateNo": 1420,
+			"commands": [
+				"HKD3"
+			],
+			"inputs": [
+				"~D, DB, B, c"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 1400,
+			"animation": "action-1420"
+		},
+		{
+			"name": "108PH",
+			"stateNo": 3000,
+			"commands": [
+				"108PH"
+			],
+			"inputs": [
+				"~D, DF, F, x+y"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 3000,
+			"animation": "action-3000"
+		},
+		{
+			"name": "KTM",
+			"stateNo": 3100,
+			"commands": [
+				"KTM"
+			],
+			"inputs": [
+				"~D, DB, B, x+y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3100,
+			"animation": "action-3100"
+		},
+		{
+			"name": "108PH",
+			"stateNo": 3200,
+			"commands": [
+				"108PH"
+			],
+			"inputs": [
+				"~D, DF, F, x+y"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 3010,
+			"animation": "action-3010"
+		},
+		{
+			"name": "SS",
+			"stateNo": 3300,
+			"commands": [
+				"SS"
+			],
+			"inputs": [
+				"~D, DF, F, a+b"
+			],
+			"movetype": "A",
+			"damage": 2,
+			"anim": 3300,
+			"animation": "action-3300"
+		},
+		{
+			"name": "Partner Change",
+			"stateNo": 4510,
+			"commands": [
+				"c",
+				"z"
+			],
+			"inputs": [
+				"c",
+				"z"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": null,
+			"animation": "action-4510"
+		},
+		{
+			"name": "Dual Hyper Attack",
+			"stateNo": 4600,
+			"commands": [
+				"Dual Hyper"
+			],
+			"inputs": [
+				"~D,DF,F,x+a"
+			],
+			"movetype": "I",
+			"damage": 30,
+			"anim": null,
+			"animation": "action-4600"
+		},
+		{
+			"name": "Partner Assist",
+			"stateNo": 4700,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": null,
+			"animation": "action-4700"
+		},
+		{
+			"name": "Tag Counter",
+			"stateNo": 4800,
+			"commands": [
+				"Tag Counter"
+			],
+			"inputs": [
+				"a+b+c"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 40,
+			"animation": "jump-start"
+		},
+		{
+			"name": "State 5210",
+			"stateNo": 5210,
+			"commands": [],
+			"inputs": [],
+			"movetype": "I",
+			"damage": null,
+			"anim": 5210,
+			"animation": "action-5210"
+		},
+		{
+			"name": "SnapBack",
+			"stateNo": 50000,
+			"commands": [
+				"SnapBack"
+			],
+			"inputs": [
+				"~D, DF, F, D, DF, F, z"
+			],
+			"movetype": "A",
+			"damage": 65,
+			"anim": 250,
+			"animation": "action-250"
+		}
+	]
+}

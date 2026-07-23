@@ -1,0 +1,489 @@
+{
+	"name": "Piccolo sb1",
+	"commands": [
+		{
+			"name": "Makenk",
+			"input": "~D, DF, F, a"
+		},
+		{
+			"name": "Big_Bomb",
+			"input": "~D, DB, B, x"
+		},
+		{
+			"name": "Multi_Blast",
+			"input": "~D, DB, B, a"
+		},
+		{
+			"name": "Tracker",
+			"input": "~50$D, B, b"
+		},
+		{
+			"name": "Slide_Kick",
+			"input": "~D, DF, F, b"
+		},
+		{
+			"name": "Fly_Kick",
+			"input": "~D, DF, F, y"
+		},
+		{
+			"name": "DFK",
+			"input": "~F, B, y"
+		},
+		{
+			"name": "Eye_Laser",
+			"input": "~B, F, a"
+		},
+		{
+			"name": "Arm_Stretch",
+			"input": "~B, F, b"
+		},
+		{
+			"name": "Fireball_Basic",
+			"input": "~F, B, a"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "a+b"
+		},
+		{
+			"name": "ab",
+			"input": "a+b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "Charge",
+			"input": "/c"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		}
+	],
+	"moves": [
+		{
+			"name": "FF",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run"
+		},
+		{
+			"name": "BB",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "a",
+			"stateNo": 200,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "b",
+			"stateNo": 210,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Multi_Blast",
+			"stateNo": 280,
+			"commands": [
+				"Multi_Blast"
+			],
+			"inputs": [
+				"~D, DB, B, a"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 280,
+			"animation": "action-280"
+		},
+		{
+			"name": "Charge",
+			"stateNo": 300,
+			"commands": [
+				"Charge"
+			],
+			"inputs": [
+				"/c"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 300,
+			"animation": "action-300"
+		},
+		{
+			"name": "Slide_Kick",
+			"stateNo": 342,
+			"commands": [
+				"Slide_Kick"
+			],
+			"inputs": [
+				"~D, DF, F, b"
+			],
+			"movetype": "A",
+			"damage": 110,
+			"anim": 342,
+			"animation": "action-342"
+		},
+		{
+			"name": "Makenk",
+			"stateNo": 360,
+			"commands": [
+				"Makenk"
+			],
+			"inputs": [
+				"~D, DF, F, a"
+			],
+			"movetype": "I",
+			"damage": 10,
+			"anim": 360,
+			"animation": "action-360"
+		},
+		{
+			"name": "a",
+			"stateNo": 400,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "b",
+			"stateNo": 410,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "y",
+			"stateNo": 415,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 5,
+			"anim": 415,
+			"animation": "action-415"
+		},
+		{
+			"name": "x",
+			"stateNo": 416,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 5,
+			"anim": 416,
+			"animation": "action-416"
+		},
+		{
+			"name": "x",
+			"stateNo": 425,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 5,
+			"anim": 425,
+			"animation": "action-425"
+		},
+		{
+			"name": "y",
+			"stateNo": 426,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 5,
+			"anim": 426,
+			"animation": "action-426"
+		},
+		{
+			"name": "Arm_Stretch",
+			"stateNo": 440,
+			"commands": [
+				"Arm_Stretch"
+			],
+			"inputs": [
+				"~B, F, b"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 440,
+			"animation": "action-440"
+		},
+		{
+			"name": "Big_Bomb",
+			"stateNo": 500,
+			"commands": [
+				"Big_Bomb"
+			],
+			"inputs": [
+				"~D, DB, B, x"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 500,
+			"animation": "action-500"
+		},
+		{
+			"name": "Fly_Kick",
+			"stateNo": 580,
+			"commands": [
+				"Fly_Kick"
+			],
+			"inputs": [
+				"~D, DF, F, y"
+			],
+			"movetype": "A",
+			"damage": 120,
+			"anim": 580,
+			"animation": "action-580"
+		},
+		{
+			"name": "a",
+			"stateNo": 600,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "b",
+			"stateNo": 610,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "DFK",
+			"stateNo": 760,
+			"commands": [
+				"DFK"
+			],
+			"inputs": [
+				"~F, B, y"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 760,
+			"animation": "action-760"
+		},
+		{
+			"name": "z",
+			"stateNo": 767,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 747,
+			"animation": "action-747"
+		},
+		{
+			"name": "z",
+			"stateNo": 777,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 747,
+			"animation": "action-747"
+		},
+		{
+			"name": "Fireball_Basic",
+			"stateNo": 1000,
+			"commands": [
+				"Fireball_Basic"
+			],
+			"inputs": [
+				"~F, B, a"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Fireball_Basic",
+			"stateNo": 1001,
+			"commands": [
+				"Fireball_Basic"
+			],
+			"inputs": [
+				"~F, B, a"
+			],
+			"movetype": "A",
+			"damage": 110,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Fireball_Basic",
+			"stateNo": 1002,
+			"commands": [
+				"Fireball_Basic"
+			],
+			"inputs": [
+				"~F, B, a"
+			],
+			"movetype": "A",
+			"damage": 110,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Eye_Laser",
+			"stateNo": 1050,
+			"commands": [
+				"Eye_Laser"
+			],
+			"inputs": [
+				"~B, F, a"
+			],
+			"movetype": "A",
+			"damage": 85,
+			"anim": 1050,
+			"animation": "action-1050"
+		},
+		{
+			"name": "Tracker",
+			"stateNo": 1690,
+			"commands": [
+				"Tracker"
+			],
+			"inputs": [
+				"~50$D, B, b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1000,
+			"animation": "action-1000"
+		}
+	]
+}

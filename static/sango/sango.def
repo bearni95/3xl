@@ -1,0 +1,31 @@
+;***************************************************************************;
+;******************* Created in Fighter Factory Ultimate *******************;
+;*******************      http://www.virtualltek.com     *******************;
+;***************************************************************************;
+
+[Info]
+name ="Sango"
+displayname ="Sango"
+versiondate =8/30/2011
+mugenversion =1.0
+author ="Alexei Roschak"
+pal.defaults =1,2,3,4
+
+[Files]
+sprite =sango.sff
+anim =sango.air
+sound =sango.jp.snd
+cmd =sango.cmd
+cns =sango.cns
+stcommon =common1.cns
+st =sango.cns
+pal1=red.act
+pal2=green.act
+pal3=yellow.act
+pal4=blue.act
+st1=override.cns
+st2=miroku.cns
+
+[Arcade]
+intro.storyboard = 
+ending.storyboard = 

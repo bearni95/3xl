@@ -1,0 +1,809 @@
+{
+	"name": "Kikyo",
+	"commands": [
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "hold_a",
+			"input": "/a"
+		},
+		{
+			"name": "a2",
+			"input": "a"
+		},
+		{
+			"name": "b2",
+			"input": "b"
+		},
+		{
+			"name": "c2",
+			"input": "c"
+		},
+		{
+			"name": "x2",
+			"input": "x"
+		},
+		{
+			"name": "y2",
+			"input": "y"
+		},
+		{
+			"name": "z2",
+			"input": "z"
+		},
+		{
+			"name": "start2",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd2",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback2",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup2",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown2",
+			"input": "/$D"
+		},
+		{
+			"name": "hold_a2",
+			"input": "/a"
+		},
+		{
+			"name": "Purify_Arrow",
+			"input": "D,D,x"
+		},
+		{
+			"name": "Ascension",
+			"input": "/F, x"
+		},
+		{
+			"name": "Curse_Deflect",
+			"input": "/B, x"
+		},
+		{
+			"name": "Purification",
+			"input": "x"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		}
+	],
+	"moves": [
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "Dash FWD Atk",
+			"stateNo": 110,
+			"commands": [
+				"y",
+				"z",
+				"b",
+				"c"
+			],
+			"inputs": [
+				"y",
+				"z",
+				"b",
+				"c"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 110,
+			"animation": "action-110"
+		},
+		{
+			"name": "Dash Back Atk",
+			"stateNo": 111,
+			"commands": [
+				"y",
+				"z",
+				"b",
+				"c"
+			],
+			"inputs": [
+				"y",
+				"z",
+				"b",
+				"c"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 111,
+			"animation": "action-111"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 200,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Light Punch2",
+			"stateNo": 201,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Light Punch3",
+			"stateNo": 202,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Stand Light Punch4",
+			"stateNo": 203,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Stand Light Punch5",
+			"stateNo": 204,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Stand Light Punch6",
+			"stateNo": 205,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Stand Light Punch7",
+			"stateNo": 206,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Stand Strong Punch",
+			"stateNo": 210,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Strong Punch 2",
+			"stateNo": 211,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Strong Punch 3",
+			"stateNo": 212,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 212,
+			"animation": "action-212"
+		},
+		{
+			"name": "Stand Strong Punch 4",
+			"stateNo": 213,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 212,
+			"animation": "action-212"
+		},
+		{
+			"name": "Stand Strong Punch 5",
+			"stateNo": 214,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 212,
+			"animation": "action-212"
+		},
+		{
+			"name": "Stand Strong Punch 6",
+			"stateNo": 215,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 212,
+			"animation": "action-212"
+		},
+		{
+			"name": "Stand Strong Punch 7",
+			"stateNo": 216,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 212,
+			"animation": "action-212"
+		},
+		{
+			"name": "Crouch Light Punch",
+			"stateNo": 400,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouch Light Punch2",
+			"stateNo": 401,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouch Light Punch3",
+			"stateNo": 402,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 402,
+			"animation": "action-402"
+		},
+		{
+			"name": "Crouch Light Punch4",
+			"stateNo": 403,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 402,
+			"animation": "action-402"
+		},
+		{
+			"name": "Crouch Light Punch5",
+			"stateNo": 404,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 402,
+			"animation": "action-402"
+		},
+		{
+			"name": "Crouch Light Punch6",
+			"stateNo": 405,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 402,
+			"animation": "action-402"
+		},
+		{
+			"name": "Crouch Light Punch7",
+			"stateNo": 406,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 402,
+			"animation": "action-402"
+		},
+		{
+			"name": "Crouch Strong Punch",
+			"stateNo": 410,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouch Strong Punch 2",
+			"stateNo": 411,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouch Strong Punch 3",
+			"stateNo": 412,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 412,
+			"animation": "action-412"
+		},
+		{
+			"name": "Crouch Strong Punch 4",
+			"stateNo": 413,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 412,
+			"animation": "action-412"
+		},
+		{
+			"name": "Crouch Strong Punch 5",
+			"stateNo": 414,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 412,
+			"animation": "action-412"
+		},
+		{
+			"name": "Crouch Strong Punch 6",
+			"stateNo": 415,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 412,
+			"animation": "action-412"
+		},
+		{
+			"name": "Crouch Strong Punch 7",
+			"stateNo": 416,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 42,
+			"anim": 412,
+			"animation": "action-412"
+		},
+		{
+			"name": "Jump Light Punch",
+			"stateNo": 600,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Jump Strong Punch",
+			"stateNo": 610,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Soul Collector In Yo Face Throw",
+			"stateNo": 800,
+			"commands": [
+				"b",
+				"holdfwd",
+				"holdback"
+			],
+			"inputs": [
+				"b",
+				"/$F",
+				"/$B"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "Beat Yo Ass",
+			"stateNo": 801,
+			"commands": [
+				"b",
+				"holdfwd",
+				"holdback"
+			],
+			"inputs": [
+				"b",
+				"/$F",
+				"/$B"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 801,
+			"animation": "action-801"
+		},
+		{
+			"name": "Standing Parry",
+			"stateNo": 900,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "Crouching Parry",
+			"stateNo": 901,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 901,
+			"animation": "action-901"
+		},
+		{
+			"name": "Standing PushBlock",
+			"stateNo": 950,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 950,
+			"animation": "action-950"
+		},
+		{
+			"name": "Crouching PushBlock",
+			"stateNo": 951,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 951,
+			"animation": "action-951"
+		},
+		{
+			"name": "Ascension",
+			"stateNo": 1000,
+			"commands": [
+				"Ascension"
+			],
+			"inputs": [
+				"/F, x"
+			],
+			"movetype": "A",
+			"damage": 100,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Purification",
+			"stateNo": 1500,
+			"commands": [
+				"Purification",
+				"y",
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"y",
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1500,
+			"animation": "action-1500"
+		},
+		{
+			"name": "Curse Deflector",
+			"stateNo": 2000,
+			"commands": [
+				"Curse_Deflect"
+			],
+			"inputs": [
+				"/B, x"
+			],
+			"movetype": "A",
+			"damage": 100,
+			"anim": 2000,
+			"animation": "action-2000"
+		},
+		{
+			"name": "Sacred Arrow",
+			"stateNo": 6666,
+			"commands": [
+				"Purify_Arrow"
+			],
+			"inputs": [
+				"D,D,x"
+			],
+			"movetype": "A",
+			"damage": 300,
+			"anim": 4000,
+			"animation": "action-4000"
+		}
+	]
+}

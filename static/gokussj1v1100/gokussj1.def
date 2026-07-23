@@ -1,0 +1,26 @@
+; Definition file for Player
+; Contains all the filenames needed for the character
+; Template player 9X-09-12
+
+; Character information
+[Info]
+name    = "Goku";<-- Replace with a real name
+displayname = "Goku SSJ1";<-- Replace with name to display
+author = "GohanSSM2"
+;mugenversion = 4.01 & 4.14
+
+; Files for the character
+[Files]
+cmd     = gokussj1ai.cmd     ;Command set
+cns     = gokussj1.cns     ;Constants
+st      = gokussj1.cns     ;States
+stcommon = aircodes.cns   ;Common states
+sprite  = gokussj1.sff     ;Sprite
+anim    = gokussj1.air     ;Animation
+sound   = gokussj1.snd     ;Sound
+pal1    = gokussj1.act     ;Palettes
+pal2    = gokussj1b.act
+pal3    = gokussj1c.act
+pal4    = gokussj1d.act
+pal5    = gokussj1e.act
+pal6    = gokussj1f.act

@@ -1,0 +1,1401 @@
+{
+	"name": "Moon",
+	"commands": [
+		{
+			"name": "AI0",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI1",
+			"input": "b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b"
+		},
+		{
+			"name": "AI2",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI3",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI4",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI5",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI6",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI7",
+			"input": "F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F"
+		},
+		{
+			"name": "AI8",
+			"input": "D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D"
+		},
+		{
+			"name": "AI9",
+			"input": "B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B"
+		},
+		{
+			"name": "AI10",
+			"input": "U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U"
+		},
+		{
+			"name": "AI11",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI12",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI13",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI14",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI15",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI16",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI17",
+			"input": "a,B,c,x,y,z,s,B,D,F,U,a,b,c,x,y,z,s,s"
+		},
+		{
+			"name": "AI18",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI19",
+			"input": "b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b"
+		},
+		{
+			"name": "AI20",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI21",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI22",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI23",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI24",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI25",
+			"input": "F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F"
+		},
+		{
+			"name": "AI26",
+			"input": "D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D"
+		},
+		{
+			"name": "AI27",
+			"input": "B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B"
+		},
+		{
+			"name": "AI28",
+			"input": "U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U"
+		},
+		{
+			"name": "AI29",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI30",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI31",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI32",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI33",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI34",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI35",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI36",
+			"input": "z,z,z,z,z,z,a,a,a,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI37",
+			"input": "z,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,z,z,z"
+		},
+		{
+			"name": "AI38",
+			"input": "z,z,z,z,z,a,a,a,z,z,z,z,z,a,a,a,z,z,z"
+		},
+		{
+			"name": "AI39",
+			"input": "z,z,z,z,z,a,a,a,z,z,z,z,z,z,a,a,z,z,z"
+		},
+		{
+			"name": "AI40",
+			"input": "z,z,z,z,a,a,a,z,z,z,z,a,z,z,a,a,z,z,z"
+		},
+		{
+			"name": "AI41",
+			"input": "z,z,z,a,z,z,z,z,z,z,z,z,z,a,a,z,z,z,z"
+		},
+		{
+			"name": "AI42",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI43",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,a,a,z"
+		},
+		{
+			"name": "AI44",
+			"input": "z,z,a,a,a,a,z,z,z,z,z,z,z,z,z,a,a,a,z"
+		},
+		{
+			"name": "AI45",
+			"input": "z,z,z,z,z,z,a,a,z,z,z,z,z,a,a,a,a,z,z"
+		},
+		{
+			"name": "AI46",
+			"input": "z,z,z,z,z,z,z,z,a,a,a,a,a,a,z,z,z,z,z"
+		},
+		{
+			"name": "AI47",
+			"input": "z,z,z,a,a,a,a,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI48",
+			"input": "z,z,z,z,z,a,a,a,z,z,z,a,a,a,z,z,a,z,a"
+		},
+		{
+			"name": "AI49",
+			"input": "z,z,z,z,a,a,a,z,z,z,z,z,a,a,a,z,z,z,z"
+		},
+		{
+			"name": "AI50",
+			"input": "z,z,z,a,a,z,z,z,z,z,z,z,z,z,a,a,z,z,z"
+		},
+		{
+			"name": "Henshin",
+			"input": "~D,DF,F,D,DF,F,c"
+		},
+		{
+			"name": "S_Moon_Spiral_Heart_Attack",
+			"input": "~D,DF,F,D,DB,B,a"
+		},
+		{
+			"name": "S_Moon_Princess_Halation",
+			"input": "~D,DF,F,D,DB,B,y"
+		},
+		{
+			"name": "S_Sailor_Body_Attack",
+			"input": "~D,DB,B,D,DB,B,x"
+		},
+		{
+			"name": "S_Moon_Healing_Escalation",
+			"input": "~D,DF,F,D,DB,B,x"
+		},
+		{
+			"name": "S_Sailor_Moon_Kick",
+			"input": "~D,DB,B,D,DB,B,a"
+		},
+		{
+			"name": "S_Communication_Antenna",
+			"input": "~D,DF,F,D,DF,F,s"
+		},
+		{
+			"name": "S_Moon_Crystal_Power",
+			"input": "~D,DF,F,D,DF,F,z"
+		},
+		{
+			"name": "S_Moon_Prisim_Power",
+			"input": "~D,DF,F,D,DF,F,z"
+		},
+		{
+			"name": "S_Moon_Tiara_Action",
+			"input": "~D,DF,F,D,DF,F,x"
+		},
+		{
+			"name": "S_Supersonic_Waves",
+			"input": "~D,DF,F,D,DF,F,a"
+		},
+		{
+			"name": "S_Moon_Twilight_Flash",
+			"input": "~D,DF,F,D,DF,F,y"
+		},
+		{
+			"name": "S_Moon_Sparkling_Sensation",
+			"input": "~D,DF,F,D,DF,F,b"
+		},
+		{
+			"name": "silver_crystal",
+			"input": "~D,DB,B,c"
+		},
+		{
+			"name": "healing_escalation",
+			"input": "~D,DF,F,c"
+		},
+		{
+			"name": "princess_halation_l",
+			"input": "~B,D,DF,F,a"
+		},
+		{
+			"name": "princess_halation_h",
+			"input": "~B,D,DF,F,b"
+		},
+		{
+			"name": "moon_screw_punch_l",
+			"input": "~F,D,DF,F,x"
+		},
+		{
+			"name": "moon_screw_punch_h",
+			"input": "~F,D,DF,F,y"
+		},
+		{
+			"name": "guruguru_punch_l",
+			"input": "~F,D,DF,F,a"
+		},
+		{
+			"name": "guruguru_punch_h",
+			"input": "~F,D,DF,F,b"
+		},
+		{
+			"name": "gorgeous_meditation",
+			"input": "~D,B,F,a"
+		},
+		{
+			"name": "supersonic_waves_l",
+			"input": "~D,B,F,x"
+		},
+		{
+			"name": "supersonic_waves_h",
+			"input": "~D,B,F,y"
+		},
+		{
+			"name": "twilight_flash_l",
+			"input": "~D,DF,F,a"
+		},
+		{
+			"name": "twilight_flash_h",
+			"input": "~D,DF,F,b"
+		},
+		{
+			"name": "awaken_l",
+			"input": "~D,DB,B,a"
+		},
+		{
+			"name": "awaken_h",
+			"input": "~D,DB,B,b"
+		},
+		{
+			"name": "moon_tiara_stardust",
+			"input": "~D,DF,F,z"
+		},
+		{
+			"name": "moon_tiara_action_1",
+			"input": "~D,DF,F,x"
+		},
+		{
+			"name": "moon_tiara_action_2",
+			"input": "~D,DF,F,y"
+		},
+		{
+			"name": "moon_tiara_action_3",
+			"input": "~D,DB,B,x"
+		},
+		{
+			"name": "moon_tiara_action_4",
+			"input": "~D,DB,B,y"
+		},
+		{
+			"name": "moon_spiral_heart_attack_l",
+			"input": "~D,DF,F,x"
+		},
+		{
+			"name": "moon_spiral_heart_attack_h",
+			"input": "~D,DF,F,y"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "a"
+		},
+		{
+			"name": "nage",
+			"input": "x+y"
+		},
+		{
+			"name": "kaihi",
+			"input": "x+a"
+		},
+		{
+			"name": "HJ",
+			"input": "~$D, $U"
+		},
+		{
+			"name": "NHJ",
+			"input": "~12$D, $U"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "holdDF",
+			"input": "/$DF"
+		},
+		{
+			"name": "holda",
+			"input": "/$a"
+		},
+		{
+			"name": "holdb",
+			"input": "/$b"
+		},
+		{
+			"name": "holdc",
+			"input": "/$c"
+		},
+		{
+			"name": "holdx",
+			"input": "/$x"
+		},
+		{
+			"name": "holdy",
+			"input": "/$y"
+		},
+		{
+			"name": "holdz",
+			"input": "/$z"
+		}
+	],
+	"moves": [
+		{
+			"name": "Walk f",
+			"stateNo": 22,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Walk b",
+			"stateNo": 23,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "holdup",
+			"stateNo": 40,
+			"commands": [
+				"holdup"
+			],
+			"inputs": [
+				"/$U"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 40,
+			"animation": "jump-start"
+		},
+		{
+			"name": "Jump_F",
+			"stateNo": 42,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": 40,
+			"animation": "jump-start"
+		},
+		{
+			"name": "Jump_B",
+			"stateNo": 43,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": 40,
+			"animation": "jump-start"
+		},
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 105,
+			"animation": "run-back"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 108,
+			"commands": [
+				"kaihi"
+			],
+			"inputs": [
+				"x+a"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 108,
+			"animation": "action-108"
+		},
+		{
+			"name": "Guard",
+			"stateNo": 120,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-start"
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 195,
+			"commands": [
+				"start"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "H_Jump_F",
+			"stateNo": 199,
+			"commands": [
+				"HJ"
+			],
+			"inputs": [
+				"~$D, $U"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 40,
+			"animation": "jump-start"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 205,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Light Kick",
+			"stateNo": 210,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Light Kick",
+			"stateNo": 220,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 220,
+			"animation": "action-220"
+		},
+		{
+			"name": "Stand Strong Punch",
+			"stateNo": 225,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 225,
+			"animation": "action-225"
+		},
+		{
+			"name": "Standing Strong Kick",
+			"stateNo": 230,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "Standing Strong Kick",
+			"stateNo": 235,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "Standing Strong Kick",
+			"stateNo": 240,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 240,
+			"animation": "action-240"
+		},
+		{
+			"name": "?iU?",
+			"stateNo": 250,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 100,
+			"anim": 250,
+			"animation": "action-250"
+		},
+		{
+			"name": "µáªÝãU?",
+			"stateNo": 400,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "µáªÝ­p?`",
+			"stateNo": 410,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "µáªÝ­LbN",
+			"stateNo": 420,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 420,
+			"animation": "action-420"
+		},
+		{
+			"name": "ó?ãU?",
+			"stateNo": 600,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "ó??U?",
+			"stateNo": 610,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "ó?­U?",
+			"stateNo": 630,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "Uèü«U?",
+			"stateNo": 640,
+			"commands": [
+				"holdback",
+				"a"
+			],
+			"inputs": [
+				"/$B",
+				"a"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 640,
+			"animation": "action-640"
+		},
+		{
+			"name": "}~ºU?",
+			"stateNo": 650,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 650,
+			"animation": "action-652"
+		},
+		{
+			"name": "Jump Strong Punch",
+			"stateNo": 700,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 700,
+			"animation": "action-700"
+		},
+		{
+			"name": "Jump Strong Punch",
+			"stateNo": 710,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 710,
+			"animation": "action-710"
+		},
+		{
+			"name": "Kung Fu Throw",
+			"stateNo": 800,
+			"commands": [
+				"nage"
+			],
+			"inputs": [
+				"x+y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1000,
+			"commands": [
+				"guruguru_punch_l"
+			],
+			"inputs": [
+				"~F,D,DF,F,a"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1005,
+			"commands": [
+				"guruguru_punch_h"
+			],
+			"inputs": [
+				"~F,D,DF,F,b"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 1000,
+			"animation": "action-1005"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1100,
+			"commands": [
+				"moon_tiara_action_1"
+			],
+			"inputs": [
+				"~D,DF,F,x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1105,
+			"commands": [
+				"moon_tiara_action_2"
+			],
+			"inputs": [
+				"~D,DF,F,y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1105,
+			"animation": "action-1105"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1120,
+			"commands": [
+				"moon_tiara_stardust"
+			],
+			"inputs": [
+				"~D,DF,F,z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1150,
+			"commands": [
+				"moon_tiara_action_3"
+			],
+			"inputs": [
+				"~D,DB,B,x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1150,
+			"animation": "action-1150"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1155,
+			"commands": [
+				"moon_tiara_action_4"
+			],
+			"inputs": [
+				"~D,DB,B,y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1155,
+			"animation": "action-1155"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1170,
+			"commands": [
+				"moon_tiara_action_1"
+			],
+			"inputs": [
+				"~D,DF,F,x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1170,
+			"animation": ""
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1175,
+			"commands": [
+				"moon_tiara_action_2"
+			],
+			"inputs": [
+				"~D,DF,F,y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1175,
+			"animation": ""
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1190,
+			"commands": [
+				"moon_tiara_action_3"
+			],
+			"inputs": [
+				"~D,DB,B,x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1190,
+			"animation": ""
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1195,
+			"commands": [
+				"moon_tiara_action_4"
+			],
+			"inputs": [
+				"~D,DB,B,y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1195,
+			"animation": ""
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1200,
+			"commands": [
+				"supersonic_waves_l"
+			],
+			"inputs": [
+				"~D,B,F,x"
+			],
+			"movetype": "A",
+			"damage": 31,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1250,
+			"commands": [
+				"supersonic_waves_h"
+			],
+			"inputs": [
+				"~D,B,F,y"
+			],
+			"movetype": "A",
+			"damage": 18,
+			"anim": 1201,
+			"animation": "action-1201"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1300,
+			"commands": [
+				"twilight_flash_l"
+			],
+			"inputs": [
+				"~D,DF,F,a"
+			],
+			"movetype": "A",
+			"damage": 75,
+			"anim": 1300,
+			"animation": "action-1300"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1305,
+			"commands": [
+				"twilight_flash_h"
+			],
+			"inputs": [
+				"~D,DF,F,b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1300,
+			"animation": "action-1300"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1400,
+			"commands": [
+				"moon_screw_punch_l"
+			],
+			"inputs": [
+				"~F,D,DF,F,x"
+			],
+			"movetype": "A",
+			"damage": 23,
+			"anim": 1400,
+			"animation": "action-1400"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1500,
+			"commands": [
+				"princess_halation_l"
+			],
+			"inputs": [
+				"~B,D,DF,F,a"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 1500,
+			"animation": "action-1500"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1550,
+			"commands": [
+				"princess_halation_h"
+			],
+			"inputs": [
+				"~B,D,DF,F,b"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 1550,
+			"animation": "action-1550"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1600,
+			"commands": [
+				"awaken_l"
+			],
+			"inputs": [
+				"~D,DB,B,a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1600,
+			"animation": "action-1600"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1700,
+			"commands": [
+				"moon_spiral_heart_attack_l"
+			],
+			"inputs": [
+				"~D,DF,F,x"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 1700,
+			"animation": "action-1700"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1705,
+			"commands": [
+				"moon_spiral_heart_attack_h"
+			],
+			"inputs": [
+				"~D,DF,F,y"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 1700,
+			"animation": "action-1700"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 1800,
+			"commands": [
+				"gorgeous_meditation"
+			],
+			"inputs": [
+				"~D,B,F,a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1800,
+			"animation": "action-1800"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 2000,
+			"commands": [
+				"healing_escalation"
+			],
+			"inputs": [
+				"~D,DF,F,c"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 2000,
+			"animation": "action-2000"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 2100,
+			"commands": [
+				"silver_crystal"
+			],
+			"inputs": [
+				"~D,DB,B,c"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 2100,
+			"animation": "action-2100"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 3000,
+			"commands": [
+				"S_Moon_Tiara_Action"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3000,
+			"animation": "action-3000"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 3100,
+			"commands": [
+				"S_Supersonic_Waves"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,a"
+			],
+			"movetype": "A",
+			"damage": 7,
+			"anim": 3100,
+			"animation": "action-3100"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 3200,
+			"commands": [
+				"S_Moon_Twilight_Flash"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3200,
+			"animation": "action-3200"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 3300,
+			"commands": [
+				"S_Moon_Sparkling_Sensation"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,b"
+			],
+			"movetype": "A",
+			"damage": 11,
+			"anim": 3300,
+			"animation": "action-3300"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 3400,
+			"commands": [
+				"S_Moon_Prisim_Power"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3400,
+			"animation": "action-3400"
+		},
+		{
+			"name": "?B[iXELbN",
+			"stateNo": 3500,
+			"commands": [
+				"S_Sailor_Moon_Kick"
+			],
+			"inputs": [
+				"~D,DB,B,D,DB,B,a"
+			],
+			"movetype": "A",
+			"damage": 220,
+			"anim": 3500,
+			"animation": "action-3500"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 3600,
+			"commands": [
+				"S_Moon_Healing_Escalation"
+			],
+			"inputs": [
+				"~D,DF,F,D,DB,B,x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3600,
+			"animation": "action-3600"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 3700,
+			"commands": [
+				"S_Communication_Antenna"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,s"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 3700,
+			"animation": "action-3700"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 3800,
+			"commands": [
+				"S_Moon_Princess_Halation"
+			],
+			"inputs": [
+				"~D,DF,F,D,DB,B,y"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 3800,
+			"animation": "action-3800"
+		},
+		{
+			"name": "t@C?[E\\[?Eo[h",
+			"stateNo": 3900,
+			"commands": [
+				"Henshin"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,c"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 3900,
+			"animation": "action-3900"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 13400,
+			"commands": [
+				"S_Moon_Crystal_Power"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3400,
+			"animation": "action-3400"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 63000,
+			"commands": [
+				"S_Sailor_Body_Attack"
+			],
+			"inputs": [
+				"~D,DB,B,D,DB,B,x"
+			],
+			"movetype": "A",
+			"damage": 220,
+			"anim": 63000,
+			"animation": ""
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 63900,
+			"commands": [
+				"S_Moon_Spiral_Heart_Attack"
+			],
+			"inputs": [
+				"~D,DF,F,D,DB,B,a"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "action-63900"
+		}
+	]
+}
