@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import { charactersRouter } from './routes/characters';
+import { characterTemplatesRouter } from './routes/character-templates';
+import { showsRouter } from './routes/shows';
 import { tmdbRouter } from './routes/tmdb';
 import type { HttpError } from './http-error';
 
@@ -25,9 +27,14 @@ app.use(
 		allowedHeaders: ['content-type']
 	})
 );
-app.use(express.json());
+// Saving a show POSTs its full image set (a show like One Piece has thousands of
+// images), which far exceeds body-parser's 100kb default. This is a local
+// authoring-only server, so allow a generous limit.
+app.use(express.json({ limit: '50mb' }));
 
 app.use('/api/characters', charactersRouter);
+app.use('/api/character-templates', characterTemplatesRouter);
+app.use('/api/shows', showsRouter);
 app.use('/api/tmdb', tmdbRouter);
 
 // Central error handler: renders thrown HttpErrors as `{ message }` so the
