@@ -123,7 +123,14 @@ function validate(id: string, body: unknown): CharacterDefinition {
 	// missing values fall back to DEFAULT_COLOR rather than failing validation.
 	const color = COMPOUND_COLORS.includes(def.color!) ? def.color! : DEFAULT_COLOR;
 
-	return {
+	// Optional chosen portrait: a bare group-9000 sprite filename from the
+	// manifest (`spr_9000_1.png`). Constrained to that shape so a crafted body
+	// can't smuggle a path; anything else (or absent) drops the field, leaving the
+	// board on the manifest's default face.
+	const face =
+		typeof def.face === 'string' && /^spr_9000_\d+\.png$/.test(def.face) ? def.face : undefined;
+
+	const result: CharacterDefinition = {
 		id,
 		label: def.label,
 		basePath: def.basePath,
@@ -133,6 +140,8 @@ function validate(id: string, body: unknown): CharacterDefinition {
 		stats,
 		color
 	};
+	if (face) result.face = face;
+	return result;
 }
 
 export const charactersRouter = Router();

@@ -6,6 +6,74 @@
     "width": 172,
     "height": 461
   },
+  "faces": [
+    {
+      "file": "spr_9000_0.png",
+      "image": 0,
+      "width": 25,
+      "height": 25
+    },
+    {
+      "file": "spr_9000_1.png",
+      "image": 1,
+      "width": 172,
+      "height": 461
+    },
+    {
+      "file": "spr_9000_2.png",
+      "image": 2,
+      "width": 444,
+      "height": 508
+    },
+    {
+      "file": "spr_9000_3.png",
+      "image": 3,
+      "width": 36,
+      "height": 19
+    },
+    {
+      "file": "spr_9000_4.png",
+      "image": 4,
+      "width": 40,
+      "height": 19
+    },
+    {
+      "file": "spr_9000_6.png",
+      "image": 6,
+      "width": 253,
+      "height": 283
+    },
+    {
+      "file": "spr_9000_10.png",
+      "image": 10,
+      "width": 79,
+      "height": 71
+    },
+    {
+      "file": "spr_9000_11.png",
+      "image": 11,
+      "width": 78,
+      "height": 32
+    },
+    {
+      "file": "spr_9000_12.png",
+      "image": 12,
+      "width": 78,
+      "height": 31
+    },
+    {
+      "file": "spr_9000_13.png",
+      "image": 13,
+      "width": 77,
+      "height": 42
+    },
+    {
+      "file": "spr_9000_14.png",
+      "image": 14,
+      "width": 53,
+      "height": 21
+    }
+  ],
   "animations": {
     "idle": {
       "loop": true,

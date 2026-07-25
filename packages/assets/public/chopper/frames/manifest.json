@@ -6,6 +6,80 @@
     "width": 180,
     "height": 384
   },
+  "faces": [
+    {
+      "file": "spr_9000_0.png",
+      "image": 0,
+      "width": 25,
+      "height": 25
+    },
+    {
+      "file": "spr_9000_1.png",
+      "image": 1,
+      "width": 180,
+      "height": 384
+    },
+    {
+      "file": "spr_9000_2.png",
+      "image": 2,
+      "width": 261,
+      "height": 327
+    },
+    {
+      "file": "spr_9000_3.png",
+      "image": 3,
+      "width": 41,
+      "height": 19
+    },
+    {
+      "file": "spr_9000_4.png",
+      "image": 4,
+      "width": 34,
+      "height": 19
+    },
+    {
+      "file": "spr_9000_5.png",
+      "image": 5,
+      "width": 123,
+      "height": 160
+    },
+    {
+      "file": "spr_9000_6.png",
+      "image": 6,
+      "width": 165,
+      "height": 194
+    },
+    {
+      "file": "spr_9000_10.png",
+      "image": 10,
+      "width": 97,
+      "height": 75
+    },
+    {
+      "file": "spr_9000_11.png",
+      "image": 11,
+      "width": 85,
+      "height": 34
+    },
+    {
+      "file": "spr_9000_12.png",
+      "image": 12,
+      "width": 80,
+      "height": 31
+    },
+    {
+      "file": "spr_9000_13.png",
+      "image": 13,
+      "width": 83,
+      "height": 43
+    },
+    {
+      "file": "spr_9000_14.png",
+      "image": 14,
+      "width": 56,
+      "height": 22
+    }
+  ],
   "animations": {
     "idle": {
       "loop": true,

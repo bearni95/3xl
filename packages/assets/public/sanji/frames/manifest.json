@@ -6,6 +6,44 @@
     "width": 120,
     "height": 332
   },
+  "faces": [
+    {
+      "file": "spr_9000_0.png",
+      "image": 0,
+      "width": 25,
+      "height": 25
+    },
+    {
+      "file": "spr_9000_1.png",
+      "image": 1,
+      "width": 120,
+      "height": 332
+    },
+    {
+      "file": "spr_9000_2.png",
+      "image": 2,
+      "width": 407,
+      "height": 895
+    },
+    {
+      "file": "spr_9000_3.png",
+      "image": 3,
+      "width": 52,
+      "height": 19
+    },
+    {
+      "file": "spr_9000_4.png",
+      "image": 4,
+      "width": 52,
+      "height": 19
+    },
+    {
+      "file": "spr_9000_6.png",
+      "image": 6,
+      "width": 251,
+      "height": 257
+    }
+  ],
   "animations": {
     "idle": {
       "loop": true,

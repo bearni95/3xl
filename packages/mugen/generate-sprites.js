@@ -1,9 +1,12 @@
 /**
- * MUGEN sprite-decoding helpers, consumed by scripts/import-mugen.js (the
- * single entry point — `pnpm import:mugen`). Not a standalone script.
+ * MUGEN sprite-decoding helpers, consumed by import-mugen.js (`pnpm import:mugen`,
+ * which imports raw archives from mugen-characters/). Also runnable directly as
+ * `pnpm generate:sprites [id…]` to re-decode frames + manifest from the raw files
+ * already copied into characters-src/ — without re-importing archives or touching
+ * the registry. Use it after changing what the manifest emits (e.g. portraits).
  */
 import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join } from 'path';
 import extract from 'sff-extractor';
 import { PNG } from 'pngjs';
@@ -228,18 +231,28 @@ export function buildCharacter(character) {
 		return file;
 	};
 
-	// Portrait / face: prefer the larger versus portrait (9000,1), fall back to the
-	// small select-screen portrait (9000,0). Null when the character ships neither.
-	let face = null;
-	for (const image of [1, 0]) {
-		const sprite = spriteByKey.get(`9000,${image}`);
-		const file = writeSprite(9000, image);
-		if (!sprite || !file) continue;
-		face = { file, width: sprite.width, height: sprite.height };
-		break;
+	// Portraits: MUGEN group 9000 holds every portrait a character ships — 9000,0
+	// the small select-screen avatar, 9000,1 the large versus face, plus any extra
+	// alternates. Decode and write them all (in image-number order) so the admin
+	// Faces tab can offer every one; `faces` lists them, `face` keeps the historical
+	// single default (large versus portrait, else the small avatar) for consumers
+	// that read one portrait.
+	const faces = [];
+	for (const sprite of data.sprites) {
+		if (sprite.group !== 9000) continue;
+		const file = writeSprite(9000, sprite.number);
+		if (!file) continue;
+		faces.push({ file, image: sprite.number, width: sprite.width, height: sprite.height });
 	}
+	faces.sort((a, b) => a.image - b.image);
+	const preferred =
+		faces.find((f) => f.image === 1) ?? faces.find((f) => f.image === 0) ?? faces[0] ?? null;
+	// Keep `face` byte-identical to the pre-`faces` shape (no `image` key).
+	const face = preferred
+		? { file: preferred.file, width: preferred.width, height: preferred.height }
+		: null;
 
-	const manifest = { name: info.name, author: info.author, face, animations: {} };
+	const manifest = { name: info.name, author: info.author, face, faces, animations: {} };
 	const used = new Set();
 	let missing = 0;
 
@@ -280,5 +293,62 @@ export function buildCharacter(character) {
 	);
 
 	return manifest;
+}
+
+/**
+ * Resolve a character-src folder's sprite (.sff), animation (.air) and .def
+ * inputs — the shape buildCharacter expects. Prefers the sprite/anim declared in
+ * the .def's [Files] section (resolving case + subfolders), falling back to the
+ * first .sff/.air in the folder. Returns null when any of the three is missing.
+ */
+function discoverInputs(dir) {
+	const files = readdirSync(dir);
+	const def = files.find((f) => f.toLowerCase().endsWith('.def'));
+	let sff = null;
+	let air = null;
+	if (def) {
+		const text = readFileSync(join(dir, def), 'utf-8');
+		const ref = (key) => {
+			const m = text.match(new RegExp(`^\\s*${key}\\s*=\\s*"?([^";\\r\\n]*)`, 'im'));
+			return m ? resolveRelPath(dir, m[1].trim()) : null;
+		};
+		sff = ref('sprite');
+		air = ref('anim');
+	}
+	sff = sff ?? files.find((f) => f.toLowerCase().endsWith('.sff')) ?? null;
+	air = air ?? files.find((f) => f.toLowerCase().endsWith('.air')) ?? null;
+	if (!def || !sff || !air) return null;
+	return { sff, air, def };
+}
+
+/**
+ * Re-decode characters-src/ into @3xl/assets frames + manifests. Optional CLI
+ * args filter which folders to rebuild by id substring; no args rebuilds all.
+ */
+function main() {
+	const filters = process.argv.slice(2).map((a) => a.toLowerCase());
+	const ids = readdirSync(SRC_DIR, { withFileTypes: true })
+		.filter((e) => e.isDirectory())
+		.map((e) => e.name)
+		.filter((id) => filters.length === 0 || filters.some((needle) => id.toLowerCase().includes(needle)))
+		.sort();
+	if (ids.length === 0) {
+		console.error('No matching character folders in characters-src/.');
+		process.exit(1);
+	}
+	for (const id of ids) {
+		const inputs = discoverInputs(join(SRC_DIR, id));
+		if (!inputs) {
+			console.warn(`Skipping ${id}: could not resolve .def/.sff/.air inputs.`);
+			continue;
+		}
+		buildCharacter({ dir: id, ...inputs });
+	}
+}
+
+// Run only when invoked directly (`node generate-sprites.js`), not when
+// import-mugen.js imports buildCharacter from here.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+	main();
 }
 

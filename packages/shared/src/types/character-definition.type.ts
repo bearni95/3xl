@@ -110,6 +110,13 @@ export interface CharacterDefinition {
 	stats: CharacterStats;
 	/** This character's compound combat color, driving the color RPS in combat. */
 	color: CompoundColor;
+	/**
+	 * Chosen portrait: the group-9000 sprite filename (`spr_9000_1.png`) the board
+	 * shows for this character, picked from the manifest's `faces` in the admin
+	 * Faces tab. Resolved against `basePath`. Omitted/empty falls back to the
+	 * manifest's default `face`.
+	 */
+	face?: string;
 }
 
 /** Non-directional movement slots in render/display order. */

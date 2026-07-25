@@ -20,13 +20,29 @@ export interface ManifestFace {
 	file: string;
 	width: number;
 	height: number;
+	/**
+	 * The sprite's group-9000 image number: 0 is the small select-screen avatar,
+	 * 1 the large versus portrait, higher numbers character-specific alternates.
+	 * Only set on the `faces` list entries; omitted on the single `face` default.
+	 */
+	image?: number;
 }
 
 export interface Manifest {
 	name: string;
 	author: string;
-	/** Portrait sprite, or null when the character ships none in group 9000. */
+	/**
+	 * The default portrait sprite (large versus portrait, else the small avatar),
+	 * or null when the character ships none in group 9000. Kept for consumers that
+	 * read a single portrait; the board prefers the one the definition selects.
+	 */
 	face: ManifestFace | null;
+	/**
+	 * Every portrait the character ships in group 9000, in image-number order —
+	 * what the admin Faces tab lists so an author can pick which one the board
+	 * shows. Absent on manifests generated before portraits were enumerated.
+	 */
+	faces?: ManifestFace[];
 	animations: Record<string, ManifestAnimation>;
 }
 

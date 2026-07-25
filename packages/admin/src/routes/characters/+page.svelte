@@ -5,11 +5,13 @@
 	import CharacterGridCard from '$components/core/CharacterGridCard.svelte';
 	import CharacterDefinitionEditor from '$components/core/CharacterDefinitionEditor.svelte';
 	import CharacterStatsEditor from '$components/core/CharacterStatsEditor.svelte';
+	import CharacterFacesEditor from '$components/core/CharacterFacesEditor.svelte';
 	import MugenImportedMoves from '$components/core/MugenImportedMoves.svelte';
 	import CharacterTemplateSync from '$components/core/CharacterTemplateSync.svelte';
 	import { characters, defaultCharacterId } from '@3xl/data';
 	import type { CharacterOption } from '@3xl/data';
 	import type { CharacterDefinition } from '$types/character-definition.type';
+	import type { ManifestFace } from '$utils/mugen/mugen-player';
 	import type { MugenImportedMoveset } from '$types/mugen-move.type';
 	import type { CharacterTemplateStatus } from '$types/character-template.type';
 
@@ -18,7 +20,7 @@
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
 
 	let selectedId = defaultCharacterId;
-	let activeTab: 'definition' | 'stats' | 'frames' | 'imported' = 'definition';
+	let activeTab: 'definition' | 'stats' | 'faces' | 'frames' | 'imported' = 'definition';
 
 	// Per-character Supabase sync status, published by CharacterTemplateSync once
 	// the remote templates load; drives the badge on each grid card.
@@ -31,6 +33,10 @@
 	// during static prerender.
 	let definition: CharacterDefinition | null = null;
 	let availableAnimations: string[] = [];
+	// Portraits the character ships (manifest.faces) + the manifest default face,
+	// for the Faces tab. Empty until the manifest loads.
+	let availableFaces: ManifestFace[] = [];
+	let defaultFace: string | null = null;
 	let moveset: MugenImportedMoveset | null = null;
 	let loadError = '';
 	let saving = false;
@@ -39,6 +45,8 @@
 	async function load(character: CharacterOption) {
 		definition = null;
 		availableAnimations = [];
+		availableFaces = [];
+		defaultFace = null;
 		moveset = null;
 		loadError = '';
 		saveError = '';
@@ -54,6 +62,8 @@
 			if (manifestRes.ok) {
 				const manifest = await manifestRes.json();
 				availableAnimations = Object.keys(manifest.animations ?? {});
+				availableFaces = manifest.faces ?? [];
+				defaultFace = manifest.face?.file ?? null;
 			}
 			if (movesRes.ok) {
 				moveset = (await movesRes.json()) as MugenImportedMoveset;
@@ -134,6 +144,13 @@
 			</button>
 			<button
 				role="tab"
+				class={classNames('tab', { 'tab-active': activeTab === 'faces' })}
+				on:click={() => (activeTab = 'faces')}
+			>
+				Faces
+			</button>
+			<button
+				role="tab"
 				class={classNames('tab', { 'tab-active': activeTab === 'frames' })}
 				on:click={() => (activeTab = 'frames')}
 			>
@@ -201,6 +218,42 @@
 					{#key definition.id}
 						<CharacterStatsEditor
 							{definition}
+							{saving}
+							errorMessage={saveError}
+							on:save={handleSave}
+						/>
+					{/key}
+				{:else}
+					<div class="flex items-center gap-2 opacity-70">
+						<span class="loading loading-spinner loading-sm"></span>
+						<span>Loading definition…</span>
+					</div>
+				{/if}
+			</div>
+		</section>
+
+		<section class={classNames('card bg-base-100 shadow-xl', { hidden: activeTab !== 'faces' })}>
+			<div class="card-body gap-4">
+				<div class="flex items-center gap-3">
+					<h2 class="card-title">{selected.label} — faces</h2>
+					<span class="badge badge-ghost font-mono text-xs">/characters/{selected.id}.json</span>
+				</div>
+				<p class="text-sm opacity-70">
+					Every MUGEN-defined face and avatar for this character. Pick which portrait the board
+					shows, then save straight into the git tree.
+				</p>
+
+				{#if loadError}
+					<div class="alert alert-error">
+						<span>{loadError}</span>
+					</div>
+				{:else if definition}
+					{#key definition.id}
+						<CharacterFacesEditor
+							{definition}
+							basePath={selected.basePath}
+							faces={availableFaces}
+							{defaultFace}
 							{saving}
 							errorMessage={saveError}
 							on:save={handleSave}
