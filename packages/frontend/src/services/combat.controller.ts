@@ -167,6 +167,11 @@ export class CombatController {
 	/** Give the controller the running board engine so it can drive movement. */
 	attachBoard(board: MugenBoard): void {
 		this.board = board;
+		// Seed every fighter's board HP bar with its rolled pool so the numbers show
+		// from the start, before the first hit lands.
+		for (const fighter of this.fighters) {
+			board.setHp(fighter.id, fighter.hp, fighter.maxHp);
+		}
 	}
 
 	private emit(): void {
@@ -477,7 +482,7 @@ export class CombatController {
 		defender.strikes += damage;
 		defender.hp = Math.max(0, defender.hp - damage);
 		// Ease the defender's board HP bar down to its new health (green→red).
-		this.board?.setHp(defender.id, defender.hp / defender.maxHp);
+		this.board?.setHp(defender.id, defender.hp, defender.maxHp);
 		// Float the damage dealt above the attacker, coloured in the thrown colour.
 		this.board?.showStrikeLabel(attacker.id, damage, thrown);
 		// setStatus emits, so the cards' live HP updates the moment a hit lands.

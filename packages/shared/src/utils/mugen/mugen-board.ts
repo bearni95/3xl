@@ -164,9 +164,11 @@ const SLASH_MS = 420;
 
 /** HP bar geometry: width as a fraction of the actor's nominal width, its pixel
  * height, and the gap (px) from the actor's feet down to the top of the bar. */
-const HP_BAR_WIDTH_RATIO = 0.85;
-const HP_BAR_HEIGHT = 7;
+const HP_BAR_WIDTH_RATIO = 0.9;
+const HP_BAR_HEIGHT = 18;
 const HP_BAR_GAP = 10;
+/** Font size (px) of the `hp/maxHp` readout centred inside the bar. */
+const HP_BAR_FONT_SIZE = 12;
 /** How fast the displayed fill eases toward the real HP ratio (fraction closed
  * per second) — drives both the width shrink and the colour transition. */
 const HP_BAR_EASE_PER_S = 6;
@@ -254,6 +256,8 @@ interface SlashEffect {
  */
 interface HpBar {
 	graphics: Graphics;
+	/** The `current/max` readout centred inside the bar. */
+	label: Text;
 	/** Displayed fill fraction (0..1), eased toward {@link targetRatio}. */
 	ratio: number;
 	/** The real hp/maxHp fraction the bar is easing toward. */
@@ -635,9 +639,23 @@ export class MugenBoard {
 		this.app.stage.addChild(sprite);
 
 		// A full (green) HP bar just below the character's feet; combat eases it down
-		// (and reddens it) via setHp as the fighter takes damage.
+		// (and reddens it) via setHp as the fighter takes damage. A `current/max`
+		// readout sits centred inside it (blank until combat seeds the numbers).
 		const hpGraphics = new Graphics();
 		this.app.stage.addChild(hpGraphics);
+		const hpLabel = new Text({
+			text: '',
+			style: {
+				fill: 0xffffff,
+				fontSize: HP_BAR_FONT_SIZE,
+				fontWeight: '700',
+				fontFamily: 'system-ui, sans-serif',
+				stroke: { color: 0x000000, width: 3 },
+				align: 'center'
+			}
+		});
+		hpLabel.anchor.set(0.5);
+		this.app.stage.addChild(hpLabel);
 
 		const actor: Actor = {
 			id,
@@ -660,7 +678,7 @@ export class MugenBoard {
 			onArrive: null,
 			oneShot: null,
 			aura: null,
-			hpBar: { graphics: hpGraphics, ratio: 1, targetRatio: 1 },
+			hpBar: { graphics: hpGraphics, label: hpLabel, ratio: 1, targetRatio: 1 },
 			label: null,
 			// Nominal size from the base frames at fit scale — stable across poses,
 			// unlike the live sprite whose size tracks the current frame's texture.
@@ -834,13 +852,18 @@ export class MugenBoard {
 		g.clear();
 		// Dark track behind the fill so an empty bar still reads.
 		g.roundRect(left, top, width, HP_BAR_HEIGHT, radius);
-		g.fill({ color: 0x000000, alpha: 0.55 });
+		g.fill({ color: 0x000000, alpha: 0.6 });
 		if (fillWidth > 0) {
 			g.roundRect(left, top, Math.max(fillWidth, HP_BAR_HEIGHT), HP_BAR_HEIGHT, radius);
 			g.fill({ color: hpColor(bar.ratio) });
 		}
 		// Draw with the actor's feet depth so nearer fighters' bars sit in front.
 		g.zIndex = actor.y + HP_BAR_GAP;
+
+		// The current/max readout, centred in the bar and just above it in depth.
+		bar.label.x = actor.x;
+		bar.label.y = top + HP_BAR_HEIGHT / 2;
+		bar.label.zIndex = actor.y + HP_BAR_GAP + 1;
 	}
 
 	/** Keep the actor's combat readout floating just above its head, always on top. */
@@ -1350,14 +1373,16 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Set a character's HP bar to `ratio` (hp / maxHp, clamped to 0..1). The bar
-	 * eases toward the new value over the next few ticks, animating both its width
-	 * and its green→yellow→red colour.
+	 * Set a character's HP bar to `hp` out of `maxHp`. The bar eases toward the new
+	 * fill over the next few ticks — animating both its width and its
+	 * green→yellow→red colour — and shows the `hp/maxHp` numbers inside it.
 	 */
-	setHp(id: string, ratio: number): void {
+	setHp(id: string, hp: number, maxHp: number): void {
 		const actor = this.findActor(id);
 		if (!actor?.hpBar) return;
-		actor.hpBar.targetRatio = Math.max(0, Math.min(1, ratio));
+		const safeMax = maxHp > 0 ? maxHp : 1;
+		actor.hpBar.targetRatio = Math.max(0, Math.min(1, hp / safeMax));
+		actor.hpBar.label.text = `${Math.max(0, Math.round(hp))}/${Math.round(maxHp)}`;
 	}
 
 	/**
