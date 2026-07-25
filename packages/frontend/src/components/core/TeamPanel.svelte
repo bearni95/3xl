@@ -4,6 +4,8 @@
 	import MugenLineup from '$components/core/MugenLineup.svelte';
 	import { TEAM_SIZE, type Team } from '$services/team.service';
 	import type { SpawnColor } from '$types/character-spawn.type';
+	import type { CombatColor } from '$types/character-definition.type';
+	import { teammateColors } from '$utils/color/compare';
 
 	// Presentational only — the parent owns the team service and applies changes.
 	export let teams: Team[] = [];
@@ -38,6 +40,14 @@
 	function handleSelect(teamId: string, index: number, event: Event): void {
 		const value = (event.currentTarget as HTMLSelectElement).value;
 		dispatch('select', { teamId, index, characterId: value || null });
+	}
+
+	// Colours a teammate may carry given the lead's colour (slot 0). Null when the
+	// lead slot is empty — until a lead is picked, no teammate colour is allowed.
+	// (SpawnColor and CombatColor share the same string values.)
+	function allowedTeammateColors(leadColor: SpawnColor | null): Set<string> | null {
+		if (!leadColor) return null;
+		return new Set<string>(teammateColors(leadColor as unknown as CombatColor));
 	}
 
 	function handleRename(teamId: string, event: Event): void {
@@ -101,6 +111,7 @@
 						{@const memberLocations = team.memberIds.map((id) =>
 							id ? (locationById.get(id) ?? null) : null
 						)}
+						{@const allowedColors = allowedTeammateColors(memberColors[0])}
 						<div class="mt-3 flex flex-col gap-3">
 							<div class="flex flex-col items-center gap-2">
 								<!-- All three picks' idle animations on a single canvas, each
@@ -127,20 +138,29 @@
 								</div>
 							</div>
 
-							<!-- The three character selects, stacked under the animations. -->
+							<!-- The three character selects, stacked under the animations. The
+							     lead (slot 0) may be any colour; slots 2 & 3 must share a colour
+							     with it (its colour, plus the compounds/primaries linked to it). -->
 							<div class="flex flex-col gap-2">
 								{#each team.memberIds as characterId, index (index)}
+									{@const isLead = index === 0}
 									<div class="flex items-center gap-2">
+										<span class="w-10 shrink-0 text-[10px] font-medium uppercase opacity-50">
+											{isLead ? 'Lead' : `#${index + 1}`}
+										</span>
 										<select
 											class="select select-bordered select-sm w-full"
 											value={characterId ?? ''}
+											disabled={!isLead && !allowedColors}
 											on:change={(event) => handleSelect(team.id, index, event)}
 										>
 											<option value="">— Empty slot —</option>
 											{#each options as option (option.id)}
 												<option
 													value={option.id}
-													disabled={chosen.has(option.id) && characterId !== option.id}
+													disabled={option.id !== characterId &&
+														(chosen.has(option.id) ||
+															(!isLead && !allowedColors?.has(option.color ?? '')))}
 												>
 													{option.label}
 												</option>
@@ -157,6 +177,13 @@
 										{/if}
 									</div>
 								{/each}
+								<p class="text-[10px] leading-tight opacity-60">
+									{#if allowedColors}
+										Slots #2 and #3 must share a colour with the lead.
+									{:else}
+										Pick a lead character first — slots #2 and #3 must share its colour.
+									{/if}
+								</p>
 							</div>
 						</div>
 					{:else}

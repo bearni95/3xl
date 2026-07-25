@@ -61,3 +61,18 @@ export function throwableColors(color: CombatColor): CombatColor[] {
 	);
 	return [color, ...compounds];
 }
+
+/**
+ * The colors a teammate may carry given the team leader's `lead` color: the
+ * lead's own color, plus — for a primary lead — every compound that contains it,
+ * or — for a compound lead — the two primaries that make it. This is the same
+ * color relation as {@link throwableColors}: a teammate must share a color with
+ * the lead. */
+export function teammateColors(lead: CombatColor): CombatColor[] {
+	return throwableColors(lead);
+}
+
+/** Whether `color` is allowed on a team led by `lead` (see {@link teammateColors}). */
+export function isTeammateColor(lead: CombatColor, color: CombatColor): boolean {
+	return teammateColors(lead).includes(color);
+}

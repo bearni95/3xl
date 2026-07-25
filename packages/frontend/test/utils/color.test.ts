@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
 	STRIKE_MULTIPLIERS,
 	isPrimaryColor,
+	isTeammateColor,
 	strikeMultiplier,
+	teammateColors,
 	throwableColors
 } from '$utils/color/compare';
 import type { CombatColor } from '$types/character-definition.type';
@@ -99,5 +101,33 @@ describe('color strike table', () => {
 		expect(isPrimaryColor('purple')).toBe(false);
 		expect(isPrimaryColor('orange')).toBe(false);
 		expect(isPrimaryColor('green')).toBe(false);
+	});
+
+	it('teammateColors: a primary lead allows itself plus every compound containing it', () => {
+		expect(teammateColors('red')).toEqual(['red', 'purple', 'orange']);
+		expect(teammateColors('blue')).toEqual(['blue', 'purple', 'green']);
+		expect(teammateColors('yellow')).toEqual(['yellow', 'orange', 'green']);
+	});
+
+	it('teammateColors: a compound lead allows itself plus its two component primaries', () => {
+		expect(teammateColors('purple')).toEqual(['purple', 'red', 'blue']);
+		expect(teammateColors('orange')).toEqual(['orange', 'red', 'yellow']);
+		expect(teammateColors('green')).toEqual(['green', 'blue', 'yellow']);
+	});
+
+	it('isTeammateColor allows the shared-colour cases and rejects the rest', () => {
+		// A blue lead: blue itself, plus purple and green (the compounds with blue).
+		expect(isTeammateColor('blue', 'blue')).toBe(true);
+		expect(isTeammateColor('blue', 'purple')).toBe(true);
+		expect(isTeammateColor('blue', 'green')).toBe(true);
+		expect(isTeammateColor('blue', 'red')).toBe(false);
+		expect(isTeammateColor('blue', 'orange')).toBe(false);
+
+		// An orange lead: orange itself, plus its makers red and yellow.
+		expect(isTeammateColor('orange', 'orange')).toBe(true);
+		expect(isTeammateColor('orange', 'red')).toBe(true);
+		expect(isTeammateColor('orange', 'yellow')).toBe(true);
+		expect(isTeammateColor('orange', 'blue')).toBe(false);
+		expect(isTeammateColor('orange', 'green')).toBe(false);
 	});
 });

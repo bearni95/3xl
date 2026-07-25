@@ -8,6 +8,8 @@
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import { AuthStatus } from '$types/profile.type';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
+	import type { CombatColor } from '$types/character-definition.type';
+	import { teammateColors } from '$utils/color/compare';
 	import RosterCard from '$components/core/RosterCard.svelte';
 	import TeamPanel from '$components/core/TeamPanel.svelte';
 
@@ -145,6 +147,31 @@
 		event: CustomEvent<{ teamId: string; index: number; characterId: string | null }>
 	): void {
 		teamService.setMember(event.detail.teamId, event.detail.index, event.detail.characterId);
+		// Changing the lead (or any slot) can leave a teammate whose colour no longer
+		// shares the lead's — drop those so the enforced rule always holds.
+		enforceTeamColors(event.detail.teamId);
+	}
+
+	// character id → its representative (newest) spawn colour, for the team rule.
+	$: colorForCharacter = new Map(teamOptions.map((option) => [option.id, option.color]));
+
+	// Clear every non-lead slot whose colour isn't allowed by the lead's colour
+	// (see teammateColors). A team with no lead allows no teammate colour at all.
+	function enforceTeamColors(teamId: string): void {
+		const team = teamService.get().teams.find((entry) => entry.id === teamId);
+		if (!team) return;
+		const leadId = team.memberIds[0];
+		const leadColor = leadId ? (colorForCharacter.get(leadId) ?? null) : null;
+		const allowed = leadColor
+			? new Set<string>(teammateColors(leadColor as unknown as CombatColor))
+			: null;
+		team.memberIds.forEach((id, index) => {
+			if (index === 0 || !id) return;
+			const color = colorForCharacter.get(id) ?? null;
+			if (!allowed || !color || !allowed.has(color)) {
+				teamService.clearMember(teamId, index);
+			}
+		});
 	}
 	function onTeamClear(event: CustomEvent<{ teamId: string; index: number }>): void {
 		teamService.clearMember(event.detail.teamId, event.detail.index);
