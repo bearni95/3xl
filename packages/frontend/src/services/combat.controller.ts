@@ -1,31 +1,30 @@
 /**
  * Orchestrates a combat round on the board. Kept out of the Svelte component per
  * the project's separation rules: the page renders from this controller's store
- * and forwards user intent (color clicks); all sequencing, colors and strikes
- * live here.
+ * and forwards user intent (color clicks); all sequencing, dice and damage live
+ * here.
  *
- * Every character has a compound combat color (purple, orange or green) fixed in
- * its definition JSON. Each round the player throws one of three colors per
- * (blue / `info`) fighter — the fighter's own compound color or either of its
- * two primary components. The rival (red / `error`) fighters each start the
- * round with a randomly pre-rolled color of their own, which the player may
- * override by clicking a different color on the rival's card. Once all players
- * are picked, the rivals lock in whatever color they hold, then the pairs duel
- * one at a time — player i vs rival i by selection order.
+ * Every character carries three combat attributes seeded from its Supabase spawn:
+ * ATK (how many d10 it rolls per attack), DEF (the d10 threshold an attacker must
+ * meet to hit it) and HP (a small pool carried across the whole game). Each round
+ * the player still picks a color per (blue / `info`) fighter and the rivals (red /
+ * `error`) pre-roll one, then the pairs duel one at a time — player i vs rival i
+ * by selection order. (Colour matching no longer influences damage — that
+ * calculation is on hold and reworks later — but the pick still drives the aura,
+ * slash and animation colour.)
  *
- * Each duel is one encounter on a purple meeting cell: the player throws its
- * chosen color against the rival's *character* color, then the rival answers
- * back likewise. Every throw lands — the strike table (see
- * `$utils/color/compare`) maps the colour pairing to a multiplier (x0.5, x1 or
- * x2), and the defender takes that many strikes. Strikes only exist within the
- * encounter — whoever holds fewer when it ends claims the duel cell and stays on
- * it while the other walks home (equal strikes keep the status quo), and then
- * both tallies reset to zero.
+ * Each duel is one encounter on a purple meeting cell: one fighter attacks, then
+ * the other answers back. An attack rolls ATK d10 and every die at or above the
+ * defender's DEF is a hit; each hit costs the defender one HP. A fighter reduced
+ * to 0 HP is knocked out — it walks back to its origin cell at half opacity and
+ * takes no further part in any round. Barring a knockout, whoever took fewer hits
+ * this encounter claims the duel cell (a tie keeps the status quo); the encounter
+ * tally then resets while HP persists.
  *
  * Rounds repeat: after a round the selections reset and control returns to
- * selection, so the player can fight again. The game ends at the end of any
- * round in which one side holds all three purple duel cells (claimed cells stay
- * tinted in their holder's colour until the holder fights again).
+ * selection. The game ends when one side is wiped out (all its fighters knocked
+ * out) or at the end of any round in which one side holds all three purple duel
+ * cells (claimed cells stay tinted in their holder's colour until it fights again).
  *
  * A fighter holding a purple cell is pinned there: it cannot pick or act on its
  * turn and only fights when an enemy attacks it on its cell, auto-defending with
@@ -40,16 +39,11 @@ import {
 	type CharacterMove,
 	type CombatColor
 } from '$types/character-definition.type';
-import { strikeMultiplier, throwableColors } from '$utils/color/compare';
-import { rollDie } from '$utils/dice/roll';
+import { throwableColors } from '$utils/color/compare';
+import { resolveAttack, rollDie } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
 export type FighterSide = 'error' | 'info';
-
-/** Most strikes one fighter can take in a single encounter: it is attacked
- * exactly once, so at most the table's top multiplier (x2). Only used for the
- * strike readout in the UI. */
-export const MAX_DUEL_STRIKES = 2;
 
 /** Animation for a fighter whose definition binds no melee move. */
 const FALLBACK_MELEE: CharacterMove = { name: 'Melee', type: 'melee', source: '' };
@@ -80,11 +74,26 @@ export interface FighterSeed {
 	color: CombatColor;
 	/** The moves this character's JSON definition declares (used for animation). */
 	moves: CharacterMove[];
+	/** Attack rating — the number of d10 this fighter rolls on each attack (its
+	 * Supabase spawn stat). Every die at or above the defender's {@link def} is a hit. */
+	atk: number;
+	/** Defence rating — the d10 threshold an attacker's die must meet to hit this
+	 * fighter (derived as SPAWN_STAT_MAX − atk). */
+	def: number;
+	/** Starting (and maximum) hit points. Every hit taken costs one HP. */
+	maxHp: number;
 }
 
 export interface Fighter extends FighterSeed {
-	/** Strikes taken in the current encounter; resets to 0 when the duel ends. */
+	/** Strikes (hits) taken in the current encounter; resets to 0 when the duel ends.
+	 * Only decides who claims the duel cell — persistent damage is tracked by {@link hp}. */
 	strikes: number;
+	/** Current hit points, carried across the whole game. At 0 the fighter is
+	 * {@link defeated}. */
+	hp: number;
+	/** True once the fighter has been knocked out (0 HP): it returns home at half
+	 * opacity and takes no further part in any round. */
+	defeated: boolean;
 	/** True once a color has been selected (its area is locked). */
 	disabled: boolean;
 	/** The color thrown this round, or null before selection. */
@@ -139,6 +148,8 @@ export class CombatController {
 		this.fighters = seed.map((entry) => ({
 			...entry,
 			strikes: 0,
+			hp: entry.maxHp,
+			defeated: false,
 			disabled: false,
 			moveColor: null,
 			actionIndex: null
@@ -211,7 +222,7 @@ export class CombatController {
 	 */
 	private rollRivalDefaults(): void {
 		for (const rival of this.rivals()) {
-			if (this.heldCell(rival)) continue;
+			if (this.heldCell(rival) || rival.defeated) continue;
 			rival.moveColor = this.randomColor(rival);
 		}
 	}
@@ -226,8 +237,9 @@ export class CombatController {
 	selectColor(id: string, color: CombatColor): void {
 		if (this.phase !== 'selecting') return;
 		const fighter = this.fighters.find((f) => f.id === id);
-		// Cell-holders can't act this turn — they only fight if attacked.
-		if (!fighter || fighter.actionIndex !== null || this.heldCell(fighter)) {
+		// Cell-holders can't act this turn — they only fight if attacked; knocked-out
+		// fighters can't act at all.
+		if (!fighter || fighter.actionIndex !== null || fighter.defeated || this.heldCell(fighter)) {
 			return;
 		}
 		// Only the fighter's own compound color or its components can be thrown.
@@ -245,12 +257,12 @@ export class CombatController {
 		fighter.actionIndex = alreadyPicked;
 		fighter.disabled = true;
 
-		const pickers = this.players().filter((f) => !this.heldCell(f));
+		const pickers = this.players().filter((f) => !this.heldCell(f) && !f.defeated);
 		if (pickers.every((f) => f.actionIndex !== null)) {
 			// Every player who *can* act committed — each non-holder rival locks in
 			// its held color (its pre-rolled default, unless overridden), in board order.
 			this.rivals().forEach((rival, index) => {
-				if (this.heldCell(rival)) return; // holders sit out unless attacked
+				if (this.heldCell(rival) || rival.defeated) return; // out or holding: sit out
 				rival.moveColor = rival.moveColor ?? this.randomColor(rival);
 				rival.actionIndex = index;
 				rival.disabled = true;
@@ -280,10 +292,10 @@ export class CombatController {
 	private async runSequence(): Promise<void> {
 		const byOrder = (a: Fighter, b: Fighter) => (a.actionIndex ?? 0) - (b.actionIndex ?? 0);
 		const playersQueue = this.players()
-			.filter((f) => !this.heldCell(f))
+			.filter((f) => !this.heldCell(f) && !f.defeated)
 			.sort(byOrder);
 		const rivalsQueue = this.rivals()
-			.filter((f) => !this.heldCell(f))
+			.filter((f) => !this.heldCell(f) && !f.defeated)
 			.sort(byOrder);
 		for (let i = 0; i < MELEE_MEETING_CELLS.length; i++) {
 			const holder = this.cellOwners.get(cellKey(MELEE_MEETING_CELLS[i]));
@@ -311,6 +323,15 @@ export class CombatController {
 		// The round's throws are spent — every aura burns out and the readouts clear.
 		this.board?.clearAuras();
 		this.board?.clearStrikeLabels();
+		// Elimination victory: a side with no fighters left standing loses outright.
+		if (this.players().every((f) => f.defeated)) {
+			this.end('lose', 'Your whole team has been knocked out.');
+			return;
+		}
+		if (this.rivals().every((f) => f.defeated)) {
+			this.end('win', 'The rival team has been knocked out.');
+			return;
+		}
 		// Territory victory: holding all three purple duel cells when the round
 		// ends wins outright.
 		const owners = MELEE_MEETING_CELLS.map((cell) => this.cellOwners.get(cellKey(cell))?.side);
@@ -326,8 +347,9 @@ export class CombatController {
 		for (const fighter of this.fighters) {
 			fighter.moveColor = null;
 			fighter.actionIndex = null;
-			// Cell-holders stay locked: they can't act next round unless attacked.
-			fighter.disabled = this.heldCell(fighter) !== null;
+			// Cell-holders and knocked-out fighters stay locked: they can't act next
+			// round (holders only fight if attacked; the defeated never fight again).
+			fighter.disabled = fighter.defeated || this.heldCell(fighter) !== null;
 		}
 		// Rivals pre-roll a fresh default for the next round.
 		this.rollRivalDefaults();
@@ -358,23 +380,35 @@ export class CombatController {
 
 		await this.strike(first, second);
 		await pause(500);
-		await this.strike(second, first);
-		await pause(500);
+		// A fighter knocked out by the first blow can't answer back.
+		if (!second.defeated) {
+			await this.strike(second, first);
+			await pause(500);
+		}
 
-		// Whoever took fewer strikes this encounter claims the duel cell — striding
-		// from its half onto the cell's centre, taking all of it — while the other
-		// walks back to where it started. Equal strikes keep the status quo: a
-		// defended cell stays with its prior holder, an unclaimed one sends both home.
+		// Claim the duel cell. A knockout decides it outright — the survivor takes the
+		// cell while the fallen has already walked home dimmed. Otherwise whoever took
+		// fewer hits this encounter claims it, with a tie keeping the status quo (a
+		// defended cell stays with its prior holder, an unclaimed one sends both home).
 		const cell = MELEE_MEETING_CELLS[duelIndex];
-		const tie = player.strikes === rival.strikes;
-		const playerStays = player.strikes < rival.strikes || (tie && priorHolder === player);
-		const rivalStays = rival.strikes < player.strikes || (tie && priorHolder === rival);
-		this.setStatus(this.encounterLine(player, rival, tie, playerStays));
+		let playerStays: boolean;
+		let rivalStays: boolean;
+		if (player.defeated || rival.defeated) {
+			playerStays = !player.defeated && rival.defeated;
+			rivalStays = !rival.defeated && player.defeated;
+		} else {
+			const tie = player.strikes === rival.strikes;
+			playerStays = player.strikes < rival.strikes || (tie && priorHolder === player);
+			rivalStays = rival.strikes < player.strikes || (tie && priorHolder === rival);
+		}
+		this.setStatus(this.encounterLine(player, rival, priorHolder));
+		// A knocked-out fighter already walked home under its own power — only the
+		// survivors settle onto (or back off) the cell here.
 		await Promise.all([
-			this.settle(player, playerStays, cell),
-			this.settle(rival, rivalStays, cell)
+			player.defeated ? undefined : this.settle(player, playerStays, cell),
+			rival.defeated ? undefined : this.settle(rival, rivalStays, cell)
 		]);
-		// Strikes only live within the encounter — clear both tallies for the next one.
+		// Encounter strikes only decide this cell — clear both tallies for the next.
 		player.strikes = 0;
 		rival.strikes = 0;
 		this.emit();
@@ -406,15 +440,17 @@ export class CombatController {
 	}
 
 	/**
-	 * `attacker` throws its chosen color against `defender`'s *character* color.
-	 * Every throw lands: the strike table (see `$utils/color/compare`) gives the
-	 * multiplier for that colour pairing, and the defender takes exactly that many
-	 * strikes (0.5, 1 or 2). Plays the attacker's melee animation while the
-	 * defender flinches.
+	 * `attacker` makes one attack against `defender`: it rolls one d10 per point of
+	 * its ATK and every die at or above the defender's DEF counts as a hit. Each hit
+	 * costs the defender one HP; reaching 0 knocks it out. Plays the attacker's melee
+	 * animation while the defender flinches.
+	 *
+	 * (Colour matching is on hold: the thrown colour still tints the animation and
+	 * the floating readout, but no longer scales the damage — that reworks later.)
 	 */
 	private async strike(attacker: Fighter, defender: Fighter): Promise<void> {
 		const thrown = attacker.moveColor ?? attacker.color;
-		const strikes = strikeMultiplier(thrown, defender.color);
+		const { hits } = resolveAttack(attacker.atk, defender.def);
 
 		// Attacker and defender are always distinct actors, so the move, the flinch
 		// and the slash landing on the defender all play together — the slash is
@@ -425,31 +461,54 @@ export class CombatController {
 			this.board?.showSlash(defender.id, thrown)
 		]);
 
-		defender.strikes += strikes;
-		// Float the throw's multiplier ×100 above the attacker, coloured in the
-		// thrown colour, so the two fighters' numbers sit side by side — higher
-		// deals more strikes and wins the duel.
-		this.board?.showStrikeLabel(attacker.id, Math.round(strikes * 100), thrown);
-		this.setStatus(this.strikeLine(attacker, defender, strikes));
+		// Each hit both dents the defender's persistent HP and counts toward this
+		// encounter's strike tally (which decides who claims the duel cell).
+		defender.strikes += hits;
+		defender.hp = Math.max(0, defender.hp - hits);
+		// Float the hit count above the attacker, coloured in the thrown colour.
+		this.board?.showStrikeLabel(attacker.id, hits, thrown);
+		// setStatus emits, so the cards' live HP updates the moment a hit lands.
+		this.setStatus(this.strikeLine(attacker, defender, hits));
+
+		// At 0 HP the defender is knocked out: home it goes, dimmed and done.
+		if (defender.hp === 0 && !defender.defeated) {
+			await this.knockOut(defender);
+		}
 	}
 
-	/** One status line summarising a color throw and the strikes it dealt. */
-	private strikeLine(attacker: Fighter, defender: Fighter, strikes: number): string {
-		const clash = `${attacker.name} throws ${colorLabel(attacker.moveColor)} at ${defender.name} (${colorLabel(defender.color)})`;
-		const hit = strikes === 1 ? '1 strike' : `${strikes} strikes`;
-		return `${clash} — ×${strikes}, ${defender.name} takes ${hit}.`;
+	/**
+	 * Knock a fighter out of the game: flag it, release any cell it held, and walk
+	 * it home at half opacity. It stays parked there and never fights again.
+	 */
+	private async knockOut(fighter: Fighter): Promise<void> {
+		fighter.defeated = true;
+		fighter.disabled = true;
+		fighter.moveColor = null;
+		this.vacateCells(fighter);
+		this.emit();
+		await this.board?.knockOut(fighter.id);
 	}
 
-	/** One status line summarising who won the encounter on strikes. */
-	private encounterLine(
-		player: Fighter,
-		rival: Fighter,
-		tie: boolean,
-		playerWon: boolean
-	): string {
-		const score = `${player.strikes}–${rival.strikes}`;
-		if (tie) return `Even at ${score} — the encounter is a stand-off.`;
-		const winner = playerWon ? player : rival;
-		return `${winner.name} wins the encounter ${score} and takes the cell.`;
+	/** One status line summarising an attack roll and the hits it landed. */
+	private strikeLine(attacker: Fighter, defender: Fighter, hits: number): string {
+		const roll = `${attacker.name} rolls ${attacker.atk}d10 vs ${defender.name}'s DEF ${defender.def}`;
+		if (hits === 0) return `${roll} — no hits.`;
+		const hit = hits === 1 ? '1 hit' : `${hits} hits`;
+		return `${roll} — ${hit}, ${defender.name} down to ${defender.hp} HP.`;
+	}
+
+	/** One status line summarising how the encounter resolved. */
+	private encounterLine(player: Fighter, rival: Fighter, priorHolder: Fighter | null): string {
+		if (player.defeated && !rival.defeated)
+			return `${player.name} is knocked out — ${rival.name} takes the cell.`;
+		if (rival.defeated && !player.defeated)
+			return `${rival.name} is knocked out — ${player.name} takes the cell.`;
+		const score = `${player.hp}–${rival.hp} HP`;
+		if (player.strikes === rival.strikes) {
+			const held = priorHolder ? `${priorHolder.name} keeps the cell` : 'neither takes the cell';
+			return `A stand-off at ${score} — ${held}.`;
+		}
+		const winner = player.strikes < rival.strikes ? player : rival;
+		return `${winner.name} takes fewer hits (${score}) and claims the cell.`;
 	}
 }

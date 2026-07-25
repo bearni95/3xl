@@ -338,7 +338,11 @@
 			name: badge.name,
 			side: badge.side,
 			color: badge.color,
-			moves: badge.moves
+			moves: badge.moves,
+			// Combat attributes: ATK is the spawn stat, DEF its complement, HP a fixed pool.
+			atk: badge.stat,
+			def: SPAWN_STAT_MAX - badge.stat,
+			maxHp: HP_MAX
 		}));
 		unsubscribe?.();
 		controller = new CombatController(seeds);
@@ -437,7 +441,7 @@
 				</div>
 				<span>{badge.name}</span>
 				<!-- ATK is the character's Supabase spawn stat; DEF is its complement
-				     (SPAWN_STAT_MAX - ATK); HP is a fixed HP_MAX/HP_MAX pool for all. -->
+				     (SPAWN_STAT_MAX - ATK); HP starts at HP_MAX and drains live in combat. -->
 				<table class="table table-xs w-auto text-center">
 					<thead>
 						<tr>
@@ -450,7 +454,13 @@
 						<tr>
 							<td class="px-2 font-semibold">{badge.stat}</td>
 							<td class="px-2 font-semibold">{SPAWN_STAT_MAX - badge.stat}</td>
-							<td class="px-2 font-semibold">{HP_MAX}/{HP_MAX}</td>
+							<td
+								class={classNames('px-2 font-semibold', {
+									'text-error': combat?.defeated
+								})}
+							>
+								{combat?.hp ?? HP_MAX}/{HP_MAX}
+							</td>
 						</tr>
 					</tbody>
 				</table>

@@ -1092,6 +1092,18 @@ export class MugenBoard {
 	}
 
 	/**
+	 * Knock a fighter out: walk it back to its origin cell and dim its sprite to
+	 * half opacity so it reads as out of the fight. The alpha sticks — the tick
+	 * loop never rewrites an actor's sprite alpha — so it stays dimmed until the
+	 * board is rebuilt for a new game.
+	 */
+	async knockOut(id: string): Promise<void> {
+		await this.returnHome(id);
+		const actor = this.findActor(id);
+		if (actor) actor.sprite.alpha = 0.5;
+	}
+
+	/**
 	 * Back an actor off to shoot: walk it to the cell furthest from the central
 	 * column on its own side, so its ranged attack fires from as deep in its
 	 * territory as the board allows. Resolves once it has settled there.
