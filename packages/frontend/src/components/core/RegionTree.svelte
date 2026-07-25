@@ -9,63 +9,38 @@
 	// The territory → (province) → comarca → municipality tree, mirroring the
 	// map's red / yellow / green / blue tiers.
 	export let territories: RegionTerritory[] = [];
-	// Municipality id to highlight (the one the player stands in), painted red
-	// like its polygon; the branches leading to it open automatically.
+	// The shared set of open node keys (a territory's key is its own id; deeper
+	// tiers append theirs), and the toggle that flips one. The map reads the same
+	// set to decide which poster each polygon shows.
+	export let expanded: Set<string>;
+	export let onToggle: (key: string) => void;
+	// Municipality id to highlight (the one the player stands in), painted red.
 	export let highlightId: string | null = null;
-
-	// Which territories are open. Auto-open a territory when a new highlight lands
-	// inside it; the deeper tiers reveal themselves the same way.
-	let open = new Set<string>();
-
-	function territoryContains(territory: RegionTerritory, id: string): boolean {
-		const inComarques = (comarques: RegionTerritory['comarques']) =>
-			comarques.some((c) => c.municipis.some((m) => m.id === id));
-		return (
-			territory.municipis.some((m) => m.id === id) ||
-			inComarques(territory.comarques) ||
-			territory.provincies.some(
-				(p) => p.municipis.some((m) => m.id === id) || inComarques(p.comarques)
-			)
-		);
-	}
-
-	$: if (highlightId) {
-		for (const territory of territories) {
-			if (territoryContains(territory, highlightId)) open = new Set(open).add(territory.id);
-		}
-	}
-
-	function toggle(id: string) {
-		const next = new Set(open);
-		if (next.has(id)) next.delete(id);
-		else next.add(id);
-		open = next;
-	}
 </script>
 
 <ul class="menu min-h-0 flex-1 flex-nowrap gap-1 overflow-y-auto p-2">
 	{#each territories as territory (territory.id)}
-		{@const isOpen = open.has(territory.id)}
+		{@const open = expanded.has(territory.id)}
 		<li class="w-full">
 			<button
 				type="button"
 				class="flex w-full items-center gap-2 border-l-4 border-error font-semibold"
-				aria-expanded={isOpen}
-				on:click={() => toggle(territory.id)}
+				aria-expanded={open}
+				on:click={() => onToggle(territory.id)}
 			>
-				<span class={classNames('text-xs transition-transform', { 'rotate-90': isOpen })}>▶</span>
+				<span class={classNames('text-xs transition-transform', { 'rotate-90': open })}>▶</span>
 				<span class="min-w-0 flex-1 truncate text-left">{territory.name}</span>
 				<ShowChip show={territory.show} prefix="top" classes="max-w-[45%]" />
 				<span class="badge badge-error badge-sm flex-none">{territory.count}</span>
 			</button>
 
-			{#if isOpen}
+			{#if open}
 				<ul class="w-full border-l border-error/30">
 					{#each territory.provincies as province (province.id)}
-						<ProvinceNode {province} {highlightId} />
+						<ProvinceNode {province} parentKey={territory.id} {expanded} {onToggle} {highlightId} />
 					{/each}
 					{#each territory.comarques as comarca (comarca.id)}
-						<ComarcaNode {comarca} {highlightId} />
+						<ComarcaNode {comarca} parentKey={territory.id} {expanded} {onToggle} {highlightId} />
 					{/each}
 					{#each territory.municipis as municipality (municipality.id)}
 						<MunicipalityRow {municipality} {highlightId} />

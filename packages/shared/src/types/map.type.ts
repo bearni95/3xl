@@ -1,5 +1,13 @@
 import type { PathOptions } from 'leaflet';
 
+/** An image fill plus the group key that decides which features share it. */
+export interface ImageFill {
+	/** Features returning the same key merge into one image over their union. */
+	key: string;
+	/** The image URL painted across that group. */
+	url: string;
+}
+
 /** A GeoJSON layer drawn on top of the base map, in array order (last = topmost). */
 export interface MapOverlay {
 	/** URL of the GeoJSON file, fetched client-side after the map mounts. */
@@ -11,10 +19,13 @@ export interface MapOverlay {
 	/** Returns the hover tooltip label for a feature. */
 	label?: (feature: GeoJSON.Feature) => string;
 	/**
-	 * Returns an image URL to paint as a feature's fill (stretched to its
-	 * bounding box), or null to leave the normal `style.fillColor`.
+	 * Returns an image to paint as a feature's fill (stretched to its bounding
+	 * box), or null to leave the normal `style.fillColor`. Features that resolve
+	 * to the same group `key` share one image spanning their combined shape; a
+	 * bare string is shorthand for `{ key: url, url }`. Re-evaluated whenever the
+	 * overlays prop changes, so the fill can follow live UI state.
 	 */
-	imageFill?: (feature: GeoJSON.Feature) => string | null;
+	imageFill?: (feature: GeoJSON.Feature) => ImageFill | string | null;
 	/** Called when a feature is clicked. */
 	onClick?: (feature: GeoJSON.Feature) => void;
 	/**

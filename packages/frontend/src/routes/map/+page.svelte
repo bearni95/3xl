@@ -4,7 +4,12 @@
 	import type { PathOptions } from 'leaflet';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTree from '$components/core/RegionTree.svelte';
-	import { buildRegionTree } from '$utils/geo/region-tree';
+	import {
+		buildRegionTree,
+		buildFillIndex,
+		resolveFill,
+		type FillLevel
+	} from '$utils/geo/region-tree';
 	import type { MapCircle, MapOverlay } from '$types/map.type';
 	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
 	import { locationService, hasLocation } from '$services/location.service';
@@ -26,20 +31,23 @@
 	let municipalities: GeoJSON.FeatureCollection | null = null;
 	// The baked municipality→show assignment, keyed by municipality id. Built
 	// once from municipality-shows.json; every polygon's poster and every sidebar
-	// row read from it. The whole collection is fetched, but only the entries
-	// flagged `neighbourOfCenter` (Barcelona + its neighbours) are rendered.
+	// row read from it.
 	let assignmentsById = new Map<string, MunicipalityShow>();
-	// The subset flagged for rendering: Barcelona and its immediate neighbours,
-	// listed in the right sidebar and the only towns painted with a poster.
-	let neighbourhood: MunicipalityShow[] = [];
-	// The ids in `neighbourhood`, so the overlay's `imageFill` closure (read once
-	// during WorldMap's mount) can decide which polygons get a poster.
-	let paintedIds = new Set<string>();
-	// Held until the fetches settle so the overlay's `imageFill` closure (read
-	// once, during WorldMap's mount) sees the loaded assignment.
+	// Held until the fetches settle so the map renders against the loaded data.
 	let ready = false;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
+	// The open sections of the sidebar tree, by node key. Both the tree and the
+	// map read this: an open region reveals its children, and on the map each
+	// polygon shows the poster of its shallowest still-collapsed ancestor.
+	let expanded = new Set<string>();
+
+	function toggle(key: string) {
+		const next = new Set(expanded);
+		if (next.has(key)) next.delete(key);
+		else next.add(key);
+		expanded = next;
+	}
 
 	$: location = $store;
 	// The `properties.id` of the municipality the player is in, so WorldMap can
@@ -70,8 +78,6 @@
 			assignmentsById = new Map(
 				showsResult.value.assignments.map((assignment) => [assignment.id, assignment])
 			);
-			neighbourhood = showsResult.value.assignments.filter((a) => a.neighbourOfCenter);
-			paintedIds = new Set(neighbourhood.map((a) => a.id));
 		}
 		ready = true;
 	});
@@ -103,47 +109,54 @@
 	// Drawn bottom-up: municipality fills, comarca lines, province lines,
 	// territory lines (green comarca lines sit under the yellow province ones,
 	// so shared borders read as province).
-	const overlays: MapOverlay[] = [
-		{
-			url: '/data/geo/municipis.json',
-			style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
-			hoverStyle: { weight: 2, fillOpacity: 0.3 },
-			label: (feature) => {
-				const props = feature.properties ?? {};
-				const assignment = assignmentsById.get(String(props.id));
-				const show = paintedIds.has(String(props.id)) ? assignment?.show.name : null;
-				return [props.name ?? 'Unknown', props.comarca, props.prov, props.territory, show]
-					.filter(Boolean)
-					.join(', ');
+	//
+	// The municipality overlay's poster follows the sidebar: each polygon is
+	// grouped under — and painted with the show of — its shallowest still-collapsed
+	// ancestor (its territory at rest, then its province/comarca/own show as the
+	// sidebar drills in). WorldMap merges every polygon sharing a group key into
+	// one image spanning their combined shape, so a collapsed region reads as a
+	// single poster across its whole area.
+	function buildOverlays(index: Map<string, FillLevel[]>, open: Set<string>): MapOverlay[] {
+		return [
+			{
+				url: '/data/geo/municipis.json',
+				style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
+				hoverStyle: { weight: 2, fillOpacity: 0.3 },
+				label: (feature) => {
+					const props = feature.properties ?? {};
+					const show = assignmentsById.get(String(props.id))?.show.name;
+					return [props.name ?? 'Unknown', props.comarca, props.prov, props.territory, show]
+						.filter(Boolean)
+						.join(', ');
+				},
+				imageFill: (feature) => {
+					const levels = index.get(String(feature.properties?.id));
+					if (!levels) return null;
+					const { key, url } = resolveFill(levels, open);
+					return url ? { key, url } : null;
+				}
 			},
-			// Paint Barcelona and its immediate neighbours with the poster of the
-			// show baked onto each one; every other municipality keeps its flat
-			// fill. WorldMap groups features by the URL returned here, so any of
-			// these towns that land on the same show share one poster spanning
-			// their combined shape, with each polygon's border drawn over it —
-			// adjacent same-show cells merge into a single picture.
-			imageFill: (feature) => {
-				const id = String(feature.properties?.id);
-				if (!paintedIds.has(id)) return null;
-				return assignmentsById.get(id)?.show.posterUrl ?? null;
+			{
+				url: '/data/geo/comarques.json',
+				style: { color: '#22c55e', weight: 1.5, fill: false },
+				interactive: false
+			},
+			{
+				url: '/data/geo/provincies.json',
+				style: { color: '#eab308', weight: 2, fill: false },
+				interactive: false
+			},
+			{
+				url: '/data/geo/territoris.json',
+				style: { color: '#ef4444', weight: 3, fill: false },
+				interactive: false
 			}
-		},
-		{
-			url: '/data/geo/comarques.json',
-			style: { color: '#22c55e', weight: 1.5, fill: false },
-			interactive: false
-		},
-		{
-			url: '/data/geo/provincies.json',
-			style: { color: '#eab308', weight: 2, fill: false },
-			interactive: false
-		},
-		{
-			url: '/data/geo/territoris.json',
-			style: { color: '#ef4444', weight: 3, fill: false },
-			interactive: false
-		}
-	];
+		];
+	}
+
+	// Rebuilt (so WorldMap repaints) whenever the tree loads or a section opens.
+	// fillIndex and expanded are passed as arguments so this statement tracks them.
+	$: overlays = buildOverlays(fillIndex, expanded);
 
 	// The portal axis: an imaginary straight line from the municipality of Girona
 	// (centroid ~[41.99, 2.83]) out to l'Alguer — the lone Italian territory in
@@ -178,9 +191,32 @@
 		[...assignmentsById].map(([id, assignment]) => [id, assignment.show])
 	);
 
-	// The red → green → blue region hierarchy (territory → comarca →
-	// municipality) mirrored from the map's divisions, for the sidebar tree.
+	// The red → yellow → green → blue region hierarchy (territory → province →
+	// comarca → municipality) mirrored from the map's divisions, for the tree.
 	$: regionTree = buildRegionTree(municipalities, showsById);
+
+	// Per-municipality chain of paint tiers, shared by the map's imageFill and
+	// the highlight auto-reveal below.
+	$: fillIndex = buildFillIndex(regionTree);
+
+	// When a reading resolves to a town, open the tree down to it so its polygon
+	// (and the sidebar row) surface. Reads `expanded` inside, so it settles once
+	// every ancestor is already open and never loops.
+	$: if (highlightRowId) revealAncestors(highlightRowId, fillIndex);
+
+	function revealAncestors(id: string, index: Map<string, FillLevel[]>) {
+		const levels = index.get(id);
+		if (!levels) return;
+		const next = new Set(expanded);
+		let changed = false;
+		for (let i = 0; i < levels.length - 1; i++) {
+			if (!next.has(levels[i].key)) {
+				next.add(levels[i].key);
+				changed = true;
+			}
+		}
+		if (changed) expanded = next;
+	}
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
@@ -250,6 +286,11 @@
 			</p>
 		</div>
 
-		<RegionTree territories={regionTree} highlightId={highlightRowId} />
+		<RegionTree
+			territories={regionTree}
+			{expanded}
+			onToggle={toggle}
+			highlightId={highlightRowId}
+		/>
 	</aside>
 </div>

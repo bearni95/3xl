@@ -72,6 +72,86 @@ export interface RegionTerritory {
 }
 
 /**
+ * A stable expand/collapse + fill key for a node, unique across the whole tree:
+ * a territory is its own id; deeper tiers append their id to the parent's key.
+ * The sidebar toggles these keys and the map reads them, so both agree on which
+ * region a click opens and which poster a polygon shows.
+ */
+export function joinKey(parentKey: string, id: string): string {
+	return `${parentKey}/${id}`;
+}
+
+/** One tier a municipality can be painted at: its region's key + that show's poster. */
+export interface FillLevel {
+	key: string;
+	url: string | null;
+}
+
+/**
+ * Precomputes, for every municipality, the ordered chain of fill tiers from its
+ * territory down to itself (territory → [province] → [comarca] → municipality).
+ * The map walks this chain against the set of expanded keys to pick the poster:
+ * the shallowest tier whose region is still collapsed (or the municipality's own
+ * show once every ancestor is open). Keys match the sidebar's toggle keys.
+ */
+export function buildFillIndex(territories: RegionTerritory[]): Map<string, FillLevel[]> {
+	const index = new Map<string, FillLevel[]>();
+
+	const leaf = (municipality: RegionMunicipality): FillLevel => ({
+		key: municipality.id,
+		url: municipality.show?.posterUrl ?? null
+	});
+
+	for (const territory of territories) {
+		const territoryLevel: FillLevel = { key: territory.id, url: territory.show?.posterUrl ?? null };
+
+		const addComarca = (above: FillLevel[], comarcaKey: string, comarca: RegionComarca) => {
+			const comarcaLevel: FillLevel = { key: comarcaKey, url: comarca.show?.posterUrl ?? null };
+			for (const municipality of comarca.municipis) {
+				index.set(municipality.id, [...above, comarcaLevel, leaf(municipality)]);
+			}
+		};
+
+		if (territory.provincies.length) {
+			for (const province of territory.provincies) {
+				const provinceKey = joinKey(territory.id, province.id);
+				const provinceLevel: FillLevel = {
+					key: provinceKey,
+					url: province.show?.posterUrl ?? null
+				};
+				const above = [territoryLevel, provinceLevel];
+				for (const comarca of province.comarques) {
+					addComarca(above, joinKey(provinceKey, comarca.id), comarca);
+				}
+				for (const municipality of province.municipis) {
+					index.set(municipality.id, [...above, leaf(municipality)]);
+				}
+			}
+		} else {
+			for (const comarca of territory.comarques) {
+				addComarca([territoryLevel], joinKey(territory.id, comarca.id), comarca);
+			}
+			for (const municipality of territory.municipis) {
+				index.set(municipality.id, [territoryLevel, leaf(municipality)]);
+			}
+		}
+	}
+
+	return index;
+}
+
+/**
+ * Picks the tier a municipality is painted at: the shallowest ancestor still
+ * collapsed, or the municipality's own leaf once every ancestor is expanded.
+ */
+export function resolveFill(levels: FillLevel[], expanded: Set<string>): FillLevel {
+	for (let i = 0; i < levels.length - 1; i++) {
+		if (!expanded.has(levels[i].key)) return levels[i];
+	}
+	return levels[levels.length - 1];
+}
+
+/**
  * The plurality show among a set of municipalities: the one held by the most of
  * them (simple count), ties broken by name for a stable pick. Municipalities
  * with no show are ignored.

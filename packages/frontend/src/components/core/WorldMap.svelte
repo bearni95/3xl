@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type L from 'leaflet';
-	import type { MapCircle, MapLine, MapOverlay } from '$types/map.type';
+	import type { ImageFill, MapCircle, MapLine, MapOverlay } from '$types/map.type';
 
 	let {
 		center = [20, 0] as [number, number],
@@ -13,6 +13,7 @@
 		lines = [],
 		highlightId = null,
 		highlightStyle = null,
+		currentZoom = $bindable(zoom),
 		classes = ''
 	}: {
 		/** Initial map centre as [lat, lng]. */
@@ -30,16 +31,34 @@
 		highlightId?: string | null;
 		/** Style merged over the highlighted feature's base style. */
 		highlightStyle?: L.PathOptions | null;
+		/** Live map zoom level, kept in sync with the map (bindable). */
+		currentZoom?: number;
 		/** Extra Tailwind classes for the map container. */
 		classes?: string;
 	} = $props();
 
 	let mapContainer: HTMLDivElement;
 	let mapInstance: L.Map | null = null;
-	// The geoJSON layer groups (in overlay order) and the image-fill refresh,
-	// captured at mount so the highlight $effect can repaint reactively.
+	// The geoJSON layer groups, in overlay order, captured at mount so the
+	// highlight and overlay $effects can repaint reactively.
 	let overlayGroups: L.GeoJSON[] = [];
-	let refreshImageFills: () => void = () => {};
+	// The current image-fill groups (rebuilt whenever the overlays prop changes).
+	let imageFillGroups: ImageFillGroup[] = [];
+	// Flipped true once the overlays are on the map, so the rebuild $effect knows
+	// the layers exist before it evaluates any imageFill.
+	let ready = $state(false);
+
+	// Reposition every group's pattern over its (reprojected) union box.
+	function refreshImageFills() {
+		imageFillGroups.forEach(updateImageFillGroup);
+	}
+
+	// A bare string is shorthand for a group keyed by its own URL.
+	function normalizeFill(fill: ImageFill | string | null | undefined): ImageFill | null {
+		if (!fill) return null;
+		if (typeof fill === 'string') return { key: fill, url: fill };
+		return fill.url ? fill : null;
+	}
 
 	// A feature's base style, plus the highlight merged on when it's the chosen
 	// one. Called both at first paint and by resetStyle, so reading the live
@@ -59,6 +78,14 @@
 		void highlightStyle;
 		for (const group of overlayGroups) group.resetStyle();
 		refreshImageFills();
+	});
+
+	$effect(() => {
+		// Re-derive the image fills whenever the parent swaps the overlays array
+		// (e.g. the sidebar opens a region, changing which poster each polygon
+		// shows). The layers themselves stay put; only their fills are regrouped.
+		void overlays;
+		if (ready) buildImageFills();
 	});
 
 	const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -185,6 +212,11 @@
 		).addTo(mapInstance);
 
 		mapInstance.setView(center, zoom);
+		// Keep the bindable zoom in sync so callers can render a live readout.
+		currentZoom = mapInstance.getZoom();
+		mapInstance.on('zoomend', () => {
+			currentZoom = mapInstance!.getZoom();
+		});
 
 		// Fetch all overlays in parallel, then add them in array order so
 		// z-stacking is deterministic regardless of network timing.
@@ -198,10 +230,6 @@
 		// Guard against the component unmounting while fetches were in flight.
 		if (!mapInstance) return;
 
-		// Features sharing an imageFill URL, gathered across every overlay; each
-		// distinct URL becomes one group whose image spans the combined shape.
-		const imageFillLayers = new Map<string, L.Path[]>();
-
 		overlays.forEach((overlay, index) => {
 			const layerGroup = Leaf.geoJSON(datasets[index], {
 				interactive: overlay.interactive ?? true,
@@ -214,13 +242,10 @@
 						layer.bindTooltip(label, { sticky: true });
 					}
 
-					const imageUrl = overlay.imageFill?.(feature) ?? null;
-					const hasImageFill = imageUrl !== null;
-					if (imageUrl) {
-						const list = imageFillLayers.get(imageUrl) ?? [];
-						list.push(layer as L.Path);
-						imageFillLayers.set(imageUrl, list);
-					}
+					// Whether this feature currently carries an image fill, so hover can
+					// re-apply it after setStyle repaints the base fillColor. Its group
+					// membership is (re)built in buildImageFills, not here.
+					const hasImageFill = normalizeFill(overlay.imageFill?.(feature)) !== null;
 
 					if (overlay.hoverStyle) {
 						layer.on('mouseover', () => {
@@ -271,22 +296,57 @@
 			}
 		}
 
-		// Build the shared groups now the paths exist, tag each path with its
-		// pattern id, and keep every group's image aligned as the map reprojects.
-		const imageFillGroups: ImageFillGroup[] = [...imageFillLayers].map(([url, layers]) => {
+		// Keep every group's image aligned as the map reprojects.
+		mapInstance.on('zoomend viewreset moveend', refreshImageFills);
+		// Now the paths exist: let the rebuild $effect build the fills (and rebuild
+		// them whenever the overlays prop later changes). Any highlight set before
+		// mount was already painted by styleFor; changes go through its $effect.
+		ready = true;
+	});
+
+	// (Re)build the image-fill groups from the current overlays: reset every
+	// previously filled path to its base style, drop the old <pattern> defs, then
+	// re-evaluate each feature's imageFill and group the paths by the key it
+	// returns — one shared image per key, spanning that group's combined shape.
+	function buildImageFills() {
+		if (!mapInstance) return;
+
+		for (const group of imageFillGroups) {
+			for (const layer of group.layers) {
+				delete (layer as L.Path & { _imageFillPatternId?: string })._imageFillPatternId;
+			}
+		}
+		overlays.forEach((overlay, index) => {
+			if (overlay.imageFill) overlayGroups[index]?.resetStyle();
+		});
+		for (const svg of mapContainer.querySelectorAll('svg')) {
+			svg.querySelectorAll('pattern[id^="map-image-fill-"]').forEach((pattern) => pattern.remove());
+		}
+
+		const grouped = new Map<string, { url: string; layers: L.Path[] }>();
+		overlays.forEach((overlay, index) => {
+			const group = overlayGroups[index];
+			if (!overlay.imageFill || !group) return;
+			group.eachLayer((layer) => {
+				const feature = (layer as L.Layer & { feature?: GeoJSON.Feature }).feature;
+				if (!feature) return;
+				const fill = normalizeFill(overlay.imageFill!(feature));
+				if (!fill) return;
+				const entry = grouped.get(fill.key) ?? { url: fill.url, layers: [] };
+				entry.layers.push(layer as L.Path);
+				grouped.set(fill.key, entry);
+			});
+		});
+
+		imageFillGroups = [...grouped.values()].map(({ url, layers }) => {
 			const patternId = `map-image-fill-${imageFillId++}`;
 			for (const layer of layers) {
 				(layer as L.Path & { _imageFillPatternId?: string })._imageFillPatternId = patternId;
 			}
 			return { url, patternId, layers };
 		});
-
-		refreshImageFills = () => imageFillGroups.forEach(updateImageFillGroup);
 		refreshImageFills();
-		mapInstance.on('zoomend viewreset moveend', refreshImageFills);
-		// Any highlight set before mount was already painted by styleFor at
-		// feature creation; later changes are handled by the highlight $effect.
-	});
+	}
 
 	onDestroy(() => {
 		mapInstance?.remove();
