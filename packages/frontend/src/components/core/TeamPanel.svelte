@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
+	import Icon from '$components/core/Icon.svelte';
 	import MugenLineup from '$components/core/MugenLineup.svelte';
 	import { TEAM_SIZE, type Team } from '$services/team.service';
 	import { SpawnColor } from '$types/character-spawn.type';
@@ -138,7 +139,10 @@
 									{#each memberStats as stat, index (index)}
 										<span class="flex w-20 justify-center">
 											{#if stat !== null}
-												<span class="badge badge-primary badge-sm" title="Character stat">💪 {stat}</span>
+												<span class="badge badge-primary badge-sm" title="Character stat">
+													<Icon name="skoll/d10" alt="Character stat" classes="h-3.5 w-3.5" />
+													{stat}
+												</span>
 											{/if}
 										</span>
 									{/each}

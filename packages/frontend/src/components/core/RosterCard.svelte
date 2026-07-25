@@ -1,5 +1,6 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import Icon from '$components/core/Icon.svelte';
 	import { SpawnColor } from '$types/character-spawn.type';
 
 	// A single claimed spawn, already resolved to display-ready values by the
@@ -15,6 +16,8 @@
 	export let claimedAt: string;
 	// The weighted colour rolled for this spawn (stored in Supabase).
 	export let color: SpawnColor;
+	// The character's single Supabase gameplay stat (1..10), defaulted upstream.
+	export let stat: number;
 
 	// Literal Tailwind classes so the swatch colours survive the v4 content scan.
 	const swatchClasses: Record<SpawnColor, string> = {
@@ -43,6 +46,10 @@
 	<div class="card-body gap-2 p-4">
 		<h2 class="card-title text-base">
 			{label}
+			<span class="badge badge-primary badge-sm ml-auto" title="Character stat">
+				<Icon name="skoll/d10" alt="Character stat" classes="h-3.5 w-3.5" />
+				{stat}
+			</span>
 		</h2>
 		<div class="flex flex-wrap gap-2">
 			{#each showNames as showName (showName)}
