@@ -4,9 +4,17 @@
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { spawnService } from '$services/spawn.service';
+	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { AuthStatus } from '$types/profile.type';
 	import type { ClaimableShow } from '$types/character-spawn.type';
+	import type { GeoRegion } from '$types/location.type';
 	import MugenStage from '$components/core/MugenStage.svelte';
+
+	// The municipality the player has resolved from their browser location, plus the
+	// full feature collection so a stored spawn's location id can be labelled. Both
+	// come from the /claim page's "Claim your location" panel.
+	export let region: GeoRegion | null = null;
+	export let municipalities: GeoJSON.FeatureCollection | null = null;
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -14,6 +22,13 @@
 
 	// Spawns store only a character id; labels + sprites come from the local registry.
 	const charactersById = new Map(characters.map((character) => [character.id, character]));
+
+	// The municipality a spawn was claimed in is stored as a geojson id; resolve it
+	// back to a place name the same way the location panel does.
+	$: municipalityNames = municipalities ? locationAdapter.municipalityNames(municipalities) : null;
+
+	// A location must be claimed before a character can be spawned.
+	$: locationId = region?.id ?? null;
 
 	let shows: ClaimableShow[] = [];
 	let loadingShows = false;
@@ -59,11 +74,11 @@
 	$: showTag = selectedShow ? selectedShow.id : null;
 
 	async function claim() {
-		if (!currentUserId) return;
+		if (!currentUserId || !locationId) return;
 		claiming = true;
 		claimError = '';
 		try {
-			await spawnService.claimRandom(currentUserId, pool, showTag);
+			await spawnService.claimRandom(currentUserId, pool, showTag, locationId);
 		} catch (error) {
 			claimError = error instanceof Error ? error.message : String(error);
 		} finally {
@@ -80,6 +95,10 @@
 	function showNameFor(id: number | null): string {
 		if (id === null) return 'All shows';
 		return shows.find((show) => show.id === id)?.name ?? `Show ${id}`;
+	}
+	// Resolve a spawn's stored municipality id to its place name.
+	function locationNameFor(id: string): string {
+		return municipalityNames?.get(id) ?? id;
 	}
 </script>
 
@@ -129,8 +148,16 @@
 					</select>
 				</label>
 
+				{#if !locationId}
+					<div class="alert alert-info text-sm">
+						<span>Claim your location above before spawning a character.</span>
+					</div>
+				{/if}
+
 				<button
-					class={classNames('btn btn-primary', { 'btn-disabled': claiming || pool.length === 0 })}
+					class={classNames('btn btn-primary', {
+						'btn-disabled': claiming || pool.length === 0 || !locationId
+					})}
 					on:click={claim}
 				>
 					{#if claiming}
@@ -157,16 +184,22 @@
 						{/key}
 					{/if}
 					<span class="text-lg font-bold">{labelFor(latest.characterId)}</span>
-					<span class="badge badge-ghost">from {showNameFor(latest.showId)}</span>
+					<div class="flex flex-wrap items-center justify-center gap-2">
+						<span class="badge badge-ghost">from {showNameFor(latest.showId)}</span>
+						<span class="badge badge-secondary">📍 {locationNameFor(latest.locationId)}</span>
+					</div>
 				</div>
 
 				<div class="flex flex-col gap-1">
 					<span class="text-xs uppercase tracking-wide opacity-60">
 						Your roster ({$spawns.length})
 					</span>
-					<div class="flex flex-wrap gap-2">
+					<div class="flex flex-col gap-1">
 						{#each $spawns as spawn (spawn.id)}
-							<span class="badge badge-outline">{labelFor(spawn.characterId)}</span>
+							<div class="flex items-center justify-between gap-2 text-sm">
+								<span class="badge badge-outline">{labelFor(spawn.characterId)}</span>
+								<span class="opacity-70">📍 {locationNameFor(spawn.locationId)}</span>
+							</div>
 						{/each}
 					</div>
 				</div>

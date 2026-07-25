@@ -65,8 +65,10 @@ function ensureTables(): Promise<void> {
 						user_id uuid not null references auth.users (id) on delete cascade,
 						character_id text not null references character_templates (id) on delete cascade,
 						show_id bigint references show_templates (id) on delete set null,
+						location_id text,
 						created_at timestamptz not null default now()
 					);
+				alter table character_spawns add column if not exists location_id text;
 				alter table character_spawns enable row level security;
 				drop policy if exists character_spawns_select_own on character_spawns;
 				create policy character_spawns_select_own on character_spawns

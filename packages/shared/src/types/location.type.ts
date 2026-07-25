@@ -16,6 +16,8 @@ export interface GeoLocation {
 
 /** The named administrative area a coordinate resolves to. */
 export interface GeoRegion {
+	/** The municipality's geojson feature id (e.g. `ES_08028`), or `null` outside scope. */
+	id: string | null;
 	municipality: string;
 	province: string;
 	country: string;
@@ -23,6 +25,7 @@ export interface GeoRegion {
 
 /** Shown when a coordinate falls outside every defined area. */
 export const ULTRAMAR: GeoRegion = {
+	id: null,
 	municipality: 'Ultramar',
 	province: 'Ultramar',
 	country: 'Ultramar'

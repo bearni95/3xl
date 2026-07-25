@@ -18,6 +18,7 @@ export class SpawnAdapter extends AdapterClass {
 			userId: row.user_id,
 			characterId: row.character_id,
 			showId: row.show_id === null ? null : Number(row.show_id),
+			locationId: row.location_id ?? '',
 			createdAt: row.created_at
 		};
 	}

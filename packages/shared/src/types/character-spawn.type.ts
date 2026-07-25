@@ -16,6 +16,12 @@ export interface CharacterSpawn {
 	characterId: string;
 	/** The show the character was rolled from, or `null` if rolled across all shows. */
 	showId: number | null;
+	/**
+	 * The municipality the spawn was claimed in, as the geojson feature id
+	 * (e.g. `ES_08028`) resolved from the player's browser location. Always set —
+	 * a spawn cannot be claimed without a location.
+	 */
+	locationId: string;
 	/** ISO timestamp the spawn was created. */
 	createdAt: string;
 }
@@ -30,6 +36,7 @@ export interface CharacterSpawnRow {
 	user_id: string;
 	character_id: string;
 	show_id: string | number | null;
+	location_id: string | null;
 	created_at: string;
 }
 

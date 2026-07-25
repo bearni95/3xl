@@ -16,8 +16,14 @@ create table if not exists public.character_spawns (
 	user_id uuid not null references auth.users (id) on delete cascade,
 	character_id text not null references public.character_templates (id) on delete cascade,
 	show_id bigint references public.show_templates (id) on delete set null,
+	-- Municipality the spawn was claimed in, as a geojson feature id (e.g. ES_08028)
+	-- resolved from the player's browser location. The frontend requires it on claim.
+	location_id text,
 	created_at timestamptz not null default now()
 );
+
+-- Backfill the column on tables provisioned before location tracking existed.
+alter table public.character_spawns add column if not exists location_id text;
 
 -- Row-level security: a player may only read, create, and delete their own
 -- spawns. `auth.uid()` resolves from the caller's JWT (the browser anon client

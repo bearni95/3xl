@@ -68,7 +68,7 @@ class SpawnService {
 		const supabase = getSupabaseClient();
 		const { data, error } = await supabase
 			.from('character_spawns')
-			.select('id, user_id, character_id, show_id, created_at')
+			.select('id, user_id, character_id, show_id, location_id, created_at')
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false });
 		if (error) throw error;
@@ -81,24 +81,35 @@ class SpawnService {
 	/**
 	 * Roll a random character from `characterIds` and persist it as a spawn owned
 	 * by `userId`, tagged with the show it came from (`showId`, or `null` when
-	 * rolled across all shows). The new spawn is prepended to the store and
+	 * rolled across all shows) and the municipality it was claimed in
+	 * (`locationId`, a geojson feature id). A location is required — a spawn
+	 * cannot be claimed without one. The new spawn is prepended to the store and
 	 * returned.
 	 */
 	async claimRandom(
 		userId: string,
 		characterIds: string[],
-		showId: number | null
+		showId: number | null,
+		locationId: string
 	): Promise<CharacterSpawn> {
 		if (characterIds.length === 0) {
 			throw new Error('There are no claimable characters to roll from.');
+		}
+		if (!locationId) {
+			throw new Error('Claim your location before spawning a character.');
 		}
 		const characterId = characterIds[Math.floor(Math.random() * characterIds.length)];
 
 		const supabase = getSupabaseClient();
 		const { data, error } = await supabase
 			.from('character_spawns')
-			.insert({ user_id: userId, character_id: characterId, show_id: showId })
-			.select('id, user_id, character_id, show_id, created_at')
+			.insert({
+				user_id: userId,
+				character_id: characterId,
+				show_id: showId,
+				location_id: locationId
+			})
+			.select('id, user_id, character_id, show_id, location_id, created_at')
 			.single();
 		if (error) throw error;
 

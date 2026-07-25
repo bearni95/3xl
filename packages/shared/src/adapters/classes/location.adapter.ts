@@ -46,6 +46,7 @@ export class LocationAdapter extends AdapterClass {
 			if (feature.geometry && pointInGeometry(longitude, latitude, feature.geometry)) {
 				const props = feature.properties ?? {};
 				return {
+					id: props.id ?? ULTRAMAR.id,
 					municipality: props.name ?? ULTRAMAR.municipality,
 					province: props.prov ?? ULTRAMAR.province,
 					country: props.territory ?? ULTRAMAR.country
@@ -53,6 +54,20 @@ export class LocationAdapter extends AdapterClass {
 			}
 		}
 		return ULTRAMAR;
+	}
+
+	/**
+	 * Build a lookup from a municipality geojson id (e.g. `ES_08028`) to its
+	 * display name, so a stored spawn location resolves back to a place name
+	 * without re-scanning the feature collection per lookup.
+	 */
+	municipalityNames(municipalities: GeoJSON.FeatureCollection): Map<string, string> {
+		const names = new Map<string, string>();
+		for (const feature of municipalities.features) {
+			const props = feature.properties ?? {};
+			if (props.id && props.name) names.set(props.id, props.name);
+		}
+		return names;
 	}
 }
 
