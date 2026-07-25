@@ -7,7 +7,7 @@
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { errorMessage } from '$utils/error/error-message';
 	import { AuthStatus } from '$types/profile.type';
-	import type { ClaimableShow } from '$types/character-spawn.type';
+	import { SpawnColor, type ClaimableShow } from '$types/character-spawn.type';
 	import { ULTRAMAR, ULTRAMAR_ID, type GeoRegion } from '$types/location.type';
 	import MugenStage from '$components/core/MugenStage.svelte';
 
@@ -23,6 +23,17 @@
 
 	// Spawns store only a character id; labels + sprites come from the local registry.
 	const charactersById = new Map(characters.map((character) => [character.id, character]));
+
+	// Static Tailwind classes per spawn colour — must be literal strings so they
+	// survive Tailwind's purge (a computed `bg-${color}-500` would be stripped).
+	const colorSwatch: Record<SpawnColor, string> = {
+		[SpawnColor.Red]: 'bg-red-500',
+		[SpawnColor.Yellow]: 'bg-yellow-400',
+		[SpawnColor.Blue]: 'bg-blue-500',
+		[SpawnColor.Orange]: 'bg-orange-500',
+		[SpawnColor.Green]: 'bg-green-500',
+		[SpawnColor.Purple]: 'bg-purple-500'
+	};
 
 	// The municipality a spawn was claimed in is stored as a geojson id; resolve it
 	// back to a place name the same way the location panel does.
@@ -188,6 +199,10 @@
 					{/if}
 					<span class="text-lg font-bold">{labelFor(latest.characterId)}</span>
 					<div class="flex flex-wrap items-center justify-center gap-2">
+						<span class="badge badge-ghost gap-1">
+							<span class={classNames('inline-block h-2.5 w-2.5 rounded-full', colorSwatch[latest.color])}></span>
+							{latest.color}
+						</span>
 						<span class="badge badge-ghost">from {showNameFor(latest.showId)}</span>
 						<span class="badge badge-secondary">📍 {locationNameFor(latest.locationId)}</span>
 					</div>
@@ -200,7 +215,10 @@
 					<div class="flex flex-col gap-1">
 						{#each $spawns as spawn (spawn.id)}
 							<div class="flex items-center justify-between gap-2 text-sm">
-								<span class="badge badge-outline">{labelFor(spawn.characterId)}</span>
+								<span class="flex items-center gap-2">
+									<span class={classNames('inline-block h-2.5 w-2.5 rounded-full', colorSwatch[spawn.color])}></span>
+									<span class="badge badge-outline">{labelFor(spawn.characterId)}</span>
+								</span>
 								<span class="opacity-70">📍 {locationNameFor(spawn.locationId)}</span>
 							</div>
 						{/each}

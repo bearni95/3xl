@@ -19,11 +19,29 @@ create table if not exists public.character_spawns (
 	-- Municipality the spawn was claimed in, as a geojson feature id (e.g. ES_08028)
 	-- resolved from the player's browser location. The frontend requires it on claim.
 	location_id text,
+	-- Weighted spawn colour (red/yellow/blue common; orange/green/purple 3x rarer).
+	color text,
 	created_at timestamptz not null default now()
 );
 
--- Backfill the column on tables provisioned before location tracking existed.
+-- Backfill the columns on tables provisioned before they existed.
 alter table public.character_spawns add column if not exists location_id text;
+alter table public.character_spawns add column if not exists color text;
+
+-- Assign a weighted colour to any pre-existing rows that lack one.
+update public.character_spawns cs set color = pick.color
+from (
+	select id, case
+		when r < 3.0 / 12 then 'red'
+		when r < 6.0 / 12 then 'yellow'
+		when r < 9.0 / 12 then 'blue'
+		when r < 10.0 / 12 then 'orange'
+		when r < 11.0 / 12 then 'green'
+		else 'purple'
+	end as color
+	from (select id, random() as r from public.character_spawns where color is null) seeded
+) pick
+where cs.id = pick.id;
 
 -- Row-level security: a player may only read, create, and delete their own
 -- spawns. `auth.uid()` resolves from the caller's JWT (the browser anon client

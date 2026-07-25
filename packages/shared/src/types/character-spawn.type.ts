@@ -1,4 +1,18 @@
 /**
+ * The colour rolled for a spawn. The three primaries (red/yellow/blue) are common;
+ * the three secondaries (orange/green/purple) are each three times as rare — see
+ * `randomSpawnColor` in `@3xl/shared/utils/spawn/color`.
+ */
+export enum SpawnColor {
+	Red = 'red',
+	Yellow = 'yellow',
+	Blue = 'blue',
+	Orange = 'orange',
+	Green = 'green',
+	Purple = 'purple'
+}
+
+/**
  * A character "spawn": a concrete instance of a playable character claimed by a
  * signed-in player, stored in Supabase's `character_spawns` table.
  *
@@ -22,6 +36,8 @@ export interface CharacterSpawn {
 	 * a spawn cannot be claimed without a location.
 	 */
 	locationId: string;
+	/** The colour rolled for this spawn (weighted — see {@link SpawnColor}). */
+	color: SpawnColor;
 	/** ISO timestamp the spawn was created. */
 	createdAt: string;
 }
@@ -37,6 +53,7 @@ export interface CharacterSpawnRow {
 	character_id: string;
 	show_id: string | number | null;
 	location_id: string | null;
+	color: string | null;
 	created_at: string;
 }
 

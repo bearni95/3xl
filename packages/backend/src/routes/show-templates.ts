@@ -66,9 +66,26 @@ function ensureTables(): Promise<void> {
 						character_id text not null references character_templates (id) on delete cascade,
 						show_id bigint references show_templates (id) on delete set null,
 						location_id text,
+						color text,
 						created_at timestamptz not null default now()
 					);
 				alter table character_spawns add column if not exists location_id text;
+				alter table character_spawns add column if not exists color text;
+				-- Backfill colours on rows that predate the column, weighting the three
+				-- primaries 3x the three secondaries (matches randomSpawnColor).
+				update character_spawns cs set color = pick.color
+				from (
+					select id, case
+						when r < 3.0 / 12 then 'red'
+						when r < 6.0 / 12 then 'yellow'
+						when r < 9.0 / 12 then 'blue'
+						when r < 10.0 / 12 then 'orange'
+						when r < 11.0 / 12 then 'green'
+						else 'purple'
+					end as color
+					from (select id, random() as r from character_spawns where color is null) seeded
+				) pick
+				where cs.id = pick.id;
 				alter table character_spawns enable row level security;
 				drop policy if exists character_spawns_select_own on character_spawns;
 				create policy character_spawns_select_own on character_spawns

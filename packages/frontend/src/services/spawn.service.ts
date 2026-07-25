@@ -2,6 +2,7 @@ import { writable, type Readable } from 'svelte/store';
 import { characters } from '@3xl/data';
 import { getSupabaseClient } from '$services/supabase.client';
 import { spawnAdapter } from '$adapters/classes/spawn.adapter';
+import { randomSpawnColor } from '$utils/spawn/color';
 import type {
 	CharacterSpawn,
 	CharacterSpawnRow,
@@ -100,7 +101,7 @@ class SpawnService {
 		const supabase = getSupabaseClient();
 		const { data, error } = await supabase
 			.from('character_spawns')
-			.select('id, user_id, character_id, show_id, location_id, created_at')
+			.select('id, user_id, character_id, show_id, location_id, color, created_at')
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false });
 		if (error) throw error;
@@ -115,8 +116,8 @@ class SpawnService {
 	 * by `userId`, tagged with the show it came from (`showId`, or `null` when
 	 * rolled across all shows) and the municipality it was claimed in
 	 * (`locationId`, a geojson feature id). A location is required — a spawn
-	 * cannot be claimed without one. The new spawn is prepended to the store and
-	 * returned.
+	 * cannot be claimed without one. Each spawn also rolls a weighted colour. The
+	 * new spawn is prepended to the store and returned.
 	 */
 	async claimRandom(
 		userId: string,
@@ -131,6 +132,7 @@ class SpawnService {
 			throw new Error('Claim your location before spawning a character.');
 		}
 		const characterId = characterIds[Math.floor(Math.random() * characterIds.length)];
+		const color = randomSpawnColor();
 
 		const supabase = getSupabaseClient();
 		const { data, error } = await supabase
@@ -139,9 +141,10 @@ class SpawnService {
 				user_id: userId,
 				character_id: characterId,
 				show_id: showId,
-				location_id: locationId
+				location_id: locationId,
+				color
 			})
-			.select('id, user_id, character_id, show_id, location_id, created_at')
+			.select('id, user_id, character_id, show_id, location_id, color, created_at')
 			.single();
 		if (error) throw error;
 

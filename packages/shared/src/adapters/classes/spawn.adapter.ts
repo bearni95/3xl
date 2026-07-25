@@ -1,5 +1,6 @@
 import { AdapterClass } from './adapter.class';
-import type { CharacterSpawn, CharacterSpawnRow } from '../../types/character-spawn.type';
+import { SpawnColor, type CharacterSpawn, type CharacterSpawnRow } from '../../types/character-spawn.type';
+import { isSpawnColor } from '../../utils/spawn/color';
 
 /**
  * Transforms `character_spawns` rows between Supabase's snake_case shape and the
@@ -19,6 +20,8 @@ export class SpawnAdapter extends AdapterClass {
 			characterId: row.character_id,
 			showId: row.show_id === null ? null : Number(row.show_id),
 			locationId: row.location_id ?? '',
+			// Legacy rows predate colours; fall back to a stable primary.
+			color: isSpawnColor(row.color) ? row.color : SpawnColor.Red,
 			createdAt: row.created_at
 		};
 	}
