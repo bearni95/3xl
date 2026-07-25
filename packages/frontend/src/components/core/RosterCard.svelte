@@ -30,9 +30,8 @@
 </script>
 
 <div class="card overflow-hidden bg-base-100 shadow-md">
-	<!-- Colour bar so the spawn's rolled colour reads at a glance. -->
-	<div class={classNames('h-1.5 w-full', swatchClass)}></div>
-	<figure class="flex h-[180px] items-center justify-center bg-base-200 p-4">
+	<!-- The spawn's rolled colour reads at a glance as the portrait backdrop. -->
+	<figure class={classNames('flex h-[180px] items-center justify-center p-4', swatchClass)} title={color}>
 		{#if faceUrl}
 			<img src={faceUrl} alt={label} class="h-full max-w-full object-contain" />
 		{:else}
@@ -43,10 +42,6 @@
 	</figure>
 	<div class="card-body gap-2 p-4">
 		<h2 class="card-title text-base">
-			<span
-				class={classNames('inline-block h-3 w-3 shrink-0 rounded-full', swatchClass)}
-				title={color}
-			></span>
 			{label}
 		</h2>
 		<div class="flex flex-wrap gap-2">

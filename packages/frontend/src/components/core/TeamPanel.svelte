@@ -1,7 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
-	import MugenStage from '$components/core/MugenStage.svelte';
+	import MugenLineup from '$components/core/MugenLineup.svelte';
 	import { TEAM_SIZE, type Team } from '$services/team.service';
 
 	// Presentational only — the parent owns the team service and applies changes.
@@ -83,45 +83,51 @@
 					</div>
 
 					{#if isActive}
-						<div class="mt-3 flex flex-col gap-2">
-							{#each team.memberIds as characterId, index (index)}
-								{@const basePath = characterId ? basePathById.get(characterId) : null}
-								<div class="flex items-center gap-2">
-									<figure
-										class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded bg-base-300"
-									>
-										{#if basePath}
-											<MugenStage {basePath} width={40} height={40} scale={0.32} />
-										{:else}
-											<span class="text-xs opacity-40">{index + 1}</span>
-										{/if}
-									</figure>
-									<select
-										class="select select-bordered select-sm w-full"
-										value={characterId ?? ''}
-										on:change={(event) => handleSelect(team.id, index, event)}
-									>
-										<option value="">— Empty slot —</option>
-										{#each options as option (option.id)}
-											<option
-												value={option.id}
-												disabled={chosen.has(option.id) && characterId !== option.id}
-											>
-												{option.label}
-											</option>
-										{/each}
-									</select>
-									{#if characterId}
-										<button
-											class="btn btn-ghost btn-sm btn-square"
-											title="Clear slot"
-											on:click={() => dispatch('clear', { teamId: team.id, index })}
+						{@const memberBasePaths = team.memberIds.map((id) =>
+							id ? (basePathById.get(id) ?? null) : null
+						)}
+						<div class="mt-3 flex flex-col gap-3">
+							<!-- All three picks' idle animations on a single canvas, at one
+							     shared scale so their proportions read true. -->
+							<figure
+								class="flex h-28 items-center justify-center overflow-hidden rounded bg-base-300"
+							>
+								{#key memberBasePaths.join(',')}
+									<MugenLineup basePaths={memberBasePaths} cellWidth={80} cellHeight={112} />
+								{/key}
+							</figure>
+
+							<!-- The three character selects, stacked under the animations. -->
+							<div class="flex flex-col gap-2">
+								{#each team.memberIds as characterId, index (index)}
+									<div class="flex items-center gap-2">
+										<select
+											class="select select-bordered select-sm w-full"
+											value={characterId ?? ''}
+											on:change={(event) => handleSelect(team.id, index, event)}
 										>
-											✕
-										</button>
-									{/if}
-								</div>
-							{/each}
+											<option value="">— Empty slot —</option>
+											{#each options as option (option.id)}
+												<option
+													value={option.id}
+													disabled={chosen.has(option.id) && characterId !== option.id}
+												>
+													{option.label}
+												</option>
+											{/each}
+										</select>
+										{#if characterId}
+											<button
+												class="btn btn-ghost btn-sm btn-square"
+												title="Clear slot"
+												on:click={() => dispatch('clear', { teamId: team.id, index })}
+											>
+												✕
+											</button>
+										{/if}
+									</div>
+								{/each}
+							</div>
 						</div>
 					{:else}
 						<div class="mt-2 flex flex-wrap items-center gap-1">

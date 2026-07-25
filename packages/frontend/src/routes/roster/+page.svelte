@@ -7,6 +7,7 @@
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import { AuthStatus } from '$types/profile.type';
+	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import RosterCard from '$components/core/RosterCard.svelte';
 	import TeamPanel from '$components/core/TeamPanel.svelte';
 
@@ -96,7 +97,12 @@
 		return characterShowNames.get(characterId) ?? [];
 	}
 	function locationNameFor(id: string): string {
-		return municipalityNames?.get(id) ?? id;
+		if (id && id !== ULTRAMAR_ID) {
+			const name = municipalityNames?.get(id);
+			if (name) return name;
+		}
+		// The Ultramar sentinel and any missing/unresolved location read as Ultramar.
+		return ULTRAMAR.municipality;
 	}
 	function claimedAtFor(createdAt: string): string {
 		return new Date(createdAt).toLocaleString();
