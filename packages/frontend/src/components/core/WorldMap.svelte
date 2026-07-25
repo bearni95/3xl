@@ -128,8 +128,9 @@
 					if (overlay.hoverStyle) {
 						layer.on('mouseover', () => {
 							(layer as L.Path).setStyle(overlay.hoverStyle!);
-							// Keep the image opaque instead of dimming to the hover fillOpacity.
-							if (imageUrl) (layer as L.Path).getElement()?.setAttribute('fill-opacity', '1');
+							// setStyle repaints the base fillColor, so re-apply the image
+							// (kept opaque rather than dimmed to the hover fillOpacity).
+							if (imageUrl) applyImageFill(layer as L.Path, imageUrl);
 						});
 						layer.on('mouseout', () => {
 							layerGroup.resetStyle(layer);
