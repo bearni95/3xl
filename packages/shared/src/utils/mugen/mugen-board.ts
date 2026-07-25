@@ -2,6 +2,7 @@ import { Application, Assets, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import type { Manifest } from './mugen-player';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
+	boardCells,
 	cellSide,
 	findClosestApproach,
 	findMeleeMeeting,
@@ -408,50 +409,43 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Draw the hexagonal board (radius HEX_RADIUS). Cells left of the vertical
-	 * centre line take `leftColor`, cells to the right `rightColor`, and the
-	 * central column (q = 0) — the shared row both creatures can enter — is painted
-	 * `centerColor`.
+	 * Draw the board. Cells left of the vertical centre line take `leftColor`,
+	 * cells to the right `rightColor`, and the central column (q = 0) — the shared
+	 * row both creatures can enter — is painted `centerColor`. Iterates the exact
+	 * cell list from the shared hex utility (rather than a fixed radius box) so
+	 * every occupiable cell is drawn, no matter how far its column reaches.
 	 */
 	private drawBoard(leftColor: number, rightColor: number, centerColor: number): void {
 		if (!this.app) return;
 		const graphics = new Graphics();
-		const R = HEX_RADIUS;
-		// Cell membership (hexagon shape, trimmed columns and front edge) lives in
-		// the shared hex utility so pathfinding and rendering can't disagree.
-		for (let q = -R; q <= R; q++) {
-			for (let r = -R; r <= R; r++) {
-				if (!isBoardCell(q, r)) continue;
-				// Column membership and row ranges live in the shared hex utility; q
-				// alone still decides the side, and the central column (q = 0) is the
-				// shared purple row.
-				const side = cellSide(q);
-				const color =
-					side === 'red' ? leftColor : side === 'blue' ? rightColor : centerColor;
+		for (const { q, r } of boardCells()) {
+			// q alone decides the side; the central column (q = 0) is the shared
+			// purple row.
+			const side = cellSide(q);
+			const color = side === 'red' ? leftColor : side === 'blue' ? rightColor : centerColor;
 
-				const centre = this.hexCoord(q, r);
-				const pts: number[] = [];
-				for (const corner of HEX_CORNERS) {
-					const p = this.project(centre.x + corner.x, centre.y + corner.y);
-					pts.push(p.x, p.y);
-				}
-				graphics.poly(pts);
-				graphics.fill({ color, alpha: 0.08 });
-				graphics.stroke({ width: 2, color, alpha: 0.9 });
-
-				// Label the cell with its axial coordinates so it's easy to refer to.
-				const mid = this.project(centre.x, centre.y);
-				const label = new Text({
-					text: `${q},${r}`,
-					style: { fontFamily: 'monospace', fontSize: 14, fill: 0xffffff, align: 'center' }
-				});
-				label.anchor.set(0.5);
-				label.position.set(mid.x, mid.y);
-				label.alpha = 0.75;
-				// Behind the characters (zIndex ~ feet-y) but above the grid graphics.
-				label.zIndex = 1;
-				this.app.stage.addChild(label);
+			const centre = this.hexCoord(q, r);
+			const pts: number[] = [];
+			for (const corner of HEX_CORNERS) {
+				const p = this.project(centre.x + corner.x, centre.y + corner.y);
+				pts.push(p.x, p.y);
 			}
+			graphics.poly(pts);
+			graphics.fill({ color, alpha: 0.08 });
+			graphics.stroke({ width: 2, color, alpha: 0.9 });
+
+			// Label the cell with its axial coordinates so it's easy to refer to.
+			const mid = this.project(centre.x, centre.y);
+			const label = new Text({
+				text: `${q},${r}`,
+				style: { fontFamily: 'monospace', fontSize: 14, fill: 0xffffff, align: 'center' }
+			});
+			label.anchor.set(0.5);
+			label.position.set(mid.x, mid.y);
+			label.alpha = 0.75;
+			// Behind the characters (zIndex ~ feet-y) but above the grid graphics.
+			label.zIndex = 1;
+			this.app.stage.addChild(label);
 		}
 		this.app.stage.addChild(graphics);
 	}
