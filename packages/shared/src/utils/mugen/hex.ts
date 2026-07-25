@@ -166,10 +166,15 @@ export interface Approach {
 export function findMeleeMeeting(
 	startRed: Hex,
 	startBlue: Hex,
-	redCell?: Hex
+	redCell?: Hex,
+	blocked?: (c: Hex) => boolean
 ): { red: Approach; blue: Approach } | null {
-	const redAllowed = (c: Hex) => cellSide(c.q) !== 'blue'; // red or purple (q ≤ 0)
-	const blueAllowed = (c: Hex) => cellSide(c.q) === 'blue'; // blue only (q ≥ 1), never purple
+	// A cell is walkable for a side if it obeys the side rule and isn't occupied by
+	// another (non-dueling) character; the two fighters' own cells are never blocked
+	// because the caller excludes them from `blocked`.
+	const free = (c: Hex) => !blocked?.(c);
+	const redAllowed = (c: Hex) => cellSide(c.q) !== 'blue' && free(c); // red or purple (q ≤ 0)
+	const blueAllowed = (c: Hex) => cellSide(c.q) === 'blue' && free(c); // blue only (q ≥ 1)
 
 	if (redCell) {
 		// Fixed meeting spot: red on the given cell, blue facing it from the east

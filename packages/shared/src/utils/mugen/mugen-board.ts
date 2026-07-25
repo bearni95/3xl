@@ -883,7 +883,13 @@ export class MugenBoard {
 		// Infer which fighter is on the red half (starts left) vs blue (right).
 		const red = a.homeCell <= b.homeCell ? a : b;
 		const blue = red === a ? b : a;
-		const meeting = findMeleeMeeting(this.cellOf(red), this.cellOf(blue), meetingCell);
+		// Route both fighters around any other character standing in the way (the two
+		// duelists themselves are excluded so they don't block each other); if that
+		// leaves no legal meeting, fall back to the side-only search.
+		const blocked = this.occupied([red, blue]);
+		const meeting =
+			findMeleeMeeting(this.cellOf(red), this.cellOf(blue), meetingCell, blocked) ??
+			findMeleeMeeting(this.cellOf(red), this.cellOf(blue), meetingCell);
 		if (!meeting) return;
 
 		// Split the meeting cell down its midline, one half each, without the two
@@ -915,6 +921,29 @@ export class MugenBoard {
 			return (c) => isBoardCell(c.q, c.r) && cellSide(c.q) === 'blue';
 		}
 		return (c) => isBoardCell(c.q, c.r) && cellSide(c.q) !== 'blue';
+	}
+
+	/**
+	 * Predicate: is a cell currently occupied by an actor other than those in
+	 * `exclude`? Used to keep a moving fighter from stepping onto (or through) a
+	 * cell another character is standing on; the movers themselves are excluded so
+	 * their own start cell never counts as blocked.
+	 */
+	private occupied(exclude: Actor[]): (c: Hex) => boolean {
+		const taken = new Set<string>();
+		for (const other of this.actors) {
+			if (exclude.includes(other)) continue;
+			taken.add(`${other.cell},${other.rowFront}`);
+		}
+		return (c) => taken.has(`${c.q},${c.r}`);
+	}
+
+	/** The side rule combined with occupancy: `actor` may walk a cell only if it's
+	 * on its own side and no other character is standing there. */
+	private walkAllowed(actor: Actor): (c: Hex) => boolean {
+		const side = this.sideAllowed(actor);
+		const blocked = this.occupied([actor]);
+		return (c) => side(c) && !blocked(c);
 	}
 
 	/**
@@ -968,7 +997,11 @@ export class MugenBoard {
 		const actor = this.findActor(id);
 		if (!actor) return;
 		const home: Hex = { q: actor.homeCell, r: actor.homeRow };
-		const path = findPath(this.cellOf(actor), home, this.sideAllowed(actor));
+		// Route around other characters when a clear path exists; if occupancy boxes
+		// it in, fall back to the side-only path so the actor still reaches home.
+		const path =
+			findPath(this.cellOf(actor), home, this.walkAllowed(actor)) ??
+			findPath(this.cellOf(actor), home, this.sideAllowed(actor));
 		if (!path) return;
 		// Passing the home mark as the walk's end point also covers the fighter
 		// whose home *is* the cell it logically occupies but who is standing half a
@@ -984,7 +1017,9 @@ export class MugenBoard {
 	async retreat(id: string): Promise<void> {
 		const actor = this.findActor(id);
 		if (!actor) return;
-		const retreat = findRetreatCell(this.cellOf(actor), this.sideAllowed(actor));
+		const retreat =
+			findRetreatCell(this.cellOf(actor), this.walkAllowed(actor)) ??
+			findRetreatCell(this.cellOf(actor), this.sideAllowed(actor));
 		if (!retreat) return;
 		await this.walkCells(actor, retreat.path.slice(1));
 	}
