@@ -9,7 +9,8 @@
 		minZoom = 2,
 		maxZoom = 19,
 		overlays = [],
-		marker = null,
+		highlightId = null,
+		highlightStyle = null,
 		classes = ''
 	}: {
 		/** Initial map centre as [lat, lng]. */
@@ -19,46 +20,39 @@
 		maxZoom?: number;
 		/** GeoJSON overlays drawn in array order (last = topmost). */
 		overlays?: MapOverlay[];
-		/** A single pin dropped at [lat, lng], or null for no pin. */
-		marker?: [number, number] | null;
+		/** `properties.id` of the one feature to paint with `highlightStyle`. */
+		highlightId?: string | null;
+		/** Style merged over the highlighted feature's base style. */
+		highlightStyle?: L.PathOptions | null;
 		/** Extra Tailwind classes for the map container. */
 		classes?: string;
 	} = $props();
 
 	let mapContainer: HTMLDivElement;
 	let mapInstance: L.Map | null = null;
-	// The Leaflet module (loaded in the browser) and the current pin layer, kept
-	// so the marker can be added/moved/removed reactively as `marker` changes.
-	let leaflet: typeof L | null = null;
-	let markerLayer: L.CircleMarker | null = null;
+	// The geoJSON layer groups (in overlay order) and the image-fill refresh,
+	// captured at mount so the highlight $effect can repaint reactively.
+	let overlayGroups: L.GeoJSON[] = [];
+	let refreshImageFills: () => void = () => {};
 
-	// Sync the pin to the current `marker` prop: drop it, move it, or clear it.
-	function renderMarker() {
-		if (!mapInstance || !leaflet) return;
-		if (!marker) {
-			markerLayer?.remove();
-			markerLayer = null;
-			return;
+	// A feature's base style, plus the highlight merged on when it's the chosen
+	// one. Called both at first paint and by resetStyle, so reading the live
+	// `highlightId`/`highlightStyle` keeps the highlight through hover resets.
+	function styleFor(overlay: MapOverlay, feature?: GeoJSON.Feature): L.PathOptions {
+		if (highlightId != null && highlightStyle && feature?.properties?.id === highlightId) {
+			return { ...overlay.style, ...highlightStyle };
 		}
-		if (markerLayer) {
-			markerLayer.setLatLng(marker);
-			return;
-		}
-		markerLayer = leaflet
-			.circleMarker(marker, {
-				radius: 8,
-				color: '#ffffff',
-				weight: 2,
-				fillColor: '#ef4444',
-				fillOpacity: 1
-			})
-			.addTo(mapInstance);
+		return overlay.style;
 	}
 
 	$effect(() => {
-		// Track `marker` so the pin follows the player's stored location.
-		void marker;
-		renderMarker();
+		// Repaint when the highlighted feature changes: resetStyle re-runs each
+		// group's style option (which now reflects the new highlightId), then the
+		// image fills are re-applied since resetStyle repaints their fillColor.
+		void highlightId;
+		void highlightStyle;
+		for (const group of overlayGroups) group.resetStyle();
+		refreshImageFills();
 	});
 
 	const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -157,7 +151,6 @@
 		// dynamically in the browser — never during SSR.
 		const Leaf = await import('leaflet');
 		await import('leaflet/dist/leaflet.css');
-		leaflet = Leaf;
 
 		mapInstance = Leaf.map(mapContainer, {
 			minZoom,
@@ -197,7 +190,7 @@
 		overlays.forEach((overlay, index) => {
 			const layerGroup = Leaf.geoJSON(datasets[index], {
 				interactive: overlay.interactive ?? true,
-				style: () => overlay.style,
+				style: (feature) => styleFor(overlay, feature),
 				onEachFeature: (feature, layer) => {
 					if (overlay.interactive === false) return;
 
@@ -231,6 +224,7 @@
 					layer.on('click', () => overlay.onClick?.(feature));
 				}
 			}).addTo(mapInstance!);
+			overlayGroups.push(layerGroup);
 		});
 
 		// Build the shared groups now the paths exist, tag each path with its
@@ -243,12 +237,11 @@
 			return { url, patternId, layers };
 		});
 
-		const refreshImageFills = () => imageFillGroups.forEach(updateImageFillGroup);
+		refreshImageFills = () => imageFillGroups.forEach(updateImageFillGroup);
 		refreshImageFills();
 		mapInstance.on('zoomend viewreset moveend', refreshImageFills);
-
-		// Overlays finished loading; drop the pin if a location is already set.
-		renderMarker();
+		// Any highlight set before mount was already painted by styleFor at
+		// feature creation; later changes are handled by the highlight $effect.
 	});
 
 	onDestroy(() => {

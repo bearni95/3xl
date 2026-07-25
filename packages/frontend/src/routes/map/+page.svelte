@@ -1,5 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import { onMount } from 'svelte';
+	import type { PathOptions } from 'leaflet';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import type { MapOverlay } from '$types/map.type';
 	import { locationService, hasLocation } from '$services/location.service';
@@ -7,14 +9,35 @@
 
 	const store = locationService.store;
 
+	// Paint the municipality the player stands in solid red over its base fill.
+	const highlightStyle: PathOptions = {
+		color: '#ef4444',
+		weight: 2,
+		fillColor: '#ef4444',
+		fillOpacity: 0.55
+	};
+
 	let loading = false;
 	let error = '';
+	// The municipality polygons, used to resolve a reading to its feature id.
+	let municipalities: GeoJSON.FeatureCollection | null = null;
 
 	$: location = $store;
-	// Drop a pin at the player's stored reading, or nothing until one is set.
-	$: marker = hasLocation(location)
-		? ([location.latitude, location.longitude] as [number, number])
-		: null;
+	// The `properties.id` of the municipality the player is in, so WorldMap can
+	// paint that one polygon red — null until a reading is taken and resolved.
+	$: highlightId =
+		hasLocation(location) && municipalities
+			? (locationAdapter.toRegion(location, municipalities).id ?? null)
+			: null;
+
+	onMount(async () => {
+		try {
+			const response = await fetch('/data/geo/municipis.json');
+			municipalities = await response.json();
+		} catch {
+			// Highlight simply stays off if the polygons fail to load.
+		}
+	});
 
 	function requestLocation() {
 		error = '';
@@ -74,7 +97,14 @@
 </script>
 
 <div class="relative flex h-[calc(100vh-4rem)] flex-col">
-	<WorldMap center={[41.8, 1.7]} zoom={8} {overlays} {marker} classes="min-h-0 flex-1" />
+	<WorldMap
+		center={[41.8, 1.7]}
+		zoom={8}
+		{overlays}
+		{highlightId}
+		{highlightStyle}
+		classes="min-h-0 flex-1"
+	/>
 
 	<div class="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
 		<button
@@ -84,7 +114,7 @@
 			{#if loading}
 				<span class="loading loading-spinner loading-xs"></span>
 				Locating…
-			{:else if marker}
+			{:else if highlightId}
 				Update my location
 			{:else}
 				Show my location
