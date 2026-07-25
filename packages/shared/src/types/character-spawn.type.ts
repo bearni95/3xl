@@ -38,9 +38,23 @@ export interface CharacterSpawn {
 	locationId: string;
 	/** The colour rolled for this spawn (weighted — see {@link SpawnColor}). */
 	color: SpawnColor;
+	/**
+	 * The gameplay stat rolled for this spawn, an integer in
+	 * [{@link SPAWN_STAT_MIN}, {@link SPAWN_STAT_MAX}]. Rolled once at claim time
+	 * (like {@link color}); legacy spawns that predate the stat read as
+	 * {@link DEFAULT_SPAWN_STAT}.
+	 */
+	stat: number;
 	/** ISO timestamp the spawn was created. */
 	createdAt: string;
 }
+
+/** Inclusive bounds a rolled spawn stat is constrained to. */
+export const SPAWN_STAT_MIN = 1;
+export const SPAWN_STAT_MAX = 10;
+
+/** Value legacy spawns (or invalid/out-of-range ones) read as. */
+export const DEFAULT_SPAWN_STAT = 1;
 
 /**
  * Raw `character_spawns` row as returned by the Supabase client (snake_case,
@@ -54,6 +68,7 @@ export interface CharacterSpawnRow {
 	show_id: string | number | null;
 	location_id: string | null;
 	color: string | null;
+	stat: number | string | null;
 	created_at: string;
 }
 
