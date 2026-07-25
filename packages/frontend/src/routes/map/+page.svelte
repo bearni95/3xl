@@ -239,6 +239,9 @@
 					><span class="h-2 w-2 rounded-full bg-error"></span>Territory</span
 				>
 				<span class="flex items-center gap-1"
+					><span class="h-2 w-2 rounded-full bg-warning"></span>Province</span
+				>
+				<span class="flex items-center gap-1"
 					><span class="h-2 w-2 rounded-full bg-success"></span>Comarca</span
 				>
 				<span class="flex items-center gap-1"

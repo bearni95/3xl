@@ -1,131 +1,74 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import ComarcaNode from '$components/core/ComarcaNode.svelte';
+	import MunicipalityRow from '$components/core/MunicipalityRow.svelte';
+	import ProvinceNode from '$components/core/ProvinceNode.svelte';
 	import ShowChip from '$components/core/ShowChip.svelte';
-	import type {
-		RegionComarca,
-		RegionTerritory
-	} from '$utils/geo/region-tree';
+	import type { RegionTerritory } from '$utils/geo/region-tree';
 
-	// The territory → comarca → municipality tree, mirroring the map's red /
-	// green / blue tiers.
+	// The territory → (province) → comarca → municipality tree, mirroring the
+	// map's red / yellow / green / blue tiers.
 	export let territories: RegionTerritory[] = [];
 	// Municipality id to highlight (the one the player stands in), painted red
-	// like its polygon; the branches leading to it are expanded on change.
+	// like its polygon; the branches leading to it open automatically.
 	export let highlightId: string | null = null;
 
-	// Which branches are open, keyed by the ids we mint below. UI-only state.
-	let openTerritories = new Set<string>();
-	let openComarques = new Set<string>();
+	// Which territories are open. Auto-open a territory when a new highlight lands
+	// inside it; the deeper tiers reveal themselves the same way.
+	let open = new Set<string>();
 
-	function comarcaKey(territory: RegionTerritory, comarca: RegionComarca): string {
-		return `${territory.id}/${comarca.id}`;
+	function territoryContains(territory: RegionTerritory, id: string): boolean {
+		const inComarques = (comarques: RegionTerritory['comarques']) =>
+			comarques.some((c) => c.municipis.some((m) => m.id === id));
+		return (
+			territory.municipis.some((m) => m.id === id) ||
+			inComarques(territory.comarques) ||
+			territory.provincies.some(
+				(p) => p.municipis.some((m) => m.id === id) || inComarques(p.comarques)
+			)
+		);
 	}
 
-	function toggle(set: Set<string>, key: string): Set<string> {
-		if (set.has(key)) set.delete(key);
-		else set.add(key);
-		// Reassign so Svelte tracks the change.
-		return new Set(set);
-	}
-
-	function toggleTerritory(territory: RegionTerritory) {
-		openTerritories = toggle(openTerritories, territory.id);
-	}
-
-	function toggleComarca(territory: RegionTerritory, comarca: RegionComarca) {
-		openComarques = toggle(openComarques, comarcaKey(territory, comarca));
-	}
-
-	// Auto-open the branches down to the highlighted municipality so the player's
-	// town is revealed whenever a new reading resolves.
-	$: if (highlightId) revealHighlight(highlightId);
-
-	function revealHighlight(id: string) {
+	$: if (highlightId) {
 		for (const territory of territories) {
-			for (const comarca of territory.comarques) {
-				if (comarca.municipis.some((m) => m.id === id)) {
-					openTerritories = new Set(openTerritories).add(territory.id);
-					openComarques = new Set(openComarques).add(comarcaKey(territory, comarca));
-					return;
-				}
-			}
-			if (territory.municipis.some((m) => m.id === id)) {
-				openTerritories = new Set(openTerritories).add(territory.id);
-				return;
-			}
+			if (territoryContains(territory, highlightId)) open = new Set(open).add(territory.id);
 		}
+	}
+
+	function toggle(id: string) {
+		const next = new Set(open);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		open = next;
 	}
 </script>
 
 <ul class="menu min-h-0 flex-1 flex-nowrap gap-1 overflow-y-auto p-2">
 	{#each territories as territory (territory.id)}
-		{@const open = openTerritories.has(territory.id)}
+		{@const isOpen = open.has(territory.id)}
 		<li class="w-full">
 			<button
 				type="button"
 				class="flex w-full items-center gap-2 border-l-4 border-error font-semibold"
-				aria-expanded={open}
-				on:click={() => toggleTerritory(territory)}
+				aria-expanded={isOpen}
+				on:click={() => toggle(territory.id)}
 			>
-				<span class={classNames('text-xs transition-transform', { 'rotate-90': open })}>▶</span>
+				<span class={classNames('text-xs transition-transform', { 'rotate-90': isOpen })}>▶</span>
 				<span class="min-w-0 flex-1 truncate text-left">{territory.name}</span>
 				<ShowChip show={territory.show} prefix="top" classes="max-w-[45%]" />
 				<span class="badge badge-error badge-sm flex-none">{territory.count}</span>
 			</button>
 
-			{#if open}
+			{#if isOpen}
 				<ul class="w-full border-l border-error/30">
-					{#each territory.comarques as comarca (comarca.id)}
-						{@const comarcaOpen = openComarques.has(comarcaKey(territory, comarca))}
-						<li class="w-full">
-							<button
-								type="button"
-								class="flex w-full items-center gap-2 border-l-4 border-success"
-								aria-expanded={comarcaOpen}
-								on:click={() => toggleComarca(territory, comarca)}
-							>
-								<span
-									class={classNames('text-xs transition-transform', { 'rotate-90': comarcaOpen })}
-								>▶</span>
-								<span class="min-w-0 flex-1 truncate text-left">{comarca.name}</span>
-								<ShowChip show={comarca.show} prefix="top" classes="max-w-[45%]" />
-								<span class="badge badge-success badge-sm flex-none"
-									>{comarca.municipis.length}</span
-								>
-							</button>
-
-							{#if comarcaOpen}
-								<ul class="w-full border-l border-success/30">
-									{#each comarca.municipis as municipality (municipality.id)}
-										<li class="w-full">
-											<span
-												class={classNames('flex w-full items-center gap-2 border-l-4 border-info', {
-													'bg-error/20 font-semibold': highlightId === municipality.id
-												})}
-											>
-												<span class="h-2 w-2 flex-none rounded-full bg-info"></span>
-												<span class="min-w-0 flex-1 truncate">{municipality.name}</span>
-											<ShowChip show={municipality.show} classes="max-w-[50%]" />
-											</span>
-										</li>
-									{/each}
-								</ul>
-							{/if}
-						</li>
+					{#each territory.provincies as province (province.id)}
+						<ProvinceNode {province} {highlightId} />
 					{/each}
-
+					{#each territory.comarques as comarca (comarca.id)}
+						<ComarcaNode {comarca} {highlightId} />
+					{/each}
 					{#each territory.municipis as municipality (municipality.id)}
-						<li class="w-full">
-							<span
-								class={classNames('flex w-full items-center gap-2 border-l-4 border-info', {
-									'bg-error/20 font-semibold': highlightId === municipality.id
-								})}
-							>
-								<span class="h-2 w-2 flex-none rounded-full bg-info"></span>
-								<span class="min-w-0 flex-1 truncate">{municipality.name}</span>
-								<ShowChip show={municipality.show} classes="max-w-[50%]" />
-							</span>
-						</li>
+						<MunicipalityRow {municipality} {highlightId} />
 					{/each}
 				</ul>
 			{/if}
