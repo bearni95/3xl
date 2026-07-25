@@ -131,6 +131,26 @@ const HEX_CORNERS: { x: number; y: number }[] = Array.from({ length: 6 }, (_, k)
  */
 const HEX_FOOT_Y = -0.5 * HEX_SCALE_Y;
 
+/**
+ * Left→right screen position of the standing point in the hex at axial [q, r],
+ * in arbitrary units (only the ordering is meaningful). Mirrors the horizontal
+ * term of {@link MugenBoard.project} — the raw x scaled by the perspective
+ * half-width at that row — so callers outside the engine (e.g. the board page's
+ * character cards) can sort characters into the exact left-to-right order they
+ * stand in on the canvas, tie-breaks and all. Uses the board's default
+ * `farRatio`, the only value the app configures it with.
+ */
+export function cellScreenX(q: number, r: number, farRatio: number = DEFAULTS.farRatio): number {
+	const rawX = SQRT3 * (q + r / 2);
+	const row = ROWS / 2 + 1.5 * r * HEX_SCALE_Y;
+	// Perspective depth parameter (0 near, 1 far), then the half-width at that row
+	// relative to the near edge — matches project()'s halfWidth up to a positive
+	// scale, which the ordering ignores.
+	const t = row / (ROWS * farRatio + row * (1 - farRatio));
+	const halfWidth = 1 + t * (farRatio - 1);
+	return halfWidth * rawX;
+}
+
 /** Character height as a multiple of its (perspective-foreshortened) cell width. */
 const CHAR_HEIGHT_RATIO = 1.3;
 /** Horizontal speed (canvas px/s) a character runs between cells during combat. */

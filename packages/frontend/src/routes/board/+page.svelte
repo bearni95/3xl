@@ -2,6 +2,7 @@
 	import classNames from 'classnames';
 	import { onDestroy, onMount } from 'svelte';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
+	import { cellScreenX } from '$utils/mugen/mugen-board';
 	import type {
 		BoardCharacter,
 		BoardGrid,
@@ -192,10 +193,11 @@
 		/** The character's Supabase spawn gameplay stat (1..10). */
 		stat: number;
 		/**
-		 * Board depth of the character's cell (`r + q/2`). Larger = further into the
-		 * board = higher on screen; used to stack the cards to match the grid.
+		 * Left→right screen position of the character's cell on the canvas (arbitrary
+		 * units; only the ordering matters). Used to lay the cards out in the same
+		 * horizontal order the characters stand in on the board.
 		 */
-		gridY: number;
+		gridX: number;
 	}
 
 	// Start cells of the two movable centre characters (they're placed by the engine,
@@ -206,21 +208,19 @@
 		info: { q: 2, r: -3 }
 	};
 
-	// Screen depth of a cell. With pointy-top hexes rows are level, so a character's
-	// height on screen depends only on its row (r). Mirrors mugen-board's hexCoord.
-	const gridDepth = (_q: number, r: number): number => r;
-
 	function rosterFor(
 		characters: (BoardCharacter | PlacedCharacter)[],
 		side: 'error' | 'info'
-	): Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] {
+	): Pick<Badge, 'id' | 'basePath' | 'side' | 'gridX'>[] {
 		return characters.map((c) => {
 			const cell = 'q' in c ? { q: c.q, r: c.r } : centerCells[side];
 			return {
 				id: c.id as string,
 				basePath: c.basePath,
 				side,
-				gridY: gridDepth(cell.q, cell.r)
+				// Horizontal on-screen position of the cell, so the cards can be laid
+				// out left-to-right in the same order as the characters on the board.
+				gridX: cellScreenX(cell.q, cell.r)
 			};
 		});
 	}
@@ -234,31 +234,15 @@
 	// Live combat state keyed by fighter id, for quick lookup while rendering.
 	$: combatById = new Map((state?.fighters ?? []).map((fighter) => [fighter.id, fighter]));
 
-	// Each side's badges, ordered by melee-selection order once picked; unselected
-	// cards sit in the same vertical order as their character on the board (deepest
-	// cell = highest on screen = top of the column). `badges` and `combatById` are
-	// passed in explicitly so Svelte's legacy reactive tracking sees them as
-	// dependencies — referencing them only inside a helper would not re-run this.
-	$: columns = [
-		orderColumn('error', badges, combatById),
-		orderColumn('info', badges, combatById)
-	];
+	// Each side's badges, laid out left-to-right in the same order the characters
+	// stand on the board (leftmost cell first). `badges` is referenced directly so
+	// Svelte's legacy reactive tracking sees it as a dependency of `lineups`.
+	$: lineups = [orderByCell('error', badges), orderByCell('info', badges)];
 
-	function orderColumn(
-		side: 'error' | 'info',
-		list: Badge[],
-		byId: Map<string, Fighter>
-	): Badge[] {
+	function orderByCell(side: 'error' | 'info', list: Badge[]): Badge[] {
 		return list
 			.filter((badge) => badge.side === side)
-			.map((badge) => ({
-				badge,
-				// Selected fighters (actionIndex 0,1,…) float above the rest; otherwise
-				// order by board depth so higher-on-screen characters sit higher up.
-				order: byId.get(badge.id)?.actionIndex ?? 100 - badge.gridY
-			}))
-			.sort((a, b) => a.order - b.order)
-			.map((entry) => entry.badge);
+			.sort((a, b) => a.gridX - b.gridX);
 	}
 
 	function onBoardReady(engine: MugenBoardEngine): void {
@@ -276,7 +260,7 @@
 	async function setup(): Promise<void> {
 		const token = ++setupToken;
 		const currentGrids = buildGrids(slots, spawnById);
-		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] = [
+		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridX'>[] = [
 			...rosterFor([currentGrids[0].character, ...(currentGrids[0].extras ?? [])], 'error'),
 			...rosterFor([currentGrids[1].character, ...(currentGrids[1].extras ?? [])], 'info')
 		];
@@ -500,7 +484,7 @@
 		<div class="card bg-base-100 shadow-xl">
 			<div class="card-body items-center gap-3">
 				<!-- CPU options, as a row before the game canvas. -->
-				{@render row(columns[0])}
+				{@render row(lineups[0])}
 				<div class="flex flex-col items-center gap-3">
 					{#key boardKey}
 						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
@@ -510,7 +494,7 @@
 					{/if}
 				</div>
 				<!-- Player options, as a row after the game canvas. -->
-				{@render row(columns[1])}
+				{@render row(lineups[1])}
 			</div>
 		</div>
 	{/if}
