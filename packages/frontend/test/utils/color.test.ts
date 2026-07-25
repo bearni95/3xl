@@ -86,10 +86,10 @@ describe('color strike table', () => {
 		expect(throwableColors('green')).toEqual(['green', 'blue', 'yellow']);
 	});
 
-	it('throwableColors of a primary is just that primary', () => {
-		expect(throwableColors('red')).toEqual(['red']);
-		expect(throwableColors('blue')).toEqual(['blue']);
-		expect(throwableColors('yellow')).toEqual(['yellow']);
+	it('throwableColors of a primary yields it plus every compound that mixes it', () => {
+		expect(throwableColors('red')).toEqual(['red', 'purple', 'orange']);
+		expect(throwableColors('blue')).toEqual(['blue', 'purple', 'green']);
+		expect(throwableColors('yellow')).toEqual(['yellow', 'orange', 'green']);
 	});
 
 	it('isPrimaryColor splits the six colors into their families', () => {
