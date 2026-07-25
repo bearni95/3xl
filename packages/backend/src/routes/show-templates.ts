@@ -35,7 +35,11 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // Ensure the tables exist exactly once per process, lazily on first use. We also
 // (re)declare `character_templates` here because `show_characters` references it,
 // and that table is otherwise only created lazily by ./character-templates —
-// which may not have run yet. All three DDLs are idempotent.
+// which may not have run yet. `character_spawns` (the per-player claimed
+// instances behind the frontend /claim panel) is provisioned here too, since it
+// references both `character_templates` and `show_templates`; unlike the other
+// tables it's RLS-protected (each player only sees/creates their own spawns), as
+// the frontend writes it directly with the anon key. All DDL is idempotent.
 let ensured: Promise<void> | null = null;
 function ensureTables(): Promise<void> {
 	if (!ensured) {
@@ -55,7 +59,24 @@ function ensureTables(): Promise<void> {
 					show_id bigint not null references show_templates (id) on delete cascade,
 					character_id text not null references character_templates (id) on delete cascade,
 					primary key (show_id, character_id)
-				)`
+				);
+				create table if not exists character_spawns (
+						id uuid primary key default gen_random_uuid(),
+						user_id uuid not null references auth.users (id) on delete cascade,
+						character_id text not null references character_templates (id) on delete cascade,
+						show_id bigint references show_templates (id) on delete set null,
+						created_at timestamptz not null default now()
+					);
+				alter table character_spawns enable row level security;
+				drop policy if exists character_spawns_select_own on character_spawns;
+				create policy character_spawns_select_own on character_spawns
+						for select using (auth.uid() = user_id);
+				drop policy if exists character_spawns_insert_own on character_spawns;
+				create policy character_spawns_insert_own on character_spawns
+						for insert with check (auth.uid() = user_id);
+				drop policy if exists character_spawns_delete_own on character_spawns;
+				create policy character_spawns_delete_own on character_spawns
+						for delete using (auth.uid() = user_id)`
 			)
 			.then(() => undefined)
 			.catch((error: unknown) => {

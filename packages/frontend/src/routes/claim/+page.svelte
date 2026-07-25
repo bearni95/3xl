@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { locationService, hasLocation } from '$services/location.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
+	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 
 	const store = locationService.store;
 
@@ -111,4 +112,6 @@
 			</button>
 		</div>
 	</div>
+
+	<CharacterClaimPanel />
 </div>

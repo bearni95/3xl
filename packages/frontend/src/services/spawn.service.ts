@@ -1,0 +1,111 @@
+import { writable, type Readable } from 'svelte/store';
+import { characters } from '@3xl/data';
+import { getSupabaseClient } from '$services/supabase.client';
+import { spawnAdapter } from '$adapters/classes/spawn.adapter';
+import type {
+	CharacterSpawn,
+	CharacterSpawnRow,
+	ClaimableShow
+} from '$types/character-spawn.type';
+
+/**
+ * Player-facing spawn state, backed by Supabase. Talks to Postgres directly from
+ * the browser with the anon key (RLS-gated), the same pure-SPA pattern as
+ * {@link authService}: it reads the show → character assignments synced by the
+ * admin, rolls a random character for a chosen show, and persists the claim as a
+ * `character_spawns` row owned by the signed-in user.
+ *
+ * Rendering data (labels, sprites) never touches Supabase — a spawn stores only
+ * the character id, which resolves back into the local @3xl/data registry.
+ */
+class SpawnService {
+	private spawnsStore = writable<CharacterSpawn[]>([]);
+
+	/** Ids of characters that exist in the local registry, so spawns can render. */
+	private renderableIds = new Set(characters.map((character) => character.id));
+
+	/** The signed-in player's spawns, newest first. */
+	get spawns(): Readable<CharacterSpawn[]> {
+		return this.spawnsStore;
+	}
+
+	/**
+	 * Load every show that has at least one renderable character assigned, so the
+	 * claim panel can offer a show to roll from. Character ids not present in the
+	 * local registry are dropped (they can't be rendered), and empty shows with
+	 * nothing left are omitted.
+	 */
+	async loadShows(): Promise<ClaimableShow[]> {
+		const supabase = getSupabaseClient();
+		const [showsRes, assignmentsRes] = await Promise.all([
+			supabase.from('show_templates').select('id, name'),
+			supabase.from('show_characters').select('show_id, character_id')
+		]);
+		if (showsRes.error) throw showsRes.error;
+		if (assignmentsRes.error) throw assignmentsRes.error;
+
+		const byShow = new Map<number, string[]>();
+		for (const row of assignmentsRes.data ?? []) {
+			if (!this.renderableIds.has(row.character_id)) continue;
+			const showId = Number(row.show_id);
+			const ids = byShow.get(showId) ?? [];
+			ids.push(row.character_id);
+			byShow.set(showId, ids);
+		}
+
+		return (showsRes.data ?? [])
+			.map((show) => ({
+				id: Number(show.id),
+				name: show.name as string,
+				characterIds: byShow.get(Number(show.id)) ?? []
+			}))
+			.filter((show) => show.characterIds.length > 0)
+			.sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	/** Load the signed-in player's spawns into the store, newest first. */
+	async loadSpawns(userId: string): Promise<CharacterSpawn[]> {
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase
+			.from('character_spawns')
+			.select('id, user_id, character_id, show_id, created_at')
+			.eq('user_id', userId)
+			.order('created_at', { ascending: false });
+		if (error) throw error;
+
+		const spawns = (data as CharacterSpawnRow[]).map((row) => spawnAdapter.fromRow(row));
+		this.spawnsStore.set(spawns);
+		return spawns;
+	}
+
+	/**
+	 * Roll a random character from `characterIds` and persist it as a spawn owned
+	 * by `userId`, tagged with the show it came from (`showId`, or `null` when
+	 * rolled across all shows). The new spawn is prepended to the store and
+	 * returned.
+	 */
+	async claimRandom(
+		userId: string,
+		characterIds: string[],
+		showId: number | null
+	): Promise<CharacterSpawn> {
+		if (characterIds.length === 0) {
+			throw new Error('There are no claimable characters to roll from.');
+		}
+		const characterId = characterIds[Math.floor(Math.random() * characterIds.length)];
+
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase
+			.from('character_spawns')
+			.insert({ user_id: userId, character_id: characterId, show_id: showId })
+			.select('id, user_id, character_id, show_id, created_at')
+			.single();
+		if (error) throw error;
+
+		const spawn = spawnAdapter.fromRow(data as CharacterSpawnRow);
+		this.spawnsStore.update((current) => [spawn, ...current]);
+		return spawn;
+	}
+}
+
+export const spawnService = new SpawnService();
