@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onDestroy, onMount } from 'svelte';
+	import Icon from '$components/core/Icon.svelte';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
 	import type {
 		BoardCharacter,
@@ -51,6 +52,10 @@
 	};
 
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
+
+	// Hit points are a fixed pool for every character on the board (shown as a
+	// full HP_MAX/HP_MAX in the stats table); only ATK/DEF come from Supabase.
+	const HP_MAX = 3;
 
 	// The blue side is the player's active team; the red side (the CPU) is a 1:1
 	// copy of it. Both are driven entirely by the roster's active team — there is
@@ -427,11 +432,25 @@
 						{@render moveButtons(badge, combat, areaLocked)}
 					{/if}
 				</div>
-				<div class="flex items-center gap-2">
-					<span>{badge.name}</span>
-					<!-- The character's Supabase gameplay stat, mirroring the roster card. -->
-					<span class="badge badge-primary badge-sm" title="Character stat">💪 {badge.stat}</span>
-				</div>
+				<span>{badge.name}</span>
+				<!-- ATK and DEF are both the character's Supabase spawn stat; HP is a
+				     fixed HP_MAX/HP_MAX pool shared by every character. -->
+				<table class="table table-xs w-auto text-center">
+					<thead>
+						<tr>
+							<th class="px-2">ATK</th>
+							<th class="px-2">DEF</th>
+							<th class="px-2">HP</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td class="px-2 font-semibold">{badge.stat}</td>
+							<td class="px-2 font-semibold">{badge.stat}</td>
+							<td class="px-2 font-semibold">{HP_MAX}/{HP_MAX}</td>
+						</tr>
+					</tbody>
+				</table>
 			</div>
 		{/each}
 	</div>
