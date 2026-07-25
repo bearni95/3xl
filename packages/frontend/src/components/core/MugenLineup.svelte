@@ -2,10 +2,14 @@
 	import classNames from 'classnames';
 	import { onDestroy, onMount } from 'svelte';
 	import type { MugenLineup } from '$utils/mugen/mugen-lineup';
+	import { SPAWN_COLOR_HEX } from '$utils/spawn/color';
+	import type { SpawnColor } from '$types/character-spawn.type';
 
 	// One frame folder per slot (null = empty slot), rendered side by side on a
-	// single canvas at a shared scale so proportions stay true.
+	// single canvas, each height-normalised like the board and mirrored.
 	export let basePaths: (string | null)[] = [];
+	// Per-slot spawn colour (aligned with basePaths); paints that slot's backdrop.
+	export let colors: (SpawnColor | null)[] = [];
 	export let cellWidth: number = 96;
 	export let cellHeight: number = 128;
 	export let gap: number = 8;
@@ -18,7 +22,8 @@
 
 	async function build(): Promise<void> {
 		const { MugenLineup } = await import('$utils/mugen/mugen-lineup');
-		lineup = new MugenLineup({ basePaths, cellWidth, cellHeight, gap });
+		const cellColors = colors.map((color) => (color ? SPAWN_COLOR_HEX[color] : null));
+		lineup = new MugenLineup({ basePaths, cellColors, cellWidth, cellHeight, gap });
 		await lineup.start(host);
 	}
 

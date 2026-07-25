@@ -1,4 +1,4 @@
-import { Application, Assets, Sprite, Texture } from 'pixi.js';
+import { Application, Assets, Graphics, Sprite, Texture } from 'pixi.js';
 import type { Manifest } from './mugen-player';
 
 /** One loaded idle frame with its pre-computed anchor fractions and source size. */
@@ -36,6 +36,11 @@ export interface MugenLineupOptions {
 	cellHeight?: number;
 	/** Horizontal gap between slots. */
 	gap?: number;
+	/**
+	 * Per-slot backdrop colour (24-bit RGB hex), aligned with `basePaths`; null
+	 * paints no backdrop for that slot. Typically each character's spawn colour.
+	 */
+	cellColors?: (number | null)[];
 	backgroundColor?: number;
 	/** Canvas background alpha; 0 lets the DOM backdrop show through. */
 	backgroundAlpha?: number;
@@ -46,16 +51,18 @@ const DEFAULTS: Required<MugenLineupOptions> = {
 	cellWidth: 96,
 	cellHeight: 128,
 	gap: 8,
+	cellColors: [],
 	backgroundColor: 0x000000,
 	backgroundAlpha: 0
 };
 
 /**
  * Renders several MUGEN characters' idle animations side by side on a *single*
- * PixiJS canvas, all at one shared scale so their relative proportions read
- * true (a tall fighter looms over a short one) and each stands on a common
- * baseline. Unlike {@link MugenPlayer} there is no ground line, no input and no
- * movement — it is a passive lineup, e.g. a team preview.
+ * PixiJS canvas. Each character is height-normalised the way the board sizes its
+ * actors (so they all read at the same on-screen height), mirrored horizontally,
+ * and stood on a common baseline over an optional per-slot colour backdrop.
+ * Unlike {@link MugenPlayer} there is no ground line, no input and no movement —
+ * it is a passive lineup, e.g. a team preview.
  *
  * All rendering state lives here so the Svelte component stays UI-only.
  */
@@ -86,6 +93,16 @@ export class MugenLineup {
 		this.app = app;
 		container.appendChild(app.canvas);
 
+		// Paint each slot's spawn-colour backdrop first, so the sprites sit on top.
+		const { cellColors } = this.options;
+		basePaths.forEach((_basePath, index) => {
+			const color = cellColors[index];
+			if (color == null) return;
+			const cellX = index * (cellWidth + gap);
+			const backdrop = new Graphics().rect(cellX, 0, cellWidth, cellHeight).fill(color);
+			app.stage.addChild(backdrop);
+		});
+
 		// Load every slot's idle frames (empty slots stay null).
 		const framesPerSlot = await Promise.all(
 			basePaths.map((basePath) => (basePath ? this.loadIdle(basePath) : Promise.resolve(null)))
@@ -110,7 +127,8 @@ export class MugenLineup {
 			const fitScale = Math.min(heightScale, widthScale);
 
 			const sprite = new Sprite();
-			sprite.scale.set(fitScale);
+			// Negative x-scale mirrors the sprite horizontally around its body axis.
+			sprite.scale.set(-fitScale, fitScale);
 			sprite.x = centerX;
 			sprite.y = baselineY;
 			app.stage.addChild(sprite);

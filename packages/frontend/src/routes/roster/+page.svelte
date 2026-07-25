@@ -108,15 +108,18 @@
 		return new Date(createdAt).toLocaleString();
 	}
 
-	// Distinct characters the player has claimed, offered as team picks.
+	// Distinct characters the player has claimed, offered as team picks. Spawns
+	// arrive newest-first; reversing before de-duping lets the newest spawn's
+	// rolled colour win (the same character can be claimed in several colours).
 	$: teamOptions = Array.from(
 		new Map(
-			$spawns.map((spawn) => [
+			[...$spawns].reverse().map((spawn) => [
 				spawn.characterId,
 				{
 					id: spawn.characterId,
 					label: labelFor(spawn.characterId),
-					basePath: basePathFor(spawn.characterId)
+					basePath: basePathFor(spawn.characterId),
+					color: spawn.color
 				}
 			])
 		).values()

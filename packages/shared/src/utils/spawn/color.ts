@@ -15,6 +15,20 @@ export const SPAWN_COLOR_WEIGHTS: ReadonlyArray<readonly [SpawnColor, number]> =
 	[SpawnColor.Purple, 1]
 ];
 
+/**
+ * Each spawn colour as a 24-bit RGB hex, matching the Tailwind swatches used in
+ * the DOM (red/blue/orange/green/purple 500, yellow 400) so a Pixi-painted
+ * backdrop reads the same colour as the badges elsewhere.
+ */
+export const SPAWN_COLOR_HEX: Record<SpawnColor, number> = {
+	[SpawnColor.Red]: 0xef4444,
+	[SpawnColor.Yellow]: 0xfacc15,
+	[SpawnColor.Blue]: 0x3b82f6,
+	[SpawnColor.Orange]: 0xf97316,
+	[SpawnColor.Green]: 0x22c55e,
+	[SpawnColor.Purple]: 0xa855f7
+};
+
 /** Pick a spawn colour at random, respecting {@link SPAWN_COLOR_WEIGHTS}. */
 export function randomSpawnColor(): SpawnColor {
 	const total = SPAWN_COLOR_WEIGHTS.reduce((sum, [, weight]) => sum + weight, 0);

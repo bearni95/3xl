@@ -3,12 +3,18 @@
 	import { createEventDispatcher } from 'svelte';
 	import MugenLineup from '$components/core/MugenLineup.svelte';
 	import { TEAM_SIZE, type Team } from '$services/team.service';
+	import type { SpawnColor } from '$types/character-spawn.type';
 
 	// Presentational only — the parent owns the team service and applies changes.
 	export let teams: Team[] = [];
 	export let activeTeamId: string | null = null;
 	// Characters the player can pick from (deduplicated roster characters).
-	export let options: { id: string; label: string; basePath: string | null }[] = [];
+	export let options: {
+		id: string;
+		label: string;
+		basePath: string | null;
+		color?: SpawnColor | null;
+	}[] = [];
 
 	const dispatch = createEventDispatcher<{
 		create: void;
@@ -21,6 +27,7 @@
 
 	$: labelById = new Map(options.map((option) => [option.id, option.label]));
 	$: basePathById = new Map(options.map((option) => [option.id, option.basePath]));
+	$: colorById = new Map(options.map((option) => [option.id, option.color ?? null]));
 
 	function filledCount(team: Team): number {
 		return team.memberIds.filter((id): id is string => Boolean(id)).length;
@@ -86,14 +93,20 @@
 						{@const memberBasePaths = team.memberIds.map((id) =>
 							id ? (basePathById.get(id) ?? null) : null
 						)}
+						{@const memberColors = team.memberIds.map((id) =>
+							id ? (colorById.get(id) ?? null) : null
+						)}
 						<div class="mt-3 flex flex-col gap-3">
-							<!-- All three picks' idle animations on a single canvas, at one
-							     shared scale so their proportions read true. -->
-							<figure
-								class="flex h-28 items-center justify-center overflow-hidden rounded bg-base-300"
-							>
+							<!-- All three picks' idle animations on a single canvas, each
+							     height-normalised like the board, mirrored, over its spawn colour. -->
+							<figure class="flex h-28 items-center justify-center overflow-hidden rounded bg-base-300">
 								{#key memberBasePaths.join(',')}
-									<MugenLineup basePaths={memberBasePaths} cellWidth={80} cellHeight={112} />
+									<MugenLineup
+										basePaths={memberBasePaths}
+										colors={memberColors}
+										cellWidth={80}
+										cellHeight={112}
+									/>
 								{/key}
 							</figure>
 
