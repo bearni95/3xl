@@ -6,10 +6,12 @@
 	import CharacterDefinitionEditor from '$components/core/CharacterDefinitionEditor.svelte';
 	import CharacterStatsEditor from '$components/core/CharacterStatsEditor.svelte';
 	import MugenImportedMoves from '$components/core/MugenImportedMoves.svelte';
+	import CharacterTemplateSync from '$components/core/CharacterTemplateSync.svelte';
 	import { characters, defaultCharacterId } from '@3xl/data';
 	import type { CharacterOption } from '@3xl/data';
 	import type { CharacterDefinition } from '$types/character-definition.type';
 	import type { MugenImportedMoveset } from '$types/mugen-move.type';
+	import type { CharacterTemplateStatus } from '$types/character-template.type';
 
 	// The character read/write API is served by @3xl/backend (default :2002).
 	// Static assets (/data, manifests) stay same-origin, served by this app's vite.
@@ -17,6 +19,10 @@
 
 	let selectedId = defaultCharacterId;
 	let activeTab: 'definition' | 'stats' | 'frames' | 'imported' = 'definition';
+
+	// Per-character Supabase sync status, published by CharacterTemplateSync once
+	// the remote templates load; drives the badge on each grid card.
+	let syncStatusById = new Map<string, CharacterTemplateStatus>();
 
 	$: selected = characters.find((character) => character.id === selectedId) ?? characters[0];
 
@@ -96,6 +102,8 @@
 			<a class="link link-primary text-sm" href="/">← Back to stage</a>
 		</header>
 
+		<CharacterTemplateSync on:statuschange={(event) => (syncStatusById = event.detail)} />
+
 		<div
 			class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
 		>
@@ -103,6 +111,7 @@
 				<CharacterGridCard
 					{character}
 					selected={character.id === selectedId}
+					syncStatus={syncStatusById.get(character.id)}
 					on:select={(event) => (selectedId = event.detail.id)}
 				/>
 			{/each}
