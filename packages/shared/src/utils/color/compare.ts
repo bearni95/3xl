@@ -1,11 +1,11 @@
 /**
  * Color combat table. Pure functions — no side effects.
  *
- * Every throw lands. An attacker throwing color A at a defender of color B
- * deals a fixed multiplier of strikes, read straight from the table below
- * (rows = attacking color, columns = defending color). That multiplier IS the
- * number of strikes the defender takes; across a duel's two exchanges whoever
- * took fewer strikes is the stronger fighter.
+ * Every throw lands. An attacker throwing color A at a defender of color B gets
+ * a fixed damage multiplier, read straight from the table below (rows = attacking
+ * color, columns = defending color). The combat controller multiplies an attack's
+ * raw hits by this value (rounded) to get the HP of damage dealt; across a duel's
+ * two exchanges whoever took less damage is the stronger fighter.
  *
  * The table encodes three tiers — x2 (dominant), x1 (even), x0.5 (weak):
  *   · same primary → x2; same compound → x0.5
@@ -42,8 +42,8 @@ export function isPrimaryColor(color: CombatColor): color is PrimaryColor {
 }
 
 /**
- * Strikes an attacker's throw inflicts on a defender: the multiplier from
- * {@link STRIKE_MULTIPLIERS} (0.5, 1 or 2). Every throw lands — the value is
+ * Damage multiplier an attacker's throw applies against a defender: the value
+ * from {@link STRIKE_MULTIPLIERS} (0.5, 1 or 2). Every throw lands — the value is
  * only how hard.
  */
 export function strikeMultiplier(attacker: CombatColor, defender: CombatColor): number {

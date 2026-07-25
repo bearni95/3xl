@@ -56,9 +56,6 @@
 
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
 
-	// Hit points are a fixed pool for every character on the board (shown as a
-	// full HP_MAX/HP_MAX in the stats table); only ATK/DEF come from Supabase.
-	const HP_MAX = 3;
 
 	// The blue side is the player's active team; the red side (the CPU) is a 1:1
 	// copy of it. Both are driven entirely by the roster's active team — there is
@@ -339,10 +336,10 @@
 			side: badge.side,
 			color: badge.color,
 			moves: badge.moves,
-			// Combat attributes: ATK is the spawn stat, DEF its complement, HP a fixed pool.
+			// Combat attributes: ATK is the spawn stat, DEF its complement. HP is rolled
+			// from ATK at battle start inside the controller, not supplied here.
 			atk: badge.stat,
-			def: SPAWN_STAT_MAX - badge.stat,
-			maxHp: HP_MAX
+			def: SPAWN_STAT_MAX - badge.stat
 		}));
 		unsubscribe?.();
 		controller = new CombatController(seeds);
@@ -441,7 +438,8 @@
 				</div>
 				<span>{badge.name}</span>
 				<!-- ATK is the character's Supabase spawn stat; DEF is its complement
-				     (SPAWN_STAT_MAX - ATK); HP starts at HP_MAX and drains live in combat. -->
+				     (SPAWN_STAT_MAX - ATK); HP is rolled from ATK at battle start and
+				     drains live as combat plays out. -->
 				<table class="table table-xs w-auto text-center">
 					<thead>
 						<tr>
@@ -459,7 +457,7 @@
 									'text-error': combat?.defeated
 								})}
 							>
-								{combat?.hp ?? HP_MAX}/{HP_MAX}
+								{combat ? `${combat.hp}/${combat.maxHp}` : '—'}
 							</td>
 						</tr>
 					</tbody>

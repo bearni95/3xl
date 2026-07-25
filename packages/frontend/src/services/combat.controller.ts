@@ -4,22 +4,21 @@
  * and forwards user intent (color clicks); all sequencing, dice and damage live
  * here.
  *
- * Every character carries three combat attributes seeded from its Supabase spawn:
- * ATK (how many d10 it rolls per attack), DEF (the d10 threshold an attacker must
- * meet to hit it) and HP (a small pool carried across the whole game). Each round
- * the player still picks a color per (blue / `info`) fighter and the rivals (red /
- * `error`) pre-roll one, then the pairs duel one at a time — player i vs rival i
- * by selection order. (Colour matching no longer influences damage — that
- * calculation is on hold and reworks later — but the pick still drives the aura,
- * slash and animation colour.)
+ * Every character carries combat attributes seeded from its Supabase spawn: ATK
+ * (how many d10 it rolls per attack) and DEF (the d10 threshold an attacker must
+ * meet to hit it). At battle start each fighter also rolls its HP pool — ATK d6
+ * summed — carried across the whole game. Each round the player picks a color per
+ * (blue / `info`) fighter and the rivals (red / `error`) pre-roll one, then the
+ * pairs duel one at a time — player i vs rival i by selection order.
  *
  * Each duel is one encounter on a purple meeting cell: one fighter attacks, then
  * the other answers back. An attack rolls ATK d10 and every die at or above the
- * defender's DEF is a hit; each hit costs the defender one HP. A fighter reduced
- * to 0 HP is knocked out — it walks back to its origin cell at half opacity and
- * takes no further part in any round. Barring a knockout, whoever took fewer hits
- * this encounter claims the duel cell (a tie keeps the status quo); the encounter
- * tally then resets while HP persists.
+ * defender's DEF is a hit; the thrown colour vs the defender's colour then scales
+ * those hits (the strike table's ×0.5 / ×1 / ×2, rounded) into the HP of damage
+ * dealt. A fighter reduced to 0 HP is knocked out — it walks back to its origin
+ * cell at half opacity and takes no further part in any round. Barring a knockout,
+ * whoever took less damage this encounter claims the duel cell (a tie keeps the
+ * status quo); the encounter tally then resets while HP persists.
  *
  * Rounds repeat: after a round the selections reset and control returns to
  * selection. The game ends when one side is wiped out (all its fighters knocked
@@ -39,8 +38,8 @@ import {
 	type CharacterMove,
 	type CombatColor
 } from '$types/character-definition.type';
-import { throwableColors } from '$utils/color/compare';
-import { resolveAttack, rollDie } from '$utils/dice/roll';
+import { strikeMultiplier, throwableColors } from '$utils/color/compare';
+import { resolveAttack, rollDice, rollDie } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
 export type FighterSide = 'error' | 'info';
@@ -80,14 +79,15 @@ export interface FighterSeed {
 	/** Defence rating — the d10 threshold an attacker's die must meet to hit this
 	 * fighter (derived as SPAWN_STAT_MAX − atk). */
 	def: number;
-	/** Starting (and maximum) hit points. Every hit taken costs one HP. */
-	maxHp: number;
 }
 
 export interface Fighter extends FighterSeed {
-	/** Strikes (hits) taken in the current encounter; resets to 0 when the duel ends.
+	/** Damage taken in the current encounter; resets to 0 when the duel ends.
 	 * Only decides who claims the duel cell — persistent damage is tracked by {@link hp}. */
 	strikes: number;
+	/** Hit points this fighter starts (and tops out) at, rolled once at battle
+	 * start as {@link atk} d6 summed. */
+	maxHp: number;
 	/** Current hit points, carried across the whole game. At 0 the fighter is
 	 * {@link defeated}. */
 	hp: number;
@@ -145,15 +145,21 @@ export class CombatController {
 	readonly subscribe = this.store.subscribe;
 
 	constructor(seed: FighterSeed[]) {
-		this.fighters = seed.map((entry) => ({
-			...entry,
-			strikes: 0,
-			hp: entry.maxHp,
-			defeated: false,
-			disabled: false,
-			moveColor: null,
-			actionIndex: null
-		}));
+		this.fighters = seed.map((entry) => {
+			// HP is rolled at battle start: one d6 per point of ATK, summed. A stronger
+			// attacker is thus also tougher, and every fighter's pool differs each game.
+			const maxHp = rollDice(entry.atk, 6);
+			return {
+				...entry,
+				strikes: 0,
+				maxHp,
+				hp: maxHp,
+				defeated: false,
+				disabled: false,
+				moveColor: null,
+				actionIndex: null
+			};
+		});
 		this.rollRivalDefaults();
 		this.emit();
 	}
@@ -451,6 +457,11 @@ export class CombatController {
 	private async strike(attacker: Fighter, defender: Fighter): Promise<void> {
 		const thrown = attacker.moveColor ?? attacker.color;
 		const { hits } = resolveAttack(attacker.atk, defender.def);
+		// The colour pairing scales the raw hits into damage: the strike table maps
+		// the thrown colour against the defender's colour to ×0.5 / ×1 / ×2, and the
+		// product is rounded to whole HP of damage.
+		const multiplier = strikeMultiplier(thrown, defender.color);
+		const damage = Math.round(hits * multiplier);
 
 		// Attacker and defender are always distinct actors, so the move, the flinch
 		// and the slash landing on the defender all play together — the slash is
@@ -461,14 +472,14 @@ export class CombatController {
 			this.board?.showSlash(defender.id, thrown)
 		]);
 
-		// Each hit both dents the defender's persistent HP and counts toward this
-		// encounter's strike tally (which decides who claims the duel cell).
-		defender.strikes += hits;
-		defender.hp = Math.max(0, defender.hp - hits);
-		// Float the hit count above the attacker, coloured in the thrown colour.
-		this.board?.showStrikeLabel(attacker.id, hits, thrown);
+		// Damage both dents the defender's persistent HP and counts toward this
+		// encounter's tally (which decides who claims the duel cell).
+		defender.strikes += damage;
+		defender.hp = Math.max(0, defender.hp - damage);
+		// Float the damage dealt above the attacker, coloured in the thrown colour.
+		this.board?.showStrikeLabel(attacker.id, damage, thrown);
 		// setStatus emits, so the cards' live HP updates the moment a hit lands.
-		this.setStatus(this.strikeLine(attacker, defender, hits));
+		this.setStatus(this.strikeLine(attacker, defender, hits, multiplier, damage));
 
 		// At 0 HP the defender is knocked out: home it goes, dimmed and done.
 		if (defender.hp === 0 && !defender.defeated) {
@@ -489,12 +500,19 @@ export class CombatController {
 		await this.board?.knockOut(fighter.id);
 	}
 
-	/** One status line summarising an attack roll and the hits it landed. */
-	private strikeLine(attacker: Fighter, defender: Fighter, hits: number): string {
+	/** One status line summarising an attack roll, the colour multiplier and the
+	 * damage it dealt. */
+	private strikeLine(
+		attacker: Fighter,
+		defender: Fighter,
+		hits: number,
+		multiplier: number,
+		damage: number
+	): string {
 		const roll = `${attacker.name} rolls ${attacker.atk}d10 vs ${defender.name}'s DEF ${defender.def}`;
 		if (hits === 0) return `${roll} — no hits.`;
 		const hit = hits === 1 ? '1 hit' : `${hits} hits`;
-		return `${roll} — ${hit}, ${defender.name} down to ${defender.hp} HP.`;
+		return `${roll} — ${hit} ×${multiplier} = ${damage} dmg, ${defender.name} down to ${defender.hp} HP.`;
 	}
 
 	/** One status line summarising how the encounter resolved. */
