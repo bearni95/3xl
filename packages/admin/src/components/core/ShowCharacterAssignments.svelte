@@ -90,6 +90,23 @@
 	// Ordered show list for the picker, plus a lookup for names/counts.
 	$: sortedShows = [...shows].sort((a, b) => a.show.name.localeCompare(b.show.name));
 	$: selectedShow = shows.find((entry) => entry.show.id === selectedShowId) ?? null;
+	// A character belongs to at most one show: map each character already assigned
+	// to a *different* show to that show's id, so its checkbox can be locked here.
+	$: showNameById = new Map(shows.map((entry) => [entry.show.id, entry.show.name]));
+	$: assignedElsewhere = buildAssignedElsewhere(assignments, selectedShowId);
+
+	function buildAssignedElsewhere(
+		map: ShowCharacterAssignments,
+		currentShowId: number | null
+	): Map<string, number> {
+		const result = new Map<string, number>();
+		for (const [showId, characterIds] of Object.entries(map)) {
+			const numericShowId = Number(showId);
+			if (numericShowId === currentShowId) continue;
+			for (const characterId of characterIds) result.set(characterId, numericShowId);
+		}
+		return result;
+	}
 	// The draft diverged from what's stored, so a save would actually change things.
 	$: dirty =
 		selectedShowId !== null &&
@@ -157,17 +174,31 @@
 
 						<div class="grid max-h-72 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
 							{#each characters as character (character.id)}
+								{@const takenBy = assignedElsewhere.get(character.id)}
 								<label
-									class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded px-2 py-1"
+									class={classNames('flex items-center gap-2 rounded px-2 py-1', {
+										'hover:bg-base-200 cursor-pointer': takenBy === undefined,
+										'cursor-not-allowed opacity-50': takenBy !== undefined
+									})}
+									title={takenBy !== undefined
+										? `Already assigned to ${showNameById.get(takenBy) ?? takenBy}`
+										: undefined}
 								>
 									<input
 										type="checkbox"
 										class="checkbox checkbox-sm"
 										checked={draft.has(character.id)}
+										disabled={takenBy !== undefined}
 										on:change={() => toggleCharacter(character.id)}
 									/>
 									<span class="truncate">{character.label}</span>
-									<span class="text-base-content/40 ml-auto font-mono text-xs">{character.id}</span>
+									{#if takenBy !== undefined}
+										<span class="badge badge-ghost badge-sm ml-auto shrink-0" title={`Assigned to ${showNameById.get(takenBy) ?? takenBy}`}>
+											{showNameById.get(takenBy) ?? takenBy}
+										</span>
+									{:else}
+										<span class="text-base-content/40 ml-auto font-mono text-xs">{character.id}</span>
+									{/if}
 								</label>
 							{/each}
 						</div>
