@@ -28,7 +28,7 @@
 	import { spawnService } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE, type Team } from '$services/team.service';
 	import { AuthStatus } from '$types/profile.type';
-	import type { CharacterSpawn } from '$types/character-spawn.type';
+	import { DEFAULT_SPAWN_STAT, type CharacterSpawn } from '$types/character-spawn.type';
 
 	// Filled button styling per combat color (the player's clickable buttons).
 	const colorFill: Record<CombatColor, string> = {
@@ -87,6 +87,16 @@
 		const map = new Map<string, CombatColor>();
 		for (const spawn of $spawns as CharacterSpawn[]) {
 			if (!map.has(spawn.characterId)) map.set(spawn.characterId, spawn.color as CombatColor);
+		}
+		return map;
+	})();
+
+	// character id → the Supabase spawn gameplay stat (1..10) to fight with. As with
+	// the colour, when a character was claimed more than once the newest spawn wins.
+	$: statByCharacter = (() => {
+		const map = new Map<string, number>();
+		for (const spawn of $spawns as CharacterSpawn[]) {
+			if (!map.has(spawn.characterId)) map.set(spawn.characterId, spawn.stat);
 		}
 		return map;
 	})();
@@ -184,6 +194,8 @@
 		moves: CharacterMove[];
 		/** The character's combat color — its Supabase spawn colour. */
 		color: CombatColor;
+		/** The character's Supabase spawn gameplay stat (1..10). */
+		stat: number;
 		/**
 		 * Board depth of the character's cell (`r + q/2`). Larger = further into the
 		 * board = higher on screen; used to stack the cards to match the grid.
@@ -294,13 +306,17 @@
 					(COMPOUND_COLORS.includes(definition.color!) ? definition.color! : DEFAULT_COLOR);
 				// Face: the portrait the definition picked in /admin/characters, else
 				// the manifest's default. Both resolve to a file under the char's frames.
+				// Gameplay stat comes from the character's Supabase spawn; characters
+				// with no spawn stat read as the default (like legacy spawns).
+				const stat: number = statByCharacter.get(characterId) ?? DEFAULT_SPAWN_STAT;
 				const faceFile = definition.face || manifest.face?.file || null;
 				return {
 					...entry,
 					name: manifest.name,
 					face: faceFile ? `${entry.basePath}/${faceFile}` : null,
 					moves: definition.moves ?? [],
-					color
+					color,
+					stat
 				};
 			})
 		);
@@ -326,12 +342,14 @@
 
 	onDestroy(() => unsubscribe?.());
 
-	// (Re)build the fight whenever the playable line-up or its colours change. The
-	// key folds in each slot's character id and its resolved spawn colour, so the
-	// controller is rebuilt only on a real change — not on every unrelated tick.
+	// (Re)build the fight whenever the playable line-up, its colours, or its stats
+	// change. The key folds in each slot's character id and its resolved spawn
+	// colour and stat, so the controller is rebuilt only on a real change — not on
+	// every unrelated tick.
 	$: fightKey =
 		playable && spawnsLoaded
-			? `${slots.join(',')}|${slots.map((id) => colorByCharacter.get(id) ?? '').join(',')}`
+			? `${slots.join(',')}|${slots.map((id) => colorByCharacter.get(id) ?? '').join(',')}` +
+				`|${slots.map((id) => statByCharacter.get(id) ?? '').join(',')}`
 			: '';
 	let lastFightKey = '';
 	$: if (fightKey && fightKey !== lastFightKey) {
@@ -409,7 +427,11 @@
 						{@render moveButtons(badge, combat, areaLocked)}
 					{/if}
 				</div>
-				<span>{badge.name}</span>
+				<div class="flex items-center gap-2">
+					<span>{badge.name}</span>
+					<!-- The character's Supabase gameplay stat, mirroring the roster card. -->
+					<span class="badge badge-primary badge-sm" title="Character stat">💪 {badge.stat}</span>
+				</div>
 			</div>
 		{/each}
 	</div>
