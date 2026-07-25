@@ -154,19 +154,38 @@
 	}
 
 	// --- Full-size preview modal ----------------------------------------------
-	// Image opened in the full-size modal, or null when the modal is closed.
-	let previewImage: (DisplayTMDBImage & { showName: string }) | null = null;
+	// The grid the modal was opened from, so it can page left/right across it.
+	// Empty list means the modal is closed.
+	let previewList: DisplayTMDBImage[] = [];
+	let previewIndex = 0;
+	let previewShowName = '';
+	$: previewImage = previewList[previewIndex] ?? null;
 
-	function openPreview(image: DisplayTMDBImage, showName: string) {
-		previewImage = { ...image, showName };
+	function openPreview(
+		detail: { images: DisplayTMDBImage[]; image: DisplayTMDBImage },
+		showName: string
+	) {
+		const index = detail.images.findIndex((img) => img.filePath === detail.image.filePath);
+		previewList = detail.images;
+		previewIndex = index < 0 ? 0 : index;
+		previewShowName = showName;
 	}
 
 	function closePreview() {
-		previewImage = null;
+		previewList = [];
+	}
+
+	// Wrap around at both ends so paging never dead-ends.
+	function stepPreview(delta: number) {
+		if (previewList.length === 0) return;
+		previewIndex = (previewIndex + delta + previewList.length) % previewList.length;
 	}
 
 	function handleModalKeydown(event: KeyboardEvent) {
+		if (previewList.length === 0) return;
 		if (event.key === 'Escape') closePreview();
+		else if (event.key === 'ArrowLeft') stepPreview(-1);
+		else if (event.key === 'ArrowRight') stepPreview(1);
 	}
 </script>
 
@@ -399,18 +418,21 @@
 		class="modal modal-open"
 		role="dialog"
 		aria-modal="true"
-		aria-label={`${previewImage.kind} for ${previewImage.showName}`}
+		aria-label={`${previewImage.kind} for ${previewShowName}`}
 	>
 		<div class="modal-box flex max-h-[90vh] max-w-4xl flex-col gap-3 p-4">
 			<div class="flex items-start justify-between gap-3">
 				<div class="min-w-0">
-					<h3 class="truncate font-semibold" title={previewImage.showName}>
-						{previewImage.showName}
+					<h3 class="truncate font-semibold" title={previewShowName}>
+						{previewShowName}
 					</h3>
 					<p class="text-base-content/60 text-xs">
 						{previewImage.kind} · {previewImage.width}×{previewImage.height}{previewImage.language
 							? ` · ${previewImage.language}`
 							: ''}
+						{#if previewList.length > 1}
+							<span class="text-base-content/40"> · {previewIndex + 1} / {previewList.length}</span>
+						{/if}
 					</p>
 				</div>
 				<button
@@ -423,13 +445,31 @@
 				</button>
 			</div>
 			<div
-				class="bg-base-200 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded"
+				class="bg-base-200 relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded"
 			>
 				<img
 					class="max-h-[70vh] w-auto max-w-full object-contain"
 					src={previewImage.fullUrl}
-					alt={`${previewImage.kind} for ${previewImage.showName}`}
+					alt={`${previewImage.kind} for ${previewShowName}`}
 				/>
+				{#if previewList.length > 1}
+					<button
+						type="button"
+						class="btn btn-circle btn-sm absolute left-2 top-1/2 -translate-y-1/2"
+						on:click={() => stepPreview(-1)}
+						aria-label="Previous image"
+					>
+						❮
+					</button>
+					<button
+						type="button"
+						class="btn btn-circle btn-sm absolute right-2 top-1/2 -translate-y-1/2"
+						on:click={() => stepPreview(1)}
+						aria-label="Next image"
+					>
+						❯
+					</button>
+				{/if}
 			</div>
 		</div>
 		<button

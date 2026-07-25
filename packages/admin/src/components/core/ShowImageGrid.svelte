@@ -12,7 +12,13 @@
 	export let images: DisplayTMDBTvImages;
 	export let showName: string;
 
-	const dispatch = createEventDispatcher<{ preview: DisplayTMDBImage }>();
+	// The grid renders the groups top-to-bottom; navigation in the preview modal
+	// follows that same visual order, so hand it this flattened list.
+	$: orderedImages = imageGroups.flatMap((group) => images[group.key]);
+
+	const dispatch = createEventDispatcher<{
+		preview: { images: DisplayTMDBImage[]; image: DisplayTMDBImage };
+	}>();
 </script>
 
 {#if images.all.length === 0}
@@ -34,7 +40,7 @@
 							<button
 								type="button"
 								class="bg-base-200 hover:ring-primary flex h-24 cursor-pointer items-center justify-center overflow-hidden rounded transition hover:ring-2"
-								on:click={() => dispatch('preview', image)}
+								on:click={() => dispatch('preview', { images: orderedImages, image })}
 								title={`${image.kind} · ${image.width}×${image.height}${image.language ? ` · ${image.language}` : ''}`}
 							>
 								<img
