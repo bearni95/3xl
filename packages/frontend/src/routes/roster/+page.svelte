@@ -125,6 +125,7 @@
 					showNames={showNamesFor(spawn.characterId)}
 					locationName={locationNameFor(spawn.locationId)}
 					claimedAt={claimedAtFor(spawn.createdAt)}
+					color={spawn.color}
 				/>
 			{/each}
 		</div>
