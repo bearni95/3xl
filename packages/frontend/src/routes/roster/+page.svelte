@@ -125,7 +125,8 @@
 						label: labelFor(spawn.characterId),
 						basePath: basePathFor(spawn.characterId),
 						color: spawn.color,
-						location: names?.get(spawn.locationId) ?? ULTRAMAR.municipality
+						location: names?.get(spawn.locationId) ?? ULTRAMAR.municipality,
+						shows: showNamesFor(spawn.characterId)
 					}
 				])
 			).values()

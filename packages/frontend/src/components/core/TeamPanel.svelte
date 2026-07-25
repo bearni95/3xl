@@ -3,7 +3,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import MugenLineup from '$components/core/MugenLineup.svelte';
 	import { TEAM_SIZE, type Team } from '$services/team.service';
-	import type { SpawnColor } from '$types/character-spawn.type';
+	import { SpawnColor } from '$types/character-spawn.type';
 	import type { CombatColor } from '$types/character-definition.type';
 	import { teammateColors } from '$utils/color/compare';
 
@@ -17,7 +17,18 @@
 		basePath: string | null;
 		color?: SpawnColor | null;
 		location?: string | null;
+		shows?: string[];
 	}[] = [];
+
+	// Literal Tailwind classes so the swatch colours survive the v4 content scan.
+	const swatchClasses: Record<SpawnColor, string> = {
+		[SpawnColor.Red]: 'bg-red-500',
+		[SpawnColor.Yellow]: 'bg-yellow-400',
+		[SpawnColor.Blue]: 'bg-blue-500',
+		[SpawnColor.Orange]: 'bg-orange-500',
+		[SpawnColor.Green]: 'bg-green-500',
+		[SpawnColor.Purple]: 'bg-purple-500'
+	};
 
 	const dispatch = createEventDispatcher<{
 		create: void;
@@ -32,6 +43,7 @@
 	$: basePathById = new Map(options.map((option) => [option.id, option.basePath]));
 	$: colorById = new Map(options.map((option) => [option.id, option.color ?? null]));
 	$: locationById = new Map(options.map((option) => [option.id, option.location ?? null]));
+	$: showsById = new Map(options.map((option) => [option.id, option.shows ?? []]));
 
 	function filledCount(team: Team): number {
 		return team.memberIds.filter((id): id is string => Boolean(id)).length;
@@ -180,6 +192,45 @@
 									</div>
 								{/each}
 							</div>
+
+							<!-- Summary of the first selected pick (lead, or first filled slot):
+							     its rolled colour, the Supabase show(s) it belongs to, and the
+							     region it was originally claimed in. -->
+							{@const leadId = team.memberIds.find((id): id is string => Boolean(id)) ?? null}
+							{#if leadId}
+								{@const leadColor = colorById.get(leadId) ?? null}
+								{@const leadShows = showsById.get(leadId) ?? []}
+								{@const leadLocation = locationById.get(leadId) ?? null}
+								<div class="flex flex-col gap-2 rounded-box bg-base-200 p-3">
+									<div class="flex items-center gap-2">
+										<span class="w-16 shrink-0 text-[10px] font-medium uppercase opacity-50">Colour</span>
+										{#if leadColor}
+											<span
+												class={classNames('inline-block h-4 w-4 rounded-full', swatchClasses[leadColor])}
+												title={leadColor}
+											></span>
+											<span class="text-xs capitalize opacity-70">{leadColor}</span>
+										{:else}
+											<span class="text-xs opacity-40">—</span>
+										{/if}
+									</div>
+									<div class="flex items-start gap-2">
+										<span class="w-16 shrink-0 text-[10px] font-medium uppercase opacity-50">Show</span>
+										<div class="flex flex-wrap gap-1">
+											{#each leadShows as showName (showName)}
+												<span class="badge badge-ghost badge-sm">{showName}</span>
+											{/each}
+											{#if leadShows.length === 0}
+												<span class="badge badge-ghost badge-outline badge-sm opacity-60">No show</span>
+											{/if}
+										</div>
+									</div>
+									<div class="flex items-center gap-2">
+										<span class="w-16 shrink-0 text-[10px] font-medium uppercase opacity-50">Region</span>
+										<span class="badge badge-secondary badge-sm">📍 {leadLocation ?? 'Ultramar'}</span>
+									</div>
+								</div>
+							{/if}
 						</div>
 					{:else}
 						<div class="mt-2 flex flex-wrap items-center gap-1">
