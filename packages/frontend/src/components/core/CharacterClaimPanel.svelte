@@ -1,43 +1,20 @@
 <script lang="ts">
-	import classNames from 'classnames';
 	import { onMount } from 'svelte';
-	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { spawnService } from '$services/spawn.service';
-	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { errorMessage } from '$utils/error/error-message';
 	import { AuthStatus } from '$types/profile.type';
-	import { SpawnColor, type ClaimableShow } from '$types/character-spawn.type';
-	import { ULTRAMAR, ULTRAMAR_ID, type GeoRegion } from '$types/location.type';
-	import MugenStage from '$components/core/MugenStage.svelte';
+	import type { ClaimableShow } from '$types/character-spawn.type';
+	import type { GeoRegion } from '$types/location.type';
+	import type { ShowEntry, ShowsCollection } from '$types/show.type';
+	import ShowClaimCard from '$components/core/ShowClaimCard.svelte';
 
-	// The municipality the player has resolved from their browser location, plus the
-	// full feature collection so a stored spawn's location id can be labelled. Both
-	// come from the /claim page's "Claim your location" panel.
+	// The municipality the player has resolved from their browser location, from the
+	// /claim page's "Claim your location" panel.
 	export let region: GeoRegion | null = null;
-	export let municipalities: GeoJSON.FeatureCollection | null = null;
 
 	const status = authService.status;
 	const profile = authService.profile;
-	const spawns = spawnService.spawns;
-
-	// Spawns store only a character id; labels + sprites come from the local registry.
-	const charactersById = new Map(characters.map((character) => [character.id, character]));
-
-	// Static Tailwind classes per spawn colour — must be literal strings so they
-	// survive Tailwind's purge (a computed `bg-${color}-500` would be stripped).
-	const colorSwatch: Record<SpawnColor, string> = {
-		[SpawnColor.Red]: 'bg-red-500',
-		[SpawnColor.Yellow]: 'bg-yellow-400',
-		[SpawnColor.Blue]: 'bg-blue-500',
-		[SpawnColor.Orange]: 'bg-orange-500',
-		[SpawnColor.Green]: 'bg-green-500',
-		[SpawnColor.Purple]: 'bg-purple-500'
-	};
-
-	// The municipality a spawn was claimed in is stored as a geojson id; resolve it
-	// back to a place name the same way the location panel does.
-	$: municipalityNames = municipalities ? locationAdapter.municipalityNames(municipalities) : null;
 
 	// A location must be claimed before a character can be spawned.
 	$: locationId = region?.id ?? null;
@@ -45,33 +22,64 @@
 	let shows: ClaimableShow[] = [];
 	let loadingShows = false;
 	let showsError = '';
-	// Which show to roll from: a specific show id, or 'all' for the union of every show.
-	let selection: number | 'all' = 'all';
 
-	let claiming = false;
-	let claimError = '';
+	// Assigned main poster URL per show id, joined from shows.json (the admin picks
+	// each show's main poster there). Independent of auth, so loaded up front.
+	let posterByShowId = new Map<number, string>();
+
+	// The show currently being rolled (its card spins; the others lock out), plus
+	// per-show roll errors keyed by show id.
+	let claimingId: number | null = null;
+	let claimErrors: Record<number, string> = {};
 
 	// Guards the one-time load so the reactive block doesn't refire on every store tick.
 	let loadedForUser: string | null = null;
 
-	onMount(() => authService.init());
+	onMount(() => {
+		authService.init();
+		void loadPosters();
+	});
 
-	// Once a signed-in user is known, load the claimable shows and their spawns once.
+	// A saved show's assigned main poster URL, falling back to its default TMDB
+	// poster, then null (the card shows a placeholder).
+	function mainPosterUrl(entry: ShowEntry): string | null {
+		const filePath = entry.mainImages?.poster;
+		if (filePath) {
+			const image = entry.images.posters.find((candidate) => candidate.filePath === filePath);
+			if (image) return image.thumbnailUrl;
+		}
+		return entry.show.posterUrl ?? null;
+	}
+
+	// Load the saved-show collection (public JSON) to map each show to its poster.
+	async function loadPosters() {
+		try {
+			const res = await fetch('/data/shows.json');
+			if (!res.ok) return;
+			const data = (await res.json()) as ShowsCollection;
+			const map = new Map<number, string>();
+			for (const entry of data.shows) {
+				const url = mainPosterUrl(entry);
+				if (url) map.set(entry.show.id, url);
+			}
+			posterByShowId = map;
+		} catch {
+			// Posters are optional — cards fall back to a placeholder.
+		}
+	}
+
+	// Once a signed-in user is known, load the claimable shows once.
 	$: currentUserId = $status === AuthStatus.SignedIn && $profile ? String($profile.id) : null;
 	$: if (currentUserId && currentUserId !== loadedForUser) {
 		loadedForUser = currentUserId;
-		load(currentUserId);
+		load();
 	}
 
-	async function load(userId: string) {
+	async function load() {
 		loadingShows = true;
 		showsError = '';
 		try {
-			const [loadedShows] = await Promise.all([
-				spawnService.loadShows(),
-				spawnService.loadSpawns(userId)
-			]);
-			shows = loadedShows;
+			shows = await spawnService.loadShows();
 		} catch (error) {
 			showsError = errorMessage(error);
 		} finally {
@@ -79,40 +87,19 @@
 		}
 	}
 
-	// The character pool + show tag implied by the current selection.
-	$: allCharacterIds = [...new Set(shows.flatMap((show) => show.characterIds))];
-	$: selectedShow = selection === 'all' ? null : (shows.find((show) => show.id === selection) ?? null);
-	$: pool = selectedShow ? selectedShow.characterIds : allCharacterIds;
-	$: showTag = selectedShow ? selectedShow.id : null;
-
-	async function claim() {
-		if (!currentUserId || !locationId) return;
-		claiming = true;
-		claimError = '';
+	// Roll a random character from one show's assigned pool and persist it, tagged
+	// with that show. Only one roll runs at a time (the other cards lock out).
+	async function claimFromShow(show: ClaimableShow) {
+		if (!currentUserId || !locationId || claimingId !== null) return;
+		claimingId = show.id;
+		claimErrors = { ...claimErrors, [show.id]: '' };
 		try {
-			await spawnService.claimRandom(currentUserId, pool, showTag, locationId);
+			await spawnService.claimRandom(currentUserId, show.characterIds, show.id, locationId);
 		} catch (error) {
-			claimError = errorMessage(error);
+			claimErrors = { ...claimErrors, [show.id]: errorMessage(error) };
 		} finally {
-			claiming = false;
+			claimingId = null;
 		}
-	}
-
-	function labelFor(id: string): string {
-		return charactersById.get(id)?.label ?? id;
-	}
-	function basePathFor(id: string): string | null {
-		return charactersById.get(id)?.basePath ?? null;
-	}
-	function showNameFor(id: number | null): string {
-		if (id === null) return 'All shows';
-		return shows.find((show) => show.id === id)?.name ?? `Show ${id}`;
-	}
-	// Resolve a spawn's stored municipality id to its place name. Readings outside
-	// every mapped area are stored under the Ultramar sentinel.
-	function locationNameFor(id: string): string {
-		if (id === ULTRAMAR_ID) return ULTRAMAR.municipality;
-		return municipalityNames?.get(id) ?? id;
 	}
 </script>
 
@@ -150,79 +137,25 @@
 					<span>No shows with characters have been synced yet. Check back later.</span>
 				</div>
 			{:else}
-				<label class="form-control w-full">
-					<div class="label">
-						<span class="label-text">Show</span>
-					</div>
-					<select class="select select-bordered" bind:value={selection}>
-						<option value="all">All shows ({allCharacterIds.length})</option>
-						{#each shows as show (show.id)}
-							<option value={show.id}>{show.name} ({show.characterIds.length})</option>
-						{/each}
-					</select>
-				</label>
-
 				{#if !locationId}
 					<div class="alert alert-info text-sm">
 						<span>Claim your location above before spawning a character.</span>
 					</div>
 				{/if}
 
-				<button
-					class={classNames('btn btn-primary', {
-						'btn-disabled': claiming || pool.length === 0 || !locationId
-					})}
-					on:click={claim}
-				>
-					{#if claiming}
-						<span class="loading loading-spinner loading-sm"></span>
-						Spawning…
-					{:else}
-						Spawn random character
-					{/if}
-				</button>
-
-				{#if claimError}
-					<div class="alert alert-error text-sm"><span>{claimError}</span></div>
-				{/if}
-			{/if}
-
-			{#if $spawns.length > 0}
-				{@const latest = $spawns[0]}
-				{@const latestBasePath = basePathFor(latest.characterId)}
-				<div class="flex flex-col items-center gap-2 rounded-box bg-base-200 p-4">
-					<span class="text-xs uppercase tracking-wide opacity-60">Latest spawn</span>
-					{#if latestBasePath}
-						{#key latest.id}
-							<MugenStage basePath={latestBasePath} width={260} height={200} scale={1.6} />
-						{/key}
-					{/if}
-					<span class="text-lg font-bold">{labelFor(latest.characterId)}</span>
-					<div class="flex flex-wrap items-center justify-center gap-2">
-						<span class="badge badge-ghost gap-1">
-							<span class={classNames('inline-block h-2.5 w-2.5 rounded-full', colorSwatch[latest.color])}></span>
-							{latest.color}
-						</span>
-						<span class="badge badge-ghost">from {showNameFor(latest.showId)}</span>
-						<span class="badge badge-secondary">📍 {locationNameFor(latest.locationId)}</span>
-					</div>
-				</div>
-
-				<div class="flex flex-col gap-1">
-					<span class="text-xs uppercase tracking-wide opacity-60">
-						Your roster ({$spawns.length})
-					</span>
-					<div class="flex flex-col gap-1">
-						{#each $spawns as spawn (spawn.id)}
-							<div class="flex items-center justify-between gap-2 text-sm">
-								<span class="flex items-center gap-2">
-									<span class={classNames('inline-block h-2.5 w-2.5 rounded-full', colorSwatch[spawn.color])}></span>
-									<span class="badge badge-outline">{labelFor(spawn.characterId)}</span>
-								</span>
-								<span class="opacity-70">📍 {locationNameFor(spawn.locationId)}</span>
-							</div>
-						{/each}
-					</div>
+				<!-- One claim panel per show, keyed by its assigned main poster. Rolling
+				     a character draws only from that show's assigned pool. -->
+				<div class="grid grid-cols-2 gap-3">
+					{#each shows as show (show.id)}
+						<ShowClaimCard
+							{show}
+							posterUrl={posterByShowId.get(show.id) ?? null}
+							claiming={claimingId === show.id}
+							disabled={!locationId || claimingId !== null}
+							error={claimErrors[show.id] ?? ''}
+							on:claim={() => claimFromShow(show)}
+						/>
+					{/each}
 				</div>
 			{/if}
 		{/if}

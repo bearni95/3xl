@@ -113,5 +113,5 @@
 		</div>
 	</div>
 
-	<CharacterClaimPanel {region} {municipalities} />
+	<CharacterClaimPanel {region} />
 </div>
