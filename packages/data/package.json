@@ -16,7 +16,8 @@
 		"public"
 	],
 	"scripts": {
-		"generate:geo": "node --max-old-space-size=8192 generate-geo.js"
+		"generate:geo": "node --max-old-space-size=8192 generate-geo.js",
+		"generate:shows": "node generate-shows.js"
 	},
 	"devDependencies": {
 		"topojson-client": "^3.1.0",

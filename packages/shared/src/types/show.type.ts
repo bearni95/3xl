@@ -27,3 +27,34 @@ export interface ShowEntry {
 export interface ShowsCollection {
 	shows: ShowEntry[];
 }
+
+/**
+ * One municipality's baked show assignment, as written by @3xl/data's
+ * `generate:shows` into `public/municipality-shows.json`. The pick is a pure
+ * function of the municipality's GPS geometry (see the script), precomputed at
+ * build time so the frontend map reads the finished assignment from the server.
+ */
+export interface MunicipalityShow {
+	/** Municipality feature id, matching `properties.id` in the geo layers. */
+	id: string;
+	name: string;
+	comarca: string | null;
+	prov: string | null;
+	territory: string | null;
+	/** Barcelona and its immediate neighbours — the subset the map renders. */
+	neighbourOfCenter: boolean;
+	/** The assigned show, trimmed to what the map and sidebar need. */
+	show: {
+		id: number;
+		name: string;
+		posterUrl: string | null;
+	};
+}
+
+/** Shape of `public/municipality-shows.json` — the whole baked assignment. */
+export interface MunicipalityShowsCollection {
+	generatedAt: string;
+	/** The municipality whose neighbourhood is flagged for rendering. */
+	center: string;
+	assignments: MunicipalityShow[];
+}

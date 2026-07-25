@@ -4,12 +4,7 @@
 	import type { PathOptions } from 'leaflet';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import type { MapCircle, MapOverlay } from '$types/map.type';
-	import type { ShowEntry, ShowsCollection } from '$types/show.type';
-	import {
-		immediateNeighbourhood,
-		showForMunicipality,
-		showPosterUrl
-	} from '$utils/geo/municipality-show';
+	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
 	import { locationService, hasLocation } from '$services/location.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 
@@ -27,14 +22,19 @@
 	let error = '';
 	// The municipality polygons, used to resolve a reading to its feature id.
 	let municipalities: GeoJSON.FeatureCollection | null = null;
-	// The saved-show collection, seeded onto municipalities as their poster fill.
-	let shows: ShowEntry[] = [];
-	// The only municipalities that get a seeded poster: Barcelona and the towns
-	// bordering it. Computed once from the polygons in onMount, before the map
-	// renders (its `imageFill` closure reads this set during WorldMap's mount).
+	// The baked municipality→show assignment, keyed by municipality id. Built
+	// once from municipality-shows.json; every polygon's poster and every sidebar
+	// row read from it. The whole collection is fetched, but only the entries
+	// flagged `neighbourOfCenter` (Barcelona + its neighbours) are rendered.
+	let assignmentsById = new Map<string, MunicipalityShow>();
+	// The subset flagged for rendering: Barcelona and its immediate neighbours,
+	// listed in the right sidebar and the only towns painted with a poster.
+	let neighbourhood: MunicipalityShow[] = [];
+	// The ids in `neighbourhood`, so the overlay's `imageFill` closure (read once
+	// during WorldMap's mount) can decide which polygons get a poster.
 	let paintedIds = new Set<string>();
-	// Held until the shows fetch settles so the overlay's `imageFill` closure
-	// (read once, during WorldMap's mount) sees the loaded collection.
+	// Held until the fetches settle so the overlay's `imageFill` closure (read
+	// once, during WorldMap's mount) sees the loaded assignment.
 	let ready = false;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
@@ -48,22 +48,28 @@
 			: null;
 
 	onMount(async () => {
-		// Load the polygons (for highlight resolution) and the saved shows (for
-		// the seeded poster fill) in parallel; both are optional, so settle each
-		// independently and always flip `ready` so the map renders regardless.
+		// Load the polygons (for highlight resolution) and the baked show
+		// assignment (for the poster fill + sidebar) in parallel; both are
+		// optional, so settle each independently and always flip `ready` so the
+		// map renders regardless.
 		const [municipisResult, showsResult] = await Promise.allSettled([
 			fetch('/data/geo/municipis.json').then((response) => response.json()),
-			fetch('/data/shows.json').then((response) => response.json() as Promise<ShowsCollection>)
+			fetch('/data/municipality-shows.json').then(
+				(response) => response.json() as Promise<MunicipalityShowsCollection>
+			)
 		]);
 
 		if (municipisResult.status === 'fulfilled') {
 			// Highlight simply stays off if the polygons fail to load.
 			municipalities = municipisResult.value;
-			paintedIds = immediateNeighbourhood(municipisResult.value, 'Barcelona');
 		}
 		if (showsResult.status === 'fulfilled') {
-			// Municipalities fall back to their flat fill if the shows fail to load.
-			shows = showsResult.value.shows;
+			// Municipalities fall back to their flat fill if the assignment fails.
+			assignmentsById = new Map(
+				showsResult.value.assignments.map((assignment) => [assignment.id, assignment])
+			);
+			neighbourhood = showsResult.value.assignments.filter((a) => a.neighbourOfCenter);
+			paintedIds = new Set(neighbourhood.map((a) => a.id));
 		}
 		ready = true;
 	});
@@ -102,23 +108,22 @@
 			hoverStyle: { weight: 2, fillOpacity: 0.3 },
 			label: (feature) => {
 				const props = feature.properties ?? {};
-				const show = paintedIds.has(String(props.id))
-					? showForMunicipality(feature, shows)
-					: null;
-				return [props.name ?? 'Unknown', props.comarca, props.prov, props.territory, show?.show.name]
+				const assignment = assignmentsById.get(String(props.id));
+				const show = paintedIds.has(String(props.id)) ? assignment?.show.name : null;
+				return [props.name ?? 'Unknown', props.comarca, props.prov, props.territory, show]
 					.filter(Boolean)
 					.join(', ');
 			},
 			// Paint Barcelona and its immediate neighbours with the poster of the
-			// show seeded from each one's GPS coordinates; every other municipality
-			// keeps its flat fill. WorldMap groups features by the URL returned
-			// here, so any of these towns that land on the same show share one
-			// poster spanning their combined shape, with each polygon's border
-			// drawn over it — adjacent same-show cells merge into a single picture.
+			// show baked onto each one; every other municipality keeps its flat
+			// fill. WorldMap groups features by the URL returned here, so any of
+			// these towns that land on the same show share one poster spanning
+			// their combined shape, with each polygon's border drawn over it —
+			// adjacent same-show cells merge into a single picture.
 			imageFill: (feature) => {
-				if (!paintedIds.has(String(feature.properties?.id))) return null;
-				const show = showForMunicipality(feature, shows);
-				return show ? showPosterUrl(show) : null;
+				const id = String(feature.properties?.id);
+				if (!paintedIds.has(id)) return null;
+				return assignmentsById.get(id)?.show.posterUrl ?? null;
 			}
 		},
 		{
@@ -159,44 +164,95 @@
 			label: 'Portal'
 		}
 	];
+
+	// Paint the same red as the geolocation highlight onto the sidebar row for
+	// the municipality the player is standing in, when it's in the neighbourhood.
+	$: highlightRowId = highlightId ? String(highlightId) : null;
 </script>
 
-<div class="relative flex h-[calc(100vh-4rem)] flex-col">
-	{#if ready}
-		<WorldMap
-			center={[41.8, 1.7]}
-			zoom={8}
-			{overlays}
-			{circles}
-			{lines}
-			{highlightId}
-			{highlightStyle}
-			bind:currentZoom
-			classes="min-h-0 flex-1"
-		/>
-	{:else}
-		<div class="flex min-h-0 flex-1 items-center justify-center">
-			<span class="loading loading-spinner loading-lg"></span>
-		</div>
-	{/if}
-
-	<div class="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
-		<button
-			class={classNames('btn btn-primary btn-sm shadow-lg', { 'btn-disabled': loading })}
-			on:click={requestLocation}
-		>
-			{#if loading}
-				<span class="loading loading-spinner loading-xs"></span>
-				Locating…
-			{:else if highlightId}
-				Update my location
-			{:else}
-				Show my location
-			{/if}
-		</button>
-
-		{#if error}
-			<div class="alert alert-error max-w-xs py-2 text-sm shadow-lg">{error}</div>
+<div class="flex h-[calc(100vh-4rem)]">
+	<div class="relative flex min-w-0 flex-1 flex-col">
+		{#if ready}
+			<WorldMap
+				center={[41.8, 1.7]}
+				zoom={8}
+				{overlays}
+				{circles}
+				{highlightId}
+				{highlightStyle}
+				bind:currentZoom
+				classes="min-h-0 flex-1"
+			/>
+		{:else}
+			<div class="flex min-h-0 flex-1 items-center justify-center">
+				<span class="loading loading-spinner loading-lg"></span>
+			</div>
 		{/if}
+
+		<div class="badge badge-neutral absolute left-4 top-4 z-[1000] gap-1 py-3 shadow-lg">
+			<span class="opacity-70">Zoom</span>
+			<span class="font-bold tabular-nums">{currentZoom}</span>
+		</div>
+
+		<div class="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
+			<button
+				class={classNames('btn btn-primary btn-sm shadow-lg', { 'btn-disabled': loading })}
+				on:click={requestLocation}
+			>
+				{#if loading}
+					<span class="loading loading-spinner loading-xs"></span>
+					Locating…
+				{:else if highlightId}
+					Update my location
+				{:else}
+					Show my location
+				{/if}
+			</button>
+
+			{#if error}
+				<div class="alert alert-error max-w-xs py-2 text-sm shadow-lg">{error}</div>
+			{/if}
+		</div>
 	</div>
+
+	<aside
+		class="flex w-72 flex-col border-l border-base-300 bg-base-100 shadow-inner"
+		aria-label="Municipalities and their shows"
+	>
+		<div class="border-b border-base-300 px-4 py-3">
+			<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Barcelona &amp; neighbours</h2>
+			<p class="text-xs opacity-50">{neighbourhood.length} municipalities</p>
+		</div>
+
+		<ul class="menu min-h-0 flex-1 flex-nowrap gap-1 overflow-y-auto p-2">
+			{#each neighbourhood as entry (entry.id)}
+				<li>
+					<div
+						class={classNames('flex items-center gap-3', {
+							'bg-error/20': highlightRowId === entry.id
+						})}
+					>
+						{#if entry.show.posterUrl}
+							<img
+								src={entry.show.posterUrl}
+								alt={entry.show.name}
+								class="h-14 w-10 flex-none rounded object-cover"
+								loading="lazy"
+							/>
+						{:else}
+							<div class="flex h-14 w-10 flex-none items-center justify-center rounded bg-base-300">
+								<span class="text-[0.6rem] opacity-50">N/A</span>
+							</div>
+						{/if}
+						<div class="min-w-0">
+							<p class="truncate text-sm font-semibold">{entry.name}</p>
+							<p class="truncate text-xs opacity-60">{entry.show.name}</p>
+						</div>
+					</div>
+				</li>
+			{:else}
+				<li class="px-2 py-4 text-sm opacity-60">No show assignments loaded.</li>
+			{/each}
+		</ul>
+	</aside>
 </div>
