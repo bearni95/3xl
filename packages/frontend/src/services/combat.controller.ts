@@ -17,8 +17,8 @@
  * those hits (the strike table's ×0.5 / ×1 / ×2, rounded) into the HP of damage
  * dealt. A fighter reduced to 0 HP is knocked out — it walks back to its origin
  * cell at half opacity and takes no further part in any round. Barring a knockout,
- * whoever took less damage this encounter claims the duel cell (a tie keeps the
- * status quo); the encounter tally then resets while HP persists.
+ * whoever is left with the most current HP claims the duel cell (a tie in HP keeps
+ * the status quo); HP persists across encounters.
  *
  * Rounds repeat: after a round the selections reset and control returns to
  * selection. The game ends when one side is wiped out (all its fighters knocked
@@ -82,9 +82,6 @@ export interface FighterSeed {
 }
 
 export interface Fighter extends FighterSeed {
-	/** Damage taken in the current encounter; resets to 0 when the duel ends.
-	 * Only decides who claims the duel cell — persistent damage is tracked by {@link hp}. */
-	strikes: number;
 	/** Hit points this fighter starts (and tops out) at, rolled once at battle
 	 * start as {@link atk} d6 summed. */
 	maxHp: number;
@@ -151,7 +148,6 @@ export class CombatController {
 			const maxHp = rollDice(entry.atk, 6);
 			return {
 				...entry,
-				strikes: 0,
 				maxHp,
 				hp: maxHp,
 				defeated: false,
@@ -398,9 +394,10 @@ export class CombatController {
 		}
 
 		// Claim the duel cell. A knockout decides it outright — the survivor takes the
-		// cell while the fallen has already walked home dimmed. Otherwise whoever took
-		// fewer hits this encounter claims it, with a tie keeping the status quo (a
-		// defended cell stays with its prior holder, an unclaimed one sends both home).
+		// cell while the fallen has already walked home dimmed. Otherwise whoever is
+		// left with the most current HP claims it, with a tie (equal HP) keeping the
+		// status quo (a defended cell stays with its prior holder, an unclaimed one
+		// sends both home).
 		const cell = MELEE_MEETING_CELLS[duelIndex];
 		let playerStays: boolean;
 		let rivalStays: boolean;
@@ -408,9 +405,9 @@ export class CombatController {
 			playerStays = !player.defeated && rival.defeated;
 			rivalStays = !rival.defeated && player.defeated;
 		} else {
-			const tie = player.strikes === rival.strikes;
-			playerStays = player.strikes < rival.strikes || (tie && priorHolder === player);
-			rivalStays = rival.strikes < player.strikes || (tie && priorHolder === rival);
+			const tie = player.hp === rival.hp;
+			playerStays = player.hp > rival.hp || (tie && priorHolder === player);
+			rivalStays = rival.hp > player.hp || (tie && priorHolder === rival);
 		}
 		this.setStatus(this.encounterLine(player, rival, priorHolder));
 		// A knocked-out fighter already walked home under its own power — only the
@@ -419,9 +416,6 @@ export class CombatController {
 			player.defeated ? undefined : this.settle(player, playerStays, cell),
 			rival.defeated ? undefined : this.settle(rival, rivalStays, cell)
 		]);
-		// Encounter strikes only decide this cell — clear both tallies for the next.
-		player.strikes = 0;
-		rival.strikes = 0;
 		this.emit();
 	}
 
@@ -477,9 +471,8 @@ export class CombatController {
 			this.board?.showSlash(defender.id, thrown)
 		]);
 
-		// Damage both dents the defender's persistent HP and counts toward this
-		// encounter's tally (which decides who claims the duel cell).
-		defender.strikes += damage;
+		// Damage dents the defender's persistent HP; whoever is left with more HP
+		// when the encounter ends claims the duel cell.
 		defender.hp = Math.max(0, defender.hp - damage);
 		// Ease the defender's board HP bar down to its new health (green→red).
 		this.board?.setHp(defender.id, defender.hp, defender.maxHp);
@@ -529,11 +522,11 @@ export class CombatController {
 		if (rival.defeated && !player.defeated)
 			return `${rival.name} is knocked out — ${player.name} takes the cell.`;
 		const score = `${player.hp}–${rival.hp} HP`;
-		if (player.strikes === rival.strikes) {
+		if (player.hp === rival.hp) {
 			const held = priorHolder ? `${priorHolder.name} keeps the cell` : 'neither takes the cell';
 			return `A stand-off at ${score} — ${held}.`;
 		}
-		const winner = player.strikes < rival.strikes ? player : rival;
-		return `${winner.name} takes fewer hits (${score}) and claims the cell.`;
+		const winner = player.hp > rival.hp ? player : rival;
+		return `${winner.name} is left standing stronger (${score}) and claims the cell.`;
 	}
 }

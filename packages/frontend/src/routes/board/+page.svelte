@@ -178,7 +178,7 @@
 
 	// One badge per character on the board, in board order (red half then blue).
 	// Static display info (name, face, compound color, moves); the live combat
-	// state (strikes, selection, defeat) lives in the CombatController store.
+	// state (HP, selection, defeat) lives in the CombatController store.
 	interface Badge {
 		id: string;
 		basePath: string;
