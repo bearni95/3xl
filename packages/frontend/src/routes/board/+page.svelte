@@ -320,16 +320,14 @@
 		{#each throwableColors(badge.color) as color (color)}
 			<button
 				type="button"
-				class={classNames('btn join-item btn-xs btn-block gap-1 capitalize', {
+				class={classNames('btn join-item btn-sm btn-block gap-2 capitalize', {
 					'btn-outline pointer-events-none': isRival,
 					'btn-active': combat?.moveColor === color
 				})}
 				disabled={!isRival && areaLocked}
-				tabindex={isRival ? -1 : undefined}
-				aria-disabled={isRival}
 				on:click={() => !isRival && selectColor(badge.id, color)}
 			>
-				<span class={classNames('h-2.5 w-2.5 rounded-full', colorSwatches[color])}></span>
+				<span class={classNames('h-3 w-3 rounded-full', colorSwatches[color])}></span>
 				{color}
 			</button>
 		{/each}
