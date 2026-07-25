@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import type { PathOptions } from 'leaflet';
 	import WorldMap from '$components/core/WorldMap.svelte';
-	import type { MapCircle, MapOverlay } from '$types/map.type';
+	import type { MapCircle, MapLine, MapOverlay } from '$types/map.type';
 	import type { ShowEntry, ShowsCollection } from '$types/show.type';
 	import {
 		immediateNeighbourhood,
@@ -136,11 +136,29 @@
 		}
 	];
 
-	// A mythical "Portal" region floating in the Mediterranean, in open water
-	// between the mainland coast and the Balearic Islands (roughly off Ibiza).
+	// The portal axis: a straight line from the municipality of Girona
+	// (centroid ~[41.99, 2.83]) out to l'Alguer — the lone Italian territory
+	// in the map (Alghero, Sardinia; centroid ~[40.60, 8.27]). The portal sits
+	// on this line, at its midpoint out in the open Mediterranean.
+	const GIRONA: [number, number] = [41.988, 2.828];
+	const ALGUER: [number, number] = [40.598, 8.268];
+	const PORTAL_CENTER: [number, number] = [
+		(GIRONA[0] + ALGUER[0]) / 2,
+		(GIRONA[1] + ALGUER[1]) / 2
+	];
+
+	const lines: MapLine[] = [
+		{
+			points: [GIRONA, ALGUER],
+			style: { color: '#a855f7', weight: 2, dashArray: '6 6', opacity: 0.8 }
+		}
+	];
+
+	// The mythical "Portal", floating in open Mediterranean water at the middle
+	// of the Girona–l'Alguer line.
 	const circles: MapCircle[] = [
 		{
-			center: [39.6, 1.4],
+			center: PORTAL_CENTER,
 			radius: 30000,
 			style: { color: '#a855f7', weight: 2, fillColor: '#a855f7', fillOpacity: 0.35 },
 			label: 'Portal'
@@ -155,6 +173,7 @@
 			zoom={8}
 			{overlays}
 			{circles}
+			{lines}
 			{highlightId}
 			{highlightStyle}
 			classes="min-h-0 flex-1"

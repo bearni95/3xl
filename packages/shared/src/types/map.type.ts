@@ -24,6 +24,16 @@ export interface MapOverlay {
 	interactive?: boolean;
 }
 
+/** A standalone straight line (polyline) drawn on the map, independent of any GeoJSON. */
+export interface MapLine {
+	/** Ordered vertices as [lat, lng] pairs; a straight segment between each. */
+	points: [number, number][];
+	/** Leaflet path options for the line's stroke. */
+	style: PathOptions;
+	/** Text shown as a permanent centred label over the line. */
+	label?: string;
+}
+
 /** A standalone circular region drawn on the map, independent of any GeoJSON. */
 export interface MapCircle {
 	/** Centre as [lat, lng]. */

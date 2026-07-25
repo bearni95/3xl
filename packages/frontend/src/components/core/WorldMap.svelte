@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type L from 'leaflet';
-	import type { MapCircle, MapOverlay } from '$types/map.type';
+	import type { MapCircle, MapLine, MapOverlay } from '$types/map.type';
 
 	let {
 		center = [20, 0] as [number, number],
@@ -10,6 +10,7 @@
 		maxZoom = 19,
 		overlays = [],
 		circles = [],
+		lines = [],
 		highlightId = null,
 		highlightStyle = null,
 		classes = ''
@@ -23,6 +24,8 @@
 		overlays?: MapOverlay[];
 		/** Standalone circular regions drawn above the overlays. */
 		circles?: MapCircle[];
+		/** Standalone straight lines drawn above the overlays. */
+		lines?: MapLine[];
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
 		highlightId?: string | null;
 		/** Style merged over the highlighted feature's base style. */
@@ -239,6 +242,19 @@
 			}).addTo(mapInstance!);
 			overlayGroups.push(layerGroup);
 		});
+
+		// Standalone straight lines, drawn above every overlay (e.g. the portal
+		// axis running from the mainland out across the Mediterranean).
+		for (const line of lines) {
+			const shape = Leaf.polyline(line.points, line.style).addTo(mapInstance!);
+			if (line.label) {
+				shape.bindTooltip(line.label, {
+					permanent: true,
+					direction: 'center',
+					className: 'bg-transparent! border-none! shadow-none! font-bold text-white!'
+				});
+			}
+		}
 
 		// Standalone circular regions, drawn above every overlay with a permanent
 		// centred label (e.g. the "Portal" out at sea).
