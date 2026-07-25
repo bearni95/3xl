@@ -124,6 +124,7 @@
 							id ? (locationById.get(id) ?? null) : null
 						)}
 						{@const allowedColors = allowedTeammateColors(memberColors[0])}
+						{@const leadId = team.memberIds.find((id): id is string => Boolean(id)) ?? null}
 						<div class="mt-3 flex flex-col gap-3">
 							<div class="flex flex-col items-center gap-2">
 								<!-- All three picks' idle animations on a single canvas, each
@@ -196,7 +197,6 @@
 							<!-- Summary of the first selected pick (lead, or first filled slot):
 							     its rolled colour, the Supabase show(s) it belongs to, and the
 							     region it was originally claimed in. -->
-							{@const leadId = team.memberIds.find((id): id is string => Boolean(id)) ?? null}
 							{#if leadId}
 								{@const leadColor = colorById.get(leadId) ?? null}
 								{@const leadShows = showsById.get(leadId) ?? []}
