@@ -1,7 +1,6 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onDestroy, onMount } from 'svelte';
-	import Icon from '$components/core/Icon.svelte';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
 	import type {
 		BoardCharacter,
@@ -29,7 +28,11 @@
 	import { spawnService } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE, type Team } from '$services/team.service';
 	import { AuthStatus } from '$types/profile.type';
-	import { DEFAULT_SPAWN_STAT, type CharacterSpawn } from '$types/character-spawn.type';
+	import {
+		DEFAULT_SPAWN_STAT,
+		SPAWN_STAT_MAX,
+		type CharacterSpawn
+	} from '$types/character-spawn.type';
 
 	// Filled button styling per combat color (the player's clickable buttons).
 	const colorFill: Record<CombatColor, string> = {
@@ -433,8 +436,8 @@
 					{/if}
 				</div>
 				<span>{badge.name}</span>
-				<!-- ATK and DEF are both the character's Supabase spawn stat; HP is a
-				     fixed HP_MAX/HP_MAX pool shared by every character. -->
+				<!-- ATK is the character's Supabase spawn stat; DEF is its complement
+				     (SPAWN_STAT_MAX - ATK); HP is a fixed HP_MAX/HP_MAX pool for all. -->
 				<table class="table table-xs w-auto text-center">
 					<thead>
 						<tr>
@@ -446,7 +449,7 @@
 					<tbody>
 						<tr>
 							<td class="px-2 font-semibold">{badge.stat}</td>
-							<td class="px-2 font-semibold">{badge.stat}</td>
+							<td class="px-2 font-semibold">{SPAWN_STAT_MAX - badge.stat}</td>
 							<td class="px-2 font-semibold">{HP_MAX}/{HP_MAX}</td>
 						</tr>
 					</tbody>
