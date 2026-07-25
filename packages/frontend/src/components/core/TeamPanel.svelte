@@ -156,14 +156,16 @@
 										>
 											<option value="">— Empty slot —</option>
 											{#each options as option (option.id)}
-												<option
-													value={option.id}
-													disabled={option.id !== characterId &&
-														(chosen.has(option.id) ||
-															(!isLead && !allowedColors?.has(option.color ?? '')))}
-												>
-													{option.label}
-												</option>
+												<!-- Slots 2 & 3 only list colour-compatible candidates; the
+												     current pick always stays listed so its value shows. -->
+												{#if isLead || option.id === characterId || allowedColors?.has(option.color ?? '')}
+													<option
+														value={option.id}
+														disabled={chosen.has(option.id) && option.id !== characterId}
+													>
+														{option.label}
+													</option>
+												{/if}
 											{/each}
 										</select>
 										{#if characterId}
@@ -177,13 +179,6 @@
 										{/if}
 									</div>
 								{/each}
-								<p class="text-[10px] leading-tight opacity-60">
-									{#if allowedColors}
-										Slots #2 and #3 must share a colour with the lead.
-									{:else}
-										Pick a lead character first — slots #2 and #3 must share its colour.
-									{/if}
-								</p>
 							</div>
 						</div>
 					{:else}
