@@ -255,11 +255,11 @@ export class CombatController {
 				rival.actionIndex = index;
 				rival.disabled = true;
 			});
-			// Combat starts: every fighter that will act flares an aura in its own
-			// (native) colour — not the colour it throws (cell-holders sit out
-			// aura-less unless attacked).
+			// Combat starts: every fighter that will act flares an aura in the
+			// colour it throws this round — not its own native colour (cell-holders
+			// sit out aura-less unless attacked).
 			for (const combatant of this.fighters) {
-				if (combatant.moveColor) void this.board?.showAura(combatant.id, combatant.color);
+				if (combatant.moveColor) void this.board?.showAura(combatant.id, combatant.moveColor);
 			}
 			this.phase = 'fighting';
 			this.emit();
@@ -291,11 +291,11 @@ export class CombatController {
 			const rival = holder?.side === 'error' ? holder : rivalsQueue.shift();
 			if (!player || !rival) continue;
 			// An attacked holder never picked a color — it defends with a random one,
-			// flaring its aura (in its own native colour) only now that it's dragged
+			// flaring its aura (in the colour it now throws) only once it's dragged
 			// into the duel.
 			if (holder && !holder.moveColor) {
 				holder.moveColor = this.randomColor(holder);
-				void this.board?.showAura(holder.id, holder.color);
+				void this.board?.showAura(holder.id, holder.moveColor);
 			}
 			await this.duel(player, rival, i);
 		}
