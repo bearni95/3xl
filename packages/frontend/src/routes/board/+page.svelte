@@ -57,8 +57,8 @@
 			{ q: -1, r: -3 }
 		],
 		info: [
-			{ q: 1, r: -3 },
-			{ q: 1, r: 0 }
+			{ q: 1, r: -4 },
+			{ q: 1, r: -1 }
 		]
 	};
 
@@ -116,7 +116,7 @@
 	// with where each character stands on the board).
 	const centerCells: Record<'error' | 'info', { q: number; r: number }> = {
 		error: { q: -2, r: -2 },
-		info: { q: 2, r: -2 }
+		info: { q: 2, r: -3 }
 	};
 
 	// Screen depth of a cell. With pointy-top hexes rows are level, so a character's

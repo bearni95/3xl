@@ -21,7 +21,7 @@ describe('hex board cells', () => {
 	it('includes representative interior cells', () => {
 		expect(isBoardCell(0, -1)).toBe(true);
 		expect(isBoardCell(-1, 0)).toBe(true);
-		expect(isBoardCell(1, 0)).toBe(true);
+		expect(isBoardCell(1, -1)).toBe(true);
 	});
 
 	it('assigns colour side by column sign', () => {
