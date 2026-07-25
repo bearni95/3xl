@@ -5,11 +5,26 @@
  *         (EPSG:4326 / WGS84), downloaded to the repo root as
  *         `ref-lau-2024-01m.geojson/LAU_RG_01M_2024_4326.geojson`.
  *         Override with `LAU_GEOJSON=/path/to/file.geojson` or argv[2].
- * Output: three GeoJSON layers under `public/geo/`, mirroring the three-tier
- *         view the frontend map draws (fill + two boundary rings):
+ * Output: four GeoJSON layers under `public/geo/`, mirroring the tiered view the
+ *         frontend map draws (fill + three boundary rings):
  *           - municipis.json  every municipality (polygon fills + labels)
+ *           - comarques.json  municipalities dissolved by comarca / equivalent
  *           - provincies.json municipalities dissolved by province / equivalent
  *           - territoris.json municipalities dissolved by territory
+ *
+ *         The comarca tier sits between municipality and province. Comarques are
+ *         only an administrative division in part of the domain, so each
+ *         municipality's comarca is fetched at build time from Wikidata (like
+ *         Andorra from geoBoundaries): Catalan comarques for Catalunya (P772 →
+ *         direct P131), the traditional Valencian comarques for the País Valencià
+ *         (P772 → transitive P131+), and the historical comarques of Northern
+ *         Catalonia for Catalunya Nord (P374/INSEE → transitive P131+). The Illes
+ *         Balears have no comarca layer, so each municipality is assigned to its
+ *         island (the Consell Insular tier — the real division between province
+ *         and municipality) from its centroid. Andorra and l'Alguer have no
+ *         sub-province tier and are left out of the comarca layer. The rings are
+ *         dissolved from the same LAU geometry as the province/territory rings, so
+ *         comarca borders fall exactly on municipality borders.
  *
  * Scope — the Catalan Countries (Països Catalans), as the three Spanish
  * autonomous communities *in full* plus Andorra and the cross-border bits:
@@ -156,6 +171,151 @@ function dissolve(features, keyOf, propsOf) {
 	return { type: 'FeatureCollection', features: out };
 }
 
+// --- comarca assignment ---------------------------------------------------
+
+/** Slugify a comarca/island name into a url-safe dissolve id (strip accents). */
+function slug(name) {
+	return name
+		.normalize('NFD')
+		.replace(/[̀-ͯ]/g, '')
+		.toLowerCase()
+		.replace(/['’]/g, '')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+}
+
+const WDQS = 'https://query.wikidata.org/sparql';
+
+/** Run a SPARQL query against the Wikidata Query Service and return its bindings. */
+async function wdquery(sparql) {
+	const url = `${WDQS}?format=json&query=${encodeURIComponent(sparql)}`;
+	const res = await fetch(url, {
+		headers: {
+			Accept: 'application/sparql-results+json',
+			// WDQS rejects requests without a descriptive User-Agent.
+			'User-Agent': '3xl-game-geo-build/1.0 (https://github.com/bearni95; bernatcanal@gmail.com)'
+		}
+	});
+	if (!res.ok) throw new Error(`WDQS ${res.status}: ${(await res.text()).slice(0, 200)}`);
+	return (await res.json()).results.bindings;
+}
+
+/**
+ * Fetch each municipality's comarca from Wikidata, keyed by GISCO_ID
+ * (`ES_<INE5>` / `FR_<INSEE5>`). Comarca classes are matched by an English class
+ * label containing "comarca", which uniformly covers the Catalan, Valencian and
+ * Northern-Catalan comarca classes. First binding per key wins.
+ * @returns {Promise<Map<string, {name:string,id:string}>>}
+ */
+async function fetchComarques() {
+	/** @type {Map<string,{name:string,id:string}>} */
+	const map = new Map();
+	const add = (gisco, name) => {
+		if (!map.has(gisco)) map.set(gisco, { name, id: slug(name) });
+	};
+
+	// Catalunya — municipality's direct P131 is its (Catalan) comarca (Q937876).
+	const cat = await wdquery(`SELECT ?ine ?cLabel WHERE {
+		?m wdt:P772 ?ine .
+		FILTER(STRLEN(?ine)=5 && (STRSTARTS(?ine,"08")||STRSTARTS(?ine,"17")||STRSTARTS(?ine,"25")||STRSTARTS(?ine,"43")))
+		?m wdt:P131 ?c . ?c wdt:P31 wd:Q937876 .
+		SERVICE wikibase:label { bd:serviceParam wikibase:language "ca". }
+	}`);
+	for (const b of cat) add(`ES_${b.ine.value}`, b.cLabel.value);
+	console.log(`  Catalunya: ${cat.length} municipalities → comarca`);
+
+	// País Valencià — its comarques are traditional (not administrative) and so
+	// are largely unlinked in Wikidata; take them from a GADM-derived municipality
+	// layer instead (GADM level 3 = comarca), keyed by the INE code (`codine`).
+	const val = await fetchValencianComarques();
+	for (const [gisco, name] of val) add(gisco, name);
+	console.log(`  País Valencià: ${val.size} municipalities → comarca`);
+
+	// Catalunya Nord — communes carry the historical N. Catalan comarca (P131+).
+	const nord = await wdquery(`SELECT ?insee ?cLabel WHERE {
+		?m wdt:P374 ?insee . FILTER(STRSTARTS(?insee,"66"))
+		?m wdt:P131+ ?c . ?c wdt:P31 ?cls .
+		?cls rdfs:label ?cl . FILTER(LANG(?cl)="en" && CONTAINS(LCASE(?cl),"comarca"))
+		SERVICE wikibase:label { bd:serviceParam wikibase:language "ca". }
+	}`);
+	for (const b of nord) add(`FR_${b.insee.value}`, b.cLabel.value);
+	console.log(`  Catalunya Nord: ${nord.length} bindings → comarca`);
+
+	return map;
+}
+
+const VALENCIA_GEOJSON =
+	'https://gist.githubusercontent.com/josemamira/ba6811e98859fdf6a734f670207ef1cc/raw';
+
+/**
+ * Fix the handful of comarca names GADM leaves broken in that layer, mapping each
+ * to the exact string of the comarca it belongs to (so they merge, not split):
+ * two unnamed clusters are Els Ports (around Morella) and La Safor (around
+ * Gandia); "Vinalopo" is the Baix Vinalopó trio; and one Horta municipality has a
+ * concatenated name.
+ */
+const VALENCIA_COMARCA_FIX = {
+	'n.a. (211)': 'Els Ports',
+	'n.a. (221)': 'Safor',
+	Vinalopo: 'Baix Vinalopó',
+	'Horta Sud Ciutat de Valencia': 'Horta Sud'
+};
+
+/**
+ * Fetch a GADM-derived Valencian municipality layer and map each INE code
+ * (`codine`) to its comarca (GADM level 3 name, `name_3`), keyed as `ES_<INE5>`.
+ * @returns {Promise<Map<string,string>>}
+ */
+async function fetchValencianComarques() {
+	const res = await fetch(VALENCIA_GEOJSON, {
+		headers: { 'User-Agent': '3xl-game-geo-build/1.0 (bernatcanal@gmail.com)' }
+	});
+	if (!res.ok) throw new Error(`Valencian layer ${res.status}`);
+	const fc = await res.json();
+	const out = new Map();
+	for (const f of fc.features) {
+		const ine = String(f.properties.codine ?? f.properties.CodMunicipio ?? '').padStart(5, '0');
+		const raw = f.properties.name_3;
+		const comarca = VALENCIA_COMARCA_FIX[raw] ?? raw;
+		if (ine.length === 5 && comarca) out.set(`ES_${ine}`, comarca);
+	}
+	return out;
+}
+
+/** Area-weighted-free centroid: the mean of every vertex in a (multi)polygon. */
+function centroidOf(geom) {
+	const rings =
+		geom.type === 'Polygon'
+			? geom.coordinates
+			: geom.type === 'MultiPolygon'
+				? geom.coordinates.flat()
+				: [];
+	let x = 0;
+	let y = 0;
+	let n = 0;
+	for (const ring of rings) {
+		for (const [lon, lat] of ring) {
+			x += lon;
+			y += lat;
+			n += 1;
+		}
+	}
+	return n ? [x / n, y / n] : [0, 0];
+}
+
+/**
+ * Classify a Balearic municipality onto its island from its centroid. The four
+ * islands are cleanly separated in lon/lat, so a coordinate rule is exact.
+ */
+function islandComarca(geom) {
+	const [lon, lat] = centroidOf(geom);
+	let name;
+	if (lon < 2.0) name = lat < 38.8 ? 'Formentera' : 'Eivissa';
+	else if (lon > 3.65) name = 'Menorca';
+	else name = 'Mallorca';
+	return { name, id: slug(name) };
+}
+
 // --- main -----------------------------------------------------------------
 
 async function main() {
@@ -180,9 +340,64 @@ async function main() {
 	}
 	console.log(`  matched ${municipis.length} municipalities in Spain/France/Italy`);
 
+	console.log('Fetching comarca assignment from Wikidata…');
+	const comarcaByGisco = await fetchComarques();
+	// Tag each municipality with its comarca: Wikidata for Catalunya / País
+	// Valencià / Catalunya Nord, the island for the Illes Balears (ES province 07),
+	// and none for l'Alguer (which has no sub-province tier).
+	let comarcaCount = 0;
+	for (const f of municipis) {
+		const wd = comarcaByGisco.get(f.properties.id);
+		const comarca = wd ?? (f.properties.id.startsWith('ES_07') ? islandComarca(f.geometry) : null);
+		f.properties.comarca = comarca?.name ?? null;
+		f.properties.comarcaId = comarca?.id ?? null;
+		if (comarca) comarcaCount += 1;
+	}
+	console.log(`  ${comarcaCount} of ${municipis.length} municipalities directly assigned`);
+
+	// Patch stragglers so comarca regions have no holes: a municipality left
+	// unassigned inside a province that *does* have comarques (a few in Catalunya,
+	// the communes of Catalunya Nord that Wikidata omits) inherits the comarca of
+	// the geographically nearest assigned municipality in its own province.
+	// l'Alguer's province has no assigned members, so it stays (correctly) out.
+	const assignedByProv = new Map();
+	for (const f of municipis) {
+		if (!f.properties.comarcaId) continue;
+		const pool = assignedByProv.get(f.properties.provKey) ?? [];
+		pool.push({ c: centroidOf(f.geometry), name: f.properties.comarca, id: f.properties.comarcaId });
+		assignedByProv.set(f.properties.provKey, pool);
+	}
+	let filled = 0;
+	for (const f of municipis) {
+		if (f.properties.comarcaId) continue;
+		const pool = assignedByProv.get(f.properties.provKey);
+		if (!pool) continue;
+		const [lon, lat] = centroidOf(f.geometry);
+		let best = null;
+		let bestDist = Infinity;
+		for (const a of pool) {
+			const d = (a.c[0] - lon) ** 2 + (a.c[1] - lat) ** 2;
+			if (d < bestDist) {
+				bestDist = d;
+				best = a;
+			}
+		}
+		if (best) {
+			f.properties.comarca = best.name;
+			f.properties.comarcaId = best.id;
+			filled += 1;
+		}
+	}
+	console.log(`  ${filled} stragglers filled from nearest neighbour; ${comarcaCount + filled} total`);
+
 	console.log('Fetching Andorra parishes from geoBoundaries…');
 	const andorra = await fetchAndorraParishes();
 	console.log(`  added ${andorra.length} Andorran parishes`);
+	// Andorra has no comarca tier — its parishes are the finest division.
+	for (const f of andorra) {
+		f.properties.comarca = null;
+		f.properties.comarcaId = null;
+	}
 	municipis.push(...andorra);
 
 	// Municipality fills keep their full source geometry; only the dissolved
@@ -194,12 +409,24 @@ async function main() {
 			properties: {
 				id: f.properties.id,
 				name: f.properties.name,
+				comarca: f.properties.comarca,
 				prov: f.properties.prov,
 				territory: f.properties.territory
 			},
 			geometry: f.geometry
 		}))
 	};
+
+	console.log('Dissolving comarca rings…');
+	// Only municipalities with a comarca contribute; l'Alguer and Andorra (no
+	// sub-province tier) are absent. A comarca that spans two provinces (e.g.
+	// Cerdanya) dissolves into a single ring crossing the province line.
+	const comarques = dissolve(
+		municipis.filter((f) => f.properties.comarcaId),
+		(p) => p.comarcaId,
+		(p) => ({ id: p.comarcaId, name: p.comarca })
+	);
+	console.log(`  ${comarques.features.length} comarques`);
 
 	console.log('Dissolving province rings…');
 	const provincies = dissolve(
@@ -219,9 +446,10 @@ async function main() {
 
 	await mkdir(outDir, { recursive: true });
 	await writeFile(`${outDir}municipis.json`, JSON.stringify(municipisFC));
+	await writeFile(`${outDir}comarques.json`, JSON.stringify(comarques));
 	await writeFile(`${outDir}provincies.json`, JSON.stringify(provincies));
 	await writeFile(`${outDir}territoris.json`, JSON.stringify(territoris));
-	console.log(`Wrote municipis / provincies / territoris to ${outDir}`);
+	console.log(`Wrote municipis / comarques / provincies / territoris to ${outDir}`);
 }
 
 main().catch((err) => {

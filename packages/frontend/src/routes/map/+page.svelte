@@ -90,7 +90,9 @@
 
 	// Països Catalans polygons, built by @3xl/data's generate:geo from the
 	// Eurostat LAU set (WGS84) and served from that package's public/ at /data.
-	// Drawn bottom-up: municipality fills, province lines, territory lines.
+	// Drawn bottom-up: municipality fills, comarca lines, province lines,
+	// territory lines (green comarca lines sit under the yellow province ones,
+	// so shared borders read as province).
 	const overlays: MapOverlay[] = [
 		{
 			url: '/data/geo/municipis.json',
@@ -101,7 +103,7 @@
 				const show = paintedIds.has(String(props.id))
 					? showForMunicipality(feature, shows)
 					: null;
-				return [props.name ?? 'Unknown', props.prov, props.territory, show?.show.name]
+				return [props.name ?? 'Unknown', props.comarca, props.prov, props.territory, show?.show.name]
 					.filter(Boolean)
 					.join(', ');
 			},
@@ -116,6 +118,11 @@
 				const show = showForMunicipality(feature, shows);
 				return show ? showPosterUrl(show) : null;
 			}
+		},
+		{
+			url: '/data/geo/comarques.json',
+			style: { color: '#22c55e', weight: 1.5, fill: false },
+			interactive: false
 		},
 		{
 			url: '/data/geo/provincies.json',

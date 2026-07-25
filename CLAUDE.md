@@ -1,6 +1,11 @@
-# Arktosmos Boilerplate - Development Guidelines
+# 3xl-game — Development Guidelines
 
-This document guides Claude (and developers) on implementing features using this SvelteKit boilerplate. Follow these conventions strictly to maintain consistency across the codebase.
+This document guides Claude (and developers) on implementing features in this
+project: a browser game built on SvelteKit whose characters are imported from
+**MUGEN** sprite archives, with a **Països Catalans** (Catalan Countries) Leaflet
+map and Supabase magic-link auth. It's a pnpm monorepo with two SvelteKit apps
+(player + admin) and a small authoring backend. Follow these conventions strictly
+to keep the codebase consistent.
 
 ## Monorepo Structure
 
@@ -9,56 +14,171 @@ from the repo root; scripts delegate to the right package via `pnpm --filter`.
 
 ```
 packages/
-├── frontend/  (@3xl/frontend)  SvelteKit web app — the only UI package
+├── frontend/  (@3xl/frontend)  SvelteKit player web app (port 2000)
+├── admin/     (@3xl/admin)      SvelteKit authoring SPA (port 2001)
+├── backend/   (@3xl/backend)    Express authoring API (port 2002)
+├── shared/    (@3xl/shared)     framework-agnostic types + utils + adapters (TS source)
 ├── mugen/     (@3xl/mugen)      MUGEN import/assembly scripts (write assets + data)
 ├── assets/    (@3xl/assets)     generated sprite frames + manifests + auras (public/)
-└── data/      (@3xl/data)       character registry module + JSON definitions + movesets
+└── data/      (@3xl/data)       character registry module + JSON definitions + movesets + geo
 ```
 
-**Data flow**: `@3xl/mugen` reads raw archives (`mugen-characters/`) + decode inputs
-(`characters-src/<id>/`) and *writes into* `@3xl/assets` (`public/<id>/frames/`,
+**Apps and ports** (all hardcoded / `--strictPort`, so the dev servers always agree):
+
+| Package        | Kind                     | Port | Notes                                        |
+| -------------- | ------------------------ | ---- | -------------------------------------------- |
+| `@3xl/frontend`| SvelteKit (adapter-static) | 2000 | The player-facing game. Ships to a static bundle. |
+| `@3xl/admin`   | SvelteKit (adapter-static) | 2001 | Character/TMDB authoring SPA. Talks to the backend. |
+| `@3xl/backend` | Node/Express 5 (`tsx`)     | 2002 | Dev/authoring only — reads/writes `@3xl/data`, proxies TMDB. |
+
+Both SvelteKit apps build to a **static SPA** (`@sveltejs/adapter-static`,
+`fallback: index.html`) and render MUGEN sprites with **PixiJS**.
+
+**Data flow — MUGEN:** `@3xl/mugen` reads raw archives (`mugen-characters/`) + decode
+inputs (`characters-src/<id>/`) and *writes into* `@3xl/assets` (`public/<id>/frames/`,
 `public/auras/`) and `@3xl/data` (`registry.generated.ts`, plus each character's
-`public/characters/<id>/definition.json` and `public/characters/<id>/mugen-moves.json`;
-the unrelated Països Catalans map layers stay separate under `public/geo/`).
-`@3xl/frontend` *installs* both as `workspace:*` deps:
-it imports the registry as a module (`import { characters } from '@3xl/data'`) and serves
-their `public/` dirs at the `/assets` and `/data` URL prefixes via the
-`serveWorkspacePublic()` Vite plugin in `packages/frontend/vite.config.ts`. Do not
-hand-edit generated files (`registry.generated.ts`, `manifest.json`, `mugen-moves.json`)
-or the decoded assets — re-run `pnpm import:mugen` / `generate:sprites` / `generate:auras`.
+`public/characters/<id>/definition.json` and `public/characters/<id>/mugen-moves.json`).
+`@3xl/frontend` and `@3xl/admin` *install* `@3xl/assets` + `@3xl/data` as `workspace:*`
+deps: they import the registry as a module (`import { characters } from '@3xl/data'`) and
+serve each package's `public/` dir at the `/assets` and `/data` URL prefixes via the
+identical `serveWorkspacePublic()` Vite plugin in each app's `vite.config.ts` (dev/preview
+mount it as middleware; build copies the dirs into `dist/`).
 
-Root scripts: `pnpm dev`, `pnpm build`, `pnpm preview`, `pnpm check`, `pnpm test`,
-`pnpm import:mugen`, `pnpm generate:sprites`, `pnpm generate:auras`.
+**Data flow — geo:** `@3xl/data`'s `generate-geo.js` reads the Eurostat GISCO "LAU 2024"
+municipalities layer (downloaded to the repo root as `ref-lau-2024-01m.geojson/`) and
+writes four dissolved GeoJSON layers under `public/geo/` (`municipis.json`,
+`comarques.json`, `provincies.json`, `territoris.json`), served to the frontend map at
+`/data/geo/*`. The comarca tier (between municipality and province) is assigned per
+municipality at build time from Wikidata (Catalunya / Catalunya Nord), a GADM-derived
+layer (País Valencià), and by island for the Illes Balears; Andorra and l'Alguer have no
+comarca tier. See the script header for the full sourcing notes.
 
-### Frontend structure (`packages/frontend/src/`)
+**Do not hand-edit generated files** (`registry.generated.ts`, `manifest.json`,
+`mugen-moves.json`, `public/geo/*.json`) or decoded assets — re-run the relevant script.
+
+**Root scripts** (from repo root):
+
+```
+pnpm dev            # frontend + admin + backend in parallel
+pnpm dev:frontend   # just the player app (2000)
+pnpm dev:admin      # just the admin SPA (2001)
+pnpm dev:backend    # just the Express API (2002)
+pnpm build          # build frontend + admin static bundles
+pnpm preview        # preview the frontend build
+pnpm check          # svelte-check (frontend + admin) + tsc (backend)
+pnpm test           # frontend vitest suite
+pnpm import:mugen   # (re)build the character registry from MUGEN archives
+pnpm generate:sprites
+pnpm generate:auras
+pnpm generate:geo   # rebuild the Països Catalans map layers
+pnpm clean          # remove build output across all packages
+```
+
+### App structure (`packages/frontend/src/`, and `packages/admin/src/` similarly)
 
 ```
 src/
-├── adapters/classes/     # Data transformation logic
-├── components/core/      # Reusable UI components
+├── components/core/      # Reusable UI components (per app)
 ├── routes/               # SvelteKit pages and layouts
 ├── services/classes/     # State management with localStorage persistence
-├── types/                # TypeScript type definitions
-├── utils/                # Pure utility functions
 ├── css/                  # Global styles (Tailwind imports)
 └── services/i18n/        # Internationalization
 ```
 
+Frontend routes: `/` (home), `/board` (combat board), `/map` (Països Catalans map),
+`/claim` (resolve a location reading against the map), `/profile` (Supabase magic-link
+auth). Admin routes: `/characters` (definition editor) and `/shows` (TMDB browser).
+
+**Types, utils, and adapters no longer live in the apps** — they moved to `@3xl/shared`
+(see below). Only `components/`, `routes/`, `services/`, `css/`, and `i18n/` are per-app.
+
 ### Path Aliases
 
-Frontend import aliases (defined in `packages/frontend/svelte.config.js`, scoped to
-the frontend package):
+Import aliases are declared identically in each app's `svelte.config.js`. Note that
+`$components`/`$services` stay **local to the app**, while `$utils`/`$types`/`$adapters`
+resolve into the **`@3xl/shared`** package:
 
 ```typescript
-$components  → src/components/*
-$services    → src/services/*
-$adapters    → src/adapters/*
-$utils       → src/utils/*
-$types       → src/types/*
+$components  → src/components/*              (this app)
+$services    → src/services/*                (this app)
+$adapters    → ../shared/src/adapters/*      (@3xl/shared)
+$utils       → ../shared/src/utils/*         (@3xl/shared)
+$types       → ../shared/src/types/*         (@3xl/shared)
 ```
+
+So `import { ThemeColors } from '$types/core.type'` and
+`import type { CharacterDefinition } from '@3xl/shared/types/character-definition.type'`
+reach the same files — use the `$`-alias form inside the SvelteKit apps, and the
+`@3xl/shared/...` subpath form from `@3xl/backend` (which has no aliases).
 
 The character registry is **not** an alias — import it from the workspace package:
 `import { characters, defaultCharacterId, type CharacterOption } from '@3xl/data';`
+
+---
+
+## Shared package (`@3xl/shared`)
+
+Framework-agnostic code consumed by **all three** runtime packages (`frontend`,
+`admin`, `backend`). It **ships raw TypeScript source** — no build step; consumers
+transpile it (the SvelteKit apps via Vite, the backend via `tsx`). It has three
+subpath exports, which map to the app aliases above:
+
+```
+@3xl/shared/types/*       → src/types/*.ts        ($types  in the apps)
+@3xl/shared/utils/*       → src/utils/*.ts         ($utils  in the apps)
+@3xl/shared/adapters/*    → src/adapters/*.ts      ($adapters in the apps)
+```
+
+What lives here today:
+
+- **types** — `core.type` (`ThemeColors`, `ThemeSizes`, `ID`, …), `character-definition.type`,
+  `mugen-move.type`, `map.type`, `location.type`, `profile.type`, `player-card.type`,
+  `tmdb.type`, `navigation.type`.
+- **utils** — `mugen/*` (frame sheets, animation, board engine, hex, PixiJS player),
+  `geo/pointInPolygon`, `dice/roll`, `color/compare`, `string/*`, `tmdb/*`
+  (client + rate limiter), `routes/get-routes`, `localStorageWritableStore`.
+- **adapters** — `adapter.class`, `tmdb.adapter`, `location.adapter`, `profile.adapter`,
+  `route.adapter`.
+
+**Rule of thumb:** anything more than one runtime package needs, or that is pure and
+framework-agnostic (types, transformers, pure helpers), goes in `@3xl/shared`. App-only
+UI state and components stay in the app. When you add a type/util/adapter, add it here,
+not in an app.
+
+## Backend API (`@3xl/backend`)
+
+A small **Node/Express 5** server (run with `tsx`) that exists only so the admin SPA can
+stay a pure static app. **Dev/authoring only — it is not part of the shipped game.** Pinned
+to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost:2001`).
+
+- `GET/POST /api/characters/:id` — read/write a character's
+  `definition.json` in `@3xl/data`'s `public/characters/<id>/` (writes straight into the
+  git tree; `:id` is constrained to `^[a-z0-9-]+$` to prevent path traversal). Validated
+  against constants exported from `@3xl/shared/types/character-definition.type`.
+- `GET /api/character-templates` + `POST /api/character-templates/sync` — read/sync the
+  Supabase `character_templates` table (id + frontend name only) against the local `@3xl/data`
+  registry, which is the source of truth. Connects directly to Postgres with the DB password
+  (`SUPABASE_DB_KEY`, host derived from `PUBLIC_SUPABASE_URL`) and auto-creates the table;
+  the admin `/characters` screen visualises the local↔remote diff and triggers the manual
+  sync. `packages/backend/supabase/character_templates.sql` is kept for reference only.
+- `/api/tmdb/*` — proxy for the admin `/shows` screen. Keeps the TMDB key server-side and
+  **disk-caches** every search response, image-list, and image binary under
+  `packages/backend/.cache/` (git-ignored) so TMDB is never queried twice for the same thing.
+
+## Environment variables
+
+Live in the **repo-root `.env`** (git-ignored). The backend loads it explicitly; the
+frontend reads the `PUBLIC_`-prefixed ones via SvelteKit's `$env/dynamic/public`.
+
+| Var                        | Used by  | Purpose                                   |
+| -------------------------- | -------- | ----------------------------------------- |
+| `TMDB_API_KEY`             | backend  | Server-only TMDB key (never sent to browser). |
+| `PUBLIC_SUPABASE_URL`      | frontend | Supabase project URL for magic-link auth. |
+| `PUBLIC_SUPABASE_ANON_KEY` | frontend | Supabase anon key.                        |
+| `SUPABASE_DB_KEY`          | backend  | Supabase **database password** — backend connects to Postgres to sync `character_templates` (never sent to browser). |
+
+The Supabase client degrades gracefully when the `PUBLIC_SUPABASE_*` vars are unset,
+so auth-less local dev still works.
 
 ---
 
@@ -201,7 +321,7 @@ Adapters transform data between external formats (APIs, raw data) and internal a
 ### Creating an Adapter
 
 ```typescript
-// src/adapters/classes/user.adapter.ts
+// packages/shared/src/adapters/classes/user.adapter.ts
 import { AdapterClass } from '$adapters/classes/adapter.class';
 
 interface ApiUser {
@@ -471,12 +591,13 @@ Use Tailwind's responsive prefixes:
 
 ### Core Types Location
 
-Define shared types in `src/types/`:
+Shared types live in the `@3xl/shared` package (`packages/shared/src/types/`), reached
+via the `$types` alias in the apps or the `@3xl/shared/types/*` subpath from the backend:
 
 ```typescript
-// src/types/core.type.ts - shared across the app
-// src/types/user.type.ts - user-specific types
-// src/types/api.type.ts - API response types
+// packages/shared/src/types/core.type.ts             - ThemeColors/Sizes, ID, enums
+// packages/shared/src/types/character-definition.type.ts - move kinds, stats, colors
+// packages/shared/src/types/tmdb.type.ts              - TMDB API/display shapes
 ```
 
 ### ID Type
@@ -501,7 +622,7 @@ Utilities are **pure functions** with no side effects.
 ### Creating Utilities
 
 ```typescript
-// src/utils/string/slugify.ts
+// packages/shared/src/utils/string/slugify.ts
 export function slugify(text: string): string {
 	return text
 		.toLowerCase()
@@ -524,22 +645,24 @@ const name = capitalize(normalize(rawInput));
 
 ## Testing
 
-Tests are located in the `test/` directory mirroring the `src/` structure.
+Tests live in the frontend package's `packages/frontend/test/` directory (Vitest +
+`@testing-library/svelte`, config in `packages/frontend/vitest.config.ts`). They cover
+app services plus the `@3xl/shared` utils/adapters the frontend consumes.
 
 ```
-test/
+packages/frontend/test/
 ├── services/     # Service unit tests
 ├── adapters/     # Adapter unit tests
-├── utils/        # Utility function tests
+├── utils/        # Utility function tests (dice, hex, color, localStorage store…)
 └── components/   # Component tests (with @testing-library/svelte)
 ```
 
 ### Running Tests
 
 ```bash
-pnpm test           # Run all tests
-pnpm test:ui        # Interactive test UI
-pnpm test:coverage  # Coverage report
+pnpm test           # Run all tests (from repo root; delegates to @3xl/frontend)
+pnpm --filter @3xl/frontend test:ui        # Interactive test UI
+pnpm --filter @3xl/frontend test:coverage  # Coverage report
 ```
 
 ---
@@ -556,7 +679,8 @@ Use `svelte-i18n` for translations:
 <h1>{$_('common.welcome')}</h1><p>{$_('errors.notFound')}</p>
 ```
 
-Translations are in `src/services/i18n/locales/`.
+Each app has its own translations under `src/services/i18n/locales/` (`en.json`, plus a
+generated `qq.json` pseudo-locale — regenerate the frontend's with `pnpm dev:qq`).
 
 ---
 
@@ -564,12 +688,13 @@ Translations are in `src/services/i18n/locales/`.
 
 When implementing a new feature:
 
-- [ ] Create types in `src/types/` if needed
-- [ ] Create/extend service in `src/services/` for state management
-- [ ] Create adapter in `src/adapters/` for data transformation
-- [ ] Create component(s) in `src/components/` for UI
+- [ ] Create types in `@3xl/shared` (`packages/shared/src/types/`) if needed
+- [ ] Put pure helpers/transformers in `@3xl/shared` (`utils/`, `adapters/`)
+- [ ] Create/extend service in the app's `src/services/` for state management
+- [ ] Create component(s) in the app's `src/components/` for UI
 - [ ] Use `classnames` for all conditional styling
 - [ ] No `<style>` tags or inline styles
 - [ ] Components dispatch events, don't contain business logic
-- [ ] Write tests in `test/` directory
-- [ ] Use path aliases (`$services`, `$adapters`, etc.)
+- [ ] Write tests in `packages/frontend/test/`
+- [ ] Use path aliases (`$services`, `$adapters`, etc.); import the registry from `@3xl/data`
+- [ ] Don't hand-edit generated files (registry, manifests, moves, geo) — re-run the script
