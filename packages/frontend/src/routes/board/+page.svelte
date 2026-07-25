@@ -115,7 +115,7 @@
 	// not the grid config — mirror mugen-board's start() here so the cards can line up
 	// with where each character stands on the board).
 	const centerCells: Record<'error' | 'info', { q: number; r: number }> = {
-		error: { q: -2, r: -2 },
+		error: { q: -2, r: -1 },
 		info: { q: 2, r: -3 }
 	};
 
@@ -208,10 +208,13 @@
 				const color = COMPOUND_COLORS.includes(definition.color!)
 					? definition.color!
 					: DEFAULT_COLOR;
+				// Face: the portrait the definition picked in /admin/characters, else
+				// the manifest's default. Both resolve to a file under the char's frames.
+				const faceFile = definition.face || manifest.face?.file || null;
 				return {
 					...entry,
 					name: manifest.name,
-					face: manifest.face ? `${entry.basePath}/${manifest.face.file}` : null,
+					face: faceFile ? `${entry.basePath}/${faceFile}` : null,
 					moves: definition.moves ?? [],
 					color
 				};

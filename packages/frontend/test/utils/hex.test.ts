@@ -46,7 +46,7 @@ describe('hex adjacency and pathfinding', () => {
 	});
 
 	it('findPath returns a contiguous path including both endpoints', () => {
-		const start: Hex = { q: -2, r: -2 };
+		const start: Hex = { q: -2, r: -1 };
 		const goal: Hex = { q: 0, r: -1 };
 		const path = findPath(start, goal, (c) => isBoardCell(c.q, c.r));
 		expect(path).not.toBeNull();
@@ -61,7 +61,7 @@ describe('hex adjacency and pathfinding', () => {
 
 describe('findMeleeMeeting', () => {
 	it('lands the two fighters on adjacent, colour-legal cells', () => {
-		const meeting = findMeleeMeeting({ q: -2, r: -2 }, { q: 2, r: -2 });
+		const meeting = findMeleeMeeting({ q: -2, r: -1 }, { q: 2, r: -2 });
 		expect(meeting).not.toBeNull();
 		const { red, blue } = meeting!;
 		// Adjacent.
@@ -70,7 +70,7 @@ describe('findMeleeMeeting', () => {
 		expect(red.destination.q).toBeLessThanOrEqual(0);
 		expect(blue.destination.q).toBeGreaterThanOrEqual(1);
 		// Paths are anchored at each fighter's start and their destination.
-		expect(red.path[0]).toEqual({ q: -2, r: -2 });
+		expect(red.path[0]).toEqual({ q: -2, r: -1 });
 		expect(red.path[red.path.length - 1]).toEqual(red.destination);
 		expect(blue.path[0]).toEqual({ q: 2, r: -2 });
 		expect(blue.path[blue.path.length - 1]).toEqual(blue.destination);

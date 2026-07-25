@@ -36,7 +36,7 @@ export const HEX_RADIUS = 3;
  * full depth so every purple duel cell keeps a blue east-neighbour to face.
  */
 const ROW_RANGE = new Map<number, [number, number]>([
-	[-2, [-3, -1]],
+	[-2, [-2, 0]],
 	[-1, [-3, 0]],
 	[0, [-3, -1]],
 	[1, [-4, -1]],

@@ -310,7 +310,7 @@ export class MugenBoard {
 		// The centre character of each grid stands left/right of centre: the red one
 		// lower-left (unflipped), the blue one (flipped) to the upper-right. Combat can
 		// walk any actor into the central purple column.
-		await this.addActor(this.options.grids[0].character, -2, -2, false, this.options.grids[0].color);
+		await this.addActor(this.options.grids[0].character, -2, -1, false, this.options.grids[0].color);
 		await this.addActor(this.options.grids[1].character, 2, -3, true, this.options.grids[1].color);
 
 		// Extra characters stand idle on their assigned hexes — left half faces
