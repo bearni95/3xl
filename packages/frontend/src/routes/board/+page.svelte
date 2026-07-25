@@ -30,14 +30,24 @@
 	import { AuthStatus } from '$types/profile.type';
 	import type { CharacterSpawn } from '$types/character-spawn.type';
 
-	// Swatch background per combat color, for buttons and badges.
-	const colorSwatches: Record<CombatColor, string> = {
-		red: 'bg-red-500',
-		blue: 'bg-blue-500',
-		yellow: 'bg-yellow-400',
-		purple: 'bg-purple-500',
-		orange: 'bg-orange-500',
-		green: 'bg-green-500'
+	// Filled button styling per combat color (the player's clickable buttons).
+	const colorFill: Record<CombatColor, string> = {
+		red: 'bg-red-500 hover:bg-red-600 border-red-500 text-white',
+		blue: 'bg-blue-500 hover:bg-blue-600 border-blue-500 text-white',
+		yellow: 'bg-yellow-400 hover:bg-yellow-500 border-yellow-400 text-black',
+		purple: 'bg-purple-500 hover:bg-purple-600 border-purple-500 text-white',
+		orange: 'bg-orange-500 hover:bg-orange-600 border-orange-500 text-white',
+		green: 'bg-green-500 hover:bg-green-600 border-green-500 text-white'
+	};
+
+	// Outline styling per combat color (the rival's read-only buttons).
+	const colorOutline: Record<CombatColor, string> = {
+		red: 'border-red-500 text-red-500',
+		blue: 'border-blue-500 text-blue-500',
+		yellow: 'border-yellow-400 text-yellow-500',
+		purple: 'border-purple-500 text-purple-500',
+		orange: 'border-orange-500 text-orange-500',
+		green: 'border-green-500 text-green-500'
 	};
 
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
@@ -320,14 +330,14 @@
 		{#each throwableColors(badge.color) as color (color)}
 			<button
 				type="button"
-				class={classNames('btn join-item btn-sm btn-block gap-2 capitalize', {
-					'btn-outline pointer-events-none': isRival,
-					'btn-active': combat?.moveColor === color
-				})}
+				class={classNames(
+					'btn join-item btn-sm btn-block capitalize',
+					isRival ? `btn-outline pointer-events-none ${colorOutline[color]}` : colorFill[color],
+					{ 'ring-2 ring-base-content ring-inset': combat?.moveColor === color }
+				)}
 				disabled={!isRival && areaLocked}
 				on:click={() => !isRival && selectColor(badge.id, color)}
 			>
-				<span class={classNames('h-3 w-3 rounded-full', colorSwatches[color])}></span>
 				{color}
 			</button>
 		{/each}
