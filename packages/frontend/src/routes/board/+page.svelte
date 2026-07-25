@@ -311,19 +311,23 @@
 </script>
 
 {#snippet moveButtons(badge: Badge, combat: Fighter | undefined, areaLocked: boolean)}
-	<!-- One button per color the character can throw, stacked vertically: its
-	     compound color first, then that color's two primary components. The active
-	     button marks the current choice — for rivals that's their pre-rolled
-	     default, and clicking another color overwrites it. -->
-	<div class="join join-vertical">
+	<!-- One button per color the character can throw, stacked vertically and full
+	     width: the character's own color first, then the colors it mixes into. The
+	     active button marks the current choice. The player's buttons are solid and
+	     clickable; the rival's are read-only outlines showing its pre-rolled default. -->
+	{@const isRival = badge.side === 'error'}
+	<div class="join join-vertical w-32">
 		{#each throwableColors(badge.color) as color (color)}
 			<button
 				type="button"
-				class={classNames('btn join-item btn-xs gap-1 capitalize', {
+				class={classNames('btn join-item btn-xs btn-block gap-1 capitalize', {
+					'btn-outline pointer-events-none': isRival,
 					'btn-active': combat?.moveColor === color
 				})}
-				disabled={areaLocked}
-				on:click={() => selectColor(badge.id, color)}
+				disabled={!isRival && areaLocked}
+				tabindex={isRival ? -1 : undefined}
+				aria-disabled={isRival}
+				on:click={() => !isRival && selectColor(badge.id, color)}
 			>
 				<span class={classNames('h-2.5 w-2.5 rounded-full', colorSwatches[color])}></span>
 				{color}
