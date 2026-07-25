@@ -54,11 +54,11 @@
 	const extraCells: Record<'error' | 'info', { q: number; r: number }[]> = {
 		error: [
 			{ q: -1, r: 0 },
-			{ q: -1, r: 3 }
+			{ q: -1, r: -3 }
 		],
 		info: [
-			{ q: 1, r: 2 },
-			{ q: 1, r: -1 }
+			{ q: 1, r: -2 },
+			{ q: 1, r: 1 }
 		]
 	};
 
@@ -115,7 +115,7 @@
 	// not the grid config — mirror mugen-board's start() here so the cards can line up
 	// with where each character stands on the board).
 	const centerCells: Record<'error' | 'info', { q: number; r: number }> = {
-		error: { q: -2, r: 2 },
+		error: { q: -2, r: -2 },
 		info: { q: 2, r: 0 }
 	};
 

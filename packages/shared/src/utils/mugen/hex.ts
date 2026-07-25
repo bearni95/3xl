@@ -1,10 +1,17 @@
 /**
  * Pure hex-grid helpers for the board, shared between the renderer
  * ({@link file://./mugen-board.ts}) and combat pathfinding so the two can never
- * disagree about which cells exist. The board is a single pointy-top hexagon of
- * radius {@link HEX_RADIUS} in axial coordinates (q across the width, r into the
- * depth); cells left of centre are the red half, right the blue half, and the
- * central column (q = 0) is the shared purple row.
+ * disagree about which cells exist. The board is a single pointy-top cluster of
+ * hexes in axial coordinates (q across the width, r into the depth); cells left
+ * of centre are the red half, right the blue half, and the central column
+ * (q = 0) is the shared purple row.
+ *
+ * The cluster is tilted diagonally so the red half sits **lower** on screen
+ * (nearer the viewer, smaller r) and to the left, while the blue half sits
+ * higher (further into the board) and to the right. Each column therefore spans
+ * its own explicit [minR, maxR] range ({@link ROW_RANGE}) — the red columns run
+ * through low r, the blue columns through high r — rather than the symmetric
+ * upright hexagon the field used to be.
  */
 
 /** An axial hex coordinate. */
@@ -16,20 +23,23 @@ export interface Hex {
 /** Which half of the board a column belongs to. */
 export type CellSide = 'red' | 'purple' | 'blue';
 
-/** Rings out from the centre hex (must match mugen-board's HEX_RADIUS). */
+/** Widest column reach out from the centre column (used to size the projection). */
 export const HEX_RADIUS = 3;
 
 /**
- * Front edge of the board: per column, the nearest cell (smallest r) still
- * rendered. Anything closer to the viewer is trimmed. Mirrors the FRONT_ROW map
- * in mugen-board's drawBoard — keep the two in sync.
+ * The [minR, maxR] row range each column occupies (inclusive). Columns not
+ * listed have no cells. This is the whole board shape: red columns (q < 0) run
+ * through the low (near, lower-on-screen) rows, blue columns (q > 0) through the
+ * high (far, higher-on-screen) rows, so the halves read as a diagonal — red
+ * lower-left, blue upper-right. It is the vertical mirror (r → −r) of the old
+ * upright hexagon, so both halves keep the same size and staircase as before.
  */
-const FRONT_ROW = new Map<number, number>([
-	[-2, 1],
-	[-1, 0],
-	[0, 0],
-	[1, -1],
-	[2, -1]
+const ROW_RANGE = new Map<number, [number, number]>([
+	[-2, [-3, -1]],
+	[-1, [-3, 0]],
+	[0, [-2, 0]],
+	[1, [-2, 1]],
+	[2, [-1, 1]]
 ]);
 
 /** Standard axial neighbour deltas (6 directions). */
@@ -44,22 +54,17 @@ const NEIGHBOR_DELTAS: Hex[] = [
 
 /** Whether axial [q, r] is a real, occupiable board cell. */
 export function isBoardCell(q: number, r: number): boolean {
-	const R = HEX_RADIUS;
-	if (Math.abs(q + r) > R) return false; // outside the hexagon
-	if (Math.abs(q) === R) return false; // outermost red / blue column removed
-	if (q === 0 && Math.abs(r) === R) return false; // top / bottom purple cell removed
-	const front = FRONT_ROW.get(q);
-	if (front !== undefined && r < front) return false; // nearer than the front edge
-	return true;
+	const range = ROW_RANGE.get(q);
+	if (!range) return false; // column not on the board
+	return r >= range[0] && r <= range[1];
 }
 
-/** Every valid board cell, in a stable order. */
+/** Every valid board cell, in a stable order (by column, then row). */
 export function boardCells(): Hex[] {
 	const cells: Hex[] = [];
-	const R = HEX_RADIUS;
-	for (let q = -R; q <= R; q++) {
-		for (let r = -R; r <= R; r++) {
-			if (isBoardCell(q, r)) cells.push({ q, r });
+	for (const [q, [minR, maxR]] of ROW_RANGE) {
+		for (let r = minR; r <= maxR; r++) {
+			cells.push({ q, r });
 		}
 	}
 	return cells;

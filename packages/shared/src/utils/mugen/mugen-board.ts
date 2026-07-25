@@ -307,9 +307,9 @@ export class MugenBoard {
 		);
 
 		// The centre character of each grid stands left/right of centre: the red one
-		// left (unflipped), the blue one (flipped) to the right. Combat can walk any
-		// actor into the central purple column.
-		await this.addActor(this.options.grids[0].character, -2, 2, false, this.options.grids[0].color);
+		// lower-left (unflipped), the blue one (flipped) to the upper-right. Combat can
+		// walk any actor into the central purple column.
+		await this.addActor(this.options.grids[0].character, -2, -2, false, this.options.grids[0].color);
 		await this.addActor(this.options.grids[1].character, 2, 0, true, this.options.grids[1].color);
 
 		// Extra characters stand idle on their assigned hexes — left half faces
@@ -422,8 +422,9 @@ export class MugenBoard {
 		for (let q = -R; q <= R; q++) {
 			for (let r = -R; r <= R; r++) {
 				if (!isBoardCell(q, r)) continue;
-				// Within any row cells are ordered left-to-right by q, so q alone
-				// decides the side; the central column (q = 0) is the shared purple row.
+				// Column membership and row ranges live in the shared hex utility; q
+				// alone still decides the side, and the central column (q = 0) is the
+				// shared purple row.
 				const side = cellSide(q);
 				const color =
 					side === 'red' ? leftColor : side === 'blue' ? rightColor : centerColor;

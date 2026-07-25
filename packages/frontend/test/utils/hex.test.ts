@@ -11,11 +11,11 @@ import {
 } from '$utils/mugen/hex';
 
 describe('hex board cells', () => {
-	it('excludes the outermost columns and out-of-hexagon cells', () => {
-		expect(isBoardCell(3, 0)).toBe(false); // |q| === R
+	it('excludes columns off the board and rows outside a column range', () => {
+		expect(isBoardCell(3, 0)).toBe(false); // no such column
 		expect(isBoardCell(-3, 0)).toBe(false);
-		expect(isBoardCell(0, 3)).toBe(false); // top/bottom purple removed
-		expect(isBoardCell(2, 2)).toBe(false); // outside the hexagon (|q+r| > R)
+		expect(isBoardCell(0, 3)).toBe(false); // above the purple column's range
+		expect(isBoardCell(2, 2)).toBe(false); // above the far blue column's range
 	});
 
 	it('includes representative interior cells', () => {
@@ -46,7 +46,7 @@ describe('hex adjacency and pathfinding', () => {
 	});
 
 	it('findPath returns a contiguous path including both endpoints', () => {
-		const start: Hex = { q: -2, r: 2 };
+		const start: Hex = { q: -2, r: -2 };
 		const goal: Hex = { q: 0, r: 0 };
 		const path = findPath(start, goal, (c) => isBoardCell(c.q, c.r));
 		expect(path).not.toBeNull();
@@ -61,7 +61,7 @@ describe('hex adjacency and pathfinding', () => {
 
 describe('findMeleeMeeting', () => {
 	it('lands the two fighters on adjacent, colour-legal cells', () => {
-		const meeting = findMeleeMeeting({ q: -2, r: 2 }, { q: 2, r: 0 });
+		const meeting = findMeleeMeeting({ q: -2, r: -2 }, { q: 2, r: 0 });
 		expect(meeting).not.toBeNull();
 		const { red, blue } = meeting!;
 		// Adjacent.
@@ -70,14 +70,14 @@ describe('findMeleeMeeting', () => {
 		expect(red.destination.q).toBeLessThanOrEqual(0);
 		expect(blue.destination.q).toBeGreaterThanOrEqual(1);
 		// Paths are anchored at each fighter's start and their destination.
-		expect(red.path[0]).toEqual({ q: -2, r: 2 });
+		expect(red.path[0]).toEqual({ q: -2, r: -2 });
 		expect(red.path[red.path.length - 1]).toEqual(red.destination);
 		expect(blue.path[0]).toEqual({ q: 2, r: 0 });
 		expect(blue.path[blue.path.length - 1]).toEqual(blue.destination);
 	});
 
 	it('keeps red on its colour or purple and blue strictly on blue', () => {
-		const meeting = findMeleeMeeting({ q: -1, r: 0 }, { q: 1, r: 2 })!;
+		const meeting = findMeleeMeeting({ q: -1, r: 0 }, { q: 1, r: -2 })!;
 		for (const cell of meeting.red.path) expect(cell.q).toBeLessThanOrEqual(0);
 		for (const cell of meeting.blue.path) expect(cell.q).toBeGreaterThanOrEqual(1);
 	});
