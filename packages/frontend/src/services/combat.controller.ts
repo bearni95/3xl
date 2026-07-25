@@ -476,6 +476,8 @@ export class CombatController {
 		// encounter's tally (which decides who claims the duel cell).
 		defender.strikes += damage;
 		defender.hp = Math.max(0, defender.hp - damage);
+		// Ease the defender's board HP bar down to its new health (green→red).
+		this.board?.setHp(defender.id, defender.hp / defender.maxHp);
 		// Float the damage dealt above the attacker, coloured in the thrown colour.
 		this.board?.showStrikeLabel(attacker.id, damage, thrown);
 		// setStatus emits, so the cards' live HP updates the moment a hit lands.

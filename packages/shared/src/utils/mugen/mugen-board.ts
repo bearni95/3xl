@@ -162,6 +162,42 @@ const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color] ?? 0xf
 /** Lifetime of a strike slash overlay (ms). */
 const SLASH_MS = 420;
 
+/** HP bar geometry: width as a fraction of the actor's nominal width, its pixel
+ * height, and the gap (px) from the actor's feet down to the top of the bar. */
+const HP_BAR_WIDTH_RATIO = 0.85;
+const HP_BAR_HEIGHT = 7;
+const HP_BAR_GAP = 10;
+/** How fast the displayed fill eases toward the real HP ratio (fraction closed
+ * per second) — drives both the width shrink and the colour transition. */
+const HP_BAR_EASE_PER_S = 6;
+
+/** HP bar colour stops, full → empty: green at full, yellow at half, red near 0. */
+const HP_FULL = 0x22c55e;
+const HP_MID = 0xeab308;
+const HP_LOW = 0xef4444;
+
+/** Blend two 0xRRGGBB colours, `t` from 0 (a) to 1 (b). */
+function lerpColor(a: number, b: number, t: number): number {
+	const ar = (a >> 16) & 0xff;
+	const ag = (a >> 8) & 0xff;
+	const ab = a & 0xff;
+	const br = (b >> 16) & 0xff;
+	const bg = (b >> 8) & 0xff;
+	const bb = b & 0xff;
+	const r = Math.round(ar + (br - ar) * t);
+	const g = Math.round(ag + (bg - ag) * t);
+	const bl = Math.round(ab + (bb - ab) * t);
+	return (r << 16) | (g << 8) | bl;
+}
+
+/** HP bar fill colour for a 0..1 ratio: green→yellow over the top half, then
+ * yellow→red over the bottom half, so the bar reddens as the fighter weakens. */
+function hpColor(ratio: number): number {
+	const clamped = Math.max(0, Math.min(1, ratio));
+	if (clamped > 0.5) return lerpColor(HP_MID, HP_FULL, (clamped - 0.5) / 0.5);
+	return lerpColor(HP_LOW, HP_MID, clamped / 0.5);
+}
+
 interface Point {
 	x: number;
 	y: number;
@@ -211,6 +247,19 @@ interface SlashEffect {
 	elapsed: number;
 }
 
+/**
+ * A green→red HP bar drawn just below an actor's feet. The bar tracks a target
+ * ratio (the fighter's hp/maxHp) but the *displayed* ratio eases toward it each
+ * tick, so both the width shrink and the colour transition animate smoothly.
+ */
+interface HpBar {
+	graphics: Graphics;
+	/** Displayed fill fraction (0..1), eased toward {@link targetRatio}. */
+	ratio: number;
+	/** The real hp/maxHp fraction the bar is easing toward. */
+	targetRatio: number;
+}
+
 /** A character standing (and, during combat, running) on the board. */
 interface Actor {
 	/** Stable id (character id or basePath's first segment), used to command it. */
@@ -253,6 +302,8 @@ interface Actor {
 	oneShot: OneShot | null;
 	/** The looping combat aura shown behind the actor, or null. */
 	aura: Aura | null;
+	/** The HP bar tracking this fighter's health below its feet. */
+	hpBar: HpBar | null;
 	/** Floating combat readout (the strike multiplier ×100) above the actor,
 	 * shown during a duel so the two throws can be compared. Null when clear. */
 	label: Text | null;
@@ -583,6 +634,11 @@ export class MugenBoard {
 		sprite.zIndex = mark.y;
 		this.app.stage.addChild(sprite);
 
+		// A full (green) HP bar just below the character's feet; combat eases it down
+		// (and reddens it) via setHp as the fighter takes damage.
+		const hpGraphics = new Graphics();
+		this.app.stage.addChild(hpGraphics);
+
 		const actor: Actor = {
 			id,
 			sprite,
@@ -604,6 +660,7 @@ export class MugenBoard {
 			onArrive: null,
 			oneShot: null,
 			aura: null,
+			hpBar: { graphics: hpGraphics, ratio: 1, targetRatio: 1 },
 			label: null,
 			// Nominal size from the base frames at fit scale — stable across poses,
 			// unlike the live sprite whose size tracks the current frame's texture.
@@ -618,6 +675,7 @@ export class MugenBoard {
 			stepDir: 0
 		};
 		this.applyFrame(actor);
+		this.updateHpBar(actor, 0);
 		this.actors.push(actor);
 	}
 
@@ -707,6 +765,7 @@ export class MugenBoard {
 			actor.sprite.zIndex = actor.y;
 			this.applyFrame(actor);
 			this.updateAura(actor, deltaMs);
+			this.updateHpBar(actor, deltaMs);
 			this.updateLabel(actor);
 		}
 		this.updateProjectiles(deltaMs);
@@ -747,6 +806,41 @@ export class MugenBoard {
 		aura.sprite.x = actor.x;
 		aura.sprite.y = actor.y;
 		aura.sprite.zIndex = actor.y - 0.5;
+	}
+
+	/**
+	 * Ease the actor's HP bar toward its target ratio and redraw it below the
+	 * actor's feet. The displayed ratio lags the target, so a hit both shrinks the
+	 * fill and slides its colour from green through yellow to red over ~0.2s.
+	 */
+	private updateHpBar(actor: Actor, deltaMs: number): void {
+		const bar = actor.hpBar;
+		if (!bar) return;
+
+		// Exponential ease toward the target ratio (frame-rate independent).
+		if (deltaMs > 0 && bar.ratio !== bar.targetRatio) {
+			const t = 1 - Math.exp((-HP_BAR_EASE_PER_S * deltaMs) / 1000);
+			bar.ratio += (bar.targetRatio - bar.ratio) * t;
+			if (Math.abs(bar.targetRatio - bar.ratio) < 0.001) bar.ratio = bar.targetRatio;
+		}
+
+		const width = actor.displayWidth * HP_BAR_WIDTH_RATIO;
+		const left = actor.x - width / 2;
+		const top = actor.y + HP_BAR_GAP;
+		const radius = HP_BAR_HEIGHT / 2;
+		const fillWidth = Math.max(0, Math.min(1, bar.ratio)) * width;
+
+		const g = bar.graphics;
+		g.clear();
+		// Dark track behind the fill so an empty bar still reads.
+		g.roundRect(left, top, width, HP_BAR_HEIGHT, radius);
+		g.fill({ color: 0x000000, alpha: 0.55 });
+		if (fillWidth > 0) {
+			g.roundRect(left, top, Math.max(fillWidth, HP_BAR_HEIGHT), HP_BAR_HEIGHT, radius);
+			g.fill({ color: hpColor(bar.ratio) });
+		}
+		// Draw with the actor's feet depth so nearer fighters' bars sit in front.
+		g.zIndex = actor.y + HP_BAR_GAP;
 	}
 
 	/** Keep the actor's combat readout floating just above its head, always on top. */
@@ -1253,6 +1347,17 @@ export class MugenBoard {
 	/** Put out every aura on the board. */
 	clearAuras(): void {
 		for (const actor of this.actors) this.clearAura(actor.id);
+	}
+
+	/**
+	 * Set a character's HP bar to `ratio` (hp / maxHp, clamped to 0..1). The bar
+	 * eases toward the new value over the next few ticks, animating both its width
+	 * and its green→yellow→red colour.
+	 */
+	setHp(id: string, ratio: number): void {
+		const actor = this.findActor(id);
+		if (!actor?.hpBar) return;
+		actor.hpBar.targetRatio = Math.max(0, Math.min(1, ratio));
 	}
 
 	/**
