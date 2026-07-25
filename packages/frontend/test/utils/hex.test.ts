@@ -61,7 +61,7 @@ describe('hex adjacency and pathfinding', () => {
 
 describe('findMeleeMeeting', () => {
 	it('lands the two fighters on adjacent, colour-legal cells', () => {
-		const meeting = findMeleeMeeting({ q: -2, r: -2 }, { q: 2, r: 0 });
+		const meeting = findMeleeMeeting({ q: -2, r: -2 }, { q: 2, r: -2 });
 		expect(meeting).not.toBeNull();
 		const { red, blue } = meeting!;
 		// Adjacent.
@@ -72,7 +72,7 @@ describe('findMeleeMeeting', () => {
 		// Paths are anchored at each fighter's start and their destination.
 		expect(red.path[0]).toEqual({ q: -2, r: -2 });
 		expect(red.path[red.path.length - 1]).toEqual(red.destination);
-		expect(blue.path[0]).toEqual({ q: 2, r: 0 });
+		expect(blue.path[0]).toEqual({ q: 2, r: -2 });
 		expect(blue.path[blue.path.length - 1]).toEqual(blue.destination);
 	});
 
