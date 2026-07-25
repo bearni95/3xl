@@ -23,6 +23,21 @@
 		"about": "About",
 		"contact": "Contact"
 	},
+	"profile": {
+		"title": "Profile",
+		"signInPrompt": "Enter your email and we'll send you a secure sign-in link. New here? The same link creates your account.",
+		"emailLabel": "Email address",
+		"emailPlaceholder": "you@example.com",
+		"sendMagicLink": "Send magic link",
+		"magicLinkHint": "No password needed — just click the link in your inbox.",
+		"checkEmail": "Check your inbox at {email} for your sign-in link.",
+		"useAnotherEmail": "Use a different email",
+		"accountId": "Account ID",
+		"memberSince": "Member since",
+		"lastSignIn": "Last sign-in",
+		"signOut": "Sign out",
+		"notConfigured": "Sign-in is unavailable: Supabase is not configured. Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY."
+	},
 	"errors": {
 		"generic": "An error occurred",
 		"notFound": "Not found",
