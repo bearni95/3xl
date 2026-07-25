@@ -50,8 +50,8 @@ writes four dissolved GeoJSON layers under `public/geo/` (`municipis.json`,
 `comarques.json`, `provincies.json`, `territoris.json`), served to the frontend map at
 `/data/geo/*`. The comarca tier (between municipality and province) is assigned per
 municipality at build time from Wikidata (Catalunya / Catalunya Nord), a GADM-derived
-layer (País Valencià), and by island for the Illes Balears; Andorra and l'Alguer have no
-comarca tier. See the script header for the full sourcing notes.
+layer (País Valencià), and the comarques de les illes Balears (Illes Balears); Andorra and
+l'Alguer have no comarca tier. See the script header for the full sourcing notes.
 
 **Do not hand-edit generated files** (`registry.generated.ts`, `manifest.json`,
 `mugen-moves.json`, `public/geo/*.json`) or decoded assets — re-run the relevant script.

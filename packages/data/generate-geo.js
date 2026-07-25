@@ -19,10 +19,9 @@
  *         direct P131), the traditional Valencian comarques for the País Valencià
  *         (P772 → transitive P131+), and the historical comarques of Northern
  *         Catalonia for Catalunya Nord (P374/INSEE → transitive P131+). The Illes
- *         Balears have no comarca layer, so each municipality is assigned to its
- *         island (the Consell Insular tier — the real division between province
- *         and municipality) from its centroid. Andorra and l'Alguer have no
- *         sub-province tier and are left out of the comarca layer. The rings are
+ *         Balears use the comarques de les illes Balears (only Mallorca is
+ *         subdivided; Menorca and Eivissa are each one comarca). Andorra and
+ *         l'Alguer have no sub-province tier and are left out of the layer. Rings
  *         dissolved from the same LAU geometry as the province/territory rings, so
  *         comarca borders fall exactly on municipality borders.
  *
@@ -241,6 +240,18 @@ async function fetchComarques() {
 	for (const b of nord) add(`FR_${b.insee.value}`, b.cLabel.value);
 	console.log(`  Catalunya Nord: ${nord.length} bindings → comarca`);
 
+	// Illes Balears — the comarques de les illes Balears (Q20105287). Only Mallorca
+	// is subdivided (Serra de Tramuntana, Raiguer, Pla, Llevant, Migjorn); Menorca
+	// and Eivissa are each a single comarca. The English class label omits
+	// "comarca", so it is matched by Q-id rather than the label heuristic above.
+	const bal = await wdquery(`SELECT ?ine ?cLabel WHERE {
+		?m wdt:P772 ?ine . FILTER(STRLEN(?ine)=5 && STRSTARTS(?ine,"07"))
+		?m wdt:P131 ?c . ?c wdt:P31 wd:Q20105287 .
+		SERVICE wikibase:label { bd:serviceParam wikibase:language "ca". }
+	}`);
+	for (const b of bal) add(`ES_${b.ine.value}`, b.cLabel.value);
+	console.log(`  Illes Balears: ${bal.length} municipalities → comarca`);
+
 	return map;
 }
 
@@ -303,19 +314,6 @@ function centroidOf(geom) {
 	return n ? [x / n, y / n] : [0, 0];
 }
 
-/**
- * Classify a Balearic municipality onto its island from its centroid. The four
- * islands are cleanly separated in lon/lat, so a coordinate rule is exact.
- */
-function islandComarca(geom) {
-	const [lon, lat] = centroidOf(geom);
-	let name;
-	if (lon < 2.0) name = lat < 38.8 ? 'Formentera' : 'Eivissa';
-	else if (lon > 3.65) name = 'Menorca';
-	else name = 'Mallorca';
-	return { name, id: slug(name) };
-}
-
 // --- main -----------------------------------------------------------------
 
 async function main() {
@@ -342,13 +340,11 @@ async function main() {
 
 	console.log('Fetching comarca assignment from Wikidata…');
 	const comarcaByGisco = await fetchComarques();
-	// Tag each municipality with its comarca: Wikidata for Catalunya / País
-	// Valencià / Catalunya Nord, the island for the Illes Balears (ES province 07),
-	// and none for l'Alguer (which has no sub-province tier).
+	// Tag each municipality with its comarca (Catalunya / País Valencià / Catalunya
+	// Nord / Illes Balears). l'Alguer has no sub-province tier, so it stays null.
 	let comarcaCount = 0;
 	for (const f of municipis) {
-		const wd = comarcaByGisco.get(f.properties.id);
-		const comarca = wd ?? (f.properties.id.startsWith('ES_07') ? islandComarca(f.geometry) : null);
+		const comarca = comarcaByGisco.get(f.properties.id) ?? null;
 		f.properties.comarca = comarca?.name ?? null;
 		f.properties.comarcaId = comarca?.id ?? null;
 		if (comarca) comarcaCount += 1;
