@@ -5,6 +5,7 @@ import cors from 'cors';
 import { charactersRouter } from './routes/characters';
 import { characterTemplatesRouter } from './routes/character-templates';
 import { showsRouter } from './routes/shows';
+import { showTemplatesRouter } from './routes/show-templates';
 import { tmdbRouter } from './routes/tmdb';
 import type { HttpError } from './http-error';
 
@@ -23,7 +24,7 @@ const app = express();
 app.use(
 	cors({
 		origin: ADMIN_ORIGIN,
-		methods: ['GET', 'POST'],
+		methods: ['GET', 'POST', 'PUT'],
 		allowedHeaders: ['content-type']
 	})
 );
@@ -35,6 +36,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use('/api/characters', charactersRouter);
 app.use('/api/character-templates', characterTemplatesRouter);
 app.use('/api/shows', showsRouter);
+app.use('/api/show-templates', showTemplatesRouter);
 app.use('/api/tmdb', tmdbRouter);
 
 // Central error handler: renders thrown HttpErrors as `{ message }` so the

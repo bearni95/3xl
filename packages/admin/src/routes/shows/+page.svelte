@@ -2,6 +2,8 @@
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import ShowImageGrid from '$components/core/ShowImageGrid.svelte';
+	import ShowTemplateSync from '$components/core/ShowTemplateSync.svelte';
+	import ShowCharacterAssignments from '$components/core/ShowCharacterAssignments.svelte';
 	import type {
 		DisplayTMDBTvShow,
 		DisplayTMDBTvSearchResponse,
@@ -15,8 +17,9 @@
 	// endpoints return.
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
 
-	// The two views: the persisted shows.json collection (default) and TMDB search.
-	type Tab = 'saved' | 'search';
+	// The views: the persisted shows.json collection (default), TMDB search, the
+	// Supabase template sync, and the character-assignment (cast) editor.
+	type Tab = 'saved' | 'search' | 'sync' | 'cast';
 	let tab: Tab = 'saved';
 
 	// --- Saved shows (shows.json) ---------------------------------------------
@@ -233,6 +236,22 @@
 		>
 			Search TMDB
 		</button>
+		<button
+			role="tab"
+			type="button"
+			class={classNames('tab', { 'tab-active': tab === 'sync' })}
+			on:click={() => (tab = 'sync')}
+		>
+			Supabase sync
+		</button>
+		<button
+			role="tab"
+			type="button"
+			class={classNames('tab', { 'tab-active': tab === 'cast' })}
+			on:click={() => (tab = 'cast')}
+		>
+			Cast
+		</button>
 	</div>
 
 	{#if tab === 'saved'}
@@ -322,6 +341,12 @@
 				{/each}
 			</ul>
 		{/if}
+	{:else if tab === 'sync'}
+		<!-- Mirror the saved-show collection into Supabase's show_templates table. -->
+		<ShowTemplateSync />
+	{:else if tab === 'cast'}
+		<!-- Assign characters to each saved show (show_characters join table). -->
+		<ShowCharacterAssignments shows={savedShows} />
 	{:else}
 		<!-- TMDB search -->
 		<form class="mb-6 flex gap-2" on:submit={handleSubmit}>
