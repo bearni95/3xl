@@ -14,6 +14,7 @@
 		label: string;
 		basePath: string | null;
 		color?: SpawnColor | null;
+		location?: string | null;
 	}[] = [];
 
 	const dispatch = createEventDispatcher<{
@@ -28,6 +29,7 @@
 	$: labelById = new Map(options.map((option) => [option.id, option.label]));
 	$: basePathById = new Map(options.map((option) => [option.id, option.basePath]));
 	$: colorById = new Map(options.map((option) => [option.id, option.color ?? null]));
+	$: locationById = new Map(options.map((option) => [option.id, option.location ?? null]));
 
 	function filledCount(team: Team): number {
 		return team.memberIds.filter((id): id is string => Boolean(id)).length;
@@ -96,19 +98,34 @@
 						{@const memberColors = team.memberIds.map((id) =>
 							id ? (colorById.get(id) ?? null) : null
 						)}
+						{@const memberLocations = team.memberIds.map((id) =>
+							id ? (locationById.get(id) ?? null) : null
+						)}
 						<div class="mt-3 flex flex-col gap-3">
-							<!-- All three picks' idle animations on a single canvas, each
-							     height-normalised like the board, mirrored, over its spawn colour. -->
-							<figure class="flex h-28 items-center justify-center overflow-hidden rounded bg-base-300">
-								{#key memberBasePaths.join(',')}
-									<MugenLineup
-										basePaths={memberBasePaths}
-										colors={memberColors}
-										cellWidth={80}
-										cellHeight={112}
-									/>
-								{/key}
-							</figure>
+							<div class="flex flex-col items-center gap-2">
+								<!-- All three picks' idle animations on a single canvas, each
+								     height-normalised like the board, mirrored, over its spawn colour. -->
+								<figure class="flex h-28 w-64 items-center justify-center overflow-hidden rounded bg-base-300">
+									{#key memberBasePaths.join(',')}
+										<MugenLineup
+											basePaths={memberBasePaths}
+											colors={memberColors}
+											cellWidth={80}
+											cellHeight={112}
+										/>
+									{/key}
+								</figure>
+								<!-- Municipality name under each pick, aligned to its canvas cell
+								     (three 80px cells with an 8px gap = 256px = w-64). -->
+								<div class="flex w-64 gap-2">
+									{#each memberLocations as location, index (index)}
+										<span
+											class="w-20 truncate text-center text-[10px] leading-tight opacity-70"
+											title={location ?? ''}>{location ?? ''}</span
+										>
+									{/each}
+								</div>
+							</div>
 
 							<!-- The three character selects, stacked under the animations. -->
 							<div class="flex flex-col gap-2">

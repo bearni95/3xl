@@ -110,20 +110,24 @@
 
 	// Distinct characters the player has claimed, offered as team picks. Spawns
 	// arrive newest-first; reversing before de-duping lets the newest spawn's
-	// rolled colour win (the same character can be claimed in several colours).
-	$: teamOptions = Array.from(
-		new Map(
-			[...$spawns].reverse().map((spawn) => [
-				spawn.characterId,
-				{
-					id: spawn.characterId,
-					label: labelFor(spawn.characterId),
-					basePath: basePathFor(spawn.characterId),
-					color: spawn.color
-				}
-			])
-		).values()
-	).sort((a, b) => a.label.localeCompare(b.label));
+	// rolled colour and place win (the same character can be claimed several times).
+	// `municipalityNames` is passed in explicitly so this reactive block re-runs
+	// once the layer loads — a bare locationNameFor() call wouldn't track it.
+	$: teamOptions = ((names: Map<string, string> | null) =>
+		Array.from(
+			new Map(
+				[...$spawns].reverse().map((spawn) => [
+					spawn.characterId,
+					{
+						id: spawn.characterId,
+						label: labelFor(spawn.characterId),
+						basePath: basePathFor(spawn.characterId),
+						color: spawn.color,
+						location: names?.get(spawn.locationId) ?? ULTRAMAR.municipality
+					}
+				])
+			).values()
+		).sort((a, b) => a.label.localeCompare(b.label)))(municipalityNames);
 
 	function onTeamCreate(): void {
 		teamService.createTeam();
