@@ -9,6 +9,7 @@
 		minZoom = 2,
 		maxZoom = 19,
 		overlays = [],
+		marker = null,
 		classes = ''
 	}: {
 		/** Initial map centre as [lat, lng]. */
@@ -18,12 +19,47 @@
 		maxZoom?: number;
 		/** GeoJSON overlays drawn in array order (last = topmost). */
 		overlays?: MapOverlay[];
+		/** A single pin dropped at [lat, lng], or null for no pin. */
+		marker?: [number, number] | null;
 		/** Extra Tailwind classes for the map container. */
 		classes?: string;
 	} = $props();
 
 	let mapContainer: HTMLDivElement;
 	let mapInstance: L.Map | null = null;
+	// The Leaflet module (loaded in the browser) and the current pin layer, kept
+	// so the marker can be added/moved/removed reactively as `marker` changes.
+	let leaflet: typeof L | null = null;
+	let markerLayer: L.CircleMarker | null = null;
+
+	// Sync the pin to the current `marker` prop: drop it, move it, or clear it.
+	function renderMarker() {
+		if (!mapInstance || !leaflet) return;
+		if (!marker) {
+			markerLayer?.remove();
+			markerLayer = null;
+			return;
+		}
+		if (markerLayer) {
+			markerLayer.setLatLng(marker);
+			return;
+		}
+		markerLayer = leaflet
+			.circleMarker(marker, {
+				radius: 8,
+				color: '#ffffff',
+				weight: 2,
+				fillColor: '#ef4444',
+				fillOpacity: 1
+			})
+			.addTo(mapInstance);
+	}
+
+	$effect(() => {
+		// Track `marker` so the pin follows the player's stored location.
+		void marker;
+		renderMarker();
+	});
 
 	const SVG_NS = 'http://www.w3.org/2000/svg';
 	const XLINK_NS = 'http://www.w3.org/1999/xlink';
@@ -121,6 +157,7 @@
 		// dynamically in the browser — never during SSR.
 		const Leaf = await import('leaflet');
 		await import('leaflet/dist/leaflet.css');
+		leaflet = Leaf;
 
 		mapInstance = Leaf.map(mapContainer, {
 			minZoom,
@@ -209,6 +246,9 @@
 		const refreshImageFills = () => imageFillGroups.forEach(updateImageFillGroup);
 		refreshImageFills();
 		mapInstance.on('zoomend viewreset moveend', refreshImageFills);
+
+		// Overlays finished loading; drop the pin if a location is already set.
+		renderMarker();
 	});
 
 	onDestroy(() => {

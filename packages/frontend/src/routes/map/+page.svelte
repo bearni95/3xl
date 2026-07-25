@@ -1,6 +1,42 @@
 <script lang="ts">
+	import classNames from 'classnames';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import type { MapOverlay } from '$types/map.type';
+	import { locationService, hasLocation } from '$services/location.service';
+	import { locationAdapter } from '$adapters/classes/location.adapter';
+
+	const store = locationService.store;
+
+	let loading = false;
+	let error = '';
+
+	$: location = $store;
+	// Drop a pin at the player's stored reading, or nothing until one is set.
+	$: marker = hasLocation(location)
+		? ([location.latitude, location.longitude] as [number, number])
+		: null;
+
+	function requestLocation() {
+		error = '';
+
+		if (!('geolocation' in navigator)) {
+			error = 'Geolocation is not supported by this browser.';
+			return;
+		}
+
+		loading = true;
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				locationService.set(locationAdapter.fromBrowser(position));
+				loading = false;
+			},
+			(positionError) => {
+				error = positionError.message || 'Unable to retrieve your location.';
+				loading = false;
+			},
+			{ enableHighAccuracy: true }
+		);
+	}
 
 	// Països Catalans polygons, built by @3xl/data's generate:geo from the
 	// Eurostat LAU set (WGS84) and served from that package's public/ at /data.
@@ -37,6 +73,26 @@
 	];
 </script>
 
-<div class="flex h-[calc(100vh-4rem)] flex-col">
-	<WorldMap center={[41.8, 1.7]} zoom={8} {overlays} classes="min-h-0 flex-1" />
+<div class="relative flex h-[calc(100vh-4rem)] flex-col">
+	<WorldMap center={[41.8, 1.7]} zoom={8} {overlays} {marker} classes="min-h-0 flex-1" />
+
+	<div class="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
+		<button
+			class={classNames('btn btn-primary btn-sm shadow-lg', { 'btn-disabled': loading })}
+			on:click={requestLocation}
+		>
+			{#if loading}
+				<span class="loading loading-spinner loading-xs"></span>
+				Locating…
+			{:else if marker}
+				Update my location
+			{:else}
+				Show my location
+			{/if}
+		</button>
+
+		{#if error}
+			<div class="alert alert-error max-w-xs py-2 text-sm shadow-lg">{error}</div>
+		{/if}
+	</div>
 </div>
