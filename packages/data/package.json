@@ -1,0 +1,18 @@
+{
+	"name": "@3xl/data",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"description": "Character registry module + JSON definitions and movesets. Written by @3xl/mugen, consumed by @3xl/frontend.",
+	"main": "./index.ts",
+	"types": "./index.ts",
+	"exports": {
+		".": "./index.ts",
+		"./public/*": "./public/*"
+	},
+	"files": [
+		"index.ts",
+		"registry.generated.ts",
+		"public"
+	]
+}

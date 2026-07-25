@@ -1,0 +1,10 @@
+{
+	"name": "@3xl/assets",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"description": "Generated MUGEN sprite frames, manifests, and auras. Written by @3xl/mugen, served by @3xl/frontend at /assets.",
+	"files": [
+		"public"
+	]
+}

@@ -1,0 +1,3 @@
+# MUGEN source archives (folder tracked, contents not)
+mugen-characters/*
+!mugen-characters/.gitkeep

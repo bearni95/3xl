@@ -1,0 +1,69 @@
+{
+	"id": "crappy-naraku",
+	"label": "Naraku",
+	"basePath": "/crappy-naraku/frames",
+	"animations": {
+		"idle": {
+			"source": "idle",
+			"loop": true
+		},
+		"jump": {
+			"source": "jump",
+			"loop": false
+		},
+		"fall": {
+			"source": "fall",
+			"loop": false
+		},
+		"hurt": {
+			"source": "action-5000",
+			"loop": false
+		}
+	},
+	"directions": {
+		"move-left": {
+			"source": "walk-back",
+			"loop": true
+		},
+		"move-right": {
+			"source": "run",
+			"loop": true
+		}
+	},
+	"moves": [
+		{
+			"name": "Melee",
+			"type": "melee",
+			"source": "action-200"
+		},
+		{
+			"name": "Ranged",
+			"type": "ranged",
+			"source": "action-1000",
+			"projectile": {
+				"source": "",
+				"loop": true
+			}
+		},
+		{
+			"name": "Final",
+			"type": "final",
+			"source": "action-2000",
+			"projectile": {
+				"source": "",
+				"loop": true
+			}
+		},
+		{
+			"name": "Defent",
+			"type": "defent",
+			"source": "guard-stand"
+		}
+	],
+	"stats": {
+		"atk": 5,
+		"def": 5,
+		"hp": 5
+	},
+	"color": "purple"
+}

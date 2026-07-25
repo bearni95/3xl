@@ -2,7 +2,33 @@
 
 This document guides Claude (and developers) on implementing features using this SvelteKit boilerplate. Follow these conventions strictly to maintain consistency across the codebase.
 
-## Project Structure
+## Monorepo Structure
+
+This is a **pnpm workspace** (`pnpm-workspace.yaml` → `packages/*`). Run everything
+from the repo root; scripts delegate to the right package via `pnpm --filter`.
+
+```
+packages/
+├── frontend/  (@3xl/frontend)  SvelteKit web app — the only UI package
+├── mugen/     (@3xl/mugen)      MUGEN import/assembly scripts (write assets + data)
+├── assets/    (@3xl/assets)     generated sprite frames + manifests + auras (public/)
+└── data/      (@3xl/data)       character registry module + JSON definitions + movesets
+```
+
+**Data flow**: `@3xl/mugen` reads raw archives (`mugen-characters/`) + decode inputs
+(`characters-src/<id>/`) and *writes into* `@3xl/assets` (`public/<id>/frames/`,
+`public/auras/`) and `@3xl/data` (`registry.generated.ts`, `public/characters/<id>.json`,
+`public/<id>/mugen-moves.json`). `@3xl/frontend` *installs* both as `workspace:*` deps:
+it imports the registry as a module (`import { characters } from '@3xl/data'`) and serves
+their `public/` dirs at the `/assets` and `/data` URL prefixes via the
+`serveWorkspacePublic()` Vite plugin in `packages/frontend/vite.config.ts`. Do not
+hand-edit generated files (`registry.generated.ts`, `manifest.json`, `mugen-moves.json`)
+or the decoded assets — re-run `pnpm import:mugen` / `generate:sprites` / `generate:auras`.
+
+Root scripts: `pnpm dev`, `pnpm build`, `pnpm preview`, `pnpm check`, `pnpm test`,
+`pnpm import:mugen`, `pnpm generate:sprites`, `pnpm generate:auras`.
+
+### Frontend structure (`packages/frontend/src/`)
 
 ```
 src/
@@ -18,7 +44,8 @@ src/
 
 ### Path Aliases
 
-Use these import aliases throughout the codebase:
+Frontend import aliases (defined in `packages/frontend/svelte.config.js`, scoped to
+the frontend package):
 
 ```typescript
 $components  → src/components/*
@@ -26,8 +53,20 @@ $services    → src/services/*
 $adapters    → src/adapters/*
 $utils       → src/utils/*
 $types       → src/types/*
-$data        → src/data/*
 ```
+
+The character registry is **not** an alias — import it from the workspace package:
+`import { characters, defaultCharacterId, type CharacterOption } from '@3xl/data';`
+
+---
+
+## Git & commits
+
+- **Commit directly to `main`** — no feature branches.
+- Author is the repo's configured identity (`bearni95` / bernatcanal@gmail.com); do not
+  change author or add other authors.
+- Commit messages are **concise plain text, no emoji**.
+- **Never add a `Co-Authored-By` trailer or a "Generated with …" line** — anywhere.
 
 ---
 

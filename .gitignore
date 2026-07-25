@@ -1,19 +1,15 @@
 node_modules
 
-# MUGEN source archives (folder tracked, contents not)
-mugen-characters/*
-!mugen-characters/.gitkeep
-
-# ICGC admin divisions source download (the file we use is copied to static/geo/)
+# ICGC admin divisions source download (the file we use is copied to frontend static/geo/)
 divisions-administratives-*
 
-
-# Output
+# Build output
+dist/
+.svelte-kit/
 .output
 .vercel
 .netlify
 .wrangler
-/.svelte-kit
 /build
 
 # OS
@@ -33,6 +29,3 @@ vite.config.ts.timestamp-*
 # Test coverage
 coverage/
 .vitest/
-
-# Build output
-/dist/
