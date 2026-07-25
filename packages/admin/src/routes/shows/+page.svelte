@@ -1,24 +1,55 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import { onMount } from 'svelte';
+	import ShowImageGrid from '$components/core/ShowImageGrid.svelte';
 	import type {
 		DisplayTMDBTvShow,
 		DisplayTMDBTvSearchResponse,
 		DisplayTMDBTvImages,
 		DisplayTMDBImage
 	} from '$types/tmdb.type';
-
-	// Image kinds rendered as separate labeled grids, in display order.
-	const imageGroups: { key: 'posters' | 'backdrops' | 'logos'; label: string }[] = [
-		{ key: 'posters', label: 'Posters' },
-		{ key: 'backdrops', label: 'Backdrops' },
-		{ key: 'logos', label: 'Logos' }
-	];
+	import type { ShowEntry, ShowsCollection } from '$types/show.type';
 
 	// UI-only state. All TMDB access goes through the @3xl/backend proxy (default
 	// :2002) so the API key stays server-side; this page just renders whatever the
 	// endpoints return.
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
 
+	// The two views: the persisted shows.json collection (default) and TMDB search.
+	type Tab = 'saved' | 'search';
+	let tab: Tab = 'saved';
+
+	// --- Saved shows (shows.json) ---------------------------------------------
+	let savedShows: ShowEntry[] = [];
+	let savedLoading = false;
+	let savedError = '';
+	// Ids already persisted, so search results can show as already added.
+	let savedShowIds = new Set<number>();
+
+	// Load the saved-show collection up front: it's the default tab, and it also
+	// drives the "already added" state of the search results.
+	onMount(loadSavedShows);
+
+	async function loadSavedShows() {
+		savedLoading = true;
+		savedError = '';
+		try {
+			const res = await fetch(`${API_BASE}/api/shows`);
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({ message: res.statusText }));
+				throw new Error(body.message ?? `Failed to load shows (${res.status})`);
+			}
+			const data = (await res.json()) as ShowsCollection;
+			savedShows = data.shows;
+			savedShowIds = new Set(data.shows.map((entry) => entry.show.id));
+		} catch (err) {
+			savedError = err instanceof Error ? err.message : String(err);
+		} finally {
+			savedLoading = false;
+		}
+	}
+
+	// --- TMDB search ----------------------------------------------------------
 	let query = '';
 	let results: DisplayTMDBTvShow[] = [];
 	let totalResults = 0;
@@ -31,6 +62,41 @@
 	let imagesByShow: Record<number, DisplayTMDBTvImages> = {};
 	let imagesLoading: Record<number, boolean> = {};
 	let imagesError: Record<number, string> = {};
+
+	// Per-show save state tracks the "Add to shows" button.
+	let savingShow: Record<number, boolean> = {};
+	let saveError: Record<number, string> = {};
+
+	// Persist a search result — the show plus every image TMDB holds for it —
+	// exactly as displayed, into shows.json via the backend.
+	async function saveShow(show: DisplayTMDBTvShow) {
+		const images = imagesByShow[show.id];
+		if (!images) return;
+
+		savingShow = { ...savingShow, [show.id]: true };
+		saveError = { ...saveError, [show.id]: '' };
+		try {
+			const res = await fetch(`${API_BASE}/api/shows`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ show, images })
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({ message: res.statusText }));
+				throw new Error(body.message ?? `Failed to save (${res.status})`);
+			}
+			savedShowIds = new Set(savedShowIds).add(show.id);
+			// Reflect the new entry in the saved tab without a round-trip.
+			savedShows = [...savedShows.filter((entry) => entry.show.id !== show.id), { show, images }];
+		} catch (err) {
+			saveError = {
+				...saveError,
+				[show.id]: err instanceof Error ? err.message : String(err)
+			};
+		} finally {
+			savingShow = { ...savingShow, [show.id]: false };
+		}
+	}
 
 	async function search() {
 		const trimmed = query.trim();
@@ -87,6 +153,7 @@
 		search();
 	}
 
+	// --- Full-size preview modal ----------------------------------------------
 	// Image opened in the full-size modal, or null when the modal is closed.
 	let previewImage: (DisplayTMDBImage & { showName: string }) | null = null;
 
@@ -108,135 +175,221 @@
 <div class="mx-auto max-w-5xl p-6">
 	<header class="mb-6">
 		<h1 class="text-2xl font-bold">TV Shows</h1>
-		<p class="text-base-content/60 text-sm">Search TV shows on TMDB.</p>
+		<p class="text-base-content/60 text-sm">Manage saved shows and search TMDB.</p>
 	</header>
 
-	<form class="mb-6 flex gap-2" on:submit={handleSubmit}>
-		<input
-			class="input input-bordered flex-1"
-			type="search"
-			placeholder="Search TV shows…"
-			bind:value={query}
-			aria-label="Search TV shows"
-		/>
-		<button class="btn btn-primary" type="submit" disabled={loading || !query.trim()}>
-			{#if loading}
-				<span class="loading loading-spinner loading-sm"></span>
-			{/if}
-			Search
+	<div role="tablist" class="tabs tabs-bordered mb-6">
+		<button
+			role="tab"
+			type="button"
+			class={classNames('tab', { 'tab-active': tab === 'saved' })}
+			on:click={() => (tab = 'saved')}
+		>
+			Saved shows
+			<span class="badge badge-sm badge-neutral ml-2">{savedShows.length}</span>
 		</button>
-	</form>
+		<button
+			role="tab"
+			type="button"
+			class={classNames('tab', { 'tab-active': tab === 'search' })}
+			on:click={() => (tab = 'search')}
+		>
+			Search TMDB
+		</button>
+	</div>
 
-	{#if searchError}
-		<div class="alert alert-error mb-6" role="alert">
-			<span>{searchError}</span>
-		</div>
-	{/if}
-
-	{#if hasSearched && !loading && results.length === 0 && !searchError}
-		<p class="text-base-content/60">No shows found for “{query.trim()}”.</p>
-	{/if}
-
-	{#if results.length > 0}
-		<p class="text-base-content/60 mb-3 text-sm">
-			{totalResults.toLocaleString()} result{totalResults === 1 ? '' : 's'}
-		</p>
-		<ul class="flex flex-col gap-4">
-			{#each results as show (show.id)}
-				<li class="card bg-base-100 border-base-300 border shadow-sm">
-					<div class="flex gap-3 p-3">
-						<div class="bg-base-200 h-36 w-24 shrink-0 overflow-hidden rounded">
-							{#if show.posterUrl}
-								<img
-									class="h-full w-full object-cover"
-									src={show.posterUrl}
-									alt={`Poster for ${show.name}`}
-									loading="lazy"
-								/>
-							{:else}
-								<div
-									class="text-base-content/40 flex h-full w-full items-center justify-center text-xs"
-								>
-									No image
-								</div>
-							{/if}
-						</div>
-						<div class="min-w-0 flex-1">
-							<h2 class="truncate font-semibold" title={show.name}>{show.name}</h2>
-							<div class="text-base-content/60 mb-1 flex items-center gap-2 text-xs">
-								<span>{show.firstAirYear}</span>
-								{#if show.voteCount > 0}
-									<span
-										class={classNames('badge badge-sm', {
-											'badge-success': show.voteAverage >= 7,
-											'badge-warning': show.voteAverage >= 5 && show.voteAverage < 7,
-											'badge-error': show.voteAverage < 5
-										})}
+	{#if tab === 'saved'}
+		<!-- Saved collection from shows.json — the default view. -->
+		{#if savedLoading}
+			<div class="text-base-content/50 flex items-center gap-2 text-sm">
+				<span class="loading loading-spinner loading-sm"></span>
+				Loading saved shows…
+			</div>
+		{:else if savedError}
+			<div class="alert alert-error mb-6" role="alert">
+				<span>{savedError}</span>
+			</div>
+		{:else if savedShows.length === 0}
+			<p class="text-base-content/60">
+				No saved shows yet. Use the <button
+					type="button"
+					class="link"
+					on:click={() => (tab = 'search')}>Search TMDB</button
+				> tab to add some.
+			</p>
+		{:else}
+			<ul class="flex flex-col gap-4">
+				{#each savedShows as entry (entry.show.id)}
+					{@const show = entry.show}
+					<li class="card bg-base-100 border-base-300 border shadow-sm">
+						<div class="flex gap-3 p-3">
+							<div class="bg-base-200 h-36 w-24 shrink-0 overflow-hidden rounded">
+								{#if show.posterUrl}
+									<img
+										class="h-full w-full object-cover"
+										src={show.posterUrl}
+										alt={`Poster for ${show.name}`}
+										loading="lazy"
+									/>
+								{:else}
+									<div
+										class="text-base-content/40 flex h-full w-full items-center justify-center text-xs"
 									>
-										★ {show.voteAverage.toFixed(1)}
-									</span>
+										No image
+									</div>
 								{/if}
 							</div>
-							<p class="text-base-content/70 line-clamp-4 text-sm">
-								{show.overview || 'No overview available.'}
-							</p>
-						</div>
-					</div>
-
-					<!-- All images TMDB holds for this show -->
-					<div class="border-base-300 border-t p-3">
-						{#if imagesLoading[show.id]}
-							<div class="text-base-content/50 flex items-center gap-2 text-sm">
-								<span class="loading loading-spinner loading-xs"></span>
-								Loading images…
-							</div>
-						{:else if imagesError[show.id]}
-							<p class="text-error text-sm">{imagesError[show.id]}</p>
-						{:else if imagesByShow[show.id]}
-							{@const images = imagesByShow[show.id]}
-							{#if images.all.length === 0}
-								<p class="text-base-content/50 text-sm">No images available.</p>
-							{:else}
-								<div class="flex flex-col gap-4">
-									{#each imageGroups as group (group.key)}
-										{@const groupImages = images[group.key]}
-										{#if groupImages.length > 0}
-											<section>
-												<h3 class="text-base-content/60 mb-2 text-xs font-semibold uppercase">
-													{group.label}
-													<span class="text-base-content/40 font-normal normal-case">
-														· {groupImages.length}
-													</span>
-												</h3>
-												<div
-													class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
-												>
-													{#each groupImages as image (image.filePath)}
-														<button
-															type="button"
-															class="bg-base-200 flex h-24 cursor-pointer items-center justify-center overflow-hidden rounded transition hover:ring-2 hover:ring-primary"
-															on:click={() => openPreview(image, show.name)}
-															title={`${image.kind} · ${image.width}×${image.height}${image.language ? ` · ${image.language}` : ''}`}
-														>
-															<img
-																class="h-full w-full object-contain"
-																src={image.thumbnailUrl}
-																alt={`${image.kind} for ${show.name}`}
-																loading="lazy"
-															/>
-														</button>
-													{/each}
-												</div>
-											</section>
-										{/if}
-									{/each}
+							<div class="min-w-0 flex-1">
+								<h2 class="truncate font-semibold" title={show.name}>{show.name}</h2>
+								<div class="text-base-content/60 mb-1 flex items-center gap-2 text-xs">
+									<span>{show.firstAirYear}</span>
+									{#if show.voteCount > 0}
+										<span
+											class={classNames('badge badge-sm', {
+												'badge-success': show.voteAverage >= 7,
+												'badge-warning': show.voteAverage >= 5 && show.voteAverage < 7,
+												'badge-error': show.voteAverage < 5
+											})}
+										>
+											★ {show.voteAverage.toFixed(1)}
+										</span>
+									{/if}
 								</div>
+								<p class="text-base-content/70 line-clamp-4 text-sm">
+									{show.overview || 'No overview available.'}
+								</p>
+							</div>
+						</div>
+
+						<div class="border-base-300 border-t p-3">
+							<ShowImageGrid
+								images={entry.images}
+								showName={show.name}
+								on:preview={(e) => openPreview(e.detail, show.name)}
+							/>
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	{:else}
+		<!-- TMDB search -->
+		<form class="mb-6 flex gap-2" on:submit={handleSubmit}>
+			<input
+				class="input input-bordered flex-1"
+				type="search"
+				placeholder="Search TV shows…"
+				bind:value={query}
+				aria-label="Search TV shows"
+			/>
+			<button class="btn btn-primary" type="submit" disabled={loading || !query.trim()}>
+				{#if loading}
+					<span class="loading loading-spinner loading-sm"></span>
+				{/if}
+				Search
+			</button>
+		</form>
+
+		{#if searchError}
+			<div class="alert alert-error mb-6" role="alert">
+				<span>{searchError}</span>
+			</div>
+		{/if}
+
+		{#if hasSearched && !loading && results.length === 0 && !searchError}
+			<p class="text-base-content/60">No shows found for “{query.trim()}”.</p>
+		{/if}
+
+		{#if results.length > 0}
+			<p class="text-base-content/60 mb-3 text-sm">
+				{totalResults.toLocaleString()} result{totalResults === 1 ? '' : 's'}
+			</p>
+			<ul class="flex flex-col gap-4">
+				{#each results as show (show.id)}
+					<li class="card bg-base-100 border-base-300 border shadow-sm">
+						<div class="flex gap-3 p-3">
+							<div class="bg-base-200 h-36 w-24 shrink-0 overflow-hidden rounded">
+								{#if show.posterUrl}
+									<img
+										class="h-full w-full object-cover"
+										src={show.posterUrl}
+										alt={`Poster for ${show.name}`}
+										loading="lazy"
+									/>
+								{:else}
+									<div
+										class="text-base-content/40 flex h-full w-full items-center justify-center text-xs"
+									>
+										No image
+									</div>
+								{/if}
+							</div>
+							<div class="min-w-0 flex-1">
+								<h2 class="truncate font-semibold" title={show.name}>{show.name}</h2>
+								<div class="text-base-content/60 mb-1 flex items-center gap-2 text-xs">
+									<span>{show.firstAirYear}</span>
+									{#if show.voteCount > 0}
+										<span
+											class={classNames('badge badge-sm', {
+												'badge-success': show.voteAverage >= 7,
+												'badge-warning': show.voteAverage >= 5 && show.voteAverage < 7,
+												'badge-error': show.voteAverage < 5
+											})}
+										>
+											★ {show.voteAverage.toFixed(1)}
+										</span>
+									{/if}
+								</div>
+								<p class="text-base-content/70 line-clamp-4 text-sm">
+									{show.overview || 'No overview available.'}
+								</p>
+							</div>
+							<div class="flex shrink-0 flex-col items-end gap-1">
+								{#if savedShowIds.has(show.id)}
+									<button class="btn btn-success btn-sm" type="button" disabled> ✓ Added </button>
+								{:else}
+									<button
+										class="btn btn-primary btn-sm"
+										type="button"
+										on:click={() => saveShow(show)}
+										disabled={savingShow[show.id] || !imagesByShow[show.id]}
+										title={imagesByShow[show.id]
+											? 'Save this show and all its images to shows.json'
+											: 'Waiting for images to load…'}
+									>
+										{#if savingShow[show.id]}
+											<span class="loading loading-spinner loading-xs"></span>
+										{/if}
+										Add to shows
+									</button>
+								{/if}
+								{#if saveError[show.id]}
+									<span class="text-error max-w-40 text-right text-xs">{saveError[show.id]}</span>
+								{/if}
+							</div>
+						</div>
+
+						<!-- All images TMDB holds for this show -->
+						<div class="border-base-300 border-t p-3">
+							{#if imagesLoading[show.id]}
+								<div class="text-base-content/50 flex items-center gap-2 text-sm">
+									<span class="loading loading-spinner loading-xs"></span>
+									Loading images…
+								</div>
+							{:else if imagesError[show.id]}
+								<p class="text-error text-sm">{imagesError[show.id]}</p>
+							{:else if imagesByShow[show.id]}
+								<ShowImageGrid
+									images={imagesByShow[show.id]}
+									showName={show.name}
+									on:preview={(e) => openPreview(e.detail, show.name)}
+								/>
 							{/if}
-						{/if}
-					</div>
-				</li>
-			{/each}
-		</ul>
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{/if}
 	{/if}
 </div>
 
@@ -269,7 +422,9 @@
 					✕
 				</button>
 			</div>
-			<div class="bg-base-200 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded">
+			<div
+				class="bg-base-200 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded"
+			>
 				<img
 					class="max-h-[70vh] w-auto max-w-full object-contain"
 					src={previewImage.fullUrl}
