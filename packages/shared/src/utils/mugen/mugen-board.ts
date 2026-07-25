@@ -464,7 +464,13 @@ export class MugenBoard {
 	): Promise<void> {
 		if (!this.app) return;
 		const startName = character.animation ?? 'idle';
-		const id = character.id ?? character.basePath.split('/').filter(Boolean)[0] ?? character.basePath;
+		// The actor id is the instance identity (unique per placement — the two
+		// sides can field the same character, so it must not be the asset id). The
+		// character's definition/assets are keyed by the id embedded in basePath
+		// (`/assets/<charId>/frames`), which stays shared across those instances.
+		const segments = character.basePath.split('/').filter(Boolean);
+		const characterId = segments[segments.length - 2] ?? segments[segments.length - 1] ?? '';
+		const id = character.id ?? characterId ?? character.basePath;
 
 		// Every actor can be walked cell to cell by combat, so all of them load the
 		// directional animations bound in the character's JSON definition
@@ -475,7 +481,7 @@ export class MugenBoard {
 		let moveLeftAnim = 'run';
 		let hurtAnim = '';
 		const moveSources: string[] = [];
-		const definition = await this.loadDefinition(id);
+		const definition = await this.loadDefinition(characterId);
 		if (definition) {
 			moveRightAnim = definition.directions['move-right']?.source || moveRightAnim;
 			moveLeftAnim = definition.directions['move-left']?.source || moveLeftAnim;

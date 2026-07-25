@@ -107,9 +107,24 @@
 		]
 	};
 
-	function boardCharacter(id: string): BoardCharacter {
+	// The two sides field the SAME character line-up (the CPU mirrors the player's
+	// team), so a bare character id is not unique across the board. Every board
+	// actor / fighter is identified by a per-side instance id (`error:kikyo`),
+	// while the underlying character id (for assets, definition and spawn colour)
+	// is recovered from basePath. Without this, id lookups (board actors, the
+	// combat controller) collide between the two sides and combat never starts.
+	function instanceId(side: 'error' | 'info', characterId: string): string {
+		return `${side}:${characterId}`;
+	}
+
+	function characterIdOf(basePath: string): string {
+		const segments = basePath.split('/').filter(Boolean);
+		return segments[segments.length - 2] ?? segments[segments.length - 1] ?? '';
+	}
+
+	function boardCharacter(id: string, side: 'error' | 'info'): BoardCharacter {
 		const option = characterById.get(id) ?? availableCharacters[0];
-		return { id: option.id, basePath: option.basePath, animation: 'idle' };
+		return { id: instanceId(side, option.id), basePath: option.basePath, animation: 'idle' };
 	}
 
 	// Left: red grid with its movable centre plus two idling extras; right: blue
@@ -118,13 +133,19 @@
 		return [
 			{
 				color: 0xff0000,
-				character: boardCharacter(ids[0]),
-				extras: extraCells.error.map((cell, i) => ({ ...boardCharacter(ids[1 + i]), ...cell }))
+				character: boardCharacter(ids[0], 'error'),
+				extras: extraCells.error.map((cell, i) => ({
+					...boardCharacter(ids[1 + i], 'error'),
+					...cell
+				}))
 			},
 			{
 				color: 0x2563eb,
-				character: boardCharacter(ids[3]),
-				extras: extraCells.info.map((cell, i) => ({ ...boardCharacter(ids[4 + i]), ...cell }))
+				character: boardCharacter(ids[3], 'info'),
+				extras: extraCells.info.map((cell, i) => ({
+					...boardCharacter(ids[4 + i], 'info'),
+					...cell
+				}))
 			}
 		];
 	}
@@ -241,11 +262,13 @@
 
 		const loaded = await Promise.all(
 			roster.map(async (entry) => {
-				// The character id is the first path segment (`/kikyo/frames` → `kikyo`);
-				// its combat color lives in the definition JSON authored via /admin/characters.
+				// `entry.id` is the per-side instance id (`error:kikyo`); the underlying
+				// character id — which keys the definition JSON and the spawn colour —
+				// comes from basePath (`/assets/kikyo/frames` → `kikyo`).
+				const characterId = characterIdOf(entry.basePath);
 				const [manifestRes, defRes] = await Promise.all([
 					fetch(`${entry.basePath}/manifest.json`),
-					fetch(`/data/characters/${entry.id}/definition.json`)
+					fetch(`/data/characters/${characterId}/definition.json`)
 				]);
 				const manifest: Manifest = await manifestRes.json();
 				const definition: Partial<CharacterDefinition> = defRes.ok ? await defRes.json() : {};
@@ -253,7 +276,7 @@
 				// character somehow has no spawn colour do we fall back to the
 				// definition's compound colour (or DEFAULT_COLOR).
 				const color: CombatColor =
-					colorByCharacter.get(entry.id) ??
+					colorByCharacter.get(characterId) ??
 					(COMPOUND_COLORS.includes(definition.color!) ? definition.color! : DEFAULT_COLOR);
 				// Face: the portrait the definition picked in /admin/characters, else
 				// the manifest's default. Both resolve to a file under the char's frames.
