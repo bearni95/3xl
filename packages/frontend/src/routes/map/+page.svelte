@@ -38,8 +38,5 @@
 </script>
 
 <div class="flex h-[calc(100vh-4rem)] flex-col">
-	<div class="flex items-center justify-between bg-base-200 px-4 py-2">
-		<h1 class="text-lg font-bold">World Map</h1>
-	</div>
 	<WorldMap center={[41.8, 1.7]} zoom={8} {overlays} classes="min-h-0 flex-1" />
 </div>
