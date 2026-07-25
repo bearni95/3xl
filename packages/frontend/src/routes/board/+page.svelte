@@ -386,7 +386,7 @@
 	{@const combat = combatById.get(badge.id)}
 	{@const areaLocked = !!combat?.disabled || state?.phase !== 'selecting'}
 	<div
-		class={classNames('flex flex-col items-center gap-1 transition-opacity', {
+		class={classNames('flex shrink-0 flex-col items-center gap-1 transition-opacity', {
 			'opacity-60': combat?.disabled
 		})}
 	>
@@ -436,12 +436,16 @@
 	</div>
 {/snippet}
 
-<!-- A line-up laid out horizontally, above (CPU) or below (player) the board. -->
+<!-- A line-up laid out horizontally, above (CPU) or below (player) the board.
+     Stays a single row on every screen — on mobile it scrolls sideways rather
+     than wrapping the cards into a stack. -->
 {#snippet row(list: Badge[])}
-	<div class="flex flex-row flex-wrap items-start justify-center gap-6 text-sm">
-		{#each list as badge (badge.id)}
-			{@render badgeCard(badge)}
-		{/each}
+	<div class="w-full overflow-x-auto">
+		<div class="mx-auto flex w-max flex-row flex-nowrap items-start gap-6 px-2 text-sm">
+			{#each list as badge (badge.id)}
+				{@render badgeCard(badge)}
+			{/each}
+		</div>
 	</div>
 {/snippet}
 
