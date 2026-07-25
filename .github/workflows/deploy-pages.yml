@@ -1,0 +1,75 @@
+name: Deploy frontend to GitHub Pages
+
+# Builds only the @3xl/frontend package (a self-contained SvelteKit SPA that
+# talks to Supabase directly from the browser) and publishes its static bundle
+# to GitHub Pages. The @3xl/admin and @3xl/backend packages are dev/authoring
+# only and are never built or shipped here.
+#
+# Served at the custom domain in packages/frontend/static/CNAME (3xl.bearni.io),
+# i.e. the site root, so the app's absolute /assets and /data URLs resolve.
+#
+# Supabase config is injected at build time from repository *variables*
+# (Settings -> Secrets and variables -> Actions -> Variables). The anon key is
+# safe to expose to the browser (PUBLIC_ prefix, gated by Row Level Security):
+#   PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY
+# When unset the SPA still builds and runs; only magic-link sign-in is disabled.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Allow the workflow to publish to Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One concurrent deployment; don't cancel an in-flight publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm --filter @3xl/frontend build
+        env:
+          PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ vars.PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
