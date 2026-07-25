@@ -166,6 +166,19 @@
 		return Boolean(allowed && color && allowed.has(color));
 	}
 
+	// Addability per spawn, keyed by spawn id. Computed reactively — the deps
+	// (active team, its members, their colours) are threaded in explicitly so the
+	// statement re-runs when they change; a bare canAddToActiveTeam() call in the
+	// template would hide those deps inside the function and never re-evaluate,
+	// leaving the grid's "Add to team" buttons stuck disabled (same reason
+	// teamOptions threads municipalityNames in).
+	$: canAddById = ((_activeTeam, _members, _colors) =>
+		new Map($spawns.map((spawn) => [spawn.id, canAddToActiveTeam(spawn.id)])))(
+		activeTeam,
+		activeMemberIds,
+		colorForSpawn
+	);
+
 	// Toggle a spawn on the active team: remove it if present, otherwise add it to
 	// the first free slot (respecting the colour rule via canAddToActiveTeam).
 	function toggleTeamMember(spawnId: string): void {
@@ -259,7 +272,7 @@
 							stat={spawn.stat}
 							hasActiveTeam={activeTeam !== null}
 							{onTeam}
-							canAdd={!onTeam && canAddToActiveTeam(spawn.id)}
+							canAdd={!onTeam && (canAddById.get(spawn.id) ?? false)}
 							on:toggle={() => toggleTeamMember(spawn.id)}
 						/>
 					{/each}
