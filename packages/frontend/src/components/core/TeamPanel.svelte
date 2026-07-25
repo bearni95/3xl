@@ -16,6 +16,7 @@
 		label: string;
 		basePath: string | null;
 		color?: SpawnColor | null;
+		stat?: number | null;
 		location?: string | null;
 		shows?: string[];
 	}[] = [];
@@ -42,6 +43,7 @@
 	$: labelById = new Map(options.map((option) => [option.id, option.label]));
 	$: basePathById = new Map(options.map((option) => [option.id, option.basePath]));
 	$: colorById = new Map(options.map((option) => [option.id, option.color ?? null]));
+	$: statById = new Map(options.map((option) => [option.id, option.stat ?? null]));
 	$: locationById = new Map(options.map((option) => [option.id, option.location ?? null]));
 	$: showsById = new Map(options.map((option) => [option.id, option.shows ?? []]));
 
@@ -123,10 +125,24 @@
 						{@const memberLocations = team.memberIds.map((id) =>
 							id ? (locationById.get(id) ?? null) : null
 						)}
+						{@const memberStats = team.memberIds.map((id) =>
+							id ? (statById.get(id) ?? null) : null
+						)}
 						{@const allowedColors = allowedTeammateColors(memberColors[0])}
 						{@const leadId = team.memberIds.find((id): id is string => Boolean(id)) ?? null}
 						<div class="mt-3 flex flex-col gap-3">
 							<div class="flex flex-col items-center gap-2">
+								<!-- Rolled stat over each pick, aligned to its canvas cell (three
+								     80px cells with an 8px gap = 256px = w-64). -->
+								<div class="flex w-64 gap-2">
+									{#each memberStats as stat, index (index)}
+										<span class="flex w-20 justify-center">
+											{#if stat !== null}
+												<span class="badge badge-primary badge-sm" title="Character stat">💪 {stat}</span>
+											{/if}
+										</span>
+									{/each}
+								</div>
 								<!-- All three picks' idle animations on a single canvas, each
 								     height-normalised like the board, mirrored, over its spawn colour. -->
 								<figure class="flex h-28 w-64 items-center justify-center overflow-hidden rounded bg-base-300">

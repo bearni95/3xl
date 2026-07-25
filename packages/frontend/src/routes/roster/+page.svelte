@@ -125,6 +125,7 @@
 						label: labelFor(spawn.characterId),
 						basePath: basePathFor(spawn.characterId),
 						color: spawn.color,
+						stat: spawn.stat,
 						location: names?.get(spawn.locationId) ?? ULTRAMAR.municipality,
 						shows: showNamesFor(spawn.characterId)
 					}
@@ -233,6 +234,7 @@
 							locationName={locationNameFor(spawn.locationId)}
 							claimedAt={claimedAtFor(spawn.createdAt)}
 							color={spawn.color}
+							stat={spawn.stat}
 						/>
 					{/each}
 				</div>
