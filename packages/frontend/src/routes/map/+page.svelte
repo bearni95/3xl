@@ -4,6 +4,11 @@
 	import type { PathOptions } from 'leaflet';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import type { MapCircle, MapOverlay } from '$types/map.type';
+	import type { ShowEntry, ShowsCollection } from '$types/show.type';
+	import {
+		showForMunicipality,
+		showPosterUrl
+	} from '$utils/geo/municipality-show';
 	import { locationService, hasLocation } from '$services/location.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 
@@ -21,6 +26,11 @@
 	let error = '';
 	// The municipality polygons, used to resolve a reading to its feature id.
 	let municipalities: GeoJSON.FeatureCollection | null = null;
+	// The saved-show collection, seeded onto municipalities as their poster fill.
+	let shows: ShowEntry[] = [];
+	// Held until the shows fetch settles so the overlay's `imageFill` closure
+	// (read once, during WorldMap's mount) sees the loaded collection.
+	let ready = false;
 
 	$: location = $store;
 	// The `properties.id` of the municipality the player is in, so WorldMap can
@@ -31,12 +41,23 @@
 			: null;
 
 	onMount(async () => {
-		try {
-			const response = await fetch('/data/geo/municipis.json');
-			municipalities = await response.json();
-		} catch {
+		// Load the polygons (for highlight resolution) and the saved shows (for
+		// the seeded poster fill) in parallel; both are optional, so settle each
+		// independently and always flip `ready` so the map renders regardless.
+		const [municipisResult, showsResult] = await Promise.allSettled([
+			fetch('/data/geo/municipis.json').then((response) => response.json()),
+			fetch('/data/shows.json').then((response) => response.json() as Promise<ShowsCollection>)
+		]);
+
+		if (municipisResult.status === 'fulfilled') {
 			// Highlight simply stays off if the polygons fail to load.
+			municipalities = municipisResult.value;
 		}
+		if (showsResult.status === 'fulfilled') {
+			// Municipalities fall back to their flat fill if the shows fail to load.
+			shows = showsResult.value.shows;
+		}
+		ready = true;
 	});
 
 	function requestLocation() {
@@ -71,17 +92,20 @@
 			hoverStyle: { weight: 2, fillOpacity: 0.3 },
 			label: (feature) => {
 				const props = feature.properties ?? {};
-				return [props.name ?? 'Unknown', props.prov, props.territory]
+				const show = showForMunicipality(feature, shows);
+				return [props.name ?? 'Unknown', props.prov, props.territory, show?.show.name]
 					.filter(Boolean)
 					.join(', ');
 			},
-			// Paint Badalona + Montgat together with the same One Piece poster the
-			// /claim page shows: the two municipalities share one image spanning
-			// their combined shape, with each polygon's border drawn over it.
-			imageFill: (feature) =>
-				feature.properties?.name === 'Badalona' || feature.properties?.name === 'Montgat'
-					? 'http://localhost:2002/api/tmdb/image/w342/y7IozUi2dwICMl8aGvLxjTmJDYZ.jpg'
-					: null
+			// Paint each municipality with the poster of the show seeded from its
+			// GPS coordinates. WorldMap groups features by the URL returned here,
+			// so every municipality that lands on the same show shares one poster
+			// spanning their combined shape, with each polygon's border drawn over
+			// it — adjacent same-show cells merge into a single picture.
+			imageFill: (feature) => {
+				const show = showForMunicipality(feature, shows);
+				return show ? showPosterUrl(show) : null;
+			}
 		},
 		{
 			url: '/data/geo/provincies.json',
@@ -108,15 +132,21 @@
 </script>
 
 <div class="relative flex h-[calc(100vh-4rem)] flex-col">
-	<WorldMap
-		center={[41.8, 1.7]}
-		zoom={8}
-		{overlays}
-		{circles}
-		{highlightId}
-		{highlightStyle}
-		classes="min-h-0 flex-1"
-	/>
+	{#if ready}
+		<WorldMap
+			center={[41.8, 1.7]}
+			zoom={8}
+			{overlays}
+			{circles}
+			{highlightId}
+			{highlightStyle}
+			classes="min-h-0 flex-1"
+		/>
+	{:else}
+		<div class="flex min-h-0 flex-1 items-center justify-center">
+			<span class="loading loading-spinner loading-lg"></span>
+		</div>
+	{/if}
 
 	<div class="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
 		<button

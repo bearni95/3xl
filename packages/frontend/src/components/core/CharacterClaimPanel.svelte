@@ -6,7 +6,8 @@
 	import { AuthStatus } from '$types/profile.type';
 	import type { ClaimableShow } from '$types/character-spawn.type';
 	import type { GeoRegion } from '$types/location.type';
-	import type { ShowEntry, ShowsCollection } from '$types/show.type';
+	import type { ShowsCollection } from '$types/show.type';
+	import { showPosterUrl } from '$utils/geo/municipality-show';
 	import ShowClaimCard from '$components/core/ShowClaimCard.svelte';
 
 	// The municipality the player has resolved from their browser location, from the
@@ -40,17 +41,6 @@
 		void loadPosters();
 	});
 
-	// A saved show's assigned main poster URL, falling back to its default TMDB
-	// poster, then null (the card shows a placeholder).
-	function mainPosterUrl(entry: ShowEntry): string | null {
-		const filePath = entry.mainImages?.poster;
-		if (filePath) {
-			const image = entry.images.posters.find((candidate) => candidate.filePath === filePath);
-			if (image) return image.thumbnailUrl;
-		}
-		return entry.show.posterUrl ?? null;
-	}
-
 	// Load the saved-show collection (public JSON) to map each show to its poster.
 	async function loadPosters() {
 		try {
@@ -59,7 +49,7 @@
 			const data = (await res.json()) as ShowsCollection;
 			const map = new Map<number, string>();
 			for (const entry of data.shows) {
-				const url = mainPosterUrl(entry);
+				const url = showPosterUrl(entry);
 				if (url) map.set(entry.show.id, url);
 			}
 			posterByShowId = map;
