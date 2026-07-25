@@ -139,15 +139,23 @@
 		for (const layer of group.layers) applyImageFill(layer);
 	}
 
+	// Image-filled polygons sit at half strength so the satellite base reads
+	// through, and fade to full opacity while hovered.
+	const IMAGE_FILL_OPACITY = 0.5;
+	const IMAGE_FILL_HOVER_OPACITY = 1;
+
 	// Point a member path's fill at its group pattern (set when the group is
-	// built). Used on first paint and to restore the fill after a
-	// setStyle/resetStyle repaints the base fillColor on hover.
-	function applyImageFill(layer: L.Path) {
+	// built) at the given opacity. Used on first paint and to restore the fill
+	// after a setStyle/resetStyle repaints the base fillColor on hover.
+	// fill-opacity is driven through the CSS property (not the attribute) with a
+	// transition, so the hover change fades rather than snapping.
+	function applyImageFill(layer: L.Path, opacity: number = IMAGE_FILL_OPACITY) {
 		const patternId = (layer as L.Path & { _imageFillPatternId?: string })._imageFillPatternId;
-		const el = layer.getElement();
+		const el = layer.getElement() as SVGElement | undefined;
 		if (!patternId || !el) return;
 		el.setAttribute('fill', `url(#${patternId})`);
-		el.setAttribute('fill-opacity', '1');
+		el.style.transition = 'fill-opacity 200ms ease';
+		el.style.fillOpacity = String(opacity);
 	}
 
 	onMount(async () => {
@@ -214,13 +222,14 @@
 					if (overlay.hoverStyle) {
 						layer.on('mouseover', () => {
 							(layer as L.Path).setStyle(overlay.hoverStyle!);
-							// setStyle repaints the base fillColor, so re-apply the image
-							// (kept opaque rather than dimmed to the hover fillOpacity).
-							if (hasImageFill) applyImageFill(layer as L.Path);
+							// setStyle repaints the base fillColor, so re-apply the image —
+							// fading it to full opacity while hovered.
+							if (hasImageFill) applyImageFill(layer as L.Path, IMAGE_FILL_HOVER_OPACITY);
 						});
 						layer.on('mouseout', () => {
 							layerGroup.resetStyle(layer);
-							// resetStyle repaints the base fillColor, so re-apply the image.
+							// resetStyle repaints the base fillColor, so re-apply the image
+							// at its resting half opacity.
 							if (hasImageFill) applyImageFill(layer as L.Path);
 						});
 					}
