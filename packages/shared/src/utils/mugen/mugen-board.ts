@@ -223,6 +223,9 @@ interface Actor {
 	oneShot: OneShot | null;
 	/** The looping combat aura shown behind the actor, or null. */
 	aura: Aura | null;
+	/** Floating combat readout (the strike multiplier ×100) above the actor,
+	 * shown during a duel so the two throws can be compared. Null when clear. */
+	label: Text | null;
 	/** Nominal on-screen size (px) of the character at its fit scale, measured
 	 * from its base animation frames; sizes the aura that envelops it. */
 	displayWidth: number;
@@ -562,6 +565,7 @@ export class MugenBoard {
 			onArrive: null,
 			oneShot: null,
 			aura: null,
+			label: null,
 			// Nominal size from the base frames at fit scale — stable across poses,
 			// unlike the live sprite whose size tracks the current frame's texture.
 			displayWidth: Math.max(...baseFrames.map((frame) => frame.width)) * fitScale,
@@ -664,6 +668,7 @@ export class MugenBoard {
 			actor.sprite.zIndex = actor.y;
 			this.applyFrame(actor);
 			this.updateAura(actor, deltaMs);
+			this.updateLabel(actor);
 		}
 		this.updateProjectiles(deltaMs);
 	};
@@ -682,6 +687,15 @@ export class MugenBoard {
 		aura.sprite.x = actor.x;
 		aura.sprite.y = actor.y;
 		aura.sprite.zIndex = actor.y - 0.5;
+	}
+
+	/** Keep the actor's combat readout floating just above its head, always on top. */
+	private updateLabel(actor: Actor): void {
+		const label = actor.label;
+		if (!label) return;
+		label.x = actor.x;
+		label.y = actor.y - actor.displayHeight - 12;
+		label.zIndex = actor.y + 10000;
 	}
 
 	/** Advance every in-flight projectile toward its target; land and resolve on arrival. */
@@ -1110,6 +1124,46 @@ export class MugenBoard {
 	/** Put out every aura on the board. */
 	clearAuras(): void {
 		for (const actor of this.actors) this.clearAura(actor.id);
+	}
+
+	/**
+	 * Float a combat readout above a character — the strike multiplier of its
+	 * throw ×100 (50 / 100 / 200) — so the two fighters' numbers can be compared
+	 * during a duel (higher deals more, and wins). Replaces any existing label.
+	 */
+	showStrikeLabel(id: string, value: number): void {
+		const actor = this.findActor(id);
+		if (!actor || !this.app) return;
+		this.clearStrikeLabel(id);
+		const label = new Text({
+			text: String(value),
+			style: {
+				fill: 0xffffff,
+				fontSize: 40,
+				fontWeight: '900',
+				fontFamily: 'system-ui, sans-serif',
+				stroke: { color: 0x000000, width: 6 },
+				align: 'center'
+			}
+		});
+		label.anchor.set(0.5, 1);
+		this.app.stage.addChild(label);
+		actor.label = label;
+		this.updateLabel(actor);
+	}
+
+	/** Remove a character's combat readout, if it has one. */
+	clearStrikeLabel(id: string): void {
+		const actor = this.findActor(id);
+		if (!actor?.label) return;
+		actor.label.parent?.removeChild(actor.label);
+		actor.label.destroy();
+		actor.label = null;
+	}
+
+	/** Clear every combat readout on the board. */
+	clearStrikeLabels(): void {
+		for (const actor of this.actors) this.clearStrikeLabel(actor.id);
 	}
 
 	/** Load (and cache) the frame textures of one aura color. Resolves to an

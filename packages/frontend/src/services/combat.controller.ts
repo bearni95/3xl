@@ -306,8 +306,9 @@ export class CombatController {
 	 * the player can run another round.
 	 */
 	private finishRound(): void {
-		// The round's throws are spent — every aura burns out.
+		// The round's throws are spent — every aura burns out and the readouts clear.
 		this.board?.clearAuras();
+		this.board?.clearStrikeLabels();
 		// Territory victory: holding all three purple duel cells when the round
 		// ends wins outright.
 		const owners = MELEE_MEETING_CELLS.map((cell) => this.cellOwners.get(cellKey(cell))?.side);
@@ -344,6 +345,8 @@ export class CombatController {
 		// Remember who held the cell coming in — a tie must not strip a defended cell.
 		const priorHolder = [player, rival].find((f) => this.heldCell(f)) ?? null;
 		const [first, second] = priorHolder === player ? [rival, player] : [player, rival];
+		// Clear the previous duel's readouts before this pair throws.
+		this.board?.clearStrikeLabels();
 		// Fighting vacates whatever cell each participant held: its paint reverts to
 		// purple for the duration, and only winning a duel earns a cell back.
 		this.vacateCells(player);
@@ -419,6 +422,9 @@ export class CombatController {
 		]);
 
 		defender.strikes += strikes;
+		// Float the throw's multiplier ×100 above the attacker so the two fighters'
+		// numbers sit side by side — higher deals more strikes and wins the duel.
+		this.board?.showStrikeLabel(attacker.id, Math.round(strikes * 100));
 		this.setStatus(this.strikeLine(attacker, defender, strikes));
 	}
 
