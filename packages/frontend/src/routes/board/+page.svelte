@@ -452,16 +452,7 @@
 	</div>
 {/snippet}
 
-<!-- The rival line-up, stacked vertically beside the board. -->
-{#snippet column(list: Badge[])}
-	<div class="flex flex-col items-center gap-4 text-sm">
-		{#each list as badge (badge.id)}
-			{@render badgeCard(badge)}
-		{/each}
-	</div>
-{/snippet}
-
-<!-- The player line-up, laid out horizontally below the board. -->
+<!-- A line-up laid out horizontally, above (CPU) or below (player) the board. -->
 {#snippet row(list: Badge[])}
 	<div class="flex flex-row flex-wrap items-start justify-center gap-6 text-sm">
 		{#each list as badge (badge.id)}
@@ -508,16 +499,15 @@
 	{:else}
 		<div class="card bg-base-100 shadow-xl">
 			<div class="card-body items-center gap-3">
-				<div class="flex items-start justify-center gap-12">
-					{@render column(columns[0])}
-					<div class="flex flex-col items-center gap-3">
-						{#key boardKey}
-							<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
-						{/key}
-						{#if state?.status && !state?.outcome}
-							<div class="text-sm font-medium">{state.status}</div>
-						{/if}
-					</div>
+				<!-- CPU options, as a row before the game canvas. -->
+				{@render row(columns[0])}
+				<div class="flex flex-col items-center gap-3">
+					{#key boardKey}
+						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
+					{/key}
+					{#if state?.status && !state?.outcome}
+						<div class="text-sm font-medium">{state.status}</div>
+					{/if}
 				</div>
 				<!-- Player options, as a row after the game canvas. -->
 				{@render row(columns[1])}
