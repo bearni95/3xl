@@ -38,8 +38,7 @@ import type { MugenBoard } from '$utils/mugen/mugen-board';
 import {
 	findMove,
 	type CharacterMove,
-	type CombatColor,
-	type CompoundColor
+	type CombatColor
 } from '$types/character-definition.type';
 import { strikeMultiplier, throwableColors } from '$utils/color/compare';
 import { rollDie } from '$utils/dice/roll';
@@ -75,8 +74,10 @@ export interface FighterSeed {
 	id: string;
 	name: string;
 	side: FighterSide;
-	/** The character's compound combat color, from its definition JSON. */
-	color: CompoundColor;
+	/** The character's combat color — the colour rolled for its Supabase spawn.
+	 * A compound (purple/orange/green) can throw its two components too; a primary
+	 * (red/yellow/blue) throws only itself (see {@link throwableColors}). */
+	color: CombatColor;
 	/** The moves this character's JSON definition declares (used for animation). */
 	moves: CharacterMove[];
 }

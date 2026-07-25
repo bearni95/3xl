@@ -49,8 +49,9 @@ export function strikeMultiplier(attacker: CombatColor, defender: CombatColor): 
 	return STRIKE_MULTIPLIERS[attacker][defender];
 }
 
-/** The colors a character of `color` can throw: the compound plus its two
- * component primaries, in display order. */
-export function throwableColors(color: CompoundColor): CombatColor[] {
-	return [color, ...COMPOUND_COMPONENTS[color]];
+/** The colors a character of `color` can throw. A compound character throws the
+ * compound plus its two component primaries (in display order); a primary
+ * character throws only its own primary. */
+export function throwableColors(color: CombatColor): CombatColor[] {
+	return isPrimaryColor(color) ? [color] : [color, ...COMPOUND_COMPONENTS[color]];
 }

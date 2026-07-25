@@ -20,11 +20,15 @@
 		DEFAULT_COLOR,
 		type CharacterDefinition,
 		type CharacterMove,
-		type CombatColor,
-		type CompoundColor
+		type CombatColor
 	} from '$types/character-definition.type';
 	import { throwableColors } from '$utils/color/compare';
 	import { characters as availableCharacters } from '@3xl/data';
+	import { authService } from '$services/auth.service';
+	import { spawnService } from '$services/spawn.service';
+	import { teamService, TEAM_SIZE, type Team } from '$services/team.service';
+	import { AuthStatus } from '$types/profile.type';
+	import type { CharacterSpawn } from '$types/character-spawn.type';
 
 	// Swatch background per combat color, for buttons and badges.
 	const colorSwatches: Record<CombatColor, string> = {
@@ -36,19 +40,50 @@
 		green: 'bg-green-500'
 	};
 
-	// The six combat participants, pickable from the character registry. Slots
-	// 0–2 fill the red grid (slot 0 is the movable centre character, 1–2 the
-	// extras), slots 3–5 the blue grid likewise.
-	let slots: string[] = [
-		'kikyo',
-		'moon',
-		'luffy',
-		'vegetassj1v1100',
-		'sb1gokuanotherlive',
-		'ranmahb'
-	];
-
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
+
+	// The blue side is the player's active team; the red side (the CPU) is a 1:1
+	// copy of it. Both are driven entirely by the roster's active team — there is
+	// no in-board picker anymore.
+	const authStatus = authService.status;
+	const profile = authService.profile;
+	const teamStore = teamService.store;
+	const spawns = spawnService.spawns;
+
+	// The signed-in player, or null. Colours (and the team's characters) come from
+	// this player's Supabase spawns, so playing requires being signed in.
+	$: currentUserId =
+		$authStatus === AuthStatus.SignedIn && $profile ? String($profile.id) : null;
+
+	// The active team, and whether it's ready to play (all TEAM_SIZE slots filled).
+	$: activeTeam =
+		$teamStore.teams.find((team: Team) => team.id === $teamStore.activeTeamId) ?? null;
+	$: teamMembers = (activeTeam?.memberIds ?? []).filter((id): id is string => Boolean(id));
+	$: teamReady = teamMembers.length === TEAM_SIZE;
+	$: playable = !!currentUserId && teamReady;
+
+	// Load the player's spawns once signed in, so their rolled colours are available.
+	let loadedForUser: string | null = null;
+	let spawnsLoaded = false;
+	$: if (currentUserId && currentUserId !== loadedForUser) {
+		loadedForUser = currentUserId;
+		spawnsLoaded = false;
+		void spawnService.loadSpawns(currentUserId).then(() => (spawnsLoaded = true));
+	}
+
+	// character id → the Supabase spawn colour to fight with. When a character was
+	// claimed more than once the newest spawn (spawns arrive newest-first) wins.
+	$: colorByCharacter = (() => {
+		const map = new Map<string, CombatColor>();
+		for (const spawn of $spawns as CharacterSpawn[]) {
+			if (!map.has(spawn.characterId)) map.set(spawn.characterId, spawn.color as CombatColor);
+		}
+		return map;
+	})();
+
+	// Slots 0–2 are the red (CPU) grid, 3–5 the blue (player) grid; the CPU line-up
+	// mirrors the player's active team exactly.
+	$: slots = playable ? [...teamMembers, ...teamMembers] : [];
 
 	// Fixed hexes the two non-centre characters of each side idle on.
 	const extraCells: Record<'error' | 'info', { q: number; r: number }[]> = {
@@ -102,8 +137,8 @@
 		face: string | null;
 		/** The moves this character's JSON definition declares, in declared order. */
 		moves: CharacterMove[];
-		/** The character's compound combat color, from its definition JSON. */
-		color: CompoundColor;
+		/** The character's combat color — its Supabase spawn colour. */
+		color: CombatColor;
 		/**
 		 * Board depth of the character's cell (`r + q/2`). Larger = further into the
 		 * board = higher on screen; used to stack the cards to match the grid.
@@ -204,10 +239,12 @@
 				]);
 				const manifest: Manifest = await manifestRes.json();
 				const definition: Partial<CharacterDefinition> = defRes.ok ? await defRes.json() : {};
-				// Definitions predating colors fall back to DEFAULT_COLOR.
-				const color = COMPOUND_COLORS.includes(definition.color!)
-					? definition.color!
-					: DEFAULT_COLOR;
+				// Combat colour comes from the character's Supabase spawn; only if a
+				// character somehow has no spawn colour do we fall back to the
+				// definition's compound colour (or DEFAULT_COLOR).
+				const color: CombatColor =
+					colorByCharacter.get(entry.id) ??
+					(COMPOUND_COLORS.includes(definition.color!) ? definition.color! : DEFAULT_COLOR);
 				// Face: the portrait the definition picked in /admin/characters, else
 				// the manifest's default. Both resolve to a file under the char's frames.
 				const faceFile = definition.face || manifest.face?.file || null;
@@ -238,16 +275,20 @@
 		if (board) controller.attachBoard(board);
 	}
 
-	onMount(() => void setup());
+	onMount(() => authService.init());
 
 	onDestroy(() => unsubscribe?.());
 
-	// Swap the character in one picker slot and rebuild the whole fight around
-	// the new line-up (the board remounts via boardKey).
-	function onSlotChange(index: number, id: string): void {
-		const next = [...slots];
-		next[index] = id;
-		slots = next;
+	// (Re)build the fight whenever the playable line-up or its colours change. The
+	// key folds in each slot's character id and its resolved spawn colour, so the
+	// controller is rebuilt only on a real change — not on every unrelated tick.
+	$: fightKey =
+		playable && spawnsLoaded
+			? `${slots.join(',')}|${slots.map((id) => colorByCharacter.get(id) ?? '').join(',')}`
+			: '';
+	let lastFightKey = '';
+	$: if (fightKey && fightKey !== lastFightKey) {
+		lastFightKey = fightKey;
 		void setup();
 	}
 
@@ -328,59 +369,58 @@
 {/snippet}
 
 <div class="flex min-h-screen flex-col items-center justify-start gap-6 bg-base-200 p-8">
-	<div class="card bg-base-100 shadow-xl">
-		<div class="card-body items-center gap-3">
-			<!-- Line-up picker: one slot per combat participant (red 1–3, blue 1–3).
-			     Changing a slot rebuilds the board and restarts the fight. -->
-			<div class="grid w-full grid-cols-6 gap-2">
-				{#each slots as slotId, index (index)}
-					{@const side = index < 3 ? 'error' : 'info'}
-					<label class="flex flex-col gap-1">
-						<span
-							class={classNames('text-xs font-medium uppercase', {
-								'text-error': side === 'error',
-								'text-info': side === 'info'
-							})}
-						>
-							{side === 'error' ? 'Red' : 'Blue'}
-							{(index % 3) + 1}
-						</span>
-						<select
-							class={classNames('select-bordered select select-xs', {
-								'select-error': side === 'error',
-								'select-info': side === 'info'
-							})}
-							value={slotId}
-							disabled={state?.phase === 'fighting'}
-							on:change={(event) => onSlotChange(index, event.currentTarget.value)}
-						>
-							{#each availableCharacters as option (option.id)}
-								<!-- A character can only occupy one slot at a time. -->
-								<option
-									value={option.id}
-									disabled={option.id !== slotId && slots.includes(option.id)}
-								>
-									{option.label}
-								</option>
-							{/each}
-						</select>
-					</label>
-				{/each}
-			</div>
-			<div class="flex items-start justify-center gap-12">
-				{@render column(columns[0])}
-				<div class="flex flex-col items-center gap-3">
-					{#key boardKey}
-						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
-					{/key}
-					{#if state?.status && !state?.outcome}
-						<div class="text-sm font-medium">{state.status}</div>
-					{/if}
-				</div>
-				{@render column(columns[1])}
+	{#if !authService.configured}
+		<div class="alert alert-warning max-w-md text-sm">
+			<span>Sign-in is unavailable — Supabase is not configured, so no team can be played.</span>
+		</div>
+	{:else if $authStatus === AuthStatus.Loading}
+		<div class="flex justify-center py-12">
+			<span class="loading loading-spinner loading-md"></span>
+		</div>
+	{:else if $authStatus !== AuthStatus.SignedIn}
+		<div class="card max-w-md bg-base-100 shadow-xl">
+			<div class="card-body gap-4">
+				<h2 class="card-title">Sign in to play</h2>
+				<p class="text-sm opacity-70">
+					Your team fights with the characters you've claimed and the colours they rolled. Sign in
+					to pick a team.
+				</p>
+				<a class="btn btn-primary btn-sm w-fit" href="/profile">Sign in</a>
 			</div>
 		</div>
-	</div>
+	{:else if !teamReady}
+		<!-- Signed in, but there's no active team ready to field. -->
+		<div class="card max-w-md bg-base-100 shadow-xl">
+			<div class="card-body gap-4">
+				<h2 class="card-title">No active team</h2>
+				<p class="text-sm opacity-70">
+					{#if !activeTeam}
+						Create a team and set it as active on your roster to play.
+					{:else}
+						Your active team needs all {TEAM_SIZE} slots filled to play — finish it on your roster.
+					{/if}
+				</p>
+				<a class="btn btn-primary btn-sm w-fit" href="/roster">Go to roster</a>
+			</div>
+		</div>
+	{:else}
+		<div class="card bg-base-100 shadow-xl">
+			<div class="card-body items-center gap-3">
+				<div class="flex items-start justify-center gap-12">
+					{@render column(columns[0])}
+					<div class="flex flex-col items-center gap-3">
+						{#key boardKey}
+							<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
+						{/key}
+						{#if state?.status && !state?.outcome}
+							<div class="text-sm font-medium">{state.status}</div>
+						{/if}
+					</div>
+					{@render column(columns[1])}
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <!-- Endgame modal: blocks the whole page once the game is decided. No backdrop

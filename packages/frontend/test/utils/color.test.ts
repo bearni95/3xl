@@ -86,6 +86,12 @@ describe('color strike table', () => {
 		expect(throwableColors('green')).toEqual(['green', 'blue', 'yellow']);
 	});
 
+	it('throwableColors of a primary is just that primary', () => {
+		expect(throwableColors('red')).toEqual(['red']);
+		expect(throwableColors('blue')).toEqual(['blue']);
+		expect(throwableColors('yellow')).toEqual(['yellow']);
+	});
+
 	it('isPrimaryColor splits the six colors into their families', () => {
 		expect(isPrimaryColor('red')).toBe(true);
 		expect(isPrimaryColor('blue')).toBe(true);
