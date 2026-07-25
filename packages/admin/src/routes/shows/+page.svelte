@@ -62,20 +62,33 @@
 	let imagesByShow: Record<number, DisplayTMDBTvImages> = {};
 	let imagesLoading: Record<number, boolean> = {};
 	let imagesError: Record<number, string> = {};
+	// Which results have their images section expanded. Fetching a show's images
+	// is a separate TMDB call, so it happens on demand — only when a card is
+	// opened (or saved), never for the whole result set at once.
+	let expandedImages: Record<number, boolean> = {};
 
 	// Per-show save state tracks the "Add to shows" button.
 	let savingShow: Record<number, boolean> = {};
 	let saveError: Record<number, string> = {};
 
+	// Toggle a result's image gallery, fetching it the first time it's opened.
+	function toggleImages(showId: number) {
+		const open = !expandedImages[showId];
+		expandedImages = { ...expandedImages, [showId]: open };
+		if (open && !imagesByShow[showId] && !imagesLoading[showId]) loadImages(showId);
+	}
+
 	// Persist a search result — the show plus every image TMDB holds for it —
 	// exactly as displayed, into shows.json via the backend.
 	async function saveShow(show: DisplayTMDBTvShow) {
-		const images = imagesByShow[show.id];
-		if (!images) return;
-
 		savingShow = { ...savingShow, [show.id]: true };
 		saveError = { ...saveError, [show.id]: '' };
 		try {
+			// Images load on demand, so a show can be saved without being expanded —
+			// fetch them first if we don't have them yet.
+			const images = imagesByShow[show.id] ?? (await loadImages(show.id));
+			if (!images) throw new Error(imagesError[show.id] || 'Could not load images');
+
 			const res = await fetch(`${API_BASE}/api/shows`, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
@@ -108,6 +121,7 @@
 		imagesByShow = {};
 		imagesLoading = {};
 		imagesError = {};
+		expandedImages = {};
 		try {
 			const res = await fetch(`${API_BASE}/api/tmdb/search?query=${encodeURIComponent(trimmed)}`);
 			if (!res.ok) {
@@ -117,7 +131,6 @@
 			const data = (await res.json()) as DisplayTMDBTvSearchResponse;
 			results = data.results;
 			totalResults = data.totalResults;
-			for (const show of results) loadImages(show.id);
 		} catch (err) {
 			results = [];
 			totalResults = 0;
@@ -127,7 +140,7 @@
 		}
 	}
 
-	async function loadImages(showId: number) {
+	async function loadImages(showId: number): Promise<DisplayTMDBTvImages | null> {
 		imagesLoading = { ...imagesLoading, [showId]: true };
 		imagesError = { ...imagesError, [showId]: '' };
 		try {
@@ -138,11 +151,13 @@
 			}
 			const data = (await res.json()) as DisplayTMDBTvImages;
 			imagesByShow = { ...imagesByShow, [showId]: data };
+			return data;
 		} catch (err) {
 			imagesError = {
 				...imagesError,
 				[showId]: err instanceof Error ? err.message : String(err)
 			};
+			return null;
 		} finally {
 			imagesLoading = { ...imagesLoading, [showId]: false };
 		}
@@ -371,10 +386,8 @@
 										class="btn btn-primary btn-sm"
 										type="button"
 										on:click={() => saveShow(show)}
-										disabled={savingShow[show.id] || !imagesByShow[show.id]}
-										title={imagesByShow[show.id]
-											? 'Save this show and all its images to shows.json'
-											: 'Waiting for images to load…'}
+										disabled={savingShow[show.id]}
+										title="Save this show and all its images to shows.json"
 									>
 										{#if savingShow[show.id]}
 											<span class="loading loading-spinner loading-xs"></span>
@@ -382,29 +395,39 @@
 										Add to shows
 									</button>
 								{/if}
+								<button
+									class="btn btn-ghost btn-sm"
+									type="button"
+									on:click={() => toggleImages(show.id)}
+									aria-expanded={!!expandedImages[show.id]}
+								>
+									{expandedImages[show.id] ? 'Hide images' : 'Show images'}
+								</button>
 								{#if saveError[show.id]}
 									<span class="text-error max-w-40 text-right text-xs">{saveError[show.id]}</span>
 								{/if}
 							</div>
 						</div>
 
-						<!-- All images TMDB holds for this show -->
-						<div class="border-base-300 border-t p-3">
-							{#if imagesLoading[show.id]}
-								<div class="text-base-content/50 flex items-center gap-2 text-sm">
-									<span class="loading loading-spinner loading-xs"></span>
-									Loading images…
-								</div>
-							{:else if imagesError[show.id]}
-								<p class="text-error text-sm">{imagesError[show.id]}</p>
-							{:else if imagesByShow[show.id]}
-								<ShowImageGrid
-									images={imagesByShow[show.id]}
-									showName={show.name}
-									on:preview={(e) => openPreview(e.detail, show.name)}
-								/>
-							{/if}
-						</div>
+						<!-- All images TMDB holds for this show — fetched on first open. -->
+						{#if expandedImages[show.id]}
+							<div class="border-base-300 border-t p-3">
+								{#if imagesLoading[show.id]}
+									<div class="text-base-content/50 flex items-center gap-2 text-sm">
+										<span class="loading loading-spinner loading-xs"></span>
+										Loading images…
+									</div>
+								{:else if imagesError[show.id]}
+									<p class="text-error text-sm">{imagesError[show.id]}</p>
+								{:else if imagesByShow[show.id]}
+									<ShowImageGrid
+										images={imagesByShow[show.id]}
+										showName={show.name}
+										on:preview={(e) => openPreview(e.detail, show.name)}
+									/>
+								{/if}
+							</div>
+						{/if}
 					</li>
 				{/each}
 			</ul>
