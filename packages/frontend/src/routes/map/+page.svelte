@@ -15,7 +15,12 @@
 				return [props.name ?? 'Unknown', props.prov, props.territory]
 					.filter(Boolean)
 					.join(', ');
-			}
+			},
+			// Paint Badalona with the same One Piece poster the /claim page shows.
+			imageFill: (feature) =>
+				feature.properties?.name === 'Badalona'
+					? 'http://localhost:2002/api/tmdb/image/w342/y7IozUi2dwICMl8aGvLxjTmJDYZ.jpg'
+					: null
 		},
 		{
 			url: '/data/geo/provincies.json',

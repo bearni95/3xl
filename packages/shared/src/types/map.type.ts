@@ -10,6 +10,11 @@ export interface MapOverlay {
 	hoverStyle?: PathOptions;
 	/** Returns the hover tooltip label for a feature. */
 	label?: (feature: GeoJSON.Feature) => string;
+	/**
+	 * Returns an image URL to paint as a feature's fill (stretched to its
+	 * bounding box), or null to leave the normal `style.fillColor`.
+	 */
+	imageFill?: (feature: GeoJSON.Feature) => string | null;
 	/** Called when a feature is clicked. */
 	onClick?: (feature: GeoJSON.Feature) => void;
 	/**

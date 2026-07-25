@@ -25,6 +25,50 @@
 	let mapContainer: HTMLDivElement;
 	let mapInstance: L.Map | null = null;
 
+	const SVG_NS = 'http://www.w3.org/2000/svg';
+	const XLINK_NS = 'http://www.w3.org/1999/xlink';
+	let imageFillId = 0;
+
+	// Paint a vector layer's SVG path with an image, stretched to its bounding
+	// box via an SVG <pattern>. The pattern is created once per layer and reused
+	// so a mouseout/resetStyle can re-apply the fill without leaking <defs> nodes.
+	function applyImageFill(layer: L.Path, url: string) {
+		const el = layer.getElement() as (SVGPathElement & { _imageFillId?: string }) | null;
+		const svg = el?.ownerSVGElement;
+		if (!el || !svg) return;
+
+		let defs = svg.querySelector('defs');
+		if (!defs) {
+			defs = document.createElementNS(SVG_NS, 'defs');
+			svg.insertBefore(defs, svg.firstChild);
+		}
+
+		let patternId = el._imageFillId;
+		if (!patternId) {
+			patternId = `map-image-fill-${imageFillId++}`;
+			el._imageFillId = patternId;
+
+			const pattern = document.createElementNS(SVG_NS, 'pattern');
+			pattern.setAttribute('id', patternId);
+			pattern.setAttribute('patternContentUnits', 'objectBoundingBox');
+			pattern.setAttribute('width', '1');
+			pattern.setAttribute('height', '1');
+
+			const image = document.createElementNS(SVG_NS, 'image');
+			image.setAttributeNS(XLINK_NS, 'href', url);
+			image.setAttribute('href', url);
+			image.setAttribute('width', '1');
+			image.setAttribute('height', '1');
+			image.setAttribute('preserveAspectRatio', 'none');
+
+			pattern.appendChild(image);
+			defs.appendChild(pattern);
+		}
+
+		el.setAttribute('fill', `url(#${patternId})`);
+		el.setAttribute('fill-opacity', '1');
+	}
+
 	onMount(async () => {
 		// Leaflet touches `window` at import time, so it must be loaded
 		// dynamically in the browser — never during SSR.
@@ -63,6 +107,10 @@
 		if (!mapInstance) return;
 
 		overlays.forEach((overlay, index) => {
+			// Layers whose fill is an image; painted after the group is added to
+			// the map, since their SVG paths don't exist until then.
+			const imageFills: Array<{ layer: L.Path; url: string }> = [];
+
 			const layerGroup = Leaf.geoJSON(datasets[index], {
 				interactive: overlay.interactive ?? true,
 				style: () => overlay.style,
@@ -74,14 +122,27 @@
 						layer.bindTooltip(label, { sticky: true });
 					}
 
+					const imageUrl = overlay.imageFill?.(feature) ?? null;
+					if (imageUrl) imageFills.push({ layer: layer as L.Path, url: imageUrl });
+
 					if (overlay.hoverStyle) {
-						layer.on('mouseover', () => (layer as L.Path).setStyle(overlay.hoverStyle!));
-						layer.on('mouseout', () => layerGroup.resetStyle(layer));
+						layer.on('mouseover', () => {
+							(layer as L.Path).setStyle(overlay.hoverStyle!);
+							// Keep the image opaque instead of dimming to the hover fillOpacity.
+							if (imageUrl) (layer as L.Path).getElement()?.setAttribute('fill-opacity', '1');
+						});
+						layer.on('mouseout', () => {
+							layerGroup.resetStyle(layer);
+							// resetStyle repaints the base fillColor, so re-apply the image.
+							if (imageUrl) applyImageFill(layer as L.Path, imageUrl);
+						});
 					}
 
 					layer.on('click', () => overlay.onClick?.(feature));
 				}
 			}).addTo(mapInstance!);
+
+			for (const { layer, url } of imageFills) applyImageFill(layer, url);
 		});
 	});
 
