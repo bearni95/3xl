@@ -8,7 +8,7 @@
 	import { errorMessage } from '$utils/error/error-message';
 	import { AuthStatus } from '$types/profile.type';
 	import type { ClaimableShow } from '$types/character-spawn.type';
-	import type { GeoRegion } from '$types/location.type';
+	import { ULTRAMAR, ULTRAMAR_ID, type GeoRegion } from '$types/location.type';
 	import MugenStage from '$components/core/MugenStage.svelte';
 
 	// The municipality the player has resolved from their browser location, plus the
@@ -97,8 +97,10 @@
 		if (id === null) return 'All shows';
 		return shows.find((show) => show.id === id)?.name ?? `Show ${id}`;
 	}
-	// Resolve a spawn's stored municipality id to its place name.
+	// Resolve a spawn's stored municipality id to its place name. Readings outside
+	// every mapped area are stored under the Ultramar sentinel.
 	function locationNameFor(id: string): string {
+		if (id === ULTRAMAR_ID) return ULTRAMAR.municipality;
 		return municipalityNames?.get(id) ?? id;
 	}
 </script>

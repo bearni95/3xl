@@ -16,16 +16,23 @@ export interface GeoLocation {
 
 /** The named administrative area a coordinate resolves to. */
 export interface GeoRegion {
-	/** The municipality's geojson feature id (e.g. `ES_08028`), or `null` outside scope. */
-	id: string | null;
+	/**
+	 * The municipality's geojson feature id (e.g. `ES_08028`), or the
+	 * {@link ULTRAMAR} sentinel id when the coordinate falls outside every area.
+	 * Always set, so any resolved reading — Ultramar included — is claimable.
+	 */
+	id: string;
 	municipality: string;
 	province: string;
 	country: string;
 }
 
+/** Sentinel geojson id stored for readings outside every defined area. */
+export const ULTRAMAR_ID = 'ultramar';
+
 /** Shown when a coordinate falls outside every defined area. */
 export const ULTRAMAR: GeoRegion = {
-	id: null,
+	id: ULTRAMAR_ID,
 	municipality: 'Ultramar',
 	province: 'Ultramar',
 	country: 'Ultramar'
