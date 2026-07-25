@@ -3,13 +3,16 @@
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { spawnService } from '$services/spawn.service';
+	import { teamService } from '$services/team.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { AuthStatus } from '$types/profile.type';
 	import RosterCard from '$components/core/RosterCard.svelte';
+	import TeamPanel from '$components/core/TeamPanel.svelte';
 
 	const status = authService.status;
 	const profile = authService.profile;
 	const spawns = spawnService.spawns;
+	const team = teamService.store;
 
 	// Spawns store only a character id + geojson ids; labels, sprites and place
 	// names are resolved here from the local registry and municipality layer.
@@ -72,6 +75,30 @@
 	function claimedAtFor(createdAt: string): string {
 		return new Date(createdAt).toLocaleString();
 	}
+
+	// Distinct characters the player has claimed, offered as team picks.
+	$: teamOptions = Array.from(
+		new Map(
+			$spawns.map((spawn) => [
+				spawn.characterId,
+				{
+					id: spawn.characterId,
+					label: labelFor(spawn.characterId),
+					basePath: basePathFor(spawn.characterId)
+				}
+			])
+		).values()
+	).sort((a, b) => a.label.localeCompare(b.label));
+
+	function onTeamSelect(event: CustomEvent<{ index: number; characterId: string | null }>): void {
+		teamService.setMember(event.detail.index, event.detail.characterId);
+	}
+	function onTeamRename(event: CustomEvent<{ index: number; name: string }>): void {
+		teamService.renameMember(event.detail.index, event.detail.name);
+	}
+	function onTeamClear(event: CustomEvent<{ index: number }>): void {
+		teamService.clearMember(event.detail.index);
+	}
 </script>
 
 <div class="flex min-h-screen flex-col gap-6 bg-base-200 p-8">
@@ -85,49 +112,65 @@
 		{/if}
 	</div>
 
-	{#if !authService.configured}
-		<div class="alert alert-warning text-sm">
-			<span>Sign-in is unavailable — Supabase is not configured.</span>
+	<div class="flex flex-col gap-6 lg:flex-row lg:items-start">
+		<div class="flex-1">
+			{#if !authService.configured}
+				<div class="alert alert-warning text-sm">
+					<span>Sign-in is unavailable — Supabase is not configured.</span>
+				</div>
+			{:else if $status === AuthStatus.Loading}
+				<div class="flex justify-center py-12">
+					<span class="loading loading-spinner loading-md"></span>
+				</div>
+			{:else if $status !== AuthStatus.SignedIn}
+				<div class="card max-w-md bg-base-100 shadow-xl">
+					<div class="card-body gap-4">
+						<p class="text-sm opacity-70">Sign in to see the characters you've claimed.</p>
+						<a class="btn btn-primary btn-sm w-fit" href="/profile">Sign in</a>
+					</div>
+				</div>
+			{:else if error}
+				<div class="alert alert-error text-sm"><span>{error}</span></div>
+			{:else if loading}
+				<div class="flex items-center gap-2 text-sm opacity-70">
+					<span class="loading loading-spinner loading-xs"></span>
+					Loading your roster…
+				</div>
+			{:else if $spawns.length === 0}
+				<div class="card max-w-md bg-base-100 shadow-xl">
+					<div class="card-body gap-4">
+						<p class="text-sm opacity-70">
+							You haven't claimed any characters yet. Head to the claim page to spawn your first one.
+						</p>
+						<a class="btn btn-primary btn-sm w-fit" href="/claim">Claim a character</a>
+					</div>
+				</div>
+			{:else}
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+					{#each $spawns as spawn (spawn.id)}
+						<RosterCard
+							label={labelFor(spawn.characterId)}
+							basePath={basePathFor(spawn.characterId)}
+							showNames={showNamesFor(spawn.characterId)}
+							locationName={locationNameFor(spawn.locationId)}
+							claimedAt={claimedAtFor(spawn.createdAt)}
+							color={spawn.color}
+						/>
+					{/each}
+				</div>
+			{/if}
 		</div>
-	{:else if $status === AuthStatus.Loading}
-		<div class="flex justify-center py-12">
-			<span class="loading loading-spinner loading-md"></span>
-		</div>
-	{:else if $status !== AuthStatus.SignedIn}
-		<div class="card max-w-md bg-base-100 shadow-xl">
-			<div class="card-body gap-4">
-				<p class="text-sm opacity-70">Sign in to see the characters you've claimed.</p>
-				<a class="btn btn-primary btn-sm w-fit" href="/profile">Sign in</a>
-			</div>
-		</div>
-	{:else if error}
-		<div class="alert alert-error text-sm"><span>{error}</span></div>
-	{:else if loading}
-		<div class="flex items-center gap-2 text-sm opacity-70">
-			<span class="loading loading-spinner loading-xs"></span>
-			Loading your roster…
-		</div>
-	{:else if $spawns.length === 0}
-		<div class="card max-w-md bg-base-100 shadow-xl">
-			<div class="card-body gap-4">
-				<p class="text-sm opacity-70">
-					You haven't claimed any characters yet. Head to the claim page to spawn your first one.
-				</p>
-				<a class="btn btn-primary btn-sm w-fit" href="/claim">Claim a character</a>
-			</div>
-		</div>
-	{:else}
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-			{#each $spawns as spawn (spawn.id)}
-				<RosterCard
-					label={labelFor(spawn.characterId)}
-					basePath={basePathFor(spawn.characterId)}
-					showNames={showNamesFor(spawn.characterId)}
-					locationName={locationNameFor(spawn.locationId)}
-					claimedAt={claimedAtFor(spawn.createdAt)}
-					color={spawn.color}
+
+		{#if $status === AuthStatus.SignedIn}
+			<aside class="w-full lg:w-80 lg:shrink-0">
+				<TeamPanel
+					members={$team.members}
+					options={teamOptions}
+					on:select={onTeamSelect}
+					on:rename={onTeamRename}
+					on:clear={onTeamClear}
 				/>
-			{/each}
-		</div>
-	{/if}
+			</aside>
+		{/if}
+	</div>
 </div>
