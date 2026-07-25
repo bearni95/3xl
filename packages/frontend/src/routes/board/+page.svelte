@@ -398,61 +398,74 @@
 	</div>
 {/snippet}
 
+{#snippet badgeCard(badge: Badge)}
+	{@const combat = combatById.get(badge.id)}
+	{@const areaLocked = !!combat?.disabled || state?.phase !== 'selecting'}
+	<div
+		class={classNames('flex flex-col items-center gap-1 transition-opacity', {
+			'opacity-60': combat?.disabled
+		})}
+	>
+		<div class="flex items-center gap-2">
+			<!-- Buttons sit board-side: left of the face for red, right of it for blue. -->
+			{#if badge.side === 'error'}
+				{@render moveButtons(badge, combat, areaLocked)}
+			{/if}
+			{#if badge.face}
+				<!-- Face images are horizontally flipped. -->
+				<img
+					src={badge.face}
+					alt={badge.name}
+					class="h-32 w-32 -scale-x-100 bg-base-300 object-cover object-top"
+				/>
+			{/if}
+			{#if badge.side === 'info'}
+				{@render moveButtons(badge, combat, areaLocked)}
+			{/if}
+		</div>
+		<span>{badge.name}</span>
+		<!-- ATK is the character's Supabase spawn stat; DEF is its complement
+		     (SPAWN_STAT_MAX - ATK); HP is rolled from ATK at battle start and
+		     drains live as combat plays out. -->
+		<table class="table table-xs w-auto text-center">
+			<thead>
+				<tr>
+					<th class="px-2">ATK</th>
+					<th class="px-2">DEF</th>
+					<th class="px-2">HP</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td class="px-2 font-semibold">{badge.stat}</td>
+					<td class="px-2 font-semibold">{SPAWN_STAT_MAX - badge.stat}</td>
+					<td
+						class={classNames('px-2 font-semibold', {
+							'text-error': combat?.defeated
+						})}
+					>
+						{combat ? `${combat.hp}/${combat.maxHp}` : '—'}
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+{/snippet}
+
+<!-- The rival line-up, stacked vertically beside the board. -->
 {#snippet column(list: Badge[])}
 	<div class="flex flex-col items-center gap-4 text-sm">
 		{#each list as badge (badge.id)}
-			{@const combat = combatById.get(badge.id)}
-			{@const areaLocked = !!combat?.disabled || state?.phase !== 'selecting'}
-			<div
-				class={classNames('flex flex-col items-center gap-1 transition-opacity', {
-					'opacity-60': combat?.disabled
-				})}
-			>
-				<div class="flex items-center gap-2">
-					<!-- Buttons sit board-side on both columns: left of the face for red,
-					     right of the face for blue. -->
-					{#if badge.side === 'error'}
-						{@render moveButtons(badge, combat, areaLocked)}
-					{/if}
-					{#if badge.face}
-						<!-- Both columns' face images are horizontally flipped. -->
-						<img
-							src={badge.face}
-							alt={badge.name}
-							class="h-32 w-32 -scale-x-100 bg-base-300 object-cover object-top"
-						/>
-					{/if}
-					{#if badge.side === 'info'}
-						{@render moveButtons(badge, combat, areaLocked)}
-					{/if}
-				</div>
-				<span>{badge.name}</span>
-				<!-- ATK is the character's Supabase spawn stat; DEF is its complement
-				     (SPAWN_STAT_MAX - ATK); HP is rolled from ATK at battle start and
-				     drains live as combat plays out. -->
-				<table class="table table-xs w-auto text-center">
-					<thead>
-						<tr>
-							<th class="px-2">ATK</th>
-							<th class="px-2">DEF</th>
-							<th class="px-2">HP</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td class="px-2 font-semibold">{badge.stat}</td>
-							<td class="px-2 font-semibold">{SPAWN_STAT_MAX - badge.stat}</td>
-							<td
-								class={classNames('px-2 font-semibold', {
-									'text-error': combat?.defeated
-								})}
-							>
-								{combat ? `${combat.hp}/${combat.maxHp}` : '—'}
-							</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
+			{@render badgeCard(badge)}
+		{/each}
+	</div>
+{/snippet}
+
+<!-- The player line-up, laid out horizontally below the board. -->
+{#snippet row(list: Badge[])}
+	<div class="flex flex-row flex-wrap items-start justify-center gap-6 text-sm">
+		{#each list as badge (badge.id)}
+			{@render badgeCard(badge)}
 		{/each}
 	</div>
 {/snippet}
@@ -505,8 +518,9 @@
 							<div class="text-sm font-medium">{state.status}</div>
 						{/if}
 					</div>
-					{@render column(columns[1])}
 				</div>
+				<!-- Player options, as a row after the game canvas. -->
+				{@render row(columns[1])}
 			</div>
 		</div>
 	{/if}
