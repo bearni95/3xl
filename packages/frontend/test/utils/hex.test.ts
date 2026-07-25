@@ -8,7 +8,7 @@ import {
 	isBoardCell,
 	neighbors,
 	type Hex
-} from '../../src/utils/mugen/hex';
+} from '$utils/mugen/hex';
 
 describe('hex board cells', () => {
 	it('excludes the outermost columns and out-of-hexagon cells', () => {

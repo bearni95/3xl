@@ -1,0 +1,22 @@
+{
+	"name": "@3xl/shared",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"description": "Framework-agnostic shared code (types, utils, adapters) consumed by @3xl/frontend, @3xl/admin and @3xl/backend. Ships TypeScript source; consumers transpile it.",
+	"exports": {
+		"./types/*": "./src/types/*.ts",
+		"./utils/*": "./src/utils/*.ts",
+		"./adapters/*": "./src/adapters/*.ts"
+	},
+	"files": [
+		"src"
+	],
+	"dependencies": {
+		"leaflet": "^1.9.4",
+		"pixi.js": "^8.19.0"
+	},
+	"peerDependencies": {
+		"svelte": "^5.0.0"
+	}
+}

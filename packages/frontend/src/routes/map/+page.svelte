@@ -2,27 +2,28 @@
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import type { MapOverlay } from '$types/map.type';
 
-	// ICGC "divisions administratives" polygons (WGS84, 1:250,000).
-	// Drawn bottom-up: municipality fills, comarca lines, province lines.
+	// Països Catalans polygons, built by @3xl/data's generate:geo from the
+	// Eurostat LAU set (WGS84) and served from that package's public/ at /data.
+	// Drawn bottom-up: municipality fills, province lines, territory lines.
 	const overlays: MapOverlay[] = [
 		{
-			url: '/geo/municipis.json',
+			url: '/data/geo/municipis.json',
 			style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
 			hoverStyle: { weight: 2, fillOpacity: 0.3 },
 			label: (feature) => {
 				const props = feature.properties ?? {};
-				return [props.NOMMUNI ?? 'Unknown', props.NOMCOMAR, props.NOMPROV]
+				return [props.name ?? 'Unknown', props.prov, props.territory]
 					.filter(Boolean)
 					.join(', ');
 			}
 		},
 		{
-			url: '/geo/comarques.json',
+			url: '/data/geo/provincies.json',
 			style: { color: '#eab308', weight: 2, fill: false },
 			interactive: false
 		},
 		{
-			url: '/geo/provincies.json',
+			url: '/data/geo/territoris.json',
 			style: { color: '#ef4444', weight: 3, fill: false },
 			interactive: false
 		}

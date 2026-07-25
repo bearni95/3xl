@@ -1,4 +1,4 @@
-import type { Manifest } from '$utils/mugen/mugen-player';
+import type { Manifest } from './mugen-player';
 
 export interface MugenAnimationOptions {
 	/** Folder (relative to the static root) holding manifest.json + frame PNGs. */

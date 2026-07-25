@@ -19,7 +19,7 @@ import {
 	type CombatColor,
 	type CompoundColor,
 	type PrimaryColor
-} from '$types/character-definition.type';
+} from '../../types/character-definition.type';
 
 const PRIMARIES: PrimaryColor[] = ['red', 'blue', 'yellow'];
 

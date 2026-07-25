@@ -1,5 +1,5 @@
-import { routeAdapter } from '$adapters/classes/route.adapter';
-import type { RouteNode } from '$types/navigation.type';
+import { routeAdapter } from '../../adapters/classes/route.adapter';
+import type { RouteNode } from '../../types/navigation.type';
 
 /**
  * Statically discover every SvelteKit page at build time. Vite requires a

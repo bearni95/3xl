@@ -3,6 +3,9 @@ node_modules
 # ICGC admin divisions source download (the file we use is copied to frontend static/geo/)
 divisions-administratives-*
 
+# Eurostat LAU Europe source download (input to packages/data generate:geo)
+ref-lau-*
+
 # Build output
 dist/
 .svelte-kit/

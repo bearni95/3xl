@@ -14,6 +14,10 @@
 	// The definition being edited and the raw manifest animation keys the user
 	// can bind slots to. Both come from the parent (loaded via the API / manifest).
 	export let definition: CharacterDefinition;
+	// Where the character's frames are actually served (the registry's
+	// `/assets/<id>/frames` path). The definition JSON's own `basePath` is legacy
+	// and doesn't match the served location, so previews must use this instead.
+	export let basePath: string = definition.basePath;
 	export let availableAnimations: string[] = [];
 	// Save feedback, driven by the parent while the POST is in flight.
 	export let saving: boolean = false;
@@ -102,7 +106,7 @@
 								{#if draft.animations[name].source}
 									{#key draft.animations[name].source}
 										<MugenAnimationPreview
-											basePath={definition.basePath}
+											basePath={basePath}
 											animation={draft.animations[name].source}
 										/>
 									{/key}
@@ -151,7 +155,7 @@
 								{#if draft.directions[name].source}
 									{#key draft.directions[name].source}
 										<MugenAnimationPreview
-											basePath={definition.basePath}
+											basePath={basePath}
 											animation={draft.directions[name].source}
 										/>
 									{/key}
@@ -238,7 +242,7 @@
 								{#if move.source}
 									{#key move.source}
 										<MugenAnimationPreview
-											basePath={definition.basePath}
+											basePath={basePath}
 											animation={move.source}
 										/>
 									{/key}
@@ -285,7 +289,7 @@
 									{#if move.projectile.source}
 										{#key move.projectile.source}
 											<MugenAnimationPreview
-												basePath={definition.basePath}
+												basePath={basePath}
 												animation={move.projectile.source}
 											/>
 										{/key}

@@ -6,9 +6,9 @@
  * actually drives — the movement animations the root page plays, plus three
  * combat moves — and layers custom gameplay params on top.
  *
- * Definitions live as JSON under `static/characters/<id>.json`, are committed to
- * the git tree, and are edited from /admin/characters through the write API at
- * `src/routes/api/characters/[id]/+server.ts`.
+ * Definitions live as JSON in @3xl/data under `public/characters/<id>/definition.json`,
+ * are committed to the git tree, and are edited from /admin/characters through
+ * the backend write API at `packages/backend/src/routes/characters.ts`.
  */
 
 /**
@@ -90,7 +90,7 @@ export type StatKind = 'atk' | 'def' | 'hp';
 export type CharacterStats = Record<StatKind, number>;
 
 export interface CharacterDefinition {
-	/** Stable id, matches `static/<id>/` and `static/characters/<id>.json`. */
+	/** Stable id, matches `/assets/<id>/` and `public/characters/<id>/definition.json`. */
 	id: string;
 	/** Human-readable name shown in pickers. */
 	label: string;

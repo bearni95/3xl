@@ -17,8 +17,10 @@ packages/
 
 **Data flow**: `@3xl/mugen` reads raw archives (`mugen-characters/`) + decode inputs
 (`characters-src/<id>/`) and *writes into* `@3xl/assets` (`public/<id>/frames/`,
-`public/auras/`) and `@3xl/data` (`registry.generated.ts`, `public/characters/<id>.json`,
-`public/<id>/mugen-moves.json`). `@3xl/frontend` *installs* both as `workspace:*` deps:
+`public/auras/`) and `@3xl/data` (`registry.generated.ts`, plus each character's
+`public/characters/<id>/definition.json` and `public/characters/<id>/mugen-moves.json`;
+the unrelated Països Catalans map layers stay separate under `public/geo/`).
+`@3xl/frontend` *installs* both as `workspace:*` deps:
 it imports the registry as a module (`import { characters } from '@3xl/data'`) and serves
 their `public/` dirs at the `/assets` and `/data` URL prefixes via the
 `serveWorkspacePublic()` Vite plugin in `packages/frontend/vite.config.ts`. Do not

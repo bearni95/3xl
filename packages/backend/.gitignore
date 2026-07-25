@@ -1,0 +1,5 @@
+# Local TMDB response/image cache (populated at runtime, never committed)
+.cache/
+
+# Build output
+dist/

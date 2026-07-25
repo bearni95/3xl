@@ -1,6 +1,6 @@
-import { AdapterClass } from '$adapters/classes/adapter.class';
-import capitalize from '$utils/string/capitalize';
-import type { RouteNode } from '$types/navigation.type';
+import { AdapterClass } from './adapter.class';
+import capitalize from '../../utils/string/capitalize';
+import type { RouteNode } from '../../types/navigation.type';
 
 const ROUTES_PREFIX = '/src/routes';
 const PAGE_SUFFIX = '/+page.svelte';

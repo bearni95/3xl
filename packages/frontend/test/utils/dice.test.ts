@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { rollN, resolveAttack } from '../../src/utils/dice/roll';
+import { rollN, resolveAttack } from '$utils/dice/roll';
 
 /** Feed Math.random a fixed sequence so dice results are deterministic. */
 function stubDice(values: number[]): void {

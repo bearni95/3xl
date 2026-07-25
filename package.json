@@ -5,17 +5,21 @@
 	"type": "module",
 	"packageManager": "pnpm@10.10.0",
 	"scripts": {
-		"dev": "pnpm --filter @3xl/frontend dev",
+		"dev": "pnpm --filter @3xl/frontend --filter @3xl/admin --filter @3xl/backend --parallel run dev",
+		"dev:frontend": "pnpm --filter @3xl/frontend dev",
+		"dev:admin": "pnpm --filter @3xl/admin dev",
+		"dev:backend": "pnpm --filter @3xl/backend dev",
 		"dev:qq": "pnpm --filter @3xl/frontend dev:qq",
-		"build": "pnpm --filter @3xl/frontend build",
+		"build": "pnpm --filter @3xl/frontend --filter @3xl/admin run build",
 		"preview": "pnpm --filter @3xl/frontend preview",
-		"check": "pnpm --filter @3xl/frontend check",
+		"check": "pnpm --filter @3xl/frontend --filter @3xl/admin --filter @3xl/backend run check",
 		"format": "pnpm --filter @3xl/frontend format",
 		"lint": "pnpm --filter @3xl/frontend lint",
 		"test": "pnpm --filter @3xl/frontend test",
 		"import:mugen": "pnpm --filter @3xl/mugen import:mugen",
 		"generate:sprites": "pnpm --filter @3xl/mugen generate:sprites",
 		"generate:auras": "pnpm --filter @3xl/mugen generate:auras",
+		"generate:geo": "pnpm --filter @3xl/data generate:geo",
 		"clean": "pnpm -r clean"
 	}
 }

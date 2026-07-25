@@ -14,5 +14,12 @@
 		"index.ts",
 		"registry.generated.ts",
 		"public"
-	]
+	],
+	"scripts": {
+		"generate:geo": "node --max-old-space-size=8192 generate-geo.js"
+	},
+	"devDependencies": {
+		"topojson-client": "^3.1.0",
+		"topojson-server": "^3.0.1"
+	}
 }

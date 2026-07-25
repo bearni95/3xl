@@ -1,4 +1,4 @@
-import { AdapterClass } from '$adapters/classes/adapter.class';
+import { AdapterClass } from './adapter.class';
 import type {
 	TMDBTvShow,
 	TMDBTvSearchResponse,
@@ -9,7 +9,7 @@ import type {
 	DisplayTMDBTvSearchResponse,
 	DisplayTMDBImage,
 	DisplayTMDBTvImages
-} from '$types/tmdb.type';
+} from '../../types/tmdb.type';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 

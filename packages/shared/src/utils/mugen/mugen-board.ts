@@ -1,6 +1,6 @@
 import { Application, Assets, Graphics, Sprite, Text, Texture } from 'pixi.js';
-import type { Manifest } from '$utils/mugen/mugen-player';
-import type { CharacterDefinition, CharacterMove } from '$types/character-definition.type';
+import type { Manifest } from './mugen-player';
+import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
 	cellSide,
 	findClosestApproach,
@@ -9,7 +9,7 @@ import {
 	findRetreatCell,
 	isBoardCell,
 	type Hex
-} from '$utils/mugen/hex';
+} from './hex';
 
 /** A frame with its loaded texture and pre-computed anchor fractions. */
 interface LoadedFrame {
@@ -28,7 +28,7 @@ export interface BoardCharacter {
 	/** Animation to play in place. Defaults to `idle`. */
 	animation?: string;
 	/**
-	 * Character definition id (matches `static/characters/<id>.json`). When set,
+	 * Character definition id (matches `public/characters/<id>/definition.json`). When set,
 	 * its `directions` bindings drive the move-left/move-right animations used while
 	 * combat walks the actor; without it both fall back to `run`.
 	 */
@@ -578,13 +578,13 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Fetch a character's JSON definition (served as a static asset from
-	 * `/characters/<id>.json`). Returns null if it can't be loaded so movement
+	 * Fetch a character's JSON definition (served from @3xl/data at
+	 * `/data/characters/<id>/definition.json`). Returns null if it can't be loaded so movement
 	 * falls back to sensible defaults rather than failing the board.
 	 */
 	private async loadDefinition(id: string): Promise<CharacterDefinition | null> {
 		try {
-			const response = await fetch(`/data/characters/${id}.json`);
+			const response = await fetch(`/data/characters/${id}/definition.json`);
 			if (!response.ok) return null;
 			return (await response.json()) as CharacterDefinition;
 		} catch {

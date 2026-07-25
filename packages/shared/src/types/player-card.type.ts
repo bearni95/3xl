@@ -1,4 +1,4 @@
-import { ThemeColors } from '$types/core.type';
+import { ThemeColors } from './core.type';
 
 export enum PlayerCardKind {
 	Move = 'move',

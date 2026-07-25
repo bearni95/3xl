@@ -1,0 +1,27 @@
+{
+	"name": "@3xl/backend",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"description": "Node/Express API for the admin app: reads/writes character definitions in @3xl/data and proxies TMDB. Dev/authoring server — runs on port 2002.",
+	"scripts": {
+		"dev": "tsx watch src/index.ts",
+		"start": "tsx src/index.ts",
+		"check": "tsc --noEmit",
+		"clean": "rm -rf dist"
+	},
+	"dependencies": {
+		"@3xl/data": "workspace:*",
+		"@3xl/shared": "workspace:*",
+		"cors": "^2.8.5",
+		"dotenv": "^16.4.7",
+		"express": "^5.1.0"
+	},
+	"devDependencies": {
+		"@types/cors": "^2.8.17",
+		"@types/express": "^5.0.0",
+		"@types/node": "^22.10.0",
+		"tsx": "^4.19.2",
+		"typescript": "^5.0.0"
+	}
+}

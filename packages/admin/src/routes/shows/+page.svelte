@@ -3,7 +3,8 @@
 	import type {
 		DisplayTMDBTvShow,
 		DisplayTMDBTvSearchResponse,
-		DisplayTMDBTvImages
+		DisplayTMDBTvImages,
+		DisplayTMDBImage
 	} from '$types/tmdb.type';
 
 	// Image kinds rendered as separate labeled grids, in display order.
@@ -13,8 +14,11 @@
 		{ key: 'logos', label: 'Logos' }
 	];
 
-	// UI-only state. All TMDB access goes through /api/tmdb/* so the API key stays
-	// server-side; this page just renders whatever the endpoints return.
+	// UI-only state. All TMDB access goes through the @3xl/backend proxy (default
+	// :2002) so the API key stays server-side; this page just renders whatever the
+	// endpoints return.
+	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
+
 	let query = '';
 	let results: DisplayTMDBTvShow[] = [];
 	let totalResults = 0;
@@ -39,7 +43,7 @@
 		imagesLoading = {};
 		imagesError = {};
 		try {
-			const res = await fetch(`/api/tmdb/search?query=${encodeURIComponent(trimmed)}`);
+			const res = await fetch(`${API_BASE}/api/tmdb/search?query=${encodeURIComponent(trimmed)}`);
 			if (!res.ok) {
 				const body = await res.json().catch(() => ({ message: res.statusText }));
 				throw new Error(body.message ?? `Search failed (${res.status})`);
@@ -61,7 +65,7 @@
 		imagesLoading = { ...imagesLoading, [showId]: true };
 		imagesError = { ...imagesError, [showId]: '' };
 		try {
-			const res = await fetch(`/api/tmdb/images?id=${showId}`);
+			const res = await fetch(`${API_BASE}/api/tmdb/images?id=${showId}`);
 			if (!res.ok) {
 				const body = await res.json().catch(() => ({ message: res.statusText }));
 				throw new Error(body.message ?? `Failed to load images (${res.status})`);
@@ -82,7 +86,24 @@
 		event.preventDefault();
 		search();
 	}
+
+	// Image opened in the full-size modal, or null when the modal is closed.
+	let previewImage: (DisplayTMDBImage & { showName: string }) | null = null;
+
+	function openPreview(image: DisplayTMDBImage, showName: string) {
+		previewImage = { ...image, showName };
+	}
+
+	function closePreview() {
+		previewImage = null;
+	}
+
+	function handleModalKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape') closePreview();
+	}
 </script>
+
+<svelte:window on:keydown={handleModalKeydown} />
 
 <div class="mx-auto max-w-5xl p-6">
 	<header class="mb-6">
@@ -191,11 +212,10 @@
 													class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"
 												>
 													{#each groupImages as image (image.filePath)}
-														<a
-															class="bg-base-200 flex h-24 items-center justify-center overflow-hidden rounded"
-															href={image.fullUrl}
-															target="_blank"
-															rel="noreferrer"
+														<button
+															type="button"
+															class="bg-base-200 flex h-24 cursor-pointer items-center justify-center overflow-hidden rounded transition hover:ring-2 hover:ring-primary"
+															on:click={() => openPreview(image, show.name)}
 															title={`${image.kind} · ${image.width}×${image.height}${image.language ? ` · ${image.language}` : ''}`}
 														>
 															<img
@@ -204,7 +224,7 @@
 																alt={`${image.kind} for ${show.name}`}
 																loading="lazy"
 															/>
-														</a>
+														</button>
 													{/each}
 												</div>
 											</section>
@@ -219,3 +239,49 @@
 		</ul>
 	{/if}
 </div>
+
+{#if previewImage}
+	<!-- Full-size image preview. Backdrop click and Escape (window handler) both close. -->
+	<div
+		class="modal modal-open"
+		role="dialog"
+		aria-modal="true"
+		aria-label={`${previewImage.kind} for ${previewImage.showName}`}
+	>
+		<div class="modal-box flex max-h-[90vh] max-w-4xl flex-col gap-3 p-4">
+			<div class="flex items-start justify-between gap-3">
+				<div class="min-w-0">
+					<h3 class="truncate font-semibold" title={previewImage.showName}>
+						{previewImage.showName}
+					</h3>
+					<p class="text-base-content/60 text-xs">
+						{previewImage.kind} · {previewImage.width}×{previewImage.height}{previewImage.language
+							? ` · ${previewImage.language}`
+							: ''}
+					</p>
+				</div>
+				<button
+					type="button"
+					class="btn btn-sm btn-circle btn-ghost"
+					on:click={closePreview}
+					aria-label="Close preview"
+				>
+					✕
+				</button>
+			</div>
+			<div class="bg-base-200 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded">
+				<img
+					class="max-h-[70vh] w-auto max-w-full object-contain"
+					src={previewImage.fullUrl}
+					alt={`${previewImage.kind} for ${previewImage.showName}`}
+				/>
+			</div>
+		</div>
+		<button
+			type="button"
+			class="modal-backdrop"
+			on:click={closePreview}
+			aria-label="Close preview"
+		></button>
+	</div>
+{/if}

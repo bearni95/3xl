@@ -4,8 +4,8 @@ import {
 	isPrimaryColor,
 	strikeMultiplier,
 	throwableColors
-} from '../../src/utils/color/compare';
-import type { CombatColor } from '../../src/types/character-definition.type';
+} from '$utils/color/compare';
+import type { CombatColor } from '$types/character-definition.type';
 
 const ALL: CombatColor[] = ['red', 'yellow', 'blue', 'purple', 'orange', 'green'];
 

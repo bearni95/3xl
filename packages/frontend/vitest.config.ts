@@ -19,9 +19,10 @@ export default defineConfig({
 		alias: {
 			$lib: resolve(__dirname, './src/lib'),
 			$services: resolve(__dirname, './src/services'),
-			$adapters: resolve(__dirname, './src/adapters'),
-			$types: resolve(__dirname, './src/types'),
-			$utils: resolve(__dirname, './src/utils'),
+			// types/utils/adapters now live in the @3xl/shared workspace package.
+			$adapters: resolve(__dirname, '../shared/src/adapters'),
+			$types: resolve(__dirname, '../shared/src/types'),
+			$utils: resolve(__dirname, '../shared/src/utils'),
 			$app: resolve(__dirname, './test/mocks/$app')
 		}
 	}

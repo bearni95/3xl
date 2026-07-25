@@ -10,8 +10,8 @@ import type {
 	TMDBTvSearchResponse,
 	TMDBTvShowDetails,
 	TMDBTvImagesResponse
-} from '$types/tmdb.type';
-import { tmdbRateLimiter } from '$utils/tmdb/rate-limiter';
+} from '../../types/tmdb.type';
+import { tmdbRateLimiter } from './rate-limiter';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 

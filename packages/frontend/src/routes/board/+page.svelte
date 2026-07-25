@@ -200,7 +200,7 @@
 				// its combat color lives in the definition JSON authored via /admin/characters.
 				const [manifestRes, defRes] = await Promise.all([
 					fetch(`${entry.basePath}/manifest.json`),
-					fetch(`/data/characters/${entry.id}.json`)
+					fetch(`/data/characters/${entry.id}/definition.json`)
 				]);
 				const manifest: Manifest = await manifestRes.json();
 				const definition: Partial<CharacterDefinition> = defRes.ok ? await defRes.json() : {};
