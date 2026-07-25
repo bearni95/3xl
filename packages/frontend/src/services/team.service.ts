@@ -1,83 +1,118 @@
 import { ObjectServiceClass } from '$services/classes/object-service.class';
 import type { ID } from '$types/core.type';
 
-/** A team always has exactly this many slots. */
+/** A team always has exactly this many character slots. */
 export const TEAM_SIZE = 3;
 
-/** One team slot: a chosen character (or empty) plus an optional custom name. */
-export interface TeamMember {
-	characterId: string | null;
-	name: string;
-}
-
-/** The player's single team, persisted to localStorage. */
+/** A named team of {@link TEAM_SIZE} distinct characters (empty slots allowed). */
 export interface Team {
+	id: string;
+	/** Optional team name. */
+	name: string;
+	/** One character id (or null) per slot; always length {@link TEAM_SIZE}. */
+	memberIds: (string | null)[];
+}
+
+/** The whole persisted collection plus which team is currently active. */
+export interface TeamsState {
 	id: ID;
-	members: TeamMember[];
+	teams: Team[];
+	activeTeamId: string | null;
 }
 
-function emptyMember(): TeamMember {
-	return { characterId: null, name: '' };
+function emptyMembers(): (string | null)[] {
+	return Array.from({ length: TEAM_SIZE }, () => null);
 }
 
-function emptyTeam(): Team {
-	return {
-		id: 'player-team',
-		members: Array.from({ length: TEAM_SIZE }, emptyMember)
-	};
+function makeTeam(): Team {
+	return { id: crypto.randomUUID(), name: '', memberIds: emptyMembers() };
+}
+
+function initialState(): TeamsState {
+	return { id: 'teams', teams: [], activeTeamId: null };
 }
 
 /**
- * Manages the player's team of {@link TEAM_SIZE} characters, each with an optional
- * name, persisted to localStorage via {@link ObjectServiceClass}. The team enforces
- * distinct characters: picking a character that already sits in another slot moves
- * it there, clearing the old slot.
+ * Manages the player's teams, persisted to localStorage via {@link ObjectServiceClass}.
+ * The player can keep any number of teams (each with an optional name and up to
+ * {@link TEAM_SIZE} distinct characters) and mark exactly one as active. Assigning a
+ * character already present in the same team moves it, clearing its old slot.
  */
-class TeamService extends ObjectServiceClass<Team> {
+class TeamService extends ObjectServiceClass<TeamsState> {
 	constructor() {
-		super('team', emptyTeam());
+		super('teams', initialState());
 		this.normalize();
 	}
 
-	/** Guard against malformed / older persisted shapes losing the fixed slot count. */
+	/** Repair older / malformed persisted shapes (slot count, dangling active id). */
 	private normalize(): void {
-		const team = this.get();
-		if (!Array.isArray(team.members) || team.members.length !== TEAM_SIZE) {
-			const members = Array.from(
-				{ length: TEAM_SIZE },
-				(_, index) => team.members?.[index] ?? emptyMember()
-			);
-			this.set({ ...team, members });
-		}
+		const state = this.get();
+		const teams = (Array.isArray(state.teams) ? state.teams : []).map((team) => ({
+			id: team.id,
+			name: team.name ?? '',
+			memberIds: Array.from({ length: TEAM_SIZE }, (_, i) => team.memberIds?.[i] ?? null)
+		}));
+		const activeTeamId = teams.some((team) => team.id === state.activeTeamId)
+			? state.activeTeamId
+			: (teams[0]?.id ?? null);
+		this.set({ ...state, teams, activeTeamId });
 	}
 
-	/** Assign a character to a slot, clearing it from any other slot it occupied. */
-	setMember(index: number, characterId: string | null): void {
-		this.store.update((team) => ({
+	/** Create a new empty team, make it active if none is, and return its id. */
+	createTeam(): string {
+		const team = makeTeam();
+		this.store.update((state) => ({
+			...state,
+			teams: [...state.teams, team],
+			activeTeamId: state.activeTeamId ?? team.id
+		}));
+		return team.id;
+	}
+
+	/** Delete a team; if it was active, fall back to the first remaining team. */
+	removeTeam(teamId: string): void {
+		this.store.update((state) => {
+			const teams = state.teams.filter((team) => team.id !== teamId);
+			const activeTeamId =
+				state.activeTeamId === teamId ? (teams[0]?.id ?? null) : state.activeTeamId;
+			return { ...state, teams, activeTeamId };
+		});
+	}
+
+	/** Set a team's optional name. */
+	renameTeam(teamId: string, name: string): void {
+		this.updateTeam(teamId, (team) => ({ ...team, name }));
+	}
+
+	/** Mark a team as the active one. */
+	setActive(teamId: string): void {
+		this.store.update((state) => ({ ...state, activeTeamId: teamId }));
+	}
+
+	/** Assign a character to a slot, clearing it from any other slot in the same team. */
+	setMember(teamId: string, index: number, characterId: string | null): void {
+		this.updateTeam(teamId, (team) => ({
 			...team,
-			members: team.members.map((member, i) => {
-				if (i === index) return { ...member, characterId };
-				if (characterId && member.characterId === characterId) {
-					return { ...member, characterId: null };
-				}
-				return member;
+			memberIds: team.memberIds.map((id, i) => {
+				if (i === index) return characterId;
+				if (characterId && id === characterId) return null;
+				return id;
 			})
 		}));
 	}
 
-	/** Set a slot's optional custom name. */
-	renameMember(index: number, name: string): void {
-		this.store.update((team) => ({
+	/** Empty a single slot. */
+	clearMember(teamId: string, index: number): void {
+		this.updateTeam(teamId, (team) => ({
 			...team,
-			members: team.members.map((member, i) => (i === index ? { ...member, name } : member))
+			memberIds: team.memberIds.map((id, i) => (i === index ? null : id))
 		}));
 	}
 
-	/** Empty a slot (character and name). */
-	clearMember(index: number): void {
-		this.store.update((team) => ({
-			...team,
-			members: team.members.map((member, i) => (i === index ? emptyMember() : member))
+	private updateTeam(teamId: string, mutate: (team: Team) => Team): void {
+		this.store.update((state) => ({
+			...state,
+			teams: state.teams.map((team) => (team.id === teamId ? mutate(team) : team))
 		}));
 	}
 }

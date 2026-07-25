@@ -90,14 +90,25 @@
 		).values()
 	).sort((a, b) => a.label.localeCompare(b.label));
 
-	function onTeamSelect(event: CustomEvent<{ index: number; characterId: string | null }>): void {
-		teamService.setMember(event.detail.index, event.detail.characterId);
+	function onTeamCreate(): void {
+		teamService.createTeam();
 	}
-	function onTeamRename(event: CustomEvent<{ index: number; name: string }>): void {
-		teamService.renameMember(event.detail.index, event.detail.name);
+	function onTeamRemove(event: CustomEvent<{ teamId: string }>): void {
+		teamService.removeTeam(event.detail.teamId);
 	}
-	function onTeamClear(event: CustomEvent<{ index: number }>): void {
-		teamService.clearMember(event.detail.index);
+	function onTeamRename(event: CustomEvent<{ teamId: string; name: string }>): void {
+		teamService.renameTeam(event.detail.teamId, event.detail.name);
+	}
+	function onTeamActivate(event: CustomEvent<{ teamId: string }>): void {
+		teamService.setActive(event.detail.teamId);
+	}
+	function onTeamSelect(
+		event: CustomEvent<{ teamId: string; index: number; characterId: string | null }>
+	): void {
+		teamService.setMember(event.detail.teamId, event.detail.index, event.detail.characterId);
+	}
+	function onTeamClear(event: CustomEvent<{ teamId: string; index: number }>): void {
+		teamService.clearMember(event.detail.teamId, event.detail.index);
 	}
 </script>
 
@@ -164,10 +175,14 @@
 		{#if $status === AuthStatus.SignedIn}
 			<aside class="w-full lg:w-80 lg:shrink-0">
 				<TeamPanel
-					members={$team.members}
+					teams={$team.teams}
+					activeTeamId={$team.activeTeamId}
 					options={teamOptions}
-					on:select={onTeamSelect}
+					on:create={onTeamCreate}
+					on:remove={onTeamRemove}
 					on:rename={onTeamRename}
+					on:activate={onTeamActivate}
+					on:select={onTeamSelect}
 					on:clear={onTeamClear}
 				/>
 			</aside>
