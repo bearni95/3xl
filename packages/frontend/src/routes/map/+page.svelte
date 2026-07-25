@@ -16,9 +16,11 @@
 					.filter(Boolean)
 					.join(', ');
 			},
-			// Paint Badalona with the same One Piece poster the /claim page shows.
+			// Paint Badalona + Montgat together with the same One Piece poster the
+			// /claim page shows: the two municipalities share one image spanning
+			// their combined shape, with each polygon's border drawn over it.
 			imageFill: (feature) =>
-				feature.properties?.name === 'Badalona'
+				feature.properties?.name === 'Badalona' || feature.properties?.name === 'Montgat'
 					? 'http://localhost:2002/api/tmdb/image/w342/y7IozUi2dwICMl8aGvLxjTmJDYZ.jpg'
 					: null
 		},

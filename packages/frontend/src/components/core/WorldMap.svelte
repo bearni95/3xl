@@ -29,13 +29,42 @@
 	const XLINK_NS = 'http://www.w3.org/1999/xlink';
 	let imageFillId = 0;
 
-	// Paint a vector layer's SVG path with an image, stretched to its bounding
-	// box via an SVG <pattern>. The pattern is created once per layer and reused
-	// so a mouseout/resetStyle can re-apply the fill without leaking <defs> nodes.
-	function applyImageFill(layer: L.Path, url: string) {
-		const el = layer.getElement() as (SVGPathElement & { _imageFillId?: string }) | null;
-		const svg = el?.ownerSVGElement;
-		if (!el || !svg) return;
+	// A set of vector layers that share a single image fill: the image is
+	// stretched across their combined bounding box (not each polygon's own), so
+	// adjacent features assemble into one picture. Features are grouped by the
+	// URL their overlay's `imageFill` returns.
+	type ImageFillGroup = { url: string; patternId: string; layers: L.Path[] };
+
+	// The union of the group's path bounding boxes, in SVG user coordinates —
+	// the same space a `userSpaceOnUse` pattern is measured in, so getBBox()
+	// values can be used directly.
+	function groupBoundingBox(group: ImageFillGroup) {
+		let minX = Infinity;
+		let minY = Infinity;
+		let maxX = -Infinity;
+		let maxY = -Infinity;
+		let found = false;
+		for (const layer of group.layers) {
+			const el = layer.getElement() as SVGGraphicsElement | null;
+			if (!el) continue;
+			const box = el.getBBox();
+			if (box.width === 0 && box.height === 0) continue;
+			found = true;
+			minX = Math.min(minX, box.x);
+			minY = Math.min(minY, box.y);
+			maxX = Math.max(maxX, box.x + box.width);
+			maxY = Math.max(maxY, box.y + box.height);
+		}
+		return found ? { x: minX, y: minY, width: maxX - minX, height: maxY - minY } : null;
+	}
+
+	// Create (once) the group's shared <pattern>/<image>, size it to the group's
+	// current union box, and point every member path's fill at it. Re-run on
+	// zoom/pan since the paths reproject and the box moves with them.
+	function updateImageFillGroup(group: ImageFillGroup) {
+		const firstEl = group.layers[0]?.getElement() as SVGElement | null;
+		const svg = firstEl?.ownerSVGElement;
+		if (!svg) return;
 
 		let defs = svg.querySelector('defs');
 		if (!defs) {
@@ -43,28 +72,44 @@
 			svg.insertBefore(defs, svg.firstChild);
 		}
 
-		let patternId = el._imageFillId;
-		if (!patternId) {
-			patternId = `map-image-fill-${imageFillId++}`;
-			el._imageFillId = patternId;
-
-			const pattern = document.createElementNS(SVG_NS, 'pattern');
-			pattern.setAttribute('id', patternId);
-			pattern.setAttribute('patternContentUnits', 'objectBoundingBox');
-			pattern.setAttribute('width', '1');
-			pattern.setAttribute('height', '1');
-
-			const image = document.createElementNS(SVG_NS, 'image');
-			image.setAttributeNS(XLINK_NS, 'href', url);
-			image.setAttribute('href', url);
-			image.setAttribute('width', '1');
-			image.setAttribute('height', '1');
+		let pattern = svg.querySelector<SVGPatternElement>(`#${group.patternId}`);
+		let image: SVGImageElement;
+		if (!pattern) {
+			pattern = document.createElementNS(SVG_NS, 'pattern');
+			pattern.setAttribute('id', group.patternId);
+			pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+			image = document.createElementNS(SVG_NS, 'image');
+			image.setAttributeNS(XLINK_NS, 'href', group.url);
+			image.setAttribute('href', group.url);
 			image.setAttribute('preserveAspectRatio', 'none');
-
 			pattern.appendChild(image);
 			defs.appendChild(pattern);
+		} else {
+			image = pattern.querySelector('image')!;
 		}
 
+		const box = groupBoundingBox(group);
+		if (box) {
+			// One tile the size of the union box, anchored at its top-left, so the
+			// image lands over the assembled shape exactly once.
+			pattern.setAttribute('x', String(box.x));
+			pattern.setAttribute('y', String(box.y));
+			pattern.setAttribute('width', String(box.width));
+			pattern.setAttribute('height', String(box.height));
+			image.setAttribute('width', String(box.width));
+			image.setAttribute('height', String(box.height));
+		}
+
+		for (const layer of group.layers) applyImageFill(layer);
+	}
+
+	// Point a member path's fill at its group pattern (set when the group is
+	// built). Used on first paint and to restore the fill after a
+	// setStyle/resetStyle repaints the base fillColor on hover.
+	function applyImageFill(layer: L.Path) {
+		const patternId = (layer as L.Path & { _imageFillPatternId?: string })._imageFillPatternId;
+		const el = layer.getElement();
+		if (!patternId || !el) return;
 		el.setAttribute('fill', `url(#${patternId})`);
 		el.setAttribute('fill-opacity', '1');
 	}
@@ -106,11 +151,11 @@
 		// Guard against the component unmounting while fetches were in flight.
 		if (!mapInstance) return;
 
-		overlays.forEach((overlay, index) => {
-			// Layers whose fill is an image; painted after the group is added to
-			// the map, since their SVG paths don't exist until then.
-			const imageFills: Array<{ layer: L.Path; url: string }> = [];
+		// Features sharing an imageFill URL, gathered across every overlay; each
+		// distinct URL becomes one group whose image spans the combined shape.
+		const imageFillLayers = new Map<string, L.Path[]>();
 
+		overlays.forEach((overlay, index) => {
 			const layerGroup = Leaf.geoJSON(datasets[index], {
 				interactive: overlay.interactive ?? true,
 				style: () => overlay.style,
@@ -123,28 +168,45 @@
 					}
 
 					const imageUrl = overlay.imageFill?.(feature) ?? null;
-					if (imageUrl) imageFills.push({ layer: layer as L.Path, url: imageUrl });
+					const hasImageFill = imageUrl !== null;
+					if (imageUrl) {
+						const list = imageFillLayers.get(imageUrl) ?? [];
+						list.push(layer as L.Path);
+						imageFillLayers.set(imageUrl, list);
+					}
 
 					if (overlay.hoverStyle) {
 						layer.on('mouseover', () => {
 							(layer as L.Path).setStyle(overlay.hoverStyle!);
 							// setStyle repaints the base fillColor, so re-apply the image
 							// (kept opaque rather than dimmed to the hover fillOpacity).
-							if (imageUrl) applyImageFill(layer as L.Path, imageUrl);
+							if (hasImageFill) applyImageFill(layer as L.Path);
 						});
 						layer.on('mouseout', () => {
 							layerGroup.resetStyle(layer);
 							// resetStyle repaints the base fillColor, so re-apply the image.
-							if (imageUrl) applyImageFill(layer as L.Path, imageUrl);
+							if (hasImageFill) applyImageFill(layer as L.Path);
 						});
 					}
 
 					layer.on('click', () => overlay.onClick?.(feature));
 				}
 			}).addTo(mapInstance!);
-
-			for (const { layer, url } of imageFills) applyImageFill(layer, url);
 		});
+
+		// Build the shared groups now the paths exist, tag each path with its
+		// pattern id, and keep every group's image aligned as the map reprojects.
+		const imageFillGroups: ImageFillGroup[] = [...imageFillLayers].map(([url, layers]) => {
+			const patternId = `map-image-fill-${imageFillId++}`;
+			for (const layer of layers) {
+				(layer as L.Path & { _imageFillPatternId?: string })._imageFillPatternId = patternId;
+			}
+			return { url, patternId, layers };
+		});
+
+		const refreshImageFills = () => imageFillGroups.forEach(updateImageFillGroup);
+		refreshImageFills();
+		mapInstance.on('zoomend viewreset moveend', refreshImageFills);
 	});
 
 	onDestroy(() => {
