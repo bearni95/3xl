@@ -2,6 +2,7 @@
 	import classNames from 'classnames';
 	import { browser } from '$app/environment';
 	import MugenFrameSheet from '$components/core/MugenFrameSheet.svelte';
+	import CharacterGridCard from '$components/core/CharacterGridCard.svelte';
 	import CharacterDefinitionEditor from '$components/core/CharacterDefinitionEditor.svelte';
 	import CharacterStatsEditor from '$components/core/CharacterStatsEditor.svelte';
 	import MugenImportedMoves from '$components/core/MugenImportedMoves.svelte';
@@ -95,14 +96,17 @@
 			<a class="link link-primary text-sm" href="/">← Back to stage</a>
 		</header>
 
-		<label class="form-control w-full max-w-xs">
-			<span class="label-text mb-1">Character</span>
-			<select class="select select-bordered" bind:value={selectedId}>
-				{#each characters as character (character.id)}
-					<option value={character.id}>{character.label}</option>
-				{/each}
-			</select>
-		</label>
+		<div
+			class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
+		>
+			{#each characters as character (character.id)}
+				<CharacterGridCard
+					{character}
+					selected={character.id === selectedId}
+					on:select={(event) => (selectedId = event.detail.id)}
+				/>
+			{/each}
+		</div>
 
 		<div role="tablist" class="tabs tabs-boxed w-fit">
 			<button
