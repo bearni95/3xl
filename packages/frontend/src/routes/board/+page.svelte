@@ -122,40 +122,54 @@
 		return segments[segments.length - 2] ?? segments[segments.length - 1] ?? '';
 	}
 
-	function boardCharacter(id: string, side: 'error' | 'info'): BoardCharacter {
+	function boardCharacter(
+		id: string,
+		side: 'error' | 'info',
+		colors: Map<string, CombatColor>
+	): BoardCharacter {
 		const option = characterById.get(id) ?? availableCharacters[0];
-		return { id: instanceId(side, option.id), basePath: option.basePath, animation: 'idle' };
+		return {
+			id: instanceId(side, option.id),
+			basePath: option.basePath,
+			animation: 'idle',
+			// The character's Supabase spawn colour tints its home cell on the board.
+			combatColor: colors.get(option.id)
+		};
 	}
 
 	// Left: red grid with its movable centre plus two idling extras; right: blue
-	// grid likewise. Rebuilt whenever a picker slot changes.
-	function buildGrids(ids: string[]): [BoardGrid, BoardGrid] {
+	// grid likewise. Rebuilt whenever a picker slot or a character's spawn colour
+	// changes. `colors` is passed in explicitly so Svelte's legacy reactive
+	// tracking sees the colour map as a dependency of `grids`.
+	function buildGrids(ids: string[], colors: Map<string, CombatColor>): [BoardGrid, BoardGrid] {
 		return [
 			{
 				color: 0xff0000,
-				character: boardCharacter(ids[0], 'error'),
+				character: boardCharacter(ids[0], 'error', colors),
 				extras: extraCells.error.map((cell, i) => ({
-					...boardCharacter(ids[1 + i], 'error'),
+					...boardCharacter(ids[1 + i], 'error', colors),
 					...cell
 				}))
 			},
 			{
 				color: 0x2563eb,
-				character: boardCharacter(ids[3], 'info'),
+				character: boardCharacter(ids[3], 'info', colors),
 				extras: extraCells.info.map((cell, i) => ({
-					...boardCharacter(ids[4 + i], 'info'),
+					...boardCharacter(ids[4 + i], 'info', colors),
 					...cell
 				}))
 			}
 		];
 	}
 
-	$: grids = buildGrids(slots);
+	$: grids = buildGrids(slots, colorByCharacter);
 	// Bumped by "Play again" so the Pixi board remounts with a clean slate.
 	let gameKey = 0;
-	// Remounts the Pixi board (and thus repositions everyone) on any slot change
-	// or game restart.
-	$: boardKey = `${slots.join(',')}:${gameKey}`;
+	// Remounts the Pixi board (and thus repositions everyone) on any slot change,
+	// spawn-colour change (so home cells repaint once colours load), or restart.
+	$: boardKey = `${slots.join(',')}:${slots
+		.map((id) => colorByCharacter.get(id) ?? '')
+		.join(',')}:${gameKey}`;
 
 	// One badge per character on the board, in board order (red half then blue).
 	// Static display info (name, face, compound color, moves); the live combat
@@ -254,7 +268,7 @@
 	// Runs on mount and again whenever a picker slot changes.
 	async function setup(): Promise<void> {
 		const token = ++setupToken;
-		const currentGrids = buildGrids(slots);
+		const currentGrids = buildGrids(slots, colorByCharacter);
 		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] = [
 			...rosterFor([currentGrids[0].character, ...(currentGrids[0].extras ?? [])], 'error'),
 			...rosterFor([currentGrids[1].character, ...(currentGrids[1].extras ?? [])], 'info')

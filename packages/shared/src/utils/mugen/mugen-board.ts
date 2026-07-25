@@ -29,6 +29,13 @@ export interface BoardCharacter {
 	/** Animation to play in place. Defaults to `idle`. */
 	animation?: string;
 	/**
+	 * The character's combat colour — its Supabase spawn colour (`red`, `blue`,
+	 * `yellow`, `purple`, `orange`, `green`). When set, the character's starting
+	 * hex is tinted this colour so each fighter's home cell reads in the colour it
+	 * fights with. Unlike the grid's `color`, this is per character, not per side.
+	 */
+	combatColor?: string;
+	/**
 	 * Character definition id (matches `public/characters/<id>/definition.json`). When set,
 	 * its `directions` bindings drive the move-left/move-right animations used while
 	 * combat walks the actor; without it both fall back to `run`.
@@ -531,6 +538,12 @@ export class MugenBoard {
 		const baseFrames = animations[startName];
 		if (!baseFrames || baseFrames.length === 0) return;
 
+		// Tint the actor's starting hex in its own combat (Supabase spawn) colour, so
+		// each fighter's home cell reads in the colour it fights with.
+		if (character.combatColor) {
+			this.fillHex(q, r, combatColorHex(character.combatColor));
+		}
+
 		// Guide line spans the hex's edge-to-edge width along its lower-corner line
 		// (not its centre); the character stands centred on it, feet on the line.
 		const centre = this.hexCoord(q, r);
@@ -1004,6 +1017,28 @@ export class MugenBoard {
 		const actor = this.findActor(id);
 		if (!actor) return;
 		await this.walkCells(actor, [], this.hexMark(cell.q, cell.r));
+	}
+
+	/**
+	 * Tint the hex at axial [q, r] with an arbitrary colour, above the base grid
+	 * but beneath the coordinate labels and the characters. Used to paint each
+	 * fighter's starting cell in its own combat (Supabase spawn) colour.
+	 */
+	private fillHex(q: number, r: number, colorHex: number): void {
+		if (!this.app) return;
+		const centre = this.hexCoord(q, r);
+		const pts: number[] = [];
+		for (const corner of HEX_CORNERS) {
+			const p = this.project(centre.x + corner.x, centre.y + corner.y);
+			pts.push(p.x, p.y);
+		}
+		const graphics = new Graphics();
+		graphics.poly(pts);
+		// Stronger fill than the base grid's 0.08 so the spawn colour reads clearly.
+		graphics.fill({ color: colorHex, alpha: 0.35 });
+		graphics.stroke({ width: 2, color: colorHex, alpha: 1 });
+		graphics.zIndex = 0.5; // above the base grid (0), below labels (1) and actors
+		this.app.stage.addChild(graphics);
 	}
 
 	/**
