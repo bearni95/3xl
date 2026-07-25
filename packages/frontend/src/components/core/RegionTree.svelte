@@ -59,10 +59,10 @@
 <ul class="menu min-h-0 flex-1 flex-nowrap gap-1 overflow-y-auto p-2">
 	{#each territories as territory (territory.id)}
 		{@const open = openTerritories.has(territory.id)}
-		<li>
+		<li class="w-full">
 			<button
 				type="button"
-				class="flex items-center gap-2 border-l-4 border-error font-semibold"
+				class="flex w-full items-center gap-2 border-l-4 border-error font-semibold"
 				aria-expanded={open}
 				on:click={() => toggleTerritory(territory)}
 			>
@@ -72,13 +72,13 @@
 			</button>
 
 			{#if open}
-				<ul class="border-l border-error/30">
+				<ul class="w-full border-l border-error/30">
 					{#each territory.comarques as comarca (comarca.id)}
 						{@const comarcaOpen = openComarques.has(comarcaKey(territory, comarca))}
-						<li>
+						<li class="w-full">
 							<button
 								type="button"
-								class="flex items-center gap-2 border-l-4 border-success"
+								class="flex w-full items-center gap-2 border-l-4 border-success"
 								aria-expanded={comarcaOpen}
 								on:click={() => toggleComarca(territory, comarca)}
 							>
@@ -90,11 +90,11 @@
 							</button>
 
 							{#if comarcaOpen}
-								<ul class="border-l border-success/30">
+								<ul class="w-full border-l border-success/30">
 									{#each comarca.municipis as municipality (municipality.id)}
-										<li>
+										<li class="w-full">
 											<span
-												class={classNames('flex items-center gap-2 border-l-4 border-info', {
+												class={classNames('flex w-full items-center gap-2 border-l-4 border-info', {
 													'bg-error/20 font-semibold': highlightId === municipality.id
 												})}
 											>
@@ -109,9 +109,9 @@
 					{/each}
 
 					{#each territory.municipis as municipality (municipality.id)}
-						<li>
+						<li class="w-full">
 							<span
-								class={classNames('flex items-center gap-2 border-l-4 border-info', {
+								class={classNames('flex w-full items-center gap-2 border-l-4 border-info', {
 									'bg-error/20 font-semibold': highlightId === municipality.id
 								})}
 							>
