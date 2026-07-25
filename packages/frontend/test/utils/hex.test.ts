@@ -19,7 +19,7 @@ describe('hex board cells', () => {
 	});
 
 	it('includes representative interior cells', () => {
-		expect(isBoardCell(0, 0)).toBe(true);
+		expect(isBoardCell(0, -1)).toBe(true);
 		expect(isBoardCell(-1, 0)).toBe(true);
 		expect(isBoardCell(1, 0)).toBe(true);
 	});
@@ -39,15 +39,15 @@ describe('hex board cells', () => {
 
 describe('hex adjacency and pathfinding', () => {
 	it('neighbours are all valid board cells at distance 1', () => {
-		for (const nb of neighbors(0, 0)) {
+		for (const nb of neighbors(0, -1)) {
 			expect(isBoardCell(nb.q, nb.r)).toBe(true);
-			expect(hexDistance({ q: 0, r: 0 }, nb)).toBe(1);
+			expect(hexDistance({ q: 0, r: -1 }, nb)).toBe(1);
 		}
 	});
 
 	it('findPath returns a contiguous path including both endpoints', () => {
 		const start: Hex = { q: -2, r: -2 };
-		const goal: Hex = { q: 0, r: 0 };
+		const goal: Hex = { q: 0, r: -1 };
 		const path = findPath(start, goal, (c) => isBoardCell(c.q, c.r));
 		expect(path).not.toBeNull();
 		const cells = path as Hex[];

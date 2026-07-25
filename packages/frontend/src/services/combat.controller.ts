@@ -57,14 +57,14 @@ const FALLBACK_MELEE: CharacterMove = { name: 'Melee', type: 'melee', source: ''
 
 /**
  * Fixed purple-column cells the duels meet on, in duel order: the first pair
- * clashes on (0,-2), the second on (0,-1), the third on (0,0). The pair shares
+ * clashes on (0,-3), the second on (0,-2), the third on (0,-1). The pair shares
  * the purple cell itself — red standing on its left half, blue on its right —
  * after walking in via the cell's east neighbour.
  */
 const MELEE_MEETING_CELLS: Hex[] = [
+	{ q: 0, r: -3 },
 	{ q: 0, r: -2 },
-	{ q: 0, r: -1 },
-	{ q: 0, r: 0 }
+	{ q: 0, r: -1 }
 ];
 
 /** Map key for a cell, so ownership can be tracked per purple cell. */

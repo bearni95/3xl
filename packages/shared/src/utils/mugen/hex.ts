@@ -31,14 +31,15 @@ export const HEX_RADIUS = 3;
  * listed have no cells. This is the whole board shape: red columns (q < 0) run
  * through the low (near, lower-on-screen) rows, blue columns (q > 0) through the
  * high (far, higher-on-screen) rows, so the halves read as a diagonal — red
- * lower-left, blue upper-right. It is the vertical mirror (r → −r) of the old
- * upright hexagon, so both halves keep the same size and staircase as before.
+ * lower-left, blue upper-right. The central purple column sits a row lower than
+ * its neighbours (its top cell recessed), and the inner blue column runs the
+ * full depth so every purple duel cell keeps a blue east-neighbour to face.
  */
 const ROW_RANGE = new Map<number, [number, number]>([
 	[-2, [-3, -1]],
 	[-1, [-3, 0]],
-	[0, [-2, 0]],
-	[1, [-2, 1]],
+	[0, [-3, -1]],
+	[1, [-3, 1]],
 	[2, [-1, 1]]
 ]);
 
