@@ -25,6 +25,9 @@
 	let savedError = '';
 	// Ids already persisted, so search results can show as already added.
 	let savedShowIds = new Set<number>();
+	// Which saved cards have their images expanded. Saved shows carry their images
+	// already, so this is a pure show/hide — no fetch, unlike the search tab.
+	let expandedSaved: Record<number, boolean> = {};
 
 	// Load the saved-show collection up front: it's the default tab, and it also
 	// drives the "already added" state of the search results.
@@ -293,15 +296,28 @@
 									{show.overview || 'No overview available.'}
 								</p>
 							</div>
+							<div class="flex shrink-0 flex-col items-end gap-1">
+								<button
+									class="btn btn-ghost btn-sm"
+									type="button"
+									on:click={() =>
+										(expandedSaved = { ...expandedSaved, [show.id]: !expandedSaved[show.id] })}
+									aria-expanded={!!expandedSaved[show.id]}
+								>
+									{expandedSaved[show.id] ? 'Hide images' : 'Show images'}
+								</button>
+							</div>
 						</div>
 
-						<div class="border-base-300 border-t p-3">
-							<ShowImageGrid
-								images={entry.images}
-								showName={show.name}
-								on:preview={(e) => openPreview(e.detail, show.name)}
-							/>
-						</div>
+						{#if expandedSaved[show.id]}
+							<div class="border-base-300 border-t p-3">
+								<ShowImageGrid
+									images={entry.images}
+									showName={show.name}
+									on:preview={(e) => openPreview(e.detail, show.name)}
+								/>
+							</div>
+						{/if}
 					</li>
 				{/each}
 			</ul>
