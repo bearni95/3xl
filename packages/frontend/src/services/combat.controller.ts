@@ -6,8 +6,8 @@
  *
  * Every character has a compound combat color (purple, orange or green) fixed in
  * its definition JSON. Each round the player throws one of three colors per
- * (red / `error`) fighter — the fighter's own compound color or either of its
- * two primary components. The rival (blue / `info`) fighters each start the
+ * (blue / `info`) fighter — the fighter's own compound color or either of its
+ * two primary components. The rival (red / `error`) fighters each start the
  * round with a randomly pre-rolled color of their own, which the player may
  * override by clicking a different color on the rival's card. Once all players
  * are picked, the rivals lock in whatever color they hold, then the pairs duel
@@ -44,7 +44,7 @@ import {
 import { strikeMultiplier, throwableColors } from '$utils/color/compare';
 import { rollDie } from '$utils/dice/roll';
 
-/** Red fighters (`error`) are the player's; blue (`info`) are the rivals. */
+/** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
 export type FighterSide = 'error' | 'info';
 
 /** Most strikes one fighter can take in a single encounter: it is attacked
@@ -174,11 +174,11 @@ export class CombatController {
 	}
 
 	private players(): Fighter[] {
-		return this.fighters.filter((fighter) => fighter.side === 'error');
+		return this.fighters.filter((fighter) => fighter.side === 'info');
 	}
 
 	private rivals(): Fighter[] {
-		return this.fighters.filter((fighter) => fighter.side === 'info');
+		return this.fighters.filter((fighter) => fighter.side === 'error');
 	}
 
 	/** The purple cell this fighter currently holds, or null. */
@@ -232,7 +232,7 @@ export class CombatController {
 		// Only the fighter's own compound color or its components can be thrown.
 		if (!throwableColors(fighter.color).includes(color)) return;
 
-		if (fighter.side === 'info') {
+		if (fighter.side === 'error') {
 			// Overriding a rival's pre-rolled default — no lock, no action order.
 			fighter.moveColor = color;
 			this.emit();
@@ -285,8 +285,8 @@ export class CombatController {
 			.sort(byOrder);
 		for (let i = 0; i < MELEE_MEETING_CELLS.length; i++) {
 			const holder = this.cellOwners.get(cellKey(MELEE_MEETING_CELLS[i]));
-			const player = holder?.side === 'error' ? holder : playersQueue.shift();
-			const rival = holder?.side === 'info' ? holder : rivalsQueue.shift();
+			const player = holder?.side === 'info' ? holder : playersQueue.shift();
+			const rival = holder?.side === 'error' ? holder : rivalsQueue.shift();
 			if (!player || !rival) continue;
 			// An attacked holder never picked a color — it defends with a random one,
 			// flaring its aura only now that it's dragged into the duel.
@@ -310,11 +310,11 @@ export class CombatController {
 		// Territory victory: holding all three purple duel cells when the round
 		// ends wins outright.
 		const owners = MELEE_MEETING_CELLS.map((cell) => this.cellOwners.get(cellKey(cell))?.side);
-		if (owners.every((side) => side === 'error')) {
+		if (owners.every((side) => side === 'info')) {
 			this.end('win', 'You hold all three purple cells.');
 			return;
 		}
-		if (owners.every((side) => side === 'info')) {
+		if (owners.every((side) => side === 'error')) {
 			this.end('lose', 'The rivals hold all three purple cells.');
 			return;
 		}
