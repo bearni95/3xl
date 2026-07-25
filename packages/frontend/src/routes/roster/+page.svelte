@@ -5,6 +5,7 @@
 	import { spawnService } from '$services/spawn.service';
 	import { teamService } from '$services/team.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
+	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import { AuthStatus } from '$types/profile.type';
 	import RosterCard from '$components/core/RosterCard.svelte';
 	import TeamPanel from '$components/core/TeamPanel.svelte';
@@ -21,6 +22,12 @@
 	// character id → names of the Supabase shows it belongs to.
 	let characterShowNames = new Map<string, string[]>();
 	let municipalityNames: Map<string, string> | null = null;
+
+	// character id → resolved active-face portrait URL (definition.face → manifest
+	// default). Loaded lazily per distinct character as spawns arrive; the grid shows
+	// these static portraits while the sidebar keeps the animated sprites.
+	let characterFaces = new Map<string, string | null>();
+	const faceRequested = new Set<string>();
 
 	let loading = false;
 	let error = '';
@@ -66,6 +73,25 @@
 	function basePathFor(id: string): string | null {
 		return charactersById.get(id)?.basePath ?? null;
 	}
+	function faceFor(id: string): string | null {
+		return characterFaces.get(id) ?? null;
+	}
+
+	// Fetch the active-face portrait for any distinct character not yet requested.
+	async function loadFaces(ids: string[]): Promise<void> {
+		const missing = ids.filter((id) => !faceRequested.has(id));
+		if (missing.length === 0) return;
+		for (const id of missing) faceRequested.add(id);
+		await Promise.all(
+			missing.map(async (id) => {
+				const basePath = basePathFor(id);
+				characterFaces.set(id, basePath ? await resolveCharacterFaceUrl(id, basePath) : null);
+			})
+		);
+		characterFaces = characterFaces; // reassign so the grid re-renders
+	}
+
+	$: loadFaces([...new Set($spawns.map((spawn) => spawn.characterId))]);
 	function showNamesFor(characterId: string): string[] {
 		return characterShowNames.get(characterId) ?? [];
 	}
@@ -161,7 +187,7 @@
 					{#each $spawns as spawn (spawn.id)}
 						<RosterCard
 							label={labelFor(spawn.characterId)}
-							basePath={basePathFor(spawn.characterId)}
+							faceUrl={faceFor(spawn.characterId)}
 							showNames={showNamesFor(spawn.characterId)}
 							locationName={locationNameFor(spawn.locationId)}
 							claimedAt={claimedAtFor(spawn.createdAt)}

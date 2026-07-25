@@ -1,13 +1,14 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import MugenStage from '$components/core/MugenStage.svelte';
 	import { SpawnColor } from '$types/character-spawn.type';
 
 	// A single claimed spawn, already resolved to display-ready values by the
-	// parent (labels/sprites come from the local @3xl/data registry, place names
-	// from the municipality layer) — this card renders UI only.
+	// parent (labels come from the local @3xl/data registry, the face portrait from
+	// the character definition, place names from the municipality layer) — this card
+	// renders UI only.
 	export let label: string;
-	export let basePath: string | null = null;
+	// The character's active face portrait (definition.face → manifest default).
+	export let faceUrl: string | null = null;
 	// The Supabase show(s) this character belongs to (via show_characters).
 	export let showNames: string[] = [];
 	export let locationName: string;
@@ -31,11 +32,11 @@
 <div class="card overflow-hidden bg-base-100 shadow-md">
 	<!-- Colour bar so the spawn's rolled colour reads at a glance. -->
 	<div class={classNames('h-1.5 w-full', swatchClass)}></div>
-	<figure class="bg-base-200 pt-4">
-		{#if basePath}
-			<MugenStage {basePath} width={220} height={180} scale={1.4} />
+	<figure class="flex h-[180px] items-center justify-center bg-base-200 p-4">
+		{#if faceUrl}
+			<img src={faceUrl} alt={label} class="h-full max-w-full object-contain" />
 		{:else}
-			<div class="flex h-[180px] w-[220px] items-center justify-center opacity-40">
+			<div class="flex items-center justify-center opacity-40">
 				<span class="text-4xl">👤</span>
 			</div>
 		{/if}
