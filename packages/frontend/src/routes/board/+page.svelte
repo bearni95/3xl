@@ -339,8 +339,6 @@
 			{@const areaLocked = !!combat?.disabled || state?.phase !== 'selecting'}
 			<div
 				class={classNames('flex flex-col items-center gap-1 transition-opacity', {
-					'text-error': badge.side === 'error',
-					'text-info': badge.side === 'info',
 					'opacity-60': combat?.disabled
 				})}
 			>
