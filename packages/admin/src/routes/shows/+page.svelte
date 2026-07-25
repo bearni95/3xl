@@ -8,7 +8,8 @@
 		DisplayTMDBTvShow,
 		DisplayTMDBTvSearchResponse,
 		DisplayTMDBTvImages,
-		DisplayTMDBImage
+		DisplayTMDBImage,
+		TMDBImageKind
 	} from '$types/tmdb.type';
 	import type { ShowEntry, ShowsCollection } from '$types/show.type';
 
@@ -31,6 +32,62 @@
 	// Which saved cards have their images expanded. Saved shows carry their images
 	// already, so this is a pure show/hide — no fetch, unlike the search tab.
 	let expandedSaved: Record<number, boolean> = {};
+	// Per-show state for persisting a main-image pick.
+	let savingMain: Record<number, boolean> = {};
+	let mainError: Record<number, string> = {};
+
+	// The three sections, singular kind + label, for the "main images" summary.
+	const mainSections: { kind: TMDBImageKind; label: string }[] = [
+		{ kind: 'poster', label: 'Poster' },
+		{ kind: 'backdrop', label: 'Backdrop' },
+		{ kind: 'logo', label: 'Logo' }
+	];
+
+	// The DisplayTMDBImage a saved entry marks as its main for a section, or null.
+	function mainImageFor(entry: ShowEntry, kind: TMDBImageKind): DisplayTMDBImage | null {
+		const filePath = entry.mainImages?.[kind];
+		if (!filePath) return null;
+		return entry.images.all.find((image) => image.filePath === filePath) ?? null;
+	}
+
+	// Set (or, when re-picking the current one, unset) a section's main image and
+	// persist the updated entry into shows.json. Toggling keeps one main per
+	// section: choosing a different image replaces it, choosing the same clears it.
+	async function setMainImage(showId: number, kind: TMDBImageKind, filePath: string) {
+		const entry = savedShows.find((candidate) => candidate.show.id === showId);
+		if (!entry) return;
+
+		const mainImages = { ...(entry.mainImages ?? {}) };
+		if (mainImages[kind] === filePath) delete mainImages[kind];
+		else mainImages[kind] = filePath;
+		const updated: ShowEntry = { ...entry, mainImages };
+
+		savingMain = { ...savingMain, [showId]: true };
+		mainError = { ...mainError, [showId]: '' };
+		try {
+			const res = await fetch(`${API_BASE}/api/shows`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(updated)
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({ message: res.statusText }));
+				throw new Error(body.message ?? `Failed to save (${res.status})`);
+			}
+			// The endpoint returns the whole collection; refresh from it so the saved
+			// list stays the source of truth after the sanitised write.
+			const data = (await res.json()) as ShowsCollection;
+			savedShows = data.shows;
+			savedShowIds = new Set(data.shows.map((candidate) => candidate.show.id));
+		} catch (err) {
+			mainError = {
+				...mainError,
+				[showId]: err instanceof Error ? err.message : String(err)
+			};
+		} finally {
+			savingMain = { ...savingMain, [showId]: false };
+		}
+	}
 
 	// Load the saved-show collection up front: it's the default tab, and it also
 	// drives the "already added" state of the search results.
@@ -330,10 +387,55 @@
 
 						{#if expandedSaved[show.id]}
 							<div class="border-base-300 border-t p-3">
+								<!-- Main images: the chosen headline image per section. Pick them
+								     with the ★ on each thumbnail in the grid below. -->
+								<div class="mb-4 flex flex-wrap items-start gap-4">
+									{#each mainSections as section (section.kind)}
+										{@const main = mainImageFor(entry, section.kind)}
+										<div class="flex flex-col gap-1">
+											<span class="text-base-content/60 text-xs font-semibold uppercase">
+												Main {section.label}
+											</span>
+											{#if main}
+												<button
+													type="button"
+													class="bg-base-200 ring-primary flex h-20 w-28 items-center justify-center overflow-hidden rounded ring-2"
+													on:click={() => openPreview({ images: entry.images.all, image: main }, show.name)}
+													title={`Main ${section.label} · click to preview`}
+												>
+													<img
+														class="h-full w-full object-contain"
+														src={main.thumbnailUrl}
+														alt={`Main ${section.label} for ${show.name}`}
+														loading="lazy"
+													/>
+												</button>
+											{:else}
+												<div
+													class="border-base-300 text-base-content/40 flex h-20 w-28 items-center justify-center rounded border border-dashed text-xs"
+												>
+													None
+												</div>
+											{/if}
+										</div>
+									{/each}
+									<div class="flex min-h-5 items-center gap-2 self-end text-xs">
+										{#if savingMain[show.id]}
+											<span class="loading loading-spinner loading-xs"></span>
+											<span class="text-base-content/60">Saving…</span>
+										{:else if mainError[show.id]}
+											<span class="text-error">{mainError[show.id]}</span>
+										{/if}
+									</div>
+								</div>
+
 								<ShowImageGrid
 									images={entry.images}
 									showName={show.name}
+									selectable
+									mainByKind={entry.mainImages ?? {}}
 									on:preview={(e) => openPreview(e.detail, show.name)}
+									on:setmain={(e) => setMainImage(show.id, e.detail.kind, e.detail.filePath)}
 								/>
 							</div>
 						{/if}

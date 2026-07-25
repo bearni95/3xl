@@ -1,16 +1,24 @@
 <script lang="ts">
+	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
-	import type { DisplayTMDBImage, DisplayTMDBTvImages } from '$types/tmdb.type';
+	import type { DisplayTMDBImage, DisplayTMDBTvImages, TMDBImageKind } from '$types/tmdb.type';
 
-	// Image kinds rendered as separate labeled grids, in display order.
-	const imageGroups: { key: 'posters' | 'backdrops' | 'logos'; label: string }[] = [
-		{ key: 'posters', label: 'Posters' },
-		{ key: 'backdrops', label: 'Backdrops' },
-		{ key: 'logos', label: 'Logos' }
-	];
+	// Image kinds rendered as separate labeled grids, in display order. `kind` is
+	// the singular tag each image carries (image.kind), used to key the main pick.
+	const imageGroups: { key: 'posters' | 'backdrops' | 'logos'; kind: TMDBImageKind; label: string }[] =
+		[
+			{ key: 'posters', kind: 'poster', label: 'Posters' },
+			{ key: 'backdrops', kind: 'backdrop', label: 'Backdrops' },
+			{ key: 'logos', kind: 'logo', label: 'Logos' }
+		];
 
 	export let images: DisplayTMDBTvImages;
 	export let showName: string;
+	// When set, each section gains a "main" toggle and the chosen image is marked.
+	// Off (the search tab) renders a plain read-only gallery.
+	export let selectable: boolean = false;
+	// The currently chosen main filePath per section, so the grid can mark it.
+	export let mainByKind: Partial<Record<TMDBImageKind, string>> = {};
 
 	// The grid renders the groups top-to-bottom; navigation in the preview modal
 	// follows that same visual order, so hand it this flattened list.
@@ -18,6 +26,7 @@
 
 	const dispatch = createEventDispatcher<{
 		preview: { images: DisplayTMDBImage[]; image: DisplayTMDBImage };
+		setmain: { kind: TMDBImageKind; filePath: string };
 	}>();
 </script>
 
@@ -34,22 +43,46 @@
 						<span class="text-base-content/40 font-normal normal-case">
 							· {groupImages.length}
 						</span>
+						{#if selectable && mainByKind[group.kind]}
+							<span class="text-primary font-normal normal-case"> · main selected</span>
+						{/if}
 					</h3>
 					<div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
 						{#each groupImages as image (image.filePath)}
-							<button
-								type="button"
-								class="bg-base-200 hover:ring-primary flex h-24 cursor-pointer items-center justify-center overflow-hidden rounded transition hover:ring-2"
-								on:click={() => dispatch('preview', { images: orderedImages, image })}
-								title={`${image.kind} · ${image.width}×${image.height}${image.language ? ` · ${image.language}` : ''}`}
-							>
-								<img
-									class="h-full w-full object-contain"
-									src={image.thumbnailUrl}
-									alt={`${image.kind} for ${showName}`}
-									loading="lazy"
-								/>
-							</button>
+							{@const isMain = mainByKind[group.kind] === image.filePath}
+							<div class="relative">
+								<button
+									type="button"
+									class={classNames(
+										'bg-base-200 hover:ring-primary flex h-24 w-full cursor-pointer items-center justify-center overflow-hidden rounded transition hover:ring-2',
+										{ 'ring-primary ring-2': isMain }
+									)}
+									on:click={() => dispatch('preview', { images: orderedImages, image })}
+									title={`${image.kind} · ${image.width}×${image.height}${image.language ? ` · ${image.language}` : ''}`}
+								>
+									<img
+										class="h-full w-full object-contain"
+										src={image.thumbnailUrl}
+										alt={`${image.kind} for ${showName}`}
+										loading="lazy"
+									/>
+								</button>
+								{#if selectable}
+									<button
+										type="button"
+										class={classNames(
+											'btn btn-circle btn-xs absolute right-1 top-1 border-none',
+											isMain ? 'btn-primary' : 'btn-neutral/70'
+										)}
+										on:click|stopPropagation={() =>
+											dispatch('setmain', { kind: group.kind, filePath: image.filePath })}
+										aria-pressed={isMain}
+										title={isMain ? 'Main image — click to unset' : 'Set as main image'}
+									>
+										{isMain ? '★' : '☆'}
+									</button>
+								{/if}
+							</div>
 						{/each}
 					</div>
 				</section>
