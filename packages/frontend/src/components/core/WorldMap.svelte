@@ -81,7 +81,9 @@
 			image = document.createElementNS(SVG_NS, 'image');
 			image.setAttributeNS(XLINK_NS, 'href', group.url);
 			image.setAttribute('href', group.url);
-			image.setAttribute('preserveAspectRatio', 'none');
+			// Cover the combined shape while keeping the poster's aspect ratio
+			// (scale to fill, crop the overflow) rather than stretching it.
+			image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
 			pattern.appendChild(image);
 			defs.appendChild(pattern);
 		} else {
