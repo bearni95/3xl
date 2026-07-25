@@ -1,5 +1,6 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import ShowChip from '$components/core/ShowChip.svelte';
 	import type {
 		RegionComarca,
 		RegionTerritory
@@ -67,8 +68,9 @@
 				on:click={() => toggleTerritory(territory)}
 			>
 				<span class={classNames('text-xs transition-transform', { 'rotate-90': open })}>▶</span>
-				<span class="flex-1 truncate text-left">{territory.name}</span>
-				<span class="badge badge-error badge-sm">{territory.count}</span>
+				<span class="min-w-0 flex-1 truncate text-left">{territory.name}</span>
+				<ShowChip show={territory.show} prefix="top" classes="max-w-[45%]" />
+				<span class="badge badge-error badge-sm flex-none">{territory.count}</span>
 			</button>
 
 			{#if open}
@@ -85,8 +87,11 @@
 								<span
 									class={classNames('text-xs transition-transform', { 'rotate-90': comarcaOpen })}
 								>▶</span>
-								<span class="flex-1 truncate text-left">{comarca.name}</span>
-								<span class="badge badge-success badge-sm">{comarca.municipis.length}</span>
+								<span class="min-w-0 flex-1 truncate text-left">{comarca.name}</span>
+								<ShowChip show={comarca.show} prefix="top" classes="max-w-[45%]" />
+								<span class="badge badge-success badge-sm flex-none"
+									>{comarca.municipis.length}</span
+								>
 							</button>
 
 							{#if comarcaOpen}
@@ -99,7 +104,8 @@
 												})}
 											>
 												<span class="h-2 w-2 flex-none rounded-full bg-info"></span>
-												<span class="flex-1 truncate">{municipality.name}</span>
+												<span class="min-w-0 flex-1 truncate">{municipality.name}</span>
+											<ShowChip show={municipality.show} classes="max-w-[50%]" />
 											</span>
 										</li>
 									{/each}
@@ -116,7 +122,8 @@
 								})}
 							>
 								<span class="h-2 w-2 flex-none rounded-full bg-info"></span>
-								<span class="flex-1 truncate">{municipality.name}</span>
+								<span class="min-w-0 flex-1 truncate">{municipality.name}</span>
+								<ShowChip show={municipality.show} classes="max-w-[50%]" />
 							</span>
 						</li>
 					{/each}

@@ -171,9 +171,16 @@
 	// the municipality the player is standing in, when it's in the neighbourhood.
 	$: highlightRowId = highlightId ? String(highlightId) : null;
 
+	// Municipality id → its seeded show, drawn from the full baked assignment
+	// (every municipality, not just the rendered neighbourhood), so the tree can
+	// label each town and tally each region's plurality show.
+	$: showsById = new Map(
+		[...assignmentsById].map(([id, assignment]) => [id, assignment.show])
+	);
+
 	// The red → green → blue region hierarchy (territory → comarca →
 	// municipality) mirrored from the map's divisions, for the sidebar tree.
-	$: regionTree = buildRegionTree(municipalities);
+	$: regionTree = buildRegionTree(municipalities, showsById);
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">

@@ -8,10 +8,19 @@
  * hang directly off their territory in `RegionTerritory.municipis`.
  */
 
+/** The trimmed show shape shown against a region (matches MunicipalityShow.show). */
+export interface RegionShow {
+	id: number;
+	name: string;
+	posterUrl: string | null;
+}
+
 /** A single blue municipality — the leaf of the tree. */
 export interface RegionMunicipality {
 	id: string;
 	name: string;
+	/** The seeded show assigned to this municipality, when a lookup is given. */
+	show?: RegionShow;
 }
 
 /** A green comarca grouping the municipalities within it. */
@@ -20,6 +29,8 @@ export interface RegionComarca {
 	id: string;
 	name: string;
 	municipis: RegionMunicipality[];
+	/** The most common show among this comarca's municipalities (simple count). */
+	show?: RegionShow;
 }
 
 /** A red territory: its comarques plus any comarca-less municipalities. */
@@ -31,6 +42,35 @@ export interface RegionTerritory {
 	municipis: RegionMunicipality[];
 	/** Total municipalities under this territory, across all comarques. */
 	count: number;
+	/** The most common show across every municipality in the territory. */
+	show?: RegionShow;
+}
+
+/**
+ * The plurality show among a set of municipalities: the one held by the most of
+ * them (simple count), ties broken by name for a stable pick. Municipalities
+ * with no show are ignored.
+ */
+function majorityShow(municipis: RegionMunicipality[]): RegionShow | undefined {
+	const tally = new Map<number, { show: RegionShow; count: number }>();
+	for (const municipality of municipis) {
+		if (!municipality.show) continue;
+		const entry = tally.get(municipality.show.id);
+		if (entry) entry.count += 1;
+		else tally.set(municipality.show.id, { show: municipality.show, count: 1 });
+	}
+
+	let best: { show: RegionShow; count: number } | undefined;
+	for (const entry of tally.values()) {
+		if (
+			!best ||
+			entry.count > best.count ||
+			(entry.count === best.count && entry.show.name.localeCompare(best.show.name, 'ca') < 0)
+		) {
+			best = entry;
+		}
+	}
+	return best?.show;
 }
 
 function slugify(value: string): string {
@@ -50,7 +90,8 @@ const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompar
  * Catalunya leads); comarques and municipalities are sorted by name.
  */
 export function buildRegionTree(
-	municipalities: GeoJSON.FeatureCollection | null | undefined
+	municipalities: GeoJSON.FeatureCollection | null | undefined,
+	shows?: Map<string, RegionShow>
 ): RegionTerritory[] {
 	if (!municipalities) return [];
 
@@ -100,18 +141,32 @@ export function buildRegionTree(
 		comarca.municipis.push(municipality);
 	}
 
+	const withShow = (municipality: RegionMunicipality): RegionMunicipality => {
+		const show = shows?.get(municipality.id);
+		return show ? { ...municipality, show } : municipality;
+	};
+
 	return [...territories.values()]
-		.map((territory) => ({
-			id: territory.id,
-			name: territory.name,
-			count: territory.count,
-			comarques: [...territory.comarques.values()]
-				.map((comarca) => ({
-					...comarca,
-					municipis: comarca.municipis.slice().sort(byName)
-				}))
-				.sort(byName),
-			municipis: territory.municipis.slice().sort(byName)
-		}))
+		.map((territory) => {
+			const comarques = [...territory.comarques.values()]
+				.map((comarca) => {
+					const municipis = comarca.municipis.map(withShow).sort(byName);
+					return { ...comarca, municipis, show: majorityShow(municipis) };
+				})
+				.sort(byName);
+			const directMunicipis = territory.municipis.map(withShow).sort(byName);
+			const everyMunicipality = [
+				...comarques.flatMap((comarca) => comarca.municipis),
+				...directMunicipis
+			];
+			return {
+				id: territory.id,
+				name: territory.name,
+				count: territory.count,
+				comarques,
+				municipis: directMunicipis,
+				show: majorityShow(everyMunicipality)
+			};
+		})
 		.sort((a, b) => b.count - a.count);
 }
