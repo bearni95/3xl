@@ -6,7 +6,8 @@
 	// from the municipality layer) — this card renders UI only.
 	export let label: string;
 	export let basePath: string | null = null;
-	export let showName: string;
+	// The Supabase show(s) this character belongs to (via show_characters).
+	export let showNames: string[] = [];
 	export let locationName: string;
 	export let claimedAt: string;
 </script>
@@ -24,7 +25,12 @@
 	<div class="card-body gap-2 p-4">
 		<h2 class="card-title text-base">{label}</h2>
 		<div class="flex flex-wrap gap-2">
-			<span class="badge badge-ghost">{showName}</span>
+			{#each showNames as showName (showName)}
+				<span class="badge badge-ghost">{showName}</span>
+			{/each}
+			{#if showNames.length === 0}
+				<span class="badge badge-ghost badge-outline opacity-60">No show</span>
+			{/if}
 			<span class="badge badge-secondary">📍 {locationName}</span>
 		</div>
 		<span class="text-xs opacity-60">{claimedAt}</span>

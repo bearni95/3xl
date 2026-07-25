@@ -15,7 +15,8 @@
 	// names are resolved here from the local registry and municipality layer.
 	const charactersById = new Map(characters.map((character) => [character.id, character]));
 
-	let showNames = new Map<number, string>();
+	// character id → names of the Supabase shows it belongs to.
+	let characterShowNames = new Map<string, string[]>();
 	let municipalityNames: Map<string, string> | null = null;
 
 	let loading = false;
@@ -35,11 +36,11 @@
 		loading = true;
 		error = '';
 		try {
-			const [, names] = await Promise.all([
+			const [, showNamesByCharacter] = await Promise.all([
 				spawnService.loadSpawns(userId),
-				spawnService.loadShowNames()
+				spawnService.loadCharacterShowNames()
 			]);
-			showNames = names;
+			characterShowNames = showNamesByCharacter;
 
 			// Place names are optional — a missing layer just falls back to the id.
 			try {
@@ -62,9 +63,8 @@
 	function basePathFor(id: string): string | null {
 		return charactersById.get(id)?.basePath ?? null;
 	}
-	function showNameFor(id: number | null): string {
-		if (id === null) return 'All shows';
-		return showNames.get(id) ?? `Show ${id}`;
+	function showNamesFor(characterId: string): string[] {
+		return characterShowNames.get(characterId) ?? [];
 	}
 	function locationNameFor(id: string): string {
 		return municipalityNames?.get(id) ?? id;
@@ -122,7 +122,7 @@
 				<RosterCard
 					label={labelFor(spawn.characterId)}
 					basePath={basePathFor(spawn.characterId)}
-					showName={showNameFor(spawn.showId)}
+					showNames={showNamesFor(spawn.characterId)}
 					locationName={locationNameFor(spawn.locationId)}
 					claimedAt={claimedAtFor(spawn.createdAt)}
 				/>

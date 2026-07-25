@@ -64,16 +64,35 @@ class SpawnService {
 	}
 
 	/**
-	 * Load every show's display name keyed by id, so a spawn's stored `show_id`
-	 * can be labelled on the roster. Unlike {@link loadShows} this is not filtered
-	 * to renderable characters — a spawn may reference a show that has since lost
-	 * all its renderable characters but should still show its name.
+	 * Map each character id to the display names of the Supabase shows it belongs
+	 * to (via `show_characters` → `show_templates`), so the roster can label a
+	 * spawn with the show(s) its character is actually related to rather than the
+	 * show it happened to be rolled from. Character ids may map to several shows;
+	 * names are de-duplicated and sorted.
 	 */
-	async loadShowNames(): Promise<Map<number, string>> {
+	async loadCharacterShowNames(): Promise<Map<string, string[]>> {
 		const supabase = getSupabaseClient();
-		const { data, error } = await supabase.from('show_templates').select('id, name');
-		if (error) throw error;
-		return new Map((data ?? []).map((show) => [Number(show.id), show.name as string]));
+		const [showsRes, assignmentsRes] = await Promise.all([
+			supabase.from('show_templates').select('id, name'),
+			supabase.from('show_characters').select('show_id, character_id')
+		]);
+		if (showsRes.error) throw showsRes.error;
+		if (assignmentsRes.error) throw assignmentsRes.error;
+
+		const nameById = new Map<number, string>(
+			(showsRes.data ?? []).map((show) => [Number(show.id), show.name as string])
+		);
+
+		const byCharacter = new Map<string, string[]>();
+		for (const row of assignmentsRes.data ?? []) {
+			const name = nameById.get(Number(row.show_id));
+			if (!name) continue;
+			const names = byCharacter.get(row.character_id) ?? [];
+			if (!names.includes(name)) names.push(name);
+			byCharacter.set(row.character_id, names);
+		}
+		for (const names of byCharacter.values()) names.sort((a, b) => a.localeCompare(b));
+		return byCharacter;
 	}
 
 	/** Load the signed-in player's spawns into the store, newest first. */
