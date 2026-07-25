@@ -17,7 +17,12 @@
 	let host: HTMLDivElement;
 	let board: MugenBoard | null = null;
 
-	$: wrapperClasses = classNames('inline-flex overflow-hidden rounded-box leading-none', classes);
+	// Full-width, centred host so the canvas (max-width:100%, height:auto) can scale
+	// down to the viewport on small screens instead of forcing horizontal overflow.
+	$: wrapperClasses = classNames(
+		'flex w-full min-w-0 justify-center overflow-hidden rounded-box leading-none',
+		classes
+	);
 
 	onMount(async () => {
 		// Import Pixi only in the browser so it never runs during SSR/prerender.

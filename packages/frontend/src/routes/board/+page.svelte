@@ -449,7 +449,7 @@
 	</div>
 {/snippet}
 
-<div class="flex min-h-screen flex-col items-center justify-start gap-6 bg-base-200 p-8">
+<div class="flex min-h-screen flex-col items-center justify-start gap-6 bg-base-200 p-4 sm:p-8">
 	{#if !authService.configured}
 		<div class="alert alert-warning max-w-md text-sm">
 			<span>Sign-in is unavailable — Supabase is not configured, so no team can be played.</span>
@@ -485,11 +485,13 @@
 			</div>
 		</div>
 	{:else}
-		<div class="card bg-base-100 shadow-xl">
+		<!-- Full width on small screens (so the canvas can shrink to the viewport),
+		     back to hugging its content from lg up. -->
+		<div class="card w-full min-w-0 bg-base-100 shadow-xl lg:w-auto">
 			<div class="card-body items-center gap-3">
 				<!-- CPU options, as a row before the game canvas. -->
 				{@render row(lineups[0])}
-				<div class="flex flex-col items-center gap-3">
+				<div class="flex w-full min-w-0 flex-col items-center gap-3">
 					{#key boardKey}
 						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
 					{/key}
