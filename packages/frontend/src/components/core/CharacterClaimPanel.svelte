@@ -5,6 +5,7 @@
 	import { authService } from '$services/auth.service';
 	import { spawnService } from '$services/spawn.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
+	import { errorMessage } from '$utils/error/error-message';
 	import { AuthStatus } from '$types/profile.type';
 	import type { ClaimableShow } from '$types/character-spawn.type';
 	import type { GeoRegion } from '$types/location.type';
@@ -61,7 +62,7 @@
 			]);
 			shows = loadedShows;
 		} catch (error) {
-			showsError = error instanceof Error ? error.message : String(error);
+			showsError = errorMessage(error);
 		} finally {
 			loadingShows = false;
 		}
@@ -80,7 +81,7 @@
 		try {
 			await spawnService.claimRandom(currentUserId, pool, showTag, locationId);
 		} catch (error) {
-			claimError = error instanceof Error ? error.message : String(error);
+			claimError = errorMessage(error);
 		} finally {
 			claiming = false;
 		}
