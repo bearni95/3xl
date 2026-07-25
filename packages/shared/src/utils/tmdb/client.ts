@@ -15,6 +15,12 @@ import { tmdbRateLimiter } from './rate-limiter';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 
+// Every call is funnelled through one shared, serial rate limiter, so a single
+// request that never settles would wedge the whole queue and leave every
+// following request pending forever. Bound each request so a stalled/oversized
+// response (e.g. a show with an enormous image set) fails fast instead.
+const TMDB_REQUEST_TIMEOUT_MS = 15_000;
+
 async function tmdbFetch<T>(
 	apiKey: string,
 	endpoint: string,
@@ -28,17 +34,29 @@ async function tmdbFetch<T>(
 
 		const url = `${TMDB_BASE_URL}${endpoint}?${searchParams.toString()}`;
 
-		const response = await fetch(url, {
-			headers: { Accept: 'application/json' }
-		});
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), TMDB_REQUEST_TIMEOUT_MS);
+		try {
+			const response = await fetch(url, {
+				headers: { Accept: 'application/json' },
+				signal: controller.signal
+			});
 
-		if (!response.ok) {
-			if (response.status === 404) return null;
-			if (response.status === 429) throw new Error('429 Rate Limited');
-			return null;
+			if (!response.ok) {
+				if (response.status === 404) return null;
+				if (response.status === 429) throw new Error('429 Rate Limited');
+				return null;
+			}
+
+			return (await response.json()) as T;
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				throw new Error(`TMDB request timed out after ${TMDB_REQUEST_TIMEOUT_MS}ms: ${endpoint}`);
+			}
+			throw error;
+		} finally {
+			clearTimeout(timeout);
 		}
-
-		return (await response.json()) as T;
 	});
 }
 

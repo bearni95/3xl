@@ -115,7 +115,7 @@ export async function getOrFetchImage(
 		// Not cached yet — fetch below.
 	}
 
-	const response = await fetch(sourceUrl);
+	const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(15_000) });
 	if (!response.ok) return null;
 
 	const data = Buffer.from(await response.arrayBuffer());
