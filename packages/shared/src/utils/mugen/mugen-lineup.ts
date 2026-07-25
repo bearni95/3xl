@@ -21,6 +21,12 @@ interface Member {
 	centerX: number;
 }
 
+/**
+ * Target character height as a multiple of the cell width — mirrors the board's
+ * CHAR_HEIGHT_RATIO so a lineup sprite reads at the same size the board renders it.
+ */
+const CHAR_HEIGHT_RATIO = 1.3;
+
 export interface MugenLineupOptions {
 	/** Frame folders per slot (relative to the static root); null = empty slot. */
 	basePaths?: (string | null)[];
@@ -30,8 +36,6 @@ export interface MugenLineupOptions {
 	cellHeight?: number;
 	/** Horizontal gap between slots. */
 	gap?: number;
-	/** Fraction of the canvas height the tallest character fills. */
-	fillRatio?: number;
 	backgroundColor?: number;
 	/** Canvas background alpha; 0 lets the DOM backdrop show through. */
 	backgroundAlpha?: number;
@@ -42,7 +46,6 @@ const DEFAULTS: Required<MugenLineupOptions> = {
 	cellWidth: 96,
 	cellHeight: 128,
 	gap: 8,
-	fillRatio: 0.9,
 	backgroundColor: 0x000000,
 	backgroundAlpha: 0
 };
@@ -88,28 +91,26 @@ export class MugenLineup {
 			basePaths.map((basePath) => (basePath ? this.loadIdle(basePath) : Promise.resolve(null)))
 		);
 
-		// One shared scale keeps proportions honest: size everyone by the tallest
-		// (and widest) source frame so nothing overflows and no one is distorted.
-		let maxW = 1;
-		let maxH = 1;
-		for (const frames of framesPerSlot) {
-			for (const frame of frames ?? []) {
-				if (frame.width > maxW) maxW = frame.width;
-				if (frame.height > maxH) maxH = frame.height;
-			}
-		}
-		const scale = Math.min(
-			(cellHeight * this.options.fillRatio) / maxH,
-			(cellWidth * this.options.fillRatio) / maxW
-		);
-		// Feet sit slightly above the canvas bottom.
-		const baselineY = Math.round(cellHeight * 0.96);
+		// Feet sit on a shared baseline just above the canvas bottom.
+		const baselineY = cellHeight - 2;
 
 		framesPerSlot.forEach((frames, index) => {
 			if (!frames || frames.length === 0) return;
 			const centerX = index * (cellWidth + gap) + cellWidth / 2;
+
+			// Match the board: size each character by height so they all read at the
+			// same on-screen height (idle frame 0 → CHAR_HEIGHT_RATIO of the cell
+			// width), then cap by width so the widest frame's axis-to-edge extent
+			// stays within half the cell. Scaling is per-character, never shared.
+			const heightScale = (cellWidth * CHAR_HEIGHT_RATIO) / frames[0].height;
+			const maxHalfExtent = Math.max(
+				...frames.map((frame) => Math.max(frame.anchorX, 1 - frame.anchorX) * frame.width)
+			);
+			const widthScale = cellWidth / 2 / maxHalfExtent;
+			const fitScale = Math.min(heightScale, widthScale);
+
 			const sprite = new Sprite();
-			sprite.scale.set(scale);
+			sprite.scale.set(fitScale);
 			sprite.x = centerX;
 			sprite.y = baselineY;
 			app.stage.addChild(sprite);
@@ -157,7 +158,9 @@ export class MugenLineup {
 	private applyFrame(member: Member): void {
 		const frame = member.frames[member.frameIndex % member.frames.length];
 		member.sprite.texture = frame.texture;
-		member.sprite.anchor.set(frame.anchorX, frame.anchorY);
+		// Horizontal by the body axis, vertical pinned to the frame bottom (the
+		// baseline) — same convention the board uses so feet line up across the row.
+		member.sprite.anchor.set(frame.anchorX, 1);
 	}
 
 	private tick = (): void => {
