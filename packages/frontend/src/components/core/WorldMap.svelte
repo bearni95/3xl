@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type L from 'leaflet';
-	import type { MapOverlay } from '$types/map.type';
+	import type { MapCircle, MapOverlay } from '$types/map.type';
 
 	let {
 		center = [20, 0] as [number, number],
@@ -9,6 +9,7 @@
 		minZoom = 2,
 		maxZoom = 19,
 		overlays = [],
+		circles = [],
 		highlightId = null,
 		highlightStyle = null,
 		classes = ''
@@ -20,6 +21,8 @@
 		maxZoom?: number;
 		/** GeoJSON overlays drawn in array order (last = topmost). */
 		overlays?: MapOverlay[];
+		/** Standalone circular regions drawn above the overlays. */
+		circles?: MapCircle[];
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
 		highlightId?: string | null;
 		/** Style merged over the highlighted feature's base style. */
@@ -226,6 +229,21 @@
 			}).addTo(mapInstance!);
 			overlayGroups.push(layerGroup);
 		});
+
+		// Standalone circular regions, drawn above every overlay with a permanent
+		// centred label (e.g. the "Portal" out at sea).
+		for (const circle of circles) {
+			const shape = Leaf.circle(circle.center, { radius: circle.radius, ...circle.style }).addTo(
+				mapInstance!
+			);
+			if (circle.label) {
+				shape.bindTooltip(circle.label, {
+					permanent: true,
+					direction: 'center',
+					className: 'bg-transparent! border-none! shadow-none! font-bold text-white!'
+				});
+			}
+		}
 
 		// Build the shared groups now the paths exist, tag each path with its
 		// pattern id, and keep every group's image aligned as the map reprojects.

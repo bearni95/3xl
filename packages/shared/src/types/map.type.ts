@@ -23,3 +23,15 @@ export interface MapOverlay {
 	 */
 	interactive?: boolean;
 }
+
+/** A standalone circular region drawn on the map, independent of any GeoJSON. */
+export interface MapCircle {
+	/** Centre as [lat, lng]. */
+	center: [number, number];
+	/** Radius in metres. */
+	radius: number;
+	/** Leaflet path options for the circle's stroke/fill. */
+	style: PathOptions;
+	/** Text shown as a permanent centred label over the circle. */
+	label?: string;
+}

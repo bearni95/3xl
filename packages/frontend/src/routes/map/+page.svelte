@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import type { PathOptions } from 'leaflet';
 	import WorldMap from '$components/core/WorldMap.svelte';
-	import type { MapOverlay } from '$types/map.type';
+	import type { MapCircle, MapOverlay } from '$types/map.type';
 	import { locationService, hasLocation } from '$services/location.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 
@@ -94,6 +94,17 @@
 			interactive: false
 		}
 	];
+
+	// A mythical "Portal" region floating in the Mediterranean, in open water
+	// between the mainland coast and the Balearic Islands (roughly off Ibiza).
+	const circles: MapCircle[] = [
+		{
+			center: [39.6, 1.4],
+			radius: 30000,
+			style: { color: '#a855f7', weight: 2, fillColor: '#a855f7', fillOpacity: 0.35 },
+			label: 'Portal'
+		}
+	];
 </script>
 
 <div class="relative flex h-[calc(100vh-4rem)] flex-col">
@@ -101,6 +112,7 @@
 		center={[41.8, 1.7]}
 		zoom={8}
 		{overlays}
+		{circles}
 		{highlightId}
 		{highlightStyle}
 		classes="min-h-0 flex-1"
