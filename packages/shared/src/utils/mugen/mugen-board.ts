@@ -139,6 +139,22 @@ const AURA_FRAME_MS = 120;
 const AURA_WIDTH_RATIO = 1.7;
 const AURA_HEIGHT_RATIO = 1.25;
 
+/** Canvas hex for each combat colour, for tinting strike readouts and slashes. */
+const COMBAT_COLOR_HEX: Record<string, number> = {
+	red: 0xef4444,
+	blue: 0x3b82f6,
+	yellow: 0xfacc15,
+	purple: 0xa855f7,
+	orange: 0xf97316,
+	green: 0x22c55e
+};
+
+/** Hex for a combat colour name, defaulting to white for anything unknown. */
+const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color] ?? 0xffffff;
+
+/** Lifetime of a strike slash overlay (ms). */
+const SLASH_MS = 420;
+
 interface Point {
 	x: number;
 	y: number;
@@ -179,6 +195,13 @@ interface Aura {
 	frames: Texture[];
 	frameIndex: number;
 	frameElapsed: number;
+}
+
+/** A transient slash mark drawn over a struck fighter, in the attacker's colour.
+ * It scales in and fades out over {@link SLASH_MS}, then removes itself. */
+interface SlashEffect {
+	graphics: Graphics;
+	elapsed: number;
 }
 
 /** A character standing (and, during combat, running) on the board. */
@@ -256,6 +279,8 @@ export class MugenBoard {
 	private actors: Actor[] = [];
 	/** In-flight ranged projectiles, advanced each tick until they land. */
 	private projectiles: Projectile[] = [];
+	/** Transient slash overlays, faded out each tick until they expire. */
+	private slashes: SlashEffect[] = [];
 	/** Colour overlays on claimed cells, keyed by "q,r". */
 	private cellPaint = new Map<string, Graphics>();
 	/** Loaded aura frame textures, keyed by aura color name. */
@@ -365,6 +390,7 @@ export class MugenBoard {
 		}
 		this.actors = [];
 		this.projectiles = [];
+		this.slashes = [];
 		this.cellPaint.clear();
 	}
 
@@ -671,7 +697,28 @@ export class MugenBoard {
 			this.updateLabel(actor);
 		}
 		this.updateProjectiles(deltaMs);
+		this.updateSlashes(deltaMs);
 	};
+
+	/** Advance every slash overlay: fade it out over its lifetime, then remove. */
+	private updateSlashes(deltaMs: number): void {
+		if (this.slashes.length === 0) return;
+		const remaining: SlashEffect[] = [];
+		for (const slash of this.slashes) {
+			slash.elapsed += deltaMs;
+			const t = slash.elapsed / SLASH_MS;
+			if (t >= 1) {
+				slash.graphics.parent?.removeChild(slash.graphics);
+				slash.graphics.destroy();
+				continue;
+			}
+			// Snap in, then fade: full opacity for the first third, easing to zero.
+			slash.graphics.alpha = t < 0.33 ? 1 : 1 - (t - 0.33) / 0.67;
+			slash.graphics.scale.set(0.85 + t * 0.3);
+			remaining.push(slash);
+		}
+		this.slashes = remaining;
+	}
 
 	/** Loop the actor's aura animation and keep it glued to the actor's feet,
 	 * just behind it in depth order. */
@@ -1163,17 +1210,18 @@ export class MugenBoard {
 
 	/**
 	 * Float a combat readout above a character — the strike multiplier of its
-	 * throw ×100 (50 / 100 / 200) — so the two fighters' numbers can be compared
-	 * during a duel (higher deals more, and wins). Replaces any existing label.
+	 * throw ×100 (50 / 100 / 200) — tinted in the thrown `color`, so the two
+	 * fighters' numbers can be compared during a duel (higher deals more, and
+	 * wins). Replaces any existing label.
 	 */
-	showStrikeLabel(id: string, value: number): void {
+	showStrikeLabel(id: string, value: number, color: string): void {
 		const actor = this.findActor(id);
 		if (!actor || !this.app) return;
 		this.clearStrikeLabel(id);
 		const label = new Text({
 			text: String(value),
 			style: {
-				fill: 0xffffff,
+				fill: combatColorHex(color),
 				fontSize: 40,
 				fontWeight: '900',
 				fontFamily: 'system-ui, sans-serif',
@@ -1185,6 +1233,44 @@ export class MugenBoard {
 		this.app.stage.addChild(label);
 		actor.label = label;
 		this.updateLabel(actor);
+	}
+
+	/**
+	 * Flash a slash mark over a struck fighter in the attacker's `color`. Two bold
+	 * crossing strokes are drawn at the actor's mid-body; the effect scales in and
+	 * fades out on its own via the tick loop, so callers fire and forget.
+	 */
+	showSlash(id: string, color: string): void {
+		const actor = this.findActor(id);
+		if (!actor || !this.app) return;
+		const reach = Math.max(actor.displayWidth, actor.displayHeight) * 0.55;
+		const hex = combatColorHex(color);
+		const graphics = new Graphics();
+		// A slashing "X": two diagonal strokes, a dark backing under a bright core so
+		// the mark reads over any character.
+		const strokes: [number, number][][] = [
+			[
+				[-reach, -reach],
+				[reach, reach]
+			],
+			[
+				[reach, -reach],
+				[-reach, reach]
+			]
+		];
+		for (const [[x1, y1], [x2, y2]] of strokes) {
+			graphics.moveTo(x1, y1).lineTo(x2, y2);
+		}
+		graphics.stroke({ width: 12, color: 0x000000, alpha: 0.6, cap: 'round' });
+		for (const [[x1, y1], [x2, y2]] of strokes) {
+			graphics.moveTo(x1, y1).lineTo(x2, y2);
+		}
+		graphics.stroke({ width: 6, color: hex, cap: 'round' });
+		graphics.x = actor.x;
+		graphics.y = actor.y - actor.displayHeight * 0.5;
+		graphics.zIndex = actor.y + 20000; // above sprites, auras and labels
+		this.app.stage.addChild(graphics);
+		this.slashes.push({ graphics, elapsed: 0 });
 	}
 
 	/** Remove a character's combat readout, if it has one. */

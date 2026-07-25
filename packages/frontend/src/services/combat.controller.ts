@@ -255,10 +255,11 @@ export class CombatController {
 				rival.actionIndex = index;
 				rival.disabled = true;
 			});
-			// Combat starts: every fighter that will act flares an aura in the color
-			// it throws this round (cell-holders sit out aura-less unless attacked).
+			// Combat starts: every fighter that will act flares an aura in its own
+			// (native) colour — not the colour it throws (cell-holders sit out
+			// aura-less unless attacked).
 			for (const combatant of this.fighters) {
-				if (combatant.moveColor) void this.board?.showAura(combatant.id, combatant.moveColor);
+				if (combatant.moveColor) void this.board?.showAura(combatant.id, combatant.color);
 			}
 			this.phase = 'fighting';
 			this.emit();
@@ -290,10 +291,11 @@ export class CombatController {
 			const rival = holder?.side === 'error' ? holder : rivalsQueue.shift();
 			if (!player || !rival) continue;
 			// An attacked holder never picked a color — it defends with a random one,
-			// flaring its aura only now that it's dragged into the duel.
+			// flaring its aura (in its own native colour) only now that it's dragged
+			// into the duel.
 			if (holder && !holder.moveColor) {
 				holder.moveColor = this.randomColor(holder);
-				void this.board?.showAura(holder.id, holder.moveColor);
+				void this.board?.showAura(holder.id, holder.color);
 			}
 			await this.duel(player, rival, i);
 		}
@@ -414,17 +416,20 @@ export class CombatController {
 		const thrown = attacker.moveColor ?? attacker.color;
 		const strikes = strikeMultiplier(thrown, defender.color);
 
-		// Attacker and defender are always distinct actors, so the move and the
-		// flinch can play together.
+		// Attacker and defender are always distinct actors, so the move, the flinch
+		// and the slash landing on the defender all play together — the slash is
+		// drawn in the attacker's thrown colour, over whoever takes the damage.
 		await Promise.all([
 			this.board?.playMove(attacker.id, this.meleeMove(attacker)),
-			this.board?.playHurt(defender.id)
+			this.board?.playHurt(defender.id),
+			this.board?.showSlash(defender.id, thrown)
 		]);
 
 		defender.strikes += strikes;
-		// Float the throw's multiplier ×100 above the attacker so the two fighters'
-		// numbers sit side by side — higher deals more strikes and wins the duel.
-		this.board?.showStrikeLabel(attacker.id, Math.round(strikes * 100));
+		// Float the throw's multiplier ×100 above the attacker, coloured in the
+		// thrown colour, so the two fighters' numbers sit side by side — higher
+		// deals more strikes and wins the duel.
+		this.board?.showStrikeLabel(attacker.id, Math.round(strikes * 100), thrown);
 		this.setStatus(this.strikeLine(attacker, defender, strikes));
 	}
 
