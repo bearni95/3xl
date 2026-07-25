@@ -63,6 +63,19 @@ class SpawnService {
 			.sort((a, b) => a.name.localeCompare(b.name));
 	}
 
+	/**
+	 * Load every show's display name keyed by id, so a spawn's stored `show_id`
+	 * can be labelled on the roster. Unlike {@link loadShows} this is not filtered
+	 * to renderable characters — a spawn may reference a show that has since lost
+	 * all its renderable characters but should still show its name.
+	 */
+	async loadShowNames(): Promise<Map<number, string>> {
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase.from('show_templates').select('id, name');
+		if (error) throw error;
+		return new Map((data ?? []).map((show) => [Number(show.id), show.name as string]));
+	}
+
 	/** Load the signed-in player's spawns into the store, newest first. */
 	async loadSpawns(userId: string): Promise<CharacterSpawn[]> {
 		const supabase = getSupabaseClient();
