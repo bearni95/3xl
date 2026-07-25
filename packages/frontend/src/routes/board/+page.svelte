@@ -86,25 +86,10 @@
 		void spawnService.loadSpawns(currentUserId).then(() => (spawnsLoaded = true));
 	}
 
-	// character id → the Supabase spawn colour to fight with. When a character was
-	// claimed more than once the newest spawn (spawns arrive newest-first) wins.
-	$: colorByCharacter = (() => {
-		const map = new Map<string, CombatColor>();
-		for (const spawn of $spawns as CharacterSpawn[]) {
-			if (!map.has(spawn.characterId)) map.set(spawn.characterId, spawn.color as CombatColor);
-		}
-		return map;
-	})();
-
-	// character id → the Supabase spawn gameplay stat (1..10) to fight with. As with
-	// the colour, when a character was claimed more than once the newest spawn wins.
-	$: statByCharacter = (() => {
-		const map = new Map<string, number>();
-		for (const spawn of $spawns as CharacterSpawn[]) {
-			if (!map.has(spawn.characterId)) map.set(spawn.characterId, spawn.stat);
-		}
-		return map;
-	})();
+	// spawn id → the spawn itself. Teams reference spawns (not characters), so each
+	// team slot fights with its own rolled colour and stat — even when two slots hold
+	// the same character claimed twice.
+	$: spawnById = new Map(($spawns as CharacterSpawn[]).map((spawn) => [spawn.id, spawn]));
 
 	// Slots 0–2 are the red (CPU) grid, 3–5 the blue (player) grid; the CPU line-up
 	// mirrors the player's active team exactly.
@@ -122,14 +107,18 @@
 		]
 	};
 
-	// The two sides field the SAME character line-up (the CPU mirrors the player's
-	// team), so a bare character id is not unique across the board. Every board
-	// actor / fighter is identified by a per-side instance id (`error:kikyo`),
-	// while the underlying character id (for assets, definition and spawn colour)
-	// is recovered from basePath. Without this, id lookups (board actors, the
-	// combat controller) collide between the two sides and combat never starts.
-	function instanceId(side: 'error' | 'info', characterId: string): string {
-		return `${side}:${characterId}`;
+	// The two sides field the SAME spawn line-up (the CPU mirrors the player's team),
+	// so a bare spawn id is not unique across the board. Every board actor / fighter
+	// is identified by a per-side instance id (`error:<spawnId>`); the underlying
+	// spawn (for its character assets, definition, colour and stat) is recovered via
+	// spawnById. Without this, id lookups (board actors, the combat controller)
+	// collide between the two sides and combat never starts.
+	function instanceId(side: 'error' | 'info', spawnId: string): string {
+		return `${side}:${spawnId}`;
+	}
+
+	function spawnIdOf(id: string): string {
+		return id.slice(id.indexOf(':') + 1);
 	}
 
 	function characterIdOf(basePath: string): string {
@@ -138,52 +127,53 @@
 	}
 
 	function boardCharacter(
-		id: string,
+		spawnId: string,
 		side: 'error' | 'info',
-		colors: Map<string, CombatColor>
+		spawns: Map<string, CharacterSpawn>
 	): BoardCharacter {
-		const option = characterById.get(id) ?? availableCharacters[0];
+		const spawn = spawns.get(spawnId);
+		const option = (spawn && characterById.get(spawn.characterId)) ?? availableCharacters[0];
 		return {
-			id: instanceId(side, option.id),
+			id: instanceId(side, spawnId),
 			basePath: option.basePath,
 			animation: 'idle',
-			// The character's Supabase spawn colour tints its home cell on the board.
-			combatColor: colors.get(option.id)
+			// The spawn's rolled colour tints its home cell on the board.
+			combatColor: spawn?.color
 		};
 	}
 
 	// Left: red grid with its movable centre plus two idling extras; right: blue
-	// grid likewise. Rebuilt whenever a picker slot or a character's spawn colour
-	// changes. `colors` is passed in explicitly so Svelte's legacy reactive
-	// tracking sees the colour map as a dependency of `grids`.
-	function buildGrids(ids: string[], colors: Map<string, CombatColor>): [BoardGrid, BoardGrid] {
+	// grid likewise. Rebuilt whenever a picker slot or a spawn changes. `spawns` is
+	// passed in explicitly so Svelte's legacy reactive tracking sees the spawn map as
+	// a dependency of `grids`.
+	function buildGrids(ids: string[], spawns: Map<string, CharacterSpawn>): [BoardGrid, BoardGrid] {
 		return [
 			{
 				color: 0xff0000,
-				character: boardCharacter(ids[0], 'error', colors),
+				character: boardCharacter(ids[0], 'error', spawns),
 				extras: extraCells.error.map((cell, i) => ({
-					...boardCharacter(ids[1 + i], 'error', colors),
+					...boardCharacter(ids[1 + i], 'error', spawns),
 					...cell
 				}))
 			},
 			{
 				color: 0x2563eb,
-				character: boardCharacter(ids[3], 'info', colors),
+				character: boardCharacter(ids[3], 'info', spawns),
 				extras: extraCells.info.map((cell, i) => ({
-					...boardCharacter(ids[4 + i], 'info', colors),
+					...boardCharacter(ids[4 + i], 'info', spawns),
 					...cell
 				}))
 			}
 		];
 	}
 
-	$: grids = buildGrids(slots, colorByCharacter);
+	$: grids = buildGrids(slots, spawnById);
 	// Bumped by "Play again" so the Pixi board remounts with a clean slate.
 	let gameKey = 0;
 	// Remounts the Pixi board (and thus repositions everyone) on any slot change,
 	// spawn-colour change (so home cells repaint once colours load), or restart.
 	$: boardKey = `${slots.join(',')}:${slots
-		.map((id) => colorByCharacter.get(id) ?? '')
+		.map((id) => spawnById.get(id)?.color ?? '')
 		.join(',')}:${gameKey}`;
 
 	// One badge per character on the board, in board order (red half then blue).
@@ -285,7 +275,7 @@
 	// Runs on mount and again whenever a picker slot changes.
 	async function setup(): Promise<void> {
 		const token = ++setupToken;
-		const currentGrids = buildGrids(slots, colorByCharacter);
+		const currentGrids = buildGrids(slots, spawnById);
 		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] = [
 			...rosterFor([currentGrids[0].character, ...(currentGrids[0].extras ?? [])], 'error'),
 			...rosterFor([currentGrids[1].character, ...(currentGrids[1].extras ?? [])], 'info')
@@ -293,27 +283,27 @@
 
 		const loaded = await Promise.all(
 			roster.map(async (entry) => {
-				// `entry.id` is the per-side instance id (`error:kikyo`); the underlying
-				// character id — which keys the definition JSON and the spawn colour —
-				// comes from basePath (`/assets/kikyo/frames` → `kikyo`).
-				const characterId = characterIdOf(entry.basePath);
+				// `entry.id` is the per-side instance id (`error:<spawnId>`); recover the
+				// spawn (its rolled colour and stat) and the character id (which keys the
+				// definition JSON) from it, falling back to the basePath-derived id.
+				const spawn = spawnById.get(spawnIdOf(entry.id));
+				const characterId = spawn?.characterId ?? characterIdOf(entry.basePath);
 				const [manifestRes, defRes] = await Promise.all([
 					fetch(`${entry.basePath}/manifest.json`),
 					fetch(`/data/characters/${characterId}/definition.json`)
 				]);
 				const manifest: Manifest = await manifestRes.json();
 				const definition: Partial<CharacterDefinition> = defRes.ok ? await defRes.json() : {};
-				// Combat colour comes from the character's Supabase spawn; only if a
-				// character somehow has no spawn colour do we fall back to the
-				// definition's compound colour (or DEFAULT_COLOR).
+				// Combat colour comes from the spawn; only if a slot somehow has no spawn
+				// colour do we fall back to the definition's compound colour (or DEFAULT_COLOR).
 				const color: CombatColor =
-					colorByCharacter.get(characterId) ??
+					(spawn?.color as CombatColor) ??
 					(COMPOUND_COLORS.includes(definition.color!) ? definition.color! : DEFAULT_COLOR);
 				// Face: the portrait the definition picked in /admin/characters, else
 				// the manifest's default. Both resolve to a file under the char's frames.
-				// Gameplay stat comes from the character's Supabase spawn; characters
-				// with no spawn stat read as the default (like legacy spawns).
-				const stat: number = statByCharacter.get(characterId) ?? DEFAULT_SPAWN_STAT;
+				// Gameplay stat comes from the spawn; a slot with no spawn stat reads as
+				// the default (like legacy spawns).
+				const stat: number = spawn?.stat ?? DEFAULT_SPAWN_STAT;
 				const faceFile = definition.face || manifest.face?.file || null;
 				return {
 					...entry,
@@ -357,8 +347,8 @@
 	// every unrelated tick.
 	$: fightKey =
 		playable && spawnsLoaded
-			? `${slots.join(',')}|${slots.map((id) => colorByCharacter.get(id) ?? '').join(',')}` +
-				`|${slots.map((id) => statByCharacter.get(id) ?? '').join(',')}`
+			? `${slots.join(',')}|${slots.map((id) => spawnById.get(id)?.color ?? '').join(',')}` +
+				`|${slots.map((id) => spawnById.get(id)?.stat ?? '').join(',')}`
 			: '';
 	let lastFightKey = '';
 	$: if (fightKey && fightKey !== lastFightKey) {

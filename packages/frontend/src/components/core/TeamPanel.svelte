@@ -5,13 +5,12 @@
 	import MugenLineup from '$components/core/MugenLineup.svelte';
 	import { TEAM_SIZE, type Team } from '$services/team.service';
 	import { SpawnColor } from '$types/character-spawn.type';
-	import type { CombatColor } from '$types/character-definition.type';
-	import { teammateColors } from '$utils/color/compare';
 
 	// Presentational only — the parent owns the team service and applies changes.
 	export let teams: Team[] = [];
 	export let activeTeamId: string | null = null;
-	// Characters the player can pick from (deduplicated roster characters).
+	// Every claimed spawn, keyed by spawn id, used to resolve each team slot's label,
+	// sprite, colour, stat, location and shows. Picks are chosen from the roster grid.
 	export let options: {
 		id: string;
 		label: string;
@@ -37,8 +36,6 @@
 		remove: { teamId: string };
 		rename: { teamId: string; name: string };
 		activate: { teamId: string };
-		select: { teamId: string; index: number; characterId: string | null };
-		clear: { teamId: string; index: number };
 	}>();
 
 	$: labelById = new Map(options.map((option) => [option.id, option.label]));
@@ -50,19 +47,6 @@
 
 	function filledCount(team: Team): number {
 		return team.memberIds.filter((id): id is string => Boolean(id)).length;
-	}
-
-	function handleSelect(teamId: string, index: number, event: Event): void {
-		const value = (event.currentTarget as HTMLSelectElement).value;
-		dispatch('select', { teamId, index, characterId: value || null });
-	}
-
-	// Colours a teammate may carry given the lead's colour (slot 0). Null when the
-	// lead slot is empty — until a lead is picked, no teammate colour is allowed.
-	// (SpawnColor and CombatColor share the same string values.)
-	function allowedTeammateColors(leadColor: SpawnColor | null): Set<string> | null {
-		if (!leadColor) return null;
-		return new Set<string>(teammateColors(leadColor as unknown as CombatColor));
 	}
 
 	function handleRename(teamId: string, event: Event): void {
@@ -84,7 +68,6 @@
 		<div class="flex flex-col gap-3">
 			{#each teams as team (team.id)}
 				{@const isActive = team.id === activeTeamId}
-				{@const chosen = new Set(team.memberIds.filter((id): id is string => Boolean(id)))}
 				<div
 					class={classNames('rounded-box border p-3', {
 						'border-primary bg-primary/5': isActive,
@@ -129,7 +112,6 @@
 						{@const memberStats = team.memberIds.map((id) =>
 							id ? (statById.get(id) ?? null) : null
 						)}
-						{@const allowedColors = allowedTeammateColors(memberColors[0])}
 						{@const leadId = team.memberIds.find((id): id is string => Boolean(id)) ?? null}
 						<div class="mt-3 flex flex-col gap-3">
 							<div class="flex flex-col items-center gap-2">
@@ -171,44 +153,22 @@
 								</div>
 							</div>
 
-							<!-- The three character selects, stacked under the animations. The
-							     lead (slot 0) may be any colour; slots 2 & 3 must share a colour
-							     with it (its colour, plus the compounds/primaries linked to it). -->
+							<!-- Slot roster under the animations: the lead (slot 0), then the two
+							     teammate slots, each showing its pick's name or "empty". Picks are
+							     added/removed from the roster grid's per-card buttons. -->
 							<div class="flex flex-col gap-2">
-								{#each team.memberIds as characterId, index (index)}
+								{#each team.memberIds as memberId, index (index)}
 									{@const isLead = index === 0}
 									<div class="flex items-center gap-2">
 										<span class="w-10 shrink-0 text-[10px] font-medium uppercase opacity-50">
 											{isLead ? 'Lead' : `#${index + 1}`}
 										</span>
-										<select
-											class="select select-bordered select-sm w-full"
-											value={characterId ?? ''}
-											disabled={!isLead && !allowedColors}
-											on:change={(event) => handleSelect(team.id, index, event)}
-										>
-											<option value="">— Empty slot —</option>
-											{#each options as option (option.id)}
-												<!-- Slots 2 & 3 only list colour-compatible candidates; the
-												     current pick always stays listed so its value shows. -->
-												{#if isLead || option.id === characterId || allowedColors?.has(option.color ?? '')}
-													<option
-														value={option.id}
-														disabled={chosen.has(option.id) && option.id !== characterId}
-													>
-														{option.label}
-													</option>
-												{/if}
-											{/each}
-										</select>
-										{#if characterId}
-											<button
-												class="btn btn-ghost btn-sm btn-square"
-												title="Clear slot"
-												on:click={() => dispatch('clear', { teamId: team.id, index })}
-											>
-												✕
-											</button>
+										{#if memberId}
+											<span class="badge badge-outline badge-sm">
+												{labelById.get(memberId) ?? memberId}
+											</span>
+										{:else}
+											<span class="text-xs opacity-40">— Empty slot —</span>
 										{/if}
 									</div>
 								{/each}
@@ -255,9 +215,9 @@
 					{:else}
 						<div class="mt-2 flex flex-wrap items-center gap-1">
 							<span class="badge badge-ghost badge-sm">{filledCount(team)}/{TEAM_SIZE}</span>
-							{#each team.memberIds as characterId, index (index)}
-								{#if characterId}
-									<span class="badge badge-outline badge-sm">{labelById.get(characterId) ?? characterId}</span>
+							{#each team.memberIds as memberId, index (index)}
+								{#if memberId}
+									<span class="badge badge-outline badge-sm">{labelById.get(memberId) ?? memberId}</span>
 								{/if}
 							{/each}
 						</div>

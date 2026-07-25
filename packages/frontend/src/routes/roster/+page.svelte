@@ -110,28 +110,21 @@
 		return new Date(createdAt).toLocaleString();
 	}
 
-	// Distinct characters the player has claimed, offered as team picks. Spawns
-	// arrive newest-first; reversing before de-duping lets the newest spawn's
-	// rolled colour and place win (the same character can be claimed several times).
-	// `municipalityNames` is passed in explicitly so this reactive block re-runs
+	// Every claimed spawn, offered as an individual team pick — each spawn is its own
+	// entry (the same character claimed twice yields two options with their own rolled
+	// colour, stat and place). Keyed by spawn id so the TeamPanel can resolve a team's
+	// slots. `municipalityNames` is passed in explicitly so this reactive block re-runs
 	// once the layer loads — a bare locationNameFor() call wouldn't track it.
 	$: teamOptions = ((names: Map<string, string> | null) =>
-		Array.from(
-			new Map(
-				[...$spawns].reverse().map((spawn) => [
-					spawn.characterId,
-					{
-						id: spawn.characterId,
-						label: labelFor(spawn.characterId),
-						basePath: basePathFor(spawn.characterId),
-						color: spawn.color,
-						stat: spawn.stat,
-						location: names?.get(spawn.locationId) ?? ULTRAMAR.municipality,
-						shows: showNamesFor(spawn.characterId)
-					}
-				])
-			).values()
-		).sort((a, b) => a.label.localeCompare(b.label)))(municipalityNames);
+		$spawns.map((spawn) => ({
+			id: spawn.id,
+			label: labelFor(spawn.characterId),
+			basePath: basePathFor(spawn.characterId),
+			color: spawn.color,
+			stat: spawn.stat,
+			location: names?.get(spawn.locationId) ?? ULTRAMAR.municipality,
+			shows: showNamesFor(spawn.characterId)
+		})))(municipalityNames);
 
 	function onTeamCreate(): void {
 		teamService.createTeam();
@@ -145,17 +138,48 @@
 	function onTeamActivate(event: CustomEvent<{ teamId: string }>): void {
 		teamService.setActive(event.detail.teamId);
 	}
-	function onTeamSelect(
-		event: CustomEvent<{ teamId: string; index: number; characterId: string | null }>
-	): void {
-		teamService.setMember(event.detail.teamId, event.detail.index, event.detail.characterId);
-		// Changing the lead (or any slot) can leave a teammate whose colour no longer
-		// shares the lead's — drop those so the enforced rule always holds.
-		enforceTeamColors(event.detail.teamId);
+
+	// spawn id → its rolled spawn colour, for the team colour rule.
+	$: colorForSpawn = new Map(teamOptions.map((option) => [option.id, option.color]));
+
+	// The currently-selected team and the spawn ids already on it, for the
+	// per-card add/remove buttons in the grid.
+	$: activeTeam = $team.teams.find((entry) => entry.id === $team.activeTeamId) ?? null;
+	$: activeMemberIds = new Set(
+		(activeTeam?.memberIds ?? []).filter((id): id is string => Boolean(id))
+	);
+
+	// Whether a spawn (not already on the active team) may be added right now: there
+	// must be a free slot, and — for a non-lead slot — its colour must be one the
+	// lead's colour allows (see teammateColors).
+	function canAddToActiveTeam(spawnId: string): boolean {
+		if (!activeTeam || activeMemberIds.has(spawnId)) return false;
+		const emptyIndex = activeTeam.memberIds.indexOf(null);
+		if (emptyIndex < 0) return false;
+		if (emptyIndex === 0) return true;
+		const leadId = activeTeam.memberIds[0];
+		const leadColor = leadId ? (colorForSpawn.get(leadId) ?? null) : null;
+		const allowed = leadColor
+			? new Set<string>(teammateColors(leadColor as unknown as CombatColor))
+			: null;
+		const color = colorForSpawn.get(spawnId) ?? null;
+		return Boolean(allowed && color && allowed.has(color));
 	}
 
-	// character id → its representative (newest) spawn colour, for the team rule.
-	$: colorForCharacter = new Map(teamOptions.map((option) => [option.id, option.color]));
+	// Toggle a spawn on the active team: remove it if present, otherwise add it to
+	// the first free slot (respecting the colour rule via canAddToActiveTeam).
+	function toggleTeamMember(spawnId: string): void {
+		if (!activeTeam) return;
+		const existingIndex = activeTeam.memberIds.indexOf(spawnId);
+		if (existingIndex >= 0) {
+			teamService.clearMember(activeTeam.id, existingIndex);
+			enforceTeamColors(activeTeam.id);
+			return;
+		}
+		if (!canAddToActiveTeam(spawnId)) return;
+		const emptyIndex = activeTeam.memberIds.indexOf(null);
+		teamService.setMember(activeTeam.id, emptyIndex, spawnId);
+	}
 
 	// Clear every non-lead slot whose colour isn't allowed by the lead's colour
 	// (see teammateColors). A team with no lead allows no teammate colour at all.
@@ -163,20 +187,17 @@
 		const team = teamService.get().teams.find((entry) => entry.id === teamId);
 		if (!team) return;
 		const leadId = team.memberIds[0];
-		const leadColor = leadId ? (colorForCharacter.get(leadId) ?? null) : null;
+		const leadColor = leadId ? (colorForSpawn.get(leadId) ?? null) : null;
 		const allowed = leadColor
 			? new Set<string>(teammateColors(leadColor as unknown as CombatColor))
 			: null;
 		team.memberIds.forEach((id, index) => {
 			if (index === 0 || !id) return;
-			const color = colorForCharacter.get(id) ?? null;
+			const color = colorForSpawn.get(id) ?? null;
 			if (!allowed || !color || !allowed.has(color)) {
 				teamService.clearMember(teamId, index);
 			}
 		});
-	}
-	function onTeamClear(event: CustomEvent<{ teamId: string; index: number }>): void {
-		teamService.clearMember(event.detail.teamId, event.detail.index);
 	}
 </script>
 
@@ -227,6 +248,7 @@
 			{:else}
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
 					{#each $spawns as spawn (spawn.id)}
+						{@const onTeam = activeMemberIds.has(spawn.id)}
 						<RosterCard
 							label={labelFor(spawn.characterId)}
 							faceUrl={faceFor(spawn.characterId)}
@@ -235,6 +257,10 @@
 							claimedAt={claimedAtFor(spawn.createdAt)}
 							color={spawn.color}
 							stat={spawn.stat}
+							hasActiveTeam={activeTeam !== null}
+							{onTeam}
+							canAdd={!onTeam && canAddToActiveTeam(spawn.id)}
+							on:toggle={() => toggleTeamMember(spawn.id)}
 						/>
 					{/each}
 				</div>
@@ -251,8 +277,6 @@
 					on:remove={onTeamRemove}
 					on:rename={onTeamRename}
 					on:activate={onTeamActivate}
-					on:select={onTeamSelect}
-					on:clear={onTeamClear}
 				/>
 			</aside>
 		{/if}

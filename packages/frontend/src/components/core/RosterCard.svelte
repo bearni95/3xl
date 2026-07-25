@@ -1,5 +1,6 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import { createEventDispatcher } from 'svelte';
 	import Icon from '$components/core/Icon.svelte';
 	import { SpawnColor } from '$types/character-spawn.type';
 
@@ -18,6 +19,22 @@
 	export let color: SpawnColor;
 	// The character's single Supabase gameplay stat (1..10), defaulted upstream.
 	export let stat: number;
+	// Team-membership state for the add/remove button (the parent owns the team).
+	export let hasActiveTeam: boolean = false;
+	export let onTeam: boolean = false;
+	// Whether this character may be added to the active team right now (a free slot
+	// and a colour compatible with the lead). Ignored when already on the team.
+	export let canAdd: boolean = false;
+
+	const dispatch = createEventDispatcher<{ toggle: void }>();
+
+	$: buttonTitle = !hasActiveTeam
+		? 'Select a team first'
+		: onTeam
+			? 'Remove from the active team'
+			: canAdd
+				? 'Add to the active team'
+				: 'Cannot add — team full or colour incompatible with the lead';
 
 	// Literal Tailwind classes so the swatch colours survive the v4 content scan.
 	const swatchClasses: Record<SpawnColor, string> = {
@@ -61,5 +78,16 @@
 			<span class="badge badge-secondary">📍 {locationName}</span>
 		</div>
 		<span class="text-xs opacity-60">{claimedAt}</span>
+		<button
+			class={classNames('btn btn-sm w-full', {
+				'btn-outline btn-error': onTeam,
+				'btn-primary': !onTeam
+			})}
+			disabled={!onTeam && !canAdd}
+			title={buttonTitle}
+			on:click={() => dispatch('toggle')}
+		>
+			{onTeam ? 'Remove from team' : 'Add to team'}
+		</button>
 	</div>
 </div>

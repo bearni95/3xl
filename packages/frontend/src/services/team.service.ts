@@ -1,15 +1,19 @@
 import { ObjectServiceClass } from '$services/classes/object-service.class';
 import type { ID } from '$types/core.type';
 
-/** A team always has exactly this many character slots. */
+/** A team always has exactly this many spawn slots. */
 export const TEAM_SIZE = 3;
 
-/** A named team of {@link TEAM_SIZE} distinct characters (empty slots allowed). */
+/**
+ * A named team of {@link TEAM_SIZE} distinct spawns (empty slots allowed). Slots
+ * hold **spawn ids**, not character ids — each claimed spawn is a unique entry, so
+ * the same character claimed twice can occupy two different slots.
+ */
 export interface Team {
 	id: string;
 	/** Optional team name. */
 	name: string;
-	/** One character id (or null) per slot; always length {@link TEAM_SIZE}. */
+	/** One spawn id (or null) per slot; always length {@link TEAM_SIZE}. */
 	memberIds: (string | null)[];
 }
 
@@ -35,8 +39,8 @@ function initialState(): TeamsState {
 /**
  * Manages the player's teams, persisted to localStorage via {@link ObjectServiceClass}.
  * The player can keep any number of teams (each with an optional name and up to
- * {@link TEAM_SIZE} distinct characters) and mark exactly one as active. Assigning a
- * character already present in the same team moves it, clearing its old slot.
+ * {@link TEAM_SIZE} distinct spawns) and mark exactly one as active. Assigning a
+ * spawn already present in the same team moves it, clearing its old slot.
  */
 class TeamService extends ObjectServiceClass<TeamsState> {
 	constructor() {
@@ -89,13 +93,13 @@ class TeamService extends ObjectServiceClass<TeamsState> {
 		this.store.update((state) => ({ ...state, activeTeamId: teamId }));
 	}
 
-	/** Assign a character to a slot, clearing it from any other slot in the same team. */
-	setMember(teamId: string, index: number, characterId: string | null): void {
+	/** Assign a spawn to a slot, clearing it from any other slot in the same team. */
+	setMember(teamId: string, index: number, spawnId: string | null): void {
 		this.updateTeam(teamId, (team) => ({
 			...team,
 			memberIds: team.memberIds.map((id, i) => {
-				if (i === index) return characterId;
-				if (characterId && id === characterId) return null;
+				if (i === index) return spawnId;
+				if (spawnId && id === spawnId) return null;
 				return id;
 			})
 		}));
