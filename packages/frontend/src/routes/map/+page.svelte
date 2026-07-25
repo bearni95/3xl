@@ -3,6 +3,8 @@
 	import { onMount } from 'svelte';
 	import type { PathOptions } from 'leaflet';
 	import WorldMap from '$components/core/WorldMap.svelte';
+	import RegionTree from '$components/core/RegionTree.svelte';
+	import { buildRegionTree } from '$utils/geo/region-tree';
 	import type { MapCircle, MapOverlay } from '$types/map.type';
 	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
 	import { locationService, hasLocation } from '$services/location.service';
@@ -168,6 +170,10 @@
 	// Paint the same red as the geolocation highlight onto the sidebar row for
 	// the municipality the player is standing in, when it's in the neighbourhood.
 	$: highlightRowId = highlightId ? String(highlightId) : null;
+
+	// The red → green → blue region hierarchy (territory → comarca →
+	// municipality) mirrored from the map's divisions, for the sidebar tree.
+	$: regionTree = buildRegionTree(municipalities);
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
@@ -216,43 +222,24 @@
 	</div>
 
 	<aside
-		class="flex w-72 flex-col border-l border-base-300 bg-base-100 shadow-inner"
-		aria-label="Municipalities and their shows"
+		class="flex w-[36rem] flex-col border-l border-base-300 bg-base-100 shadow-inner"
+		aria-label="Map regions"
 	>
 		<div class="border-b border-base-300 px-4 py-3">
-			<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Barcelona &amp; neighbours</h2>
-			<p class="text-xs opacity-50">{neighbourhood.length} municipalities</p>
+			<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Regions</h2>
+			<p class="flex flex-wrap gap-x-3 gap-y-1 text-xs opacity-60">
+				<span class="flex items-center gap-1"
+					><span class="h-2 w-2 rounded-full bg-error"></span>Territory</span
+				>
+				<span class="flex items-center gap-1"
+					><span class="h-2 w-2 rounded-full bg-success"></span>Comarca</span
+				>
+				<span class="flex items-center gap-1"
+					><span class="h-2 w-2 rounded-full bg-info"></span>Municipality</span
+				>
+			</p>
 		</div>
 
-		<ul class="menu min-h-0 flex-1 flex-nowrap gap-1 overflow-y-auto p-2">
-			{#each neighbourhood as entry (entry.id)}
-				<li>
-					<div
-						class={classNames('flex items-center gap-3', {
-							'bg-error/20': highlightRowId === entry.id
-						})}
-					>
-						{#if entry.show.posterUrl}
-							<img
-								src={entry.show.posterUrl}
-								alt={entry.show.name}
-								class="h-14 w-10 flex-none rounded object-cover"
-								loading="lazy"
-							/>
-						{:else}
-							<div class="flex h-14 w-10 flex-none items-center justify-center rounded bg-base-300">
-								<span class="text-[0.6rem] opacity-50">N/A</span>
-							</div>
-						{/if}
-						<div class="min-w-0">
-							<p class="truncate text-sm font-semibold">{entry.name}</p>
-							<p class="truncate text-xs opacity-60">{entry.show.name}</p>
-						</div>
-					</div>
-				</li>
-			{:else}
-				<li class="px-2 py-4 text-sm opacity-60">No show assignments loaded.</li>
-			{/each}
-		</ul>
+		<RegionTree territories={regionTree} highlightId={highlightRowId} />
 	</aside>
 </div>
