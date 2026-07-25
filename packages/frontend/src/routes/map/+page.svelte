@@ -6,6 +6,7 @@
 	import type { MapCircle, MapOverlay } from '$types/map.type';
 	import type { ShowEntry, ShowsCollection } from '$types/show.type';
 	import {
+		immediateNeighbourhood,
 		showForMunicipality,
 		showPosterUrl
 	} from '$utils/geo/municipality-show';
@@ -28,6 +29,10 @@
 	let municipalities: GeoJSON.FeatureCollection | null = null;
 	// The saved-show collection, seeded onto municipalities as their poster fill.
 	let shows: ShowEntry[] = [];
+	// The only municipalities that get a seeded poster: Barcelona and the towns
+	// bordering it. Computed once from the polygons in onMount, before the map
+	// renders (its `imageFill` closure reads this set during WorldMap's mount).
+	let paintedIds = new Set<string>();
 	// Held until the shows fetch settles so the overlay's `imageFill` closure
 	// (read once, during WorldMap's mount) sees the loaded collection.
 	let ready = false;
@@ -52,6 +57,7 @@
 		if (municipisResult.status === 'fulfilled') {
 			// Highlight simply stays off if the polygons fail to load.
 			municipalities = municipisResult.value;
+			paintedIds = immediateNeighbourhood(municipisResult.value, 'Barcelona');
 		}
 		if (showsResult.status === 'fulfilled') {
 			// Municipalities fall back to their flat fill if the shows fail to load.
@@ -92,17 +98,21 @@
 			hoverStyle: { weight: 2, fillOpacity: 0.3 },
 			label: (feature) => {
 				const props = feature.properties ?? {};
-				const show = showForMunicipality(feature, shows);
+				const show = paintedIds.has(String(props.id))
+					? showForMunicipality(feature, shows)
+					: null;
 				return [props.name ?? 'Unknown', props.prov, props.territory, show?.show.name]
 					.filter(Boolean)
 					.join(', ');
 			},
-			// Paint each municipality with the poster of the show seeded from its
-			// GPS coordinates. WorldMap groups features by the URL returned here,
-			// so every municipality that lands on the same show shares one poster
-			// spanning their combined shape, with each polygon's border drawn over
-			// it — adjacent same-show cells merge into a single picture.
+			// Paint Barcelona and its immediate neighbours with the poster of the
+			// show seeded from each one's GPS coordinates; every other municipality
+			// keeps its flat fill. WorldMap groups features by the URL returned
+			// here, so any of these towns that land on the same show share one
+			// poster spanning their combined shape, with each polygon's border
+			// drawn over it — adjacent same-show cells merge into a single picture.
 			imageFill: (feature) => {
+				if (!paintedIds.has(String(feature.properties?.id))) return null;
 				const show = showForMunicipality(feature, shows);
 				return show ? showPosterUrl(show) : null;
 			}

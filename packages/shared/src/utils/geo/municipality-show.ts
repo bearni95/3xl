@@ -44,6 +44,57 @@ export function coordinateSeed(geometry: GeoJSON.Geometry | null | undefined): n
 }
 
 /**
+ * Every boundary vertex of a feature's geometry as a rounded "lng,lat" key.
+ * Rounded to five decimals (~1 m) so polygons dissolved from the same source
+ * edge match despite floating-point noise.
+ */
+function boundaryVertices(feature: GeoJSON.Feature): Set<string> {
+	const keys = new Set<string>();
+	const walk = (node: unknown, depth: number) => {
+		if (!Array.isArray(node)) return;
+		// A position is a [number, number, …] leaf; anything shallower is a ring
+		// or list of rings, so recurse until we reach the coordinate pairs.
+		if (typeof node[0] === 'number') {
+			keys.add(`${(node[0] as number).toFixed(5)},${(node[1] as number).toFixed(5)}`);
+			return;
+		}
+		for (const child of node) walk(child, depth + 1);
+	};
+	if (feature.geometry && 'coordinates' in feature.geometry) {
+		walk(feature.geometry.coordinates, 0);
+	}
+	return keys;
+}
+
+/**
+ * The ids of the municipality named `centerName` plus every municipality that
+ * shares at least one boundary vertex with it — i.e. the named town and its
+ * immediate neighbours. Empty when the named municipality isn't in the set.
+ */
+export function immediateNeighbourhood(
+	collection: GeoJSON.FeatureCollection,
+	centerName: string
+): Set<string> {
+	const ids = new Set<string>();
+	const center = collection.features.find((f) => f.properties?.name === centerName);
+	if (!center) return ids;
+
+	const centerVertices = boundaryVertices(center);
+	if (center.properties?.id != null) ids.add(String(center.properties.id));
+
+	for (const feature of collection.features) {
+		if (feature === center || feature.properties?.id == null) continue;
+		for (const vertex of boundaryVertices(feature)) {
+			if (centerVertices.has(vertex)) {
+				ids.add(String(feature.properties.id));
+				break;
+			}
+		}
+	}
+	return ids;
+}
+
+/**
  * Pick one show for a municipality feature from the saved-show collection,
  * seeded by the feature's geometry. Returns null when the feature has no
  * geometry or the collection is empty.
