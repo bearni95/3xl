@@ -25,6 +25,11 @@ Thumbs.db
 !.env.example
 !.env.test
 
+# Oversized MUGEN source archives (exceed GitHub's file-size limit; purged from history)
+packages/mugen/characters-src/sailormercury-a-hsm/mercury.sff
+static/sailormercury-a-hsm/mercury.sff
+static/moon/moon.sff
+
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
