@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
+	import { locale } from 'svelte-i18n';
 	import { page } from '$app/stores';
 	import { getRoutes } from '$utils/routes/get-routes';
 	import NavMenu from '$components/core/NavMenu.svelte';
@@ -139,7 +140,10 @@
 				>
 					<div class="card w-80 bg-base-100 shadow-xl">
 						<div class="card-body">
-							<ProfileCard profile={$profile} {signingOut} on:signout={handleSignOut} />
+							<!-- ProfileCard formats i18n messages; wait for the locale to load. -->
+							{#if $locale}
+								<ProfileCard profile={$profile} {signingOut} on:signout={handleSignOut} />
+							{/if}
 						</div>
 					</div>
 				</div>
