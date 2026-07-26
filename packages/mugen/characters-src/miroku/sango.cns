@@ -1,0 +1,265 @@
+;Sango Assist
+[StateDef 40000]
+type = A
+movetype = I
+physics = N
+anim = 21100
+velset = 10,-10
+sprpriority = 3
+
+[State 40000, AssertSpecial]
+type = AssertSpecial
+trigger1 = 1
+flag = nobardisplay
+ignorehitpause = 1
+
+[State 40000, BGPalFX]
+type = BGPalFX
+trigger1 = 1
+time = 1
+add = -256+floor(cos(time*.029)*256), -256+floor(cos(time*.029)*256), -256+floor(cos(time*.029)*256)
+mul = 256,256,256
+sinadd = 0,0,0,10
+invertall = 0
+color = 256
+ignorehitpause = 1
+;persistent =
+
+[State 40000, PlaySnd]
+type = PlaySnd
+trigger1 = !time
+value = 40,1
+
+[State 40000, Gravity]
+type = Gravity
+trigger1 = pos y < 0
+
+[State 40000, VelSet]
+type = VelSet
+trigger1 = pos y > 0
+y = 0
+x = 0
+
+[State 40000, PosSet]
+type = PosSet
+trigger1 = pos y > 0
+y = 0
+
+[State 40000, ChangeState]
+type = ChangeState
+trigger1 = pos y = 0
+value = 40001
+
+;--------------------------------------------------------------------------
+;Sango Land
+[StateDef 40001]
+type = S
+movetype = I
+physics = S
+anim = 21101
+velset = 0,0
+
+[State 40001, AssertSpecial]
+type = AssertSpecial
+trigger1 = 1
+flag = nobardisplay
+ignorehitpause = 1
+
+[State 40001, BGPalFX]
+type = BGPalFX
+trigger1 = 1
+time = 1
+add = -256, -256, -256
+mul = 256,256,256
+sinadd = 0,0,0,10
+invertall = 0
+color = 256
+ignorehitpause = 1
+;persistent =
+
+[State 40001, ChangeState]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 40002
+
+;-------------------------------------------------------------------------
+;Sango Throw Hirakotsu
+[StateDef 40002]
+type = S
+movetype = A
+physics = S
+anim = 21102
+
+[State 40002, AssertSpecial]
+type = AssertSpecial
+trigger1 = 1
+flag = nobardisplay
+ignorehitpause = 1
+
+[State 40002, BGPalFX]
+type = BGPalFX
+trigger1 = 1
+time = 1
+add = -256, -256, -256
+mul = 256,256,256
+sinadd = 0,0,0,10
+invertall = 0
+color = 256
+ignorehitpause = 1
+;persistent =
+
+[State 40002, PlaySnd]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = 40,3
+
+[State 40002, Helper]
+type = Helper
+trigger1 = AnimElem = 12
+helpertype = normal ;player
+name = "HIRAIKOTSU"
+ID = 21103
+stateno = 40003
+pos = 66,-69
+postype = p1    ;p2,front,back,left,right
+facing = 1
+keyctrl = 0
+ownpal = 1
+supermovetime = 0
+pausemovetime = 0
+
+[State 40002, ChangeState]
+type = ChangeState
+trigger1 = time > 100
+value = 40004
+
+;-----------------------------------------------------------------------
+;Hiraikotsu
+[StateDef 40003]
+type = A
+movetype = A
+physics = N
+anim = 21103
+sprpriority = 2
+velset = 10,0
+
+[State 40000, PlaySnd]
+type = PlaySnd
+trigger1 = !time
+value = 40,2
+
+[State 40003, AssertSpecial]
+type = AssertSpecial
+trigger1 = 1
+flag = noshadow
+ignorehitpause = 1
+
+[State 40003, AngleDraw]
+type = AngleDraw
+trigger1 = 1
+value = -time * 40
+ignorehitpause = 1
+
+[State 1001, VelSet]
+type = VelSet
+trigger1 = time>30
+x = -10*(time>50)
+
+[State 40003, HitDef]
+type = HitDef
+trigger1 = !time
+attr = A, SP
+animtype  = Medium
+damage    = 250,30
+guardflag = MA
+pausetime = 0,10
+sparkno = S20000
+guard.sparkno = S20001
+sparkxy = 0,0
+hitsound   = S0, 22
+guardsound = S0, 1
+ground.type = Trip
+ground.slidetime = 12
+ground.hittime  = 20
+ground.velocity = -6,-5
+air.velocity = -6.2,-4.2
+fall = 1
+air.fall = 1
+getpower = 0
+hitonce = 0
+
+[State 40003, DestroySelf]
+type = DestroySelf
+trigger1 = time > 80 || parent,stateno!=40002
+
+;---------------------------------------------------------------------------
+;Sango Catch Hiraikotsu
+[StateDef 40004]
+type = S
+movetype = I
+physics = S
+anim = 21104
+
+[State 40004, AssertSpecial]
+type = AssertSpecial
+trigger1 = 1
+flag = nobardisplay
+ignorehitpause = 1
+
+[State 40004, BGPalFX]
+type = BGPalFX
+trigger1 = 1
+time = 1
+add = -256, -256, -256
+mul = 256,256,256
+sinadd = 0,0,0,10
+invertall = 0
+color = 256
+ignorehitpause = 1
+;persistent =
+
+[State 40004, PlaySnd]
+type = PlaySnd
+trigger1 = !time
+value = 40,4
+
+[State 40004, ChangeState]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 40005
+
+;---------------------------------------------------------------------------
+;Sango Jump Back
+[StateDef 40005]
+type = A
+movetype = I
+physics = N
+anim = 21105
+
+[State 40005, AssertSpecial]
+type = AssertSpecial
+trigger1 = 1
+flag = nobardisplay
+ignorehitpause = 1
+
+[State 40005, BGPalFX]
+type = BGPalFX
+trigger1 = 1
+time = 1
+add = -256+floor(sin(time*.06)*256), -256+floor(sin(time*.06)*256), -256+floor(sin(time*.06)*256)
+mul = 256,256,256
+sinadd = 0,0,0,10
+invertall = 0
+color = 256
+ignorehitpause = 1
+;persistent =
+
+[State 40005, VelSet]
+type = VelSet
+trigger1 = AnimElem = 3
+x = -10
+y = -10
+
+[State 40005, DestroySelf]
+type = DestroySelf
+trigger1 = BackEdgeBodyDist < -50 || time > 230

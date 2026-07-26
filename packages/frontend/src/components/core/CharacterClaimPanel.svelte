@@ -103,7 +103,9 @@
 		try {
 			const [showList, showNames] = await Promise.all([
 				spawnService.loadShows(),
-				spawnService.loadCharacterShowNames()
+				spawnService.loadCharacterShowNames(),
+				// Warm the rarity cache so claimRandom can weight its roll by rarity.
+				spawnService.loadRarities()
 			]);
 			shows = showList;
 			characterShowNames = showNames;

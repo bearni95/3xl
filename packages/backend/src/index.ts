@@ -17,13 +17,18 @@ loadEnv({ path: fileURLToPath(new URL('../../../.env', import.meta.url)) });
 // configurable, so the three dev servers always agree on their ports.
 const PORT = 2002;
 const ADMIN_ORIGIN = 'http://localhost:2001';
+// The player app also reads the TMDB image proxy — its pack-opener canvas loads
+// show posters through Pixi's fetch-based loader, which (unlike a plain <img>) is
+// CORS-gated, so the frontend origin must be allowed too.
+const FRONTEND_ORIGIN = 'http://localhost:2000';
 
 const app = express();
 
-// The admin SPA is served cross-origin (2001 → 2002); allow only it.
+// The admin SPA and player app are served cross-origin (2001/2000 → 2002); allow
+// only those two.
 app.use(
 	cors({
-		origin: ADMIN_ORIGIN,
+		origin: [ADMIN_ORIGIN, FRONTEND_ORIGIN],
 		methods: ['GET', 'POST', 'PUT'],
 		allowedHeaders: ['content-type']
 	})

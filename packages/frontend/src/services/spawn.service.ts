@@ -4,6 +4,8 @@ import { getSupabaseClient } from '$services/supabase.client';
 import { spawnAdapter } from '$adapters/classes/spawn.adapter';
 import { randomSpawnColor } from '$utils/spawn/color';
 import { randomSpawnStat } from '$utils/spawn/stat';
+import { weightedRarityIndex } from '$utils/spawn/rarity';
+import { DEFAULT_RARITY } from '$types/character-template.type';
 import type {
 	CharacterSpawn,
 	CharacterSpawnRow,
@@ -25,6 +27,14 @@ class SpawnService {
 
 	/** Ids of characters that exist in the local registry, so spawns can render. */
 	private renderableIds = new Set(characters.map((character) => character.id));
+
+	/**
+	 * Per-character rarity tier, loaded from Supabase `character_templates` and
+	 * cached so {@link claimRandom} can weight its roll (higher tiers are rarer).
+	 * Empty until {@link loadRarities} runs; a missing id reads as
+	 * {@link DEFAULT_RARITY}, which makes the roll fall back to uniform.
+	 */
+	private rarityByCharacter = new Map<string, number>();
 
 	/** The signed-in player's spawns, newest first. */
 	get spawns(): Readable<CharacterSpawn[]> {
@@ -63,6 +73,26 @@ class SpawnService {
 			}))
 			.filter((show) => show.characterIds.length > 0)
 			.sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	/**
+	 * Load every character's rarity tier from `character_templates` and cache it,
+	 * so {@link claimRandom} can weight its roll by rarity. Characters absent from
+	 * the table (or with a null tier) read as {@link DEFAULT_RARITY}. Returns the
+	 * cache. Safe to call repeatedly — it just refreshes the map.
+	 */
+	async loadRarities(): Promise<Map<string, number>> {
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase.from('character_templates').select('id, rarity');
+		if (error) throw error;
+
+		const byCharacter = new Map<string, number>();
+		for (const row of data ?? []) {
+			const rarity = Number(row.rarity);
+			byCharacter.set(row.id as string, Number.isFinite(rarity) ? rarity : DEFAULT_RARITY);
+		}
+		this.rarityByCharacter = byCharacter;
+		return byCharacter;
 	}
 
 	/**
@@ -117,8 +147,11 @@ class SpawnService {
 	 * by `userId`, tagged with the show it came from (`showId`, or `null` when
 	 * rolled across all shows) and the municipality it was claimed in
 	 * (`locationId`, a geojson feature id). A location is required — a spawn
-	 * cannot be claimed without one. Each spawn also rolls a weighted colour and a
-	 * gameplay stat (1..9). The new spawn is prepended to the store and returned.
+	 * cannot be claimed without one. The character is drawn weighted by rarity
+	 * (each higher tier is 2× rarer than the one below — see {@link loadRarities}
+	 * and `weightedRarityIndex`); if rarities haven't been loaded the roll is
+	 * uniform. Each spawn also rolls a weighted colour and a gameplay stat (1..9).
+	 * The new spawn is prepended to the store and returned.
 	 */
 	async claimRandom(
 		userId: string,
@@ -132,7 +165,8 @@ class SpawnService {
 		if (!locationId) {
 			throw new Error('Claim your location before spawning a character.');
 		}
-		const characterId = characterIds[Math.floor(Math.random() * characterIds.length)];
+		const rarities = characterIds.map((id) => this.rarityByCharacter.get(id) ?? DEFAULT_RARITY);
+		const characterId = characterIds[weightedRarityIndex(rarities)];
 		const color = randomSpawnColor();
 		const stat = randomSpawnStat();
 

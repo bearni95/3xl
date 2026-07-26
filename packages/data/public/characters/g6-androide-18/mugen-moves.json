@@ -1,0 +1,695 @@
+{
+	"name": "Android 18",
+	"commands": [
+		{
+			"name": "Super Jump",
+			"input": "~D,U"
+		},
+		{
+			"name": "SPECIAL 1",
+			"input": "~D,DF,F,a"
+		},
+		{
+			"name": "SPECIAL 2",
+			"input": "~D,DB,B,a"
+		},
+		{
+			"name": "SPECIAL 3",
+			"input": "~D,DF,F,b"
+		},
+		{
+			"name": "SPECIAL 4",
+			"input": "~D,DB,B,b"
+		},
+		{
+			"name": "SPECIAL 5",
+			"input": "~D,DF,F,c"
+		},
+		{
+			"name": "SPECIAL 6",
+			"input": "~D,DB,B,c"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "back_x",
+			"input": "/$B,x"
+		},
+		{
+			"name": "back_y",
+			"input": "/$B,y"
+		},
+		{
+			"name": "back_z",
+			"input": "/$B,z"
+		},
+		{
+			"name": "down_x",
+			"input": "/$D,x"
+		},
+		{
+			"name": "down_y",
+			"input": "/$D,y"
+		},
+		{
+			"name": "down_z",
+			"input": "/$D,z"
+		},
+		{
+			"name": "fwd_x",
+			"input": "/$F,x"
+		},
+		{
+			"name": "fwd_y",
+			"input": "/$F,y"
+		},
+		{
+			"name": "fwd_z",
+			"input": "/$F,z"
+		},
+		{
+			"name": "up_x",
+			"input": "/$U,x"
+		},
+		{
+			"name": "up_y",
+			"input": "/$U,y"
+		},
+		{
+			"name": "up_z",
+			"input": "/$U,z"
+		},
+		{
+			"name": "back_a",
+			"input": "/$B,a"
+		},
+		{
+			"name": "back_b",
+			"input": "/$B,b"
+		},
+		{
+			"name": "back_c",
+			"input": "/$B,c"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "down_c",
+			"input": "/$D,c"
+		},
+		{
+			"name": "fwd_a",
+			"input": "/$F,a"
+		},
+		{
+			"name": "fwd_b",
+			"input": "/$F,b"
+		},
+		{
+			"name": "fwd_c",
+			"input": "/$F,c"
+		},
+		{
+			"name": "up_a",
+			"input": "/$U,a"
+		},
+		{
+			"name": "up_b",
+			"input": "/$U,b"
+		},
+		{
+			"name": "up_c",
+			"input": "/$U,c"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "s",
+			"input": "s"
+		},
+		{
+			"name": "fwd",
+			"input": "$F"
+		},
+		{
+			"name": "downfwd",
+			"input": "$DF"
+		},
+		{
+			"name": "down",
+			"input": "$D"
+		},
+		{
+			"name": "downback",
+			"input": "$DB"
+		},
+		{
+			"name": "back",
+			"input": "$B"
+		},
+		{
+			"name": "upback",
+			"input": "$UB"
+		},
+		{
+			"name": "up",
+			"input": "$U"
+		},
+		{
+			"name": "upfwd",
+			"input": "$UF"
+		},
+		{
+			"name": "hold_x",
+			"input": "/x"
+		},
+		{
+			"name": "hold_y",
+			"input": "/y"
+		},
+		{
+			"name": "hold_z",
+			"input": "/z"
+		},
+		{
+			"name": "hold_a",
+			"input": "/a"
+		},
+		{
+			"name": "hold_b",
+			"input": "/b"
+		},
+		{
+			"name": "hold_c",
+			"input": "/c"
+		},
+		{
+			"name": "hold_s",
+			"input": "/s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holddownfwd",
+			"input": "/$DF"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "holddownback",
+			"input": "/$DB"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdupback",
+			"input": "/$UB"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holdupfwd",
+			"input": "/$UF"
+		},
+		{
+			"name": "AI Prueba",
+			"input": "y+z"
+		},
+		{
+			"name": "AI desactivado",
+			"input": "b+c"
+		},
+		{
+			"name": "AI1",
+			"input": "b,b,b,b,b,b,b,b,b,b,b"
+		},
+		{
+			"name": "AI2",
+			"input": "b,c,b,c,b,c,b,c,b,c,b,c"
+		},
+		{
+			"name": "AI3",
+			"input": "b,c,b,c,b,c,b,c,b,c,b"
+		},
+		{
+			"name": "AI4",
+			"input": "a,b,a,b,a,b,a,b,a,b,a"
+		},
+		{
+			"name": "AI5",
+			"input": "b,a,b,a,b,a,b,a,b,a,b"
+		},
+		{
+			"name": "AI6",
+			"input": "b,b,b,b,z,b,z,b,z,z,z"
+		},
+		{
+			"name": "AI7",
+			"input": "b,x,b,b,x,b,b,b,b,b,x"
+		},
+		{
+			"name": "AI8",
+			"input": "b,y,b,b,b,y,b,b,b,b,y"
+		},
+		{
+			"name": "AI9",
+			"input": "b,b,b,b,s,z,y,x,c,b,a"
+		},
+		{
+			"name": "AI10",
+			"input": "z,b,x,y,b,b,c,b,b,b,a"
+		},
+		{
+			"name": "AI11",
+			"input": "b,x,b,b,x,b,b,b,b,b,z"
+		},
+		{
+			"name": "AI12",
+			"input": "b,y,b,s,b,y,b,b,b,b,y"
+		},
+		{
+			"name": "AI13",
+			"input": "b,b,b,z,s,z,y,x,c,b,a"
+		},
+		{
+			"name": "AI14",
+			"input": "z,b,x,y,b,b,c,b,b,c,a"
+		},
+		{
+			"name": "aHsoNn",
+			"input": "x+z"
+		},
+		{
+			"name": "sheoun",
+			"input": "~D, DF, F, a+b"
+		},
+		{
+			"name": "palit",
+			"input": "a+b"
+		},
+		{
+			"name": "turtleuno",
+			"input": "b+c"
+		}
+	],
+	"moves": [
+		{
+			"name": "Correr Atras",
+			"stateNo": 70,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Super Jump",
+			"stateNo": 80,
+			"commands": [
+				"Super Jump"
+			],
+			"inputs": [
+				"~D,U"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "A",
+			"stateNo": 200,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Down  A",
+			"stateNo": 250,
+			"commands": [
+				"holddown",
+				"a"
+			],
+			"inputs": [
+				"/$D",
+				"a"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 250,
+			"animation": "action-250"
+		},
+		{
+			"name": "B",
+			"stateNo": 300,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 300,
+			"animation": "action-300"
+		},
+		{
+			"name": "Down  B",
+			"stateNo": 350,
+			"commands": [
+				"holddown",
+				"b"
+			],
+			"inputs": [
+				"/$D",
+				"b"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 350,
+			"animation": "action-350"
+		},
+		{
+			"name": "Special",
+			"stateNo": 400,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Special Counter",
+			"stateNo": 410,
+			"commands": [
+				"holdback",
+				"c"
+			],
+			"inputs": [
+				"/$B",
+				"c"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Down  C",
+			"stateNo": 450,
+			"commands": [
+				"holddown",
+				"c"
+			],
+			"inputs": [
+				"/$D",
+				"c"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 450,
+			"animation": "action-450"
+		},
+		{
+			"name": "Down  C Air",
+			"stateNo": 480,
+			"commands": [
+				"holddown",
+				"c"
+			],
+			"inputs": [
+				"/$D",
+				"c"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 480,
+			"animation": "action-480"
+		},
+		{
+			"name": "Side Special",
+			"stateNo": 490,
+			"commands": [
+				"holdfwd",
+				"c"
+			],
+			"inputs": [
+				"/$F",
+				"c"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 490,
+			"animation": "action-490"
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 500,
+			"commands": [
+				"s"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 500,
+			"animation": "action-500"
+		},
+		{
+			"name": "Power Charge",
+			"stateNo": 540,
+			"commands": [
+				"holddown",
+				"s"
+			],
+			"inputs": [
+				"/$D",
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 540,
+			"animation": "action-540"
+		},
+		{
+			"name": "Partner Assist Animation",
+			"stateNo": 550,
+			"commands": [
+				"turtleuno"
+			],
+			"inputs": [
+				"b+c"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 500,
+			"animation": "action-500"
+		},
+		{
+			"name": "Air A",
+			"stateNo": 600,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Air B",
+			"stateNo": 610,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Special Air",
+			"stateNo": 620,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 620,
+			"animation": "action-620"
+		},
+		{
+			"name": "Super 1",
+			"stateNo": 3000,
+			"commands": [
+				"SPECIAL 1"
+			],
+			"inputs": [
+				"~D,DF,F,a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3000,
+			"animation": "action-3000"
+		},
+		{
+			"name": "Super 2",
+			"stateNo": 3100,
+			"commands": [
+				"SPECIAL 3"
+			],
+			"inputs": [
+				"~D,DF,F,b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3100,
+			"animation": "action-3100"
+		},
+		{
+			"name": "Super 3",
+			"stateNo": 3200,
+			"commands": [
+				"SPECIAL 5"
+			],
+			"inputs": [
+				"~D,DF,F,c"
+			],
+			"movetype": "I",
+			"damage": 20,
+			"anim": 3200,
+			"animation": "action-3200"
+		},
+		{
+			"name": "Throw",
+			"stateNo": 3280,
+			"commands": [
+				"a",
+				"b"
+			],
+			"inputs": [
+				"a",
+				"b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "TagIn",
+			"stateNo": 1251110,
+			"commands": [
+				"palit"
+			],
+			"inputs": [
+				"a+b"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 0,
+			"animation": "idle"
+		},
+		{
+			"name": "Team Hyper Attack",
+			"stateNo": 1251125,
+			"commands": [
+				"sheoun"
+			],
+			"inputs": [
+				"~D, DF, F, a+b"
+			],
+			"movetype": "U",
+			"damage": 3,
+			"anim": null,
+			"animation": "action-500"
+		},
+		{
+			"name": "Delayed Hyper",
+			"stateNo": 1251127,
+			"commands": [
+				"sheoun"
+			],
+			"inputs": [
+				"~D, DF, F, a+b"
+			],
+			"movetype": "A",
+			"damage": 3,
+			"anim": null,
+			"animation": "action-50"
+		}
+	]
+}

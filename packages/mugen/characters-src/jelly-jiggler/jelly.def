@@ -1,0 +1,19 @@
+[Info]
+name="Jelly "
+displayname="Jelly "
+versiondate=5,31,07
+mugenversion=04,14,2002
+author="N500"
+pal.defaults=1,2,3,4,5
+[Files]
+sprite=jelly.sff
+sound=
+anim=jelly.air
+cmd=jelly.cmd
+cns=jelly.cns
+st=jelly.cns
+stcommon=common.cns
+pal1=jelly.act
+[Arcade]
+intro.storyboard=
+ending.storyboard=

@@ -1,0 +1,32 @@
+;***************************************************************************;
+;******************* Created in Fighter Factory Ultimate *******************;
+;*******************      http://www.virtualltek.com     *******************;
+;***************************************************************************;
+
+[Info]
+name ="Miroku"
+displayname ="Miroku"
+versiondate =04,14,2002
+mugenversion =1.0
+author ="Alexei Roschak"
+pal.defaults =1,2,3,4
+localcoord = 426,320
+
+[Files]
+sprite =miroku.sff
+anim =miroku.air
+sound =miroku.jp.snd
+cmd =miroku.cmd
+cns =miroku.cns
+stcommon =common1.cns
+st =miroku.cns
+pal1=miroku.act
+pal2=miroku2.act
+pal3=red.act
+pal4=evil.act
+st1=sango.cns
+st2=override.cns
+
+[Arcade]
+intro.storyboard = 
+ending.storyboard = 

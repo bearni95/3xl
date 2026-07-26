@@ -1,0 +1,45 @@
+[Info]
+name ="Frieza"
+displayname ="Frieza"
+versiondate =02,13,2011
+mugenversion = 
+author ="CHOUJIN"
+pal.defaults =1,2,3,4,5
+
+; Files for the player
+[Files]
+cmd      =frieza.cmd
+cns      =frieza.cns
+st       =frieza.cns
+stcommon =common1.cns
+sprite   =frieza.sff
+anim     =frieza.air
+sound    =frieza.snd
+pal1=sfc1.act
+pal2=bukuu2.act
+pal3=buyu+hd.act
+pal4=bukuu1.act
+pal5=2p.act
+pal6=golden.act
+pal7=sfc1.act
+pal8=bukuu1.act
+pal9=buyu+hd.act
+pal10=frieza.act
+pal11=bukuu2.act
+pal12=2p.act
+st1=attacks.cns
+st2=specials.cns
+st3=hypers.cns
+;pal7     = .act
+;pal8     = .act
+;pal9     = .act
+;pal10     = .act
+;pal11     = .act
+;pal12     = .act
+
+; Arcade mode
+[Arcade]
+intro.storyboard=
+ending.storyboard=
+;intro.storyboard = intro.def
+;ending.storyboard = ending.def

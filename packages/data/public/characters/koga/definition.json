@@ -1,19 +1,11 @@
 {
 	"id": "koga",
 	"label": "Koga",
-	"basePath": "/koga/frames",
+	"basePath": "/assets/koga/frames",
 	"animations": {
 		"idle": {
 			"source": "idle",
 			"loop": true
-		},
-		"jump": {
-			"source": "jump",
-			"loop": false
-		},
-		"fall": {
-			"source": "fall",
-			"loop": false
 		},
 		"hurt": {
 			"source": "action-5000",
@@ -26,7 +18,7 @@
 			"loop": true
 		},
 		"move-right": {
-			"source": "run",
+			"source": "walk",
 			"loop": true
 		}
 	},
@@ -39,7 +31,7 @@
 		{
 			"name": "Ranged",
 			"type": "ranged",
-			"source": "action-1001",
+			"source": "action-1000",
 			"projectile": {
 				"source": "",
 				"loop": true
@@ -64,6 +56,5 @@
 		"atk": 5,
 		"def": 5,
 		"hp": 5
-	},
-	"color": "orange"
+	}
 }

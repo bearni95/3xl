@@ -1,0 +1,631 @@
+{
+	"name": "Sesshomaru",
+	"commands": [
+		{
+			"name": "FF",
+			"input": "F,F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "q",
+			"input": "~D,DF,F,D,DF,F,c"
+		},
+		{
+			"name": "w",
+			"input": "~D,DF,F,D,DF,F,b"
+		},
+		{
+			"name": "e",
+			"input": "~D,DF,F,D,DF,F,z"
+		},
+		{
+			"name": "Thunder",
+			"input": "~D,DF,F,a"
+		},
+		{
+			"name": "SmnSwd",
+			"input": "~D,DF,F,b"
+		},
+		{
+			"name": "TH",
+			"input": "~D,DF,F,c"
+		},
+		{
+			"name": "Throw",
+			"input": "/F,x"
+		},
+		{
+			"name": "AB",
+			"input": "a+b"
+		},
+		{
+			"name": "XY",
+			"input": "x+y"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "cpu1",
+			"input": "U, D, F"
+		},
+		{
+			"name": "cpu2",
+			"input": "U, B, F"
+		},
+		{
+			"name": "cpu3",
+			"input": "U, D, D"
+		},
+		{
+			"name": "cpu4",
+			"input": "F, B, U"
+		},
+		{
+			"name": "cpu5",
+			"input": "U, F, U, B"
+		},
+		{
+			"name": "cpu6",
+			"input": "U, D, B"
+		},
+		{
+			"name": "cpu7",
+			"input": "F, F, B"
+		},
+		{
+			"name": "cpu8",
+			"input": "U, D, U"
+		},
+		{
+			"name": "cpu9",
+			"input": "F, B, B"
+		},
+		{
+			"name": "cpu10",
+			"input": "F, F, B, B"
+		},
+		{
+			"name": "cpu11",
+			"input": "U, U, F"
+		},
+		{
+			"name": "cpu12",
+			"input": "U, B, B"
+		},
+		{
+			"name": "cpu13",
+			"input": "U, B, F, F"
+		},
+		{
+			"name": "cpu14",
+			"input": "U, F, B, U"
+		},
+		{
+			"name": "cpu15",
+			"input": "U, B, F, U"
+		},
+		{
+			"name": "cpu16",
+			"input": "U, B, B, B"
+		},
+		{
+			"name": "cpu17",
+			"input": "U, D, B, F"
+		},
+		{
+			"name": "cpu18",
+			"input": "U, D, B, D"
+		},
+		{
+			"name": "cpu19",
+			"input": "U, D, F, U"
+		},
+		{
+			"name": "cpu20",
+			"input": "U, D, U, B"
+		},
+		{
+			"name": "cpu21",
+			"input": "U, D, F, F"
+		},
+		{
+			"name": "cpu22",
+			"input": "F, F, F, F"
+		},
+		{
+			"name": "cpu23",
+			"input": "U, U, U, D"
+		},
+		{
+			"name": "cpu24",
+			"input": "B, B, B"
+		},
+		{
+			"name": "cpu25",
+			"input": "D, D, D, D"
+		},
+		{
+			"name": "cpu26",
+			"input": "D, D, D"
+		},
+		{
+			"name": "cpu27",
+			"input": "F, F, F"
+		},
+		{
+			"name": "cpu28",
+			"input": "U, U, U"
+		},
+		{
+			"name": "cpu29",
+			"input": "U, U, B, B"
+		},
+		{
+			"name": "cpu30",
+			"input": "D, D, F, F"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		}
+	],
+	"moves": [
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F,F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 195,
+			"commands": [
+				"start"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "Stand Strong Slash 1",
+			"stateNo": 200,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Strong Slash 2",
+			"stateNo": 210,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 57,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Y",
+			"stateNo": 230,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "Stand Y 2",
+			"stateNo": 231,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 231,
+			"animation": "action-231"
+		},
+		{
+			"name": "Stand A",
+			"stateNo": 234,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 234,
+			"animation": "action-234"
+		},
+		{
+			"name": "Whip of Light",
+			"stateNo": 300,
+			"commands": [
+				"q"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,c"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Stand Strong Slash 3",
+			"stateNo": 341,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 341,
+			"animation": "action-341"
+		},
+		{
+			"name": "Knock up",
+			"stateNo": 433,
+			"commands": [
+				"AB"
+			],
+			"inputs": [
+				"a+b"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 433,
+			"animation": "action-433"
+		},
+		{
+			"name": "Stand Y 2",
+			"stateNo": 434,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Crouch X",
+			"stateNo": 435,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 435,
+			"animation": "action-435"
+		},
+		{
+			"name": "Crouch Y",
+			"stateNo": 436,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 436,
+			"animation": "action-436"
+		},
+		{
+			"name": "Crouch Z",
+			"stateNo": 437,
+			"commands": [
+				"z",
+				"holddown"
+			],
+			"inputs": [
+				"z",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 437,
+			"animation": "action-437"
+		},
+		{
+			"name": "Knock Back",
+			"stateNo": 438,
+			"commands": [
+				"XY",
+				"z"
+			],
+			"inputs": [
+				"x+y",
+				"z"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 438,
+			"animation": "action-438"
+		},
+		{
+			"name": "Sounga",
+			"stateNo": 450,
+			"commands": [
+				"w"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 450,
+			"animation": "action-450"
+		},
+		{
+			"name": "Thunder Drop",
+			"stateNo": 458,
+			"commands": [
+				"TH"
+			],
+			"inputs": [
+				"~D,DF,F,c"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 778,
+			"animation": "action-778"
+		},
+		{
+			"name": "Claw Attack Strong",
+			"stateNo": 520,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 520,
+			"animation": "action-520"
+		},
+		{
+			"name": "Air A",
+			"stateNo": 611,
+			"commands": [
+				"a",
+				"b",
+				"c",
+				"x",
+				"y",
+				"z"
+			],
+			"inputs": [
+				"a",
+				"b",
+				"c",
+				"x",
+				"y",
+				"z"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 611,
+			"animation": "action-611"
+		},
+		{
+			"name": "Crouch A",
+			"stateNo": 630,
+			"commands": [
+				"a",
+				"holddown",
+				"b",
+				"c"
+			],
+			"inputs": [
+				"a",
+				"/$D",
+				"b",
+				"c"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "Stand Z",
+			"stateNo": 654,
+			"commands": [
+				"x",
+				"z"
+			],
+			"inputs": [
+				"x",
+				"z"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 654,
+			"animation": "action-654"
+		},
+		{
+			"name": "Demon Form",
+			"stateNo": 900,
+			"commands": [
+				"e"
+			],
+			"inputs": [
+				"~D,DF,F,D,DF,F,z"
+			],
+			"movetype": "A",
+			"damage": 100,
+			"anim": 4500,
+			"animation": "action-4500"
+		},
+		{
+			"name": "Stand B",
+			"stateNo": 987,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 57,
+			"anim": 987,
+			"animation": "action-987"
+		},
+		{
+			"name": "Summon Sword",
+			"stateNo": 3214,
+			"commands": [
+				"SmnSwd"
+			],
+			"inputs": [
+				"~D,DF,F,b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3214,
+			"animation": "action-3214"
+		},
+		{
+			"name": "Throw",
+			"stateNo": 5432,
+			"commands": [
+				"Throw"
+			],
+			"inputs": [
+				"/F,x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 5432,
+			"animation": "action-5432"
+		},
+		{
+			"name": "Thunder Slash",
+			"stateNo": 8765,
+			"commands": [
+				"Thunder"
+			],
+			"inputs": [
+				"~D,DF,F,a"
+			],
+			"movetype": "A",
+			"damage": 22,
+			"anim": 8765,
+			"animation": "action-8765"
+		}
+	]
+}

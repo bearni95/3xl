@@ -1,0 +1,1750 @@
+;---------------------------------------------------------------------------
+; Stand Light Punch
+; CNS difficulty: easy
+[Statedef 200]
+type    = S                    
+movetype= A                     
+physics = S                      
+juggle  = 10                   
+velset = 0,0              
+ctrl = 0                         
+anim = 200                       
+poweradd = 10                   
+sprpriority = 2              
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = S, NA             
+damage = 60, 0                 
+animtype = medium                
+guardflag = M                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -76              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = low             
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -4 
+guard.velocity = -3          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = S, NA             
+damage = 60, 0                 
+animtype = medium                
+guardflag = M                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -76              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = low              
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -4 
+guard.velocity = -3          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 2]
+type = PlaySnd
+trigger1 = Time = 1
+value = 0, 0
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 10
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 1
+
+[State 200, 3]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;---------------------------------------------------------------------------
+
+; Standing strong punch
+; CNS difficulty: easy
+; Note the width controller. It makes KFM's push box larger, so he doesn't
+; stand so close to the opponent. Hit Ctrl-C and look at the red bar at his
+; feet.
+; The sprpriority for this state is at -1, instead of the usual 2 for
+; attacks. This makes KFM appear behind the opponent initially.
+; The SprPriority controller in [State 210, 4] brings KFM to the front when
+; his arm has swung over.
+; To stop KFM from pausing in his swing frame, there is a ChangeAnim in
+; [State 210, 3] that detects if the hit has come in contact with the
+; opponent during that frame, and switches to the next animation element
+; (notice the elem=6 parameter). If you don't see what I mean, try commenting
+; out that controller, then hit someone with this attack.
+[Statedef 210]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 20
+ctrl = 0
+velset = 0,0
+anim = 210
+sprpriority = 2
+
+[State 210, 1]
+type = PlaySnd
+trigger1 = Time = 10
+value = 0, 2
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = animelem = 2
+x = 10
+
+[State 200, 1]
+type = HitDef
+triggerall = var(56) = 1
+trigger1 = !time
+attr = S, NA             
+damage = 80, 0                 
+animtype = heavy                 
+guardflag = M                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8520
+guard.sparkno = s8007                    
+sparkxy = -10, -76              
+hitsound = s1, 7                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 40
+guard.hittime = 20            
+ground.velocity = -7 
+guard.velocity = -3          
+airguard.velocity = -1.9,-.8     
+air.type = trip                 
+air.velocity = -4,8         
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+fall = ifelse(enemy,statetype = A, 1,0)
+
+[State 200, 1]
+type = HitDef
+triggerall = var(56) != 1
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = S, NA             
+damage = 70, 0                 
+animtype = heavy                 
+guardflag = M                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -76              
+hitsound = s1, 5                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 20            
+ground.velocity = -7
+guard.velocity = -3          
+airguard.velocity = -1.9,-.8     
+air.type = trip                 
+air.velocity = -4,8          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+fall = ifelse(enemy,statetype = A, 1,0)
+
+[State 200, 1]
+type = HitDef
+triggerall = var(56) != 1
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = S, NA             
+damage = 70, 0                 
+animtype = heavy                 
+guardflag = M                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -76              
+hitsound = s1, 5                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 20            
+ground.velocity = -7 
+guard.velocity = -3          
+airguard.velocity = -1.9,-.8     
+air.type = trip                 
+air.velocity = -4,8        
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+fall = ifelse(enemy,statetype = A, 1,0)
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 20
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 2
+
+[State 210, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;---------------------------------------------------------------------------
+; Standing light kick
+; CNS difficulty: easy
+[Statedef 220]
+type    = S
+movetype= A
+physics = S
+juggle  = 14
+poweradd= 10
+ctrl = 0
+velset = 0,0
+anim = 220
+sprpriority = 2
+
+[State 230, 1]
+type = PlaySnd
+trigger1 = Time = 2
+value = 0, 1
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = S, NA             
+damage = 50, 0                 
+animtype = medium                 
+guardflag = M                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -40              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = low             
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -5
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = S, NA             
+damage = 50, 0                 
+animtype = medium                
+guardflag = M                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -40              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = low              
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -5 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 10
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 1
+
+[State 230, 3]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;---------------------------------------------------------------------------
+
+
+; Standing strong kick
+; CNS difficulty: easy
+[Statedef 230]
+type    = S
+movetype= A
+physics = S
+juggle  = 15
+poweradd= 20
+ctrl = 0
+velset = 0,0
+anim = 230
+sprpriority = 2
+
+[State 240, 1]
+type = PlaySnd
+trigger1 = Time = 2
+value = 0, 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = S, NA             
+damage = 65, 0                 
+animtype = heavy                 
+guardflag = H                   
+hitflag = HAF                    
+priority = 5, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -80              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = high            
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 20            
+ground.velocity = -9
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = S, NA             
+damage = 65, 0                 
+animtype = heavy                
+guardflag = H                   
+hitflag = HAF                    
+priority = 5, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -80              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 20            
+ground.velocity = -9 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 240, 3]
+type = PosAdd
+trigger1 = AnimElem = 7
+x = 12
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 20
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 2
+
+[State 240, 4]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+;---------------------------------------------------------------------------
+
+;Unique
+[Statedef 231]
+type    = S
+movetype= A
+physics = S
+juggle  = 15
+poweradd= 30
+ctrl = 0
+velset = 0,0
+anim = 231
+sprpriority = 2
+
+[State 240, 1]
+type = PlaySnd
+trigger1 = Time = 2
+value = 0, 0
+
+[State 240, 1]
+type = PlaySnd
+trigger1 = Time = 15
+value = 0, 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = animelem = 2
+attr = S, NA             
+damage = 55, 0                 
+animtype = heavy                 
+guardflag = M                   
+hitflag = MAF                    
+priority = 5, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -80              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = low             
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 10            
+ground.velocity = -9
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = animelem = 2
+attr = S, NA             
+damage = 55, 0                 
+animtype = heavy                
+guardflag = M                   
+hitflag = MAF                    
+priority = 5, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -80              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = low              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 10            
+ground.velocity = -9 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = animelem = 5
+attr = S, NA             
+damage = 55, 0                 
+animtype = heavy                 
+guardflag = H                   
+hitflag = HAF                    
+priority = 5, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -80              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = high            
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 10            
+ground.velocity = -9
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = animelem = 5
+attr = S, NA             
+damage = 55, 0                 
+animtype = heavy                
+guardflag = H                   
+hitflag = HAF                    
+priority = 5, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -80              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 10            
+ground.velocity = -9 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 240, 3]
+type = PosAdd
+trigger1 = AnimElem = 7
+x = 12
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 30
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 3
+
+[State 240, 4]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;Crouching light punch
+; CNS difficulty: easy
+; Description: Simple crouching attack. The HitDef's guardflag parameter
+;     is set to "L", meaning that the move can only be guarded low
+;     (crouching), and not by standing or jumping opponents.
+;     Like for all light attacks, it's a good idea to keep the slidetime
+;     and hittime parameters at a smaller number, so the opponent isn't
+;     stunned for too long. For all crouching attacks you have to
+;     remember to set the attr parameter to indicate that it is crouching
+;     attack. In this case, "C, NA" stands for "crouching, normal attack".
+;     The HitDef's priority is set at 3, instead of the default of 4,
+;     so this attack has a lower priority than most others, meaning
+;     KFM will get hit instead of trading hits with his opponent if
+;     their attack collision boxes (Clsn1) intersect each other's Clsn2
+;     boxes at the same time.
+[Statedef 400]
+type    = C
+movetype= A
+physics = C
+juggle  = 10
+poweradd= 10
+ctrl = 0
+anim = 400
+sprpriority = 2
+
+[State 400, 1]
+type = PlaySnd
+trigger1 = Time = 1
+value = 0, 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = C, NA             
+damage = 60, 0                 
+animtype = medium                
+guardflag = L                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -56              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = low             
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -4 
+guard.velocity = -3          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = C, NA             
+damage = 60, 0                 
+animtype = medium                
+guardflag = L                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -56              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = low              
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -4 
+guard.velocity = -3          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 10
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 1
+
+[State 400, 4]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 11
+ctrl = 1
+
+;---------------------------------------------------------------------------
+
+;Crouching strong punch
+; CNS difficulty: easy
+; Description: This is a 2-hit move. It is done by having two HitDefs
+;     triggered, one for each frame of animation that hits.
+;     Notice how the first hit cannot be guarded by an opponent in the
+;     air, because of the "M" in the guardflag, meaning it can only
+;     be guarded "middle". The second hit has an "MA" guardflag, so
+;     it can be guarded both on the ground and in the air.
+[Statedef 410]
+type    = S
+movetype= A
+physics = S
+juggle  = 5
+poweradd= 20
+ctrl = 0
+anim = 410
+sprpriority = 2
+
+[State 410, 1]
+type = PlaySnd
+trigger1 = Time = 1
+value = 0, 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = S, NA             
+damage = 70, 0                 
+animtype = heavy                 
+guardflag = H                   
+hitflag = HAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -76              
+hitsound = s1, 3               
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 20            
+ground.velocity = -7
+guard.velocity = -3          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+fall = ifelse(enemy,statetype = A, 1,0)
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = S, NA             
+damage = 70, 0                 
+animtype = heavy                 
+guardflag = H                   
+hitflag = HAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -76              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 20            
+ground.velocity = -7 
+guard.velocity = -3          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+fall = ifelse(enemy,statetype = A, 1,0)
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 20
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 2
+
+[State 410, 4]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;Crouching light kick
+; CNS difficulty: easy
+[Statedef 420]
+type    = C
+movetype= A
+physics = C
+juggle  = 15
+poweradd= 10
+ctrl = 0
+anim = 420
+sprpriority = 2
+
+[State 230, 1]
+type = PlaySnd
+trigger1 = Time = 2
+value = 0, 1
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = C, NA             
+damage = 50, 0                 
+animtype = medium                 
+guardflag = L                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -40              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = low             
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -5
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = C, NA             
+damage = 50, 0                 
+animtype = medium                
+guardflag = L                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -40              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = low              
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -5 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 10
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 1
+
+
+[State 430, 3]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 11
+ctrl = 1
+
+;---------------------------------------------------------------------------
+
+;Crouch Strong Kick
+; CNS difficulty: easy
+; Description: This move uses "Trip" for the "ground.type" parameter in
+;     its HitDef. It's a special type that puts the opponent in a tripped
+;     animation as he falls. Also, the hitflag parameter in the HitDef
+;     is set to "MAFD". The "D" indicates that a downed opponent can be
+;     hit by the attack.
+[Statedef 430]
+type    = C
+movetype= A
+physics = C
+juggle  = 18
+poweradd= 20
+ctrl = 0
+anim = 430
+sprpriority = 2
+
+[State 440, 2]
+type = PlaySnd
+trigger1 = Time = 2
+value = 0, 2
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = C, NA             
+damage = 70, 0                 
+animtype = Light                 
+guardflag = L                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -56              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = trip             
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -4 
+guard.velocity = -1          
+airguard.velocity = -1.9,-.8     
+air.type = trip                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = C, NA             
+damage = 70, 0                 
+animtype = Light                 
+guardflag = L                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -56              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = Trip              
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -4 
+guard.velocity = -1          
+airguard.velocity = -1.9,-.8     
+air.type = trip             
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 20
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 2
+
+[State 440, 4]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 11
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;Jump Light Punch
+; CNS difficulty: easy
+[Statedef 600]
+type    = A
+movetype= A
+physics = A
+juggle  = 5
+poweradd= 10
+ctrl = 0
+anim = 600
+sprpriority = 2
+
+[State 600, 1]
+type = PlaySnd
+trigger1 = Time = 10
+value = 0, 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = A, NA             
+damage = 60, 0                 
+animtype = medium                
+guardflag = H                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -26              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -4 
+guard.velocity = -1          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = A, NA             
+damage = 60, 0                 
+animtype = medium                
+guardflag = H                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -26              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -4 
+guard.velocity = -1          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 10
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 1
+
+;---------------------------------------------------------------------------
+
+;Jump Strong Punch
+; CNS difficulty: easy
+[Statedef 610]
+type    = A
+movetype= A
+physics = A
+juggle  = 5
+poweradd= 20
+ctrl = 0
+anim = 610
+sprpriority = 2
+
+[State 610, 2]
+type = PlaySnd
+trigger1 = Time = 10
+value = 0, 2
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = A, NA             
+damage = 72, 0                 
+animtype = heavy                 
+guardflag = H                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -6              
+hitsound = s1, 5                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 20            
+ground.velocity = -4 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = A, NA             
+damage = 72, 0                 
+animtype = heavy                 
+guardflag = H                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -6              
+hitsound = s1, 5                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 20            
+ground.velocity = -4 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 20
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 2
+
+;---------------------------------------------------------------------------
+;Jump Light Kick
+; CNS difficulty: easy
+[Statedef 620]
+type    = A
+movetype= A
+physics = A
+juggle  = 5
+poweradd= 10
+ctrl = 0
+anim = 620
+sprpriority = 2
+
+[State 630, 1]
+type = PlaySnd
+trigger1 = Time = 1
+value = 0, 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) >= 500
+trigger1 = time = 0
+attr = A, NA             
+damage = 50, 0                 
+animtype = medium                 
+guardflag = H                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -56              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -4 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = enemy,var(30) <= 499
+trigger1 = time = 0
+attr = A, NA             
+damage = 50, 0                 
+animtype = medium                 
+guardflag = H                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 8, 8                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -56              
+hitsound = s1, 3                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 10
+guard.hittime = 10            
+ground.velocity = -4 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 10
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 1
+
+;---------------------------------------------------------------------------
+
+;Jump Strong Kick
+; CNS difficulty: easy
+[Statedef 630]
+type    = A
+movetype= A
+physics = A
+juggle  = 5
+poweradd= 20
+ctrl = 0
+anim = 630
+sprpriority = 2
+
+[State 640, 2]
+type = PlaySnd
+trigger1 = Time = 2
+value = 0, 0
+
+[State 200, 1]
+type = HitDef
+triggerall = var(56) = 1
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = A, NA             
+damage = 85, 0                 
+animtype = heavy                 
+guardflag = H                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8520
+guard.sparkno = s8007                    
+sparkxy = -10, -6              
+hitsound = s1, 7                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 40
+guard.hittime = 20            
+ground.velocity = -4 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3            
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = var(56) != 1
+triggerall = enemy,var(30) >= 500
+trigger1 = !time
+attr = A, NA             
+damage = 75, 0                 
+animtype = heavy                 
+guardflag = H                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8007                    
+sparkxy = -10, -6              
+hitsound = s1, 5                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 20            
+ground.velocity = -4 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 200, 1]
+type = HitDef
+triggerall = var(56) != 1
+triggerall = enemy,var(30) <= 499
+trigger1 = !time
+attr = A, NA             
+damage = 75, 0                 
+animtype = heavy                 
+guardflag = H                   
+hitflag = MAF                    
+priority = 3, Hit                
+pausetime = 12, 12                
+sparkno = s8008
+guard.sparkno = s8031                    
+sparkxy = -10, -6              
+hitsound = s1, 5                
+guardsound = s2, 0             
+ground.type = high              
+ground.slidetime = 10
+ground.hittime  = 20
+guard.hittime = 20            
+ground.velocity = -4 
+guard.velocity = -2          
+airguard.velocity = -1.9,-.8     
+air.type = High                 
+air.velocity = -1.4,-3          
+air.hittime = 99999999999999999999999999999999999999999999999999999999                
+ground.cornerpush.veloff = -10
+air.cornerpush.veloff = -10
+down.cornerpush.veloff = -10
+guard.cornerpush.veloff = -10
+airguard.cornerpush.veloff = -10
+fall.recover = 0
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = animelem = 1
+v = 11    
+value = 20
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = movehit
+v = 11    
+value = 2
+
+;---------------------------------------------------------------------------
+; Grab
+[Statedef 700]
+type    = S
+movetype= A
+physics = S
+ctrl = 0
+anim = 700
+sprpriority = 1
+
+[State 200, 2]
+type = PlaySnd
+trigger1 = time = 0
+value = 0, 1
+
+[State 200, Hitdef]
+type = HitDef
+triggerall = enemy,stateno != [5000,5500]
+trigger1 = Time = 0
+attr = S, NT
+damage = 0, 0
+animtype = Medium
+guardflag = 
+hitflag = MF
+priority = 6, Miss
+guard.pausetime = 3,3
+sparkno = -1
+guard.sparkno =  s8010
+sparkxy = 0,0
+hitsound = s1, 0
+guardsound = s2, 0
+fall = 1
+p1stateno = 701
+p2stateno = 10014
+;getpower = 0,0
+
+[State 400, ChangeState]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+;---------------------------------------------------------------------------
+; Grab P1
+[Statedef 701]
+type    = S
+movetype= A
+physics = N
+ctrl = 0
+anim = 701
+velset = 0,0
+sprpriority = 1
+
+[State 0, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 200, 2]
+type = PlaySnd
+trigger1 = time = 0
+value = 0, 2
+
+[State 200, 2]
+type = PlaySnd
+trigger1 = animelem = 4
+value = 6, 3
+
+[State 0, Helper]
+type = Helper
+trigger1 = animelem = 4
+name = "Blast"
+ID = 700
+stateno = 8005
+pos = -20,-150
+postype = p1
+ownpal = 1
+supermovetime = 0
+pausemovetime = 0
+size.xscale = 1
+size.yscale = 1
+
+[State 400, 2]
+type = HitDef
+trigger1 = Time = 0
+attr = A, NT
+damage    = 70
+priority  = 3
+animtype  = heavy
+hitflag = MAF
+guardflag = 
+pausetime = 0,10
+sparkno = s703
+sparkxy = -10,-180
+hitsound   = s7,2
+guardsound = 6,0
+ground.type = Low
+ground.slidetime = 4
+ground.hittime  = 9
+ground.velocity = 4
+air.velocity = 3,-3
+fall = 1
+
+[State 445, ChangeState]
+type = changestate
+trigger1 = animtime = 0
+value = 0
+ctrl = 1
+;---------------------------------------------------------------------------
+
+;---------------------------------------------------------------------------
+;Air Grab
+[Statedef 702]
+type    = A
+movetype= A
+physics = A
+ctrl = 0
+anim = 700
+sprpriority = 1
+
+[State 200, 2]
+type = PlaySnd
+trigger1 = time = 0
+value = 0, 1
+
+[State 200, Hitdef]
+type = HitDef
+trigger1 = Time = 0
+attr = S, NT
+damage = 0, 0
+animtype = Medium
+guardflag = 
+hitflag = A
+priority = 6, Miss
+guard.pausetime = 3,3
+sparkno = -1
+guard.sparkno =  s8010
+sparkxy = 0,0
+hitsound = s1, 0
+guardsound = s2, 0
+fall = 1
+p1stateno = 703
+p2stateno = 0001
+;getpower = 0,0
+
+[State 400, ChangeState]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 51
+ctrl = 0
+;---------------------------------------------------------------------------
+;Air Grab P1
+[Statedef 703]
+type    = A
+movetype= A
+physics = N
+ctrl = 0
+anim = 704
+velset = 0,0
+sprpriority = 1
+
+[State 0, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 200, 2]
+type = PlaySnd
+trigger1 = animelem = 7
+value = 6, 3
+
+[State 0, Helper]
+type = Helper
+trigger1 = animelem = 7
+name = "Blast"
+ID = 700
+stateno = 8006
+pos = 50,-50
+postype = p1
+ownpal = 1
+supermovetime = 0
+pausemovetime = 0
+size.xscale = 1
+size.yscale = 1
+
+[State 400, 2]
+type = HitDef
+trigger1 = Time = 0
+attr = A, NT
+damage    = 70
+priority  = 3
+animtype  = Light
+hitflag = MAF
+guardflag = 
+pausetime = 0,10
+sparkno = s703
+sparkxy = -70,-50
+hitsound   = s7,1
+ground.type = Low
+ground.slidetime = 4
+ground.hittime  = 999
+air.hittime = 999
+ground.velocity = -4,10
+air.velocity = -4,-4
+fall = 1
+
+[State 445, ChangeState]
+type = changestate
+trigger1 = animtime = 0
+value = 50
+ctrl = 0
+;---------------------------------------------------------------------------
+

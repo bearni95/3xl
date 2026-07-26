@@ -1,0 +1,30 @@
+
+[Info]
+name    ="Fat Buu"
+displayname ="Fat Buu"
+author ="miaoyu"
+versiondate=2008-6-22
+mugenversion=
+pal.defaults=1,2,3,4,5,6
+
+
+[Files]
+cmd     =fatbuu.cmd
+cns      =fatbuu.cns
+st       =fatbuu.cns
+stcommon =common1.cns
+sprite  =fatbuu.sff
+anim    =fatbuu.air
+sound   =fatbuu.snd
+pal1=fatbuu.act
+pal2=fatbuu2.act
+pal3=fatbuu3.act
+pal4=fatbuu4.act
+pal5=fatbuu5.act
+pal6=fatbuu6.act
+st1=attacks.cns
+st2=specials.cns
+st3=hypers.cns
+[Arcade]
+intro.storyboard=
+ending.storyboard=

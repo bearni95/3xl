@@ -1,7 +1,0 @@
-[Info]
-name = "Moon"
-author = "Unknown"
-
-[Files]
-sprite = moon.sff
-anim = moon.air

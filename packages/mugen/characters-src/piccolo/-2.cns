@@ -1,0 +1,202 @@
+[Statedef -2]
+
+[State -2, System]
+Type = Helper
+Triggerall = !NumHelper(8132)
+trigger1 = roundstate>=2
+Name = "Portrait"
+ID = 8132
+Pos = -83,-179
+PosType = P1
+Facing = 1
+StateNo = 8132
+KeyCtrl = 0
+OwnPal = 0
+Size.XSCale = 1
+Size.YScale = 1
+supermovetime = 99999999999999999
+pausemovetime = 99999999999999999
+
+;COUNTER HIT!
+
+[State -2, VarSet];Checks if opponent is in attack state
+type = VarSet
+triggerall = numenemy
+trigger1 = enemy, movetype = A
+var(56) = 1
+ignorehitpause = 1
+
+[State -2, VarSet];This resets the condition if counter not succesful and succesful
+type = VarSet
+triggerall = numenemy
+trigger1 = enemy, movetype = I || var(57) >= 1  ;Enemy is Idle | Counter was Succesful
+trigger2 = var(57) > 10 && enemy, movetype = H  ;10 ticks passed & enemy is on gethit state
+var(56) = 0
+ignorehitpause = 1
+
+[State -2, VarSet];Counter Hit Succesful
+type = VarSet
+trigger1 = var(56) = 1 && movehit ;Counter Check Ok, Move Hit Succesfully.
+trigger1 = stateno != [190,199] ;Does not activate during intros.
+trigger1 = stateno != [700,710] ;Does not activate during throws.
+trigger1 = stateno != [0001,0009] ;Don't activate during throws.
+trigger1 = stateno != [10000,1251199] ;Don't activate during Custom States.
+trigger2 = var(56) = 1 && projhit = 1  ;Counter Check Ok, Projectile Hit Succesfully.
+var(57) = 1
+ignorehitpause = 1
+
+[State -2, VarAdd];Counter Hit Timer
+type = VarAdd
+trigger1 = var(57) >= 1 ;Counter was succesful
+var(57) = 1
+ignorehitpause = 1
+
+[State -2, VarSet];Counter Hit Reset
+type = VarSet
+trigger1 = var(57) >= 22 && movehit ;Reset if 22 ticks passed and move hit
+trigger2 = p2movetype != H ;Reset if P2 is no longer in gethit state
+trigger3 = movetype = H ;Reset if P1 is getting hit
+trigger4 = var(57) >= 22 && projhit = 1 ;Reset if 22 ticks passed and projectile hit
+var(57) = 0
+ignorehitpause = 1
+
+[State -2, AssertSpecial];This will award free juggles for Counter Hit.
+type = AssertSpecial
+trigger1 = var(57) > 0
+flag = nojugglecheck
+
+[State -2, EnvColor];This will produce a flash a la KOF2K2
+type = EnvColor
+triggerall = numenemy
+trigger1 = stateno != [190,199] ;Does not activate during intros.
+trigger1 = stateno != [700,710] ;Does not activate during throws.
+trigger1 = stateno != [0001,0009] ;Don't activate during throws.
+trigger1 = stateno != [10000,1251199] ;Don't activate during Custom States.
+triggerall = enemy, movetype = h ;Enemy was indeed HIT, otherwise this'd be retarded.
+trigger1 = var(56) = 1 && movehit  ;Move hit, Ok
+trigger2 = var(56) = 1 && projhit = 1 ;Projectile hit, Ok
+value = 255,255,255
+time = 1
+under = 1
+ignorehitpause = 1
+persistent = 0
+
+[State -2, Explod];Counter Explod for P1 Side.
+type = Explod
+triggerall = numenemy
+triggerall = var(56) = 1 && numexplod(13000) = 0 && teamside = 1 ;Counter Ok, Explod has not played, P1 Side
+triggerall = enemy, movetype = h ;Enemy was indeed HIT, otherwise this'd be retarded.
+trigger1 = stateno != [700,710] ;Does not activate during throws.
+trigger1 = stateno != [0001,0009] ;Don't activate during throws.
+trigger1 = stateno != [10000,1251199] ;Don't activate during Custom States.
+trigger1 = movehit ;Move hits
+trigger2 = projhit = 1 ;Projectile Hits
+anim = 8500
+pos = 10,50
+postype = left  ;p2,front,back,left,right
+removetime = 30
+supermove = 1
+scale = 0.1,0.1
+sprpriority = 0
+id = 8500
+bindtime = -1
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+pausemovetime = -1
+
+[State -2, Explod];Counter Explod for P2 Side.
+type = Explod
+triggerall = numenemy
+triggerall = var(56) = 1 && numexplod(13000) = 0 && teamside = 2 ;Counter Ok, Explod has not played, P2 Side
+triggerall = enemy, movetype = h ;Enemy was indeed HIT, otherwise this'd be retarded.
+triggerall = stateno != [800,820] ;Does not activate during throws.
+triggerall = stateno != [950,951] ;Don't activate during throws.
+trigger1 = movehit ;Move hits
+trigger2 = projhit = 1 ;Projectile Hits
+anim = 8501
+pos = 150,50
+postype = left  ;p2,front,back,left,right
+removetime = 30
+supermove = 1
+scale = 0.1,0.1
+sprpriority = 0
+id = 8500
+bindtime = -1
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+pausemovetime = -1
+
+[State 0, PowerAdd]
+type = PowerAdd
+trigger1 = Var(56) = 1 && movehit
+value = 10
+
+[State 0, VarAdd]
+type = VarAdd
+triggerall = Var(10) = 0
+trigger1 = Var(56) = 1 && movehit
+v = 11    
+value = 2
+
+;---------------------------------------------------------------------------------------
+;FIRST ATTACK!
+
+[State -2, VarSet]
+type = VarSet
+triggerall = Var(35) = 0
+trigger1 = movetype = A && movehit
+trigger2 = stateno = 1004
+var(35) = 1
+ignorehitpause = 1
+
+[State 0, PowerAdd]
+type = PowerAdd
+trigger1 = numexplod(8510) = 1 
+value = 45
+
+[State -2, First Attack]
+type = Explod
+triggerall = numexplod(8510) = 0 && teamside = 1
+triggerall = life = lifemax && enemy, life = lifemax
+trigger1 = var(35) = 1 && movehit
+anim = 8510
+pos = 10,60
+postype = left  ;p2,front,back,left,right
+removetime = 30
+supermove = 1
+scale = 0.1,0.1
+sprpriority = 0
+id = 8510
+bindtime = -1
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+pausemovetime = -1
+
+[State -2, First Attack]
+type = Explod
+triggerall = numexplod(8510) = 0 && teamside = 2
+triggerall = life = lifemax && enemy, life = lifemax
+trigger1 = var(35) = 1 && movehit
+anim = 8511
+pos = 150,60
+postype = left  ;p2,front,back,left,right
+removetime = 30
+supermove = 1
+scale = 0.1,0.1
+sprpriority = 0
+id = 8510
+bindtime = -1
+ontop = 1
+ownpal = 1
+ignorehitpause = 1
+pausemovetime = -1
+
+[State -2, VarSet]
+type = VarSet
+triggerall = Var(35) = 1
+trigger1 = movetype = A && movehit
+var(35) = 2
+ignorehitpause = 1

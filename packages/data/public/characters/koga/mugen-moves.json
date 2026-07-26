@@ -2,44 +2,80 @@
 	"name": "Koga",
 	"commands": [
 		{
-			"name": "super_golpe_a",
-			"input": "~D, DF, F, D, DF, F, a"
-		},
-		{
-			"name": "super_golpe_b",
-			"input": "~D, DF, F, D, DF, F, b"
-		},
-		{
-			"name": "super_golpe_c",
-			"input": "~D, DF, F, D, DF, F, c"
-		},
-		{
-			"name": "super_misil_x",
+			"name": "Super Demon Wind",
 			"input": "~D, DF, F, D, DF, F, x"
 		},
 		{
-			"name": "super_misil_y",
-			"input": "~D, DF, F, D, DF, F, y"
+			"name": "Super Demon Wind Max",
+			"input": "~D, DF, F, D, DF, F, x+y"
 		},
 		{
-			"name": "super_misil_z",
-			"input": "~D, DF, F, D, DF, F, z"
+			"name": "Demon Pack",
+			"input": "~D, DB, B, D, DB, B, x+y"
 		},
 		{
-			"name": "misil_x",
+			"name": "Super Wolf Kick",
+			"input": "~D, DF, F, D, DF, F, a"
+		},
+		{
+			"name": "Super Wolf Kick Max",
+			"input": "~D, DF, F, D, DF, F, a+b"
+		},
+		{
+			"name": "Super Demon Kick",
+			"input": "~D, DB, B, D, DB, B, a"
+		},
+		{
+			"name": "Super Demon Kick Max",
+			"input": "~D, DB, B, D, DB, B, a+b"
+		},
+		{
+			"name": "Super Demon Kick Air",
+			"input": "~D, DB, B, D, DB, B, a"
+		},
+		{
+			"name": "Super Demon Kick Air Max",
+			"input": "~D, DB, B, D, DB, B, a+b"
+		},
+		{
+			"name": "Demon Wind",
 			"input": "~D, DF, F, x"
 		},
 		{
-			"name": "misil_y",
-			"input": "~D, DF, F, y"
+			"name": "Demon Wind Ex",
+			"input": "~D, DF, F, x+y"
 		},
 		{
-			"name": "misil_z",
-			"input": "~D, DF, F, z"
+			"name": "Wolf Kick",
+			"input": "~D, DF, F, a"
 		},
 		{
-			"name": "super_patada",
-			"input": "/U, c"
+			"name": "Wolf Kick Ex",
+			"input": "~D, DF, F, a+b"
+		},
+		{
+			"name": "Demon Kick",
+			"input": "~D, DB, B, a"
+		},
+		{
+			"name": "Demon Kick Ex",
+			"input": "~D, DB, B, a+b"
+		},
+		{
+			"name": "Demon Kick Air",
+			"input": "~D, DB, B, a"
+		},
+		{
+			"name": "Demon Kick Air Ex",
+			"input": "~D, DB, B, a+b"
+		},
+		{
+			"name": "412p",
+			"input": "~B, DB, D, x"
+		},
+		{
+			"name": "412k",
+			"input": "~B, DB, D, a"
 		},
 		{
 			"name": "FF",
@@ -51,55 +87,87 @@
 		},
 		{
 			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "pp",
+			"input": "x+y"
+		},
+		{
+			"name": "kk",
 			"input": "a+b"
 		},
 		{
-			"name": "ab",
-			"input": "a+b"
+			"name": "a+x",
+			"input": "a+x"
+		},
+		{
+			"name": "b+y",
+			"input": "b+y"
+		},
+		{
+			"name": "c+z",
+			"input": "c+z"
+		},
+		{
+			"name": "back_x",
+			"input": "/$B,x"
+		},
+		{
+			"name": "back_y",
+			"input": "/$B,y"
+		},
+		{
+			"name": "back_z",
+			"input": "/$B,z"
+		},
+		{
+			"name": "down_x",
+			"input": "/$D,x"
+		},
+		{
+			"name": "down_y",
+			"input": "/$D,y"
+		},
+		{
+			"name": "down_z",
+			"input": "/$D,z"
 		},
 		{
 			"name": "fwd_x",
-			"input": "/F,x"
+			"input": "/$F,x"
 		},
 		{
 			"name": "fwd_y",
-			"input": "/F,y"
+			"input": "/$F,y"
 		},
 		{
 			"name": "fwd_z",
-			"input": "/F,z"
+			"input": "/$F,z"
 		},
 		{
-			"name": "fwd_a",
-			"input": "/F,a"
+			"name": "up_x",
+			"input": "/$U,x"
 		},
 		{
-			"name": "fwd_b",
-			"input": "/F,b"
+			"name": "up_y",
+			"input": "/$U,y"
 		},
 		{
-			"name": "fwd_c",
-			"input": "/F,c"
-		},
-		{
-			"name": "downfwd_a",
-			"input": "/DF,a"
-		},
-		{
-			"name": "downfwd_b",
-			"input": "/DF,b"
+			"name": "up_z",
+			"input": "/$U,z"
 		},
 		{
 			"name": "back_a",
-			"input": "/B,a"
+			"input": "/$B,a"
 		},
 		{
 			"name": "back_b",
-			"input": "/B,b"
+			"input": "/$B,b"
 		},
 		{
 			"name": "back_c",
-			"input": "/B,c"
+			"input": "/$B,c"
 		},
 		{
 			"name": "down_a",
@@ -114,12 +182,28 @@
 			"input": "/$D,c"
 		},
 		{
-			"name": "fwd_ab",
-			"input": "/F, a+b"
+			"name": "fwd_a",
+			"input": "/$F,a"
 		},
 		{
-			"name": "back_ab",
-			"input": "/B, a+b"
+			"name": "fwd_b",
+			"input": "/$F,b"
+		},
+		{
+			"name": "fwd_c",
+			"input": "/$F,c"
+		},
+		{
+			"name": "up_a",
+			"input": "/$U,a"
+		},
+		{
+			"name": "up_b",
+			"input": "/$U,b"
+		},
+		{
+			"name": "up_c",
+			"input": "/$U,c"
 		},
 		{
 			"name": "a",
@@ -146,6 +230,70 @@
 			"input": "z"
 		},
 		{
+			"name": "s",
+			"input": "s"
+		},
+		{
+			"name": "fwd",
+			"input": "$F"
+		},
+		{
+			"name": "downfwd",
+			"input": "$DF"
+		},
+		{
+			"name": "down",
+			"input": "$D"
+		},
+		{
+			"name": "downback",
+			"input": "$DB"
+		},
+		{
+			"name": "back",
+			"input": "$B"
+		},
+		{
+			"name": "upback",
+			"input": "$UB"
+		},
+		{
+			"name": "up",
+			"input": "$U"
+		},
+		{
+			"name": "upfwd",
+			"input": "$UF"
+		},
+		{
+			"name": "hold_x",
+			"input": "/x"
+		},
+		{
+			"name": "hold_y",
+			"input": "/y"
+		},
+		{
+			"name": "hold_z",
+			"input": "/z"
+		},
+		{
+			"name": "hold_a",
+			"input": "/a"
+		},
+		{
+			"name": "hold_b",
+			"input": "/b"
+		},
+		{
+			"name": "hold_c",
+			"input": "/c"
+		},
+		{
+			"name": "hold_s",
+			"input": "/s"
+		},
+		{
 			"name": "holdfwd",
 			"input": "/$F"
 		},
@@ -160,25 +308,91 @@
 		{
 			"name": "holddown",
 			"input": "/$D"
+		},
+		{
+			"name": "holddownfwd",
+			"input": "/$DF"
+		},
+		{
+			"name": "holddownback",
+			"input": "/$DB"
+		},
+		{
+			"name": "holdupback",
+			"input": "/$UB"
+		},
+		{
+			"name": "holdupfwd",
+			"input": "/$UF"
+		},
+		{
+			"name": "rlsfwd",
+			"input": "~$F"
+		},
+		{
+			"name": "rlsback",
+			"input": "~$B"
+		},
+		{
+			"name": "rlsup",
+			"input": "~$U"
+		},
+		{
+			"name": "rlsdown",
+			"input": "~$D"
+		},
+		{
+			"name": "rlsx",
+			"input": "~x"
+		},
+		{
+			"name": "rlsy",
+			"input": "~y"
+		},
+		{
+			"name": "rlsz",
+			"input": "~z"
+		},
+		{
+			"name": "rlsa",
+			"input": "~a"
+		},
+		{
+			"name": "rlsb",
+			"input": "~b"
+		},
+		{
+			"name": "rlsc",
+			"input": "~c"
+		},
+		{
+			"name": "highjump",
+			"input": "$D, $U"
 		}
 	],
 	"moves": [
 		{
-			"name": "FF",
+			"name": "Jump",
+			"stateNo": 40,
+			"commands": [],
+			"inputs": [],
+			"movetype": "I",
+			"damage": null,
+			"anim": 40,
+			"animation": "jump-start"
+		},
+		{
+			"name": "Run",
 			"stateNo": 100,
-			"commands": [
-				"FF"
-			],
-			"inputs": [
-				"F, F"
-			],
-			"movetype": "",
+			"commands": [],
+			"inputs": [],
+			"movetype": "I",
 			"damage": null,
 			"anim": null,
 			"animation": "run"
 		},
 		{
-			"name": "BB",
+			"name": "Run Back",
 			"stateNo": 105,
 			"commands": [
 				"BB"
@@ -186,13 +400,65 @@
 			"inputs": [
 				"B, B"
 			],
-			"movetype": "",
+			"movetype": "I",
 			"damage": null,
-			"anim": null,
+			"anim": 105,
 			"animation": "run-back"
 		},
 		{
-			"name": "x",
+			"name": "Run Fwd",
+			"stateNo": 110,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 110,
+			"animation": "action-110"
+		},
+		{
+			"name": "Air Dash",
+			"stateNo": 115,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 115,
+			"animation": "action-115"
+		},
+		{
+			"name": "Guard",
+			"stateNo": 120,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": 120,
+			"animation": "guard-start"
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 195,
+			"commands": [
+				"s"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "Stand Light Punch",
 			"stateNo": 200,
 			"commands": [
 				"x"
@@ -201,12 +467,12 @@
 				"x"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 200,
 			"animation": "action-200"
 		},
 		{
-			"name": "y",
+			"name": "Stand Medium Punch",
 			"stateNo": 210,
 			"commands": [
 				"y"
@@ -215,12 +481,12 @@
 				"y"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 210,
 			"animation": "action-210"
 		},
 		{
-			"name": "z",
+			"name": "Stand Strong Punch",
 			"stateNo": 220,
 			"commands": [
 				"z"
@@ -229,12 +495,12 @@
 				"z"
 			],
 			"movetype": "A",
-			"damage": 55,
+			"damage": null,
 			"anim": 220,
 			"animation": "action-220"
 		},
 		{
-			"name": "a",
+			"name": "Stand Light Kick",
 			"stateNo": 230,
 			"commands": [
 				"a"
@@ -243,12 +509,12 @@
 				"a"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 230,
 			"animation": "action-230"
 		},
 		{
-			"name": "b",
+			"name": "Stand Medium Kick",
 			"stateNo": 240,
 			"commands": [
 				"b"
@@ -257,12 +523,12 @@
 				"b"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 240,
 			"animation": "action-240"
 		},
 		{
-			"name": "c",
+			"name": "Standing Strong Kick",
 			"stateNo": 250,
 			"commands": [
 				"c"
@@ -271,108 +537,96 @@
 				"c"
 			],
 			"movetype": "A",
-			"damage": 55,
+			"damage": null,
 			"anim": 250,
 			"animation": "action-250"
 		},
 		{
-			"name": "x",
+			"name": "Crouching Light Punch",
 			"stateNo": 400,
 			"commands": [
-				"x",
 				"holddown"
 			],
 			"inputs": [
-				"x",
 				"/$D"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 400,
 			"animation": "action-400"
 		},
 		{
-			"name": "y",
+			"name": "Crouching Medium Punch",
 			"stateNo": 410,
 			"commands": [
-				"y",
 				"holddown"
 			],
 			"inputs": [
-				"y",
 				"/$D"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 410,
 			"animation": "action-410"
 		},
 		{
-			"name": "z",
+			"name": "Crouching Strong Punch",
 			"stateNo": 420,
 			"commands": [
-				"z",
 				"holddown"
 			],
 			"inputs": [
-				"z",
 				"/$D"
 			],
 			"movetype": "A",
-			"damage": 55,
+			"damage": null,
 			"anim": 420,
 			"animation": "action-420"
 		},
 		{
-			"name": "a",
+			"name": "Crouching Light Kick",
 			"stateNo": 430,
 			"commands": [
-				"a",
 				"holddown"
 			],
 			"inputs": [
-				"a",
 				"/$D"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 430,
 			"animation": "action-430"
 		},
 		{
-			"name": "b",
+			"name": "Crouching Medium Kick",
 			"stateNo": 440,
 			"commands": [
-				"b",
 				"holddown"
 			],
 			"inputs": [
-				"b",
 				"/$D"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 440,
 			"animation": "action-440"
 		},
 		{
-			"name": "c",
+			"name": "Crouching Strong Kick",
 			"stateNo": 450,
 			"commands": [
-				"c",
 				"holddown"
 			],
 			"inputs": [
-				"c",
 				"/$D"
 			],
 			"movetype": "A",
-			"damage": 55,
+			"damage": null,
 			"anim": 450,
 			"animation": "action-450"
 		},
 		{
-			"name": "x",
+			"name": "Jump Light Punch",
 			"stateNo": 600,
 			"commands": [
 				"x"
@@ -381,12 +635,12 @@
 				"x"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 600,
 			"animation": "action-600"
 		},
 		{
-			"name": "y",
+			"name": "Jump Medium Punch",
 			"stateNo": 610,
 			"commands": [
 				"y"
@@ -395,26 +649,22 @@
 				"y"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 610,
 			"animation": "action-610"
 		},
 		{
-			"name": "z",
+			"name": "Jump Strong Punch",
 			"stateNo": 620,
-			"commands": [
-				"z"
-			],
-			"inputs": [
-				"z"
-			],
+			"commands": [],
+			"inputs": [],
 			"movetype": "A",
-			"damage": 55,
+			"damage": null,
 			"anim": 620,
 			"animation": "action-620"
 		},
 		{
-			"name": "a",
+			"name": "Jump Light Kick",
 			"stateNo": 630,
 			"commands": [
 				"a"
@@ -423,12 +673,26 @@
 				"a"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 630,
 			"animation": "action-630"
 		},
 		{
-			"name": "b",
+			"name": "Angled Jumping Light Kick",
+			"stateNo": 631,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "Jump Medium Kick",
 			"stateNo": 640,
 			"commands": [
 				"b"
@@ -437,12 +701,26 @@
 				"b"
 			],
 			"movetype": "A",
-			"damage": 23,
+			"damage": null,
 			"anim": 640,
 			"animation": "action-640"
 		},
 		{
-			"name": "c",
+			"name": "Angled Jumping Medium Kick",
+			"stateNo": 641,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 640,
+			"animation": "action-640"
+		},
+		{
+			"name": "Jump Strong Kick",
 			"stateNo": 650,
 			"commands": [
 				"c"
@@ -451,22 +729,120 @@
 				"c"
 			],
 			"movetype": "A",
-			"damage": 55,
+			"damage": null,
 			"anim": 650,
 			"animation": "action-650"
 		},
 		{
-			"name": "Kung Fu Throw",
-			"stateNo": 800,
+			"name": "Angled Jumping Strong Kick",
+			"stateNo": 651,
 			"commands": [
-				"y",
-				"holdfwd",
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 650,
+			"animation": "action-650"
+		},
+		{
+			"name": "Dodge",
+			"stateNo": 700,
+			"commands": [
+				"a+x"
+			],
+			"inputs": [
+				"a+x"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 700,
+			"animation": "action-700"
+		},
+		{
+			"name": "Roll Forward",
+			"stateNo": 710,
+			"commands": [
+				"a+x",
+				"holdfwd"
+			],
+			"inputs": [
+				"a+x",
+				"/$F"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 710,
+			"animation": "action-710"
+		},
+		{
+			"name": "Roll Back",
+			"stateNo": 715,
+			"commands": [
+				"a+x",
 				"holdback"
 			],
 			"inputs": [
-				"y",
-				"/$F",
+				"a+x",
 				"/$B"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 715,
+			"animation": "action-715"
+		},
+		{
+			"name": "Power Charge",
+			"stateNo": 730,
+			"commands": [
+				"hold_b"
+			],
+			"inputs": [
+				"/b"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 730,
+			"animation": "action-730"
+		},
+		{
+			"name": "Zero Counter",
+			"stateNo": 750,
+			"commands": [
+				"412p"
+			],
+			"inputs": [
+				"~B, DB, D, x"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 750,
+			"animation": "action-750"
+		},
+		{
+			"name": "MAX Mode",
+			"stateNo": 770,
+			"commands": [
+				"c+z"
+			],
+			"inputs": [
+				"c+z"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 770,
+			"animation": "action-770"
+		},
+		{
+			"name": "Throw Forward",
+			"stateNo": 800,
+			"commands": [
+				"holdfwd"
+			],
+			"inputs": [
+				"/$F"
 			],
 			"movetype": "A",
 			"damage": null,
@@ -474,13 +850,139 @@
 			"animation": "action-800"
 		},
 		{
-			"name": "misil_x",
+			"name": "Throw Back",
+			"stateNo": 900,
+			"commands": [
+				"holdfwd"
+			],
+			"inputs": [
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "Wolf Kick",
 			"stateNo": 1000,
 			"commands": [
-				"misil_x"
+				"Wolf Kick"
+			],
+			"inputs": [
+				"~D, DF, F, a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Wolf Kick Ex",
+			"stateNo": 1030,
+			"commands": [
+				"Wolf Kick Ex"
+			],
+			"inputs": [
+				"~D, DF, F, a+b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Demon Kick",
+			"stateNo": 1100,
+			"commands": [
+				"Demon Kick"
+			],
+			"inputs": [
+				"~D, DB, B, a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1010,
+			"animation": "action-1010"
+		},
+		{
+			"name": "Demon Kick Ex",
+			"stateNo": 1130,
+			"commands": [
+				"Demon Kick Ex"
+			],
+			"inputs": [
+				"~D, DB, B, a+b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1010,
+			"animation": "action-1010"
+		},
+		{
+			"name": "Demon Kick Air",
+			"stateNo": 1150,
+			"commands": [
+				"Demon Kick Air"
+			],
+			"inputs": [
+				"~D, DB, B, a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1110,
+			"animation": "action-1110"
+		},
+		{
+			"name": "Demon Kick Air Ex",
+			"stateNo": 1153,
+			"commands": [
+				"Demon Kick Air Ex"
+			],
+			"inputs": [
+				"~D, DB, B, a+b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1110,
+			"animation": "action-1110"
+		},
+		{
+			"name": "Demon Wind",
+			"stateNo": 1200,
+			"commands": [
+				"Demon Wind"
 			],
 			"inputs": [
 				"~D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1020,
+			"animation": "action-1020"
+		},
+		{
+			"name": "Demon Wind Ex",
+			"stateNo": 1230,
+			"commands": [
+				"Demon Wind Ex"
+			],
+			"inputs": [
+				"~D, DF, F, x+y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1020,
+			"animation": "action-1020"
+		},
+		{
+			"name": "Super Wolf Kick",
+			"stateNo": 3000,
+			"commands": [
+				"Super Wolf Kick"
+			],
+			"inputs": [
+				"~D, DF, F, D, DF, F, a"
 			],
 			"movetype": "A",
 			"damage": null,
@@ -488,80 +990,136 @@
 			"animation": "action-3000"
 		},
 		{
-			"name": "super_patada",
-			"stateNo": 1002,
+			"name": "Super Wolf Kick Max",
+			"stateNo": 3005,
 			"commands": [
-				"super_patada"
+				"Super Wolf Kick Max"
 			],
 			"inputs": [
-				"/U, c"
-			],
-			"movetype": "A",
-			"damage": 55,
-			"anim": 1002,
-			"animation": "action-1002"
-		},
-		{
-			"name": "misil_y",
-			"stateNo": 1010,
-			"commands": [
-				"misil_y"
-			],
-			"inputs": [
-				"~D, DF, F, y"
+				"~D, DF, F, D, DF, F, a+b"
 			],
 			"movetype": "A",
 			"damage": null,
-			"anim": 1003,
-			"animation": "action-1003"
+			"anim": 3000,
+			"animation": "action-3000"
 		},
 		{
-			"name": "misil_z",
-			"stateNo": 1020,
+			"name": "Super Demon Kick",
+			"stateNo": 3010,
 			"commands": [
-				"misil_z"
+				"Super Demon Kick"
 			],
 			"inputs": [
-				"~D, DF, F, z"
+				"~D, DB, B, D, DB, B, a"
 			],
 			"movetype": "A",
 			"damage": null,
-			"anim": 1003,
-			"animation": "action-1003"
+			"anim": 3010,
+			"animation": "action-3010"
 		},
 		{
-			"name": "super_misil_x",
-			"stateNo": 1030,
+			"name": "Super Demon Kick Max",
+			"stateNo": 3015,
 			"commands": [
-				"super_misil_x",
-				"super_misil_y",
-				"super_misil_z"
+				"Super Demon Kick Max"
 			],
 			"inputs": [
-				"~D, DF, F, D, DF, F, x",
-				"~D, DF, F, D, DF, F, y",
-				"~D, DF, F, D, DF, F, z"
+				"~D, DB, B, D, DB, B, a+b"
 			],
 			"movetype": "A",
 			"damage": null,
-			"anim": 1003,
-			"animation": "action-1003"
+			"anim": 3010,
+			"animation": "action-3010"
 		},
 		{
-			"name": "super_golpe_b",
-			"stateNo": 1810,
+			"name": "Super Demon Wind",
+			"stateNo": 3030,
 			"commands": [
-				"super_golpe_b",
-				"super_golpe_c"
+				"Super Demon Wind"
 			],
 			"inputs": [
-				"~D, DF, F, D, DF, F, b",
-				"~D, DF, F, D, DF, F, c"
+				"~D, DF, F, D, DF, F, x"
 			],
 			"movetype": "A",
-			"damage": 200,
-			"anim": 1810,
-			"animation": "action-1810"
+			"damage": null,
+			"anim": 3030,
+			"animation": "action-3030"
+		},
+		{
+			"name": "Super Demon Wind Max",
+			"stateNo": 3035,
+			"commands": [
+				"Super Demon Wind Max"
+			],
+			"inputs": [
+				"~D, DF, F, D, DF, F, x+y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3030,
+			"animation": "action-3030"
+		},
+		{
+			"name": "Super Demon Kick Air",
+			"stateNo": 3060,
+			"commands": [
+				"Super Demon Kick Air"
+			],
+			"inputs": [
+				"~D, DB, B, D, DB, B, a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3020,
+			"animation": "action-3020"
+		},
+		{
+			"name": "Super Demon Kick Air Max",
+			"stateNo": 3065,
+			"commands": [
+				"Super Demon Kick Air Max"
+			],
+			"inputs": [
+				"~D, DB, B, D, DB, B, a+b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3020,
+			"animation": "action-3020"
+		},
+		{
+			"name": "Demon Pack",
+			"stateNo": 3100,
+			"commands": [
+				"Demon Pack"
+			],
+			"inputs": [
+				"~D, DB, B, D, DB, B, x+y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 3100,
+			"animation": "action-3100"
+		},
+		{
+			"name": "Fall Recovery (Ground)",
+			"stateNo": 5200,
+			"commands": [],
+			"inputs": [],
+			"movetype": "H",
+			"damage": null,
+			"anim": null,
+			"animation": "action-5200"
+		},
+		{
+			"name": "Fall Recovery (Air)",
+			"stateNo": 5210,
+			"commands": [],
+			"inputs": [],
+			"movetype": "I",
+			"damage": null,
+			"anim": 5210,
+			"animation": "action-5210"
 		}
 	]
 }

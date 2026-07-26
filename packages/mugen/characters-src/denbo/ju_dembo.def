@@ -1,0 +1,27 @@
+[Info]
+Name = "Dembo" ;キャラの名前（後々必要な場合があるので省略不可）
+DisplayName = "Denbo" ;ゲーム中表示される名前（省略可能）
+Author = "ju" ;このキャラの作成者の名前
+
+[Files]
+Cmd = dembo.cmd
+Cns = dembo.cns
+St = dembo.cns
+St2 = demboS.cns
+St3 = demboH.cns
+StCommon = common1.cns
+Sprite = dembo.sff
+Anim = dembo.air
+Sound = dembo.snd
+pal1     = dembo1.act
+pal2     = dembo2.act
+pal3     = dembo3.act
+pal4     = dembo4.act
+;pal5     = 5.act
+;pal6     = 6.act
+
+
+[Arcade]
+intro.storyboard = intro.def
+ending.storyboard = ending.def
+

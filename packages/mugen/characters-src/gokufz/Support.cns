@@ -1,0 +1,100 @@
+;===============================================================================
+;----------------------Support Characters---------------------------------------
+;===============================================================================
+;===============================================================================
+; Call Support:
+;-------------------------------------------------------------------------------
+; Call Support 1:
+[Statedef 3000]
+type = S
+movetype= A
+physics = S
+juggle  = 1
+velset = 0,0
+ctrl = 0
+anim = 3000
+poweradd = -1000
+sprpriority = 0
+
+[State -1]
+Type = Helper
+Trigger1 = Time = 1
+StateNo = 3100
+ID = 3100
+PosType = P1
+Pos = 65,1
+Ownpal = 1
+SprPriority = 2
+IgnoreHitPause = 1
+Persistent = 0
+size.xscale= .86
+size.yscale= .86
+SuperMoveTime = 9999
+PauseMoveTime = 9999
+
+[State 0, Clank]
+type = PlaySnd
+trigger1 = animelem = 2
+value = S3,1
+volume = 9999
+
+[State 0, Clank]
+type = PlaySnd
+trigger1 = animelem = 5
+value = S3,1
+volume = 9999
+
+[State 0, CS]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;-------------------------------------------------------------------------------
+; Call Support 2:
+[Statedef 3010]
+type = S
+movetype= A
+physics = S
+juggle  = 1
+velset = 0,0
+ctrl = 0
+anim = 3000
+poweradd = -1000
+sprpriority = 0
+
+[State -1]
+Type = Helper
+Trigger1 = Animelem = 2
+StateNo = 3110
+ID = 3110
+PosType = P1
+Pos = 65,-2
+Ownpal = 1
+SprPriority = 2
+IgnoreHitPause = 1
+Persistent = 0
+size.xscale= .87
+size.yscale= .87
+SuperMoveTime = 9999
+PauseMoveTime = 9999
+
+[State 0, Clank]
+type = PlaySnd
+trigger1 = animelem = 2
+value = S3,1
+volume = 9999
+
+[State 0, Clank]
+type = PlaySnd
+trigger1 = animelem = 5
+value = S3,1
+volume = 9999
+
+[State 0, CS]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;===============================================================================

@@ -1,0 +1,41 @@
+;***************************************************************************;
+;******************* Created in Fighter Factory Ultimate *******************;
+;*******************     http://virtualltek.mgbr.net     *******************;
+;***************************************************************************;
+
+[Info]
+name ="GokuFZ"
+displayname ="Goku"
+versiondate =06/02/2018
+mugenversion = 
+author ="Alizzon"
+pal.defaults =1,2,3,4,5,6,7,8,9,10,11,12,
+
+[Files]
+sprite =GokuFZ.sff
+anim =GokuFZ.air
+sound =GokuFZ.snd
+cmd =GokuFZ.cmd
+cns =GokuFZ.cns
+stcommon =common1.cns
+st =GokuFZ.cns
+pal1=1.act
+pal2=2.act
+pal3=3.act
+pal4=4.act
+pal5=5.act
+pal6=6.act
+pal7=7.act
+pal8=8.act
+pal9=9.act
+pal10=10.act
+pal11=11.act
+pal12=12.act
+st1=Basics.cns
+st2=Especiales.cns
+st3=Supers.cns
+st4=Support.cns
+
+[Arcade]
+intro.storyboard = 
+ending.storyboard = 

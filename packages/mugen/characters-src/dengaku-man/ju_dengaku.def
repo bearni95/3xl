@@ -1,0 +1,27 @@
+[Info]
+Name = "Dengaku" ;キャラの名前（後々必要な場合があるので省略不可）
+DisplayName = "Dengaku Man" ;ゲーム中表示される名前（省略可能）
+Author = "ju" ;このキャラの作成者の名前
+
+[Files]
+Cmd = dengaku.cmd
+Cns = dengaku.cns
+St = dengaku.cns
+St2 = dengakuS.cns
+St3 = dengakuH.cns
+StCommon = common1.cns
+Sprite = dengaku.sff
+Anim = dengaku.air
+Sound = dengaku.snd
+pal1     = dengaku1.act
+pal2     = dengaku2.act
+pal3     = dengaku3.act
+pal4     = dengaku4.act
+;pal5     = 5.act
+;pal6     = 6.act
+
+
+[Arcade]
+intro.storyboard = intro.def
+ending.storyboard = ending.def
+

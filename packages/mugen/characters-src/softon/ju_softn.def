@@ -1,0 +1,27 @@
+[Info]
+Name = "Softn" ;キャラの名前（後々必要な場合があるので省略不可）
+DisplayName = "Softon" ;ゲーム中表示される名前（省略可能）
+Author = "ju" ;このキャラの作成者の名前
+
+[Files]
+Cmd = softn.cmd
+Cns = softn.cns
+St = softn.cns
+St2 = softnS.cns
+St3 = softnH.cns
+StCommon = common1.cns
+Sprite = softn.sff
+Anim = softn.air
+Sound = softn.snd
+pal1     = softn1.act
+pal2     = softn2.act
+pal3     = softn3.act
+pal4     = softn4.act
+;pal5     = 5.act
+;pal6     = 6.act
+
+
+[Arcade]
+intro.storyboard = intro.def
+ending.storyboard = ending.def
+

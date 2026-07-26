@@ -1,0 +1,38 @@
+; Definition file for player
+; Contains all the filenames needed for the character
+
+; Player information
+[Info]
+name = "Cell"        ;Name of character
+displayname = "Perfect Cell" ;Name of character to display
+versiondate =    ;Version date of character
+mugenversion = 1.0   ;Version of M.U.G.E.N character works on
+author = "boryema"      ;Character author name
+pal.defaults = 1,4,2,5,3,6,7,10,8,11,9,12 ;Default palettes in order of preference
+
+; Files for the player
+[Files]
+cmd     = cell.cmd   ;Command set
+cns     = cell.cns   ;Constants
+st      = states/system.st   ;States
+st1 = states/normal.st
+st2 = states/specials.st
+st3 = states/supers.st
+st4 = states/helpers.st
+st5 = states/custom.st
+stcommon = common1.cns ;Common states
+sprite  = cell.sff   ;Sprite
+anim    = cell.air   ;Animation
+sound  = cell.snd   ;Sound
+pal1   = pals/cell1.act   ;Palettes (can have up to 12)
+pal2   = pals/frieza.act
+pal3   = pals/buu.act
+pal4   = pals/cell2.act
+pal5   = pals/semiperfect.act
+pal6   = pals/imperfect.act
+pal7   = pals/goldencell.act
+pal8   = pals/Janemba.act
+pal9   = pals/metalcooler.act
+pal10  = pals/cooler.act
+pal11  = pals/sinshenron.act
+pal12  = pals/villianous.act

@@ -1,0 +1,29 @@
+[Info]
+Name = "Halekulani" ;キャラの名前（後々必要な場合があるので省略不可）
+DisplayName = "Halekulani" ;ゲーム中表示される名前（省略可能）
+Author = "ju" ;このキャラの作成者の名前
+
+[Files]
+Cmd = halekulani.cmd
+Cns = halekulani.cns
+St = halekulani.cns
+St2 = halekulaniS.cns
+St3 = halekulaniH.cns
+StCommon = common1.cns
+Sprite = halekulani.sff
+Anim = halekulani.air
+Sound = halekulani.snd
+pal1     = halekulani1.act
+pal2     = halekulani2.act
+pal3     = halekulani3.act
+pal4     = halekulani4.act
+;pal5     = 5.act
+;pal6     = 6.act
+
+
+
+
+[Arcade]
+intro.storyboard = intro.def
+ending.storyboard = ending.def
+

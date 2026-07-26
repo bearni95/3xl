@@ -1,0 +1,26 @@
+;***************************************************************************;
+;******************* Created in Fighter Factory Ultimate *******************;
+;*******************      http://www.virtualltek.com     *******************;
+;***************************************************************************;
+
+[Info]
+name = "YoukaiInu"
+displayname = "Youkai Inuyasha"
+versiondate = 06.07.2008
+mugenversion = 04.14.2001
+author = "YamiMario"
+pal.defaults = 1,2,3,4,5,6
+
+[Files]
+sprite = YI.sff
+anim = YI.air
+sound = YI.snd
+cmd = YI.cmd
+cns = YI.cns
+stcommon = common1.cns
+st = YI.cns
+pal1 = YI.act
+
+[Arcade]
+intro.storyboard = 
+ending.storyboard = 

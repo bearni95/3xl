@@ -1,0 +1,240 @@
+;----------------------------------------------------------------------------------
+                            [Statedef -3]
+;----------------------------------------------------------------------------------
+[State -3:	    Hit Sparks Normales]
+type                = VarRandom
+trigger1            = 1
+v                   = 15
+range               = 11000,11008
+
+[State -3:	    Hit Sparks Supers]
+type                = VarRandom
+trigger1            = 1
+v                   = 16
+range               = 11010,11018
+
+[State -3:	    Hit Sparks Hypers]
+type                = VarRandom
+trigger1            = 1
+v                   = 17
+range               = 11020,11028
+
+[State -3:          Playsnd]
+type                = playsnd
+trigger1            = (stateno = 40) && (time = 1)
+value               = 0,0
+
+[State -3:          Playsnd]
+type                = playsnd
+trigger1            = (stateno = 52) && (time = 1)
+value               = 0,1
+
+[State -3:          explod]
+type                = Explod
+trigger1            = (stateno = 40) && (time = 1)
+anim                = 11042
+postype             = p1
+pos                 = 0,0
+sprpriority         = 0
+scale               = .6,.3
+ownpal              = 1
+ignorehitpause      = 1
+
+[State -3:          explod]
+type                = Explod
+trigger1            = (stateno = 40) && (time = 1)
+anim                = 11041
+postype             = p1
+pos                 = 5,0
+sprpriority         = 90
+scale               = .5,.5
+ownpal              = 1
+ignorehitpause      = 1
+
+[State -3:          explod]
+type                = Explod
+trigger1            = (stateno = 40) && (time = 1)
+anim                = 11041
+postype             = p1
+pos                 = -5,0
+facing              = -1
+sprpriority         = 90
+scale               = .5,.5
+ownpal              = 1
+ignorehitpause      = 1
+
+[State -3:          explod]
+type                = Explod
+trigger1            = (stateno = 50) && (time = 1||time = 4||time = 7||time = 10)
+anim                = 11040
+postype             = p1
+pos                 = 0,10
+sprpriority         = 90
+scale               = .3,.3
+ownpal              = 1
+ignorehitpause      = 1
+
+[State -3:          explod]
+type                = Explod
+trigger1            = (stateno = 52) && (time = 1)
+anim                = 11042
+postype             = p1
+pos                 = 0,0
+sprpriority         = 0
+scale               = .8,.3
+ownpal              = 1
+ignorehitpause      = 1
+
+[State -3:	    ser golpeado 1]
+type                = VarRandom
+trigger1            = 1
+v                   = 5
+range               = 0,40
+
+[State -3:          Playsnd]
+type                = playsnd
+triggerall          = (Time = 1) && (Alive = 1) && (var(5) = [0,10]) 
+trigger1            = stateno = 5000||stateno = 5010||stateno = 5020
+persistent          = 0
+value               = 8,17
+channel             = 1
+
+[State -3:          Playsnd]
+type                = playsnd
+triggerall          = (Time = 1) && (Alive = 1) && (var(5) = [11,20])
+trigger1            = stateno = 5000||stateno = 5010||stateno = 5020
+persistent          = 0
+value               = 8,18
+channel             = 1
+
+[State -3:          Playsnd]
+type                = playsnd
+triggerall          = (Time = 1) && (Alive = 1) && (var(5) = [21,30]) 
+trigger1            = stateno = 5000||stateno = 5010||stateno = 5020
+persistent          = 0
+value               = 8,15
+channel             = 1
+
+[State -3:          Playsnd]
+type                = playsnd
+triggerall          = (Time = 1) && (Alive = 1) && (var(5) = [31,40])
+trigger1            = stateno = 5000||stateno = 5010||stateno = 5020 
+persistent          = 0
+value               = 99,99
+
+[State -3:          Playsnd]
+type                = playsnd
+trigger1            = (stateno = 5100||stateno = 5110) && (time = 1)
+value               = 0,50
+
+[State -3:          explod]
+type                = Explod
+trigger1            = (stateno = 5100||stateno = 5110) && (time = 1)
+anim                = 11042
+postype             = p1
+pos                 = 0,0
+sprpriority         = 0
+scale               = 1,.7
+ownpal              = 1
+ignorehitpause      = 1
+
+[State -3:	    Hit Pause]
+type                = pause
+trigger1            = (ProjHit1010 = 1)||(ProjHit1020 = 1)||(ProjHit1040 = 1)||(ProjHit1041 = 1)
+time                = 10
+pausebg             = 1
+
+[State -3:	    Hit Pause]
+type                = pause
+trigger1            = (ProjHit3010 = 1)||(ProjHit3000 = 1)||(ProjHit3020 = 1)
+time                = 15
+pausebg             = 1
+
+[State -3:          Hit Spark Projectile]
+type                = Explod
+trigger1            = ProjContact1010 = 1
+anim                = ifelse((projhit1010=1),var(16),11031)
+postype             = p2
+pos                 = 0,-20
+sprpriority         = 9999
+scale               = 1,1
+ownpal              = 1
+ignorehitpause      = 1
+pausemovetime       = 99
+
+[State -3:          Hit Spark Projectile]
+type                = Explod
+trigger1            = ProjContact1020 = 1
+anim                = ifelse((projhit1020=1),var(16),11031)
+postype             = p2
+pos                 = 0,-62
+sprpriority         = 9999
+scale               = 1,1
+ownpal              = 1
+ignorehitpause      = 1
+pausemovetime       = 99
+
+[State -3:          Hit Spark Projectile]
+type                = Explod
+trigger1            = ProjContact1040 = 1
+anim                = ifelse((projhit1040=1),var(16),11031)
+postype             = p2
+pos                 = 0,-64
+sprpriority         = 9999
+scale               = 1,1
+ownpal              = 1
+ignorehitpause      = 1
+pausemovetime       = 99
+
+[State -3:          Hit Spark Projectile]
+type                = Explod
+trigger1            = ProjContact1041 = 1
+anim                = ifelse((projhit1041=1),var(16),11031)
+postype             = p2
+pos                 = 0,-30
+sprpriority         = 9999
+scale               = 1,1
+ownpal              = 1
+ignorehitpause      = 1
+pausemovetime       = 99
+
+[State -3:          Hit Spark Projectile]
+type                = Explod
+trigger1            = ProjContact3010 = 1
+anim                = ifelse((projhit3010=1),var(17),11031)
+postype             = p2
+pos                 = 0,-30
+sprpriority         = 9999
+scale               = 1,1
+ownpal              = 1
+ignorehitpause      = 1
+pausemovetime       = 99
+
+[State -3:          Hit Spark Projectile]
+type                = Explod
+trigger1            = ProjContact3000 = 1
+anim                = ifelse((projhit3000=1),var(17),11031)
+postype             = p2
+pos                 = 0,-60
+sprpriority         = 9999
+scale               = 1,1
+ownpal              = 1
+ignorehitpause      = 1
+pausemovetime       = 99
+
+[State -3:          Hit Spark Projectile]
+type                = Explod
+trigger1            = ProjContact3020 = 1
+anim                = ifelse((projhit3020=1),var(17),11031)
+postype             = p2
+pos                 = 0,-64
+sprpriority         = 9999
+scale               = 1,1
+ownpal              = 1
+ignorehitpause      = 1
+pausemovetime       = 99
+
+[State -3:          Quitar Sombras Hyper]
+type                = AfterImagetime
+trigger1            = (stateno = [0,2999])||(stateno = [4000,5999])
+

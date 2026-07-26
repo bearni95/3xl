@@ -1,0 +1,1299 @@
+{
+	"name": "Frieza",
+	"commands": [
+		{
+			"name": "AI0",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI1",
+			"input": "b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b"
+		},
+		{
+			"name": "AI2",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI3",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI4",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI5",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI6",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI7",
+			"input": "F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F"
+		},
+		{
+			"name": "AI8",
+			"input": "D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D"
+		},
+		{
+			"name": "AI9",
+			"input": "B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B"
+		},
+		{
+			"name": "AI10",
+			"input": "U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U"
+		},
+		{
+			"name": "AI11",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI12",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI13",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI14",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI15",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI16",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI17",
+			"input": "a,B,c,x,y,z,s,B,D,F,U,a,b,c,x,y,z,s,s"
+		},
+		{
+			"name": "AI18",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI19",
+			"input": "b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b"
+		},
+		{
+			"name": "AI20",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI21",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI22",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI23",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI24",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI25",
+			"input": "F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F"
+		},
+		{
+			"name": "AI26",
+			"input": "D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D"
+		},
+		{
+			"name": "AI27",
+			"input": "B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B"
+		},
+		{
+			"name": "AI28",
+			"input": "U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U"
+		},
+		{
+			"name": "AI29",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI30",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI31",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI32",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI33",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI34",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI35",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI36",
+			"input": "z,z,z,z,z,z,a,a,a,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI37",
+			"input": "z,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,z,z,z"
+		},
+		{
+			"name": "AI38",
+			"input": "z,z,z,z,z,a,a,a,z,z,z,z,z,a,a,a,z,z,z"
+		},
+		{
+			"name": "AI39",
+			"input": "z,z,z,z,z,a,a,a,z,z,z,z,z,z,a,a,z,z,z"
+		},
+		{
+			"name": "AI40",
+			"input": "z,z,z,z,a,a,a,z,z,z,z,a,z,z,a,a,z,z,z"
+		},
+		{
+			"name": "AI41",
+			"input": "z,z,z,a,z,z,z,z,z,z,z,z,z,a,a,z,z,z,z"
+		},
+		{
+			"name": "AI42",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI43",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,a,a,z"
+		},
+		{
+			"name": "AI44",
+			"input": "z,z,a,a,a,a,z,z,z,z,z,z,z,z,z,a,a,a,z"
+		},
+		{
+			"name": "AI45",
+			"input": "z,z,z,z,z,z,a,a,z,z,z,z,z,a,a,a,a,z,z"
+		},
+		{
+			"name": "AI46",
+			"input": "z,z,z,z,z,z,z,z,a,a,a,a,a,a,z,z,z,z,z"
+		},
+		{
+			"name": "AI47",
+			"input": "z,z,z,a,a,a,a,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI48",
+			"input": "z,z,z,z,z,a,a,a,z,z,z,a,a,a,z,z,a,z,a"
+		},
+		{
+			"name": "AI49",
+			"input": "z,z,z,z,a,a,a,z,z,z,z,z,a,a,a,z,z,z,z"
+		},
+		{
+			"name": "AI50",
+			"input": "z,z,z,a,a,z,z,z,z,z,z,z,z,z,a,a,z,z,z"
+		},
+		{
+			"name": "AI51",
+			"input": "a,b,c,x,y,z,z,z,z,z,z,z,z,a,b,c,x,y,z"
+		},
+		{
+			"name": "dragonrush",
+			"input": "~D, B, F, b"
+		},
+		{
+			"name": "shinkuu",
+			"input": "~D, F, D, F, y"
+		},
+		{
+			"name": "stone",
+			"input": "~D, F, D, F, b"
+		},
+		{
+			"name": "stone2",
+			"input": "~D, B, y"
+		},
+		{
+			"name": "mega",
+			"input": "~D, B, F, y"
+		},
+		{
+			"name": "shoryuken",
+			"input": "~F, D, DF, x"
+		},
+		{
+			"name": "shoryuken2",
+			"input": "~F, D, DF, y"
+		},
+		{
+			"name": "hadouken",
+			"input": "~D, F, x"
+		},
+		{
+			"name": "hadouken2",
+			"input": "~D, F, y"
+		},
+		{
+			"name": "tatsumaki",
+			"input": "~D, B, a"
+		},
+		{
+			"name": "tatsumaki2",
+			"input": "~D, B, b"
+		},
+		{
+			"name": "headattack",
+			"input": "~D, F, a"
+		},
+		{
+			"name": "headattack2",
+			"input": "~D, F, b"
+		},
+		{
+			"name": "dash_x",
+			"input": "~F, F, x"
+		},
+		{
+			"name": "dash_y",
+			"input": "~F, F, y"
+		},
+		{
+			"name": "dash_a",
+			"input": "~F, F, a"
+		},
+		{
+			"name": "dash_b",
+			"input": "~F, F, b"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+a"
+		},
+		{
+			"name": "charge",
+			"input": "y+b"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "hold_a",
+			"input": "/$a"
+		},
+		{
+			"name": "hold_b",
+			"input": "/$b"
+		},
+		{
+			"name": "hold_c",
+			"input": "/$c"
+		},
+		{
+			"name": "hold_x",
+			"input": "/$x"
+		},
+		{
+			"name": "hold_y",
+			"input": "/$y"
+		},
+		{
+			"name": "hold_z",
+			"input": "/$z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "holddownfwd",
+			"input": "/$DF"
+		},
+		{
+			"name": "longjump",
+			"input": "~D, $U"
+		},
+		{
+			"name": "fwd",
+			"input": "F"
+		},
+		{
+			"name": "back",
+			"input": "B"
+		},
+		{
+			"name": "up",
+			"input": "U"
+		},
+		{
+			"name": "down",
+			"input": "D"
+		}
+	],
+	"moves": [
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "Run Fwd",
+			"stateNo": 110,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 110,
+			"animation": "action-110"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 112,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 112,
+			"animation": "action-112"
+		},
+		{
+			"name": "start",
+			"stateNo": 195,
+			"commands": [
+				"start"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "x",
+			"stateNo": 200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "x",
+			"stateNo": 210,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "y",
+			"stateNo": 220,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 220,
+			"animation": "action-220"
+		},
+		{
+			"name": "y",
+			"stateNo": 230,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "a",
+			"stateNo": 250,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 250,
+			"animation": "action-250"
+		},
+		{
+			"name": "a",
+			"stateNo": 260,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 260,
+			"animation": "action-260"
+		},
+		{
+			"name": "b",
+			"stateNo": 270,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 270,
+			"animation": "action-270"
+		},
+		{
+			"name": "b",
+			"stateNo": 280,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 280,
+			"animation": "action-280"
+		},
+		{
+			"name": "recovery",
+			"stateNo": 305,
+			"commands": [
+				"recovery"
+			],
+			"inputs": [
+				"x+a"
+			],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 300,
+			"animation": "action-310"
+		},
+		{
+			"name": "recovery",
+			"stateNo": 360,
+			"commands": [
+				"recovery",
+				"holdback"
+			],
+			"inputs": [
+				"x+a",
+				"/$B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 360,
+			"animation": "action-360"
+		},
+		{
+			"name": "recovery",
+			"stateNo": 361,
+			"commands": [
+				"recovery",
+				"hold_x",
+				"hold_z",
+				"hold_c"
+			],
+			"inputs": [
+				"x+a",
+				"/$x",
+				"/$z",
+				"/$c"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 361,
+			"animation": "action-361"
+		},
+		{
+			"name": "y",
+			"stateNo": 400,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "x",
+			"stateNo": 410,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "a",
+			"stateNo": 420,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 420,
+			"animation": "action-420"
+		},
+		{
+			"name": "b",
+			"stateNo": 450,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 550,
+			"animation": "action-550"
+		},
+		{
+			"name": "hold_x",
+			"stateNo": 500,
+			"commands": [
+				"hold_x"
+			],
+			"inputs": [
+				"/$x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 500,
+			"animation": "action-500"
+		},
+		{
+			"name": "dash_y",
+			"stateNo": 510,
+			"commands": [
+				"dash_y"
+			],
+			"inputs": [
+				"~F, F, y"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 510,
+			"animation": "action-510"
+		},
+		{
+			"name": "hold_y",
+			"stateNo": 511,
+			"commands": [
+				"hold_y"
+			],
+			"inputs": [
+				"/$y"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 511,
+			"animation": "action-511"
+		},
+		{
+			"name": "hold_b",
+			"stateNo": 525,
+			"commands": [
+				"hold_b"
+			],
+			"inputs": [
+				"/$b"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 525,
+			"animation": "action-525"
+		},
+		{
+			"name": "hold_a",
+			"stateNo": 550,
+			"commands": [
+				"hold_a"
+			],
+			"inputs": [
+				"/$a"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 550,
+			"animation": "action-550"
+		},
+		{
+			"name": "x",
+			"stateNo": 600,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "x",
+			"stateNo": 610,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "y",
+			"stateNo": 620,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 620,
+			"animation": "action-620"
+		},
+		{
+			"name": "a",
+			"stateNo": 630,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "a",
+			"stateNo": 635,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 635,
+			"animation": "action-635"
+		},
+		{
+			"name": "b",
+			"stateNo": 640,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 640,
+			"animation": "action-640"
+		},
+		{
+			"name": "b",
+			"stateNo": 650,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 650,
+			"animation": "action-650"
+		},
+		{
+			"name": "headattack2",
+			"stateNo": 1000,
+			"commands": [
+				"headattack2"
+			],
+			"inputs": [
+				"~D, F, b"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "tatsumaki2",
+			"stateNo": 1005,
+			"commands": [
+				"tatsumaki2"
+			],
+			"inputs": [
+				"~D, B, b"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 1000,
+			"animation": "action-1005"
+		},
+		{
+			"name": "tatsumaki2",
+			"stateNo": 1007,
+			"commands": [
+				"tatsumaki2"
+			],
+			"inputs": [
+				"~D, B, b"
+			],
+			"movetype": "I",
+			"damage": 70,
+			"anim": 1007,
+			"animation": "action-1007"
+		},
+		{
+			"name": "headattack2",
+			"stateNo": 1020,
+			"commands": [
+				"headattack2"
+			],
+			"inputs": [
+				"~D, F, b"
+			],
+			"movetype": "I",
+			"damage": 70,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "headattack",
+			"stateNo": 1030,
+			"commands": [
+				"headattack"
+			],
+			"inputs": [
+				"~D, F, a"
+			],
+			"movetype": "I",
+			"damage": 70,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "headattack",
+			"stateNo": 1050,
+			"commands": [
+				"headattack"
+			],
+			"inputs": [
+				"~D, F, a"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 1000,
+			"animation": "action-1051"
+		},
+		{
+			"name": "tatsumaki",
+			"stateNo": 1055,
+			"commands": [
+				"tatsumaki"
+			],
+			"inputs": [
+				"~D, B, a"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "tatsumaki",
+			"stateNo": 1057,
+			"commands": [
+				"tatsumaki"
+			],
+			"inputs": [
+				"~D, B, a"
+			],
+			"movetype": "I",
+			"damage": 70,
+			"anim": 1007,
+			"animation": "action-1058"
+		},
+		{
+			"name": "headattack2",
+			"stateNo": 1100,
+			"commands": [
+				"headattack2"
+			],
+			"inputs": [
+				"~D, F, b"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 1050,
+			"animation": "action-1050"
+		},
+		{
+			"name": "tatsumaki2",
+			"stateNo": 1105,
+			"commands": [
+				"tatsumaki2"
+			],
+			"inputs": [
+				"~D, B, b"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 1050,
+			"animation": "action-1050"
+		},
+		{
+			"name": "tatsumaki2",
+			"stateNo": 1107,
+			"commands": [
+				"tatsumaki2"
+			],
+			"inputs": [
+				"~D, B, b"
+			],
+			"movetype": "I",
+			"damage": 70,
+			"anim": 1057,
+			"animation": "action-1057"
+		},
+		{
+			"name": "headattack2",
+			"stateNo": 1120,
+			"commands": [
+				"headattack2"
+			],
+			"inputs": [
+				"~D, F, b"
+			],
+			"movetype": "I",
+			"damage": 70,
+			"anim": 1050,
+			"animation": "action-1050"
+		},
+		{
+			"name": "headattack",
+			"stateNo": 1130,
+			"commands": [
+				"headattack"
+			],
+			"inputs": [
+				"~D, F, a"
+			],
+			"movetype": "I",
+			"damage": 70,
+			"anim": 1050,
+			"animation": "action-1050"
+		},
+		{
+			"name": "headattack",
+			"stateNo": 1150,
+			"commands": [
+				"headattack"
+			],
+			"inputs": [
+				"~D, F, a"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 1050,
+			"animation": "action-1050"
+		},
+		{
+			"name": "tatsumaki",
+			"stateNo": 1155,
+			"commands": [
+				"tatsumaki"
+			],
+			"inputs": [
+				"~D, B, a"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 1050,
+			"animation": "action-1050"
+		},
+		{
+			"name": "tatsumaki",
+			"stateNo": 1157,
+			"commands": [
+				"tatsumaki"
+			],
+			"inputs": [
+				"~D, B, a"
+			],
+			"movetype": "I",
+			"damage": 70,
+			"anim": 1057,
+			"animation": "action-1057"
+		},
+		{
+			"name": "hadouken",
+			"stateNo": 1200,
+			"commands": [
+				"hadouken"
+			],
+			"inputs": [
+				"~D, F, x"
+			],
+			"movetype": "A",
+			"damage": 75,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "hadouken2",
+			"stateNo": 1205,
+			"commands": [
+				"hadouken2"
+			],
+			"inputs": [
+				"~D, F, y"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "holdfwd",
+			"stateNo": 1300,
+			"commands": [
+				"holdfwd"
+			],
+			"inputs": [
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 1300,
+			"animation": "action-1300"
+		},
+		{
+			"name": "hadouken",
+			"stateNo": 1400,
+			"commands": [
+				"hadouken"
+			],
+			"inputs": [
+				"~D, F, x"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "hadouken2",
+			"stateNo": 1405,
+			"commands": [
+				"hadouken2"
+			],
+			"inputs": [
+				"~D, F, y"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "shoryuken",
+			"stateNo": 1500,
+			"commands": [
+				"shoryuken"
+			],
+			"inputs": [
+				"~F, D, DF, x"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 1500,
+			"animation": "action-1500"
+		},
+		{
+			"name": "shoryuken2",
+			"stateNo": 1550,
+			"commands": [
+				"shoryuken2"
+			],
+			"inputs": [
+				"~F, D, DF, y"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 1550,
+			"animation": "action-1550"
+		},
+		{
+			"name": "mega",
+			"stateNo": 1700,
+			"commands": [
+				"mega"
+			],
+			"inputs": [
+				"~D, B, F, y"
+			],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 1700,
+			"animation": "action-1700"
+		},
+		{
+			"name": "hold_b",
+			"stateNo": 1900,
+			"commands": [
+				"hold_b",
+				"hold_c"
+			],
+			"inputs": [
+				"/$b",
+				"/$c"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 1900,
+			"animation": "action-1900"
+		},
+		{
+			"name": "stone",
+			"stateNo": 2000,
+			"commands": [
+				"stone"
+			],
+			"inputs": [
+				"~D, F, D, F, b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 2000,
+			"animation": "action-2000"
+		},
+		{
+			"name": "hadouken2",
+			"stateNo": 2100,
+			"commands": [
+				"hadouken2"
+			],
+			"inputs": [
+				"~D, F, y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 2001,
+			"animation": "action-2001"
+		},
+		{
+			"name": "hadouken2",
+			"stateNo": 2101,
+			"commands": [
+				"hadouken2"
+			],
+			"inputs": [
+				"~D, F, y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 2002,
+			"animation": "action-2002"
+		},
+		{
+			"name": "shinkuu",
+			"stateNo": 2200,
+			"commands": [
+				"shinkuu"
+			],
+			"inputs": [
+				"~D, F, D, F, y"
+			],
+			"movetype": "A",
+			"damage": 280,
+			"anim": 2200,
+			"animation": "action-2200"
+		},
+		{
+			"name": "shinkuu",
+			"stateNo": 2300,
+			"commands": [
+				"shinkuu"
+			],
+			"inputs": [
+				"~D, F, D, F, y"
+			],
+			"movetype": "A",
+			"damage": 280,
+			"anim": 2300,
+			"animation": "action-2300"
+		},
+		{
+			"name": "dragonrush",
+			"stateNo": 3000,
+			"commands": [
+				"dragonrush"
+			],
+			"inputs": [
+				"~D, B, F, b"
+			],
+			"movetype": "A",
+			"damage": 90,
+			"anim": 3000,
+			"animation": "action-3000"
+		}
+	]
+}

@@ -1,0 +1,27 @@
+[Info]
+Name = "Gunkan" ;キャラの名前（後々必要な場合があるので省略不可）
+DisplayName = "Captain Battleship" ;ゲーム中表示される名前（省略可能）
+Author = "ju" ;このキャラの作成者の名前
+
+[Files]
+Cmd = gunkan.cmd
+Cns = gunkan.cns
+St = gunkan.cns
+St2 = gunkanS.cns
+St3 = gunkanH.cns
+StCommon = common1.cns
+Sprite = gunkan.sff
+Anim = gunkan.air
+Sound = gunkan.snd
+pal1     = gunkan1.act
+pal2     = gunkan2.act
+pal3     = gunkan3.act
+pal4     = gunkan4.act
+;pal5     = 5.act
+;pal6     = 6.act
+
+
+[Arcade]
+intro.storyboard = intro.def
+ending.storyboard = ending.def
+

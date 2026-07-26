@@ -1,0 +1,638 @@
+;---------------------------------------------------------------------------;
+;                        [ Bakuryuuha ]                                     ;
+;---------------------------------------------------------------------------;
+[Statedef 3000:     Bakuryuuha]
+type                = S                      
+movetype            = A                    
+physics             = S                                      
+juggle              = 5
+sprpriority         = 2                     
+ctrl                = 0                        
+anim                = 3000                                                         
+poweradd            = -1000
+
+[State 3000:        SuperPause]
+type                = SuperPause
+trigger1            = !animelemtime(4)
+movetime            = 0
+time                = 110
+anim                = -1
+darken              = 0
+p2defmul            = 1
+channel             = 1
+
+[State 3000:        Hyper lvl1]
+type                = helper
+trigger1            = !animelemtime(4)
+helpertype          = normal
+stateno             = 8000
+ownpal              = 1
+persistent          = 0
+supermovetime       = 500
+pos                 = 0,-90
+
+[State 3000:        AfterImage]
+type                = AfterImage
+trigger1            = !animelemtime(4)
+time                = 99999999
+palbright           = 12,12,12
+palcontrast         = 200,0,0
+paladd              = 0,0,0
+palmul              = 1,1,1
+length              = 9
+frameGap            = 4
+timegap             = 2
+trans               = add1
+
+[State 3000:        Projectile]
+type                = Projectile   
+trigger1            = animelem = 6
+attr                = S,HP                
+animtype            = Diagup                
+guardflag           = MA                
+hitflag             = MA                  
+priority            = 5, Hit               
+pausetime           = 0, 0                
+damage              = 40,5
+sparkno             = -1           
+guard.sparkno       = -1
+sparkxy             = 0, -20
+hitsound 	    = s3000,0
+guardsound          = s250,0
+ground.type         = High
+ground.slidetime    = 20
+ground.hittime      = 20
+Ground.velocity     = -5,-3.5
+air.velocity        = -5,-3
+EnvShake.time       = 15
+EnvShake.ampl       = 4
+p2stateno           = 6000
+ProjID              = 3000
+projanim            = 3001
+projremove          = 0
+projhitanim         = -1
+projremanim         = -1
+projcancelanim      = 3002
+projpriority        = 999
+projsprpriority     = 50
+projedgebound       = 800
+projstagebound      = 800
+projremovetime      = 48
+projscale           = 1, 1
+velocity            = 0,0
+accel               = 0, 0
+offset              = 270,-60
+postype             = p1
+projhits            = 8
+projmisstime        = 2
+palfx.add           = -200,-200,-200
+palfx.sinadd        = 20,20,200, 3
+palfx.invertall     = 0
+palfx.time          = 20
+
+[State 3000:        explod]
+type                = Explod
+trigger1            = animelem = 6
+anim                = 3003
+postype             = p1
+pos                 = 60,-5
+bindtime            = 1
+sprpriority         = 99
+scale               = .4, .5
+ownpal              = 1
+removeongethit      = 1
+ignorehitpause      = 0
+
+[State 3000:        Playsnd]
+type                = PlaySnd
+trigger1            = AnimElem = 5
+value               = 8,0 
+
+[State 3000:        Playsnd]
+type                = Playsnd
+trigger1            = AnimElem = 5
+value               = 8,10
+volume              = 255
+
+[State 3000:         Changestate]
+type                = ChangeState
+trigger1            = animtime = 0
+value               = 0
+ctrl                = 1
+
+;---------------------------------------------------------------------------;
+;                       [ Kaze no Kizu ]                                    ;
+;---------------------------------------------------------------------------;
+[Statedef 3010:     Kaze no Kizu]
+type                = S                      
+movetype            = A                    
+physics             = S                                      
+juggle              = 5
+sprpriority         = 2                     
+ctrl                = 0                        
+anim                = 3010                                                         
+poweradd            = -1000
+
+[State 3010:        SuperPause]
+type                = SuperPause
+trigger1            = !animelemtime(3)
+movetime            = 0
+time                = 110
+anim                = -1
+darken              = 0
+p2defmul            = 1
+channel             = 1
+
+[State 3010:        Hyper lvl1]
+type                = helper
+trigger1            = !animelemtime(3)
+helpertype          = normal
+stateno             = 8000
+ownpal              = 1
+persistent          = 0
+supermovetime       = 500
+pos                 = -25,-105
+
+[State 3010:        AfterImage]
+type                = AfterImage
+trigger1            = !animelemtime(3)
+time                = 99999999
+palbright           = 12,12,12
+palcontrast         = 200,0,0
+paladd              = 0,0,0
+palmul              = 1,1,1
+length              = 9
+frameGap            = 4
+timegap             = 2
+trans               = add1
+
+[State 3010:        Projectile]
+type                = Projectile   
+trigger1            = animelem = 9
+attr                = S,HP                
+animtype            = Diagup                
+guardflag           = MA                
+hitflag             = MA                  
+priority            = 5, Hit               
+pausetime           = 0, 0                
+damage              = 100,10
+sparkno             = -1           
+guard.sparkno       = -1
+sparkxy             = 0, -20
+hitsound 	    = s300,2
+guardsound          = s250,0
+ground.type         = High
+ground.slidetime    = 20
+ground.hittime      = 20
+Ground.velocity     = -5.5,-3.5
+air.velocity        = -5.5,-2.5
+EnvShake.time       = 15
+EnvShake.ampl       = 4
+p2stateno           = 6000
+ProjID              = 3010
+projanim            = 3011
+projremove          = 0
+projhitanim         = -1
+projremanim         = -1
+projcancelanim      = 1012
+projpriority        = 999
+projsprpriority     = 50
+projedgebound       = 800
+projstagebound      = 800
+projremovetime      = 16
+projscale           = 1, 1
+velocity            = 5,0
+accel               = .35, 0
+offset              = 180,0
+postype             = p1
+projhits            = 3
+projmisstime        = 2
+palfx.add           = 1,1,0
+palfx.mul           = 256,256,0
+palfx.sinadd        = 80,80,0,10
+palfx.invertall     = 0
+palfx.time          = 20
+
+[State 3010:        explod]
+type                = Explod
+trigger1            = animelem = 6
+anim                = 3012
+postype             = p1
+pos                 = 80,0
+bindtime            = 1
+sprpriority         = 99
+scale               = .5, .7
+ownpal              = 1
+removeongethit      = 1
+ignorehitpause      = 0
+
+[State 3010:        explod]
+type                = Explod
+trigger1            = animelem = 7
+anim                = 1013
+postype             = p1
+pos                 = -60,0
+bindtime            = -1
+sprpriority         = 99
+scale               = .5, .5
+ownpal              = 1
+removeongethit      = 1
+ignorehitpause      = 0
+
+[State 3010:        Playsnd]
+type                = PlaySnd
+trigger1            = AnimElem = 7
+value               = 8,20 
+
+[State 3010:        Playsnd]
+type                = Playsnd
+trigger1            = AnimElem = 9
+value               = 8,8
+channel             = 1 
+
+[State 3010:         Changestate]
+type                = ChangeState
+trigger1            = animtime = 0
+value               = 0
+ctrl                = 1
+
+;---------------------------------------------------------------------------;
+;                        [ Kongosoha ]                                      ;
+;---------------------------------------------------------------------------;
+[Statedef 3020:     Kongosoha]
+type                = S                      
+movetype            = A                    
+physics             = S                                      
+juggle              = 0
+sprpriority         = 2                     
+ctrl                = 0                        
+anim                = 1040                                                         
+poweradd            = -1000
+
+[State 3020:        SuperPause]
+type                = SuperPause
+trigger1            = !animelemtime(5)
+movetime            = 0
+time                = 110
+anim                = -1
+darken              = 0
+p2defmul            = 1
+channel             = 1
+
+[State 3020:        Hyper lvl1]
+type                = helper
+trigger1            = !animelemtime(5)
+helpertype          = normal
+stateno             = 8000
+ownpal              = 1
+persistent          = 0
+supermovetime       = 500
+pos                 = -20,-100
+
+[State 3020:        AfterImage]
+type                = AfterImage
+trigger1            = !animelemtime(5)
+time                = 99999999
+palbright           = 12,12,12
+palcontrast         = 200,0,0
+paladd              = 0,0,0
+palmul              = 1,1,1
+length              = 9
+frameGap            = 4
+timegap             = 2
+trans               = add1
+
+[State 3020:        Projectile]
+type                = Projectile   
+trigger1            = animelem = 7
+attr                = S,HP                
+animtype            = DiagUp                
+guardflag           = MA                
+hitflag             = MAF                  
+priority            = 5, Hit               
+pausetime           = 0, 0                
+damage              = 70,0
+sparkno             = -1           
+guard.sparkno       = -1
+sparkxy             = 0, -20
+hitsound 	    = s8,23
+guardsound          = s8,23
+ground.type         = High
+ground.slidetime    = 20
+ground.hittime      = 20
+Ground.velocity     = -5,-3
+air.velocity        = -5,-2
+EnvShake.time       = 15
+EnvShake.ampl       = 4
+fall                = 1
+ProjID              = 3020
+projanim            = 1041
+projremove          = 1
+projhitanim         = 1042
+projremanim         = 1042
+projcancelanim      = 1042
+projpriority        = 1
+projsprpriority     = 50
+projedgebound       = 100
+projstagebound      = 100
+projremovetime      = -1
+projscale           = 1, 1
+velocity            = 5,0
+offset              = 110,-34
+postype             = p1
+projhits            = 1
+palfx.add           = 1,1,1
+palfx.mul           = 256,256,256                                
+Palfx.sinadd        = 0,100,255, 3
+palfx.invertall     = 0
+palfx.time          = 20
+
+[State 3020:        Projectile]
+type                = Projectile   
+trigger1            = animelem = 7
+attr                = S,HP                
+animtype            = DiagUp                
+guardflag           = MA                
+hitflag             = MAF                  
+priority            = 5, Hit               
+pausetime           = 0, 0                
+damage              = 70,0
+sparkno             = -1           
+guard.sparkno       = -1
+sparkxy             = 0, -20
+hitsound 	    = s8,23
+guardsound          = s8,23
+ground.type         = High
+ground.slidetime    = 20
+ground.hittime      = 20
+Ground.velocity     = -5,-3
+air.velocity        = -5,-2
+EnvShake.time       = 15
+EnvShake.ampl       = 4
+fall                = 1
+ProjID              = 3020
+projanim            = 1041
+projremove          = 1
+projhitanim         = 1042
+projremanim         = 1042
+projcancelanim      = 1042
+projpriority        = 1
+projsprpriority     = 50
+projedgebound       = 100
+projstagebound      = 100
+projremovetime      = -1
+projscale           = 1, 1
+velocity            = 5,0
+offset              = 95,-48
+postype             = p1
+projhits            = 1
+palfx.add           = 1,1,1
+palfx.mul           = 256,256,256                                
+Palfx.sinadd        = 0,100,255, 3
+palfx.invertall     = 0
+palfx.time          = 20
+
+[State 3020:        Projectile]
+type                = Projectile   
+trigger1            = animelem = 7
+attr                = S,HP                
+animtype            = DiagUp                
+guardflag           = MA                
+hitflag             = MAF                  
+priority            = 5, Hit               
+pausetime           = 0, 0                
+damage              = 70,0
+sparkno             = -1           
+guard.sparkno       = -1
+sparkxy             = 0, -20
+hitsound 	    = s8,23
+guardsound          = s8,23
+ground.type         = High
+ground.slidetime    = 20
+ground.hittime      = 20
+Ground.velocity     = -5,-3
+air.velocity        = -5,-2
+EnvShake.time       = 15
+EnvShake.ampl       = 4
+fall                = 1
+ProjID              = 3020
+projanim            = 1041
+projremove          = 1
+projhitanim         = 1042
+projremanim         = 1042
+projcancelanim      = 1042
+projpriority        = 1
+projsprpriority     = 50
+projedgebound       = 100
+projstagebound      = 100
+projremovetime      = -1
+projscale           = 1, 1
+velocity            = 5,0
+offset              = 90,-60
+postype             = p1
+projhits            = 1
+palfx.add           = 1,1,1
+palfx.mul           = 256,256,256                                
+Palfx.sinadd        = 0,100,255, 3
+palfx.invertall     = 0
+palfx.time          = 20
+
+[State 3020:        Projectile]
+type                = Projectile   
+trigger1            = animelem = 7
+attr                = S,HP                
+animtype            = DiagUp                
+guardflag           = MA                
+hitflag             = MAF                  
+priority            = 5, Hit               
+pausetime           = 0, 0                
+damage              = 70,0
+sparkno             = -1           
+guard.sparkno       = -1
+sparkxy             = 0, -20
+hitsound 	    = s8,23
+guardsound          = s8,23
+ground.type         = High
+ground.slidetime    = 20
+ground.hittime      = 20
+Ground.velocity     = -5,-3
+air.velocity        = -5,-2
+EnvShake.time       = 15
+EnvShake.ampl       = 4
+fall                = 1
+ProjID              = 3020
+projanim            = 1041
+projremove          = 1
+projhitanim         = 1042
+projremanim         = 1042
+projcancelanim      = 1042
+projpriority        = 1
+projsprpriority     = 50
+projedgebound       = 100
+projstagebound      = 100
+projremovetime      = -1
+projscale           = 1, 1
+velocity            = 5,0
+offset              = 100,-72
+postype             = p1
+projhits            = 1
+palfx.add           = 1,1,1
+palfx.mul           = 256,256,256                                
+Palfx.sinadd        = 0,100,255, 3
+palfx.invertall     = 0
+palfx.time          = 20
+
+[State 3020:        Projectile]
+type                = Projectile   
+trigger1            = animelem = 7
+attr                = S,HP                
+animtype            = DiagUp                
+guardflag           = MA                
+hitflag             = MAF                  
+priority            = 5, Hit               
+pausetime           = 0, 0                
+damage              = 70,0
+sparkno             = -1           
+guard.sparkno       = -1
+sparkxy             = 0, -20
+hitsound 	    = s8,23
+guardsound          = s8,23
+ground.type         = High
+ground.slidetime    = 20
+ground.hittime      = 20
+Ground.velocity     = -5,-3
+air.velocity        = -5,-2
+EnvShake.time       = 15
+EnvShake.ampl       = 4
+fall                = 1
+ProjID              = 3020
+projanim            = 1041
+projremove          = 1
+projhitanim         = 1042
+projremanim         = 1042
+projcancelanim      = 1042
+projpriority        = 1
+projsprpriority     = 50
+projedgebound       = 100
+projstagebound      = 100
+projremovetime      = -1
+projscale           = 1, 1
+velocity            = 5,0
+offset              = 105,-84
+postype             = p1
+projhits            = 1
+palfx.add           = 1,1,1
+palfx.mul           = 256,256,256                                
+Palfx.sinadd        = 0,100,255, 3
+palfx.invertall     = 0
+palfx.time          = 20
+
+[State 3020:        explod]
+type                = Explod
+trigger1            = animelem = 7
+anim                = 1043
+postype             = p1
+pos                 = -10,-15
+bindtime            = -1
+sprpriority         = 99
+scale               = .5, .5
+ownpal              = 1
+removeongethit      = 1
+ignorehitpause      = 0
+
+[State 3020:        explod]
+type                = Explod
+trigger1            = animelem = 6
+anim                = 3020
+postype             = p1
+pos                 = 60,-5
+bindtime            = 1
+sprpriority         = 99
+scale               = .4, .5
+ownpal              = 1
+removeongethit      = 1
+ignorehitpause      = 0
+
+[State 3020:        explod]
+type                = Explod
+trigger1            = animelem = 7
+anim                = 11043
+postype             = p1
+pos                 = 110,-34
+bindtime            = 1
+sprpriority         = 50
+scale               = .5, .5
+ownpal              = 1
+removeongethit      = 1
+ignorehitpause      = 0
+
+[State 3020:        explod]
+type                = Explod
+trigger1            = animelem = 7
+anim                = 11043
+postype             = p1
+pos                 = 95,-48
+bindtime            = 1
+sprpriority         = 50
+scale               = .5, .5
+ownpal              = 1
+removeongethit      = 1
+ignorehitpause      = 0
+
+[State 3020:        explod]
+type                = Explod
+trigger1            = animelem = 7
+anim                = 11043
+postype             = p1
+pos                 = 90,-60
+bindtime            = 1
+sprpriority         = 50
+scale               = .5, .5
+ownpal              = 1
+removeongethit      = 1
+ignorehitpause      = 0
+
+[State 3020:        explod]
+type                = Explod
+trigger1            = animelem = 7
+anim                = 11043
+postype             = p1
+pos                 = 100,-72
+bindtime            = 1
+sprpriority         = 50
+scale               = .5, .5
+ownpal              = 1
+removeongethit      = 1
+ignorehitpause      = 0
+
+[State 3020:        explod]
+type                = Explod
+trigger1            = animelem = 7
+anim                = 11043
+postype             = p1
+pos                 = 105,-84
+bindtime            = 1
+sprpriority         = 50
+scale               = .5, .5
+ownpal              = 1
+removeongethit      = 1
+ignorehitpause      = 0
+
+[State 3020:        Playsnd]
+type                = PlaySnd
+trigger1            = AnimElem = 6
+value               = 8,14 
+
+[State 3020:        Playsnd]
+type                = Playsnd
+trigger1            = AnimElem = 7
+value               = 8,22
+channel             = 1
+
+[State 3020:         Changestate]
+type                = ChangeState
+trigger1            = animtime = 0
+value               = 0
+ctrl                = 1
+
+;---------------------------------------------------------------------------;

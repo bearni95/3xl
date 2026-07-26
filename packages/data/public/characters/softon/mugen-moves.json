@@ -1,0 +1,559 @@
+{
+	"name": "Softon",
+	"commands": [
+		{
+			"name": "AI0",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI1",
+			"input": "b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b"
+		},
+		{
+			"name": "AI2",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI3",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI4",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI5",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI6",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI7",
+			"input": "F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F"
+		},
+		{
+			"name": "AI8",
+			"input": "D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D"
+		},
+		{
+			"name": "AI9",
+			"input": "B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B"
+		},
+		{
+			"name": "AI10",
+			"input": "U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U"
+		},
+		{
+			"name": "AI11",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI12",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI13",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI14",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI15",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI16",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI17",
+			"input": "a,B,c,x,y,z,s,B,D,F,U,a,b,c,x,y,z,s,s"
+		},
+		{
+			"name": "AI18",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI19",
+			"input": "b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b"
+		},
+		{
+			"name": "AI20",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI21",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI22",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI23",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI24",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI25",
+			"input": "F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F"
+		},
+		{
+			"name": "AI26",
+			"input": "D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D"
+		},
+		{
+			"name": "AI27",
+			"input": "B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B"
+		},
+		{
+			"name": "AI28",
+			"input": "U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U"
+		},
+		{
+			"name": "AI29",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI30",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI31",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI32",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI33",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI34",
+			"input": "s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s,s"
+		},
+		{
+			"name": "AI35",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI36",
+			"input": "z,z,z,z,z,z,a,a,a,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI37",
+			"input": "z,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,z,z,z"
+		},
+		{
+			"name": "AI38",
+			"input": "z,z,z,z,z,a,a,a,z,z,z,z,z,a,a,a,z,z,z"
+		},
+		{
+			"name": "AI39",
+			"input": "z,z,z,z,z,a,a,a,z,z,z,z,z,z,a,a,z,z,z"
+		},
+		{
+			"name": "AI40",
+			"input": "z,z,z,z,a,a,a,z,z,z,z,a,z,z,a,a,z,z,z"
+		},
+		{
+			"name": "AI41",
+			"input": "z,z,z,a,z,z,z,z,z,z,z,z,z,a,a,z,z,z,z"
+		},
+		{
+			"name": "AI42",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI43",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,a,a,z"
+		},
+		{
+			"name": "AI44",
+			"input": "z,z,a,a,a,a,z,z,z,z,z,z,z,z,z,a,a,a,z"
+		},
+		{
+			"name": "AI45",
+			"input": "z,z,z,z,z,z,a,a,z,z,z,z,z,a,a,a,a,z,z"
+		},
+		{
+			"name": "AI46",
+			"input": "z,z,z,z,z,z,z,z,a,a,a,a,a,a,z,z,z,z,z"
+		},
+		{
+			"name": "AI47",
+			"input": "z,z,z,a,a,a,a,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI48",
+			"input": "z,z,z,z,z,a,a,a,z,z,z,a,a,a,z,z,a,z,a"
+		},
+		{
+			"name": "AI49",
+			"input": "z,z,z,z,a,a,a,z,z,z,z,z,a,a,a,z,z,z,z"
+		},
+		{
+			"name": "AI50",
+			"input": "z,z,z,a,a,z,z,z,z,z,z,z,z,z,a,a,z,z,z"
+		},
+		{
+			"name": "AI51",
+			"input": "z,z,z,a,a,z,z,z,z,a,z,z,z,z,a,a,z,z,z"
+		},
+		{
+			"name": "TripleKFPalm",
+			"input": "~D, DF, F, D, DF, F, x"
+		},
+		{
+			"name": "TripleKFPalm2",
+			"input": "~D, DF, F, D, DF, F, y"
+		},
+		{
+			"name": "SmashKFUpper",
+			"input": "~D, DB, B, D, DB, B, x"
+		},
+		{
+			"name": "^¸´",
+			"input": "~D, DF, F, D, DF, F, a"
+		},
+		{
+			"name": "upper_x",
+			"input": "~F, D, DF, x"
+		},
+		{
+			"name": "upper_y",
+			"input": "~F, D, DF, y"
+		},
+		{
+			"name": "upper_xy",
+			"input": "~F, D, DF, x+y"
+		},
+		{
+			"name": "magyou",
+			"input": "~D, DF, F, x"
+		},
+		{
+			"name": "236_y",
+			"input": "~D, DF, F, y"
+		},
+		{
+			"name": "236_xy",
+			"input": "~D, DF, F, x+y"
+		},
+		{
+			"name": "214_a",
+			"input": "~D, DB, B, a"
+		},
+		{
+			"name": "214_y",
+			"input": "~D, DB, B, y"
+		},
+		{
+			"name": "214_xy",
+			"input": "~D, DB, B, x+y"
+		},
+		{
+			"name": "cannon",
+			"input": "~D, DF, F, a"
+		},
+		{
+			"name": "214_b",
+			"input": "~D, DF, F, b"
+		},
+		{
+			"name": "FF_ab",
+			"input": "F, F, a+b"
+		},
+		{
+			"name": "FF_a",
+			"input": "F, F, a"
+		},
+		{
+			"name": "FF_b",
+			"input": "F, F, b"
+		},
+		{
+			"name": "jump",
+			"input": "~$D,$U"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "Luxemburg",
+			"input": "a+b"
+		},
+		{
+			"name": "Morocco",
+			"input": "/$F,a+b"
+		},
+		{
+			"name": "Jamaica",
+			"input": "/$D,a+b"
+		},
+		{
+			"name": "helper",
+			"input": "y+b"
+		},
+		{
+			"name": "roll",
+			"input": "x+a"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "jaku",
+			"input": "a"
+		},
+		{
+			"name": "kyou",
+			"input": "b"
+		},
+		{
+			"name": "No",
+			"input": "c"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "hold_c",
+			"input": "/c"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		}
+	],
+	"moves": [
+		{
+			"name": "Dash",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "airdashF",
+			"stateNo": 103,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Back Step",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 105,
+			"animation": "run-back"
+		},
+		{
+			"name": "airdashB",
+			"stateNo": 108,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "State 120",
+			"stateNo": 120,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-start"
+		},
+		{
+			"name": "Samoa",
+			"stateNo": 195,
+			"commands": [
+				"start"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "jaku",
+			"stateNo": 200,
+			"commands": [
+				"jaku"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "kyou",
+			"stateNo": 201,
+			"commands": [
+				"kyou"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 201,
+			"animation": "action-201"
+		},
+		{
+			"name": "Luxemburg",
+			"stateNo": 210,
+			"commands": [
+				"Luxemburg"
+			],
+			"inputs": [
+				"a+b"
+			],
+			"movetype": "A",
+			"damage": 75,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Morocco",
+			"stateNo": 220,
+			"commands": [
+				"Morocco"
+			],
+			"inputs": [
+				"/$F,a+b"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 220,
+			"animation": "action-220"
+		},
+		{
+			"name": "Jamaica",
+			"stateNo": 230,
+			"commands": [
+				"Jamaica"
+			],
+			"inputs": [
+				"/$D,a+b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "jaku",
+			"stateNo": 300,
+			"commands": [
+				"jaku"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "kyou",
+			"stateNo": 301,
+			"commands": [
+				"kyou"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 201,
+			"animation": "action-201"
+		},
+		{
+			"name": "Babylon",
+			"stateNo": 400,
+			"commands": [
+				"cannon"
+			],
+			"inputs": [
+				"~D, DF, F, a"
+			],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 400,
+			"animation": "action-400"
+		}
+	]
+}

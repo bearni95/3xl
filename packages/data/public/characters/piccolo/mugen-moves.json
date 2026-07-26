@@ -1,0 +1,1011 @@
+{
+	"name": "Piccolo",
+	"commands": [
+		{
+			"name": "Transform",
+			"input": "s"
+		},
+		{
+			"name": "2QCF_Punch",
+			"input": "~D, DF, F, D, DF, F, a"
+		},
+		{
+			"name": "2QCF_2Punch",
+			"input": "~D, DF, F, D, DF, F, a+b"
+		},
+		{
+			"name": "2QCF_Kick",
+			"input": "~D, DF, F, D, DF, F, x"
+		},
+		{
+			"name": "2QCF_2Kick",
+			"input": "~D, DF, F, D, DF, F, x+y"
+		},
+		{
+			"name": "2QCB_Punch",
+			"input": "~D, DB, B,D, DB, B,a"
+		},
+		{
+			"name": "2QCB_2Punch",
+			"input": "~D, DB, B,D, DB, B,a+b"
+		},
+		{
+			"name": "2QCB_Kick",
+			"input": "~D, DB, B,D, DB, B,x"
+		},
+		{
+			"name": "2QCB_2Kick",
+			"input": "~D, DB, B,D, DB, B,x+y"
+		},
+		{
+			"name": "blocking",
+			"input": "$F,x"
+		},
+		{
+			"name": "upper_x",
+			"input": "~F, D, DF, x"
+		},
+		{
+			"name": "upper_y",
+			"input": "~F, D, DF, y"
+		},
+		{
+			"name": "upper_xy",
+			"input": "~F, D, DF, x+y"
+		},
+		{
+			"name": "QCF_x",
+			"input": "~D, DF, F, x"
+		},
+		{
+			"name": "QCF_y",
+			"input": "~D, DF, F, y"
+		},
+		{
+			"name": "QCF_xy",
+			"input": "~D, DF, F, x+y"
+		},
+		{
+			"name": "QCB_x",
+			"input": "~D, DB, B, x"
+		},
+		{
+			"name": "QCB_y",
+			"input": "~D, DB, B, y"
+		},
+		{
+			"name": "QCB_xy",
+			"input": "~D, DB, B, x+y"
+		},
+		{
+			"name": "QCF_a",
+			"input": "~D, DF, F, a"
+		},
+		{
+			"name": "QCF_b",
+			"input": "~D, DF, F, b"
+		},
+		{
+			"name": "QCF_ab",
+			"input": "~D, DF, F, a+b"
+		},
+		{
+			"name": "FF_ab",
+			"input": "F, F, a+b"
+		},
+		{
+			"name": "FF_a",
+			"input": "F, F, a"
+		},
+		{
+			"name": "FF_b",
+			"input": "F, F, b"
+		},
+		{
+			"name": "Upper_PunchW",
+			"input": "~F, D, DF, a"
+		},
+		{
+			"name": "QCF_PunchW",
+			"input": "~D, DF, F, a"
+		},
+		{
+			"name": "QCF_PunchS",
+			"input": "~D, DF, F, b"
+		},
+		{
+			"name": "QCF_PunchE",
+			"input": "~D, DF, F, a+b"
+		},
+		{
+			"name": "QCB_PunchW",
+			"input": "~D, DB, B, a"
+		},
+		{
+			"name": "QCB_PunchS",
+			"input": "~D, DB, B, b"
+		},
+		{
+			"name": "QCB_PunchE",
+			"input": "~D, DB, B, a+b"
+		},
+		{
+			"name": "QCF_KickW",
+			"input": "~D, DF, F, x"
+		},
+		{
+			"name": "QCF_KickS",
+			"input": "~D, DF, F, y"
+		},
+		{
+			"name": "QCF_KickE",
+			"input": "~D, DF, F, x+y"
+		},
+		{
+			"name": "QCB_KickW",
+			"input": "~D, DB, B, x"
+		},
+		{
+			"name": "QCB_KickS",
+			"input": "~D, DB, B, y"
+		},
+		{
+			"name": "hold kick",
+			"input": "/x"
+		},
+		{
+			"name": "DD_PunchW",
+			"input": "~D,D,a"
+		},
+		{
+			"name": "DD_PunchS",
+			"input": "~D,D,b"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "Fwd",
+			"input": "F"
+		},
+		{
+			"name": "Back",
+			"input": "B"
+		},
+		{
+			"name": "Up",
+			"input": "U"
+		},
+		{
+			"name": "Down",
+			"input": "D"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "s",
+			"input": "s"
+		},
+		{
+			"name": "Grab",
+			"input": "a+x"
+		},
+		{
+			"name": "Z Gauge",
+			"input": "b+y"
+		},
+		{
+			"name": "Z GaugeF",
+			"input": "/$F,b+y"
+		},
+		{
+			"name": "Z GaugeB",
+			"input": "/$B,b+y"
+		},
+		{
+			"name": "Z Gauge Hold",
+			"input": "/b+y"
+		},
+		{
+			"name": "Charge",
+			"input": "c"
+		},
+		{
+			"name": "Hold Charge",
+			"input": "/c+z"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "Dash",
+			"input": "z"
+		},
+		{
+			"name": "B_Dash",
+			"input": "/$B,z"
+		},
+		{
+			"name": "Z_Dash",
+			"input": "/$U,z"
+		},
+		{
+			"name": "Unique",
+			"input": "/$F,y"
+		},
+		{
+			"name": "Jumping KneeW",
+			"input": "~30$B,F,x"
+		},
+		{
+			"name": "Jumping KneeWT",
+			"input": "~B,F,x"
+		},
+		{
+			"name": "Jumping KneeS",
+			"input": "~30$B,F,y"
+		},
+		{
+			"name": "Jumping KneeST",
+			"input": "~B,F,y"
+		},
+		{
+			"name": "Jumping KneeE",
+			"input": "~30$B,F,x+y"
+		},
+		{
+			"name": "Jumping KneeET",
+			"input": "~B,F,x+y"
+		},
+		{
+			"name": "Arm StretchW",
+			"input": "~30$B,F,a"
+		},
+		{
+			"name": "Arm StretchWT",
+			"input": "~B,F,a"
+		},
+		{
+			"name": "Arm StretchS",
+			"input": "~30$B,F,b"
+		},
+		{
+			"name": "Arm StretchST",
+			"input": "~B,F,b"
+		},
+		{
+			"name": "Arm StretchE",
+			"input": "~30$B,F,a+b"
+		},
+		{
+			"name": "Arm StretchET",
+			"input": "~B,F,a+b"
+		},
+		{
+			"name": "Explosive WaveW",
+			"input": "~30$D,$U,a"
+		},
+		{
+			"name": "Explosive WaveS",
+			"input": "~30$D,$U,b"
+		},
+		{
+			"name": "Explosive WaveE",
+			"input": "~30$D,$U,a+b"
+		}
+	],
+	"moves": [
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "Run Fwd",
+			"stateNo": 101,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 105,
+			"animation": "run-back"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 106,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 105,
+			"animation": "run-back"
+		},
+		{
+			"name": "State 120",
+			"stateNo": 120,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-start"
+		},
+		{
+			"name": "Stand Light Punch",
+			"stateNo": 200,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Stand Strong Punch",
+			"stateNo": 210,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Stand Light Kick",
+			"stateNo": 220,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 220,
+			"animation": "action-220"
+		},
+		{
+			"name": "Standing Strong Kick",
+			"stateNo": 230,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 65,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "Unique",
+			"stateNo": 231,
+			"commands": [
+				"Unique"
+			],
+			"inputs": [
+				"/$F,y"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 231,
+			"animation": "action-231"
+		},
+		{
+			"name": "Crouching Light Punch",
+			"stateNo": 400,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouching Strong Punch",
+			"stateNo": 410,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouching Light Kick",
+			"stateNo": 420,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 420,
+			"animation": "action-420"
+		},
+		{
+			"name": "Crouching Strong Kick",
+			"stateNo": 430,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 430,
+			"animation": "action-430"
+		},
+		{
+			"name": "Jump Light Punch",
+			"stateNo": 600,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Jump Strong Punch",
+			"stateNo": 610,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 72,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Jump Light Kick",
+			"stateNo": 620,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 620,
+			"animation": "action-620"
+		},
+		{
+			"name": "Jump Strong Kick",
+			"stateNo": 630,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 85,
+			"anim": 630,
+			"animation": "action-630"
+		},
+		{
+			"name": "AI",
+			"stateNo": 700,
+			"commands": [],
+			"inputs": [],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 700,
+			"animation": "action-700"
+		},
+		{
+			"name": "AI",
+			"stateNo": 800,
+			"commands": [],
+			"inputs": [],
+			"movetype": "A",
+			"damage": 5,
+			"anim": 800,
+			"animation": "action-800"
+		},
+		{
+			"name": "AI",
+			"stateNo": 820,
+			"commands": [],
+			"inputs": [],
+			"movetype": "I",
+			"damage": null,
+			"anim": 820,
+			"animation": "action-820"
+		},
+		{
+			"name": "AI",
+			"stateNo": 822,
+			"commands": [],
+			"inputs": [],
+			"movetype": "I",
+			"damage": null,
+			"anim": 820,
+			"animation": "action-820"
+		},
+		{
+			"name": "Charge",
+			"stateNo": 900,
+			"commands": [
+				"Charge"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": null,
+			"animation": "action-900"
+		},
+		{
+			"name": "Destructive Wave",
+			"stateNo": 1000,
+			"commands": [
+				"QCF_PunchW"
+			],
+			"inputs": [
+				"~D, DF, F, a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Destructive Wave",
+			"stateNo": 1001,
+			"commands": [
+				"QCF_PunchS"
+			],
+			"inputs": [
+				"~D, DF, F, b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1001,
+			"animation": "action-1001"
+		},
+		{
+			"name": "Destructive Wave",
+			"stateNo": 1002,
+			"commands": [
+				"QCF_PunchE"
+			],
+			"inputs": [
+				"~D, DF, F, a+b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1002,
+			"animation": "action-1002"
+		},
+		{
+			"name": "Destructive Wave",
+			"stateNo": 1010,
+			"commands": [
+				"QCF_PunchW"
+			],
+			"inputs": [
+				"~D, DF, F, a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1010,
+			"animation": "action-1010"
+		},
+		{
+			"name": "Destructive Wave",
+			"stateNo": 1011,
+			"commands": [
+				"QCF_PunchS"
+			],
+			"inputs": [
+				"~D, DF, F, b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1011,
+			"animation": "action-1011"
+		},
+		{
+			"name": "Destructive Wave",
+			"stateNo": 1012,
+			"commands": [
+				"QCF_PunchE"
+			],
+			"inputs": [
+				"~D, DF, F, a+b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 1012,
+			"animation": "action-1012"
+		},
+		{
+			"name": "Dive Strike",
+			"stateNo": 1100,
+			"commands": [
+				"QCF_KickW"
+			],
+			"inputs": [
+				"~D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "Dive Strike",
+			"stateNo": 1101,
+			"commands": [
+				"QCF_KickS"
+			],
+			"inputs": [
+				"~D, DF, F, y"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 1101,
+			"animation": "action-1101"
+		},
+		{
+			"name": "Dive Strike",
+			"stateNo": 1102,
+			"commands": [
+				"QCF_KickE"
+			],
+			"inputs": [
+				"~D, DF, F, x+y"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 1102,
+			"animation": "action-1102"
+		},
+		{
+			"name": "Jumping Knee",
+			"stateNo": 1200,
+			"commands": [
+				"Jumping KneeW",
+				"Jumping KneeWT"
+			],
+			"inputs": [
+				"~30$B,F,x",
+				"~B,F,x"
+			],
+			"movetype": "A",
+			"damage": 65,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "Jumping Knee",
+			"stateNo": 1201,
+			"commands": [
+				"Jumping KneeS",
+				"Jumping KneeST"
+			],
+			"inputs": [
+				"~30$B,F,y",
+				"~B,F,y"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 1201,
+			"animation": "action-1201"
+		},
+		{
+			"name": "Jumping Knee",
+			"stateNo": 1202,
+			"commands": [
+				"Jumping KneeE",
+				"Jumping KneeET"
+			],
+			"inputs": [
+				"~30$B,F,x+y",
+				"~B,F,x+y"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 1202,
+			"animation": "action-1202"
+		},
+		{
+			"name": "Arm Stretch",
+			"stateNo": 1300,
+			"commands": [
+				"Arm StretchW",
+				"Arm StretchWT"
+			],
+			"inputs": [
+				"~30$B,F,a",
+				"~B,F,a"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1300,
+			"animation": "action-1300"
+		},
+		{
+			"name": "Arm Stretch",
+			"stateNo": 1301,
+			"commands": [
+				"Arm StretchS",
+				"Arm StretchST"
+			],
+			"inputs": [
+				"~30$B,F,b",
+				"~B,F,b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1301,
+			"animation": "action-1301"
+		},
+		{
+			"name": "Arm Stretch",
+			"stateNo": 1302,
+			"commands": [
+				"Arm StretchE",
+				"Arm StretchET"
+			],
+			"inputs": [
+				"~30$B,F,a+b",
+				"~B,F,a+b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 1302,
+			"animation": "action-1302"
+		},
+		{
+			"name": "Explosive Wave",
+			"stateNo": 1400,
+			"commands": [
+				"Explosive WaveW"
+			],
+			"inputs": [
+				"~30$D,$U,a"
+			],
+			"movetype": "A",
+			"damage": 70,
+			"anim": 1400,
+			"animation": "action-1400"
+		},
+		{
+			"name": "Explosive Wave",
+			"stateNo": 1401,
+			"commands": [
+				"Explosive WaveS"
+			],
+			"inputs": [
+				"~30$D,$U,b"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 1400,
+			"animation": "action-1400"
+		},
+		{
+			"name": "Explosive Wave",
+			"stateNo": 1402,
+			"commands": [
+				"Explosive WaveE"
+			],
+			"inputs": [
+				"~30$D,$U,a+b"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 1400,
+			"animation": "action-1400"
+		},
+		{
+			"name": "Special Beam Cannon",
+			"stateNo": 2000,
+			"commands": [
+				"2QCF_Punch",
+				"a"
+			],
+			"inputs": [
+				"~D, DF, F, D, DF, F, a",
+				"a"
+			],
+			"movetype": "A",
+			"damage": 150,
+			"anim": 2000,
+			"animation": "action-2000"
+		},
+		{
+			"name": "Hellzone Grenade",
+			"stateNo": 2100,
+			"commands": [
+				"2QCF_Kick"
+			],
+			"inputs": [
+				"~D, DF, F, D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 2100,
+			"animation": "action-2100"
+		},
+		{
+			"name": "Light Grenade",
+			"stateNo": 2200,
+			"commands": [
+				"2QCF_2Punch"
+			],
+			"inputs": [
+				"~D, DF, F, D, DF, F, a+b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 2200,
+			"animation": "action-2200"
+		},
+		{
+			"name": "Rush Combo",
+			"stateNo": 6000,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 220,
+			"animation": "action-220"
+		},
+		{
+			"name": "Rush Combo",
+			"stateNo": 6001,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 230,
+			"animation": "action-230"
+		},
+		{
+			"name": "Transform",
+			"stateNo": 7000,
+			"commands": [
+				"Transform"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "U",
+			"damage": null,
+			"anim": 7000,
+			"animation": "action-7000"
+		}
+	]
+}

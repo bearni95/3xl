@@ -1,0 +1,21 @@
+[Info]
+name         = "Beauty"
+displayname  = "Beauty"
+author       = "TYOwwOMAww"
+pal.defaults = 6,2,3,4
+
+[Files]
+cmd     = Beauty.cmd
+cns     = Beauty.cns
+st      = Beauty.cns
+st2    = BeautyS.cns
+stcommon = common1.cns 
+sprite  = Beauty.sff
+anim    = Beauty.air
+sound   = Beauty.snd
+pal1    = Beauty.act  ;通常カラー
+pal2    = Beauty2.act ;青カラー
+pal3    = Beauty3.act ;緑カラー
+pal4    = Beauty4.act ;黄カラー
+pal5    = Beauty5.act ;黒カラー
+pal6    = Beauty6.act ;白カラー

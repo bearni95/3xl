@@ -1,0 +1,36 @@
+
+[Info]
+name = "vegeta"
+displayname = "Super Vegeta"
+versiondate = 
+mugenversion = 
+author = "CHOUJIN&557&Kinhyakushiki&barbatos";edit by Sookie
+pal.defaults = 4, 1, 5, 2
+
+[Files]
+sprite = vegeta.sff
+anim = vegeta.air
+sound = vegeta.snd
+cmd = vegeta.cmd
+cns = vegeta.cns
+stcommon = common1.cns
+st = vegeta.cns
+st1 = attacks.cns
+st2 = specials.cns
+st3 = hypers.cns
+pal1 = 1.act
+pal2 = 2.act
+pal3 = 3.act
+pal4 = vegeta4.act
+pal5 = vegeta5.act
+pal6 = vegeta6.act
+pal7 = vegeta.act
+pal8 = vegeta2.act
+pal9 = vegeta3.act
+pal10 = vegeta4.act
+pal11 = vegeta5.act
+pal12 = vegeta6.act
+
+[Arcade]
+intro.storyboard = 
+ending.storyboard = 

@@ -1,0 +1,36 @@
+;---------------------------------------------------------------------------;
+;                   [ Inuyasha by Meta Gouki ]                              ;
+;---------------------------------------------------------------------------;
+;---------------------------------------------------------------------------;
+                              [Info]
+;---------------------------------------------------------------------------;
+Name            ="Inuyasha"
+DisplayName     ="Inuyasha"
+Author          ="Meta Gouki"
+Pal.Defaults    =1,2,3,4,5,6
+versiondate     =3-4-2009
+
+;---------------------------------------------------------------------------;
+                             [Files]
+;---------------------------------------------------------------------------;
+cmd             =Inuyasha.cmd
+cns             =Inuyasha.cns
+st              =basic.cns
+stcommon        =common1.cns
+sprite          =inuyasha.sff
+anim            =inuyasha.air
+sound           =inuyasha.snd
+pal1		=inuyasha1.act
+pal2		=inuyasha2.act
+pal3		=inuyasha3.act
+pal4		=inuyasha4.act
+pal5		=inuyasha5.act
+pal6		=inuyasha6.act
+st1		=supers.cns
+st2		=hypers.cns
+st3		=statedef-3.cns
+
+;---------------------------------------------------------------------------;
+[Arcade]
+intro.storyboard=
+ending.storyboard=

@@ -1,0 +1,747 @@
+{
+	"name": "Jelly",
+	"commands": [
+		{
+			"name": "magic",
+			"input": "D,F,x"
+		},
+		{
+			"name": "gasser kick",
+			"input": "D,B,c"
+		},
+		{
+			"name": "uppercut",
+			"input": "D,F,y"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down down_a",
+			"input": "~D, D, a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "down down_b",
+			"input": "~D, D, b"
+		},
+		{
+			"name": "down_c",
+			"input": "/$D,c"
+		},
+		{
+			"name": "down_x",
+			"input": "/$D,x"
+		},
+		{
+			"name": "down down_x",
+			"input": "~D, D, x"
+		},
+		{
+			"name": "down_y",
+			"input": "/$D,y"
+		},
+		{
+			"name": "down down_y",
+			"input": "~D, D, y"
+		},
+		{
+			"name": "down_z",
+			"input": "/$D,z"
+		},
+		{
+			"name": "down_s",
+			"input": "/$D,s"
+		},
+		{
+			"name": "forward_b",
+			"input": "/$F,b"
+		},
+		{
+			"name": "forward_a",
+			"input": "/$F,a"
+		},
+		{
+			"name": "forward_c",
+			"input": "/$F,c"
+		},
+		{
+			"name": "forward_x",
+			"input": "/$F,x"
+		},
+		{
+			"name": "forward_z",
+			"input": "/$F,z"
+		},
+		{
+			"name": "forward_y",
+			"input": "/$F,y"
+		},
+		{
+			"name": "back_z",
+			"input": "/$B,z"
+		},
+		{
+			"name": "back_c",
+			"input": "/$B,c"
+		},
+		{
+			"name": "back_b",
+			"input": "/$B,b"
+		},
+		{
+			"name": "Up_z",
+			"input": "/$U,z"
+		},
+		{
+			"name": "hold a",
+			"input": "/a"
+		},
+		{
+			"name": "hold b",
+			"input": "/b"
+		},
+		{
+			"name": "hold c",
+			"input": "/c"
+		},
+		{
+			"name": "hold y",
+			"input": "/y"
+		},
+		{
+			"name": "hold z",
+			"input": "/z"
+		},
+		{
+			"name": "hold s",
+			"input": "/s"
+		},
+		{
+			"name": "hold x",
+			"input": "/x"
+		},
+		{
+			"name": "hold a + b",
+			"input": "a+b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "s",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "QCF",
+			"input": "~D, DF, F"
+		},
+		{
+			"name": "QCF_x",
+			"input": "~D, DF, F, x"
+		},
+		{
+			"name": "QCF_z",
+			"input": "~D, DF, F, z"
+		},
+		{
+			"name": "QCF_b",
+			"input": "~D, DF, F, b"
+		},
+		{
+			"name": "QCF_s",
+			"input": "~D, DF, F, s"
+		},
+		{
+			"name": "QCF_a",
+			"input": "~D, DF, F, a"
+		},
+		{
+			"name": "QCF_hold x",
+			"input": "~D, DF, F, /x"
+		},
+		{
+			"name": "QCF_y",
+			"input": "~D, DF, F, y"
+		},
+		{
+			"name": "QCF_c",
+			"input": "~D, DF, F, c"
+		},
+		{
+			"name": "QCB_a",
+			"input": "~D, DB, B, a"
+		},
+		{
+			"name": "QCB_c",
+			"input": "~D, DB, B, c"
+		},
+		{
+			"name": "QCB_y",
+			"input": "~D, DB, B, y"
+		},
+		{
+			"name": "QCB_s",
+			"input": "~D, DB, B, s"
+		},
+		{
+			"name": "QCB_z",
+			"input": "~D, DB, B, z"
+		},
+		{
+			"name": "QCB_x",
+			"input": "~D, DB, B, x"
+		},
+		{
+			"name": "QCB_hold x",
+			"input": "~D, DB, B, /x"
+		},
+		{
+			"name": "QCB_b",
+			"input": "~D, DB, B, b"
+		},
+		{
+			"name": "2QCF_a",
+			"input": "~D, DF, F, D, DF, F, a"
+		},
+		{
+			"name": "2QCF_b",
+			"input": "~D, DF, F, D, DF, F, b"
+		},
+		{
+			"name": "2QCF_c",
+			"input": "~D, DF, F, D, DF, F, c"
+		},
+		{
+			"name": "2QCF_x",
+			"input": "~D, DF, F, D, DF, F, x"
+		},
+		{
+			"name": "2QCF_y",
+			"input": "~D, DF, F, D, DF, F, y"
+		},
+		{
+			"name": "2QCF_z",
+			"input": "~D, DF, F, D, DF, F, z"
+		},
+		{
+			"name": "2QCF_s",
+			"input": "~D, DF, F, D, DF, F, s"
+		},
+		{
+			"name": "2QCB_a",
+			"input": "~D, DB, B, D, DB, B, a"
+		},
+		{
+			"name": "2QCB_b",
+			"input": "~D, DB, B, D, DB, B, b"
+		},
+		{
+			"name": "2QCB_c",
+			"input": "~D, DB, B, D, DB, B, c"
+		},
+		{
+			"name": "2QCB_x",
+			"input": "~D, DB, B, D, DB, B, x"
+		},
+		{
+			"name": "2QCB_y",
+			"input": "~D, DB, B, D, DB, B, y"
+		},
+		{
+			"name": "2QCB_z",
+			"input": "~D, DB, B, D, DB, B, z"
+		},
+		{
+			"name": "2QCB_s",
+			"input": "~D, DB, B, D, DB, B, s"
+		},
+		{
+			"name": "DF_a",
+			"input": "~F, D, DF, a"
+		},
+		{
+			"name": "DF_b",
+			"input": "~F, D, DF, b"
+		},
+		{
+			"name": "DF_c",
+			"input": "~F, D, DF, c"
+		},
+		{
+			"name": "DF_x",
+			"input": "~F, D, DF, x"
+		},
+		{
+			"name": "DF_y",
+			"input": "~F, D, DF, y"
+		},
+		{
+			"name": "DF_z",
+			"input": "~F, D, DF, z"
+		},
+		{
+			"name": "DB_a",
+			"input": "~B, D, DB, a"
+		},
+		{
+			"name": "DB_b",
+			"input": "~B, D, DB, b"
+		},
+		{
+			"name": "DB_c",
+			"input": "~B, D, DB, c"
+		},
+		{
+			"name": "DB_x",
+			"input": "~B, D, DB, x"
+		},
+		{
+			"name": "DB_y",
+			"input": "~B, D, DB, y"
+		},
+		{
+			"name": "DB_z",
+			"input": "~B, D, DB, z"
+		},
+		{
+			"name": "CPU1",
+			"input": "D, D, U, U, D, U"
+		},
+		{
+			"name": "CPU2",
+			"input": "D, U, U, D, D, U"
+		},
+		{
+			"name": "CPU3",
+			"input": "D, D, D, U, U, U"
+		},
+		{
+			"name": "CPU4",
+			"input": "U, D, B, F, a, b, x"
+		},
+		{
+			"name": "CPU5",
+			"input": "U, D, B, F, a, b, y"
+		},
+		{
+			"name": "CPU6",
+			"input": "U, D, B, F, a, b, z"
+		},
+		{
+			"name": "CPU7",
+			"input": "U, D, B, F, a, a, a"
+		},
+		{
+			"name": "CPU8",
+			"input": "U, D, B, F, a, a, b"
+		},
+		{
+			"name": "CPU9",
+			"input": "U, D, B, F, a, a, c"
+		}
+	],
+	"moves": [
+		{
+			"name": "AI walk fwd & bck",
+			"stateNo": 20,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "walk"
+		},
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run"
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "State 130",
+			"stateNo": 130,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-stand"
+		},
+		{
+			"name": "State 131",
+			"stateNo": 131,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-crouch"
+		},
+		{
+			"name": "State 132",
+			"stateNo": 132,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-air"
+		},
+		{
+			"name": "State 150",
+			"stateNo": 150,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-stand-hit"
+		},
+		{
+			"name": "State 152",
+			"stateNo": 152,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-air-hit"
+		},
+		{
+			"name": "AutoTaunt",
+			"stateNo": 195,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "dizzy"
+		},
+		{
+			"name": "punch",
+			"stateNo": 200,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Gasser Slide",
+			"stateNo": 205,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 205,
+			"animation": "action-205"
+		},
+		{
+			"name": "dark magic",
+			"stateNo": 234,
+			"commands": [
+				"QCB_y"
+			],
+			"inputs": [
+				"~D, DB, B, y"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 267,
+			"animation": "action-267"
+		},
+		{
+			"name": "punch1",
+			"stateNo": 236,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 236,
+			"animation": "action-236"
+		},
+		{
+			"name": "yugioh celtic gurdian",
+			"stateNo": 267,
+			"commands": [
+				"c",
+				"holdback"
+			],
+			"inputs": [
+				"c",
+				"/$B"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 267,
+			"animation": "action-267"
+		},
+		{
+			"name": "bobobo frying pan",
+			"stateNo": 268,
+			"commands": [
+				"a",
+				"holdback"
+			],
+			"inputs": [
+				"a",
+				"/$B"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 0,
+			"animation": "idle"
+		},
+		{
+			"name": "bobobo beam",
+			"stateNo": 275,
+			"commands": [
+				"a",
+				"holdfwd"
+			],
+			"inputs": [
+				"a",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 275,
+			"animation": "action-275"
+		},
+		{
+			"name": "karate uppercut",
+			"stateNo": 281,
+			"commands": [
+				"uppercut"
+			],
+			"inputs": [
+				"D,F,y"
+			],
+			"movetype": "A",
+			"damage": 5,
+			"anim": 281,
+			"animation": "action-281"
+		},
+		{
+			"name": "Snot Attck",
+			"stateNo": 285,
+			"commands": [
+				"c",
+				"holdfwd"
+			],
+			"inputs": [
+				"c",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 285,
+			"animation": "action-285"
+		},
+		{
+			"name": "Tramsform Rapid Punch",
+			"stateNo": 294,
+			"commands": [
+				"QCB_z"
+			],
+			"inputs": [
+				"~D, DB, B, z"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 294,
+			"animation": "action-294"
+		},
+		{
+			"name": "rocket",
+			"stateNo": 469,
+			"commands": [
+				"x",
+				"holdback"
+			],
+			"inputs": [
+				"x",
+				"/$B"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 469,
+			"animation": "action-469"
+		},
+		{
+			"name": "Tramsform attck",
+			"stateNo": 561,
+			"commands": [
+				"QCF_z"
+			],
+			"inputs": [
+				"~D, DF, F, z"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 561,
+			"animation": "action-561"
+		},
+		{
+			"name": "don patch throw",
+			"stateNo": 587,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 650,
+			"animation": "action-650"
+		},
+		{
+			"name": "transform punch",
+			"stateNo": 602,
+			"commands": [
+				"x",
+				"holdfwd"
+			],
+			"inputs": [
+				"x",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 602,
+			"animation": "action-602"
+		},
+		{
+			"name": "Magic",
+			"stateNo": 700,
+			"commands": [
+				"QCF_x"
+			],
+			"inputs": [
+				"~D, DF, F, x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 700,
+			"animation": "action-700"
+		},
+		{
+			"name": "bobobo shake",
+			"stateNo": 713,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 190,
+			"animation": "action-190"
+		},
+		{
+			"name": "gasser kick",
+			"stateNo": 963,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 190,
+			"animation": "action-190"
+		}
+	]
+}

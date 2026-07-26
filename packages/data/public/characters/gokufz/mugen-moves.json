@@ -1,0 +1,873 @@
+{
+	"name": "Goku",
+	"commands": [
+		{
+			"name": "AI_1",
+			"input": "b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b"
+		},
+		{
+			"name": "AI_2",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI_3",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI_4",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI_5",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI_6",
+			"input": "z,z,z,z,z,z,z,z,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI_7",
+			"input": "F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F"
+		},
+		{
+			"name": "AI_8",
+			"input": "D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D"
+		},
+		{
+			"name": "AI_9",
+			"input": "B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B,B"
+		},
+		{
+			"name": "AI_10",
+			"input": "U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U"
+		},
+		{
+			"name": "AI_11",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI_12",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "AI_13",
+			"input": "x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x"
+		},
+		{
+			"name": "AI_14",
+			"input": "y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y"
+		},
+		{
+			"name": "AI_15",
+			"input": "z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z,z"
+		},
+		{
+			"name": "AI_16",
+			"input": "a,a,a,b,b,b,x,x,x,y,y,y,c,c,c,z,z,z,z"
+		},
+		{
+			"name": "AI_17",
+			"input": "a,B,c,x,y,z,c,B,D,F,U,a,b,c,x,y,x,b,a"
+		},
+		{
+			"name": "AI_18",
+			"input": "a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a,a"
+		},
+		{
+			"name": "AI_19",
+			"input": "b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b"
+		},
+		{
+			"name": "AI_20",
+			"input": "c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c,c"
+		},
+		{
+			"name": "Meteor Smash",
+			"input": "D,DB,B,z"
+		},
+		{
+			"name": "Instant Transmission Kamehameha",
+			"input": "D,DF,F,c"
+		},
+		{
+			"name": "SuperKameramera",
+			"input": "D,DF,F,z"
+		},
+		{
+			"name": "Dragon Flash Fist Heavy",
+			"input": "D,DF,F,b"
+		},
+		{
+			"name": "Dragon Flash Fist Medium",
+			"input": "D,DF,F,y"
+		},
+		{
+			"name": "Dragon Flash Fist Light",
+			"input": "D,DF,F,x"
+		},
+		{
+			"name": "Kameramera",
+			"input": "D,DF,F,a"
+		},
+		{
+			"name": "Rapid Kick Rush Heavy",
+			"input": "D,DB,B,b"
+		},
+		{
+			"name": "Rapid Kick Rush Medium",
+			"input": "D,DB,B,y"
+		},
+		{
+			"name": "Rapid Kick Rush",
+			"input": "D,DB,B,x"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "DragonRush",
+			"input": "x+y"
+		},
+		{
+			"name": "SuperDash",
+			"input": "a+b"
+		},
+		{
+			"name": "Sparking Blast",
+			"input": "z+c"
+		},
+		{
+			"name": "Vanish",
+			"input": "y+b"
+		},
+		{
+			"name": "Power Charge",
+			"input": "a+x"
+		},
+		{
+			"name": "recovery",
+			"input": "y+z"
+		},
+		{
+			"name": "back_x",
+			"input": "/$B,x"
+		},
+		{
+			"name": "back_y",
+			"input": "/$B,y"
+		},
+		{
+			"name": "back_z",
+			"input": "/$B,z"
+		},
+		{
+			"name": "down_x",
+			"input": "/$D,x"
+		},
+		{
+			"name": "down_y",
+			"input": "/$D,y"
+		},
+		{
+			"name": "down_z",
+			"input": "/$D,z"
+		},
+		{
+			"name": "fwd_x",
+			"input": "/$F,x"
+		},
+		{
+			"name": "fwd_y",
+			"input": "/$F,y"
+		},
+		{
+			"name": "fwd_z",
+			"input": "/$F,z"
+		},
+		{
+			"name": "up_x",
+			"input": "/$U,x"
+		},
+		{
+			"name": "up_y",
+			"input": "/$U,y"
+		},
+		{
+			"name": "up_z",
+			"input": "/$U,z"
+		},
+		{
+			"name": "back_a",
+			"input": "/$B,a"
+		},
+		{
+			"name": "back_b",
+			"input": "/$B,b"
+		},
+		{
+			"name": "back_c",
+			"input": "/$B,c"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "down_c",
+			"input": "/$D,c"
+		},
+		{
+			"name": "fwd_a",
+			"input": "/$F,a"
+		},
+		{
+			"name": "fwd_b",
+			"input": "/$F,b"
+		},
+		{
+			"name": "fwd_c",
+			"input": "/$F,c"
+		},
+		{
+			"name": "up_a",
+			"input": "/$U,a"
+		},
+		{
+			"name": "up_b",
+			"input": "/$U,b"
+		},
+		{
+			"name": "up_c",
+			"input": "/$U,c"
+		},
+		{
+			"name": "LightAttack",
+			"input": "x"
+		},
+		{
+			"name": "MediumAttack",
+			"input": "y"
+		},
+		{
+			"name": "HeavyAttack",
+			"input": "b"
+		},
+		{
+			"name": "SpecialAttack",
+			"input": "a"
+		},
+		{
+			"name": "s",
+			"input": "s"
+		},
+		{
+			"name": "fwd",
+			"input": "$F"
+		},
+		{
+			"name": "downfwd",
+			"input": "$DF"
+		},
+		{
+			"name": "down",
+			"input": "$D"
+		},
+		{
+			"name": "downback",
+			"input": "$DB"
+		},
+		{
+			"name": "back",
+			"input": "$B"
+		},
+		{
+			"name": "upback",
+			"input": "$UB"
+		},
+		{
+			"name": "up",
+			"input": "$U"
+		},
+		{
+			"name": "upfwd",
+			"input": "$UF"
+		},
+		{
+			"name": "hold_x",
+			"input": "/x"
+		},
+		{
+			"name": "hold_y",
+			"input": "/y"
+		},
+		{
+			"name": "hold_z",
+			"input": "/z"
+		},
+		{
+			"name": "hold_a",
+			"input": "/a"
+		},
+		{
+			"name": "hold_b",
+			"input": "/b"
+		},
+		{
+			"name": "hold_c",
+			"input": "/c"
+		},
+		{
+			"name": "hold_s",
+			"input": "/s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holddownfwd",
+			"input": "/$DF"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "holddownback",
+			"input": "/$DB"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdupback",
+			"input": "/$UB"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holdupfwd",
+			"input": "/$UF"
+		}
+	],
+	"moves": [
+		{
+			"name": "Dash Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run"
+		},
+		{
+			"name": "Air Dash Fwd",
+			"stateNo": 101,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "action-101"
+		},
+		{
+			"name": "Air Dash Back",
+			"stateNo": 102,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "action-102"
+		},
+		{
+			"name": "Dash Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "run-back"
+		},
+		{
+			"name": "AIGuard",
+			"stateNo": 120,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-start"
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 195,
+			"commands": [
+				"s"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 195,
+			"animation": "dizzy"
+		},
+		{
+			"name": "Light Attack",
+			"stateNo": 200,
+			"commands": [
+				"LightAttack"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "Medium Attack",
+			"stateNo": 210,
+			"commands": [
+				"MediumAttack"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "Heavy Attack",
+			"stateNo": 220,
+			"commands": [
+				"HeavyAttack"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 220,
+			"animation": "action-220"
+		},
+		{
+			"name": "Crouching Light Attack",
+			"stateNo": 400,
+			"commands": [
+				"LightAttack",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 400,
+			"animation": "action-400"
+		},
+		{
+			"name": "Crouching Medium Attack",
+			"stateNo": 410,
+			"commands": [
+				"MediumAttack",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 410,
+			"animation": "action-410"
+		},
+		{
+			"name": "Crouching Heavy Attack",
+			"stateNo": 420,
+			"commands": [
+				"HeavyAttack",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 420,
+			"animation": "action-420"
+		},
+		{
+			"name": "Special Attack",
+			"stateNo": 520,
+			"commands": [
+				"SpecialAttack"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 520,
+			"animation": "action-520"
+		},
+		{
+			"name": "Air Special Attack",
+			"stateNo": 526,
+			"commands": [
+				"SpecialAttack"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 527,
+			"animation": "action-527"
+		},
+		{
+			"name": "Jump Light Attack",
+			"stateNo": 600,
+			"commands": [
+				"LightAttack"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 600,
+			"animation": "action-600"
+		},
+		{
+			"name": "Jump Medium Attack",
+			"stateNo": 610,
+			"commands": [
+				"MediumAttack"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 610,
+			"animation": "action-610"
+		},
+		{
+			"name": "Jump Heavy Attack",
+			"stateNo": 620,
+			"commands": [
+				"HeavyAttack"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 620,
+			"animation": "action-620"
+		},
+		{
+			"name": "Super Dash Air",
+			"stateNo": 700,
+			"commands": [
+				"SuperDash"
+			],
+			"inputs": [
+				"a+b"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 700,
+			"animation": "action-700"
+		},
+		{
+			"name": "Air Vanish",
+			"stateNo": 800,
+			"commands": [
+				"Vanish"
+			],
+			"inputs": [
+				"y+b"
+			],
+			"movetype": "I",
+			"damage": 40,
+			"anim": null,
+			"animation": "action-800"
+		},
+		{
+			"name": "Power Charge",
+			"stateNo": 850,
+			"commands": [
+				"Power Charge"
+			],
+			"inputs": [
+				"a+x"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 850,
+			"animation": "action-850"
+		},
+		{
+			"name": "DragonRush",
+			"stateNo": 900,
+			"commands": [
+				"DragonRush"
+			],
+			"inputs": [
+				"x+y"
+			],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "Air DragonRush",
+			"stateNo": 910,
+			"commands": [
+				"DragonRush"
+			],
+			"inputs": [
+				"x+y"
+			],
+			"movetype": "A",
+			"damage": 0,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "Sparking Blast",
+			"stateNo": 950,
+			"commands": [
+				"Sparking Blast"
+			],
+			"inputs": [
+				"z+c"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 950,
+			"animation": "action-950"
+		},
+		{
+			"name": "Air Sparking Blast",
+			"stateNo": 951,
+			"commands": [
+				"Sparking Blast"
+			],
+			"inputs": [
+				"z+c"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 950,
+			"animation": "action-950"
+		},
+		{
+			"name": "Rapid Kick Rush",
+			"stateNo": 1000,
+			"commands": [
+				"Rapid Kick Rush"
+			],
+			"inputs": [
+				"D,DB,B,x"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 1000,
+			"animation": "action-1000"
+		},
+		{
+			"name": "Rapid Kick Rush Medium",
+			"stateNo": 1010,
+			"commands": [
+				"Rapid Kick Rush Medium"
+			],
+			"inputs": [
+				"D,DB,B,y"
+			],
+			"movetype": "A",
+			"damage": 16,
+			"anim": 1010,
+			"animation": "action-1010"
+		},
+		{
+			"name": "Rapid Kick Rush Heavy",
+			"stateNo": 1020,
+			"commands": [
+				"Rapid Kick Rush Heavy"
+			],
+			"inputs": [
+				"D,DB,B,b"
+			],
+			"movetype": "A",
+			"damage": 16,
+			"anim": 1020,
+			"animation": "action-1020"
+		},
+		{
+			"name": "Kameramera",
+			"stateNo": 1100,
+			"commands": [
+				"Kameramera"
+			],
+			"inputs": [
+				"D,DF,F,a"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 1100,
+			"animation": "action-1100"
+		},
+		{
+			"name": "Air Kameramera",
+			"stateNo": 1110,
+			"commands": [
+				"Kameramera"
+			],
+			"inputs": [
+				"D,DF,F,a"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 1110,
+			"animation": "action-1110"
+		},
+		{
+			"name": "Air Dragon Flash Fist Light",
+			"stateNo": 1200,
+			"commands": [
+				"Dragon Flash Fist Light"
+			],
+			"inputs": [
+				"D,DF,F,x"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "Air Dragon Flash Fist Medium",
+			"stateNo": 1210,
+			"commands": [
+				"Dragon Flash Fist Medium"
+			],
+			"inputs": [
+				"D,DF,F,y"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 1200,
+			"animation": "action-1200"
+		},
+		{
+			"name": "Air Dragon Flash Fist Heavy",
+			"stateNo": 1220,
+			"commands": [
+				"Dragon Flash Fist Heavy"
+			],
+			"inputs": [
+				"D,DF,F,b"
+			],
+			"movetype": "I",
+			"damage": 55,
+			"anim": null,
+			"animation": "action-1200"
+		},
+		{
+			"name": "Super Kameramera",
+			"stateNo": 1700,
+			"commands": [
+				"SuperKameramera"
+			],
+			"inputs": [
+				"D,DF,F,z"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 1700,
+			"animation": "action-1700"
+		},
+		{
+			"name": "Air Super Kameramera",
+			"stateNo": 1710,
+			"commands": [
+				"SuperKameramera"
+			],
+			"inputs": [
+				"D,DF,F,z"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 1710,
+			"animation": "action-1710"
+		},
+		{
+			"name": "Instant Transmission Kamehameha",
+			"stateNo": 1800,
+			"commands": [
+				"Instant Transmission Kamehameha"
+			],
+			"inputs": [
+				"D,DF,F,c"
+			],
+			"movetype": "I",
+			"damage": 10,
+			"anim": 1700,
+			"animation": "action-1700"
+		},
+		{
+			"name": "Meteor Smash",
+			"stateNo": 1900,
+			"commands": [
+				"Meteor Smash"
+			],
+			"inputs": [
+				"D,DB,B,z"
+			],
+			"movetype": "I",
+			"damage": 20,
+			"anim": 1900,
+			"animation": "action-1900"
+		}
+	]
+}

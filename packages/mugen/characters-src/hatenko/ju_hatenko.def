@@ -1,0 +1,27 @@
+[Info]
+Name = "Hatenko" ;キャラの名前（後々必要な場合があるので省略不可）
+DisplayName = "Hatenko" ;ゲーム中表示される名前（省略可能）
+Author = "ju" ;このキャラの作成者の名前
+
+[Files]
+Cmd = hatenko.cmd
+Cns = hatenko.cns
+St = hatenko.cns
+St2 = hatenkoS.cns
+St3 = hatenkoH.cns
+StCommon = common1.cns
+Sprite = hatenko.sff
+Anim = hatenko.air
+Sound = hatenko.snd
+pal1     = hatenko1.act
+pal2     = hatenko2.act
+pal3     = hatenko3.act
+pal4     = hatenko4.act
+;pal5     = 5.act
+;pal6     = 6.act
+
+
+[Arcade]
+intro.storyboard = intro.def
+ending.storyboard = ending.def
+

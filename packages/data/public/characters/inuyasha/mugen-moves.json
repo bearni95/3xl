@@ -1,0 +1,161 @@
+{
+	"name": "Inuyasha",
+	"commands": [
+		{
+			"name": "Bakuryuuha",
+			"input": "D, F, D, F, a"
+		},
+		{
+			"name": "Kaze_no_Kizu",
+			"input": "D, B, D, B, a"
+		},
+		{
+			"name": "Kongosoha",
+			"input": "D, F, D, F, b"
+		},
+		{
+			"name": "Hijin_Ketsou_light",
+			"input": "D, B, x"
+		},
+		{
+			"name": "Hijin_Ketsou_hard",
+			"input": "D, B, y"
+		},
+		{
+			"name": "Kongosoha_light_crouch",
+			"input": "F, D, F, a"
+		},
+		{
+			"name": "Kongosoha_hard_crouch",
+			"input": "F, D, F, b"
+		},
+		{
+			"name": "Kongosoha_light",
+			"input": "D, F, a"
+		},
+		{
+			"name": "Kongosoha_hard",
+			"input": "D, F, b"
+		},
+		{
+			"name": "Kaze_no_Kizu_light",
+			"input": "D, B, a"
+		},
+		{
+			"name": "Kaze_no_Kizu_hard",
+			"input": "D, B, b"
+		},
+		{
+			"name": "Sankon_Tetsou_light",
+			"input": "D, F, x"
+		},
+		{
+			"name": "Sankon_Tetsou_hard",
+			"input": "D, F, y"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "a+x"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "s",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "hold_x",
+			"input": "/x"
+		},
+		{
+			"name": "hold_y",
+			"input": "/y"
+		},
+		{
+			"name": "hold_z",
+			"input": "/z"
+		},
+		{
+			"name": "hold_a",
+			"input": "/a"
+		},
+		{
+			"name": "hold_b",
+			"input": "/b"
+		},
+		{
+			"name": "hold_c",
+			"input": "/c"
+		}
+	],
+	"moves": [
+		{
+			"name": "Throw",
+			"stateNo": 600,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 600,
+			"animation": "action-600"
+		}
+	]
+}

@@ -1,0 +1,158 @@
+;---------------------------------------------------------------------------
+; 超必殺技
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;ビュティさんキレる(発動)
+[Statedef 2000]
+type     = S
+movetype = A
+physics  = S
+velset   = 0,0
+ctrl     = 0
+anim     = 2000
+poweradd = -1000
+sprpriority = 2
+
+[State 2000, ボイス]
+type = PlaySnd
+trigger1 = Time = 0
+value = 1, 1
+
+[State 2000, 超必殺技暗転時間停止]
+type = SuperPause
+trigger1 = AnimElem = 1
+pos         = 25, -57
+sound       = 20, 0
+
+[State 2000, カットイン]
+type = Explod
+trigger1 = Time = 0
+ID            = 9500
+anim          = 9500
+scale         = 1,1
+pos           = 60,50
+postype       = back
+sprpriority   = 0
+supermove     = 1
+supermovetime = 40
+pausemovetime = 40
+ownpal        = 1
+bindtime      = 1 
+
+[State 2000, 走る]
+type = VelSet
+trigger1 = AnimElem = 2
+trigger2 = AnimElem = 3
+trigger3 = AnimElem = 4
+trigger4 = AnimElem = 5
+trigger5 = AnimElem = 6
+trigger6 = AnimElem = 7
+trigger7 = AnimElem = 8
+trigger8 = AnimElem = 9
+X = 17;const(velocity.run.fwd.x)
+
+[State 2000, ステート変更]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 2005
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;ビュティさんキレる(攻撃)
+[Statedef 2005]
+type     = S
+movetype = A
+physics  = S
+velset   = 0,0
+ctrl     = 0
+anim     = 2005
+sprpriority = 2
+
+[State 2005, ヒット定義]
+type = HitDef
+trigger1 = AnimElem = 4
+trigger2 = AnimElem = 6
+trigger3 = AnimElem = 8
+trigger4 = AnimElem = 10
+trigger5 = AnimElem = 12
+trigger6 = AnimElem = 14
+trigger7 = AnimElem = 16
+trigger8 = AnimElem = 18
+trigger9 = AnimElem = 20
+trigger10 = AnimElem = 22
+trigger11 = AnimElem = 24
+trigger12 = AnimElem = 26
+trigger13 = AnimElem = 28
+trigger14 = AnimElem = 30
+attr              = S, NA
+damage            = 13, 3
+animtype          = Light
+guardflag         = MA
+hitflag           = MAF
+priority          = 3, Hit
+pausetime         = 0, 4
+sparkno           = 0
+sparkxy           = -12, -54
+hitsound          = S200,0
+guardsound        = S210,0
+ground.type       = High
+ground.slidetime  = 5
+ground.hittime    = 12
+ground.velocity   = 0
+airguard.velocity = -1.9,-.8
+air.type          = High
+air.velocity      = -1.4,-3
+air.hittime       = 12
+
+[State 2005, ステート変更]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 2010
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;ビュティさんキレる(攻撃2)
+[Statedef 2010]
+type     = S
+movetype = A
+physics  = S
+velset   = 0,0
+ctrl     = 0
+anim     = 2010
+sprpriority = 2
+
+[State 2010, ボイス]
+type = PlaySnd
+trigger1 = Time = 1
+value = 1, 0
+
+[State 2010, ヒット定義]
+type = HitDef
+trigger1 = AnimElem = 3
+attr              = S, NA
+damage            = 57, 16
+animtype          = Hard
+guardflag         = MA
+hitflag           = MAF
+priority          = 3, Hit
+pausetime         = 5, 6
+sparkno           = 0
+sparkxy           = -1,-34
+hitsound          = S200,3
+guardsound        = S210,0
+ground.type       = Trip
+ground.slidetime  = 6
+ground.hittime    = 12
+ground.velocity   = 0
+airguard.velocity = -1.9,-.8
+air.type          = Hard
+air.velocity      = -1.4,-3
+air.hittime       = 12
+fall              = 0
+
+[State 2010, ステート変更]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+

@@ -1,0 +1,38 @@
+; Definition file for Trunks
+; Contains all the filenames needed for the character
+
+; Trunks information
+[Info]
+name = "Trunks"        ;Name of character
+displayname = "Trunks SSJ" ;Name of character to display
+versiondate =    ;Version date of character
+mugenversion = 1.0  ;Version of M.U.G.E.N character works on
+author = "boryema"      ;Character author name
+pal.defaults = 1,4,2,5,3,6,7,10,8,11,9,12  ;Default palettes in order of preference
+
+; Files for the Trunks
+[Files]
+cmd     = trunks.cmd   ;Command set
+cns     = trunks.cns   ;Constants
+st      = states/system.st   ;States
+st1 =  states/normal.st
+st2 =  states/specials.st
+st3 =  states/supers.st
+st4 =  states/helpers.st
+st5 =  states/custom.st
+stcommon = common1.cns ;Common states
+sprite  = trunks.sff   ;Sprite
+anim    = trunks.air   ;Animation
+sound  = trunks.snd   ;Sound
+pal1   = pals/trunks1.act   ;Palettes (can have up to 12)
+pal2   = pals/vegeta1.act
+pal3   = pals/goku1.act
+pal4   = pals/trunks2.act
+pal5   = pals/vegeta2.act
+pal6   = pals/goku2.act
+pal7   = pals/piccolo.act
+pal8   = pals/broly1.act
+pal9   = pals/deepdramatic.act
+pal10  =pals/ssgss.act
+pal11  =pals/broly2.act
+pal12  =pals/atrocitus.act

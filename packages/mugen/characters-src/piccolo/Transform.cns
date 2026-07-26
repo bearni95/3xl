@@ -1,0 +1,741 @@
+; Stand / Tired Stand
+[Statedef 7001]
+type = S
+physics = S
+sprpriority = 0
+
+[State 240, 4]
+type = ChangeState
+triggerall = Var(10) = 1
+triggerall = Var(11) = 0
+trigger1 = 1
+value = 7012
+ctrl = 0
+
+[State 0, Explod]
+type = Explod
+trigger1 = time%40=0
+anim = 904
+ID = 902
+pos = 0,15
+postype = p1
+removetime = -2
+pausemovetime = 285
+supermovetime = 285
+scale = 1,1
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+
+[State 0, Standing animation / Tired animation]
+Type = ChangeAnim
+Trigger1 = Anim != IfElse (Life <= 400, 3, 2) && Anim != 13
+Trigger2 = Anim = 7003 && AnimTime = 0 ;Turn anim over
+Value = IfElse (Life <= 400 , 3, 2)
+
+[State 0, 2]
+type = VelSet
+trigger1 = Time = 0
+y = 0
+
+[State 0, 3] ;Stop moving if low velocity or 4 ticks pass
+type = VelSet
+trigger1 = abs(vel x) < Const(movement.stand.friction.threshold)
+trigger2 = Time = 4
+x = 0
+
+[State 0, 4] ;Are you dead?
+type = ChangeState
+trigger1 = !alive
+value = 5050
+ctrl = 0
+
+; Stand to Crouch
+[Statedef 7002]
+type    = C
+physics = C
+
+[State 240, 4]
+type = ChangeState
+triggerall = Var(10) = 1
+triggerall = Var(11) = 0
+trigger1 = 1
+value = 7012
+ctrl = 0
+
+[State 10, 1]
+type = changeanim
+triggerall = var(7) = 0
+trigger1 = time = 0
+value = 13
+
+[State 10, 1]
+type = changeanim
+triggerall = var(7) = 1
+trigger1 = time = 0
+value = 10010
+
+[State 10, 1]
+type = changeanim
+triggerall = var(7) = 2
+trigger1 = time = 0
+value = 20010
+
+[State 10, 1]
+type = changeanim
+triggerall = var(7) = 3
+trigger1 = time = 0
+value = 30010
+
+[State 10, 1]
+type = changeanim
+triggerall = var(7) = 4
+trigger1 = time = 0
+value = 40010
+
+[State 10, 1]
+type = changeanim
+triggerall = var(7) = 5
+trigger1 = time = 0
+value = 50010
+
+[State 10, 1]
+type = VelMul
+trigger1 = Time = 0
+x = .75
+
+[State 10, 2] ;Stop moving if low velocity
+type = VelSet
+trigger1 = abs(vel x) < Const(movement.crouch.friction.threshold)
+x = 0
+
+[State 10, 3]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 7003
+
+; Crouching
+[Statedef 7003]
+type    = C
+physics = C
+sprpriority = 0
+
+[State 240, 4]
+type = ChangeState
+trigger1 = Var(11) = 0
+value = 7012
+ctrl = 0
+
+[State 11, 3]
+type = changeanim
+triggerall = var(7) = 0
+trigger1 = time = 0
+value = 14
+
+[State 11, 3]
+type = changeanim
+triggerall = var(7) = 1
+trigger1 = time = 0
+value = 10011
+
+[State 11, 3]
+type = changeanim
+triggerall = var(7) = 2
+trigger1 = time = 0
+value = 20011
+
+[State 11, 3]
+type = changeanim
+triggerall = var(7) = 3
+trigger1 = time = 0
+value = 30011
+
+[State 11, 3]
+type = changeanim
+triggerall = var(7) = 4
+trigger1 = time = 0
+value = 40011
+
+[State 11, 3]
+type = changeanim
+triggerall = var(7) = 5
+trigger1 = time = 0
+value = 40011
+
+[State 11, 1] ;Change from turning animation
+type = ChangeAnim
+triggerall = var(7) = 0
+trigger1 = Anim = 6 && AnimTime = 0
+value = 14
+
+[State 11, 1] ;Change from turning animation
+type = ChangeAnim
+triggerall = var(7) = 1
+trigger1 = Anim = 10006 && AnimTime = 0
+value = 10011
+
+[State 11, 1] ;Change from turning animation
+type = ChangeAnim
+triggerall = var(7) = 2
+trigger1 = Anim = 20006 && AnimTime = 0
+value = 20011
+
+[State 11, 1] ;Change from turning animation
+type = ChangeAnim
+triggerall = var(7) = 3
+trigger1 = Anim = 30006 && AnimTime = 0
+value =30011
+
+[State 11, 1] ;Change from turning animation
+type = ChangeAnim
+triggerall = var(7) = 4
+trigger1 = Anim = 40006 && AnimTime = 0
+value = 40011
+
+[State 11, 1] ;Change from turning animation
+type = ChangeAnim
+triggerall = var(7) = 5
+trigger1 = Anim = 50006 && AnimTime = 0
+value = 50011
+
+[State 11, 2] ;Stop moving if low velocity
+type = VelSet
+trigger1 = abs(vel x) < Const(movement.crouch.friction.threshold)
+x = 0
+;---------------------------------------------------------------------------
+; Crouch to Stand
+[Statedef 7004]
+type    = S
+physics = S
+
+[State 240, 4]
+type = ChangeState
+trigger1 = Var(11) = 0
+value = 7012
+ctrl = 0
+
+[State 12, 1]
+type = changeanim
+triggerall = var(7) = 0
+trigger1 = time = 0
+value = 15
+
+[State 12, 1]
+type = changeanim
+triggerall = var(7) = 1
+trigger1 = time = 0
+value = 10012
+
+[State 12, 1]
+type = changeanim
+triggerall = var(7) = 2
+trigger1 = time = 0
+value = 20012
+
+[State 12, 1]
+type = changeanim
+triggerall = var(7) = 3
+trigger1 = time = 0
+value = 30012
+
+[State 12, 1]
+type = changeanim
+triggerall = var(7) = 4
+trigger1 = time = 0
+value = 40012
+
+[State 12, 1]
+type = changeanim
+triggerall = var(7) = 5
+trigger1 = time = 0
+value = 50012
+
+[State 12, 1]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+;---------------------------------------------------------------------------
+
+; Walk
+[Statedef 7005]
+type    = S
+physics = S
+sprpriority = 0
+
+[State 240, 4]
+type = ChangeState
+trigger1 = Var(11) = 0
+value = 7012
+ctrl = 0
+
+[State 0, Explod]
+type = Explod
+triggerall = anim = 7006 || anim=10020
+trigger1 = timemod=8,0
+anim = 110
+pos = -18,0
+postype = p1
+removetime=-2
+facing = 1
+vel = -1,-.5
+random = 20,20
+scale = 0.15,0.15
+sprpriority = 3
+
+[State 0, Explod]
+type = Explod
+triggerall = anim = 7007 || anim=10021
+trigger1 = timemod=8,0
+anim = 110
+pos = 18,0
+postype = p1
+removetime=-2
+facing = 1
+vel = 1,-.5
+random = 20,20
+scale = 0.15,0.15
+sprpriority = 3
+
+[State 20, 1]
+type = VelSet
+trigger1 = command = "holdfwd"
+x = const(velocity.walk.fwd.x)
+
+[State 20, 2]
+type = VelSet
+trigger1 = command = "holdback"
+x = const(velocity.walk.back.x)
+
+[State 20, 3]
+type = ChangeAnim
+triggerall = var(7) = 0
+triggerall = vel x > 0
+trigger1 = Anim != 22 
+value = 22
+
+[State 20, 4]
+type = ChangeAnim
+triggerall = var(7) = 0
+triggerall = vel x < 0
+trigger1 = Anim != 23
+value = 23
+
+[State 20, 4]
+type = Changestate
+triggerall = var(7) = 0
+triggerall = vel x = 0
+trigger1 = Anim != 2
+value = 2
+
+;---------------------------------------------------------------------------
+
+; Jump Start
+[Statedef 7006]
+type    = S
+physics = S
+anim = 50
+ctrl = 0
+sprpriority = 1
+
+[State 111]
+type = PlaySnd
+trigger1 = time = 1
+value = S40,1
+volume = 200
+
+[State 0]
+type = Explod
+trigger1 = time = [0,10]
+anim = 110
+pos = 0,2
+postype = p1
+facing = 1
+scale = 0.15,0.15
+vel = -2,-.5
+random = 50,10
+sprpriority = 1
+
+[State 0]
+type = Explod
+trigger1 = time = [0,10]
+anim = 110
+pos = 0,2
+postype = p1
+facing = 1
+scale = 0.15,0.15
+vel = 2,-.5
+random = 50,10
+sprpriority = 1
+
+[State 40, 1]
+type = changeanim
+triggerall = var(7) = 0
+trigger1 = time = 0
+value = 50
+
+[State 40, 1]
+type = changeanim
+triggerall = var(7) = 1
+trigger1 = time = 0
+value = 10040
+
+[State 40, 1]
+type = changeanim
+triggerall = var(7) = 2
+trigger1 = time = 0
+value = 20040
+
+[State 40, 1]
+type = changeanim
+triggerall = var(7) = 3
+trigger1 = time = 0
+value = 30040
+
+[State 40, 1]
+type = changeanim
+triggerall = var(7) = 4
+trigger1 = time = 0
+value = 40040
+
+[State 40, 1]
+type = changeanim
+triggerall = var(7) = 5
+trigger1 = time = 0
+value = 50040
+
+[State 40, 1]
+type = VarSet
+trigger1 = Time = 0
+sysvar(1) = 0
+
+[State 40, 2]
+type = VarSet
+trigger1 = command = "holdfwd"
+sysvar(1) = 1
+
+[State 40, 3]
+type = VarSet
+trigger1 = command = "holdback"
+sysvar(1) = -1
+
+[State 40, 4]
+type = VelSet
+trigger1 = AnimTime = 0
+x = ifelse(sysvar(1)=0, const(velocity.jump.neu.x), ifelse(sysvar(1)=1, const(velocity.jump.fwd.x), const(velocity.jump.back.x)))
+y = const(velocity.jump.y)
+
+[State 40, 5]
+type = VelSet
+trigger1 = AnimTime = 0
+trigger1 = prevstateno = 100 ;RUN_FWD
+trigger1 = sysvar(1) = 1
+x = const(velocity.runjump.fwd.x)
+
+[State 0, PlaySnd]
+type = PlaySnd
+trigger1 = time = 0
+value = S0,20
+volume = 200
+
+[State 40, 6]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 7007
+ctrl = 1
+;---------------------------------------------------------------------------
+
+; Jump Up
+[Statedef 7007]
+type    = A
+physics = A
+
+[State 0, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S40,0
+volume = 200
+
+[State 0, Explod]
+type = Explod
+trigger1 = animelem  = 1
+anim = 112
+pos = 0,2
+postype = p1  ;p2,front,back,left,right
+facing = 1
+scale = 0.8,0.8
+sprpriority = 1
+
+[State 50, 1]
+type = VarSet
+trigger1 = Time = 0
+sysvar(1) = 0
+
+[State 50, 2]
+type = ChangeAnim
+triggerall = var(7) = 0
+trigger1 = Time = 0
+value = ifelse((vel x)=0, 52, ifelse((vel x)>0, 52, 52))
+
+[State 50, 2]
+type = ChangeAnim
+triggerall = var(7) = 1
+trigger1 = Time = 0
+value = ifelse((vel x)=0, 10041, ifelse((vel x)>0, 10042, 10043))
+
+[State 50, 2]
+type = ChangeAnim
+triggerall = var(7) = 2
+trigger1 = Time = 0
+value = ifelse((vel x)=0, 20041, ifelse((vel x)>0, 20042, 20043))
+
+[State 50, 2]
+type = ChangeAnim
+triggerall = var(7) = 3
+trigger1 = Time = 0
+value = ifelse((vel x)=0, 30041, ifelse((vel x)>0, 30042, 30043))
+
+[State 50, 2]
+type = ChangeAnim
+triggerall = var(7) = 4
+trigger1 = Time = 0
+value = ifelse((vel x)=0, 40041, ifelse((vel x)>0, 40042, 40043))
+
+[State 50, 2]
+type = ChangeAnim
+triggerall = var(7) = 5
+trigger1 = Time = 0
+value = ifelse((vel x)=0, 50041, ifelse((vel x)>0, 50042, 50043))
+
+
+[State 50, 3]
+type = ChangeAnim
+triggerall = var(7) = 1
+trigger1 = Vel y > Const720p(-8)
+trigger1 = SelfAnimExist(anim + 3)
+trigger1 = anim >= 10041 && anim <= 10043
+persistent = 0
+value = Anim + 3
+
+[State 50, 3]
+type = ChangeAnim
+triggerall = var(7) = 2
+trigger1 = Vel y > Const720p(-8)
+trigger1 = SelfAnimExist(anim + 3)
+trigger1 = anim >= 20041 && anim <= 20043
+persistent = 0
+value = Anim + 3
+
+[State 50, 3]
+type = ChangeAnim
+triggerall = var(7) = 3
+trigger1 = Vel y > Const720p(-8)
+trigger1 = SelfAnimExist(anim + 3)
+trigger1 = anim >= 30041 && anim <= 30043
+persistent = 0
+value = Anim + 3
+
+[State 50, 3]
+type = ChangeAnim
+triggerall = var(7) = 4
+trigger1 = Vel y > Const720p(-8)
+trigger1 = SelfAnimExist(anim + 3)
+trigger1 = anim >= 40041 && anim <= 40043
+persistent = 0
+value = Anim + 3
+
+[State 50, 3]
+type = ChangeAnim
+triggerall = var(7) = 5
+trigger1 = Vel y > Const720p(-8)
+trigger1 = SelfAnimExist(anim + 3)
+trigger1 = anim >= 50041 && anim <= 50043
+persistent = 0
+value = Anim + 3
+
+
+;---------------------------------------------------------------------------
+; Jump Down (empty state for compatibility)
+[Statedef 7008]
+type    = A
+physics = A
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 6  
+value = 0
+
+[State 51, 1]
+type = Null
+trigger1 = 1
+
+;---------------------------------------------------------------------------
+; Jump Land
+[Statedef 7009]
+type    = S
+physics = S
+ctrl = 0
+
+[State 240, 4]
+type = ChangeState
+trigger1 = Var(11) = 0
+value = 7012
+ctrl = 0
+
+[State 111]
+type = PlaySnd
+trigger1 = time = 1
+value = S40,0
+volume = 200
+
+[State 0, Explod]
+type = Explod
+trigger1 = time=1
+anim = 113
+pos = 0,0
+postype = p1
+removetime=-2
+facing = 1
+ontop = 1
+scale = 0.3,0.3
+sprpriority = 10
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+trigger1 = var(7) = 0
+trigger1 = Anim != 57
+value = 57
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+trigger1 = var(7) = 1
+trigger1 = Anim != 10047
+value = 10047
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+trigger1 = var(7) = 2
+trigger1 = Anim != 20047
+value = 20047
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+trigger1 = var(7) = 3
+trigger1 = Anim != 30047
+value = 30047
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+trigger1 = var(7) = 4
+trigger1 = Anim != 40047
+value = 40047
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+trigger1 = var(7) = 5
+trigger1 = Anim != 50047
+value = 50047
+
+[State 52, 1]
+type = VelSet
+trigger1 = Time = 0
+y = 0
+
+[State 52, 2]
+type = PosSet
+trigger1 = Time = 0
+y = 0
+
+[State 52, 3]
+type = CtrlSet
+trigger1 = Time = 3
+value = 1
+
+[State 52, 4]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 7001
+ctrl = 1
+;---------------------------------------------------------------------
+
+; Dash
+[Statedef 7010]
+type = S
+physics = N
+ctrl = 0
+anim = 101
+movetype = I
+sprpriority = 2
+
+[State 0, AssertSpecial]
+type = AssertSpecial
+trigger1 = 1
+flag = nowalk
+
+[State 0, PlaySnd]
+type = PlaySnd
+trigger1 = !time
+value = S100,0
+volumescale = 100
+channel = -1
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = animelem = 2
+x = 15
+y = 0
+
+[State 0, VelMul]
+type = VelMul
+trigger1 = time > 8
+x = .9
+
+[State 195, 2]
+type = ChangeState
+trigger1 = !animtime
+value = 7001
+ctrl = 1
+;---------------------------------------------------------------------------
+; Dash Back
+[Statedef 7011]
+type = S
+physics = N
+ctrl = 0
+anim = 105
+movetype = I
+sprpriority = 2
+
+[State 0, AssertSpecial]
+type = AssertSpecial
+trigger1 = 1
+flag = nowalk
+
+[State 0, PlaySnd]
+type = PlaySnd
+trigger1 = !time
+value = S100,0
+volumescale = 100
+channel = -1
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = animelem = 2
+x = -15
+y = 0
+
+[State 0, VelMul]
+type = VelMul
+trigger1 = time > 8
+x = .9
+
+[State 0, CtrlSet]
+type = CtrlSet
+trigger1 = time = 6
+value = 1
+
+[State 195, 2]
+type = ChangeState
+trigger1 = !animtime
+value = 7001
+ctrl = 1
+;---------------------------------------------------------------------------

@@ -1,0 +1,60 @@
+{
+	"id": "inuyasha",
+	"label": "Inuyasha",
+	"basePath": "/assets/inuyasha/frames",
+	"animations": {
+		"idle": {
+			"source": "idle",
+			"loop": true
+		},
+		"hurt": {
+			"source": "action-5000",
+			"loop": false
+		}
+	},
+	"directions": {
+		"move-left": {
+			"source": "walk-back",
+			"loop": true
+		},
+		"move-right": {
+			"source": "walk",
+			"loop": true
+		}
+	},
+	"moves": [
+		{
+			"name": "Melee",
+			"type": "melee",
+			"source": "action-200"
+		},
+		{
+			"name": "Ranged",
+			"type": "ranged",
+			"source": "action-1000",
+			"projectile": {
+				"source": "",
+				"loop": true
+			}
+		},
+		{
+			"name": "Final",
+			"type": "final",
+			"source": "action-3000",
+			"projectile": {
+				"source": "",
+				"loop": true
+			}
+		},
+		{
+			"name": "Defent",
+			"type": "defent",
+			"source": "guard-stand"
+		}
+	],
+	"stats": {
+		"atk": 5,
+		"def": 5,
+		"hp": 5
+	}
+}

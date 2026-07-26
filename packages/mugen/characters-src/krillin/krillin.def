@@ -1,0 +1,36 @@
+; player information
+[info]
+name ="Krillin"
+displayname ="Krillin"
+versiondate =8,10,2008
+mugenversion =04,01,2001
+author ="Stig87"
+pal.defaults =1,2,3,4,5,6
+
+; files for the player
+[files]
+cmd      =krillin.cmd
+cns      =krillin.cns
+st       =krillin.cns
+stcommon =common1.cns
+sprite   =krillin.sff
+anim     =krillin.air
+sound    =krillin.snd
+pal1=krillin.act
+pal2=light.act
+pal3=red.act
+pal4=black.act
+pal5=green.act
+pal6=purple.act
+pal7=brown.act
+pal8=white.act
+pal9=
+st1=attacks.cns
+st2=specials.cns
+st3=hypers.cns
+
+; arcade mode
+[arcade]
+intro.storyboard=
+ending.storyboard=
+

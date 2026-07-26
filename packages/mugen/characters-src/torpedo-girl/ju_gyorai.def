@@ -1,0 +1,27 @@
+[Info]
+Name = "Gyorai" ;キャラの名前（後々必要な場合があるので省略不可）
+DisplayName = "Torpedo Girl" ;ゲーム中表示される名前（省略可能）
+Author = "ju" ;このキャラの作成者の名前
+
+[Files]
+Cmd = gyorai.cmd
+Cns = gyorai.cns
+St = gyorai.cns
+St2 = gyoraiS.cns
+St3 = gyoraiH.cns
+StCommon = common1.cns
+Sprite = gyorai.sff
+Anim = gyorai.air
+Sound = gyorai.snd
+pal1     = gyorai1.act
+pal2     = gyorai2.act
+pal3     = gyorai3.act
+pal4     = gyorai4.act
+;pal5     = 5.act
+;pal6     = 6.act
+
+
+[Arcade]
+intro.storyboard = intro.def
+ending.storyboard = ending.def
+

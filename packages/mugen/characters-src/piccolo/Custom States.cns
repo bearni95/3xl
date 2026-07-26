@@ -1,0 +1,1249 @@
+;Goku Grab P2 Part 1
+[Statedef 0001]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 1
+
+[State 0, HitBy]
+type = HitBy
+trigger1 = 1
+value = SCA,NT
+
+[State 0, RemoveExplod]
+type = RemoveExplod
+trigger1 = time = 0
+id = 5300
+
+[State 800, flash]
+type = PalFX
+trigger1 = time = 0
+add = 0, 0, 0
+sinadd = 0,0,0,0
+
+[State 0, StopSnd]
+type = StopSnd
+trigger1 = time = 0 
+channel = 10
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 0
+trigger1 = anim !=5001
+value = 5001
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 1
+trigger1 = anim !=7016
+value = 7016
+
+[State 0]
+type = VelSet
+trigger1 = time >20
+x = 0
+y = 0
+
+;---------------------------------------------------------------------------
+;Goku Grab P2 Part 2
+[Statedef 0002]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 0
+
+[State 0, HitBy]
+type = HitBy
+trigger1 = 1
+value = SCA,NT
+
+[State 0, RemoveExplod]
+type = RemoveExplod
+trigger1 = time = 0
+id = 5300
+
+[State 800, flash]
+type = PalFX
+trigger1 = time = 0
+add = 0, 0, 0
+sinadd = 0,0,0,0
+
+[State 0, StopSnd]
+type = StopSnd
+trigger1 = time = 0 
+channel = 10
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 0
+triggerall = anim !=710
+trigger1 = time = 0
+value = 710
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 1
+triggerall = anim !=711
+trigger1 = time = 0
+value = 711
+
+
+;---------------------------------------------------------------------------
+
+;----------------------------------------------------------------------------------------------------
+;Meteor Combination In Case Of Air 1
+[Statedef 0003]
+type    = S
+movetype= H
+physics = N
+velset = 0,0
+ctrl = 0
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 1
+
+[State 0, RemoveExplod]
+type = RemoveExplod
+trigger1 = time = 0
+id = 5300
+
+[State 800, flash]
+type = PalFX
+trigger1 = time = 0
+add = 0, 0, 0
+sinadd = 0,0,0,0
+
+[State 0, StopSnd]
+type = StopSnd
+trigger1 = time = 0 
+channel = 10
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = !time
+x = enemy,pos x - ifelse(facing=1,10,-10)
+y = enemy,pos y
+
+[State 0, ChangeState]
+type = ChangeState
+trigger1 = !time 
+value = 52
+ctrl = 0 
+
+[State 5000, 1] ;Anim for HIT_LIGHT to HIT_HARD
+type = ChangeAnim
+trigger1 = Time = 0
+trigger1 = GetHitVar(animtype) != [3,5]
+value = ifelse((GetHitVar(groundtype) = 1),5000,5010) + GetHitVar(animtype)
+
+[State 5000, 2] ;Anim for HIT_BACK
+type = ChangeAnim
+trigger1 = Time = 0
+trigger1 = GetHitVar(animtype) = [3,5]
+value = 5030
+
+[State 5000, 3] ;Anim for HIT_UP/HIT_DIAGUP (only if it exists)
+type = ChangeAnim
+trigger1 = Time = 0
+trigger1 = (GetHitVar(animtype) = [4,5]) && (SelfAnimExist(5047 + GetHitVar(animtype)))
+value = 5047 + GetHitVar(animtype) ;5051 - 4 + type
+
+[State 5000, 4] ;Freeze anim
+type = ChangeAnim
+trigger1 = Time > 0
+value = anim
+
+[State 5000, 5] ;State type gets set to aerial if getting hit up
+type = StateTypeSet
+trigger1 = Time = 0
+trigger1 = GetHitVar(yvel) != 0 || GetHitVar(fall)
+trigger2 = Pos Y != 0
+statetype = a
+
+[State 5000, FFB Light]
+type = ForceFeedback
+trigger1 = anim = 5000
+trigger2 = anim = 5010
+persistent = 0
+time = 6
+waveform = square
+
+[State 5000, FFB Medium]
+type = ForceFeedback
+trigger1 = anim = 5001
+trigger2 = anim = 5011
+persistent = 0
+time = 8
+waveform = sinesquare
+ampl = 110,-1,-.3
+
+[State 5000, FFB Hard]
+type = ForceFeedback
+trigger1 = anim = 5012
+trigger2 = anim = 5002
+trigger3 = anim = 5030
+persistent = 0
+time = 15
+waveform = sinesquare
+ampl = 140
+
+[State 5000, 6]
+type = SelfState
+trigger1 = HitShakeOver
+trigger1 = GetHitVar(yvel) = 0 && !GetHitVar(fall)
+value = 5001 ;Stand get-hit (knocked back)
+
+[State 5000, 7]
+type = SelfState
+trigger1 = HitShakeOver
+value = 5030
+
+;Meteor Combination In Case Of Air 2
+[Statedef 0004]
+type    = S
+movetype= H
+physics = N
+velset = 0,0
+ctrl = 0
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 1
+
+[State 0, RemoveExplod]
+type = RemoveExplod
+trigger1 = time = 0
+id = 5300
+
+[State 800, flash]
+type = PalFX
+trigger1 = time = 0
+add = 0, 0, 0
+sinadd = 0,0,0,0
+
+[State 0, StopSnd]
+type = StopSnd
+trigger1 = time = 0 
+channel = 10
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = !time
+x = enemy,pos x - ifelse(facing=1,10,-10)
+y = enemy,pos y
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 0
+x = -15
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 8
+x = 0
+
+[State 0, ChangeAnim2]
+type = ChangeAnim
+triggerall = var(10) = 0
+trigger1 = time = 0
+value = 5002 
+
+[State 0, ChangeAnim2]
+type = ChangeAnim
+triggerall = var(10) = 1
+trigger1 = time = 0
+value = 7017
+
+;---------------------------------------------------------------------------
+
+; Spirit Bomb Knock Down
+[Statedef 0005]
+movetype= H
+physics = N
+ctrl = 0
+velset = 0,0
+sprpriority = 2
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 1
+
+[State 0, RemoveExplod]
+type = RemoveExplod
+trigger1 = time = 0
+id = 5300
+
+[State 800, flash]
+type = PalFX
+trigger1 = time = 0
+add = 0, 0, 0
+sinadd = 0,0,0,0
+
+[State 0, StopSnd]
+type = StopSnd
+trigger1 = time = 0 
+channel = 10
+
+[State 0, ChangeAnim2]
+type = ChangeAnim
+triggerall = var(10) = 0
+trigger1 = !time
+value = 5030
+
+[State 0, ChangeAnim2]
+type = ChangeAnim
+triggerall = var(10) = 1
+trigger1 = !time
+value = 7033
+
+[State 0, ScreenBound]
+type = ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = !time
+x = -10
+y = 10
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = pos y > 300 && vel y > 0
+x = 0
+y = 0
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 300
+x = 0
+y = 0
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 450
+x = enemy,pos x + ifelse(facing=1,-190,190)
+y = 3
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+trigger1 = time = 450
+value = 150 
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = name = "Goku"
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = var(10) = 1
+trigger1 = time = 450
+value = 7059
+
+[State 0, AssertSpecial]
+type = AssertSpecial
+trigger1 = time > 99 && time <450
+flag = invisible
+
+[State 0, AngleDraw]
+type = AngleDraw
+trigger1 = time > 449
+scale = .5,.5
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 450
+x = 5
+y = -5
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 460
+x = 0
+y = 0
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = enemy,time = 945
+y = 0
+
+[State 0, AssertSpecial]
+type = AssertSpecial
+trigger1 = enemy,time > 569 && enemy,time < 945
+flag = invisible
+
+[State 0, AssertSpecial]
+type = AssertSpecial
+trigger1 = pos y > 300 && vel y > 0
+flag = invisible
+
+
+;---------------------------------------------------------------------------
+
+; Warp Kamehameha Knock Down
+[Statedef 0006]
+movetype= H
+physics = N
+ctrl = 0
+velset = 0,0
+sprpriority = 2
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 1
+
+[State 0, RemoveExplod]
+type = RemoveExplod
+trigger1 = time = 0
+id = 5300
+
+[State 800, flash]
+type = PalFX
+trigger1 = time = 0
+add = 0, 0, 0
+sinadd = 0,0,0,0
+
+[State 0, StopSnd]
+type = StopSnd
+trigger1 = time = 0 
+channel = 10
+
+[State 0, ChangeAnim2]
+type = ChangeAnim
+triggerall = var(10) = 0
+trigger1 = !time
+value = 5030
+
+[State 0, ChangeAnim2]
+type = ChangeAnim
+triggerall = var(10) = 1
+trigger1 = !time
+value = 7033
+
+[State 0, ScreenBound]
+type = ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = !time
+x = -10
+y = 10
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = pos y > 300 && vel y > 0
+x = 0
+y = 0
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 240
+x = ifelse(facing = 1,-80,80)
+y = 0
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 0
+trigger1 = time = 240
+value = 150 
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 1
+trigger1 = time = 240
+value = 7059
+
+;Dragon Fist Get Hit
+[Statedef 0007]
+movetype= H
+physics = N
+ctrl = 0
+velset = 0,0
+sprpriority = 2
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 1
+
+[State 0, RemoveExplod]
+type = RemoveExplod
+trigger1 = time = 0
+id = 5300
+
+[State 800, flash]
+type = PalFX
+trigger1 = time = 0
+add = 0, 0, 0
+sinadd = 0,0,0,0
+
+[State 0, StopSnd]
+type = StopSnd
+trigger1 = time = 0 
+channel = 10
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 9    
+value = 0
+
+[State 0, AssertSpecial]
+type = AssertSpecial
+trigger1 = time > 10 && time < 550
+flag = invisible
+
+[State 0, ChangeAnim2]
+type = ChangeAnim
+triggerall = var(10) = 0
+trigger1 = time = 0
+value = 5030
+
+[State 0, ChangeAnim2]
+type = ChangeAnim
+triggerall = var(10) = 1
+trigger1 = time = 0
+value = 7033
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 0
+y = -15
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 50
+y = 0
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 50
+x = 0
+y = 0
+
+[State 0, ScreenBound]
+type = ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+;Goku(SSJ3) Grab P2 Part 1
+[Statedef 0008]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 1
+
+[State 0, HitBy]
+type = HitBy
+trigger1 = 1
+value = SCA,NT
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = anim !=5001
+trigger1 = time = 0
+value = 5001
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = name = "Goku"
+triggerall = var(10) = 1
+triggerall = anim !=7016
+trigger1 = time = 0
+value = 7016
+
+[State 0, RemoveExplod]
+type = RemoveExplod
+trigger1 = time = 0
+id = 5300
+
+[State 800, flash]
+type = PalFX
+trigger1 = time = 0
+add = 0, 0, 0
+sinadd = 0,0,0,0
+
+[State 0, StopSnd]
+type = StopSnd
+trigger1 = time = 0 
+channel = 10
+
+[State 0]
+type = VelSet
+trigger1 = time >20
+x = 0
+y = 0
+
+;Goku(SSJ3) Grab P2 Part 2
+[Statedef 0009]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 1
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 0
+
+[State 0, HitBy]
+type = HitBy
+trigger1 = 1
+value = SCA,NT
+
+[State 0, AngleDraw]
+type = AngleDraw
+trigger1 = 1
+value = 40
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 0
+triggerall = anim !=712
+trigger1 = time = 0
+value = 712
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 1
+triggerall = anim !=713
+trigger1 = time = 0
+value = 713
+
+;Goku Z-Skill P2 Part 1
+[Statedef 10001]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 0
+triggerall = anim !=830
+trigger1 = time = 0
+value = 830
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 1
+triggerall = anim !=832
+trigger1 = time = 0
+value = 832
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 0
+x = -2
+y = -15
+
+;Goku Z-Skill P2 Part 2
+[Statedef 10002]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 0
+triggerall = anim !=831
+trigger1 = time = 0
+value = 831
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 1
+triggerall = anim !=833
+trigger1 = time = 0
+value = 833
+
+[State 0, Turn]
+type = Turn
+trigger1 = time = 0
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 0
+x = -5
+y = 15
+
+[State 0]
+type = Helper
+trigger1 = pos y > -10
+ID = 700
+pos = 60,0
+postype = p1
+stateno = 8130
+helpertype = normal
+name = "Ground Stuff"
+ownpal = 1
+supermovetime = 99999999999999999
+pausemovetime = 99999999999999999
+size.xscale = 1
+size.yscale = 1
+
+[State 0, SelfState]
+type = SelfState
+trigger1 = pos y > -10
+value = 5100
+
+;Frieza Z-Skill P2
+[Statedef 10003]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 0
+y = 0
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 0
+triggerall = anim !=834
+trigger1 = time = 0
+value = 834
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 1
+triggerall = anim !=835
+trigger1 = time = 0
+value = 835
+
+[State 0, SelfState]
+type = SelfState
+trigger1 = animtime = 0
+value = 0
+ctrl = 1
+
+;Frieza Grab P2
+[Statedef 10004]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 0
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 0
+y = 0
+
+[State 0, SelfState]
+type = SelfState
+trigger1 = time = 1
+value = 5070
+
+;Goku(SSJ3) Z-Skill P2
+[Statedef 10005]
+type    = S
+movetype= H
+physics = S
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 0
+y = 0
+
+[State 0, SelfState]
+type = SelfState
+trigger1 = time = 0
+value = 5000
+ctrl = 0
+
+;Air Goku(SSJ3) Grab P2
+[Statedef 10006]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 0
+triggerall = anim !=714
+trigger1 = time = 0
+value = 714
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 1
+triggerall = anim !=715
+trigger1 = time = 0
+value = 715
+
+[State 0, PosSet]
+type = PosSet
+trigger1 =  time =  0
+x = enemy,pos x + ifelse(facing = 1,-50,50)
+y = enemy, pos y - 100
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = animelem = 3
+x = 7
+y = -5
+
+[State 0, LifeAdd]
+type = LifeAdd
+trigger1 = animelem = 3
+value = -70
+kill = 1
+
+[State 0, Gravity]
+type = Gravity
+trigger1 = time > 20
+
+[State 0, SelfState]
+type = SelfState
+trigger1 = pos y > -10
+value = 5100
+
+; Hit By Vegeta Unique
+[Statedef 10007]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = anim !=5100
+trigger1 = time = 0
+value = 5100
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = var(10) = 1
+triggerall = anim !=7100
+triggerall = time = 0
+trigger1 = Name = "Vegeta"
+value = 7100
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = name = "Goku"
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = var(10) = 1
+triggerall = anim !=7042
+trigger1 = time = 0
+value = 7042
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 0
+x = 0
+y = 0
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 0
+y = 0
+
+[State 0, SelfState]
+type = SelfState
+trigger1 = time = 25
+value = 5100
+
+; Thrown By Vegeta
+[Statedef 10008]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 2
+
+[State 0, HitBy]
+type = HitBy
+trigger1 = 1
+value = SCA,NT
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 0
+triggerall = anim !=716
+trigger1 = time = 0
+value = 716
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = var(10) = 1
+triggerall = anim !=717
+trigger1 = time = 0
+value = 717
+
+; Hit By Ki Fist
+[Statedef 10009]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 1
+
+[State 0, HitBy]
+type = HitBy
+trigger1 = 1
+value = SCA,SA
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = anim !=5012
+trigger1 = time = 0
+value = 5012
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = name = "Goku"
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = Var(10) = 1
+triggerall = anim !=7023
+trigger1 = time = 0
+value = 7023
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = Var(10) = 1
+triggerall = anim !=7012
+triggerall = time = 0
+trigger1 = name = "Vegeta"
+value = 7012
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 0
+x = 0
+y = 0
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 0
+x = enemy,pos x + Ifelse(facing = 1,-50,50) 
+y = 0
+
+; Hit By Grab Flash
+[Statedef 10010]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 3  
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 1
+
+[State 0, HitBy]
+type = HitBy
+trigger1 = 1
+value = SCA,HT
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 0
+x = 0
+y = 0
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 0
+x = enemy,pos x + Ifelse(facing = 1,-50,50) 
+y = 0
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = anim !=5012
+trigger1 = time = 0
+value = 5012
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = name = "Goku"
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = Var(10) = 1
+triggerall = anim !=7023
+trigger1 = time = 0
+value = 7023
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = Var(10) = 1
+triggerall = anim !=7012
+triggerall = time = 0
+trigger1 = name = "Vegeta"
+trigger2 = name = "Teen Gohan"
+value = 7012
+
+; Hit By Frieza Anti-Air
+[Statedef 10011]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 3
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = anim !=5001
+trigger1 = time = 0
+value = 5001
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = name = "Goku"
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = Var(10) = 1
+triggerall = anim !=7016
+trigger1 = time = 0
+value = 7016
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = Var(10) = 1
+triggerall = anim !=7001
+triggerall = time = 0
+trigger1 = name = "Vegeta"
+trigger2 = name = "Teen Gohan"
+value = 7001
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 1
+
+[State 0, HitBy]
+type = HitBy
+trigger1 = 1
+value = SCA,ST
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 0
+x = 0
+y = 0
+
+; Hit By Frieza Anti-Air Explosion
+[Statedef 10012]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 1
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 0
+
+[State 0, HitBy]
+type = HitBy
+trigger1 = 1
+value = SCA,ST
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 0
+x = 0
+y = 0
+
+[State 0, SelfState]
+type = SelfState
+trigger1 = time = 0
+value = 5020
+
+;Perfect Combination P2
+[Statedef 10013]
+type    = S
+movetype= H
+physics = S
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 1
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 0
+x = enemy,pos x + Ifelse(facing = 1,-70,70) 
+y = 0
+
+[State 0, SelfState]
+type = SelfState
+trigger1 = time = 0
+value = 5000
+ctrl = 0
+
+;Grabbed by Piccolo
+[Statedef 10014]
+type    = A
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, Turn]
+type = Turn
+trigger1 = facing = enemy,facing
+
+[State 0, VarSet]
+type = VarSet
+trigger1 = time = 0
+v = 5    
+value = 1
+
+[State 0, HitBy]
+type = HitBy
+trigger1 = 1
+value = SCA,NT
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time > 0
+x = 10
+y = -7
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = anim !=5001
+trigger1 = time = 0
+value = 5001
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = name = "Goku"
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = Var(10) = 1
+triggerall = anim !=7016
+trigger1 = time = 0
+value = 7016
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = Var(10) = 1
+triggerall = anim !=7001
+triggerall = time = 0
+trigger1 = name = "Vegeta"
+trigger2 = name = "Teen Gohan"
+trigger3 = name = "Trunks"
+trigger4 = name = "Gotenks"
+value = 7001
+
+;Grabbed by Arm Stretch
+[Statedef 10015]
+type    = S
+movetype= H
+ctrl = 0
+velset = 0,0
+sprpriority = 0
+
+[State 0, Turn]
+type = Turn
+trigger1 = facing = enemy,facing 
+
+[State 0, PosSet]
+type = PosSet
+trigger1 = time = 0
+x = enemy,pos x + Ifelse(facing = 1,-100,100) 
+y = 0
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = time = 0
+x = 0
+y = 0
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = anim !=5001
+trigger1 = time = 0
+value = 5001
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = name = "Goku"
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = Var(10) = 1
+triggerall = anim !=7016
+trigger1 = time = 0
+value = 7016
+
+[State 0, ChangeAnim]
+type = ChangeAnim
+triggerall = authorname = "HIDDENSAGE121"
+triggerall = Var(10) = 1
+triggerall = anim !=7001
+triggerall = time = 0
+trigger1 = name = "Vegeta"
+trigger2 = name = "Teen Gohan"
+trigger3 = name = "Trunks"
+trigger4 = name = "Gotenks"
+value = 7001
+
+[State 0, SelfState]
+type = SelfState
+trigger1 = time = 50
+value = 0
+ctrl = 1

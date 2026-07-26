@@ -1,0 +1,45 @@
+; This Is Piccolo From Dragon Ball Z: Legacy Battle
+[Info]
+name = "Piccolo"        ;Name of character
+displayname = "Piccolo" ;Name of character to display
+versiondate = 12/20/2015    ;Version date of character (MM-DD-YYYY or X.XX)
+mugenversion = 1.0          ;Version of M.U.G.E.N character works on (X.XX)
+author = "HIDDENSAGE121"         ;Character author name
+pal.defaults = 1,2,3,4,5,6    ;Default palettes in order of preference (up to 4)
+                            ;Numbering starts from 1
+localcoord = 320,240        ;Local coordinate space width and height
+
+; Files for the player
+[Files]
+cmd     = Piccolo.cmd           ;Command set
+cns     = Piccolo.cns           ;Constants
+st      = Piccolo.cns           ;States
+st2      = Normals.cns  
+st3      = Specials.cns 
+st4      = Supers.cns
+st5      = Custom States.cns
+st6      = Misc.cns
+st7      = Mechanics.cns
+st8      = Transform.cns
+st9      = -2.cns
+stcommon = common1.cns     ;Common states (from data/ or motif)
+sprite  = Piccolo.sff           ;Sprite
+anim    = Piccolo.air           ;Animation
+sound   = Piccolo.snd           ;Sound
+
+
+; Maps character selection buttons to palette numbers.
+[Palette Keymap]
+x = 1 
+y = 2
+b = 3
+a = 4
+c = 5
+z = 6
+
+
+
+; Arcade mode
+[Arcade]
+intro.storyboard = 
+ending.storyboard = 
