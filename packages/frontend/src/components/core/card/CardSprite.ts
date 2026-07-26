@@ -13,7 +13,6 @@
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { SpawnColor } from '$types/character-spawn.type';
-import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 import type { CardModel } from './card-model.type';
 import { textureCache, type IdleFrame } from './texture-cache';
 
@@ -138,7 +137,7 @@ export class CardSprite extends Container {
 		this.artSprite = new Sprite(Texture.EMPTY);
 		this.addChild(this.artSprite);
 
-		this.addChild(this.makeName(headerH));
+		this.addChild(this.makeHeader(headerH));
 		this.addChild(this.makeMeta(metaY, metaH));
 		this.addChild(this.makeStats(footerY, footerH));
 
@@ -279,8 +278,14 @@ export class CardSprite extends Container {
 		this.shadowSprite.position.set(x + dx, y + dy);
 	}
 
-	/** The character name, centred in the top header strip. */
-	private makeName(headerH: number): Text {
+	/**
+	 * The top header strip: the character name centred, and — when the card has a
+	 * rarity — a `[N]` badge (in its WoW quality colour) pinned to the left edge.
+	 */
+	private makeHeader(headerH: number): Container {
+		const group = new Container();
+		const centerY = headerH / 2;
+
 		const name = new Text({
 			text: this.card.label,
 			style: {
@@ -294,37 +299,37 @@ export class CardSprite extends Container {
 			}
 		});
 		name.anchor.set(0.5);
-		name.position.set(this.cardWidth / 2, headerH / 2);
-		return name;
+		name.position.set(this.cardWidth / 2, centerY);
+		group.addChild(name);
+
+		// Rarity badge (left), just the bracketed tier number in its quality colour.
+		if (this.card.rarity != null) {
+			const rarity = new Text({
+				text: `[${this.card.rarity}]`,
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize: Math.max(9, Math.round(this.cardWidth * 0.072)),
+					fontWeight: '700',
+					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2
+				}
+			});
+			rarity.anchor.set(0, 0.5);
+			rarity.position.set(this.cardWidth * 0.06, centerY);
+			group.addChild(rarity);
+		}
+
+		return group;
 	}
 
 	/**
-	 * The meta row shared between the art and the ATK/DEF row: the character's
-	 * rarity (in its WoW quality colour) pinned to the left, and the location
-	 * label pinned to the right. Either side is omitted when its value is absent.
+	 * The meta row between the art and the ATK/DEF row: the location label pinned
+	 * to the right. Omitted when the card carries no location.
 	 */
 	private makeMeta(metaY: number, metaH: number): Container {
 		const group = new Container();
 		const centerY = metaY + metaH / 2;
 		const padX = this.cardWidth * 0.06;
 		const fontSize = Math.max(9, Math.round(this.cardWidth * 0.072));
-
-		// Rarity (left), coloured by its quality tier.
-		const rarityLabel = this.card.rarity != null ? wowRarityLabel(this.card.rarity) : null;
-		if (rarityLabel && this.card.rarity != null) {
-			const rarity = new Text({
-				text: `[${this.card.rarity}] ${rarityLabel}`,
-				style: {
-					fontFamily: 'sans-serif',
-					fontSize,
-					fontWeight: '700',
-					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2
-				}
-			});
-			rarity.anchor.set(0, 0.5);
-			rarity.position.set(padX, centerY);
-			group.addChild(rarity);
-		}
 
 		// Location (right), muted, truncated to the right half of the row.
 		if (this.card.locationName) {
