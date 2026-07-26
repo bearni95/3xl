@@ -190,10 +190,16 @@
 	// the pointer, without touching the URL selection.
 	$: effectiveSelected = focusPath.length >= 2 ? focusPath[focusPath.length - 2].key : null;
 
-	// The breadcrumb drill path down to (not including) the focused pin.
-	$: displayPath = focusPath.slice(0, -1);
+	// The region whose children the sidebar lists: an explicit click (the URL
+	// `region` param) wins, so a row always drills straight into what was clicked;
+	// with nothing clicked the sidebar follows the zoom-driven focus instead.
+	$: openRegion = selected ?? effectiveSelected;
 
-	$: regionRows = regionRowsForSelection(regionNodes, effectiveSelected);
+	// The breadcrumb drill path down to (and including) the open region: the URL
+	// path when a region is clicked, else the zoom focus path minus its frontier pin.
+	$: displayPath = selected ? openPath : focusPath.slice(0, -1);
+
+	$: regionRows = regionRowsForSelection(regionNodes, openRegion);
 
 	// Free-text search across every location in the whole tree (all tiers), matched
 	// against each region's displayed name (case- and accent-insensitive). While the
@@ -272,8 +278,8 @@
 	// Hide the stroke of every line overlay finer than the imaged tier, so only the
 	// tier the map is focused on (and everything coarser) keeps its borders — the
 	// finer divisions inside would just clutter the pinned regions. Keyed off the
-	// effective (zoom-driven) selection, so the borders coarsen as the map zooms out.
-	$: hiddenRank = imagedRank(effectiveSelected, regionNodes);
+	// open region, so the borders coarsen as the map zooms out (or follow a click).
+	$: hiddenRank = imagedRank(openRegion, regionNodes);
 	$: hiddenLineUrls = new Set(
 		lineTiers.filter(([, rank]) => rank > hiddenRank).map(([url]) => url)
 	);
