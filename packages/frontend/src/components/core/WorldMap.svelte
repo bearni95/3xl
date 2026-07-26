@@ -127,13 +127,22 @@
 		group.resetStyle(layer);
 	}
 
-	// Build a pin's DOM: a poster thumbnail in a rounded frame with the show name
-	// captioned beneath. The wrapper is translated so its bottom centre sits on the
-	// point (the marker itself is zero-sized, see rebuildMarkers), giving a pin
-	// that stands above its region.
+	// Build a pin's DOM: the region's location name, then a poster thumbnail in a
+	// rounded frame, with the full show name captioned beneath (never truncated).
+	// The wrapper is translated so its bottom centre sits on the point (the marker
+	// itself is zero-sized, see rebuildMarkers), giving a pin that stands above its
+	// region.
 	function markerElement(marker: MapMarker): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className = classNamesFor(marker);
+
+		if (marker.subtitle) {
+			const location = document.createElement('span');
+			location.textContent = marker.subtitle;
+			location.className =
+				'mb-1 rounded bg-base-100 px-1.5 py-0.5 text-center text-xs font-semibold text-base-content shadow';
+			wrap.appendChild(location);
+		}
 
 		if (marker.imageUrl) {
 			const frame = document.createElement('div');
@@ -149,7 +158,7 @@
 		const caption = document.createElement('span');
 		caption.textContent = marker.title;
 		caption.className =
-			'mt-1 max-w-[7rem] truncate rounded bg-neutral px-1.5 py-0.5 text-center text-xs font-semibold text-neutral-content shadow';
+			'mt-1 max-w-[10rem] whitespace-normal rounded bg-neutral px-1.5 py-0.5 text-center text-xs font-semibold text-neutral-content shadow';
 		wrap.appendChild(caption);
 
 		return wrap;
