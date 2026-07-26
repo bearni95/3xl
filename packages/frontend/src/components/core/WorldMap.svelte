@@ -147,15 +147,28 @@
 		return marker.onClick ? `${base} cursor-pointer` : base;
 	}
 
-	// (Re)build every pin from the current markers: clear the layer, then drop a
-	// zero-sized divIcon marker at each point (its overflowing content is the
-	// visible card) with a hover tooltip and optional click.
+	// Above this many pins in view the layer is left empty until the map zooms in —
+	// a map-wide fine breakdown (e.g. every municipality) would otherwise drop
+	// thousands of image markers at once. The pins reappear tier by tier as the
+	// visible count drops below the cap.
+	const MAX_VISIBLE_MARKERS = 250;
+
+	// (Re)build the pins for the current view: clear the layer, keep only the
+	// markers inside the (slightly padded) viewport, and — unless there are too
+	// many to stay legible — drop a zero-sized divIcon marker at each (its
+	// overflowing content is the visible card) with a hover tooltip and click.
+	// Runs on every markers change and whenever the map pans or zooms, so the
+	// whole-map breakdown is culled to what's actually on screen.
 	function rebuildMarkers() {
 		if (!mapInstance || !Leaf) return;
 		if (!markerLayer) markerLayer = Leaf.layerGroup().addTo(mapInstance);
 		markerLayer.clearLayers();
 
-		for (const marker of markers) {
+		const bounds = mapInstance.getBounds().pad(0.25);
+		const visible = markers.filter((marker) => bounds.contains(marker.position));
+		if (visible.length > MAX_VISIBLE_MARKERS) return;
+
+		for (const marker of visible) {
 			const icon = Leaf.divIcon({
 				html: markerElement(marker),
 				className: '',
@@ -200,6 +213,8 @@
 		mapInstance.on('zoomend', () => {
 			currentZoom = mapInstance!.getZoom();
 		});
+		// Re-cull the pins to the viewport after any pan or zoom settles.
+		mapInstance.on('moveend zoomend', rebuildMarkers);
 
 		// Fetch all overlays in parallel, then add them in array order so
 		// z-stacking is deterministic regardless of network timing.

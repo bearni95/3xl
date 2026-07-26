@@ -250,14 +250,22 @@
 		lineTiers.filter(([, rank]) => rank > hiddenRank).map(([url]) => url)
 	);
 
-	// The regions the map marks with a pin: mirrors what the old poster fill imaged
-	// — the territories at the top view, otherwise the selected region's children
-	// (its next sub-division), or the selected municipality itself when it's a leaf.
-	function imagedNodes(chosen: string | null, nodes: RegionNode[]): RegionNode[] {
-		if (!chosen) return nodes;
-		const node = findNode(nodes, chosen);
-		if (!node) return [];
-		return node.children.length ? node.children : [node];
+	// The regions the map marks with a pin — the breakdown applied to the WHOLE
+	// map, not just the open region. We take the frontier of the entire forest one
+	// tier below the open region: territories at the top view, every territory's
+	// children once a territory is open, every comarca once a province is open, and
+	// so on. Branches that don't reach that deep contribute their own leaf, so no
+	// area is left unpinned. (WorldMap culls this to the pins in view, so a fine,
+	// map-wide breakdown stays performant.)
+	function breakdownNodes(chosen: string | null, nodes: RegionNode[]): RegionNode[] {
+		const depth = (chosen ? nodePath(nodes, chosen).length : 0);
+		const frontier: RegionNode[] = [];
+		const walk = (node: RegionNode, atDepth: number) => {
+			if (atDepth === depth || node.children.length === 0) frontier.push(node);
+			else for (const child of node.children) walk(child, atDepth + 1);
+		};
+		for (const node of nodes) walk(node, 0);
+		return frontier;
 	}
 
 	// One pin per imaged region that has a show, dropped at the centre of the
@@ -289,7 +297,7 @@
 		return pins;
 	}
 
-	$: markers = buildMarkers(imagedNodes(selected, regionNodes), municipalities, fillIndex);
+	$: markers = buildMarkers(breakdownNodes(selected, regionNodes), municipalities, fillIndex);
 
 	// The bounding box the map fits when a region is selected: the union of every
 	// municipality polygon under the selected key. A fresh array each time (even
