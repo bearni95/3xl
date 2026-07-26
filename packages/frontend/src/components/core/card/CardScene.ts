@@ -30,6 +30,12 @@ export interface CardSceneOptions {
 	cards: CardModel[];
 	/** Max cards per row when more than one is drawn (default 3). */
 	columns?: number;
+	/**
+	 * Optional per-card tap handler. When set, every card is made interactive
+	 * (pointer cursor) and this fires with the tapped card's index into `cards`.
+	 * Omit for a display-only canvas (the pack opener uses its own scene).
+	 */
+	onCardTap?: (index: number) => void;
 }
 
 export class CardScene {
@@ -37,11 +43,16 @@ export class CardScene {
 	private host: HTMLElement;
 	private cards: CardModel[];
 	private columns: number;
+	private onCardTap?: (index: number) => void;
 
 	private cardLayer: Container;
 	private cardSprites: CardSprite[] = [];
 
 	private isDestroyed = false;
+	// True once the Pixi app is initialised and the canvas is mounted, so that
+	// `setCards` calls arriving before init completes just stage the new cards
+	// (init builds them) rather than rendering against an uninitialised app.
+	private ready = false;
 	private resizeObserver: ResizeObserver | null = null;
 	// Last built canvas size, so a resize that doesn't change dimensions is a no-op.
 	private builtW = 0;
@@ -51,9 +62,24 @@ export class CardScene {
 		this.host = host;
 		this.cards = options.cards;
 		this.columns = Math.max(1, options.columns ?? 3);
+		this.onCardTap = options.onCardTap;
 		this.app = new Application();
 		this.cardLayer = new Container();
 		void this.init();
+	}
+
+	/**
+	 * Replace the drawn cards (and optionally the column count) and rebuild. Cards
+	 * often arrive asynchronously after the host mounts (a roster loads its spawns),
+	 * so the hosting component calls this reactively; before init completes it only
+	 * stages the cards for the initial build.
+	 */
+	setCards(cards: CardModel[], columns?: number): void {
+		this.cards = cards;
+		if (columns != null) this.columns = Math.max(1, columns);
+		if (!this.ready || this.isDestroyed) return;
+		const { width, height } = this.measure();
+		this.build(width, height);
 	}
 
 	destroy(): void {
@@ -81,6 +107,7 @@ export class CardScene {
 
 		this.host.appendChild(this.app.canvas);
 		this.app.stage.addChild(this.cardLayer);
+		this.ready = true;
 
 		this.build(width, height);
 
@@ -129,6 +156,14 @@ export class CardScene {
 			});
 			sprite.pivot.set(cardW / 2, cardH / 2);
 			sprite.position.set(rowStartX + col * cellW, firstRowY + row * cellH);
+			// Make each card tappable when the host wants selection (the roster toggles
+			// team membership on tap); a display-only canvas leaves them inert.
+			if (this.onCardTap) {
+				const index = i;
+				sprite.eventMode = 'static';
+				sprite.cursor = 'pointer';
+				sprite.on('pointertap', () => this.onCardTap?.(index));
+			}
 			this.cardLayer.addChild(sprite);
 			this.cardSprites.push(sprite);
 		}

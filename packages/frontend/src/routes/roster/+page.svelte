@@ -10,8 +10,10 @@
 	import { AuthStatus } from '$types/profile.type';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import type { CombatColor } from '$types/character-definition.type';
+	import { SPAWN_STAT_MAX } from '$types/character-spawn.type';
 	import { teammateColors } from '$utils/color/compare';
-	import RosterCard from '$components/core/RosterCard.svelte';
+	import CardCanvas from '$components/core/card/CardCanvas.svelte';
+	import type { CardModel } from '$components/core/card/card-model.type';
 	import TeamPanel from '$components/core/TeamPanel.svelte';
 
 	const status = authService.status;
@@ -26,6 +28,9 @@
 	// character id → names of the Supabase shows it belongs to.
 	let characterShowNames = new Map<string, string[]>();
 	let municipalityNames: Map<string, string> | null = null;
+	// character id → rarity tier from Supabase `character_templates`, so each card
+	// can show its rarity badge (the same source the claim cards read).
+	let rarityByCharacter = new Map<string, number>();
 
 	// character id → resolved active-face portrait URL (definition.face → manifest
 	// default). Loaded lazily per distinct character as spawns arrive; the grid shows
@@ -50,11 +55,13 @@
 		loading = true;
 		error = '';
 		try {
-			const [, showNamesByCharacter] = await Promise.all([
+			const [, showNamesByCharacter, rarities] = await Promise.all([
 				spawnService.loadSpawns(userId),
-				spawnService.loadCharacterShowNames()
+				spawnService.loadCharacterShowNames(),
+				spawnService.loadRarities()
 			]);
 			characterShowNames = showNamesByCharacter;
+			rarityByCharacter = rarities;
 
 			// Place names are optional — a missing layer just falls back to the id.
 			try {
@@ -76,9 +83,6 @@
 	}
 	function basePathFor(id: string): string | null {
 		return charactersById.get(id)?.basePath ?? null;
-	}
-	function faceFor(id: string): string | null {
-		return characterFaces.get(id) ?? null;
 	}
 
 	// Fetch the active-face portrait for any distinct character not yet requested.
@@ -107,8 +111,36 @@
 		// The Ultramar sentinel and any missing/unresolved location read as Ultramar.
 		return ULTRAMAR.municipality;
 	}
-	function claimedAtFor(createdAt: string): string {
-		return new Date(createdAt).toLocaleString();
+
+	// Each claimed spawn as a display CardModel for the shared card renderer — the
+	// same shape the claim pack opener draws (label + sprite from the local registry,
+	// face fallback, rolled colour/stat, rarity, claim place and year). ATK is the
+	// rolled stat and DEF its complement, mirroring the claim flow's buildPull. The
+	// resolved maps are threaded in explicitly so the statement re-runs as faces,
+	// place names and rarities load in (a bare helper call would hide those deps).
+	$: cardModels = ((
+		faces: Map<string, string | null>,
+		_names: Map<string, string> | null,
+		rarities: Map<string, number>
+	): CardModel[] =>
+		$spawns.map((spawn) => ({
+			label: labelFor(spawn.characterId),
+			basePath: basePathFor(spawn.characterId),
+			faceUrl: faces.get(spawn.characterId) ?? null,
+			color: spawn.color,
+			rarity: rarities.get(spawn.characterId) ?? null,
+			locationName: locationNameFor(spawn.locationId),
+			spawnedAt: spawn.createdAt,
+			atk: spawn.stat,
+			def: SPAWN_STAT_MAX - spawn.stat
+		})))(characterFaces, municipalityNames, rarityByCharacter);
+
+	// Tapping a card on the canvas toggles that spawn on the active team (add to the
+	// first free slot, or remove it) — the canvas replaces the old per-card buttons.
+	// The tapped index maps 1:1 to the spawns the cards were built from.
+	function handleCardTap(index: number): void {
+		const spawn = $spawns[index];
+		if (spawn) toggleTeamMember(spawn.id);
 	}
 
 	// Every claimed spawn, offered as an individual team pick — each spawn is its own
@@ -143,8 +175,8 @@
 	// spawn id → its rolled spawn colour, for the team colour rule.
 	$: colorForSpawn = new Map(teamOptions.map((option) => [option.id, option.color]));
 
-	// The currently-selected team and the spawn ids already on it, for the
-	// per-card add/remove buttons in the grid.
+	// The currently-selected team and the spawn ids already on it, driving the tap
+	// toggle and the colour rule below.
 	$: activeTeam = $team.teams.find((entry) => entry.id === $team.activeTeamId) ?? null;
 	$: activeMemberIds = new Set(
 		(activeTeam?.memberIds ?? []).filter((id): id is string => Boolean(id))
@@ -166,19 +198,6 @@
 		const color = colorForSpawn.get(spawnId) ?? null;
 		return Boolean(allowed && color && allowed.has(color));
 	}
-
-	// Addability per spawn, keyed by spawn id. Computed reactively — the deps
-	// (active team, its members, their colours) are threaded in explicitly so the
-	// statement re-runs when they change; a bare canAddToActiveTeam() call in the
-	// template would hide those deps inside the function and never re-evaluate,
-	// leaving the grid's "Add to team" buttons stuck disabled (same reason
-	// teamOptions threads municipalityNames in).
-	$: canAddById = ((_activeTeam, _members, _colors) =>
-		new Map($spawns.map((spawn) => [spawn.id, canAddToActiveTeam(spawn.id)])))(
-		activeTeam,
-		activeMemberIds,
-		colorForSpawn
-	);
 
 	// Toggle a spawn on the active team: remove it if present, otherwise add it to
 	// the first free slot (respecting the colour rule via canAddToActiveTeam).
@@ -262,23 +281,18 @@
 					</div>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-					{#each $spawns as spawn (spawn.id)}
-						{@const onTeam = activeMemberIds.has(spawn.id)}
-						<RosterCard
-							label={labelFor(spawn.characterId)}
-							faceUrl={faceFor(spawn.characterId)}
-							showNames={showNamesFor(spawn.characterId)}
-							locationName={locationNameFor(spawn.locationId)}
-							claimedAt={claimedAtFor(spawn.createdAt)}
-							color={spawn.color}
-							stat={spawn.stat}
-							hasActiveTeam={activeTeam !== null}
-							{onTeam}
-							canAdd={!onTeam && (canAddById.get(spawn.id) ?? false)}
-							on:toggle={() => toggleTeamMember(spawn.id)}
-						/>
-					{/each}
+				<p class="mb-3 text-xs opacity-60">
+					{#if activeTeam}
+						Tap a card to add or remove it from the active team.
+					{:else}
+						Select a team to start adding characters by tapping their card.
+					{/if}
+				</p>
+				<!-- The roster is drawn on the shared card canvas — the same renderer the
+				     claim pack opener uses — instead of a DOM grid; tapping a card toggles
+				     its team membership. -->
+				<div class="h-[70vh] min-h-[32rem] overflow-hidden rounded-box bg-base-100 shadow-md">
+					<CardCanvas cards={cardModels} columns={3} onCardTap={handleCardTap} />
 				</div>
 			{/if}
 		</div>
