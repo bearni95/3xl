@@ -4,6 +4,7 @@
 	import { getRoutes } from '$utils/routes/get-routes';
 	import NavMenu from '$components/core/NavMenu.svelte';
 	import AuthMenu from '$components/core/AuthMenu.svelte';
+	import ThemeToggle from '$components/core/ThemeToggle.svelte';
 	import type { RouteNode } from '$types/navigation.type';
 
 	export let brand: string = '3XL';
@@ -103,7 +104,8 @@
 		</ul>
 	</div>
 
-	<div class="navbar-end">
+	<div class="navbar-end gap-1">
+		<ThemeToggle />
 		<AuthMenu />
 	</div>
 </nav>
