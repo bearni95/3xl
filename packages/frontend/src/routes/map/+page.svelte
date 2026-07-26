@@ -197,6 +197,24 @@
 
 	$: regionRows = regionRowsForSelection(regionNodes, effectiveSelected);
 
+	// Free-text filter over the rows currently in the table, matched against each
+	// region's displayed name (case- and accent-insensitive). Empty shows them all.
+	let regionFilter = '';
+	$: normalizedFilter = regionFilter
+		.trim()
+		.toLowerCase()
+		.normalize('NFD')
+		.replace(/\p{Diacritic}/gu, '');
+	$: filteredRegionRows = normalizedFilter
+		? regionRows.filter((row) =>
+				restoreCatalanArticle(row.name)
+					.toLowerCase()
+					.normalize('NFD')
+					.replace(/\p{Diacritic}/gu, '')
+					.includes(normalizedFilter)
+			)
+		: regionRows;
+
 	// The breadcrumb crumbs: a root crumb back to the top view, then one per
 	// ancestor down to the effective region. The last crumb is the current region
 	// and renders as plain text; the rest link back up to their tier.
@@ -455,7 +473,16 @@
 			</div>
 		</div>
 
-		<RegionTable rows={regionRows} onSelect={select} />
+		<div class="border-b border-base-300 px-4 py-3">
+			<input
+				type="text"
+				class="input input-bordered input-sm w-full"
+				placeholder="Filter by name…"
+				bind:value={regionFilter}
+			/>
+		</div>
+
+		<RegionTable rows={filteredRegionRows} onSelect={select} />
 	</aside>
 
 	<div class="relative flex min-w-0 flex-1 flex-col">
