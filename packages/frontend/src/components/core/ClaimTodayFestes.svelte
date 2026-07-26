@@ -1,10 +1,16 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import ShowChip from '$components/core/ShowChip.svelte';
 	import { indexFestesByDate, isoDate } from '$utils/festes/festa-calendar';
 	import type { FestesCollection, MunicipalityFesta } from '$types/festa.type';
 	import type { MunicipalityShowsCollection } from '$types/show.type';
 	import type { RegionShow } from '$utils/geo/region-tree';
+
+	// Fires when a celebrating municipality (with a seeded show) is picked, so the
+	// parent can open that show's booster from this place instead of the GPS reading.
+	const dispatch = createEventDispatcher<{
+		claim: { festa: MunicipalityFesta; show: RegionShow };
+	}>();
 
 	// The baked festes-locals calendar and the map's municipality→show assignment —
 	// the same two datasets the /seasons page reads. Fetched once on mount.
@@ -87,17 +93,32 @@
 			</div>
 			<ul class="-mx-2 max-h-96 divide-y divide-base-200 overflow-y-auto">
 				{#each todayFestes as { festa, show } (festa.id)}
-					<li class="flex items-center justify-between gap-3 px-2 py-2">
-						<div class="min-w-0">
-							<div class="truncate font-medium">{festa.name}</div>
-							<div class="truncate text-xs opacity-60">
-								{[festa.comarca, festa.prov].filter(Boolean).join(' · ')}
-							</div>
-						</div>
+					<li>
 						{#if show}
-							<ShowChip {show} classes="flex-none justify-end" />
+							<button
+								type="button"
+								class="flex w-full items-center justify-between gap-3 rounded px-2 py-2 text-left hover:bg-base-200"
+								title="Obre el sobre de {show.name} des de {festa.name}"
+								on:click={() => dispatch('claim', { festa, show })}
+							>
+								<div class="min-w-0">
+									<div class="truncate font-medium">{festa.name}</div>
+									<div class="truncate text-xs opacity-60">
+										{[festa.comarca, festa.prov].filter(Boolean).join(' · ')}
+									</div>
+								</div>
+								<ShowChip {show} classes="flex-none justify-end" />
+							</button>
 						{:else}
-							<span class="flex-none text-xs italic opacity-40">sense sèrie</span>
+							<div class="flex items-center justify-between gap-3 px-2 py-2">
+								<div class="min-w-0">
+									<div class="truncate font-medium">{festa.name}</div>
+									<div class="truncate text-xs opacity-60">
+										{[festa.comarca, festa.prov].filter(Boolean).join(' · ')}
+									</div>
+								</div>
+								<span class="flex-none text-xs italic opacity-40">sense sèrie</span>
+							</div>
 						{/if}
 					</li>
 				{/each}

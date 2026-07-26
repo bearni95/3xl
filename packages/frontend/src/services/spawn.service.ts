@@ -12,6 +12,9 @@ import type {
 	ClaimableShow
 } from '$types/character-spawn.type';
 
+/** How many cards a single booster pack contains. */
+export const BOOSTER_SIZE = 5;
+
 /**
  * Player-facing spawn state, backed by Supabase. Talks to Postgres directly from
  * the browser with the anon key (RLS-gated), the same pure-SPA pattern as
@@ -30,7 +33,7 @@ class SpawnService {
 
 	/**
 	 * Per-character rarity tier, loaded from Supabase `character_templates` and
-	 * cached so {@link claimRandom} can weight its roll (higher tiers are rarer).
+	 * cached so {@link claimBooster} can weight its roll (higher tiers are rarer).
 	 * Empty until {@link loadRarities} runs; a missing id reads as
 	 * {@link DEFAULT_RARITY}, which makes the roll fall back to uniform.
 	 */
@@ -77,7 +80,7 @@ class SpawnService {
 
 	/**
 	 * Load every character's rarity tier from `character_templates` and cache it,
-	 * so {@link claimRandom} can weight its roll by rarity. Characters absent from
+	 * so {@link claimBooster} can weight its roll by rarity. Characters absent from
 	 * the table (or with a null tier) read as {@link DEFAULT_RARITY}. Returns the
 	 * cache. Safe to call repeatedly — it just refreshes the map.
 	 */
@@ -143,22 +146,24 @@ class SpawnService {
 	}
 
 	/**
-	 * Roll a random character from `characterIds` and persist it as a spawn owned
-	 * by `userId`, tagged with the show it came from (`showId`, or `null` when
-	 * rolled across all shows) and the municipality it was claimed in
-	 * (`locationId`, a geojson feature id). A location is required — a spawn
-	 * cannot be claimed without one. The character is drawn weighted by rarity
-	 * (each higher tier is 2× rarer than the one below — see {@link loadRarities}
-	 * and `weightedRarityIndex`); if rarities haven't been loaded the roll is
-	 * uniform. Each spawn also rolls a weighted colour and a gameplay stat (1..9).
-	 * The new spawn is prepended to the store and returned.
+	 * Open a booster pack: roll {@link BOOSTER_SIZE} characters from `characterIds`
+	 * and persist each as a spawn owned by `userId`, tagged with the show it came
+	 * from (`showId`, or `null` when rolled across all shows) and the municipality
+	 * it was claimed in (`locationId`, a geojson feature id). A location is required
+	 * — a booster cannot be claimed without one. Every card is drawn independently
+	 * with the same criteria: weighted by rarity (each higher tier is 2× rarer than
+	 * the one below — see {@link loadRarities} and `weightedRarityIndex`; a uniform
+	 * roll if rarities haven't been loaded), plus its own weighted colour and
+	 * gameplay stat (1..9). Duplicates are possible, exactly like a real booster.
+	 * All new spawns are prepended to the store and returned in pull order.
 	 */
-	async claimRandom(
+	async claimBooster(
 		userId: string,
 		characterIds: string[],
 		showId: number | null,
-		locationId: string
-	): Promise<CharacterSpawn> {
+		locationId: string,
+		size: number = BOOSTER_SIZE
+	): Promise<CharacterSpawn[]> {
 		if (characterIds.length === 0) {
 			throw new Error('There are no claimable characters to roll from.');
 		}
@@ -166,28 +171,25 @@ class SpawnService {
 			throw new Error('Claim your location before spawning a character.');
 		}
 		const rarities = characterIds.map((id) => this.rarityByCharacter.get(id) ?? DEFAULT_RARITY);
-		const characterId = characterIds[weightedRarityIndex(rarities)];
-		const color = randomSpawnColor();
-		const stat = randomSpawnStat();
+		const rows = Array.from({ length: size }, () => ({
+			user_id: userId,
+			character_id: characterIds[weightedRarityIndex(rarities)],
+			show_id: showId,
+			location_id: locationId,
+			color: randomSpawnColor(),
+			stat: randomSpawnStat()
+		}));
 
 		const supabase = getSupabaseClient();
 		const { data, error } = await supabase
 			.from('character_spawns')
-			.insert({
-				user_id: userId,
-				character_id: characterId,
-				show_id: showId,
-				location_id: locationId,
-				color,
-				stat
-			})
-			.select('id, user_id, character_id, show_id, location_id, color, stat, created_at')
-			.single();
+			.insert(rows)
+			.select('id, user_id, character_id, show_id, location_id, color, stat, created_at');
 		if (error) throw error;
 
-		const spawn = spawnAdapter.fromRow(data as CharacterSpawnRow);
-		this.spawnsStore.update((current) => [spawn, ...current]);
-		return spawn;
+		const spawns = (data as CharacterSpawnRow[]).map((row) => spawnAdapter.fromRow(row));
+		this.spawnsStore.update((current) => [...spawns, ...current]);
+		return spawns;
 	}
 }
 

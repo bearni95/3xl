@@ -4,8 +4,11 @@
 	import { locationService, hasLocation } from '$services/location.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
+	import ClaimTodayFestes from '$components/core/ClaimTodayFestes.svelte';
 	import ClaimPackOpenerPanel from '$components/core/pack/ClaimPackOpenerPanel.svelte';
 	import type { OpenerView } from '$components/core/pack/scene/opener-view.type';
+	import type { MunicipalityFesta } from '$types/festa.type';
+	import type { RegionShow } from '$utils/geo/region-tree';
 
 	const store = locationService.store;
 
@@ -32,6 +35,17 @@
 			// Coordinates still show; region simply stays unresolved.
 		}
 	});
+
+	// A festa pick opens the booster from the celebrating municipality rather than
+	// the GPS reading: build that place's region and hand it to the character panel.
+	function claimFromFesta(festa: MunicipalityFesta, show: RegionShow) {
+		characterPanel?.claimFromShowId(show.id, {
+			id: festa.id,
+			municipality: festa.name,
+			province: festa.prov ?? '',
+			country: festa.territory ?? ''
+		});
+	}
 
 	function requestLocation() {
 		error = '';
@@ -126,6 +140,8 @@
 		</div>
 
 		<CharacterClaimPanel bind:this={characterPanel} bind:opener {region} />
+
+		<ClaimTodayFestes on:claim={(event) => claimFromFesta(event.detail.festa, event.detail.show)} />
 	</div>
 
 	<!-- Right column: the pack-opening canvas, shown once a character is claimed. -->

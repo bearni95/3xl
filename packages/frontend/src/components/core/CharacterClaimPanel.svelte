@@ -58,19 +58,22 @@
 	// card can show the claimed character's rarity. Empty until the shows load.
 	let rarityByCharacter = new Map<string, number>();
 
-	// The most recently claimed spawn, shown as a RosterCard so the player sees
-	// exactly what they rolled. Its face and place name are captured at claim time.
-	let lastSpawn: CharacterSpawn | null = null;
-	let lastFaceUrl: string | null = null;
+	// The most recently claimed booster, shown as RosterCards so the player sees
+	// exactly what they rolled. Faces and place name are captured at claim time.
+	let lastPulls: ClaimPull[] = [];
 	let lastLocationName = '';
 
 	// Pack-opener modal state. Rolling from a show opens the booster-pack canvas
-	// (the show's poster is the pack cover) and reveals the character just claimed
+	// (the show's poster is the pack cover) and reveals the characters just claimed
 	// from it. `openSession` bumps on every roll so the canvas remounts fresh.
 	let openerShow: ClaimableShow | null = null;
-	let openerPull: ClaimPull | null = null;
+	let openerPulls: ClaimPull[] = [];
 	let openerPosterUrl: string | null = null;
 	let openSession = 0;
+	// The region the open pack was claimed from — the GPS reading, or a municipality
+	// picked from today's festes. Re-opens ("open another") reuse it, so the pack
+	// stays tied to the place it was opened from rather than the GPS panel.
+	let openerRegion: GeoRegion | null = null;
 
 	onMount(() => {
 		authService.init();
@@ -108,7 +111,7 @@
 			const [showList, showNames, rarities] = await Promise.all([
 				spawnService.loadShows(),
 				spawnService.loadCharacterShowNames(),
-				// Warm the rarity cache so claimRandom can weight its roll by rarity.
+				// Warm the rarity cache so claimBooster can weight its rolls by rarity.
 				spawnService.loadRarities()
 			]);
 			shows = showList;
@@ -121,45 +124,32 @@
 		}
 	}
 
-	// Roll a random character from one show's assigned pool and persist it, tagged
-	// with that show. Only one roll runs at a time (the other cards lock out).
-	async function claimFromShow(show: ClaimableShow) {
-		if (!currentUserId || !locationId || claimingId !== null) return;
+	// Open a booster from one show's assigned pool and persist its cards, each
+	// tagged with that show. Only one open runs at a time (the other cards lock out).
+	async function claimFromShow(show: ClaimableShow, claimRegion: GeoRegion | null = region) {
+		const locId = claimRegion?.id ?? null;
+		if (!currentUserId || !locId || claimingId !== null) return;
 		claimingId = show.id;
 		claimErrors = { ...claimErrors, [show.id]: '' };
 		try {
-			const spawn = await spawnService.claimRandom(
+			const spawns = await spawnService.claimBooster(
 				currentUserId,
 				show.characterIds,
 				show.id,
-				locationId
+				locId
 			);
-			// Capture what was rolled and resolve its portrait, so the RosterCard
-			// below mirrors the roster grid exactly.
-			lastLocationName = region?.municipality ?? '';
-			const basePath = charactersById.get(spawn.characterId)?.basePath ?? null;
-			const faceUrl = basePath
-				? await resolveCharacterFaceUrl(spawn.characterId, basePath)
-				: null;
-			lastFaceUrl = faceUrl;
-			lastSpawn = spawn;
+			// Capture what was rolled and resolve each portrait, so the RosterCards
+			// below mirror the roster grid exactly.
+			lastLocationName = claimRegion?.municipality ?? '';
+			const pulls = await Promise.all(spawns.map((spawn) => buildPull(spawn)));
+			lastPulls = pulls;
 
 			// Open (or refresh) the pack-opener canvas with what was just claimed:
-			// the show's poster is the pack cover, the rolled character is the card.
+			// the show's poster is the pack cover, the rolled characters are the cards.
 			openerShow = show;
 			openerPosterUrl = posterByShowId.get(show.id) ?? null;
-			// ATK/DEF mirror the board: ATK is the rolled spawn stat, DEF its complement.
-			openerPull = {
-				spawn,
-				label: labelFor(spawn.characterId),
-				basePath,
-				faceUrl,
-				color: spawn.color,
-				rarity: rarityByCharacter.get(spawn.characterId) ?? null,
-				locationName: lastLocationName || null,
-				atk: spawn.stat,
-				def: SPAWN_STAT_MAX - spawn.stat
-			};
+			openerPulls = pulls;
+			openerRegion = claimRegion;
 			openSession += 1;
 		} catch (error) {
 			claimErrors = { ...claimErrors, [show.id]: errorMessage(error) };
@@ -168,29 +158,60 @@
 		}
 	}
 
+	// Open a booster for a specific show and place — used by the "festes majors
+	// d'avui" list, which claims from the celebrating municipality rather than the
+	// GPS reading. No-op until the show pool has loaded (returns whether it fired).
+	export function claimFromShowId(showId: number, claimRegion: GeoRegion): boolean {
+		const show = shows.find((entry) => entry.id === showId);
+		if (!show) return false;
+		void claimFromShow(show, claimRegion);
+		return true;
+	}
+
+	// Assemble the display card for one claimed spawn: label + face from the local
+	// registry, colour/stat off the spawn. ATK/DEF mirror the board — ATK is the
+	// rolled spawn stat, DEF its complement.
+	async function buildPull(spawn: CharacterSpawn): Promise<ClaimPull> {
+		const basePath = charactersById.get(spawn.characterId)?.basePath ?? null;
+		const faceUrl = basePath
+			? await resolveCharacterFaceUrl(spawn.characterId, basePath)
+			: null;
+		return {
+			spawn,
+			label: labelFor(spawn.characterId),
+			basePath,
+			faceUrl,
+			color: spawn.color,
+			rarity: rarityByCharacter.get(spawn.characterId) ?? null,
+			locationName: lastLocationName || null,
+			atk: spawn.stat,
+			def: SPAWN_STAT_MAX - spawn.stat
+		};
+	}
+
 	// The opener view handed up to the parent, recomputed whenever a roll resolves
 	// (openerPull/openerShow set) or the rolling/location state changes.
 	$: opener =
-		openerShow && openerPull
+		openerShow && openerPulls.length > 0
 			? {
 					coverUrl: openerPosterUrl,
 					label: openerShow.name,
-					pulls: [openerPull],
+					pulls: openerPulls,
 					openSession,
 					openAnotherBusy: claimingId !== null,
-					openAnotherDisabled: !locationId || claimingId !== null
+					openAnotherDisabled: !openerRegion?.id || claimingId !== null
 				}
 			: null;
 
-	// Re-roll from the same show without leaving the opener — reveals a fresh card.
-	// Exported so the parent's opener column can drive it.
+	// Re-open from the same show and place without leaving the opener — reveals a
+	// fresh booster. Exported so the parent's opener column can drive it.
 	export function openAnother() {
-		if (openerShow) void claimFromShow(openerShow);
+		if (openerShow) void claimFromShow(openerShow, openerRegion);
 	}
 
 	export function closeOpener() {
 		openerShow = null;
-		openerPull = null;
+		openerPulls = [];
 	}
 
 	function labelFor(id: string): string {
@@ -260,17 +281,21 @@
 				</div>
 			{/if}
 
-			{#if lastSpawn}
+			{#if lastPulls.length > 0}
 				<div class="divider text-xs">Just claimed</div>
-				<RosterCard
-					label={labelFor(lastSpawn.characterId)}
-					faceUrl={lastFaceUrl}
-					showNames={showNamesFor(lastSpawn.characterId)}
-					locationName={lastLocationName}
-					claimedAt={claimedAtFor(lastSpawn.createdAt)}
-					color={lastSpawn.color}
-					stat={lastSpawn.stat}
-				/>
+				<div class="grid grid-cols-2 gap-3">
+					{#each lastPulls as pull (pull.spawn.id)}
+						<RosterCard
+							label={labelFor(pull.spawn.characterId)}
+							faceUrl={pull.faceUrl}
+							showNames={showNamesFor(pull.spawn.characterId)}
+							locationName={lastLocationName}
+							claimedAt={claimedAtFor(pull.spawn.createdAt)}
+							color={pull.spawn.color}
+							stat={pull.spawn.stat}
+						/>
+					{/each}
+				</div>
 			{/if}
 		{/if}
 	</div>
