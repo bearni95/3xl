@@ -81,6 +81,18 @@ const DOGV_PV_PDF = SOURCES.paisValencia.url;
 const pad = (n) => String(n).padStart(2, '0');
 const geoIdForIne = (ine) => `ES_${String(ine).padStart(5, '0')}`;
 
+/**
+ * Re-base a `YYYY-MM-DD` onto YEAR, keeping its month and day — used when a town's
+ * festival is carried over from an earlier year's official calendar. Returns null
+ * for a day YEAR doesn't have (e.g. a leap-year 29 February onto a common year).
+ */
+function rebaseToYear(date) {
+	const iso = `${YEAR}-${date.slice(5, 10)}`;
+	const [, month, day] = iso.split('-').map(Number);
+	const probe = new Date(`${iso}T00:00:00Z`);
+	return probe.getUTCMonth() + 1 === month && probe.getUTCDate() === day ? iso : null;
+}
+
 // Catalan and Spanish month names → 1-based month number, for the text dates in
 // the Balears and País Valencià sources.
 const MONTHS = {
@@ -176,10 +188,15 @@ const ALIASES = new Map(
 function isNameHead(text) {
 	const words = text.trim().split(/\s+/);
 	if (words.length === 0 || words.length > 9) return false;
-	if (!/[A-ZÁÉÍÓÚÑÀÈÏÜÇ]/.test(text)) return false;
+	// The full Catalan + Spanish uppercase-accent set. The grave vowels Ì/Ò/Ù in
+	// particular must be here: names like VINARÒS, RÒTOVA, BONREPÒS or FONT D'EN
+	// CARRÒS are set in capitals in the annex, and omitting Ò would make the line
+	// fail to register as a record head — silently folding the town (and its
+	// dates) into the previous municipality's record.
+	if (!/[A-ZÀÁÈÉÌÍÏÒÓÙÚÜÑÇ]/.test(text)) return false;
 	return words.every(
 		(word) =>
-			/^[A-ZÁÉÍÓÚÑÀÈÏÜÇ0-9''´`‘’.,/\-]+$/.test(word) || CONNECTORS.has(deburr(word))
+			/^[A-ZÀÁÈÉÌÍÏÒÓÙÚÜÑÇ0-9''´`‘’.,/\-]+$/.test(word) || CONNECTORS.has(deburr(word))
 	);
 }
 
@@ -277,6 +294,45 @@ async function fetchCatalunya(propsByGeoId) {
 			add(row.codi_municipi_ine, row.data);
 		}
 	}
+
+	// The YEAR slice of the open dataset is not always fully loaded for every town
+	// (the Generalitat publishes it incrementally). For any Catalan municipality
+	// still without a date, fall back to the most recent prior year's declared
+	// local festivals ('Festiu local') from the SAME official dataset, re-based onto
+	// YEAR — a festa major is a patronal feast, stable year to year. Prefer the
+	// main-seat rows; if a town labels its local festivals only under its nuclei
+	// (e.g. Cànoves i Samalús), take that year's nucleus rows instead.
+	const stillMissing = [...propsByGeoId]
+		.filter(([id, props]) => props.territory === 'Catalunya' && !byGeoId.has(id))
+		.map(([id]) => id.replace('ES_', ''));
+	if (stillMissing.length) {
+		const inList = stillMissing.map((ine) => `'${ine}'`).join(',');
+		const priorYears = [YEAR - 1, YEAR - 2, YEAR - 3].map(String);
+		const yearList = priorYears.map((year) => `'${year}'`).join(',');
+		const rows = await socrataRows(
+			`any_calendari IN(${yearList}) AND festiu='Festiu local' AND codi_municipi_ine IN(${inList})`,
+			'codi_municipi_ine,any_calendari,pedania,data'
+		);
+		// Index rows by INE, then by year.
+		const byIne = new Map();
+		for (const row of rows) {
+			const byYear = byIne.get(row.codi_municipi_ine) ?? new Map();
+			const yearRows = byYear.get(row.any_calendari) ?? [];
+			yearRows.push(row);
+			byYear.set(row.any_calendari, yearRows);
+			byIne.set(row.codi_municipi_ine, byYear);
+		}
+		for (const [ine, byYear] of byIne) {
+			const year = priorYears.find((candidate) => byYear.has(candidate));
+			if (!year) continue;
+			const yearRows = byYear.get(year);
+			const seat = yearRows.filter((row) => row.pedania === '000');
+			for (const row of seat.length ? seat : yearRows) {
+				const rebased = rebaseToYear(String(row.data).slice(0, 10));
+				if (rebased) add(ine, rebased);
+			}
+		}
+	}
 	return byGeoId;
 }
 
@@ -284,12 +340,59 @@ async function fetchCatalunya(propsByGeoId) {
 // Source 2 — Illes Balears (CAIB CSV, joined by municipality name)
 // ---------------------------------------------------------------------------
 
-/** Minimal CSV row splitter (the CAIB file has no quoted/embedded commas). */
+/** Minimal CSV row splitter. The CAIB file quotes only the few fields that embed
+ * a comma (long parish lists), so honour double-quoted fields; everything else is
+ * a plain comma split. */
 function splitCsv(text) {
 	return text
 		.split(/\r?\n/)
 		.filter((line) => line.trim())
-		.map((line) => line.split(','));
+		.map((line) => {
+			const cells = [];
+			let cell = '';
+			let quoted = false;
+			for (let i = 0; i < line.length; i++) {
+				const ch = line[i];
+				if (ch === '"') quoted = !quoted;
+				else if (ch === ',' && !quoted) {
+					cells.push(cell);
+					cell = '';
+				} else cell += ch;
+			}
+			cells.push(cell);
+			return cells;
+		});
+}
+
+/**
+ * The rows that represent a municipality's own seat. A Balearic town lists its two
+ * local holidays either against the municipality name itself or — for every Eivissa
+ * municipality and a few Mallorcan ones — only against its parishes/nuclei, none of
+ * which equals the municipality name. Prefer exact-name rows; otherwise fall back
+ * to the single locality whose name shares the most substantive words with the
+ * municipality (the seat parish always bears the town's name — "Parròquia de Sant
+ * Antoni" for Sant Antoni de Portmany, "Algaida i Randa" for Algaida), so a town is
+ * never dropped merely for lacking a row literally named after itself.
+ */
+function balearsSeatRows(rows, municipi) {
+	const exact = rows.filter((row) => row.localitat === municipi);
+	if (exact.length) return exact;
+	const target = new Set(nameKey(municipi).split(' ').filter(Boolean));
+	if (!target.size) return [];
+	let bestLocalitat = null;
+	let bestScore = 0;
+	const scored = new Set();
+	for (const row of rows) {
+		if (scored.has(row.localitat)) continue;
+		scored.add(row.localitat);
+		let score = 0;
+		for (const word of nameKey(row.localitat).split(' ')) if (target.has(word)) score++;
+		if (score > bestScore) {
+			bestScore = score;
+			bestLocalitat = row.localitat;
+		}
+	}
+	return bestScore > 0 ? rows.filter((row) => row.localitat === bestLocalitat) : [];
 }
 
 async function fetchBalears(nameIndex, report) {
@@ -305,24 +408,34 @@ async function fetchBalears(nameIndex, report) {
 	const iLocalitat = col('localitat');
 	const iData = col('data');
 
-	const byGeoId = new Map();
-	const unmatched = new Set();
+	// Group every local-scope row by its municipality, then keep only the seat
+	// rows so nuclei don't inflate a town's dates — see balearsSeatRows for how the
+	// seat is chosen when no row is named after the municipality itself.
+	const rowsByMunicipi = new Map();
 	for (const row of rows) {
 		if (deburr(row[iAmbit] ?? '') !== 'local') continue;
 		const municipi = (row[iMunicipi] ?? '').trim();
-		// Only the municipal seat (localitat == municipi), mirroring Catalunya's
-		// main-seat choice, so nuclei don't inflate a town's dates.
-		if ((row[iLocalitat] ?? '').trim() !== municipi) continue;
+		if (!municipi) continue;
+		const list = rowsByMunicipi.get(municipi) ?? [];
+		list.push({ localitat: (row[iLocalitat] ?? '').trim(), data: row[iData] ?? '' });
+		rowsByMunicipi.set(municipi, list);
+	}
+
+	const byGeoId = new Map();
+	const unmatched = new Set();
+	for (const [municipi, list] of rowsByMunicipi) {
 		const geoId = resolveGeoId(nameIndex, municipi);
 		if (!geoId) {
 			unmatched.add(municipi);
 			continue;
 		}
-		const [date] = extractDates(row[iData] ?? '');
-		if (!date) continue;
-		const set = byGeoId.get(geoId) ?? new Set();
-		set.add(date);
-		byGeoId.set(geoId, set);
+		for (const row of balearsSeatRows(list, municipi)) {
+			const [date] = extractDates(row.data);
+			if (!date) continue;
+			const set = byGeoId.get(geoId) ?? new Set();
+			set.add(date);
+			byGeoId.set(geoId, set);
+		}
 	}
 	report.balears = { matched: byGeoId.size, unmatched: [...unmatched].sort() };
 	return byGeoId;
