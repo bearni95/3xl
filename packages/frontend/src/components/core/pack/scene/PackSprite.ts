@@ -3,9 +3,9 @@
  *
  * Renders a booster pack into a RenderTexture, framed to match {@link CardSprite}:
  * the show's poster spans the full pack width and is never cropped — the pack's
- * height adapts to the poster's aspect ratio — with plain dark header and footer
+ * height adapts to the poster's aspect ratio — with plain white header and footer
  * strips above and below it, and the place the pack belongs to overlaid at the
- * top-centre of the poster (white with a black outline). Rounded corners, a 2px
+ * top-centre of the poster (white with a black outline). Square corners, a 2px
  * black border and a soft black drop shadow sit behind it. Exposes split(y), which
  * carves the rendered texture into top/bottom halves for the slice animation.
  *
@@ -28,7 +28,7 @@ import { textureCache } from '$components/core/card/texture-cache';
 import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 
 // Card-frame proportions, shared with CardSprite so a pack reads as the unopened
-// member of the same family: a dark header strip and a dark footer strip framing
+// member of the same family: a white header strip and a white footer strip framing
 // the poster. The poster spans the full pack width, so its height sets the art
 // area and the strips are sized as a fraction of the pack *width* to stay an even
 // band regardless of the poster's aspect ratio.
@@ -37,9 +37,9 @@ const FOOTER_RATIO = 0.24;
 /** Fallback art aspect (height / width) used when there is no cover, chosen so a
  * plain frame keeps roughly the old 5/8 pack silhouette. */
 const DEFAULT_ART_ASPECT = 1.14;
-/** Fill for the dark header/footer strips — opaque so they fully hide any poster
+/** Fill for the header/footer strips — opaque white so they fully hide any poster
  * overflow behind them (the poster is a Sprite, not masked). */
-const STRIP_FILL = { color: 0x111827, alpha: 1 } as const;
+const STRIP_FILL = { color: 0xffffff, alpha: 1 } as const;
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
@@ -108,11 +108,10 @@ export class PackSprite extends Container {
 		this.app.renderer.render({ container: composition, target: intermediate });
 		composition.destroy({ children: true });
 
-		const radius = Math.max(6, this.packW * 0.05);
 		const framed = new Graphics();
-		framed.roundRect(0, 0, this.packW, this.packH, radius);
+		framed.rect(0, 0, this.packW, this.packH);
 		framed.fill({ texture: intermediate });
-		framed.roundRect(0, 0, this.packW, this.packH, radius);
+		framed.rect(0, 0, this.packW, this.packH);
 		framed.stroke({ width: 2, color: 0x000000, alpha: 1 });
 
 		this.renderTex = RenderTexture.create({
@@ -126,7 +125,7 @@ export class PackSprite extends Container {
 
 		// Soft black drop shadow behind the pack, offset down/right.
 		const shadow = new Graphics();
-		shadow.roundRect(0, 0, this.packW, this.packH, radius);
+		shadow.rect(0, 0, this.packW, this.packH);
 		shadow.fill({ color: 0x000000, alpha: 0.55 });
 		shadow.filters = [new BlurFilter({ strength: 12 })];
 		shadow.position.set(4, 10);
@@ -206,13 +205,13 @@ export class PackSprite extends Container {
 		const footerY = h - footerH;
 
 		// The poster sits only in the art area between the strips; the header/footer
-		// bars sit outside it, over this black backing.
+		// bars sit outside it, over this white backing.
 		const artY = headerH;
 		const artH = h - headerH - footerH;
 
 		const bg = new Graphics();
 		bg.rect(0, 0, w, h);
-		bg.fill({ color: 0x000000, alpha: 1 });
+		bg.fill({ color: 0xffffff, alpha: 1 });
 		root.addChild(bg);
 
 		if (cover && cover.width > 0 && cover.height > 0) {
