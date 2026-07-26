@@ -335,7 +335,9 @@
 		mapInstance = Leaf.map(mapContainer, {
 			minZoom,
 			maxZoom,
-			worldCopyJump: true
+			worldCopyJump: true,
+			// No +/- zoom buttons — the map is driven by scroll/pinch only.
+			zoomControl: false
 		});
 
 		// No tile basemap: the map shows only its own overlays (polygons + pins) over

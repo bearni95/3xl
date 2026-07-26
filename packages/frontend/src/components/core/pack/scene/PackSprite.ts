@@ -19,7 +19,6 @@ import {
 	BlurFilter,
 	Container,
 	Graphics,
-	Matrix,
 	Rectangle,
 	RenderTexture,
 	Sprite,
@@ -33,8 +32,9 @@ import { textureCache } from '$components/core/card/texture-cache';
 // as a fraction of the pack height, over the poster art.
 const HEADER_RATIO = 0.14;
 const FOOTER_RATIO = 0.15;
-/** Fill for the dark header/footer strips (matches CardSprite). */
-const STRIP_FILL = { color: 0x111827, alpha: 0.92 } as const;
+/** Fill for the dark header/footer strips — opaque so they fully hide any poster
+ * overflow behind them (the poster is a Sprite, not masked). */
+const STRIP_FILL = { color: 0x111827, alpha: 1 } as const;
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
@@ -185,25 +185,21 @@ export class PackSprite extends Container {
 		root.addChild(bg);
 
 		if (cover && cover.width > 0 && cover.height > 0) {
-			// The poster, `object-cover` within the art box: painted as a texture fill
-			// clipped to the art rect, with a matrix that scales the poster to cover the
-			// box and centres it. A Graphics fill (not a mask) keeps this render-texture
-			// safe — masks need a stencil buffer the RenderTexture target doesn't have.
+			// The poster, `object-cover` within the art box: a plain Sprite (Sprites
+			// never tile, unlike a texture fill) scaled to fully cover the box and
+			// centred. Horizontal overflow is clipped by the render target; any
+			// vertical overflow is hidden under the opaque header/footer strips drawn
+			// on top of it. No mask — masks need a stencil the RenderTexture lacks.
 			const imgW = cover.width;
 			const imgH = cover.height;
 			const scale = Math.max(w / imgW, artH / imgH);
 			const drawW = imgW * scale;
 			const drawH = imgH * scale;
-			const offsetX = (w - drawW) / 2;
-			const offsetY = artY + (artH - drawH) / 2;
 
-			const poster = new Graphics();
-			poster.rect(0, artY, w, artH);
-			poster.fill({
-				texture: cover,
-				matrix: new Matrix(scale, 0, 0, scale, offsetX, offsetY)
-			});
-			root.addChild(poster);
+			const sprite = new Sprite(cover);
+			sprite.setSize(drawW, drawH);
+			sprite.position.set((w - drawW) / 2, artY + (artH - drawH) / 2);
+			root.addChild(sprite);
 		}
 
 		// Dark header strip carrying the show name, centred — the card's name header.

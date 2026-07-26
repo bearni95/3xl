@@ -104,7 +104,7 @@
 	const overlays: MapOverlay[] = [
 		{
 			url: '/data/geo/municipis.json',
-			style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
+			style: { color: '#ce74ff', weight: 1, fillColor: '#ce74ff', fillOpacity: 0.1 },
 			// Hovering the region (via its pin or its polygons) paints the whole area's
 			// fill fully solid, with the municipis stroke suppressed (opacity 0) so the
 			// internal subdivision borders don't show — only the fill fills in. The
@@ -113,17 +113,17 @@
 		},
 		{
 			url: '/data/geo/comarques.json',
-			style: { color: '#22c55e', weight: 1.5, fill: false },
+			style: { color: '#00e8ff', weight: 1.5, fill: false },
 			interactive: false
 		},
 		{
 			url: '/data/geo/provincies.json',
-			style: { color: '#eab308', weight: 2, fill: false },
+			style: { color: '#ff6596', weight: 2, fill: false },
 			interactive: false
 		},
 		{
 			url: '/data/geo/territoris.json',
-			style: { color: '#ef4444', weight: 3, fill: false },
+			style: { color: '#111a3b', weight: 3, fill: false },
 			interactive: false
 		}
 	];
@@ -148,7 +148,7 @@
 		{
 			center: PORTAL_CENTER,
 			radius: 30000,
-			style: { color: '#a855f7', weight: 2, fillColor: '#a855f7', fillOpacity: 0.35 },
+			style: { color: '#ce74ff', weight: 2, fillColor: '#ce74ff', fillOpacity: 0.35 },
 			label: 'Portal',
 			onClick: () => (portalOpen = true)
 		}
@@ -459,7 +459,7 @@
 		selected && municipalities ? municipalityIdsForKey(fillIndex, selected) : new Set<string>();
 
 	// The persistent fill painted across the selected region's municipality polygons.
-	const selectedFillStyle = { fillColor: '#6366f1', fillOpacity: 0.45, weight: 1 };
+	const selectedFillStyle = { fillColor: '#ce74ff', fillOpacity: 0.45, weight: 1 };
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
@@ -525,11 +525,6 @@
 				<span class="loading loading-spinner loading-lg"></span>
 			</div>
 		{/if}
-
-		<div class="badge badge-neutral absolute left-4 top-4 z-[1000] gap-1 py-3 shadow-lg">
-			<span class="opacity-70">Zoom</span>
-			<span class="font-bold tabular-nums">{currentZoom}</span>
-		</div>
 	</div>
 
 	{#if portalOpen}
