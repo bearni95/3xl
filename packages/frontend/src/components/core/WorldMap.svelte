@@ -123,14 +123,9 @@
 		// Rebuild the pins whenever the parent swaps the markers (e.g. the selection
 		// changes which regions are imaged, or supplies a new level stack). Gated on
 		// `ready` so a set passed before mount still applies once the layer exists.
-		// The zoom-out barrier is re-derived alongside, since it frames the coarsest
-		// level, which the new stack may have changed.
 		void markers;
 		void markerLevels;
-		if (ready) {
-			rebuildMarkers();
-			updateMinZoom();
-		}
+		if (ready) rebuildMarkers();
 	});
 
 	$effect(() => {
@@ -243,24 +238,6 @@
 			if (countWithin(bounds, levels[i]) <= MAX_VISIBLE_MARKERS) return i;
 		}
 		return 0;
-	}
-
-	// The zoom-out barrier: the map may step down through every level as it zooms
-	// out (see levelIndexForView), but not past the point where the coarsest level —
-	// the top-level regions — is framed. Beyond that there is nothing further to
-	// reveal, only empty world, so the min zoom is pinned to the zoom that fits
-	// those regions (with a little padding so their pins sit clear of the edges).
-	function updateMinZoom() {
-		if (!mapInstance || !Leaf) return;
-		const coarsest = markerLevelStack()[0] ?? [];
-		if (coarsest.length < 2) {
-			// Nothing (or a single point) to frame — leave the base floor in place.
-			mapInstance.setMinZoom(minZoom);
-			return;
-		}
-		const extent = Leaf.latLngBounds(coarsest.map((marker) => marker.position));
-		const floor = mapInstance.getBoundsZoom(extent, false, Leaf.point(48, 48));
-		mapInstance.setMinZoom(Math.min(Math.max(floor, minZoom), maxZoom));
 	}
 
 	// (Re)build the pins for the current view: clear the layer, pick the level of
