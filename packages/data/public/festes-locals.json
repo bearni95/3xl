@@ -1,11 +1,23 @@
 {
-  "generatedAt": "2026-07-26T19:41:17.108Z",
+  "generatedAt": "2026-07-26T20:15:23.023Z",
   "year": 2026,
-  "source": {
-    "name": "Calendari de festes locals a Catalunya",
-    "publisher": "Generalitat de Catalunya — Dades Obertes",
-    "url": "https://analisi.transparenciacatalunya.cat/Treball/Calendari-de-festes-locals-a-Catalunya/b4eh-r8up"
-  },
+  "sources": [
+    {
+      "name": "Calendari de festes locals a Catalunya",
+      "publisher": "Generalitat de Catalunya — Dades Obertes",
+      "url": "https://analisi.transparenciacatalunya.cat/Treball/Calendari-de-festes-locals-a-Catalunya/b4eh-r8up"
+    },
+    {
+      "name": "Calendari Laboral General i Local Illes Balears",
+      "publisher": "Govern de les Illes Balears — Dades Obertes",
+      "url": "https://intranet.caib.es/opendatacataleg/dataset/calendari-laboral-general-i-local-illes-balears-2026"
+    },
+    {
+      "name": "Calendario de fiestas locales de la Comunitat Valenciana",
+      "publisher": "Generalitat Valenciana — DOGV",
+      "url": "https://dogv.gva.es/datos/2025/11/14/pdf/2025_46326_es.pdf"
+    }
+  ],
   "festes": [
     {
       "id": "ES_25001",
@@ -30,6 +42,28 @@
       ]
     },
     {
+      "id": "ES_46001",
+      "name": "Ademuz",
+      "comarca": "Rincón de Ademuz",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-12"
+      ]
+    },
+    {
+      "id": "ES_46002",
+      "name": "Ador",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-19",
+        "2026-08-20"
+      ]
+    },
+    {
       "id": "ES_25002",
       "name": "Àger",
       "comarca": "Noguera",
@@ -41,6 +75,17 @@
       ]
     },
     {
+      "id": "ES_03002",
+      "name": "Agost",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-11",
+        "2026-06-29"
+      ]
+    },
+    {
       "id": "ES_25003",
       "name": "Agramunt",
       "comarca": "Urgell",
@@ -48,6 +93,17 @@
       "territory": "Catalunya",
       "dates": [
         "2026-09-04",
+        "2026-09-07"
+      ]
+    },
+    {
+      "id": "ES_03003",
+      "name": "Agres",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-16",
         "2026-09-07"
       ]
     },
@@ -74,6 +130,39 @@
       ]
     },
     {
+      "id": "ES_46004",
+      "name": "Agullent",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-04-14"
+      ]
+    },
+    {
+      "id": "ES_46042",
+      "name": "Aielo de Malferit",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-03"
+      ]
+    },
+    {
+      "id": "ES_46043",
+      "name": "Aielo de Rugat",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-17"
+      ]
+    },
+    {
       "id": "ES_43001",
       "name": "Aiguamúrcia",
       "comarca": "Alt Camp",
@@ -96,6 +185,28 @@
       ]
     },
     {
+      "id": "ES_03004",
+      "name": "Aigües",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-27",
+        "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_12002",
+      "name": "Aín",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-14",
+        "2026-12-04"
+      ]
+    },
+    {
       "id": "ES_25038",
       "name": "Aitona",
       "comarca": "Segrià",
@@ -104,6 +215,17 @@
       "dates": [
         "2026-05-15",
         "2026-09-02"
+      ]
+    },
+    {
+      "id": "ES_07002",
+      "name": "Alaior",
+      "comarca": "Menorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-02-17",
+        "2026-04-30"
       ]
     },
     {
@@ -118,6 +240,45 @@
       ]
     },
     {
+      "id": "ES_46005",
+      "name": "Alaquàs",
+      "comarca": "Horta Oest",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-08",
+        "2026-09-09"
+      ]
+    },
+    {
+      "id": "ES_07001",
+      "name": "Alaró",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-24",
+        "2026-06-29"
+      ]
+    },
+    {
+      "id": "ES_25005",
+      "name": "Alàs i Cerc",
+      "comarca": "Alt Urgell",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-04-13",
+        "2026-05-15",
+        "2026-06-13",
+        "2026-06-26",
+        "2026-07-20",
+        "2026-09-19",
+        "2026-09-21",
+        "2026-11-23"
+      ]
+    },
+    {
       "id": "ES_25006",
       "name": "Albagés, L'",
       "comarca": "Garrigues",
@@ -126,6 +287,61 @@
       "dates": [
         "2026-01-20",
         "2026-08-31"
+      ]
+    },
+    {
+      "id": "ES_46006",
+      "name": "Albaida",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-24",
+        "2026-10-07"
+      ]
+    },
+    {
+      "id": "ES_46007",
+      "name": "Albal",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-07-28"
+      ]
+    },
+    {
+      "id": "ES_46008",
+      "name": "Albalat de la Ribera",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_46009",
+      "name": "Albalat dels Sorells",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-05"
+      ]
+    },
+    {
+      "id": "ES_46010",
+      "name": "Albalat dels Tarongers",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-07",
+        "2026-04-13"
       ]
     },
     {
@@ -148,6 +364,28 @@
       "dates": [
         "2026-05-08",
         "2026-10-09"
+      ]
+    },
+    {
+      "id": "ES_03005",
+      "name": "Albatera",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-25"
+      ]
+    },
+    {
+      "id": "ES_46011",
+      "name": "Alberic",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-30",
+        "2026-04-13"
       ]
     },
     {
@@ -195,6 +433,17 @@
       ]
     },
     {
+      "id": "ES_12003",
+      "name": "Albocàsser",
+      "comarca": "Alta Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-25",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_17004",
       "name": "Albons",
       "comarca": "Baix Empordà",
@@ -203,6 +452,61 @@
       "dates": [
         "2026-02-17",
         "2026-07-24"
+      ]
+    },
+    {
+      "id": "ES_46012",
+      "name": "Alborache",
+      "comarca": "Foia de Bunyol",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-24",
+        "2026-07-27"
+      ]
+    },
+    {
+      "id": "ES_46013",
+      "name": "Alboraia / Alboraya",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-10"
+      ]
+    },
+    {
+      "id": "ES_46014",
+      "name": "Albuixech",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-31",
+        "2026-09-02"
+      ]
+    },
+    {
+      "id": "ES_12004",
+      "name": "Alcalà de Xivert",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-29",
+        "2026-08-29"
+      ]
+    },
+    {
+      "id": "ES_03006",
+      "name": "Alcalalí",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-25",
+        "2026-06-26"
       ]
     },
     {
@@ -228,6 +532,17 @@
       ]
     },
     {
+      "id": "ES_46016",
+      "name": "Alcàntera de Xúquer",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-27",
+        "2026-08-28"
+      ]
+    },
+    {
       "id": "ES_25011",
       "name": "Alcarràs",
       "comarca": "Segrià",
@@ -236,6 +551,28 @@
       "dates": [
         "2026-01-23",
         "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_46015",
+      "name": "Alcàsser",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-16",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_03008",
+      "name": "Alcoleja",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-21"
       ]
     },
     {
@@ -250,6 +587,28 @@
       ]
     },
     {
+      "id": "ES_12005",
+      "name": "Alcora, l'",
+      "comarca": "Alcalaten",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-07",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_03007",
+      "name": "Alcosser",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-20",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_43005",
       "name": "Alcover",
       "comarca": "Alt Camp",
@@ -258,6 +617,83 @@
       "dates": [
         "2026-05-25",
         "2026-10-19"
+      ]
+    },
+    {
+      "id": "ES_03009",
+      "name": "Alcoy / Alcoi",
+      "comarca": "Alcoia",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-25",
+        "2026-04-27"
+      ]
+    },
+    {
+      "id": "ES_46018",
+      "name": "Alcublas",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_07003",
+      "name": "Alcúdia",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-29",
+        "2026-07-02"
+      ]
+    },
+    {
+      "id": "ES_46020",
+      "name": "Alcúdia de Crespins, l'",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-12",
+        "2026-09-07"
+      ]
+    },
+    {
+      "id": "ES_12006",
+      "name": "Alcudia de Veo",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-29",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_46019",
+      "name": "Alcúdia, l'",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-08",
+        "2026-11-30"
+      ]
+    },
+    {
+      "id": "ES_46021",
+      "name": "Aldaia",
+      "comarca": "Horta Oest",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-06"
       ]
     },
     {
@@ -305,6 +741,28 @@
       ]
     },
     {
+      "id": "ES_46022",
+      "name": "Alfafar",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_03010",
+      "name": "Alfafara",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-06",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_43008",
       "name": "Alfara de Carles",
       "comarca": "Baix Ebre",
@@ -313,6 +771,39 @@
       "dates": [
         "2026-05-25",
         "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46024",
+      "name": "Alfara de la Baronia",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-07",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_46025",
+      "name": "Alfara del Patriarca",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_46026",
+      "name": "Alfarb",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-06",
+        "2026-07-08"
       ]
     },
     {
@@ -327,6 +818,39 @@
       ]
     },
     {
+      "id": "ES_46027",
+      "name": "Alfarrasí",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-14",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_03011",
+      "name": "Alfàs del Pi, l'",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-11-09",
+        "2026-11-10"
+      ]
+    },
+    {
+      "id": "ES_46023",
+      "name": "Alfauir",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-10-07"
+      ]
+    },
+    {
       "id": "ES_25014",
       "name": "Alfés",
       "comarca": "Segrià",
@@ -335,6 +859,17 @@
       "dates": [
         "2026-01-20",
         "2026-08-06"
+      ]
+    },
+    {
+      "id": "ES_12007",
+      "name": "Alfondeguilla",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-11-09"
       ]
     },
     {
@@ -349,6 +884,28 @@
       ]
     },
     {
+      "id": "ES_46028",
+      "name": "Algar de Palància",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-25"
+      ]
+    },
+    {
+      "id": "ES_46029",
+      "name": "Algemesí",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-12",
+        "2026-09-08"
+      ]
+    },
+    {
       "id": "ES_25015",
       "name": "Algerri",
       "comarca": "Noguera",
@@ -360,6 +917,50 @@
       ]
     },
     {
+      "id": "ES_46030",
+      "name": "Algímia d'Alfara",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-03"
+      ]
+    },
+    {
+      "id": "ES_12008",
+      "name": "Algimia de Almonacid",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-24"
+      ]
+    },
+    {
+      "id": "ES_46031",
+      "name": "Alginet",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_03012",
+      "name": "Algorfa",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-16"
+      ]
+    },
+    {
       "id": "ES_25016",
       "name": "Alguaire",
       "comarca": "Segrià",
@@ -368,6 +969,28 @@
       "dates": [
         "2026-05-29",
         "2026-09-25"
+      ]
+    },
+    {
+      "id": "ES_03013",
+      "name": "Algueña",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-30"
+      ]
+    },
+    {
+      "id": "ES_03014",
+      "name": "Alicante / Alacant",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-16",
+        "2026-06-23"
       ]
     },
     {
@@ -404,6 +1027,28 @@
       ]
     },
     {
+      "id": "ES_46032",
+      "name": "Almàssera",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_12009",
+      "name": "Almassora",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-05-22"
+      ]
+    },
+    {
       "id": "ES_25020",
       "name": "Almatret",
       "comarca": "Segrià",
@@ -412,6 +1057,17 @@
       "dates": [
         "2026-02-03",
         "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_12010",
+      "name": "Almedíjar",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-10"
       ]
     },
     {
@@ -426,6 +1082,50 @@
       ]
     },
     {
+      "id": "ES_12011",
+      "name": "Almenara",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-28"
+      ]
+    },
+    {
+      "id": "ES_46033",
+      "name": "Almiserà",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-27",
+        "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_46034",
+      "name": "Almoines",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-24"
+      ]
+    },
+    {
+      "id": "ES_03015",
+      "name": "Almoradí",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-30",
+        "2026-11-30"
+      ]
+    },
+    {
       "id": "ES_43011",
       "name": "Almoster",
       "comarca": "Baix Camp",
@@ -434,6 +1134,28 @@
       "dates": [
         "2026-07-30",
         "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_03016",
+      "name": "Almudaina",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-08-21"
+      ]
+    },
+    {
+      "id": "ES_46035",
+      "name": "Almussafes",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-13",
+        "2026-07-16"
       ]
     },
     {
@@ -481,6 +1203,67 @@
       ]
     },
     {
+      "id": "ES_46036",
+      "name": "Alpuente",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-04-29"
+      ]
+    },
+    {
+      "id": "ES_03017",
+      "name": "Alqueria d'Asnar, l'",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-25",
+        "2026-09-28"
+      ]
+    },
+    {
+      "id": "ES_46037",
+      "name": "Alqueria de la Comtessa, l'",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-29",
+        "2026-07-01"
+      ]
+    },
+    {
+      "id": "ES_12901",
+      "name": "Alqueries, les / Alquerías del Niño Perdido",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-25",
+        "2026-10-05"
+      ]
+    },
+    {
+      "id": "ES_25024",
+      "name": "Alt Àneu",
+      "comarca": "Pallars Sobirà",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-02-17",
+        "2026-06-23",
+        "2026-08-03",
+        "2026-08-11",
+        "2026-08-14",
+        "2026-08-17",
+        "2026-08-24",
+        "2026-11-30"
+      ]
+    },
+    {
       "id": "ES_43012",
       "name": "Altafulla",
       "comarca": "Tarragonès",
@@ -489,6 +1272,39 @@
       "dates": [
         "2026-04-07",
         "2026-11-11"
+      ]
+    },
+    {
+      "id": "ES_03018",
+      "name": "Altea",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-28",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_12012",
+      "name": "Altura",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-25",
+        "2026-09-25"
+      ]
+    },
+    {
+      "id": "ES_46017",
+      "name": "Alzira",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-23"
       ]
     },
     {
@@ -547,6 +1363,28 @@
       ]
     },
     {
+      "id": "ES_46038",
+      "name": "Andilla",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-21",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_07005",
+      "name": "Andratx",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-29",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_17008",
       "name": "Anglès",
       "comarca": "Selva",
@@ -566,6 +1404,50 @@
       "dates": [
         "2026-09-14",
         "2026-12-11"
+      ]
+    },
+    {
+      "id": "ES_46039",
+      "name": "Anna",
+      "comarca": "Canal de Navarres",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-11",
+        "2026-09-25"
+      ]
+    },
+    {
+      "id": "ES_46040",
+      "name": "Antella",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-06",
+        "2026-12-09"
+      ]
+    },
+    {
+      "id": "ES_12013",
+      "name": "Arañuel",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-22",
+        "2026-09-28"
+      ]
+    },
+    {
+      "id": "ES_46041",
+      "name": "Aras de los Olmos",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-11-25"
       ]
     },
     {
@@ -635,6 +1517,17 @@
       ]
     },
     {
+      "id": "ES_12014",
+      "name": "Ares del Maestrat",
+      "comarca": "Alta Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-05-04"
+      ]
+    },
+    {
       "id": "ES_17010",
       "name": "Argelaguer",
       "comarca": "Garrotxa",
@@ -643,6 +1536,17 @@
       "dates": [
         "2026-05-11",
         "2026-12-14"
+      ]
+    },
+    {
+      "id": "ES_12015",
+      "name": "Argelita",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-30",
+        "2026-04-01"
       ]
     },
     {
@@ -665,6 +1569,17 @@
       "dates": [
         "2026-08-20",
         "2026-08-21"
+      ]
+    },
+    {
+      "id": "ES_07901",
+      "name": "Ariany",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-08-31",
+        "2026-12-07"
       ]
     },
     {
@@ -709,6 +1624,28 @@
       "dates": [
         "2026-03-03",
         "2026-12-31"
+      ]
+    },
+    {
+      "id": "ES_07006",
+      "name": "Artà",
+      "comarca": "Llevant",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-08-06"
+      ]
+    },
+    {
+      "id": "ES_12016",
+      "name": "Artana",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-24"
       ]
     },
     {
@@ -767,6 +1704,67 @@
       ]
     },
     {
+      "id": "ES_03019",
+      "name": "Aspe",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-12",
+        "2026-08-05"
+      ]
+    },
+    {
+      "id": "ES_46003",
+      "name": "Atzeneta d'Albaida",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-17",
+        "2026-09-18"
+      ]
+    },
+    {
+      "id": "ES_12001",
+      "name": "Atzeneta del Maestrat",
+      "comarca": "Alcalaten",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-05-22"
+      ]
+    },
+    {
+      "id": "ES_03001",
+      "name": "Atzúbia, l'",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-04"
+      ]
+    },
+    {
+      "id": "ES_25037",
+      "name": "Avellanes i Santa Linya, Les",
+      "comarca": "Noguera",
+      "prov": "Lleida",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-02-03",
+        "2026-04-23",
+        "2026-04-25",
+        "2026-05-25",
+        "2026-07-25",
+        "2026-08-17",
+        "2026-08-24",
+        "2026-09-28"
+      ]
+    },
+    {
       "id": "ES_08011",
       "name": "Avià",
       "comarca": "Berguedà",
@@ -811,6 +1809,39 @@
       ]
     },
     {
+      "id": "ES_12017",
+      "name": "Ayódar",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-20",
+        "2026-10-05"
+      ]
+    },
+    {
+      "id": "ES_46044",
+      "name": "Ayora",
+      "comarca": "Vall de Confrents",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-12",
+        "2026-11-30"
+      ]
+    },
+    {
+      "id": "ES_12018",
+      "name": "Azuébar",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-14",
+        "2026-08-17"
+      ]
+    },
+    {
       "id": "ES_08015",
       "name": "Badalona",
       "comarca": "Barcelonès",
@@ -844,6 +1875,17 @@
       ]
     },
     {
+      "id": "ES_25039",
+      "name": "Baix Pallars",
+      "comarca": "Pallars Sobirà",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-20",
+        "2026-08-03"
+      ]
+    },
+    {
       "id": "ES_25040",
       "name": "Balaguer",
       "comarca": "Noguera",
@@ -866,6 +1908,17 @@
       ]
     },
     {
+      "id": "ES_03020",
+      "name": "Balones",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-30"
+      ]
+    },
+    {
       "id": "ES_08018",
       "name": "Balsareny",
       "comarca": "Bages",
@@ -874,6 +1927,28 @@
       "dates": [
         "2026-02-09",
         "2026-04-27"
+      ]
+    },
+    {
+      "id": "ES_07007",
+      "name": "Banyalbufar",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-09-08",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_03021",
+      "name": "Banyeres de Mariola",
+      "comarca": "Alcoia",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-22",
+        "2026-04-23"
       ]
     },
     {
@@ -932,6 +2007,52 @@
       ]
     },
     {
+      "id": "ES_25042",
+      "name": "Baronia de Rialb, La",
+      "comarca": "Noguera",
+      "prov": "Lleida",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-20",
+        "2026-02-17",
+        "2026-05-15",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_12020",
+      "name": "Barracas",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-07",
+        "2026-06-29"
+      ]
+    },
+    {
+      "id": "ES_46046",
+      "name": "Barx",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-21"
+      ]
+    },
+    {
+      "id": "ES_46045",
+      "name": "Barxeta",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-23",
+        "2026-07-24"
+      ]
+    },
+    {
       "id": "ES_17016",
       "name": "Bàscara",
       "comarca": "Alt Empordà",
@@ -984,6 +2105,28 @@
       "dates": [
         "2026-05-25",
         "2026-06-29"
+      ]
+    },
+    {
+      "id": "ES_12022",
+      "name": "Bejís",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-09-07"
+      ]
+    },
+    {
+      "id": "ES_46047",
+      "name": "Bèlgida",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-13",
+        "2026-08-10"
       ]
     },
     {
@@ -1086,6 +2229,28 @@
       ]
     },
     {
+      "id": "ES_46048",
+      "name": "Bellreguard",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-24",
+        "2026-09-25"
+      ]
+    },
+    {
+      "id": "ES_46049",
+      "name": "Bellús",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-14"
+      ]
+    },
+    {
       "id": "ES_43024",
       "name": "Bellvei",
       "comarca": "Baix Penedès",
@@ -1119,6 +2284,72 @@
       ]
     },
     {
+      "id": "ES_12024",
+      "name": "Benafer",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-06",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_12025",
+      "name": "Benafigos",
+      "comarca": "Alcalaten",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-09",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_46050",
+      "name": "Benagéber",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-05-15"
+      ]
+    },
+    {
+      "id": "ES_46051",
+      "name": "Benaguasil",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-18",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_03022",
+      "name": "Benasau",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_12026",
+      "name": "Benassal",
+      "comarca": "Alta Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-25",
+        "2026-08-17"
+      ]
+    },
+    {
       "id": "ES_25053",
       "name": "Benavent de Segrià",
       "comarca": "Segrià",
@@ -1127,6 +2358,226 @@
       "dates": [
         "2026-01-26",
         "2026-08-31"
+      ]
+    },
+    {
+      "id": "ES_46052",
+      "name": "Benavites",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-18",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_03023",
+      "name": "Beneixama",
+      "comarca": "Alt Vinalopo",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_46053",
+      "name": "Beneixida",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-20",
+        "2026-08-21"
+      ]
+    },
+    {
+      "id": "ES_03024",
+      "name": "Benejúzar",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-04",
+        "2026-10-07"
+      ]
+    },
+    {
+      "id": "ES_46054",
+      "name": "Benetússer",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-06-22"
+      ]
+    },
+    {
+      "id": "ES_03025",
+      "name": "Benferri",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-30",
+        "2026-10-07"
+      ]
+    },
+    {
+      "id": "ES_03026",
+      "name": "Beniarbeig",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_03027",
+      "name": "Beniardà",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-03",
+        "2026-08-04"
+      ]
+    },
+    {
+      "id": "ES_46055",
+      "name": "Beniarjó",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-18"
+      ]
+    },
+    {
+      "id": "ES_03028",
+      "name": "Beniarrés",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46056",
+      "name": "Beniatjar",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-27",
+        "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_12027",
+      "name": "Benicarló",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-09",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_12028",
+      "name": "Benicasim / Benicàssim",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-17",
+        "2026-09-22"
+      ]
+    },
+    {
+      "id": "ES_46057",
+      "name": "Benicolet",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46904",
+      "name": "Benicull de Xúquer",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_03030",
+      "name": "Benidoleig",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-07"
+      ]
+    },
+    {
+      "id": "ES_03031",
+      "name": "Benidorm",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-11-09",
+        "2026-11-10"
+      ]
+    },
+    {
+      "id": "ES_46060",
+      "name": "Benifaió",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-08-20"
+      ]
+    },
+    {
+      "id": "ES_46059",
+      "name": "Benifairó de la Valldigna",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-03"
+      ]
+    },
+    {
+      "id": "ES_46058",
+      "name": "Benifairó de les Valls",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-07"
       ]
     },
     {
@@ -1141,6 +2592,193 @@
       ]
     },
     {
+      "id": "ES_03032",
+      "name": "Benifallim",
+      "comarca": "Alcoia",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_03033",
+      "name": "Benifato",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-27",
+        "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_46061",
+      "name": "Beniflá",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-24"
+      ]
+    },
+    {
+      "id": "ES_46062",
+      "name": "Benigànim",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-21",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_03029",
+      "name": "Benigembla",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-02"
+      ]
+    },
+    {
+      "id": "ES_03034",
+      "name": "Benijófar",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-25"
+      ]
+    },
+    {
+      "id": "ES_03035",
+      "name": "Benilloba",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_03036",
+      "name": "Benillup",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-24",
+        "2026-12-04"
+      ]
+    },
+    {
+      "id": "ES_03037",
+      "name": "Benimantell",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-07",
+        "2026-10-16"
+      ]
+    },
+    {
+      "id": "ES_03038",
+      "name": "Benimarfull",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_03039",
+      "name": "Benimassot",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-27",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_03040",
+      "name": "Benimeli",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-20",
+        "2026-08-21"
+      ]
+    },
+    {
+      "id": "ES_46063",
+      "name": "Benimodo",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-24",
+        "2026-08-25"
+      ]
+    },
+    {
+      "id": "ES_46064",
+      "name": "Benimuslem",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-14"
+      ]
+    },
+    {
+      "id": "ES_46065",
+      "name": "Beniparrell",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-16"
+      ]
+    },
+    {
+      "id": "ES_46066",
+      "name": "Benirredrà",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-10",
+        "2026-10-05"
+      ]
+    },
+    {
+      "id": "ES_03041",
+      "name": "Benissa",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-27",
+        "2026-06-29"
+      ]
+    },
+    {
       "id": "ES_43026",
       "name": "Benissanet",
       "comarca": "Ribera d'Ebre",
@@ -1149,6 +2787,61 @@
       "dates": [
         "2026-01-16",
         "2026-07-27"
+      ]
+    },
+    {
+      "id": "ES_46067",
+      "name": "Benissanó",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-08",
+        "2026-09-09"
+      ]
+    },
+    {
+      "id": "ES_46068",
+      "name": "Benissoda",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-20"
+      ]
+    },
+    {
+      "id": "ES_46069",
+      "name": "Benissuera",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-09-11"
+      ]
+    },
+    {
+      "id": "ES_03042",
+      "name": "Benitachell / Poble Nou de Benitatxell, el",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-22",
+        "2026-07-24"
+      ]
+    },
+    {
+      "id": "ES_12029",
+      "name": "Benlloc",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-09",
+        "2026-04-13"
       ]
     },
     {
@@ -1185,6 +2878,28 @@
       ]
     },
     {
+      "id": "ES_46070",
+      "name": "Bétera",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_12021",
+      "name": "Betxí",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-17",
+        "2026-09-21"
+      ]
+    },
+    {
       "id": "ES_17021",
       "name": "Beuda",
       "comarca": "Garrotxa",
@@ -1193,6 +2908,63 @@
       "dates": [
         "2026-03-27",
         "2026-09-18"
+      ]
+    },
+    {
+      "id": "ES_03043",
+      "name": "Biar",
+      "comarca": "Alt Vinalopo",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-10"
+      ]
+    },
+    {
+      "id": "ES_46071",
+      "name": "Bicorp",
+      "comarca": "Canal de Navarres",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-04",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_03044",
+      "name": "Bigastro",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_08023",
+      "name": "Bigues i Riells del Fai",
+      "comarca": "Vallès Oriental",
+      "prov": "Barcelona",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-20",
+        "2026-01-22",
+        "2026-06-29",
+        "2026-08-07"
+      ]
+    },
+    {
+      "id": "ES_07008",
+      "name": "Binissalem",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-07-24",
+        "2026-09-25"
       ]
     },
     {
@@ -1270,6 +3042,50 @@
       "dates": [
         "2026-04-07",
         "2026-08-21"
+      ]
+    },
+    {
+      "id": "ES_17029",
+      "name": "Boadella i les Escaules",
+      "comarca": "Alt Empordà",
+      "prov": "Girona",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-11-11",
+        "2026-11-23"
+      ]
+    },
+    {
+      "id": "ES_46072",
+      "name": "Bocairent",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-09",
+        "2026-02-10"
+      ]
+    },
+    {
+      "id": "ES_46073",
+      "name": "Bolbaite",
+      "comarca": "Canal de Navarres",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-14",
+        "2026-04-15"
+      ]
+    },
+    {
+      "id": "ES_03045",
+      "name": "Bolulla",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-24",
+        "2026-08-25"
       ]
     },
     {
@@ -1357,6 +3173,28 @@
       "territory": "Catalunya",
       "dates": [
         "2026-05-25",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_12032",
+      "name": "Borriana / Burriana",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_12031",
+      "name": "Borriol",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
         "2026-08-24"
       ]
     },
@@ -1460,6 +3298,83 @@
       ]
     },
     {
+      "id": "ES_46075",
+      "name": "Bufali",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-30",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_46076",
+      "name": "Bugarra",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-09",
+        "2026-04-10"
+      ]
+    },
+    {
+      "id": "ES_07009",
+      "name": "Búger",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-29",
+        "2026-06-30"
+      ]
+    },
+    {
+      "id": "ES_46077",
+      "name": "Buñol",
+      "comarca": "Foia de Bunyol",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-26",
+        "2026-08-27"
+      ]
+    },
+    {
+      "id": "ES_07010",
+      "name": "Bunyola",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-09-21",
+        "2026-11-25"
+      ]
+    },
+    {
+      "id": "ES_46078",
+      "name": "Burjassot",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-30"
+      ]
+    },
+    {
+      "id": "ES_03046",
+      "name": "Busot",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-10"
+      ]
+    },
+    {
       "id": "ES_43035",
       "name": "Cabacés",
       "comarca": "Priorat",
@@ -1501,6 +3416,17 @@
       "dates": [
         "2026-01-23",
         "2026-05-15"
+      ]
+    },
+    {
+      "id": "ES_12033",
+      "name": "Cabanes",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-08",
+        "2026-06-29"
       ]
     },
     {
@@ -1647,6 +3573,17 @@
       ]
     },
     {
+      "id": "ES_12034",
+      "name": "Càlig",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-05",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_08037",
       "name": "Calldetenes",
       "comarca": "Osona",
@@ -1655,6 +3592,39 @@
       "dates": [
         "2026-05-25",
         "2026-09-24"
+      ]
+    },
+    {
+      "id": "ES_46079",
+      "name": "Calles",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-18",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_03048",
+      "name": "Callosa d'en Sarrià",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-24",
+        "2026-10-13"
+      ]
+    },
+    {
+      "id": "ES_03049",
+      "name": "Callosa de Segura",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-13"
       ]
     },
     {
@@ -1688,6 +3658,28 @@
       "dates": [
         "2026-07-13",
         "2026-11-11"
+      ]
+    },
+    {
+      "id": "ES_03047",
+      "name": "Calp",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-05",
+        "2026-10-22"
+      ]
+    },
+    {
+      "id": "ES_07011",
+      "name": "Calvià",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-24",
+        "2026-07-16"
       ]
     },
     {
@@ -1735,6 +3727,17 @@
       ]
     },
     {
+      "id": "ES_07012",
+      "name": "Campanet",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-04-07",
+        "2026-09-29"
+      ]
+    },
+    {
       "id": "ES_17036",
       "name": "Campdevànol",
       "comarca": "Ripollès",
@@ -1754,6 +3757,17 @@
       "dates": [
         "2026-05-25",
         "2026-11-11"
+      ]
+    },
+    {
+      "id": "ES_03050",
+      "name": "Campello, el",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-16",
+        "2026-10-15"
       ]
     },
     {
@@ -1779,6 +3793,39 @@
       ]
     },
     {
+      "id": "ES_03051",
+      "name": "Campo de Mirra / Camp de Mirra, el",
+      "comarca": "Alt Vinalopo",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_46080",
+      "name": "Camporrobles",
+      "comarca": "Requena-Utiel",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-05",
+        "2026-05-15"
+      ]
+    },
+    {
+      "id": "ES_07013",
+      "name": "Campos",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-09",
+        "2026-10-22"
+      ]
+    },
+    {
       "id": "ES_17039",
       "name": "Camprodon",
       "comarca": "Ripollès",
@@ -1787,6 +3834,28 @@
       "dates": [
         "2026-06-22",
         "2026-06-23"
+      ]
+    },
+    {
+      "id": "ES_03052",
+      "name": "Cañada",
+      "comarca": "Alt Vinalopo",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-07",
+        "2026-07-10"
+      ]
+    },
+    {
+      "id": "ES_46081",
+      "name": "Canals",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-17",
+        "2026-09-18"
       ]
     },
     {
@@ -1812,6 +3881,17 @@
       ]
     },
     {
+      "id": "ES_46082",
+      "name": "Canet d'En Berenguer",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-29",
+        "2026-09-08"
+      ]
+    },
+    {
       "id": "ES_08040",
       "name": "Canet de Mar",
       "comarca": "Maresme",
@@ -1820,6 +3900,17 @@
       "dates": [
         "2026-06-29",
         "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_12036",
+      "name": "Canet lo Roig",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-04",
+        "2026-09-28"
       ]
     },
     {
@@ -1878,6 +3969,17 @@
       ]
     },
     {
+      "id": "ES_07014",
+      "name": "Capdepera",
+      "comarca": "Llevant",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-07-16",
+        "2026-08-24"
+      ]
+    },
+    {
       "id": "ES_08044",
       "name": "Capellades",
       "comarca": "Anoia",
@@ -1911,6 +4013,28 @@
       ]
     },
     {
+      "id": "ES_46083",
+      "name": "Carcaixent",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-10-16"
+      ]
+    },
+    {
+      "id": "ES_46084",
+      "name": "Càrcer",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-15",
+        "2026-09-16"
+      ]
+    },
+    {
       "id": "ES_08046",
       "name": "Cardedeu",
       "comarca": "Vallès Oriental",
@@ -1919,6 +4043,17 @@
       "dates": [
         "2026-05-25",
         "2026-08-14"
+      ]
+    },
+    {
+      "id": "ES_46085",
+      "name": "Carlet",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-23",
+        "2026-09-11"
       ]
     },
     {
@@ -1933,6 +4068,39 @@
       ]
     },
     {
+      "id": "ES_46086",
+      "name": "Carrícola",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-17",
+        "2026-05-08"
+      ]
+    },
+    {
+      "id": "ES_46087",
+      "name": "Casas Altas",
+      "comarca": "Rincón de Ademuz",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-15",
+        "2026-06-01"
+      ]
+    },
+    {
+      "id": "ES_46088",
+      "name": "Casas Bajas",
+      "comarca": "Rincón de Ademuz",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-05-15"
+      ]
+    },
+    {
       "id": "ES_43041",
       "name": "Caseres",
       "comarca": "Terra Alta",
@@ -1941,6 +4109,17 @@
       "dates": [
         "2026-08-21",
         "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_46089",
+      "name": "Casinos",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-17",
+        "2026-08-18"
       ]
     },
     {
@@ -1966,6 +4145,17 @@
       ]
     },
     {
+      "id": "ES_03053",
+      "name": "Castalla",
+      "comarca": "Alcoia",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-25",
+        "2026-09-02"
+      ]
+    },
+    {
       "id": "ES_17048",
       "name": "Castell d'Aro, Platja d'Aro i s'Agaró",
       "comarca": "Baix Empordà",
@@ -1974,6 +4164,64 @@
       "dates": [
         "2026-02-12",
         "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_12037",
+      "name": "Castell de Cabres",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-08-10"
+      ]
+    },
+    {
+      "id": "ES_03054",
+      "name": "Castell de Castells",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-27"
+      ]
+    },
+    {
+      "id": "ES_03075",
+      "name": "Castell de Guadalest, el",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-14",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_25904",
+      "name": "Castell de Mur",
+      "comarca": "Pallars Jussà",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-03-19",
+        "2026-05-08",
+        "2026-08-31",
+        "2026-11-11",
+        "2026-12-14"
+      ]
+    },
+    {
+      "id": "ES_07064",
+      "name": "Castell, Es",
+      "comarca": "Menorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-07-25"
       ]
     },
     {
@@ -2065,6 +4313,24 @@
       ]
     },
     {
+      "id": "ES_08058",
+      "name": "Castellet i la Gornal",
+      "comarca": "Alt Penedès",
+      "prov": "Penedès",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-04-02",
+        "2026-06-29",
+        "2026-07-13",
+        "2026-07-20",
+        "2026-07-27",
+        "2026-08-03",
+        "2026-08-10",
+        "2026-08-17",
+        "2026-10-19"
+      ]
+    },
+    {
       "id": "ES_17046",
       "name": "Castellfollit de la Roca",
       "comarca": "Garrotxa",
@@ -2084,6 +4350,17 @@
       "dates": [
         "2026-01-22",
         "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_12038",
+      "name": "Castellfort",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-19",
+        "2026-09-08"
       ]
     },
     {
@@ -2109,6 +4386,28 @@
       ]
     },
     {
+      "id": "ES_12039",
+      "name": "Castellnovo",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46257",
+      "name": "Castelló",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-25",
+        "2026-12-14"
+      ]
+    },
+    {
       "id": "ES_17047",
       "name": "Castelló d'Empúries",
       "comarca": "Alt Empordà",
@@ -2131,6 +4430,28 @@
       ]
     },
     {
+      "id": "ES_12040",
+      "name": "Castelló de la Plana",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-09",
+        "2026-06-29"
+      ]
+    },
+    {
+      "id": "ES_46090",
+      "name": "Castelló de Rugat",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_08063",
       "name": "Castellolí",
       "comarca": "Anoia",
@@ -2139,6 +4460,17 @@
       "dates": [
         "2026-04-07",
         "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_46091",
+      "name": "Castellonet de la Conquesta",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-24"
       ]
     },
     {
@@ -2197,6 +4529,61 @@
       ]
     },
     {
+      "id": "ES_46092",
+      "name": "Castielfabib",
+      "comarca": "Rincón de Ademuz",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-10",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_12041",
+      "name": "Castillo de Villamalefa",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-21",
+        "2026-09-22"
+      ]
+    },
+    {
+      "id": "ES_46093",
+      "name": "Catadau",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-29",
+        "2026-07-08"
+      ]
+    },
+    {
+      "id": "ES_46094",
+      "name": "Catarroja",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_12042",
+      "name": "Catí",
+      "comarca": "Alta Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-04",
+        "2026-11-11"
+      ]
+    },
+    {
       "id": "ES_43043",
       "name": "Catllar, El",
       "comarca": "Tarragonès",
@@ -2205,6 +4592,39 @@
       "dates": [
         "2026-08-21",
         "2026-12-14"
+      ]
+    },
+    {
+      "id": "ES_03055",
+      "name": "Catral",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-05",
+        "2026-02-06"
+      ]
+    },
+    {
+      "id": "ES_46095",
+      "name": "Caudete de las Fuentes",
+      "comarca": "Requena-Utiel",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-17",
+        "2026-06-13"
+      ]
+    },
+    {
+      "id": "ES_12043",
+      "name": "Caudiel",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-14",
+        "2026-10-21"
       ]
     },
     {
@@ -2263,6 +4683,17 @@
       ]
     },
     {
+      "id": "ES_46096",
+      "name": "Cerdà",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-06",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_08068",
       "name": "Cervelló",
       "comarca": "Baix Llobregat",
@@ -2282,6 +4713,17 @@
       "dates": [
         "2026-02-06",
         "2026-09-28"
+      ]
+    },
+    {
+      "id": "ES_12044",
+      "name": "Cervera del Maestre",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-20",
+        "2026-09-08"
       ]
     },
     {
@@ -2307,6 +4749,127 @@
       ]
     },
     {
+      "id": "ES_46107",
+      "name": "Chella",
+      "comarca": "Canal de Navarres",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-02-04"
+      ]
+    },
+    {
+      "id": "ES_46106",
+      "name": "Chelva",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_46108",
+      "name": "Chera",
+      "comarca": "Requena-Utiel",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-08-03"
+      ]
+    },
+    {
+      "id": "ES_46109",
+      "name": "Cheste",
+      "comarca": "Foia de Bunyol",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_12053",
+      "name": "Chilches / Xilxes",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-21"
+      ]
+    },
+    {
+      "id": "ES_46111",
+      "name": "Chiva",
+      "comarca": "Foia de Bunyol",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_12055",
+      "name": "Chodos / Xodos",
+      "comarca": "Alcalaten",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-08-10"
+      ]
+    },
+    {
+      "id": "ES_12056",
+      "name": "Chóvar",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-04",
+        "2026-05-05"
+      ]
+    },
+    {
+      "id": "ES_46112",
+      "name": "Chulilla",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-04"
+      ]
+    },
+    {
+      "id": "ES_12045",
+      "name": "Cinctorres",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-30",
+        "2026-08-31"
+      ]
+    },
+    {
+      "id": "ES_12046",
+      "name": "Cirat",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-04",
+        "2026-08-21"
+      ]
+    },
+    {
       "id": "ES_17051",
       "name": "Cistella",
       "comarca": "Alt Empordà",
@@ -2315,6 +4878,17 @@
       "dates": [
         "2026-04-30",
         "2026-06-30"
+      ]
+    },
+    {
+      "id": "ES_07015",
+      "name": "Ciutadella de Menorca",
+      "comarca": "Menorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-06-24"
       ]
     },
     {
@@ -2337,6 +4911,28 @@
       "dates": [
         "2026-02-05",
         "2026-04-30"
+      ]
+    },
+    {
+      "id": "ES_03056",
+      "name": "Cocentaina",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-10-30"
+      ]
+    },
+    {
+      "id": "ES_46097",
+      "name": "Cofrentes",
+      "comarca": "Vall de Confrents",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-08-14"
       ]
     },
     {
@@ -2428,6 +5024,34 @@
       ]
     },
     {
+      "id": "ES_25161",
+      "name": "Conca de Dalt",
+      "comarca": "Pallars Jussà",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-16",
+        "2026-01-17",
+        "2026-01-21",
+        "2026-02-02",
+        "2026-02-04",
+        "2026-04-25",
+        "2026-05-02",
+        "2026-05-15",
+        "2026-05-25",
+        "2026-07-25",
+        "2026-07-31",
+        "2026-08-03",
+        "2026-08-05",
+        "2026-08-14",
+        "2026-09-08",
+        "2026-09-14",
+        "2026-11-11",
+        "2026-11-23",
+        "2026-11-30"
+      ]
+    },
+    {
       "id": "ES_43046",
       "name": "Conesa",
       "comarca": "Conca de Barberà",
@@ -2436,6 +5060,28 @@
       "dates": [
         "2026-05-20",
         "2026-11-17"
+      ]
+    },
+    {
+      "id": "ES_03057",
+      "name": "Confrides",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-24",
+        "2026-08-25"
+      ]
+    },
+    {
+      "id": "ES_07016",
+      "name": "Consell",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-08-24",
+        "2026-12-07"
       ]
     },
     {
@@ -2458,6 +5104,17 @@
       "dates": [
         "2026-04-07",
         "2026-12-24"
+      ]
+    },
+    {
+      "id": "ES_46098",
+      "name": "Corbera",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-22",
+        "2026-09-08"
       ]
     },
     {
@@ -2538,6 +5195,83 @@
       ]
     },
     {
+      "id": "ES_12048",
+      "name": "Cortes de Arenoso",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_46099",
+      "name": "Cortes de Pallás",
+      "comarca": "Vall de Confrents",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-14"
+      ]
+    },
+    {
+      "id": "ES_07017",
+      "name": "Costitx",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-20",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_12049",
+      "name": "Costur",
+      "comarca": "Alcalaten",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-29",
+        "2026-04-30"
+      ]
+    },
+    {
+      "id": "ES_46100",
+      "name": "Cotes",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-28",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_12050",
+      "name": "Coves de Vinromà, les",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_03058",
+      "name": "Cox",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-15",
+        "2026-07-16"
+      ]
+    },
+    {
       "id": "ES_43050",
       "name": "Creixell",
       "comarca": "Tarragonès",
@@ -2557,6 +5291,28 @@
       "dates": [
         "2026-02-23",
         "2026-12-14"
+      ]
+    },
+    {
+      "id": "ES_03059",
+      "name": "Crevillent",
+      "comarca": "Baix Vinalopó",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-10-05"
+      ]
+    },
+    {
+      "id": "ES_17901",
+      "name": "Cruïlles, Monells i Sant Sadurní de l'Heura",
+      "comarca": "Baix Empordà",
+      "prov": "Girona",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-05-25",
+        "2026-10-30"
       ]
     },
     {
@@ -2582,6 +5338,28 @@
       ]
     },
     {
+      "id": "ES_12051",
+      "name": "Culla",
+      "comarca": "Alta Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-25",
+        "2026-06-05"
+      ]
+    },
+    {
+      "id": "ES_46105",
+      "name": "Cullera",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-04-17"
+      ]
+    },
+    {
       "id": "ES_43051",
       "name": "Cunit",
       "comarca": "Baix Penedès",
@@ -2590,6 +5368,17 @@
       "dates": [
         "2026-01-20",
         "2026-07-14"
+      ]
+    },
+    {
+      "id": "ES_46113",
+      "name": "Daimús",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-29",
+        "2026-07-24"
       ]
     },
     {
@@ -2615,6 +5404,39 @@
       ]
     },
     {
+      "id": "ES_03061",
+      "name": "Daya Nueva",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-29",
+        "2026-09-30"
+      ]
+    },
+    {
+      "id": "ES_03062",
+      "name": "Daya Vieja",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_07018",
+      "name": "Deià",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-20",
+        "2026-06-24"
+      ]
+    },
+    {
       "id": "ES_43901",
       "name": "Deltebre",
       "comarca": "Baix Ebre",
@@ -2623,6 +5445,50 @@
       "dates": [
         "2026-05-22",
         "2026-10-09"
+      ]
+    },
+    {
+      "id": "ES_03063",
+      "name": "Dénia",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-08"
+      ]
+    },
+    {
+      "id": "ES_03064",
+      "name": "Dolores",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-27",
+        "2026-09-21"
+      ]
+    },
+    {
+      "id": "ES_46114",
+      "name": "Domeño",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-04",
+        "2026-10-07"
+      ]
+    },
+    {
+      "id": "ES_46115",
+      "name": "Dos Aguas",
+      "comarca": "Foia de Bunyol",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-10-07"
       ]
     },
     {
@@ -2648,6 +5514,83 @@
       ]
     },
     {
+      "id": "ES_07026",
+      "name": "Eivissa",
+      "comarca": "Eivissa",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-08-05",
+        "2026-08-08"
+      ]
+    },
+    {
+      "id": "ES_03065",
+      "name": "Elche / Elx",
+      "comarca": "Baix Vinalopó",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-29"
+      ]
+    },
+    {
+      "id": "ES_03066",
+      "name": "Elda",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-08",
+        "2026-09-09"
+      ]
+    },
+    {
+      "id": "ES_46116",
+      "name": "Eliana, l'",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-16",
+        "2026-07-17"
+      ]
+    },
+    {
+      "id": "ES_46117",
+      "name": "Emperador",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-30",
+        "2026-09-07"
+      ]
+    },
+    {
+      "id": "ES_46118",
+      "name": "Enguera",
+      "comarca": "Canal de Navarres",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-29",
+        "2026-09-30"
+      ]
+    },
+    {
+      "id": "ES_46119",
+      "name": "Énova, l'",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-24"
+      ]
+    },
+    {
       "id": "ES_17062",
       "name": "Escala, L'",
       "comarca": "Alt Empordà",
@@ -2656,6 +5599,39 @@
       "dates": [
         "2026-07-16",
         "2026-09-02"
+      ]
+    },
+    {
+      "id": "ES_07019",
+      "name": "Escorca",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-29",
+        "2026-08-10"
+      ]
+    },
+    {
+      "id": "ES_12057",
+      "name": "Eslida",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-26"
+      ]
+    },
+    {
+      "id": "ES_12058",
+      "name": "Espadilla",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-17",
+        "2026-08-19"
       ]
     },
     {
@@ -2736,6 +5712,17 @@
       ]
     },
     {
+      "id": "ES_07020",
+      "name": "Esporles",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-29",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_25082",
       "name": "Espot",
       "comarca": "Pallars Sobirà",
@@ -2755,6 +5742,19 @@
       "dates": [
         "2026-06-04",
         "2026-08-10"
+      ]
+    },
+    {
+      "id": "ES_08254",
+      "name": "Esquirol, L'",
+      "comarca": "Osona",
+      "prov": "Catalunya Central",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-04-02",
+        "2026-05-25",
+        "2026-08-17",
+        "2026-11-11"
       ]
     },
     {
@@ -2791,6 +5791,17 @@
       ]
     },
     {
+      "id": "ES_07021",
+      "name": "Estellencs",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-02-27",
+        "2026-08-29"
+      ]
+    },
+    {
       "id": "ES_25086",
       "name": "Esterri d'Àneu",
       "comarca": "Pallars Sobirà",
@@ -2813,6 +5824,39 @@
       ]
     },
     {
+      "id": "ES_46120",
+      "name": "Estivella",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_46121",
+      "name": "Estubeny",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-20",
+        "2026-08-21"
+      ]
+    },
+    {
+      "id": "ES_03067",
+      "name": "Fageca",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-21",
+        "2026-10-08"
+      ]
+    },
+    {
       "id": "ES_43055",
       "name": "Falset",
       "comarca": "Priorat",
@@ -2821,6 +5865,28 @@
       "dates": [
         "2026-05-25",
         "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_03068",
+      "name": "Famorca",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-27",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_12059",
+      "name": "Fanzara",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-09",
+        "2026-10-13"
       ]
     },
     {
@@ -2857,6 +5923,50 @@
       ]
     },
     {
+      "id": "ES_46122",
+      "name": "Faura",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_46123",
+      "name": "Favara",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-08-14"
+      ]
+    },
+    {
+      "id": "ES_07022",
+      "name": "Felanitx",
+      "comarca": "Migjorn",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-07-20",
+        "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_07023",
+      "name": "Ferreries",
+      "comarca": "Menorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-08-24"
+      ]
+    },
+    {
       "id": "ES_08134",
       "name": "Figaró-Montmany",
       "comarca": "Vallès Oriental",
@@ -2876,6 +5986,23 @@
       "dates": [
         "2026-10-16",
         "2026-11-23"
+      ]
+    },
+    {
+      "id": "ES_25908",
+      "name": "Fígols i Alinyà",
+      "comarca": "Alt Urgell",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-20",
+        "2026-05-11",
+        "2026-05-14",
+        "2026-05-25",
+        "2026-06-11",
+        "2026-08-10",
+        "2026-08-14",
+        "2026-11-18"
       ]
     },
     {
@@ -2909,6 +6036,28 @@
       "dates": [
         "2026-04-02",
         "2026-07-27"
+      ]
+    },
+    {
+      "id": "ES_12060",
+      "name": "Figueroles",
+      "comarca": "Alcalaten",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-25",
+        "2026-09-21"
+      ]
+    },
+    {
+      "id": "ES_03069",
+      "name": "Finestrat",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-21",
+        "2026-08-24"
       ]
     },
     {
@@ -2967,6 +6116,17 @@
       ]
     },
     {
+      "id": "ES_46126",
+      "name": "Foios",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-17"
+      ]
+    },
+    {
       "id": "ES_17068",
       "name": "Foixà",
       "comarca": "Baix Empordà",
@@ -3000,6 +6160,17 @@
       ]
     },
     {
+      "id": "ES_03077",
+      "name": "Fondó de les Neus, el / Hondón de las Nieves",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-12",
+        "2026-08-05"
+      ]
+    },
+    {
       "id": "ES_08084",
       "name": "Fonollosa",
       "comarca": "Bages",
@@ -3008,6 +6179,17 @@
       "dates": [
         "2026-03-20",
         "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_46128",
+      "name": "Font de la Figuera, la",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-06",
+        "2026-09-08"
       ]
     },
     {
@@ -3030,6 +6212,17 @@
       "dates": [
         "2026-01-02",
         "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46124",
+      "name": "Fontanars dels Alforins",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-31"
       ]
     },
     {
@@ -3066,6 +6259,31 @@
       ]
     },
     {
+      "id": "ES_17902",
+      "name": "Forallac",
+      "comarca": "Baix Empordà",
+      "prov": "Girona",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-05-25",
+        "2026-07-11",
+        "2026-08-06",
+        "2026-08-19",
+        "2026-09-05"
+      ]
+    },
+    {
+      "id": "ES_12061",
+      "name": "Forcall",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-19",
+        "2026-08-24"
+      ]
+    },
+    {
       "id": "ES_43061",
       "name": "Forès",
       "comarca": "Conca de Barberà",
@@ -3074,6 +6292,39 @@
       "dates": [
         "2026-09-04",
         "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_07024",
+      "name": "Formentera",
+      "comarca": "Eivissa",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-07-25",
+        "2026-12-03"
+      ]
+    },
+    {
+      "id": "ES_03070",
+      "name": "Formentera del Segura",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-24",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_07025",
+      "name": "Fornalutx",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-02-27",
+        "2026-09-08"
       ]
     },
     {
@@ -3088,6 +6339,17 @@
       ]
     },
     {
+      "id": "ES_46125",
+      "name": "Fortaleny",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-17",
+        "2026-08-19"
+      ]
+    },
+    {
       "id": "ES_17074",
       "name": "Fortià",
       "comarca": "Alt Empordà",
@@ -3099,6 +6361,21 @@
       ]
     },
     {
+      "id": "ES_08086",
+      "name": "Franqueses del Vallès, Les",
+      "comarca": "Vallès Oriental",
+      "prov": "Barcelona",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-05-15",
+        "2026-07-03",
+        "2026-07-11",
+        "2026-07-25",
+        "2026-09-08",
+        "2026-09-18"
+      ]
+    },
+    {
       "id": "ES_43062",
       "name": "Freginals",
       "comarca": "Montsià",
@@ -3107,6 +6384,39 @@
       "dates": [
         "2026-08-24",
         "2026-10-16"
+      ]
+    },
+    {
+      "id": "ES_12063",
+      "name": "Fuente la Reina",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-02",
+        "2026-08-16"
+      ]
+    },
+    {
+      "id": "ES_46129",
+      "name": "Fuenterrobles",
+      "comarca": "Requena-Utiel",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-30",
+        "2026-08-20"
+      ]
+    },
+    {
+      "id": "ES_12064",
+      "name": "Fuentes de Ayódar",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-08-17"
       ]
     },
     {
@@ -3143,6 +6453,28 @@
       ]
     },
     {
+      "id": "ES_03072",
+      "name": "Gaianes",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-07",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_12065",
+      "name": "Gaibiel",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-07"
+      ]
+    },
+    {
       "id": "ES_43063",
       "name": "Galera, La",
       "comarca": "Montsià",
@@ -3162,6 +6494,17 @@
       "dates": [
         "2026-09-04",
         "2026-09-07"
+      ]
+    },
+    {
+      "id": "ES_46131",
+      "name": "Gandia",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-10-05"
       ]
     },
     {
@@ -3231,6 +6574,28 @@
       ]
     },
     {
+      "id": "ES_03071",
+      "name": "Gata de Gorgos",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-06",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_46902",
+      "name": "Gátova",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-24",
+        "2026-09-25"
+      ]
+    },
+    {
       "id": "ES_08089",
       "name": "Gavà",
       "comarca": "Baix Llobregat",
@@ -3239,6 +6604,17 @@
       "dates": [
         "2026-06-29",
         "2026-12-14"
+      ]
+    },
+    {
+      "id": "ES_46130",
+      "name": "Gavarda",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-04-14"
       ]
     },
     {
@@ -3253,6 +6629,17 @@
       ]
     },
     {
+      "id": "ES_12067",
+      "name": "Geldo",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-02",
+        "2026-09-03"
+      ]
+    },
+    {
       "id": "ES_08091",
       "name": "Gelida",
       "comarca": "Alt Penedès",
@@ -3264,6 +6651,17 @@
       ]
     },
     {
+      "id": "ES_46132",
+      "name": "Genovés, el",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-06"
+      ]
+    },
+    {
       "id": "ES_17078",
       "name": "Ger",
       "comarca": "Baixa Cerdanya",
@@ -3272,6 +6670,41 @@
       "dates": [
         "2026-09-07",
         "2026-12-31"
+      ]
+    },
+    {
+      "id": "ES_46133",
+      "name": "Gestalgar",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_46134",
+      "name": "Gilet",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-19",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_25912",
+      "name": "Gimenells i el Pla de la Font",
+      "comarca": "Segrià",
+      "prov": "Lleida",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-05-04",
+        "2026-05-15",
+        "2026-10-07",
+        "2026-10-26"
       ]
     },
     {
@@ -3319,6 +6752,28 @@
       ]
     },
     {
+      "id": "ES_46135",
+      "name": "Godella",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-20",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_46136",
+      "name": "Godelleta",
+      "comarca": "Foia de Bunyol",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-06",
+        "2026-06-29"
+      ]
+    },
+    {
       "id": "ES_25099",
       "name": "Golmés",
       "comarca": "Pla d'Urgell",
@@ -3338,6 +6793,17 @@
       "dates": [
         "2026-09-07",
         "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_03073",
+      "name": "Gorga",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-28",
+        "2026-12-28"
       ]
     },
     {
@@ -3382,6 +6848,28 @@
       "dates": [
         "2026-01-20",
         "2026-07-25"
+      ]
+    },
+    {
+      "id": "ES_46137",
+      "name": "Granja de la Costera, la",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-10"
+      ]
+    },
+    {
+      "id": "ES_03074",
+      "name": "Granja de Rocamora",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-29",
+        "2026-10-07"
       ]
     },
     {
@@ -3440,6 +6928,28 @@
       ]
     },
     {
+      "id": "ES_46138",
+      "name": "Guadasséquies",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46139",
+      "name": "Guadassuar",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-22",
+        "2026-08-06"
+      ]
+    },
+    {
       "id": "ES_08097",
       "name": "Gualba",
       "comarca": "Vallès Oriental",
@@ -3459,6 +6969,28 @@
       "dates": [
         "2026-07-30",
         "2026-07-31"
+      ]
+    },
+    {
+      "id": "ES_46140",
+      "name": "Guardamar de la Safor",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_03076",
+      "name": "Guardamar del Segura",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-24",
+        "2026-10-07"
       ]
     },
     {
@@ -3550,6 +7082,50 @@
       ]
     },
     {
+      "id": "ES_12068",
+      "name": "Herbers",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-23",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_12069",
+      "name": "Higueras",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-02",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46141",
+      "name": "Higueruelas",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-14",
+        "2026-09-15"
+      ]
+    },
+    {
+      "id": "ES_03078",
+      "name": "Hondón de los Frailes",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-12",
+        "2026-08-31"
+      ]
+    },
+    {
       "id": "ES_43071",
       "name": "Horta de Sant Joan",
       "comarca": "Terra Alta",
@@ -3594,6 +7170,17 @@
       ]
     },
     {
+      "id": "ES_03079",
+      "name": "Ibi",
+      "comarca": "Alcoia",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-11",
+        "2026-09-14"
+      ]
+    },
+    {
       "id": "ES_08102",
       "name": "Igualada",
       "comarca": "Anoia",
@@ -3602,6 +7189,42 @@
       "dates": [
         "2026-04-07",
         "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_07027",
+      "name": "Inca",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-07-30",
+        "2026-11-20"
+      ]
+    },
+    {
+      "id": "ES_25115",
+      "name": "Isona i Conca Dellà",
+      "comarca": "Pallars Jussà",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-17",
+        "2026-01-24",
+        "2026-03-19",
+        "2026-04-29",
+        "2026-05-15",
+        "2026-06-11",
+        "2026-06-13",
+        "2026-07-20",
+        "2026-08-01",
+        "2026-08-14",
+        "2026-08-22",
+        "2026-08-28",
+        "2026-09-05",
+        "2026-09-14",
+        "2026-09-26",
+        "2026-11-30"
       ]
     },
     {
@@ -3649,6 +7272,17 @@
       ]
     },
     {
+      "id": "ES_03080",
+      "name": "Jacarilla",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
+      ]
+    },
+    {
       "id": "ES_17085",
       "name": "Jafre",
       "comarca": "Baix Empordà",
@@ -3657,6 +7291,72 @@
       "dates": [
         "2026-09-08",
         "2026-11-11"
+      ]
+    },
+    {
+      "id": "ES_46142",
+      "name": "Jalance",
+      "comarca": "Vall de Confrents",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_12070",
+      "name": "Jana, la",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-16",
+        "2026-10-26"
+      ]
+    },
+    {
+      "id": "ES_46144",
+      "name": "Jarafuel",
+      "comarca": "Vall de Confrents",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-21",
+        "2026-11-27"
+      ]
+    },
+    {
+      "id": "ES_03082",
+      "name": "Jávea / Xàbia",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_12071",
+      "name": "Jérica",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-05",
+        "2026-07-08"
+      ]
+    },
+    {
+      "id": "ES_03083",
+      "name": "Jijona / Xixona",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-20",
+        "2026-08-24"
       ]
     },
     {
@@ -3679,6 +7379,18 @@
       "dates": [
         "2026-04-07",
         "2026-07-27"
+      ]
+    },
+    {
+      "id": "ES_25910",
+      "name": "Josa i Tuixén",
+      "comarca": "Alt Urgell",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-20",
+        "2026-07-25",
+        "2026-09-07"
       ]
     },
     {
@@ -3836,6 +7548,17 @@
       ]
     },
     {
+      "id": "ES_46154",
+      "name": "Llanera de Ranes",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-06",
+        "2026-08-28"
+      ]
+    },
+    {
       "id": "ES_25125",
       "name": "Llardecans",
       "comarca": "Segrià",
@@ -3844,6 +7567,17 @@
       "dates": [
         "2026-04-20",
         "2026-12-10"
+      ]
+    },
+    {
+      "id": "ES_46155",
+      "name": "Llaurí",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-08-10"
       ]
     },
     {
@@ -3891,6 +7625,17 @@
       ]
     },
     {
+      "id": "ES_03085",
+      "name": "Llíber",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-17",
+        "2026-08-18"
+      ]
+    },
+    {
       "id": "ES_08107",
       "name": "Lliçà d'Amunt",
       "comarca": "Vallès Oriental",
@@ -3935,6 +7680,17 @@
       ]
     },
     {
+      "id": "ES_46147",
+      "name": "Llíria",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-29"
+      ]
+    },
+    {
       "id": "ES_17094",
       "name": "Llívia",
       "comarca": "Baixa Cerdanya",
@@ -3965,6 +7721,50 @@
       "dates": [
         "2026-02-13",
         "2026-04-23"
+      ]
+    },
+    {
+      "id": "ES_46151",
+      "name": "Llocnou d'En Fenollet",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-27",
+        "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_46152",
+      "name": "Llocnou de la Corona",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_46153",
+      "name": "Llocnou de Sant Jeroni",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-13"
+      ]
+    },
+    {
+      "id": "ES_46156",
+      "name": "Llombai",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-17",
+        "2026-07-08"
       ]
     },
     {
@@ -4001,6 +7801,50 @@
       ]
     },
     {
+      "id": "ES_07028",
+      "name": "Lloret de Vistalegre",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-08-07",
+        "2026-12-10"
+      ]
+    },
+    {
+      "id": "ES_46157",
+      "name": "Llosa de Ranes, la",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-24",
+        "2026-08-25"
+      ]
+    },
+    {
+      "id": "ES_12074",
+      "name": "Llosa, la",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-07"
+      ]
+    },
+    {
+      "id": "ES_07029",
+      "name": "Lloseta",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-04-08",
+        "2026-09-08"
+      ]
+    },
+    {
       "id": "ES_17096",
       "name": "Llosses, Les",
       "comarca": "Ripollès",
@@ -4012,6 +7856,17 @@
       ]
     },
     {
+      "id": "ES_07030",
+      "name": "Llubí",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-04-07",
+        "2026-08-01"
+      ]
+    },
+    {
       "id": "ES_08109",
       "name": "Lluçà",
       "comarca": "Lluçanès",
@@ -4020,6 +7875,83 @@
       "dates": [
         "2026-05-25",
         "2026-12-10"
+      ]
+    },
+    {
+      "id": "ES_12072",
+      "name": "Llucena / Lucena del Cid",
+      "comarca": "Alcalaten",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_07031",
+      "name": "Llucmajor",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-09-29",
+        "2026-10-19"
+      ]
+    },
+    {
+      "id": "ES_46150",
+      "name": "Llutxent",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-27",
+        "2026-04-28"
+      ]
+    },
+    {
+      "id": "ES_03084",
+      "name": "Lorcha / Orxa, l'",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-17",
+        "2026-07-20"
+      ]
+    },
+    {
+      "id": "ES_46148",
+      "name": "Loriguilla",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-06-26"
+      ]
+    },
+    {
+      "id": "ES_46149",
+      "name": "Losa del Obispo",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-20",
+        "2026-01-21"
+      ]
+    },
+    {
+      "id": "ES_12073",
+      "name": "Ludiente",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-14",
+        "2026-10-13"
       ]
     },
     {
@@ -4042,6 +7974,17 @@
       "dates": [
         "2026-05-04",
         "2026-08-10"
+      ]
+    },
+    {
+      "id": "ES_46158",
+      "name": "Macastre",
+      "comarca": "Foia de Bunyol",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-18",
+        "2026-04-13"
       ]
     },
     {
@@ -4100,6 +8043,39 @@
       ]
     },
     {
+      "id": "ES_07033",
+      "name": "Manacor",
+      "comarca": "Llevant",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-07-25"
+      ]
+    },
+    {
+      "id": "ES_07034",
+      "name": "Mancor de la Vall",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-24",
+        "2026-11-19"
+      ]
+    },
+    {
+      "id": "ES_46159",
+      "name": "Manises",
+      "comarca": "Horta Oest",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_08112",
       "name": "Manlleu",
       "comarca": "Osona",
@@ -4119,6 +8095,28 @@
       "dates": [
         "2026-02-21",
         "2026-08-31"
+      ]
+    },
+    {
+      "id": "ES_46160",
+      "name": "Manuel",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-02",
+        "2026-09-04"
+      ]
+    },
+    {
+      "id": "ES_07032",
+      "name": "Maó",
+      "comarca": "Menorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-09-08"
       ]
     },
     {
@@ -4152,6 +8150,39 @@
       "dates": [
         "2026-05-11",
         "2026-11-23"
+      ]
+    },
+    {
+      "id": "ES_07035",
+      "name": "Maria de la Salut",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-09-07",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_46161",
+      "name": "Marines",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-06"
+      ]
+    },
+    {
+      "id": "ES_07036",
+      "name": "Marratxí",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-29",
+        "2026-06-30"
       ]
     },
     {
@@ -4298,6 +8329,17 @@
       ]
     },
     {
+      "id": "ES_46162",
+      "name": "Massalavés",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-27",
+        "2026-08-28"
+      ]
+    },
+    {
       "id": "ES_25131",
       "name": "Massalcoreig",
       "comarca": "Segrià",
@@ -4306,6 +8348,39 @@
       "dates": [
         "2026-01-16",
         "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_46163",
+      "name": "Massalfassar",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-10"
+      ]
+    },
+    {
+      "id": "ES_46164",
+      "name": "Massamagrell",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-28",
+        "2026-10-01"
+      ]
+    },
+    {
+      "id": "ES_46165",
+      "name": "Massanassa",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-18",
+        "2026-04-13"
       ]
     },
     {
@@ -4331,6 +8406,17 @@
       ]
     },
     {
+      "id": "ES_12075",
+      "name": "Mata de Morella, la",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-23",
+        "2026-01-26"
+      ]
+    },
+    {
       "id": "ES_08120",
       "name": "Matadepera",
       "comarca": "Vallès Occidental",
@@ -4353,6 +8439,17 @@
       ]
     },
     {
+      "id": "ES_12076",
+      "name": "Matet",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-19",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_08122",
       "name": "Mediona",
       "comarca": "Alt Penedès",
@@ -4361,6 +8458,17 @@
       "dates": [
         "2026-04-07",
         "2026-05-25"
+      ]
+    },
+    {
+      "id": "ES_46166",
+      "name": "Meliana",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-14"
       ]
     },
     {
@@ -4386,6 +8494,17 @@
       ]
     },
     {
+      "id": "ES_07037",
+      "name": "Mercadal, Es",
+      "comarca": "Menorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-11-11"
+      ]
+    },
+    {
       "id": "ES_17105",
       "name": "Mieres",
       "comarca": "Garrotxa",
@@ -4394,6 +8513,17 @@
       "dates": [
         "2026-03-27",
         "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_07902",
+      "name": "Migjorn Gran, Es",
+      "comarca": "Menorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-02-17",
+        "2026-07-10"
       ]
     },
     {
@@ -4408,6 +8538,28 @@
       ]
     },
     {
+      "id": "ES_46167",
+      "name": "Millares",
+      "comarca": "Canal de Navarres",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-08-06"
+      ]
+    },
+    {
+      "id": "ES_03086",
+      "name": "Millena",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-10",
+        "2026-07-13"
+      ]
+    },
+    {
       "id": "ES_25135",
       "name": "Miralcamp",
       "comarca": "Pla d'Urgell",
@@ -4419,6 +8571,17 @@
       ]
     },
     {
+      "id": "ES_46168",
+      "name": "Miramar",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-06"
+      ]
+    },
+    {
       "id": "ES_43084",
       "name": "Miravet",
       "comarca": "Ribera d'Ebre",
@@ -4427,6 +8590,28 @@
       "dates": [
         "2026-05-25",
         "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46169",
+      "name": "Mislata",
+      "comarca": "Horta Oest",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-31"
+      ]
+    },
+    {
+      "id": "ES_46170",
+      "name": "Mogente / Moixent",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-06-29"
       ]
     },
     {
@@ -4518,6 +8703,39 @@
       ]
     },
     {
+      "id": "ES_46171",
+      "name": "Moncada",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-10",
+        "2026-12-04"
+      ]
+    },
+    {
+      "id": "ES_12077",
+      "name": "Moncofa",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-22",
+        "2026-07-23"
+      ]
+    },
+    {
+      "id": "ES_03088",
+      "name": "Monforte del Cid",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-12-07",
+        "2026-12-09"
+      ]
+    },
+    {
       "id": "ES_08128",
       "name": "Monistrol de Calders",
       "comarca": "Moianès",
@@ -4526,6 +8744,17 @@
       "dates": [
         "2026-05-08",
         "2026-07-31"
+      ]
+    },
+    {
+      "id": "ES_03089",
+      "name": "Monóvar / Monòver",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
       ]
     },
     {
@@ -4573,6 +8802,39 @@
       ]
     },
     {
+      "id": "ES_12078",
+      "name": "Montán",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-27",
+        "2026-08-20"
+      ]
+    },
+    {
+      "id": "ES_12079",
+      "name": "Montanejos",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-24",
+        "2026-09-07"
+      ]
+    },
+    {
+      "id": "ES_46173",
+      "name": "Montaverner",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-28"
+      ]
+    },
+    {
       "id": "ES_43086",
       "name": "Montblanc",
       "comarca": "Conca de Barberà",
@@ -4614,6 +8876,40 @@
       "dates": [
         "2026-06-03",
         "2026-08-03"
+      ]
+    },
+    {
+      "id": "ES_25139",
+      "name": "Montellà i Martinet",
+      "comarca": "Baixa Cerdanya",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-19",
+        "2026-08-25",
+        "2026-11-30"
+      ]
+    },
+    {
+      "id": "ES_46174",
+      "name": "Montesa",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-31"
+      ]
+    },
+    {
+      "id": "ES_03903",
+      "name": "Montesinos, Los",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-30",
+        "2026-10-13"
       ]
     },
     {
@@ -4669,6 +8965,17 @@
       "dates": [
         "2026-04-23",
         "2026-05-25"
+      ]
+    },
+    {
+      "id": "ES_46175",
+      "name": "Montitxelvo / Montichelvo",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-07"
       ]
     },
     {
@@ -4760,6 +9067,17 @@
       ]
     },
     {
+      "id": "ES_46176",
+      "name": "Montroi / Montroy",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-21"
+      ]
+    },
+    {
       "id": "ES_08137",
       "name": "Montseny",
       "comarca": "Vallès Oriental",
@@ -4767,6 +9085,28 @@
       "territory": "Catalunya",
       "dates": [
         "2026-05-25",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_46172",
+      "name": "Montserrat",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-27",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_07038",
+      "name": "Montuïri",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-04-07",
         "2026-08-24"
       ]
     },
@@ -4804,6 +9144,17 @@
       ]
     },
     {
+      "id": "ES_12080",
+      "name": "Morella",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-07",
+        "2026-03-20"
+      ]
+    },
+    {
       "id": "ES_43096",
       "name": "Morera de Montsant, La",
       "comarca": "Priorat",
@@ -4826,6 +9177,61 @@
       ]
     },
     {
+      "id": "ES_03091",
+      "name": "Murla",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_07039",
+      "name": "Muro",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-06-24"
+      ]
+    },
+    {
+      "id": "ES_03092",
+      "name": "Muro de Alcoy",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-11",
+        "2026-05-12"
+      ]
+    },
+    {
+      "id": "ES_46177",
+      "name": "Museros",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_03090",
+      "name": "Mutxamel",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-06",
+        "2026-09-09"
+      ]
+    },
+    {
       "id": "ES_25145",
       "name": "Nalec",
       "comarca": "Urgell",
@@ -4837,6 +9243,52 @@
       ]
     },
     {
+      "id": "ES_46178",
+      "name": "Nàquera",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-10-01",
+        "2026-10-02"
+      ]
+    },
+    {
+      "id": "ES_25025",
+      "name": "Naut Aran",
+      "comarca": "Pallars Sobirà",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-06-13",
+        "2026-06-25",
+        "2026-06-29",
+        "2026-07-02",
+        "2026-07-20",
+        "2026-07-25",
+        "2026-08-01",
+        "2026-08-03",
+        "2026-08-05",
+        "2026-08-17",
+        "2026-08-28",
+        "2026-09-19",
+        "2026-09-28",
+        "2026-11-30",
+        "2026-12-10"
+      ]
+    },
+    {
+      "id": "ES_12081",
+      "name": "Navajas",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_08140",
       "name": "Navarcles",
       "comarca": "Bages",
@@ -4845,6 +9297,17 @@
       "dates": [
         "2026-02-16",
         "2026-05-25"
+      ]
+    },
+    {
+      "id": "ES_46179",
+      "name": "Navarrés",
+      "comarca": "Canal de Navarres",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-12",
+        "2026-10-08"
       ]
     },
     {
@@ -4889,6 +9352,50 @@
       "dates": [
         "2026-07-22",
         "2026-08-05"
+      ]
+    },
+    {
+      "id": "ES_03093",
+      "name": "Novelda",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-22"
+      ]
+    },
+    {
+      "id": "ES_46180",
+      "name": "Novetlè",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-24",
+        "2026-08-26"
+      ]
+    },
+    {
+      "id": "ES_03094",
+      "name": "Nucia, la",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_12082",
+      "name": "Nules",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-24"
       ]
     },
     {
@@ -5002,6 +9509,17 @@
       ]
     },
     {
+      "id": "ES_46181",
+      "name": "Oliva",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-17",
+        "2026-09-08"
+      ]
+    },
+    {
       "id": "ES_08148",
       "name": "Olivella",
       "comarca": "Garraf",
@@ -5009,6 +9527,39 @@
       "territory": "Catalunya",
       "dates": [
         "2026-02-16",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46183",
+      "name": "Olleria, l'",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-31",
+        "2026-09-01"
+      ]
+    },
+    {
+      "id": "ES_46182",
+      "name": "Olocau",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-17",
+        "2026-10-07"
+      ]
+    },
+    {
+      "id": "ES_12083",
+      "name": "Olocau del Rey",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-05",
         "2026-12-07"
       ]
     },
@@ -5079,6 +9630,61 @@
       ]
     },
     {
+      "id": "ES_12084",
+      "name": "Onda",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-06",
+        "2026-10-19"
+      ]
+    },
+    {
+      "id": "ES_03095",
+      "name": "Ondara",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-13"
+      ]
+    },
+    {
+      "id": "ES_03096",
+      "name": "Onil",
+      "comarca": "Alcoia",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-23",
+        "2026-11-28"
+      ]
+    },
+    {
+      "id": "ES_46184",
+      "name": "Ontinyent",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-24",
+        "2026-11-16"
+      ]
+    },
+    {
+      "id": "ES_03097",
+      "name": "Orba",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-11",
+        "2026-12-26"
+      ]
+    },
+    {
       "id": "ES_17115",
       "name": "Ordis",
       "comarca": "Alt Empordà",
@@ -5098,6 +9704,17 @@
       "dates": [
         "2026-02-16",
         "2026-05-25"
+      ]
+    },
+    {
+      "id": "ES_03099",
+      "name": "Orihuela",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-17",
+        "2026-09-08"
       ]
     },
     {
@@ -5123,6 +9740,17 @@
       ]
     },
     {
+      "id": "ES_12085",
+      "name": "Oropesa del Mar / Orpesa",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-25",
+        "2026-10-05"
+      ]
+    },
+    {
       "id": "ES_08152",
       "name": "Orpí",
       "comarca": "Anoia",
@@ -5131,6 +9759,17 @@
       "dates": [
         "2026-04-27",
         "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_03098",
+      "name": "Orxeta",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-18",
+        "2026-09-21"
       ]
     },
     {
@@ -5164,6 +9803,17 @@
       "dates": [
         "2026-08-06",
         "2026-10-09"
+      ]
+    },
+    {
+      "id": "ES_46185",
+      "name": "Otos",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-13"
       ]
     },
     {
@@ -5208,6 +9858,17 @@
       "dates": [
         "2026-06-25",
         "2026-06-26"
+      ]
+    },
+    {
+      "id": "ES_12087",
+      "name": "Palanques",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-23",
+        "2026-08-24"
       ]
     },
     {
@@ -5288,6 +9949,17 @@
       ]
     },
     {
+      "id": "ES_07040",
+      "name": "Palma",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-20",
+        "2026-06-24"
+      ]
+    },
+    {
       "id": "ES_43099",
       "name": "Palma d'Ebre, La",
       "comarca": "Ribera d'Ebre",
@@ -5310,6 +9982,28 @@
       ]
     },
     {
+      "id": "ES_46187",
+      "name": "Palma de Gandía",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-26",
+        "2026-08-27"
+      ]
+    },
+    {
+      "id": "ES_46188",
+      "name": "Palmera",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-25",
+        "2026-06-26"
+      ]
+    },
+    {
       "id": "ES_17123",
       "name": "Palol de Revardit",
       "comarca": "Pla de l'Estany",
@@ -5318,6 +10012,17 @@
       "dates": [
         "2026-10-26",
         "2026-10-29"
+      ]
+    },
+    {
+      "id": "ES_46189",
+      "name": "Palomar, el",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-05-11"
       ]
     },
     {
@@ -5340,6 +10045,17 @@
       "dates": [
         "2026-05-25",
         "2026-07-24"
+      ]
+    },
+    {
+      "id": "ES_03100",
+      "name": "Parcent",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-10"
       ]
     },
     {
@@ -5376,6 +10092,28 @@
       ]
     },
     {
+      "id": "ES_43101",
+      "name": "Passanant i Belltall",
+      "comarca": "Conca de Barberà",
+      "prov": "Camp de Tarragona",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-05-12",
+        "2026-10-05"
+      ]
+    },
+    {
+      "id": "ES_46190",
+      "name": "Paterna",
+      "comarca": "Horta Oest",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-31"
+      ]
+    },
+    {
       "id": "ES_17128",
       "name": "Pau",
       "comarca": "Alt Empordà",
@@ -5398,6 +10136,39 @@
       ]
     },
     {
+      "id": "ES_12088",
+      "name": "Pavías",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-15",
+        "2026-11-25"
+      ]
+    },
+    {
+      "id": "ES_46191",
+      "name": "Pedralba",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_03101",
+      "name": "Pedreguer",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-07-15"
+      ]
+    },
+    {
       "id": "ES_17129",
       "name": "Pedret i Marzà",
       "comarca": "Alt Empordà",
@@ -5409,6 +10180,28 @@
       ]
     },
     {
+      "id": "ES_03102",
+      "name": "Pego",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-17",
+        "2026-07-01"
+      ]
+    },
+    {
+      "id": "ES_03103",
+      "name": "Penàguila",
+      "comarca": "Alcoia",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-25",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_25164",
       "name": "Penelles",
       "comarca": "Noguera",
@@ -5417,6 +10210,17 @@
       "dates": [
         "2026-05-04",
         "2026-08-31"
+      ]
+    },
+    {
+      "id": "ES_12089",
+      "name": "Peníscola / Peñíscola",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-09"
       ]
     },
     {
@@ -5486,6 +10290,61 @@
       ]
     },
     {
+      "id": "ES_07041",
+      "name": "Petra",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-04-07",
+        "2026-07-21"
+      ]
+    },
+    {
+      "id": "ES_03104",
+      "name": "Petrer",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-18",
+        "2026-10-07"
+      ]
+    },
+    {
+      "id": "ES_46192",
+      "name": "Petrés",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-25",
+        "2026-08-31"
+      ]
+    },
+    {
+      "id": "ES_46193",
+      "name": "Picanya",
+      "comarca": "Horta Oest",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-08",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_46194",
+      "name": "Picassent",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-10",
+        "2026-09-08"
+      ]
+    },
+    {
       "id": "ES_08161",
       "name": "Piera",
       "comarca": "Anoia",
@@ -5497,6 +10356,28 @@
       ]
     },
     {
+      "id": "ES_03902",
+      "name": "Pilar de la Horadada",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-30",
+        "2026-10-13"
+      ]
+    },
+    {
+      "id": "ES_46195",
+      "name": "Piles",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-20",
+        "2026-12-04"
+      ]
+    },
+    {
       "id": "ES_43105",
       "name": "Piles, Les",
       "comarca": "Conca de Barberà",
@@ -5505,6 +10386,17 @@
       "dates": [
         "2026-11-10",
         "2026-12-15"
+      ]
+    },
+    {
+      "id": "ES_12090",
+      "name": "Pina de Montalgrao",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-08",
+        "2026-09-09"
       ]
     },
     {
@@ -5541,6 +10433,17 @@
       ]
     },
     {
+      "id": "ES_46196",
+      "name": "Pinet",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-06",
+        "2026-07-07"
+      ]
+    },
+    {
       "id": "ES_25167",
       "name": "Pinós",
       "comarca": "Solsonès",
@@ -5549,6 +10452,17 @@
       "dates": [
         "2026-01-23",
         "2026-09-01"
+      ]
+    },
+    {
+      "id": "ES_03105",
+      "name": "Pinós, el / Pinoso",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-08"
       ]
     },
     {
@@ -5585,6 +10499,17 @@
       ]
     },
     {
+      "id": "ES_03106",
+      "name": "Planes",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-10-02",
+        "2026-10-05"
+      ]
+    },
+    {
       "id": "ES_17133",
       "name": "Planes d'Hostoles, Les",
       "comarca": "Garrotxa",
@@ -5607,6 +10532,17 @@
       ]
     },
     {
+      "id": "ES_25911",
+      "name": "Plans de Sió, Els",
+      "comarca": "Segarra",
+      "prov": "Lleida",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-03-09",
+        "2026-05-15"
+      ]
+    },
+    {
       "id": "ES_25168",
       "name": "Poal, El",
       "comarca": "Pla d'Urgell",
@@ -5618,6 +10554,17 @@
       ]
     },
     {
+      "id": "ES_12093",
+      "name": "Pobla de Benifassà, la",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-30",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_08165",
       "name": "Pobla de Claramunt, La",
       "comarca": "Anoia",
@@ -5626,6 +10573,17 @@
       "dates": [
         "2026-02-02",
         "2026-07-06"
+      ]
+    },
+    {
+      "id": "ES_46199",
+      "name": "Pobla de Farnals, la",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-10",
+        "2026-09-11"
       ]
     },
     {
@@ -5684,6 +10642,72 @@
       ]
     },
     {
+      "id": "ES_46202",
+      "name": "Pobla de Vallbona, la",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-20",
+        "2026-10-07"
+      ]
+    },
+    {
+      "id": "ES_46200",
+      "name": "Pobla del Duc, la",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_46203",
+      "name": "Pobla Llarga, la",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-29",
+        "2026-10-14"
+      ]
+    },
+    {
+      "id": "ES_12094",
+      "name": "Pobla Tornesa, la",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-28"
+      ]
+    },
+    {
+      "id": "ES_07044",
+      "name": "Pobla, Sa",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-07-20"
+      ]
+    },
+    {
+      "id": "ES_03901",
+      "name": "Poblets, els",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-06"
+      ]
+    },
+    {
       "id": "ES_43112",
       "name": "Poboleda",
       "comarca": "Priorat",
@@ -5703,6 +10727,39 @@
       "dates": [
         "2026-01-20",
         "2026-07-13"
+      ]
+    },
+    {
+      "id": "ES_46197",
+      "name": "Polinyà de Xúquer",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-20",
+        "2026-08-06"
+      ]
+    },
+    {
+      "id": "ES_07042",
+      "name": "Pollença",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-06-29"
+      ]
+    },
+    {
+      "id": "ES_03107",
+      "name": "Polop",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-14",
+        "2026-10-02"
       ]
     },
     {
@@ -5816,6 +10873,17 @@
       ]
     },
     {
+      "id": "ES_07043",
+      "name": "Porreres",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-24",
+        "2026-08-17"
+      ]
+    },
+    {
       "id": "ES_17140",
       "name": "Port de la Selva, El",
       "comarca": "Alt Empordà",
@@ -5838,6 +10906,17 @@
       ]
     },
     {
+      "id": "ES_12091",
+      "name": "Portell de Morella",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_25174",
       "name": "Portella, La",
       "comarca": "Segrià",
@@ -5846,6 +10925,17 @@
       "dates": [
         "2026-03-06",
         "2026-04-29"
+      ]
+    },
+    {
+      "id": "ES_46198",
+      "name": "Potries",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-04-13"
       ]
     },
     {
@@ -6003,6 +11093,50 @@
       ]
     },
     {
+      "id": "ES_46205",
+      "name": "Puçol",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_12092",
+      "name": "Puebla de Arenoso",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-07",
+        "2026-09-18"
+      ]
+    },
+    {
+      "id": "ES_46201",
+      "name": "Puebla de San Miguel",
+      "comarca": "Rincón de Ademuz",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_46204",
+      "name": "Puig de Santa Maria, el",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-14",
+        "2026-09-07"
+      ]
+    },
+    {
       "id": "ES_08175",
       "name": "Puig-reig",
       "comarca": "Berguedà",
@@ -6044,6 +11178,17 @@
       "dates": [
         "2026-07-24",
         "2026-07-27"
+      ]
+    },
+    {
+      "id": "ES_07045",
+      "name": "Puigpunyent",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-09-08",
+        "2026-12-31"
       ]
     },
     {
@@ -6091,6 +11236,61 @@
       ]
     },
     {
+      "id": "ES_46101",
+      "name": "Quart de les Valls",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-21"
+      ]
+    },
+    {
+      "id": "ES_46102",
+      "name": "Quart de Poblet",
+      "comarca": "Horta Oest",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-07"
+      ]
+    },
+    {
+      "id": "ES_46103",
+      "name": "Quartell",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_46104",
+      "name": "Quatretonda",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-29",
+        "2026-08-31"
+      ]
+    },
+    {
+      "id": "ES_03060",
+      "name": "Quatretondeta",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-10-08"
+      ]
+    },
+    {
       "id": "ES_17043",
       "name": "Queralbs",
       "comarca": "Ripollès",
@@ -6113,6 +11313,17 @@
       ]
     },
     {
+      "id": "ES_46206",
+      "name": "Quesa",
+      "comarca": "Canal de Navarres",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-05",
+        "2026-08-07"
+      ]
+    },
+    {
       "id": "ES_17143",
       "name": "Rabós",
       "comarca": "Alt Empordà",
@@ -6121,6 +11332,72 @@
       "dates": [
         "2026-05-25",
         "2026-06-29"
+      ]
+    },
+    {
+      "id": "ES_03109",
+      "name": "Rafal",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-10-07",
+        "2026-10-08"
+      ]
+    },
+    {
+      "id": "ES_46207",
+      "name": "Rafelbunyol",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_46208",
+      "name": "Rafelcofer",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-09",
+        "2026-07-10"
+      ]
+    },
+    {
+      "id": "ES_46209",
+      "name": "Rafelguaraf",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-05",
+        "2026-08-06"
+      ]
+    },
+    {
+      "id": "ES_03110",
+      "name": "Ràfol d'Almúnia, el",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-13",
+        "2026-08-14"
+      ]
+    },
+    {
+      "id": "ES_46210",
+      "name": "Ráfol de Salem",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-06"
       ]
     },
     {
@@ -6157,6 +11434,39 @@
       ]
     },
     {
+      "id": "ES_46212",
+      "name": "Real",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-10"
+      ]
+    },
+    {
+      "id": "ES_46211",
+      "name": "Real de Gandia, el",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-07"
+      ]
+    },
+    {
+      "id": "ES_03111",
+      "name": "Redován",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-08",
+        "2026-09-29"
+      ]
+    },
+    {
       "id": "ES_17144",
       "name": "Regencós",
       "comarca": "Baix Empordà",
@@ -6165,6 +11475,17 @@
       "dates": [
         "2026-01-23",
         "2026-04-30"
+      ]
+    },
+    {
+      "id": "ES_03112",
+      "name": "Relleu",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-10",
+        "2026-09-28"
       ]
     },
     {
@@ -6187,6 +11508,17 @@
       "dates": [
         "2026-12-10",
         "2026-12-14"
+      ]
+    },
+    {
+      "id": "ES_46213",
+      "name": "Requena",
+      "comarca": "Requena-Utiel",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-27",
+        "2026-04-13"
       ]
     },
     {
@@ -6223,6 +11555,17 @@
       ]
     },
     {
+      "id": "ES_46214",
+      "name": "Riba-roja de Túria",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-14"
+      ]
+    },
+    {
       "id": "ES_43124",
       "name": "Riba, La",
       "comarca": "Alt Camp",
@@ -6234,6 +11577,38 @@
       ]
     },
     {
+      "id": "ES_25905",
+      "name": "Ribera d'Ondara",
+      "comarca": "Segarra",
+      "prov": "Lleida",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-04-27",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_25185",
+      "name": "Ribera d'Urgellet",
+      "comarca": "Alt Urgell",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-20",
+        "2026-01-28",
+        "2026-02-02",
+        "2026-05-18",
+        "2026-05-25",
+        "2026-07-03",
+        "2026-08-07",
+        "2026-09-07",
+        "2026-11-11",
+        "2026-11-30",
+        "2026-12-17",
+        "2026-12-31"
+      ]
+    },
+    {
       "id": "ES_17145",
       "name": "Ribes de Freser",
       "comarca": "Ripollès",
@@ -6242,6 +11617,17 @@
       "dates": [
         "2026-02-13",
         "2026-06-12"
+      ]
+    },
+    {
+      "id": "ES_12095",
+      "name": "Ribesalbes",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-10",
+        "2026-10-07"
       ]
     },
     {
@@ -6264,6 +11650,34 @@
       "dates": [
         "2026-07-20",
         "2026-09-14"
+      ]
+    },
+    {
+      "id": "ES_25186",
+      "name": "Riner",
+      "comarca": "Solsonès",
+      "prov": "Catalunya Central",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-02-03",
+        "2026-07-10",
+        "2026-08-03",
+        "2026-08-07",
+        "2026-08-11",
+        "2026-08-14",
+        "2026-08-17",
+        "2026-09-28"
+      ]
+    },
+    {
+      "id": "ES_46215",
+      "name": "Riola",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-05"
       ]
     },
     {
@@ -6388,6 +11802,17 @@
       ]
     },
     {
+      "id": "ES_46216",
+      "name": "Rocafort",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-01"
+      ]
+    },
+    {
       "id": "ES_43130",
       "name": "Rocafort de Queralt",
       "comarca": "Conca de Barberà",
@@ -6432,6 +11857,28 @@
       ]
     },
     {
+      "id": "ES_03113",
+      "name": "Rojales",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-29",
+        "2026-10-07"
+      ]
+    },
+    {
+      "id": "ES_03114",
+      "name": "Romana, la",
+      "comarca": "Vinalopo Mitja",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_43133",
       "name": "Roquetes",
       "comarca": "Baix Ebre",
@@ -6454,6 +11901,17 @@
       ]
     },
     {
+      "id": "ES_12096",
+      "name": "Rossell",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-19",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_25189",
       "name": "Rosselló",
       "comarca": "Segrià",
@@ -6462,6 +11920,17 @@
       "dates": [
         "2026-09-02",
         "2026-10-09"
+      ]
+    },
+    {
+      "id": "ES_46217",
+      "name": "Rotglà i Corberà",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-03",
+        "2026-09-04"
       ]
     },
     {
@@ -6487,6 +11956,17 @@
       ]
     },
     {
+      "id": "ES_46219",
+      "name": "Rugat",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_17153",
       "name": "Rupià",
       "comarca": "Baix Empordà",
@@ -6495,6 +11975,17 @@
       "dates": [
         "2026-01-22",
         "2026-07-20"
+      ]
+    },
+    {
+      "id": "ES_08901",
+      "name": "Rupit i Pruit",
+      "comarca": "Osona",
+      "prov": "Catalunya Central",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-09-29",
+        "2026-11-30"
       ]
     },
     {
@@ -6520,6 +12011,28 @@
       ]
     },
     {
+      "id": "ES_03115",
+      "name": "Sagra",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-07"
+      ]
+    },
+    {
+      "id": "ES_46220",
+      "name": "Sagunto / Sagunt",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-30"
+      ]
+    },
+    {
       "id": "ES_25190",
       "name": "Salàs de Pallars",
       "comarca": "Pallars Jussà",
@@ -6542,6 +12055,17 @@
       ]
     },
     {
+      "id": "ES_46221",
+      "name": "Salem",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-10",
+        "2026-09-11"
+      ]
+    },
+    {
       "id": "ES_17154",
       "name": "Sales de Llierca",
       "comarca": "Garrotxa",
@@ -6550,6 +12074,28 @@
       "dates": [
         "2026-04-23",
         "2026-11-11"
+      ]
+    },
+    {
+      "id": "ES_03116",
+      "name": "Salinas",
+      "comarca": "Alt Vinalopo",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-25",
+        "2026-05-26"
+      ]
+    },
+    {
+      "id": "ES_07059",
+      "name": "Salines, Ses",
+      "comarca": "Migjorn",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-08-24"
       ]
     },
     {
@@ -6597,6 +12143,83 @@
       ]
     },
     {
+      "id": "ES_12098",
+      "name": "Salzadella, la",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-02",
+        "2026-02-03"
+      ]
+    },
+    {
+      "id": "ES_46903",
+      "name": "San Antonio de Benagéber",
+      "comarca": "Horta Oest",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-08",
+        "2026-05-15"
+      ]
+    },
+    {
+      "id": "ES_03118",
+      "name": "San Fulgencio",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-10-08"
+      ]
+    },
+    {
+      "id": "ES_03904",
+      "name": "San Isidro",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-15",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_03120",
+      "name": "San Miguel de Salinas",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-28",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_12101",
+      "name": "San Rafael del Río",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-07-16"
+      ]
+    },
+    {
+      "id": "ES_03122",
+      "name": "San Vicente del Raspeig / Sant Vicent del Raspeig",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-04-14"
+      ]
+    },
+    {
       "id": "ES_25191",
       "name": "Sanaüja",
       "comarca": "Segarra",
@@ -6605,6 +12228,16 @@
       "dates": [
         "2026-01-17",
         "2026-05-22"
+      ]
+    },
+    {
+      "id": "ES_03117",
+      "name": "Sanet y Negrals",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-04"
       ]
     },
     {
@@ -7015,6 +12648,39 @@
       ]
     },
     {
+      "id": "ES_07049",
+      "name": "Sant Joan",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-04-07",
+        "2026-06-24"
+      ]
+    },
+    {
+      "id": "ES_03119",
+      "name": "Sant Joan d'Alacant",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-06-23",
+        "2026-09-14"
+      ]
+    },
+    {
+      "id": "ES_07050",
+      "name": "Sant Joan de Labritja",
+      "comarca": "Eivissa",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-06-24",
+        "2026-08-05"
+      ]
+    },
+    {
       "id": "ES_17167",
       "name": "Sant Joan de les Abadesses",
       "comarca": "Ripollès",
@@ -7034,6 +12700,17 @@
       "dates": [
         "2026-01-20",
         "2026-10-29"
+      ]
+    },
+    {
+      "id": "ES_12902",
+      "name": "Sant Joan de Moró",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-13"
       ]
     },
     {
@@ -7067,6 +12744,28 @@
       "dates": [
         "2026-06-23",
         "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46222",
+      "name": "Sant Joanet",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-06-23"
+      ]
+    },
+    {
+      "id": "ES_12099",
+      "name": "Sant Jordi / San Jorge",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-23",
+        "2026-05-04"
       ]
     },
     {
@@ -7158,6 +12857,17 @@
       ]
     },
     {
+      "id": "ES_07051",
+      "name": "Sant Llorenç des Cardassar",
+      "comarca": "Llevant",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-08-10",
+        "2026-09-08"
+      ]
+    },
+    {
       "id": "ES_08223",
       "name": "Sant Llorenç Savall",
       "comarca": "Vallès Occidental",
@@ -7166,6 +12876,17 @@
       "dates": [
         "2026-08-28",
         "2026-11-20"
+      ]
+    },
+    {
+      "id": "ES_07052",
+      "name": "Sant Lluís",
+      "comarca": "Menorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-09-08"
       ]
     },
     {
@@ -7199,6 +12920,21 @@
       "dates": [
         "2026-01-02",
         "2026-01-05"
+      ]
+    },
+    {
+      "id": "ES_25902",
+      "name": "Sant Martí de Riucorb",
+      "comarca": "Urgell",
+      "prov": "Lleida",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-20",
+        "2026-05-04",
+        "2026-05-11",
+        "2026-07-27",
+        "2026-08-03",
+        "2026-11-11"
       ]
     },
     {
@@ -7243,6 +12979,17 @@
       "dates": [
         "2026-07-25",
         "2026-10-29"
+      ]
+    },
+    {
+      "id": "ES_12100",
+      "name": "Sant Mateu",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-09-21"
       ]
     },
     {
@@ -7565,6 +13312,17 @@
       ]
     },
     {
+      "id": "ES_07053",
+      "name": "Santa Eugènia",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-04-20",
+        "2026-08-03"
+      ]
+    },
+    {
       "id": "ES_08246",
       "name": "Santa Eugènia de Berga",
       "comarca": "Osona",
@@ -7606,6 +13364,28 @@
       "dates": [
         "2026-05-02",
         "2026-06-29"
+      ]
+    },
+    {
+      "id": "ES_12102",
+      "name": "Santa Magdalena de Pulpis",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_07055",
+      "name": "Santa Margalida",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-07-20",
+        "2026-09-07"
       ]
     },
     {
@@ -7686,6 +13466,17 @@
       ]
     },
     {
+      "id": "ES_07056",
+      "name": "Santa María del Camí",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-04-27",
+        "2026-07-20"
+      ]
+    },
+    {
       "id": "ES_43140",
       "name": "Santa Oliva",
       "comarca": "Baix Penedès",
@@ -7719,6 +13510,17 @@
       ]
     },
     {
+      "id": "ES_03121",
+      "name": "Santa Pola",
+      "comarca": "Baix Vinalopó",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-16",
+        "2026-09-08"
+      ]
+    },
+    {
       "id": "ES_08261",
       "name": "Santa Susanna",
       "comarca": "Maresme",
@@ -7727,6 +13529,17 @@
       "dates": [
         "2026-08-10",
         "2026-08-11"
+      ]
+    },
+    {
+      "id": "ES_07057",
+      "name": "Santanyí",
+      "comarca": "Migjorn",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-03-03",
+        "2026-11-30"
       ]
     },
     {
@@ -7785,6 +13598,19 @@
       ]
     },
     {
+      "id": "ES_17187",
+      "name": "Saus, Camallera i Llampaies",
+      "comarca": "Alt Empordà",
+      "prov": "Girona",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-04-30",
+        "2026-08-24",
+        "2026-09-10",
+        "2026-11-11"
+      ]
+    },
+    {
       "id": "ES_43143",
       "name": "Savallà del Comtat",
       "comarca": "Conca de Barberà",
@@ -7796,6 +13622,17 @@
       ]
     },
     {
+      "id": "ES_03123",
+      "name": "Sax",
+      "comarca": "Alt Vinalopo",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-12-26"
+      ]
+    },
+    {
       "id": "ES_43144",
       "name": "Secuita, La",
       "comarca": "Tarragonès",
@@ -7804,6 +13641,72 @@
       "dates": [
         "2026-07-10",
         "2026-08-14"
+      ]
+    },
+    {
+      "id": "ES_46223",
+      "name": "Sedaví",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-18"
+      ]
+    },
+    {
+      "id": "ES_46224",
+      "name": "Segart",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-03"
+      ]
+    },
+    {
+      "id": "ES_12104",
+      "name": "Segorbe",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-02",
+        "2026-09-04"
+      ]
+    },
+    {
+      "id": "ES_03124",
+      "name": "Sella",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-10-05",
+        "2026-10-06"
+      ]
+    },
+    {
+      "id": "ES_46225",
+      "name": "Sellent",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-20",
+        "2026-08-21"
+      ]
+    },
+    {
+      "id": "ES_07058",
+      "name": "Selva",
+      "comarca": "El Raiguer",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-08-10",
+        "2026-11-19"
       ]
     },
     {
@@ -7829,6 +13732,17 @@
       ]
     },
     {
+      "id": "ES_46226",
+      "name": "Sempere",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-02",
+        "2026-03-20"
+      ]
+    },
+    {
       "id": "ES_43146",
       "name": "Senan",
       "comarca": "Conca de Barberà",
@@ -7840,6 +13754,17 @@
       ]
     },
     {
+      "id": "ES_07047",
+      "name": "Sencelles",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-02-05",
+        "2026-02-27"
+      ]
+    },
+    {
       "id": "ES_43044",
       "name": "Sénia, La",
       "comarca": "Montsià",
@@ -7848,6 +13773,17 @@
       "dates": [
         "2026-03-19",
         "2026-05-11"
+      ]
+    },
+    {
+      "id": "ES_03125",
+      "name": "Senija",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-04",
+        "2026-05-05"
       ]
     },
     {
@@ -7884,6 +13820,17 @@
       ]
     },
     {
+      "id": "ES_46227",
+      "name": "Senyera",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-27",
+        "2026-08-24"
+      ]
+    },
+    {
       "id": "ES_17190",
       "name": "Serinyà",
       "comarca": "Pla de l'Estany",
@@ -7906,6 +13853,17 @@
       ]
     },
     {
+      "id": "ES_46228",
+      "name": "Serra",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-18",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_17191",
       "name": "Serra de Daró",
       "comarca": "Baix Empordà",
@@ -7914,6 +13872,17 @@
       "dates": [
         "2026-04-23",
         "2026-06-23"
+      ]
+    },
+    {
+      "id": "ES_12103",
+      "name": "Serratella, la",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-09",
+        "2026-08-03"
       ]
     },
     {
@@ -7961,6 +13930,39 @@
       ]
     },
     {
+      "id": "ES_12105",
+      "name": "Sierra Engarcerán",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-09",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_46229",
+      "name": "Siete Aguas",
+      "comarca": "Foia de Bunyol",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-08-06"
+      ]
+    },
+    {
+      "id": "ES_46230",
+      "name": "Silla",
+      "comarca": "Horta Sud",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-06"
+      ]
+    },
+    {
       "id": "ES_17193",
       "name": "Sils",
       "comarca": "Selva",
@@ -7969,6 +13971,39 @@
       "dates": [
         "2026-07-13",
         "2026-09-25"
+      ]
+    },
+    {
+      "id": "ES_46231",
+      "name": "Simat de la Valldigna",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_46232",
+      "name": "Sinarcas",
+      "comarca": "Requena-Utiel",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-15",
+        "2026-10-21"
+      ]
+    },
+    {
+      "id": "ES_07060",
+      "name": "Sineu",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-04-25",
+        "2026-08-14"
       ]
     },
     {
@@ -8026,6 +14061,28 @@
       ]
     },
     {
+      "id": "ES_46233",
+      "name": "Sollana",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-22",
+        "2026-08-10"
+      ]
+    },
+    {
+      "id": "ES_07061",
+      "name": "Sóller",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-05-11",
+        "2026-08-24"
+      ]
+    },
+    {
       "id": "ES_25207",
       "name": "Solsona",
       "comarca": "Solsonès",
@@ -8034,6 +14091,28 @@
       "dates": [
         "2026-09-08",
         "2026-09-09"
+      ]
+    },
+    {
+      "id": "ES_07062",
+      "name": "Son Servera",
+      "comarca": "Llevant",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-01-17",
+        "2026-06-24"
+      ]
+    },
+    {
+      "id": "ES_12106",
+      "name": "Soneja",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-24",
+        "2026-09-25"
       ]
     },
     {
@@ -8081,6 +14160,47 @@
       ]
     },
     {
+      "id": "ES_46234",
+      "name": "Sot de Chera",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-20",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_12107",
+      "name": "Sot de Ferrer",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_08273",
+      "name": "Subirats",
+      "comarca": "Alt Penedès",
+      "prov": "Penedès",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-26",
+        "2026-04-02",
+        "2026-04-13",
+        "2026-04-20",
+        "2026-05-04",
+        "2026-06-29",
+        "2026-07-06",
+        "2026-07-27",
+        "2026-08-03",
+        "2026-10-26"
+      ]
+    },
+    {
       "id": "ES_25211",
       "name": "Sudanell",
       "comarca": "Segrià",
@@ -8089,6 +14209,39 @@
       "dates": [
         "2026-10-02",
         "2026-10-05"
+      ]
+    },
+    {
+      "id": "ES_46235",
+      "name": "Sueca",
+      "comarca": "Ribera Baixa",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_12108",
+      "name": "Sueras / Suera",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-03",
+        "2026-10-26"
+      ]
+    },
+    {
+      "id": "ES_46236",
+      "name": "Sumacàrcer",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-07"
       ]
     },
     {
@@ -8169,6 +14322,17 @@
       ]
     },
     {
+      "id": "ES_12109",
+      "name": "Tales",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-11-09",
+        "2026-11-10"
+      ]
+    },
+    {
       "id": "ES_17195",
       "name": "Tallada d'Empordà, La",
       "comarca": "Baix Empordà",
@@ -8188,6 +14352,17 @@
       "dates": [
         "2026-01-20",
         "2026-08-25"
+      ]
+    },
+    {
+      "id": "ES_03127",
+      "name": "Tàrbena",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-03",
+        "2026-12-04"
       ]
     },
     {
@@ -8235,6 +14410,28 @@
       ]
     },
     {
+      "id": "ES_46237",
+      "name": "Tavernes Blanques",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-18"
+      ]
+    },
+    {
+      "id": "ES_46238",
+      "name": "Tavernes de la Valldigna",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-18",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_08280",
       "name": "Tavertet",
       "comarca": "Osona",
@@ -8254,6 +14451,28 @@
       "dates": [
         "2026-05-25",
         "2026-11-11"
+      ]
+    },
+    {
+      "id": "ES_12110",
+      "name": "Teresa",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-15",
+        "2026-10-15"
+      ]
+    },
+    {
+      "id": "ES_46239",
+      "name": "Teresa de Cofrentes",
+      "comarca": "Vall de Confrents",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-02",
+        "2026-08-14"
       ]
     },
     {
@@ -8290,6 +14509,28 @@
       ]
     },
     {
+      "id": "ES_46240",
+      "name": "Terrateig",
+      "comarca": "Vall d'Albaida",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-04-14"
+      ]
+    },
+    {
+      "id": "ES_03128",
+      "name": "Teulada",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-15"
+      ]
+    },
+    {
       "id": "ES_08282",
       "name": "Tiana",
       "comarca": "Maresme",
@@ -8301,6 +14542,28 @@
       ]
     },
     {
+      "id": "ES_03129",
+      "name": "Tibi",
+      "comarca": "Alcoia",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-22"
+      ]
+    },
+    {
+      "id": "ES_12111",
+      "name": "Tírig",
+      "comarca": "Alta Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-22",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_25221",
       "name": "Tírvia",
       "comarca": "Pallars Sobirà",
@@ -8309,6 +14572,17 @@
       "dates": [
         "2026-01-19",
         "2026-08-03"
+      ]
+    },
+    {
+      "id": "ES_46241",
+      "name": "Titaguas",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-03",
+        "2026-09-04"
       ]
     },
     {
@@ -8345,6 +14619,39 @@
       ]
     },
     {
+      "id": "ES_12112",
+      "name": "Todolella",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-09",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_12113",
+      "name": "Toga",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-03",
+        "2026-08-04"
+      ]
+    },
+    {
+      "id": "ES_03130",
+      "name": "Tollos",
+      "comarca": "Comtat",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-24",
+        "2026-07-25"
+      ]
+    },
+    {
       "id": "ES_08283",
       "name": "Tona",
       "comarca": "Osona",
@@ -8367,6 +14674,17 @@
       ]
     },
     {
+      "id": "ES_12114",
+      "name": "Torás",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-08",
+        "2026-09-09"
+      ]
+    },
+    {
       "id": "ES_08284",
       "name": "Tordera",
       "comarca": "Maresme",
@@ -8375,6 +14693,17 @@
       "dates": [
         "2026-03-11",
         "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_03131",
+      "name": "Tormos",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-28"
       ]
     },
     {
@@ -8397,6 +14726,50 @@
       "dates": [
         "2026-05-15",
         "2026-10-05"
+      ]
+    },
+    {
+      "id": "ES_12115",
+      "name": "Toro, El",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-14",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_12116",
+      "name": "Torralba del Pinar",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-06",
+        "2026-12-04"
+      ]
+    },
+    {
+      "id": "ES_12119",
+      "name": "Torre d'En Besora, la",
+      "comarca": "Alta Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-23",
+        "2026-08-25"
+      ]
+    },
+    {
+      "id": "ES_12120",
+      "name": "Torre d'en Doménec, la",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-03",
+        "2026-08-04"
       ]
     },
     {
@@ -8455,6 +14828,17 @@
       ]
     },
     {
+      "id": "ES_46242",
+      "name": "Torrebaja",
+      "comarca": "Rincón de Ademuz",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-24"
+      ]
+    },
+    {
       "id": "ES_25226",
       "name": "Torrebesses",
       "comarca": "Segrià",
@@ -8463,6 +14847,28 @@
       "dates": [
         "2026-01-20",
         "2026-08-06"
+      ]
+    },
+    {
+      "id": "ES_12117",
+      "name": "Torreblanca",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-23",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_12118",
+      "name": "Torrechiva",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-08-17"
       ]
     },
     {
@@ -8485,6 +14891,28 @@
       "dates": [
         "2026-01-19",
         "2026-09-14"
+      ]
+    },
+    {
+      "id": "ES_25907",
+      "name": "Torrefeta i Florejacs",
+      "comarca": "Segarra",
+      "prov": "Lleida",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-08",
+        "2026-01-20",
+        "2026-05-09",
+        "2026-05-15",
+        "2026-07-25",
+        "2026-08-06",
+        "2026-08-08",
+        "2026-08-11",
+        "2026-08-14",
+        "2026-08-22",
+        "2026-11-04",
+        "2026-11-11",
+        "2026-11-14"
       ]
     },
     {
@@ -8521,6 +14949,17 @@
       ]
     },
     {
+      "id": "ES_46243",
+      "name": "Torrella",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-06-11"
+      ]
+    },
+    {
       "id": "ES_08288",
       "name": "Torrelles de Foix",
       "comarca": "Alt Penedès",
@@ -8543,6 +14982,17 @@
       ]
     },
     {
+      "id": "ES_03132",
+      "name": "Torremanzanas / Torre de les Maçanes, la",
+      "comarca": "Alacanti",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-08",
+        "2026-07-27"
+      ]
+    },
+    {
       "id": "ES_17197",
       "name": "Torrent",
       "comarca": "Baix Empordà",
@@ -8554,6 +15004,17 @@
       ]
     },
     {
+      "id": "ES_46244",
+      "name": "Torrent",
+      "comarca": "Horta Oest",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-30"
+      ]
+    },
+    {
       "id": "ES_25232",
       "name": "Torres de Segre",
       "comarca": "Segrià",
@@ -8562,6 +15023,28 @@
       "dates": [
         "2026-05-11",
         "2026-12-04"
+      ]
+    },
+    {
+      "id": "ES_46245",
+      "name": "Torres Torres",
+      "comarca": "Camp de Morvedre",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-08",
+        "2026-09-09"
+      ]
+    },
+    {
+      "id": "ES_03133",
+      "name": "Torrevieja",
+      "comarca": "Baix Segura",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-16"
       ]
     },
     {
@@ -8642,6 +15125,28 @@
       ]
     },
     {
+      "id": "ES_46246",
+      "name": "Tous",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-09-29",
+        "2026-09-30"
+      ]
+    },
+    {
+      "id": "ES_12121",
+      "name": "Traiguera",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_25234",
       "name": "Tremp",
       "comarca": "Pallars Jussà",
@@ -8650,6 +15155,28 @@
       "dates": [
         "2026-05-14",
         "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_46247",
+      "name": "Tuéjar",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-11-13",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_46248",
+      "name": "Turís",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-27",
+        "2026-04-13"
       ]
     },
     {
@@ -8730,6 +15257,28 @@
       ]
     },
     {
+      "id": "ES_12122",
+      "name": "Useras / Useres, les",
+      "comarca": "Alcalaten",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-24",
+        "2026-08-06"
+      ]
+    },
+    {
+      "id": "ES_46249",
+      "name": "Utiel",
+      "comarca": "Requena-Utiel",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
+      ]
+    },
+    {
       "id": "ES_08291",
       "name": "Vacarisses",
       "comarca": "Vallès Occidental",
@@ -8752,6 +15301,88 @@
       ]
     },
     {
+      "id": "ES_46250",
+      "name": "València",
+      "comarca": "Ciutat de Valencia",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-22",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_12124",
+      "name": "Vall d'Alba",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-07"
+      ]
+    },
+    {
+      "id": "ES_03134",
+      "name": "Vall d'Alcalà, la",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-19",
+        "2026-08-28"
+      ]
+    },
+    {
+      "id": "ES_03135",
+      "name": "Vall d'Ebo, la",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-10"
+      ]
+    },
+    {
+      "id": "ES_17207",
+      "name": "Vall d'en Bas, La",
+      "comarca": "Garrotxa",
+      "prov": "Girona",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-07-24",
+        "2026-08-03",
+        "2026-08-14",
+        "2026-08-21",
+        "2026-08-24",
+        "2026-09-08",
+        "2026-09-21"
+      ]
+    },
+    {
+      "id": "ES_12126",
+      "name": "Vall d'Uixó, la",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-10-13"
+      ]
+    },
+    {
+      "id": "ES_12125",
+      "name": "Vall de Almonacid",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-07"
+      ]
+    },
+    {
       "id": "ES_17208",
       "name": "Vall de Bianya, La",
       "comarca": "Garrotxa",
@@ -8763,6 +15394,72 @@
       ]
     },
     {
+      "id": "ES_25043",
+      "name": "Vall de Boí, La",
+      "comarca": "Alta Ribagorça",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-02-12",
+        "2026-02-13",
+        "2026-06-10",
+        "2026-06-16",
+        "2026-06-23",
+        "2026-07-17",
+        "2026-07-29",
+        "2026-08-01",
+        "2026-08-14",
+        "2026-09-08",
+        "2026-10-31",
+        "2026-11-23"
+      ]
+    },
+    {
+      "id": "ES_25901",
+      "name": "Vall de Cardós",
+      "comarca": "Pallars Sobirà",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-01-22",
+        "2026-02-17",
+        "2026-05-15",
+        "2026-06-29",
+        "2026-07-25",
+        "2026-08-10",
+        "2026-08-31",
+        "2026-09-04",
+        "2026-09-08",
+        "2026-10-15",
+        "2026-11-18",
+        "2026-11-30",
+        "2026-12-29",
+        "2026-12-31"
+      ]
+    },
+    {
+      "id": "ES_03136",
+      "name": "Vall de Gallinera, la",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-23"
+      ]
+    },
+    {
+      "id": "ES_03137",
+      "name": "Vall de Laguar, la",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_17209",
       "name": "Vall-llobrega",
       "comarca": "Baix Empordà",
@@ -8771,6 +15468,39 @@
       "dates": [
         "2026-01-26",
         "2026-09-21"
+      ]
+    },
+    {
+      "id": "ES_46251",
+      "name": "Vallada",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-11"
+      ]
+    },
+    {
+      "id": "ES_46252",
+      "name": "Vallanca",
+      "comarca": "Rincón de Ademuz",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_12123",
+      "name": "Vallat",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-04",
+        "2026-12-28"
       ]
     },
     {
@@ -8804,6 +15534,28 @@
       "dates": [
         "2026-08-21",
         "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_07063",
+      "name": "Valldemossa",
+      "comarca": "Serra de Tramuntana",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-07-28",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_46253",
+      "name": "Vallés",
+      "comarca": "Costera",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-06-26"
       ]
     },
     {
@@ -8851,6 +15603,17 @@
       ]
     },
     {
+      "id": "ES_12127",
+      "name": "Vallibona",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-10-08"
+      ]
+    },
+    {
       "id": "ES_08295",
       "name": "Vallirana",
       "comarca": "Baix Llobregat",
@@ -8895,6 +15658,90 @@
       ]
     },
     {
+      "id": "ES_25906",
+      "name": "Valls d'Aguilar, Les",
+      "comarca": "Alt Urgell",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-02-16",
+        "2026-05-30",
+        "2026-07-13",
+        "2026-08-17",
+        "2026-09-28",
+        "2026-10-13"
+      ]
+    },
+    {
+      "id": "ES_25239",
+      "name": "Valls de Valira, Les",
+      "comarca": "Alt Urgell",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-05-25",
+        "2026-05-30",
+        "2026-06-01",
+        "2026-06-13",
+        "2026-06-27",
+        "2026-06-29",
+        "2026-07-04",
+        "2026-07-07",
+        "2026-07-11",
+        "2026-07-25",
+        "2026-08-01",
+        "2026-08-14",
+        "2026-09-05",
+        "2026-09-08",
+        "2026-09-12",
+        "2026-10-10",
+        "2026-10-24",
+        "2026-11-07",
+        "2026-11-14",
+        "2026-11-28",
+        "2026-12-10",
+        "2026-12-21"
+      ]
+    },
+    {
+      "id": "ES_43162",
+      "name": "Vandellòs i l'Hospitalet de l'Infant",
+      "comarca": "Baix Camp",
+      "prov": "Camp de Tarragona",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-05-15",
+        "2026-06-29",
+        "2026-07-17",
+        "2026-07-18",
+        "2026-07-24",
+        "2026-07-25",
+        "2026-07-31",
+        "2026-08-14",
+        "2026-09-25",
+        "2026-11-14"
+      ]
+    },
+    {
+      "id": "ES_25909",
+      "name": "Vansa i Fórnols, La",
+      "comarca": "Alt Urgell",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-06-27",
+        "2026-06-29",
+        "2026-08-01",
+        "2026-08-03",
+        "2026-08-08",
+        "2026-08-10",
+        "2026-11-07",
+        "2026-11-09",
+        "2026-11-14",
+        "2026-11-16"
+      ]
+    },
+    {
       "id": "ES_43163",
       "name": "Vendrell, El",
       "comarca": "Baix Penedès",
@@ -8903,6 +15750,17 @@
       "dates": [
         "2026-07-27",
         "2026-07-28"
+      ]
+    },
+    {
+      "id": "ES_46254",
+      "name": "Venta del Moro",
+      "comarca": "Requena-Utiel",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-15",
+        "2026-12-10"
       ]
     },
     {
@@ -8925,6 +15783,17 @@
       "dates": [
         "2026-01-26",
         "2026-09-09"
+      ]
+    },
+    {
+      "id": "ES_03138",
+      "name": "Verger, el",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-14"
       ]
     },
     {
@@ -8980,6 +15849,42 @@
       "dates": [
         "2026-02-17",
         "2026-09-07"
+      ]
+    },
+    {
+      "id": "ES_25243",
+      "name": "Vielha e Mijaran",
+      "comarca": "Alta Ribagorça",
+      "prov": "Alt Pirineu i Aran",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-06-29",
+        "2026-07-03",
+        "2026-07-25",
+        "2026-08-01",
+        "2026-08-03",
+        "2026-08-05",
+        "2026-08-10",
+        "2026-08-17",
+        "2026-08-29",
+        "2026-09-08",
+        "2026-10-05",
+        "2026-10-08",
+        "2026-10-09",
+        "2026-11-11",
+        "2026-11-28",
+        "2026-12-21"
+      ]
+    },
+    {
+      "id": "ES_12135",
+      "name": "Vila-real",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-18",
+        "2026-12-26"
       ]
     },
     {
@@ -9126,6 +16031,17 @@
       ]
     },
     {
+      "id": "ES_12128",
+      "name": "Vilafamés",
+      "comarca": "Plana Alta",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-16",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_17221",
       "name": "Vilafant",
       "comarca": "Alt Empordà",
@@ -9134,6 +16050,28 @@
       "dates": [
         "2026-05-04",
         "2026-09-16"
+      ]
+    },
+    {
+      "id": "ES_12129",
+      "name": "Vilafranca / Villafranca del Cid",
+      "comarca": "Alta Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-25",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_07065",
+      "name": "Vilafranca de Bonany",
+      "comarca": "Pla de Mallorca",
+      "prov": "Illes Balears",
+      "territory": "Illes Balears",
+      "dates": [
+        "2026-12-04",
+        "2026-12-07"
       ]
     },
     {
@@ -9203,6 +16141,17 @@
       ]
     },
     {
+      "id": "ES_46255",
+      "name": "Vilallonga / Villalonga",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-17"
+      ]
+    },
+    {
       "id": "ES_17224",
       "name": "Vilallonga de Ter",
       "comarca": "Ripollès",
@@ -9255,6 +16204,17 @@
       "dates": [
         "2026-05-04",
         "2026-09-01"
+      ]
+    },
+    {
+      "id": "ES_46256",
+      "name": "Vilamarxant",
+      "comarca": "Camp de Túria",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-18",
+        "2026-03-20"
       ]
     },
     {
@@ -9412,6 +16372,17 @@
       ]
     },
     {
+      "id": "ES_12134",
+      "name": "Vilar de Canes",
+      "comarca": "Alta Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-02-02",
+        "2026-08-10"
+      ]
+    },
+    {
       "id": "ES_08214",
       "name": "Vilassar de Dalt",
       "comarca": "Maresme",
@@ -9445,6 +16416,17 @@
       ]
     },
     {
+      "id": "ES_12136",
+      "name": "Vilavella, la",
+      "comarca": "Plana Baixa",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-20",
+        "2026-04-13"
+      ]
+    },
+    {
       "id": "ES_43172",
       "name": "Vilaverd",
       "comarca": "Conca de Barberà",
@@ -9475,6 +16457,94 @@
       "dates": [
         "2026-05-22",
         "2026-05-25"
+      ]
+    },
+    {
+      "id": "ES_12130",
+      "name": "Villahermosa del Río",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-19",
+        "2026-08-25"
+      ]
+    },
+    {
+      "id": "ES_03139",
+      "name": "Villajoyosa / Vila Joiosa, la",
+      "comarca": "Marina Baixa",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-07-29",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_12131",
+      "name": "Villamalur",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-11",
+        "2026-09-15"
+      ]
+    },
+    {
+      "id": "ES_12133",
+      "name": "Villanueva de Viver",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-20",
+        "2026-08-21"
+      ]
+    },
+    {
+      "id": "ES_46258",
+      "name": "Villar del Arzobispo",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-24",
+        "2026-03-20"
+      ]
+    },
+    {
+      "id": "ES_46259",
+      "name": "Villargordo del Cabriel",
+      "comarca": "Requena-Utiel",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-05-15",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_03140",
+      "name": "Villena",
+      "comarca": "Alt Vinalopo",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-10"
+      ]
+    },
+    {
+      "id": "ES_12137",
+      "name": "Villores",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-20",
+        "2026-04-13"
       ]
     },
     {
@@ -9544,6 +16614,17 @@
       ]
     },
     {
+      "id": "ES_46260",
+      "name": "Vinalesa",
+      "comarca": "Horta Nord",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-10-13",
+        "2026-10-14"
+      ]
+    },
+    {
       "id": "ES_43177",
       "name": "Vinebre",
       "comarca": "Ribera d'Ebre",
@@ -9566,6 +16647,96 @@
       ]
     },
     {
+      "id": "ES_12139",
+      "name": "Vistabella del Maestrat",
+      "comarca": "Alcalaten",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-09",
+        "2026-08-24"
+      ]
+    },
+    {
+      "id": "ES_12140",
+      "name": "Viver",
+      "comarca": "Alt Palancia",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-17",
+        "2026-09-25"
+      ]
+    },
+    {
+      "id": "ES_08308",
+      "name": "Viver i Serrateix",
+      "comarca": "Berguedà",
+      "prov": "Catalunya Central",
+      "territory": "Catalunya",
+      "dates": [
+        "2026-05-11",
+        "2026-08-06",
+        "2026-08-31",
+        "2026-09-29"
+      ]
+    },
+    {
+      "id": "ES_03081",
+      "name": "Xaló",
+      "comarca": "Marina Alta",
+      "prov": "Alacant",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-04",
+        "2026-10-19"
+      ]
+    },
+    {
+      "id": "ES_46145",
+      "name": "Xàtiva",
+      "comarca": "Ribera Alta",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-08-01",
+        "2026-08-05"
+      ]
+    },
+    {
+      "id": "ES_46143",
+      "name": "Xeraco",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-08-06"
+      ]
+    },
+    {
+      "id": "ES_46146",
+      "name": "Xeresa",
+      "comarca": "Safor",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-02",
+        "2026-04-13"
+      ]
+    },
+    {
+      "id": "ES_12052",
+      "name": "Xert",
+      "comarca": "Baix Maestrat",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-12-07"
+      ]
+    },
+    {
       "id": "ES_43052",
       "name": "Xerta",
       "comarca": "Baix Ebre",
@@ -9574,6 +16745,72 @@
       "dates": [
         "2026-07-25",
         "2026-11-11"
+      ]
+    },
+    {
+      "id": "ES_46110",
+      "name": "Xirivella",
+      "comarca": "Horta Oest",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-09-08"
+      ]
+    },
+    {
+      "id": "ES_46261",
+      "name": "Yátova",
+      "comarca": "Foia de Bunyol",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-18",
+        "2026-08-17"
+      ]
+    },
+    {
+      "id": "ES_46262",
+      "name": "Yesa, La",
+      "comarca": "Serranos",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-04-13",
+        "2026-07-16"
+      ]
+    },
+    {
+      "id": "ES_46263",
+      "name": "Zarra",
+      "comarca": "Vall de Confrents",
+      "prov": "València",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-07-27"
+      ]
+    },
+    {
+      "id": "ES_12141",
+      "name": "Zorita del Maestrazgo",
+      "comarca": "Els Ports",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-01-16",
+        "2026-09-04"
+      ]
+    },
+    {
+      "id": "ES_12142",
+      "name": "Zucaina",
+      "comarca": "Alt Millars",
+      "prov": "Castelló",
+      "territory": "País Valencià",
+      "dates": [
+        "2026-03-09",
+        "2026-07-27"
       ]
     }
   ]

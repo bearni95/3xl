@@ -1,11 +1,13 @@
-// Local-festival ("festes locals") calendar types.
+// Local-festival ("festes locals" / "fiestas locales") calendar types.
 //
-// @3xl/data's `generate:festes` bakes the Generalitat de Catalunya open dataset
-// "Calendari de festes locals a Catalunya" into `public/festes-locals.json`
-// (served at `/data/festes-locals.json`), one entry per Catalan municipality
-// with its official local-holiday dates for the year. Each town's festa major
-// is conventionally one of these two days; the dataset does not single out
-// which, so both are kept. See the script header for sourcing and coverage.
+// @3xl/data's `generate:festes` bakes several official government datasets into
+// `public/festes-locals.json` (served at `/data/festes-locals.json`), one entry
+// per municipality with its legally-recognised local-holiday dates for the year:
+// the Generalitat de Catalunya, the Govern de les Illes Balears, and the
+// Generalitat Valenciana's DOGV. Each town's festa major is conventionally one
+// of its two local holidays; the sources do not single out which, so both are
+// kept. See the script header for sourcing and coverage (Catalunya Nord,
+// Andorra and l'Alguer have no equivalent source and carry no dates).
 
 /** One municipality's local-festival days for the baked year. */
 export interface MunicipalityFesta {
@@ -19,16 +21,19 @@ export interface MunicipalityFesta {
 	dates: string[];
 }
 
+/** Provenance of one underlying official dataset. */
+export interface FestaSource {
+	name: string;
+	publisher: string;
+	url: string;
+}
+
 /** Shape of `public/festes-locals.json` — the whole baked calendar. */
 export interface FestesCollection {
 	generatedAt: string;
 	/** The calendar year the dates belong to. */
 	year: number;
-	/** Provenance of the underlying open dataset. */
-	source: {
-		name: string;
-		publisher: string;
-		url: string;
-	};
+	/** Provenance of every official dataset merged into the calendar. */
+	sources: FestaSource[];
 	festes: MunicipalityFesta[];
 }

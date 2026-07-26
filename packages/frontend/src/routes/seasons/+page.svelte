@@ -83,11 +83,19 @@
 			</div>
 			{#if collection}
 				<p class="mt-2 text-xs opacity-50">
-					Font:
-					<a class="link" href={collection.source.url} target="_blank" rel="noopener noreferrer">
-						{collection.source.name}
-					</a>
-					— {collection.source.publisher}. Només Catalunya.
+					Fonts oficials:
+					{#each collection.sources as source, i}
+						<a
+							class="link"
+							href={source.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							title={source.publisher}
+						>
+							{source.name}
+						</a>{i < collection.sources.length - 1 ? ' · ' : ''}
+					{/each}
+					. Sense dades per a la Catalunya Nord, Andorra ni l'Alguer.
 				</p>
 			{/if}
 		</div>
