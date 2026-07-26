@@ -34,10 +34,26 @@ function serveDir(prefix: string, root: string) {
 		// Guard against path traversal outside the served root.
 		if (filePath !== root && !filePath.startsWith(root + sep)) return next();
 		if (!existsSync(filePath) || !statSync(filePath).isFile()) return next();
+		const stat = statSync(filePath);
+		// Cache validators so the browser always revalidates before reusing a file:
+		// regenerated data (geo layers, manifests) is picked up on the next request
+		// instead of being served stale from the browser cache. `no-cache` means
+		// "you may cache, but revalidate every time" — an unchanged file then 304s
+		// cheaply, a changed one 200s fresh.
+		const etag = `"${stat.size.toString(16)}-${stat.mtimeMs.toString(16)}"`;
+		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('ETag', etag);
+		res.setHeader('Last-Modified', stat.mtime.toUTCString());
+		if (req.headers['if-none-match'] === etag) {
+			res.statusCode = 304;
+			res.end();
+			return;
+		}
 		res.setHeader(
 			'Content-Type',
 			MIME[extname(filePath).toLowerCase()] ?? 'application/octet-stream'
 		);
+		res.setHeader('Content-Length', stat.size);
 		createReadStream(filePath).pipe(res);
 	};
 }
