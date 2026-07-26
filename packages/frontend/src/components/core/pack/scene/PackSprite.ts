@@ -2,10 +2,11 @@
  * PackSprite
  *
  * Renders a booster pack into a RenderTexture, framed to match {@link CardSprite}:
- * the show's poster fills the frame (object-cover) as the art, a dark header strip
- * carries the show name and a dark footer strip the place the pack belongs to
- * (white with a black outline), with rounded corners, a 2px black border and a
- * soft black drop shadow behind it. Exposes
+ * the show's poster fills the middle art area (object-cover, masked to it) with a
+ * dark header strip above it carrying the show name and a dark footer strip below
+ * it carrying the place the pack belongs to (white with a black outline) — both
+ * strips outside the image — with rounded corners, a 2px black border and a soft
+ * black drop shadow behind it. Exposes
  * split(y), which carves the rendered texture into top/bottom halves for the slice
  * animation.
  *
@@ -172,24 +173,34 @@ export class PackSprite extends Container {
 		const footerH = Math.round(h * FOOTER_RATIO);
 		const footerY = h - footerH;
 
-		// Black backing — fills any letterbox left by the contained poster.
+		// The poster sits only in the art area between the strips; the header/footer
+		// bars sit outside it, over this black backing.
+		const artY = headerH;
+		const artH = h - headerH - footerH;
+
 		const bg = new Graphics();
 		bg.rect(0, 0, w, h);
 		bg.fill({ color: 0x000000, alpha: 1 });
 		root.addChild(bg);
 
 		if (cover && cover.width > 0 && cover.height > 0) {
-			// The poster, `object-cover`: scaled so it fully covers the pack,
-			// centred and cropped by the render target (no black letterbox).
+			// The poster, `object-cover` within the art box: scaled to fully cover it,
+			// centred, and masked to that box so it never runs under the strips.
 			const imgW = cover.width;
 			const imgH = cover.height;
-			const scale = Math.max(w / imgW, h / imgH);
+			const scale = Math.max(w / imgW, artH / imgH);
 			const drawW = imgW * scale;
 			const drawH = imgH * scale;
 
 			const sprite = new Sprite(cover);
 			sprite.setSize(drawW, drawH);
-			sprite.position.set((w - drawW) / 2, (h - drawH) / 2);
+			sprite.position.set((w - drawW) / 2, artY + (artH - drawH) / 2);
+
+			const artMask = new Graphics();
+			artMask.rect(0, artY, w, artH);
+			artMask.fill(0xffffff);
+			sprite.mask = artMask;
+			root.addChild(artMask);
 			root.addChild(sprite);
 		}
 

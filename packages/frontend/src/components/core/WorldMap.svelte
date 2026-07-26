@@ -99,6 +99,10 @@
 	let overlayGroups: L.GeoJSON[] = [];
 	// The pins layer, rebuilt whenever the markers prop changes.
 	let markerLayer: L.LayerGroup | null = null;
+	// municipality `properties.id` → the featureIds of the pin region it currently
+	// belongs to (at the tier on screen), rebuilt with the pins. Lets hovering
+	// anywhere in a pinned region's polygons light that whole region, not just the pin.
+	let regionByFeatureId = new Map<string, string[]>();
 	// For every overlay that carries a hoverStyle, its group + hoverStyle + a
 	// `properties.id → layer` lookup, so a pin can light up all of its region's
 	// polygons with the same hover the polygons show on their own mouseover.
@@ -294,7 +298,17 @@
 		const index = levels.length ? levelIndexForView(levels, mapInstance.getCenter()) : 0;
 		// Publish the chosen tier so the parent can mirror it (polygons, sidebar).
 		activeLevel = index;
-		const visible = (levels[index] ?? []).filter((marker) => bounds.contains(marker.position));
+		const chosen = levels[index] ?? [];
+
+		// Remap every municipality of the chosen tier to its region's featureIds (from
+		// all of the tier's pins, not just the culled-in ones), so a polygon hover can
+		// light the same whole region its pin does — wherever in the region you point.
+		regionByFeatureId = new Map();
+		for (const marker of chosen) {
+			for (const id of marker.featureIds ?? []) regionByFeatureId.set(id, marker.featureIds!);
+		}
+
+		const visible = chosen.filter((marker) => bounds.contains(marker.position));
 
 		for (const marker of visible) {
 			const icon = Leaf.divIcon({
@@ -369,12 +383,18 @@
 						layer.bindTooltip(label, { sticky: true });
 					}
 
-					// Record each feature's layer so a pin can light up its whole region,
-					// but do NOT bind a per-feature hover: a municipality never changes its
-					// own fill on hover — only a pin hover paints its region.
+					// Record each feature's layer so a pin can light up its whole region.
+					// Hovering the polygon lights the SAME whole region its pin does (never
+					// the single municipality on its own) — so the hover works across the
+					// pinned area, not just on the tiny pin icon.
 					if (overlay.hoverStyle) {
 						const id = feature.properties?.id;
-						if (id != null) byId.set(String(id), layer as L.Path);
+						if (id != null) {
+							const key = String(id);
+							byId.set(key, layer as L.Path);
+							layer.on('mouseover', () => highlightRegion(regionByFeatureId.get(key), true));
+							layer.on('mouseout', () => highlightRegion(regionByFeatureId.get(key), false));
+						}
 					}
 
 					layer.on('click', () => overlay.onClick?.(feature));
