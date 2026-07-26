@@ -41,10 +41,9 @@ const DEFAULT_ART_ASPECT = 1.14;
  * overflow behind them (the poster is a Sprite, not masked). */
 const STRIP_FILL = { color: 0xffffff, alpha: 1 } as const;
 /** A row of equilateral triangles marches across the top edge, bases on the start
- * of the top white strip (y = 0). Their base is a target fraction of the pack
- * width, rounded to a whole count so they tile the width edge to edge. */
+ * of the top strip (y = 0). Their base is a target fraction of the pack width,
+ * rounded to a whole count so they tile the width edge to edge. */
 const TRIANGLE_BASE_RATIO = 0.1;
-const TRIANGLE_FILL = { color: 0x000000, alpha: 1 } as const;
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
@@ -73,6 +72,9 @@ export class PackSprite extends Container {
 	private packH: number;
 	private renderTex: RenderTexture | null = null;
 	private mainSprite: Sprite | null = null;
+	/** Fill for the top rectangle + triangles: the most frequent colour in the
+	 * cover's first pixel row, resolved in load(). White until then. */
+	private topColor = 0xffffff;
 
 	constructor(opts: PackSpriteOptions) {
 		super();
@@ -98,6 +100,7 @@ export class PackSprite extends Container {
 		// ratio sets the pack's height. Resolve the final footprint (fitted inside
 		// the caller's box) before composing.
 		this.resolveDimensions(cover);
+		this.topColor = this.detectTopColor(cover);
 
 		const composition = this.buildComposition(cover);
 
@@ -201,6 +204,35 @@ export class PackSprite extends Container {
 		this.packH = Math.round(width * heightPerWidth);
 	}
 
+	/**
+	 * The most frequent colour in the cover's first pixel row, as 0xRRGGBB. Reads
+	 * the poster's pixels once and tallies each colour across row 0; falls back to
+	 * white when there is no cover or the pixels can't be read.
+	 */
+	private detectTopColor(cover: Texture | null): number {
+		if (!cover || cover.width <= 0 || cover.height <= 0) return 0xffffff;
+		try {
+			const { pixels, width } = this.app.renderer.extract.pixels(cover);
+			const counts = new Map<number, number>();
+			let best = 0xffffff;
+			let bestCount = 0;
+			for (let x = 0; x < width; x++) {
+				const i = x * 4;
+				if (pixels[i + 3] === 0) continue; // skip fully transparent pixels
+				const color = (pixels[i] << 16) | (pixels[i + 1] << 8) | pixels[i + 2];
+				const n = (counts.get(color) ?? 0) + 1;
+				counts.set(color, n);
+				if (n > bestCount) {
+					bestCount = n;
+					best = color;
+				}
+			}
+			return best;
+		} catch {
+			return 0xffffff;
+		}
+	}
+
 	private buildComposition(cover: Texture | null): Container {
 		const root = new Container();
 		const w = this.packW;
@@ -230,10 +262,12 @@ export class PackSprite extends Container {
 			root.addChild(sprite);
 		}
 
-		// Plain white header + footer strips, outside the image — no text on them.
+		// Header + footer strips, outside the image — no text on them. The footer is
+		// plain white; the header is painted the cover's dominant top-row colour so
+		// the frame's top edge picks up the poster.
 		const header = new Graphics();
 		header.rect(0, 0, w, headerH);
-		header.fill(STRIP_FILL);
+		header.fill({ color: this.topColor, alpha: 1 });
 		root.addChild(header);
 
 		const footer = new Graphics();
@@ -255,7 +289,7 @@ export class PackSprite extends Container {
 			const xR = Math.round((i + 1) * triBase);
 			triangles.poly([xL, 0, xR, 0, Math.round((xL + xR) / 2), triHeight]);
 		}
-		triangles.fill(TRIANGLE_FILL);
+		triangles.fill({ color: this.topColor, alpha: 1 });
 		root.addChild(triangles);
 
 		// The place the pack belongs to, overlaid at the top-centre of the image in
