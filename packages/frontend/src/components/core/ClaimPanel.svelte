@@ -42,6 +42,7 @@
 			<ClaimPackOpenerPanel
 				coverUrl={opener.coverUrl}
 				packLabel={opener.label}
+				locationName={opener.locationName}
 				claim={opener.claim}
 				openSession={opener.openSession}
 				openAnotherBusy={opener.openAnotherBusy}

@@ -23,7 +23,7 @@
 		if (!host) return;
 		scene = new ClaimPackScene(
 			host,
-			{ coverUrl, label },
+			{ coverUrl, label, locationName },
 			claim,
 			{ onOpenComplete: () => onOpenComplete?.() }
 		);

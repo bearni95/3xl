@@ -7,6 +7,8 @@
 	// The show poster (pack cover) and its name.
 	export let coverUrl: string | null = null;
 	export let packLabel: string = '';
+	// Full name of the place the pack belongs to, drawn across its bottom.
+	export let locationName: string | null = null;
 	// Rolls the booster against Supabase when the pack is sliced open, resolving
 	// the claimed character(s) to reveal.
 	export let claim: ClaimBooster;
@@ -34,7 +36,7 @@
 
 		<div class="min-h-0 flex-1 rounded-md bg-gradient-to-b from-base-300/80 to-base-200">
 			{#key openSession}
-				<ClaimPackOpener {coverUrl} label={packLabel} {claim} />
+				<ClaimPackOpener {coverUrl} label={packLabel} {locationName} {claim} />
 			{/key}
 		</div>
 

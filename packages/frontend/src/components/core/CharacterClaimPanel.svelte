@@ -199,6 +199,7 @@
 		? {
 				coverUrl: openerPosterUrl,
 				label: openerShow.name,
+				locationName: openerRegion?.municipality ?? null,
 				claim: runClaim,
 				openSession,
 				openAnotherBusy: claimingId !== null,
