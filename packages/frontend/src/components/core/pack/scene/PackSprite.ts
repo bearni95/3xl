@@ -1,10 +1,12 @@
 /**
  * PackSprite
  *
- * Renders a booster pack into a RenderTexture: the show's poster shown in full
- * (object-contain) over a black backing, with a 2px black border and a soft
- * black drop shadow behind it. Exposes split(y), which carves the rendered
- * texture into top/bottom halves for the slice animation.
+ * Renders a booster pack into a RenderTexture, framed to match {@link CardSprite}:
+ * the show's poster fills the frame (object-cover) as the art, a dark header strip
+ * carries the show name and a dark footer strip a "BOOSTER" tag, with rounded
+ * corners, a 2px black border and a soft black drop shadow behind it. Exposes
+ * split(y), which carves the rendered texture into top/bottom halves for the slice
+ * animation.
  *
  * Ported from the yugioh-duel-sim booster opener; the cover is now a show poster
  * (loaded by URL) rather than a card's cropped artwork.
@@ -18,9 +20,18 @@ import {
 	Rectangle,
 	RenderTexture,
 	Sprite,
+	Text,
 	Texture
 } from 'pixi.js';
 import { textureCache } from '$components/core/card/texture-cache';
+
+// Card-frame proportions, shared with CardSprite so a pack reads as the unopened
+// member of the same family: a dark header strip and a dark footer strip, sized
+// as a fraction of the pack height, over the poster art.
+const HEADER_RATIO = 0.14;
+const FOOTER_RATIO = 0.15;
+/** Fill for the dark header/footer strips (matches CardSprite). */
+const STRIP_FILL = { color: 0x111827, alpha: 0.92 } as const;
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
@@ -80,10 +91,11 @@ export class PackSprite extends Container {
 		this.app.renderer.render({ container: composition, target: intermediate });
 		composition.destroy({ children: true });
 
+		const radius = Math.max(6, this.packW * 0.05);
 		const framed = new Graphics();
-		framed.rect(0, 0, this.packW, this.packH);
+		framed.roundRect(0, 0, this.packW, this.packH, radius);
 		framed.fill({ texture: intermediate });
-		framed.rect(0, 0, this.packW, this.packH);
+		framed.roundRect(0, 0, this.packW, this.packH, radius);
 		framed.stroke({ width: 2, color: 0x000000, alpha: 1 });
 
 		this.renderTex = RenderTexture.create({
@@ -97,7 +109,7 @@ export class PackSprite extends Container {
 
 		// Soft black drop shadow behind the pack, offset down/right.
 		const shadow = new Graphics();
-		shadow.rect(0, 0, this.packW, this.packH);
+		shadow.roundRect(0, 0, this.packW, this.packH, radius);
 		shadow.fill({ color: 0x000000, alpha: 0.55 });
 		shadow.filters = [new BlurFilter({ strength: 12 })];
 		shadow.position.set(4, 10);
@@ -151,6 +163,9 @@ export class PackSprite extends Container {
 		const root = new Container();
 		const w = this.packW;
 		const h = this.packH;
+		const headerH = Math.round(h * HEADER_RATIO);
+		const footerH = Math.round(h * FOOTER_RATIO);
+		const footerY = h - footerH;
 
 		// Black backing — fills any letterbox left by the contained poster.
 		const bg = new Graphics();
@@ -172,6 +187,48 @@ export class PackSprite extends Container {
 			sprite.position.set((w - drawW) / 2, (h - drawH) / 2);
 			root.addChild(sprite);
 		}
+
+		// Dark header strip carrying the show name, centred — the card's name header.
+		const header = new Graphics();
+		header.rect(0, 0, w, headerH);
+		header.fill(STRIP_FILL);
+		root.addChild(header);
+
+		const name = new Text({
+			text: this.packLabel,
+			style: {
+				fontFamily: 'sans-serif',
+				fontSize: Math.max(10, Math.round(w * 0.09)),
+				fontWeight: '700',
+				fill: 0xf2f2f2,
+				align: 'center',
+				wordWrap: true,
+				wordWrapWidth: w * 0.9
+			}
+		});
+		name.anchor.set(0.5);
+		name.position.set(w / 2, headerH / 2);
+		root.addChild(name);
+
+		// Dark footer strip with a muted "BOOSTER" tag — echoes the card's stat footer.
+		const footer = new Graphics();
+		footer.rect(0, footerY, w, footerH);
+		footer.fill(STRIP_FILL);
+		root.addChild(footer);
+
+		const tag = new Text({
+			text: 'BOOSTER',
+			style: {
+				fontFamily: 'sans-serif',
+				fontSize: Math.max(9, Math.round(w * 0.07)),
+				fontWeight: '700',
+				fill: 0x9ca3af,
+				letterSpacing: 2
+			}
+		});
+		tag.anchor.set(0.5);
+		tag.position.set(w / 2, footerY + footerH / 2);
+		root.addChild(tag);
 
 		return root;
 	}
