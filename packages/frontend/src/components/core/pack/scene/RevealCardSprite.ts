@@ -30,6 +30,10 @@ const SHADOW_OFFSET_Y_RATIO = 0.045;
 /** Opacity of the black silhouette drop-shadow. */
 const SHADOW_ALPHA = 0.45;
 
+/** The d10 die icon (white SVG) shown next to the ATK value — the same one the
+ * roster/team cards use for a character's stat. Served from @3xl/assets. */
+const D10_ICON_URL = '/assets/icons/skoll/d10.svg';
+
 // Hex twins of the Tailwind swatches RosterCard uses for each spawn colour.
 const COLOR_HEX: Record<SpawnColor, number> = {
 	[SpawnColor.Red]: 0xef4444,
@@ -266,20 +270,46 @@ export class RevealCardSprite extends Container {
 		return name;
 	}
 
-	/** The character's ATK/DEF, centred in the bottom footer strip. */
-	private makeStats(footerY: number, footerH: number): Text {
-		const stats = new Text({
-			text: `ATK ${this.pull.atk}  ·  DEF ${this.pull.def}`,
-			style: {
-				fontFamily: 'sans-serif',
-				fontSize: Math.max(9, Math.round(this.cardWidth * 0.08)),
-				fontWeight: '600',
-				fill: 0x9ca3af,
-				align: 'center'
-			}
+	/**
+	 * The footer stat row: the ATK value with the d10 die icon beside it on the
+	 * left, and the DEF value with a trailing "+" on the right — spaced apart to
+	 * the two edges of the footer, with no separator between them.
+	 */
+	private makeStats(footerY: number, footerH: number): Container {
+		const group = new Container();
+		const centerY = footerY + footerH / 2;
+		const padX = this.cardWidth * 0.12;
+		const fontSize = Math.max(11, Math.round(this.cardWidth * 0.1));
+
+		// Attack: the ATK value, then the d10 die icon right beside it.
+		const atk = new Text({
+			text: `${this.pull.atk}`,
+			style: { fontFamily: 'sans-serif', fontSize, fontWeight: '700', fill: 0xf2f2f2 }
 		});
-		stats.anchor.set(0.5);
-		stats.position.set(this.cardWidth / 2, footerY + footerH / 2);
-		return stats;
+		atk.anchor.set(0, 0.5);
+		atk.position.set(padX, centerY);
+		group.addChild(atk);
+
+		// The d10 icon loads async; place it just right of the ATK value once ready.
+		const iconGap = fontSize * 0.35;
+		void textureCache.icon(D10_ICON_URL).then((tex) => {
+			if (this.destroyed || group.destroyed || !tex) return;
+			const icon = new Sprite(tex);
+			icon.anchor.set(0, 0.5);
+			icon.scale.set(fontSize / tex.height);
+			icon.position.set(atk.x + atk.width + iconGap, centerY);
+			group.addChild(icon);
+		});
+
+		// Defense: the DEF value with a trailing "+", pinned to the right edge.
+		const def = new Text({
+			text: `${this.pull.def}+`,
+			style: { fontFamily: 'sans-serif', fontSize, fontWeight: '700', fill: 0xf2f2f2 }
+		});
+		def.anchor.set(1, 0.5);
+		def.position.set(this.cardWidth - padX, centerY);
+		group.addChild(def);
+
+		return group;
 	}
 }
