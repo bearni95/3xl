@@ -8,7 +8,6 @@
 	import {
 		buildRegionTree,
 		buildFillIndex,
-		resolveFill,
 		type FillLevel
 	} from '$utils/geo/region-tree';
 	import type { MapCircle, MapOverlay } from '$types/map.type';
@@ -38,16 +37,27 @@
 	let ready = false;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
-	// The open sections of the sidebar tree, by node key. Both the tree and the
-	// map read this: an open region reveals its children, and on the map each
-	// polygon shows the poster of its shallowest still-collapsed ancestor.
+	// The open sections of the sidebar tree, by node key. The tree reads this to
+	// decide which regions reveal their children; it no longer drives the map.
 	let expanded = new Set<string>();
+	// The single region currently selected in the sidebar, by its node key — the
+	// only region the map paints with its poster. A node's key matches the fill
+	// index: a territory is its own id, deeper tiers append theirs, a municipality
+	// is its own id. Null until the player picks a region.
+	let selected: string | null = null;
 
 	function toggle(key: string) {
 		const next = new Set(expanded);
 		if (next.has(key)) next.delete(key);
 		else next.add(key);
 		expanded = next;
+	}
+
+	// Selecting a region opens it (so its children surface) and marks it as the
+	// one the map images; re-selecting it just keeps it selected.
+	function select(key: string) {
+		selected = key;
+		if (!expanded.has(key)) toggle(key);
 	}
 
 	$: location = $store;
@@ -111,13 +121,14 @@
 	// territory lines (green comarca lines sit under the yellow province ones,
 	// so shared borders read as province).
 	//
-	// The municipality overlay's poster follows the sidebar: each polygon is
-	// grouped under — and painted with the show of — its shallowest still-collapsed
-	// ancestor (its territory at rest, then its province/comarca/own show as the
-	// sidebar drills in). WorldMap merges every polygon sharing a group key into
-	// one image spanning their combined shape, so a collapsed region reads as a
-	// single poster across its whole area.
-	function buildOverlays(index: Map<string, FillLevel[]>, open: Set<string>): MapOverlay[] {
+	// Every polygon is always drawn; only the one selected region carries a
+	// poster. A municipality is painted when the selected key sits somewhere in
+	// its ancestor chain (its territory, province, comarca) or is the municipality
+	// itself — and, since every municipality of the selected region returns that
+	// same key, WorldMap merges them into a single image spanning the region's
+	// whole shape. Every other municipality returns null and stays a plain
+	// polygon. With nothing selected, the map shows no imagery at all.
+	function buildOverlays(index: Map<string, FillLevel[]>, chosen: string | null): MapOverlay[] {
 		return [
 			{
 				url: '/data/geo/municipis.json',
@@ -131,10 +142,10 @@
 						.join(', ');
 				},
 				imageFill: (feature) => {
+					if (!chosen) return null;
 					const levels = index.get(String(feature.properties?.id));
-					if (!levels) return null;
-					const { key, url } = resolveFill(levels, open);
-					return url ? { key, url } : null;
+					const level = levels?.find((tier) => tier.key === chosen);
+					return level?.url ? { key: level.key, url: level.url } : null;
 				}
 			},
 			{
@@ -155,9 +166,9 @@
 		];
 	}
 
-	// Rebuilt (so WorldMap repaints) whenever the tree loads or a section opens.
-	// fillIndex and expanded are passed as arguments so this statement tracks them.
-	$: overlays = buildOverlays(fillIndex, expanded);
+	// Rebuilt (so WorldMap repaints) whenever the tree loads or the selection
+	// changes. fillIndex and selected are passed in so this statement tracks them.
+	$: overlays = buildOverlays(fillIndex, selected);
 
 	// The portal axis: an imaginary straight line from the municipality of Girona
 	// (centroid ~[41.99, 2.83]) out to l'Alguer — the lone Italian territory in
@@ -225,6 +236,38 @@
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
+	<aside
+		class="flex w-[36rem] flex-col border-r border-base-300 bg-base-100 shadow-inner"
+		aria-label="Map regions"
+	>
+		<div class="border-b border-base-300 px-4 py-3">
+			<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Regions</h2>
+			<p class="flex flex-wrap gap-x-3 gap-y-1 text-xs opacity-60">
+				<span class="flex items-center gap-1"
+					><span class="h-2 w-2 rounded-full bg-error"></span>Territory</span
+				>
+				<span class="flex items-center gap-1"
+					><span class="h-2 w-2 rounded-full bg-warning"></span>Province</span
+				>
+				<span class="flex items-center gap-1"
+					><span class="h-2 w-2 rounded-full bg-success"></span>Comarca</span
+				>
+				<span class="flex items-center gap-1"
+					><span class="h-2 w-2 rounded-full bg-info"></span>Municipality</span
+				>
+			</p>
+		</div>
+
+		<RegionTree
+			territories={regionTree}
+			{expanded}
+			{selected}
+			onToggle={toggle}
+			onSelect={select}
+			highlightId={highlightRowId}
+		/>
+	</aside>
+
 	<div class="relative flex min-w-0 flex-1 flex-col">
 		{#if ready}
 			<WorldMap
@@ -268,36 +311,6 @@
 			{/if}
 		</div>
 	</div>
-
-	<aside
-		class="flex w-[36rem] flex-col border-l border-base-300 bg-base-100 shadow-inner"
-		aria-label="Map regions"
-	>
-		<div class="border-b border-base-300 px-4 py-3">
-			<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Regions</h2>
-			<p class="flex flex-wrap gap-x-3 gap-y-1 text-xs opacity-60">
-				<span class="flex items-center gap-1"
-					><span class="h-2 w-2 rounded-full bg-error"></span>Territory</span
-				>
-				<span class="flex items-center gap-1"
-					><span class="h-2 w-2 rounded-full bg-warning"></span>Province</span
-				>
-				<span class="flex items-center gap-1"
-					><span class="h-2 w-2 rounded-full bg-success"></span>Comarca</span
-				>
-				<span class="flex items-center gap-1"
-					><span class="h-2 w-2 rounded-full bg-info"></span>Municipality</span
-				>
-			</p>
-		</div>
-
-		<RegionTree
-			territories={regionTree}
-			{expanded}
-			onToggle={toggle}
-			highlightId={highlightRowId}
-		/>
-	</aside>
 </div>
 
 {#if portalOpen}
