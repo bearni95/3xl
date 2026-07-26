@@ -1,7 +1,5 @@
 <script lang="ts">
-	import classNames from 'classnames';
 	import { onMount } from 'svelte';
-	import type { PathOptions } from 'leaflet';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTree from '$components/core/RegionTree.svelte';
 	import ClaimPanel from '$components/core/ClaimPanel.svelte';
@@ -14,22 +12,8 @@
 	import { boundsForFeatures } from '$utils/geo/bounds';
 	import type { MapCircle, MapOverlay } from '$types/map.type';
 	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
-	import { locationService, hasLocation } from '$services/location.service';
-	import { locationAdapter } from '$adapters/classes/location.adapter';
 
-	const store = locationService.store;
-
-	// Paint the municipality the player stands in solid red over its base fill.
-	const highlightStyle: PathOptions = {
-		color: '#ef4444',
-		weight: 2,
-		fillColor: '#ef4444',
-		fillOpacity: 0.55
-	};
-
-	let loading = false;
-	let error = '';
-	// The municipality polygons, used to resolve a reading to its feature id.
+	// The municipality polygons, feeding the region tree and the map framing.
 	let municipalities: GeoJSON.FeatureCollection | null = null;
 	// The baked municipality→show assignment, keyed by municipality id. Built
 	// once from municipality-shows.json; every polygon's poster and every sidebar
@@ -62,16 +46,8 @@
 		if (!expanded.has(key)) toggle(key);
 	}
 
-	$: location = $store;
-	// The `properties.id` of the municipality the player is in, so WorldMap can
-	// paint that one polygon red — null until a reading is taken and resolved.
-	$: highlightId =
-		hasLocation(location) && municipalities
-			? (locationAdapter.toRegion(location, municipalities).id ?? null)
-			: null;
-
 	onMount(async () => {
-		// Load the polygons (for highlight resolution) and the baked show
+		// Load the polygons (for the region tree + framing) and the baked show
 		// assignment (for the poster fill + sidebar) in parallel; both are
 		// optional, so settle each independently and always flip `ready` so the
 		// map renders regardless.
@@ -83,7 +59,7 @@
 		]);
 
 		if (municipisResult.status === 'fulfilled') {
-			// Highlight simply stays off if the polygons fail to load.
+			// The region tree simply stays empty if the polygons fail to load.
 			municipalities = municipisResult.value;
 		}
 		if (showsResult.status === 'fulfilled') {
@@ -95,41 +71,22 @@
 		ready = true;
 	});
 
-	function requestLocation() {
-		error = '';
-
-		if (!('geolocation' in navigator)) {
-			error = 'Geolocation is not supported by this browser.';
-			return;
-		}
-
-		loading = true;
-		navigator.geolocation.getCurrentPosition(
-			(position) => {
-				locationService.set(locationAdapter.fromBrowser(position));
-				loading = false;
-			},
-			(positionError) => {
-				error = positionError.message || 'Unable to retrieve your location.';
-				loading = false;
-			},
-			{ enableHighAccuracy: true }
-		);
-	}
-
 	// Països Catalans polygons, built by @3xl/data's generate:geo from the
 	// Eurostat LAU set (WGS84) and served from that package's public/ at /data.
 	// Drawn bottom-up: municipality fills, comarca lines, province lines,
 	// territory lines (green comarca lines sit under the yellow province ones,
 	// so shared borders read as province).
 	//
-	// Every polygon is always drawn; only the one selected region carries a
-	// poster. A municipality is painted when the selected key sits somewhere in
-	// its ancestor chain (its territory, province, comarca) or is the municipality
-	// itself — and, since every municipality of the selected region returns that
-	// same key, WorldMap merges them into a single image spanning the region's
-	// whole shape. Every other municipality returns null and stays a plain
-	// polygon. With nothing selected, the map shows no imagery at all.
+	// Every polygon is always drawn; imagery appears only inside the selected
+	// region, and it images the region's *next* sub-division rather than the
+	// region itself. Selecting a territory paints each of its provinces (or
+	// comarques) with that child's own top show; selecting a province paints its
+	// comarques; a comarca paints its municipalities. Because every municipality
+	// under a given child returns that child's key + poster, WorldMap merges them
+	// into one image spanning the child's whole shape. Selecting a municipality
+	// (no deeper tier) paints just that municipality with its own show. Every
+	// municipality outside the selection returns null and stays a plain polygon;
+	// with nothing selected the map shows no imagery at all.
 	function buildOverlays(index: Map<string, FillLevel[]>, chosen: string | null): MapOverlay[] {
 		return [
 			{
@@ -146,7 +103,14 @@
 				imageFill: (feature) => {
 					if (!chosen) return null;
 					const levels = index.get(String(feature.properties?.id));
-					const level = levels?.find((tier) => tier.key === chosen);
+					if (!levels) return null;
+					// Find where the chosen region sits in this municipality's chain,
+					// then image the tier one step deeper (its child sub-division) —
+					// unless the chosen region is the municipality itself, which has no
+					// deeper tier and images its own show.
+					const at = levels.findIndex((tier) => tier.key === chosen);
+					if (at === -1) return null;
+					const level = levels[Math.min(at + 1, levels.length - 1)];
 					return level?.url ? { key: level.key, url: level.url } : null;
 				}
 			},
@@ -198,10 +162,6 @@
 		}
 	];
 
-	// Paint the same red as the geolocation highlight onto the sidebar row for
-	// the municipality the player is standing in, when it's in the neighbourhood.
-	$: highlightRowId = highlightId ? String(highlightId) : null;
-
 	// Municipality id → its seeded show, drawn from the full baked assignment
 	// (every municipality, not just the rendered neighbourhood), so the tree can
 	// label each town and tally each region's plurality show.
@@ -213,8 +173,8 @@
 	// comarca → municipality) mirrored from the map's divisions, for the tree.
 	$: regionTree = buildRegionTree(municipalities, showsById);
 
-	// Per-municipality chain of paint tiers, shared by the map's imageFill and
-	// the highlight auto-reveal below.
+	// Per-municipality chain of paint tiers, read by the map's imageFill to pick
+	// each polygon's poster and by focusBounds to frame the selected region.
 	$: fillIndex = buildFillIndex(regionTree);
 
 	// The bounding box the map fits when a region is selected: the union of every
@@ -225,25 +185,6 @@
 		selected && municipalities
 			? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
 			: null;
-
-	// When a reading resolves to a town, open the tree down to it so its polygon
-	// (and the sidebar row) surface. Reads `expanded` inside, so it settles once
-	// every ancestor is already open and never loops.
-	$: if (highlightRowId) revealAncestors(highlightRowId, fillIndex);
-
-	function revealAncestors(id: string, index: Map<string, FillLevel[]>) {
-		const levels = index.get(id);
-		if (!levels) return;
-		const next = new Set(expanded);
-		let changed = false;
-		for (let i = 0; i < levels.length - 1; i++) {
-			if (!next.has(levels[i].key)) {
-				next.add(levels[i].key);
-				changed = true;
-			}
-		}
-		if (changed) expanded = next;
-	}
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
@@ -275,7 +216,6 @@
 			{selected}
 			onToggle={toggle}
 			onSelect={select}
-			highlightId={highlightRowId}
 		/>
 	</aside>
 
@@ -286,8 +226,6 @@
 				zoom={8}
 				{overlays}
 				{circles}
-				{highlightId}
-				{highlightStyle}
 				{focusBounds}
 				bind:currentZoom
 				classes="min-h-0 flex-1"
@@ -301,26 +239,6 @@
 		<div class="badge badge-neutral absolute left-4 top-4 z-[1000] gap-1 py-3 shadow-lg">
 			<span class="opacity-70">Zoom</span>
 			<span class="font-bold tabular-nums">{currentZoom}</span>
-		</div>
-
-		<div class="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
-			<button
-				class={classNames('btn btn-primary btn-sm shadow-lg', { 'btn-disabled': loading })}
-				on:click={requestLocation}
-			>
-				{#if loading}
-					<span class="loading loading-spinner loading-xs"></span>
-					Locating…
-				{:else if highlightId}
-					Update my location
-				{:else}
-					Show my location
-				{/if}
-			</button>
-
-			{#if error}
-				<div class="alert alert-error max-w-xs py-2 text-sm shadow-lg">{error}</div>
-			{/if}
 		</div>
 	</div>
 

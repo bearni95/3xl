@@ -5,18 +5,22 @@
 
 	// A blue municipality leaf: dot + name + its seeded show.
 	export let municipality: RegionMunicipality;
-	// Painted red like its polygon when it's the town the player stands in.
-	export let highlightId: string | null = null;
+	// The selected node key (the map's single imaged region) and its setter — a
+	// municipality's key is its own id.
+	export let selected: string | null = null;
+	export let onSelect: (key: string) => void;
 </script>
 
 <li class="w-full">
-	<span
-		class={classNames('flex w-full items-center gap-2 border-l-4 border-info', {
-			'bg-error/20 font-semibold': highlightId === municipality.id
+	<button
+		type="button"
+		class={classNames('flex w-full items-center gap-2 border-l-4 border-info text-left', {
+			'bg-info/20': selected === municipality.id
 		})}
+		on:click={() => onSelect(municipality.id)}
 	>
 		<span class="h-2 w-2 flex-none rounded-full bg-info"></span>
 		<span class="min-w-0 flex-1 truncate">{municipality.name}</span>
 		<ShowChip show={municipality.show} classes="max-w-[50%]" />
-	</span>
+	</button>
 </li>
