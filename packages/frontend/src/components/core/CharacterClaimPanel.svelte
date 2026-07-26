@@ -12,7 +12,6 @@
 	import type { ShowsCollection } from '$types/show.type';
 	import { showPosterUrl } from '$utils/geo/municipality-show';
 	import { EXP_PER_SPAWN } from '$utils/progression/level';
-	import RosterCard from '$components/core/RosterCard.svelte';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
 	import type { OpenerView } from '$components/core/pack/scene/opener-view.type';
 
@@ -41,19 +40,16 @@
 	// Guards the one-time load so the reactive block doesn't refire on every store tick.
 	let loadedForUser: string | null = null;
 
-	// Display context for the just-claimed card, resolved the same way the roster
-	// page resolves a spawn (label + face from the local registry, show names from
-	// Supabase). The card itself is the same RosterCard the roster grid uses; the
-	// stat comes straight off the spawn (rolled at claim time).
+	// Registry + Supabase lookups used to assemble each revealed card (a ClaimPull):
+	// the character's label + face resolve from the local @3xl/data registry, its
+	// rarity tier from Supabase `character_templates`.
 	const charactersById = new Map(characters.map((character) => [character.id, character]));
-	let characterShowNames = new Map<string, string[]>();
 	// Per-character rarity tier from Supabase `character_templates`, so the revealed
 	// card can show the claimed character's rarity. Empty until the shows load.
 	let rarityByCharacter = new Map<string, number>();
 
-	// The most recently claimed booster, shown as RosterCards so the player sees
-	// exactly what they rolled. Faces and place name are captured at claim time.
-	let lastPulls: ClaimPull[] = [];
+	// The place the open pack is tied to, captured at claim time and shown on each
+	// revealed card's location strip.
 	let lastLocationName = '';
 
 	// Pack-opener modal state. Selecting a show opens the booster-pack canvas (the
@@ -101,14 +97,12 @@
 		loadingShows = true;
 		showsError = '';
 		try {
-			const [showList, showNames, rarities] = await Promise.all([
+			const [showList, rarities] = await Promise.all([
 				spawnService.loadShows(),
-				spawnService.loadCharacterShowNames(),
 				// Warm the rarity cache so claimBooster can weight its rolls by rarity.
 				spawnService.loadRarities()
 			]);
 			shows = showList;
-			characterShowNames = showNames;
 			rarityByCharacter = rarities;
 		} catch (error) {
 			showsError = errorMessage(error);
@@ -127,16 +121,15 @@
 		openerShow = show;
 		openerPosterUrl = posterByShowId.get(show.id) ?? null;
 		openerRegion = claimRegion;
-		lastPulls = [];
 		claimError = '';
 		openSession += 1;
 	}
 
 	// Roll the open booster against Supabase and resolve its cards. Handed to the
 	// canvas, which invokes it when the pack is sliced open — so the spawn is
-	// persisted at open time, not when the pack was selected. Persists the spawns,
-	// awards experience, and mirrors the cards into the "just claimed" list below.
-	// Returns the cards to reveal ([] on failure, which reveals nothing).
+	// persisted at open time, not when the pack was selected. Persists the spawns
+	// and awards experience. Returns the cards to reveal ([] on failure, which
+	// reveals nothing).
 	async function runClaim(): Promise<ClaimPull[]> {
 		const show = openerShow;
 		const claimRegion = openerRegion;
@@ -156,12 +149,10 @@
 			// must not sink a successful claim.
 			void authService.addExp(spawns.length * EXP_PER_SPAWN).catch(() => undefined);
 
-			// Capture what was rolled and resolve each portrait, so the RosterCards
-			// below mirror the roster grid exactly.
+			// Capture the place and resolve each portrait so the revealed cards carry
+			// the character's face and the town it was claimed in.
 			lastLocationName = claimRegion?.municipality ?? '';
-			const pulls = await Promise.all(spawns.map((spawn) => buildPull(spawn)));
-			lastPulls = pulls;
-			return pulls;
+			return await Promise.all(spawns.map((spawn) => buildPull(spawn)));
 		} catch (error) {
 			claimError = errorMessage(error);
 			return [];
@@ -228,12 +219,6 @@
 	function labelFor(id: string): string {
 		return charactersById.get(id)?.label ?? id;
 	}
-	function showNamesFor(id: string): string[] {
-		return characterShowNames.get(id) ?? [];
-	}
-	function claimedAtFor(createdAt: string): string {
-		return new Date(createdAt).toLocaleString();
-	}
 </script>
 
 <div class="card w-full max-w-md bg-base-100 shadow-xl">
@@ -274,23 +259,6 @@
 
 			{#if claimError}
 				<div class="alert alert-error text-sm"><span>{claimError}</span></div>
-			{/if}
-
-			{#if lastPulls.length > 0}
-				<div class="divider text-xs">Just claimed</div>
-				<div class="grid grid-cols-2 gap-3">
-					{#each lastPulls as pull (pull.spawn.id)}
-						<RosterCard
-							label={labelFor(pull.spawn.characterId)}
-							faceUrl={pull.faceUrl}
-							showNames={showNamesFor(pull.spawn.characterId)}
-							locationName={lastLocationName}
-							claimedAt={claimedAtFor(pull.spawn.createdAt)}
-							color={pull.spawn.color}
-							stat={pull.spawn.stat}
-						/>
-					{/each}
-				</div>
 			{/if}
 		{/if}
 	</div>

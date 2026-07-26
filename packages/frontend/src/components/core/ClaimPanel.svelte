@@ -35,9 +35,10 @@
 		<ClaimTodayFestes on:claim={(event) => claimFromFesta(event.detail.festa, event.detail.show)} />
 	</div>
 
-	<!-- Right column: the pack-opening canvas, shown once a character is claimed. -->
-	{#if opener}
-		<div class="w-full lg:min-w-0 lg:flex-1">
+	<!-- Right column: the pack-opening canvas. Always visible — a placeholder prompt
+	     until a festa is picked, then the live opener. -->
+	<div class="w-full lg:min-w-0 lg:flex-1">
+		{#if opener}
 			<ClaimPackOpenerPanel
 				coverUrl={opener.coverUrl}
 				packLabel={opener.label}
@@ -48,6 +49,15 @@
 				on:close={() => characterPanel.closeOpener()}
 				on:openAnother={() => characterPanel.openAnother()}
 			/>
-		</div>
-	{/if}
+		{:else}
+			<div class="card h-full min-h-[32rem] w-full bg-base-100 shadow-xl">
+				<div class="card-body items-center justify-center gap-2 text-center">
+					<h2 class="text-lg font-bold">No booster open</h2>
+					<p class="max-w-xs text-sm opacity-60">
+						Pick a town celebrating its festa major today to open its booster here.
+					</p>
+				</div>
+			</div>
+		{/if}
+	</div>
 </div>
