@@ -11,7 +11,9 @@
 		visibleRegionRows,
 		municipalityIdsForKey,
 		type FillLevel,
-		type RegionRow
+		type RegionRow,
+		type RegionNode,
+		type RegionType
 	} from '$utils/geo/region-tree';
 	import { boundsForFeatures } from '$utils/geo/bounds';
 	import type { MapCircle, MapOverlay } from '$types/map.type';
@@ -197,6 +199,51 @@
 	// each polygon's poster and by focusBounds to frame the selected region.
 	$: fillIndex = buildFillIndex(regionTree);
 
+	// Coarse → fine rank of each division tier, used to compare a line overlay's
+	// tier against the tier the map is currently imaging.
+	const tierRank: Record<RegionType, number> = {
+		Territory: 0,
+		Province: 1,
+		Comarca: 2,
+		Municipality: 3
+	};
+
+	// The line overlays that subdivide a poster, each with its own tier rank. The
+	// territory outline (rank 0) is never hidden, so it isn't listed. municipis
+	// carries the fill too, so hiding it drops only its stroke, not its poster.
+	const lineTiers: [string, number][] = [
+		['/data/geo/provincies.json', tierRank.Province],
+		['/data/geo/comarques.json', tierRank.Comarca],
+		['/data/geo/municipis.json', tierRank.Municipality]
+	];
+
+	// Find a region node by its key anywhere in the nested tree.
+	function findNode(nodes: RegionNode[], key: string): RegionNode | null {
+		for (const node of nodes) {
+			if (node.key === key) return node;
+			const found = findNode(node.children, key);
+			if (found) return found;
+		}
+		return null;
+	}
+
+	// The tier the map is imaging right now: territories at the top view (nothing
+	// selected), otherwise the selected region's child tier — the sub-division its
+	// posters span. A selected municipality (a leaf) images itself.
+	function imagedRank(chosen: string | null, nodes: RegionNode[]): number {
+		if (!chosen) return tierRank.Territory;
+		const node = findNode(nodes, chosen);
+		return tierRank[node?.children[0]?.type ?? 'Municipality'];
+	}
+
+	// Hide the stroke of every line overlay finer than the imaged tier: those
+	// borders sit inside each poster and would crawl across the image. The imaged
+	// tier's own outline and everything coarser stay drawn to frame each poster.
+	$: hiddenRank = imagedRank(selected, regionNodes);
+	$: hiddenLineUrls = new Set(
+		lineTiers.filter(([, rank]) => rank > hiddenRank).map(([url]) => url)
+	);
+
 	// The bounding box the map fits when a region is selected: the union of every
 	// municipality polygon under the selected key. A fresh array each time (even
 	// re-selecting the same region) so the map re-frames on every pick. Null while
@@ -237,6 +284,7 @@
 				zoom={8}
 				{overlays}
 				{circles}
+				{hiddenLineUrls}
 				{focusBounds}
 				bind:currentZoom
 				classes="min-h-0 flex-1"

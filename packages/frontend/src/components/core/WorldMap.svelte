@@ -13,6 +13,7 @@
 		lines = [],
 		highlightId = null,
 		highlightStyle = null,
+		hiddenLineUrls = new Set<string>(),
 		focusBounds = null,
 		currentZoom = $bindable(zoom),
 		classes = ''
@@ -32,6 +33,14 @@
 		highlightId?: string | null;
 		/** Style merged over the highlighted feature's base style. */
 		highlightStyle?: L.PathOptions | null;
+		/**
+		 * `url`s of the overlays whose stroke should be suppressed. A hidden overlay
+		 * keeps its fill (so an image-filled polygon still shows its poster) but
+		 * drops its border, so sub-division lines don't crawl across a coarser
+		 * tier's poster. Reactive: repaints as the selection changes which tier is
+		 * imaged.
+		 */
+		hiddenLineUrls?: Set<string>;
 		/**
 		 * When set, the map animates to frame this `[[south, west], [north, east]]`
 		 * box (e.g. the selected region's polygons). A fresh array reference re-fits
@@ -71,18 +80,26 @@
 	// one. Called both at first paint and by resetStyle, so reading the live
 	// `highlightId`/`highlightStyle` keeps the highlight through hover resets.
 	function styleFor(overlay: MapOverlay, feature?: GeoJSON.Feature): L.PathOptions {
+		let style = overlay.style;
 		if (highlightId != null && highlightStyle && feature?.properties?.id === highlightId) {
-			return { ...overlay.style, ...highlightStyle };
+			style = { ...style, ...highlightStyle };
 		}
-		return overlay.style;
+		// Suppress the stroke of a hidden overlay while keeping its fill, so an
+		// image-filled polygon still shows its poster but its border no longer
+		// draws over a coarser tier's image.
+		if (hiddenLineUrls.has(overlay.url)) {
+			style = { ...style, opacity: 0 };
+		}
+		return style;
 	}
 
 	$effect(() => {
-		// Repaint when the highlighted feature changes: resetStyle re-runs each
-		// group's style option (which now reflects the new highlightId), then the
-		// image fills are re-applied since resetStyle repaints their fillColor.
+		// Repaint when the highlight or the hidden-stroke set changes: resetStyle
+		// re-runs each group's style option (which now reflects the new state), then
+		// the image fills are re-applied since resetStyle repaints their fillColor.
 		void highlightId;
 		void highlightStyle;
+		void hiddenLineUrls;
 		for (const group of overlayGroups) group.resetStyle();
 		refreshImageFills();
 	});
