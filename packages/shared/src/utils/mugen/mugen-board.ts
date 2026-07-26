@@ -189,9 +189,10 @@ const HP_BAR_HEIGHT = 18;
 const HP_BAR_GAP = 10;
 /** Font size (px) of the `hp/maxHp` readout centred inside the bar. */
 const HP_BAR_FONT_SIZE = 12;
-/** Border drawn around the whole HP bar. */
+/** Border around the HP bar: a larger backing shape in the fill colour, darkened
+ * by this much black, poking out this many px around the bar on every edge. */
 const HP_BAR_BORDER_WIDTH = 2;
-const HP_BAR_BORDER_COLOR = 0x000000;
+const HP_BAR_BORDER_DARKEN = 0.3;
 /** How fast the displayed fill eases toward the real HP ratio (fraction closed
  * per second) — drives the width shrink as a fighter takes damage. */
 const HP_BAR_EASE_PER_S = 6;
@@ -856,6 +857,18 @@ export class MugenBoard {
 
 		const g = bar.graphics;
 		g.clear();
+		// Border: a slightly larger rounded rect behind the bar, filled in the
+		// fighter's colour under a 30% black overlay, so the border reads as a
+		// darkened shade of the fill colour poking out around every edge.
+		const bLeft = left - HP_BAR_BORDER_WIDTH;
+		const bTop = top - HP_BAR_BORDER_WIDTH;
+		const bWidth = width + HP_BAR_BORDER_WIDTH * 2;
+		const bHeight = HP_BAR_HEIGHT + HP_BAR_BORDER_WIDTH * 2;
+		const bRadius = bHeight / 2;
+		g.roundRect(bLeft, bTop, bWidth, bHeight, bRadius);
+		g.fill({ color: bar.fillColor });
+		g.roundRect(bLeft, bTop, bWidth, bHeight, bRadius);
+		g.fill({ color: 0x000000, alpha: HP_BAR_BORDER_DARKEN });
 		// Track behind the fill: the fighter's own colour washed out by a 30% white
 		// overlay, so the spent portion reads as a paler tint of the same colour.
 		g.roundRect(left, top, width, HP_BAR_HEIGHT, radius);
@@ -866,9 +879,6 @@ export class MugenBoard {
 			g.roundRect(left, top, Math.max(fillWidth, HP_BAR_HEIGHT), HP_BAR_HEIGHT, radius);
 			g.fill({ color: bar.fillColor });
 		}
-		// Border around the whole bar.
-		g.roundRect(left, top, width, HP_BAR_HEIGHT, radius);
-		g.stroke({ width: HP_BAR_BORDER_WIDTH, color: HP_BAR_BORDER_COLOR });
 		// Draw with the actor's feet depth so nearer fighters' bars sit in front.
 		g.zIndex = actor.y + HP_BAR_GAP;
 
