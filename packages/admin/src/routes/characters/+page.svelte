@@ -112,7 +112,11 @@
 			<a class="link link-primary text-sm" href="/">← Back to stage</a>
 		</header>
 
-		<CharacterTemplateSync on:statuschange={(event) => (syncStatusById = event.detail)} />
+		<CharacterTemplateSync
+			{selectedId}
+			selectedLabel={selected.label}
+			on:statuschange={(event) => (syncStatusById = event.detail)}
+		/>
 
 		<CharacterShowGroups
 			{characters}
