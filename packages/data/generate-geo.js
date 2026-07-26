@@ -9,7 +9,10 @@
  *         frontend map draws (fill + three boundary rings):
  *           - municipis.json  every municipality (polygon fills + labels)
  *           - comarques.json  municipalities dissolved by comarca / equivalent
- *           - provincies.json municipalities dissolved by province / equivalent
+ *           - provincies.json municipalities dissolved by province / equivalent —
+ *                             but Catalunya's tier is its vegueries, not its four
+ *                             Spanish provinces (see VEGUERIA_BY_COMARCA); the other
+ *                             territories keep their provinces
  *           - territoris.json municipalities dissolved by territory
  *
  *         The comarca tier sits between municipality and province. Comarques are
@@ -62,6 +65,70 @@ const ES_PROVINCES = {
 	'12': { prov: 'Castelló', territory: 'País Valencià' },
 	'46': { prov: 'València', territory: 'País Valencià' },
 	'07': { prov: 'Illes Balears', territory: 'Illes Balears' }
+};
+
+/**
+ * Catalunya's four Spanish provinces are replaced on the map by its *vegueries*
+ * (the Catalan territorial division): each Catalunya municipality's province tier
+ * becomes the vegueria of its comarca. Every other territory keeps its Spanish /
+ * French province. Keyed by comarca slug (the same slug() used for comarcaId).
+ *
+ * The eight àmbits territorials / vegueries per the Llei de vegueries (Penedès
+ * included), covering the 42 modern comarques (Moianès and Lluçanès included).
+ * Cerdanya appears here as "Baixa Cerdanya" (Alta Cerdanya is in Catalunya Nord).
+ */
+const VEGUERIA_BY_COMARCA = {
+	// Àmbit Metropolità de Barcelona
+	barcelones: 'Barcelona',
+	'baix-llobregat': 'Barcelona',
+	maresme: 'Barcelona',
+	'valles-occidental': 'Barcelona',
+	'valles-oriental': 'Barcelona',
+	// Comarques Gironines
+	'alt-emporda': 'Girona',
+	'baix-emporda': 'Girona',
+	garrotxa: 'Girona',
+	girones: 'Girona',
+	'pla-de-lestany': 'Girona',
+	ripolles: 'Girona',
+	selva: 'Girona',
+	// Camp de Tarragona
+	'alt-camp': 'Camp de Tarragona',
+	'baix-camp': 'Camp de Tarragona',
+	'conca-de-barbera': 'Camp de Tarragona',
+	priorat: 'Camp de Tarragona',
+	tarragones: 'Camp de Tarragona',
+	// Terres de l'Ebre
+	'baix-ebre': "Terres de l'Ebre",
+	montsia: "Terres de l'Ebre",
+	'ribera-debre': "Terres de l'Ebre",
+	'terra-alta': "Terres de l'Ebre",
+	// Ponent (Lleida)
+	garrigues: 'Lleida',
+	noguera: 'Lleida',
+	'pla-durgell': 'Lleida',
+	segarra: 'Lleida',
+	segria: 'Lleida',
+	urgell: 'Lleida',
+	// Catalunya Central
+	anoia: 'Catalunya Central',
+	bages: 'Catalunya Central',
+	bergueda: 'Catalunya Central',
+	moianes: 'Catalunya Central',
+	osona: 'Catalunya Central',
+	solsones: 'Catalunya Central',
+	llucanes: 'Catalunya Central',
+	// Alt Pirineu i Aran
+	'alt-urgell': 'Alt Pirineu i Aran',
+	'alta-ribagorca': 'Alt Pirineu i Aran',
+	'baixa-cerdanya': 'Alt Pirineu i Aran',
+	'pallars-jussa': 'Alt Pirineu i Aran',
+	'pallars-sobira': 'Alt Pirineu i Aran',
+	'val-daran': 'Alt Pirineu i Aran',
+	// Penedès
+	'alt-penedes': 'Penedès',
+	'baix-penedes': 'Penedès',
+	garraf: 'Penedès'
 };
 
 /** Territory display name → url-safe id used as the dissolve key. */
@@ -385,6 +452,26 @@ async function main() {
 		}
 	}
 	console.log(`  ${filled} stragglers filled from nearest neighbour; ${comarcaCount + filled} total`);
+
+	// Replace Catalunya's provinces with its vegueries: each Catalunya municipality's
+	// province tier becomes the vegueria of its comarca (via comarcaId). Every other
+	// territory keeps its province. Done after the comarca fill, so every Catalunya
+	// municipality already carries a comarca to map from. A comarca with no vegueria
+	// mapping is a build error rather than a silent fallback to the old province.
+	let vegueriaCount = 0;
+	for (const f of municipis) {
+		if (f.properties.territory !== 'Catalunya') continue;
+		const veg = VEGUERIA_BY_COMARCA[f.properties.comarcaId];
+		if (!veg) {
+			throw new Error(
+				`No vegueria mapped for Catalunya comarca "${f.properties.comarca}" (${f.properties.comarcaId})`
+			);
+		}
+		f.properties.prov = veg;
+		f.properties.provKey = `VEG_${slug(veg)}`;
+		vegueriaCount += 1;
+	}
+	console.log(`  Catalunya: ${vegueriaCount} municipalities → vegueria (province tier replaced)`);
 
 	console.log('Fetching Andorra parishes from geoBoundaries…');
 	const andorra = await fetchAndorraParishes();

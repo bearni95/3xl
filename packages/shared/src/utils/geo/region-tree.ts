@@ -6,8 +6,9 @@
  * layer is fetched.
  *
  * The province tier only appears where it genuinely subdivides a territory —
- * i.e. a territory with more than one province (the Spanish provincias of
- * Catalunya and País Valencià). Territories with a single province (its name
+ * i.e. a territory with more than one entry in the `prov` field (the Spanish
+ * provincias of País Valencià, and Catalunya's vegueries, which replace its four
+ * provinces in the geo build). Territories with a single province (its name
  * mirrors the territory: Illes Balears, Catalunya Nord, Andorra, l'Alguer) skip
  * the tier and list their comarques directly. A handful of municipalities
  * (Andorra, l'Alguer) also have no comarca and hang directly off their parent.
