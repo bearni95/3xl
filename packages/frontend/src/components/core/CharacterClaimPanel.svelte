@@ -187,6 +187,7 @@
 			color: spawn.color,
 			rarity: rarityByCharacter.get(spawn.characterId) ?? null,
 			locationName: lastLocationName || null,
+			spawnedAt: spawn.createdAt,
 			atk: spawn.stat,
 			def: SPAWN_STAT_MAX - spawn.stat
 		};

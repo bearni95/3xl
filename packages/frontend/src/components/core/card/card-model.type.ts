@@ -34,6 +34,12 @@ export interface CardModel {
 	 * the claim location here), or null to omit it.
 	 */
 	locationName: string | null;
+	/**
+	 * ISO timestamp the card was spawned/claimed (the spawn's `createdAt`). Its year
+	 * is shown as a two-digit suffix beside {@link locationName} in the meta strip
+	 * (e.g. `'25`). Null to omit the year.
+	 */
+	spawnedAt: string | null;
 	/** Attack: the character's ATK stat, drawn in the footer beside the d10 icon. */
 	atk: number;
 	/** Defence: the character's DEF stat, drawn with a trailing "+" in the footer. */

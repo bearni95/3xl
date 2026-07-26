@@ -311,27 +311,39 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The meta row between the art and the ATK/DEF row: the location label pinned
-	 * to the right. Omitted when the card carries no location.
+	 * The meta row between the art and the ATK/DEF row: the location label, with the
+	 * spawn year as a two-digit suffix (e.g. `Barcelona '25`), centred in the row.
+	 * Omitted when the card carries neither a location nor a spawn date.
 	 */
 	private makeMeta(metaY: number, metaH: number): Container {
 		const group = new Container();
 		const centerY = metaY + metaH / 2;
 		const fontSize = Math.max(8, Math.round(this.cardWidth * 0.06));
 
-		// Location, muted, centred in the row and truncated to most of its width.
-		if (this.card.locationName) {
+		// Join the location and the two-digit spawn year into one muted label, centred
+		// in the row and truncated to most of its width.
+		const label = [this.card.locationName, this.spawnYearLabel()].filter(Boolean).join(' ');
+		if (label) {
 			const loc = new Text({
-				text: this.card.locationName,
+				text: label,
 				style: { fontFamily: 'sans-serif', fontSize, fontWeight: '600', fill: 0x9ca3af }
 			});
-			this.ellipsize(loc, this.card.locationName, this.cardWidth * 0.9);
+			this.ellipsize(loc, label, this.cardWidth * 0.9);
 			loc.anchor.set(0.5, 0.5);
 			loc.position.set(this.cardWidth / 2, centerY);
 			group.addChild(loc);
 		}
 
 		return group;
+	}
+
+	/** The spawn's year as a two-digit apostrophe suffix (2025 → `'25`), or null when
+	 * the card carries no valid spawn date. */
+	private spawnYearLabel(): string | null {
+		if (!this.card.spawnedAt) return null;
+		const year = new Date(this.card.spawnedAt).getFullYear();
+		if (Number.isNaN(year)) return null;
+		return `'${String(year).slice(-2).padStart(2, '0')}`;
 	}
 
 	/** Trim `full` with a trailing ellipsis until the text fits within `maxWidth`. */
