@@ -34,9 +34,6 @@
 					<span>Move</span>
 					<kbd class="kbd kbd-sm">←</kbd>
 					<kbd class="kbd kbd-sm">→</kbd>
-					<span>Jump</span>
-					<kbd class="kbd kbd-sm">↑</kbd>
-					<kbd class="kbd kbd-sm">space</kbd>
 				</div>
 				<span class="opacity-70">double-tap to run</span>
 			</div>

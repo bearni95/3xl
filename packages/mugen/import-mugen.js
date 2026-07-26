@@ -501,13 +501,11 @@ function autoBindDefinition(id, manifest, basePath) {
 		basePath,
 		animations: {
 			idle: { source: pick('idle'), loop: true },
-			jump: { source: pick('jump', 'jump-start'), loop: false },
-			fall: { source: pick('fall'), loop: false },
 			hurt: { source: pick('action-5000') || pickRange(5000, 5099), loop: false }
 		},
 		directions: {
 			'move-left': { source: pick('walk-back', 'walk'), loop: true },
-			'move-right': { source: pick('run', 'walk'), loop: true }
+			'move-right': { source: pick('walk'), loop: true }
 		},
 		// One seeded move per type we can map; unmappable types are simply absent
 		// (the editor adds them). Projectiles are too character-specific to guess
@@ -538,9 +536,13 @@ function autoBindDefinition(id, manifest, basePath) {
 
 /** Rewrite @3xl/data's registry.generated.ts from every definition JSON on disk. */
 function regenerateRegistry() {
-	const defs = readdirSync(DEFINITIONS_DIR)
-		.filter((f) => f.endsWith('.json'))
-		.map((f) => JSON.parse(readFileSync(join(DEFINITIONS_DIR, f), 'utf-8')))
+	// Definitions live one per character under characters/<id>/definition.json,
+	// so walk the id subdirectories rather than expecting flat *.json files.
+	const defs = readdirSync(DEFINITIONS_DIR, { withFileTypes: true })
+		.filter((entry) => entry.isDirectory())
+		.map((entry) => join(DEFINITIONS_DIR, entry.name, 'definition.json'))
+		.filter((defPath) => existsSync(defPath))
+		.map((defPath) => JSON.parse(readFileSync(defPath, 'utf-8')))
 		// Only list characters whose decoded frames actually exist.
 		.filter((d) => existsSync(join(ASSETS_DIR, d.id, 'frames', 'manifest.json')))
 		.sort((a, b) => a.label.localeCompare(b.label));

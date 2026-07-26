@@ -49,7 +49,7 @@ export interface CharacterMove {
  * including the hurt flinch every character defines. Moved into data so a
  * character's movement can be re-bound without touching the player code.
  */
-export type MovementAnimationName = 'idle' | 'jump' | 'fall' | 'hurt';
+export type MovementAnimationName = 'idle' | 'hurt';
 
 /**
  * Directional movement. There is no walk/run split anymore — a single animation
@@ -96,7 +96,7 @@ export interface CharacterDefinition {
 	label: string;
 	/** Folder (relative to the static root) with manifest.json + frames. */
 	basePath: string;
-	/** Non-directional movement states (idle/jump/fall/hurt), keyed by logical name. */
+	/** Non-directional movement states (idle/hurt), keyed by logical name. */
 	animations: Record<MovementAnimationName, AnimationBinding>;
 	/** Directional movement (move-left/move-right), keyed by direction. */
 	directions: Record<DirectionName, AnimationBinding>;
@@ -120,7 +120,7 @@ export interface CharacterDefinition {
 }
 
 /** Non-directional movement slots in render/display order. */
-export const MOVEMENT_ANIMATIONS: MovementAnimationName[] = ['idle', 'jump', 'fall', 'hurt'];
+export const MOVEMENT_ANIMATIONS: MovementAnimationName[] = ['idle', 'hurt'];
 
 /** Direction slots in display order. */
 export const DIRECTION_NAMES: DirectionName[] = ['move-left', 'move-right'];

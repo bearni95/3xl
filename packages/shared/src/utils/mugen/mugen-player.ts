@@ -65,10 +65,6 @@ export interface MugenPlayerOptions {
 	runSpeed?: number;
 	/** Max gap (ms) between two taps of the same arrow to trigger a run. */
 	doubleTapMs?: number;
-	/** Upward launch speed (px/s) applied at the moment of a jump. */
-	jumpSpeed?: number;
-	/** Downward acceleration (px/s²) pulling an airborne character back down. */
-	gravity?: number;
 	backgroundColor?: number;
 }
 
@@ -78,21 +74,16 @@ const DEFAULTS = {
 	speed: 90,
 	runSpeed: 220,
 	doubleTapMs: 260,
-	jumpSpeed: 520,
-	gravity: 1400,
 	backgroundColor: 0x1d232a
 };
 
 /** Arrow keys mapped to a horizontal direction. */
 const KEY_DIRECTION: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1 };
 
-/** Keys that trigger a jump from the ground. */
-const JUMP_KEYS = new Set(['ArrowUp', ' ', 'Spacebar', 'w', 'W']);
-
 // Only the movement animations the game loop drives. Manifests now carry a
 // character's full moveset (100+ animations); loading them all here would pull
 // hundreds of unused textures onto the play page, so we load just these.
-const GAME_ANIMATIONS = new Set(['idle', 'walk', 'run', 'jump', 'fall']);
+const GAME_ANIMATIONS = new Set(['idle', 'walk', 'run']);
 
 /**
  * Renders a MUGEN character on a PixiJS canvas and drives idle/walk/run
@@ -118,13 +109,8 @@ export class MugenPlayer {
 	private positionX = 0;
 	private readonly held = new Set<string>();
 
-	// Vertical state. groundY is the baseline (feet on the ground line);
-	// verticalOffset is how far above it the character currently is, and
-	// velocityY is the upward speed (positive up, negative falling).
+	// Vertical baseline: the y where the character's feet rest on the ground line.
 	private groundY = 0;
-	private verticalOffset = 0;
-	private velocityY = 0;
-	private grounded = true;
 
 	// Double-tap / run state.
 	private runningDirection = 0;
@@ -243,7 +229,7 @@ export class MugenPlayer {
 		// Flip around the anchor (the body) by mirroring the horizontal scale.
 		this.sprite.scale.x = this.options.scale * this.facing;
 		this.sprite.x = this.positionX;
-		this.sprite.y = this.groundY - this.verticalOffset;
+		this.sprite.y = this.groundY;
 	}
 
 	private tick = (): void => {
@@ -265,24 +251,7 @@ export class MugenPlayer {
 			this.clampPosition();
 		}
 
-		// Integrate the jump: gravity pulls velocity down until the feet reach
-		// the ground line again, which lands the character.
-		if (!this.grounded) {
-			this.velocityY -= this.options.gravity * deltaSeconds;
-			this.verticalOffset += this.velocityY * deltaSeconds;
-			if (this.verticalOffset <= 0) {
-				this.verticalOffset = 0;
-				this.velocityY = 0;
-				this.grounded = true;
-			}
-		}
-
-		if (!this.grounded) {
-			// Rising uses the jump pose, descending the fall pose (falling back to
-			// the jump pose when a character has no dedicated fall animation).
-			const airborne = this.velocityY > 0 ? 'jump' : 'fall';
-			this.setAnimation(this.animations[airborne] ? airborne : 'jump');
-		} else if (direction !== 0) {
+		if (direction !== 0) {
 			this.setAnimation(running ? 'run' : 'walk');
 		} else {
 			this.setAnimation('idle');
@@ -312,17 +281,6 @@ export class MugenPlayer {
 	}
 
 	private onKeyDown = (event: KeyboardEvent): void => {
-		if (JUMP_KEYS.has(event.key)) {
-			event.preventDefault();
-			// Only launch from the ground, and ignore OS key-repeat so holding the
-			// key doesn't re-trigger. Landing (grounded) re-arms the next jump.
-			if (this.grounded && !event.repeat) {
-				this.grounded = false;
-				this.velocityY = this.options.jumpSpeed;
-			}
-			return;
-		}
-
 		const direction = KEY_DIRECTION[event.key];
 		if (direction === undefined) return;
 		event.preventDefault();

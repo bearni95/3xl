@@ -69,7 +69,7 @@
 		<section class="flex flex-col gap-3">
 			<h3 class="text-lg font-semibold">Movement & directions</h3>
 			<p class="text-sm opacity-70">
-				The slots the game loop drives — the idle/jump/fall/hurt poses every character defines,
+				The slots the game loop drives — the idle/hurt poses every character defines,
 				alongside directional movement — each bound to a raw manifest animation, previewed live.
 			</p>
 			<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
