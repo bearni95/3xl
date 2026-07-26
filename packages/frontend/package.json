@@ -25,6 +25,7 @@
 		"@supabase/supabase-js": "^2.110.8",
 		"@sveltejs/adapter-static": "^3.0.9",
 		"classnames": "^2.5.1",
+		"gifenc": "^1.0.3",
 		"leaflet": "^1.9.4",
 		"pixi.js": "^8.19.0",
 		"svelte-i18n": "^4.0.1"

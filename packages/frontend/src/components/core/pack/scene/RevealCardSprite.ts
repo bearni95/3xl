@@ -23,6 +23,12 @@ export interface RevealCardSpriteOptions {
 	height: number;
 	/** The scene's Pixi app — its ticker drives the looping idle animation. */
 	app: Application;
+	/**
+	 * When true (the default), the idle animation loops on the app ticker. Set
+	 * false to drive the frames manually (used by the GIF exporter, which steps
+	 * `showIdleFrame` frame by frame and never wants the auto ticker running).
+	 */
+	animate?: boolean;
 }
 
 // Offset (as a fraction of card width) of the silhouette behind the art: a touch
@@ -63,9 +69,15 @@ export class RevealCardSprite extends Container {
 	readonly cardWidth: number;
 	readonly cardHeight: number;
 	private app: Application;
+	private animate: boolean;
 	private artSprite: Sprite;
 	private shadowSprite: Sprite;
 	private artArea: { x: number; y: number; w: number; h: number };
+
+	/** Resolves once the art (idle frames or the fallback face) has loaded and the
+	 * first frame is applied — so an exporter knows the card is ready to capture. */
+	readonly ready: Promise<void>;
+	private resolveReady!: () => void;
 
 	// Idle-animation playback state (null until the frames load).
 	private idleFrames: IdleFrame[] | null = null;
@@ -82,6 +94,8 @@ export class RevealCardSprite extends Container {
 		this.cardWidth = opts.width;
 		this.cardHeight = opts.height;
 		this.app = opts.app;
+		this.animate = opts.animate ?? true;
+		this.ready = new Promise((resolve) => (this.resolveReady = resolve));
 
 		const radius = Math.max(6, this.cardWidth * 0.05);
 		// Top→bottom: a name header, the art, a rarity/location meta strip, an
@@ -164,6 +178,7 @@ export class RevealCardSprite extends Container {
 		if (this.destroyed) return;
 		if (frames && frames.length > 0) {
 			this.applyIdle(frames);
+			this.resolveReady();
 			return;
 		}
 
@@ -173,9 +188,30 @@ export class RevealCardSprite extends Container {
 			this.applyFace(cached);
 		} else if (this.pull.faceUrl) {
 			const tex = await textureCache.face(this.pull.faceUrl).catch(() => null);
-			if (this.destroyed || !tex) return;
-			this.applyFace(tex);
+			if (this.destroyed) return;
+			if (tex) this.applyFace(tex);
 		}
+		// Resolve regardless — even a card with no art is "ready" (nothing more loads).
+		this.resolveReady();
+	}
+
+	/** Number of idle-animation frames (0 when the card fell back to a face). */
+	get idleFrameCount(): number {
+		return this.idleFrames?.length ?? 0;
+	}
+
+	/** Per-frame durations (ms) of the idle animation, in order. */
+	idleFrameDelays(): number[] {
+		return (this.idleFrames ?? []).map((frame) => frame.duration);
+	}
+
+	/** Render a specific idle frame without advancing the ticker — for frame-by-frame
+	 * capture by the GIF exporter. No-op when there are no idle frames. */
+	showIdleFrame(index: number): void {
+		const frames = this.idleFrames;
+		if (!frames || frames.length === 0) return;
+		this.frameIndex = ((index % frames.length) + frames.length) % frames.length;
+		this.applyIdleFrame();
 	}
 
 	/**
@@ -211,7 +247,8 @@ export class RevealCardSprite extends Container {
 		this.frameElapsed = 0;
 		this.applyIdleFrame();
 
-		if (!this.tickerAdded) {
+		// In capture mode the exporter steps the frames itself — no auto ticker.
+		if (this.animate && !this.tickerAdded) {
 			this.app.ticker.add(this.tick);
 			this.tickerAdded = true;
 		}
