@@ -6,9 +6,10 @@
  * RosterCard: the character's colour is the portrait backdrop, a dark header
  * strip at the top carries the character name, the character's looping idle
  * animation plays in the middle (contained within the art area), a meta strip
- * below it carries the rarity and a free-text label, and a dark footer carries
- * its ATK/DEF. The idle frames (and the fallback face) are lazy-loaded via the
- * shared cache; the host scene drives all positioning and tweens.
+ * below it carries a free-text location label, and a dark footer carries its
+ * ATK/DEF with the rarity badge centred between them. The idle frames (and the
+ * fallback face) are lazy-loaded via the shared cache; the host scene drives all
+ * positioning and tweens.
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
@@ -279,8 +280,7 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The top header strip: the character name centred, and — when the card has a
-	 * rarity — a `[N]` badge (in its WoW quality colour) pinned to the left edge.
+	 * The top header strip: the character name centred.
 	 */
 	private makeHeader(headerH: number): Container {
 		const group = new Container();
@@ -301,22 +301,6 @@ export class CardSprite extends Container {
 		name.anchor.set(0.5);
 		name.position.set(this.cardWidth / 2, centerY);
 		group.addChild(name);
-
-		// Rarity badge (left), just the bracketed tier number in its quality colour.
-		if (this.card.rarity != null) {
-			const rarity = new Text({
-				text: `[${this.card.rarity}]`,
-				style: {
-					fontFamily: 'sans-serif',
-					fontSize: Math.max(9, Math.round(this.cardWidth * 0.072)),
-					fontWeight: '700',
-					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2
-				}
-			});
-			rarity.anchor.set(0, 0.5);
-			rarity.position.set(this.cardWidth * 0.06, centerY);
-			group.addChild(rarity);
-		}
 
 		return group;
 	}
@@ -357,14 +341,32 @@ export class CardSprite extends Container {
 
 	/**
 	 * The footer stat row: the ATK value with the d10 die icon beside it on the
-	 * left, and the DEF value with a trailing "+" on the right — spaced apart to
-	 * the two edges of the footer, with no separator between them.
+	 * left, the DEF value with a trailing "+" on the right — spaced apart to the two
+	 * edges of the footer — and, when the card has a rarity, the `[N]` badge (in its
+	 * WoW quality colour) centred between them.
 	 */
 	private makeStats(footerY: number, footerH: number): Container {
 		const group = new Container();
 		const centerY = footerY + footerH / 2;
 		const padX = this.cardWidth * 0.06;
 		const fontSize = Math.max(11, Math.round(this.cardWidth * 0.1));
+
+		// Rarity badge, centred between ATK and DEF: the bracketed tier number in its
+		// quality colour, a touch smaller than the stats so they stay the focus.
+		if (this.card.rarity != null) {
+			const rarity = new Text({
+				text: `[${this.card.rarity}]`,
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize: Math.max(9, Math.round(this.cardWidth * 0.072)),
+					fontWeight: '700',
+					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2
+				}
+			});
+			rarity.anchor.set(0.5, 0.5);
+			rarity.position.set(this.cardWidth / 2, centerY);
+			group.addChild(rarity);
+		}
 
 		// Attack: the ATK value, then the d10 die icon right beside it.
 		const atk = new Text({
