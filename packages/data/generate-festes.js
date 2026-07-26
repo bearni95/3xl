@@ -3,14 +3,17 @@
  * days ("festes locals" / "fiestas locales", which include its festa major)
  * into JSON for the @3xl/frontend /seasons calendar.
  *
- * Every date written here comes from an OFFICIAL government source — nothing is
- * invented. Three authorities publish the two legally-recognised local holidays
- * each of their municipalities declares for the year; we fetch all three live at
- * generate time, join each to the map's municipality polygons, and merge:
+ * The first three sources are OFFICIAL government data — nothing invented. Each
+ * authority publishes the two legally-recognised local holidays its municipalities
+ * declare for the year; we fetch all three live at generate time, join each to the
+ * map's municipality polygons, and merge:
  *
  *   1. Catalunya       — Generalitat de Catalunya open dataset "Calendari de
  *                        festes locals a Catalunya" (Socrata b4eh-r8up). Joined
- *                        on the INE municipality code (geo id = `ES_<INE>`).
+ *                        on the INE municipality code (geo id = `ES_<INE>`). The
+ *                        YEAR slice loads incrementally, so a town still missing
+ *                        falls back to its most recent prior year's local
+ *                        festivals from the same dataset, re-based onto YEAR.
  *   2. Illes Balears   — Govern de les Illes Balears (CAIB) open dataset
  *                        "Calendari Laboral General i Local" (CSV). Joined on
  *                        the municipality name (the dataset has no INE code).
@@ -18,21 +21,26 @@
  *                        approves the year's "fiestas locales" for the three
  *                        provinces (a PDF; text extracted with `pdftotext`).
  *                        Joined on the municipality name.
+ *   4. Catalunya Nord  — Wikidata (NON-governmental). France declares no municipal
+ *                        festa-major holiday, so each commune's date is its
+ *                        patronal feast — the feast day (P841) of the saint its
+ *                        church is dedicated to (P825) — the day its festa major
+ *                        traditionally falls on. Joined on the INSEE code
+ *                        (geo id = `FR_<insee>`). An approximation, not a decree.
  *
- * Requires the `pdftotext` binary (poppler) on PATH for the País Valencià
- * source; if it is missing, that territory is skipped with a warning and the
- * other two still build. Bump YEAR / the source URLs each year.
+ * Requires the `pdftotext` binary (poppler) on PATH for the País Valencià source;
+ * if it is missing, that territory is skipped with a warning and the rest still
+ * build. Likewise a Wikidata outage only skips Catalunya Nord. Bump YEAR / the
+ * source URLs each year.
  *
- * Coverage note: Catalunya Nord (France) has no legal municipal festa-major
- * holiday and no equivalent authority publishes one, and Andorra and l'Alguer
- * have no such open dataset, so those territories carry no dates here. Name
- * joins are strict: a municipality is written only when the source name maps to
- * exactly one polygon, so an unmatched or ambiguous town is left out (and
- * reported), never guessed.
+ * Coverage note: Andorra and l'Alguer have no festa-major dataset (official or
+ * otherwise) and carry no dates. Name joins are strict: a municipality is written
+ * only when the source name maps to exactly one polygon, so an unmatched or
+ * ambiguous town is left out (and reported), never guessed.
  *
  * Input : public/geo/municipis.json  (the municipality polygons — the join
  *                                      target: id/name/comarca/prov/territory)
- *         the three datasets, fetched live at generate time.
+ *         the four datasets, fetched live at generate time.
  * Output: public/festes-locals.json — one entry per matched municipality with
  *         its sorted festival dates.
  *
@@ -66,6 +74,11 @@ const SOURCES = {
 		name: 'Calendario de fiestas locales de la Comunitat Valenciana',
 		publisher: 'Generalitat Valenciana — DOGV',
 		url: 'https://dogv.gva.es/datos/2025/11/14/pdf/2025_46326_es.pdf'
+	},
+	catalunyaNord: {
+		name: "Advocacions parroquials de la Catalunya Nord (festa major, dia del patró)",
+		publisher: 'Wikidata',
+		url: 'https://query.wikidata.org/'
 	}
 };
 
@@ -73,6 +86,10 @@ const CATALUNYA_SOCRATA = 'https://analisi.transparenciacatalunya.cat/resource/b
 const BALEARS_CSV =
 	'https://intranet.caib.es/opendatacataleg/dataset/e89fb44b-67f3-4e29-affc-2df135b719e5/resource/edf08154-bbc0-4259-a254-3b0185411354/download/calendari-laboral-2026.csv';
 const DOGV_PV_PDF = SOURCES.paisValencia.url;
+const WIKIDATA_SPARQL = 'https://query.wikidata.org/sparql';
+// Département des Pyrénées-Orientales — the French administrative area that is,
+// exactly, the Catalunya Nord municipality set (INSEE codes 66xxx).
+const PYRENEES_ORIENTALES = 'Q12709';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -500,6 +517,69 @@ async function fetchPaisValencia(nameIndex, report) {
 }
 
 // ---------------------------------------------------------------------------
+// Source 4 — Catalunya Nord (Wikidata, joined by INSEE code)
+// ---------------------------------------------------------------------------
+
+/**
+ * Northern Catalan festa-major days. No French authority publishes a municipal
+ * festa-major holiday, so — unlike the three official sources above — these dates
+ * are each commune's patronal feast: the day its festa major has traditionally
+ * fallen on, the feast of the saint its church is dedicated to. We read it from
+ * Wikidata: commune (by INSEE code P374) → the church located in it (P131) → the
+ * saint it is dedicated to (P825) → that saint's feast day (P841), whose Catalan
+ * label ("29 de juny") the shared date parser reads. This is an approximation from
+ * an open but NON-governmental source, kept distinct in intent from the other
+ * territories' legally-declared holidays; failures skip the territory, never the
+ * build. Joined by INSEE code (geo id = `FR_<insee>`).
+ */
+async function fetchCatalunyaNord(propsByGeoId, report) {
+	const query = `SELECT DISTINCT ?insee ?church ?feastLabel WHERE {
+  ?commune wdt:P31 wd:Q484170 ; wdt:P131* wd:${PYRENEES_ORIENTALES} ; wdt:P374 ?insee .
+  ?church wdt:P131 ?commune ; wdt:P825 ?saint . ?saint wdt:P841 ?feast .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "ca". }
+}`;
+	const response = await fetch(`${WIKIDATA_SPARQL}?query=${encodeURIComponent(query)}`, {
+		headers: {
+			Accept: 'application/sparql-results+json',
+			'User-Agent': '3xl-game-festes/1.0 (bernatcanal@gmail.com)'
+		}
+	});
+	if (!response.ok) throw new Error(`Wikidata ${response.status} ${response.statusText}`);
+	const rows = (await response.json()).results.bindings;
+
+	// Index feast labels by commune → church, so each commune can be reduced to a
+	// single church — its lowest-numbered (earliest-created, most notable) Wikidata
+	// item — instead of letting every minor chapel inflate the town's dates.
+	const byInsee = new Map();
+	for (const row of rows) {
+		const byChurch = byInsee.get(row.insee.value) ?? new Map();
+		const feasts = byChurch.get(row.church.value) ?? new Set();
+		feasts.add(row.feastLabel.value);
+		byChurch.set(row.church.value, feasts);
+		byInsee.set(row.insee.value, byChurch);
+	}
+
+	const qNumber = (uri) => Number(uri.split('/Q')[1]);
+	const byGeoId = new Map();
+	for (const [insee, byChurch] of byInsee) {
+		const geoId = `FR_${insee}`;
+		if (!propsByGeoId.has(geoId)) continue;
+		const [mainChurch] = [...byChurch.keys()].sort((a, b) => qNumber(a) - qNumber(b));
+		const dates = new Set();
+		for (const label of byChurch.get(mainChurch)) {
+			// Feast labels are Catalan "DD de MONTH"; normalise the "1r" ordinal so
+			// "1r de novembre" parses like "1 de novembre". Non-date feasts in other
+			// calendars (e.g. a Coptic "Thout 1") simply yield nothing and are dropped.
+			const [date] = extractDates(label.replace(/\b(\d{1,2})(?:r|er|n|t|è|é)\b/gi, '$1'), 1);
+			if (date) dates.add(date);
+		}
+		if (dates.size) byGeoId.set(geoId, dates);
+	}
+	report.catalunyaNord = { matched: byGeoId.size };
+	return byGeoId;
+}
+
+// ---------------------------------------------------------------------------
 // Merge & write
 // ---------------------------------------------------------------------------
 
@@ -514,7 +594,7 @@ const balearsIndex = buildNameIndex(municipis.features, 'Illes Balears');
 const valenciaIndex = buildNameIndex(municipis.features, 'País Valencià');
 
 const report = {};
-const [catalunya, balears, paisValencia] = await Promise.all([
+const [catalunya, balears, paisValencia, catalunyaNord] = await Promise.all([
 	fetchCatalunya(propsByGeoId),
 	fetchBalears(balearsIndex, report).catch((error) => {
 		report.balears = { error: String(error) };
@@ -523,12 +603,16 @@ const [catalunya, balears, paisValencia] = await Promise.all([
 	fetchPaisValencia(valenciaIndex, report).catch((error) => {
 		report.paisValencia = { error: String(error) };
 		return new Map();
+	}),
+	fetchCatalunyaNord(propsByGeoId, report).catch((error) => {
+		report.catalunyaNord = { error: String(error) };
+		return new Map();
 	})
 ]);
 
 // Merge every source's date sets by geoId (no source overlaps, but union is safe).
 const datesByGeoId = new Map();
-for (const source of [catalunya, balears, paisValencia]) {
+for (const source of [catalunya, balears, paisValencia, catalunyaNord]) {
 	for (const [geoId, dates] of source) {
 		const set = datesByGeoId.get(geoId) ?? new Set();
 		for (const date of dates) set.add(date);
