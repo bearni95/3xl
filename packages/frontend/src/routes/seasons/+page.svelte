@@ -96,7 +96,7 @@
 			</div>
 			{#if collection}
 				<p class="mt-2 text-xs opacity-50">
-					Fonts oficials:
+					Fonts:
 					{#each collection.sources as source, i}
 						<a
 							class="link"
@@ -108,7 +108,9 @@
 							{source.name}
 						</a>{i < collection.sources.length - 1 ? ' · ' : ''}
 					{/each}
-					. Sense dades per a la Catalunya Nord, Andorra ni l'Alguer.
+					. Catalunya, País Valencià i les Illes Balears porten els festius locals
+					oficials; la Catalunya Nord, que no en té, hi porta el dia del patró
+					(advocació parroquial). Sense dades encara per a Andorra ni l'Alguer.
 				</p>
 			{/if}
 		</div>
