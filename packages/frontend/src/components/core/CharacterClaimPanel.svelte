@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
+	import { signInPanelOpen } from '$services/signInPanel';
 	import { spawnService } from '$services/spawn.service';
 	import { errorMessage } from '$utils/error/error-message';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
@@ -219,7 +220,7 @@
 			<p class="text-sm opacity-70">
 				Sign in to spawn a random character from your shows.
 			</p>
-			<a class="btn btn-primary btn-sm" href="/profile">Sign in</a>
+			<button class="btn btn-primary btn-sm" on:click={() => signInPanelOpen.set(true)}>Sign in</button>
 		{:else}
 			<p class="text-sm opacity-70">
 				Roll a random character from one of your shows — the spawn is saved to your account.

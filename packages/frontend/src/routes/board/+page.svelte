@@ -26,6 +26,7 @@
 	import { throwableColors } from '$utils/color/compare';
 	import { characters as availableCharacters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
+	import { signInPanelOpen } from '$services/signInPanel';
 	import { spawnService } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE, type Team } from '$services/team.service';
 	import { AuthStatus } from '$types/profile.type';
@@ -466,7 +467,9 @@
 					Your team fights with the characters you've claimed and the colours they rolled. Sign in
 					to pick a team.
 				</p>
-				<a class="btn btn-primary btn-sm w-fit" href="/profile">Sign in</a>
+				<button class="btn btn-primary btn-sm w-fit" on:click={() => signInPanelOpen.set(true)}>
+					Sign in
+				</button>
 			</div>
 		</div>
 	{:else if !teamReady}

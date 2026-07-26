@@ -70,7 +70,7 @@ class AuthService {
 			email,
 			options: {
 				shouldCreateUser: true,
-				emailRedirectTo: browser ? `${window.location.origin}/profile` : undefined
+				emailRedirectTo: browser ? `${window.location.origin}/` : undefined
 			}
 		});
 		if (error) throw error;

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
+	import { signInPanelOpen } from '$services/signInPanel';
 	import { spawnService } from '$services/spawn.service';
 	import { teamService } from '$services/team.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
@@ -239,7 +240,9 @@
 				<div class="card max-w-md bg-base-100 shadow-xl">
 					<div class="card-body gap-4">
 						<p class="text-sm opacity-70">Sign in to see the characters you've claimed.</p>
-						<a class="btn btn-primary btn-sm w-fit" href="/profile">Sign in</a>
+						<button class="btn btn-primary btn-sm w-fit" on:click={() => signInPanelOpen.set(true)}>
+							Sign in
+						</button>
 					</div>
 				</div>
 			{:else if error}
