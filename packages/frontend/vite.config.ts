@@ -46,7 +46,8 @@ function serveDir(prefix: string, root: string) {
  * Serves the @3xl/assets and @3xl/data packages the frontend installs:
  *  - dev/preview: connect middleware mounts each package's public/ dir;
  *  - build: after adapter-static writes dist/, copy the dirs into dist so the
- *    static bundle is self-contained. Placed AFTER sveltekit() so this
+ *    static bundle is self-contained, and mirror index.html to 404.html for
+ *    GitHub Pages SPA deep-link routing. Placed AFTER sveltekit() so this
  *    closeBundle runs once the adapter has finished emitting dist/.
  */
 function serveWorkspacePublic(): Plugin {
@@ -65,6 +66,12 @@ function serveWorkspacePublic(): Plugin {
 			for (const { prefix, dir } of WORKSPACE_PUBLIC) {
 				if (existsSync(dir)) cpSync(dir, join(DIST_DIR, prefix.slice(1)), { recursive: true });
 			}
+			// GitHub Pages serves 404.html for any unknown path. Mirror the
+			// adapter's index.html shell to 404.html so deep links (e.g. the
+			// /profile magic-link redirect) boot the SPA instead of hitting
+			// GitHub's own 404; the client router then resolves the real route.
+			const indexHtml = join(DIST_DIR, 'index.html');
+			if (existsSync(indexHtml)) cpSync(indexHtml, join(DIST_DIR, '404.html'));
 		}
 	};
 }
