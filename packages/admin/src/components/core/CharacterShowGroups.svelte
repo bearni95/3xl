@@ -69,19 +69,21 @@
 
 	// One section per show that has assigned characters, sorted by show name,
 	// with an "Unassigned" section last for characters no show claims. Characters
-	// keep the registry order inside each section.
+	// inside each section are sorted by Supabase rarity, highest first (ties keep
+	// registry order, since the sort is stable).
 	interface ShowGroup {
 		key: string;
 		name: string;
 		characters: CharacterOption[];
 	}
 
-	$: groups = buildGroups(characters, showIdByCharacter, showNameById);
+	$: groups = buildGroups(characters, showIdByCharacter, showNameById, rarityById);
 
 	function buildGroups(
 		all: CharacterOption[],
 		showByCharacter: Map<string, number>,
-		names: Map<number, string>
+		names: Map<number, string>,
+		rarities: Map<string, number>
 	): ShowGroup[] {
 		const byShow = new Map<number, CharacterOption[]>();
 		const unassigned: CharacterOption[] = [];
@@ -93,15 +95,22 @@
 				(byShow.get(showId) ?? byShow.set(showId, []).get(showId)!).push(character);
 			}
 		}
+		// Highest rarity first within each section; unset rarities read as 0.
+		const byRarityDesc = (a: CharacterOption, b: CharacterOption) =>
+			(rarities.get(b.id) ?? 0) - (rarities.get(a.id) ?? 0);
 		const showGroups: ShowGroup[] = [...byShow.entries()]
 			.map(([showId, chars]) => ({
 				key: `show-${showId}`,
 				name: names.get(showId) ?? `Show ${showId}`,
-				characters: chars
+				characters: [...chars].sort(byRarityDesc)
 			}))
 			.sort((a, b) => a.name.localeCompare(b.name));
 		if (unassigned.length > 0) {
-			showGroups.push({ key: 'unassigned', name: 'Unassigned', characters: unassigned });
+			showGroups.push({
+				key: 'unassigned',
+				name: 'Unassigned',
+				characters: [...unassigned].sort(byRarityDesc)
+			});
 		}
 		return showGroups;
 	}
