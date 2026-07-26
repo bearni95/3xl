@@ -152,6 +152,23 @@ export function resolveFill(levels: FillLevel[], expanded: Set<string>): FillLev
 }
 
 /**
+ * The ids of every municipality that sits under a given fill key — i.e. whose
+ * ancestor chain (or leaf) carries that key. Used to frame the map on a region:
+ * the map fits to the union of these municipalities' polygons. A municipality's
+ * own id returns just itself.
+ */
+export function municipalityIdsForKey(
+	index: Map<string, FillLevel[]>,
+	key: string
+): Set<string> {
+	const ids = new Set<string>();
+	for (const [id, levels] of index) {
+		if (levels.some((level) => level.key === key)) ids.add(id);
+	}
+	return ids;
+}
+
+/**
  * The plurality show among a set of municipalities: the one held by the most of
  * them (simple count), ties broken by name for a stable pick. Municipalities
  * with no show are ignored.

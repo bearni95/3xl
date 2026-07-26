@@ -8,8 +8,10 @@
 	import {
 		buildRegionTree,
 		buildFillIndex,
+		municipalityIdsForKey,
 		type FillLevel
 	} from '$utils/geo/region-tree';
+	import { boundsForFeatures } from '$utils/geo/bounds';
 	import type { MapCircle, MapOverlay } from '$types/map.type';
 	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
 	import { locationService, hasLocation } from '$services/location.service';
@@ -215,6 +217,15 @@
 	// the highlight auto-reveal below.
 	$: fillIndex = buildFillIndex(regionTree);
 
+	// The bounding box the map fits when a region is selected: the union of every
+	// municipality polygon under the selected key. A fresh array each time (even
+	// re-selecting the same region) so the map re-frames on every pick. Null while
+	// nothing is selected, leaving the map where it is.
+	$: focusBounds =
+		selected && municipalities
+			? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
+			: null;
+
 	// When a reading resolves to a town, open the tree down to it so its polygon
 	// (and the sidebar row) surface. Reads `expanded` inside, so it settles once
 	// every ancestor is already open and never loops.
@@ -277,6 +288,7 @@
 				{circles}
 				{highlightId}
 				{highlightStyle}
+				{focusBounds}
 				bind:currentZoom
 				classes="min-h-0 flex-1"
 			/>

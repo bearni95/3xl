@@ -13,6 +13,7 @@
 		lines = [],
 		highlightId = null,
 		highlightStyle = null,
+		focusBounds = null,
 		currentZoom = $bindable(zoom),
 		classes = ''
 	}: {
@@ -31,6 +32,12 @@
 		highlightId?: string | null;
 		/** Style merged over the highlighted feature's base style. */
 		highlightStyle?: L.PathOptions | null;
+		/**
+		 * When set, the map animates to frame this `[[south, west], [north, east]]`
+		 * box (e.g. the selected region's polygons). A fresh array reference re-fits
+		 * even to the same box, so re-selecting a region re-centres it.
+		 */
+		focusBounds?: [[number, number], [number, number]] | null;
 		/** Live map zoom level, kept in sync with the map (bindable). */
 		currentZoom?: number;
 		/** Extra Tailwind classes for the map container. */
@@ -82,10 +89,19 @@
 
 	$effect(() => {
 		// Re-derive the image fills whenever the parent swaps the overlays array
-		// (e.g. the sidebar opens a region, changing which poster each polygon
-		// shows). The layers themselves stay put; only their fills are regrouped.
+		// (e.g. the sidebar selects a region, changing which polygons carry a
+		// poster). The layers themselves stay put; only their fills are regrouped.
 		void overlays;
 		if (ready) buildImageFills();
+	});
+
+	$effect(() => {
+		// Frame the requested region: fit the map to its bounding box with a little
+		// breathing room. Gated on `ready` (a $state flag) so a focus set before the
+		// map mounts still applies once the instance exists.
+		void ready;
+		if (!focusBounds || !mapInstance) return;
+		mapInstance.fitBounds(focusBounds, { padding: [32, 32] });
 	});
 
 	const SVG_NS = 'http://www.w3.org/2000/svg';
