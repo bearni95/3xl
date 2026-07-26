@@ -7,9 +7,11 @@
 	import {
 		buildRegionTree,
 		buildFillIndex,
-		flattenRegions,
+		buildRegionNodes,
+		visibleRegionRows,
 		municipalityIdsForKey,
-		type FillLevel
+		type FillLevel,
+		type RegionRow
 	} from '$utils/geo/region-tree';
 	import { boundsForFeatures } from '$utils/geo/bounds';
 	import type { MapCircle, MapOverlay } from '$types/map.type';
@@ -30,17 +32,25 @@
 	// index: a territory is its own id, deeper tiers append theirs, a municipality
 	// is its own id. Null until the player picks a region.
 	let selected: string | null = null;
+	// The unfolded rows of the table, by region key. A row with children reveals
+	// its next tier as indented subrows while its key is in this set.
+	let expanded = new Set<string>();
 
-	// The region-tier tabs above the table, which filter it to one tier at a
-	// time. Territory is the default active tab.
+	// The region-tier tabs above the table, which set the table's top tier — the
+	// rows you drill down from. Territory is the default active tab.
 	const tierTabs = ['Territory', 'Province', 'Comarca', 'Municipality'] as const;
 	type Tier = (typeof tierTabs)[number];
 	let activeTier: Tier = 'Territory';
 
-	// Selecting a region marks it as the one the map images; clicking the already
-	// selected row clears it, so the map returns to plain polygons.
-	function select(key: string) {
-		selected = selected === key ? null : key;
+	// Clicking a row marks its region as the one the map images and, when the row
+	// has a deeper tier, unfolds (or re-folds) its children as subrows.
+	function select(row: RegionRow) {
+		selected = row.key;
+		if (!row.hasChildren) return;
+		const next = new Set(expanded);
+		if (next.has(row.key)) next.delete(row.key);
+		else next.add(row.key);
+		expanded = next;
 	}
 
 	onMount(async () => {
@@ -170,9 +180,10 @@
 	// comarca → municipality) mirrored from the map's divisions, for the tree.
 	$: regionTree = buildRegionTree(municipalities, showsById);
 
-	// Every region flattened to a row, then narrowed to the active tier tab — the
-	// rows the sidebar table renders.
-	$: regionRows = flattenRegions(regionTree).filter((row) => row.type === activeTier);
+	// The nested region nodes, and the visible rows drilled from the active tier:
+	// each top-tier region plus the unfolded children of any expanded row.
+	$: regionNodes = buildRegionNodes(regionTree);
+	$: regionRows = visibleRegionRows(regionNodes, activeTier, expanded);
 
 	// Per-municipality chain of paint tiers, read by the map's imageFill to pick
 	// each polygon's poster and by focusBounds to frame the selected region.

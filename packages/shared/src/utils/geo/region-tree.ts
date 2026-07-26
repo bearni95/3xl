@@ -85,59 +85,117 @@ export function joinKey(parentKey: string, id: string): string {
 /** The four region tiers, matching the map's red/yellow/green/blue divisions. */
 export type RegionType = 'Territory' | 'Province' | 'Comarca' | 'Municipality';
 
-/** A flat row for the sidebar table: one region, its tier, and its top show. */
-export interface RegionRow {
-	/** Selection/fill key — the same key the map images (see buildFillIndex). */
+/**
+ * One region as a nestable node: its selection key (the same key the map images,
+ * see buildFillIndex), tier, top show, and the child regions one tier deeper.
+ * A territory's children are its provinces (or, where the province tier is
+ * skipped, its comarques); a province's are its comarques + comarca-less
+ * municipalities; a comarca's are its municipalities; a municipality is a leaf.
+ */
+export interface RegionNode {
 	key: string;
 	name: string;
 	type: RegionType;
-	/** The region's plurality (top) show, when one is assigned. */
 	show?: RegionShow;
+	children: RegionNode[];
+}
+
+/** Builds the nested region nodes from the tree, keyed to match the map fills. */
+export function buildRegionNodes(territories: RegionTerritory[]): RegionNode[] {
+	const municipalityNode = (municipality: RegionMunicipality): RegionNode => ({
+		key: municipality.id,
+		name: municipality.name,
+		type: 'Municipality',
+		show: municipality.show,
+		children: []
+	});
+
+	const comarcaNode = (parentKey: string, comarca: RegionComarca): RegionNode => ({
+		key: joinKey(parentKey, comarca.id),
+		name: comarca.name,
+		type: 'Comarca',
+		show: comarca.show,
+		children: comarca.municipis.map(municipalityNode)
+	});
+
+	return territories.map((territory) => {
+		let children: RegionNode[];
+		if (territory.provincies.length) {
+			children = territory.provincies.map((province) => {
+				const provinceKey = joinKey(territory.id, province.id);
+				return {
+					key: provinceKey,
+					name: province.name,
+					type: 'Province' as const,
+					show: province.show,
+					children: [
+						...province.comarques.map((comarca) => comarcaNode(provinceKey, comarca)),
+						...province.municipis.map(municipalityNode)
+					]
+				};
+			});
+		} else {
+			children = [
+				...territory.comarques.map((comarca) => comarcaNode(territory.id, comarca)),
+				...territory.municipis.map(municipalityNode)
+			];
+		}
+		return {
+			key: territory.id,
+			name: territory.name,
+			type: 'Territory' as const,
+			show: territory.show,
+			children
+		};
+	});
+}
+
+/** A row the sidebar table renders: a region node plus its display/unfold state. */
+export interface RegionRow {
+	key: string;
+	name: string;
+	type: RegionType;
+	show?: RegionShow;
+	/** Nesting depth relative to the top tier (0 = a top-level row). */
+	depth: number;
+	hasChildren: boolean;
+	expanded: boolean;
 }
 
 /**
- * Flattens the nested region tree into one row per region across every tier,
- * each carrying the selection key the map paints by. The sidebar table filters
- * these by the active tier tab.
+ * The rows the table shows: every node of `topTier` as a depth-0 row, plus the
+ * unfolded descendants of any expanded row (recursively). The active tier tab
+ * picks `topTier`; clicking a row toggles its key in `expanded`.
  */
-export function flattenRegions(territories: RegionTerritory[]): RegionRow[] {
-	const rows: RegionRow[] = [];
-
-	const addMunicipality = (municipality: RegionMunicipality) => {
-		rows.push({
-			key: municipality.id,
-			name: municipality.name,
-			type: 'Municipality',
-			show: municipality.show
-		});
-	};
-
-	const addComarca = (parentKey: string, comarca: RegionComarca) => {
-		rows.push({
-			key: joinKey(parentKey, comarca.id),
-			name: comarca.name,
-			type: 'Comarca',
-			show: comarca.show
-		});
-		comarca.municipis.forEach(addMunicipality);
-	};
-
-	for (const territory of territories) {
-		rows.push({ key: territory.id, name: territory.name, type: 'Territory', show: territory.show });
-
-		if (territory.provincies.length) {
-			for (const province of territory.provincies) {
-				const provinceKey = joinKey(territory.id, province.id);
-				rows.push({ key: provinceKey, name: province.name, type: 'Province', show: province.show });
-				for (const comarca of province.comarques) addComarca(provinceKey, comarca);
-				province.municipis.forEach(addMunicipality);
-			}
-		} else {
-			for (const comarca of territory.comarques) addComarca(territory.id, comarca);
-			territory.municipis.forEach(addMunicipality);
+export function visibleRegionRows(
+	nodes: RegionNode[],
+	topTier: RegionType,
+	expanded: Set<string>
+): RegionRow[] {
+	const roots: RegionNode[] = [];
+	const collect = (list: RegionNode[]) => {
+		for (const node of list) {
+			if (node.type === topTier) roots.push(node);
+			else collect(node.children);
 		}
-	}
+	};
+	collect(nodes);
 
+	const rows: RegionRow[] = [];
+	const walk = (node: RegionNode, depth: number) => {
+		const isOpen = expanded.has(node.key);
+		rows.push({
+			key: node.key,
+			name: node.name,
+			type: node.type,
+			show: node.show,
+			depth,
+			hasChildren: node.children.length > 0,
+			expanded: isOpen
+		});
+		if (isOpen) for (const child of node.children) walk(child, depth + 1);
+	};
+	for (const root of roots) walk(root, 0);
 	return rows;
 }
 
