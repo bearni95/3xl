@@ -246,7 +246,7 @@ export class PackSprite extends Container {
 		// to a whole count so the row tiles the full width with no gap or overhang.
 		const triCount = Math.max(1, Math.round(w / (w * TRIANGLE_BASE_RATIO)));
 		const triBase = w / triCount;
-		const triHeight = (triBase * Math.sqrt(3)) / 2;
+		const triHeight = ((triBase * Math.sqrt(3)) / 2) * 0.67;
 		const triangles = new Graphics();
 		for (let i = 0; i < triCount; i++) {
 			const x0 = i * triBase;
