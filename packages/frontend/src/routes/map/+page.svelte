@@ -105,9 +105,11 @@
 		{
 			url: '/data/geo/municipis.json',
 			style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
-			// Only a pin hover uses this, painting its whole region's fill fully solid;
-			// individual municipalities no longer highlight or label on their own hover.
-			hoverStyle: { weight: 2, fillOpacity: 1 }
+			// Hovering the region (via its pin or its polygons) paints the whole area's
+			// fill fully solid, with the municipis stroke suppressed (opacity 0) so the
+			// internal subdivision borders don't show — only the fill fills in. The
+			// region's outer outline still comes from the coarser line overlays.
+			hoverStyle: { fillOpacity: 1, opacity: 0 }
 		},
 		{
 			url: '/data/geo/comarques.json',
