@@ -20,7 +20,7 @@ import {
 	Sprite,
 	Texture
 } from 'pixi.js';
-import { textureCache } from './texture-cache';
+import { textureCache } from '$components/core/card/texture-cache';
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */

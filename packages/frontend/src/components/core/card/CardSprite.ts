@@ -1,27 +1,27 @@
 /**
- * RevealCardSprite
+ * CardSprite
  *
- * A single revealed card in the pack-opening canvas — one claimed character,
- * drawn as a trading card that mirrors RosterCard: the spawn's rolled colour is
- * the portrait backdrop, a dark header strip at the top carries the character
- * name, the character's looping idle animation plays in the middle (contained
- * within the art area), a meta strip below it carries the rarity and claim
- * location, and a dark footer carries its ATK/DEF. The idle frames (and the
- * fallback face) are lazy-loaded via the shared cache; the parent scene drives
- * all positioning and tweens.
+ * A single character trading card, drawn as a Pixi `Container` and reusable in
+ * any canvas (the pack opener's reveal, a collection grid, …). It mirrors
+ * RosterCard: the character's colour is the portrait backdrop, a dark header
+ * strip at the top carries the character name, the character's looping idle
+ * animation plays in the middle (contained within the art area), a meta strip
+ * below it carries the rarity and a free-text label, and a dark footer carries
+ * its ATK/DEF. The idle frames (and the fallback face) are lazy-loaded via the
+ * shared cache; the host scene drives all positioning and tweens.
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { SpawnColor } from '$types/character-spawn.type';
 import { wowRarityLabel } from '$utils/rarity/wow-rarity';
-import type { ClaimPull } from './pull.type';
+import type { CardModel } from './card-model.type';
 import { textureCache, type IdleFrame } from './texture-cache';
 
-export interface RevealCardSpriteOptions {
-	pull: ClaimPull;
+export interface CardSpriteOptions {
+	card: CardModel;
 	width: number;
 	height: number;
-	/** The scene's Pixi app — its ticker drives the looping idle animation. */
+	/** The host's Pixi app — its ticker drives the looping idle animation. */
 	app: Application;
 }
 
@@ -58,8 +58,8 @@ const COLOR_HEX: Record<SpawnColor, number> = {
 	[SpawnColor.Purple]: 0xa855f7
 };
 
-export class RevealCardSprite extends Container {
-	readonly pull: ClaimPull;
+export class CardSprite extends Container {
+	readonly card: CardModel;
 	readonly cardWidth: number;
 	readonly cardHeight: number;
 	private app: Application;
@@ -76,9 +76,9 @@ export class RevealCardSprite extends Container {
 	private frameElapsed = 0;
 	private tickerAdded = false;
 
-	constructor(opts: RevealCardSpriteOptions) {
+	constructor(opts: CardSpriteOptions) {
 		super();
-		this.pull = opts.pull;
+		this.card = opts.card;
 		this.cardWidth = opts.width;
 		this.cardHeight = opts.height;
 		this.app = opts.app;
@@ -93,11 +93,11 @@ export class RevealCardSprite extends Container {
 		const metaY = footerY - metaH;
 		this.artArea = { x: 0, y: headerH, w: this.cardWidth, h: metaY - headerH };
 
-		// Colored portrait backdrop (the spawn's rolled colour), with a black
+		// Colored portrait backdrop (the character's colour), with a black
 		// border to match the roster card framing.
 		const backdrop = new Graphics();
 		backdrop.roundRect(0, 0, this.cardWidth, this.cardHeight, radius);
-		backdrop.fill(COLOR_HEX[this.pull.color] ?? 0x1f2937);
+		backdrop.fill(COLOR_HEX[this.card.color] ?? 0x1f2937);
 		backdrop.roundRect(0, 0, this.cardWidth, this.cardHeight, radius);
 		backdrop.stroke({ width: 2, color: 0x000000, alpha: 0.9 });
 		this.addChild(backdrop);
@@ -108,7 +108,7 @@ export class RevealCardSprite extends Container {
 		header.fill({ color: 0x111827, alpha: 0.92 });
 		this.addChild(header);
 
-		// Dark meta strip below the art, carrying the rarity + claim location, then
+		// Dark meta strip below the art, carrying the rarity + location label, then
 		// the ATK/DEF footer directly beneath it (both share the same dark fill so
 		// they read as one lower block with two rows).
 		const meta = new Graphics();
@@ -160,7 +160,7 @@ export class RevealCardSprite extends Container {
 	 * the character ships no idle clip (or its manifest can't be loaded).
 	 */
 	private async loadArt(): Promise<void> {
-		const frames = await textureCache.idleFrames(this.pull.basePath);
+		const frames = await textureCache.idleFrames(this.card.basePath);
 		if (this.destroyed) return;
 		if (frames && frames.length > 0) {
 			this.applyIdle(frames);
@@ -168,11 +168,11 @@ export class RevealCardSprite extends Container {
 		}
 
 		// Fallback: the static face portrait, contained within the art area.
-		const cached = textureCache.cached(this.pull.faceUrl);
+		const cached = textureCache.cached(this.card.faceUrl);
 		if (cached) {
 			this.applyFace(cached);
-		} else if (this.pull.faceUrl) {
-			const tex = await textureCache.face(this.pull.faceUrl).catch(() => null);
+		} else if (this.card.faceUrl) {
+			const tex = await textureCache.face(this.card.faceUrl).catch(() => null);
 			if (this.destroyed || !tex) return;
 			this.applyFace(tex);
 		}
@@ -282,7 +282,7 @@ export class RevealCardSprite extends Container {
 	/** The character name, centred in the top header strip. */
 	private makeName(headerH: number): Text {
 		const name = new Text({
-			text: this.pull.label,
+			text: this.card.label,
 			style: {
 				fontFamily: 'sans-serif',
 				fontSize: Math.max(10, Math.round(this.cardWidth * 0.09)),
@@ -300,8 +300,8 @@ export class RevealCardSprite extends Container {
 
 	/**
 	 * The meta row shared between the art and the ATK/DEF row: the character's
-	 * rarity (in its WoW quality colour) pinned to the left, and the claim location
-	 * pinned to the right. Either side is omitted when its value is absent.
+	 * rarity (in its WoW quality colour) pinned to the left, and the location
+	 * label pinned to the right. Either side is omitted when its value is absent.
 	 */
 	private makeMeta(metaY: number, metaH: number): Container {
 		const group = new Container();
@@ -310,15 +310,15 @@ export class RevealCardSprite extends Container {
 		const fontSize = Math.max(9, Math.round(this.cardWidth * 0.072));
 
 		// Rarity (left), coloured by its quality tier.
-		const rarityLabel = this.pull.rarity != null ? wowRarityLabel(this.pull.rarity) : null;
-		if (rarityLabel && this.pull.rarity != null) {
+		const rarityLabel = this.card.rarity != null ? wowRarityLabel(this.card.rarity) : null;
+		if (rarityLabel && this.card.rarity != null) {
 			const rarity = new Text({
-				text: `[${this.pull.rarity}] ${rarityLabel}`,
+				text: `[${this.card.rarity}] ${rarityLabel}`,
 				style: {
 					fontFamily: 'sans-serif',
 					fontSize,
 					fontWeight: '700',
-					fill: RARITY_COLOR[this.pull.rarity] ?? 0xf2f2f2
+					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2
 				}
 			});
 			rarity.anchor.set(0, 0.5);
@@ -327,12 +327,12 @@ export class RevealCardSprite extends Container {
 		}
 
 		// Location (right), muted, truncated to the right half of the row.
-		if (this.pull.locationName) {
+		if (this.card.locationName) {
 			const loc = new Text({
-				text: this.pull.locationName,
+				text: this.card.locationName,
 				style: { fontFamily: 'sans-serif', fontSize, fontWeight: '600', fill: 0x9ca3af }
 			});
-			this.ellipsize(loc, this.pull.locationName, this.cardWidth * 0.5);
+			this.ellipsize(loc, this.card.locationName, this.cardWidth * 0.5);
 			loc.anchor.set(1, 0.5);
 			loc.position.set(this.cardWidth - padX, centerY);
 			group.addChild(loc);
@@ -364,7 +364,7 @@ export class RevealCardSprite extends Container {
 
 		// Attack: the ATK value, then the d10 die icon right beside it.
 		const atk = new Text({
-			text: `${this.pull.atk}`,
+			text: `${this.card.atk}`,
 			style: { fontFamily: 'sans-serif', fontSize, fontWeight: '700', fill: 0xf2f2f2 }
 		});
 		atk.anchor.set(0, 0.5);
@@ -384,7 +384,7 @@ export class RevealCardSprite extends Container {
 
 		// Defense: the DEF value with a trailing "+", pinned to the right edge.
 		const def = new Text({
-			text: `${this.pull.def}+`,
+			text: `${this.card.def}+`,
 			style: { fontFamily: 'sans-serif', fontSize, fontWeight: '700', fill: 0xf2f2f2 }
 		});
 		def.anchor.set(1, 0.5);

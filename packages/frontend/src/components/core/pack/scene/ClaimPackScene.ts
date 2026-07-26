@@ -24,8 +24,8 @@ import {
 	type FederatedPointerEvent
 } from 'pixi.js';
 import { PackSprite } from './PackSprite';
-import { RevealCardSprite } from './RevealCardSprite';
-import { textureCache } from './texture-cache';
+import { CardSprite } from '$components/core/card/CardSprite';
+import { textureCache } from '$components/core/card/texture-cache';
 import type { ClaimPull } from './pull.type';
 
 export interface ClaimPackSceneCallbacks {
@@ -61,7 +61,7 @@ export class ClaimPackScene {
 	private packSprite: PackSprite | null = null;
 	private topHalf: Sprite | null = null;
 	private bottomHalf: Sprite | null = null;
-	private cardSprites: RevealCardSprite[] = [];
+	private cardSprites: CardSprite[] = [];
 
 	private state: SceneState = 'loading';
 	private isDestroyed = false;
@@ -408,7 +408,7 @@ export class ClaimPackScene {
 
 		for (let i = 0; i < this.pulls.length; i++) {
 			const pull = this.pulls[i];
-			const sprite = new RevealCardSprite({ pull, width: cardW, height: cardH, app: this.app });
+			const sprite = new CardSprite({ card: pull, width: cardW, height: cardH, app: this.app });
 			sprite.pivot.set(cardW / 2, cardH / 2);
 			sprite.position.set(centerX + i * 0.7, centerY + i * 0.7);
 			sprite.rotation = 0;
@@ -488,7 +488,7 @@ export class ClaimPackScene {
 		return targets;
 	}
 
-	private popIn(sprite: RevealCardSprite, delayMs: number): Promise<void> {
+	private popIn(sprite: CardSprite, delayMs: number): Promise<void> {
 		return new Promise((resolve) => {
 			const startTime = performance.now() + delayMs;
 			const duration = 260;
@@ -519,7 +519,7 @@ export class ClaimPackScene {
 	}
 
 	private tweenSprite(
-		sprite: RevealCardSprite,
+		sprite: CardSprite,
 		target: { x: number; y: number; rotation: number; scale: number },
 		durationMs: number,
 		delayMs: number,
