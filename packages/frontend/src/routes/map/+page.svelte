@@ -89,19 +89,23 @@
 	// so shared borders read as province).
 	//
 	// Each imaged region's top show is pinned at its centre (see `markers`); on top
-	// of that, the currently-selected region is marked by painting its show's wide
-	// backdrop across its own municipality polygons — every municipality under the
-	// selection returns the same key + backdrop, so WorldMap merges them into one
-	// continuous image spanning the whole selected shape. Nothing selected → plain
-	// outlines. The municipality layer stays interactive for its hover highlight
-	// and tooltip; the coarser tiers are decorative outlines. `hiddenLineUrls`
-	// still thins the finer borders down to the tier the map is focused on.
-	// Rebuilt (so WorldMap repaints) whenever the selection or its backdrop change
-	// — all three named here so the statement tracks them.
+	// of that, the map paints each region's show backdrop across its own polygons,
+	// at the SAME breakdown the pins use — one tier below the open region. Selecting
+	// a territory paints each of its provinces/comarques with that child's own
+	// backdrop; selecting a province paints its comarques; a comarca its
+	// municipalities. Every municipality under a given child returns that child's
+	// key + backdrop, so WorldMap merges them into one continuous image spanning the
+	// child's whole shape — not one backdrop across the entire selected region. Tiers
+	// outside the selection rest dimmed, exactly like the pins' 50%/full split.
+	// The municipality layer stays interactive for its hover highlight and tooltip;
+	// the coarser tiers are decorative outlines. `hiddenLineUrls` still thins the
+	// finer borders down to the tier the map is focused on. Rebuilt (so WorldMap
+	// repaints) whenever the breakdown depth or selected subtree change — both named
+	// here so the statement tracks them.
 	function buildOverlays(
-		chosen: string | null,
-		muniIds: Set<string>,
-		backdropUrl: string | null
+		index: Map<string, FillLevel[]>,
+		depth: number,
+		inside: Set<string> | null
 	): MapOverlay[] {
 		return [
 			{
@@ -117,13 +121,15 @@
 						.join(', ');
 				},
 				imageFill: (feature) => {
-					// Only the selected region is imaged, and only when its show has a
-					// backdrop. Every municipality inside it returns the same key, so
-					// they merge into one backdrop stretched across the whole region.
-					if (!chosen || !backdropUrl) return null;
-					return muniIds.has(String(feature.properties?.id))
-						? { key: chosen, url: backdropUrl }
-						: null;
+					// The tier this municipality falls under at the current breakdown
+					// depth (clamped to its own leaf for shallower branches) — the same
+					// region its pin stands for. Every municipality under that tier
+					// returns its key, so they merge into one backdrop over its shape.
+					const levels = index.get(String(feature.properties?.id));
+					if (!levels) return null;
+					const tier = levels[Math.min(depth, levels.length - 1)];
+					if (!tier?.backdropUrl) return null;
+					return { key: tier.key, url: tier.backdropUrl, dimmed: inside ? !inside.has(tier.key) : false };
 				}
 			},
 			{
@@ -331,20 +337,12 @@
 			? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
 			: null;
 
-	// The currently-open region node (null at the top view), so the map can mark
-	// the selection with the backdrop of the show associated to that area.
-	$: selectedNode = selected ? findNode(regionNodes, selected) : null;
-
-	// The selected region's show backdrop, and the ids of every municipality
-	// polygon under it — the imageFill paints that backdrop across exactly those
-	// polygons. Empty/null while nothing is selected, so the map shows plain outlines.
-	$: selectedBackdropUrl = selectedNode?.show?.backdropUrl ?? null;
-	$: selectedMunicipalityIds =
-		selected && municipalities ? municipalityIdsForKey(fillIndex, selected) : new Set<string>();
-
-	// Rebuilt whenever the selection or its backdrop changes, so WorldMap re-groups
-	// the fills and paints the newly-selected region (and clears the old one).
-	$: overlays = buildOverlays(selected, selectedMunicipalityIds, selectedBackdropUrl);
+	// The breakdown depth the fills image at — one tier below the open region (0 at
+	// the top view: territories), the same depth `breakdownNodes` pins at. Rebuilt
+	// (so WorldMap re-groups the fills) whenever that depth or the selected subtree
+	// (`insideKeys`, which drives the dim split) changes.
+	$: selectionDepth = selected ? nodePath(regionNodes, selected).length : 0;
+	$: overlays = buildOverlays(fillIndex, selectionDepth, insideKeys);
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">

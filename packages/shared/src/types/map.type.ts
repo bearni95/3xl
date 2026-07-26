@@ -6,6 +6,12 @@ export interface ImageFill {
 	key: string;
 	/** The image URL painted across that group. */
 	url: string;
+	/**
+	 * Whether this group sits outside the currently-selected area. Dimmed groups
+	 * paint at reduced opacity so the selection's subdivisions stand out — the
+	 * same 50%/full split the pins use.
+	 */
+	dimmed?: boolean;
 }
 
 /** A GeoJSON layer drawn on top of the base map, in array order (last = topmost). */

@@ -156,15 +156,17 @@
 	let imageFillId = 0;
 
 	// Image-filled polygons sit a touch under full strength so the satellite base
-	// reads through, and fade to full opacity while hovered.
+	// reads through, and fade to full opacity while hovered. Groups outside the
+	// selected area rest dimmed — the same 50%/full split the pins use.
 	const IMAGE_FILL_OPACITY = 0.85;
+	const IMAGE_FILL_DIMMED_OPACITY = 0.4;
 	const IMAGE_FILL_HOVER_OPACITY = 1;
 
 	// A set of vector layers that share a single image fill: the image is
 	// stretched across their combined bounding box (not each polygon's own), so
 	// adjacent features assemble into one picture. Grouped by the key each
-	// overlay's `imageFill` returns.
-	type ImageFillGroup = { url: string; patternId: string; layers: L.Path[] };
+	// overlay's `imageFill` returns; `dimmed` sets the group's resting opacity.
+	type ImageFillGroup = { url: string; patternId: string; dimmed: boolean; layers: L.Path[] };
 
 	// Reposition every group's pattern over its (reprojected) union box.
 	function refreshImageFills() {
@@ -176,6 +178,14 @@
 		if (!fill) return null;
 		if (typeof fill === 'string') return { key: fill, url: fill };
 		return fill.url ? fill : null;
+	}
+
+	// A layer's resting fill-opacity: dimmed groups (outside the selection) rest
+	// fainter, matching the pins' 50%/full split.
+	function restingOpacity(layer: L.Path): number {
+		return (layer as L.Path & { _imageFillDimmed?: boolean })._imageFillDimmed
+			? IMAGE_FILL_DIMMED_OPACITY
+			: IMAGE_FILL_OPACITY;
 	}
 
 	// The union of the group's path bounding boxes, in SVG user coordinates — the
@@ -254,7 +264,7 @@
 	// setStyle/resetStyle repaints the base fillColor on hover. fill-opacity is
 	// driven through the CSS property (not the attribute) with a transition, so the
 	// hover change fades rather than snapping. No-ops for an unfilled polygon.
-	function applyImageFill(layer: L.Path, opacity: number = IMAGE_FILL_OPACITY) {
+	function applyImageFill(layer: L.Path, opacity: number = restingOpacity(layer)) {
 		const patternId = (layer as L.Path & { _imageFillPatternId?: string })._imageFillPatternId;
 		const el = layer.getElement() as SVGElement | undefined;
 		if (!patternId || !el) return;
@@ -282,7 +292,7 @@
 			svg.querySelectorAll('pattern[id^="map-image-fill-"]').forEach((pattern) => pattern.remove());
 		}
 
-		const grouped = new Map<string, { url: string; layers: L.Path[] }>();
+		const grouped = new Map<string, { url: string; dimmed: boolean; layers: L.Path[] }>();
 		overlays.forEach((overlay, index) => {
 			const group = overlayGroups[index];
 			if (!overlay.imageFill || !group) return;
@@ -291,18 +301,20 @@
 				if (!feature) return;
 				const fill = normalizeFill(overlay.imageFill!(feature));
 				if (!fill) return;
-				const entry = grouped.get(fill.key) ?? { url: fill.url, layers: [] };
+				const entry = grouped.get(fill.key) ?? { url: fill.url, dimmed: !!fill.dimmed, layers: [] };
 				entry.layers.push(layer as L.Path);
 				grouped.set(fill.key, entry);
 			});
 		});
 
-		imageFillGroups = [...grouped.values()].map(({ url, layers }) => {
+		imageFillGroups = [...grouped.values()].map(({ url, dimmed, layers }) => {
 			const patternId = `map-image-fill-${imageFillId++}`;
 			for (const layer of layers) {
-				(layer as L.Path & { _imageFillPatternId?: string })._imageFillPatternId = patternId;
+				const path = layer as L.Path & { _imageFillPatternId?: string; _imageFillDimmed?: boolean };
+				path._imageFillPatternId = patternId;
+				path._imageFillDimmed = dimmed;
 			}
-			return { url, patternId, layers };
+			return { url, patternId, dimmed, layers };
 		});
 		refreshImageFills();
 	}
@@ -365,8 +377,9 @@
 				if (on) layer.setStyle(entry.hoverStyle);
 				else entry.group.resetStyle(layer);
 				// setStyle/resetStyle repaint the base fillColor, so restore a filled
-				// polygon's image (full opacity while lit, resting when reset).
-				applyImageFill(layer, on ? IMAGE_FILL_HOVER_OPACITY : IMAGE_FILL_OPACITY);
+				// polygon's image (full opacity while lit, its resting opacity when reset).
+				if (on) applyImageFill(layer, IMAGE_FILL_HOVER_OPACITY);
+				else applyImageFill(layer);
 			}
 		}
 	}
