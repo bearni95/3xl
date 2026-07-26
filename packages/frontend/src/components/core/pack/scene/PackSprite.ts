@@ -44,6 +44,8 @@ const STRIP_FILL = { color: 0xffffff, alpha: 1 } as const;
  * of the top strip (y = 0). Their base is a target fraction of the pack width,
  * rounded to a whole count so they tile the width edge to edge. */
 const TRIANGLE_BASE_RATIO = 0.1;
+/** Triangle fill — black, to stay legible over the coloured header strip. */
+const TRIANGLE_FILL = { color: 0x000000, alpha: 1 } as const;
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
@@ -289,7 +291,7 @@ export class PackSprite extends Container {
 			const xR = Math.round((i + 1) * triBase);
 			triangles.poly([xL, 0, xR, 0, Math.round((xL + xR) / 2), triHeight]);
 		}
-		triangles.fill({ color: this.topColor, alpha: 1 });
+		triangles.fill(TRIANGLE_FILL);
 		root.addChild(triangles);
 
 		// The place the pack belongs to, overlaid at the top-centre of the image in
