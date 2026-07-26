@@ -2,11 +2,11 @@
  * PackSprite
  *
  * Renders a booster pack into a RenderTexture, framed to match {@link CardSprite}:
- * the show's poster fills the middle art area (object-cover, masked to it) with a
- * dark header strip above it carrying the show name and a dark footer strip below
- * it carrying the place the pack belongs to (white with a black outline) — both
- * strips outside the image — with rounded corners, a 2px black border and a soft
- * black drop shadow behind it. Exposes
+ * the show's poster fills the middle art area (object-cover) with plain dark
+ * header and footer strips above and below it — outside the image — and the place
+ * the pack belongs to overlaid at the top-centre of the poster (white with a black
+ * outline). Rounded corners, a 2px black border and a soft black drop shadow sit
+ * behind it. Exposes
  * split(y), which carves the rendered texture into top/bottom halves for the slice
  * animation.
  *
@@ -39,9 +39,7 @@ const STRIP_FILL = { color: 0x111827, alpha: 1 } as const;
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
 	coverUrl: string | null;
-	/** Pack label — the show name, shown across the top section. */
-	label: string;
-	/** Full name of the place the pack belongs to, drawn across its bottom. */
+	/** Full name of the place the pack belongs to, overlaid on the poster's top. */
 	locationName: string | null;
 	app: Application;
 	width: number;
@@ -56,7 +54,6 @@ export interface PackHalves {
 export class PackSprite extends Container {
 	private app: Application;
 	private coverUrl: string | null;
-	private packLabel: string;
 	private locationName: string | null;
 	private packW: number;
 	private packH: number;
@@ -67,7 +64,6 @@ export class PackSprite extends Container {
 		super();
 		this.app = opts.app;
 		this.coverUrl = opts.coverUrl;
-		this.packLabel = opts.label;
 		this.locationName = opts.locationName;
 		this.packW = opts.width;
 		this.packH = opts.height;
@@ -202,63 +198,37 @@ export class PackSprite extends Container {
 			root.addChild(sprite);
 		}
 
-		// Dark header strip carrying the show name, centred — the card's name header.
+		// Plain dark header + footer strips, outside the image — no text on them.
 		const header = new Graphics();
 		header.rect(0, 0, w, headerH);
 		header.fill(STRIP_FILL);
 		root.addChild(header);
 
-		const name = new Text({
-			text: this.packLabel,
-			style: {
-				fontFamily: 'sans-serif',
-				fontSize: Math.max(10, Math.round(w * 0.09)),
-				fontWeight: '700',
-				fill: 0xf2f2f2,
-				align: 'center',
-				wordWrap: true,
-				wordWrapWidth: w * 0.9
-			}
-		});
-		name.anchor.set(0.5);
-		name.position.set(w / 2, headerH / 2);
-		root.addChild(name);
-
-		// Dark footer strip — echoes the card's stat footer.
 		const footer = new Graphics();
 		footer.rect(0, footerY, w, footerH);
 		footer.fill(STRIP_FILL);
 		root.addChild(footer);
 
-		// The place the pack belongs to, in white with a black outline so it stays
-		// legible over any poster; falls back to a muted "BOOSTER" tag when unknown.
-		const footerText = this.locationName
-			? new Text({
-					text: this.locationName,
-					style: {
-						fontFamily: 'sans-serif',
-						fontSize: Math.max(10, Math.round(w * 0.08)),
-						fontWeight: '700',
-						fill: 0xffffff,
-						stroke: { color: 0x000000, width: Math.max(2, Math.round(w * 0.02)) },
-						align: 'center',
-						wordWrap: true,
-						wordWrapWidth: w * 0.92
-					}
-				})
-			: new Text({
-					text: 'BOOSTER',
-					style: {
-						fontFamily: 'sans-serif',
-						fontSize: Math.max(9, Math.round(w * 0.07)),
-						fontWeight: '700',
-						fill: 0x9ca3af,
-						letterSpacing: 2
-					}
-				});
-		footerText.anchor.set(0.5);
-		footerText.position.set(w / 2, footerY + footerH / 2);
-		root.addChild(footerText);
+		// The place the pack belongs to, overlaid at the top-centre of the image in
+		// white with a black outline so it stays legible over the poster.
+		if (this.locationName) {
+			const loc = new Text({
+				text: this.locationName,
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize: Math.max(10, Math.round(w * 0.08)),
+					fontWeight: '700',
+					fill: 0xffffff,
+					stroke: { color: 0x000000, width: Math.max(2, Math.round(w * 0.02)) },
+					align: 'center',
+					wordWrap: true,
+					wordWrapWidth: w * 0.92
+				}
+			});
+			loc.anchor.set(0.5, 0);
+			loc.position.set(w / 2, artY + Math.round(w * 0.04));
+			root.addChild(loc);
+		}
 
 		return root;
 	}

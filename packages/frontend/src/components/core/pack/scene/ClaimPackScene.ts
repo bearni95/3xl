@@ -37,9 +37,7 @@ export interface ClaimPackSceneCallbacks {
 export interface ClaimPackInput {
 	/** Show poster URL used as the pack cover, or null for a plain frame. */
 	coverUrl: string | null;
-	/** Pack label — the show name. */
-	label: string;
-	/** Full name of the place the pack belongs to, drawn across its bottom. */
+	/** Full name of the place the pack belongs to, overlaid on the poster's top. */
 	locationName: string | null;
 }
 
@@ -156,7 +154,6 @@ export class ClaimPackScene {
 		const { packW, packH } = this.computePackDimensions(width, height);
 		this.packSprite = new PackSprite({
 			coverUrl: this.input.coverUrl,
-			label: this.input.label,
 			locationName: this.input.locationName,
 			app: this.app,
 			width: packW,

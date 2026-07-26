@@ -36,7 +36,7 @@
 
 		<div class="min-h-0 flex-1 rounded-md bg-gradient-to-b from-base-300/80 to-base-200">
 			{#key openSession}
-				<ClaimPackOpener {coverUrl} label={packLabel} {locationName} {claim} />
+				<ClaimPackOpener {coverUrl} {locationName} {claim} />
 			{/key}
 		</div>
 

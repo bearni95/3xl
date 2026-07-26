@@ -5,9 +5,7 @@
 
 	// The show poster used as the pack cover art, or null for a plain frame.
 	export let coverUrl: string | null = null;
-	// Pack label — the show name shown across the top of the pack.
-	export let label: string = '';
-	// Full name of the place the pack belongs to, drawn across its bottom.
+	// Full name of the place the pack belongs to, overlaid on the poster's top.
 	export let locationName: string | null = null;
 	// Rolls the booster against Supabase when the pack is sliced open, resolving
 	// the claimed character(s) to reveal.
@@ -23,7 +21,7 @@
 		if (!host) return;
 		scene = new ClaimPackScene(
 			host,
-			{ coverUrl, label, locationName },
+			{ coverUrl, locationName },
 			claim,
 			{ onOpenComplete: () => onOpenComplete?.() }
 		);
