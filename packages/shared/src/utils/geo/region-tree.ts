@@ -150,16 +150,14 @@ export function buildRegionNodes(territories: RegionTerritory[]): RegionNode[] {
 	});
 }
 
-/** A row the sidebar table renders: a region node plus its display/unfold state. */
+/** A row the sidebar table renders: one region at the current drill level. */
 export interface RegionRow {
 	key: string;
 	name: string;
 	type: RegionType;
 	show?: RegionShow;
-	/** Nesting depth relative to the top tier (0 = a top-level row). */
-	depth: number;
+	/** Whether drilling into this region reveals a deeper level. */
 	hasChildren: boolean;
-	expanded: boolean;
 }
 
 /** The chain of nodes from a root territory down to `key`, or [] if not found. */
@@ -172,51 +170,28 @@ export function nodePath(nodes: RegionNode[], key: string): RegionNode[] {
 	return [];
 }
 
-/** Turns a node into a table row at `depth`, optionally marked as the open one. */
-function toRow(node: RegionNode, depth: number, expanded: boolean): RegionRow {
-	return {
-		key: node.key,
-		name: node.name,
-		type: node.type,
-		show: node.show,
-		depth,
-		hasChildren: node.children.length > 0,
-		expanded
-	};
-}
-
 /**
- * The rows the table shows for the open region: only two tiers deep. The
- * "previous" tier — the open region's siblings (or the top territories when a
- * territory is open, or nothing is open) — sit at depth 0, and the open region's
- * own children — the "current" tier the map is imaging — unfold under it at
- * depth 1. Deeper ancestors are reached through the breadcrumbs, not the table,
- * so the table never grows past these two levels.
+ * The rows the table shows: only the current level of view — the direct children
+ * of the open region (the sub-regions the map is imaging), or the top territories
+ * when nothing is open. Ancestors are reached through the breadcrumbs and the
+ * open region's own siblings are never listed, so the table is a single flat
+ * level that drills exactly one tier deeper on each click.
  */
 export function regionRowsForSelection(
 	nodes: RegionNode[],
 	selected: string | null
 ): RegionRow[] {
-	// Top view: the territories are the current tier, with no previous one.
-	if (!selected) return nodes.map((node) => toRow(node, 0, false));
-
-	const path = nodePath(nodes, selected);
-	// An unknown key falls back to the top view rather than an empty table.
-	if (!path.length) return nodes.map((node) => toRow(node, 0, false));
-
-	// The previous tier: the open region's siblings — its parent's children, or
-	// the top territories when the open region is itself a territory.
-	const parent = path.length >= 2 ? path[path.length - 2] : null;
-	const siblings = parent ? parent.children : nodes;
-
-	const rows: RegionRow[] = [];
-	for (const sibling of siblings) {
-		const isOpen = sibling.key === selected;
-		rows.push(toRow(sibling, 0, isOpen));
-		// The current tier unfolds under the open sibling only.
-		if (isOpen) for (const child of sibling.children) rows.push(toRow(child, 1, false));
-	}
-	return rows;
+	// The open region's node (its last path entry); an unknown key falls back to
+	// the top view. A leaf municipality has no children, so its level is empty.
+	const open = selected ? nodePath(nodes, selected).at(-1) : null;
+	const level = selected ? (open?.children ?? nodes) : nodes;
+	return level.map((node) => ({
+		key: node.key,
+		name: node.name,
+		type: node.type,
+		show: node.show,
+		hasChildren: node.children.length > 0
+	}));
 }
 
 /** One tier a municipality can be painted at: its region's key + that show's poster. */

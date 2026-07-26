@@ -116,75 +116,15 @@
 		mapInstance.fitBounds(focusBounds, { padding: [32, 32] });
 	});
 
-	const SVG_NS = 'http://www.w3.org/2000/svg';
-	const XLINK_NS = 'http://www.w3.org/1999/xlink';
-	// Opacity of a polygon's cover while hovered — strong enough to read the cover,
-	// with the satellite base still showing through a touch.
-	const HOVER_IMAGE_OPACITY = 0.9;
-	let hoverImageId = 0;
-
-	// Enter a feature: apply the overlay's hoverStyle, then — if the overlay gives
-	// a hover image for it — paint that image across the polygon via a one-off SVG
-	// pattern sized to its current bounding box.
-	function hoverOn(overlay: MapOverlay, layer: L.Path, feature: GeoJSON.Feature) {
+	// Enter a feature: apply the overlay's hoverStyle so the polygon's border and
+	// fill highlight while the pointer is over it.
+	function hoverOn(overlay: MapOverlay, layer: L.Path) {
 		if (overlay.hoverStyle) layer.setStyle(overlay.hoverStyle);
-		const url = overlay.hoverImage?.(feature);
-		if (url) paintHoverImage(layer, url);
 	}
 
-	// Leave a feature: drop its hover-image pattern and reset to the base style.
+	// Leave a feature: reset it to its base style.
 	function hoverOff(group: L.GeoJSON, layer: L.Path) {
-		clearHoverImage(layer);
 		group.resetStyle(layer);
-	}
-
-	// Point the polygon's fill at a fresh <pattern>/<image> covering its bounding
-	// box (userSpaceOnUse, so getBBox values map straight through), sliced to keep
-	// the poster's aspect. Stashes the pattern id on the layer for cleanup.
-	function paintHoverImage(layer: L.Path & { _hoverPatternId?: string }, url: string) {
-		const el = layer.getElement() as SVGGraphicsElement | null;
-		const svg = el?.ownerSVGElement;
-		if (!el || !svg) return;
-
-		let defs = svg.querySelector('defs');
-		if (!defs) {
-			defs = document.createElementNS(SVG_NS, 'defs');
-			svg.insertBefore(defs, svg.firstChild);
-		}
-
-		const box = el.getBBox();
-		if (box.width === 0 && box.height === 0) return;
-		const patternId = `map-hover-image-${hoverImageId++}`;
-		const pattern = document.createElementNS(SVG_NS, 'pattern');
-		pattern.setAttribute('id', patternId);
-		pattern.setAttribute('patternUnits', 'userSpaceOnUse');
-		pattern.setAttribute('x', String(box.x));
-		pattern.setAttribute('y', String(box.y));
-		pattern.setAttribute('width', String(box.width));
-		pattern.setAttribute('height', String(box.height));
-
-		const image = document.createElementNS(SVG_NS, 'image');
-		image.setAttributeNS(XLINK_NS, 'href', url);
-		image.setAttribute('href', url);
-		image.setAttribute('width', String(box.width));
-		image.setAttribute('height', String(box.height));
-		image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-		pattern.appendChild(image);
-		defs.appendChild(pattern);
-
-		el.setAttribute('fill', `url(#${patternId})`);
-		el.style.fillOpacity = String(HOVER_IMAGE_OPACITY);
-		layer._hoverPatternId = patternId;
-	}
-
-	// Remove a layer's hover-image pattern and its inline fill overrides, if any.
-	function clearHoverImage(layer: L.Path & { _hoverPatternId?: string }) {
-		const patternId = layer._hoverPatternId;
-		if (!patternId) return;
-		const el = layer.getElement() as SVGElement | null;
-		el?.ownerSVGElement?.querySelector(`#${patternId}`)?.remove();
-		if (el) el.style.fillOpacity = '';
-		delete layer._hoverPatternId;
 	}
 
 	// Build a pin's DOM: a poster thumbnail in a rounded frame with the show name
@@ -333,10 +273,10 @@
 						layer.bindTooltip(label, { sticky: true });
 					}
 
-					if (overlay.hoverStyle || overlay.hoverImage) {
+					if (overlay.hoverStyle) {
 						const id = feature.properties?.id;
-						if (id != null && overlay.hoverStyle) byId.set(String(id), layer as L.Path);
-						layer.on('mouseover', () => hoverOn(overlay, layer as L.Path, feature));
+						if (id != null) byId.set(String(id), layer as L.Path);
+						layer.on('mouseover', () => hoverOn(overlay, layer as L.Path));
 						layer.on('mouseout', () => hoverOff(layerGroup, layer as L.Path));
 					}
 

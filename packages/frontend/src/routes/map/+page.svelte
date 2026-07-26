@@ -49,16 +49,11 @@
 		goto(query ? `?${query}` : location.pathname, { keepFocus: true, noScroll: true });
 	}
 
-	// Clicking a row opens its region; clicking the already-open row collapses one
-	// tier back up its path (to its parent, or the top view for a territory). Only
-	// the clicked path is ever open, so the table behaves as a single accordion.
+	// Clicking a row drills into that region — the table then shows its children
+	// as the new current level, and the breadcrumbs grow a crumb. Going back up is
+	// done through the breadcrumbs, never the table.
 	function select(row: RegionRow) {
-		if (row.key === selected) {
-			const path = nodePath(regionNodes, row.key);
-			open(path.length > 1 ? path[path.length - 2].key : null);
-		} else {
-			open(row.key);
-		}
+		open(row.key);
 	}
 
 	onMount(async () => {
@@ -102,9 +97,6 @@
 			url: '/data/geo/municipis.json',
 			style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
 			hoverStyle: { weight: 2, fillOpacity: 0.3 },
-			// On hover, paint the municipality with its own assigned show's cover.
-			hoverImage: (feature) =>
-				assignmentsById.get(String(feature.properties?.id))?.show.posterUrl ?? null,
 			label: (feature) => {
 				const props = feature.properties ?? {};
 				const show = assignmentsById.get(String(props.id))?.show.name;
@@ -319,7 +311,7 @@
 			</div>
 		</div>
 
-		<RegionTable rows={regionRows} {selected} onSelect={select} />
+		<RegionTable rows={regionRows} onSelect={select} />
 	</aside>
 
 	<div class="relative flex min-w-0 flex-1 flex-col">
