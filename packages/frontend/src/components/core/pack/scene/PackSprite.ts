@@ -19,6 +19,7 @@ import {
 	BlurFilter,
 	Container,
 	Graphics,
+	Matrix,
 	Rectangle,
 	RenderTexture,
 	Sprite,
@@ -184,24 +185,25 @@ export class PackSprite extends Container {
 		root.addChild(bg);
 
 		if (cover && cover.width > 0 && cover.height > 0) {
-			// The poster, `object-cover` within the art box: scaled to fully cover it,
-			// centred, and masked to that box so it never runs under the strips.
+			// The poster, `object-cover` within the art box: painted as a texture fill
+			// clipped to the art rect, with a matrix that scales the poster to cover the
+			// box and centres it. A Graphics fill (not a mask) keeps this render-texture
+			// safe — masks need a stencil buffer the RenderTexture target doesn't have.
 			const imgW = cover.width;
 			const imgH = cover.height;
 			const scale = Math.max(w / imgW, artH / imgH);
 			const drawW = imgW * scale;
 			const drawH = imgH * scale;
+			const offsetX = (w - drawW) / 2;
+			const offsetY = artY + (artH - drawH) / 2;
 
-			const sprite = new Sprite(cover);
-			sprite.setSize(drawW, drawH);
-			sprite.position.set((w - drawW) / 2, artY + (artH - drawH) / 2);
-
-			const artMask = new Graphics();
-			artMask.rect(0, artY, w, artH);
-			artMask.fill(0xffffff);
-			sprite.mask = artMask;
-			root.addChild(artMask);
-			root.addChild(sprite);
+			const poster = new Graphics();
+			poster.rect(0, artY, w, artH);
+			poster.fill({
+				texture: cover,
+				matrix: new Matrix(scale, 0, 0, scale, offsetX, offsetY)
+			});
+			root.addChild(poster);
 		}
 
 		// Dark header strip carrying the show name, centred — the card's name header.
