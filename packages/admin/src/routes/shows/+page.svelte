@@ -23,6 +23,10 @@
 	type Tab = 'saved' | 'search' | 'sync' | 'cast';
 	let tab: Tab = 'saved';
 
+	// How many columns every image grid on the page renders. Driven by the slider
+	// in the header and applied to both the saved and search galleries.
+	let gridColumns = 8;
+
 	// --- Saved shows (shows.json) ---------------------------------------------
 	let savedShows: ShowEntry[] = [];
 	let savedLoading = false;
@@ -275,9 +279,23 @@
 <svelte:window on:keydown={handleModalKeydown} />
 
 <div class="mx-auto max-w-5xl p-6">
-	<header class="mb-6">
-		<h1 class="text-2xl font-bold">TV Shows</h1>
-		<p class="text-base-content/60 text-sm">Manage saved shows and search TMDB.</p>
+	<header class="mb-6 flex flex-wrap items-end justify-between gap-4">
+		<div>
+			<h1 class="text-2xl font-bold">TV Shows</h1>
+			<p class="text-base-content/60 text-sm">Manage saved shows and search TMDB.</p>
+		</div>
+		<label class="flex items-center gap-2 text-xs">
+			<span class="text-base-content/60 whitespace-nowrap">Grid columns</span>
+			<input
+				type="range"
+				min="2"
+				max="12"
+				class="range range-primary range-xs w-40"
+				bind:value={gridColumns}
+				aria-label="Image grid columns"
+			/>
+			<span class="text-base-content/70 w-4 text-right tabular-nums">{gridColumns}</span>
+		</label>
 	</header>
 
 	<div role="tablist" class="tabs tabs-bordered mb-6">
@@ -446,6 +464,7 @@
 									images={entry.images}
 									showName={show.name}
 									selectable
+									columns={gridColumns}
 									enabledByKind={entry.enabledImages ?? {}}
 									on:preview={(e) => openPreview(e.detail, show.name)}
 									on:toggle={(e) => toggleEnabledImage(show.id, e.detail.kind, e.detail.filePath)}
@@ -579,6 +598,7 @@
 									<ShowImageGrid
 										images={imagesByShow[show.id]}
 										showName={show.name}
+										columns={gridColumns}
 										on:preview={(e) => openPreview(e.detail, show.name)}
 									/>
 								{/if}

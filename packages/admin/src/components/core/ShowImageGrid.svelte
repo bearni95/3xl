@@ -19,6 +19,24 @@
 	export let selectable: boolean = false;
 	// The enabled filePaths per section, so the grid can mark each thumbnail.
 	export let enabledByKind: Partial<Record<TMDBImageKind, string[]>> = {};
+	// How many columns the thumbnail grid uses. The caller drives this from a
+	// slider; map each value to a static Tailwind class so nothing is inlined.
+	export let columns: number = 8;
+
+	const columnClasses: Record<number, string> = {
+		2: 'grid-cols-2',
+		3: 'grid-cols-3',
+		4: 'grid-cols-4',
+		5: 'grid-cols-5',
+		6: 'grid-cols-6',
+		7: 'grid-cols-7',
+		8: 'grid-cols-8',
+		9: 'grid-cols-9',
+		10: 'grid-cols-10',
+		11: 'grid-cols-11',
+		12: 'grid-cols-12'
+	};
+	$: gridClass = classNames('grid gap-2', columnClasses[columns] ?? 'grid-cols-8');
 
 	// The grid renders the groups top-to-bottom; navigation in the preview modal
 	// follows that same visual order, so hand it this flattened list.
@@ -49,7 +67,7 @@
 							</span>
 						{/if}
 					</h3>
-					<div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+					<div class={gridClass}>
 						{#each groupImages as image (image.filePath)}
 							{@const isEnabled = enabledByKind[group.kind]?.includes(image.filePath) ?? false}
 							<div class="relative">
