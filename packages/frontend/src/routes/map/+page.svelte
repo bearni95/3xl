@@ -1,11 +1,13 @@
 <script lang="ts">
+	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
-	import RegionTree from '$components/core/RegionTree.svelte';
+	import RegionTable from '$components/core/RegionTable.svelte';
 	import ClaimPanel from '$components/core/ClaimPanel.svelte';
 	import {
 		buildRegionTree,
 		buildFillIndex,
+		flattenRegions,
 		municipalityIdsForKey,
 		type FillLevel
 	} from '$utils/geo/region-tree';
@@ -23,27 +25,22 @@
 	let ready = false;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
-	// The open sections of the sidebar tree, by node key. The tree reads this to
-	// decide which regions reveal their children; it no longer drives the map.
-	let expanded = new Set<string>();
 	// The single region currently selected in the sidebar, by its node key — the
 	// only region the map paints with its poster. A node's key matches the fill
 	// index: a territory is its own id, deeper tiers append theirs, a municipality
 	// is its own id. Null until the player picks a region.
 	let selected: string | null = null;
 
-	function toggle(key: string) {
-		const next = new Set(expanded);
-		if (next.has(key)) next.delete(key);
-		else next.add(key);
-		expanded = next;
-	}
+	// The region-tier tabs above the table, which filter it to one tier at a
+	// time. Territory is the default active tab.
+	const tierTabs = ['Territory', 'Province', 'Comarca', 'Municipality'] as const;
+	type Tier = (typeof tierTabs)[number];
+	let activeTier: Tier = 'Territory';
 
-	// Selecting a region opens it (so its children surface) and marks it as the
-	// one the map images; re-selecting it just keeps it selected.
+	// Selecting a region marks it as the one the map images; clicking the already
+	// selected row clears it, so the map returns to plain polygons.
 	function select(key: string) {
-		selected = key;
-		if (!expanded.has(key)) toggle(key);
+		selected = selected === key ? null : key;
 	}
 
 	onMount(async () => {
@@ -173,6 +170,10 @@
 	// comarca → municipality) mirrored from the map's divisions, for the tree.
 	$: regionTree = buildRegionTree(municipalities, showsById);
 
+	// Every region flattened to a row, then narrowed to the active tier tab — the
+	// rows the sidebar table renders.
+	$: regionRows = flattenRegions(regionTree).filter((row) => row.type === activeTier);
+
 	// Per-municipality chain of paint tiers, read by the map's imageFill to pick
 	// each polygon's poster and by focusBounds to frame the selected region.
 	$: fillIndex = buildFillIndex(regionTree);
@@ -194,29 +195,20 @@
 	>
 		<div class="border-b border-base-300 px-4 py-3">
 			<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Regions</h2>
-			<p class="flex flex-wrap gap-x-3 gap-y-1 text-xs opacity-60">
-				<span class="flex items-center gap-1"
-					><span class="h-2 w-2 rounded-full bg-error"></span>Territory</span
-				>
-				<span class="flex items-center gap-1"
-					><span class="h-2 w-2 rounded-full bg-warning"></span>Province</span
-				>
-				<span class="flex items-center gap-1"
-					><span class="h-2 w-2 rounded-full bg-success"></span>Comarca</span
-				>
-				<span class="flex items-center gap-1"
-					><span class="h-2 w-2 rounded-full bg-info"></span>Municipality</span
-				>
-			</p>
+			<div class="join mt-2 grid grid-cols-4">
+				{#each tierTabs as tier}
+					<button
+						type="button"
+						class={classNames('btn btn-primary join-item', { 'btn-outline': activeTier !== tier })}
+						on:click={() => (activeTier = tier)}
+					>
+						{tier}
+					</button>
+				{/each}
+			</div>
 		</div>
 
-		<RegionTree
-			territories={regionTree}
-			{expanded}
-			{selected}
-			onToggle={toggle}
-			onSelect={select}
-		/>
+		<RegionTable rows={regionRows} {selected} onSelect={select} />
 	</aside>
 
 	<div class="relative flex min-w-0 flex-1 flex-col">

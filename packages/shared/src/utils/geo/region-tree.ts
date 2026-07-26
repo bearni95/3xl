@@ -82,6 +82,65 @@ export function joinKey(parentKey: string, id: string): string {
 	return `${parentKey}/${id}`;
 }
 
+/** The four region tiers, matching the map's red/yellow/green/blue divisions. */
+export type RegionType = 'Territory' | 'Province' | 'Comarca' | 'Municipality';
+
+/** A flat row for the sidebar table: one region, its tier, and its top show. */
+export interface RegionRow {
+	/** Selection/fill key — the same key the map images (see buildFillIndex). */
+	key: string;
+	name: string;
+	type: RegionType;
+	/** The region's plurality (top) show, when one is assigned. */
+	show?: RegionShow;
+}
+
+/**
+ * Flattens the nested region tree into one row per region across every tier,
+ * each carrying the selection key the map paints by. The sidebar table filters
+ * these by the active tier tab.
+ */
+export function flattenRegions(territories: RegionTerritory[]): RegionRow[] {
+	const rows: RegionRow[] = [];
+
+	const addMunicipality = (municipality: RegionMunicipality) => {
+		rows.push({
+			key: municipality.id,
+			name: municipality.name,
+			type: 'Municipality',
+			show: municipality.show
+		});
+	};
+
+	const addComarca = (parentKey: string, comarca: RegionComarca) => {
+		rows.push({
+			key: joinKey(parentKey, comarca.id),
+			name: comarca.name,
+			type: 'Comarca',
+			show: comarca.show
+		});
+		comarca.municipis.forEach(addMunicipality);
+	};
+
+	for (const territory of territories) {
+		rows.push({ key: territory.id, name: territory.name, type: 'Territory', show: territory.show });
+
+		if (territory.provincies.length) {
+			for (const province of territory.provincies) {
+				const provinceKey = joinKey(territory.id, province.id);
+				rows.push({ key: provinceKey, name: province.name, type: 'Province', show: province.show });
+				for (const comarca of province.comarques) addComarca(provinceKey, comarca);
+				province.municipis.forEach(addMunicipality);
+			}
+		} else {
+			for (const comarca of territory.comarques) addComarca(territory.id, comarca);
+			territory.municipis.forEach(addMunicipality);
+		}
+	}
+
+	return rows;
+}
+
 /** One tier a municipality can be painted at: its region's key + that show's poster. */
 export interface FillLevel {
 	key: string;
