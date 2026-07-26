@@ -21,6 +21,7 @@
 		"generate:auras": "pnpm --filter @3xl/mugen generate:auras",
 		"generate:geo": "pnpm --filter @3xl/data generate:geo",
 		"generate:shows": "pnpm --filter @3xl/data generate:shows",
+		"generate:festes": "pnpm --filter @3xl/data generate:festes",
 		"clean": "pnpm -r clean"
 	}
 }
