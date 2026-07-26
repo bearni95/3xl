@@ -511,6 +511,7 @@
 			<WorldMap
 				center={[41.8, 1.7]}
 				zoom={8}
+				minZoom={7}
 				{overlays}
 				{circles}
 				{markerLevels}
