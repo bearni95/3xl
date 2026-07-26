@@ -42,10 +42,10 @@ const DEFAULT_ART_ASPECT = 1.14;
 const STRIP_FILL = { color: 0xffffff, alpha: 1 } as const;
 /** A row of equilateral triangles marches across the top edge, bases on the start
  * of the top strip (y = 0). Their base is a target fraction of the pack width,
- * rounded to a whole count so they tile the width edge to edge. */
+ * rounded to a whole count so they tile the width edge to edge. They are painted
+ * the same colour as the header band — the row is made visible only by the
+ * per-column overlays drawn on top. */
 const TRIANGLE_BASE_RATIO = 0.1;
-/** Triangle fill — black, to stay legible over the coloured header strip. */
-const TRIANGLE_FILL = { color: 0x000000, alpha: 1 } as const;
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
@@ -291,7 +291,7 @@ export class PackSprite extends Container {
 			const xR = Math.round((i + 1) * triBase);
 			triangles.poly([xL, 0, xR, 0, Math.round((xL + xR) / 2), triHeight]);
 		}
-		triangles.fill(TRIANGLE_FILL);
+		triangles.fill({ color: this.topColor, alpha: 1 });
 		root.addChild(triangles);
 
 		// The first triangle's apex sits on a vertical line at half its base — its
