@@ -2,12 +2,12 @@
 	import classNames from 'classnames';
 	import { browser } from '$app/environment';
 	import MugenFrameSheet from '$components/core/MugenFrameSheet.svelte';
-	import CharacterGridCard from '$components/core/CharacterGridCard.svelte';
 	import CharacterDefinitionEditor from '$components/core/CharacterDefinitionEditor.svelte';
 	import CharacterStatsEditor from '$components/core/CharacterStatsEditor.svelte';
 	import CharacterFacesEditor from '$components/core/CharacterFacesEditor.svelte';
 	import MugenImportedMoves from '$components/core/MugenImportedMoves.svelte';
 	import CharacterTemplateSync from '$components/core/CharacterTemplateSync.svelte';
+	import CharacterShowGroups from '$components/core/CharacterShowGroups.svelte';
 	import { characters, defaultCharacterId } from '@3xl/data';
 	import type { CharacterOption } from '@3xl/data';
 	import type { CharacterDefinition } from '$types/character-definition.type';
@@ -114,18 +114,12 @@
 
 		<CharacterTemplateSync on:statuschange={(event) => (syncStatusById = event.detail)} />
 
-		<div
-			class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
-		>
-			{#each characters as character (character.id)}
-				<CharacterGridCard
-					{character}
-					selected={character.id === selectedId}
-					syncStatus={syncStatusById.get(character.id)}
-					on:select={(event) => (selectedId = event.detail.id)}
-				/>
-			{/each}
-		</div>
+		<CharacterShowGroups
+			{characters}
+			{selectedId}
+			{syncStatusById}
+			on:select={(event) => (selectedId = event.detail.id)}
+		/>
 
 		<div role="tablist" class="tabs tabs-boxed w-fit">
 			<button
