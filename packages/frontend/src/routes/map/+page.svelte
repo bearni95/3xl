@@ -18,6 +18,7 @@
 		type RegionType
 	} from '$utils/geo/region-tree';
 	import { boundsForFeatures } from '$utils/geo/bounds';
+	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import type { MapCircle, MapMarker, MapOverlay } from '$types/map.type';
 	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
 
@@ -284,7 +285,7 @@
 				position: [(south + north) / 2, (west + east) / 2],
 				imageUrl: poster,
 				title: node.show!.name,
-				subtitle: node.name,
+				subtitle: restoreCatalanArticle(node.name),
 				featureIds: [...ids],
 				dimmed: inside ? !inside.has(node.key) : false,
 				onClick: () => open(node.key)
