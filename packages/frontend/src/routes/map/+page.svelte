@@ -92,8 +92,10 @@
 	// under a given child returns that child's key + poster, WorldMap merges them
 	// into one image spanning the child's whole shape. Selecting a municipality
 	// (no deeper tier) paints just that municipality with its own show. Every
-	// municipality outside the selection returns null and stays a plain polygon;
-	// with nothing selected the map shows no imagery at all.
+	// municipality outside the selection returns null and stays a plain polygon.
+	// With nothing selected the map opens on its top view: every municipality
+	// returns its territory tier (levels[0]), so each territory is merged into one
+	// image of its own most-popular show.
 	function buildOverlays(index: Map<string, FillLevel[]>, chosen: string | null): MapOverlay[] {
 		return [
 			{
@@ -108,9 +110,15 @@
 						.join(', ');
 				},
 				imageFill: (feature) => {
-					if (!chosen) return null;
 					const levels = index.get(String(feature.properties?.id));
 					if (!levels) return null;
+					// Top view: with no region selected, image every municipality at its
+					// territory tier (levels[0]), so each territory merges into one image
+					// of its own most-popular show.
+					if (!chosen) {
+						const territory = levels[0];
+						return territory?.url ? { key: territory.key, url: territory.url } : null;
+					}
 					// Find where the chosen region sits in this municipality's chain,
 					// then image the tier one step deeper (its child sub-division) —
 					// unless the chosen region is the municipality itself, which has no
