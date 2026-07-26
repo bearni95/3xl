@@ -60,14 +60,13 @@
 	// @3xl/shared; the per-tier colour is a UI concern, so it's mapped here.
 	$: rarityLabel = wowRarityLabel(typeof draft === 'number' ? draft : DEFAULT_RARITY);
 	const rarityBadgeClass: Record<number, string> = {
-		0: 'badge-ghost',
-		1: 'badge-neutral',
-		2: 'badge-success',
-		3: 'badge-info',
-		4: 'badge-secondary',
+		0: 'badge-neutral',
+		1: 'badge-success',
+		2: 'badge-info',
+		3: 'badge-secondary',
+		4: 'badge-warning',
 		5: 'badge-warning',
-		6: 'badge-warning',
-		7: 'badge-info'
+		6: 'badge-info'
 	};
 
 	$: cardClasses = classNames(

@@ -11,8 +11,8 @@ export interface WowRarity {
 
 /**
  * The WoW quality tiers in ascending rarity, indexed by our numeric `rarity`
- * field: index 0 is the most common tier (Poor) — matching the rarity default —
- * and each step up is rarer (Common, Uncommon, Rare, Epic, Legendary, …).
+ * field: index 0 is the most common tier (Common) — matching the rarity default
+ * — and each step up is rarer (Uncommon, Rare, Epic, Legendary, …).
  */
 export const WOW_RARITIES: readonly WowRarity[] = rarities;
 
