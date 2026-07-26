@@ -1,6 +1,8 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
 	import ClaimPanel from '$components/core/ClaimPanel.svelte';
@@ -29,30 +31,39 @@
 	let ready = false;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
-	// The single region currently selected in the sidebar, by its node key — the
-	// only region the map paints with its poster. A node's key matches the fill
-	// index: a territory is its own id, deeper tiers append theirs, a municipality
-	// is its own id. Null until the player picks a region.
-	let selected: string | null = null;
-	// The unfolded rows of the table, by region key. A row with children reveals
-	// its next tier as indented subrows while its key is in this set.
-	let expanded = new Set<string>();
+	// The single open region, driven entirely by the `region` query param, by its
+	// node key — the only region the map paints with its poster, and the head of
+	// the one open drill path. A node's key matches the fill index: a territory is
+	// its own id, deeper tiers append theirs, a municipality is its own id. Null
+	// (no param) means nothing is open — the map's top view.
+	$: selected = $page.url.searchParams.get('region');
 
-	// The region-tier tabs above the table, which set the table's top tier — the
-	// rows you drill down from. Territory is the default active tab.
+	// The breadcrumb tiers, shown as a 4-col button grid above the table. The
+	// active button mirrors the open region's tier; the table itself always drills
+	// from Territory.
 	const tierTabs = ['Territory', 'Province', 'Comarca', 'Municipality'] as const;
-	type Tier = (typeof tierTabs)[number];
-	let activeTier: Tier = 'Territory';
 
-	// Clicking a row marks its region as the one the map images and, when the row
-	// has a deeper tier, unfolds (or re-folds) its children as subrows.
+	// Point the URL at a region (or clear it), which reactively re-derives every
+	// piece of open/expanded/selected state below. Pushed as history so the back
+	// button walks the drill path; focus and scroll are preserved across the nav.
+	function open(key: string | null) {
+		const params = new URLSearchParams($page.url.searchParams);
+		if (key) params.set('region', key);
+		else params.delete('region');
+		const query = params.toString();
+		goto(query ? `?${query}` : location.pathname, { keepFocus: true, noScroll: true });
+	}
+
+	// Clicking a row opens its region; clicking the already-open row collapses one
+	// tier back up its path (to its parent, or the top view for a territory). Only
+	// the clicked path is ever open, so the table behaves as a single accordion.
 	function select(row: RegionRow) {
-		selected = row.key;
-		if (!row.hasChildren) return;
-		const next = new Set(expanded);
-		if (next.has(row.key)) next.delete(row.key);
-		else next.add(row.key);
-		expanded = next;
+		if (row.key === selected) {
+			const path = nodePath(regionNodes, row.key);
+			open(path.length > 1 ? path[path.length - 2].key : null);
+		} else {
+			open(row.key);
+		}
 	}
 
 	onMount(async () => {
@@ -190,10 +201,37 @@
 	// comarca → municipality) mirrored from the map's divisions, for the tree.
 	$: regionTree = buildRegionTree(municipalities, showsById);
 
-	// The nested region nodes, and the visible rows drilled from the active tier:
-	// each top-tier region plus the unfolded children of any expanded row.
+	// The nested region nodes. The table always drills from Territory; the single
+	// open path (below) is what unfolds, so exactly one branch is ever expanded.
 	$: regionNodes = buildRegionNodes(regionTree);
-	$: regionRows = visibleRegionRows(regionNodes, activeTier, expanded);
+	$: regionRows = visibleRegionRows(regionNodes, 'Territory', expanded);
+
+	// The chain of nodes from the top territory down to the open region (empty when
+	// nothing is open). Its keys are the expanded set — every ancestor plus the
+	// open node itself (so the open region's own children unfold) — which is what
+	// makes the table a single accordion.
+	$: openPath = selected ? nodePath(regionNodes, selected) : [];
+	$: expanded = new Set(openPath.map((node) => node.key));
+
+	// The tier the open region sits at (Territory at the top view), which the
+	// breadcrumb grid highlights. Each button carries the ancestor at its tier, if
+	// the open path reaches it, so clicking collapses back up to that tier.
+	$: openTier = openPath.length ? openPath[openPath.length - 1].type : 'Territory';
+	$: tierButtons = tierTabs.map((tier) => ({
+		tier,
+		node: openPath.find((node) => node.type === tier) ?? null,
+		active: tier === openTier
+	}));
+
+	// The path of nodes from a root territory down to `key`, or [] if not found.
+	function nodePath(nodes: RegionNode[], key: string): RegionNode[] {
+		for (const node of nodes) {
+			if (node.key === key) return [node];
+			const below = nodePath(node.children, key);
+			if (below.length) return [node, ...below];
+		}
+		return [];
+	}
 
 	// Per-municipality chain of paint tiers, read by the map's imageFill to pick
 	// each polygon's poster and by focusBounds to frame the selected region.
@@ -262,11 +300,12 @@
 		<div class="border-b border-base-300 px-4 py-3">
 			<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Regions</h2>
 			<div class="join mt-2 grid grid-cols-4">
-				{#each tierTabs as tier}
+				{#each tierButtons as { tier, node, active }}
 					<button
 						type="button"
-						class={classNames('btn btn-primary join-item', { 'btn-outline': activeTier !== tier })}
-						on:click={() => (activeTier = tier)}
+						class={classNames('btn btn-primary join-item', { 'btn-outline': !active })}
+						disabled={!active && !node}
+						on:click={() => node && node.key !== selected && open(node.key)}
 					>
 						{tier}
 					</button>
