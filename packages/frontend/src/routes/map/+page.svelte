@@ -4,6 +4,7 @@
 	import type { PathOptions } from 'leaflet';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTree from '$components/core/RegionTree.svelte';
+	import ClaimPanel from '$components/core/ClaimPanel.svelte';
 	import {
 		buildRegionTree,
 		buildFillIndex,
@@ -169,14 +170,18 @@
 		(GIRONA[1] + ALGUER[1]) / 2
 	];
 
+	// Whether the portal modal — the /claim experience surfaced over the map — is open.
+	let portalOpen = false;
+
 	// The mythical "Portal", floating in open Mediterranean water at the middle
-	// of the Girona–l'Alguer line.
+	// of the Girona–l'Alguer line. Clicking it opens the claim panel in a modal.
 	const circles: MapCircle[] = [
 		{
 			center: PORTAL_CENTER,
 			radius: 30000,
 			style: { color: '#a855f7', weight: 2, fillColor: '#a855f7', fillOpacity: 0.35 },
-			label: 'Portal'
+			label: 'Portal',
+			onClick: () => (portalOpen = true)
 		}
 	];
 
@@ -294,3 +299,22 @@
 		/>
 	</aside>
 </div>
+
+{#if portalOpen}
+	<div class="modal modal-open">
+		<div class="modal-box max-h-[90vh] w-fit max-w-none overflow-y-auto bg-base-200">
+			<div class="mb-4 flex items-center justify-between gap-4">
+				<h2 class="text-lg font-bold">Portal</h2>
+				<button class="btn btn-circle btn-ghost btn-sm" on:click={() => (portalOpen = false)}>
+					✕
+				</button>
+			</div>
+			<ClaimPanel />
+		</div>
+		<button
+			class="modal-backdrop"
+			aria-label="Close portal"
+			on:click={() => (portalOpen = false)}
+		></button>
+	</div>
+{/if}

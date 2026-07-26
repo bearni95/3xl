@@ -55,4 +55,6 @@ export interface MapCircle {
 	style: PathOptions;
 	/** Text shown as a permanent centred label over the circle. */
 	label?: string;
+	/** Called when the circle is clicked. */
+	onClick?: () => void;
 }

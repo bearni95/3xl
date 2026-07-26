@@ -294,6 +294,9 @@
 					className: 'bg-transparent! border-none! shadow-none! font-bold text-white!'
 				});
 			}
+			if (circle.onClick) {
+				shape.on('click', () => circle.onClick!());
+			}
 		}
 
 		// Keep every group's image aligned as the map reprojects.
