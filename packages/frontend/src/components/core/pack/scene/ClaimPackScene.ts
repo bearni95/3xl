@@ -408,7 +408,7 @@ export class ClaimPackScene {
 
 		for (let i = 0; i < this.pulls.length; i++) {
 			const pull = this.pulls[i];
-			const sprite = new RevealCardSprite({ pull, width: cardW, height: cardH });
+			const sprite = new RevealCardSprite({ pull, width: cardW, height: cardH, app: this.app });
 			sprite.pivot.set(cardW / 2, cardH / 2);
 			sprite.position.set(centerX + i * 0.7, centerY + i * 0.7);
 			sprite.rotation = 0;

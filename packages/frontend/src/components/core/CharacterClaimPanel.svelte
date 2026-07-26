@@ -6,18 +6,24 @@
 	import { errorMessage } from '$utils/error/error-message';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import { AuthStatus } from '$types/profile.type';
-	import type { CharacterSpawn, ClaimableShow } from '$types/character-spawn.type';
+	import { SPAWN_STAT_MAX, type CharacterSpawn, type ClaimableShow } from '$types/character-spawn.type';
 	import type { GeoRegion } from '$types/location.type';
 	import type { ShowsCollection } from '$types/show.type';
 	import { showPosterUrl } from '$utils/geo/municipality-show';
 	import ShowClaimCard from '$components/core/ShowClaimCard.svelte';
 	import RosterCard from '$components/core/RosterCard.svelte';
-	import ClaimPackOpenerModal from '$components/core/pack/ClaimPackOpenerModal.svelte';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
+	import type { OpenerView } from '$components/core/pack/scene/opener-view.type';
 
 	// The municipality the player has resolved from their browser location, from the
 	// /claim page's "Claim your location" panel.
 	export let region: GeoRegion | null = null;
+
+	// All the state the (non-modal) pack-opener canvas needs, surfaced to the parent
+	// so it can render the canvas in a sibling column to the right of this content.
+	// Null while no pack is open. Bound by the parent (`bind:opener`); the parent
+	// drives the canvas via the exported `openAnother`/`closeOpener` methods.
+	export let opener: OpenerView | null = null;
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -135,12 +141,15 @@
 			// the show's poster is the pack cover, the rolled character is the card.
 			openerShow = show;
 			openerPosterUrl = posterByShowId.get(show.id) ?? null;
+			// ATK/DEF mirror the board: ATK is the rolled spawn stat, DEF its complement.
 			openerPull = {
 				spawn,
 				label: labelFor(spawn.characterId),
+				basePath,
 				faceUrl,
 				color: spawn.color,
-				stat: spawn.stat
+				atk: spawn.stat,
+				def: SPAWN_STAT_MAX - spawn.stat
 			};
 			openSession += 1;
 		} catch (error) {
@@ -150,12 +159,27 @@
 		}
 	}
 
+	// The opener view handed up to the parent, recomputed whenever a roll resolves
+	// (openerPull/openerShow set) or the rolling/location state changes.
+	$: opener =
+		openerShow && openerPull
+			? {
+					coverUrl: openerPosterUrl,
+					label: openerShow.name,
+					pulls: [openerPull],
+					openSession,
+					openAnotherBusy: claimingId !== null,
+					openAnotherDisabled: !locationId || claimingId !== null
+				}
+			: null;
+
 	// Re-roll from the same show without leaving the opener — reveals a fresh card.
-	function openAnother() {
+	// Exported so the parent's opener column can drive it.
+	export function openAnother() {
 		if (openerShow) void claimFromShow(openerShow);
 	}
 
-	function closeOpener() {
+	export function closeOpener() {
 		openerShow = null;
 		openerPull = null;
 	}
@@ -242,16 +266,3 @@
 		{/if}
 	</div>
 </div>
-
-{#if openerShow && openerPull}
-	<ClaimPackOpenerModal
-		coverUrl={openerPosterUrl}
-		packLabel={openerShow.name}
-		pulls={[openerPull]}
-		{openSession}
-		openAnotherBusy={claimingId !== null}
-		openAnotherDisabled={!locationId || claimingId !== null}
-		on:close={closeOpener}
-		on:openAnother={openAnother}
-	/>
-{/if}
