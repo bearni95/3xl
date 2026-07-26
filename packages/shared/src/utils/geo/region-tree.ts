@@ -150,6 +150,40 @@ export function buildRegionNodes(territories: RegionTerritory[]): RegionNode[] {
 	});
 }
 
+/**
+ * One region flattened out of the tree for free-text search: its selection key,
+ * name, tier, top show, and the ancestor region names from the top territory
+ * down to (but not including) it — shown on the search card for context.
+ */
+export interface RegionSearchEntry {
+	key: string;
+	name: string;
+	type: RegionType;
+	show?: RegionShow;
+	path: string[];
+}
+
+/**
+ * Every region in the tree, at every tier, flattened for search. Each entry
+ * carries the chain of ancestor names above it so a match can be shown in
+ * context (e.g. a municipality under its comarca / province / territory).
+ */
+export function flattenRegionNodes(nodes: RegionNode[]): RegionSearchEntry[] {
+	const entries: RegionSearchEntry[] = [];
+	const walk = (node: RegionNode, ancestors: string[]) => {
+		entries.push({
+			key: node.key,
+			name: node.name,
+			type: node.type,
+			show: node.show,
+			path: ancestors
+		});
+		for (const child of node.children) walk(child, [...ancestors, node.name]);
+	};
+	for (const node of nodes) walk(node, []);
+	return entries;
+}
+
 /** A row the sidebar table renders: one region at the current drill level. */
 export interface RegionRow {
 	key: string;

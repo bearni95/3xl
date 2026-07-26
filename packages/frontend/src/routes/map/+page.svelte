@@ -4,12 +4,14 @@
 	import { goto } from '$app/navigation';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
+	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import ClaimPanel from '$components/core/ClaimPanel.svelte';
 	import {
 		buildRegionTree,
 		buildFillIndex,
 		buildRegionNodes,
 		regionRowsForSelection,
+		flattenRegionNodes,
 		nodePath,
 		municipalityIdsForKey,
 		type FillLevel,
@@ -197,23 +199,30 @@
 
 	$: regionRows = regionRowsForSelection(regionNodes, effectiveSelected);
 
-	// Free-text filter over the rows currently in the table, matched against each
-	// region's displayed name (case- and accent-insensitive). Empty shows them all.
-	let regionFilter = '';
-	$: normalizedFilter = regionFilter
-		.trim()
-		.toLowerCase()
-		.normalize('NFD')
-		.replace(/\p{Diacritic}/gu, '');
-	$: filteredRegionRows = normalizedFilter
-		? regionRows.filter((row) =>
-				restoreCatalanArticle(row.name)
-					.toLowerCase()
-					.normalize('NFD')
-					.replace(/\p{Diacritic}/gu, '')
-					.includes(normalizedFilter)
-			)
-		: regionRows;
+	// Free-text search across every location in the whole tree (all tiers), matched
+	// against each region's displayed name (case- and accent-insensitive). While the
+	// box holds text the sidebar shows the matches as cards instead of the drill
+	// table; an empty box falls back to the table for the current view.
+	let searchQuery = '';
+	const foldText = (value: string) =>
+		value
+			.toLowerCase()
+			.normalize('NFD')
+			.replace(/\p{Diacritic}/gu, '');
+	$: normalizedQuery = foldText(searchQuery.trim());
+	$: allRegions = flattenRegionNodes(regionNodes);
+	$: searchResults = normalizedQuery
+		? allRegions
+				.filter((entry) => foldText(restoreCatalanArticle(entry.name)).includes(normalizedQuery))
+				.slice(0, 100)
+		: [];
+
+	// Opening a search result reuses the drill logic (URL region param → map
+	// framing + table), then clears the search so the cards give way to the table.
+	function openSearchResult(entry: { key: string }) {
+		searchQuery = '';
+		open(entry.key);
+	}
 
 	// The breadcrumb crumbs: a root crumb back to the top view, then one per
 	// ancestor down to the effective region. The last crumb is the current region
@@ -475,14 +484,18 @@
 
 		<div class="border-b border-base-300 px-4 py-3">
 			<input
-				type="text"
+				type="search"
 				class="input input-bordered input-sm w-full"
-				placeholder="Filter by name…"
-				bind:value={regionFilter}
+				placeholder="Search locations…"
+				bind:value={searchQuery}
 			/>
 		</div>
 
-		<RegionTable rows={filteredRegionRows} onSelect={select} />
+		{#if normalizedQuery}
+			<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
+		{:else}
+			<RegionTable rows={regionRows} onSelect={select} />
+		{/if}
 	</aside>
 
 	<div class="relative flex min-w-0 flex-1 flex-col">
