@@ -159,11 +159,11 @@ export class PackSprite extends Container {
 		root.addChild(bg);
 
 		if (cover && cover.width > 0 && cover.height > 0) {
-			// The whole poster, `object-contain`: scaled to fit inside the pack
-			// with its full extent visible, centred over the black backing.
+			// The poster, `object-cover`: scaled so it fully covers the pack,
+			// centred and cropped by the render target (no black letterbox).
 			const imgW = cover.width;
 			const imgH = cover.height;
-			const scale = Math.min(w / imgW, h / imgH);
+			const scale = Math.max(w / imgW, h / imgH);
 			const drawW = imgW * scale;
 			const drawH = imgH * scale;
 
