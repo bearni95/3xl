@@ -107,6 +107,9 @@
 			url: '/data/geo/municipis.json',
 			style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
 			hoverStyle: { weight: 2, fillOpacity: 0.3 },
+			// On hover, paint the municipality with its own assigned show's cover.
+			hoverImage: (feature) =>
+				assignmentsById.get(String(feature.properties?.id))?.show.posterUrl ?? null,
 			label: (feature) => {
 				const props = feature.properties ?? {};
 				const show = assignmentsById.get(String(props.id))?.show.name;

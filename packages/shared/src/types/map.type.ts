@@ -8,6 +8,12 @@ export interface MapOverlay {
 	style: PathOptions;
 	/** Style merged onto a feature while hovered; reset on mouseout. */
 	hoverStyle?: PathOptions;
+	/**
+	 * Returns an image URL to paint across a feature (stretched to its bounding
+	 * box) while it is hovered, or null for none. Lets each polygon reveal its own
+	 * TV show cover on hover; falls back to `hoverStyle` when null.
+	 */
+	hoverImage?: (feature: GeoJSON.Feature) => string | null;
 	/** Returns the hover tooltip label for a feature. */
 	label?: (feature: GeoJSON.Feature) => string;
 	/** Called when a feature is clicked. */
