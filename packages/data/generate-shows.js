@@ -34,6 +34,11 @@ const OUTPUT = resolve(here, 'public/municipality-shows.json');
 // a boundary vertex with it are flagged for painting.
 const CENTER_NAME = 'Barcelona';
 
+// The shows eligible for assignment, by exact name. Only these are drawn from
+// the saved shows.json pool, so every municipality gets one of them; set to null
+// (or empty) to use the whole pool. Kept here so a re-run reproduces the subset.
+const SHOW_ALLOWLIST = ['Dragon Ball Z', 'InuYasha', 'One Piece'];
+
 /**
  * Fold every coordinate number of a GeoJSON geometry into a 32-bit FNV-1a hash
  * — the municipality's "GPS seed". Mirrors coordinateSeed() in the shared util.
@@ -120,10 +125,27 @@ function showPosterUrl(entry) {
 }
 
 const municipis = JSON.parse(readFileSync(MUNICIPIS, 'utf8'));
-const { shows } = JSON.parse(readFileSync(SHOWS, 'utf8'));
+const { shows: allShows } = JSON.parse(readFileSync(SHOWS, 'utf8'));
 
-if (!Array.isArray(shows) || shows.length === 0) {
+if (!Array.isArray(allShows) || allShows.length === 0) {
 	throw new Error(`No shows in ${SHOWS} — author some in the admin /shows screen first.`);
+}
+
+// Restrict the assignment pool to the allow-listed shows (order preserved from
+// shows.json so the seeded pick stays deterministic); an empty/null list uses all.
+const shows =
+	SHOW_ALLOWLIST && SHOW_ALLOWLIST.length
+		? allShows.filter((entry) => SHOW_ALLOWLIST.includes(entry.show.name))
+		: allShows;
+
+const missing = (SHOW_ALLOWLIST ?? []).filter(
+	(name) => !allShows.some((entry) => entry.show.name === name)
+);
+if (missing.length) {
+	throw new Error(`Allow-listed shows not found in ${SHOWS}: ${missing.join(', ')}`);
+}
+if (shows.length === 0) {
+	throw new Error(`SHOW_ALLOWLIST matched no shows in ${SHOWS}.`);
 }
 
 const neighbourhood = immediateNeighbourhood(municipis.features, CENTER_NAME);
