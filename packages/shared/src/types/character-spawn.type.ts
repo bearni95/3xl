@@ -51,7 +51,7 @@ export interface CharacterSpawn {
 
 /** Inclusive bounds a rolled spawn stat is constrained to. */
 export const SPAWN_STAT_MIN = 1;
-export const SPAWN_STAT_MAX = 10;
+export const SPAWN_STAT_MAX = 9;
 
 /** Value legacy spawns (or invalid/out-of-range ones) read as. */
 export const DEFAULT_SPAWN_STAT = 1;

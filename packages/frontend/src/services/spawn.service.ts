@@ -118,7 +118,7 @@ class SpawnService {
 	 * rolled across all shows) and the municipality it was claimed in
 	 * (`locationId`, a geojson feature id). A location is required — a spawn
 	 * cannot be claimed without one. Each spawn also rolls a weighted colour and a
-	 * gameplay stat (1..10). The new spawn is prepended to the store and returned.
+	 * gameplay stat (1..9). The new spawn is prepended to the store and returned.
 	 */
 	async claimRandom(
 		userId: string,
