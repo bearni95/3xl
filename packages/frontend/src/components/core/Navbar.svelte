@@ -1,19 +1,37 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { getRoutes } from '$utils/routes/get-routes';
 	import NavMenu from '$components/core/NavMenu.svelte';
+	import ProfileCard from '$components/core/ProfileCard.svelte';
+	import { authService } from '$services/auth.service';
 	import type { RouteNode } from '$types/navigation.type';
 
 	export let brand: string = '3XL';
 	export let classes: string = '';
 
 	const routes: RouteNode[] = getRoutes();
+	const profile = authService.profile;
 
 	// Path of the top-level node whose submenu is currently unfolded.
 	let openPath: string | null = null;
+	let signingOut = false;
+
+	onMount(() => authService.init());
 
 	$: current = $page.url.pathname;
+	$: profileInitial = ($profile?.displayName || $profile?.email || '?').charAt(0).toUpperCase();
+
+	async function handleSignOut(): Promise<void> {
+		if (signingOut) return;
+		signingOut = true;
+		try {
+			await authService.signOut();
+		} finally {
+			signingOut = false;
+		}
+	}
 
 	function isActive(node: RouteNode): boolean {
 		if (current === node.path) return true;
@@ -102,7 +120,32 @@
 		</ul>
 	</div>
 
-	<div class="navbar-end"></div>
+	<div class="navbar-end">
+		{#if $profile}
+			<!-- Signed-in username; hovering slides the profile card down. -->
+			<div class="group relative">
+				<button type="button" class="btn btn-ghost btn-sm gap-2">
+					<div class="avatar avatar-placeholder">
+						<div class="w-6 rounded-full bg-primary text-primary-content">
+							<span class="text-xs">{profileInitial}</span>
+						</div>
+					</div>
+					<span class="max-w-[10rem] truncate">{$profile.displayName}</span>
+				</button>
+
+				<!-- pt-2 keeps the hover area unbroken across the visual gap. -->
+				<div
+					class="invisible absolute right-0 top-full z-20 origin-top -translate-y-2 pt-2 opacity-0 transition duration-200 ease-out group-hover:visible group-hover:translate-y-0 group-hover:opacity-100"
+				>
+					<div class="card w-80 bg-base-100 shadow-xl">
+						<div class="card-body">
+							<ProfileCard profile={$profile} {signingOut} on:signout={handleSignOut} />
+						</div>
+					</div>
+				</div>
+			</div>
+		{/if}
+	</div>
 </nav>
 
 <!-- Click-away layer to close an open submenu. -->

@@ -24,6 +24,16 @@ export interface ClaimPull {
 	faceUrl: string | null;
 	/** The weighted colour rolled for the spawn — the card's backdrop. */
 	color: SpawnColor;
+	/**
+	 * The character template's rarity tier (a WoW quality index — see
+	 * `wowRarityLabel`), or null when the character has no rarity to show.
+	 */
+	rarity: number | null;
+	/**
+	 * Human-readable name of the location the spawn was claimed in (the
+	 * municipality), or null when the spawn carries no location.
+	 */
+	locationName: string | null;
 	/** Attack: the spawn's rolled gameplay stat (same as the board's ATK). */
 	atk: number;
 	/** Defence: the complement of ATK (SPAWN_STAT_MAX − stat), as the board computes it. */

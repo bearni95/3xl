@@ -53,6 +53,9 @@
 	// stat comes straight off the spawn (rolled at claim time).
 	const charactersById = new Map(characters.map((character) => [character.id, character]));
 	let characterShowNames = new Map<string, string[]>();
+	// Per-character rarity tier from Supabase `character_templates`, so the revealed
+	// card can show the claimed character's rarity. Empty until the shows load.
+	let rarityByCharacter = new Map<string, number>();
 
 	// The most recently claimed spawn, shown as a RosterCard so the player sees
 	// exactly what they rolled. Its face and place name are captured at claim time.
@@ -101,7 +104,7 @@
 		loadingShows = true;
 		showsError = '';
 		try {
-			const [showList, showNames] = await Promise.all([
+			const [showList, showNames, rarities] = await Promise.all([
 				spawnService.loadShows(),
 				spawnService.loadCharacterShowNames(),
 				// Warm the rarity cache so claimRandom can weight its roll by rarity.
@@ -109,6 +112,7 @@
 			]);
 			shows = showList;
 			characterShowNames = showNames;
+			rarityByCharacter = rarities;
 		} catch (error) {
 			showsError = errorMessage(error);
 		} finally {
@@ -150,6 +154,8 @@
 				basePath,
 				faceUrl,
 				color: spawn.color,
+				rarity: rarityByCharacter.get(spawn.characterId) ?? null,
+				locationName: lastLocationName || null,
 				atk: spawn.stat,
 				def: SPAWN_STAT_MAX - spawn.stat
 			};

@@ -5,13 +5,15 @@
  * drawn as a trading card that mirrors RosterCard: the spawn's rolled colour is
  * the portrait backdrop, a dark header strip at the top carries the character
  * name, the character's looping idle animation plays in the middle (contained
- * within the art area), and a dark footer carries its ATK/DEF. The idle frames
- * (and the fallback face) are lazy-loaded via the shared cache; the parent scene
- * drives all positioning and tweens.
+ * within the art area), a meta strip below it carries the rarity and claim
+ * location, and a dark footer carries its ATK/DEF. The idle frames (and the
+ * fallback face) are lazy-loaded via the shared cache; the parent scene drives
+ * all positioning and tweens.
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { SpawnColor } from '$types/character-spawn.type';
+import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 import type { ClaimPull } from './pull.type';
 import { textureCache, type IdleFrame } from './texture-cache';
 
