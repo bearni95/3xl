@@ -6,6 +6,32 @@
     "width": 138,
     "height": 157
   },
+  "faces": [
+    {
+      "file": "spr_9000_0.png",
+      "image": 0,
+      "width": 25,
+      "height": 25
+    },
+    {
+      "file": "spr_9000_1.png",
+      "image": 1,
+      "width": 138,
+      "height": 157
+    },
+    {
+      "file": "spr_9000_2.png",
+      "image": 2,
+      "width": 118,
+      "height": 139
+    },
+    {
+      "file": "spr_9000_11.png",
+      "image": 11,
+      "width": 70,
+      "height": 69
+    }
+  ],
   "animations": {
     "idle": {
       "loop": true,

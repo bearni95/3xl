@@ -101,6 +101,20 @@ export function parseAllActions(airText) {
 	return actions.filter((a) => a.frames.length > 0);
 }
 
+/**
+ * Per-character default-palette overrides, keyed by characters-src/ folder.
+ * The automatic pick (findDefaultPalette → first resolving palN) is right for
+ * most SFF v1 characters, but a few .defs ship a pal1 that isn't the character's
+ * canonical look and declare no usable default in metadata. VinceJ's Kagome is
+ * one: pal1 (final_kagome.act) is a blue recolour and pal.defaults points at a
+ * brown alt, while her green school-uniform seifuku — the look on her own versus
+ * portrait — is pal2 (idunno.act). The value is an .act filename resolved
+ * case-insensitively against the character's src dir (subfolders allowed).
+ */
+export const PALETTE_OVERRIDES = {
+	kagome: 'idunno.act'
+};
+
 /** Assign a unique animation name for an action number. */
 function nameForAction(action, used) {
 	let base = STANDARD_NAMES[action] ?? `action-${action}`;
@@ -198,7 +212,15 @@ export function buildCharacter(character) {
 	// (portraits, effects) are untouched. SFF v2 embeds real palettes and never
 	// needs this.
 	const sffBuffer = readFileSync(join(srcDir, character.sff));
-	const actPath = sffBuffer.readUInt8(15) === 1 ? findDefaultPalette(srcDir, defText) : null;
+	const overrideRel = PALETTE_OVERRIDES[character.dir]
+		? resolveRelPath(srcDir, PALETTE_OVERRIDES[character.dir])
+		: null;
+	const actPath =
+		sffBuffer.readUInt8(15) === 1
+			? overrideRel
+				? join(srcDir, overrideRel)
+				: findDefaultPalette(srcDir, defText)
+			: null;
 	const groups = [...new Set([9000, ...actions.flatMap((a) => a.frames.map((f) => f.group))])];
 	const data = extract(sffBuffer, {
 		palettes: false,
