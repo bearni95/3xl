@@ -456,6 +456,14 @@
 		selected && municipalities
 			? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
 			: null;
+
+	// The municipality ids under the open (URL-selected) region — every polygon the
+	// map paints with the selected fill, so the whole selected location stays filled.
+	$: selectedIds =
+		selected && municipalities ? municipalityIdsForKey(fillIndex, selected) : new Set<string>();
+
+	// The persistent fill painted across the selected region's municipality polygons.
+	const selectedFillStyle = { fillColor: '#6366f1', fillOpacity: 0.45, weight: 1 };
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
@@ -508,6 +516,8 @@
 				{markerLevels}
 				{hiddenLineUrls}
 				{focusBounds}
+				{selectedIds}
+				selectedStyle={selectedFillStyle}
 				bind:currentZoom
 				bind:activeLevel
 				bind:currentCenter

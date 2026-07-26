@@ -15,6 +15,8 @@
 		markerLevels = null,
 		highlightId = null,
 		highlightStyle = null,
+		selectedIds = new Set<string>(),
+		selectedStyle = null,
 		hiddenLineUrls = new Set<string>(),
 		focusBounds = null,
 		currentZoom = $bindable(zoom),
@@ -51,6 +53,15 @@
 		highlightId?: string | null;
 		/** Style merged over the highlighted feature's base style. */
 		highlightStyle?: L.PathOptions | null;
+		/**
+		 * `properties.id`s of every feature that belongs to the selected region —
+		 * painted with `selectedStyle` and kept painted (unlike the transient hover),
+		 * so the whole selected location stays filled. Reactive: repaints when the
+		 * selection changes.
+		 */
+		selectedIds?: Set<string>;
+		/** Style merged over the base style of each feature in `selectedIds`. */
+		selectedStyle?: L.PathOptions | null;
 		/**
 		 * `url`s of the overlays whose stroke should be suppressed. A hidden overlay
 		 * keeps its fill but drops its border, so sub-division lines don't crowd the
@@ -105,6 +116,11 @@
 		if (highlightId != null && highlightStyle && feature?.properties?.id === highlightId) {
 			style = { ...style, ...highlightStyle };
 		}
+		// Keep every feature of the selected region painted with the selected style,
+		// so the whole selected location's background stays filled (not just on hover).
+		if (selectedStyle && feature?.properties?.id != null && selectedIds.has(String(feature.properties.id))) {
+			style = { ...style, ...selectedStyle };
+		}
 		// Suppress the stroke of a hidden overlay while keeping its fill, so a
 		// sub-division border no longer draws over a coarser tier's region.
 		if (hiddenLineUrls.has(overlay.url)) {
@@ -118,6 +134,8 @@
 		// re-runs each group's style option, which now reflects the new state.
 		void highlightId;
 		void highlightStyle;
+		void selectedIds;
+		void selectedStyle;
 		void hiddenLineUrls;
 		for (const group of overlayGroups) group.resetStyle();
 	});
