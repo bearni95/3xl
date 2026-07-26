@@ -3,10 +3,11 @@
  *
  * A single revealed card in the pack-opening canvas — one claimed character,
  * drawn as a trading card that mirrors RosterCard: the spawn's rolled colour is
- * the portrait backdrop, the character's looping idle animation plays on top
- * (contained within the art area), and a dark footer carries the character label
- * and its ATK/DEF. The idle frames (and the fallback face) are lazy-loaded via
- * the shared cache; the parent scene drives all positioning and tweens.
+ * the portrait backdrop, a dark header strip at the top carries the character
+ * name, the character's looping idle animation plays in the middle (contained
+ * within the art area), and a dark footer carries its ATK/DEF. The idle frames
+ * (and the fallback face) are lazy-loaded via the shared cache; the parent scene
+ * drives all positioning and tweens.
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
@@ -65,9 +66,11 @@ export class RevealCardSprite extends Container {
 		this.app = opts.app;
 
 		const radius = Math.max(6, this.cardWidth * 0.05);
-		const footerH = Math.round(this.cardHeight * 0.18);
-		const artH = this.cardHeight - footerH;
-		this.artArea = { x: 0, y: 0, w: this.cardWidth, h: artH };
+		// A name header at the top, the art in the middle, an ATK/DEF footer below.
+		const headerH = Math.round(this.cardHeight * 0.14);
+		const footerH = Math.round(this.cardHeight * 0.16);
+		const footerY = this.cardHeight - footerH;
+		this.artArea = { x: 0, y: headerH, w: this.cardWidth, h: footerY - headerH };
 
 		// Colored portrait backdrop (the spawn's rolled colour), with a black
 		// border to match the roster card framing.
@@ -78,9 +81,15 @@ export class RevealCardSprite extends Container {
 		backdrop.stroke({ width: 2, color: 0x000000, alpha: 0.9 });
 		this.addChild(backdrop);
 
-		// Dark footer strip carrying the label + ATK/DEF.
+		// Dark header strip at the top, carrying the character name.
+		const header = new Graphics();
+		header.rect(0, 0, this.cardWidth, headerH);
+		header.fill({ color: 0x111827, alpha: 0.92 });
+		this.addChild(header);
+
+		// Dark footer strip carrying the ATK/DEF.
 		const footer = new Graphics();
-		footer.rect(0, artH, this.cardWidth, footerH);
+		footer.rect(0, footerY, this.cardWidth, footerH);
 		footer.fill({ color: 0x111827, alpha: 0.92 });
 		this.addChild(footer);
 
@@ -100,7 +109,8 @@ export class RevealCardSprite extends Container {
 		this.artSprite = new Sprite(Texture.EMPTY);
 		this.addChild(this.artSprite);
 
-		this.addChild(this.makeLabels(artH, footerH));
+		this.addChild(this.makeName(headerH));
+		this.addChild(this.makeStats(footerY, footerH));
 
 		void this.loadArt();
 	}
@@ -237,17 +247,13 @@ export class RevealCardSprite extends Container {
 		this.shadowSprite.position.set(x + dx, y + dy);
 	}
 
-	/** The character name (upper) and its ATK/DEF (lower), centred in the footer. */
-	private makeLabels(artH: number, footerH: number): Container {
-		const group = new Container();
-		const nameSize = Math.max(10, Math.round(this.cardWidth * 0.09));
-		const statSize = Math.max(9, Math.round(this.cardWidth * 0.075));
-
+	/** The character name, centred in the top header strip. */
+	private makeName(headerH: number): Text {
 		const name = new Text({
 			text: this.pull.label,
 			style: {
 				fontFamily: 'sans-serif',
-				fontSize: nameSize,
+				fontSize: Math.max(10, Math.round(this.cardWidth * 0.09)),
 				fontWeight: '700',
 				fill: 0xf2f2f2,
 				align: 'center',
@@ -256,23 +262,24 @@ export class RevealCardSprite extends Container {
 			}
 		});
 		name.anchor.set(0.5);
-		name.position.set(this.cardWidth / 2, artH + footerH * 0.36);
-		group.addChild(name);
+		name.position.set(this.cardWidth / 2, headerH / 2);
+		return name;
+	}
 
+	/** The character's ATK/DEF, centred in the bottom footer strip. */
+	private makeStats(footerY: number, footerH: number): Text {
 		const stats = new Text({
 			text: `ATK ${this.pull.atk}  ·  DEF ${this.pull.def}`,
 			style: {
 				fontFamily: 'sans-serif',
-				fontSize: statSize,
+				fontSize: Math.max(9, Math.round(this.cardWidth * 0.08)),
 				fontWeight: '600',
 				fill: 0x9ca3af,
 				align: 'center'
 			}
 		});
 		stats.anchor.set(0.5);
-		stats.position.set(this.cardWidth / 2, artH + footerH * 0.72);
-		group.addChild(stats);
-
-		return group;
+		stats.position.set(this.cardWidth / 2, footerY + footerH / 2);
+		return stats;
 	}
 }
