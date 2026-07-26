@@ -146,10 +146,12 @@ export class RevealCardSprite extends Container {
 	}
 
 	override destroy(options?: Parameters<Container['destroy']>[0]): void {
-		if (this.tickerAdded) {
+		// When the whole scene is torn down, `app.destroy()` nulls the ticker before
+		// it recursively destroys children, so guard against it already being gone.
+		if (this.tickerAdded && this.app.ticker) {
 			this.app.ticker.remove(this.tick);
-			this.tickerAdded = false;
 		}
+		this.tickerAdded = false;
 		super.destroy(options);
 	}
 
