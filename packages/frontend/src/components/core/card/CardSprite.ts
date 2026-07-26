@@ -32,6 +32,15 @@ const SHADOW_OFFSET_Y_RATIO = 0.045;
 /** Opacity of the black silhouette drop-shadow. */
 const SHADOW_ALPHA = 0.45;
 
+/**
+ * Native source-pixel height treated as a "full-height" character. Every card scales
+ * its idle by the same ratio (art-box height ÷ this value) so on-screen size tracks a
+ * character's real sprite size relative to the roster — a short character renders
+ * smaller than a tall one instead of each being stretched to fill its box. Sized so a
+ * tall MUGEN character (Trunks ~136px) nearly fills the art box; anything taller is
+ * capped to the box in {@link CardSprite.applyIdle}. */
+const REFERENCE_SOURCE_HEIGHT = 150;
+
 /** The d10 die icon (white SVG) shown next to the ATK value — the same one the
  * roster/team cards use for a character's stat. Served from @3xl/assets. */
 const D10_ICON_URL = '/assets/icons/skoll/d10.svg';
@@ -180,13 +189,14 @@ export class CardSprite extends Container {
 
 	/**
 	 * Fit the idle animation inside the art area and start looping it on the app
-	 * ticker. Sizing mirrors the board/lineup so characters read at a consistent
-	 * size from card to card: the sprite is normalised by its *base* idle frame
-	 * (frame 0), not the tallest frame of the cycle — so a character whose animation
-	 * has a tall outlier pose isn't shrunk to make that pose fit, and no sprite is
-	 * blown up to fill its square. The scale is then capped so the widest frame can't
-	 * overflow sideways. Frames are anchored at their body axis with feet on a common
-	 * line, so the character breathes in place without drifting.
+	 * ticker. The key point is that every card scales its sprite by the *same* ratio
+	 * ({@link REFERENCE_SOURCE_HEIGHT}), so a character's on-screen size reflects its
+	 * true sprite size relative to the others — a short character (Krillin, ~78px)
+	 * renders visibly smaller than a tall one (Trunks, ~136px) rather than each sprite
+	 * being stretched to fill its box, which is what made stocky characters balloon.
+	 * The shared scale is then capped so a character taller or wider than the box can
+	 * never overflow it. Frames are anchored at their body axis with feet on a common
+	 * baseline, so the character breathes in place without drifting.
 	 */
 	private applyIdle(frames: IdleFrame[]): void {
 		this.idleFrames = frames;
@@ -194,18 +204,19 @@ export class CardSprite extends Container {
 		const boxW = this.artArea.w - pad * 2;
 		const boxH = this.artArea.h - pad * 2;
 
-		// Reference height is the base idle pose (frame 0), matching how the board and
-		// lineup size their actors — this is what keeps proportions consistent across
-		// cards instead of each sprite filling the whole art box.
-		const refHeight = frames[0].height;
+		const maxHeight = Math.max(...frames.map((f) => f.height));
 		// Widest axis-to-edge extent across frames (each frame is placed by its body
 		// anchor, which can sit off-centre), so the whole cycle stays within the box.
 		const maxHalfExtent = Math.max(
 			...frames.map((f) => Math.max(f.anchorX, 1 - f.anchorX) * f.width)
 		);
-		const heightScale = boxH / refHeight;
-		const widthScale = boxW / 2 / maxHalfExtent;
-		this.idleFitScale = Math.min(heightScale, widthScale);
+		// One shared ratio for every card keeps proportions honest between characters;
+		// the height/width caps only bite for a sprite that would otherwise spill out
+		// of the art box.
+		const sharedScale = boxH / REFERENCE_SOURCE_HEIGHT;
+		const heightCap = boxH / maxHeight;
+		const widthCap = boxW / 2 / maxHalfExtent;
+		this.idleFitScale = Math.min(sharedScale, heightCap, widthCap);
 
 		// Stand every character on a shared baseline at the bottom of the art box
 		// (feet down) — the same footing convention the board uses.
