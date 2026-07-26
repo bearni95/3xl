@@ -179,9 +179,13 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * Fit the idle animation inside the art area — scaled to fit by height, capped
-	 * so the widest frame can't overflow sideways — and start looping it on the
-	 * app ticker. Frames are anchored at their body axis with feet on a common
+	 * Fit the idle animation inside the art area and start looping it on the app
+	 * ticker. Sizing mirrors the board/lineup so characters read at a consistent
+	 * size from card to card: the sprite is normalised by its *base* idle frame
+	 * (frame 0), not the tallest frame of the cycle — so a character whose animation
+	 * has a tall outlier pose isn't shrunk to make that pose fit, and no sprite is
+	 * blown up to fill its square. The scale is then capped so the widest frame can't
+	 * overflow sideways. Frames are anchored at their body axis with feet on a common
 	 * line, so the character breathes in place without drifting.
 	 */
 	private applyIdle(frames: IdleFrame[]): void {
@@ -190,22 +194,23 @@ export class CardSprite extends Container {
 		const boxW = this.artArea.w - pad * 2;
 		const boxH = this.artArea.h - pad * 2;
 
-		const maxHeight = Math.max(...frames.map((f) => f.height));
+		// Reference height is the base idle pose (frame 0), matching how the board and
+		// lineup size their actors — this is what keeps proportions consistent across
+		// cards instead of each sprite filling the whole art box.
+		const refHeight = frames[0].height;
 		// Widest axis-to-edge extent across frames (each frame is placed by its body
 		// anchor, which can sit off-centre), so the whole cycle stays within the box.
 		const maxHalfExtent = Math.max(
 			...frames.map((f) => Math.max(f.anchorX, 1 - f.anchorX) * f.width)
 		);
-		const heightScale = boxH / maxHeight;
+		const heightScale = boxH / refHeight;
 		const widthScale = boxW / 2 / maxHalfExtent;
 		this.idleFitScale = Math.min(heightScale, widthScale);
 
-		// Centre the character in the art area: feet on a line half the content
-		// height below the box centre.
-		const contentHeight = maxHeight * this.idleFitScale;
-		const centerY = this.artArea.y + this.artArea.h / 2;
+		// Stand every character on a shared baseline at the bottom of the art box
+		// (feet down) — the same footing convention the board uses.
 		this.idleCenterX = this.artArea.x + this.artArea.w / 2;
-		this.idleFeetY = centerY + contentHeight / 2;
+		this.idleFeetY = this.artArea.y + this.artArea.h - pad;
 
 		this.frameIndex = 0;
 		this.frameElapsed = 0;
