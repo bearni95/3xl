@@ -246,11 +246,14 @@ export class PackSprite extends Container {
 		// to a whole count so the row tiles the full width with no gap or overhang.
 		const triCount = Math.max(1, Math.round(w / (w * TRIANGLE_BASE_RATIO)));
 		const triBase = w / triCount;
-		const triHeight = ((triBase * Math.sqrt(3)) / 2) * 0.67;
+		const triHeight = Math.round(((triBase * Math.sqrt(3)) / 2) * 0.67);
 		const triangles = new Graphics();
 		for (let i = 0; i < triCount; i++) {
-			const x0 = i * triBase;
-			triangles.poly([x0, 0, x0 + triBase, 0, x0 + triBase / 2, triHeight]);
+			// Snap edges to whole pixels; neighbours share a boundary because they
+			// round the same value, so the row stays gapless and crisp.
+			const xL = Math.round(i * triBase);
+			const xR = Math.round((i + 1) * triBase);
+			triangles.poly([xL, 0, xR, 0, Math.round((xL + xR) / 2), triHeight]);
 		}
 		triangles.fill(TRIANGLE_FILL);
 		root.addChild(triangles);
