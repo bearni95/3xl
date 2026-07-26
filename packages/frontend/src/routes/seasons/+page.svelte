@@ -8,21 +8,34 @@
 		type FestaMonthGrid
 	} from '$utils/festes/festa-calendar';
 	import type { FestesCollection, MunicipalityFesta } from '$types/festa.type';
+	import type { MunicipalityShowsCollection } from '$types/show.type';
+	import type { RegionShow } from '$utils/geo/region-tree';
 
 	// The baked festes-locals collection (Generalitat open data), fetched once.
 	let collection: FestesCollection | null = null;
+	// The map's baked municipality→show assignment, keyed by municipality id — the
+	// same data the /map page paints with. Feeds the day panel's "shows" section.
+	let showByMunicipality = new Map<string, RegionShow>();
 	// Held until the fetch settles so the calendar renders against loaded data.
 	let ready = false;
 	// The day the panel is detailing — a `YYYY-MM-DD` key, or null for none.
 	let selected: string | null = null;
 
 	onMount(async () => {
-		try {
-			const response = await fetch('/data/festes-locals.json');
-			collection = (await response.json()) as FestesCollection;
-		} catch {
-			// The calendar simply renders empty if the dataset fails to load.
-			collection = null;
+		// Load the festival calendar and the map's show assignment in parallel; both
+		// are optional, so settle each independently and always flip `ready`.
+		const [festesResult, showsResult] = await Promise.allSettled([
+			fetch('/data/festes-locals.json').then((response) => response.json() as Promise<FestesCollection>),
+			fetch('/data/municipality-shows.json').then(
+				(response) => response.json() as Promise<MunicipalityShowsCollection>
+			)
+		]);
+
+		if (festesResult.status === 'fulfilled') collection = festesResult.value;
+		if (showsResult.status === 'fulfilled') {
+			showByMunicipality = new Map(
+				showsResult.value.assignments.map((assignment) => [assignment.id, assignment.show])
+			);
 		}
 		ready = true;
 	});
@@ -97,6 +110,11 @@
 	</div>
 
 	{#if selected}
-		<FestaDayPanel date={selected} festes={dayFestes} onClose={() => (selected = null)} />
+		<FestaDayPanel
+			date={selected}
+			festes={dayFestes}
+			{showByMunicipality}
+			onClose={() => (selected = null)}
+		/>
 	{/if}
 </div>
