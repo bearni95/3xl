@@ -39,7 +39,7 @@ import {
 	type CombatColor
 } from '$types/character-definition.type';
 import { strikeMultiplier, throwableColors } from '$utils/color/compare';
-import { resolveAttack, rollDice, rollDie } from '$utils/dice/roll';
+import { resolveAttack, rollDie } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
 export type FighterSide = 'error' | 'info';
@@ -77,13 +77,15 @@ export interface FighterSeed {
 	 * Supabase spawn stat). Every die at or above the defender's {@link def} is a hit. */
 	atk: number;
 	/** Defence rating — the d10 threshold an attacker's die must meet to hit this
-	 * fighter (derived as SPAWN_STAT_MAX − atk). */
+	 * fighter (derived as SPAWN_STAT_MAX − atk). Also sets the fighter's HP pool
+	 * (def + 1) at battle start. */
 	def: number;
+	/** Speed rating — a derived stat alongside atk/def (atk − 1). */
+	spd: number;
 }
 
 export interface Fighter extends FighterSeed {
-	/** Hit points this fighter starts (and tops out) at, rolled once at battle
-	 * start as {@link atk} d6 summed. */
+	/** Hit points this fighter starts (and tops out) at: its {@link def} + 1. */
 	maxHp: number;
 	/** Current hit points, carried across the whole game. At 0 the fighter is
 	 * {@link defeated}. */
@@ -143,9 +145,9 @@ export class CombatController {
 
 	constructor(seed: FighterSeed[]) {
 		this.fighters = seed.map((entry) => {
-			// HP is rolled at battle start: one d6 per point of ATK, summed. A stronger
-			// attacker is thus also tougher, and every fighter's pool differs each game.
-			const maxHp = rollDice(entry.atk, 6);
+			// HP pool at battle start is the fighter's DEF + 1: a sturdier defender is
+			// also tougher, and the pool is deterministic rather than rolled.
+			const maxHp = entry.def + 1;
 			return {
 				...entry,
 				maxHp,

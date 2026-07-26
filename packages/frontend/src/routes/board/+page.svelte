@@ -311,10 +311,11 @@
 			side: badge.side,
 			color: badge.color,
 			moves: badge.moves,
-			// Combat attributes: ATK is the spawn stat, DEF its complement. HP is rolled
-			// from ATK at battle start inside the controller, not supplied here.
+			// Combat attributes: ATK is the spawn stat, DEF its complement, SPD is ATK − 1.
+			// HP (DEF + 1) is derived at battle start inside the controller, not supplied here.
 			atk: badge.stat,
-			def: SPAWN_STAT_MAX - badge.stat
+			def: SPAWN_STAT_MAX - badge.stat,
+			spd: badge.stat - 1
 		}));
 		unsubscribe?.();
 		controller = new CombatController(seeds);
@@ -410,13 +411,14 @@
 		</div>
 		<span>{badge.name}</span>
 		<!-- ATK is the character's Supabase spawn stat; DEF is its complement
-		     (SPAWN_STAT_MAX - ATK); HP is rolled from ATK at battle start and
+		     (SPAWN_STAT_MAX - ATK); SPD is ATK − 1; HP starts at DEF + 1 and
 		     drains live as combat plays out. -->
 		<table class="table table-xs w-auto text-center">
 			<thead>
 				<tr>
 					<th class="px-2">ATK</th>
 					<th class="px-2">DEF</th>
+					<th class="px-2">SPD</th>
 					<th class="px-2">HP</th>
 				</tr>
 			</thead>
@@ -424,6 +426,7 @@
 				<tr>
 					<td class="px-2 font-semibold">{badge.stat}</td>
 					<td class="px-2 font-semibold">{SPAWN_STAT_MAX - badge.stat}</td>
+					<td class="px-2 font-semibold">{badge.stat - 1}</td>
 					<td
 						class={classNames('px-2 font-semibold', {
 							'text-error': combat?.defeated
