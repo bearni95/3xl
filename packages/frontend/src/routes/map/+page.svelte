@@ -183,11 +183,11 @@
 		(GIRONA[1] + ALGUER[1]) / 2
 	];
 
-	// Whether the portal modal — the /claim experience surfaced over the map — is open.
+	// Whether the portal sidebar — the /claim experience surfaced beside the map — is open.
 	let portalOpen = false;
 
 	// The mythical "Portal", floating in open Mediterranean water at the middle
-	// of the Girona–l'Alguer line. Clicking it opens the claim panel in a modal.
+	// of the Girona–l'Alguer line. Clicking it opens the claim panel in a right sidebar.
 	const circles: MapCircle[] = [
 		{
 			center: PORTAL_CENTER,
@@ -323,23 +323,21 @@
 			{/if}
 		</div>
 	</div>
-</div>
 
-{#if portalOpen}
-	<div class="modal modal-open">
-		<div class="modal-box max-h-[90vh] w-fit max-w-none overflow-y-auto bg-base-200">
-			<div class="mb-4 flex items-center justify-between gap-4">
-				<h2 class="text-lg font-bold">Portal</h2>
+	{#if portalOpen}
+		<aside
+			class="flex w-[36rem] flex-col overflow-y-auto border-l border-base-300 bg-base-100 shadow-inner"
+			aria-label="Portal"
+		>
+			<div class="flex items-center justify-between gap-4 border-b border-base-300 px-4 py-3">
+				<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Portal</h2>
 				<button class="btn btn-circle btn-ghost btn-sm" on:click={() => (portalOpen = false)}>
 					✕
 				</button>
 			</div>
-			<ClaimPanel />
-		</div>
-		<button
-			class="modal-backdrop"
-			aria-label="Close portal"
-			on:click={() => (portalOpen = false)}
-		></button>
-	</div>
-{/if}
+			<div class="p-4">
+				<ClaimPanel />
+			</div>
+		</aside>
+	{/if}
+</div>
