@@ -326,7 +326,7 @@
 
 	{#if portalOpen}
 		<aside
-			class="flex w-[36rem] flex-col overflow-y-auto border-l border-base-300 bg-base-100 shadow-inner"
+			class="flex flex-col overflow-y-auto border-l border-base-300 bg-base-100 shadow-inner"
 			aria-label="Portal"
 		>
 			<div class="flex items-center justify-between gap-4 border-b border-base-300 px-4 py-3">
