@@ -32,6 +32,9 @@
 	let ready = false;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
+	// The tier of pins WorldMap is currently drawing (0 = coarsest), reported back
+	// as the map zooms. Drives the effective breakdown the sidebar and polygons show.
+	let activeLevel = 0;
 	// The single open region, driven entirely by the `region` query param, by its
 	// node key — the only region the map paints with its poster, and the head of
 	// the one open drill path. A node's key matches the fill index: a territory is
@@ -165,18 +168,34 @@
 	// region's siblings and its children (see regionRowsForSelection) — while the
 	// breadcrumbs carry the full drill path back up.
 	$: regionNodes = buildRegionNodes(regionTree);
-	$: regionRows = regionRowsForSelection(regionNodes, selected);
 
-	// The chain of nodes from the top territory down to the open region (empty when
-	// nothing is open), rendered as the breadcrumb trail above the table.
+	// The chain of nodes from the top territory down to the open (URL-selected)
+	// region — the deepest tier available. Zoom then decides how far down this
+	// chain the map actually shows (see `effectiveDepth`).
 	$: openPath = selected ? nodePath(regionNodes, selected) : [];
 
+	// How far down the drill path the map is rendering right now, driven by zoom:
+	// WorldMap reports the tier of pins it drew (`activeLevel`) and the sidebar and
+	// polygons follow it. Clamped to the available depth. Zooming out lowers it,
+	// walking the effective focus back up the path without touching the URL.
+	$: effectiveDepth = Math.min(Math.max(activeLevel, 0), openPath.length);
+
+	// The region the sidebar and polygons reflect right now: the ancestor of the
+	// open region at the effective (zoom-driven) depth, or null at the top view — so
+	// zooming out coarsens the table, breadcrumbs and borders in step with the pins.
+	$: effectiveSelected = effectiveDepth === 0 ? null : (openPath[effectiveDepth - 1]?.key ?? selected);
+
+	// The breadcrumb/table drill path down to the effective region.
+	$: displayPath = openPath.slice(0, effectiveDepth);
+
+	$: regionRows = regionRowsForSelection(regionNodes, effectiveSelected);
+
 	// The breadcrumb crumbs: a root crumb back to the top view, then one per
-	// ancestor down to the open region. The last crumb is the current region and
-	// renders as plain text; the rest link back up to their tier.
+	// ancestor down to the effective region. The last crumb is the current region
+	// and renders as plain text; the rest link back up to their tier.
 	$: crumbs = [
 		{ label: 'Països Catalans', key: null as string | null },
-		...openPath.map((node) => ({ label: restoreCatalanArticle(node.name), key: node.key as string | null }))
+		...displayPath.map((node) => ({ label: restoreCatalanArticle(node.name), key: node.key as string | null }))
 	];
 
 	// Per-municipality chain of region tiers, read by buildMarkers/focusBounds to
@@ -212,8 +231,8 @@
 	}
 
 	// The tier the map is imaging right now: territories at the top view (nothing
-	// selected), otherwise the selected region's child tier — the sub-division its
-	// pins mark. A selected municipality (a leaf) images itself.
+	// selected), otherwise the effective region's child tier — the sub-division its
+	// pins mark. A municipality (a leaf) images itself.
 	function imagedRank(chosen: string | null, nodes: RegionNode[]): number {
 		if (!chosen) return tierRank.Territory;
 		const node = findNode(nodes, chosen);
@@ -222,8 +241,9 @@
 
 	// Hide the stroke of every line overlay finer than the imaged tier, so only the
 	// tier the map is focused on (and everything coarser) keeps its borders — the
-	// finer divisions inside would just clutter the pinned regions.
-	$: hiddenRank = imagedRank(selected, regionNodes);
+	// finer divisions inside would just clutter the pinned regions. Keyed off the
+	// effective (zoom-driven) selection, so the borders coarsen as the map zooms out.
+	$: hiddenRank = imagedRank(effectiveSelected, regionNodes);
 	$: hiddenLineUrls = new Set(
 		lineTiers.filter(([, rank]) => rank > hiddenRank).map(([url]) => url)
 	);
@@ -378,6 +398,7 @@
 				{hiddenLineUrls}
 				{focusBounds}
 				bind:currentZoom
+				bind:activeLevel
 				classes="min-h-0 flex-1"
 			/>
 		{:else}

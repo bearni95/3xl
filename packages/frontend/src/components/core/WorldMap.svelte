@@ -18,6 +18,7 @@
 		hiddenLineUrls = new Set<string>(),
 		focusBounds = null,
 		currentZoom = $bindable(zoom),
+		activeLevel = $bindable(0),
 		classes = ''
 	}: {
 		/** Initial map centre as [lat, lng]. */
@@ -64,6 +65,12 @@
 		focusBounds?: [[number, number], [number, number]] | null;
 		/** Live map zoom level, kept in sync with the map (bindable). */
 		currentZoom?: number;
+		/**
+		 * Index into `markerLevels` of the rendering currently on screen (0 = the
+		 * coarsest). Bindable, so the parent can mirror the zoom-driven tier in the
+		 * rest of its UI (e.g. which polygon borders and sidebar level to show).
+		 */
+		activeLevel?: number;
 		/** Extra Tailwind classes for the map container. */
 		classes?: string;
 	} = $props();
@@ -221,17 +228,16 @@
 		return level.reduce((count, marker) => count + (bounds.contains(marker.position) ? 1 : 0), 0);
 	}
 
-	// The level of detail to draw for the current view: the finest rendering whose
-	// pins stay under the cap in the padded viewport, falling back to the coarsest
-	// when even it is crowded (still better than a blank map). Zooming out shrinks
-	// nothing but grows the viewport, so more pins fall in view and the choice
-	// steps down to a coarser rendering — the "previous" tier of pins.
-	function levelForView(bounds: L.LatLngBounds): MapMarker[] {
-		const levels = markerLevelStack();
+	// The index of the level of detail to draw for the current view: the finest
+	// rendering whose pins stay under the cap in the padded viewport, falling back
+	// to the coarsest (0) when even it is crowded (still better than a blank map).
+	// Zooming out shrinks nothing but grows the viewport, so more pins fall in view
+	// and the choice steps down to a coarser rendering — the "previous" tier.
+	function levelIndexForView(bounds: L.LatLngBounds, levels: MapMarker[][]): number {
 		for (let i = levels.length - 1; i >= 0; i--) {
-			if (countWithin(bounds, levels[i]) <= MAX_VISIBLE_MARKERS) return levels[i];
+			if (countWithin(bounds, levels[i]) <= MAX_VISIBLE_MARKERS) return i;
 		}
-		return levels[0] ?? [];
+		return 0;
 	}
 
 	// (Re)build the pins for the current view: clear the layer, pick the level of
@@ -246,7 +252,11 @@
 		markerLayer.clearLayers();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
-		const visible = levelForView(bounds).filter((marker) => bounds.contains(marker.position));
+		const levels = markerLevelStack();
+		const index = levels.length ? levelIndexForView(bounds, levels) : 0;
+		// Publish the chosen tier so the parent can mirror it (polygons, sidebar).
+		activeLevel = index;
+		const visible = (levels[index] ?? []).filter((marker) => bounds.contains(marker.position));
 
 		for (const marker of visible) {
 			const icon = Leaf.divIcon({
