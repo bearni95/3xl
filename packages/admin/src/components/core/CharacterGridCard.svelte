@@ -8,6 +8,7 @@
 		RARITY_MIN,
 		type CharacterTemplateStatus
 	} from '$types/character-template.type';
+	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 
 	// The character read/write API is served by @3xl/backend (default :2002).
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
@@ -53,6 +54,21 @@
 		draft = rarity;
 	}
 	$: dirty = draft !== baseline;
+
+	// WoW quality name for the value currently in the editor (null when the value
+	// is above the highest WoW tier — then no label shows). Data lives in
+	// @3xl/shared; the per-tier colour is a UI concern, so it's mapped here.
+	$: rarityLabel = wowRarityLabel(typeof draft === 'number' ? draft : DEFAULT_RARITY);
+	const rarityBadgeClass: Record<number, string> = {
+		0: 'badge-ghost',
+		1: 'badge-neutral',
+		2: 'badge-success',
+		3: 'badge-info',
+		4: 'badge-secondary',
+		5: 'badge-warning',
+		6: 'badge-warning',
+		7: 'badge-info'
+	};
 
 	$: cardClasses = classNames(
 		'card relative items-center gap-2 border-2 bg-base-100 p-3 shadow-md transition',
@@ -107,7 +123,7 @@
 	<!-- Supabase rarity editor. Lives on the card so each character's tier can be
 	     set inline; kept out of the select button so editing never changes the
 	     active character. -->
-	<div class="flex w-full items-center gap-1">
+	<div class="flex w-full flex-wrap items-center gap-1">
 		<span class="text-xs opacity-60">Rarity</span>
 		<input
 			type="number"
@@ -117,8 +133,18 @@
 			bind:value={draft}
 			disabled={saving || rarity === undefined}
 		/>
+		{#if rarityLabel}
+			<span
+				class={classNames(
+					'badge badge-sm',
+					rarityBadgeClass[typeof draft === 'number' ? draft : DEFAULT_RARITY] ?? 'badge-ghost'
+				)}
+			>
+				{rarityLabel}
+			</span>
+		{/if}
 		<button
-			class="btn btn-secondary btn-xs"
+			class="btn btn-secondary btn-xs ml-auto"
 			type="button"
 			on:click={saveRarity}
 			disabled={saving || rarity === undefined || !dirty}

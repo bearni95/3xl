@@ -1,0 +1,10 @@
+[
+	{ "label": "Poor" },
+	{ "label": "Common" },
+	{ "label": "Uncommon" },
+	{ "label": "Rare" },
+	{ "label": "Epic" },
+	{ "label": "Legendary" },
+	{ "label": "Artifact" },
+	{ "label": "Heirloom" }
+]
