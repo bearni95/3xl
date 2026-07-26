@@ -10,9 +10,9 @@
  *           - municipis.json  every municipality (polygon fills + labels)
  *           - comarques.json  municipalities dissolved by comarca / equivalent
  *           - provincies.json municipalities dissolved by province / equivalent —
- *                             but Catalunya's tier is its vegueries, not its four
- *                             Spanish provinces (see VEGUERIA_BY_COMARCA); the other
- *                             territories keep their provinces
+ *                             but Catalunya's tier is its vegueries (àmbits del pla
+ *                             territorial, fetched from Idescat by INE code), not its
+ *                             four Spanish provinces; the other territories keep theirs
  *           - territoris.json municipalities dissolved by territory
  *
  *         The comarca tier sits between municipality and province. Comarques are
@@ -69,66 +69,25 @@ const ES_PROVINCES = {
 
 /**
  * Catalunya's four Spanish provinces are replaced on the map by its *vegueries*
- * (the Catalan territorial division): each Catalunya municipality's province tier
- * becomes the vegueria of its comarca. Every other territory keeps its Spanish /
- * French province. Keyed by comarca slug (the same slug() used for comarcaId).
+ * (the Catalan territorial division). Each Catalunya municipality's province tier
+ * becomes its vegueria; every other territory keeps its Spanish / French province.
  *
- * The eight àmbits territorials / vegueries per the Llei de vegueries (Penedès
- * included), covering the 42 modern comarques (Moianès and Lluçanès included).
- * Cerdanya appears here as "Baixa Cerdanya" (Alta Cerdanya is in Catalunya Nord).
+ * The vegueria composition is NOT hand-authored — it is fetched at build time from
+ * Idescat's official correspondence table (municipi → comarca → àmbit del pla
+ * territorial → província), keyed by INE code (see fetchCatalunyaVegueries). The
+ * eight àmbits del pla territorial are the territorial equivalent of the eight
+ * vegueries (Llei 30/2010 de vegueries + Llei 2/2017 adding Penedès); this table
+ * only maps each àmbit's Idescat code to the vegueria's legal display name.
  */
-const VEGUERIA_BY_COMARCA = {
-	// Àmbit Metropolità de Barcelona
-	barcelones: 'Barcelona',
-	'baix-llobregat': 'Barcelona',
-	maresme: 'Barcelona',
-	'valles-occidental': 'Barcelona',
-	'valles-oriental': 'Barcelona',
-	// Comarques Gironines
-	'alt-emporda': 'Girona',
-	'baix-emporda': 'Girona',
-	garrotxa: 'Girona',
-	girones: 'Girona',
-	'pla-de-lestany': 'Girona',
-	ripolles: 'Girona',
-	selva: 'Girona',
-	// Camp de Tarragona
-	'alt-camp': 'Camp de Tarragona',
-	'baix-camp': 'Camp de Tarragona',
-	'conca-de-barbera': 'Camp de Tarragona',
-	priorat: 'Camp de Tarragona',
-	tarragones: 'Camp de Tarragona',
-	// Terres de l'Ebre
-	'baix-ebre': "Terres de l'Ebre",
-	montsia: "Terres de l'Ebre",
-	'ribera-debre': "Terres de l'Ebre",
-	'terra-alta': "Terres de l'Ebre",
-	// Ponent (Lleida)
-	garrigues: 'Lleida',
-	noguera: 'Lleida',
-	'pla-durgell': 'Lleida',
-	segarra: 'Lleida',
-	segria: 'Lleida',
-	urgell: 'Lleida',
-	// Catalunya Central
-	anoia: 'Catalunya Central',
-	bages: 'Catalunya Central',
-	bergueda: 'Catalunya Central',
-	moianes: 'Catalunya Central',
-	osona: 'Catalunya Central',
-	solsones: 'Catalunya Central',
-	llucanes: 'Catalunya Central',
-	// Alt Pirineu i Aran
-	'alt-urgell': 'Alt Pirineu i Aran',
-	'alta-ribagorca': 'Alt Pirineu i Aran',
-	'baixa-cerdanya': 'Alt Pirineu i Aran',
-	'pallars-jussa': 'Alt Pirineu i Aran',
-	'pallars-sobira': 'Alt Pirineu i Aran',
-	'val-daran': 'Alt Pirineu i Aran',
-	// Penedès
-	'alt-penedes': 'Penedès',
-	'baix-penedes': 'Penedès',
-	garraf: 'Penedès'
+const VEGUERIA_NAME = {
+	AT01: 'Barcelona', // Àmbit Metropolità
+	AT02: 'Girona', // Comarques Gironines
+	AT03: 'Camp de Tarragona',
+	AT04: "Terres de l'Ebre",
+	AT05: 'Lleida', // Ponent
+	AT06: 'Catalunya Central', // Comarques Centrals
+	AT07: 'Alt Pirineu i Aran',
+	AT08: 'Penedès'
 };
 
 /** Territory display name → url-safe id used as the dissolve key. */
@@ -360,6 +319,38 @@ async function fetchValencianComarques() {
 	return out;
 }
 
+/** Idescat's official municipi → comarca → àmbit → província correspondence table (SSV). */
+const IDESCAT_CORRESPONDENCE_SSV = 'https://www.idescat.cat/codis/?id=50&n=84&f=ssv';
+
+/**
+ * Fetch each Catalunya municipality's àmbit del pla territorial (the territorial
+ * equivalent of its vegueria) from Idescat's official correspondence table, keyed
+ * by GISCO_ID (`ES_<INE5>`). The SSV columns are:
+ *   Codi municipi ; Nom municipi ; Codi comarca ; Nom comarca ; Codi àmbit ; Nom àmbit ; Codi província ; Nom província
+ * The 6-digit `Codi municipi` is the 5-digit INE code plus a control digit, so its
+ * first five digits are the INE code that matches our LAU-derived `ES_<INE5>` ids.
+ * @returns {Promise<Map<string,string>>} gisco id → àmbit code (AT01…AT08)
+ */
+async function fetchCatalunyaVegueries() {
+	const res = await fetch(IDESCAT_CORRESPONDENCE_SSV, {
+		headers: { 'User-Agent': '3xl-game-geo-build/1.0 (bernatcanal@gmail.com)' }
+	});
+	if (!res.ok) throw new Error(`Idescat correspondence ${res.status}`);
+	const text = await res.text();
+	const lines = text.split(/\r?\n/);
+	const header = lines.findIndex((l) => l.startsWith('Codi municipi'));
+	if (header === -1) throw new Error('Idescat correspondence: header row not found');
+	const map = new Map();
+	for (const line of lines.slice(header + 1)) {
+		if (!line.includes(';')) continue;
+		const cols = line.split(';');
+		const ine = cols[0]?.slice(0, 5);
+		const ambit = cols[4];
+		if (ine?.length === 5 && ambit) map.set(`ES_${ine}`, ambit);
+	}
+	return map;
+}
+
 /** Area-weighted-free centroid: the mean of every vertex in a (multi)polygon. */
 function centroidOf(geom) {
 	const rings =
@@ -454,21 +445,26 @@ async function main() {
 	console.log(`  ${filled} stragglers filled from nearest neighbour; ${comarcaCount + filled} total`);
 
 	// Replace Catalunya's provinces with its vegueries: each Catalunya municipality's
-	// province tier becomes the vegueria of its comarca (via comarcaId). Every other
-	// territory keeps its province. Done after the comarca fill, so every Catalunya
-	// municipality already carries a comarca to map from. A comarca with no vegueria
-	// mapping is a build error rather than a silent fallback to the old province.
+	// province tier becomes its àmbit del pla territorial (its vegueria), fetched by
+	// INE code from Idescat's official correspondence table. Every other territory
+	// keeps its Spanish / French province. A Catalunya municipality Idescat does not
+	// list, or an àmbit code with no legal name, is a build error rather than a
+	// silent fallback to the old province.
+	console.log('Fetching Catalunya vegueries (àmbits) from Idescat…');
+	const vegueriaByGisco = await fetchCatalunyaVegueries();
+	console.log(`  Idescat: ${vegueriaByGisco.size} municipalities → àmbit`);
 	let vegueriaCount = 0;
 	for (const f of municipis) {
 		if (f.properties.territory !== 'Catalunya') continue;
-		const veg = VEGUERIA_BY_COMARCA[f.properties.comarcaId];
-		if (!veg) {
+		const ambit = vegueriaByGisco.get(f.properties.id);
+		const name = ambit && VEGUERIA_NAME[ambit];
+		if (!name) {
 			throw new Error(
-				`No vegueria mapped for Catalunya comarca "${f.properties.comarca}" (${f.properties.comarcaId})`
+				`No vegueria for Catalunya municipality ${f.properties.id} (${f.properties.name}); Idescat àmbit=${ambit ?? 'none'}`
 			);
 		}
-		f.properties.prov = veg;
-		f.properties.provKey = `VEG_${slug(veg)}`;
+		f.properties.prov = name;
+		f.properties.provKey = ambit;
 		vegueriaCount += 1;
 	}
 	console.log(`  Catalunya: ${vegueriaCount} municipalities → vegueria (province tier replaced)`);
