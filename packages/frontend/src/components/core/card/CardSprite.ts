@@ -328,18 +328,17 @@ export class CardSprite extends Container {
 	private makeMeta(metaY: number, metaH: number): Container {
 		const group = new Container();
 		const centerY = metaY + metaH / 2;
-		const padX = this.cardWidth * 0.06;
-		const fontSize = Math.max(9, Math.round(this.cardWidth * 0.072));
+		const fontSize = Math.max(8, Math.round(this.cardWidth * 0.06));
 
-		// Location (right), muted, truncated to the right half of the row.
+		// Location, muted, centred in the row and truncated to most of its width.
 		if (this.card.locationName) {
 			const loc = new Text({
 				text: this.card.locationName,
 				style: { fontFamily: 'sans-serif', fontSize, fontWeight: '600', fill: 0x9ca3af }
 			});
-			this.ellipsize(loc, this.card.locationName, this.cardWidth * 0.5);
-			loc.anchor.set(1, 0.5);
-			loc.position.set(this.cardWidth - padX, centerY);
+			this.ellipsize(loc, this.card.locationName, this.cardWidth * 0.9);
+			loc.anchor.set(0.5, 0.5);
+			loc.position.set(this.cardWidth / 2, centerY);
 			group.addChild(loc);
 		}
 
