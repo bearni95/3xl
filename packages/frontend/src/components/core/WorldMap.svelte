@@ -102,9 +102,14 @@
 	$effect(() => {
 		// Rebuild the pins whenever the parent swaps the markers array (e.g. the
 		// selection changes which regions are imaged). Gated on `ready` so a set
-		// passed before mount still applies once the layer exists.
+		// passed before mount still applies once the layer exists. Recomputing the
+		// zoom-out floor here means it re-derives for every cut: whatever set of
+		// pins is currently shown, the map can't zoom out to where they'd blank.
 		void markers;
-		if (ready) rebuildMarkers();
+		if (ready) {
+			rebuildMarkers();
+			updateMinZoom();
+		}
 	});
 
 	$effect(() => {
@@ -193,6 +198,33 @@
 	// thousands of image markers at once. The pins reappear tier by tier as the
 	// visible count drops below the cap.
 	const MAX_VISIBLE_MARKERS = 250;
+
+	// How many of the current markers would fall inside the viewport at a
+	// hypothetical zoom, using the same padded bounds rebuildMarkers culls with.
+	// Projecting the current centre at `zoom` lets us ask "how crowded would the
+	// map be down there?" without actually zooming.
+	function visibleCountAtZoom(zoom: number): number {
+		if (!mapInstance || !Leaf) return 0;
+		const half = mapInstance.getSize().divideBy(2);
+		const centre = mapInstance.project(mapInstance.getCenter(), zoom);
+		const nw = mapInstance.unproject(centre.subtract(half), zoom);
+		const se = mapInstance.unproject(centre.add(half), zoom);
+		const bounds = Leaf.latLngBounds(nw, se).pad(0.25);
+		return markers.reduce((count, marker) => count + (bounds.contains(marker.position) ? 1 : 0), 0);
+	}
+
+	// Constrain how far the map may zoom out to the lowest zoom at which the
+	// currently-shown pins still stay under the cap — below that they'd blank out
+	// (see rebuildMarkers), so we forbid reaching it instead. Recomputed for every
+	// cut: a coarse breakdown (few pins) leaves the floor at the base minZoom and
+	// full zoom-out stays available; a dense one (a whole tier of municipalities)
+	// raises it so those pins are always visible while the map is zoomed in past it.
+	function updateMinZoom() {
+		if (!mapInstance) return;
+		let floor = minZoom;
+		while (floor < maxZoom && visibleCountAtZoom(floor) > MAX_VISIBLE_MARKERS) floor++;
+		mapInstance.setMinZoom(floor);
+	}
 
 	// (Re)build the pins for the current view: clear the layer, keep only the
 	// markers inside the (slightly padded) viewport, and — unless there are too
