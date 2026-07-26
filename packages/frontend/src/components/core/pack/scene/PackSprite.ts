@@ -295,12 +295,13 @@ export class PackSprite extends Container {
 		root.addChild(triangles);
 
 		// The first triangle's apex sits on a vertical line at half its base — its
-		// "vertical half". Darken the whole column from the left edge to that line
-		// (the half-triangle and the full pack height below it) with a 50% black
-		// overlay, so that slice reads as tinted over the colours beneath it.
+		// "vertical half". Darken the column from the left edge to that line (the
+		// half-triangle and the header band below it) with a 50% black overlay,
+		// stopping where the header rectangle ends and the poster art begins, so
+		// that slice reads as tinted over the colours beneath it.
 		const firstHalfX = Math.round(Math.round(triBase) / 2);
 		const columnOverlay = new Graphics();
-		columnOverlay.rect(0, 0, firstHalfX, h);
+		columnOverlay.rect(0, 0, firstHalfX, headerH);
 		columnOverlay.fill({ color: 0x000000, alpha: 0.5 });
 		root.addChild(columnOverlay);
 

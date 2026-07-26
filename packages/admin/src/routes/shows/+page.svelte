@@ -246,16 +246,32 @@
 	let previewList: DisplayTMDBImage[] = [];
 	let previewIndex = 0;
 	let previewShowName = '';
+	// The saved show the preview belongs to, when opened from the saved tab. Null
+	// for search-result previews, which have nothing to enable/disable against.
+	let previewShowId: number | null = null;
 	$: previewImage = previewList[previewIndex] ?? null;
+	// The saved entry backing the preview (if any), so the modal can offer the
+	// enable toggle and reflect the current state — kept reactive to savedShows.
+	$: previewEntry =
+		previewShowId != null
+			? (savedShows.find((entry) => entry.show.id === previewShowId) ?? null)
+			: null;
+	$: previewEnabled = !!(
+		previewEntry &&
+		previewImage &&
+		previewEntry.enabledImages?.[previewImage.kind]?.includes(previewImage.filePath)
+	);
 
 	function openPreview(
 		detail: { images: DisplayTMDBImage[]; image: DisplayTMDBImage },
-		showName: string
+		showName: string,
+		showId: number | null = null
 	) {
 		const index = detail.images.findIndex((img) => img.filePath === detail.image.filePath);
 		previewList = detail.images;
 		previewIndex = index < 0 ? 0 : index;
 		previewShowName = showName;
+		previewShowId = showId;
 	}
 
 	function closePreview() {
@@ -429,7 +445,7 @@
 															type="button"
 															class="bg-base-200 ring-primary flex h-20 w-28 items-center justify-center overflow-hidden rounded ring-2"
 															on:click={() =>
-																openPreview({ images: entry.images.all, image }, show.name)}
+																openPreview({ images: entry.images.all, image }, show.name, show.id)}
 															title={`Enabled ${section.label} · click to preview`}
 														>
 															<img
@@ -466,7 +482,7 @@
 									selectable
 									columns={gridColumns}
 									enabledByKind={entry.enabledImages ?? {}}
-									on:preview={(e) => openPreview(e.detail, show.name)}
+									on:preview={(e) => openPreview(e.detail, show.name, show.id)}
 									on:toggle={(e) => toggleEnabledImage(show.id, e.detail.kind, e.detail.filePath)}
 								/>
 							</div>
@@ -634,15 +650,40 @@
 						{/if}
 					</p>
 				</div>
-				<button
-					type="button"
-					class="btn btn-sm btn-circle btn-ghost"
-					on:click={closePreview}
-					aria-label="Close preview"
-				>
-					✕
-				</button>
+				<div class="flex shrink-0 items-center gap-2">
+					{#if previewEntry && previewShowId != null}
+						{#if savingEnabled[previewShowId]}
+							<span class="loading loading-spinner loading-xs"></span>
+						{/if}
+						<button
+							type="button"
+							class={classNames(
+								'btn btn-sm gap-1',
+								previewEnabled ? 'btn-primary' : 'btn-neutral btn-outline'
+							)}
+							on:click={() => {
+								if (previewShowId != null && previewImage)
+									toggleEnabledImage(previewShowId, previewImage.kind, previewImage.filePath);
+							}}
+							disabled={savingEnabled[previewShowId]}
+							aria-pressed={previewEnabled}
+						>
+							{previewEnabled ? '★ Enabled' : '☆ Disabled'}
+						</button>
+					{/if}
+					<button
+						type="button"
+						class="btn btn-sm btn-circle btn-ghost"
+						on:click={closePreview}
+						aria-label="Close preview"
+					>
+						✕
+					</button>
+				</div>
 			</div>
+			{#if previewEntry && previewShowId != null && enabledError[previewShowId]}
+				<p class="text-error text-xs">{enabledError[previewShowId]}</p>
+			{/if}
 			<div
 				class="bg-base-200 relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded"
 			>
