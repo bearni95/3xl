@@ -438,4 +438,11 @@
 	});
 </script>
 
-<div bind:this={mapContainer} class={classes} role="application" aria-label="World map"></div>
+<!-- bg-transparent! overrides Leaflet's default grey container fill, so with no tile
+	basemap the map shows through to the page background instead of a white block. -->
+<div
+	bind:this={mapContainer}
+	class={`bg-transparent! ${classes}`}
+	role="application"
+	aria-label="World map"
+></div>
