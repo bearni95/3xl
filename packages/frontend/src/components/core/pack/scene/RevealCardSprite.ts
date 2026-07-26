@@ -36,6 +36,18 @@ const SHADOW_ALPHA = 0.45;
  * roster/team cards use for a character's stat. Served from @3xl/assets. */
 const D10_ICON_URL = '/assets/icons/skoll/d10.svg';
 
+// Canonical WoW quality colours, indexed by rarity tier — so the rarity label
+// reads in its quality colour (Common grey → Legendary orange → …).
+const RARITY_COLOR: Record<number, number> = {
+	0: 0xf2f2f2, // Common
+	1: 0x1eff00, // Uncommon
+	2: 0x0070dd, // Rare
+	3: 0xa335ee, // Epic
+	4: 0xff8000, // Legendary
+	5: 0xe6cc80, // Artifact
+	6: 0x00ccff // Heirloom
+};
+
 // Hex twins of the Tailwind swatches RosterCard uses for each spawn colour.
 const COLOR_HEX: Record<SpawnColor, number> = {
 	[SpawnColor.Red]: 0xef4444,
@@ -72,11 +84,14 @@ export class RevealCardSprite extends Container {
 		this.app = opts.app;
 
 		const radius = Math.max(6, this.cardWidth * 0.05);
-		// A name header at the top, the art in the middle, an ATK/DEF footer below.
+		// Top→bottom: a name header, the art, a rarity/location meta strip, an
+		// ATK/DEF footer.
 		const headerH = Math.round(this.cardHeight * 0.14);
-		const footerH = Math.round(this.cardHeight * 0.16);
+		const footerH = Math.round(this.cardHeight * 0.15);
+		const metaH = Math.round(this.cardHeight * 0.11);
 		const footerY = this.cardHeight - footerH;
-		this.artArea = { x: 0, y: headerH, w: this.cardWidth, h: footerY - headerH };
+		const metaY = footerY - metaH;
+		this.artArea = { x: 0, y: headerH, w: this.cardWidth, h: metaY - headerH };
 
 		// Colored portrait backdrop (the spawn's rolled colour), with a black
 		// border to match the roster card framing.
@@ -93,11 +108,19 @@ export class RevealCardSprite extends Container {
 		header.fill({ color: 0x111827, alpha: 0.92 });
 		this.addChild(header);
 
-		// Dark footer strip carrying the ATK/DEF.
-		const footer = new Graphics();
-		footer.rect(0, footerY, this.cardWidth, footerH);
-		footer.fill({ color: 0x111827, alpha: 0.92 });
-		this.addChild(footer);
+		// Dark meta strip below the art, carrying the rarity + claim location, then
+		// the ATK/DEF footer directly beneath it (both share the same dark fill so
+		// they read as one lower block with two rows).
+		const meta = new Graphics();
+		meta.rect(0, metaY, this.cardWidth, metaH + footerH);
+		meta.fill({ color: 0x111827, alpha: 0.92 });
+		this.addChild(meta);
+		// A faint divider between the meta row and the ATK/DEF row.
+		const divider = new Graphics();
+		divider.moveTo(this.cardWidth * 0.08, footerY);
+		divider.lineTo(this.cardWidth * 0.92, footerY);
+		divider.stroke({ width: 1, color: 0xffffff, alpha: 0.12 });
+		this.addChild(divider);
 
 		// A black silhouette copy of the art, sitting behind the full-colour sprite
 		// (added first, so lower z-index) and offset to the bottom-left — the
@@ -116,6 +139,7 @@ export class RevealCardSprite extends Container {
 		this.addChild(this.artSprite);
 
 		this.addChild(this.makeName(headerH));
+		this.addChild(this.makeMeta(metaY, metaH));
 		this.addChild(this.makeStats(footerY, footerH));
 
 		void this.loadArt();
@@ -270,6 +294,59 @@ export class RevealCardSprite extends Container {
 		name.anchor.set(0.5);
 		name.position.set(this.cardWidth / 2, headerH / 2);
 		return name;
+	}
+
+	/**
+	 * The meta row shared between the art and the ATK/DEF row: the character's
+	 * rarity (in its WoW quality colour) pinned to the left, and the claim location
+	 * pinned to the right. Either side is omitted when its value is absent.
+	 */
+	private makeMeta(metaY: number, metaH: number): Container {
+		const group = new Container();
+		const centerY = metaY + metaH / 2;
+		const padX = this.cardWidth * 0.12;
+		const fontSize = Math.max(9, Math.round(this.cardWidth * 0.072));
+
+		// Rarity (left), coloured by its quality tier.
+		const rarityLabel = this.pull.rarity != null ? wowRarityLabel(this.pull.rarity) : null;
+		if (rarityLabel && this.pull.rarity != null) {
+			const rarity = new Text({
+				text: rarityLabel,
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize,
+					fontWeight: '700',
+					fill: RARITY_COLOR[this.pull.rarity] ?? 0xf2f2f2
+				}
+			});
+			rarity.anchor.set(0, 0.5);
+			rarity.position.set(padX, centerY);
+			group.addChild(rarity);
+		}
+
+		// Location (right), muted, truncated to the right half of the row.
+		if (this.pull.locationName) {
+			const loc = new Text({
+				text: this.pull.locationName,
+				style: { fontFamily: 'sans-serif', fontSize, fontWeight: '600', fill: 0x9ca3af }
+			});
+			this.ellipsize(loc, this.pull.locationName, this.cardWidth * 0.5);
+			loc.anchor.set(1, 0.5);
+			loc.position.set(this.cardWidth - padX, centerY);
+			group.addChild(loc);
+		}
+
+		return group;
+	}
+
+	/** Trim `full` with a trailing ellipsis until the text fits within `maxWidth`. */
+	private ellipsize(text: Text, full: string, maxWidth: number): void {
+		text.text = full;
+		let trimmed = full;
+		while (trimmed.length > 1 && text.width > maxWidth) {
+			trimmed = trimmed.slice(0, -1);
+			text.text = `${trimmed.trimEnd()}…`;
+		}
 	}
 
 	/**
