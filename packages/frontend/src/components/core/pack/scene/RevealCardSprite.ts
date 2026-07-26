@@ -22,6 +22,13 @@ export interface RevealCardSpriteOptions {
 	app: Application;
 }
 
+// Offset (as a fraction of card width) of the silhouette behind the art: a touch
+// to the left and down, so the black copy reads as the character's shadow.
+const SHADOW_OFFSET_X_RATIO = -0.05;
+const SHADOW_OFFSET_Y_RATIO = 0.045;
+/** Opacity of the black silhouette drop-shadow. */
+const SHADOW_ALPHA = 0.45;
+
 // Hex twins of the Tailwind swatches RosterCard uses for each spawn colour.
 const COLOR_HEX: Record<SpawnColor, number> = {
 	[SpawnColor.Red]: 0xef4444,
@@ -38,6 +45,7 @@ export class RevealCardSprite extends Container {
 	readonly cardHeight: number;
 	private app: Application;
 	private artSprite: Sprite;
+	private shadowSprite: Sprite;
 	private artArea: { x: number; y: number; w: number; h: number };
 
 	// Idle-animation playback state (null until the frames load).
@@ -75,6 +83,17 @@ export class RevealCardSprite extends Container {
 		footer.rect(0, artH, this.cardWidth, footerH);
 		footer.fill({ color: 0x111827, alpha: 0.92 });
 		this.addChild(footer);
+
+		// A black silhouette copy of the art, sitting behind the full-colour sprite
+		// (added first, so lower z-index) and offset to the bottom-left — the
+		// character's animated shadow. A black tint multiplies every visible pixel's
+		// RGB to zero (brightness → 0) while the texture's alpha keeps the shape, so
+		// the copy is a pure black silhouette that tracks the animation frame for
+		// frame. Added before the art sprite so it always renders underneath it.
+		this.shadowSprite = new Sprite(Texture.EMPTY);
+		this.shadowSprite.tint = 0x000000;
+		this.shadowSprite.alpha = SHADOW_ALPHA;
+		this.addChild(this.shadowSprite);
 
 		// The art starts as a transparent 1×1 sprite; its real texture and size are
 		// applied once the idle frames (or the fallback face) load.
@@ -156,16 +175,26 @@ export class RevealCardSprite extends Container {
 		}
 	}
 
-	/** Push the current idle frame's texture, anchor, scale and position. */
+	/** Push the current idle frame's texture, anchor, scale and position to both
+	 * the full-colour art sprite and the black silhouette shadow behind it. */
 	private applyIdleFrame(): void {
 		const frames = this.idleFrames;
 		if (!frames || frames.length === 0) return;
 		const frame = frames[this.frameIndex % frames.length];
-		this.artSprite.texture = frame.texture;
+
 		// Body axis horizontally (stable pivot across frames), feet at the bottom.
+		this.artSprite.texture = frame.texture;
 		this.artSprite.anchor.set(frame.anchorX, 1);
 		this.artSprite.scale.set(this.idleFitScale);
 		this.artSprite.position.set(this.idleCenterX, this.idleFeetY);
+
+		// The silhouette mirrors the art, offset to the bottom-left.
+		const dx = this.cardWidth * SHADOW_OFFSET_X_RATIO;
+		const dy = this.cardWidth * SHADOW_OFFSET_Y_RATIO;
+		this.shadowSprite.texture = frame.texture;
+		this.shadowSprite.anchor.set(frame.anchorX, 1);
+		this.shadowSprite.scale.set(this.idleFitScale);
+		this.shadowSprite.position.set(this.idleCenterX + dx, this.idleFeetY + dy);
 	}
 
 	private tick = (): void => {
@@ -189,14 +218,23 @@ export class RevealCardSprite extends Container {
 		const scale = Math.min(boxW / tex.width, boxH / tex.height);
 		const w = tex.width * scale;
 		const h = tex.height * scale;
+		const x = this.artArea.x + (this.artArea.w - w) / 2;
+		const y = this.artArea.y + (this.artArea.h - h) / 2;
 		this.artSprite.anchor.set(0, 0);
 		this.artSprite.scale.set(1);
 		this.artSprite.width = w;
 		this.artSprite.height = h;
-		this.artSprite.position.set(
-			this.artArea.x + (this.artArea.w - w) / 2,
-			this.artArea.y + (this.artArea.h - h) / 2
-		);
+		this.artSprite.position.set(x, y);
+
+		// The silhouette mirrors the face, offset to the bottom-left.
+		const dx = this.cardWidth * SHADOW_OFFSET_X_RATIO;
+		const dy = this.cardWidth * SHADOW_OFFSET_Y_RATIO;
+		this.shadowSprite.texture = tex;
+		this.shadowSprite.anchor.set(0, 0);
+		this.shadowSprite.scale.set(1);
+		this.shadowSprite.width = w;
+		this.shadowSprite.height = h;
+		this.shadowSprite.position.set(x + dx, y + dy);
 	}
 
 	/** The character name (upper) and its ATK/DEF (lower), centred in the footer. */
