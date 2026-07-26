@@ -306,7 +306,7 @@ export class CardSprite extends Container {
 	private makeMeta(metaY: number, metaH: number): Container {
 		const group = new Container();
 		const centerY = metaY + metaH / 2;
-		const padX = this.cardWidth * 0.12;
+		const padX = 0;
 		const fontSize = Math.max(9, Math.round(this.cardWidth * 0.072));
 
 		// Rarity (left), coloured by its quality tier.
@@ -359,7 +359,7 @@ export class CardSprite extends Container {
 	private makeStats(footerY: number, footerH: number): Container {
 		const group = new Container();
 		const centerY = footerY + footerH / 2;
-		const padX = this.cardWidth * 0.12;
+		const padX = 0;
 		const fontSize = Math.max(11, Math.round(this.cardWidth * 0.1));
 
 		// Attack: the ATK value, then the d10 die icon right beside it.
