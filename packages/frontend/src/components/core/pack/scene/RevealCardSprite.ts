@@ -313,7 +313,7 @@ export class RevealCardSprite extends Container {
 		const rarityLabel = this.pull.rarity != null ? wowRarityLabel(this.pull.rarity) : null;
 		if (rarityLabel && this.pull.rarity != null) {
 			const rarity = new Text({
-				text: rarityLabel,
+				text: `[${this.pull.rarity}] ${rarityLabel}`,
 				style: {
 					fontFamily: 'sans-serif',
 					fontSize,
