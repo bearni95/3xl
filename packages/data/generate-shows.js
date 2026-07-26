@@ -124,6 +124,20 @@ function showPosterUrl(entry) {
 	return entry.show.posterUrl ?? null;
 }
 
+/**
+ * A saved show's display backdrop URL. Mirrors showBackdropUrl() in the shared
+ * util: the author-chosen main backdrop at full resolution if picked, otherwise
+ * the show's default TMDB backdrop, otherwise null.
+ */
+function showBackdropUrl(entry) {
+	const filePath = entry.mainImages?.backdrop;
+	if (filePath) {
+		const image = entry.images.backdrops.find((candidate) => candidate.filePath === filePath);
+		if (image) return image.fullUrl;
+	}
+	return entry.show.backdropUrl ?? null;
+}
+
 const municipis = JSON.parse(readFileSync(MUNICIPIS, 'utf8'));
 const { shows: allShows } = JSON.parse(readFileSync(SHOWS, 'utf8'));
 
@@ -166,7 +180,8 @@ const assignments = municipis.features
 			show: {
 				id: entry.show.id,
 				name: entry.show.name,
-				posterUrl: showPosterUrl(entry)
+				posterUrl: showPosterUrl(entry),
+				backdropUrl: showBackdropUrl(entry)
 			}
 		};
 	})

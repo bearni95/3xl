@@ -19,6 +19,8 @@ export interface RegionShow {
 	id: number;
 	name: string;
 	posterUrl: string | null;
+	/** Wide backdrop, shown behind the currently-selected region on the map. */
+	backdropUrl: string | null;
 }
 
 /** A single blue municipality — the leaf of the tree. */

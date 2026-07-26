@@ -310,6 +310,10 @@
 		selected && municipalities
 			? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
 			: null;
+
+	// The currently-open region node (null at the top view), so the map can mark
+	// the selection with the backdrop of the show associated to that area.
+	$: selectedNode = selected ? findNode(regionNodes, selected) : null;
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
@@ -362,6 +366,28 @@
 			<span class="opacity-70">Zoom</span>
 			<span class="font-bold tabular-nums">{currentZoom}</span>
 		</div>
+
+		{#if selectedNode?.show?.backdropUrl}
+			<div
+				class="rounded-box ring-base-300 absolute bottom-4 left-4 z-[1000] w-80 overflow-hidden shadow-xl ring-1"
+			>
+				<img
+					src={selectedNode.show.backdropUrl}
+					alt={selectedNode.show.name}
+					class="h-44 w-full object-cover"
+				/>
+				<div
+					class="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-3"
+				>
+					<span class="text-xs font-semibold uppercase tracking-wide text-white/70">
+						{restoreCatalanArticle(selectedNode.name)}
+					</span>
+					<span class="text-lg font-bold leading-tight text-white">
+						{selectedNode.show.name}
+					</span>
+				</div>
+			</div>
+		{/if}
 	</div>
 
 	{#if portalOpen}
