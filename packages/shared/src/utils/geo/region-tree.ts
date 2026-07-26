@@ -162,40 +162,60 @@ export interface RegionRow {
 	expanded: boolean;
 }
 
-/**
- * The rows the table shows: every node of `topTier` as a depth-0 row, plus the
- * unfolded descendants of any expanded row (recursively). The active tier tab
- * picks `topTier`; clicking a row toggles its key in `expanded`.
- */
-export function visibleRegionRows(
-	nodes: RegionNode[],
-	topTier: RegionType,
-	expanded: Set<string>
-): RegionRow[] {
-	const roots: RegionNode[] = [];
-	const collect = (list: RegionNode[]) => {
-		for (const node of list) {
-			if (node.type === topTier) roots.push(node);
-			else collect(node.children);
-		}
+/** The chain of nodes from a root territory down to `key`, or [] if not found. */
+export function nodePath(nodes: RegionNode[], key: string): RegionNode[] {
+	for (const node of nodes) {
+		if (node.key === key) return [node];
+		const below = nodePath(node.children, key);
+		if (below.length) return [node, ...below];
+	}
+	return [];
+}
+
+/** Turns a node into a table row at `depth`, optionally marked as the open one. */
+function toRow(node: RegionNode, depth: number, expanded: boolean): RegionRow {
+	return {
+		key: node.key,
+		name: node.name,
+		type: node.type,
+		show: node.show,
+		depth,
+		hasChildren: node.children.length > 0,
+		expanded
 	};
-	collect(nodes);
+}
+
+/**
+ * The rows the table shows for the open region: only two tiers deep. The
+ * "previous" tier — the open region's siblings (or the top territories when a
+ * territory is open, or nothing is open) — sit at depth 0, and the open region's
+ * own children — the "current" tier the map is imaging — unfold under it at
+ * depth 1. Deeper ancestors are reached through the breadcrumbs, not the table,
+ * so the table never grows past these two levels.
+ */
+export function regionRowsForSelection(
+	nodes: RegionNode[],
+	selected: string | null
+): RegionRow[] {
+	// Top view: the territories are the current tier, with no previous one.
+	if (!selected) return nodes.map((node) => toRow(node, 0, false));
+
+	const path = nodePath(nodes, selected);
+	// An unknown key falls back to the top view rather than an empty table.
+	if (!path.length) return nodes.map((node) => toRow(node, 0, false));
+
+	// The previous tier: the open region's siblings — its parent's children, or
+	// the top territories when the open region is itself a territory.
+	const parent = path.length >= 2 ? path[path.length - 2] : null;
+	const siblings = parent ? parent.children : nodes;
 
 	const rows: RegionRow[] = [];
-	const walk = (node: RegionNode, depth: number) => {
-		const isOpen = expanded.has(node.key);
-		rows.push({
-			key: node.key,
-			name: node.name,
-			type: node.type,
-			show: node.show,
-			depth,
-			hasChildren: node.children.length > 0,
-			expanded: isOpen
-		});
-		if (isOpen) for (const child of node.children) walk(child, depth + 1);
-	};
-	for (const root of roots) walk(root, 0);
+	for (const sibling of siblings) {
+		const isOpen = sibling.key === selected;
+		rows.push(toRow(sibling, 0, isOpen));
+		// The current tier unfolds under the open sibling only.
+		if (isOpen) for (const child of sibling.children) rows.push(toRow(child, 1, false));
+	}
 	return rows;
 }
 

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -10,7 +9,8 @@
 		buildRegionTree,
 		buildFillIndex,
 		buildRegionNodes,
-		visibleRegionRows,
+		regionRowsForSelection,
+		nodePath,
 		municipalityIdsForKey,
 		type FillLevel,
 		type RegionRow,
@@ -37,11 +37,6 @@
 	// its own id, deeper tiers append theirs, a municipality is its own id. Null
 	// (no param) means nothing is open — the map's top view.
 	$: selected = $page.url.searchParams.get('region');
-
-	// The breadcrumb tiers, shown as a 4-col button grid above the table. The
-	// active button mirrors the open region's tier; the table itself always drills
-	// from Territory.
-	const tierTabs = ['Territory', 'Province', 'Comarca', 'Municipality'] as const;
 
 	// Point the URL at a region (or clear it), which reactively re-derives every
 	// piece of open/expanded/selected state below. Pushed as history so the back
@@ -172,37 +167,23 @@
 	// comarca → municipality) mirrored from the map's divisions, for the tree.
 	$: regionTree = buildRegionTree(municipalities, showsById);
 
-	// The nested region nodes. The table always drills from Territory; the single
-	// open path (below) is what unfolds, so exactly one branch is ever expanded.
+	// The nested region nodes. The table shows only two tiers at a time — the open
+	// region's siblings and its children (see regionRowsForSelection) — while the
+	// breadcrumbs carry the full drill path back up.
 	$: regionNodes = buildRegionNodes(regionTree);
-	$: regionRows = visibleRegionRows(regionNodes, 'Territory', expanded);
+	$: regionRows = regionRowsForSelection(regionNodes, selected);
 
 	// The chain of nodes from the top territory down to the open region (empty when
-	// nothing is open). Its keys are the expanded set — every ancestor plus the
-	// open node itself (so the open region's own children unfold) — which is what
-	// makes the table a single accordion.
+	// nothing is open), rendered as the breadcrumb trail above the table.
 	$: openPath = selected ? nodePath(regionNodes, selected) : [];
-	$: expanded = new Set(openPath.map((node) => node.key));
 
-	// The tier the open region sits at (Territory at the top view), which the
-	// breadcrumb grid highlights. Each button carries the ancestor at its tier, if
-	// the open path reaches it, so clicking collapses back up to that tier.
-	$: openTier = openPath.length ? openPath[openPath.length - 1].type : 'Territory';
-	$: tierButtons = tierTabs.map((tier) => ({
-		tier,
-		node: openPath.find((node) => node.type === tier) ?? null,
-		active: tier === openTier
-	}));
-
-	// The path of nodes from a root territory down to `key`, or [] if not found.
-	function nodePath(nodes: RegionNode[], key: string): RegionNode[] {
-		for (const node of nodes) {
-			if (node.key === key) return [node];
-			const below = nodePath(node.children, key);
-			if (below.length) return [node, ...below];
-		}
-		return [];
-	}
+	// The breadcrumb crumbs: a root crumb back to the top view, then one per
+	// ancestor down to the open region. The last crumb is the current region and
+	// renders as plain text; the rest link back up to their tier.
+	$: crumbs = [
+		{ label: 'Països Catalans', key: null as string | null },
+		...openPath.map((node) => ({ label: node.name, key: node.key as string | null }))
+	];
 
 	// Per-municipality chain of region tiers, read by buildMarkers/focusBounds to
 	// find the municipalities under a region and frame or pin it.
@@ -321,17 +302,20 @@
 	>
 		<div class="border-b border-base-300 px-4 py-3">
 			<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Regions</h2>
-			<div class="join mt-2 grid grid-cols-4">
-				{#each tierButtons as { tier, node, active }}
-					<button
-						type="button"
-						class={classNames('btn btn-primary join-item', { 'btn-outline': !active })}
-						disabled={!active && !node}
-						on:click={() => node && node.key !== selected && open(node.key)}
-					>
-						{tier}
-					</button>
-				{/each}
+			<div class="breadcrumbs mt-1 max-w-full text-sm">
+				<ul>
+					{#each crumbs as crumb, i}
+						<li>
+							{#if i === crumbs.length - 1}
+								<span class="font-semibold">{crumb.label}</span>
+							{:else}
+								<button type="button" class="link link-hover" on:click={() => open(crumb.key)}>
+									{crumb.label}
+								</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
 			</div>
 		</div>
 
