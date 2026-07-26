@@ -185,9 +185,9 @@
 		for (const layer of group.layers) applyImageFill(layer);
 	}
 
-	// Image-filled polygons sit at half strength so the satellite base reads
+	// Image-filled polygons sit at 80% strength so the satellite base reads
 	// through, and fade to full opacity while hovered.
-	const IMAGE_FILL_OPACITY = 0.5;
+	const IMAGE_FILL_OPACITY = 0.8;
 	const IMAGE_FILL_HOVER_OPACITY = 1;
 
 	// Point a member path's fill at its group pattern (set when the group is
@@ -273,7 +273,7 @@
 						layer.on('mouseout', () => {
 							layerGroup.resetStyle(layer);
 							// resetStyle repaints the base fillColor, so re-apply the image
-							// at its resting half opacity.
+							// at its resting opacity.
 							if (hasImageFill) applyImageFill(layer as L.Path);
 						});
 					}
