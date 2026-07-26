@@ -9,7 +9,7 @@
 	export let signingOut: boolean = false;
 	export let classes: string = '';
 
-	const dispatch = createEventDispatcher<{ signout: void }>();
+	const dispatch = createEventDispatcher<{ signout: void; editusername: void }>();
 
 	function formatDate(value: string | null): string {
 		if (!value) return '—';
@@ -19,6 +19,10 @@
 
 	function handleSignOut(): void {
 		if (!signingOut) dispatch('signout');
+	}
+
+	function handleEditUsername(): void {
+		dispatch('editusername');
 	}
 
 	$: initial = (profile.displayName || profile.email || '?').charAt(0).toUpperCase();
@@ -31,9 +35,18 @@
 				<span class="text-xl">{initial}</span>
 			</div>
 		</div>
-		<div class="flex flex-col">
-			<span class="text-lg font-semibold">{profile.displayName}</span>
-			<span class="text-sm text-base-content/70">{profile.email}</span>
+		<div class="flex min-w-0 flex-col">
+			<div class="flex items-center gap-2">
+				<span class="truncate text-lg font-semibold">{profile.displayName}</span>
+				<button
+					type="button"
+					class="btn btn-ghost btn-xs"
+					on:click={handleEditUsername}
+				>
+					{profile.username ? $_('profile.username.edit') : $_('profile.username.set')}
+				</button>
+			</div>
+			<span class="truncate text-sm text-base-content/70">{profile.email}</span>
 		</div>
 	</div>
 

@@ -26,12 +26,17 @@ export class ProfileAdapter extends AdapterClass {
 	/** Transform a Supabase auth user into the internal {@link Profile} model. */
 	fromSupabaseUser(user: SupabaseUserLike): Profile {
 		const email = user.email ?? '';
-		const metadataName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? '';
+		// The chosen username, or null when the account has never set one. Unlike
+		// the display name, this is not backfilled from the email — an empty
+		// username is what triggers the first-login prompt.
+		const rawName = (user.user_metadata?.full_name ?? user.user_metadata?.name ?? '')?.trim();
+		const username = rawName || null;
 
 		return {
 			id: user.id,
 			email,
-			displayName: metadataName || email.split('@')[0] || 'Account',
+			username,
+			displayName: username || email.split('@')[0] || 'Account',
 			createdAt: user.created_at ?? null,
 			lastSignInAt: user.last_sign_in_at ?? null
 		};

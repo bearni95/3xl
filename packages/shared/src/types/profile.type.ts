@@ -14,7 +14,13 @@ export enum AuthStatus {
 export interface Profile {
 	id: ID;
 	email: string;
-	/** Display name from user metadata, falling back to the email local-part. */
+	/**
+	 * The username the account chose, or `null` when it has never been set.
+	 * A fresh account starts with `null`; the app prompts for one on first
+	 * sign-in and via the profile card.
+	 */
+	username: string | null;
+	/** Display name — the chosen {@link username}, falling back to the email local-part. */
 	displayName: string;
 	/** ISO timestamp the account was created, if known. */
 	createdAt: string | null;

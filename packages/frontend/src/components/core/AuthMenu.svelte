@@ -4,6 +4,7 @@
 	import { _, locale } from 'svelte-i18n';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
+	import { usernamePromptOpen } from '$services/usernamePrompt';
 	import { AuthStatus } from '$types/profile.type';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
 	import MagicLinkForm from '$components/core/MagicLinkForm.svelte';
@@ -49,6 +50,10 @@
 	function resetFlow(): void {
 		sentTo = null;
 		errorMessage = null;
+	}
+
+	function openUsernamePrompt(): void {
+		usernamePromptOpen.set(true);
 	}
 
 	function togglePanel(): void {
@@ -98,7 +103,12 @@
 							<span>{$_('profile.notConfigured')}</span>
 						</div>
 					{:else if $status === AuthStatus.SignedIn && $profile}
-						<ProfileCard profile={$profile} {signingOut} on:signout={handleSignOut} />
+						<ProfileCard
+							profile={$profile}
+							{signingOut}
+							on:signout={handleSignOut}
+							on:editusername={openUsernamePrompt}
+						/>
 					{:else if sentTo}
 						<div class="alert alert-success">
 							<span>{$_('profile.checkEmail', { values: { email: sentTo } })}</span>

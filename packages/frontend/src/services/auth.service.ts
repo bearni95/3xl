@@ -76,6 +76,20 @@ class AuthService {
 		if (error) throw error;
 	}
 
+	/**
+	 * Set (or change) the signed-in account's username. Persists it to Supabase
+	 * user metadata and immediately mirrors the updated user into the stores.
+	 */
+	async updateUsername(username: string): Promise<void> {
+		const trimmed = username.trim();
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase.auth.updateUser({
+			data: { full_name: trimmed, name: trimmed }
+		});
+		if (error) throw error;
+		this.apply(data.user ?? null);
+	}
+
 	/** End the current session. */
 	async signOut(): Promise<void> {
 		const supabase = getSupabaseClient();

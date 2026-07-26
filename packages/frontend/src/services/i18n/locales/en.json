@@ -36,7 +36,17 @@
 		"memberSince": "Member since",
 		"lastSignIn": "Last sign-in",
 		"signOut": "Sign out",
-		"notConfigured": "Sign-in is unavailable: Supabase is not configured. Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY."
+		"notConfigured": "Sign-in is unavailable: Supabase is not configured. Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY.",
+		"username": {
+			"title": "Choose a username",
+			"prompt": "Pick a username so others can recognise you. You can change it later from your profile.",
+			"label": "Username",
+			"placeholder": "e.g. player_one",
+			"save": "Save username",
+			"later": "Maybe later",
+			"set": "Set username",
+			"edit": "Edit"
+		}
 	},
 	"errors": {
 		"generic": "An error occurred",
