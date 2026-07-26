@@ -258,23 +258,22 @@
 						layer.bindTooltip(label, { sticky: true });
 					}
 
-					// Whether this feature currently carries an image fill, so hover can
-					// re-apply it after setStyle repaints the base fillColor. Its group
-					// membership is (re)built in buildImageFills, not here.
-					const hasImageFill = normalizeFill(overlay.imageFill?.(feature)) !== null;
-
 					if (overlay.hoverStyle) {
 						layer.on('mouseover', () => {
 							(layer as L.Path).setStyle(overlay.hoverStyle!);
 							// setStyle repaints the base fillColor, so re-apply the image —
-							// fading it to full opacity while hovered.
-							if (hasImageFill) applyImageFill(layer as L.Path, IMAGE_FILL_HOVER_OPACITY);
+							// fading it to full opacity while hovered. applyImageFill no-ops
+							// when the layer has no pattern, and reads the layer's *live*
+							// pattern id (set in buildImageFills after a selection), so a
+							// polygon that gained its image after bind still fades correctly
+							// instead of showing the bare purple hover fill.
+							applyImageFill(layer as L.Path, IMAGE_FILL_HOVER_OPACITY);
 						});
 						layer.on('mouseout', () => {
 							layerGroup.resetStyle(layer);
 							// resetStyle repaints the base fillColor, so re-apply the image
 							// at its resting opacity.
-							if (hasImageFill) applyImageFill(layer as L.Path);
+							applyImageFill(layer as L.Path);
 						});
 					}
 
