@@ -12,12 +12,6 @@
 
 	const dispatch = createEventDispatcher<{ signout: void; editusername: void }>();
 
-	function formatDate(value: string | null): string {
-		if (!value) return '—';
-		const date = new Date(value);
-		return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
-	}
-
 	/** Whole days elapsed since `value`, or `null` when it's missing/invalid. */
 	function fullDaysSince(value: string | null): number | null {
 		if (!value) return null;
@@ -37,7 +31,7 @@
 	$: initial = (profile.displayName || profile.email || '?').charAt(0).toUpperCase();
 	$: progress = levelProgress(profile.exp);
 	$: expPercent = Math.round(progress.fraction * 100);
-	$: daysSinceSignIn = fullDaysSince(profile.lastSignInAt);
+	$: memberDays = fullDaysSince(profile.createdAt);
 </script>
 
 <div class={classNames('flex flex-col gap-4', classes)}>
@@ -101,14 +95,11 @@
 		<dd class="truncate font-mono">{profile.id}</dd>
 
 		<dt class="text-base-content/60">{$_('profile.memberSince')}</dt>
-		<dd>{formatDate(profile.createdAt)}</dd>
-
-		<dt class="text-base-content/60">{$_('profile.daysSinceSignIn')}</dt>
 		<dd>
-			{#if daysSinceSignIn === null}
+			{#if memberDays === null}
 				—
 			{:else}
-				{$_('profile.daysElapsed', { values: { days: daysSinceSignIn } })}
+				{$_('profile.daysElapsed', { values: { days: memberDays } })}
 			{/if}
 		</dd>
 

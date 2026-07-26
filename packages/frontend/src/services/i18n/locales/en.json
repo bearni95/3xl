@@ -34,7 +34,6 @@
 		"useAnotherEmail": "Use a different email",
 		"accountId": "Account ID",
 		"memberSince": "Member since",
-		"daysSinceSignIn": "Days since sign-in",
 		"daysElapsed": "{days, plural, =0 {Today} one {# day} other {# days}}",
 		"level": "Level",
 		"levelBadge": "Lv {level}",
