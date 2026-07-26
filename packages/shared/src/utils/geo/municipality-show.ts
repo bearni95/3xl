@@ -1,13 +1,11 @@
 // Deterministically assign a saved TV show to a municipality from its shape.
 //
-// The map paints each municipality with the poster of an assigned show. The
-// assignment is a pure function of the municipality's *full GPS coordinates*:
-// the same polygon always yields the same show (stable across reloads and
-// machines, no storage needed), while neighbouring municipalities land on
-// independent shows. Because WorldMap groups features by the image URL their
-// `imageFill` returns, every municipality assigned the same show shares one
-// poster spanning their combined shape, with each polygon's border drawn over
-// it — adjacent same-show cells merge into a single picture automatically.
+// Each municipality is assigned a show, and the map pins each region's plurality
+// show at its centre. The assignment is a pure function of the municipality's
+// *full GPS coordinates*: the same polygon always yields the same show (stable
+// across reloads and machines, no storage needed), while neighbouring
+// municipalities land on independent shows — so each region's most common show
+// is a stable, deterministic pick.
 
 import type { ShowEntry } from '../../types/show.type';
 

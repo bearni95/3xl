@@ -18,7 +18,7 @@
 		type RegionType
 	} from '$utils/geo/region-tree';
 	import { boundsForFeatures } from '$utils/geo/bounds';
-	import type { MapCircle, MapOverlay } from '$types/map.type';
+	import type { MapCircle, MapMarker, MapOverlay } from '$types/map.type';
 	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
 
 	// The municipality polygons, feeding the region tree and the map framing.
@@ -97,72 +97,40 @@
 	// territory lines (green comarca lines sit under the yellow province ones,
 	// so shared borders read as province).
 	//
-	// Every polygon is always drawn; imagery appears only inside the selected
-	// region, and it images the region's *next* sub-division rather than the
-	// region itself. Selecting a territory paints each of its provinces (or
-	// comarques) with that child's own top show; selecting a province paints its
-	// comarques; a comarca paints its municipalities. Because every municipality
-	// under a given child returns that child's key + poster, WorldMap merges them
-	// into one image spanning the child's whole shape. Selecting a municipality
-	// (no deeper tier) paints just that municipality with its own show. Every
-	// municipality outside the selection returns null and stays a plain polygon.
-	// With nothing selected the map opens on its top view: every municipality
-	// returns its territory tier (levels[0]), so each territory is merged into one
-	// image of its own most-popular show.
-	function buildOverlays(index: Map<string, FillLevel[]>, chosen: string | null): MapOverlay[] {
-		return [
-			{
-				url: '/data/geo/municipis.json',
-				style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
-				hoverStyle: { weight: 2, fillOpacity: 0.3 },
-				label: (feature) => {
-					const props = feature.properties ?? {};
-					const show = assignmentsById.get(String(props.id))?.show.name;
-					return [props.name ?? 'Unknown', props.comarca, props.prov, props.territory, show]
-						.filter(Boolean)
-						.join(', ');
-				},
-				imageFill: (feature) => {
-					const levels = index.get(String(feature.properties?.id));
-					if (!levels) return null;
-					// Top view: with no region selected, image every municipality at its
-					// territory tier (levels[0]), so each territory merges into one image
-					// of its own most-popular show.
-					if (!chosen) {
-						const territory = levels[0];
-						return territory?.url ? { key: territory.key, url: territory.url } : null;
-					}
-					// Find where the chosen region sits in this municipality's chain,
-					// then image the tier one step deeper (its child sub-division) —
-					// unless the chosen region is the municipality itself, which has no
-					// deeper tier and images its own show.
-					const at = levels.findIndex((tier) => tier.key === chosen);
-					if (at === -1) return null;
-					const level = levels[Math.min(at + 1, levels.length - 1)];
-					return level?.url ? { key: level.key, url: level.url } : null;
-				}
-			},
-			{
-				url: '/data/geo/comarques.json',
-				style: { color: '#22c55e', weight: 1.5, fill: false },
-				interactive: false
-			},
-			{
-				url: '/data/geo/provincies.json',
-				style: { color: '#eab308', weight: 2, fill: false },
-				interactive: false
-			},
-			{
-				url: '/data/geo/territoris.json',
-				style: { color: '#ef4444', weight: 3, fill: false },
-				interactive: false
+	// The polygons are plain outlines now — each imaged region's top show is shown
+	// on a pin dropped at the region's centre (see `markers`), not painted across
+	// its shape. The municipality layer stays interactive for its hover highlight
+	// and tooltip; the coarser tiers are decorative outlines. `hiddenLineUrls`
+	// still thins the finer borders down to the tier the map is focused on.
+	const overlays: MapOverlay[] = [
+		{
+			url: '/data/geo/municipis.json',
+			style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
+			hoverStyle: { weight: 2, fillOpacity: 0.3 },
+			label: (feature) => {
+				const props = feature.properties ?? {};
+				const show = assignmentsById.get(String(props.id))?.show.name;
+				return [props.name ?? 'Unknown', props.comarca, props.prov, props.territory, show]
+					.filter(Boolean)
+					.join(', ');
 			}
-		];
-	}
-
-	// Rebuilt (so WorldMap repaints) whenever the tree loads or the selection
-	// changes. fillIndex and selected are passed in so this statement tracks them.
-	$: overlays = buildOverlays(fillIndex, selected);
+		},
+		{
+			url: '/data/geo/comarques.json',
+			style: { color: '#22c55e', weight: 1.5, fill: false },
+			interactive: false
+		},
+		{
+			url: '/data/geo/provincies.json',
+			style: { color: '#eab308', weight: 2, fill: false },
+			interactive: false
+		},
+		{
+			url: '/data/geo/territoris.json',
+			style: { color: '#ef4444', weight: 3, fill: false },
+			interactive: false
+		}
+	];
 
 	// The portal axis: an imaginary straight line from the municipality of Girona
 	// (centroid ~[41.99, 2.83]) out to l'Alguer — the lone Italian territory in
@@ -233,8 +201,8 @@
 		return [];
 	}
 
-	// Per-municipality chain of paint tiers, read by the map's imageFill to pick
-	// each polygon's poster and by focusBounds to frame the selected region.
+	// Per-municipality chain of region tiers, read by buildMarkers/focusBounds to
+	// find the municipalities under a region and frame or pin it.
 	$: fillIndex = buildFillIndex(regionTree);
 
 	// Coarse → fine rank of each division tier, used to compare a line overlay's
@@ -246,9 +214,9 @@
 		Municipality: 3
 	};
 
-	// The line overlays that subdivide a poster, each with its own tier rank. The
+	// The line overlays that subdivide a region, each with its own tier rank. The
 	// territory outline (rank 0) is never hidden, so it isn't listed. municipis
-	// carries the fill too, so hiding it drops only its stroke, not its poster.
+	// carries the fill too, so hiding it drops only its stroke, not its fill.
 	const lineTiers: [string, number][] = [
 		['/data/geo/provincies.json', tierRank.Province],
 		['/data/geo/comarques.json', tierRank.Comarca],
@@ -267,20 +235,61 @@
 
 	// The tier the map is imaging right now: territories at the top view (nothing
 	// selected), otherwise the selected region's child tier — the sub-division its
-	// posters span. A selected municipality (a leaf) images itself.
+	// pins mark. A selected municipality (a leaf) images itself.
 	function imagedRank(chosen: string | null, nodes: RegionNode[]): number {
 		if (!chosen) return tierRank.Territory;
 		const node = findNode(nodes, chosen);
 		return tierRank[node?.children[0]?.type ?? 'Municipality'];
 	}
 
-	// Hide the stroke of every line overlay finer than the imaged tier: those
-	// borders sit inside each poster and would crawl across the image. The imaged
-	// tier's own outline and everything coarser stay drawn to frame each poster.
+	// Hide the stroke of every line overlay finer than the imaged tier, so only the
+	// tier the map is focused on (and everything coarser) keeps its borders — the
+	// finer divisions inside would just clutter the pinned regions.
 	$: hiddenRank = imagedRank(selected, regionNodes);
 	$: hiddenLineUrls = new Set(
 		lineTiers.filter(([, rank]) => rank > hiddenRank).map(([url]) => url)
 	);
+
+	// The regions the map marks with a pin: mirrors what the old poster fill imaged
+	// — the territories at the top view, otherwise the selected region's children
+	// (its next sub-division), or the selected municipality itself when it's a leaf.
+	function imagedNodes(chosen: string | null, nodes: RegionNode[]): RegionNode[] {
+		if (!chosen) return nodes;
+		const node = findNode(nodes, chosen);
+		if (!node) return [];
+		return node.children.length ? node.children : [node];
+	}
+
+	// One pin per imaged region that has a show, dropped at the centre of the
+	// region's bounding box, captioned with the show and tooltipped with the region
+	// name; clicking a pin opens that region. Rebuilt when the selection, tree or
+	// polygons change (all named here so the statement tracks them).
+	function buildMarkers(
+		nodes: RegionNode[],
+		polygons: GeoJSON.FeatureCollection | null,
+		index: Map<string, FillLevel[]>
+	): MapMarker[] {
+		if (!polygons) return [];
+		const pins: MapMarker[] = [];
+		for (const node of nodes) {
+			const poster = node.show?.posterUrl;
+			if (!poster) continue;
+			const box = boundsForFeatures(polygons, municipalityIdsForKey(index, node.key));
+			if (!box) continue;
+			const [[south, west], [north, east]] = box;
+			pins.push({
+				id: node.key,
+				position: [(south + north) / 2, (west + east) / 2],
+				imageUrl: poster,
+				title: node.show!.name,
+				subtitle: node.name,
+				onClick: () => open(node.key)
+			});
+		}
+		return pins;
+	}
+
+	$: markers = buildMarkers(imagedNodes(selected, regionNodes), municipalities, fillIndex);
 
 	// The bounding box the map fits when a region is selected: the union of every
 	// municipality polygon under the selected key. A fresh array each time (even
@@ -323,6 +332,7 @@
 				zoom={8}
 				{overlays}
 				{circles}
+				{markers}
 				{hiddenLineUrls}
 				{focusBounds}
 				bind:currentZoom

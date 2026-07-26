@@ -1,13 +1,5 @@
 import type { PathOptions } from 'leaflet';
 
-/** An image fill plus the group key that decides which features share it. */
-export interface ImageFill {
-	/** Features returning the same key merge into one image over their union. */
-	key: string;
-	/** The image URL painted across that group. */
-	url: string;
-}
-
 /** A GeoJSON layer drawn on top of the base map, in array order (last = topmost). */
 export interface MapOverlay {
 	/** URL of the GeoJSON file, fetched client-side after the map mounts. */
@@ -18,14 +10,6 @@ export interface MapOverlay {
 	hoverStyle?: PathOptions;
 	/** Returns the hover tooltip label for a feature. */
 	label?: (feature: GeoJSON.Feature) => string;
-	/**
-	 * Returns an image to paint as a feature's fill (stretched to its bounding
-	 * box), or null to leave the normal `style.fillColor`. Features that resolve
-	 * to the same group `key` share one image spanning their combined shape; a
-	 * bare string is shorthand for `{ key: url, url }`. Re-evaluated whenever the
-	 * overlays prop changes, so the fill can follow live UI state.
-	 */
-	imageFill?: (feature: GeoJSON.Feature) => ImageFill | string | null;
 	/** Called when a feature is clicked. */
 	onClick?: (feature: GeoJSON.Feature) => void;
 	/**
@@ -43,6 +27,26 @@ export interface MapLine {
 	style: PathOptions;
 	/** Text shown as a permanent centred label over the line. */
 	label?: string;
+}
+
+/**
+ * A pin dropped at a point, showing an image and caption in a small card — used
+ * to mark each imaged region's top show on the map instead of painting it across
+ * the region's polygons.
+ */
+export interface MapMarker {
+	/** Stable id (the region key), so the marker layer can diff on rebuild. */
+	id: string;
+	/** Where the pin sits, as [lat, lng]. */
+	position: [number, number];
+	/** Poster/thumbnail shown in the pin; the pin is caption-only when null. */
+	imageUrl: string | null;
+	/** Primary caption under the image (the show name). */
+	title: string;
+	/** Secondary text for the hover tooltip (e.g. the region name). */
+	subtitle?: string;
+	/** Called when the pin is clicked. */
+	onClick?: () => void;
 }
 
 /** A standalone circular region drawn on the map, independent of any GeoJSON. */
