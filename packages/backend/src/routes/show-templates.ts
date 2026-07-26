@@ -67,6 +67,8 @@ function ensureTables(): Promise<void> {
 						show_id bigint references show_templates (id) on delete set null,
 						location_id text,
 						color text,
+						-- Gameplay stat, rolled at claim time (SPAWN_STAT_MIN..SPAWN_STAT_MAX).
+						stat smallint not null default 1,
 						created_at timestamptz not null default now()
 					);
 				alter table character_spawns add column if not exists location_id text;
@@ -86,6 +88,19 @@ function ensureTables(): Promise<void> {
 					from (select id, random() as r from character_spawns where color is null) seeded
 				) pick
 				where cs.id = pick.id;
+				-- Backfill the stat column on tables provisioned before it existed, then
+				-- clamp any stored values into range so the check constraint below holds.
+				alter table character_spawns add column if not exists stat smallint;
+				update character_spawns set stat = 1 where stat is null;
+				update character_spawns set stat = least(9, greatest(1, stat))
+					where stat < 1 or stat > 9;
+				alter table character_spawns alter column stat set default 1;
+				alter table character_spawns alter column stat set not null;
+				-- Range constraint, dropped/re-added so it's idempotent. Keep the bounds
+				-- in sync with SPAWN_STAT_MIN/SPAWN_STAT_MAX in @3xl/shared.
+				alter table character_spawns drop constraint if exists character_spawns_stat_range;
+				alter table character_spawns
+					add constraint character_spawns_stat_range check (stat between 1 and 9);
 				alter table character_spawns enable row level security;
 				drop policy if exists character_spawns_select_own on character_spawns;
 				create policy character_spawns_select_own on character_spawns

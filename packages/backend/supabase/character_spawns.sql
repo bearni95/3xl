@@ -21,12 +21,26 @@ create table if not exists public.character_spawns (
 	location_id text,
 	-- Weighted spawn colour (red/yellow/blue common; orange/green/purple 3x rarer).
 	color text,
+	-- Gameplay stat, rolled at claim time (SPAWN_STAT_MIN..SPAWN_STAT_MAX).
+	stat smallint not null default 1,
 	created_at timestamptz not null default now()
 );
 
 -- Backfill the columns on tables provisioned before they existed.
 alter table public.character_spawns add column if not exists location_id text;
 alter table public.character_spawns add column if not exists color text;
+alter table public.character_spawns add column if not exists stat smallint;
+
+-- Clamp stat into range, then enforce it. Keep the bounds in sync with
+-- SPAWN_STAT_MIN/SPAWN_STAT_MAX in @3xl/shared.
+update public.character_spawns set stat = 1 where stat is null;
+update public.character_spawns set stat = least(9, greatest(1, stat))
+	where stat < 1 or stat > 9;
+alter table public.character_spawns alter column stat set default 1;
+alter table public.character_spawns alter column stat set not null;
+alter table public.character_spawns drop constraint if exists character_spawns_stat_range;
+alter table public.character_spawns
+	add constraint character_spawns_stat_range check (stat between 1 and 9);
 
 -- Assign a weighted colour to any pre-existing rows that lack one.
 update public.character_spawns cs set color = pick.color
