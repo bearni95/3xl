@@ -278,32 +278,30 @@ export class PackSprite extends Container {
 		root.addChild(footer);
 
 		// A row of equilateral triangles across the top, bases on y = 0 (the start of
-		// the top white strip) and apexes pointing down into it. The base is rounded
-		// to a whole count so the row tiles the full width with no gap or overhang.
+		// the top strip) and apexes pointing down into it. The base is rounded to a
+		// whole count so the row tiles the full width with no gap or overhang. The
+		// triangles are band-coloured; every other one is then tinted with a 50%
+		// black overlay so the row reads as alternating dark and band teeth across
+		// the full width (yes-no-yes-no to the right end).
 		const triCount = Math.max(1, Math.round(w / (w * TRIANGLE_BASE_RATIO)));
 		const triBase = w / triCount;
 		const triHeight = Math.round(((triBase * Math.sqrt(3)) / 2) * 0.67);
 		const triangles = new Graphics();
+		const triTint = new Graphics();
 		for (let i = 0; i < triCount; i++) {
 			// Snap edges to whole pixels; neighbours share a boundary because they
 			// round the same value, so the row stays gapless and crisp.
 			const xL = Math.round(i * triBase);
 			const xR = Math.round((i + 1) * triBase);
-			triangles.poly([xL, 0, xR, 0, Math.round((xL + xR) / 2), triHeight]);
+			const poly = [xL, 0, xR, 0, Math.round((xL + xR) / 2), triHeight];
+			triangles.poly(poly);
+			if (i % 2 === 0) triTint.poly(poly); // tint the 1st, 3rd, 5th … triangle
 		}
 		triangles.fill({ color: this.topColor, alpha: 1 });
 		root.addChild(triangles);
 
-		// The first triangle's apex sits on a vertical line at half its base — its
-		// "vertical half". Darken the column from the left edge to that line (the
-		// half-triangle and the header band below it) with a 50% black overlay,
-		// stopping where the header rectangle ends and the poster art begins, so
-		// that slice reads as tinted over the colours beneath it.
-		const firstHalfX = Math.round(Math.round(triBase) / 2);
-		const columnOverlay = new Graphics();
-		columnOverlay.rect(0, 0, firstHalfX, headerH);
-		columnOverlay.fill({ color: 0x000000, alpha: 0.5 });
-		root.addChild(columnOverlay);
+		triTint.fill({ color: 0x000000, alpha: 0.5 });
+		root.addChild(triTint);
 
 		// The place the pack belongs to, overlaid at the top-centre of the image in
 		// white with a black outline so it stays legible over the poster.
