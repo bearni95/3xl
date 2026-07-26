@@ -101,7 +101,8 @@
 			label: (feature) => {
 				const props = feature.properties ?? {};
 				const show = assignmentsById.get(String(props.id))?.show.name;
-				return [props.name ?? 'Unknown', props.comarca, props.prov, props.territory, show]
+				const name = restoreCatalanArticle(String(props.name ?? 'Unknown'));
+				return [name, props.comarca, props.prov, props.territory, show]
 					.filter(Boolean)
 					.join(', ');
 			}
@@ -175,7 +176,7 @@
 	// renders as plain text; the rest link back up to their tier.
 	$: crumbs = [
 		{ label: 'Països Catalans', key: null as string | null },
-		...openPath.map((node) => ({ label: node.name, key: node.key as string | null }))
+		...openPath.map((node) => ({ label: restoreCatalanArticle(node.name), key: node.key as string | null }))
 	];
 
 	// Per-municipality chain of region tiers, read by buildMarkers/focusBounds to

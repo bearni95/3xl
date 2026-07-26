@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { RegionRow } from '$utils/geo/region-tree';
+	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 
 	// The current drill level: the sub-regions of the open region (or the top
 	// territories when nothing is open). Clicking a row drills one tier deeper;
@@ -22,7 +23,7 @@
 				<tr class="cursor-pointer hover" on:click={() => onSelect(row)}>
 					<td class="font-medium">
 						<span class="flex items-center justify-between gap-2">
-							<span class="truncate">{row.name}</span>
+							<span class="truncate">{restoreCatalanArticle(row.name)}</span>
 							{#if row.hasChildren}
 								<span class="flex-none text-base opacity-40">›</span>
 							{/if}
