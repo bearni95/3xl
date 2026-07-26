@@ -39,6 +39,12 @@ export interface MapMarker {
 	id: string;
 	/** Where the pin sits, as [lat, lng]. */
 	position: [number, number];
+	/**
+	 * The region's bounding box as `[[south, west], [north, east]]`, when known.
+	 * Lets a level-of-detail map decide which grouping tier to draw by whether the
+	 * region fits the viewport, rather than by a raw pin count.
+	 */
+	bounds?: [[number, number], [number, number]];
 	/** Poster/thumbnail shown in the pin; the pin is caption-only when null. */
 	imageUrl: string | null;
 	/** Primary caption under the image (the show name). */

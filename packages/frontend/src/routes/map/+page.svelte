@@ -389,6 +389,7 @@
 			pins.push({
 				id: node.key,
 				position: [(south + north) / 2, (west + east) / 2],
+				bounds: box,
 				imageUrl: poster,
 				title: node.show!.name,
 				subtitle: restoreCatalanArticle(node.name),

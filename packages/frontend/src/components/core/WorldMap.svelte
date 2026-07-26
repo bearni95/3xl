@@ -212,12 +212,11 @@
 		}
 	}
 
-	// Above this many pins in a padded viewport a rendering is too crowded to stay
-	// legible, so the map drops to the next coarser level of detail instead — a
-	// map-wide fine breakdown (e.g. every municipality) would otherwise drop
-	// thousands of image markers at once. As the map zooms in and the visible
-	// count falls below the cap, the finer level takes over again.
-	const MAX_VISIBLE_MARKERS = 250;
+	// A grouping tier is drawn while its regions are no bigger than this fraction of
+	// the viewport. Once the region you're over grows past it (zooming in), the map
+	// unfolds to its children; once its parent shrinks back under it (zooming out),
+	// the map folds up a tier — so every step, coarse or fine, switches on zoom.
+	const LEVEL_FIT_FACTOR = 0.85;
 
 	// The available pin renderings, coarsest → finest. `markerLevels` (a stack of
 	// breakdowns) wins; a plain `markers` array is treated as a single level.
@@ -226,26 +225,55 @@
 		return markers.length ? [markers] : [];
 	}
 
-	// How many of a level's pins fall inside the given bounds.
-	function countWithin(bounds: L.LatLngBounds, level: MapMarker[]): number {
-		return level.reduce((count, marker) => count + (bounds.contains(marker.position) ? 1 : 0), 0);
+	// The pin of a level nearest the map centre — the region the view is focused on
+	// (zoom centres on the pointer), used to decide the tier by that region's size.
+	function focusedMarker(level: MapMarker[], centre: L.LatLng): MapMarker | null {
+		let nearest: MapMarker | null = null;
+		let best = Infinity;
+		for (const marker of level) {
+			const dLat = marker.position[0] - centre.lat;
+			const dLng = marker.position[1] - centre.lng;
+			const distance = dLat * dLat + dLng * dLng;
+			if (distance < best) {
+				best = distance;
+				nearest = marker;
+			}
+		}
+		return nearest;
 	}
 
-	// The index of the level of detail to draw for the current view: the finest
-	// rendering whose pins stay under the cap in the padded viewport, falling back
-	// to the coarsest (0) when even it is crowded (still better than a blank map).
-	// Zooming out shrinks nothing but grows the viewport, so more pins fall in view
-	// and the choice steps down to a coarser rendering — the "previous" tier.
-	function levelIndexForView(bounds: L.LatLngBounds, levels: MapMarker[][]): number {
-		for (let i = levels.length - 1; i >= 0; i--) {
-			if (countWithin(bounds, levels[i]) <= MAX_VISIBLE_MARKERS) return i;
+	// Whether a marker's region is small enough to sit within the viewport (times
+	// the fit factor) at the current zoom — i.e. this tier is the right size to show
+	// rather than unfolding into its children. Markers without bounds always "fit".
+	function regionFits(marker: MapMarker): boolean {
+		if (!marker.bounds || !mapInstance) return true;
+		const zoom = mapInstance.getZoom();
+		const [[south, west], [north, east]] = marker.bounds;
+		const topLeft = mapInstance.project([north, west], zoom);
+		const bottomRight = mapInstance.project([south, east], zoom);
+		const size = mapInstance.getSize();
+		return (
+			Math.abs(bottomRight.x - topLeft.x) <= size.x * LEVEL_FIT_FACTOR &&
+			Math.abs(bottomRight.y - topLeft.y) <= size.y * LEVEL_FIT_FACTOR
+		);
+	}
+
+	// The index of the tier to draw: the COARSEST level whose focused region still
+	// fits the viewport. Region size shrinks as the level gets finer, so the first
+	// (coarsest) level that fits is the right one; if even the finest region
+	// overflows (zoomed in hard), the finest level is shown. This switches on every
+	// zoom step — including the coarse ones the old pin-count cap never triggered.
+	function levelIndexForView(levels: MapMarker[][], centre: L.LatLng): number {
+		for (let i = 0; i < levels.length; i++) {
+			const focus = focusedMarker(levels[i], centre);
+			if (focus && regionFits(focus)) return i;
 		}
-		return 0;
+		return levels.length - 1;
 	}
 
 	// (Re)build the pins for the current view: clear the layer, pick the level of
-	// detail that fits this viewport, keep only its markers inside the (slightly
-	// padded) viewport, and drop a zero-sized divIcon marker at each (its
+	// detail whose regions are viewport-sized, keep only its markers inside the
+	// (slightly padded) viewport, and drop a zero-sized divIcon marker at each (its
 	// overflowing content is the visible card) with a hover tooltip and click.
 	// Runs on every markers change and whenever the map pans or zooms, so both the
 	// culling and the chosen level track what's actually on screen.
@@ -256,7 +284,7 @@
 
 		const bounds = mapInstance.getBounds().pad(0.25);
 		const levels = markerLevelStack();
-		const index = levels.length ? levelIndexForView(bounds, levels) : 0;
+		const index = levels.length ? levelIndexForView(levels, mapInstance.getCenter()) : 0;
 		// Publish the chosen tier so the parent can mirror it (polygons, sidebar).
 		activeLevel = index;
 		const visible = (levels[index] ?? []).filter((marker) => bounds.contains(marker.position));
