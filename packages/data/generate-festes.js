@@ -437,16 +437,9 @@ const festes = [...datesByGeoId]
 	})
 	.sort((a, b) => a.name.localeCompare(b.name, 'ca'));
 
-const output = {
-	generatedAt: new Date().toISOString(),
-	year: YEAR,
-	sources: Object.values(SOURCES),
-	festes
-};
-
-writeFileSync(OUTPUT, `${JSON.stringify(output, null, 2)}\n`);
-
-// Per-territory coverage report against the geo, so gaps are visible, not silent.
+// Per-territory coverage against the geo universe (every map municipality),
+// baked into the output so the /seasons header can show the covered share, and
+// logged so gaps are visible, not silent.
 const geoByTerritory = {};
 for (const props of propsByGeoId.values()) {
 	geoByTerritory[props.territory] = (geoByTerritory[props.territory] ?? 0) + 1;
@@ -455,12 +448,38 @@ const coveredByTerritory = {};
 for (const festa of festes) {
 	coveredByTerritory[festa.territory] = (coveredByTerritory[festa.territory] ?? 0) + 1;
 }
-const totalDates = festes.reduce((sum, f) => sum + f.dates.length, 0);
+const coverage = Object.entries(geoByTerritory)
+	.map(([territory, total]) => ({
+		territory,
+		covered: coveredByTerritory[territory] ?? 0,
+		total
+	}))
+	.sort((a, b) => b.covered - a.covered || a.territory.localeCompare(b.territory, 'ca'));
 
-console.log(`Wrote ${festes.length} municipalities (${totalDates} festival days) for ${YEAR}.`);
-console.log('Coverage by territory (matched / geo total):');
-for (const [territory, total] of Object.entries(geoByTerritory).sort()) {
-	console.log(`  ${territory}: ${coveredByTerritory[territory] ?? 0} / ${total}`);
+const output = {
+	generatedAt: new Date().toISOString(),
+	year: YEAR,
+	sources: Object.values(SOURCES),
+	/** Every municipality on the map — the denominator for the covered share. */
+	municipalitiesTotal: propsByGeoId.size,
+	/** Municipalities with at least one festival day — the numerator. */
+	municipalitiesCovered: festes.length,
+	/** Covered vs geo total per territory, for the header breakdown. */
+	coverage,
+	festes
+};
+
+writeFileSync(OUTPUT, `${JSON.stringify(output, null, 2)}\n`);
+
+const totalDates = festes.reduce((sum, f) => sum + f.dates.length, 0);
+const pct = Math.round((festes.length / propsByGeoId.size) * 100);
+
+console.log(
+	`Wrote ${festes.length} / ${propsByGeoId.size} municipalities (${pct}%, ${totalDates} festival days) for ${YEAR}.`
+);
+console.log('Coverage by territory (covered / geo total):');
+for (const { territory, covered, total } of coverage) {
+	console.log(`  ${territory}: ${covered} / ${total}`);
 }
 for (const [source, info] of Object.entries(report)) {
 	if (info.error) console.log(`  ! ${source}: ${info.error}`);

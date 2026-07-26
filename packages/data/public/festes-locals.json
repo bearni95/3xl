@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-26T20:15:23.023Z",
+  "generatedAt": "2026-07-26T20:18:58.114Z",
   "year": 2026,
   "sources": [
     {
@@ -16,6 +16,40 @@
       "name": "Calendario de fiestas locales de la Comunitat Valenciana",
       "publisher": "Generalitat Valenciana — DOGV",
       "url": "https://dogv.gva.es/datos/2025/11/14/pdf/2025_46326_es.pdf"
+    }
+  ],
+  "municipalitiesTotal": 1790,
+  "municipalitiesCovered": 1507,
+  "coverage": [
+    {
+      "territory": "Catalunya",
+      "covered": 909,
+      "total": 947
+    },
+    {
+      "territory": "País Valencià",
+      "covered": 535,
+      "total": 542
+    },
+    {
+      "territory": "Illes Balears",
+      "covered": 63,
+      "total": 67
+    },
+    {
+      "territory": "Andorra",
+      "covered": 0,
+      "total": 7
+    },
+    {
+      "territory": "Catalunya Nord",
+      "covered": 0,
+      "total": 226
+    },
+    {
+      "territory": "l'Alguer",
+      "covered": 0,
+      "total": 1
     }
   ],
   "festes": [

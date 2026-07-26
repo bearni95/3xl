@@ -50,8 +50,17 @@
 
 	// The municipalities for the open day, and headline totals for the banner.
 	$: dayFestes = (selected && index.get(selected)) || ([] as MunicipalityFesta[]);
-	$: totalMunicipalities = collection?.festes.length ?? 0;
 	$: totalDays = collection?.festes.reduce((sum, festa) => sum + festa.dates.length, 0) ?? 0;
+
+	// Coverage: municipalities with a festa major vs every municipality on the
+	// map. Not all are shown — only the covered share carries official dates.
+	$: covered = collection?.municipalitiesCovered ?? 0;
+	$: totalGeo = collection?.municipalitiesTotal ?? 0;
+	$: coveragePct = totalGeo ? Math.round((covered / totalGeo) * 100) : 0;
+	// Per-territory breakdown, surfaced as the coverage stat's hover tooltip.
+	$: coverageTitle = (collection?.coverage ?? [])
+		.map((row) => `${row.territory}: ${row.covered}/${row.total}`)
+		.join('\n');
 
 	function selectDate(date: string) {
 		selected = date;
@@ -70,9 +79,13 @@
 				</div>
 				{#if collection}
 					<div class="flex gap-4 text-sm">
+						<div class="cursor-help text-center" title={coverageTitle}>
+							<div class="text-xl font-bold tabular-nums text-primary">{coveragePct}%</div>
+							<div class="opacity-60">cobertura</div>
+						</div>
 						<div class="text-center">
-							<div class="text-xl font-bold tabular-nums">{totalMunicipalities}</div>
-							<div class="opacity-60">municipis</div>
+							<div class="text-xl font-bold tabular-nums">{covered}</div>
+							<div class="opacity-60">/ {totalGeo} municipis</div>
 						</div>
 						<div class="text-center">
 							<div class="text-xl font-bold tabular-nums">{totalDays}</div>

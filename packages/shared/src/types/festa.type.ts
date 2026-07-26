@@ -28,6 +28,15 @@ export interface FestaSource {
 	url: string;
 }
 
+/** One territory's covered-vs-total municipality tally. */
+export interface FestaCoverage {
+	territory: string;
+	/** Municipalities with at least one festival day. */
+	covered: number;
+	/** Every map municipality in the territory. */
+	total: number;
+}
+
 /** Shape of `public/festes-locals.json` — the whole baked calendar. */
 export interface FestesCollection {
 	generatedAt: string;
@@ -35,5 +44,11 @@ export interface FestesCollection {
 	year: number;
 	/** Provenance of every official dataset merged into the calendar. */
 	sources: FestaSource[];
+	/** Every municipality on the map — the denominator for the covered share. */
+	municipalitiesTotal: number;
+	/** Municipalities with at least one festival day — the numerator. */
+	municipalitiesCovered: number;
+	/** Covered vs geo total per territory, for the header breakdown. */
+	coverage: FestaCoverage[];
 	festes: MunicipalityFesta[];
 }
