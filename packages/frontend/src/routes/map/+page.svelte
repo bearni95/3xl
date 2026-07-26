@@ -17,7 +17,7 @@
 		type RegionNode,
 		type RegionType
 	} from '$utils/geo/region-tree';
-	import { boundsForFeatures } from '$utils/geo/bounds';
+	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import type { MapCircle, MapMarker, MapOverlay } from '$types/map.type';
 	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
@@ -35,6 +35,9 @@
 	// The tier of pins WorldMap is currently drawing (0 = coarsest), reported back
 	// as the map zooms. Drives the effective breakdown the sidebar and polygons show.
 	let activeLevel = 0;
+	// The map centre WorldMap reports, used to tell which region the view is
+	// focused on so the sidebar and polygons follow what's zoomed into.
+	let currentCenter: [number, number] = [41.8, 1.7];
 	// The single open region, driven entirely by the `region` query param, by its
 	// node key — the only region the map paints with its poster, and the head of
 	// the one open drill path. A node's key matches the fill index: a territory is
@@ -170,23 +173,27 @@
 	$: regionNodes = buildRegionNodes(regionTree);
 
 	// The chain of nodes from the top territory down to the open (URL-selected)
-	// region — the deepest tier available. Zoom then decides how far down this
-	// chain the map actually shows (see `effectiveDepth`).
+	// region, kept so the clicked region and its ancestors stay highlighted.
 	$: openPath = selected ? nodePath(regionNodes, selected) : [];
 
-	// How far down the drill path the map is rendering right now, driven by zoom:
-	// WorldMap reports the tier of pins it drew (`activeLevel`) and the sidebar and
-	// polygons follow it. Clamped to the available depth. Zooming out lowers it,
-	// walking the effective focus back up the path without touching the URL.
-	$: effectiveDepth = Math.min(Math.max(activeLevel, 0), openPath.length);
+	// The level of pins WorldMap is currently drawing (clamped to what exists),
+	// driven purely by zoom — the tier of groupings on screen right now.
+	$: effectiveDepth = Math.min(Math.max(activeLevel, 0), Math.max(markerLevels.length - 1, 0));
 
-	// The region the sidebar and polygons reflect right now: the ancestor of the
-	// open region at the effective (zoom-driven) depth, or null at the top view — so
-	// zooming out coarsens the table, breadcrumbs and borders in step with the pins.
-	$: effectiveSelected = effectiveDepth === 0 ? null : (openPath[effectiveDepth - 1]?.key ?? selected);
+	// The path from the top region down to the pin nearest the map centre at that
+	// level — the region the view is focused on. Zoom centres on the pointer, so
+	// this is the grouping under the cursor. The pin sits at the frontier tier; its
+	// parent is the "open" region whose children that tier is.
+	$: focusPath = focusedPath(effectiveDepth, markerLevels, currentCenter, regionNodes);
 
-	// The breadcrumb/table drill path down to the effective region.
-	$: displayPath = openPath.slice(0, effectiveDepth);
+	// The effective open region the sidebar and polygons reflect: the focused pin's
+	// parent (null at the top view). So zooming into an area unfolds the breadcrumbs,
+	// table and border detail into it and zooming out walks them back up — following
+	// the pointer, without touching the URL selection.
+	$: effectiveSelected = focusPath.length >= 2 ? focusPath[focusPath.length - 2].key : null;
+
+	// The breadcrumb drill path down to (not including) the focused pin.
+	$: displayPath = focusPath.slice(0, -1);
 
 	$: regionRows = regionRowsForSelection(regionNodes, effectiveSelected);
 
@@ -263,6 +270,40 @@
 		return frontier;
 	}
 
+	// The number of tiers on the deepest branch (territory-only = 1, down to
+	// municipality = 4), so the pin stack can span every drill level.
+	function treeDepth(nodes: RegionNode[]): number {
+		let depth = 0;
+		for (const node of nodes) depth = Math.max(depth, 1 + treeDepth(node.children));
+		return depth;
+	}
+
+	// The path from a root region down to the pin nearest the map centre among those
+	// drawn at `level` — the region the view is centred (and so zoomed) on. A plain
+	// squared lat/lng delta is enough to pick the nearest. Empty when the level has
+	// no pins.
+	function focusedPath(
+		level: number,
+		levels: MapMarker[][],
+		centre: [number, number],
+		nodes: RegionNode[]
+	): RegionNode[] {
+		const pins = levels[level] ?? [];
+		if (!pins.length) return [];
+		let nearest = pins[0];
+		let best = Infinity;
+		for (const pin of pins) {
+			const dLat = pin.position[0] - centre[0];
+			const dLng = pin.position[1] - centre[1];
+			const distance = dLat * dLat + dLng * dLng;
+			if (distance < best) {
+				best = distance;
+				nearest = pin;
+			}
+		}
+		return nodePath(nodes, nearest.id);
+	}
+
 	// Every key inside a node's subtree (the node itself and all descendants),
 	// used to tell which breakdown pins fall within the selected area.
 	function subtreeKeys(node: RegionNode, keys: Set<string> = new Set()): Set<string> {
@@ -286,9 +327,48 @@
 			])
 		: null;
 
-	// The breakdown depth for the current selection: 0 at the top view (territory
-	// pins), deeper as the drill path grows — the finest tier of pins the map draws.
-	$: breakdownDepth = selected ? nodePath(regionNodes, selected).length : 0;
+	// The deepest drill level in the tree (territory = level 0), so the pin stack
+	// can span every level down to the municipalities.
+	$: maxLevel = treeDepth(regionNodes) - 1;
+
+	// A region key's union bounding box + the municipality ids beneath it.
+	type RegionGeometry = { boxes: Map<string, LatLngBounds>; muniIds: Map<string, string[]> };
+
+	// One pass over the polygons for each municipality's own box, then aggregated up
+	// every municipality's fill chain so each region key carries the union box and
+	// its municipality ids. Precomputed so buildMarkers is O(regions), not
+	// O(regions × polygons) — the municipality level alone is thousands of pins.
+	function buildRegionGeometry(
+		polygons: GeoJSON.FeatureCollection | null,
+		index: Map<string, FillLevel[]>
+	): RegionGeometry {
+		const boxes = new Map<string, LatLngBounds>();
+		const muniIds = new Map<string, string[]>();
+		if (!polygons) return { boxes, muniIds };
+
+		const munBoxes = boundsByFeatureId(polygons);
+		for (const [id, levels] of index) {
+			const box = munBoxes.get(id);
+			for (const level of levels) {
+				let ids = muniIds.get(level.key);
+				if (!ids) muniIds.set(level.key, (ids = []));
+				ids.push(id);
+				if (!box) continue;
+				const current = boxes.get(level.key);
+				if (!current) {
+					boxes.set(level.key, [[box[0][0], box[0][1]], [box[1][0], box[1][1]]]);
+				} else {
+					current[0][0] = Math.min(current[0][0], box[0][0]);
+					current[0][1] = Math.min(current[0][1], box[0][1]);
+					current[1][0] = Math.max(current[1][0], box[1][0]);
+					current[1][1] = Math.max(current[1][1], box[1][1]);
+				}
+			}
+		}
+		return { boxes, muniIds };
+	}
+
+	$: regionGeometry = buildRegionGeometry(municipalities, fillIndex);
 
 	// One pin per imaged region that has a show, dropped at the centre of the
 	// region's bounding box, captioned with the show and tooltipped with the region
@@ -296,17 +376,14 @@
 	// flagged `dimmed` so the map fades them rather than dropping them.
 	function buildMarkers(
 		nodes: RegionNode[],
-		polygons: GeoJSON.FeatureCollection | null,
-		index: Map<string, FillLevel[]>,
+		geometry: RegionGeometry,
 		relevant: Set<string> | null
 	): MapMarker[] {
-		if (!polygons) return [];
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
 			const poster = node.show?.posterUrl;
 			if (!poster) continue;
-			const ids = municipalityIdsForKey(index, node.key);
-			const box = boundsForFeatures(polygons, ids);
+			const box = geometry.boxes.get(node.key);
 			if (!box) continue;
 			const [[south, west], [north, east]] = box;
 			pins.push({
@@ -315,7 +392,7 @@
 				imageUrl: poster,
 				title: node.show!.name,
 				subtitle: restoreCatalanArticle(node.name),
-				featureIds: [...ids],
+				featureIds: geometry.muniIds.get(node.key) ?? [],
 				dimmed: relevant ? !relevant.has(node.key) : false,
 				onClick: () => open(node.key)
 			});
@@ -323,32 +400,25 @@
 		return pins;
 	}
 
-	// The map's pin renderings as a coarse → fine stack: the whole-map territory
-	// frontier (depth 0) down to the selected region's child tier (breakdownDepth).
-	// WorldMap shows the finest level that stays legible at the current zoom and
-	// steps to a coarser one as the map zooms out, instead of the map refusing to
-	// zoom out past a dense breakdown. All named here so the statement tracks them.
+	// The map's pin renderings as a coarse → fine stack, one per drill level from the
+	// whole-map territory frontier (level 0) down to the municipalities (maxLevel).
+	// WorldMap draws the finest level that stays legible at the current zoom and
+	// steps between them as the map zooms in and out, so zooming in unfolds the next
+	// grouping and zooming out folds back up. All named here so the statement tracks them.
 	function buildMarkerLevels(
 		depth: number,
 		nodes: RegionNode[],
-		polygons: GeoJSON.FeatureCollection | null,
-		index: Map<string, FillLevel[]>,
+		geometry: RegionGeometry,
 		relevant: Set<string> | null
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
-			levels.push(buildMarkers(frontierAtDepth(d, nodes), polygons, index, relevant));
+			levels.push(buildMarkers(frontierAtDepth(d, nodes), geometry, relevant));
 		}
 		return levels;
 	}
 
-	$: markerLevels = buildMarkerLevels(
-		breakdownDepth,
-		regionNodes,
-		municipalities,
-		fillIndex,
-		relevantKeys
-	);
+	$: markerLevels = buildMarkerLevels(maxLevel, regionNodes, regionGeometry, relevantKeys);
 
 	// The bounding box the map fits when a region is selected: the union of every
 	// municipality polygon under the selected key. A fresh array each time (even
@@ -399,6 +469,7 @@
 				{focusBounds}
 				bind:currentZoom
 				bind:activeLevel
+				bind:currentCenter
 				classes="min-h-0 flex-1"
 			/>
 		{:else}

@@ -20,6 +20,38 @@ function walkPositions(coords: unknown, visit: (lng: number, lat: number) => voi
 }
 
 /**
+ * Each feature's own bounding box, keyed by `properties.id`, in a single pass
+ * over the collection. Callers that need many regions' boxes aggregate these up
+ * their own hierarchy, avoiding a full re-scan of the polygons per region (which
+ * would be O(regions × features)).
+ */
+export function boundsByFeatureId(
+	collection: GeoJSON.FeatureCollection | null | undefined
+): Map<string, LatLngBounds> {
+	const boxes = new Map<string, LatLngBounds>();
+	if (!collection) return boxes;
+
+	for (const feature of collection.features) {
+		const id = String(feature.properties?.id ?? '');
+		if (!id || !feature.geometry || !('coordinates' in feature.geometry)) continue;
+
+		let minLat = Infinity;
+		let minLng = Infinity;
+		let maxLat = -Infinity;
+		let maxLng = -Infinity;
+		walkPositions(feature.geometry.coordinates, (lng, lat) => {
+			if (lat < minLat) minLat = lat;
+			if (lat > maxLat) maxLat = lat;
+			if (lng < minLng) minLng = lng;
+			if (lng > maxLng) maxLng = lng;
+		});
+		if (minLat !== Infinity) boxes.set(id, [[minLat, minLng], [maxLat, maxLng]]);
+	}
+
+	return boxes;
+}
+
+/**
  * The union bounding box of every feature in `collection` whose
  * `properties.id` is in `ids`, or null when none match (or the set is empty).
  */

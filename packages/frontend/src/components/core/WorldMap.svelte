@@ -19,6 +19,7 @@
 		focusBounds = null,
 		currentZoom = $bindable(zoom),
 		activeLevel = $bindable(0),
+		currentCenter = $bindable(center),
 		classes = ''
 	}: {
 		/** Initial map centre as [lat, lng]. */
@@ -71,6 +72,8 @@
 		 * rest of its UI (e.g. which polygon borders and sidebar level to show).
 		 */
 		activeLevel?: number;
+		/** Live map centre as [lat, lng], kept in sync with the map (bindable). */
+		currentCenter?: [number, number];
 		/** Extra Tailwind classes for the map container. */
 		classes?: string;
 	} = $props();
@@ -298,13 +301,19 @@
 		).addTo(mapInstance);
 
 		mapInstance.setView(center, zoom);
-		// Keep the bindable zoom in sync so callers can render a live readout.
-		currentZoom = mapInstance.getZoom();
-		mapInstance.on('zoomend', () => {
+		// Keep the bindable zoom and centre in sync so callers can render a live
+		// readout and tell which region the view is focused on.
+		const syncView = () => {
 			currentZoom = mapInstance!.getZoom();
+			const c = mapInstance!.getCenter();
+			currentCenter = [c.lat, c.lng];
+		};
+		syncView();
+		// Re-cull the pins and re-sync the view after any pan or zoom settles.
+		mapInstance.on('moveend zoomend', () => {
+			syncView();
+			rebuildMarkers();
 		});
-		// Re-cull the pins to the viewport after any pan or zoom settles.
-		mapInstance.on('moveend zoomend', rebuildMarkers);
 
 		// Fetch all overlays in parallel, then add them in array order so
 		// z-stacking is deterministic regardless of network timing.
