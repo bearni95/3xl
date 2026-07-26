@@ -18,6 +18,14 @@
 		return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 	}
 
+	/** Whole days elapsed since `value`, or `null` when it's missing/invalid. */
+	function fullDaysSince(value: string | null): number | null {
+		if (!value) return null;
+		const then = new Date(value).getTime();
+		if (Number.isNaN(then)) return null;
+		return Math.max(0, Math.floor((Date.now() - then) / 86_400_000));
+	}
+
 	function handleSignOut(): void {
 		if (!signingOut) dispatch('signout');
 	}
@@ -29,6 +37,7 @@
 	$: initial = (profile.displayName || profile.email || '?').charAt(0).toUpperCase();
 	$: progress = levelProgress(profile.exp);
 	$: expPercent = Math.round(progress.fraction * 100);
+	$: daysSinceSignIn = fullDaysSince(profile.lastSignInAt);
 </script>
 
 <div class={classNames('flex flex-col gap-4', classes)}>
@@ -94,8 +103,14 @@
 		<dt class="text-base-content/60">{$_('profile.memberSince')}</dt>
 		<dd>{formatDate(profile.createdAt)}</dd>
 
-		<dt class="text-base-content/60">{$_('profile.lastSignIn')}</dt>
-		<dd>{formatDate(profile.lastSignInAt)}</dd>
+		<dt class="text-base-content/60">{$_('profile.daysSinceSignIn')}</dt>
+		<dd>
+			{#if daysSinceSignIn === null}
+				—
+			{:else}
+				{$_('profile.daysElapsed', { values: { days: daysSinceSignIn } })}
+			{/if}
+		</dd>
 
 		<dt class="text-base-content/60">{$_('profile.exp')}</dt>
 		<dd class="font-mono">{progress.exp.toLocaleString()}</dd>
