@@ -40,6 +40,11 @@ const DEFAULT_ART_ASPECT = 1.14;
 /** Fill for the header/footer strips — opaque white so they fully hide any poster
  * overflow behind them (the poster is a Sprite, not masked). */
 const STRIP_FILL = { color: 0xffffff, alpha: 1 } as const;
+/** A row of equilateral triangles marches across the top edge, bases on the start
+ * of the top white strip (y = 0). Their base is a target fraction of the pack
+ * width, rounded to a whole count so they tile the width edge to edge. */
+const TRIANGLE_BASE_RATIO = 0.1;
+const TRIANGLE_FILL = { color: 0x000000, alpha: 1 } as const;
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
@@ -225,7 +230,7 @@ export class PackSprite extends Container {
 			root.addChild(sprite);
 		}
 
-		// Plain dark header + footer strips, outside the image — no text on them.
+		// Plain white header + footer strips, outside the image — no text on them.
 		const header = new Graphics();
 		header.rect(0, 0, w, headerH);
 		header.fill(STRIP_FILL);
@@ -235,6 +240,20 @@ export class PackSprite extends Container {
 		footer.rect(0, footerY, w, footerH);
 		footer.fill(STRIP_FILL);
 		root.addChild(footer);
+
+		// A row of equilateral triangles across the top, bases on y = 0 (the start of
+		// the top white strip) and apexes pointing down into it. The base is rounded
+		// to a whole count so the row tiles the full width with no gap or overhang.
+		const triCount = Math.max(1, Math.round(w / (w * TRIANGLE_BASE_RATIO)));
+		const triBase = w / triCount;
+		const triHeight = (triBase * Math.sqrt(3)) / 2;
+		const triangles = new Graphics();
+		for (let i = 0; i < triCount; i++) {
+			const x0 = i * triBase;
+			triangles.poly([x0, 0, x0 + triBase, 0, x0 + triBase / 2, triHeight]);
+		}
+		triangles.fill(TRIANGLE_FILL);
+		root.addChild(triangles);
 
 		// The place the pack belongs to, overlaid at the top-centre of the image in
 		// white with a black outline so it stays legible over the poster.
