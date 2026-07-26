@@ -2,6 +2,7 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import ShowChip from '$components/core/ShowChip.svelte';
 	import { indexFestesByDate, isoDate } from '$utils/festes/festa-calendar';
+	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import type { FestesCollection, MunicipalityFesta } from '$types/festa.type';
 	import type { MunicipalityShowsCollection } from '$types/show.type';
 	import type { RegionShow } from '$utils/geo/region-tree';
@@ -98,11 +99,11 @@
 							<button
 								type="button"
 								class="flex w-full items-center justify-between gap-3 rounded px-2 py-2 text-left hover:bg-base-200"
-								title="Obre el sobre de {show.name} des de {festa.name}"
+								title="Obre el sobre de {show.name} des de {restoreCatalanArticle(festa.name)}"
 								on:click={() => dispatch('claim', { festa, show })}
 							>
 								<div class="min-w-0">
-									<div class="truncate font-medium">{festa.name}</div>
+									<div class="truncate font-medium">{restoreCatalanArticle(festa.name)}</div>
 									<div class="truncate text-xs opacity-60">
 										{[festa.comarca, festa.prov].filter(Boolean).join(' · ')}
 									</div>
@@ -112,7 +113,7 @@
 						{:else}
 							<div class="flex items-center justify-between gap-3 px-2 py-2">
 								<div class="min-w-0">
-									<div class="truncate font-medium">{festa.name}</div>
+									<div class="truncate font-medium">{restoreCatalanArticle(festa.name)}</div>
 									<div class="truncate text-xs opacity-60">
 										{[festa.comarca, festa.prov].filter(Boolean).join(' · ')}
 									</div>

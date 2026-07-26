@@ -2,16 +2,15 @@
  * PackSprite
  *
  * Renders a booster pack into a RenderTexture, framed to match {@link CardSprite}:
- * the show's poster fills the middle art area (object-cover) with plain dark
- * header and footer strips above and below it — outside the image — and the place
- * the pack belongs to overlaid at the top-centre of the poster (white with a black
- * outline). Rounded corners, a 2px black border and a soft black drop shadow sit
- * behind it. Exposes
- * split(y), which carves the rendered texture into top/bottom halves for the slice
- * animation.
+ * the show's poster spans the full pack width and is never cropped — the pack's
+ * height adapts to the poster's aspect ratio — with plain dark header and footer
+ * strips above and below it, and the place the pack belongs to overlaid at the
+ * top-centre of the poster (white with a black outline). Rounded corners, a 2px
+ * black border and a soft black drop shadow sit behind it. Exposes split(y), which
+ * carves the rendered texture into top/bottom halves for the slice animation.
  *
  * Ported from the yugioh-duel-sim booster opener; the cover is now a show poster
- * (loaded by URL) rather than a card's cropped artwork.
+ * (loaded by URL) shown whole rather than a card's cropped artwork.
  */
 
 import {
@@ -26,12 +25,18 @@ import {
 	Texture
 } from 'pixi.js';
 import { textureCache } from '$components/core/card/texture-cache';
+import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 
 // Card-frame proportions, shared with CardSprite so a pack reads as the unopened
-// member of the same family: a dark header strip and a dark footer strip, sized
-// as a fraction of the pack height, over the poster art.
-const HEADER_RATIO = 0.14;
-const FOOTER_RATIO = 0.15;
+// member of the same family: a dark header strip and a dark footer strip framing
+// the poster. The poster spans the full pack width, so its height sets the art
+// area and the strips are sized as a fraction of the pack *width* to stay an even
+// band regardless of the poster's aspect ratio.
+const HEADER_RATIO = 0.22;
+const FOOTER_RATIO = 0.24;
+/** Fallback art aspect (height / width) used when there is no cover, chosen so a
+ * plain frame keeps roughly the old 5/8 pack silhouette. */
+const DEFAULT_ART_ASPECT = 1.14;
 /** Fill for the dark header/footer strips — opaque so they fully hide any poster
  * overflow behind them (the poster is a Sprite, not masked). */
 const STRIP_FILL = { color: 0x111827, alpha: 1 } as const;
@@ -42,6 +47,10 @@ export interface PackSpriteOptions {
 	/** Full name of the place the pack belongs to, overlaid on the poster's top. */
 	locationName: string | null;
 	app: Application;
+	/** Bounding box the pack is fitted into. The pack takes the full width unless
+	 * the resulting (aspect-driven) height would exceed the box, in which case it
+	 * shrinks to fit; read {@link PackSprite.packWidth}/{@link PackSprite.packHeight}
+	 * after {@link PackSprite.load} for the actual footprint. */
 	width: number;
 	height: number;
 }
@@ -79,6 +88,11 @@ export class PackSprite extends Container {
 
 	async load(): Promise<void> {
 		const cover = await textureCache.poster(this.coverUrl);
+
+		// The cover spans the full pack width and is never cropped, so its aspect
+		// ratio sets the pack's height. Resolve the final footprint (fitted inside
+		// the caller's box) before composing.
+		this.resolveDimensions(cover);
 
 		const composition = this.buildComposition(cover);
 
@@ -162,12 +176,33 @@ export class PackSprite extends Container {
 		super.destroy(options);
 	}
 
+	/**
+	 * Fit the pack inside the caller's box: it takes the full box width and grows
+	 * as tall as the full-width, uncropped cover needs (plus the header/footer
+	 * bands). If that would overflow the box height, the pack narrows so the whole
+	 * stack fits. The cover's aspect ratio drives the art height; a coverless pack
+	 * falls back to {@link DEFAULT_ART_ASPECT}.
+	 */
+	private resolveDimensions(cover: Texture | null): void {
+		const boxW = this.packW;
+		const boxH = this.packH;
+		const artAspect =
+			cover && cover.width > 0 && cover.height > 0
+				? cover.height / cover.width
+				: DEFAULT_ART_ASPECT;
+		// Total pack height expressed as a multiple of the pack width.
+		const heightPerWidth = HEADER_RATIO + artAspect + FOOTER_RATIO;
+		const width = Math.min(boxW, boxH / heightPerWidth);
+		this.packW = Math.round(width);
+		this.packH = Math.round(width * heightPerWidth);
+	}
+
 	private buildComposition(cover: Texture | null): Container {
 		const root = new Container();
 		const w = this.packW;
 		const h = this.packH;
-		const headerH = Math.round(h * HEADER_RATIO);
-		const footerH = Math.round(h * FOOTER_RATIO);
+		const headerH = Math.round(w * HEADER_RATIO);
+		const footerH = Math.round(w * FOOTER_RATIO);
 		const footerY = h - footerH;
 
 		// The poster sits only in the art area between the strips; the header/footer
@@ -181,20 +216,13 @@ export class PackSprite extends Container {
 		root.addChild(bg);
 
 		if (cover && cover.width > 0 && cover.height > 0) {
-			// The poster, `object-cover` within the art box: a plain Sprite (Sprites
-			// never tile, unlike a texture fill) scaled to fully cover the box and
-			// centred. Horizontal overflow is clipped by the render target; any
-			// vertical overflow is hidden under the opaque header/footer strips drawn
-			// on top of it. No mask — masks need a stencil the RenderTexture lacks.
-			const imgW = cover.width;
-			const imgH = cover.height;
-			const scale = Math.max(w / imgW, artH / imgH);
-			const drawW = imgW * scale;
-			const drawH = imgH * scale;
-
+			// The poster spans the full pack width and is never cropped: the art box
+			// height was sized from its aspect ratio in resolveDimensions(), so the
+			// sprite fills the box between the strips edge to edge. A plain Sprite
+			// (Sprites never tile, unlike a texture fill) scaled to the box.
 			const sprite = new Sprite(cover);
-			sprite.setSize(drawW, drawH);
-			sprite.position.set((w - drawW) / 2, artY + (artH - drawH) / 2);
+			sprite.setSize(w, artH);
+			sprite.position.set(0, artY);
 			root.addChild(sprite);
 		}
 
@@ -213,7 +241,7 @@ export class PackSprite extends Container {
 		// white with a black outline so it stays legible over the poster.
 		if (this.locationName) {
 			const loc = new Text({
-				text: this.locationName,
+				text: restoreCatalanArticle(this.locationName),
 				style: {
 					fontFamily: 'sans-serif',
 					fontSize: Math.max(10, Math.round(w * 0.08)),
