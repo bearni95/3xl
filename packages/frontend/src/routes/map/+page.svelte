@@ -228,15 +228,12 @@
 		lineTiers.filter(([, rank]) => rank > hiddenRank).map(([url]) => url)
 	);
 
-	// The regions the map marks with a pin — the breakdown applied to the WHOLE
-	// map, not just the open region. We take the frontier of the entire forest one
-	// tier below the open region: territories at the top view, every territory's
-	// children once a territory is open, every comarca once a province is open, and
-	// so on. Branches that don't reach that deep contribute their own leaf, so no
-	// area is left unpinned. (WorldMap culls this to the pins in view, so a fine,
-	// map-wide breakdown stays performant.)
-	function breakdownNodes(chosen: string | null, nodes: RegionNode[]): RegionNode[] {
-		const depth = (chosen ? nodePath(nodes, chosen).length : 0);
+	// The frontier of the WHOLE forest at a given depth: every node reached at
+	// exactly `depth` tiers down, plus any branch that bottoms out sooner (its own
+	// leaf), so no area is left unpinned. Depth 0 is the territories, 1 their
+	// children, and so on. This is the set of regions the map marks with a pin at
+	// that breakdown tier.
+	function frontierAtDepth(depth: number, nodes: RegionNode[]): RegionNode[] {
 		const frontier: RegionNode[] = [];
 		const walk = (node: RegionNode, atDepth: number) => {
 			if (atDepth === depth || node.children.length === 0) frontier.push(node);
@@ -254,23 +251,34 @@
 		return keys;
 	}
 
-	// The keys inside the selected area, or null when nothing is selected (then no
-	// pin is dimmed). A pin whose region isn't in this set sits outside the
-	// selection and renders faded.
-	$: insideKeys = selected
-		? subtreeKeys(findNode(regionNodes, selected) ?? { key: '', name: '', type: 'Territory', children: [] })
+	// The keys whose region overlaps the selection — its ancestors (the crumbs down
+	// to it), the selection itself, and its whole subtree — or null when nothing is
+	// selected (then no pin is dimmed). A pin whose region isn't in this set sits
+	// clear of the selection and renders faded. Ancestors are included so a coarse
+	// pin that CONTAINS the selection (shown once the map zooms out to that tier)
+	// isn't dimmed alongside the disjoint regions around it.
+	$: relevantKeys = selected
+		? new Set<string>([
+				...subtreeKeys(
+					findNode(regionNodes, selected) ?? { key: '', name: '', type: 'Territory', children: [] }
+				),
+				...openPath.map((node) => node.key)
+			])
 		: null;
+
+	// The breakdown depth for the current selection: 0 at the top view (territory
+	// pins), deeper as the drill path grows — the finest tier of pins the map draws.
+	$: breakdownDepth = selected ? nodePath(regionNodes, selected).length : 0;
 
 	// One pin per imaged region that has a show, dropped at the centre of the
 	// region's bounding box, captioned with the show and tooltipped with the region
-	// name; clicking a pin opens that region. Pins outside the selected area are
-	// flagged `dimmed` so the map fades them rather than dropping them. Rebuilt when
-	// the selection, tree or polygons change (all named here so the statement tracks them).
+	// name; clicking a pin opens that region. Pins clear of the selection are
+	// flagged `dimmed` so the map fades them rather than dropping them.
 	function buildMarkers(
 		nodes: RegionNode[],
 		polygons: GeoJSON.FeatureCollection | null,
 		index: Map<string, FillLevel[]>,
-		inside: Set<string> | null
+		relevant: Set<string> | null
 	): MapMarker[] {
 		if (!polygons) return [];
 		const pins: MapMarker[] = [];
@@ -288,18 +296,38 @@
 				title: node.show!.name,
 				subtitle: restoreCatalanArticle(node.name),
 				featureIds: [...ids],
-				dimmed: inside ? !inside.has(node.key) : false,
+				dimmed: relevant ? !relevant.has(node.key) : false,
 				onClick: () => open(node.key)
 			});
 		}
 		return pins;
 	}
 
-	$: markers = buildMarkers(
-		breakdownNodes(selected, regionNodes),
+	// The map's pin renderings as a coarse → fine stack: the whole-map territory
+	// frontier (depth 0) down to the selected region's child tier (breakdownDepth).
+	// WorldMap shows the finest level that stays legible at the current zoom and
+	// steps to a coarser one as the map zooms out, instead of the map refusing to
+	// zoom out past a dense breakdown. All named here so the statement tracks them.
+	function buildMarkerLevels(
+		depth: number,
+		nodes: RegionNode[],
+		polygons: GeoJSON.FeatureCollection | null,
+		index: Map<string, FillLevel[]>,
+		relevant: Set<string> | null
+	): MapMarker[][] {
+		const levels: MapMarker[][] = [];
+		for (let d = 0; d <= depth; d++) {
+			levels.push(buildMarkers(frontierAtDepth(d, nodes), polygons, index, relevant));
+		}
+		return levels;
+	}
+
+	$: markerLevels = buildMarkerLevels(
+		breakdownDepth,
+		regionNodes,
 		municipalities,
 		fillIndex,
-		insideKeys
+		relevantKeys
 	);
 
 	// The bounding box the map fits when a region is selected: the union of every
@@ -346,7 +374,7 @@
 				zoom={8}
 				{overlays}
 				{circles}
-				{markers}
+				{markerLevels}
 				{hiddenLineUrls}
 				{focusBounds}
 				bind:currentZoom

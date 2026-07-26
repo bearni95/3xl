@@ -12,6 +12,7 @@
 		circles = [],
 		lines = [],
 		markers = [],
+		markerLevels = null,
 		highlightId = null,
 		highlightStyle = null,
 		hiddenLineUrls = new Set<string>(),
@@ -30,8 +31,20 @@
 		circles?: MapCircle[];
 		/** Standalone straight lines drawn above the overlays. */
 		lines?: MapLine[];
-		/** Image-and-caption pins dropped above the overlays; rebuilt reactively. */
+		/**
+		 * Image-and-caption pins dropped above the overlays; rebuilt reactively.
+		 * Treated as a single level of detail — for zoom-driven level-of-detail,
+		 * pass `markerLevels` instead.
+		 */
 		markers?: MapMarker[];
+		/**
+		 * A stack of pin renderings, ordered coarsest → finest (e.g. territory
+		 * pins, then province pins, …). At any view the map shows the finest level
+		 * whose pins stay legible in the viewport and steps down to a coarser one
+		 * as it zooms out, so a dense breakdown never forbids zooming out — it just
+		 * falls back to the previous rendering. Takes precedence over `markers`.
+		 */
+		markerLevels?: MapMarker[][] | null;
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
 		highlightId?: string | null;
 		/** Style merged over the highlighted feature's base style. */
@@ -100,16 +113,12 @@
 	});
 
 	$effect(() => {
-		// Rebuild the pins whenever the parent swaps the markers array (e.g. the
-		// selection changes which regions are imaged). Gated on `ready` so a set
-		// passed before mount still applies once the layer exists. Recomputing the
-		// zoom-out floor here means it re-derives for every cut: whatever set of
-		// pins is currently shown, the map can't zoom out to where they'd blank.
+		// Rebuild the pins whenever the parent swaps the markers (e.g. the selection
+		// changes which regions are imaged, or supplies a new level stack). Gated on
+		// `ready` so a set passed before mount still applies once the layer exists.
 		void markers;
-		if (ready) {
-			rebuildMarkers();
-			updateMinZoom();
-		}
+		void markerLevels;
+		if (ready) rebuildMarkers();
 	});
 
 	$effect(() => {
@@ -193,53 +202,51 @@
 		}
 	}
 
-	// Above this many pins in view the layer is left empty until the map zooms in —
-	// a map-wide fine breakdown (e.g. every municipality) would otherwise drop
-	// thousands of image markers at once. The pins reappear tier by tier as the
-	// visible count drops below the cap.
+	// Above this many pins in a padded viewport a rendering is too crowded to stay
+	// legible, so the map drops to the next coarser level of detail instead — a
+	// map-wide fine breakdown (e.g. every municipality) would otherwise drop
+	// thousands of image markers at once. As the map zooms in and the visible
+	// count falls below the cap, the finer level takes over again.
 	const MAX_VISIBLE_MARKERS = 250;
 
-	// How many of the current markers would fall inside the viewport at a
-	// hypothetical zoom, using the same padded bounds rebuildMarkers culls with.
-	// Projecting the current centre at `zoom` lets us ask "how crowded would the
-	// map be down there?" without actually zooming.
-	function visibleCountAtZoom(zoom: number): number {
-		if (!mapInstance || !Leaf) return 0;
-		const half = mapInstance.getSize().divideBy(2);
-		const centre = mapInstance.project(mapInstance.getCenter(), zoom);
-		const nw = mapInstance.unproject(centre.subtract(half), zoom);
-		const se = mapInstance.unproject(centre.add(half), zoom);
-		const bounds = Leaf.latLngBounds(nw, se).pad(0.25);
-		return markers.reduce((count, marker) => count + (bounds.contains(marker.position) ? 1 : 0), 0);
+	// The available pin renderings, coarsest → finest. `markerLevels` (a stack of
+	// breakdowns) wins; a plain `markers` array is treated as a single level.
+	function markerLevelStack(): MapMarker[][] {
+		if (markerLevels && markerLevels.length) return markerLevels;
+		return markers.length ? [markers] : [];
 	}
 
-	// Constrain how far the map may zoom out to the lowest zoom at which the
-	// currently-shown pins still stay under the cap — below that they'd blank out
-	// (see rebuildMarkers), so we forbid reaching it instead. Recomputed for every
-	// cut: a coarse breakdown (few pins) leaves the floor at the base minZoom and
-	// full zoom-out stays available; a dense one (a whole tier of municipalities)
-	// raises it so those pins are always visible while the map is zoomed in past it.
-	function updateMinZoom() {
-		if (!mapInstance) return;
-		let floor = minZoom;
-		while (floor < maxZoom && visibleCountAtZoom(floor) > MAX_VISIBLE_MARKERS) floor++;
-		mapInstance.setMinZoom(floor);
+	// How many of a level's pins fall inside the given bounds.
+	function countWithin(bounds: L.LatLngBounds, level: MapMarker[]): number {
+		return level.reduce((count, marker) => count + (bounds.contains(marker.position) ? 1 : 0), 0);
 	}
 
-	// (Re)build the pins for the current view: clear the layer, keep only the
-	// markers inside the (slightly padded) viewport, and — unless there are too
-	// many to stay legible — drop a zero-sized divIcon marker at each (its
+	// The level of detail to draw for the current view: the finest rendering whose
+	// pins stay under the cap in the padded viewport, falling back to the coarsest
+	// when even it is crowded (still better than a blank map). Zooming out shrinks
+	// nothing but grows the viewport, so more pins fall in view and the choice
+	// steps down to a coarser rendering — the "previous" tier of pins.
+	function levelForView(bounds: L.LatLngBounds): MapMarker[] {
+		const levels = markerLevelStack();
+		for (let i = levels.length - 1; i >= 0; i--) {
+			if (countWithin(bounds, levels[i]) <= MAX_VISIBLE_MARKERS) return levels[i];
+		}
+		return levels[0] ?? [];
+	}
+
+	// (Re)build the pins for the current view: clear the layer, pick the level of
+	// detail that fits this viewport, keep only its markers inside the (slightly
+	// padded) viewport, and drop a zero-sized divIcon marker at each (its
 	// overflowing content is the visible card) with a hover tooltip and click.
-	// Runs on every markers change and whenever the map pans or zooms, so the
-	// whole-map breakdown is culled to what's actually on screen.
+	// Runs on every markers change and whenever the map pans or zooms, so both the
+	// culling and the chosen level track what's actually on screen.
 	function rebuildMarkers() {
 		if (!mapInstance || !Leaf) return;
 		if (!markerLayer) markerLayer = Leaf.layerGroup().addTo(mapInstance);
 		markerLayer.clearLayers();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
-		const visible = markers.filter((marker) => bounds.contains(marker.position));
-		if (visible.length > MAX_VISIBLE_MARKERS) return;
+		const visible = levelForView(bounds).filter((marker) => bounds.contains(marker.position));
 
 		for (const marker of visible) {
 			const icon = Leaf.divIcon({
