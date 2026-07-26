@@ -279,29 +279,21 @@ export class PackSprite extends Container {
 
 		// A row of equilateral triangles across the top, bases on y = 0 (the start of
 		// the top strip) and apexes pointing down into it. The base is rounded to a
-		// whole count so the row tiles the full width with no gap or overhang. The
-		// triangles are band-coloured; every other one is then tinted with a 50%
-		// black overlay so the row reads as alternating dark and band teeth across
-		// the full width (yes-no-yes-no to the right end).
+		// whole count so the row tiles the full width with no gap or overhang. Filled
+		// solid black so the teeth read clearly against the header band.
 		const triCount = Math.max(1, Math.round(w / (w * TRIANGLE_BASE_RATIO)));
 		const triBase = w / triCount;
 		const triHeight = Math.round(((triBase * Math.sqrt(3)) / 2) * 0.67);
 		const triangles = new Graphics();
-		const triTint = new Graphics();
 		for (let i = 0; i < triCount; i++) {
 			// Snap edges to whole pixels; neighbours share a boundary because they
 			// round the same value, so the row stays gapless and crisp.
 			const xL = Math.round(i * triBase);
 			const xR = Math.round((i + 1) * triBase);
-			const poly = [xL, 0, xR, 0, Math.round((xL + xR) / 2), triHeight];
-			triangles.poly(poly);
-			if (i % 2 === 0) triTint.poly(poly); // tint the 1st, 3rd, 5th … triangle
+			triangles.poly([xL, 0, xR, 0, Math.round((xL + xR) / 2), triHeight]);
 		}
-		triangles.fill({ color: this.topColor, alpha: 1 });
+		triangles.fill({ color: 0x000000, alpha: 1 });
 		root.addChild(triangles);
-
-		triTint.fill({ color: 0x000000, alpha: 0.5 });
-		root.addChild(triTint);
 
 		// The place the pack belongs to, overlaid at the top-centre of the image in
 		// white with a black outline so it stays legible over the poster.
