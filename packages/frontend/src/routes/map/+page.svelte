@@ -244,14 +244,31 @@
 		return frontier;
 	}
 
+	// Every key inside a node's subtree (the node itself and all descendants),
+	// used to tell which breakdown pins fall within the selected area.
+	function subtreeKeys(node: RegionNode, keys: Set<string> = new Set()): Set<string> {
+		keys.add(node.key);
+		for (const child of node.children) subtreeKeys(child, keys);
+		return keys;
+	}
+
+	// The keys inside the selected area, or null when nothing is selected (then no
+	// pin is dimmed). A pin whose region isn't in this set sits outside the
+	// selection and renders faded.
+	$: insideKeys = selected
+		? subtreeKeys(findNode(regionNodes, selected) ?? { key: '', name: '', type: 'Territory', children: [] })
+		: null;
+
 	// One pin per imaged region that has a show, dropped at the centre of the
 	// region's bounding box, captioned with the show and tooltipped with the region
-	// name; clicking a pin opens that region. Rebuilt when the selection, tree or
-	// polygons change (all named here so the statement tracks them).
+	// name; clicking a pin opens that region. Pins outside the selected area are
+	// flagged `dimmed` so the map fades them rather than dropping them. Rebuilt when
+	// the selection, tree or polygons change (all named here so the statement tracks them).
 	function buildMarkers(
 		nodes: RegionNode[],
 		polygons: GeoJSON.FeatureCollection | null,
-		index: Map<string, FillLevel[]>
+		index: Map<string, FillLevel[]>,
+		inside: Set<string> | null
 	): MapMarker[] {
 		if (!polygons) return [];
 		const pins: MapMarker[] = [];
@@ -269,13 +286,19 @@
 				title: node.show!.name,
 				subtitle: node.name,
 				featureIds: [...ids],
+				dimmed: inside ? !inside.has(node.key) : false,
 				onClick: () => open(node.key)
 			});
 		}
 		return pins;
 	}
 
-	$: markers = buildMarkers(breakdownNodes(selected, regionNodes), municipalities, fillIndex);
+	$: markers = buildMarkers(
+		breakdownNodes(selected, regionNodes),
+		municipalities,
+		fillIndex,
+		insideKeys
+	);
 
 	// The bounding box the map fits when a region is selected: the union of every
 	// municipality polygon under the selected key. A fresh array each time (even

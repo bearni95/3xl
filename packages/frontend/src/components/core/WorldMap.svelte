@@ -156,10 +156,12 @@
 	}
 
 	// The pin wrapper's classes: a bottom-centred column, made clickable when the
-	// marker carries an onClick.
+	// marker carries an onClick and faded when it sits outside the selected area.
 	function classNamesFor(marker: MapMarker): string {
-		const base = 'flex -translate-x-1/2 -translate-y-full flex-col items-center';
-		return marker.onClick ? `${base} cursor-pointer` : base;
+		let classes = 'flex -translate-x-1/2 -translate-y-full flex-col items-center';
+		if (marker.onClick) classes += ' cursor-pointer';
+		if (marker.dimmed) classes += ' opacity-50';
+		return classes;
 	}
 
 	// Light up (or reset) a region's polygons as the pin standing for it is

@@ -51,6 +51,12 @@ export interface MapMarker {
 	 * so the whole region lights up as if each polygon were hovered directly.
 	 */
 	featureIds?: string[];
+	/**
+	 * Whether the pin sits outside the currently selected area. Dimmed pins render
+	 * at reduced opacity so the selected region's pins stand out, without hiding
+	 * the rest of the map's breakdown.
+	 */
+	dimmed?: boolean;
 	/** Called when the pin is clicked. */
 	onClick?: () => void;
 }
