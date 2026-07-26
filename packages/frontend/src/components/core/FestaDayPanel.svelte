@@ -10,16 +10,22 @@
 	export let showByMunicipality: Map<string, RegionShow> = new Map();
 	export let onClose: () => void;
 
-	// The distinct shows assigned (on the map) to the day's municipalities, deduped
-	// by show id and kept in first-seen order — mirrors what those towns paint on
-	// the /map page.
+	// The distinct shows assigned (on the map) to the day's municipalities, each
+	// with a tally of how many of the day's municipalities contribute to it, sorted
+	// by that count descending (ties broken by name) — mirrors what those towns
+	// paint on the /map page.
 	$: uniqueShows = (() => {
-		const byId = new Map<number, RegionShow>();
+		const byId = new Map<number, { show: RegionShow; count: number }>();
 		for (const festa of festes) {
 			const show = showByMunicipality.get(festa.id);
-			if (show && !byId.has(show.id)) byId.set(show.id, show);
+			if (!show) continue;
+			const entry = byId.get(show.id);
+			if (entry) entry.count++;
+			else byId.set(show.id, { show, count: 1 });
 		}
-		return [...byId.values()];
+		return [...byId.values()].sort(
+			(a, b) => b.count - a.count || a.show.name.localeCompare(b.show.name, 'ca')
+		);
 	})();
 
 	// Long-form Catalan date for the panel header, e.g. "15 d'agost de 2026".
@@ -68,8 +74,11 @@
 					Sèries ({uniqueShows.length})
 				</h3>
 				<div class="flex flex-col gap-1.5">
-					{#each uniqueShows as show (show.id)}
-						<ShowChip {show} />
+					{#each uniqueShows as { show, count } (show.id)}
+						<div class="flex items-center justify-between gap-2">
+							<ShowChip {show} classes="min-w-0" />
+							<span class="badge badge-neutral badge-sm flex-none tabular-nums">{count}</span>
+						</div>
 					{/each}
 				</div>
 			</div>
