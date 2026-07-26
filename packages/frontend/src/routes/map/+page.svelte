@@ -282,7 +282,8 @@
 		for (const node of nodes) {
 			const poster = node.show?.posterUrl;
 			if (!poster) continue;
-			const box = boundsForFeatures(polygons, municipalityIdsForKey(index, node.key));
+			const ids = municipalityIdsForKey(index, node.key);
+			const box = boundsForFeatures(polygons, ids);
 			if (!box) continue;
 			const [[south, west], [north, east]] = box;
 			pins.push({
@@ -291,6 +292,7 @@
 				imageUrl: poster,
 				title: node.show!.name,
 				subtitle: node.name,
+				featureIds: [...ids],
 				onClick: () => open(node.key)
 			});
 		}

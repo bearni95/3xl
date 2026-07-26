@@ -65,6 +65,10 @@
 	let overlayGroups: L.GeoJSON[] = [];
 	// The pins layer, rebuilt whenever the markers prop changes.
 	let markerLayer: L.LayerGroup | null = null;
+	// For every overlay that carries a hoverStyle, its group + hoverStyle + a
+	// `properties.id → layer` lookup, so a pin can light up all of its region's
+	// polygons with the same hover the polygons show on their own mouseover.
+	let hoverLayers: { group: L.GeoJSON; hoverStyle: L.PathOptions; byId: Map<string, L.Path> }[] = [];
 	// Flipped true once the map and overlays are on the map, so the reactive
 	// $effects know the layers exist before they touch them.
 	let ready = $state(false);
@@ -147,6 +151,21 @@
 		return marker.onClick ? `${base} cursor-pointer` : base;
 	}
 
+	// Light up (or reset) a region's polygons as the pin standing for it is
+	// hovered: apply each hoverable overlay's hoverStyle to the covered features,
+	// exactly as their own mouseover does, so the whole region's fill shows.
+	function highlightRegion(featureIds: string[] | undefined, on: boolean) {
+		if (!featureIds?.length) return;
+		for (const entry of hoverLayers) {
+			for (const id of featureIds) {
+				const layer = entry.byId.get(id);
+				if (!layer) continue;
+				if (on) layer.setStyle(entry.hoverStyle);
+				else entry.group.resetStyle(layer);
+			}
+		}
+	}
+
 	// Above this many pins in view the layer is left empty until the map zooms in —
 	// a map-wide fine breakdown (e.g. every municipality) would otherwise drop
 	// thousands of image markers at once. The pins reappear tier by tier as the
@@ -180,6 +199,10 @@
 				offset: [0, -8]
 			});
 			if (marker.onClick) pin.on('click', () => marker.onClick!());
+			// Hovering the pin highlights its whole region's fill, just like hovering
+			// the polygons; leaving it resets them to their base style.
+			pin.on('mouseover', () => highlightRegion(marker.featureIds, true));
+			pin.on('mouseout', () => highlightRegion(marker.featureIds, false));
 			pin.addTo(markerLayer!);
 		}
 	}
@@ -229,6 +252,9 @@
 		if (!mapInstance) return;
 
 		overlays.forEach((overlay, index) => {
+			// A `properties.id → layer` lookup for this overlay, populated below when
+			// the overlay has a hoverStyle so pins can highlight their region.
+			const byId = new Map<string, L.Path>();
 			const layerGroup = Leaf!.geoJSON(datasets[index], {
 				interactive: overlay.interactive ?? true,
 				style: (feature) => styleFor(overlay, feature),
@@ -241,6 +267,8 @@
 					}
 
 					if (overlay.hoverStyle) {
+						const id = feature.properties?.id;
+						if (id != null) byId.set(String(id), layer as L.Path);
 						layer.on('mouseover', () => {
 							(layer as L.Path).setStyle(overlay.hoverStyle!);
 						});
@@ -253,6 +281,9 @@
 				}
 			}).addTo(mapInstance!);
 			overlayGroups.push(layerGroup);
+			if (overlay.hoverStyle) {
+				hoverLayers.push({ group: layerGroup, hoverStyle: overlay.hoverStyle, byId });
+			}
 		});
 
 		// Standalone straight lines, drawn above every overlay (e.g. the portal

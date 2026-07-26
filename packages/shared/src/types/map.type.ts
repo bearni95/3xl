@@ -45,6 +45,12 @@ export interface MapMarker {
 	title: string;
 	/** Secondary text for the hover tooltip (e.g. the region name). */
 	subtitle?: string;
+	/**
+	 * `properties.id`s of the overlay features this pin stands for (the region's
+	 * municipalities). Hovering the pin applies the overlays' `hoverStyle` to them,
+	 * so the whole region lights up as if each polygon were hovered directly.
+	 */
+	featureIds?: string[];
 	/** Called when the pin is clicked. */
 	onClick?: () => void;
 }
