@@ -11,14 +11,10 @@
 	import type { GeoRegion } from '$types/location.type';
 	import type { ShowsCollection } from '$types/show.type';
 	import { showPosterUrl } from '$utils/geo/municipality-show';
-	import ShowClaimCard from '$components/core/ShowClaimCard.svelte';
+	import { EXP_PER_SPAWN } from '$utils/progression/level';
 	import RosterCard from '$components/core/RosterCard.svelte';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
 	import type { OpenerView } from '$components/core/pack/scene/opener-view.type';
-
-	// The municipality the player has resolved from their browser location, from the
-	// /claim page's "Claim your location" panel.
-	export let region: GeoRegion | null = null;
 
 	// All the state the (non-modal) pack-opener canvas needs, surfaced to the parent
 	// so it can render the canvas in a sibling column to the right of this content.
@@ -29,9 +25,6 @@
 	const status = authService.status;
 	const profile = authService.profile;
 
-	// A location must be claimed before a character can be spawned.
-	$: locationId = region?.id ?? null;
-
 	let shows: ClaimableShow[] = [];
 	let loadingShows = false;
 	let showsError = '';
@@ -40,10 +33,10 @@
 	// each show's main poster there). Independent of auth, so loaded up front.
 	let posterByShowId = new Map<number, string>();
 
-	// The show currently being rolled (its card spins; the others lock out), plus
-	// per-show roll errors keyed by show id.
+	// The show currently being opened (locks out concurrent opens), plus the error
+	// from the last open attempt, if any.
 	let claimingId: number | null = null;
-	let claimErrors: Record<number, string> = {};
+	let claimError = '';
 
 	// Guards the one-time load so the reactive block doesn't refire on every store tick.
 	let loadedForUser: string | null = null;
@@ -125,12 +118,13 @@
 	}
 
 	// Open a booster from one show's assigned pool and persist its cards, each
-	// tagged with that show. Only one open runs at a time (the other cards lock out).
-	async function claimFromShow(show: ClaimableShow, claimRegion: GeoRegion | null = region) {
+	// tagged with that show and the place it was opened from. Only one open runs at
+	// a time.
+	async function claimFromShow(show: ClaimableShow, claimRegion: GeoRegion | null) {
 		const locId = claimRegion?.id ?? null;
 		if (!currentUserId || !locId || claimingId !== null) return;
 		claimingId = show.id;
-		claimErrors = { ...claimErrors, [show.id]: '' };
+		claimError = '';
 		try {
 			const spawns = await spawnService.claimBooster(
 				currentUserId,
@@ -138,6 +132,11 @@
 				show.id,
 				locId
 			);
+			// Award experience for the cards pulled and mirror the new total (and the
+			// level it implies) into the profile card. Non-blocking — a failure here
+			// must not sink a successful claim.
+			void authService.addExp(spawns.length * EXP_PER_SPAWN).catch(() => undefined);
+
 			// Capture what was rolled and resolve each portrait, so the RosterCards
 			// below mirror the roster grid exactly.
 			lastLocationName = claimRegion?.municipality ?? '';
@@ -152,7 +151,7 @@
 			openerRegion = claimRegion;
 			openSession += 1;
 		} catch (error) {
-			claimErrors = { ...claimErrors, [show.id]: errorMessage(error) };
+			claimError = errorMessage(error);
 		} finally {
 			claimingId = null;
 		}
@@ -244,7 +243,8 @@
 			<button class="btn btn-primary btn-sm" on:click={() => signInPanelOpen.set(true)}>Sign in</button>
 		{:else}
 			<p class="text-sm opacity-70">
-				Roll a random character from one of your shows — the spawn is saved to your account.
+				Pick a town celebrating its festa major today, below, to open its booster — the
+				spawn is saved to your account, tagged with that place.
 			</p>
 
 			{#if showsError}
@@ -258,27 +258,10 @@
 				<div class="alert alert-info text-sm">
 					<span>No shows with characters have been synced yet. Check back later.</span>
 				</div>
-			{:else}
-				{#if !locationId}
-					<div class="alert alert-info text-sm">
-						<span>Claim your location above before spawning a character.</span>
-					</div>
-				{/if}
+			{/if}
 
-				<!-- One claim panel per show, keyed by its assigned main poster. Rolling
-				     a character draws only from that show's assigned pool. -->
-				<div class="grid grid-cols-2 gap-3">
-					{#each shows as show (show.id)}
-						<ShowClaimCard
-							{show}
-							posterUrl={posterByShowId.get(show.id) ?? null}
-							claiming={claimingId === show.id}
-							disabled={!locationId || claimingId !== null}
-							error={claimErrors[show.id] ?? ''}
-							on:claim={() => claimFromShow(show)}
-						/>
-					{/each}
-				</div>
+			{#if claimError}
+				<div class="alert alert-error text-sm"><span>{claimError}</span></div>
 			{/if}
 
 			{#if lastPulls.length > 0}
