@@ -190,35 +190,8 @@ const HP_BAR_GAP = 10;
 /** Font size (px) of the `hp/maxHp` readout centred inside the bar. */
 const HP_BAR_FONT_SIZE = 12;
 /** How fast the displayed fill eases toward the real HP ratio (fraction closed
- * per second) — drives both the width shrink and the colour transition. */
+ * per second) — drives the width shrink as a fighter takes damage. */
 const HP_BAR_EASE_PER_S = 6;
-
-/** HP bar colour stops, full → empty: green at full, yellow at half, red near 0. */
-const HP_FULL = 0x22c55e;
-const HP_MID = 0xeab308;
-const HP_LOW = 0xef4444;
-
-/** Blend two 0xRRGGBB colours, `t` from 0 (a) to 1 (b). */
-function lerpColor(a: number, b: number, t: number): number {
-	const ar = (a >> 16) & 0xff;
-	const ag = (a >> 8) & 0xff;
-	const ab = a & 0xff;
-	const br = (b >> 16) & 0xff;
-	const bg = (b >> 8) & 0xff;
-	const bb = b & 0xff;
-	const r = Math.round(ar + (br - ar) * t);
-	const g = Math.round(ag + (bg - ag) * t);
-	const bl = Math.round(ab + (bb - ab) * t);
-	return (r << 16) | (g << 8) | bl;
-}
-
-/** HP bar fill colour for a 0..1 ratio: green→yellow over the top half, then
- * yellow→red over the bottom half, so the bar reddens as the fighter weakens. */
-function hpColor(ratio: number): number {
-	const clamped = Math.max(0, Math.min(1, ratio));
-	if (clamped > 0.5) return lerpColor(HP_MID, HP_FULL, (clamped - 0.5) / 0.5);
-	return lerpColor(HP_LOW, HP_MID, clamped / 0.5);
-}
 
 interface Point {
 	x: number;
@@ -270,9 +243,10 @@ interface SlashEffect {
 }
 
 /**
- * A green→red HP bar drawn just below an actor's feet. The bar tracks a target
- * ratio (the fighter's hp/maxHp) but the *displayed* ratio eases toward it each
- * tick, so both the width shrink and the colour transition animate smoothly.
+ * An HP bar drawn just below an actor's feet, filled in the fighter's own combat
+ * (Supabase spawn) colour. The bar tracks a target ratio (the fighter's hp/maxHp)
+ * but the *displayed* ratio eases toward it each tick, so the width shrink animates
+ * smoothly; the fill colour is fixed to the fighter's spawn colour.
  */
 interface HpBar {
 	graphics: Graphics;
@@ -282,6 +256,8 @@ interface HpBar {
 	ratio: number;
 	/** The real hp/maxHp fraction the bar is easing toward. */
 	targetRatio: number;
+	/** Fixed fill colour: the fighter's combat (spawn) colour. */
+	fillColor: number;
 }
 
 /** A character standing (and, during combat, running) on the board. */
@@ -658,9 +634,10 @@ export class MugenBoard {
 		sprite.zIndex = mark.y;
 		this.app.stage.addChild(sprite);
 
-		// A full (green) HP bar just below the character's feet; combat eases it down
-		// (and reddens it) via setHp as the fighter takes damage. A `current/max`
-		// readout sits centred inside it (blank until combat seeds the numbers).
+		// A full HP bar just below the character's feet, filled in the fighter's own
+		// combat (spawn) colour; combat eases its width down via setHp as the fighter
+		// takes damage. A `current/max` readout sits centred inside it (blank until
+		// combat seeds the numbers).
 		const hpGraphics = new Graphics();
 		this.app.stage.addChild(hpGraphics);
 		const hpLabel = new Text({
@@ -698,7 +675,13 @@ export class MugenBoard {
 			onArrive: null,
 			oneShot: null,
 			aura: null,
-			hpBar: { graphics: hpGraphics, label: hpLabel, ratio: 1, targetRatio: 1 },
+			hpBar: {
+				graphics: hpGraphics,
+				label: hpLabel,
+				ratio: 1,
+				targetRatio: 1,
+				fillColor: combatColorHex(character.combatColor ?? '')
+			},
 			label: null,
 			// Nominal size from the base frames at fit scale — stable across poses,
 			// unlike the live sprite whose size tracks the current frame's texture.
@@ -875,7 +858,7 @@ export class MugenBoard {
 		g.fill({ color: 0x000000, alpha: 0.6 });
 		if (fillWidth > 0) {
 			g.roundRect(left, top, Math.max(fillWidth, HP_BAR_HEIGHT), HP_BAR_HEIGHT, radius);
-			g.fill({ color: hpColor(bar.ratio) });
+			g.fill({ color: bar.fillColor });
 		}
 		// Draw with the actor's feet depth so nearer fighters' bars sit in front.
 		g.zIndex = actor.y + HP_BAR_GAP;
