@@ -2,13 +2,14 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
 	import ClaimPackOpener from './ClaimPackOpener.svelte';
-	import type { ClaimPull } from './scene/pull.type';
+	import type { ClaimBooster } from './scene/ClaimPackScene';
 
 	// The show poster (pack cover) and its name.
 	export let coverUrl: string | null = null;
 	export let packLabel: string = '';
-	// The claimed character(s) revealed by this open.
-	export let pulls: ClaimPull[] = [];
+	// Rolls the booster against Supabase when the pack is sliced open, resolving
+	// the claimed character(s) to reveal.
+	export let claim: ClaimBooster;
 	// Bumped on every new open so the opener canvas remounts with a fresh pack.
 	export let openSession: number = 0;
 	// True while the parent is rolling the next claim.
@@ -33,7 +34,7 @@
 
 		<div class="min-h-0 flex-1 rounded-md bg-gradient-to-b from-base-300/80 to-base-200">
 			{#key openSession}
-				<ClaimPackOpener {coverUrl} label={packLabel} {pulls} />
+				<ClaimPackOpener {coverUrl} label={packLabel} {claim} />
 			{/key}
 		</div>
 

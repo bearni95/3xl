@@ -11,8 +11,12 @@ export interface OpenerView {
 	coverUrl: string | null;
 	/** Pack label — the show name shown across the pack. */
 	label: string;
-	/** The claimed character(s) revealed by this open. */
-	pulls: ClaimPull[];
+	/**
+	 * Rolls the booster against Supabase and returns the cards to reveal. The canvas
+	 * calls this when the player slices the pack open — so the spawn is persisted at
+	 * open time, not when the pack was selected. Rejections/empties reveal no cards.
+	 */
+	claim: () => Promise<ClaimPull[]>;
 	/** Bumped on every open so the canvas remounts with a fresh pack. */
 	openSession: number;
 	/** True while the parent is rolling the next claim. */

@@ -56,16 +56,16 @@
 	let lastPulls: ClaimPull[] = [];
 	let lastLocationName = '';
 
-	// Pack-opener modal state. Rolling from a show opens the booster-pack canvas
-	// (the show's poster is the pack cover) and reveals the characters just claimed
-	// from it. `openSession` bumps on every roll so the canvas remounts fresh.
+	// Pack-opener modal state. Selecting a show opens the booster-pack canvas (the
+	// show's poster is the pack cover); the spawn is rolled against Supabase only
+	// when the player slices the pack open (`runClaim`). `openSession` bumps on
+	// every open so the canvas remounts with a fresh, unsliced pack.
 	let openerShow: ClaimableShow | null = null;
-	let openerPulls: ClaimPull[] = [];
 	let openerPosterUrl: string | null = null;
 	let openSession = 0;
-	// The region the open pack was claimed from — the GPS reading, or a municipality
-	// picked from today's festes. Re-opens ("open another") reuse it, so the pack
-	// stays tied to the place it was opened from rather than the GPS panel.
+	// The region the open pack is tied to — a municipality picked from today's
+	// festes. Re-opens ("open another") reuse it, so the roll stays tied to the
+	// place the pack was opened from.
 	let openerRegion: GeoRegion | null = null;
 
 	onMount(() => {
@@ -117,12 +117,31 @@
 		}
 	}
 
-	// Open a booster from one show's assigned pool and persist its cards, each
-	// tagged with that show and the place it was opened from. Only one open runs at
-	// a time.
-	async function claimFromShow(show: ClaimableShow, claimRegion: GeoRegion | null) {
+	// Open a booster from one show for a place: show the pack on the canvas, tied to
+	// that show and municipality. Nothing is spawned yet — the Supabase roll fires
+	// only when the player slices the pack open (see `runClaim`). Bumping
+	// `openSession` remounts the canvas with a fresh, unsliced pack. Blocked while a
+	// previous open is still rolling.
+	function openBooster(show: ClaimableShow, claimRegion: GeoRegion | null) {
+		if (!currentUserId || !claimRegion?.id || claimingId !== null) return;
+		openerShow = show;
+		openerPosterUrl = posterByShowId.get(show.id) ?? null;
+		openerRegion = claimRegion;
+		lastPulls = [];
+		claimError = '';
+		openSession += 1;
+	}
+
+	// Roll the open booster against Supabase and resolve its cards. Handed to the
+	// canvas, which invokes it when the pack is sliced open — so the spawn is
+	// persisted at open time, not when the pack was selected. Persists the spawns,
+	// awards experience, and mirrors the cards into the "just claimed" list below.
+	// Returns the cards to reveal ([] on failure, which reveals nothing).
+	async function runClaim(): Promise<ClaimPull[]> {
+		const show = openerShow;
+		const claimRegion = openerRegion;
 		const locId = claimRegion?.id ?? null;
-		if (!currentUserId || !locId || claimingId !== null) return;
+		if (!currentUserId || !show || !locId) return [];
 		claimingId = show.id;
 		claimError = '';
 		try {
@@ -142,28 +161,22 @@
 			lastLocationName = claimRegion?.municipality ?? '';
 			const pulls = await Promise.all(spawns.map((spawn) => buildPull(spawn)));
 			lastPulls = pulls;
-
-			// Open (or refresh) the pack-opener canvas with what was just claimed:
-			// the show's poster is the pack cover, the rolled characters are the cards.
-			openerShow = show;
-			openerPosterUrl = posterByShowId.get(show.id) ?? null;
-			openerPulls = pulls;
-			openerRegion = claimRegion;
-			openSession += 1;
+			return pulls;
 		} catch (error) {
 			claimError = errorMessage(error);
+			return [];
 		} finally {
 			claimingId = null;
 		}
 	}
 
 	// Open a booster for a specific show and place — used by the "festes majors
-	// d'avui" list, which claims from the celebrating municipality rather than the
-	// GPS reading. No-op until the show pool has loaded (returns whether it fired).
+	// d'avui" list, which opens from the celebrating municipality. No-op until the
+	// show pool has loaded (returns whether it fired).
 	export function claimFromShowId(showId: number, claimRegion: GeoRegion): boolean {
 		const show = shows.find((entry) => entry.id === showId);
 		if (!show) return false;
-		void claimFromShow(show, claimRegion);
+		openBooster(show, claimRegion);
 		return true;
 	}
 
@@ -188,29 +201,28 @@
 		};
 	}
 
-	// The opener view handed up to the parent, recomputed whenever a roll resolves
-	// (openerPull/openerShow set) or the rolling/location state changes.
-	$: opener =
-		openerShow && openerPulls.length > 0
-			? {
-					coverUrl: openerPosterUrl,
-					label: openerShow.name,
-					pulls: openerPulls,
-					openSession,
-					openAnotherBusy: claimingId !== null,
-					openAnotherDisabled: !openerRegion?.id || claimingId !== null
-				}
-			: null;
+	// The opener view handed up to the parent, present whenever a pack is open. The
+	// canvas rolls the booster via `runClaim` when the pack is sliced; recomputed
+	// when the open show/place or the rolling state changes.
+	$: opener = openerShow
+		? {
+				coverUrl: openerPosterUrl,
+				label: openerShow.name,
+				claim: runClaim,
+				openSession,
+				openAnotherBusy: claimingId !== null,
+				openAnotherDisabled: !openerRegion?.id || claimingId !== null
+			}
+		: null;
 
-	// Re-open from the same show and place without leaving the opener — reveals a
-	// fresh booster. Exported so the parent's opener column can drive it.
+	// Re-open a fresh, unsliced pack from the same show and place without leaving
+	// the opener. Exported so the parent's opener column can drive it.
 	export function openAnother() {
-		if (openerShow) void claimFromShow(openerShow, openerRegion);
+		if (openerShow) openBooster(openerShow, openerRegion);
 	}
 
 	export function closeOpener() {
 		openerShow = null;
-		openerPulls = [];
 	}
 
 	function labelFor(id: string): string {

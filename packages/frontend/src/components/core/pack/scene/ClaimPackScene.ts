@@ -7,6 +7,7 @@
  *  - load → renders the pack (show poster cover), listens for a click on it
  *  - click → flashes a slash, splits the pack at the click Y into two halves
  *  - top half flies up off-screen, bottom half flies down (both rotating)
+ *  - meanwhile the booster is rolled against Supabase (the `claim` callback)
  *  - the claimed character card(s) appear stacked at the cut, fan into a grid
  *
  * The scene exposes no Svelte interop — inputs come through the constructor,
@@ -40,6 +41,13 @@ export interface ClaimPackInput {
 	label: string;
 }
 
+/**
+ * Rolls the booster against Supabase and resolves the cards to reveal. Invoked
+ * once, when the player slices the pack open — so the spawn is persisted at open
+ * time. A rejection or empty result simply reveals no cards.
+ */
+export type ClaimBooster = () => Promise<ClaimPull[]>;
+
 type SceneState = 'loading' | 'idle' | 'cutting' | 'revealing' | 'fanned';
 
 const PACK_ASPECT = 5 / 8; // width / height (portrait)
@@ -50,7 +58,9 @@ export class ClaimPackScene {
 	private host: HTMLElement;
 	private callbacks: ClaimPackSceneCallbacks;
 	private input: ClaimPackInput;
-	private pulls: ClaimPull[];
+	private claim: ClaimBooster;
+	// The cards this open revealed — empty until the pack is cut and `claim` resolves.
+	private pulls: ClaimPull[] = [];
 
 	private rootLayer: Container;
 	private cardLayer: Container;
@@ -72,13 +82,13 @@ export class ClaimPackScene {
 	constructor(
 		host: HTMLElement,
 		input: ClaimPackInput,
-		pulls: ClaimPull[],
+		claim: ClaimBooster,
 		callbacks: ClaimPackSceneCallbacks = {}
 	) {
 		this.host = host;
 		this.callbacks = callbacks;
 		this.input = input;
-		this.pulls = pulls;
+		this.claim = claim;
 		this.app = new Application();
 
 		this.rootLayer = new Container();
@@ -166,9 +176,6 @@ export class ClaimPackScene {
 		this.app.stage.on('pointermove', this.onPointerMove);
 		this.app.stage.on('pointerdown', this.onPointerDown);
 		this.app.stage.on('pointerleave', this.onPointerLeave);
-
-		// Warm the face textures while the player decides where to cut.
-		void Promise.all(this.pulls.map((p) => textureCache.face(p.faceUrl).catch(() => null)));
 
 		if (!this.resizeObserver) {
 			this.resizeObserver = new ResizeObserver(() => this.handleResize());
@@ -308,6 +315,16 @@ export class ClaimPackScene {
 		]);
 
 		this.state = 'revealing';
+		// Roll the booster against Supabase now — the spawn is persisted at open
+		// time, masked by the halves flying away. A failure reveals no cards.
+		try {
+			this.pulls = await this.claim();
+		} catch {
+			this.pulls = [];
+		}
+		if (this.isDestroyed) return;
+		// Warm the freshly-claimed face textures before the cards pop in.
+		void Promise.all(this.pulls.map((p) => textureCache.face(p.faceUrl).catch(() => null)));
 		await this.revealCards();
 
 		await halvesPromise;
