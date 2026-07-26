@@ -470,7 +470,7 @@
 
 <div class="flex h-[calc(100vh-4rem)]">
 	<aside
-		class="fixed left-4 top-20 z-[1100] flex max-h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
+		class="fixed bottom-4 left-4 z-[1100] flex max-h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
 		aria-label="Map regions"
 	>
 		<div class="border-b border-base-300 px-4 py-3">
