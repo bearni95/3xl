@@ -26,6 +26,14 @@
 	// the remote templates load; drives the badge on each grid card.
 	let syncStatusById = new Map<string, CharacterTemplateStatus>();
 
+	// Per-character Supabase rarity, published by CharacterTemplateSync; seeds the
+	// per-card rarity editor and is kept current as cards save their edits.
+	let rarityById = new Map<string, number>();
+
+	function handleRaritySaved(event: CustomEvent<{ id: string; rarity: number }>) {
+		rarityById = new Map(rarityById).set(event.detail.id, event.detail.rarity);
+	}
+
 	$: selected = characters.find((character) => character.id === selectedId) ?? characters[0];
 
 	// Definition + editor state for the selected character. All loading happens in
@@ -113,16 +121,17 @@
 		</header>
 
 		<CharacterTemplateSync
-			{selectedId}
-			selectedLabel={selected.label}
 			on:statuschange={(event) => (syncStatusById = event.detail)}
+			on:raritychange={(event) => (rarityById = event.detail)}
 		/>
 
 		<CharacterShowGroups
 			{characters}
 			{selectedId}
 			{syncStatusById}
+			{rarityById}
 			on:select={(event) => (selectedId = event.detail.id)}
+			on:raritysaved={handleRaritySaved}
 		/>
 
 		<div role="tablist" class="tabs tabs-boxed w-fit">

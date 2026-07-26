@@ -12,6 +12,8 @@
 	export let characters: CharacterOption[] = [];
 	export let selectedId: string;
 	export let syncStatusById: Map<string, CharacterTemplateStatus> = new Map();
+	// Each character's Supabase rarity, seeding the per-card rarity editor.
+	export let rarityById: Map<string, number> = new Map();
 
 	// Which show each character belongs to lives only in Supabase (the
 	// `show_characters` join), read through @3xl/backend (default :2002) — same
@@ -119,7 +121,9 @@
 							{character}
 							selected={character.id === selectedId}
 							syncStatus={syncStatusById.get(character.id)}
+							rarity={rarityById.get(character.id)}
 							on:select={(event) => dispatch('select', event.detail)}
+							on:raritysaved
 						/>
 					{/each}
 				</div>
@@ -145,7 +149,9 @@
 				{character}
 				selected={character.id === selectedId}
 				syncStatus={syncStatusById.get(character.id)}
+				rarity={rarityById.get(character.id)}
 				on:select={(event) => dispatch('select', event.detail)}
+				on:raritysaved
 			/>
 		{/each}
 	</div>
