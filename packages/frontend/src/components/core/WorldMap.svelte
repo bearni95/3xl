@@ -335,16 +335,8 @@
 			worldCopyJump: true
 		});
 
-		// Esri World Imagery: pure satellite tiles, no labels or roads.
-		// Note the {z}/{y}/{x} order — ArcGIS swaps y and x vs the OSM scheme.
-		Leaf.tileLayer(
-			'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-			{
-				attribution:
-					'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-				maxZoom: 19
-			}
-		).addTo(mapInstance);
+		// No tile basemap: the map shows only its own overlays (polygons + pins) over
+		// the bare container, with no satellite/road imagery behind them.
 
 		mapInstance.setView(center, zoom);
 		// Keep the bindable zoom and centre in sync so callers can render a live
