@@ -88,41 +88,61 @@
 	// territory lines (green comarca lines sit under the yellow province ones,
 	// so shared borders read as province).
 	//
-	// The polygons are plain outlines now — each imaged region's top show is shown
-	// on a pin dropped at the region's centre (see `markers`), not painted across
-	// its shape. The municipality layer stays interactive for its hover highlight
+	// Each imaged region's top show is pinned at its centre (see `markers`); on top
+	// of that, the currently-selected region is marked by painting its show's wide
+	// backdrop across its own municipality polygons — every municipality under the
+	// selection returns the same key + backdrop, so WorldMap merges them into one
+	// continuous image spanning the whole selected shape. Nothing selected → plain
+	// outlines. The municipality layer stays interactive for its hover highlight
 	// and tooltip; the coarser tiers are decorative outlines. `hiddenLineUrls`
 	// still thins the finer borders down to the tier the map is focused on.
-	const overlays: MapOverlay[] = [
-		{
-			url: '/data/geo/municipis.json',
-			style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
-			hoverStyle: { weight: 2, fillOpacity: 0.3 },
-			label: (feature) => {
-				const props = feature.properties ?? {};
-				const show = assignmentsById.get(String(props.id))?.show.name;
-				const name = restoreCatalanArticle(String(props.name ?? 'Unknown'));
-				return [name, props.comarca, props.prov, props.territory, show]
-					.filter(Boolean)
-					.join(', ');
+	// Rebuilt (so WorldMap repaints) whenever the selection or its backdrop change
+	// — all three named here so the statement tracks them.
+	function buildOverlays(
+		chosen: string | null,
+		muniIds: Set<string>,
+		backdropUrl: string | null
+	): MapOverlay[] {
+		return [
+			{
+				url: '/data/geo/municipis.json',
+				style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
+				hoverStyle: { weight: 2, fillOpacity: 0.3 },
+				label: (feature) => {
+					const props = feature.properties ?? {};
+					const show = assignmentsById.get(String(props.id))?.show.name;
+					const name = restoreCatalanArticle(String(props.name ?? 'Unknown'));
+					return [name, props.comarca, props.prov, props.territory, show]
+						.filter(Boolean)
+						.join(', ');
+				},
+				imageFill: (feature) => {
+					// Only the selected region is imaged, and only when its show has a
+					// backdrop. Every municipality inside it returns the same key, so
+					// they merge into one backdrop stretched across the whole region.
+					if (!chosen || !backdropUrl) return null;
+					return muniIds.has(String(feature.properties?.id))
+						? { key: chosen, url: backdropUrl }
+						: null;
+				}
+			},
+			{
+				url: '/data/geo/comarques.json',
+				style: { color: '#22c55e', weight: 1.5, fill: false },
+				interactive: false
+			},
+			{
+				url: '/data/geo/provincies.json',
+				style: { color: '#eab308', weight: 2, fill: false },
+				interactive: false
+			},
+			{
+				url: '/data/geo/territoris.json',
+				style: { color: '#ef4444', weight: 3, fill: false },
+				interactive: false
 			}
-		},
-		{
-			url: '/data/geo/comarques.json',
-			style: { color: '#22c55e', weight: 1.5, fill: false },
-			interactive: false
-		},
-		{
-			url: '/data/geo/provincies.json',
-			style: { color: '#eab308', weight: 2, fill: false },
-			interactive: false
-		},
-		{
-			url: '/data/geo/territoris.json',
-			style: { color: '#ef4444', weight: 3, fill: false },
-			interactive: false
-		}
-	];
+		];
+	}
 
 	// The portal axis: an imaginary straight line from the municipality of Girona
 	// (centroid ~[41.99, 2.83]) out to l'Alguer — the lone Italian territory in
@@ -314,6 +334,17 @@
 	// The currently-open region node (null at the top view), so the map can mark
 	// the selection with the backdrop of the show associated to that area.
 	$: selectedNode = selected ? findNode(regionNodes, selected) : null;
+
+	// The selected region's show backdrop, and the ids of every municipality
+	// polygon under it — the imageFill paints that backdrop across exactly those
+	// polygons. Empty/null while nothing is selected, so the map shows plain outlines.
+	$: selectedBackdropUrl = selectedNode?.show?.backdropUrl ?? null;
+	$: selectedMunicipalityIds =
+		selected && municipalities ? municipalityIdsForKey(fillIndex, selected) : new Set<string>();
+
+	// Rebuilt whenever the selection or its backdrop changes, so WorldMap re-groups
+	// the fills and paints the newly-selected region (and clears the old one).
+	$: overlays = buildOverlays(selected, selectedMunicipalityIds, selectedBackdropUrl);
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
@@ -366,28 +397,6 @@
 			<span class="opacity-70">Zoom</span>
 			<span class="font-bold tabular-nums">{currentZoom}</span>
 		</div>
-
-		{#if selectedNode?.show?.backdropUrl}
-			<div
-				class="rounded-box ring-base-300 absolute bottom-4 left-4 z-[1000] w-80 overflow-hidden shadow-xl ring-1"
-			>
-				<img
-					src={selectedNode.show.backdropUrl}
-					alt={selectedNode.show.name}
-					class="h-44 w-full object-cover"
-				/>
-				<div
-					class="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/30 to-transparent p-3"
-				>
-					<span class="text-xs font-semibold uppercase tracking-wide text-white/70">
-						{restoreCatalanArticle(selectedNode.name)}
-					</span>
-					<span class="text-lg font-bold leading-tight text-white">
-						{selectedNode.show.name}
-					</span>
-				</div>
-			</div>
-		{/if}
 	</div>
 
 	{#if portalOpen}
