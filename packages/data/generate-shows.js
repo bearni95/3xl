@@ -112,11 +112,11 @@ function immediateNeighbourhood(features, centerName) {
 
 /**
  * A saved show's display poster URL. Mirrors showPosterUrl() in the shared util:
- * the author-chosen main poster if picked, otherwise the show's default TMDB
+ * the first author-enabled poster if any, otherwise the show's default TMDB
  * poster, otherwise null.
  */
 function showPosterUrl(entry) {
-	const filePath = entry.mainImages?.poster;
+	const filePath = entry.enabledImages?.poster?.[0];
 	if (filePath) {
 		const image = entry.images.posters.find((candidate) => candidate.filePath === filePath);
 		if (image) return image.thumbnailUrl;

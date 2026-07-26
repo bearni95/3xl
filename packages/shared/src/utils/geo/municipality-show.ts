@@ -107,12 +107,12 @@ export function showForMunicipality(
 }
 
 /**
- * A saved show's display poster URL: the author-chosen main poster if one was
- * picked in the admin `/shows` screen, otherwise the show's default TMDB
- * poster, otherwise null. Mirrors the resolution used by the claim screens.
+ * A saved show's display poster URL: the first author-enabled poster if any
+ * were toggled on in the admin `/shows` screen, otherwise the show's default
+ * TMDB poster, otherwise null. Mirrors the resolution used by the claim screens.
  */
 export function showPosterUrl(entry: ShowEntry): string | null {
-	const filePath = entry.mainImages?.poster;
+	const filePath = entry.enabledImages?.poster?.[0];
 	if (filePath) {
 		const image = entry.images.posters.find((candidate) => candidate.filePath === filePath);
 		if (image) return image.thumbnailUrl;

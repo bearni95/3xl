@@ -15,12 +15,14 @@ export interface ShowEntry {
 	/** Every image (posters, backdrops, logos) TMDB holds for the show. */
 	images: DisplayTMDBTvImages;
 	/**
-	 * The author-chosen "main" image for each section (poster/backdrop/logo),
-	 * stored as that image's `filePath` and picked in the admin `/shows` screen.
-	 * A section is absent until a main is chosen; each stored `filePath` always
-	 * references an image present in the matching `images` array.
+	 * The author-enabled images per section (poster/backdrop/logo), each stored
+	 * as an array of image `filePath`s and toggled in the admin `/shows` screen.
+	 * A section is absent until at least one image is enabled; every stored
+	 * `filePath` references an image present in the matching `images` array.
+	 * Consumers that need a single headline image (e.g. the map poster) take the
+	 * first enabled entry for the kind.
 	 */
-	mainImages?: Partial<Record<TMDBImageKind, string>>;
+	enabledImages?: Partial<Record<TMDBImageKind, string[]>>;
 }
 
 /** Shape of `public/shows.json` — the whole saved-show collection. */

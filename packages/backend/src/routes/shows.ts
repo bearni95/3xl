@@ -54,20 +54,30 @@ function validateEntry(body: unknown): ShowEntry {
 	}
 	if (images.id !== show.id) httpError(400, 'images.id does not match show.id');
 
-	// Optional author-chosen main image per section. Keep only kinds whose value
-	// is a filePath that actually exists in the matching images array, so a
-	// crafted body can't point "main" at an image the show doesn't hold.
+	// Optional author-enabled images per section. Keep only filePaths that
+	// actually exist in the matching images array (de-duplicated, order
+	// preserved), so a crafted body can't enable an image the show doesn't hold.
 	const listByKind = { poster: images.posters, backdrop: images.backdrops, logo: images.logos };
-	const rawMains = (entry.mainImages ?? {}) as Record<string, unknown>;
-	const mainImages: NonNullable<ShowEntry['mainImages']> = {};
+	const rawEnabled = (entry.enabledImages ?? {}) as Record<string, unknown>;
+	const enabledImages: NonNullable<ShowEntry['enabledImages']> = {};
 	for (const kind of ['poster', 'backdrop', 'logo'] as const) {
-		const filePath = rawMains[kind];
-		if (typeof filePath === 'string' && listByKind[kind]?.some((img) => img.filePath === filePath)) {
-			mainImages[kind] = filePath;
+		const raw = rawEnabled[kind];
+		if (!Array.isArray(raw)) continue;
+		const available = listByKind[kind] ?? [];
+		const kept: string[] = [];
+		for (const filePath of raw) {
+			if (
+				typeof filePath === 'string' &&
+				!kept.includes(filePath) &&
+				available.some((img) => img.filePath === filePath)
+			) {
+				kept.push(filePath);
+			}
 		}
+		if (kept.length > 0) enabledImages[kind] = kept;
 	}
 
-	return Object.keys(mainImages).length > 0 ? { show, images, mainImages } : { show, images };
+	return Object.keys(enabledImages).length > 0 ? { show, images, enabledImages } : { show, images };
 }
 
 export const showsRouter = Router();

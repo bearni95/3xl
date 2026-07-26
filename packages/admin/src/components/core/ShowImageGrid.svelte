@@ -4,7 +4,7 @@
 	import type { DisplayTMDBImage, DisplayTMDBTvImages, TMDBImageKind } from '$types/tmdb.type';
 
 	// Image kinds rendered as separate labeled grids, in display order. `kind` is
-	// the singular tag each image carries (image.kind), used to key the main pick.
+	// the singular tag each image carries (image.kind), used to key the enabled set.
 	const imageGroups: { key: 'posters' | 'backdrops' | 'logos'; kind: TMDBImageKind; label: string }[] =
 		[
 			{ key: 'posters', kind: 'poster', label: 'Posters' },
@@ -14,11 +14,11 @@
 
 	export let images: DisplayTMDBTvImages;
 	export let showName: string;
-	// When set, each section gains a "main" toggle and the chosen image is marked.
+	// When set, each thumbnail gains a toggle and enabled images are marked.
 	// Off (the search tab) renders a plain read-only gallery.
 	export let selectable: boolean = false;
-	// The currently chosen main filePath per section, so the grid can mark it.
-	export let mainByKind: Partial<Record<TMDBImageKind, string>> = {};
+	// The enabled filePaths per section, so the grid can mark each thumbnail.
+	export let enabledByKind: Partial<Record<TMDBImageKind, string[]>> = {};
 
 	// The grid renders the groups top-to-bottom; navigation in the preview modal
 	// follows that same visual order, so hand it this flattened list.
@@ -26,7 +26,7 @@
 
 	const dispatch = createEventDispatcher<{
 		preview: { images: DisplayTMDBImage[]; image: DisplayTMDBImage };
-		setmain: { kind: TMDBImageKind; filePath: string };
+		toggle: { kind: TMDBImageKind; filePath: string };
 	}>();
 </script>
 
@@ -43,25 +43,29 @@
 						<span class="text-base-content/40 font-normal normal-case">
 							· {groupImages.length}
 						</span>
-						{#if selectable && mainByKind[group.kind]}
-							<span class="text-primary font-normal normal-case"> · main selected</span>
+						{#if selectable && (enabledByKind[group.kind]?.length ?? 0) > 0}
+							<span class="text-primary font-normal normal-case">
+								· {enabledByKind[group.kind]?.length} enabled
+							</span>
 						{/if}
 					</h3>
 					<div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
 						{#each groupImages as image (image.filePath)}
-							{@const isMain = mainByKind[group.kind] === image.filePath}
+							{@const isEnabled = enabledByKind[group.kind]?.includes(image.filePath) ?? false}
 							<div class="relative">
 								<button
 									type="button"
 									class={classNames(
 										'bg-base-200 hover:ring-primary flex h-24 w-full cursor-pointer items-center justify-center overflow-hidden rounded transition hover:ring-2',
-										{ 'ring-primary ring-2': isMain }
+										{ 'ring-primary ring-2': isEnabled }
 									)}
 									on:click={() => dispatch('preview', { images: orderedImages, image })}
 									title={`${image.kind} · ${image.width}×${image.height}${image.language ? ` · ${image.language}` : ''}`}
 								>
 									<img
-										class="h-full w-full object-contain"
+										class={classNames('h-full w-full object-contain transition', {
+											'opacity-40': selectable && !isEnabled
+										})}
 										src={image.thumbnailUrl}
 										alt={`${image.kind} for ${showName}`}
 										loading="lazy"
@@ -72,14 +76,14 @@
 										type="button"
 										class={classNames(
 											'btn btn-circle btn-xs absolute right-1 top-1 border-none',
-											isMain ? 'btn-primary' : 'btn-neutral/70'
+											isEnabled ? 'btn-primary' : 'btn-neutral/70'
 										)}
 										on:click|stopPropagation={() =>
-											dispatch('setmain', { kind: group.kind, filePath: image.filePath })}
-										aria-pressed={isMain}
-										title={isMain ? 'Main image — click to unset' : 'Set as main image'}
+											dispatch('toggle', { kind: group.kind, filePath: image.filePath })}
+										aria-pressed={isEnabled}
+										title={isEnabled ? 'Enabled — click to disable' : 'Click to enable'}
 									>
-										{isMain ? '★' : '☆'}
+										{isEnabled ? '★' : '☆'}
 									</button>
 								{/if}
 							</div>

@@ -32,38 +32,43 @@
 	// Which saved cards have their images expanded. Saved shows carry their images
 	// already, so this is a pure show/hide — no fetch, unlike the search tab.
 	let expandedSaved: Record<number, boolean> = {};
-	// Per-show state for persisting a main-image pick.
-	let savingMain: Record<number, boolean> = {};
-	let mainError: Record<number, string> = {};
+	// Per-show state for persisting an enabled-images change.
+	let savingEnabled: Record<number, boolean> = {};
+	let enabledError: Record<number, string> = {};
 
-	// The three sections, singular kind + label, for the "main images" summary.
-	const mainSections: { kind: TMDBImageKind; label: string }[] = [
-		{ kind: 'poster', label: 'Poster' },
-		{ kind: 'backdrop', label: 'Backdrop' },
-		{ kind: 'logo', label: 'Logo' }
+	// The three sections, singular kind + label, for the "enabled images" summary.
+	const enabledSections: { kind: TMDBImageKind; label: string }[] = [
+		{ kind: 'poster', label: 'Posters' },
+		{ kind: 'backdrop', label: 'Backdrops' },
+		{ kind: 'logo', label: 'Logos' }
 	];
 
-	// The DisplayTMDBImage a saved entry marks as its main for a section, or null.
-	function mainImageFor(entry: ShowEntry, kind: TMDBImageKind): DisplayTMDBImage | null {
-		const filePath = entry.mainImages?.[kind];
-		if (!filePath) return null;
-		return entry.images.all.find((image) => image.filePath === filePath) ?? null;
+	// The DisplayTMDBImages a saved entry has enabled for a section, in stored order.
+	function enabledImagesFor(entry: ShowEntry, kind: TMDBImageKind): DisplayTMDBImage[] {
+		const filePaths = entry.enabledImages?.[kind] ?? [];
+		return filePaths
+			.map((filePath) => entry.images.all.find((image) => image.filePath === filePath))
+			.filter((image): image is DisplayTMDBImage => Boolean(image));
 	}
 
-	// Set (or, when re-picking the current one, unset) a section's main image and
-	// persist the updated entry into shows.json. Toggling keeps one main per
-	// section: choosing a different image replaces it, choosing the same clears it.
-	async function setMainImage(showId: number, kind: TMDBImageKind, filePath: string) {
+	// Toggle one image's enabled state for its section and persist the updated
+	// entry into shows.json. Enabling appends; disabling removes; a section is
+	// dropped once its last image is disabled.
+	async function toggleEnabledImage(showId: number, kind: TMDBImageKind, filePath: string) {
 		const entry = savedShows.find((candidate) => candidate.show.id === showId);
 		if (!entry) return;
 
-		const mainImages = { ...(entry.mainImages ?? {}) };
-		if (mainImages[kind] === filePath) delete mainImages[kind];
-		else mainImages[kind] = filePath;
-		const updated: ShowEntry = { ...entry, mainImages };
+		const enabledImages = { ...(entry.enabledImages ?? {}) };
+		const current = enabledImages[kind] ?? [];
+		const next = current.includes(filePath)
+			? current.filter((path) => path !== filePath)
+			: [...current, filePath];
+		if (next.length > 0) enabledImages[kind] = next;
+		else delete enabledImages[kind];
+		const updated: ShowEntry = { ...entry, enabledImages };
 
-		savingMain = { ...savingMain, [showId]: true };
-		mainError = { ...mainError, [showId]: '' };
+		savingEnabled = { ...savingEnabled, [showId]: true };
+		enabledError = { ...enabledError, [showId]: '' };
 		try {
 			const res = await fetch(`${API_BASE}/api/shows`, {
 				method: 'POST',
@@ -80,12 +85,12 @@
 			savedShows = data.shows;
 			savedShowIds = new Set(data.shows.map((candidate) => candidate.show.id));
 		} catch (err) {
-			mainError = {
-				...mainError,
+			enabledError = {
+				...enabledError,
 				[showId]: err instanceof Error ? err.message : String(err)
 			};
 		} finally {
-			savingMain = { ...savingMain, [showId]: false };
+			savingEnabled = { ...savingEnabled, [showId]: false };
 		}
 	}
 
@@ -387,29 +392,37 @@
 
 						{#if expandedSaved[show.id]}
 							<div class="border-base-300 border-t p-3">
-								<!-- Main images: the chosen headline image per section. Pick them
+								<!-- Enabled images: the author-selected set per section. Toggle them
 								     with the ★ on each thumbnail in the grid below. -->
-								<div class="mb-4 flex flex-wrap items-start gap-4">
-									{#each mainSections as section (section.kind)}
-										{@const main = mainImageFor(entry, section.kind)}
+								<div class="mb-4 flex flex-col gap-3">
+									{#each enabledSections as section (section.kind)}
+										{@const enabled = enabledImagesFor(entry, section.kind)}
 										<div class="flex flex-col gap-1">
 											<span class="text-base-content/60 text-xs font-semibold uppercase">
-												Main {section.label}
+												Enabled {section.label}
+												<span class="text-base-content/40 font-normal normal-case">
+													· {enabled.length}
+												</span>
 											</span>
-											{#if main}
-												<button
-													type="button"
-													class="bg-base-200 ring-primary flex h-20 w-28 items-center justify-center overflow-hidden rounded ring-2"
-													on:click={() => openPreview({ images: entry.images.all, image: main }, show.name)}
-													title={`Main ${section.label} · click to preview`}
-												>
-													<img
-														class="h-full w-full object-contain"
-														src={main.thumbnailUrl}
-														alt={`Main ${section.label} for ${show.name}`}
-														loading="lazy"
-													/>
-												</button>
+											{#if enabled.length > 0}
+												<div class="flex flex-wrap gap-2">
+													{#each enabled as image (image.filePath)}
+														<button
+															type="button"
+															class="bg-base-200 ring-primary flex h-20 w-28 items-center justify-center overflow-hidden rounded ring-2"
+															on:click={() =>
+																openPreview({ images: entry.images.all, image }, show.name)}
+															title={`Enabled ${section.label} · click to preview`}
+														>
+															<img
+																class="h-full w-full object-contain"
+																src={image.thumbnailUrl}
+																alt={`Enabled ${section.label} for ${show.name}`}
+																loading="lazy"
+															/>
+														</button>
+													{/each}
+												</div>
 											{:else}
 												<div
 													class="border-base-300 text-base-content/40 flex h-20 w-28 items-center justify-center rounded border border-dashed text-xs"
@@ -419,12 +432,12 @@
 											{/if}
 										</div>
 									{/each}
-									<div class="flex min-h-5 items-center gap-2 self-end text-xs">
-										{#if savingMain[show.id]}
+									<div class="flex min-h-5 items-center gap-2 text-xs">
+										{#if savingEnabled[show.id]}
 											<span class="loading loading-spinner loading-xs"></span>
 											<span class="text-base-content/60">Saving…</span>
-										{:else if mainError[show.id]}
-											<span class="text-error">{mainError[show.id]}</span>
+										{:else if enabledError[show.id]}
+											<span class="text-error">{enabledError[show.id]}</span>
 										{/if}
 									</div>
 								</div>
@@ -433,9 +446,9 @@
 									images={entry.images}
 									showName={show.name}
 									selectable
-									mainByKind={entry.mainImages ?? {}}
+									enabledByKind={entry.enabledImages ?? {}}
 									on:preview={(e) => openPreview(e.detail, show.name)}
-									on:setmain={(e) => setMainImage(show.id, e.detail.kind, e.detail.filePath)}
+									on:toggle={(e) => toggleEnabledImage(show.id, e.detail.kind, e.detail.filePath)}
 								/>
 							</div>
 						{/if}
