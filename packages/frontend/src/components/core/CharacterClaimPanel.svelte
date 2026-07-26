@@ -1,14 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { spawnService } from '$services/spawn.service';
 	import { errorMessage } from '$utils/error/error-message';
+	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import { AuthStatus } from '$types/profile.type';
-	import type { ClaimableShow } from '$types/character-spawn.type';
+	import type { CharacterSpawn, ClaimableShow } from '$types/character-spawn.type';
 	import type { GeoRegion } from '$types/location.type';
 	import type { ShowsCollection } from '$types/show.type';
 	import { showPosterUrl } from '$utils/geo/municipality-show';
 	import ShowClaimCard from '$components/core/ShowClaimCard.svelte';
+	import RosterCard from '$components/core/RosterCard.svelte';
+	import ClaimPackOpenerModal from '$components/core/pack/ClaimPackOpenerModal.svelte';
+	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
 
 	// The municipality the player has resolved from their browser location, from the
 	// /claim page's "Claim your location" panel.
@@ -35,6 +40,27 @@
 
 	// Guards the one-time load so the reactive block doesn't refire on every store tick.
 	let loadedForUser: string | null = null;
+
+	// Display context for the just-claimed card, resolved the same way the roster
+	// page resolves a spawn (label + face from the local registry, show names from
+	// Supabase). The card itself is the same RosterCard the roster grid uses; the
+	// stat comes straight off the spawn (rolled at claim time).
+	const charactersById = new Map(characters.map((character) => [character.id, character]));
+	let characterShowNames = new Map<string, string[]>();
+
+	// The most recently claimed spawn, shown as a RosterCard so the player sees
+	// exactly what they rolled. Its face and place name are captured at claim time.
+	let lastSpawn: CharacterSpawn | null = null;
+	let lastFaceUrl: string | null = null;
+	let lastLocationName = '';
+
+	// Pack-opener modal state. Rolling from a show opens the booster-pack canvas
+	// (the show's poster is the pack cover) and reveals the character just claimed
+	// from it. `openSession` bumps on every roll so the canvas remounts fresh.
+	let openerShow: ClaimableShow | null = null;
+	let openerPull: ClaimPull | null = null;
+	let openerPosterUrl: string | null = null;
+	let openSession = 0;
 
 	onMount(() => {
 		authService.init();
@@ -69,7 +95,12 @@
 		loadingShows = true;
 		showsError = '';
 		try {
-			shows = await spawnService.loadShows();
+			const [showList, showNames] = await Promise.all([
+				spawnService.loadShows(),
+				spawnService.loadCharacterShowNames()
+			]);
+			shows = showList;
+			characterShowNames = showNames;
 		} catch (error) {
 			showsError = errorMessage(error);
 		} finally {
@@ -84,12 +115,59 @@
 		claimingId = show.id;
 		claimErrors = { ...claimErrors, [show.id]: '' };
 		try {
-			await spawnService.claimRandom(currentUserId, show.characterIds, show.id, locationId);
+			const spawn = await spawnService.claimRandom(
+				currentUserId,
+				show.characterIds,
+				show.id,
+				locationId
+			);
+			// Capture what was rolled and resolve its portrait, so the RosterCard
+			// below mirrors the roster grid exactly.
+			lastLocationName = region?.municipality ?? '';
+			const basePath = charactersById.get(spawn.characterId)?.basePath ?? null;
+			const faceUrl = basePath
+				? await resolveCharacterFaceUrl(spawn.characterId, basePath)
+				: null;
+			lastFaceUrl = faceUrl;
+			lastSpawn = spawn;
+
+			// Open (or refresh) the pack-opener canvas with what was just claimed:
+			// the show's poster is the pack cover, the rolled character is the card.
+			openerShow = show;
+			openerPosterUrl = posterByShowId.get(show.id) ?? null;
+			openerPull = {
+				spawn,
+				label: labelFor(spawn.characterId),
+				faceUrl,
+				color: spawn.color,
+				stat: spawn.stat
+			};
+			openSession += 1;
 		} catch (error) {
 			claimErrors = { ...claimErrors, [show.id]: errorMessage(error) };
 		} finally {
 			claimingId = null;
 		}
+	}
+
+	// Re-roll from the same show without leaving the opener — reveals a fresh card.
+	function openAnother() {
+		if (openerShow) void claimFromShow(openerShow);
+	}
+
+	function closeOpener() {
+		openerShow = null;
+		openerPull = null;
+	}
+
+	function labelFor(id: string): string {
+		return charactersById.get(id)?.label ?? id;
+	}
+	function showNamesFor(id: string): string[] {
+		return characterShowNames.get(id) ?? [];
+	}
+	function claimedAtFor(createdAt: string): string {
+		return new Date(createdAt).toLocaleString();
 	}
 </script>
 
@@ -148,6 +226,32 @@
 					{/each}
 				</div>
 			{/if}
+
+			{#if lastSpawn}
+				<div class="divider text-xs">Just claimed</div>
+				<RosterCard
+					label={labelFor(lastSpawn.characterId)}
+					faceUrl={lastFaceUrl}
+					showNames={showNamesFor(lastSpawn.characterId)}
+					locationName={lastLocationName}
+					claimedAt={claimedAtFor(lastSpawn.createdAt)}
+					color={lastSpawn.color}
+					stat={lastSpawn.stat}
+				/>
+			{/if}
 		{/if}
 	</div>
 </div>
+
+{#if openerShow && openerPull}
+	<ClaimPackOpenerModal
+		coverUrl={openerPosterUrl}
+		packLabel={openerShow.name}
+		pulls={[openerPull]}
+		{openSession}
+		openAnotherBusy={claimingId !== null}
+		openAnotherDisabled={!locationId || claimingId !== null}
+		on:close={closeOpener}
+		on:openAnother={openAnother}
+	/>
+{/if}
