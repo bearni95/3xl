@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type L from 'leaflet';
-	import type { ImageFill, MapCircle, MapLine, MapMarker, MapOverlay } from '$types/map.type';
+	import type { MapCircle, MapLine, MapMarker, MapOverlay } from '$types/map.type';
 
 	let {
 		center = [20, 0] as [number, number],
@@ -65,9 +65,6 @@
 	let overlayGroups: L.GeoJSON[] = [];
 	// The pins layer, rebuilt whenever the markers prop changes.
 	let markerLayer: L.LayerGroup | null = null;
-	// The current image-fill groups (rebuilt whenever the overlays prop changes),
-	// each a set of polygons sharing one image stretched across their union.
-	let imageFillGroups: ImageFillGroup[] = [];
 	// For every overlay that carries a hoverStyle, its group + hoverStyle + a
 	// `properties.id → layer` lookup, so a pin can light up all of its region's
 	// polygons with the same hover the polygons show on their own mouseover.
@@ -95,22 +92,11 @@
 
 	$effect(() => {
 		// Repaint when the highlight or the hidden-stroke set changes: resetStyle
-		// re-runs each group's style option, which now reflects the new state, then
-		// the image fills are re-applied since resetStyle repaints their fillColor.
+		// re-runs each group's style option, which now reflects the new state.
 		void highlightId;
 		void highlightStyle;
 		void hiddenLineUrls;
 		for (const group of overlayGroups) group.resetStyle();
-		refreshImageFills();
-	});
-
-	$effect(() => {
-		// Re-derive the image fills whenever the parent swaps the overlays array
-		// (e.g. the selection changes which region carries its show's backdrop).
-		// The layers themselves stay put; only their fills are regrouped. Gated on
-		// `ready` so an overlays prop set before mount still applies once they exist.
-		void overlays;
-		if (ready) buildImageFills();
 	});
 
 	$effect(() => {
@@ -136,187 +122,14 @@
 	});
 
 	// Enter a feature: apply the overlay's hoverStyle so the polygon's border and
-	// fill highlight while the pointer is over it. setStyle repaints the base
-	// fillColor, so re-apply the image (fading it to full opacity) for a polygon
-	// that carries a fill — reading its live pattern id, set after a selection.
+	// fill highlight while the pointer is over it.
 	function hoverOn(overlay: MapOverlay, layer: L.Path) {
 		if (overlay.hoverStyle) layer.setStyle(overlay.hoverStyle);
-		applyImageFill(layer, IMAGE_FILL_HOVER_OPACITY);
 	}
 
-	// Leave a feature: reset it to its base style, then re-apply the image at its
-	// resting opacity since resetStyle repaints the base fillColor.
+	// Leave a feature: reset it to its base style.
 	function hoverOff(group: L.GeoJSON, layer: L.Path) {
 		group.resetStyle(layer);
-		applyImageFill(layer);
-	}
-
-	const SVG_NS = 'http://www.w3.org/2000/svg';
-	const XLINK_NS = 'http://www.w3.org/1999/xlink';
-	let imageFillId = 0;
-
-	// Image-filled polygons sit a touch under full strength so the satellite base
-	// reads through, and fade to full opacity while hovered. Groups outside the
-	// selected area rest dimmed — the same 50%/full split the pins use.
-	const IMAGE_FILL_OPACITY = 0.85;
-	const IMAGE_FILL_DIMMED_OPACITY = 0.4;
-	const IMAGE_FILL_HOVER_OPACITY = 1;
-
-	// A set of vector layers that share a single image fill: the image is
-	// stretched across their combined bounding box (not each polygon's own), so
-	// adjacent features assemble into one picture. Grouped by the key each
-	// overlay's `imageFill` returns; `dimmed` sets the group's resting opacity.
-	type ImageFillGroup = { url: string; patternId: string; dimmed: boolean; layers: L.Path[] };
-
-	// Reposition every group's pattern over its (reprojected) union box.
-	function refreshImageFills() {
-		imageFillGroups.forEach(updateImageFillGroup);
-	}
-
-	// A bare string is shorthand for a group keyed by its own URL.
-	function normalizeFill(fill: ImageFill | string | null | undefined): ImageFill | null {
-		if (!fill) return null;
-		if (typeof fill === 'string') return { key: fill, url: fill };
-		return fill.url ? fill : null;
-	}
-
-	// A layer's resting fill-opacity: dimmed groups (outside the selection) rest
-	// fainter, matching the pins' 50%/full split.
-	function restingOpacity(layer: L.Path): number {
-		return (layer as L.Path & { _imageFillDimmed?: boolean })._imageFillDimmed
-			? IMAGE_FILL_DIMMED_OPACITY
-			: IMAGE_FILL_OPACITY;
-	}
-
-	// The union of the group's path bounding boxes, in SVG user coordinates — the
-	// same space a `userSpaceOnUse` pattern is measured in, so getBBox() values
-	// can be used directly.
-	function groupBoundingBox(group: ImageFillGroup) {
-		let minX = Infinity;
-		let minY = Infinity;
-		let maxX = -Infinity;
-		let maxY = -Infinity;
-		let found = false;
-		for (const layer of group.layers) {
-			const el = layer.getElement() as SVGGraphicsElement | null;
-			if (!el) continue;
-			const box = el.getBBox();
-			if (box.width === 0 && box.height === 0) continue;
-			found = true;
-			minX = Math.min(minX, box.x);
-			minY = Math.min(minY, box.y);
-			maxX = Math.max(maxX, box.x + box.width);
-			maxY = Math.max(maxY, box.y + box.height);
-		}
-		return found ? { x: minX, y: minY, width: maxX - minX, height: maxY - minY } : null;
-	}
-
-	// Create (once) the group's shared <pattern>/<image>, size it to the group's
-	// current union box, and point every member path's fill at it. Re-run on
-	// zoom/pan since the paths reproject and the box moves with them.
-	function updateImageFillGroup(group: ImageFillGroup) {
-		const firstEl = group.layers[0]?.getElement() as SVGElement | null;
-		const svg = firstEl?.ownerSVGElement;
-		if (!svg) return;
-
-		let defs = svg.querySelector('defs');
-		if (!defs) {
-			defs = document.createElementNS(SVG_NS, 'defs');
-			svg.insertBefore(defs, svg.firstChild);
-		}
-
-		let pattern = svg.querySelector<SVGPatternElement>(`#${group.patternId}`);
-		let image: SVGImageElement;
-		if (!pattern) {
-			pattern = document.createElementNS(SVG_NS, 'pattern');
-			pattern.setAttribute('id', group.patternId);
-			pattern.setAttribute('patternUnits', 'userSpaceOnUse');
-			image = document.createElementNS(SVG_NS, 'image');
-			image.setAttributeNS(XLINK_NS, 'href', group.url);
-			image.setAttribute('href', group.url);
-			// Cover the combined shape's full extent, keeping the image's aspect
-			// ratio (scale to fill the outermost box, crop the overflow) so no part
-			// of any polygon is ever left without image behind it.
-			image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-			pattern.appendChild(image);
-			defs.appendChild(pattern);
-		} else {
-			image = pattern.querySelector('image')!;
-		}
-
-		const box = groupBoundingBox(group);
-		if (box) {
-			// One tile the size of the union box, anchored at its top-left, so the
-			// image lands over the assembled shape exactly once.
-			pattern.setAttribute('x', String(box.x));
-			pattern.setAttribute('y', String(box.y));
-			pattern.setAttribute('width', String(box.width));
-			pattern.setAttribute('height', String(box.height));
-			image.setAttribute('width', String(box.width));
-			image.setAttribute('height', String(box.height));
-		}
-
-		for (const layer of group.layers) applyImageFill(layer);
-	}
-
-	// Point a member path's fill at its group pattern (set when the group is built)
-	// at the given opacity. Used on first paint and to restore the fill after a
-	// setStyle/resetStyle repaints the base fillColor on hover. fill-opacity is
-	// driven through the CSS property (not the attribute) with a transition, so the
-	// hover change fades rather than snapping. No-ops for an unfilled polygon.
-	function applyImageFill(layer: L.Path, opacity: number = restingOpacity(layer)) {
-		const patternId = (layer as L.Path & { _imageFillPatternId?: string })._imageFillPatternId;
-		const el = layer.getElement() as SVGElement | undefined;
-		if (!patternId || !el) return;
-		el.setAttribute('fill', `url(#${patternId})`);
-		el.style.transition = 'fill-opacity 200ms ease';
-		el.style.fillOpacity = String(opacity);
-	}
-
-	// (Re)build the image-fill groups from the current overlays: reset every
-	// previously filled path to its base style, drop the old <pattern> defs, then
-	// re-evaluate each feature's imageFill and group the paths by the key it
-	// returns — one shared image per key, spanning that group's combined shape.
-	function buildImageFills() {
-		if (!mapInstance) return;
-
-		for (const group of imageFillGroups) {
-			for (const layer of group.layers) {
-				delete (layer as L.Path & { _imageFillPatternId?: string })._imageFillPatternId;
-			}
-		}
-		overlays.forEach((overlay, index) => {
-			if (overlay.imageFill) overlayGroups[index]?.resetStyle();
-		});
-		for (const svg of mapContainer.querySelectorAll('svg')) {
-			svg.querySelectorAll('pattern[id^="map-image-fill-"]').forEach((pattern) => pattern.remove());
-		}
-
-		const grouped = new Map<string, { url: string; dimmed: boolean; layers: L.Path[] }>();
-		overlays.forEach((overlay, index) => {
-			const group = overlayGroups[index];
-			if (!overlay.imageFill || !group) return;
-			group.eachLayer((layer) => {
-				const feature = (layer as L.Layer & { feature?: GeoJSON.Feature }).feature;
-				if (!feature) return;
-				const fill = normalizeFill(overlay.imageFill!(feature));
-				if (!fill) return;
-				const entry = grouped.get(fill.key) ?? { url: fill.url, dimmed: !!fill.dimmed, layers: [] };
-				entry.layers.push(layer as L.Path);
-				grouped.set(fill.key, entry);
-			});
-		});
-
-		imageFillGroups = [...grouped.values()].map(({ url, dimmed, layers }) => {
-			const patternId = `map-image-fill-${imageFillId++}`;
-			for (const layer of layers) {
-				const path = layer as L.Path & { _imageFillPatternId?: string; _imageFillDimmed?: boolean };
-				path._imageFillPatternId = patternId;
-				path._imageFillDimmed = dimmed;
-			}
-			return { url, patternId, dimmed, layers };
-		});
-		refreshImageFills();
 	}
 
 	// Build a pin's DOM: the region's location name, then a poster thumbnail in a
@@ -376,10 +189,6 @@
 				if (!layer) continue;
 				if (on) layer.setStyle(entry.hoverStyle);
 				else entry.group.resetStyle(layer);
-				// setStyle/resetStyle repaint the base fillColor, so restore a filled
-				// polygon's image (full opacity while lit, its resting opacity when reset).
-				if (on) applyImageFill(layer, IMAGE_FILL_HOVER_OPACITY);
-				else applyImageFill(layer);
 			}
 		}
 	}
@@ -479,8 +288,6 @@
 		});
 		// Re-cull the pins to the viewport after any pan or zoom settles.
 		mapInstance.on('moveend zoomend', rebuildMarkers);
-		// Keep every group's image aligned as the map reprojects.
-		mapInstance.on('zoomend viewreset moveend', refreshImageFills);
 
 		// Fetch all overlays in parallel, then add them in array order so
 		// z-stacking is deterministic regardless of network timing.

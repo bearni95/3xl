@@ -48,8 +48,6 @@ export interface MunicipalityShow {
 		id: number;
 		name: string;
 		posterUrl: string | null;
-		/** Wide backdrop, shown behind the currently-selected region on the map. */
-		backdropUrl: string | null;
 	};
 }
 

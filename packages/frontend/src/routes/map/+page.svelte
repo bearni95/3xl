@@ -88,67 +88,41 @@
 	// territory lines (green comarca lines sit under the yellow province ones,
 	// so shared borders read as province).
 	//
-	// Each imaged region's top show is pinned at its centre (see `markers`); on top
-	// of that, the map paints each region's show backdrop across its own polygons,
-	// at the SAME breakdown the pins use — one tier below the open region. Selecting
-	// a territory paints each of its provinces/comarques with that child's own
-	// backdrop; selecting a province paints its comarques; a comarca its
-	// municipalities. Every municipality under a given child returns that child's
-	// key + backdrop, so WorldMap merges them into one continuous image spanning the
-	// child's whole shape — not one backdrop across the entire selected region. Tiers
-	// outside the selection rest dimmed, exactly like the pins' 50%/full split.
-	// The municipality layer stays interactive for its hover highlight and tooltip;
-	// the coarser tiers are decorative outlines. `hiddenLineUrls` still thins the
-	// finer borders down to the tier the map is focused on. Rebuilt (so WorldMap
-	// repaints) whenever the breakdown depth or selected subtree change — both named
-	// here so the statement tracks them.
-	function buildOverlays(
-		index: Map<string, FillLevel[]>,
-		depth: number,
-		inside: Set<string> | null
-	): MapOverlay[] {
-		return [
-			{
-				url: '/data/geo/municipis.json',
-				style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
-				hoverStyle: { weight: 2, fillOpacity: 0.3 },
-				label: (feature) => {
-					const props = feature.properties ?? {};
-					const show = assignmentsById.get(String(props.id))?.show.name;
-					const name = restoreCatalanArticle(String(props.name ?? 'Unknown'));
-					return [name, props.comarca, props.prov, props.territory, show]
-						.filter(Boolean)
-						.join(', ');
-				},
-				imageFill: (feature) => {
-					// The tier this municipality falls under at the current breakdown
-					// depth (clamped to its own leaf for shallower branches) — the same
-					// region its pin stands for. Every municipality under that tier
-					// returns its key, so they merge into one backdrop over its shape.
-					const levels = index.get(String(feature.properties?.id));
-					if (!levels) return null;
-					const tier = levels[Math.min(depth, levels.length - 1)];
-					if (!tier?.backdropUrl) return null;
-					return { key: tier.key, url: tier.backdropUrl, dimmed: inside ? !inside.has(tier.key) : false };
-				}
-			},
-			{
-				url: '/data/geo/comarques.json',
-				style: { color: '#22c55e', weight: 1.5, fill: false },
-				interactive: false
-			},
-			{
-				url: '/data/geo/provincies.json',
-				style: { color: '#eab308', weight: 2, fill: false },
-				interactive: false
-			},
-			{
-				url: '/data/geo/territoris.json',
-				style: { color: '#ef4444', weight: 3, fill: false },
-				interactive: false
+	// The polygons are plain outlines now — each imaged region's top show is shown
+	// on a pin dropped at the region's centre (see `markers`), not painted across
+	// its shape. The municipality layer stays interactive for its hover highlight
+	// and tooltip; the coarser tiers are decorative outlines. `hiddenLineUrls`
+	// still thins the finer borders down to the tier the map is focused on.
+	const overlays: MapOverlay[] = [
+		{
+			url: '/data/geo/municipis.json',
+			style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
+			hoverStyle: { weight: 2, fillOpacity: 0.3 },
+			label: (feature) => {
+				const props = feature.properties ?? {};
+				const show = assignmentsById.get(String(props.id))?.show.name;
+				const name = restoreCatalanArticle(String(props.name ?? 'Unknown'));
+				return [name, props.comarca, props.prov, props.territory, show]
+					.filter(Boolean)
+					.join(', ');
 			}
-		];
-	}
+		},
+		{
+			url: '/data/geo/comarques.json',
+			style: { color: '#22c55e', weight: 1.5, fill: false },
+			interactive: false
+		},
+		{
+			url: '/data/geo/provincies.json',
+			style: { color: '#eab308', weight: 2, fill: false },
+			interactive: false
+		},
+		{
+			url: '/data/geo/territoris.json',
+			style: { color: '#ef4444', weight: 3, fill: false },
+			interactive: false
+		}
+	];
 
 	// The portal axis: an imaginary straight line from the municipality of Girona
 	// (centroid ~[41.99, 2.83]) out to l'Alguer — the lone Italian territory in
@@ -336,13 +310,6 @@
 		selected && municipalities
 			? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
 			: null;
-
-	// The breakdown depth the fills image at — one tier below the open region (0 at
-	// the top view: territories), the same depth `breakdownNodes` pins at. Rebuilt
-	// (so WorldMap re-groups the fills) whenever that depth or the selected subtree
-	// (`insideKeys`, which drives the dim split) changes.
-	$: selectionDepth = selected ? nodePath(regionNodes, selected).length : 0;
-	$: overlays = buildOverlays(fillIndex, selectionDepth, insideKeys);
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">

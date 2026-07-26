@@ -19,8 +19,6 @@ export interface RegionShow {
 	id: number;
 	name: string;
 	posterUrl: string | null;
-	/** Wide backdrop, shown behind the currently-selected region on the map. */
-	backdropUrl: string | null;
 }
 
 /** A single blue municipality — the leaf of the tree. */
@@ -199,10 +197,7 @@ export function regionRowsForSelection(
 /** One tier a municipality can be painted at: its region's key + that show's poster. */
 export interface FillLevel {
 	key: string;
-	/** The tier's poster (shown on its pin). */
 	url: string | null;
-	/** The tier's wide backdrop (painted across its polygons when imaged). */
-	backdropUrl: string | null;
 }
 
 /**
@@ -217,23 +212,14 @@ export function buildFillIndex(territories: RegionTerritory[]): Map<string, Fill
 
 	const leaf = (municipality: RegionMunicipality): FillLevel => ({
 		key: municipality.id,
-		url: municipality.show?.posterUrl ?? null,
-		backdropUrl: municipality.show?.backdropUrl ?? null
+		url: municipality.show?.posterUrl ?? null
 	});
 
 	for (const territory of territories) {
-		const territoryLevel: FillLevel = {
-			key: territory.id,
-			url: territory.show?.posterUrl ?? null,
-			backdropUrl: territory.show?.backdropUrl ?? null
-		};
+		const territoryLevel: FillLevel = { key: territory.id, url: territory.show?.posterUrl ?? null };
 
 		const addComarca = (above: FillLevel[], comarcaKey: string, comarca: RegionComarca) => {
-			const comarcaLevel: FillLevel = {
-				key: comarcaKey,
-				url: comarca.show?.posterUrl ?? null,
-				backdropUrl: comarca.show?.backdropUrl ?? null
-			};
+			const comarcaLevel: FillLevel = { key: comarcaKey, url: comarca.show?.posterUrl ?? null };
 			for (const municipality of comarca.municipis) {
 				index.set(municipality.id, [...above, comarcaLevel, leaf(municipality)]);
 			}
@@ -244,8 +230,7 @@ export function buildFillIndex(territories: RegionTerritory[]): Map<string, Fill
 				const provinceKey = joinKey(territory.id, province.id);
 				const provinceLevel: FillLevel = {
 					key: provinceKey,
-					url: province.show?.posterUrl ?? null,
-					backdropUrl: province.show?.backdropUrl ?? null
+					url: province.show?.posterUrl ?? null
 				};
 				const above = [territoryLevel, provinceLevel];
 				for (const comarca of province.comarques) {

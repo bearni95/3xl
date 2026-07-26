@@ -119,17 +119,3 @@ export function showPosterUrl(entry: ShowEntry): string | null {
 	}
 	return entry.show.posterUrl ?? null;
 }
-
-/**
- * A saved show's display backdrop URL: the author-chosen main backdrop if one
- * was picked in the admin `/shows` screen (at full resolution, since it fills a
- * wide banner), otherwise the show's default TMDB backdrop, otherwise null.
- */
-export function showBackdropUrl(entry: ShowEntry): string | null {
-	const filePath = entry.mainImages?.backdrop;
-	if (filePath) {
-		const image = entry.images.backdrops.find((candidate) => candidate.filePath === filePath);
-		if (image) return image.fullUrl;
-	}
-	return entry.show.backdropUrl ?? null;
-}

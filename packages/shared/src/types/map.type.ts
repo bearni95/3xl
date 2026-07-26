@@ -1,19 +1,5 @@
 import type { PathOptions } from 'leaflet';
 
-/** An image painted across a group of features rather than any one polygon. */
-export interface ImageFill {
-	/** Features returning the same key merge into one image over their union. */
-	key: string;
-	/** The image URL painted across that group. */
-	url: string;
-	/**
-	 * Whether this group sits outside the currently-selected area. Dimmed groups
-	 * paint at reduced opacity so the selection's subdivisions stand out — the
-	 * same 50%/full split the pins use.
-	 */
-	dimmed?: boolean;
-}
-
 /** A GeoJSON layer drawn on top of the base map, in array order (last = topmost). */
 export interface MapOverlay {
 	/** URL of the GeoJSON file, fetched client-side after the map mounts. */
@@ -24,12 +10,6 @@ export interface MapOverlay {
 	hoverStyle?: PathOptions;
 	/** Returns the hover tooltip label for a feature. */
 	label?: (feature: GeoJSON.Feature) => string;
-	/**
-	 * Returns the image a feature is filled with, or null for a plain polygon.
-	 * Features returning the same key merge into one image spanning their union,
-	 * so a whole region's municipalities show one continuous picture.
-	 */
-	imageFill?: (feature: GeoJSON.Feature) => ImageFill | string | null;
 	/** Called when a feature is clicked. */
 	onClick?: (feature: GeoJSON.Feature) => void;
 	/**
