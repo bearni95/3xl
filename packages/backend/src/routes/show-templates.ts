@@ -39,7 +39,10 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // instances behind the frontend /claim panel) is provisioned here too, since it
 // references both `character_templates` and `show_templates`; unlike the other
 // tables it's RLS-protected (each player only sees/creates their own spawns), as
-// the frontend writes it directly with the anon key. All DDL is idempotent.
+// the frontend writes it directly with the anon key. `player_profiles` (the
+// per-player experience total behind the profile card's level, mutated only via
+// the security-definer `add_player_exp` RPC) is provisioned here too. All DDL is
+// idempotent.
 let ensured: Promise<void> | null = null;
 function ensureTables(): Promise<void> {
 	if (!ensured) {
@@ -110,7 +113,42 @@ function ensureTables(): Promise<void> {
 						for insert with check (auth.uid() = user_id);
 				drop policy if exists character_spawns_delete_own on character_spawns;
 				create policy character_spawns_delete_own on character_spawns
-						for delete using (auth.uid() = user_id)`
+						for delete using (auth.uid() = user_id);
+				-- Per-player progression: an accumulated experience total the frontend
+				-- reads to derive a level (D&D 5e table). RLS lets a player read only
+				-- their own row; it is never written directly — the add_player_exp RPC
+				-- below (security definer) is the only path that mutates it, so a client
+				-- cannot set an arbitrary total, only earn increments.
+				create table if not exists player_profiles (
+						user_id uuid primary key references auth.users (id) on delete cascade,
+						exp bigint not null default 0,
+						created_at timestamptz not null default now(),
+						updated_at timestamptz not null default now()
+					);
+				alter table player_profiles enable row level security;
+				drop policy if exists player_profiles_select_own on player_profiles;
+				create policy player_profiles_select_own on player_profiles
+						for select using (auth.uid() = user_id);
+				-- Atomically add experience for the caller, upserting their row and
+				-- clamping negative amounts to a no-op. Returns the new total.
+				create or replace function add_player_exp(amount bigint)
+				returns bigint
+				language plpgsql
+				security definer
+				set search_path = public
+				as $add_player_exp$
+				declare
+						new_exp bigint;
+				begin
+						insert into player_profiles (user_id, exp)
+						values (auth.uid(), greatest(0, amount))
+						on conflict (user_id) do update
+								set exp = player_profiles.exp + greatest(0, amount), updated_at = now()
+						returning exp into new_exp;
+						return new_exp;
+				end;
+				$add_player_exp$;
+				grant execute on function add_player_exp(bigint) to authenticated`
 			)
 			.then(() => undefined)
 			.catch((error: unknown) => {

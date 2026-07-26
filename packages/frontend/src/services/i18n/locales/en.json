@@ -35,6 +35,11 @@
 		"accountId": "Account ID",
 		"memberSince": "Member since",
 		"lastSignIn": "Last sign-in",
+		"level": "Level",
+		"levelBadge": "Lv {level}",
+		"exp": "Experience",
+		"expProgress": "{into} / {span} XP",
+		"expMax": "{exp} XP (max)",
 		"signOut": "Sign out",
 		"notConfigured": "Sign-in is unavailable: Supabase is not configured. Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY.",
 		"username": {

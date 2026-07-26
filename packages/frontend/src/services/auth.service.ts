@@ -54,10 +54,61 @@ class AuthService {
 		if (user) {
 			this.profileStore.set(profileAdapter.fromSupabaseUser(user));
 			this.statusStore.set(AuthStatus.SignedIn);
+			// Experience lives in a separate table; fetch it and fold it in. Fire and
+			// forget — the profile renders immediately at exp 0 and updates on load.
+			void this.loadExp();
 		} else {
 			this.profileStore.set(null);
 			this.statusStore.set(AuthStatus.SignedOut);
 		}
+	}
+
+	/**
+	 * Load the signed-in player's experience total from Supabase and merge it into
+	 * the profile store (recomputing the level). A player with no `player_profiles`
+	 * row yet reads as 0 exp — the row is created lazily on their first exp gain.
+	 * No-ops when signed out or Supabase is unconfigured; failures are swallowed so
+	 * a missing table never breaks sign-in.
+	 */
+	private async loadExp(): Promise<void> {
+		if (!isSupabaseConfigured()) return;
+		try {
+			const supabase = getSupabaseClient();
+			const { data, error } = await supabase
+				.from('player_profiles')
+				.select('exp')
+				.maybeSingle();
+			if (error) throw error;
+			this.mergeExp(Number(data?.exp ?? 0));
+		} catch (error) {
+			console.warn('Failed to load player experience', error);
+		}
+	}
+
+	/** Overlay an experience total onto the current profile, recomputing its level. */
+	private mergeExp(exp: number): void {
+		this.profileStore.update((profile) =>
+			profile ? profileAdapter.withExp(profile, exp) : profile
+		);
+	}
+
+	/**
+	 * Award experience to the signed-in player. Increments the stored total
+	 * atomically server-side via the `add_player_exp` RPC (which upserts the
+	 * `player_profiles` row and clamps negatives), then mirrors the authoritative
+	 * new total — and the level it implies — into the profile store. Returns the
+	 * new total, or `null` when signed out / unconfigured.
+	 */
+	async addExp(amount: number): Promise<number | null> {
+		if (!isSupabaseConfigured() || !Number.isFinite(amount) || amount <= 0) return null;
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase.rpc('add_player_exp', {
+			amount: Math.trunc(amount)
+		});
+		if (error) throw error;
+		const total = Number(data ?? 0);
+		this.mergeExp(total);
+		return total;
 	}
 
 	/**

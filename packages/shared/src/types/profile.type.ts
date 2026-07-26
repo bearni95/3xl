@@ -26,4 +26,15 @@ export interface Profile {
 	createdAt: string | null;
 	/** ISO timestamp of the most recent sign-in, if known. */
 	lastSignInAt: string | null;
+	/**
+	 * Total accumulated experience, from the Supabase `player_profiles` table.
+	 * Starts at 0 for a fresh account and is only ever increased (server-side, via
+	 * the `add_player_exp` RPC). Defaults to 0 until the value has loaded.
+	 */
+	exp: number;
+	/**
+	 * The player's level, derived from {@link exp} via the D&D 5e experience table
+	 * (`levelForExp`). Not stored — always computed from {@link exp}.
+	 */
+	level: number;
 }

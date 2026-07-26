@@ -3,6 +3,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import type { Profile } from '$types/profile.type';
+	import { levelProgress } from '$utils/progression/level';
 
 	// Props
 	export let profile: Profile;
@@ -26,6 +27,8 @@
 	}
 
 	$: initial = (profile.displayName || profile.email || '?').charAt(0).toUpperCase();
+	$: progress = levelProgress(profile.exp);
+	$: expPercent = Math.round(progress.fraction * 100);
 </script>
 
 <div class={classNames('flex flex-col gap-4', classes)}>
@@ -52,6 +55,38 @@
 
 	<div class="divider my-0"></div>
 
+	<!-- Level + experience, derived from the stored exp via the D&D 5e table. -->
+	<div class="flex flex-col gap-1">
+		<div class="flex items-center justify-between text-sm">
+			<span class="flex items-center gap-2">
+				<span class="badge badge-primary badge-sm font-semibold">
+					{$_('profile.levelBadge', { values: { level: progress.level } })}
+				</span>
+				<span class="text-base-content/60">{$_('profile.level')}</span>
+			</span>
+			<span class="font-mono text-base-content/70">
+				{#if progress.atMax}
+					{$_('profile.expMax', { values: { exp: progress.exp.toLocaleString() } })}
+				{:else}
+					{$_('profile.expProgress', {
+						values: {
+							into: progress.expIntoLevel.toLocaleString(),
+							span: (progress.expForLevelSpan ?? 0).toLocaleString()
+						}
+					})}
+				{/if}
+			</span>
+		</div>
+		<progress
+			class="progress progress-primary w-full"
+			value={expPercent}
+			max="100"
+			aria-label={$_('profile.exp')}
+		></progress>
+	</div>
+
+	<div class="divider my-0"></div>
+
 	<dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
 		<dt class="text-base-content/60">{$_('profile.accountId')}</dt>
 		<dd class="truncate font-mono">{profile.id}</dd>
@@ -61,6 +96,9 @@
 
 		<dt class="text-base-content/60">{$_('profile.lastSignIn')}</dt>
 		<dd>{formatDate(profile.lastSignInAt)}</dd>
+
+		<dt class="text-base-content/60">{$_('profile.exp')}</dt>
+		<dd class="font-mono">{progress.exp.toLocaleString()}</dd>
 	</dl>
 
 	<button
