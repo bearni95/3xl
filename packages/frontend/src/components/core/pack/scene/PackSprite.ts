@@ -3,8 +3,9 @@
  *
  * Renders a booster pack into a RenderTexture, framed to match {@link CardSprite}:
  * the show's poster fills the frame (object-cover) as the art, a dark header strip
- * carries the show name and a dark footer strip a "BOOSTER" tag, with rounded
- * corners, a 2px black border and a soft black drop shadow behind it. Exposes
+ * carries the show name and a dark footer strip the place the pack belongs to
+ * (white with a black outline), with rounded corners, a 2px black border and a
+ * soft black drop shadow behind it. Exposes
  * split(y), which carves the rendered texture into top/bottom halves for the slice
  * animation.
  *
@@ -38,6 +39,8 @@ export interface PackSpriteOptions {
 	coverUrl: string | null;
 	/** Pack label — the show name, shown across the top section. */
 	label: string;
+	/** Full name of the place the pack belongs to, drawn across its bottom. */
+	locationName: string | null;
 	app: Application;
 	width: number;
 	height: number;
@@ -52,6 +55,7 @@ export class PackSprite extends Container {
 	private app: Application;
 	private coverUrl: string | null;
 	private packLabel: string;
+	private locationName: string | null;
 	private packW: number;
 	private packH: number;
 	private renderTex: RenderTexture | null = null;
@@ -62,6 +66,7 @@ export class PackSprite extends Container {
 		this.app = opts.app;
 		this.coverUrl = opts.coverUrl;
 		this.packLabel = opts.label;
+		this.locationName = opts.locationName;
 		this.packW = opts.width;
 		this.packH = opts.height;
 	}
@@ -210,25 +215,41 @@ export class PackSprite extends Container {
 		name.position.set(w / 2, headerH / 2);
 		root.addChild(name);
 
-		// Dark footer strip with a muted "BOOSTER" tag — echoes the card's stat footer.
+		// Dark footer strip — echoes the card's stat footer.
 		const footer = new Graphics();
 		footer.rect(0, footerY, w, footerH);
 		footer.fill(STRIP_FILL);
 		root.addChild(footer);
 
-		const tag = new Text({
-			text: 'BOOSTER',
-			style: {
-				fontFamily: 'sans-serif',
-				fontSize: Math.max(9, Math.round(w * 0.07)),
-				fontWeight: '700',
-				fill: 0x9ca3af,
-				letterSpacing: 2
-			}
-		});
-		tag.anchor.set(0.5);
-		tag.position.set(w / 2, footerY + footerH / 2);
-		root.addChild(tag);
+		// The place the pack belongs to, in white with a black outline so it stays
+		// legible over any poster; falls back to a muted "BOOSTER" tag when unknown.
+		const footerText = this.locationName
+			? new Text({
+					text: this.locationName,
+					style: {
+						fontFamily: 'sans-serif',
+						fontSize: Math.max(10, Math.round(w * 0.08)),
+						fontWeight: '700',
+						fill: 0xffffff,
+						stroke: { color: 0x000000, width: Math.max(2, Math.round(w * 0.02)) },
+						align: 'center',
+						wordWrap: true,
+						wordWrapWidth: w * 0.92
+					}
+				})
+			: new Text({
+					text: 'BOOSTER',
+					style: {
+						fontFamily: 'sans-serif',
+						fontSize: Math.max(9, Math.round(w * 0.07)),
+						fontWeight: '700',
+						fill: 0x9ca3af,
+						letterSpacing: 2
+					}
+				});
+		footerText.anchor.set(0.5);
+		footerText.position.set(w / 2, footerY + footerH / 2);
+		root.addChild(footerText);
 
 		return root;
 	}

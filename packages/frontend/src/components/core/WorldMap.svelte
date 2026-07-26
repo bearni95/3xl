@@ -158,17 +158,6 @@
 		mapInstance.fitBounds(focusBounds, { padding: [32, 32] });
 	});
 
-	// Enter a feature: apply the overlay's hoverStyle so the polygon's border and
-	// fill highlight while the pointer is over it.
-	function hoverOn(overlay: MapOverlay, layer: L.Path) {
-		if (overlay.hoverStyle) layer.setStyle(overlay.hoverStyle);
-	}
-
-	// Leave a feature: reset it to its base style.
-	function hoverOff(group: L.GeoJSON, layer: L.Path) {
-		group.resetStyle(layer);
-	}
-
 	// Build a pin's DOM: the region's location name, then a poster thumbnail in a
 	// rounded frame, with the full show name captioned beneath (never truncated).
 	// The wrapper is translated so its bottom centre sits on the point (the marker
@@ -380,11 +369,12 @@
 						layer.bindTooltip(label, { sticky: true });
 					}
 
+					// Record each feature's layer so a pin can light up its whole region,
+					// but do NOT bind a per-feature hover: a municipality never changes its
+					// own fill on hover — only a pin hover paints its region.
 					if (overlay.hoverStyle) {
 						const id = feature.properties?.id;
 						if (id != null) byId.set(String(id), layer as L.Path);
-						layer.on('mouseover', () => hoverOn(overlay, layer as L.Path));
-						layer.on('mouseout', () => hoverOff(layerGroup, layer as L.Path));
 					}
 
 					layer.on('click', () => overlay.onClick?.(feature));

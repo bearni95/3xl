@@ -105,15 +105,9 @@
 		{
 			url: '/data/geo/municipis.json',
 			style: { color: '#6366f1', weight: 1, fillColor: '#6366f1', fillOpacity: 0.1 },
-			hoverStyle: { weight: 2, fillOpacity: 0.3 },
-			label: (feature) => {
-				const props = feature.properties ?? {};
-				const show = assignmentsById.get(String(props.id))?.show.name;
-				const name = restoreCatalanArticle(String(props.name ?? 'Unknown'));
-				return [name, props.comarca, props.prov, props.territory, show]
-					.filter(Boolean)
-					.join(', ');
-			}
+			// Only a pin hover uses this, painting its whole region's fill fully solid;
+			// individual municipalities no longer highlight or label on their own hover.
+			hoverStyle: { weight: 2, fillOpacity: 1 }
 		},
 		{
 			url: '/data/geo/comarques.json',

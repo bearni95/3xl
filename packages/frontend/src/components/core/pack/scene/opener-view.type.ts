@@ -11,6 +11,8 @@ export interface OpenerView {
 	coverUrl: string | null;
 	/** Pack label — the show name shown across the pack. */
 	label: string;
+	/** Full name of the place the pack belongs to, drawn across its bottom. */
+	locationName: string | null;
 	/**
 	 * Rolls the booster against Supabase and returns the cards to reveal. The canvas
 	 * calls this when the player slices the pack open — so the spawn is persisted at

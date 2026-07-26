@@ -7,6 +7,8 @@
 	export let coverUrl: string | null = null;
 	// Pack label — the show name shown across the top of the pack.
 	export let label: string = '';
+	// Full name of the place the pack belongs to, drawn across its bottom.
+	export let locationName: string | null = null;
 	// Rolls the booster against Supabase when the pack is sliced open, resolving
 	// the claimed character(s) to reveal.
 	export let claim: ClaimBooster;

@@ -39,6 +39,8 @@ export interface ClaimPackInput {
 	coverUrl: string | null;
 	/** Pack label — the show name. */
 	label: string;
+	/** Full name of the place the pack belongs to, drawn across its bottom. */
+	locationName: string | null;
 }
 
 /**
@@ -155,6 +157,7 @@ export class ClaimPackScene {
 		this.packSprite = new PackSprite({
 			coverUrl: this.input.coverUrl,
 			label: this.input.label,
+			locationName: this.input.locationName,
 			app: this.app,
 			width: packW,
 			height: packH
