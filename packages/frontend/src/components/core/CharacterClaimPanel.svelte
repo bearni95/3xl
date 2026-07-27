@@ -7,24 +7,27 @@
 	import { errorMessage } from '$utils/error/error-message';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import { AuthStatus } from '$types/profile.type';
-	import { SPAWN_STAT_MAX, type CharacterSpawn, type ClaimableShow } from '$types/character-spawn.type';
+	import type { CharacterSpawn, ClaimableShow } from '$types/character-spawn.type';
+	import { combatStatsFromStat } from '$utils/spawn/stat';
 	import type { GeoRegion } from '$types/location.type';
-	import type { ShowEntry, ShowsCollection } from '$types/show.type';
+	import type { MunicipalityShowsCollection, ShowEntry, ShowsCollection } from '$types/show.type';
 	import { showPosterUrlForSeed } from '$utils/geo/municipality-show';
 	import { EXP_PER_SPAWN } from '$utils/progression/level';
+	import { festesService } from '$services/festes.service';
+	import type { RegionShow } from '$utils/geo/region-tree';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
-	import type { TodayFestaPair } from '$types/festivity.type';
+	import type { FestaLocationRow, TodayFestaPair } from '$types/festivity.type';
 
-	// Today's (festa, show) pairs, from the festes list — the towns celebrating their
-	// festa major today. The pack grid renders one booster per pair that has a show
-	// this player can claim.
-	export let pairs: TodayFestaPair[] = [];
-
-	// The day's booster packs, assembled from `pairs` and surfaced to the parent
-	// (`bind:packs`) so it can render the pack-grid canvas beside this content. Each
+	// The day's booster packs, assembled from today's festes and surfaced to the parent
+	// (`bind:packs`) so it can render the pack-grid canvas below this content. Each
 	// carries its own poster cover and the roll it fires when sliced open.
 	export let packs: OpenerPack[] = [];
+
+	// Today's (festa, show) pairs — the towns celebrating their festa major today, each
+	// paired with the series the map assigns it. Loaded on mount; the pack grid renders
+	// one booster per pair that has a show this player can claim.
+	let todayPairs: TodayFestaPair[] = [];
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -67,7 +70,30 @@
 	onMount(() => {
 		authService.init();
 		void loadPosters();
+		void loadTodayFestes();
 	});
+
+	// Load today's celebrating municipalities (from Supabase, via the festes service)
+	// and the map's municipality→show assignment (a baked dataset), then pair each town
+	// with its assigned show. Both are fetched once; failures leave the grid empty.
+	async function loadTodayFestes() {
+		const [festesResult, showsResult] = await Promise.allSettled([
+			festesService.loadTodayFestes(),
+			fetch('/data/municipality-shows.json').then(
+				(response) => response.json() as Promise<MunicipalityShowsCollection>
+			)
+		]);
+
+		let locations: FestaLocationRow[] = [];
+		let showByMunicipality = new Map<string, RegionShow>();
+		if (festesResult.status === 'fulfilled') locations = festesResult.value;
+		if (showsResult.status === 'fulfilled') {
+			showByMunicipality = new Map(
+				showsResult.value.assignments.map((assignment) => [assignment.id, assignment.show])
+			);
+		}
+		todayPairs = locations.map((festa) => ({ festa, show: showByMunicipality.get(festa.id) }));
+	}
 
 	// Load the saved-show collection (public JSON) and index each entry by show id
 	// so the pack cover can be resolved from its enabled posters at open time.
@@ -224,24 +250,21 @@
 			showName,
 			locationName: lastLocationName || null,
 			spawnedAt: spawn.createdAt,
-			atk: spawn.stat,
-			def: SPAWN_STAT_MAX - spawn.stat,
-			spd: spawn.stat - 1,
-			hp: SPAWN_STAT_MAX - spawn.stat + 1
+			...combatStatsFromStat(spawn.stat)
 		};
 	}
 
 	// The day's grid packs, recomputed whenever today's festes, the claimable show
 	// pool, the enabled posters, or the signed-in user change. (All four are named
 	// here so the reactive statement actually re-runs when any of them updates.)
-	$: packs = computePacks(pairs, shows, showEntryById, currentUserId);
+	$: packs = computePacks(todayPairs, shows, showEntryById, currentUserId);
 
 	function labelFor(id: string): string {
 		return charactersById.get(id)?.label ?? id;
 	}
 </script>
 
-<div class="card w-full max-w-md bg-base-100 shadow-xl">
+<div class="card w-full bg-base-100 shadow-xl">
 	<div class="card-body gap-4">
 		<h1 class="card-title">Claim a character</h1>
 
