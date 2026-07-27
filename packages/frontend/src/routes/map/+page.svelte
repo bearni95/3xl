@@ -113,7 +113,11 @@
 		},
 		{
 			url: '/data/geo/municipis.json',
-			style: { stroke: false, fillColor: '#ce74ff', fillOpacity: 1 },
+			// The municipality borders draw in the same navy as every coarser tier, but
+			// only when this tier is the one imaged (the finest zoom) — the tier logic
+			// below drops the stroke (opacity 0) at coarser views, so the fill stays
+			// seamless there while the borders return once you zoom into the towns.
+			style: { color: '#111a3b', weight: 1, fillColor: '#ce74ff', fillOpacity: 1 },
 			// Hovering the region (via its pin or its polygons) paints the whole area's
 			// fill fully solid, with the municipis stroke suppressed (opacity 0) so the
 			// internal subdivision borders don't show — only the fill fills in. The
