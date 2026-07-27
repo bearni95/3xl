@@ -254,7 +254,7 @@ interface OneShot {
 
 /**
  * A knocked-out fighter dissolving off the board: it holds its hurt pose while
- * its sprite (and HP bar / guide) dim from full to nothing, then it's removed.
+ * its sprite (and HP bar) dim from full to nothing, then it's removed.
  */
 interface KnockOutFade {
 	/** Total fade duration (ms). */
@@ -322,11 +322,6 @@ interface Actor {
 	/** Stable id (character id or basePath's first segment), used to command it. */
 	id: string;
 	sprite: Sprite;
-	/** The guide line under the character; slides with it as it moves. */
-	guide: Graphics;
-	/** Where the guide line was drawn, so it can be re-offset while moving. */
-	homeX: number;
-	homeY: number;
 	/** Axial cell the actor started on, so it can walk back after combat. */
 	homeCell: number;
 	homeRow: number;
@@ -488,8 +483,8 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Shrink the canvas to the bounding box of everything drawn (grid + characters
-	 * + guides), so the hex grid sits flush against the left/right edges and the
+	 * Shrink the canvas to the bounding box of everything drawn (grid + characters),
+	 * so the hex grid sits flush against the left/right edges and the
 	 * canvas is exactly tall enough for the grid plus the front-row characters that
 	 * stand below its near edge. The stage is offset so the content stays in view;
 	 * the projection's design size is left untouched so hex positions don't shift.
@@ -721,22 +716,15 @@ export class MugenBoard {
 		const baseFrames = animations[startName];
 		if (!baseFrames || baseFrames.length === 0) return;
 
-		// Guide line spans the hex's edge-to-edge width along its lower-corner line
-		// (not its centre); the character stands centred on it, feet on the line.
+		// The character stands centred on its hex's lower-corner line, feet on it. The
+		// edge-to-edge points along that line are projected to size and place the sprite
+		// (the line itself is not drawn).
 		const centre = this.hexCoord(q, r);
 		const half = (SQRT3 / 2) * HEX_SCALE_X; // pointy-top hex half-width (flat edge), in grid columns
 		const footY = centre.y + HEX_FOOT_Y;
 		const leftLine = this.project(centre.x - half, footY);
 		const rightLine = this.project(centre.x + half, footY);
 		const mark = this.project(centre.x, footY);
-
-		// Draw the guide line the character stands on.
-		const guide = new Graphics();
-		guide
-			.moveTo(leftLine.x, leftLine.y)
-			.lineTo(rightLine.x, rightLine.y)
-			.stroke({ width: 2, color, alpha: 0.9 });
-		this.app.stage.addChild(guide);
 
 		// Width at that line encodes the perspective foreshortening there. Every actor
 		// scales its sprite by the SAME source→screen ratio ({@link REFERENCE_SOURCE_HEIGHT}):
@@ -789,8 +777,6 @@ export class MugenBoard {
 		const actor: Actor = {
 			id,
 			sprite,
-			guide,
-			homeX: mark.x,
 			homeCell: q,
 			homeRow: r,
 			animations,
@@ -820,7 +806,6 @@ export class MugenBoard {
 			// unlike the live sprite whose size tracks the current frame's texture.
 			displayWidth: Math.max(...baseFrames.map((frame) => frame.width)) * fitScale,
 			displayHeight: baseFrames[0].height * fitScale,
-			homeY: mark.y,
 			x: mark.x,
 			y: mark.y,
 			targetX: mark.x,
@@ -889,7 +874,7 @@ export class MugenBoard {
 		const frame = frames[actor.frameIndex % frames.length];
 		actor.sprite.texture = frame.texture;
 		// Horizontal: the character's body (foot) anchor keeps it centred over the
-		// cell; vertical: 1 so the sprite's bottom end sits on the guide line.
+		// cell; vertical: 1 so the sprite's bottom end sits on the hex's lower-corner line.
 		actor.sprite.anchor.set(frame.anchorX, 1);
 	}
 
@@ -1111,9 +1096,6 @@ export class MugenBoard {
 			}
 			actor.sprite.x = actor.x;
 			actor.sprite.y = actor.y;
-			// Slide the guide line so it stays under the running character.
-			actor.guide.x = actor.x - actor.homeX;
-			actor.guide.y = actor.y - actor.homeY;
 			// Play the animation bound to this direction in the JSON definition, as-is.
 			const name = actor.stepDir < 0 ? actor.moveLeftAnim : actor.moveRightAnim;
 			this.setAnimation(actor, actor.animations[name] ? name : 'idle');
@@ -1144,10 +1126,10 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Advance a knocked-out actor's fade: dim its sprite (and HP bar + guide line)
-	 * toward zero over the fade's lifetime while it holds its hurt pose, then remove
-	 * it from the board and resolve. The hurt frame was pinned when the fade began,
-	 * so nothing here advances playback.
+	 * Advance a knocked-out actor's fade: dim its sprite (and HP bar) toward zero over
+	 * the fade's lifetime while it holds its hurt pose, then remove it from the board
+	 * and resolve. The hurt frame was pinned when the fade began, so nothing here
+	 * advances playback.
 	 */
 	private advanceFade(actor: Actor, deltaMs: number): void {
 		const fade = actor.fade;
@@ -1155,7 +1137,6 @@ export class MugenBoard {
 		fade.elapsed += deltaMs;
 		const alpha = Math.max(0, 1 - fade.elapsed / fade.total);
 		actor.sprite.alpha = alpha;
-		actor.guide.alpha = alpha;
 		if (actor.hpBar) {
 			actor.hpBar.graphics.alpha = alpha;
 			actor.hpBar.label.alpha = alpha;
@@ -1174,8 +1155,6 @@ export class MugenBoard {
 		this.clearStrikeLabel(actor.id);
 		actor.sprite.parent?.removeChild(actor.sprite);
 		actor.sprite.destroy();
-		actor.guide.parent?.removeChild(actor.guide);
-		actor.guide.destroy();
 		if (actor.hpBar) {
 			actor.hpBar.graphics.parent?.removeChild(actor.hpBar.graphics);
 			actor.hpBar.graphics.destroy();
@@ -1388,7 +1367,7 @@ export class MugenBoard {
 
 	/**
 	 * Knock a fighter out where it stands: freeze it on its hurt flinch, then fade
-	 * it (and its HP bar and guide line) out over {@link KNOCKOUT_FADE_MS} and
+	 * it (and its HP bar) out over {@link KNOCKOUT_FADE_MS} and
 	 * remove it from the board entirely. Resolves once it's gone. Any in-flight
 	 * movement or one-shot is cancelled so the hurt pose owns the sprite as it
 	 * dissolves.
