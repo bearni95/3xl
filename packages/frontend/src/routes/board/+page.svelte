@@ -50,16 +50,6 @@
 		green: 'bg-green-500 hover:bg-green-600 border-green-500 text-white'
 	};
 
-	// Outline styling per combat color (the rival's read-only buttons).
-	const colorOutline: Record<CombatColor, string> = {
-		red: 'border-red-500 text-red-500',
-		blue: 'border-blue-500 text-blue-500',
-		yellow: 'border-yellow-400 text-yellow-500',
-		purple: 'border-purple-500 text-purple-500',
-		orange: 'border-orange-500 text-orange-500',
-		green: 'border-green-500 text-green-500'
-	};
-
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
 
 
@@ -441,20 +431,17 @@
 {#snippet moveButtons(badge: Badge, combat: Fighter | undefined, areaLocked: boolean)}
 	<!-- One button per color the character can throw, stacked vertically and full
 	     width: the character's own color first, then the colors it mixes into. The
-	     active button marks the current choice. The player's buttons are solid and
-	     clickable; the rival's are read-only outlines showing its pre-rolled default. -->
-	{@const isRival = badge.side === 'error'}
+	     active button marks the current choice. Only the player picks colours — the
+	     rival fights on its pre-rolled defaults and has no picker. -->
 	<div class="join join-vertical w-full">
 		{#each throwableColors(badge.color) as color (color)}
 			<button
 				type="button"
-				class={classNames(
-					'btn join-item btn-sm btn-block capitalize',
-					isRival ? `btn-outline pointer-events-none ${colorOutline[color]}` : colorFill[color],
-					{ 'ring-2 ring-base-content ring-inset': combat?.moveColor === color }
-				)}
-				disabled={!isRival && areaLocked}
-				on:click={() => !isRival && selectColor(badge.id, color)}
+				class={classNames('btn join-item btn-sm btn-block capitalize', colorFill[color], {
+					'ring-2 ring-base-content ring-inset': combat?.moveColor === color
+				})}
+				disabled={areaLocked}
+				on:click={() => selectColor(badge.id, color)}
 			>
 				{color}
 			</button>
@@ -533,8 +520,6 @@
 		     back to hugging its content from lg up. -->
 		<div class="card w-full min-w-0 bg-base-100 shadow-xl lg:w-auto">
 			<div class="card-body items-center gap-3">
-				<!-- CPU options, as a row before the game canvas. -->
-				{@render row(lineups[0])}
 				<div class="flex w-full min-w-0 flex-col items-center gap-3">
 					{#key boardKey}
 						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
