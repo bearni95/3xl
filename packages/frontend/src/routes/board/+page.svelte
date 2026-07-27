@@ -539,9 +539,6 @@
 					{#key boardKey}
 						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
 					{/key}
-					{#if state?.status && !state?.outcome}
-						<div class="text-sm font-medium">{state.status}</div>
-					{/if}
 				</div>
 				<!-- Player options, as a row after the game canvas. -->
 				{@render row(lineups[1])}
