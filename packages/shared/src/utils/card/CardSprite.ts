@@ -4,12 +4,12 @@
  * A single character trading card, drawn as a Pixi `Container` and reusable in
  * any canvas (the pack opener's reveal, a collection grid, …). It mirrors
  * RosterCard: the character's colour is the portrait backdrop, a dark header strip
- * at the top carries the character name, the character's looping idle animation
- * plays in the square colour area below it, with the rarity badge (left) opposite
- * the show name (right) overlaid transparently across the top of that square and a
- * free-text location label overlaid across its bottom; a dark footer below carries
- * its ATK/DEF/SPD/HP stats. The idle frames (and the fallback face) are lazy-loaded
- * via the shared cache; the host scene drives all positioning and tweens.
+ * at the top carries the rarity badge (left) and the character name (centred), the
+ * character's looping idle animation plays in the square colour area below it, with
+ * the show name overlaid transparently across the top of that square and a free-text
+ * location label overlaid across its bottom; a dark footer below carries its
+ * ATK/DEF/SPD/HP stats. The idle frames (and the fallback face) are lazy-loaded via
+ * the shared cache; the host scene drives all positioning and tweens.
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
@@ -346,17 +346,40 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The top header strip: the character name centred.
+	 * The top title strip: the `[N]` rarity badge flush left, the character name
+	 * centred. The name is sized to the midpoint of its former size and the rarity
+	 * badge's, so it sits a touch smaller now that the badge shares the row.
 	 */
 	private makeHeader(headerH: number): Container {
 		const group = new Container();
 		const centerY = headerH / 2;
 
+		// Rarity badge, flush left in the title row: the bracketed tier number in its
+		// WoW quality colour with a black outline.
+		const raritySize = Math.max(9, Math.round(this.cardWidth * 0.072));
+		if (this.card.rarity != null) {
+			const rarity = new Text({
+				text: `[${this.card.rarity}]`,
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize: raritySize,
+					fontWeight: '700',
+					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2,
+					stroke: { color: 0x000000, width: Math.max(2, Math.round(this.cardWidth * 0.012)) }
+				}
+			});
+			rarity.anchor.set(0, 0.5);
+			rarity.position.set(this.cardWidth * 0.08, centerY);
+			group.addChild(rarity);
+		}
+
+		// Name, centred — sized halfway between its former size and the rarity badge's.
+		const nameSize = Math.max(10, Math.round(this.cardWidth * 0.09));
 		const name = new Text({
 			text: this.card.label,
 			style: {
 				fontFamily: 'sans-serif',
-				fontSize: Math.max(10, Math.round(this.cardWidth * 0.09)),
+				fontSize: Math.round((nameSize + raritySize) / 2),
 				fontWeight: '700',
 				fill: 0xf2f2f2,
 				align: 'center',
@@ -372,10 +395,9 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The row overlaid (with no background) on the top of the colour square: the `[N]`
-	 * rarity badge (in its WoW quality colour) flush left, and the show name flush
-	 * right, spaced apart across the row. The show name is truncated to whatever width
-	 * the rarity badge leaves it. `topY` is the top edge of the colour square.
+	 * The row overlaid (with no background) on the top of the colour square: the show
+	 * name flush right (the rarity badge now lives in the title row). The show name is
+	 * truncated to the row width. `topY` is the top edge of the colour square.
 	 */
 	private makeShowRow(topY: number, showRowH: number): Container {
 		const group = new Container();
@@ -383,30 +405,8 @@ export class CardSprite extends Container {
 		const leftX = this.cardWidth * 0.08;
 		const rightX = this.cardWidth * 0.92;
 
-		// Rarity badge, flush left: the bracketed tier number in its quality colour.
-		let rarityRight = leftX;
-		if (this.card.rarity != null) {
-			const rarity = new Text({
-				text: `[${this.card.rarity}]`,
-				style: {
-					fontFamily: 'sans-serif',
-					fontSize: Math.max(9, Math.round(this.cardWidth * 0.072)),
-					fontWeight: '700',
-					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2,
-					// A black outline, matching the show + location labels on the square.
-					stroke: { color: 0x000000, width: Math.max(2, Math.round(this.cardWidth * 0.012)) }
-				}
-			});
-			rarity.anchor.set(0, 0.5);
-			rarity.position.set(leftX, centerY);
-			group.addChild(rarity);
-			rarityRight = leftX + rarity.width;
-		}
-
-		// Show name, flush right and muted, truncated to the width the rarity badge
-		// leaves it (with a small gap so the two never touch).
+		// Show name, flush right, truncated to the row width.
 		if (this.card.showName) {
-			const gap = this.cardWidth * 0.06;
 			const show = new Text({
 				text: this.card.showName,
 				style: {
@@ -419,7 +419,7 @@ export class CardSprite extends Container {
 				}
 			});
 			show.alpha = 1;
-			this.ellipsize(show, this.card.showName, Math.max(0, rightX - rarityRight - gap));
+			this.ellipsize(show, this.card.showName, Math.max(0, rightX - leftX));
 			show.anchor.set(1, 0.5);
 			show.position.set(rightX, centerY);
 			group.addChild(show);
