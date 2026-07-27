@@ -155,10 +155,6 @@
 		return ULTRAMAR.municipality;
 	}
 
-	function rarityFor(characterId: string): number | null {
-		return rarityByCharacter.get(characterId) ?? null;
-	}
-
 	// The distinct show names present across the roster, sorted — the options for the
 	// show dropdown. Rebuilds as spawns and their show mapping load in.
 	$: showFilterOptions = ((names: Map<string, string[]>) =>
