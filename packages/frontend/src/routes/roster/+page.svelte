@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
@@ -13,8 +14,15 @@
 	import { SPAWN_STAT_MAX } from '$types/character-spawn.type';
 	import { teammateColors } from '$utils/color/compare';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
+	import { responsiveGridColumns } from '$components/core/card/CardScene';
 	import type { CardModel } from '$components/core/card/card-model.type';
 	import TeamPanel from '$components/core/TeamPanel.svelte';
+
+	// Bounds for the grid-column slider. It defaults to the responsive value the
+	// old DOM grid used (1/2/3 by viewport), which the player can then override.
+	const MIN_COLUMNS = 1;
+	const MAX_COLUMNS = 6;
+	let columns = browser ? responsiveGridColumns(window.innerWidth) : 3;
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -281,20 +289,35 @@
 					</div>
 				</div>
 			{:else}
-				<p class="mb-3 text-xs opacity-60">
-					Drag to pan, scroll or pinch to zoom.
-					{#if activeTeam}
-						Tap a card to add or remove it from the active team.
-					{:else}
-						Select a team to start adding characters by tapping their card.
-					{/if}
-				</p>
+				<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+					<p class="text-xs opacity-60">
+						Drag to pan, scroll or pinch to zoom.
+						{#if activeTeam}
+							Tap a card to add or remove it from the active team.
+						{:else}
+							Select a team to start adding characters by tapping their card.
+						{/if}
+					</p>
+					<label class="flex items-center gap-2 text-xs">
+						<span class="whitespace-nowrap opacity-60">Columns</span>
+						<input
+							type="range"
+							min={MIN_COLUMNS}
+							max={MAX_COLUMNS}
+							class="range range-primary range-xs w-40"
+							bind:value={columns}
+							aria-label="Grid columns"
+						/>
+						<span class="w-4 text-right tabular-nums opacity-70">{columns}</span>
+					</label>
+				</div>
 				<!-- The roster is drawn on the shared card canvas — the same renderer the
 				     claim pack opener uses — instead of a DOM grid. Cards lay out in a
-				     responsive grid (1/2/3 columns, like the old grid) inside a world you
-				     pan and zoom like a map; tapping a card toggles its team membership. -->
+				     grid (columns default to the old 1/2/3 responsive rule, then follow
+				     the slider) inside a world you pan and zoom like a map; tapping a card
+				     toggles its team membership. -->
 				<div class="h-[70vh] min-h-[32rem] overflow-hidden rounded-box bg-base-100 shadow-md">
-					<CardCanvas cards={cardModels} layout="grid" pannable onCardTap={handleCardTap} />
+					<CardCanvas cards={cardModels} {columns} layout="grid" pannable onCardTap={handleCardTap} />
 				</div>
 			{/if}
 		</div>

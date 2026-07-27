@@ -49,6 +49,19 @@ const PAN_MARGIN = 48;
 
 export type CardLayout = 'fit' | 'grid';
 
+/**
+ * Column count mirroring the old `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3`
+ * roster grid. Tailwind's responsive prefixes key off the *viewport* width (not
+ * the element's), so callers pass `window.innerWidth`. Exposed so a host can seed
+ * a column slider with the same breakpoints the DOM grid used before overriding
+ * them.
+ */
+export function responsiveGridColumns(viewportWidth: number): number {
+	if (viewportWidth >= 1280) return 3;
+	if (viewportWidth >= 640) return 2;
+	return 1;
+}
+
 export interface CardSceneOptions {
 	/** The card(s) to draw. */
 	cards: CardModel[];
@@ -236,7 +249,9 @@ export class CardScene {
 			return;
 		}
 
-		const cols = this.responsiveColumns();
+		// Grid columns are driven explicitly by the host (a slider, seeded with
+		// `responsiveGridColumns`); cards are sized to fill the container at that count.
+		const cols = Math.max(1, this.columns);
 		const availW = Math.max(1, width - NAV_PAD * 2);
 		const cardW = Math.max(80, (availW - NAV_GAP * (cols - 1)) / cols);
 		const cardH = cardW / CARD_ASPECT;
@@ -280,21 +295,6 @@ export class CardScene {
 		this.cardLayer.addChild(sprite);
 		this.cardSprites.push(sprite);
 		return sprite;
-	}
-
-	/**
-	 * Column count mirroring the old `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3`
-	 * roster grid. Tailwind's responsive prefixes key off the *viewport* width, not
-	 * the element's, so this reads `window.innerWidth` (the canvas container is
-	 * narrower — it shares its row with the team-panel aside — and keying off it
-	 * would drop to 2 columns on an xl screen). Cards are still *sized* to the
-	 * container width; only the column count follows the viewport breakpoints.
-	 */
-	private responsiveColumns(): number {
-		const vw = typeof window !== 'undefined' ? window.innerWidth : this.builtW;
-		if (vw >= 1280) return 3;
-		if (vw >= 640) return 2;
-		return 1;
 	}
 
 	private gridDims(n: number): { cols: number; rows: number } {
