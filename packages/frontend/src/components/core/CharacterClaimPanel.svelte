@@ -9,8 +9,8 @@
 	import { AuthStatus } from '$types/profile.type';
 	import { SPAWN_STAT_MAX, type CharacterSpawn, type ClaimableShow } from '$types/character-spawn.type';
 	import type { GeoRegion } from '$types/location.type';
-	import type { ShowsCollection } from '$types/show.type';
-	import { showPosterUrl } from '$utils/geo/municipality-show';
+	import type { ShowEntry, ShowsCollection } from '$types/show.type';
+	import { showPosterUrlForSeed } from '$utils/geo/municipality-show';
 	import { EXP_PER_SPAWN } from '$utils/progression/level';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
 	import type { OpenerView } from '$components/core/pack/scene/opener-view.type';
@@ -28,9 +28,11 @@
 	let loadingShows = false;
 	let showsError = '';
 
-	// Assigned main poster URL per show id, joined from shows.json (the admin picks
-	// each show's main poster there). Independent of auth, so loaded up front.
-	let posterByShowId = new Map<number, string>();
+	// Saved show entry per show id, joined from shows.json (the admin enables each
+	// show's posters there). Kept whole — not reduced to a single URL — so the pack
+	// cover can be picked per location+year from the enabled set at open time.
+	// Independent of auth, so loaded up front.
+	let showEntryById = new Map<number, ShowEntry>();
 
 	// The show currently being opened (locks out concurrent opens), plus the error
 	// from the last open attempt, if any.
@@ -69,18 +71,18 @@
 		void loadPosters();
 	});
 
-	// Load the saved-show collection (public JSON) to map each show to its poster.
+	// Load the saved-show collection (public JSON) and index each entry by show id
+	// so the pack cover can be resolved from its enabled posters at open time.
 	async function loadPosters() {
 		try {
 			const res = await fetch('/data/shows.json');
 			if (!res.ok) return;
 			const data = (await res.json()) as ShowsCollection;
-			const map = new Map<number, string>();
+			const map = new Map<number, ShowEntry>();
 			for (const entry of data.shows) {
-				const url = showPosterUrl(entry);
-				if (url) map.set(entry.show.id, url);
+				map.set(entry.show.id, entry);
 			}
-			posterByShowId = map;
+			showEntryById = map;
 		} catch {
 			// Posters are optional — cards fall back to a placeholder.
 		}
@@ -119,7 +121,12 @@
 	function openBooster(show: ClaimableShow, claimRegion: GeoRegion | null) {
 		if (!currentUserId || !claimRegion?.id || claimingId !== null) return;
 		openerShow = show;
-		openerPosterUrl = posterByShowId.get(show.id) ?? null;
+		// Pick the pack cover from this show's enabled posters by hashing the place +
+		// year, so each location/year combo gets its own (stable) cover. The year is
+		// "now" — the same year the pack and the spawn are stamped with.
+		const entry = showEntryById.get(show.id);
+		const seed = `${claimRegion.municipality ?? ''}|${new Date().getFullYear()}`;
+		openerPosterUrl = entry ? showPosterUrlForSeed(entry, seed) : null;
 		openerRegion = claimRegion;
 		claimError = '';
 		openSession += 1;

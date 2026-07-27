@@ -8,6 +8,7 @@
 // is a stable, deterministic pick.
 
 import type { ShowEntry } from '../../types/show.type';
+import { fnv1a } from '../string/hash';
 
 /**
  * Fold every coordinate number of a GeoJSON geometry into a 32-bit FNV-1a hash
@@ -114,6 +115,25 @@ export function showForMunicipality(
 export function showPosterUrl(entry: ShowEntry): string | null {
 	const filePath = entry.enabledImages?.poster?.[0];
 	if (filePath) {
+		const image = entry.images.posters.find((candidate) => candidate.filePath === filePath);
+		if (image) return image.thumbnailUrl;
+	}
+	return entry.show.posterUrl ?? null;
+}
+
+/**
+ * A saved show's poster URL for a given `seed` key. When the author enabled more
+ * than one poster in the admin `/shows` screen, one is chosen from the enabled set
+ * by hashing the seed — so the same show renders a *different* but stable poster
+ * per seed (the claim pack seeds it with the location + year, giving every
+ * location/year combination its own cover). Falls back through the same chain as
+ * {@link showPosterUrl}: the enabled set (index 0 when only one is enabled), then
+ * the default TMDB poster, then null.
+ */
+export function showPosterUrlForSeed(entry: ShowEntry, seed: string): string | null {
+	const enabled = entry.enabledImages?.poster ?? [];
+	if (enabled.length > 0) {
+		const filePath = enabled[fnv1a(seed) % enabled.length];
 		const image = entry.images.posters.find((candidate) => candidate.filePath === filePath);
 		if (image) return image.thumbnailUrl;
 	}
