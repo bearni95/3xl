@@ -269,7 +269,9 @@ export class ClaimPackGridScene {
 
 		for (const entry of this.entries) {
 			const packX = NAV_PAD + entry.col * (this.bakedCardW + NAV_GAP);
-			const packY = NAV_PAD + entry.row * rowPitch;
+			// Centre the pack vertically within its (uniform, maxBakedH-tall) row cell,
+			// so a pack shorter than the tallest in the grid sits centred, not top-aligned.
+			const packY = NAV_PAD + entry.row * rowPitch + (this.maxBakedH - entry.bakedH) / 2;
 			entry.sprite.scale.set(1);
 			entry.sprite.position.set(packX, packY);
 		}
