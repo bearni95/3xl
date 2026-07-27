@@ -29,7 +29,7 @@ export function normalizeSpawnStat(value: unknown): number {
 export interface CombatStats {
 	/** Attack: how many d10 the fighter rolls per attack. */
 	atk: number;
-	/** Defence: the d10 hit threshold and the ATK complement. */
+	/** Defence: the d10 threshold an attacker's die must beat, and the ATK complement. */
 	def: number;
 	/** Speed: a derived rating (ATK − 1). */
 	spd: number;

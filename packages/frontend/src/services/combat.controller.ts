@@ -6,7 +6,7 @@
  *
  * Every character carries combat attributes seeded from its Supabase spawn: ATK
  * (how many d10 it rolls per attack) and DEF (the d10 threshold an attacker must
- * meet to hit it). Each fighter starts on its HP attribute (DEF + 1) as a flat HP
+ * beat to hit it). Each fighter starts on its HP attribute (DEF + 1) as a flat HP
  * pool, carried across the whole game. Each round the player picks a color per
  * (blue / `info`) fighter and the rivals (red / `error`) pre-roll one, then the
  * pairs duel one at a time. The rival line-up never moves: the rival in line-up
@@ -16,8 +16,9 @@
  *
  * Each duel is one encounter on a purple meeting cell: the faster fighter (higher
  * SPD, ties broken by a coin flip) attacks first, then the other answers back if
- * it survives. An attack rolls ATK d10 and every die at or above the
- * defender's DEF is a hit; the thrown colour vs the defender's colour then scales
+ * it survives. An attack rolls ATK d10 and every die that beats the
+ * defender's DEF is a hit — landing on the DEF exactly is turned aside; the thrown
+ * colour vs the defender's colour then scales
  * those hits (the strike table's ×0.5 / ×1 / ×2, rounded) into the HP of damage
  * dealt. A fighter reduced to 0 HP is knocked out — it holds its hurt pose, fades
  * off the board and is removed from the game entirely. Barring a knockout,
@@ -94,11 +95,11 @@ export interface FighterSeed {
 	/** The moves this character's JSON definition declares (used for animation). */
 	moves: CharacterMove[];
 	/** Attack rating — the number of d10 this fighter rolls on each attack (its
-	 * Supabase spawn stat). Every die at or above the defender's {@link def} is a hit. */
+	 * Supabase spawn stat). Every die strictly above the defender's {@link def} is a hit. */
 	atk: number;
-	/** Defence rating — the d10 threshold an attacker's die must meet to hit this
-	 * fighter (derived as SPAWN_STAT_MAX − atk). Its HP attribute (def + 1) is its
-	 * HP pool at battle start. */
+	/** Defence rating — the d10 threshold an attacker's die must *beat* to hit this
+	 * fighter (derived as SPAWN_STAT_MAX − atk); a die landing on it exactly is turned
+	 * aside. Its HP attribute (def + 1) is its HP pool at battle start. */
 	def: number;
 	/** Speed rating — a derived stat alongside atk/def (atk − 1). */
 	spd: number;
@@ -655,7 +656,8 @@ export class CombatController {
 
 	/**
 	 * `attacker` makes one attack against `defender`: it rolls one d10 per point of
-	 * its ATK and every die at or above the defender's DEF counts as a hit. Each hit
+	 * its ATK and every die that beats the defender's DEF counts as a hit — a die
+	 * landing on the DEF itself is turned aside. Each hit
 	 * costs the defender one HP; reaching 0 knocks it out. Plays the attacker's melee
 	 * animation while the defender flinches.
 	 *

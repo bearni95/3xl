@@ -23,27 +23,29 @@ export function rollN(count: number, sides: number): number[] {
 
 /**
  * Resolve a melee attack: roll `atk` ten-sided dice, and count each die that
- * lands on or above the defender's `def` as a success ("hit"). Damage dealt
- * equals the number of hits — one HP lost per success.
+ * lands **strictly above** the defender's `def` as a success ("hit") — rolling the
+ * defence value itself is turned aside, not a hit. Damage dealt equals the number
+ * of hits — one HP lost per success.
  */
 export function resolveAttack(atk: number, def: number): { rolls: number[]; hits: number } {
 	const rolls = rollN(atk, 10);
-	const hits = rolls.filter((die) => die >= def).length;
+	const hits = rolls.filter((die) => die > def).length;
 	return { rolls, hits };
 }
 
 /**
- * The odds a single d10 counts as a hit against `def` — the faces from `def` to 10,
- * out of ten. Returned as a probability in [0, 1]; a `def` at or below 1 can never
- * be missed, one above 10 can never be met.
+ * The odds a single d10 counts as a hit against `def` — the faces strictly above
+ * `def`, out of ten, since landing on the defence value itself is turned aside.
+ * Returned as a probability in [0, 1]; a `def` below 1 can never be missed, one at
+ * 10 or above can never be beaten.
  */
 export function dieHitChance(def: number): number {
-	return Math.min(1, Math.max(0, (11 - def) / 10));
+	return Math.min(1, Math.max(0, (10 - def) / 10));
 }
 
 /**
  * The odds an attack of `atk` ten-sided dice lands **at least one** hit against
- * `def` — the complement of every die missing, `1 − (1 − p)^atk`. This is what the
+ * `def` — the complement of every die failing to beat it, `1 − (1 − p)^atk`. This is what the
  * arena previews on a fighter's colour buttons: whether the throw connects at all
  * is decided by these dice, so the thrown colour does not enter into it (it only
  * scales the hits that land into HP of damage).
