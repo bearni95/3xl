@@ -6,10 +6,10 @@
  * RosterCard: the character's colour is the portrait backdrop, a dark header strip
  * at the top carries the character name, the character's looping idle animation
  * plays in the square colour area below it, with the rarity badge (left) opposite
- * the show name (right) overlaid transparently across the top of that square; a meta
- * strip below carries a free-text location label, and a dark footer carries its
- * ATK/DEF/SPD/HP stats. The idle frames (and the fallback face) are lazy-loaded via
- * the shared cache; the host scene drives all positioning and tweens.
+ * the show name (right) overlaid transparently across the top of that square and a
+ * free-text location label overlaid across its bottom; a dark footer below carries
+ * its ATK/DEF/SPD/HP stats. The idle frames (and the fallback face) are lazy-loaded
+ * via the shared cache; the host scene drives all positioning and tweens.
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
@@ -100,24 +100,23 @@ export class CardSprite extends Container {
 		this.app = opts.app;
 
 		const radius = Math.max(6, this.cardWidth * 0.05);
-		// Top→bottom: a name header, the art, a location meta strip, an ATK/DEF/SPD/HP
-		// footer. The coloured art area is a full-width SQUARE (side = card width); the
-		// three text rows share the vertical space left over, split by their prior ratios
-		// (name .14, location .11, stats .15 of card height; sum .40). The rarity/show
-		// row no longer has a band of its own — it is overlaid, transparently, on the top
-		// of the colour square (see makeShowRow).
+		// Top→bottom: a name header, the art, an ATK/DEF/SPD/HP footer. The coloured art
+		// area is a full-width SQUARE (side = card width); only the name header and stats
+		// footer take a band of their own, splitting the vertical space left over by
+		// their prior ratios (name .14, stats .15 of card height; sum .29). The
+		// rarity/show and location rows have no band — they are overlaid, transparently,
+		// on the top and bottom of the colour square (see makeShowRow / makeMeta).
 		const artSide = this.cardWidth;
-		const chrome = this.cardHeight - artSide; // vertical space for the three text rows
-		const headerH = Math.round(chrome * (0.14 / 0.4));
+		const chrome = this.cardHeight - artSide; // vertical space for the header + footer
+		const headerH = Math.round(chrome * (0.14 / 0.29));
 		const artY = headerH;
-		const metaY = artY + artSide; // the colour square sits exactly artY..metaY
-		const bottomBlockH = this.cardHeight - metaY; // location + stats rows
-		const metaH = Math.round(bottomBlockH * (0.11 / 0.26));
-		const footerH = bottomBlockH - metaH;
-		const footerY = metaY + metaH;
+		const footerY = artY + artSide; // the square's bottom edge = the footer's top
+		const footerH = this.cardHeight - footerY;
 		this.artArea = { x: 0, y: artY, w: artSide, h: artSide };
-		// The rarity/show row is drawn (with no background) over the top of the square.
+		// The rarity/show and location rows are drawn (with no background) over the top
+		// and bottom of the colour square respectively.
 		const showRowH = Math.round(this.cardHeight * 0.1);
+		const metaH = Math.round(this.cardHeight * 0.1);
 
 		// Colored portrait backdrop (the character's colour), with a black
 		// border to match the roster card framing.
@@ -135,19 +134,13 @@ export class CardSprite extends Container {
 		header.fill({ color: 0x111827, alpha: 0.92 });
 		this.addChild(header);
 
-		// Dark meta strip below the art, carrying the location label, then the
-		// ATK/DEF/SPD/HP footer directly beneath it (both share the same dark fill so
-		// they read as one lower block with two rows).
-		const meta = new Graphics();
-		meta.rect(0, metaY, this.cardWidth, metaH + footerH);
-		meta.fill({ color: 0x111827, alpha: 0.92 });
-		this.addChild(meta);
-		// A faint divider between the meta row and the ATK/DEF row.
-		const divider = new Graphics();
-		divider.moveTo(this.cardWidth * 0.08, footerY);
-		divider.lineTo(this.cardWidth * 0.92, footerY);
-		divider.stroke({ width: 1, color: 0xffffff, alpha: 0.12 });
-		this.addChild(divider);
+		// Dark footer strip at the bottom, carrying the ATK/DEF/SPD/HP stats. The
+		// location row is not part of it — it floats transparently over the bottom of
+		// the colour square above.
+		const footer = new Graphics();
+		footer.rect(0, footerY, this.cardWidth, footerH);
+		footer.fill({ color: 0x111827, alpha: 0.92 });
+		this.addChild(footer);
 
 		// A black silhouette copy of the art, sitting behind the full-colour sprite
 		// (added first, so lower z-index) and offset to the bottom-left — the
@@ -167,7 +160,7 @@ export class CardSprite extends Container {
 
 		this.addChild(this.makeHeader(headerH));
 		this.addChild(this.makeShowRow(artY, showRowH));
-		this.addChild(this.makeMeta(metaY, metaH));
+		this.addChild(this.makeMeta(footerY - metaH, metaH));
 		this.addChild(this.makeStats(footerY, footerH));
 
 		this.artReady = this.loadArt();
@@ -410,9 +403,11 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The meta row between the art and the ATK/DEF row: the location label, with the
-	 * spawn year as a two-digit suffix (e.g. `Barcelona '25`), centred in the row.
-	 * Omitted when the card carries neither a location nor a spawn date.
+	 * The location row overlaid (with no background) on the bottom of the colour
+	 * square: the location label, with the spawn year as a two-digit suffix (e.g.
+	 * `Barcelona '25`), centred in the row. Omitted when the card carries neither a
+	 * location nor a spawn date. `metaY` is the top of the row (its bottom sits on the
+	 * square's bottom edge).
 	 */
 	private makeMeta(metaY: number, metaH: number): Container {
 		const group = new Container();
