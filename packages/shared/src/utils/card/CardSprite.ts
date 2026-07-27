@@ -223,8 +223,9 @@ export class CardSprite extends Container {
 	 * renders visibly smaller than a tall one (Trunks, ~136px) rather than each sprite
 	 * being stretched to fill its box, which is what made stocky characters balloon.
 	 * The shared scale is then capped so a character taller or wider than the box can
-	 * never overflow it. Frames are anchored at their body axis with feet on a common
-	 * baseline, so the character breathes in place without drifting.
+	 * never overflow it. Frames are anchored at their body axis on a common baseline
+	 * (so the character breathes in place without drifting), and that baseline is
+	 * placed to centre the animation vertically within the art area.
 	 */
 	private applyIdle(frames: IdleFrame[]): void {
 		this.idleFrames = frames;
@@ -246,10 +247,13 @@ export class CardSprite extends Container {
 		const widthCap = boxW / 2 / maxHalfExtent;
 		this.idleFitScale = Math.min(sharedScale, heightCap, widthCap);
 
-		// Stand every character on a shared baseline at the bottom of the art box
-		// (feet down) — the same footing convention the board uses.
+		// Centre the animation vertically in the coloured art area (scale unchanged):
+		// place the shared feet baseline so the tallest frame's rendered height is
+		// centred in the box. Every frame still shares this one baseline, so the
+		// character breathes in place without drifting.
 		this.idleCenterX = this.artArea.x + this.artArea.w / 2;
-		this.idleFeetY = this.artArea.y + this.artArea.h - pad;
+		const renderedHeight = maxHeight * this.idleFitScale;
+		this.idleFeetY = this.artArea.y + this.artArea.h / 2 + renderedHeight / 2;
 
 		this.frameIndex = 0;
 		this.frameElapsed = 0;
