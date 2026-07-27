@@ -1,6 +1,6 @@
 import { Application, Assets, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import type { Manifest } from './mugen-player';
-import { CardSprite } from '../card/CardSprite';
+import { CardSprite, REFERENCE_SOURCE_HEIGHT } from '../card/CardSprite';
 import type { CardModel } from '../card/card-model.type';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
@@ -159,7 +159,9 @@ export function cellScreenX(q: number, r: number, farRatio: number = DEFAULTS.fa
 	return halfWidth * rawX;
 }
 
-/** Character height as a multiple of its (perspective-foreshortened) cell width. */
+/** On-screen height of a reference-height ({@link REFERENCE_SOURCE_HEIGHT}) character
+ * as a multiple of its (perspective-foreshortened) cell width. Every other character
+ * scales by the same source→screen ratio, so shorter/taller sprites read shorter/taller. */
 const CHAR_HEIGHT_RATIO = 1.3;
 
 // --- Character cards (drawn outside the hex grid) ---------------------------
@@ -717,18 +719,24 @@ export class MugenBoard {
 			.stroke({ width: 2, color, alpha: 0.9 });
 		this.app.stage.addChild(guide);
 
-		// Width at that line encodes the perspective foreshortening there. Size the
-		// character by height (CHAR_HEIGHT_RATIO of the cell width), but cap the scale
-		// so it never overflows the cell's width. Since each frame is positioned by
-		// its body axis (anchorX), which can sit off-centre, the wider axis-to-edge
-		// extent of the widest frame must stay within half the cell.
+		// Width at that line encodes the perspective foreshortening there. Every actor
+		// scales its sprite by the SAME source→screen ratio ({@link REFERENCE_SOURCE_HEIGHT}):
+		// a reference-height character stands CHAR_HEIGHT_RATIO of the cell width tall, and
+		// every other character scales by that same ratio — so on-screen size tracks each
+		// character's true sprite height relative to the others (Krillin renders shorter
+		// than Goku) instead of every sprite being stretched to the same cell height. The
+		// shared scale is the same one the character cards use, so both surfaces agree on
+		// relative sizes. It's then capped by the cell's width so a wide character can't
+		// overflow into its neighbours: since each frame is positioned by its body axis
+		// (anchorX), which can sit off-centre, the widest frame's axis-to-edge extent must
+		// stay within half the cell.
 		const cellWidth = Math.abs(rightLine.x - leftLine.x);
-		const heightScale = (cellWidth * CHAR_HEIGHT_RATIO) / baseFrames[0].height;
+		const sharedScale = (cellWidth * CHAR_HEIGHT_RATIO) / REFERENCE_SOURCE_HEIGHT;
 		const maxHalfExtent = Math.max(
 			...baseFrames.map((frame) => Math.max(frame.anchorX, 1 - frame.anchorX) * frame.width)
 		);
 		const widthScale = cellWidth / 2 / maxHalfExtent;
-		const fitScale = Math.min(heightScale, widthScale);
+		const fitScale = Math.min(sharedScale, widthScale);
 
 		const sprite = new Sprite();
 		// A negative x-scale mirrors the sprite around its anchor (in place).

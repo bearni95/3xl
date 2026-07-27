@@ -39,8 +39,10 @@ const SHADOW_ALPHA = 0.45;
  * character's real sprite size relative to the roster — a short character renders
  * smaller than a tall one instead of each being stretched to fill its box. Sized so a
  * tall MUGEN character (Trunks ~136px) nearly fills the art box; anything taller is
- * capped to the box in {@link CardSprite.applyIdle}. */
-const REFERENCE_SOURCE_HEIGHT = 150;
+ * capped to the box in {@link CardSprite.applyIdle}. Exported so the board engine can
+ * scale its standing characters against the same reference — the two surfaces then
+ * agree on every character's size relative to the others. */
+export const REFERENCE_SOURCE_HEIGHT = 150;
 
 /** The d10 die icon (white SVG) shown next to the ATK value — the same one the
  * roster/team cards use for a character's stat. Served from @3xl/assets. */
