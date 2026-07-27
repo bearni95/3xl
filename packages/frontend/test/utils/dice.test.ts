@@ -4,7 +4,7 @@ import {
 	resolveAttack,
 	dieHitChance,
 	attackHitChance,
-	chancePercent
+	formatChancePercent
 } from '$utils/dice/roll';
 
 /** Feed Math.random a fixed sequence so dice results are deterministic. */
@@ -96,23 +96,33 @@ describe('dice', () => {
 		expect(attackHitChance(9, 0)).toBe(1);
 	});
 
-	it('chancePercent never rounds a real chance up to a certainty', () => {
-		// The bug this guards: 3d10 vs DEF 1 is 99.9%, which Math.round reports as 100%.
-		expect(attackHitChance(3, 1)).toBeCloseTo(0.999);
-		expect(chancePercent(attackHitChance(3, 1))).toBe(99);
-		expect(chancePercent(0.9999999)).toBe(99);
-		// …nor a real chance down to an impossibility.
-		expect(chancePercent(0.0001)).toBe(1);
+	it('displays the number of dice thrown at DEF 1, not a lumped-together 99%', () => {
+		// The weakest defender there is. One die beating it is a plain 90% — nothing
+		// near-certain about it — and each extra die must read as its own figure.
+		expect(formatChancePercent(attackHitChance(1, 1))).toBe('90%');
+		expect(formatChancePercent(attackHitChance(2, 1))).toBe('99%');
+		expect(formatChancePercent(attackHitChance(3, 1))).toBe('99.9%');
+		expect(formatChancePercent(attackHitChance(5, 1))).toBe('99.9%');
 	});
 
-	it('chancePercent prints 100 and 0 only for an actual certainty', () => {
-		expect(chancePercent(1)).toBe(100);
-		expect(chancePercent(0)).toBe(0);
-		expect(chancePercent(1.5)).toBe(100);
-		expect(chancePercent(-0.2)).toBe(0);
-		// Ordinary values round as usual.
-		expect(chancePercent(0.5)).toBe(50);
-		expect(chancePercent(0.874)).toBe(87);
+	it('never rounds a real chance up to a certainty, nor down to an impossibility', () => {
+		expect(formatChancePercent(0.9999999)).toBe('99.9%');
+		expect(formatChancePercent(0.999)).toBe('99.9%');
+		expect(formatChancePercent(0.0001)).toBe('0.1%');
+	});
+
+	it('prints 100% and 0% only for an actual certainty', () => {
+		expect(formatChancePercent(1)).toBe('100%');
+		expect(formatChancePercent(0)).toBe('0%');
+		expect(formatChancePercent(1.5)).toBe('100%');
+		expect(formatChancePercent(-0.2)).toBe('0%');
+	});
+
+	it('shows whole percents everywhere between the extremes', () => {
+		expect(formatChancePercent(0.5)).toBe('50%');
+		expect(formatChancePercent(0.874)).toBe('87%');
+		expect(formatChancePercent(0.4)).toBe('40%');
+		expect(formatChancePercent(0.99)).toBe('99%');
 	});
 
 	it('no DEF a card can roll ever shows a guaranteed hit', () => {
@@ -120,7 +130,7 @@ describe('dice', () => {
 		// defender turns a rolled 1 away — 9 dice against DEF 1 still is not certain.
 		for (let def = 1; def <= 9; def++) {
 			for (let atk = 1; atk <= 9; atk++) {
-				expect(chancePercent(attackHitChance(atk, def))).toBeLessThan(100);
+				expect(formatChancePercent(attackHitChance(atk, def))).not.toBe('100%');
 			}
 		}
 	});

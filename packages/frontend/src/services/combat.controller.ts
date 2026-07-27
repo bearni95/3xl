@@ -135,10 +135,17 @@ export interface MatchupPreview {
 	/** The fighter waiting on the other side of it. */
 	opponentId: string;
 	opponentName: string;
+	/** Dice this fighter throws at it — its own ATK. */
+	dice: number;
+	/** The DEF those dice have to beat — the opponent's. */
+	opponentDef: number;
 	/**
-	 * The odds this fighter's attack lands at least one hit on that opponent — its
-	 * ATK d10 against the opponent's DEF. Colour-independent: the thrown colour only
-	 * scales hits into damage, it never decides whether the dice connect.
+	 * The odds this fighter's attack lands at least one hit on that opponent: the
+	 * chance at least one of {@link dice} d10 beats {@link opponentDef}. Shown beside
+	 * both, so the figure can be read back off the numbers that produced it — a lone
+	 * die against DEF 1 is 90%, five of them 99.999%, and those must not look alike.
+	 * Colour-independent: the thrown colour only scales hits into damage, it never
+	 * decides whether the dice connect.
 	 */
 	hitChance: number;
 }
@@ -286,6 +293,8 @@ export class CombatController {
 				duelIndex,
 				opponentId: opponent.id,
 				opponentName: opponent.name,
+				dice: fighter.atk,
+				opponentDef: opponent.def,
 				hitChance: attackHitChance(fighter.atk, opponent.def)
 			});
 		};

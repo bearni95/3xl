@@ -25,7 +25,7 @@
 		type CombatColor
 	} from '$types/character-definition.type';
 	import { throwableColors } from '$utils/color/compare';
-	import { chancePercent } from '$utils/dice/roll';
+	import { formatChancePercent } from '$utils/dice/roll';
 	import { characters as availableCharacters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
@@ -542,8 +542,13 @@
 	{@const preview = combat?.preview ?? null}
 	<div class="flex w-full flex-col gap-1">
 		{#if preview}
+			<!-- Name the roll behind the percentage, so it can be checked rather than
+			     trusted: "1d10 vs DEF 1" is 90%, "5d10 vs DEF 1" is 99.9%. -->
 			<p class="truncate text-center text-[11px] leading-tight opacity-70">
 				vs <span class="font-semibold">{preview.opponentName}</span>
+			</p>
+			<p class="truncate text-center text-[10px] leading-tight opacity-50">
+				{preview.dice}d10 vs DEF {preview.opponentDef}
 			</p>
 		{/if}
 		<div class="join join-vertical w-full">
@@ -559,7 +564,7 @@
 					<span class="capitalize">{color}</span>
 					{#if preview}
 						<span class="ml-auto text-xs font-normal tabular-nums opacity-80">
-							{chancePercent(preview.hitChance)}%
+							{formatChancePercent(preview.hitChance)}
 						</span>
 					{/if}
 				</button>

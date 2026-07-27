@@ -5,7 +5,8 @@ import {
 	type CombatState,
 	type FighterSeed
 } from '$services/combat.controller';
-import { attackHitChance } from '$utils/dice/roll';
+import { attackHitChance, formatChancePercent } from '$utils/dice/roll';
+import { combatStatsFromStat } from '$utils/spawn/stat';
 
 /**
  * The matchup preview the arena's colour buttons read: who a fighter is next up
@@ -89,6 +90,35 @@ describe('combat matchup preview', () => {
 		// r1 and r2 have nobody assigned yet, so they preview nothing.
 		expect(previewOf(state, 'r1')).toBeNull();
 		expect(previewOf(state, 'r2')).toBeNull();
+	});
+
+	it('reads 90% for a single die against the weakest defender', () => {
+		// The whole path a card actually takes: rolled stat → ATK/DEF → preview → the
+		// string on the button. A stat-1 fighter throws 1d10; a stat-9 rival defends on
+		// DEF 1. One die beats a 1 nine times in ten — no more, no less.
+		const from = (id: string, side: 'error' | 'info', stat: number): FighterSeed => {
+			const { atk, def, spd } = combatStatsFromStat(stat);
+			return { ...seed(id, side, { atk, def }), spd };
+		};
+		const controller = new CombatController([
+			from('r0', 'error', 9),
+			from('r1', 'error', 5),
+			from('r2', 'error', 5),
+			from('p0', 'info', 1),
+			from('p1', 'info', 5),
+			from('p2', 'info', 9)
+		]);
+		const state = get(controller);
+
+		const lone = previewOf(state, 'p0')!;
+		expect(lone).toMatchObject({ opponentId: 'r0', dice: 1, opponentDef: 1 });
+		expect(lone.hitChance).toBeCloseTo(0.9);
+		expect(formatChancePercent(lone.hitChance)).toBe('90%');
+
+		// More dice against that same DEF 1 are near-certain, and must not read as the
+		// same figure as the single die — nor as a flat 100%.
+		expect(formatChancePercent(previewOf(state, 'p1')!.hitChance)).toBe('99.9%');
+		expect(previewOf(state, 'p1')).toMatchObject({ dice: 5, opponentDef: 1 });
 	});
 
 	it('keeps the rival line-up fixed to its slots as picks accumulate', () => {

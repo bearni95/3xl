@@ -56,16 +56,26 @@ export function attackHitChance(atk: number, def: number): number {
 }
 
 /**
- * A probability as the whole percent to *display*. Plain rounding lies at both ends:
- * 3d10 against DEF 1 lands 99.9% of the time, and `Math.round` turns that into a flat
- * "100%" — a certainty the dice never offer, since all three can still come up a 1 and
- * be turned aside. So a chance short of a true certainty is held at 99, and one above a
- * true impossibility at 1; only an exact 1 or 0 prints 100 or 0.
+ * A probability formatted as the percentage to *display*, e.g. `"90%"`, `"99.9%"`.
+ *
+ * Whole percents everywhere except the two extremes, where rounding would state
+ * something false: 5d10 against DEF 1 lands 99.999% of the time, and `Math.round`
+ * reports that as a flat `"100%"` — a certainty the dice never offer, since every die
+ * can still come up a 1 and be turned aside. Clamping it to `"99%"` instead is no
+ * better: it reads as materially worse odds than it is, and collides with a genuine
+ * 99.0% (2d10 against DEF 1). So a chance that would round to 100% is *floored* to a
+ * tenth, and one that would round to 0% is *raised* to a tenth — enough precision to
+ * stay honest and to tell those cases apart. Only an exact 1 or 0 prints 100% or 0%.
  */
-export function chancePercent(chance: number): number {
-	if (chance >= 1) return 100;
-	if (chance <= 0) return 0;
-	return Math.min(99, Math.max(1, Math.round(chance * 100)));
+export function formatChancePercent(chance: number): string {
+	if (chance >= 1) return '100%';
+	if (chance <= 0) return '0%';
+	const percent = chance * 100;
+	// Floor/raise to a tenth so a near-certainty never rounds up into certainty (nor a
+	// slim chance down into impossibility).
+	if (percent >= 99.5) return `${Math.floor(percent * 10) / 10}%`;
+	if (percent <= 0.5) return `${Math.ceil(percent * 10) / 10}%`;
+	return `${Math.round(percent)}%`;
 }
 
 /**
