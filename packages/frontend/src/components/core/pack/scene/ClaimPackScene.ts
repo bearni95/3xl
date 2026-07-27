@@ -28,7 +28,7 @@ import {
 	type FederatedPointerEvent
 } from 'pixi.js';
 import { PackSprite } from './PackSprite';
-import { CardSprite } from '$utils/card/CardSprite';
+import { CardSprite, cardBorderWidth } from '$utils/card/CardSprite';
 import type { ClaimPull } from './pull.type';
 
 export interface ClaimPackSceneCallbacks {
@@ -491,13 +491,17 @@ export class ClaimPackScene {
 		const gap = 12;
 		const availW = this.app.screen.width * 0.92;
 		const availH = this.app.screen.height * 0.92;
-		const maxCardW = (availW - gap * (cols - 1)) / cols;
-		const maxCardH = (availH - gap * (rows - 1)) / rows;
-		const cardWFromH = maxCardH * CARD_ASPECT;
-		if (cardWFromH <= maxCardW) {
-			return { cardW: cardWFromH, cardH: maxCardH };
+		// Each card's full footprint (content plus the outset border on both sides) must
+		// fit its slot, so neighbouring borders never overlap. The border width depends
+		// on the card width, so converge on it with a couple of iterations.
+		const slotW = (availW - gap * (cols - 1)) / cols;
+		const slotH = (availH - gap * (rows - 1)) / rows;
+		let cardW = Math.max(1, Math.min(slotW, slotH * CARD_ASPECT));
+		for (let k = 0; k < 4; k++) {
+			const border = cardBorderWidth(cardW);
+			cardW = Math.max(1, Math.min(slotW - 2 * border, (slotH - 2 * border) * CARD_ASPECT));
 		}
-		return { cardW: maxCardW, cardH: maxCardW / CARD_ASPECT };
+		return { cardW, cardH: cardW / CARD_ASPECT };
 	}
 
 	private computeGridTargets(
@@ -511,18 +515,23 @@ export class ClaimPackScene {
 
 		const { cols, rows } = this.gridDims(n);
 		const gap = 12;
-		const cellW = cardW + gap;
-		const cellH = cardH + gap;
-		const totalH = rows * cardH + (rows - 1) * gap;
-		const firstRowY = centerY - totalH / 2 + cardH / 2;
+		// Space the card centres by each card's full footprint (content + outset border
+		// on both sides) plus the gap, so neighbouring borders never overlap.
+		const border = cardBorderWidth(cardW);
+		const footW = cardW + 2 * border;
+		const footH = cardH + 2 * border;
+		const cellW = footW + gap;
+		const cellH = footH + gap;
+		const totalH = rows * footH + (rows - 1) * gap;
+		const firstRowY = centerY - totalH / 2 + footH / 2;
 
 		const targets: Array<{ x: number; y: number; rotation: number; scale: number }> = [];
 		for (let i = 0; i < n; i++) {
 			const row = Math.floor(i / cols);
 			const col = i % cols;
 			const cardsInRow = Math.min(cols, n - row * cols);
-			const rowWidth = cardsInRow * cardW + (cardsInRow - 1) * gap;
-			const rowStartX = centerX - rowWidth / 2 + cardW / 2;
+			const rowWidth = cardsInRow * footW + (cardsInRow - 1) * gap;
+			const rowStartX = centerX - rowWidth / 2 + footW / 2;
 			targets.push({
 				x: rowStartX + col * cellW,
 				y: firstRowY + row * cellH,
