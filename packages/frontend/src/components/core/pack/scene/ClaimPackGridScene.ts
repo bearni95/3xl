@@ -409,8 +409,10 @@ export class ClaimPackGridScene {
 		const localX = worldX - NAV_PAD - col * (this.bakedCardW + NAV_GAP);
 		const localY = worldY - NAV_PAD - row * rowPitch;
 		if (localX > this.bakedCardW || localY > this.maxBakedH) return null; // gutter
-		const index = row * this.cols + col;
-		return index >= 0 && index < this.entries.length ? index : null;
+		// Match by cell, not array position: entries are pushed in load-completion order
+		// (a Promise.all over async bakes), so their array index is not their grid slot.
+		const index = this.entries.findIndex((e) => e.col === col && e.row === row);
+		return index >= 0 ? index : null;
 	}
 
 	/**
