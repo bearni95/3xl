@@ -3,14 +3,15 @@
  *
  * Renders a booster pack into a RenderTexture, framed to match {@link CardSprite}:
  * the show's poster spans the full pack width and is never cropped — the pack's
- * height adapts to the poster's aspect ratio — with a coloured header band and a
- * plain white footer strip above and below it, and the place the pack belongs to set
- * within the header band below its teeth (white with a black outline). The header's
- * top edge is serrated into teeth (the teeth are the band colour, the notches between
- * them transparent), so the whole pack silhouette — a 2px black border and a soft
- * black drop shadow follow it — is serrated rather than a rectangle with triangles
- * painted over it. Exposes split(y), which carves the rendered texture into top/bottom
- * halves for the slice animation.
+ * height adapts to the poster's aspect ratio — with coloured header and footer bands
+ * above and below it, and the place the pack belongs to set within the header band
+ * below its teeth (white with a black outline). Each band picks up the poster's colour
+ * on its side (top pixel row → header, bottom row → footer). Both the top and bottom
+ * edges are serrated into teeth (the teeth are the band colour, the notches between
+ * them transparent, the bottom the top rotated 180°), so the whole pack silhouette —
+ * a 2px black border and a soft black drop shadow follow it — is serrated rather than a
+ * rectangle with triangles painted over it. Exposes split(y), which carves the rendered
+ * texture into top/bottom halves for the slice animation.
  *
  * Ported from the yugioh-duel-sim booster opener; the cover is now a show poster
  * (loaded by URL) shown whole rather than a card's cropped artwork.
@@ -41,10 +42,7 @@ const FOOTER_RATIO = 0.24;
 /** Fallback art aspect (height / width) used when there is no cover, chosen so a
  * plain frame keeps roughly the old 5/8 pack silhouette. */
 const DEFAULT_ART_ASPECT = 1.14;
-/** Fill for the header/footer strips — opaque white so they fully hide any poster
- * overflow behind them (the poster is a Sprite, not masked). */
-const STRIP_FILL = { color: 0xffffff, alpha: 1 } as const;
-/** The pack's top edge is serrated into equilateral teeth. Each tooth base is a
+/** The pack's top and bottom edges are serrated into equilateral teeth. Each tooth base is a
  * target fraction of the pack width, rounded to a whole count so the row tiles the
  * width edge to edge. The teeth are the header-band colour and the notches between
  * them are transparent — the band's top edge literally zig-zags, so the whole pack
@@ -79,9 +77,12 @@ export class PackSprite extends Container {
 	private packH: number;
 	private renderTex: RenderTexture | null = null;
 	private mainSprite: Sprite | null = null;
-	/** Fill for the top rectangle + triangles: the most frequent colour in the
-	 * cover's first pixel row, resolved in load(). White until then. */
+	/** Fill for the serrated top band: the most frequent colour in the cover's first
+	 * pixel row, resolved in load(). White until then. */
 	private topColor = 0xffffff;
+	/** Fill for the serrated bottom band: the most frequent colour in the cover's
+	 * last pixel row, resolved in load(). White until then. */
+	private bottomColor = 0xffffff;
 
 	constructor(opts: PackSpriteOptions) {
 		super();
@@ -107,15 +108,18 @@ export class PackSprite extends Container {
 		// ratio sets the pack's height. Resolve the final footprint (fitted inside
 		// the caller's box) before composing.
 		this.resolveDimensions(cover);
-		this.topColor = this.detectTopColor(cover);
+		const edges = this.detectEdgeColors(cover);
+		this.topColor = edges.top;
+		this.bottomColor = edges.bottom;
 
 		const composition = this.buildComposition(cover);
 
-		// The pack silhouette: the serrated top edge, then the right/bottom/left
-		// corners. Used to bake the 2px border and to shape the drop shadow so both
-		// trace the teeth rather than a straight rectangle top.
+		// The pack silhouette: the serrated top edge, down the right side, the serrated
+		// bottom edge (the same teeth rotated 180°), and up the left side. Used to bake
+		// the 2px border and to shape the drop shadow so both trace the teeth rather
+		// than a straight rectangle top/bottom.
 		const { points: topEdge } = this.serration();
-		const silhouette = [...topEdge, this.packW, this.packH, 0, this.packH];
+		const silhouette = [...topEdge, ...this.bottomEdge(topEdge)];
 
 		// Render the composition (whose top notches are transparent) into an
 		// intermediate texture, then re-render it through a Graphics: a rect fills it
@@ -146,7 +150,7 @@ export class PackSprite extends Container {
 		intermediate.destroy(true);
 
 		// Soft black drop shadow behind the pack, offset down/right. It follows the
-		// serrated silhouette so the shadow's top edge matches the teeth.
+		// serrated silhouette so the shadow's top and bottom edges match the teeth.
 		const shadow = new Graphics();
 		shadow.poly(silhouette);
 		shadow.fill({ color: 0x000000, alpha: 0.55 });
@@ -220,32 +224,43 @@ export class PackSprite extends Container {
 	}
 
 	/**
-	 * The most frequent colour in the cover's first pixel row, as 0xRRGGBB. Reads
-	 * the poster's pixels once and tallies each colour across row 0; falls back to
-	 * white when there is no cover or the pixels can't be read.
+	 * The dominant colours of the cover's first and last pixel rows, as 0xRRGGBB —
+	 * the top band picks up the poster's top edge, the bottom band its bottom edge.
+	 * Reads the poster's pixels once and tallies each row; falls back to white when
+	 * there is no cover or the pixels can't be read.
 	 */
-	private detectTopColor(cover: Texture | null): number {
-		if (!cover || cover.width <= 0 || cover.height <= 0) return 0xffffff;
+	private detectEdgeColors(cover: Texture | null): { top: number; bottom: number } {
+		if (!cover || cover.width <= 0 || cover.height <= 0) return { top: 0xffffff, bottom: 0xffffff };
 		try {
-			const { pixels, width } = this.app.renderer.extract.pixels(cover);
-			const counts = new Map<number, number>();
-			let best = 0xffffff;
-			let bestCount = 0;
-			for (let x = 0; x < width; x++) {
-				const i = x * 4;
-				if (pixels[i + 3] === 0) continue; // skip fully transparent pixels
-				const color = (pixels[i] << 16) | (pixels[i + 1] << 8) | pixels[i + 2];
-				const n = (counts.get(color) ?? 0) + 1;
-				counts.set(color, n);
-				if (n > bestCount) {
-					bestCount = n;
-					best = color;
-				}
-			}
-			return best;
+			const { pixels, width, height } = this.app.renderer.extract.pixels(cover);
+			return {
+				top: this.dominantRowColor(pixels, width, 0),
+				bottom: this.dominantRowColor(pixels, width, height - 1)
+			};
 		} catch {
-			return 0xffffff;
+			return { top: 0xffffff, bottom: 0xffffff };
 		}
+	}
+
+	/** The most frequent opaque colour across pixel row `row` of an extracted RGBA
+	 * buffer, as 0xRRGGBB; white when the row is empty/fully transparent. */
+	private dominantRowColor(pixels: Uint8ClampedArray, width: number, row: number): number {
+		const base = row * width * 4;
+		const counts = new Map<number, number>();
+		let best = 0xffffff;
+		let bestCount = 0;
+		for (let x = 0; x < width; x++) {
+			const i = base + x * 4;
+			if (pixels[i + 3] === 0) continue; // skip fully transparent pixels
+			const color = (pixels[i] << 16) | (pixels[i + 1] << 8) | pixels[i + 2];
+			const n = (counts.get(color) ?? 0) + 1;
+			counts.set(color, n);
+			if (n > bestCount) {
+				bestCount = n;
+				best = color;
+			}
+		}
+		return best;
 	}
 
 	/**
@@ -272,6 +287,22 @@ export class PackSprite extends Container {
 		return { points, depth };
 	}
 
+	/**
+	 * The serrated bottom edge as a polyline from (packW, packH) to (0, packH): the
+	 * top edge rotated 180° about the pack centre — mirrored vertically (y → packH−y)
+	 * and reversed — so the teeth point down and the notches sit at the same columns
+	 * as the top. Appended after the top edge it closes the pack silhouette; the
+	 * footer band reuses it for its own bottom edge.
+	 */
+	private bottomEdge(topEdge: number[]): number[] {
+		const h = this.packH;
+		const out: number[] = [];
+		for (let i = topEdge.length - 2; i >= 0; i -= 2) {
+			out.push(topEdge[i], h - topEdge[i + 1]);
+		}
+		return out;
+	}
+
 	private buildComposition(cover: Texture | null): Container {
 		const root = new Container();
 		const w = this.packW;
@@ -287,12 +318,12 @@ export class PackSprite extends Container {
 
 		const { points: topEdge, depth: triHeight } = this.serration();
 
-		// White backing behind the art + footer. It starts below the serrated top
-		// strip (at the notch depth) so the notches between the top teeth stay
-		// transparent rather than showing white — the teeth themselves are painted by
-		// the header band below.
+		// White backing behind the poster art. It spans only the art area (from the
+		// notch depth of the serrated top down to the top of the footer band) so the
+		// transparent notches at both the top and bottom teeth stay transparent rather
+		// than showing white — the teeth themselves are painted by the coloured bands.
 		const bg = new Graphics();
-		bg.rect(0, triHeight, w, h - triHeight);
+		bg.rect(0, triHeight, w, footerY - triHeight);
 		bg.fill({ color: 0xffffff, alpha: 1 });
 		root.addChild(bg);
 
@@ -307,20 +338,21 @@ export class PackSprite extends Container {
 			root.addChild(sprite);
 		}
 
-		// Header + footer strips, outside the image — no text on them. The footer is
-		// plain white; the header is painted the cover's dominant top-row colour so
-		// the frame's top edge picks up the poster. The header's top edge is the
+		// Header + footer bands, outside the image — no text on the footer. Each is
+		// painted the cover's dominant colour on its side (top row → header, bottom row
+		// → footer) so the frame's edges pick up the poster. Both outer edges are the
 		// serrated polyline: the teeth are the band colour and the notches between them
-		// are transparent (nothing is drawn there), so the top reads as a real serrated
-		// silhouette instead of black triangles painted over a rectangle.
+		// are transparent (nothing is drawn there), so top and bottom read as real
+		// serrated silhouettes rather than triangles painted over a rectangle. The
+		// footer edge is the top edge rotated 180°, so its teeth point down.
 		const header = new Graphics();
 		header.poly([...topEdge, w, headerH, 0, headerH]);
 		header.fill({ color: this.topColor, alpha: 1 });
 		root.addChild(header);
 
 		const footer = new Graphics();
-		footer.rect(0, footerY, w, footerH);
-		footer.fill(STRIP_FILL);
+		footer.poly([0, footerY, w, footerY, ...this.bottomEdge(topEdge)]);
+		footer.fill({ color: this.bottomColor, alpha: 1 });
 		root.addChild(footer);
 
 		// The place the pack belongs to, contained within the top coloured band, below
