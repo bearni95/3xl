@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onDestroy, onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
 	import { cellScreenY, combatColorHex } from '$utils/mugen/mugen-board';
 	import type {
@@ -37,7 +38,8 @@
 		SpawnColor,
 		type CharacterSpawn
 	} from '$types/character-spawn.type';
-	import { combatStatsFromStat } from '$utils/spawn/stat';
+	import { combatStatsFromStat, normalizeSpawnStat } from '$utils/spawn/stat';
+	import { isSpawnColor } from '$utils/spawn/color';
 	import type { CardModel } from '$utils/card/card-model.type';
 
 	// Filled button styling per combat color (the player's clickable buttons).
@@ -72,6 +74,40 @@
 	$: teamMembers = (activeTeam?.memberIds ?? []).filter((id): id is string => Boolean(id));
 	$: teamReady = teamMembers.length === TEAM_SIZE;
 	$: playable = !!currentUserId && teamReady;
+
+	// --- Challenge mode ---------------------------------------------------------
+	// The map's "Challenge" button links here with a target municipality's seeded
+	// "OG" team serialised in the `og` query param (`characterId:color:stat` triples,
+	// comma-separated) plus its name/id. When a full OG team is present the red (CPU)
+	// side fields it instead of mirroring the player's team; the blue side is still
+	// the player's active team. No `og` param → the classic mirror match.
+	$: ogTeam = parseOgTeam($page.url.searchParams.get('og'), $page.url.searchParams.get('ogLoc'));
+	$: ogName = $page.url.searchParams.get('ogName');
+	$: challengeReady = ogTeam.length === TEAM_SIZE;
+
+	// Turn the serialised OG team into synthetic spawns (ids `og:0…`) the board can
+	// field like any other: they carry a character, colour and stat but are never
+	// persisted. Their location id resolves to the challenged town so the cards show
+	// its name; the empty createdAt omits the spawn year (the OG team is timeless).
+	function parseOgTeam(param: string | null, locationId: string | null): CharacterSpawn[] {
+		if (!param) return [];
+		const out: CharacterSpawn[] = [];
+		param.split(',').forEach((chunk, index) => {
+			const [characterId, color, stat] = chunk.split(':');
+			if (!characterId) return;
+			out.push({
+				id: `og:${index}`,
+				userId: 'og',
+				characterId,
+				showId: null,
+				locationId: locationId || ULTRAMAR_ID,
+				color: isSpawnColor(color) ? color : SpawnColor.Red,
+				stat: normalizeSpawnStat(stat),
+				createdAt: ''
+			});
+		});
+		return out;
+	}
 
 	// character id → rarity tier from Supabase `character_templates`, character id →
 	// its related show names, and geojson feature id → municipality name — the same
@@ -120,11 +156,19 @@
 	// spawn id → the spawn itself. Teams reference spawns (not characters), so each
 	// team slot fights with its own rolled colour and stat — even when two slots hold
 	// the same character claimed twice.
-	$: spawnById = new Map(($spawns as CharacterSpawn[]).map((spawn) => [spawn.id, spawn]));
+	// Every fieldable spawn by id: the player's own claimed spawns plus (in a
+	// challenge) the synthetic OG spawns, so both sides' slots resolve here.
+	$: spawnById = new Map(
+		([...$spawns, ...ogTeam] as CharacterSpawn[]).map((spawn) => [spawn.id, spawn])
+	);
 
-	// Slots 0–2 are the red (CPU) grid, 3–5 the blue (player) grid; the CPU line-up
-	// mirrors the player's active team exactly.
-	$: slots = playable ? [...teamMembers, ...teamMembers] : [];
+	// Slots 0–2 are the red (CPU) grid, 3–5 the blue (player) grid. In a challenge the
+	// red side fields the town's OG team; otherwise the CPU mirrors the player's team.
+	$: slots = playable
+		? challengeReady
+			? [...ogTeam.map((spawn) => spawn.id), ...teamMembers]
+			: [...teamMembers, ...teamMembers]
+		: [];
 
 	// Fixed hexes the two non-centre characters of each side idle on.
 	const extraCells: Record<'error' | 'info', { q: number; r: number }[]> = {
@@ -534,6 +578,12 @@
 		     back to hugging its content from lg up. -->
 		<div class="card w-full min-w-0 bg-base-100 shadow-xl lg:w-auto">
 			<div class="card-body items-center gap-3">
+				{#if challengeReady && ogName}
+					<div class="flex items-center gap-2 text-sm">
+						<span class="badge badge-primary badge-sm font-bold">OG</span>
+						<span class="opacity-70">Challenging <span class="font-semibold">{ogName}</span></span>
+					</div>
+				{/if}
 				<div class="flex w-full min-w-0 flex-col items-center gap-3">
 					{#key boardKey}
 						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />

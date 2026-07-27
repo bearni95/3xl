@@ -361,6 +361,22 @@
 			...combatStatsFromStat(member.stat)
 		})))(characterFaces);
 
+	// Fight this town: hand the board the municipality's seeded OG team as the
+	// opponent (serialised as characterId:color:stat triples) plus its name/id, and
+	// let the board field the player's own active team against it. Deterministic, so
+	// the URL fully reproduces the match — nothing is persisted.
+	function challenge(): void {
+		if (municipalityTeam.length === 0) return;
+		const og = municipalityTeam
+			.map((member) => `${member.characterId}:${member.color}:${member.stat}`)
+			.join(',');
+		const params = new URLSearchParams({ og });
+		const name = municipalityFeature?.properties?.name;
+		if (name) params.set('ogName', String(name));
+		if (openRegion) params.set('ogLoc', openRegion);
+		goto(`/board?${params.toString()}`);
+	}
+
 	// Fetch the active-face portrait for any team character not yet requested, then
 	// reassign the map so the cards re-render with their faces.
 	async function loadFaces(ids: string[]): Promise<void> {
@@ -734,6 +750,9 @@
 					<div class="flex flex-none items-center gap-2">
 						<span class="badge badge-primary badge-sm font-bold">OG</span>
 						<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
+						<button type="button" class="btn btn-primary btn-xs ml-auto" on:click={challenge}>
+							Challenge
+						</button>
 					</div>
 					<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
 						<CardCanvas cards={municipalityTeamCards} columns={TEAM_SIZE} layout="grid" pannable />
