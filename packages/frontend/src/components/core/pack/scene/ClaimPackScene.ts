@@ -434,7 +434,7 @@ export class ClaimPackScene {
 	private async prepareCards(): Promise<void> {
 		if (this.pulls.length === 0) return;
 
-		const { cardW, cardH } = this.computeColumnCardSize(this.pulls.length);
+		const { cardW, cardH } = this.computeRevealCardSize(this.pulls.length);
 		const centerX = this.app.screen.width / 2;
 		const centerY = this.app.screen.height / 2;
 
@@ -467,14 +467,14 @@ export class ClaimPackScene {
 	private async revealCards(): Promise<void> {
 		if (this.cardSprites.length === 0) return;
 
-		const { cardW, cardH } = this.computeColumnCardSize(this.cardSprites.length);
+		const { cardW, cardH } = this.computeRevealCardSize(this.cardSprites.length);
 		const centerX = this.app.screen.width / 2;
 		const centerY = this.app.screen.height / 2;
 
 		await Promise.all(this.cardSprites.map((sp, i) => this.popIn(sp, i * 35)));
 		if (this.isDestroyed) return;
 
-		const targets = this.computeColumnTargets(centerX, centerY, cardW, cardH);
+		const targets = this.computeRevealTargets(centerX, centerY, cardW, cardH);
 		await Promise.all(
 			this.cardSprites.map((sp, i) =>
 				this.tweenSprite(sp, targets[i], 520, i * 55, easeOutCubic)
@@ -482,31 +482,36 @@ export class ClaimPackScene {
 		);
 	}
 
-	// A full booster's worth of cards, so the column is always sized to fit that many
-	// even when fewer were pulled — the card size never jumps with the pull count and
-	// the tallest possible reveal still fits the viewport.
-	private static readonly COLUMN_CAPACITY = 5;
+	// The reveal fans the cards into a two-column grid.
+	private static readonly REVEAL_COLS = 2;
 
-	private computeColumnCardSize(n: number): { cardW: number; cardH: number } {
+	// The column/row split for a given pull: two columns (one when a single card is
+	// pulled), rows stacking downward from there.
+	private revealDims(n: number): { cols: number; rows: number } {
+		const cols = Math.min(ClaimPackScene.REVEAL_COLS, Math.max(1, n));
+		return { cols, rows: Math.ceil(n / cols) };
+	}
+
+	private computeRevealCardSize(n: number): { cardW: number; cardH: number } {
+		const { cols, rows } = this.revealDims(n);
 		const gap = 12;
 		const availW = this.app.screen.width * 0.92;
 		const availH = this.app.screen.height * 0.96;
-		// Size each card so a full booster ({@link COLUMN_CAPACITY}) fits the height in a
-		// single column; a smaller pull just leaves the column short, not the cards big.
-		const rows = Math.max(n, ClaimPackScene.COLUMN_CAPACITY);
+		// Each card fills its column's full width; its height then follows the card
+		// aspect. If that many rows would overrun the viewport, it's capped by height so
+		// the whole reveal still fits. The full footprint (content + outset border on both
+		// sides) must fit the slot — the border depends on the width, so converge on it.
+		const colW = (availW - gap * (cols - 1)) / cols;
 		const slotH = (availH - gap * (rows - 1)) / rows;
-		// Each card's full footprint (content plus the outset border on both sides) must
-		// fit its slot, so it's height-bound in the tall column but never wider than the
-		// panel. The border width depends on the card width, so converge with a few passes.
-		let cardW = Math.max(1, Math.min(availW, slotH * CARD_ASPECT));
+		let cardW = Math.max(1, Math.min(colW, slotH * CARD_ASPECT));
 		for (let k = 0; k < 4; k++) {
 			const border = cardBorderWidth(cardW);
-			cardW = Math.max(1, Math.min(availW - 2 * border, (slotH - 2 * border) * CARD_ASPECT));
+			cardW = Math.max(1, Math.min(colW - 2 * border, (slotH - 2 * border) * CARD_ASPECT));
 		}
 		return { cardW, cardH: cardW / CARD_ASPECT };
 	}
 
-	private computeColumnTargets(
+	private computeRevealTargets(
 		centerX: number,
 		centerY: number,
 		cardW: number,
@@ -515,18 +520,27 @@ export class ClaimPackScene {
 		const n = this.cardSprites.length;
 		if (n === 0) return [];
 
+		const { cols, rows } = this.revealDims(n);
 		const gap = 12;
-		// Stack the pulled cards in one centred column, spacing each centre by its full
-		// footprint (content + outset border on both sides) plus the gap.
+		// Space the card centres by each card's full footprint (content + outset border on
+		// both sides) plus the gap, so neighbouring borders never overlap. A short final
+		// row is centred, not left-packed.
 		const border = cardBorderWidth(cardW);
+		const footW = cardW + 2 * border;
 		const footH = cardH + 2 * border;
+		const cellW = footW + gap;
 		const cellH = footH + gap;
-		const totalH = n * footH + (n - 1) * gap;
-		const firstY = centerY - totalH / 2 + footH / 2;
+		const totalH = rows * footH + (rows - 1) * gap;
+		const firstRowY = centerY - totalH / 2 + footH / 2;
 
 		const targets: Array<{ x: number; y: number; rotation: number; scale: number }> = [];
 		for (let i = 0; i < n; i++) {
-			targets.push({ x: centerX, y: firstY + i * cellH, rotation: 0, scale: 1 });
+			const row = Math.floor(i / cols);
+			const col = i % cols;
+			const cardsInRow = Math.min(cols, n - row * cols);
+			const rowWidth = cardsInRow * footW + (cardsInRow - 1) * gap;
+			const rowStartX = centerX - rowWidth / 2 + footW / 2;
+			targets.push({ x: rowStartX + col * cellW, y: firstRowY + row * cellH, rotation: 0, scale: 1 });
 		}
 		return targets;
 	}
