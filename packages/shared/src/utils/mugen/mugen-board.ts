@@ -647,19 +647,6 @@ export class MugenBoard {
 			graphics.poly(pts);
 			graphics.fill({ color, alpha: 0.08 });
 			graphics.stroke({ width: 2, color, alpha: 0.9 });
-
-			// Label the cell with its axial coordinates so it's easy to refer to.
-			const mid = this.project(centre.x, centre.y);
-			const label = new Text({
-				text: `${q},${r}`,
-				style: { fontFamily: 'monospace', fontSize: 14, fill: 0xffffff, align: 'center' }
-			});
-			label.anchor.set(0.5);
-			label.position.set(mid.x, mid.y);
-			label.alpha = 0.75;
-			// Behind the characters (zIndex ~ feet-y) but above the grid graphics.
-			label.zIndex = 1;
-			this.app.stage.addChild(label);
 		}
 		this.app.stage.addChild(graphics);
 	}
@@ -1318,7 +1305,7 @@ export class MugenBoard {
 	/**
 	 * Tint a cell in one side's colour while an occupant holds it, or restore the
 	 * base board colour with null. The overlay redraws the hex's fill and outline
-	 * above the base grid but beneath the coordinate labels and the characters.
+	 * above the base grid but beneath the characters.
 	 */
 	paintCell(cell: Hex, side: 'red' | 'blue' | null): void {
 		if (!this.app) return;
@@ -1343,7 +1330,7 @@ export class MugenBoard {
 		// Stronger fill than the base grid's 0.08 so the takeover reads clearly.
 		graphics.fill({ color, alpha: 0.35 });
 		graphics.stroke({ width: 2, color, alpha: 1 });
-		graphics.zIndex = 0.5; // above the base grid (0), below labels (1) and actors
+		graphics.zIndex = 0.5; // above the base grid (0), below the actors
 		this.app.stage.addChild(graphics);
 		this.cellPaint.set(k, graphics);
 	}
