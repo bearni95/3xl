@@ -40,6 +40,8 @@
 		"exp": "Experience",
 		"expProgress": "{into} / {span} XP",
 		"expMax": "{exp} XP (max)",
+		"claimsToday": "Booster packs today",
+		"claimsRemaining": "{remaining} / {level} left",
 		"signOut": "Sign out",
 		"notConfigured": "Sign-in is unavailable: Supabase is not configured. Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY.",
 		"username": {

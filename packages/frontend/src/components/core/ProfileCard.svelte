@@ -3,6 +3,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import type { Profile } from '$types/profile.type';
+	import type { BoostersStatus } from '$services/spawn.service';
 	import { levelProgress } from '$utils/progression/level';
 
 	// Props
@@ -13,6 +14,9 @@
 	// used by the always-visible pinned map panel, which is a glance card, not the
 	// account-management dropdown.
 	export let compact: boolean = false;
+	// The player's daily booster allowance, shown as a "N / M left" glance row when
+	// provided (the pinned map panel loads it). Null hides the row entirely.
+	export let boosters: BoostersStatus | null = null;
 
 	const dispatch = createEventDispatcher<{ signout: void; editusername: void }>();
 
@@ -91,6 +95,21 @@
 			aria-label={$_('profile.exp')}
 		></progress>
 	</div>
+
+	{#if boosters}
+		<div class="flex items-center justify-between text-sm">
+			<span class="text-base-content/60">{$_('profile.claimsToday')}</span>
+			<span
+				class={classNames('font-mono font-semibold tabular-nums', {
+					'text-warning': boosters.remaining === 0
+				})}
+			>
+				{$_('profile.claimsRemaining', {
+					values: { remaining: boosters.remaining, level: boosters.level }
+				})}
+			</span>
+		</div>
+	{/if}
 
 	<div class="divider my-0"></div>
 
