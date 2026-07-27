@@ -54,7 +54,7 @@ import {
 } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
 import { strikeMultiplier, throwableColors } from '$utils/color/compare';
-import { resolveAttack, rollDie } from '$utils/dice/roll';
+import { attackHitChance, resolveAttack, rollDie } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
 export type FighterSide = 'error' | 'info';
@@ -122,10 +122,38 @@ export interface Fighter extends FighterSeed {
 	actionIndex: number | null;
 }
 
+/**
+ * The duel a fighter is lined up for, as the page previews it before any dice are
+ * thrown. For a fighter that has yet to commit a colour this is the *next-up* duel —
+ * the first cell still free — so whichever colour button is clicked, that is who it
+ * meets; for one that has already committed it is the duel it is locked into.
+ */
+export interface MatchupPreview {
+	/** Which of the round's three duels this is (0-based). */
+	duelIndex: number;
+	/** The fighter waiting on the other side of it. */
+	opponentId: string;
+	opponentName: string;
+	/**
+	 * The odds this fighter's attack lands at least one hit on that opponent — its
+	 * ATK d10 against the opponent's DEF. Colour-independent: the thrown colour only
+	 * scales hits into damage, it never decides whether the dice connect.
+	 */
+	hitChance: number;
+}
+
+/** A fighter as the page renders it: its live combat state plus the derived
+ * {@link MatchupPreview} its colour buttons read from. */
+export interface FighterView extends Fighter {
+	/** Who this fighter is lined up to meet, or null when it has no duel this round
+	 * (knocked out, or an unchallenged cell-holder with no live rival opposite). */
+	preview: MatchupPreview | null;
+}
+
 export type CombatPhase = 'selecting' | 'fighting' | 'done';
 
 export interface CombatState {
-	fighters: Fighter[];
+	fighters: FighterView[];
 	phase: CombatPhase;
 	/** Short human-readable line describing what's happening. */
 	status: string;
@@ -138,6 +166,11 @@ const pause = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 /** 'purple' → 'Purple', for status lines. */
 const colorLabel = (color: CombatColor | null): string =>
 	color ? color.charAt(0).toUpperCase() + color.slice(1) : '—';
+
+/** Sort fighters into action order — for the player the order colours were
+ * committed in, for the rivals their fixed line-up slot. */
+const byActionOrder = (a: Fighter, b: Fighter): number =>
+	(a.actionIndex ?? 0) - (b.actionIndex ?? 0);
 
 export class CombatController {
 	private board: MugenBoard | null = null;
@@ -217,13 +250,89 @@ export class CombatController {
 	}
 
 	private emit(): void {
+		const previews = this.previews();
 		this.store.set({
 			// Copy so subscribers always see a fresh reference and re-render.
-			fighters: this.fighters.map((fighter) => ({ ...fighter })),
+			fighters: this.fighters.map((fighter) => ({
+				...fighter,
+				preview: previews.get(fighter.id) ?? null
+			})),
 			phase: this.phase,
 			status: this.status,
 			outcome: this.outcome
 		});
+	}
+
+	/**
+	 * Who every fighter is currently lined up to meet, recomputed on each emit so the
+	 * page's colour buttons follow the board: committing a colour fills a duel cell,
+	 * which moves the *next* fighter's preview on to the following rival — and a
+	 * knockout or a claimed cell reshapes the pairings for the round after.
+	 *
+	 * Fighters that have already committed (and cell-holders) get the duel they are
+	 * locked into; every player still free to pick gets the same next-up duel, since
+	 * whichever of them commits next is the one that walks into that cell.
+	 */
+	private previews(): Map<string, MatchupPreview> {
+		const committed = this.players()
+			.filter((f) => !this.heldCell(f) && !f.defeated && f.actionIndex !== null)
+			.sort(byActionOrder);
+		const { duels, next } = this.walkDuels(committed);
+
+		const previews = new Map<string, MatchupPreview>();
+		const record = (fighter: Fighter, duelIndex: number, opponent: Fighter): void => {
+			previews.set(fighter.id, {
+				duelIndex,
+				opponentId: opponent.id,
+				opponentName: opponent.name,
+				hitChance: attackHitChance(fighter.atk, opponent.def)
+			});
+		};
+		for (const [id, duel] of duels) {
+			const fighter = this.fighters.find((f) => f.id === id);
+			if (fighter) record(fighter, duel.duelIndex, duel.opponent);
+		}
+		if (next) {
+			// Every player yet to commit is queued for the same cell — the first one to
+			// pick a colour takes it, so they all preview the same rival.
+			for (const player of this.players()) {
+				if (player.defeated || player.actionIndex !== null || this.heldCell(player)) continue;
+				record(player, next.duelIndex, next.opponent);
+			}
+		}
+		return previews;
+	}
+
+	/**
+	 * Walk the round's three duel cells exactly as {@link runSequence} will, for a given
+	 * queue of player fighters, and report the pairings it produces: `duels` maps each
+	 * participant's id to the duel it lands in, and `next` is the first cell left
+	 * unpaired for want of a player — the cell one more fighter joining the queue would
+	 * take. Pure: it reads the board state but changes nothing.
+	 */
+	private walkDuels(queue: Fighter[]): {
+		duels: Map<string, { duelIndex: number; opponent: Fighter }>;
+		next: { duelIndex: number; opponent: Fighter } | null;
+	} {
+		const pending = [...queue];
+		const rivalSlots = this.rivals();
+		const duels = new Map<string, { duelIndex: number; opponent: Fighter }>();
+		let next: { duelIndex: number; opponent: Fighter } | null = null;
+		for (let i = 0; i < MELEE_MEETING_CELLS.length; i++) {
+			const rival = rivalSlots[i];
+			if (!rival || rival.defeated) continue;
+			const holder = this.cellOwners.get(cellKey(MELEE_MEETING_CELLS[i]));
+			const player = holder?.side === 'info' ? holder : pending[0];
+			if (!player) {
+				// Nobody queued for this cell — this is where the next fighter to commit goes.
+				next ??= { duelIndex: i, opponent: rival };
+				continue;
+			}
+			if (player !== holder) pending.shift();
+			duels.set(player.id, { duelIndex: i, opponent: rival });
+			duels.set(rival.id, { duelIndex: i, opponent: player });
+		}
+		return { duels, next };
 	}
 
 	private setStatus(status: string): void {
@@ -362,10 +471,9 @@ export class CombatController {
 	 * it, and the player waiting in the queue is not spent on it.
 	 */
 	private async runSequence(): Promise<void> {
-		const byOrder = (a: Fighter, b: Fighter) => (a.actionIndex ?? 0) - (b.actionIndex ?? 0);
 		const playersQueue = this.players()
 			.filter((f) => !this.heldCell(f) && !f.defeated)
-			.sort(byOrder);
+			.sort(byActionOrder);
 		const rivalSlots = this.rivals();
 		for (let i = 0; i < MELEE_MEETING_CELLS.length; i++) {
 			// The rival is whoever this slot belongs to — no shifting, no substitutes.

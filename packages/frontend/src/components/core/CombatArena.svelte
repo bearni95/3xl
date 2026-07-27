@@ -13,7 +13,7 @@
 	import {
 		CombatController,
 		type CombatState,
-		type Fighter,
+		type FighterView,
 		type FighterSeed
 	} from '$services/combat.controller';
 	import type { CombatReward } from '$types/combat.type';
@@ -506,24 +506,43 @@
 	};
 </script>
 
-{#snippet moveButtons(badge: Badge, combat: Fighter | undefined, areaLocked: boolean)}
+{#snippet moveButtons(badge: Badge, combat: FighterView | undefined, areaLocked: boolean)}
 	<!-- One button per color the character can throw, stacked vertically and full
 	     width: the character's own color first, then the colors it mixes into. The
 	     active button marks the current choice. Only the player picks colours — the
-	     rival fights on its pre-rolled defaults and has no picker. -->
-	<div class="join join-vertical w-full">
-		{#each throwableColors(badge.color) as color (color)}
-			<button
-				type="button"
-				class={classNames('btn join-item btn-sm btn-block capitalize', colorFill[color], {
-					'ring-2 ring-base-content ring-inset': combat?.moveColor === color
-				})}
-				disabled={areaLocked}
-				on:click={() => selectColor(badge.id, color)}
-			>
-				{color}
-			</button>
-		{/each}
+	     rival fights on its pre-rolled defaults and has no picker.
+
+	     Each button also reads the odds this character's attack lands on the rival it
+	     is next up against (see the controller's MatchupPreview). The figure is the
+	     same on all three: the colour thrown scales the hits into damage, it never
+	     decides whether the dice connect — so it moves with the opponent, not the
+	     colour, and updates as each pick fills the next duel cell. -->
+	{@const preview = combat?.preview ?? null}
+	<div class="flex w-full flex-col gap-1">
+		{#if preview}
+			<p class="truncate text-center text-[11px] leading-tight opacity-70">
+				vs <span class="font-semibold">{preview.opponentName}</span>
+			</p>
+		{/if}
+		<div class="join join-vertical w-full">
+			{#each throwableColors(badge.color) as color (color)}
+				<button
+					type="button"
+					class={classNames('btn join-item btn-sm btn-block', colorFill[color], {
+						'ring-2 ring-base-content ring-inset': combat?.moveColor === color
+					})}
+					disabled={areaLocked}
+					on:click={() => selectColor(badge.id, color)}
+				>
+					<span class="capitalize">{color}</span>
+					{#if preview}
+						<span class="ml-auto text-xs font-normal tabular-nums opacity-80">
+							{Math.round(preview.hitChance * 100)}%
+						</span>
+					{/if}
+				</button>
+			{/each}
+		</div>
 	</div>
 {/snippet}
 

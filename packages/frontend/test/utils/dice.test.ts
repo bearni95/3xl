@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { rollN, resolveAttack } from '$utils/dice/roll';
+import { rollN, resolveAttack, dieHitChance, attackHitChance } from '$utils/dice/roll';
 
 /** Feed Math.random a fixed sequence so dice results are deterministic. */
 function stubDice(values: number[]): void {
@@ -44,5 +44,47 @@ describe('dice', () => {
 		expect(resolveAttack(3, 1).hits).toBe(3);
 		stubDice([9, 10, 8]);
 		expect(resolveAttack(3, 11).hits).toBe(0);
+	});
+
+	it('dieHitChance counts the faces from DEF up to 10', () => {
+		// DEF 6 → faces 6..10 hit, five of ten.
+		expect(dieHitChance(6)).toBeCloseTo(0.5);
+		expect(dieHitChance(10)).toBeCloseTo(0.1);
+		expect(dieHitChance(1)).toBeCloseTo(1);
+	});
+
+	it('dieHitChance clamps a DEF outside the die range', () => {
+		expect(dieHitChance(0)).toBe(1);
+		expect(dieHitChance(-4)).toBe(1);
+		expect(dieHitChance(11)).toBe(0);
+		expect(dieHitChance(25)).toBe(0);
+	});
+
+	it('attackHitChance is the complement of every die missing', () => {
+		// 3d10 vs DEF 6: each die hits half the time, so 1 − 0.5³ = 87.5%.
+		expect(attackHitChance(3, 6)).toBeCloseTo(0.875);
+		// One die is just the single-die chance.
+		expect(attackHitChance(1, 8)).toBeCloseTo(0.3);
+		// More dice never hurt.
+		expect(attackHitChance(5, 8)).toBeGreaterThan(attackHitChance(4, 8));
+	});
+
+	it('attackHitChance bottoms out at 0 with no dice or an unreachable DEF', () => {
+		expect(attackHitChance(0, 5)).toBe(0);
+		expect(attackHitChance(-2, 5)).toBe(0);
+		expect(attackHitChance(9, 11)).toBe(0);
+		expect(attackHitChance(9, 1)).toBe(1);
+	});
+
+	it('attackHitChance agrees with rolled attacks over many samples', () => {
+		vi.restoreAllMocks();
+		const atk = 2;
+		const def = 7;
+		const samples = 20000;
+		let landed = 0;
+		for (let i = 0; i < samples; i++) {
+			if (resolveAttack(atk, def).hits > 0) landed += 1;
+		}
+		expect(landed / samples).toBeCloseTo(attackHitChance(atk, def), 1);
 	});
 });

@@ -33,6 +33,27 @@ export function resolveAttack(atk: number, def: number): { rolls: number[]; hits
 }
 
 /**
+ * The odds a single d10 counts as a hit against `def` — the faces from `def` to 10,
+ * out of ten. Returned as a probability in [0, 1]; a `def` at or below 1 can never
+ * be missed, one above 10 can never be met.
+ */
+export function dieHitChance(def: number): number {
+	return Math.min(1, Math.max(0, (11 - def) / 10));
+}
+
+/**
+ * The odds an attack of `atk` ten-sided dice lands **at least one** hit against
+ * `def` — the complement of every die missing, `1 − (1 − p)^atk`. This is what the
+ * arena previews on a fighter's colour buttons: whether the throw connects at all
+ * is decided by these dice, so the thrown colour does not enter into it (it only
+ * scales the hits that land into HP of damage).
+ */
+export function attackHitChance(atk: number, def: number): number {
+	const misses = 1 - dieHitChance(def);
+	return 1 - Math.pow(misses, Math.max(0, atk));
+}
+
+/**
  * Roll a character's fight HP: `hp` ten-sided dice summed together. A character
  * with `hp` = 5 rolls 5d10, yielding a total in the inclusive range [5, 50].
  */
