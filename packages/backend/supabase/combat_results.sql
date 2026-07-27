@@ -34,6 +34,11 @@
 -- tampered client can still claim a flawless win it did not earn. Closing that
 -- gap needs the fight simulated server-side, which is a separate change.
 --
+-- The same RPC also settles TERRITORY, in the same transaction, when the fight
+-- was picked over a town on the map: a win banks one siege win against that
+-- town's sitting team, and enough of them flip the town to the winner. See
+-- municipality_holders.sql for the tables and the rules.
+--
 -- @3xl/backend provisions all of this automatically alongside the other tables
 -- (see ../src/routes/show-templates.ts), so you normally do NOT need to run this
 -- file — it's kept for reference and for provisioning by hand.
@@ -113,16 +118,43 @@ $$;
 -- awarded and the state that produced it, so the endgame screen can explain the
 -- number. security definer: it writes player_profiles and combat_results, neither
 -- of which the anon key may write.
+--
+-- `p_location_id` names the town the fight was picked over on the map (null for a
+-- fight with nothing at stake) and `p_holder_turnover` is the town's turnover as
+-- the browser saw it when the fight started. A win then banks one siege win
+-- against that town's sitting team, and taking the town — turnover + 1 wins —
+-- rewrites municipality_holders with the winner and the team they won with, wipes
+-- every siege on it, and raises the bar for the next challenger. A fight against a
+-- generation that has since been superseded banks nothing and comes back flagged
+-- `town_stale`. See municipality_holders.sql.
+--
 -- (The OUT parameter names deliberately avoid the column names used in the body —
 -- plpgsql would otherwise have to disambiguate them against the query.)
-create or replace function public.award_combat_exp(p_outcome text, p_fighters jsonb)
+
+-- The pre-territory two-argument signature is dropped rather than replaced:
+-- leaving it in place would give PostgREST two overloads to choose between and
+-- make every rpc('award_combat_exp') call ambiguous.
+drop function if exists public.award_combat_exp(text, jsonb);
+
+create or replace function public.award_combat_exp(
+	p_outcome text,
+	p_fighters jsonb,
+	p_location_id text default null,
+	p_holder_turnover int default 0
+)
 returns table (
 	awarded_exp bigint,
 	total_exp bigint,
 	at_level int,
 	span_exp bigint,
 	team_hp_left int,
-	team_hp_max int
+	team_hp_max int,
+	-- Territory, all null when the report named no town.
+	town_captured boolean,
+	town_wins int,
+	town_required int,
+	town_turnover int,
+	town_stale boolean
 )
 language plpgsql security definer set search_path = public as $$
 declare
@@ -137,6 +169,14 @@ declare
 	v_hp_max int;
 	v_award bigint;
 	v_total bigint;
+	v_holder uuid;
+	v_turnover int;
+	v_required int;
+	v_wins int;
+	v_stale boolean := false;
+	v_captured boolean := false;
+	v_team jsonb;
+	v_name text;
 begin
 	if v_uid is null then
 		raise exception 'You must be signed in to earn experience.';
@@ -222,6 +262,104 @@ begin
 		v_total := v_exp;
 	end if;
 
+	-- Territory, when this fight was picked over a town on the map.
+	if p_location_id is not null and p_location_id <> '' then
+		-- Serialise per town, so two challengers finishing at the same moment can't
+		-- both read the same turnover and both take it.
+		perform pg_advisory_xact_lock(hashtextextended('municipality:' || p_location_id, 0));
+
+		select h.user_id, h.turnover into v_holder, v_turnover
+			from public.municipality_holders h where h.location_id = p_location_id;
+		-- No row at all means the town is still on its seeded OG team: turnover 0.
+		v_turnover := coalesce(v_turnover, 0);
+		v_required := greatest(1, v_turnover + 1);
+		-- The browser fought whatever team it had loaded; if the town has flipped
+		-- since, that was not the sitting team and the win buys no ground.
+		v_stale := coalesce(p_holder_turnover, 0) <> v_turnover;
+
+		if p_outcome = 'win' and not v_stale and v_holder is distinct from v_uid then
+			-- Bank the win. A stored siege from an older generation is not added to —
+			-- it restarts at this win, since it was earned against a team that no
+			-- longer sits there.
+			insert into public.municipality_sieges (location_id, user_id, wins, turnover)
+				values (p_location_id, v_uid, 1, v_turnover)
+				on conflict (location_id, user_id) do update
+					set wins = case
+							when municipality_sieges.turnover = excluded.turnover
+								then municipality_sieges.wins + 1
+							else 1
+						end,
+						turnover = excluded.turnover,
+						updated_at = now()
+				returning wins into v_wins;
+
+			if v_wins >= v_required then
+				-- The town falls. Freeze the team that won it, in fielded order, copying
+				-- each spawn's attributes rather than referencing the (RLS-scoped) row.
+				select jsonb_agg(
+						jsonb_build_object(
+							'character_id', cs.character_id,
+							'color', cs.color,
+							'stat', cs.stat
+						) order by f.ord
+					)
+					into v_team
+					-- Ordinality over the raw elements (a scalar-returning SRF) rather than
+					-- over jsonb_to_recordset, whose column-definition list does not combine
+					-- with WITH ORDINALITY.
+					from (
+						select (e.elem->>'spawn_id')::uuid as spawn_id, e.ord
+						from jsonb_array_elements(p_fighters) with ordinality as e(elem, ord)
+					) f
+					join public.character_spawns cs on cs.id = f.spawn_id and cs.user_id = v_uid;
+
+				-- Name the new occupant from their account, so the map never has to read
+				-- auth.users from the browser.
+				select coalesce(
+						nullif(btrim(coalesce(
+							u.raw_user_meta_data->>'full_name',
+							u.raw_user_meta_data->>'name',
+							''
+						)), ''),
+						split_part(coalesce(u.email, ''), '@', 1)
+					)
+					into v_name
+					from auth.users u where u.id = v_uid;
+
+				insert into public.municipality_holders
+					(location_id, user_id, holder_name, team, turnover, taken_at)
+					values (p_location_id, v_uid, v_name, coalesce(v_team, '[]'::jsonb),
+						v_turnover + 1, now())
+					on conflict (location_id) do update
+						set user_id = excluded.user_id,
+							holder_name = excluded.holder_name,
+							team = excluded.team,
+							turnover = excluded.turnover,
+							taken_at = excluded.taken_at;
+
+				-- A new generation voids every siege on the town, the winner's included.
+				delete from public.municipality_sieges where location_id = p_location_id;
+				v_captured := true;
+				v_turnover := v_turnover + 1;
+				v_wins := v_required;
+			end if;
+		else
+			-- Nothing banked (a loss, a draw, a stale fight, or the player's own town):
+			-- report the progress they already had against this generation.
+			select s.wins into v_wins from public.municipality_sieges s
+				where s.location_id = p_location_id
+					and s.user_id = v_uid
+					and s.turnover = v_turnover;
+			v_wins := coalesce(v_wins, 0);
+		end if;
+
+		town_captured := v_captured;
+		town_wins := v_wins;
+		town_required := v_required;
+		town_turnover := v_turnover;
+		town_stale := v_stale;
+	end if;
+
 	awarded_exp := v_award;
 	total_exp := coalesce(v_total, v_exp);
 	at_level := v_level;
@@ -232,4 +370,4 @@ begin
 end;
 $$;
 
-grant execute on function public.award_combat_exp(text, jsonb) to authenticated;
+grant execute on function public.award_combat_exp(text, jsonb, text, int) to authenticated;

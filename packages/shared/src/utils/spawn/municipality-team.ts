@@ -110,11 +110,14 @@ export function buildMunicipalityTeam(
 }
 
 /**
- * Turn a rolled OG team into synthetic {@link CharacterSpawn}s the board can field
- * like any claimed team — carrying each member's character, colour and stat, but
- * never persisted. Ids are `og:0…`; the location id ties the cards to the town so
- * they show its name, and the empty `createdAt` omits the spawn year (the OG team
- * is timeless).
+ * Turn a town's sitting team into synthetic {@link CharacterSpawn}s the board can
+ * field like any claimed team — carrying each member's character, colour and stat,
+ * but never persisted. Takes either team the map may be showing: the seeded OG roll
+ * above, or the frozen team of whoever has since taken the town (see
+ * `types/territory.type`), since both are just members with a character, a colour
+ * and a stat. Ids are `og:0…`; the location id ties the cards to the town so they
+ * show its name, and the empty `createdAt` omits the spawn year (a town's garrison
+ * is timeless — it is not a claim of the player's).
  */
 export function ogTeamSpawns(team: readonly TeamMemberRoll[], locationId: string): CharacterSpawn[] {
 	return team.map((member, index) => ({

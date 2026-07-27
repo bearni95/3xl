@@ -10,6 +10,13 @@
  * range that spawn's stat could possibly have rolled, then computes the award
  * itself from the player's *stored* experience. The browser never states an
  * amount.
+ *
+ * The same RPC also settles **territory** in the same transaction: a fight picked
+ * on the map names the town it was fought over, and a win banks one siege win
+ * against that town's sitting team — flipping the town to the winner once they
+ * have banked enough of them (see `territory.type`). Here too the browser only
+ * says what it fought; the win count, the bar to clear and the occupancy change
+ * are all the server's.
  */
 
 /** How a fight ended, from the player's (blue / `info`) point of view. */
@@ -38,6 +45,44 @@ export interface CombatReport {
 	outcome: CombatOutcome;
 	/** The player's side only — the rivals earn nothing and are not reported. */
 	fighters: CombatFighterReport[];
+	/**
+	 * The municipality this fight was picked over (a geojson feature id), or null
+	 * for a fight with no territory at stake. A win here banks a siege win against
+	 * that town's sitting team.
+	 */
+	locationId?: string | null;
+	/**
+	 * The town's turnover count as the browser saw it when the fight started — 0
+	 * for a town still on its seeded OG team. The RPC credits the win only if the
+	 * town is still on that same generation: if somebody else took it while this
+	 * fight was playing out, the team that was beaten is no longer the sitting one,
+	 * so the win buys no ground (see {@link TerritoryResult.stale}).
+	 */
+	holderTurnover?: number;
+}
+
+/**
+ * How a reported fight moved the needle on the town it was fought over. Present
+ * on the reward only when the report named a location; every figure in it is the
+ * server's, read back after the bookkeeping.
+ */
+export interface TerritoryResult {
+	/** The town the fight was over. */
+	locationId: string;
+	/** True when this fight took the town — the player is now its holder. */
+	captured: boolean;
+	/** Wins the player has banked against the town's sitting team, this one included. */
+	wins: number;
+	/** Wins needed to take it — one more than the town's turnover at fight time. */
+	required: number;
+	/** The town's turnover count now, after any capture this fight caused. */
+	turnover: number;
+	/**
+	 * True when the town changed hands while the fight was running, so the team
+	 * beaten was no longer the sitting one and nothing was banked. The map should
+	 * reload the town and the player fight the new occupant.
+	 */
+	stale: boolean;
 }
 
 /**
@@ -58,4 +103,7 @@ export interface CombatReward {
 	hpLeft: number;
 	/** Compound HP the team started with, after server-side clamping. */
 	hpMax: number;
+	/** What the fight did to the town it was fought over, or null when no town was
+	 * at stake (a report with no `locationId`, or one the server credited nothing for). */
+	territory: TerritoryResult | null;
 }

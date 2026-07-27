@@ -1,0 +1,142 @@
+/**
+ * Territory: who actually occupies each municipality on the map.
+ *
+ * Every town starts with the deterministic "OG" house team the client rolls from
+ * the town's own seed (see `utils/spawn/municipality-team`) — nothing is stored
+ * for it, every player sees the same one. Once a player beats that team enough
+ * times the town changes hands: a `municipality_holders` row is written naming
+ * them and freezing the team they won with, and from then on *that* team is what
+ * the map shows and what the next challenger fights. The seed is only ever the
+ * fallback for towns nobody has taken yet.
+ *
+ * Taking a town gets harder every time it changes hands. A holder row carries a
+ * {@link MunicipalityHolder.turnover} count — how many times the town has flipped
+ * — and a challenger must win {@link requiredWins} fights against the sitting
+ * team before it falls: once for the untouched OG team, twice for a town that has
+ * been taken once, three times for one taken twice, and so on. Progress towards
+ * that is a {@link MunicipalitySiege} row per (town, challenger), and it is scoped
+ * to the holder generation it was earned against — when the town flips, every
+ * siege on it starts over.
+ *
+ * Both tables are written **only** by the `award_combat_exp` security-definer RPC,
+ * which does the territory bookkeeping in the same transaction as the experience
+ * award. The browser reports which town it fought and which generation it fought;
+ * it never states a win count, a required count or an occupant.
+ */
+
+import { SpawnColor } from './character-spawn.type';
+
+/**
+ * One fighter of an occupying team, frozen as it stood when the town was taken.
+ *
+ * Deliberately a flat copy of the winning spawn's gameplay attributes rather than
+ * a `character_spawns` reference: those rows are RLS-scoped to their owner, so no
+ * other player could read them — and the holder's team has to be visible to
+ * everyone who looks at the town. It also keeps the occupying team fixed at the
+ * strength that won the town, immune to the holder later recycling the cards.
+ */
+export interface HolderTeamMember {
+	/** Character id — resolves into the @3xl/data registry for label + sprite. */
+	characterId: string;
+	/** The colour the winning spawn had rolled. */
+	color: SpawnColor;
+	/** The gameplay stat the winning spawn had rolled (SPAWN_STAT_MIN..MAX). */
+	stat: number;
+}
+
+/** A municipality currently occupied by a player, as everyone sees it. */
+export interface MunicipalityHolder {
+	/** The town, as its geojson feature id (e.g. `ES_08028`). */
+	locationId: string;
+	/** The occupying player's auth user id. */
+	userId: string;
+	/** The occupier's display name, resolved server-side from their account. */
+	holderName: string;
+	/** The team that won the town, in the order it was fielded. */
+	team: HolderTeamMember[];
+	/**
+	 * How many times this town has changed hands. 1 the first time a player takes
+	 * it from the OG team, 2 the next time it flips, and so on — so it is also the
+	 * number of wins the *next* challenger owes (see {@link requiredWins}).
+	 */
+	turnover: number;
+	/** ISO timestamp the town was taken. */
+	takenAt: string;
+}
+
+/**
+ * One challenger's progress against one town's sitting team: the wins they have
+ * banked toward dethroning it. Scoped to {@link turnover} — the holder generation
+ * the wins were earned against — so a town flipping voids every siege on it.
+ */
+export interface MunicipalitySiege {
+	locationId: string;
+	userId: string;
+	/** Wins banked against the current holder. */
+	wins: number;
+	/** The holder generation these wins count against. */
+	turnover: number;
+}
+
+/**
+ * How many wins it takes to dethrone a town whose team has changed hands
+ * `turnover` times. An untouched town (turnover 0, still on its OG team) falls to
+ * a single win; each flip since then adds one more fight the next challenger has
+ * to win, so the sitting leader gets harder to shift the longer the town has been
+ * fought over.
+ */
+export function requiredWins(turnover: number): number {
+	return Math.max(1, Math.trunc(turnover) + 1);
+}
+
+/** How far a challenger has got against one town, and the bar they have to clear. */
+export interface SiegeProgress {
+	/** Wins banked against the town's *current* sitting team. */
+	wins: number;
+	/** Wins it takes to dethrone that team. */
+	required: number;
+	/** The town's turnover — the generation those figures are about. */
+	turnover: number;
+}
+
+/**
+ * Read a player's progress against one town out of the holder and siege sets the
+ * map already has loaded.
+ *
+ * A siege banked against a turnover the town has since moved past counts for
+ * nothing: those wins were earned off a team that no longer sits there. The
+ * server wipes such rows when a town flips, but a client copy loaded before the
+ * flip is discarded here too, rather than shown as progress the player no longer
+ * has.
+ */
+export function siegeProgress(
+	locationId: string,
+	holders: ReadonlyMap<string, MunicipalityHolder>,
+	sieges: ReadonlyMap<string, MunicipalitySiege>
+): SiegeProgress {
+	const turnover = holders.get(locationId)?.turnover ?? 0;
+	const siege = sieges.get(locationId);
+	return {
+		wins: siege && siege.turnover === turnover ? siege.wins : 0,
+		required: requiredWins(turnover),
+		turnover
+	};
+}
+
+/** Raw `municipality_holders` row as the Supabase client returns it. */
+export interface MunicipalityHolderRow {
+	location_id: string;
+	user_id: string;
+	holder_name: string | null;
+	team: unknown;
+	turnover: number | string | null;
+	taken_at: string;
+}
+
+/** Raw `municipality_sieges` row as the Supabase client returns it. */
+export interface MunicipalitySiegeRow {
+	location_id: string;
+	user_id: string;
+	wins: number | string | null;
+	turnover: number | string | null;
+}

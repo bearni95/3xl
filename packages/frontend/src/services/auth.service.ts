@@ -106,6 +106,12 @@ class AuthService {
 	 * whole span scaled by surviving HP, a loss or draw pays nothing. The
 	 * authoritative new total (and the level it implies) is mirrored into the
 	 * profile store. Returns `null` when signed out / unconfigured.
+	 *
+	 * A fight picked over a town on the map also names it (`locationId`) and the
+	 * turnover the browser saw it on, and the same RPC settles the territory in the
+	 * same transaction: a win banks a siege win, enough of them flip the town. What
+	 * that did comes back on {@link CombatReward.territory} — again decided
+	 * server-side, never asserted here.
 	 */
 	async reportCombat(report: CombatReport): Promise<CombatReward | null> {
 		if (!isSupabaseConfigured() || report.fighters.length === 0) return null;
@@ -116,7 +122,9 @@ class AuthService {
 				spawn_id: fighter.spawnId,
 				hp_left: Math.max(0, Math.round(fighter.hpLeft)),
 				max_hp: Math.max(0, Math.round(fighter.maxHp))
-			}))
+			})),
+			p_location_id: report.locationId ?? null,
+			p_holder_turnover: Math.max(0, Math.trunc(report.holderTurnover ?? 0))
 		});
 		if (error) throw error;
 
@@ -128,7 +136,19 @@ class AuthService {
 			level: Number(row.at_level ?? MIN_LEVEL),
 			span: Number(row.span_exp ?? 0),
 			hpLeft: Number(row.team_hp_left ?? 0),
-			hpMax: Number(row.team_hp_max ?? 0)
+			hpMax: Number(row.team_hp_max ?? 0),
+			// The territory columns come back null for a report that named no town.
+			territory:
+				report.locationId && row.town_required != null
+					? {
+							locationId: report.locationId,
+							captured: Boolean(row.town_captured),
+							wins: Number(row.town_wins ?? 0),
+							required: Number(row.town_required ?? 1),
+							turnover: Number(row.town_turnover ?? 0),
+							stale: Boolean(row.town_stale)
+						}
+					: null
 		};
 		this.mergeExp(reward.total);
 		return reward;

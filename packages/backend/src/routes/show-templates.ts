@@ -50,7 +50,11 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // Europe/Madrid) and the "only towns celebrating a festa major today" rule
 // server-side; the client insert policy on `character_spawns` is dropped so the
 // rules cannot be bypassed. It reads `festivities` (provisioned lazily by
-// ./festivities). All DDL is idempotent.
+// ./festivities). `municipality_holders` / `municipality_sieges` (who occupies
+// each town on the map, and how far each challenger has got towards taking it)
+// round it off — world-readable but written only by award_combat_exp, which
+// settles territory in the same transaction as the experience award. All DDL is
+// idempotent.
 let ensured: Promise<void> | null = null;
 /**
  * Provision the whole authoring/gameplay schema (tables, RLS, RPCs) idempotently,
@@ -465,6 +469,69 @@ export function ensureTables(): Promise<void> {
 								- exp_for_level(least(greatest(p_level, 1), 20))
 						end;
 					$level_span_exp$;
+					-- Territory: who actually occupies each municipality on the map.
+					--
+					-- A town with no row here is still on its seeded "OG" team — the one every
+					-- client rolls deterministically from the town's own geometry, which is why
+					-- nothing needs storing for it. The moment a player takes a town a row
+					-- appears and becomes the source of truth: the map shows THIS team and the
+					-- next challenger fights it, with the seed left only as the fallback for
+					-- towns nobody has taken yet.
+					--
+					-- The team is frozen as a flat jsonb copy of the winning spawns' gameplay
+					-- attributes, not as character_spawns references: those rows are RLS-scoped
+					-- to their owner, so no other player could read them, and the occupying team
+					-- has to be visible to everyone looking at the town. It also pins the
+					-- garrison at the strength that won it, whatever the holder does with the
+					-- cards afterwards.
+					--
+					-- turnover counts how many times the town has changed hands (1 the first
+					-- time a player takes it off the OG team). It is also the bar the next
+					-- challenger has to clear: taking a town needs turnover + 1 wins against the
+					-- sitting team, so every flip makes the seat harder to take.
+					--
+					-- World-readable (a select policy of plain true) — the map has to show every
+					-- town's occupant to every visitor, signed in or not. There is no client
+					-- write path at all: award_combat_exp below is the only writer.
+					create table if not exists municipality_holders (
+							location_id text primary key,
+							user_id uuid not null references auth.users (id) on delete cascade,
+							-- Display name resolved server-side when the town was taken, so the map
+							-- can name the occupant without reading auth.users from the browser.
+							holder_name text,
+							-- [{"character_id": text, "color": text, "stat": int}, …] in fielded order.
+							team jsonb not null default '[]'::jsonb,
+							turnover integer not null default 1,
+							taken_at timestamptz not null default now()
+						);
+					alter table municipality_holders enable row level security;
+					drop policy if exists municipality_holders_select_all on municipality_holders;
+					create policy municipality_holders_select_all on municipality_holders
+							for select using (true);
+					-- One challenger's progress against one town's sitting team: the wins banked
+					-- so far towards the turnover + 1 it takes to dethrone them. Scoped to the
+					-- generation they were won against (turnover), so when a town flips every
+					-- siege on it is void — the row is deleted outright, and any that survived
+					-- would be ignored on the turnover mismatch anyway. A player reads only
+					-- their own progress.
+					create table if not exists municipality_sieges (
+							location_id text not null,
+							user_id uuid not null references auth.users (id) on delete cascade,
+							wins integer not null default 0,
+							turnover integer not null default 0,
+							updated_at timestamptz not null default now(),
+							primary key (location_id, user_id)
+						);
+					create index if not exists municipality_sieges_location_idx
+						on municipality_sieges (location_id);
+					alter table municipality_sieges enable row level security;
+					drop policy if exists municipality_sieges_select_own on municipality_sieges;
+					create policy municipality_sieges_select_own on municipality_sieges
+							for select using (auth.uid() = user_id);
+					-- The pre-territory two-argument signature is dropped rather than replaced:
+					-- leaving it in place would give PostgREST two overloads to choose between
+					-- and make every rpc('award_combat_exp') call ambiguous.
+					drop function if exists award_combat_exp(text, jsonb);
 					-- Award experience for one finished fight:
 					--   * a loss or a draw earns nothing;
 					--   * a win earns a share of the player's CURRENT level's full span (see
@@ -481,14 +548,38 @@ export function ensureTables(): Promise<void> {
 					-- [{"spawn_id": uuid, "hp_left": number, "max_hp": number}]. The OUT names
 					-- deliberately avoid the column names used in the body. security definer: it
 					-- writes player_profiles and combat_results, neither client-writable.
-					create or replace function award_combat_exp(p_outcome text, p_fighters jsonb)
+					--
+					-- It also settles TERRITORY in the same transaction, when the fight was
+					-- picked over a town (p_location_id, plus the turnover the browser saw that
+					-- town on):
+					--   * a win banks one siege win against that town's sitting team;
+					--   * once the player has banked turnover + 1 of them the town changes
+					--     hands: they become its holder, the team they won with is frozen as
+					--     the new garrison, turnover goes up (so the NEXT challenger owes one
+					--     more win than they did), and every siege on the town is wiped;
+					--   * if the town changed hands while the fight was running, the team that
+					--     was beaten is no longer the sitting one, so the win banks nothing and
+					--     the result comes back flagged stale.
+					-- Here too the client only says what it fought: the win count, the bar and
+					-- the occupancy change are all decided here.
+					create or replace function award_combat_exp(
+							p_outcome text,
+							p_fighters jsonb,
+							p_location_id text default null,
+							p_holder_turnover int default 0
+						)
 					returns table (
 							awarded_exp bigint,
 							total_exp bigint,
 							at_level int,
 							span_exp bigint,
 							team_hp_left int,
-							team_hp_max int
+							team_hp_max int,
+							town_captured boolean,
+							town_wins int,
+							town_required int,
+							town_turnover int,
+							town_stale boolean
 						)
 					language plpgsql security definer set search_path = public as $award_combat_exp$
 					declare
@@ -503,6 +594,14 @@ export function ensureTables(): Promise<void> {
 							v_hp_max int;
 							v_award bigint;
 							v_total bigint;
+							v_holder uuid;
+							v_turnover int;
+							v_required int;
+							v_wins int;
+							v_stale boolean := false;
+							v_captured boolean := false;
+							v_team jsonb;
+							v_name text;
 					begin
 							if v_uid is null then
 								raise exception 'You must be signed in to earn experience.';
@@ -577,6 +676,96 @@ export function ensureTables(): Promise<void> {
 							else
 								v_total := v_exp;
 							end if;
+							-- Territory, when this fight was picked over a town on the map.
+							if p_location_id is not null and p_location_id <> '' then
+								-- Serialise per town, so two challengers finishing at the same moment
+								-- can't both read the same turnover and both take it.
+								perform pg_advisory_xact_lock(hashtextextended('municipality:' || p_location_id, 0));
+								select h.user_id, h.turnover into v_holder, v_turnover
+									from municipality_holders h where h.location_id = p_location_id;
+								-- No row at all means the town is still on its seeded OG team: turnover 0.
+								v_turnover := coalesce(v_turnover, 0);
+								v_required := greatest(1, v_turnover + 1);
+								-- The browser fought whatever team it had loaded; if the town has
+								-- flipped since, that was not the sitting team and the win buys nothing.
+								v_stale := coalesce(p_holder_turnover, 0) <> v_turnover;
+								if p_outcome = 'win' and not v_stale and v_holder is distinct from v_uid then
+									-- Bank the win. A stored siege from an older generation is not added
+									-- to — it restarts at this win, since it was earned against a team
+									-- that no longer sits there.
+									insert into municipality_sieges (location_id, user_id, wins, turnover)
+										values (p_location_id, v_uid, 1, v_turnover)
+										on conflict (location_id, user_id) do update
+											set wins = case
+													when municipality_sieges.turnover = excluded.turnover
+														then municipality_sieges.wins + 1
+													else 1
+												end,
+												turnover = excluded.turnover,
+												updated_at = now()
+										returning wins into v_wins;
+									if v_wins >= v_required then
+										-- The town falls. Freeze the team that won it, in fielded order,
+										-- copying each spawn's attributes rather than referencing the row.
+										select jsonb_agg(
+												jsonb_build_object(
+													'character_id', cs.character_id,
+													'color', cs.color,
+													'stat', cs.stat
+												) order by f.ord
+											)
+											into v_team
+											-- Ordinality over the raw elements (a scalar-returning SRF) rather
+											-- than over jsonb_to_recordset, whose column-definition list does
+											-- not combine with WITH ORDINALITY.
+											from (
+												select (e.elem->>'spawn_id')::uuid as spawn_id, e.ord
+												from jsonb_array_elements(p_fighters) with ordinality as e(elem, ord)
+											) f
+											join character_spawns cs on cs.id = f.spawn_id and cs.user_id = v_uid;
+										-- Name the new occupant from their account, so the map never has to
+										-- read auth.users from the browser.
+										select coalesce(
+												nullif(btrim(coalesce(
+													u.raw_user_meta_data->>'full_name',
+													u.raw_user_meta_data->>'name',
+													''
+												)), ''),
+												split_part(coalesce(u.email, ''), '@', 1)
+											)
+											into v_name
+											from auth.users u where u.id = v_uid;
+										insert into municipality_holders
+											(location_id, user_id, holder_name, team, turnover, taken_at)
+											values (p_location_id, v_uid, v_name, coalesce(v_team, '[]'::jsonb),
+												v_turnover + 1, now())
+											on conflict (location_id) do update
+												set user_id = excluded.user_id,
+													holder_name = excluded.holder_name,
+													team = excluded.team,
+													turnover = excluded.turnover,
+													taken_at = excluded.taken_at;
+										-- A new generation voids every siege on the town, the winner's included.
+										delete from municipality_sieges where location_id = p_location_id;
+										v_captured := true;
+										v_turnover := v_turnover + 1;
+										v_wins := v_required;
+									end if;
+								else
+									-- Nothing banked (a loss, a draw, a stale fight, or the player's own
+									-- town): report the progress they already had against this generation.
+									select s.wins into v_wins from municipality_sieges s
+										where s.location_id = p_location_id
+											and s.user_id = v_uid
+											and s.turnover = v_turnover;
+									v_wins := coalesce(v_wins, 0);
+								end if;
+								town_captured := v_captured;
+								town_wins := v_wins;
+								town_required := v_required;
+								town_turnover := v_turnover;
+								town_stale := v_stale;
+							end if;
 							awarded_exp := v_award;
 							total_exp := coalesce(v_total, v_exp);
 							at_level := v_level;
@@ -586,7 +775,7 @@ export function ensureTables(): Promise<void> {
 							return next;
 					end;
 					$award_combat_exp$;
-					grant execute on function award_combat_exp(text, jsonb) to authenticated`
+					grant execute on function award_combat_exp(text, jsonb, text, int) to authenticated`
 			)
 			.then(() => undefined)
 			.catch((error: unknown) => {

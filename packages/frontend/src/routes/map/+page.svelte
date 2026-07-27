@@ -14,6 +14,11 @@
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { spawnService } from '$services/spawn.service';
+	import { authService } from '$services/auth.service';
+	import { territoryService } from '$services/territory.service';
+	import { territoryAdapter } from '$adapters/classes/territory.adapter';
+	import type { MunicipalityHolder, MunicipalitySiege } from '$types/territory.type';
+	import type { TerritoryResult } from '$types/combat.type';
 	import { TEAM_SIZE } from '$services/team.service';
 	import { buildMunicipalityTeam, ogTeamSpawns } from '$utils/spawn/municipality-team';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
@@ -137,7 +142,59 @@
 		} catch {
 			showCharacterIds = new Map();
 		}
+
+		// Who actually occupies each town, plus this player's own siege progress.
+		// Loaded last and independently: a town with no holder simply stays on its
+		// seeded OG team, which is exactly what an unconfigured or failing Supabase
+		// leaves every town on.
+		await reloadTerritory();
 	});
+
+	// --- Territory: the towns players have taken off their seeded teams ----------
+	// A municipality with a holder row is occupied by that player's frozen team, and
+	// that is what the panel shows and what a challenger fights; the seeded roll
+	// below is only the fallback for towns nobody has taken yet. Taking a town needs
+	// as many wins as it has changed hands, plus one — so every flip makes the
+	// sitting team harder to shift.
+
+	// Every occupied town, and this player's banked wins, keyed by municipality id.
+	// Reassigned wholesale (never mutated) so the reactive statements below re-run.
+	let holders = new Map<string, MunicipalityHolder>();
+	let sieges = new Map<string, MunicipalitySiege>();
+
+	// The signed-in player, so a town they already hold isn't offered as a target.
+	const profile = authService.profile;
+
+	async function reloadTerritory(): Promise<void> {
+		try {
+			holders = await territoryService.loadHolders();
+		} catch {
+			holders = new Map();
+		}
+		try {
+			sieges = await territoryService.loadSieges();
+		} catch {
+			sieges = new Map();
+		}
+	}
+
+	// A finished fight settled by the server: reload so the panel redraws the town
+	// with whatever it now holds (a capture rewrites its team, turnover and holder).
+	function onTerritory(_result: TerritoryResult): void {
+		void reloadTerritory();
+	}
+
+	// Sieges are RLS-scoped to the reader, so the set loaded before sign-in is
+	// nobody's. Reload whenever the signed-in account changes (including signing out,
+	// which empties it). `$profile` is named directly so the statement tracks it.
+	let siegesForUser: string | null = null;
+	$: if (ready && ($profile ? String($profile.id) : null) !== siegesForUser) {
+		siegesForUser = $profile ? String($profile.id) : null;
+		void territoryService
+			.loadSieges()
+			.then((loaded) => (sieges = loaded))
+			.catch(() => (sieges = new Map()));
+	}
 
 	// Països Catalans polygons, built by @3xl/data's generate:geo from the
 	// Eurostat LAU set (WGS84) and served from that package's public/ at /data.
@@ -318,12 +375,34 @@
 			: null;
 	$: municipalitySeed = municipalityFeature ? coordinateSeed(municipalityFeature.geometry) : null;
 
-	// The town's rolled team: up to TEAM_SIZE distinct characters from its top show's
-	// roster, seeded by the municipality seed and obeying the roster's colour rule.
-	$: municipalityTeam =
+	// The town's seeded team: up to TEAM_SIZE distinct characters from its top show's
+	// roster, rolled from the municipality seed and obeying the roster's colour rule.
+	// The same for every player, and only what a town falls back on until somebody
+	// takes it.
+	$: seededTeam =
 		municipalitySeed != null && openShow
 			? buildMunicipalityTeam(municipalitySeed, showCharacterIds.get(openShow.id) ?? [], TEAM_SIZE)
 			: [];
+
+	// The town's holder, or null while it is still on its seeded team.
+	$: openHolder = openRegion ? (holders.get(openRegion) ?? null) : null;
+
+	// The team on the open town: whoever holds it comes first, with the seed as the
+	// fallback for towns no player has beaten yet. This is what the panel draws and
+	// what a challenger fights.
+	$: municipalityTeam =
+		openHolder && openHolder.team.length > 0
+			? territoryAdapter.toTeamRolls(openHolder.team)
+			: seededTeam;
+
+	// How far this player has got towards taking the open town, and the bar. Wins
+	// banked against a generation that has since been replaced count for nothing.
+	$: siegeProgress = openRegion
+		? territoryService.progressFor(openRegion, holders, sieges)
+		: { wins: 0, required: 1, turnover: 0 };
+
+	// A player can't challenge a town they already hold — there is nothing to take.
+	$: holdsOpenTown = !!openHolder && !!$profile && openHolder.userId === String($profile.id);
 
 	// Kick off face loading for whichever team members are on screen.
 	$: void loadFaces(municipalityTeam.map((member) => member.characterId));
@@ -331,7 +410,8 @@
 	// The team as display CardModels for the shared renderer — the same shape the
 	// claim/roster cards use. `characterFaces` is threaded in so the statement re-runs
 	// as faces resolve. The four combat attributes derive from the rolled stat exactly
-	// as the claim flow's buildPull does.
+	// as the claim flow's buildPull does. A held town's cards carry no show: they are
+	// the occupier's own claimed characters, not a roll from the town's top show.
 	$: municipalityTeamCards = ((faces: Map<string, string | null>): CardModel[] =>
 		municipalityTeam.map((member) => ({
 			label: charactersById.get(member.characterId)?.label ?? member.characterId,
@@ -339,7 +419,7 @@
 			faceUrl: faces.get(member.characterId) ?? null,
 			color: member.color,
 			rarity: null,
-			showName: openShow?.name ?? null,
+			showName: openHolder ? null : (openShow?.name ?? null),
 			locationName: municipalityFeature
 				? restoreCatalanArticle(String(municipalityFeature.properties?.name ?? ''))
 				: null,
@@ -347,12 +427,17 @@
 			...combatStatsFromStat(member.stat)
 		})))(characterFaces);
 
-	// The open combat modal: the challenged town's OG team (as synthetic spawns) and
-	// its name, frozen at click time. Null when the modal is closed. The player's own
-	// active team is the other side, fielded by CombatArena — combat happens right
-	// here over the map, never navigating away.
+	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
+	// plus everything the fight has to be reported against — the town's id, the
+	// turnover generation it was on and who held it — all frozen at click time. Null
+	// when the modal is closed. The player's own active team is the other side,
+	// fielded by CombatArena — combat happens right here over the map, never
+	// navigating away.
 	let fightSpawns: CharacterSpawn[] = [];
 	let fightName: string | null = null;
+	let fightLocationId: string | null = null;
+	let fightTurnover = 0;
+	let fightHolderName: string | null = null;
 	let fightOpen = false;
 
 	// The bottom-left regions panel slides off the left edge while a fight is on, so the
@@ -365,12 +450,19 @@
 		{ 'translate-x-[calc(-100%-1.5rem)]': fightOpen }
 	);
 
-	// Fight this town: snapshot its seeded OG team into synthetic spawns and open the
-	// combat modal. Deterministic and read-only — nothing is persisted.
+	// Fight this town: snapshot whichever team currently sits on it — the holder's if
+	// a player has taken it, the seeded roll otherwise — into synthetic spawns and
+	// open the combat modal. Nothing is written here; the town only changes hands
+	// server-side, once the fight is reported and enough wins have been banked.
 	function challenge(): void {
-		if (municipalityTeam.length === 0) return;
+		if (municipalityTeam.length === 0 || holdsOpenTown) return;
 		fightSpawns = ogTeamSpawns(municipalityTeam, openRegion ?? '');
 		fightName = municipalityFeature ? String(municipalityFeature.properties?.name ?? '') : null;
+		fightLocationId = openRegion;
+		// The generation being fought, so a win landing after somebody else took the
+		// town is recognised as having beaten a team that no longer holds it.
+		fightTurnover = siegeProgress.turnover;
+		fightHolderName = openHolder?.holderName ?? null;
 		fightOpen = true;
 	}
 
@@ -732,19 +824,52 @@
 				{/if}
 
 				{#if municipalityTeamCards.length > 0}
-					<!-- The town's built-in, seed-rolled team — its "OG" (original) roster,
-						the same for every player. Badged so it reads as the house team, not
-						a claimed one. -->
+					<!-- Whoever holds the town. Until a player beats it, that's the town's
+						built-in, seed-rolled "OG" (original) roster — the same for every
+						player, badged so it reads as the house team. Once somebody takes the
+						town it's their frozen winning team instead, and it's their name on
+						the badge. -->
 					<div class="flex flex-none items-center gap-2">
-						<span class="badge badge-primary badge-sm font-bold">OG</span>
-						<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
-						<button type="button" class="btn btn-primary btn-xs ml-auto" on:click={challenge}>
-							Challenge
-						</button>
+						{#if openHolder}
+							<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
+							<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
+								{openHolder.holderName}
+							</span>
+						{:else}
+							<span class="badge badge-primary badge-sm font-bold">OG</span>
+							<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
+						{/if}
+						{#if holdsOpenTown}
+							<span class="badge badge-success badge-sm ml-auto">Yours</span>
+						{:else}
+							<button type="button" class="btn btn-primary btn-xs ml-auto" on:click={challenge}>
+								Challenge
+							</button>
+						{/if}
 					</div>
+					<!-- What it takes to dethrone them: one win for a town nobody has taken,
+						and one more for every time it has since changed hands — so the longer a
+						town has been fought over, the harder its leader is to shift. -->
+					{#if !holdsOpenTown}
+						<p class="flex-none text-xs opacity-60">
+							{#if siegeProgress.required === 1}
+								Beat them once to take the town.
+							{:else}
+								Beat them {siegeProgress.required} times to take the town — it has changed hands
+								{siegeProgress.turnover}
+								{siegeProgress.turnover === 1 ? 'time' : 'times'}.
+							{/if}
+							{#if siegeProgress.wins > 0}
+								<span class="font-semibold opacity-100">
+									{siegeProgress.wins}/{siegeProgress.required} won.
+								</span>
+							{/if}
+						</p>
+					{/if}
 					<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
-						<!-- The OG team is a rival team, so its cards use the board's rival variant
-							(unmirrored art), matching the rival's hand cards on the game canvas. -->
+						<!-- The town's team is a rival team, so its cards use the board's rival
+							variant (unmirrored art), matching the rival's hand cards on the game
+							canvas. -->
 						<CardCanvas
 							cards={municipalityTeamCards}
 							columns={TEAM_SIZE}
@@ -848,17 +973,30 @@
 {/if}
 
 <!-- Challenge → the board's combat arena, hosted as a full-viewport floating panel over
-	the map so a fight against a town's seeded OG team plays out without ever navigating
-	away. This is the only place combat is mounted — there is no standalone combat route
-	any more. A plain fixed panel (not a DaisyUI modal) at z-[1200] — above the map's
-	three corner panels (z-[1100]) — over a 30%-white wash so the map still reads
-	through behind it. CombatArena fields the player's active roster team against the
-	frozen OG spawns and handles all its own gating. Keyed so each new challenge remounts
-	a clean fight. -->
+	the map so a fight for a town plays out without ever navigating away. This is the
+	only place combat is mounted — there is no standalone combat route any more. A plain
+	fixed panel (not a DaisyUI modal) at z-[1200] — above the map's three corner panels
+	(z-[1100]) — over a 30%-white wash so the map still reads through behind it.
+	CombatArena fields the player's active roster team against the town's sitting team
+	(its holder's, or the seeded OG one) and handles all its own gating; the town id and
+	the turnover it was on ride along so a win is reported against the right generation.
+	Keyed so each new challenge remounts a clean fight. -->
 {#if fightOpen}
 	<div class="fixed inset-0 z-[1200] flex items-center justify-center overflow-auto bg-white/30 p-4">
-		{#key fightSpawns.map((spawn) => spawn.characterId).join(',')}
-			<CombatArena ogTeam={fightSpawns} ogName={fightName} closable on:close={() => (fightOpen = false)} />
+		<!-- Keyed on the town and the generation as well as the line-up: challenging a
+			different town whose sitting team happens to field the same characters is
+			still a different fight, and must remount rather than reuse the last one. -->
+		{#key `${fightLocationId}:${fightTurnover}:${fightSpawns.map((spawn) => spawn.characterId).join(',')}`}
+			<CombatArena
+				ogTeam={fightSpawns}
+				ogName={fightName}
+				ogLocationId={fightLocationId}
+				ogTurnover={fightTurnover}
+				ogHolderName={fightHolderName}
+				closable
+				on:territory={(event) => onTerritory(event.detail)}
+				on:close={() => (fightOpen = false)}
+			/>
 		{/key}
 	</div>
 {/if}

@@ -16,7 +16,7 @@
 		type FighterView,
 		type FighterSeed
 	} from '$services/combat.controller';
-	import type { CombatReward } from '$types/combat.type';
+	import type { CombatReward, TerritoryResult } from '$types/combat.type';
 	import {
 		COMPOUND_COLORS,
 		DEFAULT_COLOR,
@@ -42,11 +42,24 @@
 	export let ogTeam: CharacterSpawn[] = [];
 	// The challenged town's name, shown in the header. Null outside a challenge.
 	export let ogName: string | null = null;
+	// The challenged town's geojson feature id, when there is territory at stake.
+	// Reported with the fight so a win banks a siege win against the town's sitting
+	// team; null for a fight that decides nothing on the map.
+	export let ogLocationId: string | null = null;
+	// The town's turnover as the map saw it when the fight opened — 0 for a town
+	// still on its seeded OG team. Reported so the server can tell a win against the
+	// sitting team from one against a team that has since been replaced.
+	export let ogTurnover = 0;
+	// Who occupies the town right now, for the header and the endgame copy. Null
+	// while it is still on its seeded OG team.
+	export let ogHolderName: string | null = null;
 	// When true the arena renders a close control and a "Leave" endgame action, and
 	// dispatches `close` (used when hosted in a modal, e.g. the map page).
 	export let closable = false;
 
-	const dispatch = createEventDispatcher<{ close: void }>();
+	// `territory` fires once the server has settled what a finished fight did to the
+	// town, so the host (the map) can reload the occupancy it is drawing.
+	const dispatch = createEventDispatcher<{ close: void; territory: TerritoryResult }>();
 	function close(): void {
 		dispatch('close');
 	}
@@ -456,8 +469,16 @@
 		rewardPending = true;
 		rewardError = '';
 		try {
-			// The amount is the server's to decide — this only states what happened.
-			reward = await authService.reportCombat(report);
+			// The amount — and whether the town changed hands — are the server's to
+			// decide; this only states what happened and which town it happened over.
+			reward = await authService.reportCombat({
+				...report,
+				locationId: ogLocationId,
+				holderTurnover: ogTurnover
+			});
+			// Let the host redraw the town: a capture rewrites its team and its
+			// turnover, and even a banked win moves the progress it shows.
+			if (reward?.territory) dispatch('territory', reward.territory);
 		} catch (error) {
 			reward = null;
 			rewardError = error instanceof Error ? error.message : String(error);
@@ -579,9 +600,14 @@
 	{#if (challengeReady && ogName) || closable}
 		<div class="flex w-full items-center gap-2">
 			{#if challengeReady && ogName}
-				<span class="badge badge-primary badge-sm font-bold">OG</span>
+				<!-- A town still on its seeded team is badged OG; one a player has taken
+				     names its occupant instead, since that is whose team is being fought. -->
+				<span class="badge badge-primary badge-sm font-bold">{ogHolderName ? 'HOLD' : 'OG'}</span>
 				<span class="text-sm opacity-70">
 					Challenging <span class="font-semibold">{ogName}</span>
+					{#if ogHolderName}
+						— held by <span class="font-semibold">{ogHolderName}</span>
+					{/if}
 				</span>
 			{/if}
 			{#if closable}
@@ -695,6 +721,37 @@
 				{:else}
 					<p class="text-sm opacity-60">No experience — only winning pays out.</p>
 				{/if}
+			{/if}
+			<!-- What the fight did to the town. Taking one needs as many wins as the town
+			     has changed hands, plus one — so a town nobody has taken falls to a single
+			     win and every flip since makes the sitting team harder to shift. -->
+			{#if reward?.territory}
+				{@const town = reward.territory}
+				<div class="mt-3 border-t border-base-300 pt-3">
+					{#if town.stale}
+						<p class="text-warning text-sm">
+							This town changed hands while you were fighting — that team no longer holds it, so
+							the win banked nothing. Challenge the new occupant.
+						</p>
+					{:else if town.captured}
+						<p class="text-success text-lg font-bold">Town taken!</p>
+						<p class="text-xs opacity-60">
+							{ogName ? `${ogName} is yours` : 'The town is yours'} — your team holds it now. The
+							next challenger will need {town.turnover + 1} wins to take it off you.
+						</p>
+					{:else if town.wins > 0}
+						<p class="text-sm font-semibold">{town.wins} of {town.required} wins</p>
+						<p class="text-xs opacity-60">
+							Beat them {town.required - town.wins} more time{town.required - town.wins === 1
+								? ''
+								: 's'} to take the town.
+						</p>
+					{:else}
+						<p class="text-xs opacity-60">
+							No ground gained — only wins count towards taking the town ({town.required} needed).
+						</p>
+					{/if}
+				</div>
 			{/if}
 			<div class="modal-action justify-center">
 				<button type="button" class="btn btn-primary" on:click={playAgain}>Play again</button>
