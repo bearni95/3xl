@@ -1,5 +1,6 @@
 import { Application, Assets, Graphics, Sprite, Texture } from 'pixi.js';
 import type { Manifest } from './mugen-player';
+import { captureGlContextDisposer } from '../pixi/release-context';
 
 /** One loaded idle frame with its pre-computed anchor fractions and source size. */
 interface LoadedFrame {
@@ -143,7 +144,11 @@ export class MugenLineup {
 	/** Tear everything down. Safe to call more than once. */
 	destroy(): void {
 		if (this.app) {
+			// Free the WebGL context immediately — this lineup is remounted on every
+			// team switch, so leaked contexts would pile up and evict a live canvas.
+			const disposeContext = captureGlContextDisposer(this.app);
 			this.app.destroy(true, { children: true });
+			disposeContext();
 			this.app = null;
 		}
 		this.members = [];

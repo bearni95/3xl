@@ -16,14 +16,20 @@
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import { responsiveGridColumns } from '$components/core/card/CardScene';
-	import type { CardModel } from '$components/core/card/card-model.type';
+	import type { CardModel } from '$utils/card/card-model.type';
 	import TeamPanel from '$components/core/TeamPanel.svelte';
+	import localStorageWritableStore from '$utils/localStorageWritableStore';
 
 	// Bounds for the grid-column slider. It defaults to the responsive value the
 	// old DOM grid used (1/2/3 by viewport), which the player can then override.
 	const MIN_COLUMNS = 1;
 	const MAX_COLUMNS = 6;
-	let columns = browser ? responsiveGridColumns(window.innerWidth) : 3;
+	// Persisted as a player preference: reloads from localStorage on refresh, else
+	// falls back to the responsive default. The store auto-writes on every change.
+	const columns = localStorageWritableStore<number>(
+		'roster:columns',
+		browser ? responsiveGridColumns(window.innerWidth) : 3
+	);
 
 	// --- Card filters (the header toolbar) ---
 	// Sentinel every "no filter" dropdown uses, so an unset filter is distinct from
@@ -447,10 +453,10 @@
 							min={MIN_COLUMNS}
 							max={MAX_COLUMNS}
 							class="range range-primary range-xs w-40"
-							bind:value={columns}
+							bind:value={$columns}
 							aria-label="Grid columns"
 						/>
-						<span class="w-4 text-right tabular-nums opacity-70">{columns}</span>
+						<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
 					</label>
 				</div>
 				<!-- The roster is drawn on the shared card canvas — the same renderer the
@@ -461,7 +467,13 @@
 				<div
 					class="relative h-[70vh] min-h-[32rem] overflow-hidden rounded-box bg-base-100 shadow-md"
 				>
-					<CardCanvas cards={cardModels} {columns} layout="grid" pannable onCardTap={handleCardTap} />
+					<CardCanvas
+						cards={cardModels}
+						columns={$columns}
+						layout="grid"
+						pannable
+						onCardTap={handleCardTap}
+					/>
 					{#if filteredSpawns.length === 0}
 						<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
 							<p class="text-sm opacity-60">No characters match these filters.</p>

@@ -24,8 +24,9 @@
  */
 
 import { Application, Container } from 'pixi.js';
-import { CardSprite } from './CardSprite';
-import type { CardModel } from './card-model.type';
+import { captureGlContextDisposer } from '$utils/pixi/release-context';
+import { CardSprite } from '$utils/card/CardSprite';
+import type { CardModel } from '$utils/card/card-model.type';
 
 const CARD_ASPECT = 2 / 3; // portrait trading card (width / height)
 const GRID_GAP = 12; // px between cards in a fit-layout grid
@@ -145,8 +146,14 @@ export class CardScene {
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 		this.detachNavigation();
+		this.app.canvas?.removeEventListener('webglcontextlost', this.onContextLost);
+		this.app.canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
 		this.cardSprites = [];
+		// Free the WebGL context immediately so navigating away doesn't leave an
+		// orphaned context that later evicts a live canvas (see the helper's note).
+		const disposeContext = captureGlContextDisposer(this.app);
 		this.app.destroy(true, { children: true, texture: false });
+		disposeContext();
 	}
 
 	private async init(): Promise<void> {
@@ -168,12 +175,31 @@ export class CardScene {
 		this.app.stage.addChild(this.cardLayer);
 		this.ready = true;
 		if (this.pannable) this.attachNavigation();
+		// If this canvas's GL context is ever lost (e.g. the browser evicts it under
+		// context pressure), stop rendering so the idle ticker doesn't throw every
+		// frame, then rebuild once it's restored.
+		this.app.canvas.addEventListener('webglcontextlost', this.onContextLost);
+		this.app.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
 
 		this.build(width, height);
 
 		this.resizeObserver = new ResizeObserver(() => this.handleResize());
 		this.resizeObserver.observe(this.host);
 	}
+
+	private onContextLost = (event: Event): void => {
+		// preventDefault marks the context as restorable; without it the browser
+		// won't fire `webglcontextrestored`.
+		event.preventDefault();
+		this.app.ticker?.stop();
+	};
+
+	private onContextRestored = (): void => {
+		if (this.isDestroyed) return;
+		this.app.ticker?.start();
+		const { width, height } = this.measure();
+		this.build(width, height);
+	};
 
 	private measure(): { width: number; height: number } {
 		const rect = this.host.getBoundingClientRect();
