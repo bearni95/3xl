@@ -12,14 +12,16 @@
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
+	import CombatArena from '$components/core/CombatArena.svelte';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { spawnService } from '$services/spawn.service';
 	import { TEAM_SIZE } from '$services/team.service';
-	import { buildMunicipalityTeam } from '$utils/spawn/municipality-team';
+	import { buildMunicipalityTeam, ogTeamSpawns } from '$utils/spawn/municipality-team';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
 	import { combatStatsFromStat } from '$utils/spawn/stat';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import type { CardModel } from '$utils/card/card-model.type';
+	import type { CharacterSpawn } from '$types/character-spawn.type';
 	import {
 		buildRegionTree,
 		buildFillIndex,
@@ -361,20 +363,21 @@
 			...combatStatsFromStat(member.stat)
 		})))(characterFaces);
 
-	// Fight this town: hand the board the municipality's seeded OG team as the
-	// opponent (serialised as characterId:color:stat triples) plus its name/id, and
-	// let the board field the player's own active team against it. Deterministic, so
-	// the URL fully reproduces the match — nothing is persisted.
+	// The open combat modal: the challenged town's OG team (as synthetic spawns) and
+	// its name, frozen at click time. Null when the modal is closed. The player's own
+	// active team is the other side, fielded by CombatArena — combat happens right
+	// here over the map, never navigating away.
+	let fightSpawns: CharacterSpawn[] = [];
+	let fightName: string | null = null;
+	let fightOpen = false;
+
+	// Fight this town: snapshot its seeded OG team into synthetic spawns and open the
+	// combat modal. Deterministic and read-only — nothing is persisted.
 	function challenge(): void {
 		if (municipalityTeam.length === 0) return;
-		const og = municipalityTeam
-			.map((member) => `${member.characterId}:${member.color}:${member.stat}`)
-			.join(',');
-		const params = new URLSearchParams({ og });
-		const name = municipalityFeature?.properties?.name;
-		if (name) params.set('ogName', String(name));
-		if (openRegion) params.set('ogLoc', openRegion);
-		goto(`/board?${params.toString()}`);
+		fightSpawns = ogTeamSpawns(municipalityTeam, openRegion ?? '');
+		fightName = municipalityFeature ? String(municipalityFeature.properties?.name ?? '') : null;
+		fightOpen = true;
 	}
 
 	// Fetch the active-face portrait for any team character not yet requested, then
@@ -868,4 +871,19 @@
 			{/if}
 		</div>
 	</aside>
+{/if}
+
+<!-- Challenge → the board's combat arena, hosted in a modal here so a fight against a
+	town's seeded OG team plays out over the map without ever navigating to /board.
+	CombatArena fields the player's active roster team against the frozen OG spawns and
+	handles all its own gating (sign-in, no active team). Keyed so each new challenge
+	remounts a clean fight. -->
+{#if fightOpen}
+	<div class="modal modal-open">
+		<div class="modal-box max-h-[95vh] w-auto max-w-[95vw] overflow-auto">
+			{#key fightSpawns.map((spawn) => spawn.characterId).join(',')}
+				<CombatArena ogTeam={fightSpawns} ogName={fightName} closable on:close={() => (fightOpen = false)} />
+			{/key}
+		</div>
+	</div>
 {/if}

@@ -11,7 +11,12 @@
 // the lead (any colour), and every other member must carry a colour the lead's
 // colour allows (see teammateColors).
 
-import { SpawnColor, SPAWN_STAT_MIN, SPAWN_STAT_MAX } from '../../types/character-spawn.type';
+import {
+	SpawnColor,
+	SPAWN_STAT_MIN,
+	SPAWN_STAT_MAX,
+	type CharacterSpawn
+} from '../../types/character-spawn.type';
 import type { CombatColor } from '../../types/character-definition.type';
 import { SPAWN_COLOR_WEIGHTS } from './color';
 import { teammateColors } from '../color/compare';
@@ -102,4 +107,24 @@ export function buildMunicipalityTeam(
 	});
 
 	return members;
+}
+
+/**
+ * Turn a rolled OG team into synthetic {@link CharacterSpawn}s the board can field
+ * like any claimed team — carrying each member's character, colour and stat, but
+ * never persisted. Ids are `og:0…`; the location id ties the cards to the town so
+ * they show its name, and the empty `createdAt` omits the spawn year (the OG team
+ * is timeless).
+ */
+export function ogTeamSpawns(team: readonly TeamMemberRoll[], locationId: string): CharacterSpawn[] {
+	return team.map((member, index) => ({
+		id: `og:${index}`,
+		userId: 'og',
+		characterId: member.characterId,
+		showId: null,
+		locationId,
+		color: member.color,
+		stat: member.stat,
+		createdAt: ''
+	}));
 }
