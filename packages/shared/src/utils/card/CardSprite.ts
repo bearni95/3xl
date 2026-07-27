@@ -60,6 +60,8 @@ export function cardBorderWidth(cardWidth: number): number {
 /** The d10 die icon (white SVG) shown after the ATK value — the same one the
  * roster/team cards use for a character's stat. Served from @3xl/assets. */
 const D10_ICON_URL = '/assets/icons/skoll/d10.svg';
+/** The d4 die icon (white SVG, same Skoll set as the d10) shown after the HP value. */
+const D4_ICON_URL = '/assets/icons/skoll/d4.svg';
 
 // Canonical WoW quality colours, indexed by rarity tier — so the rarity label
 // reads in its quality colour (Common grey → Legendary orange → …).
@@ -507,9 +509,9 @@ export class CardSprite extends Container {
 	 * The footer stat row: the four combat attributes the board fields — ATK, DEF, SPD
 	 * and HP — each a value under a small caption. (The rarity badge now lives in the
 	 * show row under the name, not here.) The four sit in four evenly-spaced columns
-	 * across the width; every caption is a small text label ('ATK', 'DEF', …), and the
-	 * ATK value carries the shared d10 die icon (as on the roster/team cards) after its
-	 * number.
+	 * across the width; every caption is a small text label ('ATK', 'DEF', …). The ATK
+	 * value trails a d10 die icon and HP a d4 (both the shared Skoll set, as on the
+	 * roster/team cards); DEF and SPD carry no icon.
 	 */
 	private makeStats(footerY: number, footerH: number): Container {
 		const group = new Container();
@@ -525,12 +527,14 @@ export class CardSprite extends Container {
 		// Cell centres: four evenly-spaced columns (each column's midpoint), so the
 		// stats read as a 4-up row rather than the old 5-up layout that reserved the
 		// middle for the rarity badge. Same four attributes (and order) as the board.
-		const cells: { x: number; label: string; value: number }[] = [
-			{ x: this.cardWidth * 0.125, label: 'ATK', value: this.card.atk },
+		const cells: { x: number; label: string; value: number; icon?: string }[] = [
+			{ x: this.cardWidth * 0.125, label: 'ATK', value: this.card.atk, icon: D10_ICON_URL },
 			{ x: this.cardWidth * 0.375, label: 'DEF', value: this.card.def },
 			{ x: this.cardWidth * 0.625, label: 'SPD', value: this.card.spd },
-			{ x: this.cardWidth * 0.875, label: 'HP', value: this.card.hp }
+			{ x: this.cardWidth * 0.875, label: 'HP', value: this.card.hp, icon: D4_ICON_URL }
 		];
+
+		const gap = Math.max(2, Math.round(this.cardWidth * 0.02));
 
 		for (const cell of cells) {
 			const caption = new Text({
@@ -556,14 +560,13 @@ export class CardSprite extends Container {
 			value.alpha = valueAlpha;
 			group.addChild(value);
 
-			if (cell.label === 'ATK') {
-				// The d10 icon loads async; it trails the ATK number, the number+icon pair
+			if (cell.icon) {
+				// The die icon loads async; it trails the number, the number+icon pair
 				// re-centred on the column once it's ready.
-				void textureCache.icon(D10_ICON_URL).then((tex) => {
+				void textureCache.icon(cell.icon).then((tex) => {
 					if (this.destroyed || group.destroyed || !tex) return;
 					const iconH = valueSize;
 					const iconW = tex.width * (iconH / tex.height);
-					const gap = Math.max(2, Math.round(this.cardWidth * 0.02));
 					const total = value.width + gap + iconW;
 					// Left-align the number, then hang the icon off its right edge, so the
 					// combined pair stays centred on the column.
