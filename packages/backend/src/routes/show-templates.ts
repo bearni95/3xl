@@ -168,6 +168,21 @@ function ensureTables(): Promise<void> {
 						);
 					create index if not exists booster_claims_user_day_idx
 						on booster_claims (user_id, claimed_at);
+						-- Admin-granted extra daily claims: an additive, day-scoped bump to a
+						-- player's booster cap for one Europe/Madrid date, written only by the
+						-- admin /api/users route (see ./users.ts). claim_booster / boosters_status
+						-- add today's grants on top of the level cap; rows lapse at Catalan
+						-- midnight (they are only ever summed for today's date). No RLS/select
+						-- policy — the anon key never reads this; the security-definer RPCs do.
+						create table if not exists booster_grants (
+								id uuid primary key default gen_random_uuid(),
+								user_id uuid not null references auth.users (id) on delete cascade,
+								grant_date date not null,
+								amount integer not null,
+								created_at timestamptz not null default now()
+							);
+						create index if not exists booster_grants_user_day_idx
+							on booster_grants (user_id, grant_date);
 					alter table booster_claims enable row level security;
 					drop policy if exists booster_claims_select_own on booster_claims;
 					create policy booster_claims_select_own on booster_claims
@@ -225,6 +240,8 @@ function ensureTables(): Promise<void> {
 							v_size constant int := 5;
 							v_exp bigint;
 							v_level int;
+							v_granted int;
+							v_cap int;
 							v_used int;
 							v_ids text[];
 							v_rarities int[];
@@ -253,13 +270,17 @@ function ensureTables(): Promise<void> {
 							) then
 									raise exception 'This town is not celebrating a festa major today.';
 							end if;
-							-- Daily limit = player level (>=1, capped at 20), reset at Catalan midnight.
+							-- Daily cap = player level (>=1, capped at 20) plus any admin-granted
+							-- extra claims for today, reset at Catalan midnight.
 							select coalesce(exp, 0) into v_exp from player_profiles where user_id = v_uid;
 							v_level := level_for_exp(coalesce(v_exp, 0));
+							select coalesce(sum(amount), 0) into v_granted from booster_grants
+									where user_id = v_uid and grant_date = v_today;
+							v_cap := v_level + v_granted;
 							select count(*) into v_used from booster_claims
 									where user_id = v_uid and claimed_at >= v_day_start;
-							if v_used >= v_level then
-									raise exception 'Daily booster limit reached: % of % packs opened today. More unlock at midnight.', v_used, v_level;
+							if v_used >= v_cap then
+									raise exception 'Daily booster limit reached: % of % packs opened today. More unlock at midnight.', v_used, v_cap;
 							end if;
 							-- Roll pool: characters assigned to the show (any show when null) that
 							-- exist as templates, with their rarity tiers.
@@ -326,13 +347,19 @@ function ensureTables(): Promise<void> {
 					declare
 							v_uid uuid := auth.uid();
 							v_exp bigint;
+							v_granted int;
+							v_today date := (now() at time zone 'Europe/Madrid')::date;
 							v_day_start timestamptz := date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
 					begin
 							if v_uid is null then
 									return;
 							end if;
 							select coalesce(exp, 0) into v_exp from player_profiles where user_id = v_uid;
-							level := level_for_exp(coalesce(v_exp, 0));
+							-- `level` is the effective daily cap: level from exp plus any admin
+							-- grants for today, so the claim UI's "remaining / level" reflects them.
+							select coalesce(sum(amount), 0) into v_granted from booster_grants
+									where user_id = v_uid and grant_date = v_today;
+							level := level_for_exp(coalesce(v_exp, 0)) + v_granted;
 							select count(*) into used from booster_claims
 									where user_id = v_uid and claimed_at >= v_day_start;
 							remaining := greatest(0, level - used);

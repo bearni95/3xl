@@ -29,6 +29,17 @@ export interface FestaLocationRow {
 	territory: string | null;
 }
 
+/**
+ * One celebrating municipality today, paired with the series the map assigns it —
+ * `show` is undefined when the town has no seeded show (so it offers no booster).
+ * Composed by the claim screen from the festes fetch and the municipality→show
+ * assignment, and shared so the festes list and the pack grid agree on the shape.
+ */
+export interface TodayFestaPair {
+	festa: FestaLocationRow;
+	show: import('../utils/geo/region-tree').RegionShow | undefined;
+}
+
 /** A single festivity row — one (location, date) pair in `festivities`. */
 export interface FestivityRow {
 	/** Foreign key into `festa_locations(id)`. */

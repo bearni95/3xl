@@ -3,7 +3,7 @@
 	import ShowChip from '$components/core/ShowChip.svelte';
 	import { catalanTodayIso, festesService } from '$services/festes.service';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
-	import type { FestaLocationRow } from '$types/festivity.type';
+	import type { FestaLocationRow, TodayFestaPair } from '$types/festivity.type';
 	import type { MunicipalityShowsCollection } from '$types/show.type';
 	import type { RegionShow } from '$utils/geo/region-tree';
 
@@ -12,6 +12,10 @@
 	const dispatch = createEventDispatcher<{
 		claim: { festa: FestaLocationRow; show: RegionShow };
 	}>();
+
+	// Today's (festa, show) pairs, surfaced to the parent (`bind:pairs`) so the pack
+	// grid can render one booster per celebrating place alongside this list.
+	export let pairs: TodayFestaPair[] = [];
 
 	// Today's celebrating municipalities read from Supabase (the `festivities`
 	// tables the admin /seasons page syncs), plus the map's municipality→show
@@ -64,6 +68,9 @@
 		festa,
 		show: showByMunicipality.get(festa.id)
 	}));
+
+	// Surface the same pairs to the parent so the pack grid stays in sync with the list.
+	$: pairs = todayFestes;
 
 	function formatDate(iso: string): string {
 		const [year, month, day] = iso.split('-').map(Number);

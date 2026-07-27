@@ -5,10 +5,13 @@
 --   1. The town must be celebrating a festa major *today* — it must have a row in
 --      `festivities` (see festivities.sql) for today's date in Europe/Madrid
 --      (Catalan) time.
---   2. A player may open at most (their level, capped at 20) packs per day, the
---      day resetting at midnight Europe/Madrid. Level is derived from the player's
---      accumulated experience via the same D&D 5e table the frontend uses
---      (@3xl/shared utils/progression/level.ts → level_for_exp below).
+--   2. A player may open at most (their level, capped at 20, PLUS any admin-granted
+--      extra claims for today) packs per day, the day resetting at midnight
+--      Europe/Madrid. Level is derived from the player's accumulated experience via
+--      the same D&D 5e table the frontend uses (@3xl/shared utils/progression/
+--      level.ts → level_for_exp below); grants come from `booster_grants` (written
+--      by the admin /api/users route, see ../src/routes/users.ts), summed for
+--      today's Catalan date and added on top of the level.
 --
 -- Because the frontend talks to Supabase directly with the anon key, these rules
 -- live in the database, not the client: `character_spawns` has no insert policy
@@ -36,6 +39,23 @@ create index if not exists booster_claims_user_day_idx
 	on public.booster_claims (user_id, claimed_at);
 
 alter table public.booster_claims enable row level security;
+
+-- Admin-granted extra daily claims: an additive, day-scoped bump to a player's
+-- booster cap for one Europe/Madrid date. Written only by the admin /api/users
+-- route (see ../src/routes/users.ts); claim_booster / boosters_status add the sum
+-- of today's grants on top of the level cap. Rows are only ever summed for
+-- today's date, so a grant lapses at Catalan midnight. No RLS/select policy — the
+-- anon key never reads it; the security-definer RPCs below do.
+create table if not exists public.booster_grants (
+	id uuid primary key default gen_random_uuid(),
+	user_id uuid not null references auth.users (id) on delete cascade,
+	grant_date date not null,
+	amount integer not null,
+	created_at timestamptz not null default now()
+);
+
+create index if not exists booster_grants_user_day_idx
+	on public.booster_grants (user_id, grant_date);
 
 drop policy if exists booster_claims_select_own on public.booster_claims;
 create policy booster_claims_select_own on public.booster_claims
@@ -87,6 +107,8 @@ declare
 	v_size constant int := 5;
 	v_exp bigint;
 	v_level int;
+	v_granted int;
+	v_cap int;
 	v_used int;
 	v_ids text[];
 	v_rarities int[];
@@ -118,13 +140,17 @@ begin
 		raise exception 'This town is not celebrating a festa major today.';
 	end if;
 
-	-- Daily limit = player level (>=1, capped at 20), reset at Catalan midnight.
+	-- Daily cap = player level (>=1, capped at 20) plus any admin-granted extra
+	-- claims for today, reset at Catalan midnight.
 	select coalesce(exp, 0) into v_exp from public.player_profiles where user_id = v_uid;
 	v_level := public.level_for_exp(coalesce(v_exp, 0));
+	select coalesce(sum(amount), 0) into v_granted from public.booster_grants
+		where user_id = v_uid and grant_date = v_today;
+	v_cap := v_level + v_granted;
 	select count(*) into v_used from public.booster_claims
 		where user_id = v_uid and claimed_at >= v_day_start;
-	if v_used >= v_level then
-		raise exception 'Daily booster limit reached: % of % packs opened today. More unlock at midnight.', v_used, v_level;
+	if v_used >= v_cap then
+		raise exception 'Daily booster limit reached: % of % packs opened today. More unlock at midnight.', v_used, v_cap;
 	end if;
 
 	-- Roll pool: characters assigned to the show (any show when null) that exist
@@ -193,21 +219,26 @@ $$;
 
 grant execute on function public.claim_booster(bigint, text) to authenticated;
 
--- The caller's daily allowance: their level (the cap), packs opened since Catalan
--- midnight, and how many remain. Powers the claim UI's limit display.
+-- The caller's daily allowance: their effective cap (level plus any admin grants
+-- for today), packs opened since Catalan midnight, and how many remain. Powers the
+-- claim UI's limit display, so `level` here is the day's cap, not just the exp level.
 create or replace function public.boosters_status()
 returns table (level int, used int, remaining int)
 language plpgsql security definer set search_path = public as $$
 declare
 	v_uid uuid := auth.uid();
 	v_exp bigint;
+	v_granted int;
+	v_today date := (now() at time zone 'Europe/Madrid')::date;
 	v_day_start timestamptz := date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
 begin
 	if v_uid is null then
 		return;
 	end if;
 	select coalesce(exp, 0) into v_exp from public.player_profiles where user_id = v_uid;
-	level := public.level_for_exp(coalesce(v_exp, 0));
+	select coalesce(sum(amount), 0) into v_granted from public.booster_grants
+		where user_id = v_uid and grant_date = v_today;
+	level := public.level_for_exp(coalesce(v_exp, 0)) + v_granted;
 	select count(*) into used from public.booster_claims
 		where user_id = v_uid and claimed_at >= v_day_start;
 	remaining := greatest(0, level - used);

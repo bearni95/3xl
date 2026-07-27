@@ -104,7 +104,7 @@
 	const overlays: MapOverlay[] = [
 		{
 			url: '/data/geo/municipis.json',
-			style: { color: '#ce74ff', weight: 1, fillColor: '#ce74ff', fillOpacity: 0.1 },
+			style: { stroke: false, fillColor: '#ce74ff', fillOpacity: 1 },
 			// Hovering the region (via its pin or its polygons) paints the whole area's
 			// fill fully solid, with the municipis stroke suppressed (opacity 0) so the
 			// internal subdivision borders don't show — only the fill fills in. The
@@ -471,7 +471,7 @@
 		selected && municipalities ? municipalityIdsForKey(fillIndex, selected) : new Set<string>();
 
 	// The persistent fill painted across the selected region's municipality polygons.
-	const selectedFillStyle = { fillColor: '#ce74ff', fillOpacity: 0.45, weight: 1 };
+	const selectedFillStyle = { fillColor: '#ce74ff', fillOpacity: 1, weight: 1 };
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">

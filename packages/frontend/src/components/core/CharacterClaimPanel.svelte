@@ -13,13 +13,18 @@
 	import { showPosterUrlForSeed } from '$utils/geo/municipality-show';
 	import { EXP_PER_SPAWN } from '$utils/progression/level';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
-	import type { OpenerView } from '$components/core/pack/scene/opener-view.type';
+	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
+	import type { TodayFestaPair } from '$types/festivity.type';
 
-	// All the state the (non-modal) pack-opener canvas needs, surfaced to the parent
-	// so it can render the canvas in a sibling column to the right of this content.
-	// Null while no pack is open. Bound by the parent (`bind:opener`); the parent
-	// drives the canvas via the exported `openAnother`/`closeOpener` methods.
-	export let opener: OpenerView | null = null;
+	// Today's (festa, show) pairs, from the festes list — the towns celebrating their
+	// festa major today. The pack grid renders one booster per pair that has a show
+	// this player can claim.
+	export let pairs: TodayFestaPair[] = [];
+
+	// The day's booster packs, assembled from `pairs` and surfaced to the parent
+	// (`bind:packs`) so it can render the pack-grid canvas beside this content. Each
+	// carries its own poster cover and the roll it fires when sliced open.
+	export let packs: OpenerPack[] = [];
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -58,18 +63,6 @@
 	// also enforces it). Drives the "N packs left today" hint and blocks opening
 	// once spent. Null until loaded / when signed out.
 	let boosters: BoostersStatus | null = null;
-
-	// Pack-opener modal state. Selecting a show opens the booster-pack canvas (the
-	// show's poster is the pack cover); the spawn is rolled against Supabase only
-	// when the player slices the pack open (`runClaim`). `openSession` bumps on
-	// every open so the canvas remounts with a fresh, unsliced pack.
-	let openerShow: ClaimableShow | null = null;
-	let openerPosterUrl: string | null = null;
-	let openSession = 0;
-	// The region the open pack is tied to — a municipality picked from today's
-	// festes. Re-opens ("open another") reuse it, so the roll stays tied to the
-	// place the pack was opened from.
-	let openerRegion: GeoRegion | null = null;
 
 	onMount(() => {
 		authService.init();
@@ -131,74 +124,86 @@
 		}
 	}
 
-	// Open a booster from one show for a place: show the pack on the canvas, tied to
-	// that show and municipality. Nothing is spawned yet — the Supabase roll fires
-	// only when the player slices the pack open (see `runClaim`). Bumping
-	// `openSession` remounts the canvas with a fresh, unsliced pack. Blocked while a
-	// previous open is still rolling.
-	function openBooster(show: ClaimableShow, claimRegion: GeoRegion | null) {
-		if (!currentUserId || !claimRegion?.id || claimingId !== null) return;
-		// Client-side echo of the server rule: no allowance left, don't open a pack.
-		if (boosters && boosters.remaining <= 0) {
-			claimError = `You've opened all ${boosters.level} of today's booster packs. More unlock at midnight.`;
-			return;
-		}
-		openerShow = show;
-		// Pick the pack cover from this show's enabled posters by hashing the place +
-		// year, so each location/year combo gets its own (stable) cover. The year is
-		// "now" — the same year the pack and the spawn are stamped with.
+	// The pack cover for a show at a place: picked from that show's enabled posters by
+	// hashing the place + year, so each location/year combo gets its own (stable)
+	// cover. The year is "now" — the same year the pack and the spawn are stamped with.
+	function resolvePosterUrl(show: ClaimableShow, claimRegion: GeoRegion): string | null {
 		const entry = showEntryById.get(show.id);
 		const seed = `${claimRegion.municipality ?? ''}|${new Date().getFullYear()}`;
-		openerPosterUrl = entry ? showPosterUrlForSeed(entry, seed) : null;
-		openerRegion = claimRegion;
-		claimError = '';
-		openSession += 1;
+		return entry ? showPosterUrlForSeed(entry, seed) : null;
 	}
 
-	// Roll the open booster against Supabase and resolve its cards. Handed to the
-	// canvas, which invokes it when the pack is sliced open — so the spawn is
-	// persisted at open time, not when the pack was selected. Persists the spawns
-	// and awards experience. Returns the cards to reveal ([] on failure, which
-	// reveals nothing).
-	async function runClaim(): Promise<ClaimPull[]> {
-		const show = openerShow;
-		const claimRegion = openerRegion;
-		const locId = claimRegion?.id ?? null;
-		if (!currentUserId || !show || !locId) return [];
-		claimingId = show.id;
-		claimError = '';
-		try {
-			// The roll and every limit (daily allowance, festa-major-today) are enforced
-			// server-side by the claim_booster RPC; a rejected claim throws here.
-			const spawns = await spawnService.claimBooster(show.id, locId);
-			// Award experience for the cards pulled and mirror the new total (and the
-			// level it implies) into the profile card. Non-blocking — a failure here
-			// must not sink a successful claim.
-			void authService.addExp(spawns.length * EXP_PER_SPAWN).catch(() => undefined);
-			// Refresh the daily allowance: this pack counts against it, and the exp
-			// just awarded may have raised the level (and so the cap).
-			void refreshBoostersStatus();
+	// Build the roll one grid pack fires when the player slices it open — a closure
+	// bound to its show + place. The Supabase roll persists the spawn at open time
+	// (not when the pack is picked), awards experience, and returns the cards to
+	// reveal ([] on failure, which reveals nothing). Every limit (daily allowance,
+	// festa-major-today) is enforced server-side by the claim_booster RPC.
+	function makeClaim(show: ClaimableShow, claimRegion: GeoRegion): () => Promise<ClaimPull[]> {
+		return async () => {
+			if (!currentUserId || !claimRegion.id) return [];
+			// Client-side echo of the server rule: no allowance left, reveal nothing.
+			if (boosters && boosters.remaining <= 0) {
+				claimError = `You've opened all ${boosters.level} of today's booster packs. More unlock at midnight.`;
+				return [];
+			}
+			claimingId = show.id;
+			claimError = '';
+			try {
+				const spawns = await spawnService.claimBooster(show.id, claimRegion.id);
+				// Award experience for the cards pulled and mirror the new total (and the
+				// level it implies) into the profile card. Non-blocking — a failure here
+				// must not sink a successful claim.
+				void authService.addExp(spawns.length * EXP_PER_SPAWN).catch(() => undefined);
+				// Refresh the daily allowance: this pack counts against it, and the exp
+				// just awarded may have raised the level (and so the cap).
+				void refreshBoostersStatus();
 
-			// Capture the place and resolve each portrait so the revealed cards carry
-			// the character's face and the town it was claimed in.
-			lastLocationName = claimRegion?.municipality ?? '';
-			return await Promise.all(spawns.map((spawn) => buildPull(spawn, show.name)));
-		} catch (error) {
-			claimError = errorMessage(error);
-			return [];
-		} finally {
-			claimingId = null;
+				// Capture the place and resolve each portrait so the revealed cards carry
+				// the character's face and the town it was claimed in.
+				lastLocationName = claimRegion.municipality ?? '';
+				return await Promise.all(spawns.map((spawn) => buildPull(spawn, show.name)));
+			} catch (error) {
+				claimError = errorMessage(error);
+				return [];
+			} finally {
+				claimingId = null;
+			}
+		};
+	}
+
+	// Assemble the day's grid packs from today's festes: one booster per celebrating
+	// town whose assigned show this player can claim. Each pack carries its poster
+	// cover and a roll bound to that show + place. Empty when signed out or before the
+	// show pool loads. Kept as a pure function of its inputs so the reactive block
+	// below re-runs when any of them change.
+	function computePacks(
+		festaPairs: TodayFestaPair[],
+		showPool: ClaimableShow[],
+		_posters: Map<number, ShowEntry>,
+		userId: string | null
+	): OpenerPack[] {
+		if (!userId) return [];
+		const claimableById = new Map(showPool.map((show) => [show.id, show]));
+		const out: OpenerPack[] = [];
+		for (const { festa, show } of festaPairs) {
+			if (!show) continue;
+			const claimable = claimableById.get(show.id);
+			if (!claimable) continue;
+			const claimRegion: GeoRegion = {
+				id: festa.id,
+				municipality: festa.name,
+				province: festa.prov ?? '',
+				country: festa.territory ?? ''
+			};
+			out.push({
+				id: festa.id,
+				coverUrl: resolvePosterUrl(claimable, claimRegion),
+				locationName: festa.name,
+				label: claimable.name,
+				claim: makeClaim(claimable, claimRegion)
+			});
 		}
-	}
-
-	// Open a booster for a specific show and place — used by the "festes majors
-	// d'avui" list, which opens from the celebrating municipality. No-op until the
-	// show pool has loaded (returns whether it fired).
-	export function claimFromShowId(showId: number, claimRegion: GeoRegion): boolean {
-		const show = shows.find((entry) => entry.id === showId);
-		if (!show) return false;
-		openBooster(show, claimRegion);
-		return true;
+		return out;
 	}
 
 	// Assemble the display card for one claimed spawn: label + face from the local
@@ -226,30 +231,10 @@
 		};
 	}
 
-	// The opener view handed up to the parent, present whenever a pack is open. The
-	// canvas rolls the booster via `runClaim` when the pack is sliced; recomputed
-	// when the open show/place or the rolling state changes.
-	$: opener = openerShow
-		? {
-				coverUrl: openerPosterUrl,
-				label: openerShow.name,
-				locationName: openerRegion?.municipality ?? null,
-				claim: runClaim,
-				openSession,
-				openAnotherBusy: claimingId !== null,
-				openAnotherDisabled: !openerRegion?.id || claimingId !== null
-			}
-		: null;
-
-	// Re-open a fresh, unsliced pack from the same show and place without leaving
-	// the opener. Exported so the parent's opener column can drive it.
-	export function openAnother() {
-		if (openerShow) openBooster(openerShow, openerRegion);
-	}
-
-	export function closeOpener() {
-		openerShow = null;
-	}
+	// The day's grid packs, recomputed whenever today's festes, the claimable show
+	// pool, the enabled posters, or the signed-in user change. (All four are named
+	// here so the reactive statement actually re-runs when any of them updates.)
+	$: packs = computePacks(pairs, shows, showEntryById, currentUserId);
 
 	function labelFor(id: string): string {
 		return charactersById.get(id)?.label ?? id;

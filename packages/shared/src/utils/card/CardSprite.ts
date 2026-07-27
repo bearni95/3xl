@@ -133,12 +133,12 @@ export class CardSprite extends Container {
 		backdrop.stroke({ width: 2, color: 0x000000, alpha: 0.9 });
 		this.addChild(backdrop);
 
-		// Header strip at the top, carrying the character name — black at 50% opacity.
+		// Header strip at the top, carrying the character name — black at 70% opacity.
 		// The rarity/show row is not part of it — it floats transparently over the
 		// colour square below.
 		const header = new Graphics();
 		header.rect(0, 0, this.cardWidth, headerH);
-		header.fill({ color: 0x000000, alpha: 0.5 });
+		header.fill({ color: 0x000000, alpha: 0.7 });
 		this.addChild(header);
 
 		// Footer strip at the bottom, carrying the ATK/DEF/SPD/HP stats — black at 10%
