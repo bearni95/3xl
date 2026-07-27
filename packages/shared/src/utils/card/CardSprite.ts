@@ -316,11 +316,18 @@ export class CardSprite extends Container {
 		// fitted size. Applied after the fit so every character grows by the same factor.
 		this.idleFitScale = Math.min(sharedScale, heightCap, widthCap) * IDLE_SCALE_BOOST;
 
-		// Centre the animation vertically in the coloured art area (scale unchanged):
-		// place the shared feet baseline so the tallest frame's rendered height is
-		// centred in the box. Every frame still shares this one baseline, so the
-		// character breathes in place without drifting.
-		this.idleCenterX = this.artArea.x + this.artArea.w / 2;
+		// Horizontally, hug one side of the art box rather than centring: the unflipped
+		// (rival) art sits against the left edge, the flipped (player) art against the
+		// right, so on the board the two sides face inward. The body axis can sit
+		// off-centre in the frame; `axisToLeft` is the rendered distance from the axis to
+		// the frame's left edge (unflipped). The flip mirrors the frame about the axis, so
+		// that same distance becomes the axis-to-right distance when flipped — placing the
+		// axis this far inside the chosen edge lands the character's outermost pixel on it.
+		const axisToLeft =
+			Math.max(...frames.map((f) => f.anchorX * f.width)) * this.idleFitScale;
+		this.idleCenterX = this.flipped
+			? this.artArea.x + this.artArea.w - pad - axisToLeft
+			: this.artArea.x + pad + axisToLeft;
 		const renderedHeight = maxHeight * this.idleFitScale;
 		this.idleFeetY = this.artArea.y + this.artArea.h / 2 + renderedHeight / 2;
 
@@ -380,7 +387,11 @@ export class CardSprite extends Container {
 		const scale = Math.min(boxW / tex.width, boxH / tex.height);
 		const w = tex.width * scale;
 		const h = tex.height * scale;
-		const x = this.artArea.x + (this.artArea.w - w) / 2;
+		// Hug the same side as the idle art: left when unflipped (rival), right when
+		// flipped (player).
+		const x = this.flipped
+			? this.artArea.x + this.artArea.w - pad - w
+			: this.artArea.x + pad;
 		const y = this.artArea.y + (this.artArea.h - h) / 2;
 		// Anchor on the horizontal centre (top edge) so a negative x-scale mirrors the
 		// face in place, matching the flipped idle animation.
