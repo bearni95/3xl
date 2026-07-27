@@ -182,6 +182,24 @@ export class CardSprite extends Container {
 		this.addChild(this.makeMeta(footerY - metaH, metaH));
 		this.addChild(this.makeStats(footerY, footerH));
 
+		// Thick MTG-style frame around the whole card, in the rarity's quality colour
+		// (the same colour as the rarity badge text). Drawn last so it frames over the
+		// content's edges, and inset by half its width so the whole stroke stays within
+		// the card bounds.
+		const borderColor =
+			this.card.rarity != null ? (RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2) : 0xf2f2f2;
+		const borderWidth = Math.max(6, Math.round(this.cardWidth * 0.05));
+		const border = new Graphics();
+		border.roundRect(
+			borderWidth / 2,
+			borderWidth / 2,
+			this.cardWidth - borderWidth,
+			this.cardHeight - borderWidth,
+			Math.max(1, radius - borderWidth / 2)
+		);
+		border.stroke({ width: borderWidth, color: borderColor, alpha: 1 });
+		this.addChild(border);
+
 		this.artReady = this.loadArt();
 	}
 
