@@ -22,10 +22,10 @@
 --
 --   * Every spawn in it must be one of the caller's own `character_spawns` rows;
 --     a report naming a spawn the caller doesn't own is rejected outright.
---   * Each fighter's max_hp is clamped into the range that spawn's stat could
---     possibly have rolled — its HP attribute (DEF + 1, DEF being the stat's
---     complement) in d4, so [n, 4n] — and hp_left is clamped to [0, that max]. An
---     inflated pool therefore buys nothing.
+--   * Each fighter's max_hp is not read from the report at all: the HP pool is
+--     exactly that spawn's HP attribute (DEF + 1, DEF being the stat's
+--     complement), so it is re-derived here, and hp_left is clamped to [0, that
+--     max]. An inflated pool therefore buys nothing.
 --   * The amount is never sent by the client: it is derived here from the
 --     player's *stored* experience, which the client cannot write (player_profiles
 --     has no insert/update policy and there is no longer an add_player_exp RPC).
@@ -151,10 +151,10 @@ begin
 	-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
 	perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
 
-	-- The reported team, bounded against what the caller actually owns. Each
-	-- fighter's HP pool is clamped into the range its spawn's stat could have
-	-- rolled: the HP attribute (DEF + 1, DEF = the stat's complement clamped to
-	-- 1..9) in d4, so [dice, dice * 4]; hp_left is then clamped to [0, that].
+	-- The reported team, bounded against what the caller actually owns. The HP pool
+	-- is re-derived rather than trusted: it is exactly the spawn's HP attribute
+	-- (DEF + 1, DEF = the stat's complement clamped to 1..9), and the reported
+	-- hp_left is then clamped to [0, that].
 	with reported as (
 		select f.spawn_id, f.hp_left, f.max_hp
 		from jsonb_to_recordset(p_fighters)
@@ -163,14 +163,13 @@ begin
 	owned as (
 		select
 			r.hp_left,
-			r.max_hp,
-			(greatest(1, least(9, 10 - cs.stat)) + 1) as dice
+			(greatest(1, least(9, 10 - cs.stat)) + 1) as hp_pool
 		from reported r
 		join public.character_spawns cs on cs.id = r.spawn_id and cs.user_id = v_uid
 	),
 	bounded as (
 		select
-			least(greatest(coalesce(o.max_hp, 0), o.dice), o.dice * 4) as capped_max,
+			o.hp_pool as capped_max,
 			coalesce(o.hp_left, 0) as raw_left
 		from owned o
 	)

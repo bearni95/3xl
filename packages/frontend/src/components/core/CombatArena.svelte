@@ -193,7 +193,7 @@
 			// The display card drawn outside the grid (rival above, player below): the
 			// idle art loads from basePath, and the combat attributes mirror the board's
 			// derivation from the rolled stat (ATK = stat, DEF its complement, SPD = ATK − 1,
-			// HP attribute = DEF + 1, the number of d4 rolled for the pool). Rarity, show and
+			// HP attribute = DEF + 1, the pool itself). Rarity, show and
 			// claim place come from the same three Supabase/geo sources the roster and claim
 			// cards read (`showNames`/`names` are passed so the reactive build re-runs — and
 			// the board remounts — once those layers load).

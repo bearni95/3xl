@@ -474,8 +474,8 @@ export function ensureTables(): Promise<void> {
 					--     base of the level; a win at half health earns half of it.
 					-- Combat runs in the browser, so the report is treated as a claim and bounded
 					-- rather than trusted: every spawn must belong to the caller, each fighter's
-					-- max_hp is clamped into the range its stat could have rolled (its HP
-					-- attribute, DEF + 1, in d4 → [dice, dice * 4]) and hp_left to [0, that max],
+					-- max_hp is re-derived from its stat (the HP attribute, DEF + 1, is the pool
+					-- itself) rather than read from the report, and hp_left is clamped to [0, that max],
 					-- and the amount itself is never sent by the client — it is derived here from
 					-- the player's stored experience. p_fighters is the player's side only, as
 					-- [{"spawn_id": uuid, "hp_left": number, "max_hp": number}]. The OUT names
@@ -524,15 +524,15 @@ export function ensureTables(): Promise<void> {
 							owned as (
 								select
 									r.hp_left,
-									r.max_hp,
-									-- HP attribute: DEF + 1, DEF being the stat's complement clamped 1..9.
-									(greatest(1, least(9, 10 - cs.stat)) + 1) as dice
+									-- HP pool: the HP attribute itself (DEF + 1, DEF being the stat's
+									-- complement clamped 1..9) — re-derived, never read from the report.
+									(greatest(1, least(9, 10 - cs.stat)) + 1) as hp_pool
 								from reported r
 								join character_spawns cs on cs.id = r.spawn_id and cs.user_id = v_uid
 							),
 							bounded as (
 								select
-									least(greatest(coalesce(o.max_hp, 0), o.dice), o.dice * 4) as capped_max,
+									o.hp_pool as capped_max,
 									coalesce(o.hp_left, 0) as raw_left
 								from owned o
 							)

@@ -68,8 +68,6 @@ export function cardBorderWidth(cardWidth: number): number {
 /** The d10 die icon (white SVG) shown after the ATK value — the same one the
  * roster/team cards use for a character's stat. Served from @3xl/assets. */
 const D10_ICON_URL = '/assets/icons/skoll/d10.svg';
-/** The d4 die icon (white SVG, same Skoll set as the d10) shown after the HP value. */
-const D4_ICON_URL = '/assets/icons/skoll/d4.svg';
 
 // Canonical WoW quality colours, indexed by rarity tier — so the rarity label
 // reads in its quality colour (Common grey → Legendary orange → …).
@@ -525,9 +523,9 @@ export class CardSprite extends Container {
 	 * and HP (SPD leads the row) — each a value under a small caption. (The rarity badge
 	 * now lives in the show row under the name, not here.) The four sit in four
 	 * evenly-spaced columns across the width; every caption is a small text label ('SPD',
-	 * 'ATK', …). The ATK value trails a d10 die icon and HP a d4 (both the shared Skoll
-	 * set, as on the roster/team cards), the DEF value trails a '+' sign, and SPD carries
-	 * no suffix.
+	 * 'ATK', …). The ATK value trails a d10 die icon (the shared Skoll set, as on the
+	 * roster/team cards), the DEF value trails a '+' sign, and SPD and HP carry no
+	 * suffix — HP is a flat pool, not a dice count.
 	 */
 	private makeStats(footerY: number, footerH: number): Container {
 		const group = new Container();
@@ -547,7 +545,7 @@ export class CardSprite extends Container {
 			{ x: this.cardWidth * 0.125, label: 'SPD', value: this.card.spd },
 			{ x: this.cardWidth * 0.375, label: 'ATK', value: this.card.atk, icon: D10_ICON_URL },
 			{ x: this.cardWidth * 0.625, label: 'DEF', value: this.card.def, suffix: '+' },
-			{ x: this.cardWidth * 0.875, label: 'HP', value: this.card.hp, icon: D4_ICON_URL }
+			{ x: this.cardWidth * 0.875, label: 'HP', value: this.card.hp }
 		];
 
 		const gap = Math.max(2, Math.round(this.cardWidth * 0.02));

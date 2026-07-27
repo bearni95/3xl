@@ -28,7 +28,8 @@ export interface CombatFighterReport {
 	spawnId: string;
 	/** HP left at the end (0 for a knocked-out fighter). */
 	hpLeft: number;
-	/** The HP pool this fighter rolled at battle start. */
+	/** The HP pool this fighter started on (its HP attribute). Informational — the
+	 * RPC re-derives it from the spawn's stat rather than trusting this. */
 	maxHp: number;
 }
 

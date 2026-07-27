@@ -33,7 +33,7 @@ export interface CombatStats {
 	def: number;
 	/** Speed: a derived rating (ATK − 1). */
 	spd: number;
-	/** HP attribute (DEF + 1): the number of d4 rolled into the HP pool at battle start. */
+	/** HP attribute (DEF + 1): the fighter's HP pool at battle start. */
 	hp: number;
 }
 
