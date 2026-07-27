@@ -139,7 +139,7 @@
 			id: instanceId(side, spawnId),
 			basePath: option.basePath,
 			animation: 'idle',
-			// The spawn's rolled colour tints its home cell on the board.
+			// The spawn's rolled colour fills this fighter's HP bar on the board.
 			combatColor: spawn?.color
 		};
 	}
