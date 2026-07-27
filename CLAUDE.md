@@ -85,9 +85,10 @@ src/
 └── services/i18n/        # Internationalization
 ```
 
-Frontend routes: `/` (home), `/board` (combat board), `/map` (Països Catalans map),
-`/claim` (resolve a location reading against the map), `/profile` (Supabase magic-link
-auth). Admin routes: `/characters` (definition editor) and `/shows` (TMDB browser).
+Frontend routes: `/` (home), `/map` (Països Catalans map), `/claim` (resolve a location
+reading against the map), `/roster` (the player's claimed cards). Combat has no route of
+its own — `CombatArena` is hosted in a panel over the map (the Challenge button on a
+municipality). Admin routes: `/characters` (definition editor) and `/shows` (TMDB browser).
 
 **Types, utils, and adapters no longer live in the apps** — they moved to `@3xl/shared`
 (see below). Only `components/`, `routes/`, `services/`, `css/`, and `i18n/` are per-app.

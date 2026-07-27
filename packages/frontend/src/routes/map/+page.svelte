@@ -841,7 +841,8 @@
 
 <!-- Challenge → the board's combat arena, hosted as a full-viewport floating panel over
 	the map so a fight against a town's seeded OG team plays out without ever navigating
-	to /board. A plain fixed panel (not a DaisyUI modal) at z-[1200] — above the map's
+	away. This is the only place combat is mounted — there is no standalone combat route
+	any more. A plain fixed panel (not a DaisyUI modal) at z-[1200] — above the map's
 	three corner panels (z-[1100]) — with a transparent background so the map shows
 	through behind it. CombatArena fields the player's active roster team against the
 	frozen OG spawns and handles all its own gating. Keyed so each new challenge remounts
