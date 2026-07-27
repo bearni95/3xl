@@ -3,6 +3,7 @@ import { levelForExp } from '@3xl/shared/utils/progression/level';
 import type { AdminUser, GrantClaimsResult } from '@3xl/shared/types/player-user.type';
 import { asyncHandler, httpError } from '../http-error';
 import { getPool } from '../db';
+import { ensureTables } from './show-templates';
 
 /**
  * Admin API over the game's players — the Supabase `auth.users` table joined with
@@ -17,43 +18,12 @@ import { getPool } from '../db';
  * Grants written for one day never carry over — they lapse at Catalan midnight.
  *
  * Talks to Supabase's Postgres directly via ../db (the DB password), so it can
- * read `auth.users` (which the anon key cannot) and provision `booster_grants`
- * itself. The RPCs that actually consume grants are provisioned in
- * ./show-templates.ts; this route re-declares the table idempotently so listing
- * and granting work even before that path has run.
+ * read `auth.users` (which the anon key cannot). Every entry point first runs the
+ * shared {@link ensureTables} provisioning from ./show-templates, so `booster_grants`
+ * AND the grant-aware `claim_booster` / `boosters_status` RPCs are guaranteed
+ * deployed before we read or write — a grant is otherwise silently ignored by
+ * stale RPCs that predate the grants feature.
  */
-
-// Ensure the grants table exists exactly once per process, lazily on first use.
-// The RPCs that read it live in ./show-templates.ts; `create table if not exists`
-// here is idempotent and harmless if that path already created it.
-let ensured: Promise<void> | null = null;
-function ensureTable(): Promise<void> {
-	if (!ensured) {
-		ensured = getPool()
-			.query(
-				`create table if not exists booster_grants (
-					id uuid primary key default gen_random_uuid(),
-					user_id uuid not null references auth.users (id) on delete cascade,
-					-- The Europe/Madrid (Catalan) date the extra claims apply to.
-					grant_date date not null,
-					-- Extra daily claims granted for that day (may be negative to revoke).
-					amount integer not null,
-					created_at timestamptz not null default now()
-				);
-				create index if not exists booster_grants_user_day_idx
-					on booster_grants (user_id, grant_date)`
-			)
-			.then(() => undefined)
-			.catch((error: unknown) => {
-				// Reset so a transient failure (e.g. bad password) can be retried on the
-				// next request instead of being cached forever.
-				ensured = null;
-				const message = error instanceof Error ? error.message : String(error);
-				httpError(502, `Supabase DB connection failed: ${message}`);
-			});
-	}
-	return ensured;
-}
 
 /** Uuid shape auth.users ids take — validated before it reaches a query param. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -69,7 +39,7 @@ const MAX_DAILY_LEVEL = 20;
  * not depend on the DB `level_for_exp` function existing yet.
  */
 async function fetchUsers(): Promise<AdminUser[]> {
-	await ensureTable();
+	await ensureTables();
 	const { rows } = await getPool().query<{
 		id: string;
 		email: string | null;
@@ -107,7 +77,7 @@ async function fetchUsers(): Promise<AdminUser[]> {
 
 /** Load one player's refreshed admin row (or null when the user is gone). */
 async function fetchUser(id: string): Promise<AdminUser | null> {
-	await ensureTable();
+	await ensureTables();
 	const { rows } = await getPool().query<{
 		id: string;
 		email: string | null;
@@ -199,7 +169,7 @@ usersRouter.post(
 			httpError(400, 'amount must be a non-zero integer');
 		}
 
-		await ensureTable();
+		await ensureTables();
 		// FK-check the user exists up front, for a clear 404 rather than an FK error.
 		const existing = await fetchUser(id);
 		if (!existing) httpError(404, `No user "${id}"`);

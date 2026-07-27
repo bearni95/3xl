@@ -50,7 +50,14 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // rules cannot be bypassed. It reads `festivities` (provisioned lazily by
 // ./festivities). All DDL is idempotent.
 let ensured: Promise<void> | null = null;
-function ensureTables(): Promise<void> {
+/**
+ * Provision the whole authoring/gameplay schema (tables, RLS, RPCs) idempotently,
+ * once per process. Exported so sibling routes that depend on parts of it — e.g.
+ * ./users, whose grants are only honoured once the updated claim_booster /
+ * boosters_status RPCs are deployed — can guarantee it has run before they read
+ * or write, rather than relying on a show-templates request having happened first.
+ */
+export function ensureTables(): Promise<void> {
 	if (!ensured) {
 		ensured = getPool()
 			.query(
