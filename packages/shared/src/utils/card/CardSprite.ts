@@ -465,10 +465,13 @@ export class CardSprite extends Container {
 	 */
 	private makeStats(footerY: number, footerH: number): Container {
 		const group = new Container();
-		const captionY = footerY + footerH * 0.32;
-		const valueY = footerY + footerH * 0.7;
+		// Two even rows: the labels centred in the top half, the values in the bottom.
+		const captionY = footerY + footerH * 0.25;
+		const valueY = footerY + footerH * 0.75;
 		const captionSize = Math.max(7, Math.round(this.cardWidth * 0.05));
 		const valueSize = Math.max(11, Math.round(this.cardWidth * 0.09));
+		// The labels row (captions + the d10 icon) sits at 70% opacity.
+		const captionAlpha = 0.7;
 
 		// Cell centres: four evenly-spaced columns (each column's midpoint), so the
 		// stats read as a 4-up row rather than the old 5-up layout that reserved the
@@ -497,6 +500,7 @@ export class CardSprite extends Container {
 					icon.anchor.set(0.5, 0.5);
 					icon.scale.set(captionSize / tex.height);
 					icon.position.set(cell.x, captionY);
+					icon.alpha = captionAlpha;
 					group.addChild(icon);
 				});
 			} else {
@@ -511,6 +515,7 @@ export class CardSprite extends Container {
 				});
 				caption.anchor.set(0.5, 0.5);
 				caption.position.set(cell.x, captionY);
+				caption.alpha = captionAlpha;
 				group.addChild(caption);
 			}
 		}
