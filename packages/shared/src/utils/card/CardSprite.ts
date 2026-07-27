@@ -319,15 +319,22 @@ export class CardSprite extends Container {
 		// Horizontally, hug one side of the art box rather than centring: the unflipped
 		// (rival) art sits against the left edge, the flipped (player) art against the
 		// right, so on the board the two sides face inward. The body axis can sit
-		// off-centre in the frame; `axisToLeft` is the rendered distance from the axis to
-		// the frame's left edge (unflipped). The flip mirrors the frame about the axis, so
-		// that same distance becomes the axis-to-right distance when flipped — placing the
-		// axis this far inside the chosen edge lands the character's outermost pixel on it.
-		const axisToLeft =
-			Math.max(...frames.map((f) => f.anchorX * f.width)) * this.idleFitScale;
-		this.idleCenterX = this.flipped
-			? this.artArea.x + this.artArea.w - pad - axisToLeft
-			: this.artArea.x + pad + axisToLeft;
+		// off-centre in the frame, and the flip mirrors each frame about that axis, so the
+		// character's on-screen extent to the left/right of the axis depends on the flip.
+		// Measure both (max across the whole cycle) and place the axis so the character
+		// hugs the chosen edge — but only while it still fits inside the box. A boosted
+		// sprite wider than the box can't hug one edge without spilling off the other, so
+		// there it stays centred (overflowing evenly, never clipped hard against a side).
+		const screenExtLeft =
+			Math.max(...frames.map((f) => (this.flipped ? 1 - f.anchorX : f.anchorX) * f.width)) *
+			this.idleFitScale;
+		const screenExtRight =
+			Math.max(...frames.map((f) => (this.flipped ? f.anchorX : 1 - f.anchorX) * f.width)) *
+			this.idleFitScale;
+		const axisMin = this.artArea.x + pad + screenExtLeft;
+		const axisMax = this.artArea.x + this.artArea.w - pad - screenExtRight;
+		this.idleCenterX =
+			axisMin <= axisMax ? (this.flipped ? axisMax : axisMin) : (axisMin + axisMax) / 2;
 		const renderedHeight = maxHeight * this.idleFitScale;
 		this.idleFeetY = this.artArea.y + this.artArea.h / 2 + renderedHeight / 2;
 
@@ -357,8 +364,10 @@ export class CardSprite extends Container {
 		this.artSprite.scale.set(scaleX, this.idleFitScale);
 		this.artSprite.position.set(this.idleCenterX, this.idleFeetY);
 
-		// The silhouette mirrors the art, offset to the bottom-left.
-		const dx = this.cardWidth * SHADOW_OFFSET_X_RATIO;
+		// The silhouette mirrors the art, offset down and *behind* it — to the bottom-left
+		// unflipped, flipping to the bottom-right so the shadow always trails the side the
+		// character faces away from.
+		const dx = this.cardWidth * SHADOW_OFFSET_X_RATIO * (this.flipped ? -1 : 1);
 		const dy = this.cardWidth * SHADOW_OFFSET_Y_RATIO;
 		this.shadowSprite.texture = frame.texture;
 		this.shadowSprite.anchor.set(frame.anchorX, 1);
@@ -387,26 +396,29 @@ export class CardSprite extends Container {
 		const scale = Math.min(boxW / tex.width, boxH / tex.height);
 		const w = tex.width * scale;
 		const h = tex.height * scale;
-		// Hug the same side as the idle art: left when unflipped (rival), right when
-		// flipped (player).
-		const x = this.flipped
-			? this.artArea.x + this.artArea.w - pad - w
-			: this.artArea.x + pad;
+		// Hug the same side as the idle art (left unflipped, right flipped) while it fits,
+		// else centre it — mirroring the idle placement. The face is symmetric, so its
+		// half-width is the extent on each side.
+		const axisMin = this.artArea.x + pad + w / 2;
+		const axisMax = this.artArea.x + this.artArea.w - pad - w / 2;
+		const centerX =
+			axisMin <= axisMax ? (this.flipped ? axisMax : axisMin) : (axisMin + axisMax) / 2;
 		const y = this.artArea.y + (this.artArea.h - h) / 2;
 		// Anchor on the horizontal centre (top edge) so a negative x-scale mirrors the
 		// face in place, matching the flipped idle animation.
 		const scaleX = this.flipped ? -scale : scale;
 		this.artSprite.anchor.set(0.5, 0);
 		this.artSprite.scale.set(scaleX, scale);
-		this.artSprite.position.set(x + w / 2, y);
+		this.artSprite.position.set(centerX, y);
 
-		// The silhouette mirrors the face, offset to the bottom-left.
-		const dx = this.cardWidth * SHADOW_OFFSET_X_RATIO;
+		// The silhouette mirrors the face, offset down and behind — bottom-left unflipped,
+		// bottom-right when flipped (matching the idle shadow).
+		const dx = this.cardWidth * SHADOW_OFFSET_X_RATIO * (this.flipped ? -1 : 1);
 		const dy = this.cardWidth * SHADOW_OFFSET_Y_RATIO;
 		this.shadowSprite.texture = tex;
 		this.shadowSprite.anchor.set(0.5, 0);
 		this.shadowSprite.scale.set(scaleX, scale);
-		this.shadowSprite.position.set(x + w / 2 + dx, y + dy);
+		this.shadowSprite.position.set(centerX + dx, y + dy);
 	}
 
 	/**
