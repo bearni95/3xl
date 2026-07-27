@@ -1,4 +1,5 @@
 <script lang="ts">
+	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -354,6 +355,16 @@
 	let fightName: string | null = null;
 	let fightOpen = false;
 
+	// The bottom-left regions panel slides off the left edge while a fight is on, so the
+	// arena has the map to itself. Translated (not unmounted) to keep the breadcrumb/search
+	// state alive and animate back in on close; `left-4` means it must travel its own width
+	// plus that gap to clear the viewport.
+	$: regionPanelClasses = classNames(
+		'fixed bottom-4 left-4 z-[1100] flex h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box',
+		'border border-base-300 bg-base-100/70 shadow-lg transition-transform duration-300 ease-in-out',
+		{ 'translate-x-[calc(-100%-1.5rem)]': fightOpen }
+	);
+
 	// Fight this town: snapshot its seeded OG team into synthetic spawns and open the
 	// combat modal. Deterministic and read-only — nothing is persisted.
 	function challenge(): void {
@@ -668,10 +679,7 @@
 	<!-- The navbar's profile/sign-in panel, pinned always-visible top-left here. -->
 	<AuthMenu pinned />
 
-	<aside
-		class="fixed bottom-4 left-4 z-[1100] flex h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
-		aria-label="Map regions"
-	>
+	<aside class={regionPanelClasses} aria-label="Map regions">
 		<div class="flex flex-col gap-3 border-b border-base-300 px-4 py-3">
 			<div class="breadcrumbs max-w-full text-sm">
 				<ul>
