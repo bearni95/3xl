@@ -150,10 +150,11 @@ export class CardSprite extends Container {
 		this.addChild(footer);
 
 		// The labels row (top half) and the values row (bottom half) each get their own
-		// extra 50% black band, layered on top of the shared footer band.
+		// extra black band, layered on top of the shared footer band: 20% for the labels
+		// row, 50% for the values row.
 		const labelsBand = new Graphics();
 		labelsBand.rect(0, footerY, this.cardWidth, footerH / 2);
-		labelsBand.fill({ color: 0x000000, alpha: 0.5 });
+		labelsBand.fill({ color: 0x000000, alpha: 0.2 });
 		this.addChild(labelsBand);
 		const valuesBand = new Graphics();
 		valuesBand.rect(0, footerY + footerH / 2, this.cardWidth, footerH / 2);
