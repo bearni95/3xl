@@ -412,7 +412,7 @@ export class CardSprite extends Container {
 
 	/**
 	 * The row overlaid (with no background) on the top of the colour square: the show
-	 * name flush right (the rarity badge now lives in the title row). The show name is
+	 * name flush left (the rarity badge now lives in the title row). The show name is
 	 * truncated to the row width. `topY` is the top edge of the colour square.
 	 */
 	private makeShowRow(topY: number, showRowH: number): Container {
@@ -421,7 +421,7 @@ export class CardSprite extends Container {
 		const leftX = this.cardWidth * 0.08;
 		const rightX = this.cardWidth * 0.92;
 
-		// Show name, flush right, truncated to the row width.
+		// Show name, flush left, truncated to the row width.
 		if (this.card.showName) {
 			const show = new Text({
 				text: this.card.showName,
@@ -436,8 +436,8 @@ export class CardSprite extends Container {
 			});
 			show.alpha = 1;
 			this.ellipsize(show, this.card.showName, Math.max(0, rightX - leftX));
-			show.anchor.set(1, 0.5);
-			show.position.set(rightX, centerY);
+			show.anchor.set(0, 0.5);
+			show.position.set(leftX, centerY);
 			group.addChild(show);
 		}
 
