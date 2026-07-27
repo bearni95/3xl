@@ -299,21 +299,28 @@
 		info: { q: 2, r: -3 }
 	};
 
+	// One side's characters in line-up order: sorted by where they stand top→bottom on
+	// the board, which is exactly the left→right order the canvas draws that side's
+	// cards in. The controller is seeded in this order, and it is what fixes each rival
+	// to a duel step — the nth card always fights the nth duel of the round — so keep
+	// the sort here in step with the board's own card ordering (`collectCards`).
 	function rosterFor(
 		characters: (BoardCharacter | PlacedCharacter)[],
 		side: 'error' | 'info'
 	): Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] {
-		return characters.map((c) => {
-			const cell = 'q' in c ? { q: c.q, r: c.r } : centerCells[side];
-			return {
-				id: c.id as string,
-				basePath: c.basePath,
-				side,
-				// Vertical on-screen position of the cell, so the cards can be laid out
-				// left→right in the order the characters stand top-of-board first.
-				gridY: cellScreenY(cell.q, cell.r)
-			};
-		});
+		return characters
+			.map((c) => {
+				const cell = 'q' in c ? { q: c.q, r: c.r } : centerCells[side];
+				return {
+					id: c.id as string,
+					basePath: c.basePath,
+					side,
+					// Vertical on-screen position of the cell, so the cards can be laid out
+					// left→right in the order the characters stand top-of-board first.
+					gridY: cellScreenY(cell.q, cell.r)
+				};
+			})
+			.sort((a, b) => a.gridY - b.gridY);
 	}
 
 	let badges: Badge[] = [];

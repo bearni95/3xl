@@ -9,7 +9,10 @@
  * meet to hit it). Each fighter starts on its HP attribute (DEF + 1) as a flat HP
  * pool, carried across the whole game. Each round the player picks a color per
  * (blue / `info`) fighter and the rivals (red / `error`) pre-roll one, then the
- * pairs duel one at a time — player i vs rival i by selection order.
+ * pairs duel one at a time. The rival line-up never moves: the rival in line-up
+ * slot i always fights the round's ith duel, so the player can read off the rival
+ * cards who waits on each of the three steps before committing a colour. The
+ * player's own fighters fill the duels in the order they were picked.
  *
  * Each duel is one encounter on a purple meeting cell: the faster fighter (higher
  * SPD, ties broken by a coin flip) attacks first, then the other answers back if
@@ -158,6 +161,11 @@ export class CombatController {
 	/** Svelte store contract, so the page can use `$controller`. */
 	readonly subscribe = this.store.subscribe;
 
+	/**
+	 * @param seed every fighter of both sides, in **line-up order** within each side —
+	 * the left→right order that side's cards are drawn in. For the rivals that order is
+	 * binding: it is the fixed slot → duel-cell mapping {@link runSequence} pairs on.
+	 */
 	constructor(seed: FighterSeed[]) {
 		this.fighters = seed.map((entry) => {
 			// The HP pool is the fighter's HP attribute (DEF + 1) itself — no dice: a
@@ -234,6 +242,11 @@ export class CombatController {
 		return this.fighters.filter((fighter) => fighter.side === 'info');
 	}
 
+	/**
+	 * The rival line-up, in the fixed order it was seeded in — the left→right order the
+	 * board draws the rival cards in. Index i is the rival that fights the round's ith
+	 * duel, on `MELEE_MEETING_CELLS[i]`; nothing ever re-sorts or compacts it.
+	 */
 	private rivals(): Fighter[] {
 		return this.fighters.filter((fighter) => fighter.side === 'error');
 	}
@@ -305,7 +318,10 @@ export class CombatController {
 		const pickers = this.players().filter((f) => !this.heldCell(f) && !f.defeated);
 		if (pickers.every((f) => f.actionIndex !== null)) {
 			// Every player who *can* act committed — each non-holder rival locks in
-			// its held color (its pre-rolled default, unless overridden), in board order.
+			// its held color (its pre-rolled default, unless overridden). A rival's
+			// action index is its fixed line-up slot, not a picking order: it names the
+			// duel that rival always fights, and it stays the same whatever the rest of
+			// the line-up does.
 			this.rivals().forEach((rival, index) => {
 				if (this.heldCell(rival) || rival.defeated) return; // out or holding: sit out
 				rival.moveColor = rival.moveColor ?? this.randomColor(rival);
@@ -327,26 +343,40 @@ export class CombatController {
 	}
 
 	/**
-	 * Fight this round's duels, one per purple cell in order. A fighter holding a
-	 * cell is pinned to that cell's duel — it fights only if an enemy arrives
-	 * there (auto-defending with a random color, since it couldn't pick one) —
-	 * while the fighters who selected colors fill the remaining slots in selection
-	 * order. A cell whose duel can't be paired sees no fighting: an unchallenged
-	 * holder simply keeps standing on it.
+	 * Fight this round's duels, one per purple cell in order.
+	 *
+	 * The rival line-up is fixed: the rival in slot i fights on cell i and nowhere
+	 * else, round after round. It is never re-sorted, and its slot is never backfilled
+	 * by another rival — if it is knocked out, cell i simply sees no fighting for the
+	 * rest of the game. That is the point: the player can look at the three rival cards
+	 * and know exactly which one waits on each of the round's three steps before
+	 * choosing a single colour. (Because a rival only ever duels on its own cell, the
+	 * only cell it can ever hold is that cell, so a rival holder is always the slot's
+	 * own fighter.)
+	 *
+	 * The player's fighters fill the cells in selection order, so the order they are
+	 * picked in is the order they meet that fixed rival line-up. A fighter holding a
+	 * cell is pinned to that cell's duel — it fights only if an enemy arrives there,
+	 * auto-defending with a random color, since it couldn't pick one. A cell whose duel
+	 * can't be paired sees no fighting: an unchallenged holder simply keeps standing on
+	 * it, and the player waiting in the queue is not spent on it.
 	 */
 	private async runSequence(): Promise<void> {
 		const byOrder = (a: Fighter, b: Fighter) => (a.actionIndex ?? 0) - (b.actionIndex ?? 0);
 		const playersQueue = this.players()
 			.filter((f) => !this.heldCell(f) && !f.defeated)
 			.sort(byOrder);
-		const rivalsQueue = this.rivals()
-			.filter((f) => !this.heldCell(f) && !f.defeated)
-			.sort(byOrder);
+		const rivalSlots = this.rivals();
 		for (let i = 0; i < MELEE_MEETING_CELLS.length; i++) {
+			// The rival is whoever this slot belongs to — no shifting, no substitutes.
+			const rival = rivalSlots[i];
+			if (!rival || rival.defeated) continue;
 			const holder = this.cellOwners.get(cellKey(MELEE_MEETING_CELLS[i]));
-			const player = holder?.side === 'info' ? holder : playersQueue.shift();
-			const rival = holder?.side === 'error' ? holder : rivalsQueue.shift();
-			if (!player || !rival) continue;
+			// Peek at the next player rather than taking them: a player is only spent on
+			// a duel that actually happens.
+			const player = holder?.side === 'info' ? holder : playersQueue[0];
+			if (!player) continue;
+			if (player !== holder) playersQueue.shift();
 			// An attacked holder never picked a color — it defends with a random one,
 			// flaring its aura (in the colour it now throws) only once it's dragged
 			// into the duel.
