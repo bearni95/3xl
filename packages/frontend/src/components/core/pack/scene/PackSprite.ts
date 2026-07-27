@@ -364,7 +364,7 @@ export class PackSprite extends Container {
 				text: 'x5 Cartes Localitzades',
 				style: {
 					fontFamily: 'sans-serif',
-					fontSize: Math.max(10, Math.round(Math.min(w * 0.08, bandH * 0.6))),
+					fontSize: Math.max(10, Math.round(Math.min(w * 0.08, bandH * 0.6) * 0.67)),
 					fontWeight: '700',
 					fill: 0xffffff,
 					stroke: { color: 0x000000, width: Math.max(2, Math.round(w * 0.02)) },
@@ -393,7 +393,7 @@ export class PackSprite extends Container {
 				text: label,
 				style: {
 					fontFamily: 'sans-serif',
-					fontSize: Math.max(10, Math.round(Math.min(w * 0.08, bandH * 0.6))),
+					fontSize: Math.max(10, Math.round(Math.min(w * 0.08, bandH * 0.6) * 0.67)),
 					fontWeight: '700',
 					fill: 0xffffff,
 					stroke: { color: 0x000000, width: Math.max(2, Math.round(w * 0.02)) },
