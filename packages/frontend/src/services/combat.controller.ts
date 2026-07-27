@@ -15,8 +15,8 @@
  * the other answers back. An attack rolls ATK d10 and every die at or above the
  * defender's DEF is a hit; the thrown colour vs the defender's colour then scales
  * those hits (the strike table's ×0.5 / ×1 / ×2, rounded) into the HP of damage
- * dealt. A fighter reduced to 0 HP is knocked out — it walks back to its origin
- * cell at half opacity and takes no further part in any round. Barring a knockout,
+ * dealt. A fighter reduced to 0 HP is knocked out — it holds its hurt pose, fades
+ * off the board and is removed from the game entirely. Barring a knockout,
  * whoever is left with the most current HP claims the duel cell (a tie in HP keeps
  * the status quo); HP persists across encounters.
  *
@@ -436,8 +436,8 @@ export class CombatController {
 			rivalStays = rival.hp > player.hp || (tie && priorHolder === rival);
 		}
 		this.setStatus(this.encounterLine(player, rival, priorHolder));
-		// A knocked-out fighter already walked home under its own power — only the
-		// survivors settle onto (or back off) the cell here.
+		// A knocked-out fighter has already faded off the board — only the survivors
+		// settle onto (or back off) the cell here.
 		await Promise.all([
 			player.defeated ? undefined : this.settle(player, playerStays, cell),
 			rival.defeated ? undefined : this.settle(rival, rivalStays, cell)
@@ -514,8 +514,9 @@ export class CombatController {
 	}
 
 	/**
-	 * Knock a fighter out of the game: flag it, release any cell it held, and walk
-	 * it home at half opacity. It stays parked there and never fights again.
+	 * Knock a fighter out of the game: flag it, release any cell it held, and fade
+	 * it off the board (it holds its hurt pose, dissolves, and is removed for good).
+	 * It never fights again.
 	 */
 	private async knockOut(fighter: Fighter): Promise<void> {
 		fighter.defeated = true;
