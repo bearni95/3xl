@@ -2,7 +2,7 @@
 	import classNames from 'classnames';
 	import { onDestroy, onMount } from 'svelte';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
-	import { cellScreenX } from '$utils/mugen/mugen-board';
+	import { cellScreenY } from '$utils/mugen/mugen-board';
 	import type {
 		BoardCharacter,
 		BoardGrid,
@@ -253,11 +253,12 @@
 		/** The character's Supabase spawn gameplay stat (1..10). */
 		stat: number;
 		/**
-		 * Left→right screen position of the character's cell on the canvas (arbitrary
-		 * units; only the ordering matters). Used to lay the cards out in the same
-		 * horizontal order the characters stand in on the board.
+		 * Top→bottom screen position of the character's cell on the canvas (arbitrary
+		 * units that increase downward; only the ordering matters). Used to lay the
+		 * cards out left→right in the order the characters stand top-of-board first,
+		 * matching the canvas card band.
 		 */
-		gridX: number;
+		gridY: number;
 	}
 
 	// Start cells of the two movable centre characters (they're placed by the engine,
@@ -271,16 +272,16 @@
 	function rosterFor(
 		characters: (BoardCharacter | PlacedCharacter)[],
 		side: 'error' | 'info'
-	): Pick<Badge, 'id' | 'basePath' | 'side' | 'gridX'>[] {
+	): Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] {
 		return characters.map((c) => {
 			const cell = 'q' in c ? { q: c.q, r: c.r } : centerCells[side];
 			return {
 				id: c.id as string,
 				basePath: c.basePath,
 				side,
-				// Horizontal on-screen position of the cell, so the cards can be laid
-				// out left-to-right in the same order as the characters on the board.
-				gridX: cellScreenX(cell.q, cell.r)
+				// Vertical on-screen position of the cell, so the cards can be laid out
+				// left→right in the order the characters stand top-of-board first.
+				gridY: cellScreenY(cell.q, cell.r)
 			};
 		});
 	}
@@ -294,15 +295,16 @@
 	// Live combat state keyed by fighter id, for quick lookup while rendering.
 	$: combatById = new Map((state?.fighters ?? []).map((fighter) => [fighter.id, fighter]));
 
-	// Each side's badges, laid out left-to-right in the same order the characters
-	// stand on the board (leftmost cell first). `badges` is referenced directly so
-	// Svelte's legacy reactive tracking sees it as a dependency of `lineups`.
+	// Each side's badges, laid out left-to-right by where the characters stand
+	// top→bottom on the board (highest-on-canvas first). `badges` is referenced
+	// directly so Svelte's legacy reactive tracking sees it as a dependency of
+	// `lineups`.
 	$: lineups = [orderByCell('error', badges), orderByCell('info', badges)];
 
 	function orderByCell(side: 'error' | 'info', list: Badge[]): Badge[] {
 		return list
 			.filter((badge) => badge.side === side)
-			.sort((a, b) => a.gridX - b.gridX);
+			.sort((a, b) => a.gridY - b.gridY);
 	}
 
 	function onBoardReady(engine: MugenBoardEngine): void {
@@ -326,7 +328,7 @@
 			showNamesByCharacter,
 			municipalityNames
 		);
-		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridX'>[] = [
+		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] = [
 			...rosterFor([currentGrids[0].character, ...(currentGrids[0].extras ?? [])], 'error'),
 			...rosterFor([currentGrids[1].character, ...(currentGrids[1].extras ?? [])], 'info')
 		];

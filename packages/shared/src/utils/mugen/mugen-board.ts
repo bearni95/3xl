@@ -159,6 +159,22 @@ export function cellScreenX(q: number, r: number, farRatio: number = DEFAULTS.fa
 	return halfWidth * rawX;
 }
 
+/**
+ * Top→bottom screen position of the standing point in the hex at axial [q, r], in
+ * arbitrary units that increase downward (only the ordering is meaningful). Mirrors
+ * the vertical term of {@link MugenBoard.project}: far rows (larger r) sit higher up
+ * the canvas, so this returns the negated depth parameter — sort it ascending to lay
+ * characters out top-of-board first. Uses the board's default `farRatio`, the only
+ * value the app configures it with.
+ */
+export function cellScreenY(q: number, r: number, farRatio: number = DEFAULTS.farRatio): number {
+	const row = ROWS / 2 + 1.5 * r * HEX_SCALE_Y;
+	// Depth parameter t grows toward the far (upper) edge; screen y falls as t rises,
+	// so negate it to get a value that increases down the screen.
+	const t = row / (ROWS * farRatio + row * (1 - farRatio));
+	return -t;
+}
+
 /** On-screen height of a reference-height ({@link REFERENCE_SOURCE_HEIGHT}) character
  * as a multiple of its (perspective-foreshortened) cell width. Every other character
  * scales by the same source→screen ratio, so shorter/taller sprites read shorter/taller. */
@@ -540,9 +556,10 @@ export class MugenBoard {
 	}
 
 	/**
-	 * The display cards for one side, in the left→right order the characters stand on
-	 * the board. The centre character stands on `center`; each extra on its own hex.
-	 * Characters without a card are skipped.
+	 * The display cards for one side, ordered by where the characters stand top→bottom
+	 * on the board: the character highest up the canvas comes first (leftmost card),
+	 * then the middle one, then the lowest. The centre character stands on `center`;
+	 * each extra on its own hex. Characters without a card are skipped.
 	 */
 	private collectCards(grid: BoardGrid, center: { q: number; r: number }): CardModel[] {
 		const entries: { card: CardModel; q: number; r: number }[] = [];
@@ -550,7 +567,7 @@ export class MugenBoard {
 		for (const extra of grid.extras ?? []) {
 			if (extra.card) entries.push({ card: extra.card, q: extra.q, r: extra.r });
 		}
-		entries.sort((a, b) => this.hexMark(a.q, a.r).x - this.hexMark(b.q, b.r).x);
+		entries.sort((a, b) => this.hexMark(a.q, a.r).y - this.hexMark(b.q, b.r).y);
 		return entries.map((entry) => entry.card);
 	}
 
