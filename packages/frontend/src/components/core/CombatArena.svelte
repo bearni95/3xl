@@ -567,8 +567,14 @@
 		</div>
 	{:else}
 		<!-- Full width on small screens (so the canvas can shrink to the viewport),
-		     back to hugging its content from lg up. -->
-		<div class="card w-full min-w-0 bg-base-100 shadow-xl lg:w-auto">
+		     back to hugging its content from lg up. In panel mode (over the map) the
+		     card is transparent so the map shows through behind the board; on its own
+		     page it keeps the solid base card. -->
+		<div
+			class={classNames('card w-full min-w-0 lg:w-auto', {
+				'bg-base-100 shadow-xl': !closable
+			})}
+		>
 			<div class="card-body items-center gap-3">
 				<div class="flex w-full min-w-0 flex-col items-center gap-3">
 					{#key boardKey}
