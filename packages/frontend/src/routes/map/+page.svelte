@@ -6,6 +6,9 @@
 	import RegionTable from '$components/core/RegionTable.svelte';
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import ClaimPanel from '$components/core/ClaimPanel.svelte';
+	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
+	import ClaimPackGridPanel from '$components/core/pack/ClaimPackGridPanel.svelte';
+	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import {
 		buildRegionTree,
 		buildFillIndex,
@@ -39,6 +42,13 @@
 	// day's booster packs agree on which towns are "de festa". Each town's `id`
 	// matches a municipality feature id, so it resolves to a polygon on the map.
 	let todayFestes: FestaLocationRow[] = [];
+	// All of today's booster packs, computed by a hidden CharacterClaimPanel — the
+	// same component the /claim page uses to turn today's festes + the player's shows
+	// into openable packs. Kept here so clicking a star opens that town's pack at once,
+	// with no extra loading. Empty when signed out or before the show pool loads.
+	let claimPacks: OpenerPack[] = [];
+	// The municipality id whose festa-pack modal is open, or null when it's closed.
+	let festaModalId: string | null = null;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
 	// The tier of pins WorldMap is currently drawing (0 = coarsest), reported back
@@ -439,8 +449,9 @@
 
 	// A gold star dropped on every municipality celebrating a festa major today,
 	// at the centre of the town's bounding box (its own key in the region geometry).
-	// A festa town whose polygon isn't on the map (no box) is skipped. Named deps
-	// (`todayFestes`, `regionGeometry`) so the stars repaint when either lands.
+	// Clicking a star opens that town's festa booster pack in a modal. A festa town
+	// whose polygon isn't on the map (no box) is skipped. Named deps (`todayFestes`,
+	// `regionGeometry`) so the stars repaint when either lands.
 	$: festaStars = (() => {
 		const boxes = regionGeometry.boxes;
 		const result: MapStar[] = [];
@@ -451,11 +462,22 @@
 			result.push({
 				id: festa.id,
 				position: [(south + north) / 2, (west + east) / 2],
-				label: festa.name
+				label: festa.name,
+				onClick: () => (festaModalId = festa.id)
 			});
 		}
 		return result;
 	})();
+
+	// The single pack the festa modal shows — the clicked town's, filtered out of the
+	// full day's set — plus the town's name for the modal header. Empty/null when the
+	// modal is closed, the player is signed out, or the town has no claimable show yet.
+	$: festaModalPacks = festaModalId
+		? claimPacks.filter((pack) => pack.id === festaModalId)
+		: [];
+	$: festaModalName = festaModalId
+		? (todayFestes.find((festa) => festa.id === festaModalId)?.name ?? null)
+		: null;
 
 	// One pin per imaged region that has a show, dropped at the centre of the
 	// region's bounding box, captioned with the show and tooltipped with the region
@@ -631,3 +653,45 @@
 		</aside>
 	{/if}
 </div>
+
+<!-- Hidden, but mounted: the same claim panel the /claim page uses, kept alive only
+	to compute today's booster packs (bind:packs) so a star click can open the town's
+	pack instantly. Its own UI (auth, allowance) is never shown here — the modal below
+	surfaces just the pack canvas. -->
+<div class="hidden" aria-hidden="true">
+	<CharacterClaimPanel bind:packs={claimPacks} />
+</div>
+
+<!-- Star click → this town's festa booster pack on the same opener canvas as the
+	claim page, in a modal, ready to be sliced open and claimed. -->
+{#if festaModalId}
+	<div class="modal modal-open z-[2000]" role="dialog" aria-label="Sobre de festa">
+		<div class="modal-box flex max-h-[90vh] w-[92vw] max-w-4xl flex-col gap-4 p-4">
+			<div class="flex items-center justify-between gap-4">
+				<div>
+					<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Sobre de festa</h2>
+					{#if festaModalName}
+						<p class="text-lg font-bold">{restoreCatalanArticle(festaModalName)}</p>
+					{/if}
+				</div>
+				<button
+					class="btn btn-circle btn-ghost btn-sm"
+					on:click={() => (festaModalId = null)}
+					aria-label="Tanca"
+				>
+					✕
+				</button>
+			</div>
+
+			<div class="min-h-0 flex-1">
+				<ClaimPackGridPanel packs={festaModalPacks} />
+			</div>
+		</div>
+		<button
+			type="button"
+			class="modal-backdrop"
+			aria-label="Tanca"
+			on:click={() => (festaModalId = null)}
+		></button>
+	</div>
+{/if}

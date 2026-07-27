@@ -80,6 +80,8 @@ export interface MapStar {
 	position: [number, number];
 	/** Text shown as the hover tooltip (e.g. the municipality name). */
 	label?: string;
+	/** Called when the star is clicked (e.g. open the town's festa booster pack). */
+	onClick?: () => void;
 }
 
 /** A standalone circular region drawn on the map, independent of any GeoJSON. */

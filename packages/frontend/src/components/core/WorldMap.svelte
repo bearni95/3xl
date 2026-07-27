@@ -347,13 +347,14 @@
 	// A star badge's DOM: the game-icons.net round-star SVG (served from @3xl/assets),
 	// centred on its point with a drop shadow so it stays legible over any region
 	// fill beneath it.
-	function starElement(label?: string): HTMLElement {
-		const star = document.createElement('img');
-		star.src = '/assets/icons/delapouite/round-star.svg';
-		star.alt = label ?? '';
-		star.className =
+	function starElement(star: MapStar): HTMLElement {
+		const img = document.createElement('img');
+		img.src = '/assets/icons/delapouite/round-star.svg';
+		img.alt = star.label ?? '';
+		img.className =
 			'block h-6 w-6 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]';
-		return star;
+		if (star.onClick) img.className += ' cursor-pointer';
+		return img;
 	}
 
 	// (Re)build the star badges for the current view: clear the layer, keep only the
@@ -369,9 +370,10 @@
 		const bounds = mapInstance.getBounds().pad(0.25);
 		for (const star of stars) {
 			if (!bounds.contains(star.position)) continue;
-			const icon = Leaf.divIcon({ html: starElement(star.label), className: '', iconSize: [0, 0] });
+			const icon = Leaf.divIcon({ html: starElement(star), className: '', iconSize: [0, 0] });
 			const badge = Leaf.marker(star.position, { icon, riseOnHover: true });
 			if (star.label) badge.bindTooltip(star.label, { direction: 'top' });
+			if (star.onClick) badge.on('click', () => star.onClick!());
 			badge.addTo(starLayer!);
 		}
 	}
