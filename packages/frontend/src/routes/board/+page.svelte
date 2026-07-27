@@ -187,7 +187,7 @@
 			// The display card drawn outside the grid (rival above, player below): the
 			// idle art loads from basePath, and the combat attributes mirror the board's
 			// derivation from the rolled stat (ATK = stat, DEF its complement, SPD = ATK − 1,
-			// HP = DEF + 1). Rarity, show and claim place come from the same three
+			// HP attribute = DEF + 1, the number of d4 rolled for the pool). Rarity, show and claim place come from the same three
 			// Supabase/geo sources the roster and claim cards read (`showNames`/`names` are
 			// passed so the reactive build re-runs — and the board remounts — once those
 			// layers load).
@@ -489,8 +489,8 @@
 		</div>
 		<span>{badge.name}</span>
 		<!-- ATK is the character's Supabase spawn stat; DEF is its complement
-		     (SPAWN_STAT_MAX - ATK); SPD is ATK − 1; HP starts at DEF + 1 and
-		     drains live as combat plays out. -->
+		     (SPAWN_STAT_MAX - ATK); SPD is ATK − 1; the HP pool is rolled at battle
+		     start as (DEF + 1)d4 and drains live as combat plays out. -->
 		<table class="table table-xs w-auto text-center">
 			<thead>
 				<tr>

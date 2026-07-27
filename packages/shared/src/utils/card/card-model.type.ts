@@ -53,6 +53,7 @@ export interface CardModel {
 	def: number;
 	/** Speed: the character's SPD stat (ATK − 1), drawn in the footer. */
 	spd: number;
-	/** Hit points: the character's starting HP (DEF + 1), drawn in the footer. */
+	/** HP attribute (DEF + 1): the number of d4 the character rolls for its HP pool
+	 * at battle start, drawn in the footer. */
 	hp: number;
 }

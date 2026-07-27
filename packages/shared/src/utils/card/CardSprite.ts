@@ -118,21 +118,16 @@ export class CardSprite extends Container {
 		const showRowH = Math.round(this.cardHeight * 0.1);
 		const metaH = Math.round(this.cardHeight * 0.1);
 
-		// Black card base (also the rounded frame + border). The character's colour fills
-		// only the middle square below, so the header/footer bands sit over black and
-		// read as true black — a 50% black strip over the colour bled through as olive.
+		// Colored portrait backdrop (the character's colour), with a black border to
+		// match the roster card framing. The header/footer bands are a 50% black overlay
+		// on top of this, so they darken the character colour rather than reading as
+		// solid black.
 		const backdrop = new Graphics();
 		backdrop.roundRect(0, 0, this.cardWidth, this.cardHeight, radius);
-		backdrop.fill(0x000000);
+		backdrop.fill(COLOR_HEX[this.card.color] ?? 0x1f2937);
 		backdrop.roundRect(0, 0, this.cardWidth, this.cardHeight, radius);
 		backdrop.stroke({ width: 2, color: 0x000000, alpha: 0.9 });
 		this.addChild(backdrop);
-
-		// The character's colour fills the middle square (the art area) only.
-		const colorField = new Graphics();
-		colorField.rect(this.artArea.x, this.artArea.y, this.artArea.w, this.artArea.h);
-		colorField.fill(COLOR_HEX[this.card.color] ?? 0x1f2937);
-		this.addChild(colorField);
 
 		// Dark header strip at the top, carrying the character name. The rarity/show
 		// row is not part of it — it floats transparently over the colour square below.
