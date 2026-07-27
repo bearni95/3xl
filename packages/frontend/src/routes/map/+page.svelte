@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { characters } from '@3xl/data';
 	import AuthMenu from '$components/core/AuthMenu.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
@@ -10,7 +11,15 @@
 	import ClaimPanel from '$components/core/ClaimPanel.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
+	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
+	import { spawnService } from '$services/spawn.service';
+	import { TEAM_SIZE } from '$services/team.service';
+	import { buildMunicipalityTeam } from '$utils/spawn/municipality-team';
+	import { coordinateSeed } from '$utils/geo/municipality-show';
+	import { combatStatsFromStat } from '$utils/spawn/stat';
+	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
+	import type { CardModel } from '$utils/card/card-model.type';
 	import {
 		buildRegionTree,
 		buildFillIndex,
@@ -115,6 +124,17 @@
 			todayFestes = await festesService.loadTodayFestes();
 		} catch {
 			todayFestes = [];
+		}
+
+		// The show → renderable-character assignment, read once from Supabase so a
+		// selected municipality can preview its top show's team client-side. Read-only:
+		// nothing is written back. Stays empty (team preview hidden) if Supabase is
+		// unconfigured or unreadable.
+		try {
+			const claimable = await spawnService.loadShows();
+			showCharacterIds = new Map(claimable.map((show) => [show.id, show.characterIds]));
+		} catch {
+			showCharacterIds = new Map();
 		}
 	});
 
@@ -280,6 +300,81 @@
 	// anywhere in the bottom-left panel, whose table only lists the child rows beneath it.
 	$: openNode = openRegion ? findNode(regionNodes, openRegion) : null;
 	$: openShow = openNode?.show ?? null;
+
+	// --- The open municipality's deterministic "house team" ---------------------
+	// A leaf region (a municipality) has no children to drill into; instead of an
+	// empty table the bottom-left panel previews the town's team: three cards rolled
+	// deterministically from the town's own seed, drawn from its top show's roster.
+	// It's a read-only, client-side mirror of the claim roll (a card is never written
+	// to Supabase from here) — only the show→character assignment is read below.
+
+	// The registry, indexed by id, so a rolled team member resolves to a label + sprite.
+	const charactersById = new Map(characters.map((character) => [character.id, character]));
+
+	// show id → its renderable character ids, read once from Supabase (the same
+	// `show_characters` assignment the claim panel reads). Empty when Supabase is
+	// unconfigured or unreadable — the team preview simply stays hidden then.
+	let showCharacterIds = new Map<number, string[]>();
+
+	// character id → resolved active-face portrait, loaded lazily as team members
+	// appear (mirrors the roster's face loading).
+	let characterFaces = new Map<string, string | null>();
+	const faceRequested = new Set<string>();
+
+	// The open leaf municipality's feature (matched by id), and the GPS seed that
+	// assigns its show — the same seed we reuse to roll its team, so a town's show and
+	// its team are both stable functions of its shape. Null unless a municipality with
+	// no sub-regions is open.
+	$: municipalityFeature =
+		openRegion && municipalities && regionRows.length === 0
+			? (municipalities.features.find((feature) => String(feature.properties?.id) === openRegion) ??
+				null)
+			: null;
+	$: municipalitySeed = municipalityFeature ? coordinateSeed(municipalityFeature.geometry) : null;
+
+	// The town's rolled team: up to TEAM_SIZE distinct characters from its top show's
+	// roster, seeded by the municipality seed and obeying the roster's colour rule.
+	$: municipalityTeam =
+		municipalitySeed != null && openShow
+			? buildMunicipalityTeam(municipalitySeed, showCharacterIds.get(openShow.id) ?? [], TEAM_SIZE)
+			: [];
+
+	// Kick off face loading for whichever team members are on screen.
+	$: void loadFaces(municipalityTeam.map((member) => member.characterId));
+
+	// The team as display CardModels for the shared renderer — the same shape the
+	// claim/roster cards use. `characterFaces` is threaded in so the statement re-runs
+	// as faces resolve. The four combat attributes derive from the rolled stat exactly
+	// as the claim flow's buildPull does.
+	$: municipalityTeamCards = ((faces: Map<string, string | null>): CardModel[] =>
+		municipalityTeam.map((member) => ({
+			label: charactersById.get(member.characterId)?.label ?? member.characterId,
+			basePath: charactersById.get(member.characterId)?.basePath ?? null,
+			faceUrl: faces.get(member.characterId) ?? null,
+			color: member.color,
+			rarity: null,
+			showName: openShow?.name ?? null,
+			locationName: municipalityFeature
+				? restoreCatalanArticle(String(municipalityFeature.properties?.name ?? ''))
+				: null,
+			spawnedAt: null,
+			...combatStatsFromStat(member.stat)
+		})))(characterFaces);
+
+	// Fetch the active-face portrait for any team character not yet requested, then
+	// reassign the map so the cards re-render with their faces.
+	async function loadFaces(ids: string[]): Promise<void> {
+		const missing = ids.filter((id) => !faceRequested.has(id));
+		if (missing.length === 0) return;
+		for (const id of missing) faceRequested.add(id);
+		await Promise.all(
+			missing.map(async (id) => {
+				const basePath = charactersById.get(id)?.basePath ?? null;
+				characterFaces.set(id, basePath ? await resolveCharacterFaceUrl(id, basePath) : null);
+			})
+		);
+		characterFaces = characterFaces;
+	}
 
 	// Per-municipality chain of region tiers, read by buildMarkers/focusBounds to
 	// find the municipalities under a region and frame or pin it.
@@ -611,10 +706,11 @@
 		{:else if regionRows.length === 0}
 			<!-- A leaf region (a municipality) has no children to drill into, so instead of
 				an empty table we surface its own top show — the same card the bottom-right
-				panel shows for the open location. -->
-			<div class="min-h-0 flex-1 overflow-y-auto p-4">
+				panel shows — plus the town's deterministic house team on the shared card
+				canvas (three cards rolled from the town's seed and its show's roster). -->
+			<div class="flex min-h-0 flex-1 flex-col gap-3 p-4">
 				{#if openShow}
-					<div class="flex items-center gap-3">
+					<div class="flex flex-none items-center gap-3">
 						{#if openShow.posterUrl}
 							<img
 								src={openShow.posterUrl}
@@ -628,7 +724,13 @@
 						</div>
 					</div>
 				{:else}
-					<p class="text-center opacity-60">No show here yet.</p>
+					<p class="flex-none text-center opacity-60">No show here yet.</p>
+				{/if}
+
+				{#if municipalityTeamCards.length > 0}
+					<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
+						<CardCanvas cards={municipalityTeamCards} columns={TEAM_SIZE} layout="grid" pannable />
+					</div>
 				{/if}
 			</div>
 		{:else}

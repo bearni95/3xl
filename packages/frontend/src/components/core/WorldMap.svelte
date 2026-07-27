@@ -175,13 +175,31 @@
 	});
 
 	$effect(() => {
-		// Frame the requested region: fit the map to its bounding box with a little
-		// breathing room. Gated on `ready` (a $state flag) so a focus set before the
-		// map mounts still applies once the instance exists.
+		// Frame the requested region. Gated on `ready` (a $state flag) so a focus set
+		// before the map mounts still applies once the instance exists.
 		void ready;
 		if (!focusBounds || !mapInstance) return;
-		mapInstance.fitBounds(focusBounds, { padding: [32, 32] });
+
+		// `fitBounds` snaps down to the largest integer zoom at which the region still
+		// fits the (padded) viewport — which is often a zoom where the region is still
+		// within the level-of-detail fit factor, so its OWN pin tier stays on screen and
+		// clicking it reveals no new subdivisions until you zoom in again. Step one zoom
+		// deeper in that case so the region overflows the factor and its child tier
+		// becomes the active level right on click. Capped at maxZoom so a tiny leaf
+		// region (no children) just frames tighter instead of looping to the max.
+		let target = mapInstance.getBoundsZoom(focusBounds, false, [32, 32]);
+		if (target < maxZoom && boundsFitAtZoom(focusBounds, target)) target += 1;
+		const centre = focusBoundsCentre(focusBounds);
+		mapInstance.setView(centre, target, { animate: true });
 	});
+
+	// The geographic centre of a `[[south, west], [north, east]]` box.
+	function focusBoundsCentre(
+		bounds: [[number, number], [number, number]]
+	): [number, number] {
+		const [[south, west], [north, east]] = bounds;
+		return [(south + north) / 2, (west + east) / 2];
+	}
 
 	// Build a pin's DOM: the region's location name, then a poster thumbnail in a
 	// rounded frame, with the full show name captioned beneath (never truncated).
@@ -274,13 +292,15 @@
 		return nearest;
 	}
 
-	// Whether a marker's region is small enough to sit within the viewport (times
-	// the fit factor) at the current zoom — i.e. this tier is the right size to show
-	// rather than unfolding into its children. Markers without bounds always "fit".
-	function regionFits(marker: MapMarker): boolean {
-		if (!marker.bounds || !mapInstance) return true;
-		const zoom = mapInstance.getZoom();
-		const [[south, west], [north, east]] = marker.bounds;
+	// Whether a bounding box projects small enough to sit within the viewport (times
+	// the fit factor) at a given zoom — i.e. this tier is the right size to show
+	// rather than unfolding into its children.
+	function boundsFitAtZoom(
+		bounds: [[number, number], [number, number]],
+		zoom: number
+	): boolean {
+		if (!mapInstance) return true;
+		const [[south, west], [north, east]] = bounds;
 		const topLeft = mapInstance.project([north, west], zoom);
 		const bottomRight = mapInstance.project([south, east], zoom);
 		const size = mapInstance.getSize();
@@ -288,6 +308,13 @@
 			Math.abs(bottomRight.x - topLeft.x) <= size.x * LEVEL_FIT_FACTOR &&
 			Math.abs(bottomRight.y - topLeft.y) <= size.y * LEVEL_FIT_FACTOR
 		);
+	}
+
+	// Whether a marker's region still fits at the current zoom. Markers without
+	// bounds always "fit".
+	function regionFits(marker: MapMarker): boolean {
+		if (!marker.bounds || !mapInstance) return true;
+		return boundsFitAtZoom(marker.bounds, mapInstance.getZoom());
 	}
 
 	// The index of the tier to draw: the COARSEST level whose focused region still
