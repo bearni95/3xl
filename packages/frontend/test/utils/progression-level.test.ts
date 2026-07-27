@@ -5,7 +5,9 @@ import {
 	MIN_LEVEL,
 	levelForExp,
 	expForLevel,
-	levelProgress
+	levelProgress,
+	levelSpanExp,
+	combatExpAward
 } from '$utils/progression/level';
 
 describe('D&D experience-to-level', () => {
@@ -69,5 +71,52 @@ describe('level progress', () => {
 		expect(p.nextLevelExp).toBeNull();
 		expect(p.expForLevelSpan).toBeNull();
 		expect(p.fraction).toBe(1);
+	});
+});
+
+describe('level span', () => {
+	it('spans a whole level, not the part still unearned', () => {
+		expect(levelSpanExp(1)).toBe(300); // 0 → 300
+		expect(levelSpanExp(2)).toBe(600); // 300 → 900
+		expect(levelSpanExp(3)).toBe(1_800); // 900 → 2700
+	});
+
+	it('is zero at the cap and clamps out-of-range levels', () => {
+		expect(levelSpanExp(MAX_LEVEL)).toBe(0);
+		expect(levelSpanExp(99)).toBe(0);
+		expect(levelSpanExp(0)).toBe(levelSpanExp(MIN_LEVEL));
+		expect(levelSpanExp(-4)).toBe(levelSpanExp(MIN_LEVEL));
+	});
+});
+
+describe('combat experience award', () => {
+	it('pays a flawless win the whole span of the current level', () => {
+		// Untouched at level 1: exactly the 300 xp that reaches level 2.
+		expect(combatExpAward({ exp: 0, won: true, hpLeft: 30, hpMax: 30 })).toBe(300);
+		// Level 2 (300..900) pays its own full 600 span, from the level's base —
+		// so it overshoots into level 3 for a player who was already partway.
+		expect(combatExpAward({ exp: 600, won: true, hpLeft: 24, hpMax: 24 })).toBe(600);
+	});
+
+	it('scales linearly with the compound HP the team kept', () => {
+		expect(combatExpAward({ exp: 0, won: true, hpLeft: 15, hpMax: 30 })).toBe(150);
+		expect(combatExpAward({ exp: 0, won: true, hpLeft: 3, hpMax: 30 })).toBe(30);
+		// Rounded to whole experience.
+		expect(combatExpAward({ exp: 0, won: true, hpLeft: 1, hpMax: 7 })).toBe(43);
+	});
+
+	it('pays nothing for a loss, a draw, or a wipeout win', () => {
+		expect(combatExpAward({ exp: 0, won: false, hpLeft: 30, hpMax: 30 })).toBe(0);
+		expect(combatExpAward({ exp: 0, won: true, hpLeft: 0, hpMax: 30 })).toBe(0);
+	});
+
+	it('pays nothing at the level cap', () => {
+		expect(combatExpAward({ exp: 400_000, won: true, hpLeft: 30, hpMax: 30 })).toBe(0);
+	});
+
+	it('never exceeds the span or goes negative on absurd HP', () => {
+		expect(combatExpAward({ exp: 0, won: true, hpLeft: 9_000, hpMax: 30 })).toBe(300);
+		expect(combatExpAward({ exp: 0, won: true, hpLeft: -5, hpMax: 30 })).toBe(0);
+		expect(combatExpAward({ exp: 0, won: true, hpLeft: 10, hpMax: 0 })).toBe(0);
 	});
 });

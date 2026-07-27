@@ -1,8 +1,12 @@
 import { ObjectServiceClass } from '$services/classes/object-service.class';
 import type { ID } from '$types/core.type';
+import { COMBAT_TEAM_SIZE } from '$types/combat.type';
 
-/** A team always has exactly this many spawn slots. */
-export const TEAM_SIZE = 3;
+/**
+ * A team always has exactly this many spawn slots — the side a fight fields, so
+ * it is the shared combat constant the `award_combat_exp` RPC also caps reports at.
+ */
+export const TEAM_SIZE = COMBAT_TEAM_SIZE;
 
 /**
  * A named team of {@link TEAM_SIZE} distinct spawns (empty slots allowed). Slots

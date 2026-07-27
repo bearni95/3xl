@@ -2,6 +2,8 @@ import { writable, type Readable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { profileAdapter } from '$adapters/classes/profile.adapter';
 import { AuthStatus, type Profile } from '$types/profile.type';
+import type { CombatReport, CombatReward } from '$types/combat.type';
+import { MIN_LEVEL } from '$utils/progression/level';
 import { getSupabaseClient, isSupabaseConfigured } from '$services/supabase.client';
 
 /**
@@ -93,22 +95,43 @@ class AuthService {
 	}
 
 	/**
-	 * Award experience to the signed-in player. Increments the stored total
-	 * atomically server-side via the `add_player_exp` RPC (which upserts the
-	 * `player_profiles` row and clamps negatives), then mirrors the authoritative
-	 * new total — and the level it implies — into the profile store. Returns the
-	 * new total, or `null` when signed out / unconfigured.
+	 * Report a finished fight and collect whatever experience it earned — the only
+	 * way a player gains experience.
+	 *
+	 * The browser states *what happened* (the outcome and how much HP the player's
+	 * team was left with), never how much that is worth: the `award_combat_exp`
+	 * RPC checks every fighter belongs to the caller, clamps their HP into the
+	 * range their spawns could have rolled, and computes the award from the
+	 * player's stored experience — a win pays out the player's current level's
+	 * whole span scaled by surviving HP, a loss or draw pays nothing. The
+	 * authoritative new total (and the level it implies) is mirrored into the
+	 * profile store. Returns `null` when signed out / unconfigured.
 	 */
-	async addExp(amount: number): Promise<number | null> {
-		if (!isSupabaseConfigured() || !Number.isFinite(amount) || amount <= 0) return null;
+	async reportCombat(report: CombatReport): Promise<CombatReward | null> {
+		if (!isSupabaseConfigured() || report.fighters.length === 0) return null;
 		const supabase = getSupabaseClient();
-		const { data, error } = await supabase.rpc('add_player_exp', {
-			amount: Math.trunc(amount)
+		const { data, error } = await supabase.rpc('award_combat_exp', {
+			p_outcome: report.outcome,
+			p_fighters: report.fighters.map((fighter) => ({
+				spawn_id: fighter.spawnId,
+				hp_left: Math.max(0, Math.round(fighter.hpLeft)),
+				max_hp: Math.max(0, Math.round(fighter.maxHp))
+			}))
 		});
 		if (error) throw error;
-		const total = Number(data ?? 0);
-		this.mergeExp(total);
-		return total;
+
+		const row = Array.isArray(data) ? data[0] : data;
+		if (!row) return null;
+		const reward: CombatReward = {
+			awarded: Number(row.awarded_exp ?? 0),
+			total: Number(row.total_exp ?? 0),
+			level: Number(row.at_level ?? MIN_LEVEL),
+			span: Number(row.span_exp ?? 0),
+			hpLeft: Number(row.team_hp_left ?? 0),
+			hpMax: Number(row.team_hp_max ?? 0)
+		};
+		this.mergeExp(reward.total);
+		return reward;
 	}
 
 	/**

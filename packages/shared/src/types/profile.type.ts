@@ -28,8 +28,9 @@ export interface Profile {
 	lastSignInAt: string | null;
 	/**
 	 * Total accumulated experience, from the Supabase `player_profiles` table.
-	 * Starts at 0 for a fresh account and is only ever increased (server-side, via
-	 * the `add_player_exp` RPC). Defaults to 0 until the value has loaded.
+	 * Starts at 0 for a fresh account and is only ever increased by winning fights
+	 * (server-side, via the `award_combat_exp` RPC, which is the sole writer and
+	 * decides the amount itself). Defaults to 0 until the value has loaded.
 	 */
 	exp: number;
 	/**

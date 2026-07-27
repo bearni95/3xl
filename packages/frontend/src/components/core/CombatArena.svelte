@@ -16,6 +16,7 @@
 		type Fighter,
 		type FighterSeed
 	} from '$services/combat.controller';
+	import type { CombatReward } from '$types/combat.type';
 	import {
 		COMPOUND_COLORS,
 		DEFAULT_COLOR,
@@ -405,6 +406,9 @@
 			const { atk, def, spd } = combatStatsFromStat(badge.stat);
 			return {
 				id: badge.id,
+				// The spawn behind the instance id, so a won fight can be reported for
+				// experience against the actual `character_spawns` rows fielded.
+				spawnId: spawnIdOf(badge.id),
 				name: badge.name,
 				side: badge.side,
 				color: badge.color,
@@ -418,6 +422,41 @@
 		controller = new CombatController(seeds);
 		unsubscribe = controller.subscribe((next) => (state = next));
 		if (board) controller.attachBoard(board);
+	}
+
+	// The experience the finished fight earned, as the server settled it — winning
+	// is the game's only source of experience. Null until the award lands (and for
+	// a fight that earned nothing the endgame modal just shows no reward line).
+	let reward: CombatReward | null = null;
+	let rewardPending = false;
+	let rewardError = '';
+	// The controller whose result has already been reported, so the award fires
+	// exactly once per game: "Play again" builds a fresh controller, which arms it.
+	let reportedFor: CombatController | null = null;
+
+	// Report the fight the moment it is decided. Both `state` and `controller` are
+	// named here so Svelte's legacy reactive tracking sees them as dependencies.
+	$: void reportOutcome(state, controller);
+
+	async function reportOutcome(
+		current: CombatState | null,
+		ctrl: CombatController | null
+	): Promise<void> {
+		if (!current?.outcome || !ctrl || reportedFor === ctrl) return;
+		reportedFor = ctrl;
+		const report = ctrl.report();
+		if (!report) return;
+		rewardPending = true;
+		rewardError = '';
+		try {
+			// The amount is the server's to decide — this only states what happened.
+			reward = await authService.reportCombat(report);
+		} catch (error) {
+			reward = null;
+			rewardError = error instanceof Error ? error.message : String(error);
+		} finally {
+			rewardPending = false;
+		}
 	}
 
 	onMount(() => authService.init());
@@ -443,9 +482,12 @@
 		controller?.selectColor(id, color);
 	}
 
-	// Restart from the endgame modal: remount the board and rebuild the fight.
+	// Restart from the endgame modal: remount the board and rebuild the fight. The
+	// last fight's reward is cleared so the next endgame reports its own.
 	function playAgain(): void {
 		gameKey += 1;
+		reward = null;
+		rewardError = '';
 		void setup();
 	}
 
@@ -602,6 +644,32 @@
 				{outcomeTitles[state.outcome]}
 			</h3>
 			<p class="py-3 text-sm opacity-70">{state.status}</p>
+			<!-- What the fight paid out. A win earns the whole span of the player's
+			     current level scaled by the compound HP their team kept, so a flawless
+			     win is exactly one level's worth; a loss earns nothing and says so. -->
+			{#if rewardPending}
+				<p class="text-sm opacity-60">
+					<span class="loading loading-spinner loading-xs align-middle"></span>
+					Tallying experience…
+				</p>
+			{:else if rewardError}
+				<p class="text-error text-sm">Experience could not be awarded: {rewardError}</p>
+			{:else if reward}
+				{#if reward.awarded > 0}
+					<p class="text-success text-2xl font-bold">+{reward.awarded.toLocaleString()} XP</p>
+					<p class="text-xs opacity-60">
+						{reward.hpLeft}/{reward.hpMax} HP left of level {reward.level}'s
+						{reward.span.toLocaleString()} XP
+						{#if reward.hpLeft === reward.hpMax}
+							— flawless, a whole level earned.
+						{/if}
+					</p>
+				{:else if reward.span === 0}
+					<p class="text-sm opacity-60">Max level — no experience left to earn.</p>
+				{:else}
+					<p class="text-sm opacity-60">No experience — only winning pays out.</p>
+				{/if}
+			{/if}
 			<div class="modal-action justify-center">
 				<button type="button" class="btn btn-primary" on:click={playAgain}>Play again</button>
 				{#if closable}

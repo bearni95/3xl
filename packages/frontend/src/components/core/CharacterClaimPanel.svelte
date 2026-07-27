@@ -12,7 +12,6 @@
 	import type { GeoRegion } from '$types/location.type';
 	import type { MunicipalityShowsCollection, ShowEntry, ShowsCollection } from '$types/show.type';
 	import { showPosterUrlForSeed } from '$utils/geo/municipality-show';
-	import { EXP_PER_SPAWN } from '$utils/progression/level';
 	import { festesService } from '$services/festes.service';
 	import type { RegionShow } from '$utils/geo/region-tree';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
@@ -161,9 +160,10 @@
 
 	// Build the roll one grid pack fires when the player slices it open — a closure
 	// bound to its show + place. The Supabase roll persists the spawn at open time
-	// (not when the pack is picked), awards experience, and returns the cards to
-	// reveal ([] on failure, which reveals nothing). Every limit (daily allowance,
-	// festa-major-today) is enforced server-side by the claim_booster RPC.
+	// (not when the pack is picked) and returns the cards to reveal ([] on failure,
+	// which reveals nothing). Every limit (daily allowance, festa-major-today) is
+	// enforced server-side by the claim_booster RPC. Opening a pack earns no
+	// experience — that comes from winning fights only (see award_combat_exp).
 	function makeClaim(show: ClaimableShow, claimRegion: GeoRegion): () => Promise<ClaimPull[]> {
 		return async () => {
 			if (!currentUserId || !claimRegion.id) return [];
@@ -176,12 +176,7 @@
 			claimError = '';
 			try {
 				const spawns = await spawnService.claimBooster(show.id, claimRegion.id);
-				// Award experience for the cards pulled and mirror the new total (and the
-				// level it implies) into the profile card. Non-blocking — a failure here
-				// must not sink a successful claim.
-				void authService.addExp(spawns.length * EXP_PER_SPAWN).catch(() => undefined);
-				// Refresh the daily allowance: this pack counts against it, and the exp
-				// just awarded may have raised the level (and so the cap).
+				// Refresh the daily allowance: this pack counts against it.
 				void refreshBoostersStatus();
 
 				// Capture the place and resolve each portrait so the revealed cards carry

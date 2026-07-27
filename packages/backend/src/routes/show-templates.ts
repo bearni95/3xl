@@ -40,8 +40,10 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // references both `character_templates` and `show_templates`; unlike the other
 // tables it's RLS-protected (each player only sees/creates their own spawns), as
 // the frontend writes it directly with the anon key. `player_profiles` (the
-// per-player experience total behind the profile card's level, mutated only via
-// the security-definer `add_player_exp` RPC) is provisioned here too. Finally,
+// per-player experience total behind the profile card's level) is provisioned
+// here too, along with `combat_results` and the `award_combat_exp` RPC — the
+// single path that mutates it, since experience is earned by winning fights and
+// nothing else (the old client-driven `add_player_exp` is dropped). Finally,
 // `booster_claims` (the per-pack rate-limit ledger) plus the `claim_booster`
 // security-definer RPC — the only path that inserts spawns now — enforce the
 // daily booster limit (= player level, capped at 20, resetting at midnight
@@ -129,9 +131,10 @@ export function ensureTables(): Promise<void> {
 						for delete using (auth.uid() = user_id);
 				-- Per-player progression: an accumulated experience total the frontend
 				-- reads to derive a level (D&D 5e table). RLS lets a player read only
-				-- their own row; it is never written directly — the add_player_exp RPC
-				-- below (security definer) is the only path that mutates it, so a client
-				-- cannot set an arbitrary total, only earn increments.
+				-- their own row; it is never written directly — the award_combat_exp RPC
+				-- further down (security definer) is the only path that mutates it, and it
+				-- derives the amount itself from a finished fight, so a client can neither
+				-- set an arbitrary total nor name its own increment.
 				create table if not exists player_profiles (
 						user_id uuid primary key references auth.users (id) on delete cascade,
 						exp bigint not null default 0,
@@ -142,26 +145,11 @@ export function ensureTables(): Promise<void> {
 				drop policy if exists player_profiles_select_own on player_profiles;
 				create policy player_profiles_select_own on player_profiles
 						for select using (auth.uid() = user_id);
-				-- Atomically add experience for the caller, upserting their row and
-				-- clamping negative amounts to a no-op. Returns the new total.
-				create or replace function add_player_exp(amount bigint)
-				returns bigint
-				language plpgsql
-				security definer
-				set search_path = public
-				as $add_player_exp$
-				declare
-						new_exp bigint;
-				begin
-						insert into player_profiles (user_id, exp)
-						values (auth.uid(), greatest(0, amount))
-						on conflict (user_id) do update
-								set exp = player_profiles.exp + greatest(0, amount), updated_at = now()
-						returning exp into new_exp;
-						return new_exp;
-				end;
-				$add_player_exp$;
-				grant execute on function add_player_exp(bigint) to authenticated;
+				-- Retire the client-driven award path: add_player_exp(amount) took the
+				-- increment straight from the browser, so anyone holding the anon key could
+				-- grant themselves any total. Experience now comes from combat only, via
+				-- award_combat_exp below.
+				drop function if exists add_player_exp(bigint);
 					-- Booster rate-limit ledger: one row per pack a player opens, written
 					-- only by the claim_booster RPC below. Lets the daily-limit check count
 					-- opened packs directly instead of regrouping character_spawns. RLS lets
@@ -413,7 +401,192 @@ export function ensureTables(): Promise<void> {
 							return next;
 					end;
 					$recycle_spawns$;
-					grant execute on function recycle_spawns(uuid[]) to authenticated`
+					grant execute on function recycle_spawns(uuid[]) to authenticated;
+					-- Combat rewards: the ONLY way a player earns experience. Claiming cards,
+					-- opening packs and recycling award nothing at all — winning fights does.
+					-- One row per finished fight, written solely by award_combat_exp below: the
+					-- audit trail behind every experience gain. RLS lets a player read only their
+					-- own fights; there is no client write path.
+					create table if not exists combat_results (
+							id uuid primary key default gen_random_uuid(),
+							user_id uuid not null references auth.users (id) on delete cascade,
+							outcome text not null check (outcome in ('win', 'lose', 'draw')),
+							-- Compound team HP at the end / at the start, after server-side clamping.
+							hp_left integer not null,
+							hp_max integer not null,
+							-- The level whose span was at stake, and the span itself.
+							level integer not null,
+							level_span bigint not null,
+							-- Experience actually awarded (0 for anything but a win).
+							exp_awarded bigint not null,
+							fought_at timestamptz not null default now()
+						);
+					create index if not exists combat_results_user_day_idx
+						on combat_results (user_id, fought_at);
+					alter table combat_results enable row level security;
+					drop policy if exists combat_results_select_own on combat_results;
+					create policy combat_results_select_own on combat_results
+							for select using (auth.uid() = user_id);
+					-- Cumulative experience at which a level begins — the same D&D 5e table as
+					-- level_for_exp, read the other way round. Mirrors expForLevel in @3xl/shared.
+					create or replace function exp_for_level(p_level int)
+					returns bigint language sql immutable set search_path = public as $exp_for_level$
+						select case least(greatest(p_level, 1), 20)
+							when 1 then 0
+							when 2 then 300
+							when 3 then 900
+							when 4 then 2700
+							when 5 then 6500
+							when 6 then 14000
+							when 7 then 23000
+							when 8 then 34000
+							when 9 then 48000
+							when 10 then 64000
+							when 11 then 85000
+							when 12 then 100000
+							when 13 then 120000
+							when 14 then 140000
+							when 15 then 165000
+							when 16 then 195000
+							when 17 then 225000
+							when 18 then 265000
+							when 19 then 305000
+							else 355000
+						end::bigint;
+					$exp_for_level$;
+					-- The full width of a level: the experience between its own threshold and the
+					-- next one (300 at level 1, 600 at level 2, 1800 at level 3, …) — the whole
+					-- level, not just the part still unearned. 0 at level 20. Mirrors levelSpanExp.
+					create or replace function level_span_exp(p_level int)
+					returns bigint language sql immutable set search_path = public as $level_span_exp$
+						select case
+							when least(greatest(p_level, 1), 20) >= 20 then 0::bigint
+							else exp_for_level(least(greatest(p_level, 1), 20) + 1)
+								- exp_for_level(least(greatest(p_level, 1), 20))
+						end;
+					$level_span_exp$;
+					-- Award experience for one finished fight:
+					--   * a loss or a draw earns nothing;
+					--   * a win earns a share of the player's CURRENT level's full span (see
+					--     level_span_exp), scaled linearly by the compound HP their team is left
+					--     with: sum(hp_left) / sum(max_hp). A flawless win — no damage taken —
+					--     earns the entire span, i.e. one whole level's worth measured from the
+					--     base of the level; a win at half health earns half of it.
+					-- Combat runs in the browser, so the report is treated as a claim and bounded
+					-- rather than trusted: every spawn must belong to the caller, each fighter's
+					-- max_hp is clamped into the range its stat could have rolled (its HP
+					-- attribute, DEF + 1, in d4 → [dice, dice * 4]) and hp_left to [0, that max],
+					-- and the amount itself is never sent by the client — it is derived here from
+					-- the player's stored experience. p_fighters is the player's side only, as
+					-- [{"spawn_id": uuid, "hp_left": number, "max_hp": number}]. The OUT names
+					-- deliberately avoid the column names used in the body. security definer: it
+					-- writes player_profiles and combat_results, neither client-writable.
+					create or replace function award_combat_exp(p_outcome text, p_fighters jsonb)
+					returns table (
+							awarded_exp bigint,
+							total_exp bigint,
+							at_level int,
+							span_exp bigint,
+							team_hp_left int,
+							team_hp_max int
+						)
+					language plpgsql security definer set search_path = public as $award_combat_exp$
+					declare
+							v_uid uuid := auth.uid();
+							v_reported int;
+							v_distinct int;
+							v_owned int;
+							v_exp bigint;
+							v_level int;
+							v_span bigint;
+							v_hp_left int;
+							v_hp_max int;
+							v_award bigint;
+							v_total bigint;
+					begin
+							if v_uid is null then
+								raise exception 'You must be signed in to earn experience.';
+							end if;
+							if p_outcome is null or p_outcome not in ('win', 'lose', 'draw') then
+								raise exception 'Unknown combat outcome: %.', coalesce(p_outcome, 'null');
+							end if;
+							if p_fighters is null or jsonb_typeof(p_fighters) <> 'array' then
+								raise exception 'A combat report must list the fighters that took part.';
+							end if;
+							-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
+							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+							-- The reported team, bounded against what the caller actually owns.
+							with reported as (
+								select f.spawn_id, f.hp_left, f.max_hp
+								from jsonb_to_recordset(p_fighters)
+									as f(spawn_id uuid, hp_left numeric, max_hp numeric)
+							),
+							owned as (
+								select
+									r.hp_left,
+									r.max_hp,
+									-- HP attribute: DEF + 1, DEF being the stat's complement clamped 1..9.
+									(greatest(1, least(9, 10 - cs.stat)) + 1) as dice
+								from reported r
+								join character_spawns cs on cs.id = r.spawn_id and cs.user_id = v_uid
+							),
+							bounded as (
+								select
+									least(greatest(coalesce(o.max_hp, 0), o.dice), o.dice * 4) as capped_max,
+									coalesce(o.hp_left, 0) as raw_left
+								from owned o
+							)
+							select
+								(select count(*) from reported),
+								(select count(distinct spawn_id) from reported),
+								(select count(*) from owned),
+								coalesce((select sum(capped_max) from bounded), 0)::int,
+								coalesce((select sum(least(greatest(raw_left, 0), capped_max)) from bounded), 0)::int
+							into v_reported, v_distinct, v_owned, v_hp_max, v_hp_left;
+							if v_reported = 0 then
+								raise exception 'A combat report must list the fighters that took part.';
+							end if;
+							if v_reported > 3 then
+								raise exception 'A team fields at most 3 fighters; % were reported.', v_reported;
+							end if;
+							if v_distinct <> v_reported then
+								raise exception 'A fighter cannot be reported twice.';
+							end if;
+							if v_owned <> v_reported then
+								raise exception 'Every fighter must be one of your own claimed characters.';
+							end if;
+							-- The level at stake is the one the player is on now, before the award.
+							select coalesce(exp, 0) into v_exp from player_profiles where user_id = v_uid;
+							v_exp := coalesce(v_exp, 0);
+							v_level := level_for_exp(v_exp);
+							v_span := level_span_exp(v_level);
+							if p_outcome = 'win' and v_span > 0 and v_hp_max > 0 then
+								v_award := round(v_span::numeric * v_hp_left::numeric / v_hp_max::numeric);
+							else
+								v_award := 0;
+							end if;
+							insert into combat_results
+								(user_id, outcome, hp_left, hp_max, level, level_span, exp_awarded)
+								values (v_uid, p_outcome, v_hp_left, v_hp_max, v_level, v_span, v_award);
+							if v_award > 0 then
+								insert into player_profiles (user_id, exp)
+									values (v_uid, v_award)
+									on conflict (user_id) do update
+										set exp = player_profiles.exp + v_award, updated_at = now()
+									returning exp into v_total;
+							else
+								v_total := v_exp;
+							end if;
+							awarded_exp := v_award;
+							total_exp := coalesce(v_total, v_exp);
+							at_level := v_level;
+							span_exp := v_span;
+							team_hp_left := v_hp_left;
+							team_hp_max := v_hp_max;
+							return next;
+					end;
+					$award_combat_exp$;
+					grant execute on function award_combat_exp(text, jsonb) to authenticated`
 			)
 			.then(() => undefined)
 			.catch((error: unknown) => {

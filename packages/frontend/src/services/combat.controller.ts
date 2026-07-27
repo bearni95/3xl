@@ -33,6 +33,13 @@
  * turn and only fights when an enemy attacks it on its cell, auto-defending with
  * a random color (the faster fighter still strikes first). Unchallenged holders
  * keep their cell across rounds.
+ *
+ * Winning is the game's only source of experience: once the game is over
+ * {@link CombatController.report} summarises the player's side for the
+ * `award_combat_exp` RPC, which pays out a share of the player's current level —
+ * all of it for a flawless win, nothing for a loss — scaled by the compound HP
+ * the team has left. Hence HP surviving a fight is worth something in itself, not
+ * just as the tiebreaker for a cell.
  */
 import { writable } from 'svelte/store';
 import type { Hex } from '$utils/mugen/hex';
@@ -42,6 +49,7 @@ import {
 	type CharacterMove,
 	type CombatColor
 } from '$types/character-definition.type';
+import type { CombatOutcome, CombatReport } from '$types/combat.type';
 import { strikeMultiplier, throwableColors } from '$utils/color/compare';
 import { resolveAttack, rollDie, rollDice } from '$utils/dice/roll';
 
@@ -69,6 +77,11 @@ const cellKey = (cell: Hex): string => `${cell.q},${cell.r}`;
 /** The data the page hands the controller for one fighter. */
 export interface FighterSeed {
 	id: string;
+	/** The `character_spawns` row this fighter is fielded from. Both sides carry
+	 * one (the two sides can field the same spawn in a mirror match, hence the
+	 * separate instance {@link id}); only the player's are ever reported for
+	 * experience. */
+	spawnId: string;
 	name: string;
 	side: FighterSide;
 	/** The character's combat color — the colour rolled for its Supabase spawn.
@@ -107,9 +120,6 @@ export interface Fighter extends FighterSeed {
 }
 
 export type CombatPhase = 'selecting' | 'fighting' | 'done';
-
-/** How the game ended, from the player's point of view. */
-export type CombatOutcome = 'win' | 'lose' | 'draw';
 
 export interface CombatState {
 	fighters: Fighter[];
@@ -167,6 +177,26 @@ export class CombatController {
 		});
 		this.rollRivalDefaults();
 		this.emit();
+	}
+
+	/**
+	 * The finished game as an experience claim: the outcome plus every fighter the
+	 * player fielded, with the HP pool it rolled and what it has left (0 for the
+	 * knocked out). Only the player's side is reported — the rivals earn nothing —
+	 * and only once the game is actually over, so a fight abandoned mid-round
+	 * yields `null` and pays out nothing. The server re-derives the award from
+	 * this; nothing here decides an amount.
+	 */
+	report(): CombatReport | null {
+		if (this.phase !== 'done' || !this.outcome) return null;
+		return {
+			outcome: this.outcome,
+			fighters: this.players().map((fighter) => ({
+				spawnId: fighter.spawnId,
+				hpLeft: fighter.hp,
+				maxHp: fighter.maxHp
+			}))
+		};
 	}
 
 	/** Give the controller the running board engine so it can drive movement. */
@@ -372,11 +402,20 @@ export class CombatController {
 			const infoCells = owners.filter((side) => side === 'info').length;
 			const errorCells = owners.filter((side) => side === 'error').length;
 			if (infoCells > errorCells) {
-				this.end('win', `Nobody left to move — you hold the most purple cells (${infoCells}–${errorCells}).`);
+				this.end(
+					'win',
+					`Nobody left to move — you hold the most purple cells (${infoCells}–${errorCells}).`
+				);
 			} else if (errorCells > infoCells) {
-				this.end('lose', `Nobody left to move — the rivals hold the most purple cells (${errorCells}–${infoCells}).`);
+				this.end(
+					'lose',
+					`Nobody left to move — the rivals hold the most purple cells (${errorCells}–${infoCells}).`
+				);
 			} else {
-				this.end('draw', `Nobody left to move — the purple cells are split ${infoCells}–${errorCells}.`);
+				this.end(
+					'draw',
+					`Nobody left to move — the purple cells are split ${infoCells}–${errorCells}.`
+				);
 			}
 			return;
 		}
@@ -407,8 +446,7 @@ export class CombatController {
 		// Remember who held the cell coming in — a tie in leftover HP must not strip a
 		// defended cell (used further down, not for strike order).
 		const priorHolder = [player, rival].find((f) => this.heldCell(f)) ?? null;
-		const playerFirst =
-			player.spd > rival.spd || (player.spd === rival.spd && rollDie(2) === 1);
+		const playerFirst = player.spd > rival.spd || (player.spd === rival.spd && rollDie(2) === 1);
 		const [first, second] = playerFirst ? [player, rival] : [rival, player];
 		// Clear the previous duel's readouts before this pair throws.
 		this.board?.clearStrikeLabels();

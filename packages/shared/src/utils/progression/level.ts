@@ -7,6 +7,11 @@
  * at 300 xp, …). Level 20 is the cap; experience beyond it does not raise the
  * level further. These functions are pure and framework-agnostic; the frontend
  * reads a player's stored `exp` from Supabase and derives everything else here.
+ *
+ * Experience is earned in exactly one way: winning a fight ({@link combatExpAward}).
+ * Claiming cards awards nothing. The authority for an award is the
+ * `award_combat_exp` Postgres RPC — {@link combatExpAward} mirrors its arithmetic
+ * so the UI can show the same number, and the two must be kept in sync.
  */
 
 /**
@@ -44,13 +49,6 @@ export const MAX_LEVEL = DND_LEVEL_THRESHOLDS.length;
 export const MIN_LEVEL = 1;
 
 /**
- * Experience awarded per card pulled from a booster pack. Chosen so a full
- * {@link BOOSTER_SIZE}-card pack (5 × 60 = 300) takes a fresh player from level 1
- * to level 2 — the D&D 5e level-2 threshold.
- */
-export const EXP_PER_SPAWN = 60;
-
-/**
  * The level a player of `exp` total experience has reached, in
  * [{@link MIN_LEVEL}, {@link MAX_LEVEL}]. Negative/NaN input reads as level 1.
  */
@@ -69,6 +67,52 @@ export function levelForExp(exp: number): number {
 export function expForLevel(level: number): number {
 	const clamped = Math.min(Math.max(Math.trunc(level), MIN_LEVEL), MAX_LEVEL);
 	return DND_LEVEL_THRESHOLDS[clamped - 1];
+}
+
+/**
+ * The full width of `level`: the experience separating its own threshold from the
+ * next one — i.e. what a player who started the level from scratch would need to
+ * earn to leave it. This is the *whole* level, not the part still unearned, and
+ * it is the ceiling on a single fight's award. Zero at {@link MAX_LEVEL}, which
+ * has no next threshold.
+ */
+export function levelSpanExp(level: number): number {
+	const clamped = Math.min(Math.max(Math.trunc(level), MIN_LEVEL), MAX_LEVEL);
+	if (clamped >= MAX_LEVEL) return 0;
+	return expForLevel(clamped + 1) - expForLevel(clamped);
+}
+
+/** A finished fight, reduced to what decides its experience award. */
+export interface CombatExpInput {
+	/** The player's accumulated experience *before* the fight — fixes the level at stake. */
+	exp: number;
+	/** Whether the player won: anything else earns nothing. */
+	won: boolean;
+	/** Compound HP the player's team ended the fight with. */
+	hpLeft: number;
+	/** Compound HP the player's team started the fight with. */
+	hpMax: number;
+}
+
+/**
+ * Experience for one finished fight.
+ *
+ * A loss (or a draw) earns nothing. A win earns a share of {@link levelSpanExp}
+ * for the player's current level, scaled linearly by how much of its compound HP
+ * the team has left: a flawless win — every fighter untouched — earns the level's
+ * entire span, taking the player from the base of their level to the next one,
+ * while a win scraped through at 1 HP earns almost nothing. Rounded to whole
+ * experience, and never negative.
+ *
+ * Mirrors the `award_combat_exp` RPC, which is the authority — this exists so the
+ * UI can preview and explain the same number.
+ */
+export function combatExpAward({ exp, won, hpLeft, hpMax }: CombatExpInput): number {
+	if (!won) return 0;
+	const span = levelSpanExp(levelForExp(exp));
+	if (span <= 0 || !Number.isFinite(hpMax) || hpMax <= 0) return 0;
+	const left = Number.isFinite(hpLeft) ? Math.min(Math.max(hpLeft, 0), hpMax) : 0;
+	return Math.round((span * left) / hpMax);
 }
 
 /** A player's level and their progress through it, derived from an experience total. */
