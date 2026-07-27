@@ -2,28 +2,30 @@
  * ClaimPackGridScene
  *
  * Owns the Pixi application for the today's-festes pack grid. It lays out every
- * booster pack the day offers in a 3-column grid (one {@link PackSprite} per
- * celebrating place), each already rendered with its show poster cover. Picking a
- * pack — by tapping it, or via {@link ClaimPackGridScene.selectPack} driven from the
- * DOM list — centres it, zooms it up to full size while the rest fade away, and then
- * hands off to the same click-to-cut open flow as the single-pack opener.
+ * booster pack the day offers in a fit-to-width, vertically-scrolling grid (one
+ * {@link PackSprite} per celebrating place), each already rendered with its show
+ * poster cover — the same navigation model the roster's {@link CardScene} uses: the
+ * columns always span the canvas width, and rows that overflow the viewport scroll
+ * (drag or wheel) rather than shrinking to fit. Picking a pack — by tapping it —
+ * centres it, zooms it up while the rest fade away, and then hands off to the same
+ * click-to-cut open flow as the single-pack opener.
  *
  * Flow:
- *  - load    → bakes each pack and arranges them in the grid; waits for a selection
- *  - select  → the chosen pack tweens to the centre at full size, the others fade out
- *  - idle    → identical to the single-pack scene: hover shows the cut line
+ *  - load    → bakes each pack at the column width and arranges the grid; scrollable
+ *  - select  → the chosen pack lifts out, tweens to the centre, the others fade out
+ *  - idle    → hover shows the cut line (identical to the single-pack scene)
  *  - click   → flashes a slash, splits the pack, rolls its booster, reveals the cards
  *  - the claimed character card(s) fan into a grid
  *
- * The cut/reveal internals mirror {@link ClaimPackScene}; the grid + zoom phases are
- * the addition. Inputs come through the constructor, outputs through callbacks.
+ * The cut/reveal internals mirror the single-pack opener but are scale-aware, since
+ * the focused pack sits at a fitted zoom rather than 1:1. Inputs come through the
+ * constructor, outputs through callbacks.
  */
 
 import {
 	Application,
 	Container,
 	Graphics,
-	Rectangle,
 	Sprite,
 	Text,
 	type FederatedPointerEvent
@@ -35,7 +37,7 @@ import type { ClaimPull } from './pull.type';
 import type { OpenerPack } from './opener-view.type';
 
 export interface ClaimPackGridSceneCallbacks {
-	/** Fires when a pack is picked (from a tap or {@link selectPack}), before the zoom. */
+	/** Fires when a pack is picked, before the zoom. */
 	onSelect?: (pack: OpenerPack) => void;
 	/** Fires once the selected pack is fully sliced and its cards have fanned out. */
 	onOpenComplete?: () => void;
@@ -44,20 +46,25 @@ export interface ClaimPackGridSceneCallbacks {
 
 type SceneState = 'loading' | 'grid' | 'zooming' | 'idle' | 'cutting' | 'revealing' | 'fanned';
 
-const CARD_ASPECT = 2 / 3; // portrait trading card
+const CARD_ASPECT = 2 / 3; // portrait trading card (reveal cards)
 const GRID_COLS = 3;
-const GRID_GAP = 16; // px between grid cells
-const HOVER_SCALE = 1.06; // grid pack bump on hover
+// Grid navigation geometry, matching the roster grid: gap + outer padding, the tap
+// slop that separates a tap from a pan, and a little springy overscroll.
+const NAV_GAP = 16;
+const NAV_PAD = 16;
+const CAPTION_H = 22; // room reserved under each pack for its show caption
+const TAP_SLOP = 6;
+const PAN_MARGIN = 48;
 
-/** One pack laid out in the grid: its descriptor, baked sprite + caption, and the
- * cell centre / rest scale it sits at while the grid is shown. */
+/** One pack laid out in the grid: its descriptor, baked sprite + caption, its cell
+ * (col,row), and the baked height (all packs share the baked column width). */
 interface GridEntry {
 	pack: OpenerPack;
 	sprite: PackSprite;
 	caption: Text;
-	cellX: number;
-	cellY: number;
-	restScale: number;
+	col: number;
+	row: number;
+	bakedH: number;
 }
 
 export class ClaimPackGridScene {
@@ -67,31 +74,53 @@ export class ClaimPackGridScene {
 	private packs: OpenerPack[];
 
 	private rootLayer: Container;
-	private cardLayer: Container;
-	private gridLayer: Container;
-	private uiLayer: Container;
+	private cardLayer: Container; // reveal cards (screen space)
+	private gridLayer: Container; // the grid of packs (panned)
+	private focusLayer: Container; // the selected pack while opening (screen space)
+	private uiLayer: Container; // cut indicator + slash flash (screen space)
 	private cutIndicator: Graphics;
 
 	private entries: GridEntry[] = [];
-	// The pack currently being opened — set on selection, drives the cut/reveal.
+
+	// --- Grid layout + navigation (mirrors CardScene) ---
+	// The baked column width every pack was rendered at; the layer is scaled by
+	// gridScale = currentColumnWidth / bakedCardW so a resize re-fits without
+	// re-baking. World positions are in baked units.
+	private bakedCardW = 0;
+	private maxBakedH = 0;
+	private cols = 1;
+	private rows = 1;
+	private gridScale = 1;
+	private contentW = 0;
+	private contentH = 0;
+	private pan = { x: 0, y: 0 };
+	private framed = false;
+	private navAttached = false;
+	private dragPointerId: number | null = null;
+	private dragMoved = false;
+	private dragStart = { x: 0, y: 0 };
+	private panStart = { x: 0, y: 0 };
+	private downIndex: number | null = null;
+
+	// --- Selected pack / cut (scale-aware) ---
 	private packSprite: PackSprite | null = null;
 	private activeClaim: OpenerPack['claim'] | null = null;
+	// Display scale of the focused pack (fitted zoom, not 1:1).
+	private selScale = 1;
 	private pulls: ClaimPull[] = [];
 	private topHalf: Sprite | null = null;
 	private bottomHalf: Sprite | null = null;
 	private cardSprites: CardSprite[] = [];
+	// Current cut Y in baked pack-local units (0 = top edge of the focused pack).
+	private cutY = 0;
 
 	private state: SceneState = 'loading';
 	private isDestroyed = false;
 	private resizeObserver: ResizeObserver | null = null;
-	// Current cut Y in pack-local coordinates (0 = top edge of the selected pack).
-	private cutY: number = 0;
+	private builtW = 0;
+	private builtH = 0;
 
-	constructor(
-		host: HTMLElement,
-		packs: OpenerPack[],
-		callbacks: ClaimPackGridSceneCallbacks = {}
-	) {
+	constructor(host: HTMLElement, packs: OpenerPack[], callbacks: ClaimPackGridSceneCallbacks = {}) {
 		this.host = host;
 		this.callbacks = callbacks;
 		this.packs = packs;
@@ -100,6 +129,7 @@ export class ClaimPackGridScene {
 		this.rootLayer = new Container();
 		this.cardLayer = new Container();
 		this.gridLayer = new Container();
+		this.focusLayer = new Container();
 		this.uiLayer = new Container();
 		this.cutIndicator = new Graphics();
 
@@ -110,15 +140,16 @@ export class ClaimPackGridScene {
 		this.isDestroyed = true;
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
+		this.detachNavigation();
 		try {
-			this.app.stage.off('pointermove', this.onPointerMove);
-			this.app.stage.off('pointerdown', this.onPointerDown);
-			this.app.stage.off('pointerleave', this.onPointerLeave);
+			this.app.stage.off('pointermove', this.onStagePointerMove);
+			this.app.stage.off('pointerdown', this.onStagePointerDown);
+			this.app.stage.off('pointerleave', this.onStagePointerLeave);
 		} catch {
 			// stage may already be torn down
 		}
 
-		// The halves reference the selected pack's render-texture source, so destroy
+		// The halves reference the focused pack's render-texture source, so destroy
 		// them before the packs.
 		this.topHalf?.destroy();
 		this.bottomHalf?.destroy();
@@ -158,20 +189,27 @@ export class ClaimPackGridScene {
 		this.app.stage.addChild(this.rootLayer);
 		this.rootLayer.addChild(this.cardLayer);
 		this.rootLayer.addChild(this.gridLayer);
+		this.rootLayer.addChild(this.focusLayer);
 		this.rootLayer.addChild(this.uiLayer);
 		this.uiLayer.addChild(this.cutIndicator);
 
-		// Bake every pack at the full centred size, so a pack is crisp both scaled
-		// down into its grid cell and zoomed up to fill the canvas when selected.
-		const { packW, packH } = this.computePackDimensions(width, height);
+		this.builtW = width;
+		this.builtH = height;
+
+		// Bake each pack at the column width, so a full-width pack in the grid is
+		// pixel-crisp (no upscaling). Columns fit the canvas width; the poster's aspect
+		// sets each pack's height.
+		this.cols = Math.min(GRID_COLS, Math.max(1, this.packs.length));
+		this.bakedCardW = this.columnWidth(width, this.cols);
 		await Promise.all(
-			this.packs.map(async (pack) => {
+			this.packs.map(async (pack, i) => {
 				const sprite = new PackSprite({
 					coverUrl: pack.coverUrl,
 					locationName: pack.locationName,
 					app: this.app,
-					width: packW,
-					height: packH
+					width: this.bakedCardW,
+					// A tall box so the fit is width-bound: every pack bakes to bakedCardW wide.
+					height: this.bakedCardW * 8
 				});
 				await sprite.load();
 				if (this.isDestroyed) {
@@ -182,102 +220,43 @@ export class ClaimPackGridScene {
 					text: restoreCatalanArticle(pack.label),
 					style: {
 						fontFamily: 'sans-serif',
-						fontSize: 13,
+						fontSize: Math.min(15, Math.max(11, Math.round(this.bakedCardW * 0.09))),
 						fontWeight: '600',
 						fill: 0xffffff,
 						align: 'center',
 						wordWrap: true,
-						wordWrapWidth: packW
+						wordWrapWidth: this.bakedCardW
 					}
 				});
 				caption.anchor.set(0.5, 0);
-				sprite.eventMode = 'static';
-				sprite.cursor = 'pointer';
-				// Tap anywhere over the pack's footprint, notches included (the hit area is
-				// local, so it scales with the pack in its cell).
-				sprite.hitArea = new Rectangle(0, 0, sprite.packWidth, sprite.packHeight);
-				sprite.on('pointertap', () => this.selectPack(pack.id));
-				sprite.on('pointerover', () => this.onPackHover(pack.id, true));
-				sprite.on('pointerout', () => this.onPackHover(pack.id, false));
 				this.gridLayer.addChild(sprite);
-				this.uiLayer.addChild(caption);
-				this.entries.push({ pack, sprite, caption, cellX: 0, cellY: 0, restScale: 1 });
+				this.gridLayer.addChild(caption);
+				this.entries.push({
+					pack,
+					sprite,
+					caption,
+					col: i % this.cols,
+					row: Math.floor(i / this.cols),
+					bakedH: sprite.packHeight
+				});
 			})
 		);
 		if (this.isDestroyed) return;
 
 		this.state = 'grid';
-		this.layoutGrid();
+		this.layoutGrid(width, height);
+		this.attachNavigation();
 
+		// Stage-level pointer handlers drive the cut once a pack is focused; they are
+		// dormant (early-return) while the grid is shown.
 		this.app.stage.eventMode = 'static';
 		this.app.stage.hitArea = this.app.screen;
-		this.app.stage.on('pointermove', this.onPointerMove);
-		this.app.stage.on('pointerdown', this.onPointerDown);
-		this.app.stage.on('pointerleave', this.onPointerLeave);
+		this.app.stage.on('pointermove', this.onStagePointerMove);
+		this.app.stage.on('pointerdown', this.onStagePointerDown);
+		this.app.stage.on('pointerleave', this.onStagePointerLeave);
 
-		if (!this.resizeObserver) {
-			this.resizeObserver = new ResizeObserver(() => this.handleResize());
-			this.resizeObserver.observe(this.host);
-		}
-	}
-
-	/**
-	 * Pick a pack by id — the entry point for both a canvas tap and the DOM festes
-	 * list. Only fires from the grid state (ignored mid-open). Zooms the chosen pack
-	 * to the centre at full size, fades the rest away, then arms the cut flow.
-	 */
-	selectPack(id: string): void {
-		if (this.state !== 'grid') return;
-		const entry = this.entries.find((e) => e.pack.id === id);
-		if (!entry) return;
-
-		this.state = 'zooming';
-		this.callbacks.onSelect?.(entry.pack);
-		this.cutIndicator.clear();
-		this.app.canvas.style.cursor = 'default';
-
-		// The selected pack drives the cut/reveal from here on.
-		this.packSprite = entry.sprite;
-		this.activeClaim = entry.pack.claim;
-		entry.sprite.eventMode = 'none';
-		entry.sprite.cursor = 'default';
-		// Lift it above the fading siblings.
-		this.gridLayer.setChildIndex(entry.sprite, this.gridLayer.children.length - 1);
-
-		const cx = this.app.screen.width / 2;
-		const cy = this.app.screen.height / 2;
-
-		const others = this.entries.filter((e) => e !== entry);
-		void Promise.all([
-			this.zoomToCentre(entry, cx, cy),
-			...others.map((other) => this.fadeOut(other))
-		]).then(() => {
-			if (this.isDestroyed) return;
-			// Remove the faded siblings so only the opening pack remains.
-			for (const other of others) {
-				other.sprite.destroy();
-				other.caption.destroy();
-			}
-			this.entries = [entry];
-			this.enterIdle();
-		});
-	}
-
-	/** Arm the click-to-cut flow on the centred, full-size selected pack. */
-	private enterIdle(): void {
-		if (!this.packSprite) return;
-		this.state = 'idle';
-		this.cutY = this.packSprite.packHeight / 2;
-		this.redrawCutAtLocal(this.cutY);
-	}
-
-	private onPackHover(id: string, over: boolean): void {
-		if (this.state !== 'grid') return;
-		const entry = this.entries.find((e) => e.pack.id === id);
-		if (!entry) return;
-		const scale = over ? entry.restScale * HOVER_SCALE : entry.restScale;
-		this.placeAtCentre(entry.sprite, entry.cellX, entry.cellY, scale);
-		this.app.canvas.style.cursor = over ? 'pointer' : 'default';
+		this.resizeObserver = new ResizeObserver(() => this.handleResize());
+		this.resizeObserver.observe(this.host);
 	}
 
 	private measure(): { width: number; height: number } {
@@ -287,107 +266,248 @@ export class ClaimPackGridScene {
 		return { width, height };
 	}
 
-	/** The full, centred footprint one pack occupies when zoomed in — the same box
-	 * {@link ClaimPackScene} fits a single pack into. */
-	private computePackDimensions(w: number, h: number): { packW: number; packH: number } {
-		const PACK_ASPECT = 5 / 8;
-		const maxH = h * 0.82;
-		const maxW = w * 0.45;
-		const byHeight = { packW: maxH * PACK_ASPECT, packH: maxH };
-		const byWidth = { packW: maxW, packH: maxW / PACK_ASPECT };
-		return byHeight.packW <= maxW ? byHeight : byWidth;
+	/** The width one column gets at the given canvas width — a full-width pack. */
+	private columnWidth(width: number, cols: number): number {
+		const availW = Math.max(1, width - NAV_PAD * 2);
+		return Math.max(1, (availW - NAV_GAP * (cols - 1)) / cols);
 	}
 
 	/**
-	 * Arrange the packs in a centred grid of up to {@link GRID_COLS} columns. Each
-	 * pack fills the full width of its cell — the column width sets the scale — with
-	 * the show caption tucked just beneath it. The whole block is only shrunk below
-	 * full-width if the rows would otherwise overflow the canvas height, so nothing
-	 * ever clips.
+	 * Lay the packs out in world (baked) units and fit the column width to the current
+	 * canvas via `gridScale` — no re-baking. Rows extend downward into a
+	 * taller-than-canvas world scrolled vertically; a full row always spans the width.
 	 */
-	private layoutGrid(): void {
+	private layoutGrid(width: number, height: number): void {
 		const n = this.entries.length;
 		if (n === 0) return;
 
-		const cols = Math.min(GRID_COLS, n);
-		const rows = Math.ceil(n / cols);
-		const screenW = this.app.screen.width;
-		const screenH = this.app.screen.height;
+		this.rows = Math.ceil(n / this.cols);
+		this.maxBakedH = this.entries.reduce((m, e) => Math.max(m, e.bakedH), 0);
+		const rowPitch = this.maxBakedH + CAPTION_H + NAV_GAP;
 
-		// The baked pack footprint (same for every pack).
-		const packW = this.entries[0].sprite.packWidth;
-		const packH = this.entries[0].sprite.packHeight;
-		const captionH = 22;
-
-		const availW = screenW * 0.94;
-		const availH = screenH * 0.94;
-		const cellW = (availW - GRID_GAP * (cols - 1)) / cols;
-
-		// Width drives the scale: each pack spans its full column. Only clamp it down
-		// if the resulting rows would overflow the available height.
-		let scale = cellW / packW;
-		const fullBlockH = rows * (packH * scale + captionH) + (rows - 1) * GRID_GAP;
-		if (fullBlockH > availH) scale *= availH / fullBlockH;
-
-		const dispH = packH * scale;
-		const blockH = dispH + captionH;
-		const gridH = rows * blockH + (rows - 1) * GRID_GAP;
-		const originY = (screenH - gridH) / 2;
-
-		for (let i = 0; i < n; i++) {
-			const entry = this.entries[i];
-			const row = Math.floor(i / cols);
-			const col = i % cols;
-			// Cells in the last (possibly short) row are centred under the grid.
-			const inRow = Math.min(cols, n - row * cols);
-			const rowW = inRow * cellW + (inRow - 1) * GRID_GAP;
-			const rowStartX = (screenW - rowW) / 2;
-
-			const cellCX = rowStartX + col * (cellW + GRID_GAP) + cellW / 2;
-			const rowTop = originY + row * (blockH + GRID_GAP);
-			const cellCY = rowTop + dispH / 2;
-
-			entry.cellX = cellCX;
-			entry.cellY = cellCY;
-			entry.restScale = scale;
-			this.placeAtCentre(entry.sprite, cellCX, cellCY, scale);
-
-			entry.caption.style.fontSize = Math.min(15, Math.max(10, Math.round(packW * scale * 0.09)));
-			entry.caption.style.wordWrapWidth = packW * scale;
-			entry.caption.position.set(cellCX, rowTop + dispH + 4);
-			entry.caption.scale.set(1);
+		for (const entry of this.entries) {
+			const packX = NAV_PAD + entry.col * (this.bakedCardW + NAV_GAP);
+			const packY = NAV_PAD + entry.row * rowPitch;
+			entry.sprite.scale.set(1);
+			entry.sprite.position.set(packX, packY);
+			entry.caption.position.set(packX + this.bakedCardW / 2, packY + entry.bakedH + 4);
 		}
+
+		this.contentW = NAV_PAD * 2 + this.cols * this.bakedCardW + (this.cols - 1) * NAV_GAP;
+		this.contentH = NAV_PAD * 2 + this.rows * (this.maxBakedH + CAPTION_H) + (this.rows - 1) * NAV_GAP;
+
+		// Fit the columns to the current width (a resize re-fits without re-baking).
+		this.gridScale = this.columnWidth(width, this.cols) / this.bakedCardW;
+		if (!this.framed) {
+			this.pan = { x: 0, y: 0 };
+			this.framed = true;
+		}
+		this.clampPan(width, height);
+		this.applyGridTransform();
 	}
 
-	/** Position a top-left-origin pack so its centre lands at (cx, cy) at `scale`. */
-	private placeAtCentre(sprite: PackSprite, cx: number, cy: number, scale: number): void {
-		sprite.scale.set(scale);
-		sprite.position.set(cx - (sprite.packWidth * scale) / 2, cy - (sprite.packHeight * scale) / 2);
+	private applyGridTransform(): void {
+		this.gridLayer.scale.set(this.gridScale);
+		this.gridLayer.position.set(this.pan.x, this.pan.y);
 	}
 
-	private zoomToCentre(entry: GridEntry, cx: number, cy: number): Promise<void> {
-		entry.caption.visible = false;
-		const startScale = entry.sprite.scale.x;
-		const startCX = entry.cellX;
-		const startCY = entry.cellY;
+	private clamp(v: number, lo: number, hi: number): number {
+		return Math.min(hi, Math.max(lo, v));
+	}
+
+	private clampPan(width: number, height: number): void {
+		this.pan.x = this.clampAxis(this.pan.x, this.contentW * this.gridScale, width);
+		this.pan.y = this.clampAxis(this.pan.y, this.contentH * this.gridScale, height);
+	}
+
+	private clampAxis(pan: number, content: number, viewport: number): number {
+		if (content <= viewport) return (viewport - content) / 2; // centre when it fits
+		return this.clamp(pan, viewport - content - PAN_MARGIN, PAN_MARGIN);
+	}
+
+	// --- Grid navigation (DOM pointer events, tap-vs-pan) -----------------------
+
+	private attachNavigation(): void {
+		if (this.navAttached) return;
+		const canvas = this.app.canvas;
+		canvas.style.cursor = 'grab';
+		canvas.addEventListener('wheel', this.onWheel, { passive: false });
+		canvas.addEventListener('pointerdown', this.onNavPointerDown);
+		canvas.addEventListener('pointermove', this.onNavPointerMove);
+		canvas.addEventListener('pointerup', this.onNavPointerUp);
+		canvas.addEventListener('pointercancel', this.onNavPointerUp);
+		canvas.addEventListener('pointerleave', this.onNavPointerUp);
+		this.navAttached = true;
+	}
+
+	private detachNavigation(): void {
+		const canvas = this.app.canvas;
+		if (!canvas || !this.navAttached) return;
+		canvas.removeEventListener('wheel', this.onWheel);
+		canvas.removeEventListener('pointerdown', this.onNavPointerDown);
+		canvas.removeEventListener('pointermove', this.onNavPointerMove);
+		canvas.removeEventListener('pointerup', this.onNavPointerUp);
+		canvas.removeEventListener('pointercancel', this.onNavPointerUp);
+		canvas.removeEventListener('pointerleave', this.onNavPointerUp);
+		canvas.style.cursor = 'default';
+		this.navAttached = false;
+	}
+
+	private onWheel = (event: WheelEvent): void => {
+		if (this.state !== 'grid') return;
+		event.preventDefault();
+		const dy = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+		this.pan.y -= dy;
+		this.clampPan(this.builtW, this.builtH);
+		this.applyGridTransform();
+	};
+
+	private localPoint(event: PointerEvent): { x: number; y: number } {
+		const rect = this.app.canvas.getBoundingClientRect();
+		return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+	}
+
+	private onNavPointerDown = (event: PointerEvent): void => {
+		if (this.state !== 'grid' || this.dragPointerId !== null) return;
+		const { x, y } = this.localPoint(event);
+		this.dragPointerId = event.pointerId;
+		try {
+			this.app.canvas.setPointerCapture(event.pointerId);
+		} catch {
+			// best-effort
+		}
+		this.dragMoved = false;
+		this.dragStart = { x, y };
+		this.panStart = { ...this.pan };
+		this.downIndex = this.entryIndexAt(x, y);
+		this.app.canvas.style.cursor = 'grabbing';
+	};
+
+	private onNavPointerMove = (event: PointerEvent): void => {
+		if (event.pointerId !== this.dragPointerId) return;
+		const { x, y } = this.localPoint(event);
+		const dx = x - this.dragStart.x;
+		const dy = y - this.dragStart.y;
+		if (Math.hypot(dx, dy) > TAP_SLOP) this.dragMoved = true;
+		this.pan.x = this.panStart.x + dx;
+		this.pan.y = this.panStart.y + dy;
+		this.clampPan(this.builtW, this.builtH);
+		this.applyGridTransform();
+	};
+
+	private onNavPointerUp = (event: PointerEvent): void => {
+		if (event.pointerId !== this.dragPointerId) return;
+		try {
+			this.app.canvas.releasePointerCapture(event.pointerId);
+		} catch {
+			// ignore
+		}
+		const tappedIndex = this.downIndex;
+		const moved = this.dragMoved;
+		this.dragPointerId = null;
+		this.downIndex = null;
+		this.app.canvas.style.cursor = 'grab';
+		// A clean tap (no meaningful movement) on a pack opens it.
+		if (!moved && tappedIndex != null) {
+			const entry = this.entries[tappedIndex];
+			if (entry) this.selectPack(entry.pack.id);
+		}
+	};
+
+	/** Screen point → the index of the pack under it, or null over a gap/caption. */
+	private entryIndexAt(sx: number, sy: number): number | null {
+		if (this.bakedCardW === 0) return null;
+		const worldX = (sx - this.pan.x) / this.gridScale;
+		const worldY = (sy - this.pan.y) / this.gridScale;
+		const rowPitch = this.maxBakedH + CAPTION_H + NAV_GAP;
+		const col = Math.floor((worldX - NAV_PAD) / (this.bakedCardW + NAV_GAP));
+		const row = Math.floor((worldY - NAV_PAD) / rowPitch);
+		if (col < 0 || col >= this.cols || row < 0) return null;
+		const localX = worldX - NAV_PAD - col * (this.bakedCardW + NAV_GAP);
+		const localY = worldY - NAV_PAD - row * rowPitch;
+		if (localX > this.bakedCardW || localY > this.maxBakedH) return null; // gutter/caption
+		const index = row * this.cols + col;
+		return index >= 0 && index < this.entries.length ? index : null;
+	}
+
+	/**
+	 * Pick a pack by id — the entry point for both a canvas tap and the DOM festes
+	 * list. Only fires from the grid state. Lifts the chosen pack out of the scrolling
+	 * grid into screen space, zooms it to a centred fit, fades the rest away, then arms
+	 * the cut flow.
+	 */
+	selectPack(id: string): void {
+		if (this.state !== 'grid') return;
+		const entry = this.entries.find((e) => e.pack.id === id);
+		if (!entry) return;
+
+		this.state = 'zooming';
+		this.callbacks.onSelect?.(entry.pack);
+		this.detachNavigation();
+		this.cutIndicator.clear();
+
+		this.packSprite = entry.sprite;
+		this.activeClaim = entry.pack.claim;
+
+		// Move the selected pack into the (unpanned) focus layer at its current
+		// on-screen spot, so the zoom is a clean screen-space tween.
+		const screenX = entry.sprite.x * this.gridScale + this.pan.x;
+		const screenY = entry.sprite.y * this.gridScale + this.pan.y;
+		this.gridLayer.removeChild(entry.sprite);
+		this.focusLayer.addChild(entry.sprite);
+		entry.sprite.scale.set(this.gridScale);
+		entry.sprite.position.set(screenX, screenY);
+
+		const width = this.builtW;
+		const height = this.builtH;
+		const focusScale = Math.min(
+			(width * 0.9) / entry.sprite.packWidth,
+			(height * 0.92) / entry.sprite.packHeight
+		);
+		const targetX = width / 2 - (entry.sprite.packWidth * focusScale) / 2;
+		const targetY = height / 2 - (entry.sprite.packHeight * focusScale) / 2;
+
+		const others = this.entries.filter((e) => e !== entry);
+		void Promise.all([
+			this.tweenPackFocus(entry.sprite, screenX, screenY, this.gridScale, targetX, targetY, focusScale),
+			...others.map((other) => this.fadeOut(other))
+		]).then(() => {
+			if (this.isDestroyed) return;
+			for (const other of others) {
+				other.sprite.destroy();
+				other.caption.destroy();
+			}
+			this.entries = [entry];
+			this.selScale = focusScale;
+			this.enterIdle();
+		});
+	}
+
+	private tweenPackFocus(
+		sprite: PackSprite,
+		fromX: number,
+		fromY: number,
+		fromScale: number,
+		toX: number,
+		toY: number,
+		toScale: number
+	): Promise<void> {
 		const duration = 460;
 		const start = performance.now();
 		return new Promise((resolve) => {
 			const tick = () => {
-				if (this.isDestroyed || entry.sprite.destroyed) {
+				if (this.isDestroyed || sprite.destroyed) {
 					resolve();
 					return;
 				}
 				const t = Math.min(1, (performance.now() - start) / duration);
 				const e = easeOutCubic(t);
-				const scale = startScale + (1 - startScale) * e;
-				const curCX = startCX + (cx - startCX) * e;
-				const curCY = startCY + (cy - startCY) * e;
-				this.placeAtCentre(entry.sprite, curCX, curCY, scale);
+				sprite.position.set(fromX + (toX - fromX) * e, fromY + (toY - fromY) * e);
+				sprite.scale.set(fromScale + (toScale - fromScale) * e);
 				if (t < 1) requestAnimationFrame(tick);
 				else {
-					// Land exactly on the single-pack layout (scale 1, centred).
-					this.placeAtCentre(entry.sprite, cx, cy, 1);
+					sprite.position.set(toX, toY);
+					sprite.scale.set(toScale);
 					resolve();
 				}
 			};
@@ -414,15 +534,24 @@ export class ClaimPackGridScene {
 		});
 	}
 
-	// ---- Cut / reveal (mirrors ClaimPackScene) --------------------------------
+	/** Arm the click-to-cut flow on the centred, focused pack. */
+	private enterIdle(): void {
+		if (!this.packSprite) return;
+		this.state = 'idle';
+		this.cutY = this.packSprite.packHeight / 2;
+		this.redrawCutAtLocal(this.cutY);
+	}
 
+	// --- Cut / reveal (scale-aware) --------------------------------------------
+
+	/** Screen-space bounds of the focused pack (baked size × selScale). */
 	private packBounds(): { x: number; y: number; w: number; h: number } | null {
 		if (!this.packSprite) return null;
 		return {
 			x: this.packSprite.x,
 			y: this.packSprite.y,
-			w: this.packSprite.packWidth,
-			h: this.packSprite.packHeight
+			w: this.packSprite.packWidth * this.selScale,
+			h: this.packSprite.packHeight * this.selScale
 		};
 	}
 
@@ -432,28 +561,28 @@ export class ClaimPackGridScene {
 		return globalX >= b.x && globalX <= b.x + b.w && globalY >= b.y && globalY <= b.y + b.h;
 	}
 
-	private onPointerMove = (e: FederatedPointerEvent): void => {
+	private onStagePointerMove = (e: FederatedPointerEvent): void => {
 		if (this.state !== 'idle' || !this.packSprite) return;
 		const inside = this.isInsidePack(e.global.x, e.global.y);
 		this.app.canvas.style.cursor = inside ? 'row-resize' : 'default';
 		if (inside) {
-			this.cutY = e.global.y - this.packSprite.y;
+			this.cutY = (e.global.y - this.packSprite.y) / this.selScale;
 			this.drawCutIndicator(e.global.y);
 		} else {
 			this.redrawCutAtLocal(this.cutY);
 		}
 	};
 
-	private onPointerLeave = (): void => {
+	private onStagePointerLeave = (): void => {
 		if (this.state === 'idle') this.redrawCutAtLocal(this.cutY);
 		else this.cutIndicator.clear();
 		this.app.canvas.style.cursor = 'default';
 	};
 
-	private onPointerDown = (e: FederatedPointerEvent): void => {
+	private onStagePointerDown = (e: FederatedPointerEvent): void => {
 		if (this.state !== 'idle' || !this.packSprite) return;
 		if (!this.isInsidePack(e.global.x, e.global.y)) return;
-		const localY = e.global.y - this.packSprite.y;
+		const localY = (e.global.y - this.packSprite.y) / this.selScale;
 		this.cutY = localY;
 		void this.performCut(localY);
 	};
@@ -471,10 +600,11 @@ export class ClaimPackGridScene {
 		this.cutIndicator.stroke({ width: 2, color: 0xfde047, alpha: 0.9 });
 	}
 
+	/** Redraw the cut line from a baked-local Y. */
 	private redrawCutAtLocal(localY: number): void {
 		const b = this.packBounds();
 		if (!b) return;
-		this.drawCutIndicator(b.y + localY);
+		this.drawCutIndicator(b.y + localY * this.selScale);
 	}
 
 	private async performCut(localY: number): Promise<void> {
@@ -484,28 +614,26 @@ export class ClaimPackGridScene {
 		this.app.canvas.style.cursor = 'default';
 
 		const b = this.packBounds()!;
-		const globalCutY = b.y + localY;
+		const globalCutY = b.y + localY * this.selScale;
 
 		await this.playSlashFlash(globalCutY, b.x, b.w);
 		if (this.isDestroyed || !this.packSprite) return;
 
 		const { top, bottom } = this.packSprite.split(localY);
-
-		// The halves share the original RenderTexture's source, so we can't destroy
-		// the pack yet. Hide it; dispose after the halves are gone.
+		const topH = top.texture.frame.height; // baked
 		this.packSprite.visible = false;
 
 		this.placeHalf(top, b.x, b.y);
-		this.placeHalf(bottom, b.x, b.y + localY);
+		this.placeHalf(bottom, b.x, b.y + topH * this.selScale);
 
-		this.gridLayer.addChild(top);
-		this.gridLayer.addChild(bottom);
+		this.focusLayer.addChild(top);
+		this.focusLayer.addChild(bottom);
 		this.topHalf = top;
 		this.bottomHalf = bottom;
 
 		this.state = 'revealing';
-		// Roll the booster against Supabase now, while the sliced-but-closed pack
-		// still covers the reveal. A failure reveals no cards.
+		// Roll the booster against Supabase now, while the sliced-but-closed pack still
+		// covers the reveal. A failure reveals no cards.
 		try {
 			this.pulls = this.activeClaim ? await this.activeClaim() : [];
 		} catch {
@@ -514,8 +642,7 @@ export class ClaimPackGridScene {
 		if (this.isDestroyed) return;
 
 		// Build the reveal cards behind the still-closed pack and wait until their art
-		// has actually loaded, so a slow network can't slide the pack open onto empty
-		// space.
+		// has loaded, so a slow network can't slide the pack open onto empty space.
 		await this.prepareCards();
 		if (this.isDestroyed) return;
 
@@ -542,29 +669,29 @@ export class ClaimPackGridScene {
 		await halvesPromise;
 		if (this.isDestroyed) return;
 
-		// Halves first — they reference the pack's render-texture source.
 		this.topHalf?.destroy();
 		this.bottomHalf?.destroy();
 		this.topHalf = null;
 		this.bottomHalf = null;
 
 		if (this.packSprite) {
-			this.gridLayer.removeChild(this.packSprite);
+			this.focusLayer.removeChild(this.packSprite);
 			this.packSprite.destroy();
 			this.packSprite = null;
 		}
-		for (const entry of this.entries) entry.caption.destroy();
 		this.entries = [];
 
 		this.state = 'fanned';
 		this.callbacks.onOpenComplete?.();
 	}
 
-	private placeHalf(half: Sprite, originX: number, originY: number): void {
-		const w = half.width;
-		const h = half.height;
-		half.pivot.set(w / 2, h / 2);
-		half.position.set(originX + w / 2, originY + h / 2);
+	/** Place a baked half at the given screen top-left, rendered at selScale. */
+	private placeHalf(half: Sprite, screenX: number, screenY: number): void {
+		const bw = half.texture.frame.width;
+		const bh = half.texture.frame.height;
+		half.scale.set(this.selScale);
+		half.pivot.set(bw / 2, bh / 2);
+		half.position.set(screenX + (bw * this.selScale) / 2, screenY + (bh * this.selScale) / 2);
 	}
 
 	private playSlashFlash(globalY: number, packX: number, packW: number): Promise<void> {
@@ -795,11 +922,23 @@ export class ClaimPackGridScene {
 	private handleResize(): void {
 		if (this.isDestroyed) return;
 		const { width, height } = this.measure();
+		if (width === this.builtW && height === this.builtH) return;
+		this.builtW = width;
+		this.builtH = height;
 		this.app.renderer.resize(width, height);
 		if (this.state === 'grid') {
-			this.layoutGrid();
+			this.layoutGrid(width, height);
 		} else if (this.state === 'idle' && this.packSprite) {
-			this.placeAtCentre(this.packSprite, width / 2, height / 2, 1);
+			// Re-fit the focused pack to the new canvas and redraw the cut line.
+			this.selScale = Math.min(
+				(width * 0.9) / this.packSprite.packWidth,
+				(height * 0.92) / this.packSprite.packHeight
+			);
+			this.packSprite.scale.set(this.selScale);
+			this.packSprite.position.set(
+				width / 2 - (this.packSprite.packWidth * this.selScale) / 2,
+				height / 2 - (this.packSprite.packHeight * this.selScale) / 2
+			);
 			this.redrawCutAtLocal(this.cutY);
 		}
 	}

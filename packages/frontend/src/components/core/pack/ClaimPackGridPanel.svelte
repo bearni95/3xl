@@ -29,7 +29,7 @@
 	}
 </script>
 
-<div class="card h-full min-h-[32rem] w-full bg-base-100 shadow-xl">
+<div class="card w-full bg-base-100 shadow-xl">
 	<div class="card-body gap-4 p-4">
 		<div class="flex shrink-0 items-center justify-between gap-3">
 			<div>
@@ -51,7 +51,9 @@
 			{/if}
 		</div>
 
-		<div class="min-h-0 flex-1 rounded-md bg-gradient-to-b from-base-300/80 to-base-200">
+		<div
+			class="relative h-[70vh] min-h-[32rem] overflow-hidden rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
+		>
 			{#if packs.length}
 				{#key `${packsKey}:${gridSession}`}
 					<ClaimPackGrid
