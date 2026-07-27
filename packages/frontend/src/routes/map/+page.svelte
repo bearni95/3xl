@@ -881,14 +881,15 @@
 	</aside>
 {/if}
 
-<!-- Challenge → the board's combat arena, hosted in a modal here so a fight against a
-	town's seeded OG team plays out over the map without ever navigating to /board.
+<!-- Challenge → the board's combat arena, hosted as a floating panel over the map so a
+	fight against a town's seeded OG team plays out without ever navigating to /board.
+	A plain fixed panel (not a DaisyUI modal) at z-[1200] — above the map's three corner
+	panels (z-[1100]) — so it, and its backdrop, sit on top of them rather than behind.
 	CombatArena fields the player's active roster team against the frozen OG spawns and
-	handles all its own gating (sign-in, no active team). Keyed so each new challenge
-	remounts a clean fight. -->
+	handles all its own gating. Keyed so each new challenge remounts a clean fight. -->
 {#if fightOpen}
-	<div class="modal modal-open">
-		<div class="modal-box max-h-[95vh] w-auto max-w-[95vw] overflow-auto">
+	<div class="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 p-4">
+		<div class="max-h-[95vh] w-auto max-w-[95vw] overflow-auto rounded-box bg-base-100 p-6 shadow-xl">
 			{#key fightSpawns.map((spawn) => spawn.characterId).join(',')}
 				<CombatArena ogTeam={fightSpawns} ogName={fightName} closable on:close={() => (fightOpen = false)} />
 			{/key}
