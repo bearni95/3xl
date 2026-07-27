@@ -7,7 +7,7 @@
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import ClaimPanel from '$components/core/ClaimPanel.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
-	import ClaimPackGridPanel from '$components/core/pack/ClaimPackGridPanel.svelte';
+	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import {
 		buildRegionTree,
@@ -47,7 +47,7 @@
 	// into openable packs. Kept here so clicking a star opens that town's pack at once,
 	// with no extra loading. Empty when signed out or before the show pool loads.
 	let claimPacks: OpenerPack[] = [];
-	// The municipality id whose festa-pack modal is open, or null when it's closed.
+	// The municipality id whose festa-pack panel is open, or null when it's closed.
 	let festaModalId: string | null = null;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
@@ -469,12 +469,12 @@
 		return result;
 	})();
 
-	// The single pack the festa modal shows — the clicked town's, filtered out of the
-	// full day's set — plus the town's name for the modal header. Empty/null when the
-	// modal is closed, the player is signed out, or the town has no claimable show yet.
-	$: festaModalPacks = festaModalId
-		? claimPacks.filter((pack) => pack.id === festaModalId)
-		: [];
+	// The single pack the festa modal shows — the clicked town's, picked out of the
+	// full day's set — plus the town's name for the modal header. Null when the modal
+	// is closed, the player is signed out, or the town has no claimable show yet.
+	$: festaModalPack = festaModalId
+		? (claimPacks.find((pack) => pack.id === festaModalId) ?? null)
+		: null;
 	$: festaModalName = festaModalId
 		? (todayFestes.find((festa) => festa.id === festaModalId)?.name ?? null)
 		: null;
@@ -662,36 +662,48 @@
 	<CharacterClaimPanel bind:packs={claimPacks} />
 </div>
 
-<!-- Star click → this town's festa booster pack on the same opener canvas as the
-	claim page, in a modal, ready to be sliced open and claimed. -->
+<!-- Star click → this town's festa booster pack on the single-pack opener canvas, in a
+	floating right-side panel: the pack arrives already fitted and centred, ready to be
+	sliced open — no grid, no click-to-zoom step. A fixed panel (no scale animation) so
+	the canvas measures its box at full size on mount and bakes the pack at the right fit. -->
 {#if festaModalId}
-	<div class="modal modal-open z-[2000]" role="dialog" aria-label="Sobre de festa">
-		<div class="modal-box flex max-h-[90vh] w-[92vw] max-w-4xl flex-col gap-4 p-4">
-			<div class="flex items-center justify-between gap-4">
-				<div>
-					<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Sobre de festa</h2>
-					{#if festaModalName}
-						<p class="text-lg font-bold">{restoreCatalanArticle(festaModalName)}</p>
-					{/if}
-				</div>
-				<button
-					class="btn btn-circle btn-ghost btn-sm"
-					on:click={() => (festaModalId = null)}
-					aria-label="Tanca"
-				>
-					✕
-				</button>
+	<aside
+		class="fixed bottom-4 right-4 top-20 z-[1100] flex w-[28rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/95 shadow-lg"
+		aria-label="Sobre de festa"
+	>
+		<div class="flex shrink-0 items-center justify-between gap-4 border-b border-base-300 px-4 py-3">
+			<div>
+				<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Sobre de festa</h2>
+				{#if festaModalName}
+					<p class="text-lg font-bold">{restoreCatalanArticle(festaModalName)}</p>
+				{/if}
 			</div>
-
-			<div class="min-h-0 flex-1">
-				<ClaimPackGridPanel packs={festaModalPacks} />
-			</div>
+			<button
+				class="btn btn-circle btn-ghost btn-sm"
+				on:click={() => (festaModalId = null)}
+				aria-label="Tanca"
+			>
+				✕
+			</button>
 		</div>
-		<button
-			type="button"
-			class="modal-backdrop"
-			aria-label="Tanca"
-			on:click={() => (festaModalId = null)}
-		></button>
-	</div>
+
+		<div class="min-h-0 flex-1 p-3">
+			{#if festaModalPack}
+				{#key festaModalPack.id}
+					<ClaimPackOpener
+						coverUrl={festaModalPack.coverUrl}
+						locationName={festaModalPack.locationName}
+						claim={festaModalPack.claim}
+						classes="rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
+					/>
+				{/key}
+			{:else}
+				<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
+					<p class="max-w-xs text-sm opacity-60">
+						Aquest municipi encara no té cap sobre per obrir. Inicia sessió i torna-ho a provar.
+					</p>
+				</div>
+			{/if}
+		</div>
+	</aside>
 {/if}
