@@ -554,11 +554,34 @@
 	<!-- The navbar's profile/sign-in panel, pinned always-visible top-left here. -->
 	<AuthMenu pinned />
 
+	{#if openShow}
+		<aside
+			class="fixed bottom-4 right-4 z-[1100] w-[24rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
+			aria-label="Selected location"
+		>
+			<div class="flex flex-col gap-3 p-4">
+				<div class="flex items-center gap-3">
+					{#if openShow.posterUrl}
+						<img
+							src={openShow.posterUrl}
+							alt={openShow.name}
+							class="h-16 w-auto flex-none rounded shadow"
+						/>
+					{/if}
+					<div class="min-w-0">
+						<p class="text-xs font-bold uppercase tracking-wide opacity-60">Most seen</p>
+						<p class="truncate font-semibold">{openShow.name}</p>
+					</div>
+				</div>
+			</div>
+		</aside>
+	{/if}
+
 	<aside
-		class="fixed bottom-4 right-4 z-[1100] w-[24rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
-		aria-label="Selected location"
+		class="fixed bottom-4 left-4 z-[1100] flex h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
+		aria-label="Map regions"
 	>
-		<div class="flex flex-col gap-3 p-4">
+		<div class="flex flex-col gap-3 border-b border-base-300 px-4 py-3">
 			<div class="breadcrumbs max-w-full text-sm">
 				<ul>
 					{#each crumbs as crumb, i}
@@ -575,29 +598,6 @@
 				</ul>
 			</div>
 
-			{#if openShow}
-				<div class="flex items-center gap-3">
-					{#if openShow.posterUrl}
-						<img
-							src={openShow.posterUrl}
-							alt={openShow.name}
-							class="h-16 w-auto flex-none rounded shadow"
-						/>
-					{/if}
-					<div class="min-w-0">
-						<p class="text-xs font-bold uppercase tracking-wide opacity-60">Most seen</p>
-						<p class="truncate font-semibold">{openShow.name}</p>
-					</div>
-				</div>
-			{/if}
-		</div>
-	</aside>
-
-	<aside
-		class="fixed bottom-4 left-4 z-[1100] flex h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
-		aria-label="Map regions"
-	>
-		<div class="border-b border-base-300 px-4 py-3">
 			<input
 				type="search"
 				class="input input-bordered input-sm w-full"
