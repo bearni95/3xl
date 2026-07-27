@@ -8,6 +8,14 @@ export interface MapOverlay {
 	style: PathOptions;
 	/** Style merged onto a feature while hovered; reset on mouseout. */
 	hoverStyle?: PathOptions;
+	/**
+	 * Style merged onto every feature of this layer listed in the map's `dimmedIds`
+	 * — the regions sitting clear of the open selection, faded exactly as their pins
+	 * are. Declared per layer because a stack of fills has to fade as one: the layer
+	 * carrying the visible wash steps down to half, while the layers painting over it
+	 * step out of the way instead of compounding their own alpha on top.
+	 */
+	dimmedStyle?: PathOptions;
 	/** Returns the hover tooltip label for a feature. */
 	label?: (feature: GeoJSON.Feature) => string;
 	/** Called when a feature is clicked. */

@@ -18,6 +18,7 @@
 		highlightStyle = null,
 		selectedIds = new Set<string>(),
 		selectedStyle = null,
+		dimmedIds = new Set<string>(),
 		hiddenLineUrls = new Set<string>(),
 		focusBounds = null,
 		currentZoom = $bindable(zoom),
@@ -68,6 +69,14 @@
 		selectedIds?: Set<string>;
 		/** Style merged over the base style of each feature in `selectedIds`. */
 		selectedStyle?: L.PathOptions | null;
+		/**
+		 * `properties.id`s of every feature sitting clear of the selected region —
+		 * painted with each overlay's own `dimmedStyle`, the polygon counterpart of a
+		 * dimmed pin. Ids may name features of any overlay (each layer decides how it
+		 * fades). A feature in `selectedIds` is never dimmed. Reactive: repaints when
+		 * the selection changes.
+		 */
+		dimmedIds?: Set<string>;
 		/**
 		 * `url`s of the overlays whose stroke should be suppressed. A hidden overlay
 		 * keeps its fill but drops its border, so sub-division lines don't crowd the
@@ -133,6 +142,12 @@
 		if (highlightId != null && highlightStyle && feature?.properties?.id === highlightId) {
 			style = { ...style, ...highlightStyle };
 		}
+		// Fade everything clear of the selection with this overlay's own dim style, the
+		// polygon counterpart of a dimmed pin. Applied before the selected style so a
+		// feature that is somehow in both still reads as selected.
+		if (overlay.dimmedStyle && feature?.properties?.id != null && dimmedIds.has(String(feature.properties.id))) {
+			style = { ...style, ...overlay.dimmedStyle };
+		}
 		// Keep every feature of the selected region painted with the selected style,
 		// so the whole selected location's background stays filled (not just on hover).
 		if (selectedStyle && feature?.properties?.id != null && selectedIds.has(String(feature.properties.id))) {
@@ -153,6 +168,7 @@
 		void highlightStyle;
 		void selectedIds;
 		void selectedStyle;
+		void dimmedIds;
 		void hiddenLineUrls;
 		for (const group of overlayGroups) group.resetStyle();
 	});

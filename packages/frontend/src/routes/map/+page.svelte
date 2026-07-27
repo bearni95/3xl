@@ -158,6 +158,10 @@
 			// background. Non-interactive — the municipis layer on top owns the hover.
 			url: '/data/geo/territoris.json',
 			style: { stroke: false, fillColor: '#ce74ff', fillOpacity: 1 },
+			// This continuous base is what actually carries the faded wash: with a region
+			// open it drops to half opacity across the whole map, and the selected
+			// municipalities repaint over it fully solid (see selectedFillStyle).
+			dimmedStyle: { fillOpacity: 0.5 },
 			interactive: false
 		},
 		{
@@ -171,7 +175,13 @@
 			// fill fully solid, with the municipis stroke suppressed (opacity 0) so the
 			// internal subdivision borders don't show — only the fill fills in. The
 			// region's outer outline still comes from the coarser line overlays.
-			hoverStyle: { fillOpacity: 1, opacity: 0 }
+			hoverStyle: { fillOpacity: 1, opacity: 0 },
+			// A municipality clear of the open region steps out of the way entirely rather
+			// than fading on its own: stacking a half-opacity fill over the half-opacity
+			// territory base would compound back up to ~75%. Dropping this fill lets the
+			// base show through at exactly the 50% its pin renders at, and seamlessly —
+			// the base is dissolved, so no hairline seams open up in the faded area.
+			dimmedStyle: { fillOpacity: 0 }
 		},
 		{
 			url: '/data/geo/comarques.json',
@@ -635,6 +645,23 @@
 
 	// The persistent fill painted across the selected region's municipality polygons.
 	const selectedFillStyle = { fillColor: '#ce74ff', fillOpacity: 1, weight: 1 };
+
+	// The features painted at half strength — every region clear of the open one, so a
+	// region's background fades exactly as its pin does (full inside the selection, 50%
+	// outside it). Two layers are listed, each fading its own way (see the overlays'
+	// dimmedStyle): the territory base, which is where the faded wash is actually drawn,
+	// and every municipality outside the selection, which drops its own fill so the base
+	// shows through at a clean 50%. Empty with nothing open — then the map is all at full
+	// strength, just as no pin is dimmed.
+	$: dimmedIds =
+		selected && municipalities
+			? new Set<string>([
+					...regionNodes.map((node) => node.key),
+					...municipalities.features
+						.map((feature) => String(feature.properties?.id))
+						.filter((id) => !selectedIds.has(id))
+				])
+			: new Set<string>();
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
@@ -769,6 +796,7 @@
 				{focusBounds}
 				{selectedIds}
 				selectedStyle={selectedFillStyle}
+				{dimmedIds}
 				bind:currentZoom
 				bind:activeLevel
 				bind:currentCenter
