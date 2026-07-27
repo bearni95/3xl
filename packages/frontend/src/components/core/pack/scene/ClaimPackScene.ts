@@ -50,7 +50,14 @@ export interface ClaimPackInput {
  */
 export type ClaimBooster = () => Promise<ClaimPull[]>;
 
-type SceneState = 'loading' | 'idle' | 'cutting' | 'revealing' | 'fanned';
+type SceneState =
+	| 'loading'
+	| 'idle'
+	| 'cutting'
+	| 'revealing'
+	| 'fanned'
+	| 'focused'
+	| 'unfocusing';
 
 const PACK_ASPECT = 5 / 8; // width / height (portrait)
 const CARD_ASPECT = 2 / 3; // portrait trading card
@@ -74,6 +81,15 @@ export class ClaimPackScene {
 	private topHalf: Sprite | null = null;
 	private bottomHalf: Sprite | null = null;
 	private cardSprites: CardSprite[] = [];
+	// The 2-column grid slots the revealed cards rest in (their fanned targets), kept
+	// so a focused card can animate back to its own slot. The base card size (scale 1)
+	// sets how far a focused card zooms up to fill the width.
+	private cardTargets: Array<{ x: number; y: number; rotation: number; scale: number }> = [];
+	private cardBaseSize = { cardW: 0, cardH: 0 };
+	// The card currently lifted to full width above the others on tap, and its grid
+	// index — or null/-1 when the reveal is resting in its 2-column grid.
+	private focusedCard: CardSprite | null = null;
+	private focusedIndex = -1;
 
 	private state: SceneState = 'loading';
 	private isDestroyed = false;
@@ -248,6 +264,12 @@ export class ClaimPackScene {
 	};
 
 	private onPointerDown = (e: FederatedPointerEvent): void => {
+		// While a card is held full width, a click anywhere on the canvas sends it back
+		// to the 2-column grid.
+		if (this.state === 'focused') {
+			this.unfocusCard();
+			return;
+		}
 		if (this.state !== 'idle' || !this.packSprite) return;
 		if (!this.isInsidePack(e.global.x, e.global.y)) return;
 		const localY = e.global.y - this.packSprite.y;
@@ -450,7 +472,12 @@ export class ClaimPackScene {
 			sprite.cursor = 'pointer';
 			const idx = i;
 			sprite.on('pointertap', () => {
-				if (this.state === 'fanned') this.callbacks.onCardClick?.(pull, idx);
+				// A tap on a resting card lifts it to full width above the others; the
+				// callback (when wired) still fires for any external listener.
+				if (this.state === 'fanned') {
+					this.callbacks.onCardClick?.(pull, idx);
+					this.focusCard(idx);
+				}
 			});
 			this.cardLayer.addChild(sprite);
 			this.cardSprites.push(sprite);
@@ -475,11 +502,70 @@ export class ClaimPackScene {
 		if (this.isDestroyed) return;
 
 		const targets = this.computeRevealTargets(centerX, centerY, cardW, cardH);
+		// Remember the grid slots + base card size so tapping a card can zoom it up and
+		// a canvas click can send it back to exactly where it sat.
+		this.cardTargets = targets;
+		this.cardBaseSize = { cardW, cardH };
 		await Promise.all(
 			this.cardSprites.map((sp, i) =>
 				this.tweenSprite(sp, targets[i], 520, i * 55, easeOutCubic)
 			)
 		);
+	}
+
+	/**
+	 * Lift a revealed card to full width, centred above the others. It scales up from
+	 * its grid slot and is moved to the top of the card layer so it overlaps the rest;
+	 * a click anywhere on the canvas ({@link onPointerDown}) sends it back.
+	 */
+	private focusCard(index: number): void {
+		const sprite = this.cardSprites[index];
+		if (!sprite) return;
+		this.state = 'focused';
+		this.focusedCard = sprite;
+		this.focusedIndex = index;
+		// Draw it above every other card.
+		this.cardLayer.setChildIndex(sprite, this.cardLayer.children.length - 1);
+		void this.tweenSprite(sprite, this.focusTarget(), 360, 0, easeOutCubic);
+	}
+
+	/**
+	 * Send the focused card back to its grid slot, then re-arm tap-to-focus. Runs on a
+	 * canvas click while a card is focused.
+	 */
+	private unfocusCard(): void {
+		const sprite = this.focusedCard;
+		const index = this.focusedIndex;
+		if (!sprite || index < 0) {
+			this.state = 'fanned';
+			return;
+		}
+		// A transient state so this same click's card `pointertap` can't immediately
+		// re-focus it — tap-to-focus only re-arms once the card is home in its slot.
+		this.state = 'unfocusing';
+		const target = this.cardTargets[index] ?? { x: sprite.x, y: sprite.y, rotation: 0, scale: 1 };
+		void this.tweenSprite(sprite, target, 320, 0, easeOutCubic).then(() => {
+			if (this.isDestroyed) return;
+			this.focusedCard = null;
+			this.focusedIndex = -1;
+			this.state = 'fanned';
+		});
+	}
+
+	/**
+	 * The zoom target for a focused card: the canvas centre, scaled so the card (with
+	 * its outset border) spans the full width — capped by height so a tall card still
+	 * fits, and never shrinking below its grid size.
+	 */
+	private focusTarget(): { x: number; y: number; rotation: number; scale: number } {
+		const { cardW, cardH } = this.cardBaseSize;
+		const border = cardBorderWidth(cardW);
+		const footW = cardW + 2 * border;
+		const footH = cardH + 2 * border;
+		const availW = this.app.screen.width * 0.92;
+		const availH = this.app.screen.height * 0.92;
+		const scale = Math.max(1, Math.min(availW / footW, availH / footH));
+		return { x: this.app.screen.width / 2, y: this.app.screen.height / 2, rotation: 0, scale };
 	}
 
 	// The reveal fans the cards into a two-column grid.
