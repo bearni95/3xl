@@ -44,6 +44,10 @@ const SHADOW_ALPHA = 0.45;
  * agree on every character's size relative to the others. */
 export const REFERENCE_SOURCE_HEIGHT = 150;
 
+/** Multiplier applied to the fitted idle scale so the character (and its shadow)
+ * reads a little bigger than the strict fit — a deliberate 30% zoom. */
+const IDLE_SCALE_BOOST = 1.3;
+
 /** The d10 die icon (white SVG) shown next to the ATK value — the same one the
  * roster/team cards use for a character's stat. Served from @3xl/assets. */
 const D10_ICON_URL = '/assets/icons/skoll/d10.svg';
@@ -245,7 +249,9 @@ export class CardSprite extends Container {
 		const sharedScale = boxH / REFERENCE_SOURCE_HEIGHT;
 		const heightCap = boxH / maxHeight;
 		const widthCap = boxW / 2 / maxHalfExtent;
-		this.idleFitScale = Math.min(sharedScale, heightCap, widthCap);
+		// Draw the idle (and its shadow, which shares this scale) 30% larger than the
+		// fitted size. Applied after the fit so every character grows by the same factor.
+		this.idleFitScale = Math.min(sharedScale, heightCap, widthCap) * IDLE_SCALE_BOOST;
 
 		// Centre the animation vertically in the coloured art area (scale unchanged):
 		// place the shared feet baseline so the tallest frame's rendered height is
