@@ -13,6 +13,7 @@
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import { spawnYearLabel } from '$utils/spawn/year';
 import { SpawnColor } from '$types/character-spawn.type';
 import type { CardModel } from './card-model.type';
 import { textureCache, type IdleFrame } from './texture-cache';
@@ -333,7 +334,9 @@ export class CardSprite extends Container {
 
 		// Join the location and the two-digit spawn year into one muted label, centred
 		// in the row and truncated to most of its width.
-		const label = [this.card.locationName, this.spawnYearLabel()].filter(Boolean).join(' ');
+		const label = [this.card.locationName, spawnYearLabel(this.card.spawnedAt)]
+			.filter(Boolean)
+			.join(' ');
 		if (label) {
 			const loc = new Text({
 				text: label,
@@ -346,15 +349,6 @@ export class CardSprite extends Container {
 		}
 
 		return group;
-	}
-
-	/** The spawn's year as a two-digit apostrophe suffix (2025 → `'25`), or null when
-	 * the card carries no valid spawn date. */
-	private spawnYearLabel(): string | null {
-		if (!this.card.spawnedAt) return null;
-		const year = new Date(this.card.spawnedAt).getFullYear();
-		if (Number.isNaN(year)) return null;
-		return `'${String(year).slice(-2).padStart(2, '0')}`;
 	}
 
 	/** Trim `full` with a trailing ellipsis until the text fits within `maxWidth`. */

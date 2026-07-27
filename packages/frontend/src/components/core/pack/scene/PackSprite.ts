@@ -4,8 +4,9 @@
  * Renders a booster pack into a RenderTexture, framed to match {@link CardSprite}:
  * the show's poster spans the full pack width and is never cropped — the pack's
  * height adapts to the poster's aspect ratio — with plain white header and footer
- * strips above and below it, and the place the pack belongs to overlaid at the
- * top-centre of the poster (white with a black outline). Square corners, a 2px
+ * strips above and below it, and the place the pack belongs to set within the top
+ * colour rectangle, below the triangles row (white with a black outline). Square
+ * corners, a 2px
  * black border and a soft black drop shadow sit behind it. Exposes split(y), which
  * carves the rendered texture into top/bottom halves for the slice animation.
  *
@@ -26,6 +27,7 @@ import {
 } from 'pixi.js';
 import { textureCache } from '$components/core/card/texture-cache';
 import restoreCatalanArticle from '$utils/string/restore-catalan-article';
+import { spawnYearLabel } from '$utils/spawn/year';
 
 // Card-frame proportions, shared with CardSprite so a pack reads as the unopened
 // member of the same family: a white header strip and a white footer strip framing
@@ -50,7 +52,7 @@ const TRIANGLE_BASE_RATIO = 0.1;
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
 	coverUrl: string | null;
-	/** Full name of the place the pack belongs to, overlaid on the poster's top. */
+	/** Full name of the place the pack belongs to, set within the top colour band. */
 	locationName: string | null;
 	app: Application;
 	/** Bounding box the pack is fitted into. The pack takes the full width unless
@@ -295,14 +297,22 @@ export class PackSprite extends Container {
 		triangles.fill({ color: 0x000000, alpha: 1 });
 		root.addChild(triangles);
 
-		// The place the pack belongs to, overlaid at the top-centre of the image in
-		// white with a black outline so it stays legible over the poster.
+		// The place the pack belongs to, contained within the top coloured rectangle
+		// (the header band) in the band area below the triangles row, in white with a
+		// black outline so it stays legible over the header colour. The spawn's two-digit
+		// year (rolled at open time, so "now") is joined to it exactly as the card's meta
+		// strip does — e.g. `Barcelona '26`.
 		if (this.locationName) {
+			const bandTop = triHeight;
+			const bandH = headerH - triHeight;
+			const label = [restoreCatalanArticle(this.locationName), spawnYearLabel(Date.now())]
+				.filter(Boolean)
+				.join(' ');
 			const loc = new Text({
-				text: restoreCatalanArticle(this.locationName),
+				text: label,
 				style: {
 					fontFamily: 'sans-serif',
-					fontSize: Math.max(10, Math.round(w * 0.08)),
+					fontSize: Math.max(10, Math.round(Math.min(w * 0.08, bandH * 0.6))),
 					fontWeight: '700',
 					fill: 0xffffff,
 					stroke: { color: 0x000000, width: Math.max(2, Math.round(w * 0.02)) },
@@ -311,8 +321,8 @@ export class PackSprite extends Container {
 					wordWrapWidth: w * 0.92
 				}
 			});
-			loc.anchor.set(0.5, 0);
-			loc.position.set(w / 2, artY + Math.round(w * 0.04));
+			loc.anchor.set(0.5, 0.5);
+			loc.position.set(w / 2, bandTop + bandH / 2);
 			root.addChild(loc);
 		}
 
