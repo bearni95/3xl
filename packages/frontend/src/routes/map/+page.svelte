@@ -728,6 +728,13 @@
 				{/if}
 
 				{#if municipalityTeamCards.length > 0}
+					<!-- The town's built-in, seed-rolled team — its "OG" (original) roster,
+						the same for every player. Badged so it reads as the house team, not
+						a claimed one. -->
+					<div class="flex flex-none items-center gap-2">
+						<span class="badge badge-primary badge-sm font-bold">OG</span>
+						<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
+					</div>
 					<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
 						<CardCanvas cards={municipalityTeamCards} columns={TEAM_SIZE} layout="grid" pannable />
 					</div>
