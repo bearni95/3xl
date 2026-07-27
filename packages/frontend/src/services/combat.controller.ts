@@ -11,8 +11,9 @@
  * (blue / `info`) fighter and the rivals (red / `error`) pre-roll one, then the
  * pairs duel one at a time — player i vs rival i by selection order.
  *
- * Each duel is one encounter on a purple meeting cell: one fighter attacks, then
- * the other answers back. An attack rolls ATK d10 and every die at or above the
+ * Each duel is one encounter on a purple meeting cell: the faster fighter (higher
+ * SPD, ties broken by a coin flip) attacks first, then the other answers back if
+ * it survives. An attack rolls ATK d10 and every die at or above the
  * defender's DEF is a hit; the thrown colour vs the defender's colour then scales
  * those hits (the strike table's ×0.5 / ×1 / ×2, rounded) into the HP of damage
  * dealt. A fighter reduced to 0 HP is knocked out — it holds its hurt pose, fades
@@ -30,8 +31,8 @@
  *
  * A fighter holding a purple cell is pinned there: it cannot pick or act on its
  * turn and only fights when an enemy attacks it on its cell, auto-defending with
- * a random color (the attacker throws first). Unchallenged holders keep their
- * cell across rounds.
+ * a random color (the faster fighter still strikes first). Unchallenged holders
+ * keep their cell across rounds.
  */
 import { writable } from 'svelte/store';
 import type { Hex } from '$utils/mugen/hex';
@@ -397,11 +398,15 @@ export class CombatController {
 		this.setStatus(
 			`${player.name} (${colorLabel(player.moveColor)}) vs ${rival.name} (${colorLabel(rival.moveColor)}) — taking position…`
 		);
-		// A holder dragged into this duel was attacked: the attacker throws first
-		// and the holder only answers back. Otherwise the player leads as usual.
-		// Remember who held the cell coming in — a tie must not strip a defended cell.
+		// The faster fighter strikes first this duel: whoever has the higher SPD leads
+		// and the other only answers back (if it survives the opening blow). An equal
+		// SPD is settled by a coin flip, giving each a 50/50 chance to go first.
+		// Remember who held the cell coming in — a tie in leftover HP must not strip a
+		// defended cell (used further down, not for strike order).
 		const priorHolder = [player, rival].find((f) => this.heldCell(f)) ?? null;
-		const [first, second] = priorHolder === player ? [rival, player] : [player, rival];
+		const playerFirst =
+			player.spd > rival.spd || (player.spd === rival.spd && rollDie(2) === 1);
+		const [first, second] = playerFirst ? [player, rival] : [rival, player];
 		// Clear the previous duel's readouts before this pair throws.
 		this.board?.clearStrikeLabels();
 		// Fighting vacates whatever cell each participant held: its paint reverts to
