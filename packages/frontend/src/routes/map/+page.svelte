@@ -1,5 +1,4 @@
 <script lang="ts">
-	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -775,15 +774,12 @@
 		{/if}
 	</aside>
 
-	<!-- When the festa pack panel is open it floats over the map's right edge; reserve
-		that width here so the map shrinks left instead of hiding the stars behind it —
-		every festa star stays on the visible map and clicking another one switches the
-		panel. WorldMap's ResizeObserver re-projects Leaflet as this padding changes. -->
-	<div
-		class={classNames('relative flex min-w-0 flex-1 flex-col transition-[padding]', {
-			'pr-[30rem]': festaModalId
-		})}
-	>
+	<!-- The map keeps the full width at all times. The festa pack panel floats over its
+		right edge (a fixed z-[1100] aside, like the other corner panels) rather than
+		reserving space here, so opening a pack never re-frames or re-projects the map —
+		the view stays exactly where it was and clicking another star just switches the
+		panel's contents. -->
+	<div class="relative flex min-w-0 flex-1 flex-col">
 		{#if ready}
 			<WorldMap
 				center={[41.8, 1.7]}
