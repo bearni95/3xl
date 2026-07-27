@@ -57,7 +57,7 @@ export function cardBorderWidth(cardWidth: number): number {
 	return Math.max(6, Math.round(cardWidth * 0.05));
 }
 
-/** The d10 die icon (white SVG) shown next to the ATK value — the same one the
+/** The d10 die icon (white SVG) shown after the ATK value — the same one the
  * roster/team cards use for a character's stat. Served from @3xl/assets. */
 const D10_ICON_URL = '/assets/icons/skoll/d10.svg';
 
@@ -506,8 +506,9 @@ export class CardSprite extends Container {
 	 * The footer stat row: the four combat attributes the board fields — ATK, DEF, SPD
 	 * and HP — each a value under a small caption. (The rarity badge now lives in the
 	 * show row under the name, not here.) The four sit in four evenly-spaced columns
-	 * across the width; ATK's caption is the shared d10 die icon (as on the roster/team
-	 * cards), the other three use a small text label.
+	 * across the width; every caption is a small text label ('ATK', 'DEF', …), and the
+	 * ATK value carries the shared d10 die icon (as on the roster/team cards) after its
+	 * number.
 	 */
 	private makeStats(footerY: number, footerH: number): Container {
 		const group = new Container();
@@ -516,8 +517,7 @@ export class CardSprite extends Container {
 		const valueY = footerY + footerH * 0.75;
 		const captionSize = Math.max(7, Math.round(this.cardWidth * 0.05));
 		const valueSize = Math.max(11, Math.round(this.cardWidth * 0.09));
-		// The labels row (captions + the d10 icon) sits at 95% opacity; the values row is
-		// fully opaque.
+		// The labels row (captions) sits at 95% opacity; the values row is fully opaque.
 		const captionAlpha = 0.95;
 		const valueAlpha = 1;
 
@@ -532,6 +532,20 @@ export class CardSprite extends Container {
 		];
 
 		for (const cell of cells) {
+			const caption = new Text({
+				text: cell.label,
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize: captionSize,
+					fontWeight: '700',
+					fill: 0xffffff
+				}
+			});
+			caption.anchor.set(0.5, 0.5);
+			caption.position.set(cell.x, captionY);
+			caption.alpha = captionAlpha;
+			group.addChild(caption);
+
 			const value = new Text({
 				text: `${cell.value}`,
 				style: { fontFamily: 'sans-serif', fontSize: valueSize, fontWeight: '700', fill: 0xffffff }
@@ -542,30 +556,25 @@ export class CardSprite extends Container {
 			group.addChild(value);
 
 			if (cell.label === 'ATK') {
-				// The d10 icon loads async; it stands in for the ATK caption once ready.
+				// The d10 icon loads async; it trails the ATK number, the number+icon pair
+				// re-centred on the column once it's ready.
 				void textureCache.icon(D10_ICON_URL).then((tex) => {
 					if (this.destroyed || group.destroyed || !tex) return;
+					const iconH = valueSize;
+					const iconW = tex.width * (iconH / tex.height);
+					const gap = Math.max(2, Math.round(this.cardWidth * 0.02));
+					const total = value.width + gap + iconW;
+					// Left-align the number, then hang the icon off its right edge, so the
+					// combined pair stays centred on the column.
+					value.anchor.set(0, 0.5);
+					value.position.set(cell.x - total / 2, valueY);
 					const icon = new Sprite(tex);
-					icon.anchor.set(0.5, 0.5);
-					icon.scale.set(captionSize / tex.height);
-					icon.position.set(cell.x, captionY);
-					icon.alpha = captionAlpha;
+					icon.anchor.set(0, 0.5);
+					icon.scale.set(iconH / tex.height);
+					icon.position.set(cell.x - total / 2 + value.width + gap, valueY);
+					icon.alpha = valueAlpha;
 					group.addChild(icon);
 				});
-			} else {
-				const caption = new Text({
-					text: cell.label,
-					style: {
-						fontFamily: 'sans-serif',
-						fontSize: captionSize,
-						fontWeight: '700',
-						fill: 0xffffff
-					}
-				});
-				caption.anchor.set(0.5, 0.5);
-				caption.position.set(cell.x, captionY);
-				caption.alpha = captionAlpha;
-				group.addChild(caption);
 			}
 		}
 
