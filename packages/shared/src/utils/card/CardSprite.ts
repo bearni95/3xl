@@ -372,14 +372,12 @@ export class CardSprite extends Container {
 			group.addChild(rarity);
 		}
 
-		// Name, flush right — sized to the midpoint of its former size and the rarity
-		// badge's, then reduced by a further 30%.
-		const nameSize = Math.max(10, Math.round(this.cardWidth * 0.09));
+		// Name, flush right — sized to match the rarity badge's text.
 		const name = new Text({
 			text: this.card.label,
 			style: {
 				fontFamily: 'sans-serif',
-				fontSize: Math.round(((nameSize + raritySize) / 2) * 0.7),
+				fontSize: raritySize,
 				fontWeight: '700',
 				fill: 0xf2f2f2,
 				align: 'right',
