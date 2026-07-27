@@ -364,8 +364,7 @@ export class CardSprite extends Container {
 					fontFamily: 'sans-serif',
 					fontSize: raritySize,
 					fontWeight: '700',
-					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2,
-					stroke: { color: 0x000000, width: Math.max(2, Math.round(this.cardWidth * 0.012)) }
+					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2
 				}
 			});
 			rarity.anchor.set(0, 0.5);
