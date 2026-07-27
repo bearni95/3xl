@@ -129,19 +129,20 @@ export class CardSprite extends Container {
 		backdrop.stroke({ width: 2, color: 0x000000, alpha: 0.9 });
 		this.addChild(backdrop);
 
-		// Dark header strip at the top, carrying the character name. The rarity/show
-		// row is not part of it — it floats transparently over the colour square below.
+		// Header strip at the top, carrying the character name — black at 10% opacity.
+		// The rarity/show row is not part of it — it floats transparently over the
+		// colour square below.
 		const header = new Graphics();
 		header.rect(0, 0, this.cardWidth, headerH);
-		header.fill({ color: 0x000000, alpha: 0.5 });
+		header.fill({ color: 0x000000, alpha: 0.1 });
 		this.addChild(header);
 
-		// Dark footer strip at the bottom, carrying the ATK/DEF/SPD/HP stats. The
-		// location row is not part of it — it floats transparently over the bottom of
-		// the colour square above.
+		// Footer strip at the bottom, carrying the ATK/DEF/SPD/HP stats — black at 10%
+		// opacity, matching the header. The location row is not part of it — it floats
+		// transparently over the bottom of the colour square above.
 		const footer = new Graphics();
 		footer.rect(0, footerY, this.cardWidth, footerH);
-		footer.fill({ color: 0x000000, alpha: 0.5 });
+		footer.fill({ color: 0x000000, alpha: 0.1 });
 		this.addChild(footer);
 
 		// A black silhouette copy of the art, sitting behind the full-colour sprite
@@ -472,9 +473,9 @@ export class CardSprite extends Container {
 		const valueY = footerY + footerH * 0.75;
 		const captionSize = Math.max(7, Math.round(this.cardWidth * 0.05));
 		const valueSize = Math.max(11, Math.round(this.cardWidth * 0.09));
-		// The labels row (captions + the d10 icon) sits at 70% opacity, the values at 50%.
-		const captionAlpha = 0.7;
-		const valueAlpha = 0.5;
+		// The labels row (captions + the d10 icon) sits at 90% opacity, the values at 20%.
+		const captionAlpha = 0.9;
+		const valueAlpha = 0.2;
 
 		// Cell centres: four evenly-spaced columns (each column's midpoint), so the
 		// stats read as a 4-up row rather than the old 5-up layout that reserved the
