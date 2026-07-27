@@ -25,6 +25,7 @@
 		type CombatColor
 	} from '$types/character-definition.type';
 	import { throwableColors } from '$utils/color/compare';
+	import { chancePercent } from '$utils/dice/roll';
 	import { characters as availableCharacters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
@@ -558,7 +559,7 @@
 					<span class="capitalize">{color}</span>
 					{#if preview}
 						<span class="ml-auto text-xs font-normal tabular-nums opacity-80">
-							{Math.round(preview.hitChance * 100)}%
+							{chancePercent(preview.hitChance)}%
 						</span>
 					{/if}
 				</button>

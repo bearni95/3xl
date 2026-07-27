@@ -1,5 +1,11 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { rollN, resolveAttack, dieHitChance, attackHitChance } from '$utils/dice/roll';
+import {
+	rollN,
+	resolveAttack,
+	dieHitChance,
+	attackHitChance,
+	chancePercent
+} from '$utils/dice/roll';
 
 /** Feed Math.random a fixed sequence so dice results are deterministic. */
 function stubDice(values: number[]): void {
@@ -88,6 +94,35 @@ describe('dice', () => {
 		expect(attackHitChance(-2, 5)).toBe(0);
 		expect(attackHitChance(9, 10)).toBe(0);
 		expect(attackHitChance(9, 0)).toBe(1);
+	});
+
+	it('chancePercent never rounds a real chance up to a certainty', () => {
+		// The bug this guards: 3d10 vs DEF 1 is 99.9%, which Math.round reports as 100%.
+		expect(attackHitChance(3, 1)).toBeCloseTo(0.999);
+		expect(chancePercent(attackHitChance(3, 1))).toBe(99);
+		expect(chancePercent(0.9999999)).toBe(99);
+		// …nor a real chance down to an impossibility.
+		expect(chancePercent(0.0001)).toBe(1);
+	});
+
+	it('chancePercent prints 100 and 0 only for an actual certainty', () => {
+		expect(chancePercent(1)).toBe(100);
+		expect(chancePercent(0)).toBe(0);
+		expect(chancePercent(1.5)).toBe(100);
+		expect(chancePercent(-0.2)).toBe(0);
+		// Ordinary values round as usual.
+		expect(chancePercent(0.5)).toBe(50);
+		expect(chancePercent(0.874)).toBe(87);
+	});
+
+	it('no DEF a card can roll ever shows a guaranteed hit', () => {
+		// DEF spans 1..9, and a die landing on DEF is turned aside, so even the weakest
+		// defender turns a rolled 1 away — 9 dice against DEF 1 still is not certain.
+		for (let def = 1; def <= 9; def++) {
+			for (let atk = 1; atk <= 9; atk++) {
+				expect(chancePercent(attackHitChance(atk, def))).toBeLessThan(100);
+			}
+		}
 	});
 
 	it('attackHitChance agrees with rolled attacks over many samples', () => {

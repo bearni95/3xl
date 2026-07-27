@@ -56,6 +56,19 @@ export function attackHitChance(atk: number, def: number): number {
 }
 
 /**
+ * A probability as the whole percent to *display*. Plain rounding lies at both ends:
+ * 3d10 against DEF 1 lands 99.9% of the time, and `Math.round` turns that into a flat
+ * "100%" — a certainty the dice never offer, since all three can still come up a 1 and
+ * be turned aside. So a chance short of a true certainty is held at 99, and one above a
+ * true impossibility at 1; only an exact 1 or 0 prints 100 or 0.
+ */
+export function chancePercent(chance: number): number {
+	if (chance >= 1) return 100;
+	if (chance <= 0) return 0;
+	return Math.min(99, Math.max(1, Math.round(chance * 100)));
+}
+
+/**
  * Roll a character's fight HP: `hp` ten-sided dice summed together. A character
  * with `hp` = 5 rolls 5d10, yielding a total in the inclusive range [5, 50].
  */
