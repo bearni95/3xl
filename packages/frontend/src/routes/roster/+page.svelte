@@ -12,6 +12,7 @@
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import type { CombatColor } from '$types/character-definition.type';
 	import { SPAWN_STAT_MAX, SPAWN_STAT_MIN, SpawnColor } from '$types/character-spawn.type';
+	import { combatStatsFromStat } from '$utils/spawn/stat';
 	import { teammateColors } from '$utils/color/compare';
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
@@ -222,10 +223,7 @@
 			showName: showNamesFor(spawn.characterId).join(', ') || null,
 			locationName: locationNameFor(spawn.locationId),
 			spawnedAt: spawn.createdAt,
-			atk: spawn.stat,
-			def: SPAWN_STAT_MAX - spawn.stat,
-			spd: spawn.stat - 1,
-			hp: SPAWN_STAT_MAX - spawn.stat + 1
+			...combatStatsFromStat(spawn.stat)
 		})))(characterFaces, municipalityNames, rarityByCharacter, characterShowNames);
 
 	// Tapping a card on the canvas toggles that spawn on the active team (add to the

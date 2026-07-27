@@ -34,10 +34,10 @@
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import {
 		DEFAULT_SPAWN_STAT,
-		SPAWN_STAT_MAX,
 		SpawnColor,
 		type CharacterSpawn
 	} from '$types/character-spawn.type';
+	import { combatStatsFromStat } from '$utils/spawn/stat';
 	import type { CardModel } from '$utils/card/card-model.type';
 
 	// Filled button styling per combat color (the player's clickable buttons).
@@ -200,10 +200,7 @@
 				showName: spawn ? (showNames.get(spawn.characterId)?.join(', ') || null) : null,
 				locationName: spawn ? locationNameFor(spawn.locationId) : null,
 				spawnedAt: spawn?.createdAt ?? null,
-				atk: stat,
-				def: SPAWN_STAT_MAX - stat,
-				spd: stat - 1,
-				hp: SPAWN_STAT_MAX - stat + 1
+				...combatStatsFromStat(stat)
 			}
 		};
 	}
@@ -383,18 +380,21 @@
 		badges = loaded;
 
 		// Hand the fighters to the combat controller and wire its store.
-		const seeds: FighterSeed[] = badges.map((badge) => ({
-			id: badge.id,
-			name: badge.name,
-			side: badge.side,
-			color: badge.color,
-			moves: badge.moves,
-			// Combat attributes: ATK is the spawn stat, DEF its complement, SPD is ATK − 1.
-			// HP (DEF + 1) is derived at battle start inside the controller, not supplied here.
-			atk: badge.stat,
-			def: SPAWN_STAT_MAX - badge.stat,
-			spd: badge.stat - 1
-		}));
+		const seeds: FighterSeed[] = badges.map((badge) => {
+			// Combat attributes: ATK, its DEF complement and SPD (ATK − 1), with ATK and DEF
+			// clamped to 1..9. HP (DEF + 1) is rolled at battle start inside the controller.
+			const { atk, def, spd } = combatStatsFromStat(badge.stat);
+			return {
+				id: badge.id,
+				name: badge.name,
+				side: badge.side,
+				color: badge.color,
+				moves: badge.moves,
+				atk,
+				def,
+				spd
+			};
+		});
 		unsubscribe?.();
 		controller = new CombatController(seeds);
 		unsubscribe = controller.subscribe((next) => (state = next));
@@ -465,6 +465,7 @@
 {#snippet badgeCard(badge: Badge)}
 	{@const combat = combatById.get(badge.id)}
 	{@const areaLocked = !!combat?.disabled || state?.phase !== 'selecting'}
+	{@const stats = combatStatsFromStat(badge.stat)}
 	<div
 		class={classNames('flex shrink-0 flex-col items-center gap-1 transition-opacity', {
 			'opacity-60': combat?.disabled
@@ -488,9 +489,9 @@
 			{/if}
 		</div>
 		<span>{badge.name}</span>
-		<!-- ATK is the character's Supabase spawn stat; DEF is its complement
-		     (SPAWN_STAT_MAX - ATK); SPD is ATK − 1; the HP pool is rolled at battle
-		     start as (DEF + 1)d4 and drains live as combat plays out. -->
+		<!-- ATK and DEF are the spawn stat and its complement, both clamped to 1..9; SPD
+		     is ATK − 1; the HP pool is rolled at battle start as (DEF + 1)d4 and drains
+		     live as combat plays out. -->
 		<table class="table table-xs w-auto text-center">
 			<thead>
 				<tr>
@@ -502,9 +503,9 @@
 			</thead>
 			<tbody>
 				<tr>
-					<td class="px-2 font-semibold">{badge.stat}</td>
-					<td class="px-2 font-semibold">{SPAWN_STAT_MAX - badge.stat}</td>
-					<td class="px-2 font-semibold">{badge.stat - 1}</td>
+					<td class="px-2 font-semibold">{stats.atk}</td>
+					<td class="px-2 font-semibold">{stats.def}</td>
+					<td class="px-2 font-semibold">{stats.spd}</td>
 					<td
 						class={classNames('px-2 font-semibold', {
 							'text-error': combat?.defeated
