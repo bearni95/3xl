@@ -92,7 +92,6 @@ export interface MugenBoardOptions {
 	yOffset?: number;
 	/** Colour of the central column (q = 0), the shared row between the halves. */
 	centerColor?: number;
-	backgroundColor?: number;
 }
 
 const DEFAULTS = {
@@ -101,8 +100,7 @@ const DEFAULTS = {
 	farRatio: 0.97,
 	padding: 40,
 	yOffset: 110,
-	centerColor: 0xffffff, // white
-	backgroundColor: 0x1d232a
+	centerColor: 0xffffff // white
 };
 
 /** Grid extents used to size the projection footprint (unchanged canvas size). */
@@ -424,7 +422,7 @@ export class MugenBoard {
 		await app.init({
 			width,
 			height,
-			backgroundColor: this.options.backgroundColor,
+			backgroundAlpha: 0,
 			antialias: false,
 			roundPixels: true
 		});
