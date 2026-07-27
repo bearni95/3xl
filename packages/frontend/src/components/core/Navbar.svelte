@@ -7,7 +7,7 @@
 	import ThemeToggle from '$components/core/ThemeToggle.svelte';
 	import type { RouteNode } from '$types/navigation.type';
 
-	export let brand: string = '3XL';
+	export let brand: string = '6XL.net';
 	export let classes: string = '';
 
 	const routes: RouteNode[] = getRoutes();
