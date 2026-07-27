@@ -88,6 +88,13 @@ export class CardScene {
 	private cardLayer: Container;
 	private cardSprites: CardSprite[] = [];
 
+	// Recycle-style selection overlay: when active, cards whose index isn't in
+	// `selectedIndices` are dimmed so the selected ones stand out. Kept as scene
+	// state (not a rebuild) so toggling a card never restarts the idle animations,
+	// and re-applied after a rebuild (a filter change) reuses the same indices.
+	private selectionActive = false;
+	private selectedIndices: Set<number> = new Set();
+
 	private isDestroyed = false;
 	// True once the Pixi app is initialised and the canvas is mounted, so that
 	// `setCards` calls arriving before init completes just stage the new cards
@@ -327,6 +334,25 @@ export class CardScene {
 		this.applyTransform();
 	}
 
+	/**
+	 * Toggle a recycle-style selection overlay: when `active`, every card whose
+	 * index isn't in `indices` is dimmed and the selected ones stay at full opacity.
+	 * Applied to the live sprites without a rebuild, so the idle animations keep
+	 * running as the player taps cards on and off.
+	 */
+	setSelection(active: boolean, indices: Set<number>): void {
+		this.selectionActive = active;
+		this.selectedIndices = indices;
+		for (let i = 0; i < this.cardSprites.length; i++) {
+			this.cardSprites[i].alpha = this.selectionAlpha(i);
+		}
+	}
+
+	/** A card's opacity under the current selection overlay: dimmed unless selected. */
+	private selectionAlpha(index: number): number {
+		return !this.selectionActive || this.selectedIndices.has(index) ? 1 : 0.3;
+	}
+
 	/** Build one card sprite, add it to the layer, and track it. */
 	private makeSprite(index: number, cardW: number, cardH: number): CardSprite {
 		const sprite = new CardSprite({
@@ -335,6 +361,8 @@ export class CardScene {
 			height: cardH,
 			app: this.app
 		});
+		// Preserve any active selection dimming across a rebuild (e.g. a filter change).
+		sprite.alpha = this.selectionAlpha(index);
 		this.cardLayer.addChild(sprite);
 		this.cardSprites.push(sprite);
 		return sprite;

@@ -4,7 +4,7 @@
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
-	import { spawnService } from '$services/spawn.service';
+	import { spawnService, RECYCLE_GROUP_SIZE } from '$services/spawn.service';
 	import { teamService } from '$services/team.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
@@ -65,6 +65,52 @@
 		filterShow !== ANY ||
 		filterRarity !== ANY ||
 		filterMinStat !== SPAWN_STAT_MIN;
+
+	// --- Recycle mode (trade cards back for extra daily claims) ---
+	// While active, tapping a card selects it for recycling instead of toggling its
+	// team membership. Every RECYCLE_GROUP_SIZE cards recycled grants one extra claim
+	// for today. Selection is tracked by spawn id, so it survives filter changes.
+	let recycleMode = false;
+	let selectedForRecycle = new Set<string>();
+	let recycling = false;
+	let recycleNotice = '';
+
+	function enterRecycleMode(): void {
+		recycleMode = true;
+		selectedForRecycle = new Set();
+		recycleNotice = '';
+	}
+	function cancelRecycle(): void {
+		recycleMode = false;
+		selectedForRecycle = new Set();
+	}
+	function toggleRecycleSelection(spawnId: string): void {
+		const next = new Set(selectedForRecycle);
+		if (next.has(spawnId)) next.delete(spawnId);
+		else next.add(spawnId);
+		selectedForRecycle = next;
+	}
+
+	// How many cards are selected and how many extra claims that earns (one per full
+	// group of RECYCLE_GROUP_SIZE) — drives the recycle bar's tally and confirm gate.
+	$: recycleSelectedCount = selectedForRecycle.size;
+	$: recycleGrant = Math.floor(recycleSelectedCount / RECYCLE_GROUP_SIZE);
+
+	async function confirmRecycle(): Promise<void> {
+		if (recycleGrant < 1 || recycling) return;
+		recycling = true;
+		recycleNotice = '';
+		try {
+			const { recycled, granted } = await spawnService.recycleSpawns([...selectedForRecycle]);
+			recycleNotice = `Recycled ${recycled} card${recycled === 1 ? '' : 's'} for ${granted} extra claim${granted === 1 ? '' : 's'} today.`;
+			recycleMode = false;
+			selectedForRecycle = new Set();
+		} catch (err) {
+			recycleNotice = err instanceof Error ? err.message : String(err);
+		} finally {
+			recycling = false;
+		}
+	}
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -231,8 +277,24 @@
 	// The tapped index maps 1:1 to the *filtered* spawns the cards were built from.
 	function handleCardTap(index: number): void {
 		const spawn = filteredSpawns[index];
-		if (spawn) toggleTeamMember(spawn.id);
+		if (!spawn) return;
+		if (recycleMode) {
+			toggleRecycleSelection(spawn.id);
+			return;
+		}
+		toggleTeamMember(spawn.id);
 	}
+
+	// The indices (into the currently-filtered cards) of the spawns selected for
+	// recycling, so the canvas can dim the rest. Recomputed as the selection or the
+	// filtered list changes — a card selected while filtered out stays counted but
+	// simply isn't shown until it matches the filters again.
+	$: recycleSelectedIndices = new Set(
+		filteredSpawns.reduce<number[]>((indices, spawn, index) => {
+			if (selectedForRecycle.has(spawn.id)) indices.push(index);
+			return indices;
+		}, [])
+	);
 
 	// Every claimed spawn, offered as an individual team pick — each spawn is its own
 	// entry (the same character claimed twice yields two options with their own rolled
@@ -398,8 +460,50 @@
 				>
 					Clear
 				</button>
+				<button
+					class="btn btn-sm"
+					class:btn-outline={!recycleMode}
+					class:btn-warning={recycleMode}
+					on:click={() => (recycleMode ? cancelRecycle() : enterRecycleMode())}
+				>
+					{recycleMode ? 'Cancel' : 'Recycle'}
+				</button>
 			</div>
 		</div>
+
+		{#if recycleMode}
+			<!-- Recycle bar: tap cards to select them, then trade each full group of
+			     RECYCLE_GROUP_SIZE back for one extra daily claim. -->
+			<div
+				class="flex flex-wrap items-center gap-3 rounded-box bg-warning/10 p-4 text-sm shadow-md"
+			>
+				<span class="font-medium">
+					Tap cards to select them. Every {RECYCLE_GROUP_SIZE} recycled grants one extra claim today.
+				</span>
+				<span class="badge badge-warning" title="Cards selected → extra claims earned">
+					{recycleSelectedCount} selected → {recycleGrant} claim{recycleGrant === 1 ? '' : 's'}
+				</span>
+				<div class="ml-auto flex items-center gap-3">
+					<button class="btn btn-ghost btn-sm" on:click={cancelRecycle} disabled={recycling}>
+						Cancel
+					</button>
+					<button
+						class="btn btn-warning btn-sm"
+						disabled={recycleGrant < 1 || recycling}
+						on:click={confirmRecycle}
+					>
+						{#if recycling}
+							<span class="loading loading-spinner loading-xs"></span>
+						{/if}
+						Recycle {recycleSelectedCount} card{recycleSelectedCount === 1 ? '' : 's'}
+					</button>
+				</div>
+			</div>
+		{/if}
+
+		{#if recycleNotice}
+			<div class="alert alert-info py-2 text-sm"><span>{recycleNotice}</span></div>
+		{/if}
 	{/if}
 
 	<div class="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -441,7 +545,9 @@
 				<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
 					<p class="text-xs opacity-60">
 						Drag or scroll to move through your cards.
-						{#if activeTeam}
+						{#if recycleMode}
+							Tap a card to select or deselect it for recycling.
+						{:else if activeTeam}
 							Tap a card to add or remove it from the active team.
 						{:else}
 							Select a team to start adding characters by tapping their card.
@@ -474,6 +580,8 @@
 						layout="grid"
 						pannable
 						onCardTap={handleCardTap}
+						selectionMode={recycleMode}
+						selectedIndices={recycleSelectedIndices}
 					/>
 					{#if filteredSpawns.length === 0}
 						<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">

@@ -247,3 +247,50 @@ end;
 $$;
 
 grant execute on function public.boosters_status() to authenticated;
+
+-- Recycle cards: destroy a batch of the caller's own spawns and grant one extra
+-- daily claim per full group of 10 destroyed. Cards are worth nothing on their
+-- own — the player trades them back for booster claims (an additive
+-- `booster_grants` row for today, honoured by claim_booster / boosters_status,
+-- lapsing at Catalan midnight). security definer: it writes `booster_grants`,
+-- which the anon key can't touch. Takes the same per-user advisory lock as
+-- claim_booster so a concurrent claim/recycle can't race the grant.
+create or replace function public.recycle_spawns(p_spawn_ids uuid[])
+returns table (recycled int, granted int)
+language plpgsql security definer set search_path = public as $$
+declare
+	v_uid uuid := auth.uid();
+	v_today date := (now() at time zone 'Europe/Madrid')::date;
+	v_count int;
+	v_grant int;
+begin
+	if v_uid is null then
+		raise exception 'You must be signed in to recycle cards.';
+	end if;
+	if p_spawn_ids is null or array_length(p_spawn_ids, 1) is null then
+		raise exception 'Select at least 10 cards to recycle.';
+	end if;
+
+	-- Serialise this player's mutations so the grant can't be raced.
+	perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+
+	-- Only the caller's own spawns among those requested are eligible; count them
+	-- before deleting so the grant matches exactly what is destroyed.
+	select count(*) into v_count from public.character_spawns
+		where user_id = v_uid and id = any(p_spawn_ids);
+	v_grant := v_count / 10; -- integer division: one claim per full group of 10
+	if v_grant < 1 then
+		raise exception 'Recycle 10 cards to earn an extra claim; only % selected.', v_count;
+	end if;
+
+	delete from public.character_spawns where user_id = v_uid and id = any(p_spawn_ids);
+	insert into public.booster_grants (user_id, grant_date, amount)
+		values (v_uid, v_today, v_grant);
+
+	recycled := v_count;
+	granted := v_grant;
+	return next;
+end;
+$$;
+
+grant execute on function public.recycle_spawns(uuid[]) to authenticated;

@@ -13,6 +13,20 @@ import type {
 export const BOOSTER_SIZE = 5;
 
 /**
+ * How many recycled cards earn one extra daily claim. Mirrors `recycle_spawns`'s
+ * grant rule (integer division by this size). Drives the roster's recycle tally.
+ */
+export const RECYCLE_GROUP_SIZE = 10;
+
+/** The outcome of a recycle: how many spawns were destroyed and claims granted. */
+export interface RecycleResult {
+	/** Spawns actually destroyed (the caller's own among those submitted). */
+	recycled: number;
+	/** Extra daily claims granted (`floor(recycled / RECYCLE_GROUP_SIZE)`). */
+	granted: number;
+}
+
+/**
  * The signed-in player's daily booster allowance, as reported by the
  * `boosters_status` RPC. `remaining` is what's left to open today (the day
  * resetting at midnight Europe/Madrid); `level` is the daily cap.
@@ -190,6 +204,31 @@ class SpawnService {
 		const spawns = (data as CharacterSpawnRow[]).map((row) => spawnAdapter.fromRow(row));
 		this.spawnsStore.update((current) => [...spawns, ...current]);
 		return spawns;
+	}
+
+	/**
+	 * Recycle a batch of the player's spawns: destroy them from Supabase and earn
+	 * one extra daily claim per full group of {@link RECYCLE_GROUP_SIZE}. The
+	 * destroy + grant is applied atomically by the `recycle_spawns` security-definer
+	 * RPC (the only path that can write `booster_grants` from the browser); it
+	 * ignores any ids the caller doesn't own and rejects a batch too small to earn a
+	 * single claim. The destroyed spawns are removed from the store and the recycled
+	 * / granted tally is returned.
+	 */
+	async recycleSpawns(spawnIds: string[]): Promise<RecycleResult> {
+		if (spawnIds.length < RECYCLE_GROUP_SIZE) {
+			throw new Error(`Select at least ${RECYCLE_GROUP_SIZE} cards to recycle.`);
+		}
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase.rpc('recycle_spawns', { p_spawn_ids: spawnIds });
+		if (error) throw error;
+
+		const row = Array.isArray(data) ? data[0] : data;
+		const recycled = Number(row?.recycled ?? 0);
+		const granted = Number(row?.granted ?? 0);
+		const removed = new Set(spawnIds);
+		this.spawnsStore.update((current) => current.filter((spawn) => !removed.has(spawn.id)));
+		return { recycled, granted };
 	}
 
 	/**

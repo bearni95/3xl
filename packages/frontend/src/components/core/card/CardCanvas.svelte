@@ -19,6 +19,12 @@
 	// rendered array. When set, cards become interactive (the roster toggles team
 	// membership on tap); omit for a display-only canvas.
 	export let onCardTap: ((index: number) => void) | undefined = undefined;
+	// Recycle-style selection overlay: when `selectionMode` is on, every card whose
+	// index isn't in `selectedIndices` is dimmed so the selected ones stand out. The
+	// roster drives these to let the player pick cards to recycle; leave them off for
+	// a plain canvas.
+	export let selectionMode: boolean = false;
+	export let selectedIndices: Set<number> = new Set();
 	export let classes: string = '';
 
 	let host: HTMLDivElement;
@@ -30,6 +36,10 @@
 	// Cards and column count often change after mount (a roster loads its spawns
 	// asynchronously), so push updates into the live scene reactively.
 	$: scene?.setCards(models, columns);
+
+	// Push selection changes into the live scene (dims unselected cards) without a
+	// rebuild, so tapping cards on and off never restarts their idle animations.
+	$: scene?.setSelection(selectionMode, selectedIndices);
 
 	onMount(() => {
 		if (!host) return;
