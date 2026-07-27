@@ -390,9 +390,12 @@ export class CardSprite extends Container {
 					fontFamily: 'sans-serif',
 					fontSize: Math.max(8, Math.round(this.cardWidth * 0.06)),
 					fontWeight: '600',
-					fill: 0x9ca3af
+					// Solid white with a black outline so it reads over the colour square.
+					fill: 0xffffff,
+					stroke: { color: 0x000000, width: Math.max(2, Math.round(this.cardWidth * 0.012)) }
 				}
 			});
+			show.alpha = 1;
 			this.ellipsize(show, this.card.showName, Math.max(0, rightX - rarityRight - gap));
 			show.anchor.set(1, 0.5);
 			show.position.set(rightX, centerY);
