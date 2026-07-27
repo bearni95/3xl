@@ -133,12 +133,12 @@ export class CardSprite extends Container {
 		backdrop.stroke({ width: 2, color: 0x000000, alpha: 0.9 });
 		this.addChild(backdrop);
 
-		// Header strip at the top, carrying the character name — black at 10% opacity.
+		// Header strip at the top, carrying the character name — black at 50% opacity.
 		// The rarity/show row is not part of it — it floats transparently over the
 		// colour square below.
 		const header = new Graphics();
 		header.rect(0, 0, this.cardWidth, headerH);
-		header.fill({ color: 0x000000, alpha: 0.1 });
+		header.fill({ color: 0x000000, alpha: 0.5 });
 		this.addChild(header);
 
 		// Footer strip at the bottom, carrying the ATK/DEF/SPD/HP stats — black at 10%
@@ -149,13 +149,16 @@ export class CardSprite extends Container {
 		footer.fill({ color: 0x000000, alpha: 0.1 });
 		this.addChild(footer);
 
-		// The labels row (the top half of the footer) gets its own extra 50% black band,
-		// layered on top of the shared footer band, so it reads darker than the values
-		// row below it.
+		// The labels row (top half) and the values row (bottom half) each get their own
+		// extra 50% black band, layered on top of the shared footer band.
 		const labelsBand = new Graphics();
 		labelsBand.rect(0, footerY, this.cardWidth, footerH / 2);
 		labelsBand.fill({ color: 0x000000, alpha: 0.5 });
 		this.addChild(labelsBand);
+		const valuesBand = new Graphics();
+		valuesBand.rect(0, footerY + footerH / 2, this.cardWidth, footerH / 2);
+		valuesBand.fill({ color: 0x000000, alpha: 0.5 });
+		this.addChild(valuesBand);
 
 		// A black silhouette copy of the art, sitting behind the full-colour sprite
 		// (added first, so lower z-index) and offset to the bottom-left — the
