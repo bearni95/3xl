@@ -608,6 +608,29 @@
 
 		{#if normalizedQuery}
 			<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
+		{:else if regionRows.length === 0}
+			<!-- A leaf region (a municipality) has no children to drill into, so instead of
+				an empty table we surface its own top show — the same card the bottom-right
+				panel shows for the open location. -->
+			<div class="min-h-0 flex-1 overflow-y-auto p-4">
+				{#if openShow}
+					<div class="flex items-center gap-3">
+						{#if openShow.posterUrl}
+							<img
+								src={openShow.posterUrl}
+								alt={openShow.name}
+								class="h-16 w-auto flex-none rounded shadow"
+							/>
+						{/if}
+						<div class="min-w-0">
+							<p class="text-xs font-bold uppercase tracking-wide opacity-60">Most seen</p>
+							<p class="truncate font-semibold">{openShow.name}</p>
+						</div>
+					</div>
+				{:else}
+					<p class="text-center opacity-60">No show here yet.</p>
+				{/if}
+			</div>
 		{:else}
 			<RegionTable rows={regionRows} onSelect={select} />
 		{/if}
