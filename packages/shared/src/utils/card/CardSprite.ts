@@ -371,7 +371,9 @@ export class CardSprite extends Container {
 					fontFamily: 'sans-serif',
 					fontSize: Math.max(9, Math.round(this.cardWidth * 0.072)),
 					fontWeight: '700',
-					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2
+					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2,
+					// A black outline, matching the show + location labels on the square.
+					stroke: { color: 0x000000, width: Math.max(2, Math.round(this.cardWidth * 0.012)) }
 				}
 			});
 			rarity.anchor.set(0, 0.5);
@@ -417,16 +419,24 @@ export class CardSprite extends Container {
 		const centerY = metaY + metaH / 2;
 		const fontSize = Math.max(8, Math.round(this.cardWidth * 0.06));
 
-		// Join the location and the two-digit spawn year into one muted label, centred
-		// in the row and truncated to most of its width.
+		// Join the location and the two-digit spawn year into one label, centred in the
+		// row and truncated to most of its width. Solid white with a black outline (like
+		// the show name) so it reads over the colour square it sits on.
 		const label = [this.card.locationName, spawnYearLabel(this.card.spawnedAt)]
 			.filter(Boolean)
 			.join(' ');
 		if (label) {
 			const loc = new Text({
 				text: label,
-				style: { fontFamily: 'sans-serif', fontSize, fontWeight: '600', fill: 0x9ca3af }
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize,
+					fontWeight: '600',
+					fill: 0xffffff,
+					stroke: { color: 0x000000, width: Math.max(2, Math.round(this.cardWidth * 0.012)) }
+				}
 			});
+			loc.alpha = 1;
 			this.ellipsize(loc, label, this.cardWidth * 0.9);
 			loc.anchor.set(0.5, 0.5);
 			loc.position.set(this.cardWidth / 2, centerY);
