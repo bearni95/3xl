@@ -482,12 +482,13 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The footer stat row: the four combat attributes the board fields — ATK, DEF, SPD
-	 * and HP — each a value under a small caption. (The rarity badge now lives in the
-	 * show row under the name, not here.) The four sit in four evenly-spaced columns
-	 * across the width; every caption is a small text label ('ATK', 'DEF', …). The ATK
-	 * value trails a d10 die icon and HP a d4 (both the shared Skoll set, as on the
-	 * roster/team cards); DEF and SPD carry no icon.
+	 * The footer stat row: the four combat attributes the board fields — SPD, ATK, DEF
+	 * and HP (SPD leads the row) — each a value under a small caption. (The rarity badge
+	 * now lives in the show row under the name, not here.) The four sit in four
+	 * evenly-spaced columns across the width; every caption is a small text label ('SPD',
+	 * 'ATK', …). The ATK value trails a d10 die icon and HP a d4 (both the shared Skoll
+	 * set, as on the roster/team cards), the DEF value trails a '+' sign, and SPD carries
+	 * no suffix.
 	 */
 	private makeStats(footerY: number, footerH: number): Container {
 		const group = new Container();
@@ -502,11 +503,11 @@ export class CardSprite extends Container {
 
 		// Cell centres: four evenly-spaced columns (each column's midpoint), so the
 		// stats read as a 4-up row rather than the old 5-up layout that reserved the
-		// middle for the rarity badge. Same four attributes (and order) as the board.
-		const cells: { x: number; label: string; value: number; icon?: string }[] = [
-			{ x: this.cardWidth * 0.125, label: 'ATK', value: this.card.atk, icon: D10_ICON_URL },
-			{ x: this.cardWidth * 0.375, label: 'DEF', value: this.card.def },
-			{ x: this.cardWidth * 0.625, label: 'SPD', value: this.card.spd },
+		// middle for the rarity badge. SPD leads the row, then ATK, DEF, HP.
+		const cells: { x: number; label: string; value: number; icon?: string; suffix?: string }[] = [
+			{ x: this.cardWidth * 0.125, label: 'SPD', value: this.card.spd },
+			{ x: this.cardWidth * 0.375, label: 'ATK', value: this.card.atk, icon: D10_ICON_URL },
+			{ x: this.cardWidth * 0.625, label: 'DEF', value: this.card.def, suffix: '+' },
 			{ x: this.cardWidth * 0.875, label: 'HP', value: this.card.hp, icon: D4_ICON_URL }
 		];
 
@@ -528,7 +529,7 @@ export class CardSprite extends Container {
 			group.addChild(caption);
 
 			const value = new Text({
-				text: `${cell.value}`,
+				text: `${cell.value}${cell.suffix ?? ''}`,
 				style: { fontFamily: 'sans-serif', fontSize: valueSize, fontWeight: '700', fill: 0xffffff }
 			});
 			value.anchor.set(0.5, 0.5);
