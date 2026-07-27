@@ -470,8 +470,9 @@ export class CardSprite extends Container {
 		const valueY = footerY + footerH * 0.75;
 		const captionSize = Math.max(7, Math.round(this.cardWidth * 0.05));
 		const valueSize = Math.max(11, Math.round(this.cardWidth * 0.09));
-		// The labels row (captions + the d10 icon) sits at 70% opacity.
+		// The labels row (captions + the d10 icon) sits at 70% opacity, the values at 50%.
 		const captionAlpha = 0.7;
+		const valueAlpha = 0.5;
 
 		// Cell centres: four evenly-spaced columns (each column's midpoint), so the
 		// stats read as a 4-up row rather than the old 5-up layout that reserved the
@@ -490,6 +491,7 @@ export class CardSprite extends Container {
 			});
 			value.anchor.set(0.5, 0.5);
 			value.position.set(cell.x, valueY);
+			value.alpha = valueAlpha;
 			group.addChild(value);
 
 			if (cell.label === 'ATK') {
