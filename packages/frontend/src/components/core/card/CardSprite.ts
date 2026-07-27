@@ -362,19 +362,65 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The footer stat row: the ATK value with the d10 die icon beside it on the
-	 * left, the DEF value with a trailing "+" on the right — spaced apart to the two
-	 * edges of the footer — and, when the card has a rarity, the `[N]` badge (in its
-	 * WoW quality colour) centred between them.
+	 * The footer stat row: the four combat attributes the board fields — ATK and DEF
+	 * on the left, SPD and HP on the right — each a value under a small caption, with
+	 * the `[N]` rarity badge (in its WoW quality colour) centred between the two pairs.
+	 * ATK's caption is the shared d10 die icon (as on the roster/team cards); the other
+	 * three use a small text label.
 	 */
 	private makeStats(footerY: number, footerH: number): Container {
 		const group = new Container();
-		const centerY = footerY + footerH / 2;
-		const padX = this.cardWidth * 0.06;
-		const fontSize = Math.max(11, Math.round(this.cardWidth * 0.1));
+		const captionY = footerY + footerH * 0.32;
+		const valueY = footerY + footerH * 0.7;
+		const captionSize = Math.max(7, Math.round(this.cardWidth * 0.05));
+		const valueSize = Math.max(11, Math.round(this.cardWidth * 0.09));
 
-		// Rarity badge, centred between ATK and DEF: the bracketed tier number in its
-		// quality colour, a touch smaller than the stats so they stay the focus.
+		// Cell centres: ATK/DEF flush left, SPD/HP flush right, leaving the middle for
+		// the rarity badge. Same four attributes (and order) as the combat board's table.
+		const cells: { x: number; label: string; value: number }[] = [
+			{ x: this.cardWidth * 0.15, label: 'ATK', value: this.card.atk },
+			{ x: this.cardWidth * 0.33, label: 'DEF', value: this.card.def },
+			{ x: this.cardWidth * 0.67, label: 'SPD', value: this.card.spd },
+			{ x: this.cardWidth * 0.85, label: 'HP', value: this.card.hp }
+		];
+
+		for (const cell of cells) {
+			const value = new Text({
+				text: `${cell.value}`,
+				style: { fontFamily: 'sans-serif', fontSize: valueSize, fontWeight: '700', fill: 0xf2f2f2 }
+			});
+			value.anchor.set(0.5, 0.5);
+			value.position.set(cell.x, valueY);
+			group.addChild(value);
+
+			if (cell.label === 'ATK') {
+				// The d10 icon loads async; it stands in for the ATK caption once ready.
+				void textureCache.icon(D10_ICON_URL).then((tex) => {
+					if (this.destroyed || group.destroyed || !tex) return;
+					const icon = new Sprite(tex);
+					icon.anchor.set(0.5, 0.5);
+					icon.scale.set(captionSize / tex.height);
+					icon.position.set(cell.x, captionY);
+					group.addChild(icon);
+				});
+			} else {
+				const caption = new Text({
+					text: cell.label,
+					style: {
+						fontFamily: 'sans-serif',
+						fontSize: captionSize,
+						fontWeight: '700',
+						fill: 0x9ca3af
+					}
+				});
+				caption.anchor.set(0.5, 0.5);
+				caption.position.set(cell.x, captionY);
+				group.addChild(caption);
+			}
+		}
+
+		// Rarity badge, centred between the two stat pairs: the bracketed tier number in
+		// its quality colour, a touch smaller than the stats so they stay the focus.
 		if (this.card.rarity != null) {
 			const rarity = new Text({
 				text: `[${this.card.rarity}]`,
@@ -386,38 +432,9 @@ export class CardSprite extends Container {
 				}
 			});
 			rarity.anchor.set(0.5, 0.5);
-			rarity.position.set(this.cardWidth / 2, centerY);
+			rarity.position.set(this.cardWidth / 2, footerY + footerH / 2);
 			group.addChild(rarity);
 		}
-
-		// Attack: the ATK value, then the d10 die icon right beside it.
-		const atk = new Text({
-			text: `${this.card.atk}`,
-			style: { fontFamily: 'sans-serif', fontSize, fontWeight: '700', fill: 0xf2f2f2 }
-		});
-		atk.anchor.set(0, 0.5);
-		atk.position.set(padX, centerY);
-		group.addChild(atk);
-
-		// The d10 icon loads async; place it just right of the ATK value once ready.
-		const iconGap = fontSize * 0.35;
-		void textureCache.icon(D10_ICON_URL).then((tex) => {
-			if (this.destroyed || group.destroyed || !tex) return;
-			const icon = new Sprite(tex);
-			icon.anchor.set(0, 0.5);
-			icon.scale.set(fontSize / tex.height);
-			icon.position.set(atk.x + atk.width + iconGap, centerY);
-			group.addChild(icon);
-		});
-
-		// Defense: the DEF value with a trailing "+", pinned to the right edge.
-		const def = new Text({
-			text: `${this.card.def}+`,
-			style: { fontFamily: 'sans-serif', fontSize, fontWeight: '700', fill: 0xf2f2f2 }
-		});
-		def.anchor.set(1, 0.5);
-		def.position.set(this.cardWidth - padX, centerY);
-		group.addChild(def);
 
 		return group;
 	}

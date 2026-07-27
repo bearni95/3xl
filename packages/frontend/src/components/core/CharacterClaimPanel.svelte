@@ -172,8 +172,8 @@
 	}
 
 	// Assemble the display card for one claimed spawn: label + face from the local
-	// registry, colour/stat off the spawn. ATK/DEF mirror the board — ATK is the
-	// rolled spawn stat, DEF its complement.
+	// registry, colour/stat off the spawn. The combat attributes mirror the board —
+	// ATK is the rolled spawn stat, DEF its complement, SPD is ATK − 1 and HP is DEF + 1.
 	async function buildPull(spawn: CharacterSpawn): Promise<ClaimPull> {
 		const basePath = charactersById.get(spawn.characterId)?.basePath ?? null;
 		const faceUrl = basePath
@@ -189,7 +189,9 @@
 			locationName: lastLocationName || null,
 			spawnedAt: spawn.createdAt,
 			atk: spawn.stat,
-			def: SPAWN_STAT_MAX - spawn.stat
+			def: SPAWN_STAT_MAX - spawn.stat,
+			spd: spawn.stat - 1,
+			hp: SPAWN_STAT_MAX - spawn.stat + 1
 		};
 	}
 

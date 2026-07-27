@@ -11,8 +11,9 @@
 	import { AuthStatus } from '$types/profile.type';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import type { CombatColor } from '$types/character-definition.type';
-	import { SPAWN_STAT_MAX } from '$types/character-spawn.type';
+	import { SPAWN_STAT_MAX, SPAWN_STAT_MIN, SpawnColor } from '$types/character-spawn.type';
 	import { teammateColors } from '$utils/color/compare';
+	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import { responsiveGridColumns } from '$components/core/card/CardScene';
 	import type { CardModel } from '$components/core/card/card-model.type';
@@ -23,6 +24,40 @@
 	const MIN_COLUMNS = 1;
 	const MAX_COLUMNS = 6;
 	let columns = browser ? responsiveGridColumns(window.innerWidth) : 3;
+
+	// --- Card filters (the header toolbar) ---
+	// Sentinel every "no filter" dropdown uses, so an unset filter is distinct from
+	// any real value (a colour, a show name, a rarity tier).
+	const ANY = '' as const;
+	let filterName = ''; // free-text match against the character label
+	let filterColor: SpawnColor | typeof ANY = ANY;
+	let filterShow: string | typeof ANY = ANY;
+	let filterRarity: number | typeof ANY = ANY;
+	let filterMinStat = SPAWN_STAT_MIN;
+
+	// Every spawn colour, for the colour dropdown (labels are the enum values).
+	const COLOR_OPTIONS = Object.values(SpawnColor);
+	// Selectable minimum stats (SPAWN_STAT_MIN reads as "any").
+	const STAT_OPTIONS = Array.from(
+		{ length: SPAWN_STAT_MAX - SPAWN_STAT_MIN + 1 },
+		(_, i) => SPAWN_STAT_MIN + i
+	);
+
+	function resetFilters(): void {
+		filterName = '';
+		filterColor = ANY;
+		filterShow = ANY;
+		filterRarity = ANY;
+		filterMinStat = SPAWN_STAT_MIN;
+	}
+
+	// Whether any filter is narrowing the roster (drives the Clear button).
+	$: filtersActive =
+		filterName.trim() !== '' ||
+		filterColor !== ANY ||
+		filterShow !== ANY ||
+		filterRarity !== ANY ||
+		filterMinStat !== SPAWN_STAT_MIN;
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -120,10 +155,53 @@
 		return ULTRAMAR.municipality;
 	}
 
-	// Each claimed spawn as a display CardModel for the shared card renderer — the
+	function rarityFor(characterId: string): number | null {
+		return rarityByCharacter.get(characterId) ?? null;
+	}
+
+	// The distinct show names present across the roster, sorted — the options for the
+	// show dropdown. Rebuilds as spawns and their show mapping load in.
+	$: showFilterOptions = ((names: Map<string, string[]>) =>
+		[...new Set($spawns.flatMap((spawn) => names.get(spawn.characterId) ?? []))].sort((a, b) =>
+			a.localeCompare(b)
+		))(characterShowNames);
+
+	// The distinct rarity tiers present across the roster, ascending — the options
+	// for the rarity dropdown.
+	$: rarityFilterOptions = ((rarities: Map<string, number>) =>
+		[...new Set($spawns.map((spawn) => rarities.get(spawn.characterId)).filter((r): r is number => r != null))].sort(
+			(a, b) => a - b
+		))(rarityByCharacter);
+
+	// The roster narrowed by the header filters. All predicates AND together; an
+	// unset (ANY) filter is a pass. The filter maps are threaded in as deps so the
+	// list re-runs as they load or a control changes. This — not `$spawns` — is what
+	// the canvas renders and what a tap indexes into.
+	$: filteredSpawns = ((
+		name: string,
+		color: SpawnColor | typeof ANY,
+		show: string | typeof ANY,
+		rarity: number | typeof ANY,
+		minStat: number,
+		names: Map<string, string[]>,
+		rarities: Map<string, number>
+	) => {
+		const needle = name.trim().toLowerCase();
+		return $spawns.filter((spawn) => {
+			if (needle && !labelFor(spawn.characterId).toLowerCase().includes(needle)) return false;
+			if (color !== ANY && spawn.color !== color) return false;
+			if (show !== ANY && !(names.get(spawn.characterId) ?? []).includes(show)) return false;
+			if (rarity !== ANY && (rarities.get(spawn.characterId) ?? null) !== rarity) return false;
+			if (spawn.stat < minStat) return false;
+			return true;
+		});
+	})(filterName, filterColor, filterShow, filterRarity, filterMinStat, characterShowNames, rarityByCharacter);
+
+	// The filtered spawns as display CardModels for the shared card renderer — the
 	// same shape the claim pack opener draws (label + sprite from the local registry,
-	// face fallback, rolled colour/stat, rarity, claim place and year). ATK is the
-	// rolled stat and DEF its complement, mirroring the claim flow's buildPull. The
+	// face fallback, rolled colour/stat, rarity, claim place and year). The four combat
+	// attributes mirror the board: ATK is the rolled stat, DEF its complement, SPD is
+	// ATK − 1 and HP is DEF + 1 — the same derivation as the claim flow's buildPull. The
 	// resolved maps are threaded in explicitly so the statement re-runs as faces,
 	// place names and rarities load in (a bare helper call would hide those deps).
 	$: cardModels = ((
@@ -131,7 +209,7 @@
 		_names: Map<string, string> | null,
 		rarities: Map<string, number>
 	): CardModel[] =>
-		$spawns.map((spawn) => ({
+		filteredSpawns.map((spawn) => ({
 			label: labelFor(spawn.characterId),
 			basePath: basePathFor(spawn.characterId),
 			faceUrl: faces.get(spawn.characterId) ?? null,
@@ -140,14 +218,16 @@
 			locationName: locationNameFor(spawn.locationId),
 			spawnedAt: spawn.createdAt,
 			atk: spawn.stat,
-			def: SPAWN_STAT_MAX - spawn.stat
+			def: SPAWN_STAT_MAX - spawn.stat,
+			spd: spawn.stat - 1,
+			hp: SPAWN_STAT_MAX - spawn.stat + 1
 		})))(characterFaces, municipalityNames, rarityByCharacter);
 
 	// Tapping a card on the canvas toggles that spawn on the active team (add to the
 	// first free slot, or remove it) — the canvas replaces the old per-card buttons.
-	// The tapped index maps 1:1 to the spawns the cards were built from.
+	// The tapped index maps 1:1 to the *filtered* spawns the cards were built from.
 	function handleCardTap(index: number): void {
-		const spawn = $spawns[index];
+		const spawn = filteredSpawns[index];
 		if (spawn) toggleTeamMember(spawn.id);
 	}
 
@@ -243,15 +323,81 @@
 </script>
 
 <div class="flex min-h-screen flex-col gap-6 bg-base-200 p-8">
-	<div class="flex items-end justify-between gap-4">
-		<div>
-			<h1 class="text-2xl font-bold">Your roster</h1>
-			<p class="text-sm opacity-70">Every character you've claimed.</p>
+	{#if $status === AuthStatus.SignedIn && $spawns.length > 0}
+		<!-- Filter toolbar: narrows the cards shown on the canvas. Every control ANDs
+		     with the others; the count shows the filtered-vs-total tally. -->
+		<div class="flex flex-wrap items-end gap-3 rounded-box bg-base-100 p-4 shadow-md">
+			<label class="flex flex-col gap-1 text-xs">
+				<span class="opacity-60">Name</span>
+				<input
+					type="search"
+					class="input input-sm input-bordered w-44"
+					placeholder="Search by name"
+					bind:value={filterName}
+				/>
+			</label>
+
+			<label class="flex flex-col gap-1 text-xs">
+				<span class="opacity-60">Colour</span>
+				<select class="select select-sm select-bordered w-36 capitalize" bind:value={filterColor}>
+					<option value={ANY}>All colours</option>
+					{#each COLOR_OPTIONS as color (color)}
+						<option value={color}>{color}</option>
+					{/each}
+				</select>
+			</label>
+
+			<label class="flex flex-col gap-1 text-xs">
+				<span class="opacity-60">Show</span>
+				<select
+					class="select select-sm select-bordered w-44"
+					bind:value={filterShow}
+					disabled={showFilterOptions.length === 0}
+				>
+					<option value={ANY}>All shows</option>
+					{#each showFilterOptions as show (show)}
+						<option value={show}>{show}</option>
+					{/each}
+				</select>
+			</label>
+
+			<label class="flex flex-col gap-1 text-xs">
+				<span class="opacity-60">Rarity</span>
+				<select
+					class="select select-sm select-bordered w-36"
+					bind:value={filterRarity}
+					disabled={rarityFilterOptions.length === 0}
+				>
+					<option value={ANY}>All rarities</option>
+					{#each rarityFilterOptions as rarity (rarity)}
+						<option value={rarity}>{wowRarityLabel(rarity) ?? `Tier ${rarity}`}</option>
+					{/each}
+				</select>
+			</label>
+
+			<label class="flex flex-col gap-1 text-xs">
+				<span class="opacity-60">Min stat</span>
+				<select class="select select-sm select-bordered w-32" bind:value={filterMinStat}>
+					{#each STAT_OPTIONS as stat (stat)}
+						<option value={stat}>{stat === SPAWN_STAT_MIN ? 'Any stat' : `≥ ${stat}`}</option>
+					{/each}
+				</select>
+			</label>
+
+			<div class="ml-auto flex items-center gap-3">
+				<span class="badge badge-lg badge-primary" title="Cards shown / total claimed">
+					{filteredSpawns.length} / {$spawns.length}
+				</span>
+				<button
+					class="btn btn-ghost btn-sm"
+					disabled={!filtersActive}
+					on:click={resetFilters}
+				>
+					Clear
+				</button>
+			</div>
 		</div>
-		{#if $status === AuthStatus.SignedIn}
-			<span class="badge badge-lg badge-primary">{$spawns.length}</span>
-		{/if}
-	</div>
+	{/if}
 
 	<div class="flex flex-col gap-6 lg:flex-row lg:items-start">
 		<div class="flex-1">
@@ -316,8 +462,16 @@
 				     fill the canvas width (default 1/2/3 by viewport, then the slider),
 				     and the rows scroll vertically; tapping a card toggles its team
 				     membership. -->
-				<div class="h-[70vh] min-h-[32rem] overflow-hidden rounded-box bg-base-100 shadow-md">
+				<div
+					class="relative h-[70vh] min-h-[32rem] overflow-hidden rounded-box bg-base-100 shadow-md"
+				>
 					<CardCanvas cards={cardModels} {columns} layout="grid" pannable onCardTap={handleCardTap} />
+					{#if filteredSpawns.length === 0}
+						<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+							<p class="text-sm opacity-60">No characters match these filters.</p>
+							<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
