@@ -33,8 +33,10 @@
 	import {
 		DEFAULT_SPAWN_STAT,
 		SPAWN_STAT_MAX,
+		SpawnColor,
 		type CharacterSpawn
 	} from '$types/character-spawn.type';
+	import type { CardModel } from '$utils/card/card-model.type';
 
 	// Filled button styling per combat color (the player's clickable buttons).
 	const colorFill: Record<CombatColor, string> = {
@@ -135,12 +137,30 @@
 	): BoardCharacter {
 		const spawn = spawns.get(spawnId);
 		const option = (spawn && characterById.get(spawn.characterId)) ?? availableCharacters[0];
+		const stat = spawn?.stat ?? DEFAULT_SPAWN_STAT;
 		return {
 			id: instanceId(side, spawnId),
 			basePath: option.basePath,
 			animation: 'idle',
 			// The spawn's rolled colour fills this fighter's HP bar on the board.
-			combatColor: spawn?.color
+			combatColor: spawn?.color,
+			// The display card drawn outside the grid (rival above, player below): the
+			// idle art loads from basePath, and the combat attributes mirror the board's
+			// derivation from the rolled stat (ATK = stat, DEF its complement, SPD = ATK − 1,
+			// HP = DEF + 1). Rarity/place are omitted here — the board has no need of them.
+			card: {
+				label: option.label,
+				basePath: option.basePath,
+				faceUrl: null,
+				color: spawn?.color ?? SpawnColor.Red,
+				rarity: null,
+				locationName: null,
+				spawnedAt: spawn?.createdAt ?? null,
+				atk: stat,
+				def: SPAWN_STAT_MAX - stat,
+				spd: stat - 1,
+				hp: SPAWN_STAT_MAX - stat + 1
+			}
 		};
 	}
 
@@ -173,9 +193,10 @@
 	// Bumped by "Play again" so the Pixi board remounts with a clean slate.
 	let gameKey = 0;
 	// Remounts the Pixi board (and thus repositions everyone) on any slot change,
-	// spawn-colour change (so home cells repaint once colours load), or restart.
+	// spawn-colour change (so home cells repaint once colours load), spawn-stat change
+	// (so the outside-grid cards repaint), or restart.
 	$: boardKey = `${slots.join(',')}:${slots
-		.map((id) => spawnById.get(id)?.color ?? '')
+		.map((id) => `${spawnById.get(id)?.color ?? ''}/${spawnById.get(id)?.stat ?? ''}`)
 		.join(',')}:${gameKey}`;
 
 	// One badge per character on the board, in board order (red half then blue).

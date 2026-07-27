@@ -1,4 +1,4 @@
-import type { SpawnColor } from '$types/character-spawn.type';
+import type { SpawnColor } from '../../types/character-spawn.type';
 
 /**
  * The display data a single character trading card renders — everything

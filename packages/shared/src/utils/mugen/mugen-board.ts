@@ -1,5 +1,7 @@
 import { Application, Assets, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import type { Manifest } from './mugen-player';
+import { CardSprite } from '../card/CardSprite';
+import type { CardModel } from '../card/card-model.type';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
 	boardCells,
@@ -40,6 +42,13 @@ export interface BoardCharacter {
 	 * combat walks the actor; without it both fall back to `run`.
 	 */
 	id?: string;
+	/**
+	 * The character's display card, drawn in the empty space around the hex grid (a
+	 * {@link CardSprite}). When set on the grid's centre character and its extras, the
+	 * board lays that side's cards out in a row outside the grid — rival above, player
+	 * below. Omit to draw no card for this character.
+	 */
+	card?: CardModel;
 }
 
 /** A character placed on a specific hex cell (axial coordinates). */
@@ -152,6 +161,17 @@ export function cellScreenX(q: number, r: number, farRatio: number = DEFAULTS.fa
 
 /** Character height as a multiple of its (perspective-foreshortened) cell width. */
 const CHAR_HEIGHT_RATIO = 1.3;
+
+// --- Character cards (drawn outside the hex grid) ---------------------------
+/** Portrait trading-card aspect (width / height) — mirrors the card renderer. */
+const CARD_ASPECT = 2 / 3;
+/** A card's width as a multiple of the near-edge cell size. */
+const CARD_WIDTH_RATIO = 1.25;
+/** Horizontal gap between cards in a side's row, as a fraction of card width. */
+const CARD_GAP_RATIO = 0.14;
+/** Clear space between a side's card row and the nearest board content, as a
+ * fraction of card height, so the cards never overlap the grid or characters. */
+const CARD_BAND_GAP_RATIO = 0.14;
 /** Horizontal speed (canvas px/s) a character runs between cells during combat. */
 const MOVE_SPEED = 260;
 /** Speed (canvas px/s) a fired projectile travels from shooter to target. */
@@ -365,6 +385,8 @@ export class MugenBoard {
 	private cellPaint = new Map<string, Graphics>();
 	/** Loaded aura frame textures, keyed by aura color name. */
 	private auraTextures = new Map<string, Texture[]>();
+	/** Character cards drawn in the empty space around the grid (rival + player). */
+	private cardSprites: CardSprite[] = [];
 
 	/** Canvas size, cached so {@link project} can map grid coords to screen space. */
 	private canvasWidth = 0;
@@ -430,12 +452,18 @@ export class MugenBoard {
 			await this.addActor(extra, extra.q, extra.r, true, this.options.grids[1].color);
 		}
 
+		// Lay the character cards out in the empty space above (rival) and below
+		// (player) the board, before cropping — so the crop grows the canvas taller to
+		// include them.
+		this.layoutCards();
+
 		// Crop the view to what's actually drawn: the hex grid (the widest element)
 		// ends up flush with the canvas edges — so it fills the width when the canvas
 		// is scaled to its container — and the height becomes the grid's height plus
-		// the room the front-row characters need below it. The projection keeps using
-		// the original design size (canvasWidth/Height), so combat movement still lands
-		// on the right cells; we only translate the stage and resize the framebuffer.
+		// the room the front-row characters need below it, plus the card bands above
+		// and below. The projection keeps using the original design size
+		// (canvasWidth/Height), so combat movement still lands on the right cells; we
+		// only translate the stage and resize the framebuffer.
 		this.fitToContent();
 
 		app.ticker.add(this.tick);
@@ -462,6 +490,66 @@ export class MugenBoard {
 		this.app.renderer.resize(width, height);
 	}
 
+	/**
+	 * Draw each side's character cards in the empty space around the hex grid: the
+	 * rival (first grid) in a row above the board, the player (second grid) in a row
+	 * below it. Runs after the grid and characters are placed but before
+	 * {@link fitToContent}, so the two bands grow the cropped canvas taller. Each band
+	 * is anchored just clear of everything already drawn (measured from the current
+	 * stage bounds), so the cards never overlap the grid or the characters standing on
+	 * it. The cards loop their idle art on the same ticker, via {@link CardSprite}.
+	 */
+	private layoutCards(): void {
+		if (!this.app) return;
+		const rival = this.collectCards(this.options.grids[0], { q: -2, r: -1 });
+		const player = this.collectCards(this.options.grids[1], { q: 2, r: -3 });
+		if (rival.length === 0 && player.length === 0) return;
+
+		// Card geometry, sized to the grid so a side's row spans a comfortable fraction
+		// of the board width.
+		const cardW = Math.round(this.options.cellSize * CARD_WIDTH_RATIO);
+		const cardH = Math.round(cardW / CARD_ASPECT);
+		const gap = Math.round(cardW * CARD_GAP_RATIO);
+		const bandGap = Math.round(cardH * CARD_BAND_GAP_RATIO);
+
+		// Anchor the bands to the bounds of what's already drawn (grid + characters), so
+		// the top row sits above the far row's heads and the bottom row below the near
+		// row's feet — never overlapping the board.
+		const bounds = this.app.stage.getBounds();
+		const centerX = (bounds.minX + bounds.maxX) / 2;
+
+		const placeRow = (cards: CardModel[], topY: number): void => {
+			const rowW = cards.length * cardW + (cards.length - 1) * gap;
+			const startX = centerX - rowW / 2;
+			cards.forEach((card, i) => {
+				const sprite = new CardSprite({ card, width: cardW, height: cardH, app: this.app! });
+				sprite.position.set(startX + i * (cardW + gap), topY);
+				// The cards sit in empty space, but keep them above everything regardless.
+				sprite.zIndex = 100000;
+				this.app!.stage.addChild(sprite);
+				this.cardSprites.push(sprite);
+			});
+		};
+
+		if (rival.length > 0) placeRow(rival, bounds.minY - bandGap - cardH);
+		if (player.length > 0) placeRow(player, bounds.maxY + bandGap);
+	}
+
+	/**
+	 * The display cards for one side, in the left→right order the characters stand on
+	 * the board. The centre character stands on `center`; each extra on its own hex.
+	 * Characters without a card are skipped.
+	 */
+	private collectCards(grid: BoardGrid, center: { q: number; r: number }): CardModel[] {
+		const entries: { card: CardModel; q: number; r: number }[] = [];
+		if (grid.character.card) entries.push({ card: grid.character.card, q: center.q, r: center.r });
+		for (const extra of grid.extras ?? []) {
+			if (extra.card) entries.push({ card: extra.card, q: extra.q, r: extra.r });
+		}
+		entries.sort((a, b) => this.hexMark(a.q, a.r).x - this.hexMark(b.q, b.r).x);
+		return entries.map((entry) => entry.card);
+	}
+
 	/** Tear everything down. Safe to call more than once. */
 	destroy(): void {
 		if (this.app) {
@@ -471,6 +559,7 @@ export class MugenBoard {
 		this.actors = [];
 		this.projectiles = [];
 		this.slashes = [];
+		this.cardSprites = [];
 		this.cellPaint.clear();
 	}
 

@@ -13,8 +13,8 @@
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
-import { spawnYearLabel } from '$utils/spawn/year';
-import { SpawnColor } from '$types/character-spawn.type';
+import { spawnYearLabel } from '../spawn/year';
+import { SpawnColor } from '../../types/character-spawn.type';
 import type { CardModel } from './card-model.type';
 import { textureCache, type IdleFrame } from './texture-cache';
 

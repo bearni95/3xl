@@ -2,7 +2,7 @@
 	import classNames from 'classnames';
 	import { onDestroy, onMount } from 'svelte';
 	import { CardScene, type CardLayout } from './CardScene';
-	import type { CardModel } from './card-model.type';
+	import type { CardModel } from '$utils/card/card-model.type';
 
 	// A single card (convenience) — centred and fit to the host.
 	export let card: CardModel | null = null;

@@ -1,4 +1,4 @@
-import type { CardModel } from '$components/core/card/card-model.type';
+import type { CardModel } from '$utils/card/card-model.type';
 import type { CharacterSpawn } from '$types/character-spawn.type';
 
 /**

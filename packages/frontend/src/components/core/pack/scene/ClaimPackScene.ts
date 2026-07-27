@@ -25,8 +25,8 @@ import {
 	type FederatedPointerEvent
 } from 'pixi.js';
 import { PackSprite } from './PackSprite';
-import { CardSprite } from '$components/core/card/CardSprite';
-import { textureCache } from '$components/core/card/texture-cache';
+import { CardSprite } from '$utils/card/CardSprite';
+import { textureCache } from '$utils/card/texture-cache';
 import type { ClaimPull } from './pull.type';
 
 export interface ClaimPackSceneCallbacks {
