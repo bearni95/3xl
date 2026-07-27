@@ -193,12 +193,14 @@ export class ClaimPackScene {
 	}
 
 	private computePackDimensions(w: number, h: number): { packW: number; packH: number } {
-		// Pack fits within ~82% of canvas height and ~45% of canvas width.
-		const maxH = h * 0.82;
-		const maxW = w * 0.45;
-		const byHeight = { packW: maxH * PACK_ASPECT, packH: maxH };
+		// The pack spans the canvas's full width (a small breathing margin), so it fills
+		// the narrow side panel — unless that would make it taller than the canvas, in
+		// which case it's capped by height instead.
+		const maxW = w * 0.96;
+		const maxH = h * 0.96;
 		const byWidth = { packW: maxW, packH: maxW / PACK_ASPECT };
-		return byHeight.packW <= maxW ? byHeight : byWidth;
+		if (byWidth.packH <= maxH) return byWidth;
+		return { packW: maxH * PACK_ASPECT, packH: maxH };
 	}
 
 	private positionPack(): void {
@@ -432,7 +434,7 @@ export class ClaimPackScene {
 	private async prepareCards(): Promise<void> {
 		if (this.pulls.length === 0) return;
 
-		const { cardW, cardH } = this.computeGridCardSize(this.pulls.length);
+		const { cardW, cardH } = this.computeColumnCardSize(this.pulls.length);
 		const centerX = this.app.screen.width / 2;
 		const centerY = this.app.screen.height / 2;
 
@@ -465,14 +467,14 @@ export class ClaimPackScene {
 	private async revealCards(): Promise<void> {
 		if (this.cardSprites.length === 0) return;
 
-		const { cardW, cardH } = this.computeGridCardSize(this.cardSprites.length);
+		const { cardW, cardH } = this.computeColumnCardSize(this.cardSprites.length);
 		const centerX = this.app.screen.width / 2;
 		const centerY = this.app.screen.height / 2;
 
 		await Promise.all(this.cardSprites.map((sp, i) => this.popIn(sp, i * 35)));
 		if (this.isDestroyed) return;
 
-		const targets = this.computeGridTargets(centerX, centerY, cardW, cardH);
+		const targets = this.computeColumnTargets(centerX, centerY, cardW, cardH);
 		await Promise.all(
 			this.cardSprites.map((sp, i) =>
 				this.tweenSprite(sp, targets[i], 520, i * 55, easeOutCubic)
@@ -480,31 +482,31 @@ export class ClaimPackScene {
 		);
 	}
 
-	private gridDims(n: number): { cols: number; rows: number } {
-		const cols = Math.min(3, Math.max(1, n));
-		const rows = Math.ceil(n / cols);
-		return { cols, rows };
-	}
+	// A full booster's worth of cards, so the column is always sized to fit that many
+	// even when fewer were pulled — the card size never jumps with the pull count and
+	// the tallest possible reveal still fits the viewport.
+	private static readonly COLUMN_CAPACITY = 5;
 
-	private computeGridCardSize(n: number): { cardW: number; cardH: number } {
-		const { cols, rows } = this.gridDims(n);
+	private computeColumnCardSize(n: number): { cardW: number; cardH: number } {
 		const gap = 12;
 		const availW = this.app.screen.width * 0.92;
-		const availH = this.app.screen.height * 0.92;
-		// Each card's full footprint (content plus the outset border on both sides) must
-		// fit its slot, so neighbouring borders never overlap. The border width depends
-		// on the card width, so converge on it with a couple of iterations.
-		const slotW = (availW - gap * (cols - 1)) / cols;
+		const availH = this.app.screen.height * 0.96;
+		// Size each card so a full booster ({@link COLUMN_CAPACITY}) fits the height in a
+		// single column; a smaller pull just leaves the column short, not the cards big.
+		const rows = Math.max(n, ClaimPackScene.COLUMN_CAPACITY);
 		const slotH = (availH - gap * (rows - 1)) / rows;
-		let cardW = Math.max(1, Math.min(slotW, slotH * CARD_ASPECT));
+		// Each card's full footprint (content plus the outset border on both sides) must
+		// fit its slot, so it's height-bound in the tall column but never wider than the
+		// panel. The border width depends on the card width, so converge with a few passes.
+		let cardW = Math.max(1, Math.min(availW, slotH * CARD_ASPECT));
 		for (let k = 0; k < 4; k++) {
 			const border = cardBorderWidth(cardW);
-			cardW = Math.max(1, Math.min(slotW - 2 * border, (slotH - 2 * border) * CARD_ASPECT));
+			cardW = Math.max(1, Math.min(availW - 2 * border, (slotH - 2 * border) * CARD_ASPECT));
 		}
 		return { cardW, cardH: cardW / CARD_ASPECT };
 	}
 
-	private computeGridTargets(
+	private computeColumnTargets(
 		centerX: number,
 		centerY: number,
 		cardW: number,
@@ -513,31 +515,18 @@ export class ClaimPackScene {
 		const n = this.cardSprites.length;
 		if (n === 0) return [];
 
-		const { cols, rows } = this.gridDims(n);
 		const gap = 12;
-		// Space the card centres by each card's full footprint (content + outset border
-		// on both sides) plus the gap, so neighbouring borders never overlap.
+		// Stack the pulled cards in one centred column, spacing each centre by its full
+		// footprint (content + outset border on both sides) plus the gap.
 		const border = cardBorderWidth(cardW);
-		const footW = cardW + 2 * border;
 		const footH = cardH + 2 * border;
-		const cellW = footW + gap;
 		const cellH = footH + gap;
-		const totalH = rows * footH + (rows - 1) * gap;
-		const firstRowY = centerY - totalH / 2 + footH / 2;
+		const totalH = n * footH + (n - 1) * gap;
+		const firstY = centerY - totalH / 2 + footH / 2;
 
 		const targets: Array<{ x: number; y: number; rotation: number; scale: number }> = [];
 		for (let i = 0; i < n; i++) {
-			const row = Math.floor(i / cols);
-			const col = i % cols;
-			const cardsInRow = Math.min(cols, n - row * cols);
-			const rowWidth = cardsInRow * footW + (cardsInRow - 1) * gap;
-			const rowStartX = centerX - rowWidth / 2 + footW / 2;
-			targets.push({
-				x: rowStartX + col * cellW,
-				y: firstRowY + row * cellH,
-				rotation: 0,
-				scale: 1
-			});
+			targets.push({ x: centerX, y: firstY + i * cellH, rotation: 0, scale: 1 });
 		}
 		return targets;
 	}
