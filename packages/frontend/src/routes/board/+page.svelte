@@ -29,7 +29,9 @@
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { spawnService } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE, type Team } from '$services/team.service';
+	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { AuthStatus } from '$types/profile.type';
+	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import {
 		DEFAULT_SPAWN_STAT,
 		SPAWN_STAT_MAX,
@@ -81,13 +83,45 @@
 	$: teamReady = teamMembers.length === TEAM_SIZE;
 	$: playable = !!currentUserId && teamReady;
 
+	// character id → rarity tier from Supabase `character_templates`, and geojson
+	// feature id → municipality name — the same two sources the roster/claim cards
+	// read, so the cards drawn outside the board grid show their rarity badge and
+	// claim place (not just name and stats).
+	let rarityByCharacter = new Map<string, number>();
+	let municipalityNames: Map<string, string> | null = null;
+
 	// Load the player's spawns once signed in, so their rolled colours are available.
+	// Rarities and place names load alongside, so the outside-grid cards can show them.
 	let loadedForUser: string | null = null;
 	let spawnsLoaded = false;
 	$: if (currentUserId && currentUserId !== loadedForUser) {
 		loadedForUser = currentUserId;
 		spawnsLoaded = false;
 		void spawnService.loadSpawns(currentUserId).then(() => (spawnsLoaded = true));
+		void spawnService.loadRarities().then((rarities) => (rarityByCharacter = rarities));
+		void loadMunicipalityNames();
+	}
+
+	// Resolve geojson feature ids to municipality names for the cards' place labels.
+	// Optional — a missing/failed layer just falls back to the Ultramar sentinel.
+	async function loadMunicipalityNames(): Promise<void> {
+		try {
+			const response = await fetch('/data/geo/municipis.json');
+			const municipalities = (await response.json()) as GeoJSON.FeatureCollection;
+			municipalityNames = locationAdapter.municipalityNames(municipalities);
+		} catch {
+			municipalityNames = null;
+		}
+	}
+
+	// A spawn's claim place, resolved from its geojson location id (the Ultramar
+	// sentinel and any unresolved id read as Ultramar) — mirrors the roster.
+	function locationNameFor(id: string | null | undefined): string {
+		if (id && id !== ULTRAMAR_ID) {
+			const name = municipalityNames?.get(id);
+			if (name) return name;
+		}
+		return ULTRAMAR.municipality;
 	}
 
 	// spawn id → the spawn itself. Teams reference spawns (not characters), so each
@@ -133,7 +167,9 @@
 	function boardCharacter(
 		spawnId: string,
 		side: 'error' | 'info',
-		spawns: Map<string, CharacterSpawn>
+		spawns: Map<string, CharacterSpawn>,
+		rarities: Map<string, number>,
+		names: Map<string, string> | null
 	): BoardCharacter {
 		const spawn = spawns.get(spawnId);
 		const option = (spawn && characterById.get(spawn.characterId)) ?? availableCharacters[0];
@@ -147,14 +183,16 @@
 			// The display card drawn outside the grid (rival above, player below): the
 			// idle art loads from basePath, and the combat attributes mirror the board's
 			// derivation from the rolled stat (ATK = stat, DEF its complement, SPD = ATK − 1,
-			// HP = DEF + 1). Rarity/place are omitted here — the board has no need of them.
+			// HP = DEF + 1). Rarity and claim place come from the same two Supabase/geo
+			// sources the roster and claim cards read (`names` is passed so the reactive
+			// build re-runs — and the board remounts — once the place layer loads).
 			card: {
 				label: option.label,
 				basePath: option.basePath,
 				faceUrl: null,
 				color: spawn?.color ?? SpawnColor.Red,
-				rarity: null,
-				locationName: null,
+				rarity: spawn ? (rarities.get(spawn.characterId) ?? null) : null,
+				locationName: spawn ? locationNameFor(spawn.locationId) : null,
 				spawnedAt: spawn?.createdAt ?? null,
 				atk: stat,
 				def: SPAWN_STAT_MAX - stat,
@@ -168,36 +206,42 @@
 	// grid likewise. Rebuilt whenever a picker slot or a spawn changes. `spawns` is
 	// passed in explicitly so Svelte's legacy reactive tracking sees the spawn map as
 	// a dependency of `grids`.
-	function buildGrids(ids: string[], spawns: Map<string, CharacterSpawn>): [BoardGrid, BoardGrid] {
+	function buildGrids(
+		ids: string[],
+		spawns: Map<string, CharacterSpawn>,
+		rarities: Map<string, number>,
+		names: Map<string, string> | null
+	): [BoardGrid, BoardGrid] {
 		return [
 			{
 				color: 0xff0000,
-				character: boardCharacter(ids[0], 'error', spawns),
+				character: boardCharacter(ids[0], 'error', spawns, rarities, names),
 				extras: extraCells.error.map((cell, i) => ({
-					...boardCharacter(ids[1 + i], 'error', spawns),
+					...boardCharacter(ids[1 + i], 'error', spawns, rarities, names),
 					...cell
 				}))
 			},
 			{
 				color: 0x2563eb,
-				character: boardCharacter(ids[3], 'info', spawns),
+				character: boardCharacter(ids[3], 'info', spawns, rarities, names),
 				extras: extraCells.info.map((cell, i) => ({
-					...boardCharacter(ids[4 + i], 'info', spawns),
+					...boardCharacter(ids[4 + i], 'info', spawns, rarities, names),
 					...cell
 				}))
 			}
 		];
 	}
 
-	$: grids = buildGrids(slots, spawnById);
+	$: grids = buildGrids(slots, spawnById, rarityByCharacter, municipalityNames);
 	// Bumped by "Play again" so the Pixi board remounts with a clean slate.
 	let gameKey = 0;
 	// Remounts the Pixi board (and thus repositions everyone) on any slot change,
 	// spawn-colour change (so home cells repaint once colours load), spawn-stat change
-	// (so the outside-grid cards repaint), or restart.
+	// (so the outside-grid cards repaint), rarity/place load (so the cards gain their
+	// badge and location once those sources resolve), or restart.
 	$: boardKey = `${slots.join(',')}:${slots
 		.map((id) => `${spawnById.get(id)?.color ?? ''}/${spawnById.get(id)?.stat ?? ''}`)
-		.join(',')}:${gameKey}`;
+		.join(',')}:${rarityByCharacter.size}:${municipalityNames?.size ?? 0}:${gameKey}`;
 
 	// One badge per character on the board, in board order (red half then blue).
 	// Static display info (name, face, compound color, moves); the live combat
@@ -281,7 +325,7 @@
 	// Runs on mount and again whenever a picker slot changes.
 	async function setup(): Promise<void> {
 		const token = ++setupToken;
-		const currentGrids = buildGrids(slots, spawnById);
+		const currentGrids = buildGrids(slots, spawnById, rarityByCharacter, municipalityNames);
 		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridX'>[] = [
 			...rosterFor([currentGrids[0].character, ...(currentGrids[0].extras ?? [])], 'error'),
 			...rosterFor([currentGrids[1].character, ...(currentGrids[1].extras ?? [])], 'info')

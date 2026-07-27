@@ -6,9 +6,12 @@
  * Flow:
  *  - load → renders the pack (show poster cover), listens for a click on it
  *  - click → flashes a slash, splits the pack at the click Y into two halves
- *  - top half flies up off-screen, bottom half flies down (both rotating)
- *  - meanwhile the booster is rolled against Supabase (the `claim` callback)
- *  - the claimed character card(s) appear stacked at the cut, fan into a grid
+ *  - the booster is rolled against Supabase (the `claim` callback) and the reveal
+ *    cards are built behind the still-closed pack — we wait until their art has
+ *    loaded, so a slow network can't slide the pack open onto empty space
+ *  - only once the cards are ready: the top half flies up off-screen and the
+ *    bottom half flies down (both rotating), while the cards pop in at the cut
+ *  - the claimed character card(s) then fan into a grid
  *
  * The scene exposes no Svelte interop — inputs come through the constructor,
  * outputs go through the callbacks. The hosting component creates/destroys it.
@@ -26,7 +29,6 @@ import {
 } from 'pixi.js';
 import { PackSprite } from './PackSprite';
 import { CardSprite } from '$utils/card/CardSprite';
-import { textureCache } from '$utils/card/texture-cache';
 import type { ClaimPull } from './pull.type';
 
 export interface ClaimPackSceneCallbacks {
@@ -296,9 +298,28 @@ export class ClaimPackScene {
 		this.topHalf = top;
 		this.bottomHalf = bottom;
 
+		this.state = 'revealing';
+		// Roll the booster against Supabase now, while the sliced-but-closed pack
+		// still covers the reveal. The spawn is persisted at open time; a failure
+		// reveals no cards.
+		try {
+			this.pulls = await this.claim();
+		} catch {
+			this.pulls = [];
+		}
+		if (this.isDestroyed) return;
+
+		// Build the reveal cards behind the still-closed pack and wait until their
+		// art has actually loaded. This is the fix for slow networks: the pack must
+		// not slide open onto empty space, so we hold the halves in place — the pack
+		// simply sits cut open — until there is something rendered behind it.
+		await this.prepareCards();
+		if (this.isDestroyed) return;
+
 		const screenH = this.app.screen.height;
 		const screenW = this.app.screen.width;
 
+		// Cards are ready — now slide the halves apart and pop the cards in together.
 		const halvesPromise = Promise.all([
 			this.flyAway(top, {
 				dx: -screenW * 0.15,
@@ -314,17 +335,6 @@ export class ClaimPackScene {
 			})
 		]);
 
-		this.state = 'revealing';
-		// Roll the booster against Supabase now — the spawn is persisted at open
-		// time, masked by the halves flying away. A failure reveals no cards.
-		try {
-			this.pulls = await this.claim();
-		} catch {
-			this.pulls = [];
-		}
-		if (this.isDestroyed) return;
-		// Warm the freshly-claimed face textures before the cards pop in.
-		void Promise.all(this.pulls.map((p) => textureCache.face(p.faceUrl).catch(() => null)));
 		await this.revealCards();
 
 		await halvesPromise;
@@ -412,16 +422,19 @@ export class ClaimPackScene {
 		});
 	}
 
-	private async revealCards(): Promise<void> {
+	/**
+	 * Create the reveal cards stacked at the pack centre — behind the still-closed
+	 * pack — and wait until every card's art (idle animation or face fallback) has
+	 * loaded. The cards start hidden (alpha 0, shrunk), ready for {@link revealCards}
+	 * to pop them in once the caller has slid the pack open. Waiting here is what
+	 * keeps a slow network from opening the pack onto nothing.
+	 */
+	private async prepareCards(): Promise<void> {
 		if (this.pulls.length === 0) return;
 
-		const screenW = this.app.screen.width;
-		const screenH = this.app.screen.height;
-
 		const { cardW, cardH } = this.computeGridCardSize(this.pulls.length);
-
-		const centerX = screenW / 2;
-		const centerY = screenH / 2;
+		const centerX = this.app.screen.width / 2;
+		const centerY = this.app.screen.height / 2;
 
 		for (let i = 0; i < this.pulls.length; i++) {
 			const pull = this.pulls[i];
@@ -440,6 +453,21 @@ export class ClaimPackScene {
 			this.cardLayer.addChild(sprite);
 			this.cardSprites.push(sprite);
 		}
+
+		// Hold until every card has something to render before the pack opens.
+		await Promise.all(this.cardSprites.map((sp) => sp.whenReady()));
+	}
+
+	/**
+	 * Pop the (already-prepared) cards in at the cut, then fan them into a grid.
+	 * {@link prepareCards} must have run first, so the cards are loaded and staged.
+	 */
+	private async revealCards(): Promise<void> {
+		if (this.cardSprites.length === 0) return;
+
+		const { cardW, cardH } = this.computeGridCardSize(this.cardSprites.length);
+		const centerX = this.app.screen.width / 2;
+		const centerY = this.app.screen.height / 2;
 
 		await Promise.all(this.cardSprites.map((sp, i) => this.popIn(sp, i * 35)));
 		if (this.isDestroyed) return;

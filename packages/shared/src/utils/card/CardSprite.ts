@@ -79,6 +79,10 @@ export class CardSprite extends Container {
 	private shadowSprite: Sprite;
 	private artArea: { x: number; y: number; w: number; h: number };
 
+	// Resolves once the card's idle animation (or face fallback) has been applied,
+	// so a host scene can wait for the card to actually render before revealing it.
+	private readonly artReady: Promise<void>;
+
 	// Idle-animation playback state (null until the frames load).
 	private idleFrames: IdleFrame[] | null = null;
 	private idleFitScale = 1;
@@ -154,7 +158,16 @@ export class CardSprite extends Container {
 		this.addChild(this.makeMeta(metaY, metaH));
 		this.addChild(this.makeStats(footerY, footerH));
 
-		void this.loadArt();
+		this.artReady = this.loadArt();
+	}
+
+	/**
+	 * Resolves once the card's idle animation (or static face fallback) has loaded
+	 * and been applied — i.e. the card has something to render. Lets a host scene
+	 * hold an animation (e.g. sliding the pack open) until the card is on screen.
+	 */
+	whenReady(): Promise<void> {
+		return this.artReady;
 	}
 
 	override destroy(options?: Parameters<Container['destroy']>[0]): void {
