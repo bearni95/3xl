@@ -211,23 +211,23 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_20_0.png",
+          "file": "spr_20_0_h.png",
           "width": 16,
           "height": 41,
-          "anchorX": 9,
+          "anchorX": 7,
           "anchorY": 39,
           "duration": 117
         },
         {
-          "file": "spr_20_1.png",
+          "file": "spr_20_1_h.png",
           "width": 16,
           "height": 42,
-          "anchorX": 9,
+          "anchorX": 7,
           "anchorY": 40,
           "duration": 117
         },
         {
-          "file": "spr_20_2.png",
+          "file": "spr_20_2_h.png",
           "width": 22,
           "height": 39,
           "anchorX": 11,
@@ -235,23 +235,23 @@
           "duration": 117
         },
         {
-          "file": "spr_20_3.png",
+          "file": "spr_20_3_h.png",
           "width": 17,
           "height": 41,
-          "anchorX": 10,
+          "anchorX": 7,
           "anchorY": 39,
           "duration": 117
         },
         {
-          "file": "spr_20_4.png",
+          "file": "spr_20_4_h.png",
           "width": 16,
           "height": 42,
-          "anchorX": 9,
+          "anchorX": 7,
           "anchorY": 40,
           "duration": 117
         },
         {
-          "file": "spr_20_5.png",
+          "file": "spr_20_5_h.png",
           "width": 22,
           "height": 39,
           "anchorX": 11,
@@ -259,10 +259,10 @@
           "duration": 117
         },
         {
-          "file": "spr_20_6.png",
+          "file": "spr_20_6_h.png",
           "width": 17,
           "height": 41,
-          "anchorX": 10,
+          "anchorX": 7,
           "anchorY": 39,
           "duration": 117
         }
@@ -311,10 +311,10 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_41_0.png",
+          "file": "spr_41_0_h.png",
           "width": 19,
           "height": 40,
-          "anchorX": 7,
+          "anchorX": 12,
           "anchorY": 41,
           "duration": 17
         }
@@ -390,15 +390,15 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_100_0.png",
+          "file": "spr_100_0_h.png",
           "width": 19,
           "height": 41,
-          "anchorX": 8,
+          "anchorX": 11,
           "anchorY": 40,
           "duration": 100
         },
         {
-          "file": "spr_100_1.png",
+          "file": "spr_100_1_h.png",
           "width": 28,
           "height": 38,
           "anchorX": 14,
@@ -406,23 +406,23 @@
           "duration": 100
         },
         {
-          "file": "spr_100_2.png",
+          "file": "spr_100_2_h.png",
           "width": 20,
           "height": 40,
-          "anchorX": 9,
+          "anchorX": 11,
           "anchorY": 39,
           "duration": 100
         },
         {
-          "file": "spr_100_3.png",
+          "file": "spr_100_3_h.png",
           "width": 18,
           "height": 41,
-          "anchorX": 7,
+          "anchorX": 11,
           "anchorY": 40,
           "duration": 100
         },
         {
-          "file": "spr_100_4.png",
+          "file": "spr_100_4_h.png",
           "width": 28,
           "height": 38,
           "anchorX": 14,
@@ -430,10 +430,10 @@
           "duration": 100
         },
         {
-          "file": "spr_100_5.png",
+          "file": "spr_100_5_h.png",
           "width": 20,
           "height": 40,
-          "anchorX": 9,
+          "anchorX": 11,
           "anchorY": 40,
           "duration": 100
         }

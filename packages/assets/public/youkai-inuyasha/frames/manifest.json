@@ -5417,90 +5417,90 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_4444_0.png",
+          "file": "spr_4444_0_h.png",
           "width": 40,
           "height": 29,
-          "anchorX": 39,
+          "anchorX": 1,
           "anchorY": 13,
           "duration": 33
         },
         {
-          "file": "spr_4444_1.png",
+          "file": "spr_4444_1_h.png",
           "width": 57,
           "height": 41,
-          "anchorX": 56,
+          "anchorX": 1,
           "anchorY": 18,
           "duration": 33
         },
         {
-          "file": "spr_4444_2.png",
+          "file": "spr_4444_2_h.png",
           "width": 71,
           "height": 51,
-          "anchorX": 70,
+          "anchorX": 1,
           "anchorY": 21,
           "duration": 33
         },
         {
-          "file": "spr_4444_3.png",
+          "file": "spr_4444_3_h.png",
           "width": 78,
           "height": 56,
-          "anchorX": 77,
+          "anchorX": 1,
           "anchorY": 22,
           "duration": 33
         },
         {
-          "file": "spr_4444_4.png",
+          "file": "spr_4444_4_h.png",
           "width": 88,
           "height": 63,
-          "anchorX": 87,
+          "anchorX": 1,
           "anchorY": 25,
           "duration": 33
         },
         {
-          "file": "spr_4444_5.png",
+          "file": "spr_4444_5_h.png",
           "width": 96,
           "height": 69,
-          "anchorX": 95,
+          "anchorX": 1,
           "anchorY": 29,
           "duration": 33
         },
         {
-          "file": "spr_4444_6.png",
+          "file": "spr_4444_6_h.png",
           "width": 108,
           "height": 77,
-          "anchorX": 107,
+          "anchorX": 1,
           "anchorY": 32,
           "duration": 33
         },
         {
-          "file": "spr_4444_7.png",
+          "file": "spr_4444_7_h.png",
           "width": 121,
           "height": 81,
-          "anchorX": 120,
+          "anchorX": 1,
           "anchorY": 35,
           "duration": 33
         },
         {
-          "file": "spr_4444_8.png",
+          "file": "spr_4444_8_h.png",
           "width": 129,
           "height": 86,
-          "anchorX": 128,
+          "anchorX": 1,
           "anchorY": 37,
           "duration": 33
         },
         {
-          "file": "spr_4444_9.png",
+          "file": "spr_4444_9_h.png",
           "width": 139,
           "height": 94,
-          "anchorX": 138,
+          "anchorX": 1,
           "anchorY": 40,
           "duration": 33
         },
         {
-          "file": "spr_4444_10.png",
+          "file": "spr_4444_10_h.png",
           "width": 155,
           "height": 99,
-          "anchorX": 154,
+          "anchorX": 1,
           "anchorY": 42,
           "duration": 33
         }

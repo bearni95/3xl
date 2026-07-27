@@ -290,10 +290,10 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_11_0.png",
+          "file": "spr_11_0_h.png",
           "width": 61,
           "height": 44,
-          "anchorX": 26,
+          "anchorX": 35,
           "anchorY": 38,
           "duration": 33
         },

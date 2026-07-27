@@ -162,50 +162,50 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_20_0.png",
+          "file": "spr_20_0_h.png",
           "width": 32,
           "height": 53,
-          "anchorX": 18,
+          "anchorX": 14,
           "anchorY": 51,
           "duration": 133
         },
         {
-          "file": "spr_20_1.png",
+          "file": "spr_20_1_h.png",
           "width": 24,
           "height": 55,
-          "anchorX": 10,
+          "anchorX": 14,
           "anchorY": 53,
           "duration": 133
         },
         {
-          "file": "spr_20_2.png",
+          "file": "spr_20_2_h.png",
           "width": 29,
           "height": 56,
-          "anchorX": 15,
+          "anchorX": 14,
           "anchorY": 54,
           "duration": 133
         },
         {
-          "file": "spr_20_3.png",
+          "file": "spr_20_3_h.png",
           "width": 32,
           "height": 54,
-          "anchorX": 18,
+          "anchorX": 14,
           "anchorY": 52,
           "duration": 133
         },
         {
-          "file": "spr_20_4.png",
+          "file": "spr_20_4_h.png",
           "width": 24,
           "height": 55,
-          "anchorX": 10,
+          "anchorX": 14,
           "anchorY": 53,
           "duration": 133
         },
         {
-          "file": "spr_20_5.png",
+          "file": "spr_20_5_h.png",
           "width": 29,
           "height": 57,
-          "anchorX": 15,
+          "anchorX": 14,
           "anchorY": 55,
           "duration": 133
         }
@@ -254,7 +254,7 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_40_0.png",
+          "file": "spr_40_0_h.png",
           "width": 28,
           "height": 54,
           "anchorX": 14,
@@ -293,10 +293,10 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_44_0.png",
+          "file": "spr_44_0_h.png",
           "width": 35,
           "height": 61,
-          "anchorX": 20,
+          "anchorX": 15,
           "anchorY": 59,
           "duration": 1
         }
@@ -332,10 +332,10 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_100_0.png",
+          "file": "spr_100_0_h.png",
           "width": 40,
           "height": 57,
-          "anchorX": 17,
+          "anchorX": 23,
           "anchorY": 55,
           "duration": 267
         }

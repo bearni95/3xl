@@ -55,8 +55,12 @@ export const STANDARD_NAMES = {
  * Parse every [Begin Action N] block from a MUGEN .air file, in file order,
  * into { action, frames } records. Frame lines look like:
  *   group, image, offsetX, offsetY, ticks [, flip] [, blend]
- * Clsn (collision box), Loopstart markers, blank (-1) frames and comments are
- * ignored. Duplicate action numbers keep their first definition.
+ * The optional flip field (position 6) is captured and canonicalised to
+ * `''`/`'h'`/`'v'`/`'hv'`: some characters draw their body sprites facing left
+ * and flip them horizontally per-frame so the animation faces right (e.g.
+ * piccolo's idle is all `H`). Clsn (collision box), Loopstart markers, blank
+ * (-1) frames and comments are ignored. Duplicate action numbers keep their
+ * first definition.
  */
 export function parseAllActions(airText) {
 	const lines = airText.split(/\r?\n/);
@@ -89,13 +93,18 @@ export function parseAllActions(airText) {
 		const parts = line.split(',').map((p) => p.trim());
 		if (parts.length < 5) continue;
 
-		const [group, image, offsetX, offsetY, ticks] = parts.map(Number);
+		const [group, image, offsetX, offsetY, ticks] = parts.slice(0, 5).map(Number);
 		if ([group, image, offsetX, offsetY, ticks].some(Number.isNaN)) continue;
 
 		// Blank/timing frames (group or image -1) render nothing — drop them.
 		if (group < 0 || image < 0) continue;
 
-		current.frames.push({ group, image, offsetX, offsetY, ticks });
+		// Flip is the 6th field (H/V, case-insensitive, may combine). Keep only
+		// the H/V letters, in canonical h-before-v order.
+		const flipRaw = (parts[5] ?? '').toLowerCase();
+		const flip = (flipRaw.includes('h') ? 'h' : '') + (flipRaw.includes('v') ? 'v' : '');
+
+		current.frames.push({ group, image, offsetX, offsetY, ticks, flip });
 	}
 
 	return actions.filter((a) => a.frames.length > 0);
@@ -176,6 +185,32 @@ export function parseDefInfo(defText) {
 	};
 }
 
+/**
+ * Mirror an RGBA pixel buffer horizontally and/or vertically. Returns a new
+ * buffer (the source is a shared decoded sprite and must stay intact); returns
+ * the original when there is nothing to flip.
+ */
+function flipRgba(rgba, width, height, flip) {
+	const h = flip.includes('h');
+	const v = flip.includes('v');
+	if (!h && !v) return rgba;
+	// The decoded buffer is normally width*height*4, but a few sprites come back
+	// short/padded; size `out` to the full frame and guard each read so an
+	// undersized source just leaves those pixels transparent (writePng tolerates
+	// the same mismatch).
+	const out = Buffer.alloc(width * height * 4);
+	for (let y = 0; y < height; y++) {
+		const srcY = v ? height - 1 - y : y;
+		for (let x = 0; x < width; x++) {
+			const srcX = h ? width - 1 - x : x;
+			const srcOff = (srcY * width + srcX) * 4;
+			if (srcOff + 4 > rgba.length) continue;
+			rgba.copy(out, (y * width + x) * 4, srcOff, srcOff + 4);
+		}
+	}
+	return out;
+}
+
 /** Write an RGBA buffer of the given size to a PNG file. */
 function writePng(path, rgba, width, height) {
 	const png = new PNG({ width, height });
@@ -241,14 +276,18 @@ export function buildCharacter(character) {
 
 	// Each distinct sprite is written to one shared PNG and reused across every
 	// frame/animation that references it (offsets and durations stay per-frame).
+	// A per-frame H/V flip produces a separate mirrored variant, suffixed `_h`/
+	// `_v`/`_hv`; unflipped frames keep the plain `spr_G_I.png` name so characters
+	// that never flip decode byte-identically to before.
 	const spriteFiles = new Map();
-	const writeSprite = (group, image) => {
-		const key = `${group},${image}`;
+	const writeSprite = (group, image, flip = '') => {
+		const key = `${group},${image},${flip}`;
 		if (spriteFiles.has(key)) return spriteFiles.get(key);
-		const sprite = spriteByKey.get(key);
+		const sprite = spriteByKey.get(`${group},${image}`);
 		if (!sprite) return null;
-		const file = `spr_${group}_${image}.png`;
-		writePng(join(outDir, file), sprite.decodedBuffer, sprite.width, sprite.height);
+		const file = `spr_${group}_${image}${flip ? `_${flip}` : ''}.png`;
+		const rgba = flipRgba(sprite.decodedBuffer, sprite.width, sprite.height, flip);
+		writePng(join(outDir, file), rgba, sprite.width, sprite.height);
 		spriteFiles.set(key, file);
 		return file;
 	};
@@ -282,20 +321,26 @@ export function buildCharacter(character) {
 		const frames = [];
 		for (const frame of action.frames) {
 			const sprite = spriteByKey.get(`${frame.group},${frame.image}`);
-			const file = writeSprite(frame.group, frame.image);
+			const file = writeSprite(frame.group, frame.image, frame.flip);
 			if (!sprite || !file) {
 				missing++;
 				continue; // Sprite not in this character's SFF — skip the frame.
 			}
+			// Anchor = the sprite's axis (MUGEN origin near the feet) shifted by the
+			// per-frame animation offset. Keeps the character planted across
+			// differently sized frames. A per-frame flip mirrors the baked PNG, so
+			// mirror the anchor to match (reflecting axis+offset about the sprite
+			// centre is exactly width/height − anchor).
+			let anchorX = sprite.x - frame.offsetX;
+			let anchorY = sprite.y - frame.offsetY;
+			if (frame.flip.includes('h')) anchorX = sprite.width - anchorX;
+			if (frame.flip.includes('v')) anchorY = sprite.height - anchorY;
 			frames.push({
 				file,
 				width: sprite.width,
 				height: sprite.height,
-				// Anchor = the sprite's axis (MUGEN origin near the feet) shifted by
-				// the per-frame animation offset. Keeps the character planted across
-				// differently sized frames and mirrors flips around the body.
-				anchorX: sprite.x - frame.offsetX,
-				anchorY: sprite.y - frame.offsetY,
+				anchorX,
+				anchorY,
 				duration: Math.max(1, Math.round((frame.ticks / TICKS_PER_SECOND) * 1000))
 			});
 		}

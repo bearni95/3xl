@@ -83,10 +83,10 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_10_1.png",
+          "file": "spr_10_1_h.png",
           "width": 71,
           "height": 66,
-          "anchorX": 45,
+          "anchorX": 26,
           "anchorY": 57,
           "duration": 17
         }
@@ -515,26 +515,26 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_0_0.png",
+          "file": "spr_0_0_h.png",
           "width": 58,
           "height": 101,
-          "anchorX": 34,
+          "anchorX": 24,
           "anchorY": 96,
           "duration": 167
         },
         {
-          "file": "spr_0_1.png",
+          "file": "spr_0_1_h.png",
           "width": 58,
           "height": 101,
-          "anchorX": 34,
+          "anchorX": 24,
           "anchorY": 96,
           "duration": 167
         },
         {
-          "file": "spr_0_2.png",
+          "file": "spr_0_2_h.png",
           "width": 58,
           "height": 101,
-          "anchorX": 34,
+          "anchorX": 24,
           "anchorY": 96,
           "duration": 167
         }
@@ -544,34 +544,34 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_0_0.png",
+          "file": "spr_0_0_h.png",
           "width": 58,
           "height": 101,
-          "anchorX": 34,
+          "anchorX": 24,
           "anchorY": 96,
           "duration": 150
         },
         {
-          "file": "spr_0_1.png",
+          "file": "spr_0_1_h.png",
           "width": 58,
           "height": 101,
-          "anchorX": 34,
+          "anchorX": 24,
           "anchorY": 96,
           "duration": 150
         },
         {
-          "file": "spr_0_2.png",
+          "file": "spr_0_2_h.png",
           "width": 58,
           "height": 101,
-          "anchorX": 34,
+          "anchorX": 24,
           "anchorY": 96,
           "duration": 150
         },
         {
-          "file": "spr_0_1.png",
+          "file": "spr_0_1_h.png",
           "width": 58,
           "height": 101,
-          "anchorX": 34,
+          "anchorX": 24,
           "anchorY": 96,
           "duration": 150
         }
