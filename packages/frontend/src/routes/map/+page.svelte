@@ -103,6 +103,15 @@
 	// still thins the finer borders down to the tier the map is focused on.
 	const overlays: MapOverlay[] = [
 		{
+			// A gapless solid base: the dissolved territory outlines carry the same
+			// purple fill as the municipalities, so the hairline seams between adjacent
+			// municipality polygons reveal purple underneath instead of the dark page
+			// background. Non-interactive — the municipis layer on top owns the hover.
+			url: '/data/geo/territoris.json',
+			style: { stroke: false, fillColor: '#ce74ff', fillOpacity: 1 },
+			interactive: false
+		},
+		{
 			url: '/data/geo/municipis.json',
 			style: { stroke: false, fillColor: '#ce74ff', fillOpacity: 1 },
 			// Hovering the region (via its pin or its polygons) paints the whole area's
@@ -113,12 +122,12 @@
 		},
 		{
 			url: '/data/geo/comarques.json',
-			style: { color: '#00e8ff', weight: 1.5, fill: false },
+			style: { color: '#111a3b', weight: 1.5, fill: false },
 			interactive: false
 		},
 		{
 			url: '/data/geo/provincies.json',
-			style: { color: '#ff6596', weight: 2, fill: false },
+			style: { color: '#111a3b', weight: 2, fill: false },
 			interactive: false
 		},
 		{
