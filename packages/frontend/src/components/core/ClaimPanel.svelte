@@ -4,7 +4,7 @@
 	import ClaimBoosterHistory from '$components/core/ClaimBoosterHistory.svelte';
 	import ClaimPackOpenerPanel from '$components/core/pack/ClaimPackOpenerPanel.svelte';
 	import type { OpenerView } from '$components/core/pack/scene/opener-view.type';
-	import type { MunicipalityFesta } from '$types/festa.type';
+	import type { FestaLocationRow } from '$types/festivity.type';
 	import type { RegionShow } from '$utils/geo/region-tree';
 
 	// Pack-opener state surfaced by CharacterClaimPanel (bound below). While a pack
@@ -15,7 +15,7 @@
 
 	// Claims are location-driven by the celebrating town, not the browser's GPS: a
 	// festa pick opens that show's booster from that municipality's place.
-	function claimFromFesta(festa: MunicipalityFesta, show: RegionShow) {
+	function claimFromFesta(festa: FestaLocationRow, show: RegionShow) {
 		characterPanel?.claimFromShowId(show.id, {
 			id: festa.id,
 			municipality: festa.name,
