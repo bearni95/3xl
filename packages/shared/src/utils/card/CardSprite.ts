@@ -131,7 +131,7 @@ export class CardSprite extends Container {
 		// row is not part of it — it floats transparently over the colour square below.
 		const header = new Graphics();
 		header.rect(0, 0, this.cardWidth, headerH);
-		header.fill({ color: 0x111827, alpha: 0.92 });
+		header.fill({ color: 0x000000, alpha: 0.5 });
 		this.addChild(header);
 
 		// Dark footer strip at the bottom, carrying the ATK/DEF/SPD/HP stats. The
@@ -139,7 +139,7 @@ export class CardSprite extends Container {
 		// the colour square above.
 		const footer = new Graphics();
 		footer.rect(0, footerY, this.cardWidth, footerH);
-		footer.fill({ color: 0x111827, alpha: 0.92 });
+		footer.fill({ color: 0x000000, alpha: 0.5 });
 		this.addChild(footer);
 
 		// A black silhouette copy of the art, sitting behind the full-colour sprite
