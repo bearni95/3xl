@@ -9,10 +9,11 @@
  * Two layouts:
  *  - `'fit'` (default) — a single card is centred; several pack into a grid
  *    (`columns` wide) scaled to fit the whole canvas. Static, no navigation.
- *  - `'grid'` — cards are laid out at a natural, responsive size (1/2/3 columns
- *    by container width, mirroring the old DOM roster grid) into a world that can
- *    be larger than the canvas. With `pannable`, the world can be dragged and
- *    zoomed like a map (drag to pan, wheel/pinch to zoom about the cursor).
+ *  - `'grid'` — the `columns` cards per row always span the canvas width exactly
+ *    (fit-to-width, so the zoom is fixed and re-fits when the column count
+ *    changes), and the rows extend into a taller-than-canvas world. With
+ *    `pannable` the world scrolls vertically — drag or wheel to move through the
+ *    rows; there is no free zoom (the column count is the density control).
  *
  * This is the drop-in primitive for rendering character cards anywhere — the pack
  * opener uses {@link ClaimPackScene} for its bespoke reveal choreography, but any
@@ -36,11 +37,6 @@ const FILL = 0.92;
 // `gap-4` (16px). Cards are sized to fill the container width at these columns.
 const NAV_GAP = 16;
 const NAV_PAD = 16;
-// Zoom bounds and per-notch wheel step. The lower bound is further clamped so a
-// fully zoomed-out view can always frame the whole grid.
-const MAX_SCALE = 3;
-const MIN_SCALE = 0.15;
-const WHEEL_STEP = 1.12;
 // How far a pointer may travel between down and up and still count as a tap
 // (rather than a pan), in screen pixels.
 const TAP_SLOP = 6;
@@ -102,23 +98,21 @@ export class CardScene {
 	private builtH = 0;
 
 	// --- Grid layout + navigation state ---
-	// Current world→screen transform of the card layer: screen = world * scale + pan.
+	// Screen offset of the card layer: screen = world + pan. The grid is fit to the
+	// canvas width (scale stays 1), so navigation is a pure vertical scroll.
 	private pan = { x: 0, y: 0 };
 	private scale = 1;
-	private minScale = MIN_SCALE;
 	// Baked grid geometry (world units), recomputed each (re)build.
 	private grid = { cols: 1, cardW: 0, cardH: 0, contentW: 0, contentH: 0 };
-	// Whether the initial view has been framed (so a resize keeps the user's zoom).
+	// Whether the initial view has been framed (so a resize keeps the scroll offset).
 	private framed = false;
 
-	// Active pointers (by id) for drag/pinch, plus the in-flight gesture state.
-	private pointers = new Map<number, { x: number; y: number }>();
-	private dragging = false;
+	// In-flight drag gesture (a single pointer; the grid has no pinch/zoom).
+	private dragPointerId: number | null = null;
 	private dragMoved = false;
 	private dragStart = { x: 0, y: 0 };
 	private panStart = { x: 0, y: 0 };
 	private downCardIndex: number | null = null;
-	private pinchStartDist = 0;
 
 	constructor(host: HTMLElement, options: CardSceneOptions) {
 		this.host = host;
@@ -236,12 +230,13 @@ export class CardScene {
 	}
 
 	/**
-	 * Grid (map) layout: cards at a natural, responsive size laid out top-to-bottom
-	 * into a world that can exceed the canvas. The card layer is then translated and
-	 * scaled to navigate it. Columns follow the old DOM roster grid's breakpoints
-	 * (1 / 2 / 3 by container width). Cards are placed in world space (pivot at their
-	 * top-left); pan/zoom lives entirely in the layer transform, so neither panning
-	 * nor zooming rebuilds a sprite — the idle animations never restart.
+	 * Grid layout: the `columns` cards per row always fill the canvas width exactly
+	 * (fit-to-width), so the zoom is fixed at 1:1 and simply re-fits when the slider
+	 * changes the column count — a wider column count yields narrower cards, never a
+	 * horizontal scroll. The rows extend downward into a taller-than-canvas world
+	 * scrolled vertically. Cards are placed in world space (top-left pivot); the
+	 * scroll lives entirely in the layer's position, so scrolling never rebuilds a
+	 * sprite and the idle animations never restart.
 	 */
 	private buildGrid(width: number, height: number): void {
 		if (this.cards.length === 0) {
@@ -249,11 +244,12 @@ export class CardScene {
 			return;
 		}
 
-		// Grid columns are driven explicitly by the host (a slider, seeded with
-		// `responsiveGridColumns`); cards are sized to fill the container at that count.
+		// Columns are driven explicitly by the host (a slider, seeded with
+		// `responsiveGridColumns`); cards are sized so the whole row spans the canvas
+		// width, dynamically adapting as the slider changes the count.
 		const cols = Math.max(1, this.columns);
 		const availW = Math.max(1, width - NAV_PAD * 2);
-		const cardW = Math.max(80, (availW - NAV_GAP * (cols - 1)) / cols);
+		const cardW = Math.max(1, (availW - NAV_GAP * (cols - 1)) / cols);
 		const cardH = cardW / CARD_ASPECT;
 		const rows = Math.ceil(this.cards.length / cols);
 		const contentW = NAV_PAD * 2 + cols * cardW + (cols - 1) * NAV_GAP;
@@ -267,18 +263,13 @@ export class CardScene {
 			sprite.position.set(NAV_PAD + col * (cardW + NAV_GAP), NAV_PAD + row * (cardH + NAV_GAP));
 		}
 
-		// The smallest zoom is whatever frames the whole grid (never above 1:1), so
-		// you can always pull back to see everything.
-		const fitAll = Math.min(width / contentW, height / contentH);
-		this.minScale = Math.max(MIN_SCALE, Math.min(1, fitAll));
-
+		// Fixed fit-to-width: no zoom, ever. The first build starts scrolled to the
+		// top; later rebuilds (a slider change or resize) keep the scroll offset,
+		// re-clamped to the new content height.
+		this.scale = 1;
 		if (!this.framed) {
-			// First view: 1:1 from the top-left, so cards open at their natural size.
-			this.scale = Math.min(1, Math.max(this.minScale, fitAll >= 1 ? 1 : fitAll));
 			this.pan = { x: 0, y: 0 };
 			this.framed = true;
-		} else {
-			this.scale = this.clamp(this.scale, this.minScale, MAX_SCALE);
 		}
 		this.clampPan();
 		this.applyTransform();
@@ -333,9 +324,10 @@ export class CardScene {
 	}
 
 	/**
-	 * Keep the grid within the canvas (plus a little overscroll margin): when the
-	 * scaled content is larger than the canvas on an axis it may be dragged until an
-	 * edge reaches the opposite side; when it's smaller it's centred.
+	 * Keep the grid within the canvas (plus a little overscroll margin). The grid is
+	 * fit to the width, so the horizontal axis is always centred (no side scroll);
+	 * the taller-than-canvas rows scroll vertically until an edge reaches the
+	 * opposite side.
 	 */
 	private clampPan(): void {
 		this.pan.x = this.clampAxis(this.pan.x, this.grid.contentW * this.scale, this.builtW);
@@ -347,25 +339,12 @@ export class CardScene {
 		return this.clamp(pan, viewport - content - PAN_MARGIN, PAN_MARGIN);
 	}
 
-	/** Zoom about a screen point, keeping the world point under it fixed. */
-	private zoomAt(sx: number, sy: number, factor: number): void {
-		const next = this.clamp(this.scale * factor, this.minScale, MAX_SCALE);
-		if (next === this.scale) return;
-		const worldX = (sx - this.pan.x) / this.scale;
-		const worldY = (sy - this.pan.y) / this.scale;
-		this.scale = next;
-		this.pan.x = sx - worldX * next;
-		this.pan.y = sy - worldY * next;
-		this.clampPan();
-		this.applyTransform();
-	}
-
 	/** Screen point → the index of the card under it, or null if over a gap/empty. */
 	private cardIndexAt(sx: number, sy: number): number | null {
 		const { cols, cardW, cardH } = this.grid;
 		if (cardW === 0) return null;
-		const worldX = (sx - this.pan.x) / this.scale;
-		const worldY = (sy - this.pan.y) / this.scale;
+		const worldX = sx - this.pan.x;
+		const worldY = sy - this.pan.y;
 		const col = Math.floor((worldX - NAV_PAD) / (cardW + NAV_GAP));
 		const row = Math.floor((worldY - NAV_PAD) / (cardH + NAV_GAP));
 		if (col < 0 || col >= cols || row < 0) return null;
@@ -377,7 +356,7 @@ export class CardScene {
 		return index >= 0 && index < this.cards.length ? index : null;
 	}
 
-	private localPoint(event: PointerEvent | WheelEvent): { x: number; y: number } {
+	private localPoint(event: PointerEvent): { x: number; y: number } {
 		const rect = this.app.canvas.getBoundingClientRect();
 		return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 	}
@@ -405,48 +384,41 @@ export class CardScene {
 		canvas.removeEventListener('pointerleave', this.onPointerUp);
 	}
 
+	/** The wheel scrolls the rows vertically (zoom is fixed — the slider is the
+	 * density control). Line-mode deltas are scaled to roughly a row's worth. */
 	private onWheel = (event: WheelEvent): void => {
 		event.preventDefault();
-		const { x, y } = this.localPoint(event);
-		this.zoomAt(x, y, event.deltaY < 0 ? WHEEL_STEP : 1 / WHEEL_STEP);
+		const dy = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+		this.pan.y -= dy;
+		this.clampPan();
+		this.applyTransform();
 	};
 
 	private onPointerDown = (event: PointerEvent): void => {
+		// One pointer drives the scroll; ignore extra fingers (there is no pinch).
+		if (this.dragPointerId !== null) return;
 		const { x, y } = this.localPoint(event);
-		this.pointers.set(event.pointerId, { x, y });
+		this.dragPointerId = event.pointerId;
 		try {
 			this.app.canvas.setPointerCapture(event.pointerId);
 		} catch {
 			// Capture is best-effort; navigation still works without it.
 		}
-		if (this.pointers.size === 1) {
-			this.dragging = true;
-			this.dragMoved = false;
-			this.dragStart = { x, y };
-			this.panStart = { ...this.pan };
-			this.downCardIndex = this.cardIndexAt(x, y);
-			this.app.canvas.style.cursor = 'grabbing';
-		} else if (this.pointers.size === 2) {
-			// A second finger starts a pinch; the drag/tap in progress is abandoned.
-			this.dragging = false;
-			this.dragMoved = true;
-			this.pinchStartDist = this.pointerDistance();
-		}
+		this.dragMoved = false;
+		this.dragStart = { x, y };
+		this.panStart = { ...this.pan };
+		this.downCardIndex = this.cardIndexAt(x, y);
+		this.app.canvas.style.cursor = 'grabbing';
 	};
 
 	private onPointerMove = (event: PointerEvent): void => {
-		if (!this.pointers.has(event.pointerId)) return;
+		if (event.pointerId !== this.dragPointerId) return;
 		const { x, y } = this.localPoint(event);
-		this.pointers.set(event.pointerId, { x, y });
-
-		if (this.pointers.size >= 2) {
-			this.handlePinch();
-			return;
-		}
-		if (!this.dragging) return;
 		const dx = x - this.dragStart.x;
 		const dy = y - this.dragStart.y;
 		if (Math.hypot(dx, dy) > TAP_SLOP) this.dragMoved = true;
+		// Fit-to-width means the horizontal axis is clamped back to centre; the drag
+		// still updates it so a diagonal gesture reads naturally.
 		this.pan.x = this.panStart.x + dx;
 		this.pan.y = this.panStart.y + dy;
 		this.clampPan();
@@ -454,48 +426,18 @@ export class CardScene {
 	};
 
 	private onPointerUp = (event: PointerEvent): void => {
-		if (!this.pointers.has(event.pointerId)) return;
-		this.pointers.delete(event.pointerId);
+		if (event.pointerId !== this.dragPointerId) return;
 		try {
 			this.app.canvas.releasePointerCapture(event.pointerId);
 		} catch {
 			// ignore — capture may already be gone
 		}
-
-		if (this.pointers.size === 0) {
-			// A clean tap (no meaningful movement) on a card selects it.
-			if (this.dragging && !this.dragMoved && this.downCardIndex != null) {
-				this.onCardTap?.(this.downCardIndex);
-			}
-			this.dragging = false;
-			this.downCardIndex = null;
-			this.app.canvas.style.cursor = 'grab';
-		} else if (this.pointers.size === 1) {
-			// Dropped from a pinch back to one finger — resume panning from where the
-			// remaining finger now is, without counting it as a tap.
-			const remaining = this.pointers.values().next().value;
-			if (remaining) {
-				this.dragging = true;
-				this.dragMoved = true;
-				this.dragStart = { ...remaining };
-				this.panStart = { ...this.pan };
-			}
+		// A clean tap (no meaningful movement) on a card selects it.
+		if (!this.dragMoved && this.downCardIndex != null) {
+			this.onCardTap?.(this.downCardIndex);
 		}
+		this.dragPointerId = null;
+		this.downCardIndex = null;
+		this.app.canvas.style.cursor = 'grab';
 	};
-
-	private pointerDistance(): number {
-		const pts = [...this.pointers.values()];
-		if (pts.length < 2) return 0;
-		return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-	}
-
-	private handlePinch(): void {
-		const pts = [...this.pointers.values()];
-		if (pts.length < 2 || this.pinchStartDist === 0) return;
-		const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-		const midX = (pts[0].x + pts[1].x) / 2;
-		const midY = (pts[0].y + pts[1].y) / 2;
-		this.zoomAt(midX, midY, dist / this.pinchStartDist);
-		this.pinchStartDist = dist;
-	}
 }
