@@ -24,6 +24,14 @@ export interface CardSpriteOptions {
 	height: number;
 	/** The host's Pixi app — its ticker drives the looping idle animation. */
 	app: Application;
+	/**
+	 * Horizontally mirror the idle art (and its shadow), so the character faces the
+	 * opposite way. Defaults to `true` — the flipped view is the card's normal look
+	 * everywhere (roster, packs, the player's board cards). Pass `false` for the
+	 * original, unmirrored variant, which the board's rival cards use so the two sides
+	 * face each other.
+	 */
+	flipped?: boolean;
 }
 
 // Offset (as a fraction of card width) of the silhouette behind the art: a touch
@@ -93,6 +101,8 @@ export class CardSprite extends Container {
 	private artSprite: Sprite;
 	private shadowSprite: Sprite;
 	private artArea: { x: number; y: number; w: number; h: number };
+	// Horizontally mirror the art + shadow (default true; see CardSpriteOptions).
+	private flipped: boolean;
 
 	// Resolves once the card's idle animation (or face fallback) has been applied,
 	// so a host scene can wait for the card to actually render before revealing it.
@@ -113,6 +123,7 @@ export class CardSprite extends Container {
 		this.cardWidth = opts.width;
 		this.cardHeight = opts.height;
 		this.app = opts.app;
+		this.flipped = opts.flipped ?? true;
 
 		const radius = Math.max(6, this.cardWidth * 0.05);
 		// Top→bottom: a name header, the art, an ATK/DEF/SPD/HP footer. The coloured art
@@ -330,10 +341,13 @@ export class CardSprite extends Container {
 		if (!frames || frames.length === 0) return;
 		const frame = frames[this.frameIndex % frames.length];
 
-		// Body axis horizontally (stable pivot across frames), feet at the bottom.
+		// Body axis horizontally (stable pivot across frames), feet at the bottom. A
+		// negative x-scale mirrors the frame around that axis, so the character faces the
+		// other way without drifting off its centre.
+		const scaleX = this.flipped ? -this.idleFitScale : this.idleFitScale;
 		this.artSprite.texture = frame.texture;
 		this.artSprite.anchor.set(frame.anchorX, 1);
-		this.artSprite.scale.set(this.idleFitScale);
+		this.artSprite.scale.set(scaleX, this.idleFitScale);
 		this.artSprite.position.set(this.idleCenterX, this.idleFeetY);
 
 		// The silhouette mirrors the art, offset to the bottom-left.
@@ -341,7 +355,7 @@ export class CardSprite extends Container {
 		const dy = this.cardWidth * SHADOW_OFFSET_Y_RATIO;
 		this.shadowSprite.texture = frame.texture;
 		this.shadowSprite.anchor.set(frame.anchorX, 1);
-		this.shadowSprite.scale.set(this.idleFitScale);
+		this.shadowSprite.scale.set(scaleX, this.idleFitScale);
 		this.shadowSprite.position.set(this.idleCenterX + dx, this.idleFeetY + dy);
 	}
 
@@ -368,21 +382,20 @@ export class CardSprite extends Container {
 		const h = tex.height * scale;
 		const x = this.artArea.x + (this.artArea.w - w) / 2;
 		const y = this.artArea.y + (this.artArea.h - h) / 2;
-		this.artSprite.anchor.set(0, 0);
-		this.artSprite.scale.set(1);
-		this.artSprite.width = w;
-		this.artSprite.height = h;
-		this.artSprite.position.set(x, y);
+		// Anchor on the horizontal centre (top edge) so a negative x-scale mirrors the
+		// face in place, matching the flipped idle animation.
+		const scaleX = this.flipped ? -scale : scale;
+		this.artSprite.anchor.set(0.5, 0);
+		this.artSprite.scale.set(scaleX, scale);
+		this.artSprite.position.set(x + w / 2, y);
 
 		// The silhouette mirrors the face, offset to the bottom-left.
 		const dx = this.cardWidth * SHADOW_OFFSET_X_RATIO;
 		const dy = this.cardWidth * SHADOW_OFFSET_Y_RATIO;
 		this.shadowSprite.texture = tex;
-		this.shadowSprite.anchor.set(0, 0);
-		this.shadowSprite.scale.set(1);
-		this.shadowSprite.width = w;
-		this.shadowSprite.height = h;
-		this.shadowSprite.position.set(x + dx, y + dy);
+		this.shadowSprite.anchor.set(0.5, 0);
+		this.shadowSprite.scale.set(scaleX, scale);
+		this.shadowSprite.position.set(x + w / 2 + dx, y + dy);
 	}
 
 	/**

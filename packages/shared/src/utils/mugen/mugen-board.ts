@@ -520,11 +520,11 @@ export class MugenBoard {
 		const bounds = this.app.stage.getBounds();
 		const centerX = (bounds.minX + bounds.maxX) / 2;
 
-		const placeRow = (cards: CardModel[], topY: number): void => {
+		const placeRow = (cards: CardModel[], topY: number, flipped: boolean): void => {
 			const rowW = cards.length * cardW + (cards.length - 1) * gap;
 			const startX = centerX - rowW / 2;
 			cards.forEach((card, i) => {
-				const sprite = new CardSprite({ card, width: cardW, height: cardH, app: this.app! });
+				const sprite = new CardSprite({ card, width: cardW, height: cardH, app: this.app!, flipped });
 				sprite.position.set(startX + i * (cardW + gap), topY);
 				// The cards sit in empty space, but keep them above everything regardless.
 				sprite.zIndex = 100000;
@@ -533,8 +533,10 @@ export class MugenBoard {
 			});
 		};
 
-		if (rival.length > 0) placeRow(rival, bounds.minY - bandGap - cardH);
-		if (player.length > 0) placeRow(player, bounds.maxY + bandGap);
+		// The rival row (top) keeps the original, unmirrored art; the player row (bottom)
+		// uses the flipped default, so the two sides' cards face each other.
+		if (rival.length > 0) placeRow(rival, bounds.minY - bandGap - cardH, false);
+		if (player.length > 0) placeRow(player, bounds.maxY + bandGap, true);
 	}
 
 	/**
