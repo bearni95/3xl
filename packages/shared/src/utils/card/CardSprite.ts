@@ -3,11 +3,11 @@
  *
  * A single character trading card, drawn as a Pixi `Container` and reusable in
  * any canvas (the pack opener's reveal, a collection grid, …). It mirrors
- * RosterCard: the character's colour is the portrait backdrop, a dark upper block
- * at the top carries the character name and, on a second row beneath it, the
- * rarity badge (left) opposite the show name (right); the character's looping idle
- * animation plays in the middle (contained within the art area); a meta strip
- * below it carries a free-text location label, and a dark footer carries its
+ * RosterCard: the character's colour is the portrait backdrop, a dark header strip
+ * at the top carries the character name, the character's looping idle animation
+ * plays in the square colour area below it, with the rarity badge (left) opposite
+ * the show name (right) overlaid transparently across the top of that square; a meta
+ * strip below carries a free-text location label, and a dark footer carries its
  * ATK/DEF/SPD/HP stats. The idle frames (and the fallback face) are lazy-loaded via
  * the shared cache; the host scene drives all positioning and tweens.
  */
@@ -100,23 +100,24 @@ export class CardSprite extends Container {
 		this.app = opts.app;
 
 		const radius = Math.max(6, this.cardWidth * 0.05);
-		// Top→bottom: a name header, a rarity/show row, the art, a location meta strip,
-		// an ATK/DEF/SPD/HP footer. The coloured art area is a full-width SQUARE (side =
-		// card width); the four text rows share the vertical space left over, split by
-		// the same ratios they had before (name .14, show .10, location .11, stats .15 —
-		// their sum, .50, normalises within each block).
+		// Top→bottom: a name header, the art, a location meta strip, an ATK/DEF/SPD/HP
+		// footer. The coloured art area is a full-width SQUARE (side = card width); the
+		// three text rows share the vertical space left over, split by their prior ratios
+		// (name .14, location .11, stats .15 of card height; sum .40). The rarity/show
+		// row no longer has a band of its own — it is overlaid, transparently, on the top
+		// of the colour square (see makeShowRow).
 		const artSide = this.cardWidth;
-		const chrome = this.cardHeight - artSide; // vertical space for the four text rows
-		const topBlockH = Math.round(chrome * (0.24 / 0.5)); // name + show rows
-		const headerH = Math.round(topBlockH * (0.14 / 0.24));
-		const showRowH = topBlockH - headerH;
-		const artY = topBlockH;
+		const chrome = this.cardHeight - artSide; // vertical space for the three text rows
+		const headerH = Math.round(chrome * (0.14 / 0.4));
+		const artY = headerH;
 		const metaY = artY + artSide; // the colour square sits exactly artY..metaY
 		const bottomBlockH = this.cardHeight - metaY; // location + stats rows
 		const metaH = Math.round(bottomBlockH * (0.11 / 0.26));
 		const footerH = bottomBlockH - metaH;
 		const footerY = metaY + metaH;
 		this.artArea = { x: 0, y: artY, w: artSide, h: artSide };
+		// The rarity/show row is drawn (with no background) over the top of the square.
+		const showRowH = Math.round(this.cardHeight * 0.1);
 
 		// Colored portrait backdrop (the character's colour), with a black
 		// border to match the roster card framing.
@@ -127,19 +128,12 @@ export class CardSprite extends Container {
 		backdrop.stroke({ width: 2, color: 0x000000, alpha: 0.9 });
 		this.addChild(backdrop);
 
-		// Dark upper block: the name header and the rarity/show row directly beneath
-		// it share one dark fill so they read as one upper block with two rows (the
-		// mirror of the location + stats block at the bottom).
+		// Dark header strip at the top, carrying the character name. The rarity/show
+		// row is not part of it — it floats transparently over the colour square below.
 		const header = new Graphics();
-		header.rect(0, 0, this.cardWidth, artY);
+		header.rect(0, 0, this.cardWidth, headerH);
 		header.fill({ color: 0x111827, alpha: 0.92 });
 		this.addChild(header);
-		// A faint divider between the name row and the rarity/show row.
-		const topDivider = new Graphics();
-		topDivider.moveTo(this.cardWidth * 0.08, headerH);
-		topDivider.lineTo(this.cardWidth * 0.92, headerH);
-		topDivider.stroke({ width: 1, color: 0xffffff, alpha: 0.12 });
-		this.addChild(topDivider);
 
 		// Dark meta strip below the art, carrying the location label, then the
 		// ATK/DEF/SPD/HP footer directly beneath it (both share the same dark fill so
@@ -172,7 +166,7 @@ export class CardSprite extends Container {
 		this.addChild(this.artSprite);
 
 		this.addChild(this.makeHeader(headerH));
-		this.addChild(this.makeShowRow(headerH, showRowH));
+		this.addChild(this.makeShowRow(artY, showRowH));
 		this.addChild(this.makeMeta(metaY, metaH));
 		this.addChild(this.makeStats(footerY, footerH));
 
@@ -364,13 +358,14 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The row directly under the name: the `[N]` rarity badge (in its WoW quality
-	 * colour) flush left, and the show name flush right, spaced apart across the row.
-	 * The show name is truncated to whatever width the rarity badge leaves it.
+	 * The row overlaid (with no background) on the top of the colour square: the `[N]`
+	 * rarity badge (in its WoW quality colour) flush left, and the show name flush
+	 * right, spaced apart across the row. The show name is truncated to whatever width
+	 * the rarity badge leaves it. `topY` is the top edge of the colour square.
 	 */
-	private makeShowRow(headerH: number, showRowH: number): Container {
+	private makeShowRow(topY: number, showRowH: number): Container {
 		const group = new Container();
-		const centerY = headerH + showRowH / 2;
+		const centerY = topY + showRowH / 2;
 		const leftX = this.cardWidth * 0.08;
 		const rightX = this.cardWidth * 0.92;
 
