@@ -28,7 +28,7 @@ import {
 	Text,
 	Texture
 } from 'pixi.js';
-import { textureCache } from '$components/core/card/texture-cache';
+import { textureCache } from '$utils/card/texture-cache';
 import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 import { spawnYearLabel } from '$utils/spawn/year';
 
@@ -338,13 +338,13 @@ export class PackSprite extends Container {
 			root.addChild(sprite);
 		}
 
-		// Header + footer bands, outside the image — no text on the footer. Each is
-		// painted the cover's dominant colour on its side (top row → header, bottom row
-		// → footer) so the frame's edges pick up the poster. Both outer edges are the
-		// serrated polyline: the teeth are the band colour and the notches between them
-		// are transparent (nothing is drawn there), so top and bottom read as real
-		// serrated silhouettes rather than triangles painted over a rectangle. The
-		// footer edge is the top edge rotated 180°, so its teeth point down.
+		// Header + footer bands, framing the image. Each is painted the cover's dominant
+		// colour on its side (top row → header, bottom row → footer) so the frame's edges
+		// pick up the poster. Both outer edges are the serrated polyline: the teeth are
+		// the band colour and the notches between them are transparent (nothing is drawn
+		// there), so top and bottom read as real serrated silhouettes rather than
+		// triangles painted over a rectangle. The footer edge is the top edge rotated
+		// 180°, so its teeth point down.
 		const header = new Graphics();
 		header.poly([...topEdge, w, headerH, 0, headerH]);
 		header.fill({ color: this.topColor, alpha: 1 });
@@ -354,6 +354,29 @@ export class PackSprite extends Container {
 		footer.poly([0, footerY, w, footerY, ...this.bottomEdge(topEdge)]);
 		footer.fill({ color: this.bottomColor, alpha: 1 });
 		root.addChild(footer);
+
+		// The pack contents caption, centred in the solid part of the footer band (above
+		// the bottom teeth), formatted exactly like the location text in the header band.
+		{
+			const bandTop = footerY;
+			const bandH = footerH - triHeight;
+			const contents = new Text({
+				text: 'x5 Cartes Localitzades',
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize: Math.max(10, Math.round(Math.min(w * 0.08, bandH * 0.6))),
+					fontWeight: '700',
+					fill: 0xffffff,
+					stroke: { color: 0x000000, width: Math.max(2, Math.round(w * 0.02)) },
+					align: 'center',
+					wordWrap: true,
+					wordWrapWidth: w * 0.92
+				}
+			});
+			contents.anchor.set(0.5, 0.5);
+			contents.position.set(w / 2, bandTop + bandH / 2);
+			root.addChild(contents);
+		}
 
 		// The place the pack belongs to, contained within the top coloured band, below
 		// the serrated teeth, in white with a black outline so it stays legible over the
