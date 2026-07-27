@@ -758,7 +758,15 @@
 						</button>
 					</div>
 					<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
-						<CardCanvas cards={municipalityTeamCards} columns={TEAM_SIZE} layout="grid" pannable />
+						<!-- The OG team is a rival team, so its cards use the board's rival variant
+							(unmirrored art), matching the rival's hand cards on the game canvas. -->
+						<CardCanvas
+							cards={municipalityTeamCards}
+							columns={TEAM_SIZE}
+							layout="grid"
+							pannable
+							flipped={false}
+						/>
 					</div>
 				{/if}
 			</div>

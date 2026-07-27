@@ -74,6 +74,12 @@ export interface CardSceneOptions {
 	layout?: CardLayout;
 	/** Enable map-style pan/zoom navigation (only meaningful in `'grid'`). */
 	pannable?: boolean;
+	/**
+	 * Horizontally mirror each card's idle art (default `true` — the normal look
+	 * everywhere the player's own cards show). Pass `false` for the board's rival
+	 * variant, the original unmirrored art so the character faces the other way.
+	 */
+	flipped?: boolean;
 }
 
 export class CardScene {
@@ -84,6 +90,7 @@ export class CardScene {
 	private onCardTap?: (index: number) => void;
 	private layout: CardLayout;
 	private pannable: boolean;
+	private flipped: boolean;
 
 	private cardLayer: Container;
 	private cardSprites: CardSprite[] = [];
@@ -140,6 +147,7 @@ export class CardScene {
 		this.onCardTap = options.onCardTap;
 		this.layout = options.layout ?? 'fit';
 		this.pannable = Boolean(options.pannable) && this.layout === 'grid';
+		this.flipped = options.flipped ?? true;
 		this.app = new Application();
 		this.cardLayer = new Container();
 		void this.init();
@@ -359,7 +367,8 @@ export class CardScene {
 			card: this.cards[index],
 			width: cardW,
 			height: cardH,
-			app: this.app
+			app: this.app,
+			flipped: this.flipped
 		});
 		// Preserve any active selection dimming across a rebuild (e.g. a filter change).
 		sprite.alpha = this.selectionAlpha(index);

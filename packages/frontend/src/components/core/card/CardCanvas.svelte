@@ -15,6 +15,9 @@
 	export let layout: CardLayout = 'fit';
 	// Enable map-style pan/zoom navigation (only meaningful in the 'grid' layout).
 	export let pannable: boolean = false;
+	// Horizontally mirror each card's idle art. Defaults to true (the player's normal
+	// look); set false for the board's rival variant (original, unmirrored art).
+	export let flipped: boolean = true;
 	// Optional per-card tap handler, called with the tapped card's index into the
 	// rendered array. When set, cards become interactive (the roster toggles team
 	// membership on tap); omit for a display-only canvas.
@@ -43,7 +46,7 @@
 
 	onMount(() => {
 		if (!host) return;
-		scene = new CardScene(host, { cards: models, columns, layout, pannable, onCardTap });
+		scene = new CardScene(host, { cards: models, columns, layout, pannable, flipped, onCardTap });
 	});
 
 	onDestroy(() => {
