@@ -491,9 +491,9 @@ export class CardSprite extends Container {
 		const valueY = footerY + footerH * 0.75;
 		const captionSize = Math.max(7, Math.round(this.cardWidth * 0.05));
 		const valueSize = Math.max(11, Math.round(this.cardWidth * 0.09));
-		// The labels row (captions + the d10 icon) sits at 90% opacity; the values row is
+		// The labels row (captions + the d10 icon) sits at 95% opacity; the values row is
 		// fully opaque.
-		const captionAlpha = 0.9;
+		const captionAlpha = 0.95;
 		const valueAlpha = 1;
 
 		// Cell centres: four evenly-spaced columns (each column's midpoint), so the
@@ -534,7 +534,7 @@ export class CardSprite extends Container {
 						fontFamily: 'sans-serif',
 						fontSize: captionSize,
 						fontWeight: '700',
-						fill: 0x9ca3af
+						fill: 0xffffff
 					}
 				});
 				caption.anchor.set(0.5, 0.5);
