@@ -344,13 +344,15 @@
 		}
 	}
 
-	// A star badge's DOM: a gold ★ glyph, centred on its point, with a drop shadow
-	// so it stays legible over any region fill beneath it.
-	function starElement(): HTMLElement {
-		const star = document.createElement('div');
-		star.textContent = '★';
+	// A star badge's DOM: the game-icons.net round-star SVG (served from @3xl/assets),
+	// centred on its point with a drop shadow so it stays legible over any region
+	// fill beneath it.
+	function starElement(label?: string): HTMLElement {
+		const star = document.createElement('img');
+		star.src = '/assets/icons/delapouite/round-star.svg';
+		star.alt = label ?? '';
 		star.className =
-			'-translate-x-1/2 -translate-y-1/2 text-2xl leading-none text-warning drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]';
+			'block h-6 w-6 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]';
 		return star;
 	}
 
@@ -367,7 +369,7 @@
 		const bounds = mapInstance.getBounds().pad(0.25);
 		for (const star of stars) {
 			if (!bounds.contains(star.position)) continue;
-			const icon = Leaf.divIcon({ html: starElement(), className: '', iconSize: [0, 0] });
+			const icon = Leaf.divIcon({ html: starElement(star.label), className: '', iconSize: [0, 0] });
 			const badge = Leaf.marker(star.position, { icon, riseOnHover: true });
 			if (star.label) badge.bindTooltip(star.label, { direction: 'top' });
 			badge.addTo(starLayer!);
