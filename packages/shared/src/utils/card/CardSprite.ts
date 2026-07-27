@@ -209,6 +209,19 @@ export class CardSprite extends Container {
 		border.stroke({ width: borderWidth, color: borderColor, alpha: 1 });
 		this.addChild(border);
 
+		// A black overlay stroked over the frame only (same geometry and rounded corners),
+		// at 30% opacity, to darken the rarity colour a touch.
+		const borderOverlay = new Graphics();
+		borderOverlay.roundRect(
+			-borderWidth / 2,
+			-borderWidth / 2,
+			this.cardWidth + borderWidth,
+			this.cardHeight + borderWidth,
+			radius + borderWidth / 2
+		);
+		borderOverlay.stroke({ width: borderWidth, color: 0x000000, alpha: 0.3 });
+		this.addChild(borderOverlay);
+
 		this.artReady = this.loadArt();
 	}
 
