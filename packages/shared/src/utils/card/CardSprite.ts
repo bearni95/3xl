@@ -427,7 +427,8 @@ export class CardSprite extends Container {
 	private makeShowRow(topY: number, showRowH: number): Container {
 		const group = new Container();
 		const centerY = topY + showRowH / 2;
-		const leftX = this.cardWidth * 0.08;
+		// Half the usual 0.08 inset, so the show name sits closer to the left edge.
+		const leftX = this.cardWidth * 0.04;
 		const rightX = this.cardWidth * 0.92;
 
 		// Show name, flush left, truncated to the row width.
