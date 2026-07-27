@@ -294,11 +294,14 @@
 		return tierRank[node?.children[0]?.type ?? 'Municipality'];
 	}
 
-	// Hide the stroke of every line overlay finer than the imaged tier, so only the
-	// tier the map is focused on (and everything coarser) keeps its borders — the
-	// finer divisions inside would just clutter the pinned regions. Keyed off the
-	// open region, so the borders coarsen as the map zooms out (or follow a click).
-	$: hiddenRank = imagedRank(openRegion, regionNodes);
+	// Hide the stroke of every line overlay finer than the tier currently imaged, so
+	// only the tier on screen (and everything coarser) keeps its borders — the finer
+	// divisions inside would just clutter the pinned regions. Keyed off the ZOOM focus
+	// (`effectiveSelected`), never the frozen click, so the borders stay in lockstep
+	// with the pins: both advance a tier together as the map zooms in, and coarsen
+	// together as it zooms out — a clicked region no longer pins its border tier while
+	// the zoom marches on past it.
+	$: hiddenRank = imagedRank(effectiveSelected, regionNodes);
 	$: hiddenLineUrls = new Set(
 		lineTiers.filter(([, rank]) => rank > hiddenRank).map(([url]) => url)
 	);
