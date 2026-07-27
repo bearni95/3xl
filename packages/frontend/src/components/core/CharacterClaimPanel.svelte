@@ -3,7 +3,7 @@
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
-	import { spawnService } from '$services/spawn.service';
+	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { errorMessage } from '$utils/error/error-message';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import { AuthStatus } from '$types/profile.type';
@@ -54,6 +54,11 @@
 	// revealed card's location strip.
 	let lastLocationName = '';
 
+	// The signed-in player's daily booster allowance, loaded from the server (which
+	// also enforces it). Drives the "N packs left today" hint and blocks opening
+	// once spent. Null until loaded / when signed out.
+	let boosters: BoostersStatus | null = null;
+
 	// Pack-opener modal state. Selecting a show opens the booster-pack canvas (the
 	// show's poster is the pack cover); the spawn is rolled against Supabase only
 	// when the player slices the pack open (`runClaim`). `openSession` bumps on
@@ -101,7 +106,7 @@
 		try {
 			const [showList, rarities] = await Promise.all([
 				spawnService.loadShows(),
-				// Warm the rarity cache so claimBooster can weight its rolls by rarity.
+				// Rarity tiers label the revealed cards (the roll itself is server-side).
 				spawnService.loadRarities()
 			]);
 			shows = showList;
@@ -110,6 +115,19 @@
 			showsError = errorMessage(error);
 		} finally {
 			loadingShows = false;
+		}
+		void refreshBoostersStatus();
+	}
+
+	// The player's daily booster allowance (level = cap, and how many remain today),
+	// enforced server-side and mirrored here so the UI can show it and block opening
+	// once it's spent. Null until loaded / when signed out.
+	async function refreshBoostersStatus() {
+		try {
+			boosters = await spawnService.boostersStatus();
+		} catch {
+			// Non-fatal — the server still enforces the limit on the actual claim.
+			boosters = null;
 		}
 	}
 
@@ -120,6 +138,11 @@
 	// previous open is still rolling.
 	function openBooster(show: ClaimableShow, claimRegion: GeoRegion | null) {
 		if (!currentUserId || !claimRegion?.id || claimingId !== null) return;
+		// Client-side echo of the server rule: no allowance left, don't open a pack.
+		if (boosters && boosters.remaining <= 0) {
+			claimError = `You've opened all ${boosters.level} of today's booster packs. More unlock at midnight.`;
+			return;
+		}
 		openerShow = show;
 		// Pick the pack cover from this show's enabled posters by hashing the place +
 		// year, so each location/year combo gets its own (stable) cover. The year is
@@ -145,16 +168,16 @@
 		claimingId = show.id;
 		claimError = '';
 		try {
-			const spawns = await spawnService.claimBooster(
-				currentUserId,
-				show.characterIds,
-				show.id,
-				locId
-			);
+			// The roll and every limit (daily allowance, festa-major-today) are enforced
+			// server-side by the claim_booster RPC; a rejected claim throws here.
+			const spawns = await spawnService.claimBooster(show.id, locId);
 			// Award experience for the cards pulled and mirror the new total (and the
 			// level it implies) into the profile card. Non-blocking — a failure here
 			// must not sink a successful claim.
 			void authService.addExp(spawns.length * EXP_PER_SPAWN).catch(() => undefined);
+			// Refresh the daily allowance: this pack counts against it, and the exp
+			// just awarded may have raised the level (and so the cap).
+			void refreshBoostersStatus();
 
 			// Capture the place and resolve each portrait so the revealed cards carry
 			// the character's face and the town it was claimed in.
@@ -255,6 +278,18 @@
 				Pick a town celebrating its festa major today, below, to open its booster — the
 				spawn is saved to your account, tagged with that place.
 			</p>
+
+			{#if boosters}
+				<div
+					class="flex items-center justify-between gap-2 rounded-box bg-base-200 px-3 py-2 text-sm"
+					title="Your daily booster allowance equals your level (up to 20). It resets at midnight."
+				>
+					<span class="opacity-70">Booster packs today</span>
+					<span class="font-semibold tabular-nums" class:text-warning={boosters.remaining === 0}>
+						{boosters.remaining} / {boosters.level} left
+					</span>
+				</div>
+			{/if}
 
 			{#if showsError}
 				<div class="alert alert-error text-sm"><span>{showsError}</span></div>

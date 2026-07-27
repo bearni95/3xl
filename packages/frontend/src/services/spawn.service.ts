@@ -2,9 +2,6 @@ import { writable, type Readable } from 'svelte/store';
 import { characters } from '@3xl/data';
 import { getSupabaseClient } from '$services/supabase.client';
 import { spawnAdapter } from '$adapters/classes/spawn.adapter';
-import { randomSpawnColor } from '$utils/spawn/color';
-import { randomSpawnStat } from '$utils/spawn/stat';
-import { weightedRarityIndex } from '$utils/spawn/rarity';
 import { DEFAULT_RARITY } from '$types/character-template.type';
 import type {
 	CharacterSpawn,
@@ -12,8 +9,22 @@ import type {
 	ClaimableShow
 } from '$types/character-spawn.type';
 
-/** How many cards a single booster pack contains. */
+/** How many cards a single booster pack contains. Mirrors `claim_booster`'s roll count. */
 export const BOOSTER_SIZE = 5;
+
+/**
+ * The signed-in player's daily booster allowance, as reported by the
+ * `boosters_status` RPC. `remaining` is what's left to open today (the day
+ * resetting at midnight Europe/Madrid); `level` is the daily cap.
+ */
+export interface BoostersStatus {
+	/** Player level — the number of packs allowed per day (1..20). */
+	level: number;
+	/** Packs already opened since Catalan midnight. */
+	used: number;
+	/** Packs still openable today (`level - used`, never negative). */
+	remaining: number;
+}
 
 /**
  * Player-facing spawn state, backed by Supabase. Talks to Postgres directly from
@@ -30,14 +41,6 @@ class SpawnService {
 
 	/** Ids of characters that exist in the local registry, so spawns can render. */
 	private renderableIds = new Set(characters.map((character) => character.id));
-
-	/**
-	 * Per-character rarity tier, loaded from Supabase `character_templates` and
-	 * cached so {@link claimBooster} can weight its roll (higher tiers are rarer).
-	 * Empty until {@link loadRarities} runs; a missing id reads as
-	 * {@link DEFAULT_RARITY}, which makes the roll fall back to uniform.
-	 */
-	private rarityByCharacter = new Map<string, number>();
 
 	/** The signed-in player's spawns, newest first. */
 	get spawns(): Readable<CharacterSpawn[]> {
@@ -79,10 +82,10 @@ class SpawnService {
 	}
 
 	/**
-	 * Load every character's rarity tier from `character_templates` and cache it,
-	 * so {@link claimBooster} can weight its roll by rarity. Characters absent from
-	 * the table (or with a null tier) read as {@link DEFAULT_RARITY}. Returns the
-	 * cache. Safe to call repeatedly — it just refreshes the map.
+	 * Load every character's rarity tier from `character_templates`, so the claim
+	 * result and roster can label a spawn with its rarity. Characters absent from
+	 * the table (or with a null tier) read as {@link DEFAULT_RARITY}. The roll
+	 * itself no longer consults this — `claim_booster` weights by rarity in the DB.
 	 */
 	async loadRarities(): Promise<Map<string, number>> {
 		const supabase = getSupabaseClient();
@@ -94,7 +97,6 @@ class SpawnService {
 			const rarity = Number(row.rarity);
 			byCharacter.set(row.id as string, Number.isFinite(rarity) ? rarity : DEFAULT_RARITY);
 		}
-		this.rarityByCharacter = byCharacter;
 		return byCharacter;
 	}
 
@@ -159,50 +161,53 @@ class SpawnService {
 	}
 
 	/**
-	 * Open a booster pack: roll {@link BOOSTER_SIZE} characters from `characterIds`
-	 * and persist each as a spawn owned by `userId`, tagged with the show it came
-	 * from (`showId`, or `null` when rolled across all shows) and the municipality
-	 * it was claimed in (`locationId`, a geojson feature id). A location is required
-	 * — a booster cannot be claimed without one. Every card is drawn independently
-	 * with the same criteria: weighted by rarity (each higher tier is 2× rarer than
-	 * the one below — see {@link loadRarities} and `weightedRarityIndex`; a uniform
-	 * roll if rarities haven't been loaded), plus its own weighted colour and
-	 * gameplay stat (1..9). Duplicates are possible, exactly like a real booster.
-	 * All new spawns are prepended to the store and returned in pull order.
+	 * Open a booster pack for `locationId` (a geojson municipality feature id),
+	 * rolling from `showId`'s roster (or every show when `null`). The roll and all
+	 * limits are enforced server-side by the `claim_booster` security-definer RPC —
+	 * the frontend can no longer insert spawns directly:
+	 *
+	 *   - the town must be celebrating a festa major *today* (Europe/Madrid);
+	 *   - the player may open at most (their level, capped at 20) packs per day,
+	 *     the day resetting at midnight Europe/Madrid.
+	 *
+	 * The RPC rolls {@link BOOSTER_SIZE} cards — each weighted by rarity (every
+	 * higher tier 2× rarer), plus its own weighted colour and stat (1..9), exactly
+	 * as before but in the DB — and returns the inserted spawns. On a rejected
+	 * claim it throws with a message describing why (limit reached, wrong day, …).
+	 * The new spawns are prepended to the store and returned in pull order.
 	 */
-	async claimBooster(
-		userId: string,
-		characterIds: string[],
-		showId: number | null,
-		locationId: string,
-		size: number = BOOSTER_SIZE
-	): Promise<CharacterSpawn[]> {
-		if (characterIds.length === 0) {
-			throw new Error('There are no claimable characters to roll from.');
-		}
+	async claimBooster(showId: number | null, locationId: string): Promise<CharacterSpawn[]> {
 		if (!locationId) {
 			throw new Error('Claim your location before spawning a character.');
 		}
-		const rarities = characterIds.map((id) => this.rarityByCharacter.get(id) ?? DEFAULT_RARITY);
-		const rows = Array.from({ length: size }, () => ({
-			user_id: userId,
-			character_id: characterIds[weightedRarityIndex(rarities)],
-			show_id: showId,
-			location_id: locationId,
-			color: randomSpawnColor(),
-			stat: randomSpawnStat()
-		}));
-
 		const supabase = getSupabaseClient();
-		const { data, error } = await supabase
-			.from('character_spawns')
-			.insert(rows)
-			.select('id, user_id, character_id, show_id, location_id, color, stat, created_at');
+		const { data, error } = await supabase.rpc('claim_booster', {
+			p_show_id: showId,
+			p_location_id: locationId
+		});
 		if (error) throw error;
 
 		const spawns = (data as CharacterSpawnRow[]).map((row) => spawnAdapter.fromRow(row));
 		this.spawnsStore.update((current) => [...spawns, ...current]);
 		return spawns;
+	}
+
+	/**
+	 * The signed-in player's daily booster allowance from the `boosters_status`
+	 * RPC: their level (the daily cap), packs opened since Catalan midnight, and
+	 * how many remain. Returns `null` when signed out (the RPC yields no row).
+	 */
+	async boostersStatus(): Promise<BoostersStatus | null> {
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase.rpc('boosters_status');
+		if (error) throw error;
+		const row = Array.isArray(data) ? data[0] : data;
+		if (!row) return null;
+		return {
+			level: Number(row.level),
+			used: Number(row.used),
+			remaining: Number(row.remaining)
+		};
 	}
 }
 

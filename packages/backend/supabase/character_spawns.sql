@@ -57,9 +57,16 @@ from (
 ) pick
 where cs.id = pick.id;
 
--- Row-level security: a player may only read, create, and delete their own
--- spawns. `auth.uid()` resolves from the caller's JWT (the browser anon client
--- sends the signed-in user's token).
+-- Row-level security: a player may read and delete their own spawns. `auth.uid()`
+-- resolves from the caller's JWT (the browser anon client sends the signed-in
+-- user's token).
+--
+-- There is deliberately NO insert policy: spawns are created only by the
+-- `claim_booster` security-definer RPC (see booster_claims.sql), which enforces
+-- the daily limit and the festa-major-today rule server-side. A client holding
+-- the anon key therefore cannot insert arbitrary spawns — only earn them through
+-- a valid claim. (Earlier revisions had a `character_spawns_insert_own` policy;
+-- it is dropped there.)
 alter table public.character_spawns enable row level security;
 
 drop policy if exists character_spawns_select_own on public.character_spawns;
@@ -67,8 +74,6 @@ create policy character_spawns_select_own on public.character_spawns
 	for select using (auth.uid() = user_id);
 
 drop policy if exists character_spawns_insert_own on public.character_spawns;
-create policy character_spawns_insert_own on public.character_spawns
-	for insert with check (auth.uid() = user_id);
 
 drop policy if exists character_spawns_delete_own on public.character_spawns;
 create policy character_spawns_delete_own on public.character_spawns

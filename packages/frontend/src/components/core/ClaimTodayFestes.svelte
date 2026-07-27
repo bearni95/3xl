@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
 	import ShowChip from '$components/core/ShowChip.svelte';
-	import { festesService } from '$services/festes.service';
+	import { catalanTodayIso, festesService } from '$services/festes.service';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import type { FestaLocationRow } from '$types/festivity.type';
 	import type { MunicipalityShowsCollection } from '$types/show.type';
@@ -21,8 +21,9 @@
 	// Held until the fetch settles so we don't flash an empty state first.
 	let ready = false;
 
-	// Today's date key, in the browser's local time — used only for the header.
-	const today = todayIso();
+	// Today's date key, in Catalan (Europe/Madrid) time — matching the festes the
+	// service fetches and the day boundary the claim RPC enforces. Header only.
+	const today = catalanTodayIso();
 
 	// Long-form Catalan date for the section header, e.g. "27 de juliol de 2026".
 	const monthNames = [
@@ -63,13 +64,6 @@
 		festa,
 		show: showByMunicipality.get(festa.id)
 	}));
-
-	/** Today as a `YYYY-MM-DD` string in the browser's local time. */
-	function todayIso(): string {
-		const now = new Date();
-		const pad = (value: number) => String(value).padStart(2, '0');
-		return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-	}
 
 	function formatDate(iso: string): string {
 		const [year, month, day] = iso.split('-').map(Number);

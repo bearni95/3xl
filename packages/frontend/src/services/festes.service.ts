@@ -20,11 +20,14 @@ interface TodayFestivityRow {
 		| null;
 }
 
-/** Today as a `YYYY-MM-DD` string in the browser's local time. */
-function todayIso(): string {
-	const now = new Date();
-	const pad = (value: number) => String(value).padStart(2, '0');
-	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+/**
+ * Today as a `YYYY-MM-DD` string in Catalan (Europe/Madrid) time — the same day
+ * boundary the `claim_booster` RPC enforces against, so the list a player sees
+ * matches the dates the server will accept regardless of the device's timezone.
+ * `en-CA` formats a Gregorian date as `YYYY-MM-DD`.
+ */
+export function catalanTodayIso(): string {
+	return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
 }
 
 class FestesService {
@@ -41,7 +44,7 @@ class FestesService {
 		const { data, error } = await supabase
 			.from('festivities')
 			.select('festa_locations!inner(id, name, comarca, prov, territory)')
-			.eq('date', todayIso());
+			.eq('date', catalanTodayIso());
 		if (error) throw error;
 
 		// Flatten the join (one location per festivity row) and de-duplicate by id

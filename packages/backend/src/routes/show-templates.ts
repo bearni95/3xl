@@ -41,8 +41,14 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // tables it's RLS-protected (each player only sees/creates their own spawns), as
 // the frontend writes it directly with the anon key. `player_profiles` (the
 // per-player experience total behind the profile card's level, mutated only via
-// the security-definer `add_player_exp` RPC) is provisioned here too. All DDL is
-// idempotent.
+// the security-definer `add_player_exp` RPC) is provisioned here too. Finally,
+// `booster_claims` (the per-pack rate-limit ledger) plus the `claim_booster`
+// security-definer RPC — the only path that inserts spawns now — enforce the
+// daily booster limit (= player level, capped at 20, resetting at midnight
+// Europe/Madrid) and the "only towns celebrating a festa major today" rule
+// server-side; the client insert policy on `character_spawns` is dropped so the
+// rules cannot be bypassed. It reads `festivities` (provisioned lazily by
+// ./festivities). All DDL is idempotent.
 let ensured: Promise<void> | null = null;
 function ensureTables(): Promise<void> {
 	if (!ensured) {
@@ -148,7 +154,192 @@ function ensureTables(): Promise<void> {
 						return new_exp;
 				end;
 				$add_player_exp$;
-				grant execute on function add_player_exp(bigint) to authenticated`
+				grant execute on function add_player_exp(bigint) to authenticated;
+					-- Booster rate-limit ledger: one row per pack a player opens, written
+					-- only by the claim_booster RPC below. Lets the daily-limit check count
+					-- opened packs directly instead of regrouping character_spawns. RLS lets
+					-- a player read only their own claims.
+					create table if not exists booster_claims (
+							id uuid primary key default gen_random_uuid(),
+							user_id uuid not null references auth.users (id) on delete cascade,
+							show_id bigint references show_templates (id) on delete set null,
+							location_id text not null,
+							claimed_at timestamptz not null default now()
+						);
+					create index if not exists booster_claims_user_day_idx
+						on booster_claims (user_id, claimed_at);
+					alter table booster_claims enable row level security;
+					drop policy if exists booster_claims_select_own on booster_claims;
+					create policy booster_claims_select_own on booster_claims
+							for select using (auth.uid() = user_id);
+					-- Enforcement: players may no longer insert spawns directly. Opening a
+					-- pack now goes exclusively through claim_booster (security definer),
+					-- which applies the festa-major-today and daily-limit rules server-side.
+					-- Reading/deleting one's own spawns stays client-side (policies kept).
+					drop policy if exists character_spawns_insert_own on character_spawns;
+					-- Player level from an accumulated experience total, using the same
+					-- cumulative D&D 5e thresholds as @3xl/shared utils/progression/level.ts
+					-- (levelForExp); level 20 is the cap. Keep these in sync with that file.
+					create or replace function level_for_exp(p_exp bigint)
+					returns int language sql immutable set search_path = public as $level_for_exp$
+						select case
+							when p_exp >= 355000 then 20
+							when p_exp >= 305000 then 19
+							when p_exp >= 265000 then 18
+							when p_exp >= 225000 then 17
+							when p_exp >= 195000 then 16
+							when p_exp >= 165000 then 15
+							when p_exp >= 140000 then 14
+							when p_exp >= 120000 then 13
+							when p_exp >= 100000 then 12
+							when p_exp >= 85000 then 11
+							when p_exp >= 64000 then 10
+							when p_exp >= 48000 then 9
+							when p_exp >= 34000 then 8
+							when p_exp >= 23000 then 7
+							when p_exp >= 14000 then 6
+							when p_exp >= 6500 then 5
+							when p_exp >= 2700 then 4
+							when p_exp >= 900 then 3
+							when p_exp >= 300 then 2
+							else 1
+						end;
+					$level_for_exp$;
+					-- Open a booster pack for the caller, enforced entirely server-side:
+					--   * the town (p_location_id) must be celebrating a festa major *today*
+					--     in Europe/Madrid (a festivities row for today's Catalan date);
+					--   * the player may open at most (their level, capped at 20) packs per
+					--     day, the day resetting at midnight Europe/Madrid.
+					-- It then rolls 5 cards from the show's assigned, template-backed roster
+					-- (weighted by rarity, colour and stat exactly as the frontend used to)
+					-- and returns the inserted spawns. A per-user advisory lock serialises
+					-- concurrent opens so the limit can't be raced. security definer: it
+					-- inserts despite character_spawns now having no client insert policy.
+					create or replace function claim_booster(p_show_id bigint, p_location_id text)
+					returns setof character_spawns
+					language plpgsql security definer set search_path = public as $claim_booster$
+					declare
+							v_uid uuid := auth.uid();
+							v_today date := (now() at time zone 'Europe/Madrid')::date;
+							v_day_start timestamptz := date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
+							v_size constant int := 5;
+							v_exp bigint;
+							v_level int;
+							v_used int;
+							v_ids text[];
+							v_rarities int[];
+							v_weights numeric[];
+							v_total numeric;
+							v_roll numeric;
+							v_pick text;
+							v_color text;
+							v_stat int;
+							v_row character_spawns%rowtype;
+							i int;
+							j int;
+					begin
+							if v_uid is null then
+									raise exception 'You must be signed in to open a booster.';
+							end if;
+							if p_location_id is null or p_location_id = '' then
+									raise exception 'A location is required to open a booster.';
+							end if;
+							-- Serialise this player's opens so the daily limit can't be raced.
+							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+							-- The town must be celebrating a festa major today.
+							if not exists (
+									select 1 from festivities f
+									where f.location_id = p_location_id and f.date = v_today
+							) then
+									raise exception 'This town is not celebrating a festa major today.';
+							end if;
+							-- Daily limit = player level (>=1, capped at 20), reset at Catalan midnight.
+							select coalesce(exp, 0) into v_exp from player_profiles where user_id = v_uid;
+							v_level := level_for_exp(coalesce(v_exp, 0));
+							select count(*) into v_used from booster_claims
+									where user_id = v_uid and claimed_at >= v_day_start;
+							if v_used >= v_level then
+									raise exception 'Daily booster limit reached: % of % packs opened today. More unlock at midnight.', v_used, v_level;
+							end if;
+							-- Roll pool: characters assigned to the show (any show when null) that
+							-- exist as templates, with their rarity tiers.
+							with pool as (
+									select distinct ct.id as id, coalesce(ct.rarity, 0) as rarity
+									from show_characters sc
+									join character_templates ct on ct.id = sc.character_id
+									where p_show_id is null or sc.show_id = p_show_id
+							)
+							select array_agg(id order by id), array_agg(rarity order by id)
+									into v_ids, v_rarities
+							from pool;
+							if v_ids is null or array_length(v_ids, 1) is null then
+									raise exception 'There are no claimable characters for this show.';
+							end if;
+							-- Selection weights: tier 0 weighs 1, each higher tier 2x rarer
+							-- (matches rarityWeight / RARITY_STEP_FACTOR in @3xl/shared).
+							select array_agg(w order by ord), sum(w)
+									into v_weights, v_total
+							from (
+									select ord, 1.0 / (2 ^ r) as w
+									from unnest(v_rarities) with ordinality as t(r, ord)
+							) s;
+							-- Record the pack in the rate-limit ledger, then roll its cards.
+							insert into booster_claims (user_id, show_id, location_id)
+									values (v_uid, p_show_id, p_location_id);
+							for i in 1..v_size loop
+									-- Weighted-by-rarity pick (cumulative, matches weightedRarityIndex).
+									v_roll := random() * v_total;
+									v_pick := v_ids[array_length(v_ids, 1)];
+									for j in 1..array_length(v_ids, 1) loop
+											v_roll := v_roll - v_weights[j];
+											if v_roll < 0 then
+													v_pick := v_ids[j];
+													exit;
+											end if;
+									end loop;
+									-- Weighted colour: primaries 3/12, secondaries 1/12 (randomSpawnColor).
+									v_roll := random() * 12;
+									v_color := case
+											when v_roll < 3 then 'red'
+											when v_roll < 6 then 'yellow'
+											when v_roll < 9 then 'blue'
+											when v_roll < 10 then 'orange'
+											when v_roll < 11 then 'green'
+											else 'purple'
+									end;
+									-- Uniform stat 1..9 (randomSpawnStat / SPAWN_STAT_MIN..MAX).
+									v_stat := 1 + floor(random() * 9)::int;
+									insert into character_spawns (user_id, character_id, show_id, location_id, color, stat)
+											values (v_uid, v_pick, p_show_id, p_location_id, v_color, v_stat)
+											returning * into v_row;
+									return next v_row;
+							end loop;
+							return;
+					end;
+					$claim_booster$;
+					grant execute on function claim_booster(bigint, text) to authenticated;
+					-- The caller's daily allowance: their level, packs opened since Catalan
+					-- midnight, and how many remain. Powers the claim UI's limit display.
+					create or replace function boosters_status()
+					returns table (level int, used int, remaining int)
+					language plpgsql security definer set search_path = public as $boosters_status$
+					declare
+							v_uid uuid := auth.uid();
+							v_exp bigint;
+							v_day_start timestamptz := date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
+					begin
+							if v_uid is null then
+									return;
+							end if;
+							select coalesce(exp, 0) into v_exp from player_profiles where user_id = v_uid;
+							level := level_for_exp(coalesce(v_exp, 0));
+							select count(*) into used from booster_claims
+									where user_id = v_uid and claimed_at >= v_day_start;
+							remaining := greatest(0, level - used);
+							return next;
+					end;
+					$boosters_status$;
+					grant execute on function boosters_status() to authenticated`
 			)
 			.then(() => undefined)
 			.catch((error: unknown) => {
