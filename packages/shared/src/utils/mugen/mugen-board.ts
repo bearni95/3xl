@@ -214,7 +214,7 @@ const COMBAT_COLOR_HEX: Record<string, number> = {
 };
 
 /** Hex for a combat colour name, defaulting to white for anything unknown. */
-const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color] ?? 0xffffff;
+export const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color] ?? 0xffffff;
 
 /** Lifetime of a strike slash overlay (ms). */
 const SLASH_MS = 420;
@@ -443,26 +443,27 @@ export class MugenBoard {
 		this.canvasWidth = width;
 		this.canvasHeight = height;
 
-		// One hexagonal board: cells left of centre red, right blue, centre purple.
+		// One hexagonal board: cells left of centre take the left leader's colour, right
+		// the right leader's, the shared centre column purple.
 		this.drawBoard(
 			this.options.grids[0].color,
 			this.options.grids[1].color,
 			this.options.centerColor
 		);
 
-		// The centre character of each grid stands left/right of centre: the red one
-		// lower-left (unflipped), the blue one (flipped) to the upper-right. Combat can
+		// The centre character of each grid stands left/right of centre: the left one
+		// lower-left (unflipped), the right one (flipped) to the upper-right. Combat can
 		// walk any actor into the central purple column.
-		await this.addActor(this.options.grids[0].character, -2, -1, false, this.options.grids[0].color);
-		await this.addActor(this.options.grids[1].character, 2, -3, true, this.options.grids[1].color);
+		await this.addActor(this.options.grids[0].character, -2, -1, false);
+		await this.addActor(this.options.grids[1].character, 2, -3, true);
 
 		// Extra characters stand idle on their assigned hexes — left half faces
 		// right (unflipped), right half faces left (flipped) like the centre pair.
 		for (const extra of this.options.grids[0].extras ?? []) {
-			await this.addActor(extra, extra.q, extra.r, false, this.options.grids[0].color);
+			await this.addActor(extra, extra.q, extra.r, false);
 		}
 		for (const extra of this.options.grids[1].extras ?? []) {
-			await this.addActor(extra, extra.q, extra.r, true, this.options.grids[1].color);
+			await this.addActor(extra, extra.q, extra.r, true);
 		}
 
 		// Lay the character cards out in the empty space above (rival) and below
@@ -652,16 +653,15 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Load a character and stand it in the centre of the hex at axial [q, r]. A
-	 * line is drawn across the hex's width; the character's feet sit on it. Every
-	 * actor loads its directional walk animations so combat can drive it hex to hex.
+	 * Load a character and stand it in the centre of the hex at axial [q, r], feet on
+	 * the hex's lower-corner line. Every actor loads its directional walk animations so
+	 * combat can drive it hex to hex.
 	 */
 	private async addActor(
 		character: BoardCharacter,
 		q: number,
 		r: number,
-		flip: boolean,
-		color: number
+		flip: boolean
 	): Promise<void> {
 		if (!this.app) return;
 		const startName = character.animation ?? 'idle';

@@ -2,7 +2,7 @@
 	import classNames from 'classnames';
 	import { onDestroy, onMount } from 'svelte';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
-	import { cellScreenY } from '$utils/mugen/mugen-board';
+	import { cellScreenY, combatColorHex } from '$utils/mugen/mugen-board';
 	import type {
 		BoardCharacter,
 		BoardGrid,
@@ -195,10 +195,22 @@
 		};
 	}
 
-	// Left: red grid with its movable centre plus two idling extras; right: blue
-	// grid likewise. Rebuilt whenever a picker slot or a spawn changes. `spawns` is
-	// passed in explicitly so Svelte's legacy reactive tracking sees the spawn map as
-	// a dependency of `grids`.
+	// Each side's hexes take the colour of that side's leader — the team's first slot,
+	// which stands as the movable centre character (ids[0] on the left, ids[3] on the
+	// right). Falls back to the classic red/blue if the leader has no rolled colour yet.
+	function leaderColorHex(
+		leaderId: string,
+		spawns: Map<string, CharacterSpawn>,
+		fallback: number
+	): number {
+		const color = spawns.get(leaderId)?.color;
+		return color ? combatColorHex(color) : fallback;
+	}
+
+	// Left: leader-coloured grid with its movable centre plus two idling extras; right:
+	// likewise. Rebuilt whenever a picker slot or a spawn changes. `spawns` is passed in
+	// explicitly so Svelte's legacy reactive tracking sees the spawn map as a dependency
+	// of `grids`.
 	function buildGrids(
 		ids: string[],
 		spawns: Map<string, CharacterSpawn>,
@@ -208,7 +220,7 @@
 	): [BoardGrid, BoardGrid] {
 		return [
 			{
-				color: 0xff0000,
+				color: leaderColorHex(ids[0], spawns, 0xff0000),
 				character: boardCharacter(ids[0], 'error', spawns, rarities, showNames, names),
 				extras: extraCells.error.map((cell, i) => ({
 					...boardCharacter(ids[1 + i], 'error', spawns, rarities, showNames, names),
@@ -216,7 +228,7 @@
 				}))
 			},
 			{
-				color: 0x2563eb,
+				color: leaderColorHex(ids[3], spawns, 0x2563eb),
 				character: boardCharacter(ids[3], 'info', spawns, rarities, showNames, names),
 				extras: extraCells.info.map((cell, i) => ({
 					...boardCharacter(ids[4 + i], 'info', spawns, rarities, showNames, names),
