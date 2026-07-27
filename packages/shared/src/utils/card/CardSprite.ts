@@ -316,25 +316,20 @@ export class CardSprite extends Container {
 		// fitted size. Applied after the fit so every character grows by the same factor.
 		this.idleFitScale = Math.min(sharedScale, heightCap, widthCap) * IDLE_SCALE_BOOST;
 
-		// Horizontally, hug one side of the art box rather than centring: the unflipped
-		// (rival) art sits against the left edge, the flipped (player) art against the
-		// right, so on the board the two sides face inward. The body axis can sit
-		// off-centre in the frame, and the flip mirrors each frame about that axis, so the
-		// character's on-screen extent to the left/right of the axis depends on the flip.
-		// Measure both (max across the whole cycle) and place the axis so the character
-		// hugs the chosen edge — but only while it still fits inside the box. A boosted
-		// sprite wider than the box can't hug one edge without spilling off the other, so
-		// there it stays centred (overflowing evenly, never clipped hard against a side).
+		// Horizontally centre the character's *visible* extent in the art box. The body
+		// axis can sit off-centre in the frame (and the flip mirrors each frame about it),
+		// so simply pinning the axis to the box centre would leave an asymmetric sprite
+		// leaning to one side. Instead measure the on-screen reach to the left and right of
+		// the axis (max across the whole cycle, flip-aware) and offset the axis by half
+		// their difference, so the sprite's bounding box is genuinely centred.
 		const screenExtLeft =
 			Math.max(...frames.map((f) => (this.flipped ? 1 - f.anchorX : f.anchorX) * f.width)) *
 			this.idleFitScale;
 		const screenExtRight =
 			Math.max(...frames.map((f) => (this.flipped ? f.anchorX : 1 - f.anchorX) * f.width)) *
 			this.idleFitScale;
-		const axisMin = this.artArea.x + pad + screenExtLeft;
-		const axisMax = this.artArea.x + this.artArea.w - pad - screenExtRight;
 		this.idleCenterX =
-			axisMin <= axisMax ? (this.flipped ? axisMax : axisMin) : (axisMin + axisMax) / 2;
+			this.artArea.x + this.artArea.w / 2 + (screenExtLeft - screenExtRight) / 2;
 		const renderedHeight = maxHeight * this.idleFitScale;
 		this.idleFeetY = this.artArea.y + this.artArea.h / 2 + renderedHeight / 2;
 
@@ -396,13 +391,8 @@ export class CardSprite extends Container {
 		const scale = Math.min(boxW / tex.width, boxH / tex.height);
 		const w = tex.width * scale;
 		const h = tex.height * scale;
-		// Hug the same side as the idle art (left unflipped, right flipped) while it fits,
-		// else centre it — mirroring the idle placement. The face is symmetric, so its
-		// half-width is the extent on each side.
-		const axisMin = this.artArea.x + pad + w / 2;
-		const axisMax = this.artArea.x + this.artArea.w - pad - w / 2;
-		const centerX =
-			axisMin <= axisMax ? (this.flipped ? axisMax : axisMin) : (axisMin + axisMax) / 2;
+		// Centre the face in the art box (it's symmetric, so plain centring suffices).
+		const centerX = this.artArea.x + this.artArea.w / 2;
 		const y = this.artArea.y + (this.artArea.h - h) / 2;
 		// Anchor on the horizontal centre (top edge) so a negative x-scale mirrors the
 		// face in place, matching the flipped idle animation.
