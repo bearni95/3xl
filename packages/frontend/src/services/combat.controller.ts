@@ -22,8 +22,11 @@
  *
  * Rounds repeat: after a round the selections reset and control returns to
  * selection. The game ends when one side is wiped out (all its fighters knocked
- * out) or at the end of any round in which one side holds all three purple duel
- * cells (claimed cells stay tinted in their holder's colour until it fights again).
+ * out), at the end of any round in which one side holds all three purple duel
+ * cells (claimed cells stay tinted in their holder's colour until it fights
+ * again), or when no fighter can make a move next round (every survivor is a
+ * pinned cell-holder) — a stalemate decided by which side occupies more purple
+ * cells.
  *
  * A fighter holding a purple cell is pinned there: it cannot pick or act on its
  * turn and only fights when an enemy attacks it on its cell, auto-defending with
@@ -350,6 +353,27 @@ export class CombatController {
 		}
 		if (owners.every((side) => side === 'error')) {
 			this.end('lose', 'The rivals hold all three purple cells.');
+			return;
+		}
+
+		// Stalemate: now that fighters can be knocked out, a side can be left with
+		// nothing but pinned cell-holders (and the defeated). A holder can't pick a
+		// colour — it only fights if attacked — and since the player drives each
+		// round, if no player fighter can act the round can never start (its move
+		// buttons are all locked), so the fight can never progress. When that
+		// happens, end the game there and decide it by purple-cell occupancy:
+		// whoever holds the most cells wins (an even split is a draw).
+		const canAct = (fighter: Fighter) => !fighter.defeated && this.heldCell(fighter) === null;
+		if (!this.players().some(canAct)) {
+			const infoCells = owners.filter((side) => side === 'info').length;
+			const errorCells = owners.filter((side) => side === 'error').length;
+			if (infoCells > errorCells) {
+				this.end('win', `Nobody left to move — you hold the most purple cells (${infoCells}–${errorCells}).`);
+			} else if (errorCells > infoCells) {
+				this.end('lose', `Nobody left to move — the rivals hold the most purple cells (${errorCells}–${infoCells}).`);
+			} else {
+				this.end('draw', `Nobody left to move — the purple cells are split ${infoCells}–${errorCells}.`);
+			}
 			return;
 		}
 
