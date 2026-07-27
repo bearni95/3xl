@@ -9,6 +9,10 @@
 	export let profile: Profile;
 	export let signingOut: boolean = false;
 	export let classes: string = '';
+	// Compact drops the account-id / member-since rows and the sign-out button —
+	// used by the always-visible pinned map panel, which is a glance card, not the
+	// account-management dropdown.
+	export let compact: boolean = false;
 
 	const dispatch = createEventDispatcher<{ signout: void; editusername: void }>();
 
@@ -91,31 +95,35 @@
 	<div class="divider my-0"></div>
 
 	<dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-		<dt class="text-base-content/60">{$_('profile.accountId')}</dt>
-		<dd class="truncate font-mono">{profile.id}</dd>
+		{#if !compact}
+			<dt class="text-base-content/60">{$_('profile.accountId')}</dt>
+			<dd class="truncate font-mono">{profile.id}</dd>
 
-		<dt class="text-base-content/60">{$_('profile.memberSince')}</dt>
-		<dd>
-			{#if memberDays === null}
-				—
-			{:else}
-				{$_('profile.daysElapsed', { values: { days: memberDays } })}
-			{/if}
-		</dd>
+			<dt class="text-base-content/60">{$_('profile.memberSince')}</dt>
+			<dd>
+				{#if memberDays === null}
+					—
+				{:else}
+					{$_('profile.daysElapsed', { values: { days: memberDays } })}
+				{/if}
+			</dd>
+		{/if}
 
 		<dt class="text-base-content/60">{$_('profile.exp')}</dt>
 		<dd class="font-mono">{progress.exp.toLocaleString()}</dd>
 	</dl>
 
-	<button
-		type="button"
-		disabled={signingOut}
-		class={classNames('btn btn-outline btn-error', { 'btn-disabled': signingOut })}
-		on:click={handleSignOut}
-	>
-		{#if signingOut}
-			<span class="loading loading-spinner loading-sm"></span>
-		{/if}
-		{$_('profile.signOut')}
-	</button>
+	{#if !compact}
+		<button
+			type="button"
+			disabled={signingOut}
+			class={classNames('btn btn-outline btn-error', { 'btn-disabled': signingOut })}
+			on:click={handleSignOut}
+		>
+			{#if signingOut}
+				<span class="loading loading-spinner loading-sm"></span>
+			{/if}
+			{$_('profile.signOut')}
+		</button>
+	{/if}
 </div>

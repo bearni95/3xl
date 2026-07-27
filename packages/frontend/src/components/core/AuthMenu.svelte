@@ -117,6 +117,7 @@
 						<ProfileCard
 							profile={$profile}
 							{signingOut}
+							compact={pinned}
 							on:signout={handleSignOut}
 							on:editusername={openUsernamePrompt}
 						/>
