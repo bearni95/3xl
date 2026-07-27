@@ -236,7 +236,7 @@ export class CardScene {
 			return;
 		}
 
-		const cols = this.responsiveColumns(width);
+		const cols = this.responsiveColumns();
 		const availW = Math.max(1, width - NAV_PAD * 2);
 		const cardW = Math.max(80, (availW - NAV_GAP * (cols - 1)) / cols);
 		const cardH = cardW / CARD_ASPECT;
@@ -282,11 +282,18 @@ export class CardScene {
 		return sprite;
 	}
 
-	/** Column count by container width, mirroring the old `grid-cols-1
-	 * sm:grid-cols-2 xl:grid-cols-3` roster grid (Tailwind sm=640, xl=1280). */
-	private responsiveColumns(width: number): number {
-		if (width >= 1280) return 3;
-		if (width >= 640) return 2;
+	/**
+	 * Column count mirroring the old `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3`
+	 * roster grid. Tailwind's responsive prefixes key off the *viewport* width, not
+	 * the element's, so this reads `window.innerWidth` (the canvas container is
+	 * narrower — it shares its row with the team-panel aside — and keying off it
+	 * would drop to 2 columns on an xl screen). Cards are still *sized* to the
+	 * container width; only the column count follows the viewport breakpoints.
+	 */
+	private responsiveColumns(): number {
+		const vw = typeof window !== 'undefined' ? window.innerWidth : this.builtW;
+		if (vw >= 1280) return 3;
+		if (vw >= 640) return 2;
 		return 1;
 	}
 
