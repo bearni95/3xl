@@ -130,6 +130,19 @@ class SpawnService {
 		return byCharacter;
 	}
 
+	/**
+	 * Map every show id to its display name (from `show_templates`), so a booster —
+	 * which stores only the `showId` it was rolled from — can be labelled with the
+	 * show it came from. Unlike {@link loadShows} this keeps every show, including
+	 * ones with no renderable characters left.
+	 */
+	async loadShowNames(): Promise<Map<number, string>> {
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase.from('show_templates').select('id, name');
+		if (error) throw error;
+		return new Map((data ?? []).map((show) => [Number(show.id), show.name as string]));
+	}
+
 	/** Load the signed-in player's spawns into the store, newest first. */
 	async loadSpawns(userId: string): Promise<CharacterSpawn[]> {
 		const supabase = getSupabaseClient();

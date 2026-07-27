@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import ClaimTodayFestes from '$components/core/ClaimTodayFestes.svelte';
+	import ClaimBoosterHistory from '$components/core/ClaimBoosterHistory.svelte';
 	import ClaimPackOpenerPanel from '$components/core/pack/ClaimPackOpenerPanel.svelte';
 	import type { OpenerView } from '$components/core/pack/scene/opener-view.type';
 	import type { MunicipalityFesta } from '$types/festa.type';
@@ -24,9 +25,10 @@
 	}
 </script>
 
-<div
-	class="flex w-full max-w-6xl flex-col items-stretch gap-6 lg:flex-row lg:items-start lg:justify-center"
->
+<div class="flex w-full max-w-6xl flex-col items-stretch gap-6">
+	<div
+		class="flex w-full flex-col items-stretch gap-6 lg:flex-row lg:items-start lg:justify-center"
+	>
 	<!-- Left column: the character panel (auth + result) and today's festes list,
 	     which is the only way to open a booster. -->
 	<div class="flex w-full flex-col items-center gap-6 lg:max-w-md lg:shrink-0">
@@ -60,5 +62,10 @@
 				</div>
 			</div>
 		{/if}
+		</div>
 	</div>
+
+	<!-- Full-width history of the booster packs the player has opened, newest first.
+	     Reactive to the spawn store, so a pack opened above appears here at once. -->
+	<ClaimBoosterHistory />
 </div>

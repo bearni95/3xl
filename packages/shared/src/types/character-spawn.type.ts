@@ -49,6 +49,25 @@ export interface CharacterSpawn {
 	createdAt: string;
 }
 
+/**
+ * One booster pack a player has opened: the group of {@link CharacterSpawn}s that
+ * were rolled together in a single {@link claimBooster} insert. A pack isn't a row
+ * of its own — it's reconstructed from its cards, which all share one `createdAt`
+ * (Postgres `now()` is constant within a statement) plus the same show and place.
+ */
+export interface Booster {
+	/** Stable id for the pack — its cards' shared `createdAt`, show and location. */
+	id: string;
+	/** ISO timestamp the pack was opened (its cards' shared `createdAt`). */
+	openedAt: string;
+	/** The show the pack was opened from, or `null` if rolled across all shows. */
+	showId: number | null;
+	/** The municipality the pack was opened in (geojson feature id). */
+	locationId: string;
+	/** The cards the pack contained, in the order they were pulled. */
+	spawns: CharacterSpawn[];
+}
+
 /** Inclusive bounds a rolled spawn stat is constrained to. */
 export const SPAWN_STAT_MIN = 1;
 export const SPAWN_STAT_MAX = 9;
