@@ -101,16 +101,22 @@ export class CardSprite extends Container {
 
 		const radius = Math.max(6, this.cardWidth * 0.05);
 		// Top→bottom: a name header, a rarity/show row, the art, a location meta strip,
-		// an ATK/DEF/SPD/HP footer.
-		const headerH = Math.round(this.cardHeight * 0.14);
-		// The row under the name carrying the rarity badge (left) and show name (right).
-		const showRowH = Math.round(this.cardHeight * 0.1);
-		const footerH = Math.round(this.cardHeight * 0.15);
-		const metaH = Math.round(this.cardHeight * 0.11);
-		const footerY = this.cardHeight - footerH;
-		const metaY = footerY - metaH;
-		const artY = headerH + showRowH;
-		this.artArea = { x: 0, y: artY, w: this.cardWidth, h: metaY - artY };
+		// an ATK/DEF/SPD/HP footer. The coloured art area is a full-width SQUARE (side =
+		// card width); the four text rows share the vertical space left over, split by
+		// the same ratios they had before (name .14, show .10, location .11, stats .15 —
+		// their sum, .50, normalises within each block).
+		const artSide = this.cardWidth;
+		const chrome = this.cardHeight - artSide; // vertical space for the four text rows
+		const topBlockH = Math.round(chrome * (0.24 / 0.5)); // name + show rows
+		const headerH = Math.round(topBlockH * (0.14 / 0.24));
+		const showRowH = topBlockH - headerH;
+		const artY = topBlockH;
+		const metaY = artY + artSide; // the colour square sits exactly artY..metaY
+		const bottomBlockH = this.cardHeight - metaY; // location + stats rows
+		const metaH = Math.round(bottomBlockH * (0.11 / 0.26));
+		const footerH = bottomBlockH - metaH;
+		const footerY = metaY + metaH;
+		this.artArea = { x: 0, y: artY, w: artSide, h: artSide };
 
 		// Colored portrait backdrop (the character's colour), with a black
 		// border to match the roster card framing.
@@ -231,7 +237,11 @@ export class CardSprite extends Container {
 		this.idleFrames = frames;
 		const pad = this.cardWidth * 0.08;
 		const boxW = this.artArea.w - pad * 2;
-		const boxH = this.artArea.h - pad * 2;
+		// The colour field is now a full-width square, but the character keeps the size
+		// it had before that change: scale it against the *pre-square* art height
+		// (0.75·cardWidth, the old box) rather than the taller square, so squaring the
+		// field never resizes the idle. The square is only used to centre it below.
+		const boxH = this.cardWidth * 0.75 - pad * 2;
 
 		const maxHeight = Math.max(...frames.map((f) => f.height));
 		// Widest axis-to-edge extent across frames (each frame is placed by its body
@@ -444,11 +454,11 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The footer stat row: the four combat attributes the board fields — ATK and DEF
-	 * on the left, SPD and HP on the right — each a value under a small caption. (The
-	 * rarity badge now lives in the show row under the name, not here.) ATK's caption
-	 * is the shared d10 die icon (as on the roster/team cards); the other three use a
-	 * small text label.
+	 * The footer stat row: the four combat attributes the board fields — ATK, DEF, SPD
+	 * and HP — each a value under a small caption. (The rarity badge now lives in the
+	 * show row under the name, not here.) The four sit in four evenly-spaced columns
+	 * across the width; ATK's caption is the shared d10 die icon (as on the roster/team
+	 * cards), the other three use a small text label.
 	 */
 	private makeStats(footerY: number, footerH: number): Container {
 		const group = new Container();
@@ -457,13 +467,14 @@ export class CardSprite extends Container {
 		const captionSize = Math.max(7, Math.round(this.cardWidth * 0.05));
 		const valueSize = Math.max(11, Math.round(this.cardWidth * 0.09));
 
-		// Cell centres: ATK/DEF flush left, SPD/HP flush right. Same four attributes
-		// (and order) as the combat board's table.
+		// Cell centres: four evenly-spaced columns (each column's midpoint), so the
+		// stats read as a 4-up row rather than the old 5-up layout that reserved the
+		// middle for the rarity badge. Same four attributes (and order) as the board.
 		const cells: { x: number; label: string; value: number }[] = [
-			{ x: this.cardWidth * 0.15, label: 'ATK', value: this.card.atk },
-			{ x: this.cardWidth * 0.33, label: 'DEF', value: this.card.def },
-			{ x: this.cardWidth * 0.67, label: 'SPD', value: this.card.spd },
-			{ x: this.cardWidth * 0.85, label: 'HP', value: this.card.hp }
+			{ x: this.cardWidth * 0.125, label: 'ATK', value: this.card.atk },
+			{ x: this.cardWidth * 0.375, label: 'DEF', value: this.card.def },
+			{ x: this.cardWidth * 0.625, label: 'SPD', value: this.card.spd },
+			{ x: this.cardWidth * 0.875, label: 'HP', value: this.card.hp }
 		];
 
 		for (const cell of cells) {
