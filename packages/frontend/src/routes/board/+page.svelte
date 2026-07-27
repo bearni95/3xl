@@ -444,7 +444,7 @@
 	     active button marks the current choice. The player's buttons are solid and
 	     clickable; the rival's are read-only outlines showing its pre-rolled default. -->
 	{@const isRival = badge.side === 'error'}
-	<div class="join join-vertical w-32">
+	<div class="join join-vertical w-full">
 		{#each throwableColors(badge.color) as color (color)}
 			<button
 				type="button"
@@ -465,57 +465,16 @@
 {#snippet badgeCard(badge: Badge)}
 	{@const combat = combatById.get(badge.id)}
 	{@const areaLocked = !!combat?.disabled || state?.phase !== 'selecting'}
-	{@const stats = combatStatsFromStat(badge.stat)}
+	<!-- Only the colour picker lives here now — the fighter's art, name and combat
+	     attributes are drawn on the canvas as its trading card. The column width and
+	     the row's gap mirror the canvas card band (150px cards, 21px apart, centred),
+	     so each picker sits directly under its card. -->
 	<div
-		class={classNames('flex shrink-0 flex-col items-center gap-1 transition-opacity', {
+		class={classNames('flex w-[150px] shrink-0 flex-col items-center transition-opacity', {
 			'opacity-60': combat?.disabled
 		})}
 	>
-		<div class="flex items-center gap-2">
-			<!-- Buttons sit board-side: left of the face for red, right of it for blue. -->
-			{#if badge.side === 'error'}
-				{@render moveButtons(badge, combat, areaLocked)}
-			{/if}
-			{#if badge.face}
-				<!-- Face images are horizontally flipped. -->
-				<img
-					src={badge.face}
-					alt={badge.name}
-					class="h-32 w-32 -scale-x-100 bg-base-300 object-cover object-top"
-				/>
-			{/if}
-			{#if badge.side === 'info'}
-				{@render moveButtons(badge, combat, areaLocked)}
-			{/if}
-		</div>
-		<span>{badge.name}</span>
-		<!-- ATK and DEF are the spawn stat and its complement, both clamped to 1..9; SPD
-		     is ATK − 1; the HP pool is rolled at battle start as (DEF + 1)d4 and drains
-		     live as combat plays out. -->
-		<table class="table table-xs w-auto text-center">
-			<thead>
-				<tr>
-					<th class="px-2">ATK</th>
-					<th class="px-2">DEF</th>
-					<th class="px-2">SPD</th>
-					<th class="px-2">HP</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td class="px-2 font-semibold">{stats.atk}</td>
-					<td class="px-2 font-semibold">{stats.def}</td>
-					<td class="px-2 font-semibold">{stats.spd}</td>
-					<td
-						class={classNames('px-2 font-semibold', {
-							'text-error': combat?.defeated
-						})}
-					>
-						{combat ? `${combat.hp}/${combat.maxHp}` : '—'}
-					</td>
-				</tr>
-			</tbody>
-		</table>
+		{@render moveButtons(badge, combat, areaLocked)}
 	</div>
 {/snippet}
 
@@ -524,7 +483,7 @@
      than wrapping the cards into a stack. -->
 {#snippet row(list: Badge[])}
 	<div class="w-full overflow-x-auto">
-		<div class="mx-auto flex w-max flex-row flex-nowrap items-start gap-6 px-2 text-sm">
+		<div class="mx-auto flex w-max flex-row flex-nowrap items-start gap-[21px] px-2 text-sm">
 			{#each list as badge (badge.id)}
 				{@render badgeCard(badge)}
 			{/each}
