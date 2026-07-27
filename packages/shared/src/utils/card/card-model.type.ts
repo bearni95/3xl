@@ -26,9 +26,16 @@ export interface CardModel {
 	color: SpawnColor;
 	/**
 	 * The character's rarity tier (a WoW quality index — see `wowRarityLabel`), or
-	 * null when there is no rarity to show.
+	 * null when there is no rarity to show. Drawn as the `[N]` badge at the left of
+	 * the show row directly under the name.
 	 */
 	rarity: number | null;
+	/**
+	 * The show this card belongs to (the pack opener passes the opened show; the
+	 * roster passes the character's related show). Drawn at the right of the show
+	 * row under the name, opposite the rarity badge. Null to omit it.
+	 */
+	showName: string | null;
 	/**
 	 * Free-text label pinned to the right of the meta strip (the pack opener passes
 	 * the claim location here), or null to omit it.

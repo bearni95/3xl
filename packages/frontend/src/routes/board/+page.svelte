@@ -83,15 +83,17 @@
 	$: teamReady = teamMembers.length === TEAM_SIZE;
 	$: playable = !!currentUserId && teamReady;
 
-	// character id → rarity tier from Supabase `character_templates`, and geojson
-	// feature id → municipality name — the same two sources the roster/claim cards
-	// read, so the cards drawn outside the board grid show their rarity badge and
-	// claim place (not just name and stats).
+	// character id → rarity tier from Supabase `character_templates`, character id →
+	// its related show names, and geojson feature id → municipality name — the same
+	// three sources the roster/claim cards read, so the cards drawn outside the board
+	// grid show their rarity badge, show and claim place (not just name and stats).
 	let rarityByCharacter = new Map<string, number>();
+	let showNamesByCharacter = new Map<string, string[]>();
 	let municipalityNames: Map<string, string> | null = null;
 
 	// Load the player's spawns once signed in, so their rolled colours are available.
-	// Rarities and place names load alongside, so the outside-grid cards can show them.
+	// Rarities, show names and place names load alongside, so the outside-grid cards
+	// can show them.
 	let loadedForUser: string | null = null;
 	let spawnsLoaded = false;
 	$: if (currentUserId && currentUserId !== loadedForUser) {
@@ -99,6 +101,7 @@
 		spawnsLoaded = false;
 		void spawnService.loadSpawns(currentUserId).then(() => (spawnsLoaded = true));
 		void spawnService.loadRarities().then((rarities) => (rarityByCharacter = rarities));
+		void spawnService.loadCharacterShowNames().then((names) => (showNamesByCharacter = names));
 		void loadMunicipalityNames();
 	}
 
@@ -169,6 +172,7 @@
 		side: 'error' | 'info',
 		spawns: Map<string, CharacterSpawn>,
 		rarities: Map<string, number>,
+		showNames: Map<string, string[]>,
 		names: Map<string, string> | null
 	): BoardCharacter {
 		const spawn = spawns.get(spawnId);
@@ -183,15 +187,17 @@
 			// The display card drawn outside the grid (rival above, player below): the
 			// idle art loads from basePath, and the combat attributes mirror the board's
 			// derivation from the rolled stat (ATK = stat, DEF its complement, SPD = ATK − 1,
-			// HP = DEF + 1). Rarity and claim place come from the same two Supabase/geo
-			// sources the roster and claim cards read (`names` is passed so the reactive
-			// build re-runs — and the board remounts — once the place layer loads).
+			// HP = DEF + 1). Rarity, show and claim place come from the same three
+			// Supabase/geo sources the roster and claim cards read (`showNames`/`names` are
+			// passed so the reactive build re-runs — and the board remounts — once those
+			// layers load).
 			card: {
 				label: option.label,
 				basePath: option.basePath,
 				faceUrl: null,
 				color: spawn?.color ?? SpawnColor.Red,
 				rarity: spawn ? (rarities.get(spawn.characterId) ?? null) : null,
+				showName: spawn ? (showNames.get(spawn.characterId)?.join(', ') || null) : null,
 				locationName: spawn ? locationNameFor(spawn.locationId) : null,
 				spawnedAt: spawn?.createdAt ?? null,
 				atk: stat,
@@ -210,38 +216,39 @@
 		ids: string[],
 		spawns: Map<string, CharacterSpawn>,
 		rarities: Map<string, number>,
+		showNames: Map<string, string[]>,
 		names: Map<string, string> | null
 	): [BoardGrid, BoardGrid] {
 		return [
 			{
 				color: 0xff0000,
-				character: boardCharacter(ids[0], 'error', spawns, rarities, names),
+				character: boardCharacter(ids[0], 'error', spawns, rarities, showNames, names),
 				extras: extraCells.error.map((cell, i) => ({
-					...boardCharacter(ids[1 + i], 'error', spawns, rarities, names),
+					...boardCharacter(ids[1 + i], 'error', spawns, rarities, showNames, names),
 					...cell
 				}))
 			},
 			{
 				color: 0x2563eb,
-				character: boardCharacter(ids[3], 'info', spawns, rarities, names),
+				character: boardCharacter(ids[3], 'info', spawns, rarities, showNames, names),
 				extras: extraCells.info.map((cell, i) => ({
-					...boardCharacter(ids[4 + i], 'info', spawns, rarities, names),
+					...boardCharacter(ids[4 + i], 'info', spawns, rarities, showNames, names),
 					...cell
 				}))
 			}
 		];
 	}
 
-	$: grids = buildGrids(slots, spawnById, rarityByCharacter, municipalityNames);
+	$: grids = buildGrids(slots, spawnById, rarityByCharacter, showNamesByCharacter, municipalityNames);
 	// Bumped by "Play again" so the Pixi board remounts with a clean slate.
 	let gameKey = 0;
 	// Remounts the Pixi board (and thus repositions everyone) on any slot change,
 	// spawn-colour change (so home cells repaint once colours load), spawn-stat change
-	// (so the outside-grid cards repaint), rarity/place load (so the cards gain their
-	// badge and location once those sources resolve), or restart.
+	// (so the outside-grid cards repaint), rarity/show/place load (so the cards gain
+	// their badge, show and location once those sources resolve), or restart.
 	$: boardKey = `${slots.join(',')}:${slots
 		.map((id) => `${spawnById.get(id)?.color ?? ''}/${spawnById.get(id)?.stat ?? ''}`)
-		.join(',')}:${rarityByCharacter.size}:${municipalityNames?.size ?? 0}:${gameKey}`;
+		.join(',')}:${rarityByCharacter.size}:${showNamesByCharacter.size}:${municipalityNames?.size ?? 0}:${gameKey}`;
 
 	// One badge per character on the board, in board order (red half then blue).
 	// Static display info (name, face, compound color, moves); the live combat
@@ -325,7 +332,13 @@
 	// Runs on mount and again whenever a picker slot changes.
 	async function setup(): Promise<void> {
 		const token = ++setupToken;
-		const currentGrids = buildGrids(slots, spawnById, rarityByCharacter, municipalityNames);
+		const currentGrids = buildGrids(
+			slots,
+			spawnById,
+			rarityByCharacter,
+			showNamesByCharacter,
+			municipalityNames
+		);
 		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridX'>[] = [
 			...rosterFor([currentGrids[0].character, ...(currentGrids[0].extras ?? [])], 'error'),
 			...rosterFor([currentGrids[1].character, ...(currentGrids[1].extras ?? [])], 'info')

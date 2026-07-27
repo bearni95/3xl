@@ -3,13 +3,13 @@
  *
  * A single character trading card, drawn as a Pixi `Container` and reusable in
  * any canvas (the pack opener's reveal, a collection grid, …). It mirrors
- * RosterCard: the character's colour is the portrait backdrop, a dark header
- * strip at the top carries the character name, the character's looping idle
- * animation plays in the middle (contained within the art area), a meta strip
+ * RosterCard: the character's colour is the portrait backdrop, a dark upper block
+ * at the top carries the character name and, on a second row beneath it, the
+ * rarity badge (left) opposite the show name (right); the character's looping idle
+ * animation plays in the middle (contained within the art area); a meta strip
  * below it carries a free-text location label, and a dark footer carries its
- * ATK/DEF with the rarity badge centred between them. The idle frames (and the
- * fallback face) are lazy-loaded via the shared cache; the host scene drives all
- * positioning and tweens.
+ * ATK/DEF/SPD/HP stats. The idle frames (and the fallback face) are lazy-loaded via
+ * the shared cache; the host scene drives all positioning and tweens.
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
@@ -100,14 +100,17 @@ export class CardSprite extends Container {
 		this.app = opts.app;
 
 		const radius = Math.max(6, this.cardWidth * 0.05);
-		// Top→bottom: a name header, the art, a rarity/location meta strip, an
-		// ATK/DEF footer.
+		// Top→bottom: a name header, a rarity/show row, the art, a location meta strip,
+		// an ATK/DEF/SPD/HP footer.
 		const headerH = Math.round(this.cardHeight * 0.14);
+		// The row under the name carrying the rarity badge (left) and show name (right).
+		const showRowH = Math.round(this.cardHeight * 0.1);
 		const footerH = Math.round(this.cardHeight * 0.15);
 		const metaH = Math.round(this.cardHeight * 0.11);
 		const footerY = this.cardHeight - footerH;
 		const metaY = footerY - metaH;
-		this.artArea = { x: 0, y: headerH, w: this.cardWidth, h: metaY - headerH };
+		const artY = headerH + showRowH;
+		this.artArea = { x: 0, y: artY, w: this.cardWidth, h: metaY - artY };
 
 		// Colored portrait backdrop (the character's colour), with a black
 		// border to match the roster card framing.
@@ -118,14 +121,22 @@ export class CardSprite extends Container {
 		backdrop.stroke({ width: 2, color: 0x000000, alpha: 0.9 });
 		this.addChild(backdrop);
 
-		// Dark header strip at the top, carrying the character name.
+		// Dark upper block: the name header and the rarity/show row directly beneath
+		// it share one dark fill so they read as one upper block with two rows (the
+		// mirror of the location + stats block at the bottom).
 		const header = new Graphics();
-		header.rect(0, 0, this.cardWidth, headerH);
+		header.rect(0, 0, this.cardWidth, artY);
 		header.fill({ color: 0x111827, alpha: 0.92 });
 		this.addChild(header);
+		// A faint divider between the name row and the rarity/show row.
+		const topDivider = new Graphics();
+		topDivider.moveTo(this.cardWidth * 0.08, headerH);
+		topDivider.lineTo(this.cardWidth * 0.92, headerH);
+		topDivider.stroke({ width: 1, color: 0xffffff, alpha: 0.12 });
+		this.addChild(topDivider);
 
-		// Dark meta strip below the art, carrying the rarity + location label, then
-		// the ATK/DEF footer directly beneath it (both share the same dark fill so
+		// Dark meta strip below the art, carrying the location label, then the
+		// ATK/DEF/SPD/HP footer directly beneath it (both share the same dark fill so
 		// they read as one lower block with two rows).
 		const meta = new Graphics();
 		meta.rect(0, metaY, this.cardWidth, metaH + footerH);
@@ -155,6 +166,7 @@ export class CardSprite extends Container {
 		this.addChild(this.artSprite);
 
 		this.addChild(this.makeHeader(headerH));
+		this.addChild(this.makeShowRow(headerH, showRowH));
 		this.addChild(this.makeMeta(metaY, metaH));
 		this.addChild(this.makeStats(footerY, footerH));
 
@@ -338,6 +350,57 @@ export class CardSprite extends Container {
 	}
 
 	/**
+	 * The row directly under the name: the `[N]` rarity badge (in its WoW quality
+	 * colour) flush left, and the show name flush right, spaced apart across the row.
+	 * The show name is truncated to whatever width the rarity badge leaves it.
+	 */
+	private makeShowRow(headerH: number, showRowH: number): Container {
+		const group = new Container();
+		const centerY = headerH + showRowH / 2;
+		const leftX = this.cardWidth * 0.08;
+		const rightX = this.cardWidth * 0.92;
+
+		// Rarity badge, flush left: the bracketed tier number in its quality colour.
+		let rarityRight = leftX;
+		if (this.card.rarity != null) {
+			const rarity = new Text({
+				text: `[${this.card.rarity}]`,
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize: Math.max(9, Math.round(this.cardWidth * 0.072)),
+					fontWeight: '700',
+					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2
+				}
+			});
+			rarity.anchor.set(0, 0.5);
+			rarity.position.set(leftX, centerY);
+			group.addChild(rarity);
+			rarityRight = leftX + rarity.width;
+		}
+
+		// Show name, flush right and muted, truncated to the width the rarity badge
+		// leaves it (with a small gap so the two never touch).
+		if (this.card.showName) {
+			const gap = this.cardWidth * 0.06;
+			const show = new Text({
+				text: this.card.showName,
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize: Math.max(8, Math.round(this.cardWidth * 0.06)),
+					fontWeight: '600',
+					fill: 0x9ca3af
+				}
+			});
+			this.ellipsize(show, this.card.showName, Math.max(0, rightX - rarityRight - gap));
+			show.anchor.set(1, 0.5);
+			show.position.set(rightX, centerY);
+			group.addChild(show);
+		}
+
+		return group;
+	}
+
+	/**
 	 * The meta row between the art and the ATK/DEF row: the location label, with the
 	 * spawn year as a two-digit suffix (e.g. `Barcelona '25`), centred in the row.
 	 * Omitted when the card carries neither a location nor a spawn date.
@@ -378,10 +441,10 @@ export class CardSprite extends Container {
 
 	/**
 	 * The footer stat row: the four combat attributes the board fields — ATK and DEF
-	 * on the left, SPD and HP on the right — each a value under a small caption, with
-	 * the `[N]` rarity badge (in its WoW quality colour) centred between the two pairs.
-	 * ATK's caption is the shared d10 die icon (as on the roster/team cards); the other
-	 * three use a small text label.
+	 * on the left, SPD and HP on the right — each a value under a small caption. (The
+	 * rarity badge now lives in the show row under the name, not here.) ATK's caption
+	 * is the shared d10 die icon (as on the roster/team cards); the other three use a
+	 * small text label.
 	 */
 	private makeStats(footerY: number, footerH: number): Container {
 		const group = new Container();
@@ -390,8 +453,8 @@ export class CardSprite extends Container {
 		const captionSize = Math.max(7, Math.round(this.cardWidth * 0.05));
 		const valueSize = Math.max(11, Math.round(this.cardWidth * 0.09));
 
-		// Cell centres: ATK/DEF flush left, SPD/HP flush right, leaving the middle for
-		// the rarity badge. Same four attributes (and order) as the combat board's table.
+		// Cell centres: ATK/DEF flush left, SPD/HP flush right. Same four attributes
+		// (and order) as the combat board's table.
 		const cells: { x: number; label: string; value: number }[] = [
 			{ x: this.cardWidth * 0.15, label: 'ATK', value: this.card.atk },
 			{ x: this.cardWidth * 0.33, label: 'DEF', value: this.card.def },
@@ -432,23 +495,6 @@ export class CardSprite extends Container {
 				caption.position.set(cell.x, captionY);
 				group.addChild(caption);
 			}
-		}
-
-		// Rarity badge, centred between the two stat pairs: the bracketed tier number in
-		// its quality colour, a touch smaller than the stats so they stay the focus.
-		if (this.card.rarity != null) {
-			const rarity = new Text({
-				text: `[${this.card.rarity}]`,
-				style: {
-					fontFamily: 'sans-serif',
-					fontSize: Math.max(9, Math.round(this.cardWidth * 0.072)),
-					fontWeight: '700',
-					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2
-				}
-			});
-			rarity.anchor.set(0.5, 0.5);
-			rarity.position.set(this.cardWidth / 2, footerY + footerH / 2);
-			group.addChild(rarity);
 		}
 
 		return group;

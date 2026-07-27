@@ -159,7 +159,7 @@
 			// Capture the place and resolve each portrait so the revealed cards carry
 			// the character's face and the town it was claimed in.
 			lastLocationName = claimRegion?.municipality ?? '';
-			return await Promise.all(spawns.map((spawn) => buildPull(spawn)));
+			return await Promise.all(spawns.map((spawn) => buildPull(spawn, show.name)));
 		} catch (error) {
 			claimError = errorMessage(error);
 			return [];
@@ -181,7 +181,7 @@
 	// Assemble the display card for one claimed spawn: label + face from the local
 	// registry, colour/stat off the spawn. The combat attributes mirror the board —
 	// ATK is the rolled spawn stat, DEF its complement, SPD is ATK − 1 and HP is DEF + 1.
-	async function buildPull(spawn: CharacterSpawn): Promise<ClaimPull> {
+	async function buildPull(spawn: CharacterSpawn, showName: string | null): Promise<ClaimPull> {
 		const basePath = charactersById.get(spawn.characterId)?.basePath ?? null;
 		const faceUrl = basePath
 			? await resolveCharacterFaceUrl(spawn.characterId, basePath)
@@ -193,6 +193,7 @@
 			faceUrl,
 			color: spawn.color,
 			rarity: rarityByCharacter.get(spawn.characterId) ?? null,
+			showName,
 			locationName: lastLocationName || null,
 			spawnedAt: spawn.createdAt,
 			atk: spawn.stat,

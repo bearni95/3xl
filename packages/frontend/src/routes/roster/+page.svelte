@@ -201,15 +201,17 @@
 
 	// The filtered spawns as display CardModels for the shared card renderer — the
 	// same shape the claim pack opener draws (label + sprite from the local registry,
-	// face fallback, rolled colour/stat, rarity, claim place and year). The four combat
-	// attributes mirror the board: ATK is the rolled stat, DEF its complement, SPD is
-	// ATK − 1 and HP is DEF + 1 — the same derivation as the claim flow's buildPull. The
-	// resolved maps are threaded in explicitly so the statement re-runs as faces,
-	// place names and rarities load in (a bare helper call would hide those deps).
+	// face fallback, rolled colour/stat, rarity, show, claim place and year). The four
+	// combat attributes mirror the board: ATK is the rolled stat, DEF its complement,
+	// SPD is ATK − 1 and HP is DEF + 1 — the same derivation as the claim flow's
+	// buildPull. The resolved maps are threaded in explicitly so the statement re-runs
+	// as faces, place names, rarities and show names load in (a bare helper call would
+	// hide those deps).
 	$: cardModels = ((
 		faces: Map<string, string | null>,
 		_names: Map<string, string> | null,
-		rarities: Map<string, number>
+		rarities: Map<string, number>,
+		_showNames: Map<string, string[]>
 	): CardModel[] =>
 		filteredSpawns.map((spawn) => ({
 			label: labelFor(spawn.characterId),
@@ -217,13 +219,14 @@
 			faceUrl: faces.get(spawn.characterId) ?? null,
 			color: spawn.color,
 			rarity: rarities.get(spawn.characterId) ?? null,
+			showName: showNamesFor(spawn.characterId).join(', ') || null,
 			locationName: locationNameFor(spawn.locationId),
 			spawnedAt: spawn.createdAt,
 			atk: spawn.stat,
 			def: SPAWN_STAT_MAX - spawn.stat,
 			spd: spawn.stat - 1,
 			hp: SPAWN_STAT_MAX - spawn.stat + 1
-		})))(characterFaces, municipalityNames, rarityByCharacter);
+		})))(characterFaces, municipalityNames, rarityByCharacter, characterShowNames);
 
 	// Tapping a card on the canvas toggles that spawn on the active team (add to the
 	// first free slot, or remove it) — the canvas replaces the old per-card buttons.
