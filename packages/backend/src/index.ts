@@ -5,7 +5,7 @@ import cors from 'cors';
 import { charactersRouter } from './routes/characters';
 import { characterTemplatesRouter } from './routes/character-templates';
 import { showsRouter } from './routes/shows';
-import { showTemplatesRouter } from './routes/show-templates';
+import { showTemplatesRouter, ensureTables } from './routes/show-templates';
 import { festivitiesRouter } from './routes/festivities';
 import { usersRouter } from './routes/users';
 import { tmdbRouter } from './routes/tmdb';
@@ -58,7 +58,22 @@ app.use((err: HttpError, _req: Request, res: Response, _next: NextFunction) => {
 
 const server = app.listen(PORT, () => {
 	console.log(`@3xl/backend listening on http://localhost:${PORT}`);
+	// Provision the Supabase schema (tables + booster RPCs, including recycle_spawns)
+	// on boot, so a fresh database is ready immediately without first poking an admin
+	// screen. Best-effort: if the DB isn't configured or is unreachable it just logs a
+	// warning — the identical ensureTables still runs on the first API request.
+	void provisionSchema();
 });
+
+async function provisionSchema(): Promise<void> {
+	try {
+		await ensureTables();
+		console.log('@3xl/backend Supabase schema is up to date');
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		console.warn(`@3xl/backend schema provisioning skipped: ${message}`);
+	}
+}
 
 // Refuse to run anywhere but 2002: if the port is taken, exit instead of
 // falling back to another port.
