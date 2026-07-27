@@ -101,7 +101,7 @@ const DEFAULTS = {
 	farRatio: 0.97,
 	padding: 40,
 	yOffset: 110,
-	centerColor: 0x9333ea, // purple
+	centerColor: 0xffffff, // white
 	backgroundColor: 0x1d232a
 };
 
@@ -444,7 +444,7 @@ export class MugenBoard {
 		this.canvasHeight = height;
 
 		// One hexagonal board: cells left of centre take the left leader's colour, right
-		// the right leader's, the shared centre column purple.
+		// the right leader's, the shared centre column white.
 		this.drawBoard(
 			this.options.grids[0].color,
 			this.options.grids[1].color,
@@ -453,7 +453,7 @@ export class MugenBoard {
 
 		// The centre character of each grid stands left/right of centre: the left one
 		// lower-left (unflipped), the right one (flipped) to the upper-right. Combat can
-		// walk any actor into the central purple column.
+		// walk any actor into the central white column.
 		await this.addActor(this.options.grids[0].character, -2, -1, false);
 		await this.addActor(this.options.grids[1].character, 2, -3, true);
 
@@ -635,7 +635,7 @@ export class MugenBoard {
 		const graphics = new Graphics();
 		for (const { q, r } of boardCells()) {
 			// q alone decides the side; the central column (q = 0) is the shared
-			// purple row.
+			// white row.
 			const side = cellSide(q);
 			const color = side === 'red' ? leftColor : side === 'blue' ? rightColor : centerColor;
 
@@ -1211,7 +1211,7 @@ export class MugenBoard {
 	/**
 	 * Walk two fighters toward each other until they stand side by side on the
 	 * same row (immediately horizontal cells), each staying on its own colour or
-	 * the shared purple column. When `meetingCell` is given, the red fighter
+	 * the shared white column. When `meetingCell` is given, the red fighter
 	 * walks to that exact cell and the blue fighter to its east neighbour;
 	 * otherwise the cheapest meeting pair is searched. Each walk ends on the
 	 * meeting cell itself, split down its midline — red's sprite stops flush
@@ -1254,9 +1254,9 @@ export class MugenBoard {
 	}
 
 	/**
-	 * The cells an actor may occupy: nobody crosses the central purple column, so a
-	 * red-side fighter stays on red or the shared purple line (q ≤ 0) and a blue-side
-	 * fighter stays strictly on blue (q ≥ 1) — blue never even enters the purple
+	 * The cells an actor may occupy: nobody crosses the central white column, so a
+	 * red-side fighter stays on red or the shared white line (q ≤ 0) and a blue-side
+	 * fighter stays strictly on blue (q ≥ 1) — blue never even enters the white
 	 * cells. Every combat move is confined to this predicate.
 	 */
 	private sideAllowed(actor: Actor): (c: Hex) => boolean {
@@ -1399,7 +1399,7 @@ export class MugenBoard {
 
 	/**
 	 * Walk a (melee) actor as close to `targetId` as its own side allows. It never
-	 * crosses the purple line, so against a foe who backed off to shoot it advances
+	 * crosses the white line, so against a foe who backed off to shoot it advances
 	 * up to the boundary rather than reaching them — the strike still lands (for
 	 * halved damage) from there. Resolves once it has settled.
 	 */
