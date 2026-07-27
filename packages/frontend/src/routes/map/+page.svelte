@@ -8,7 +8,6 @@
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
-	import ClaimPanel from '$components/core/ClaimPanel.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
@@ -37,7 +36,7 @@
 	} from '$utils/geo/region-tree';
 	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
-	import type { MapCircle, MapMarker, MapOverlay, MapStar } from '$types/map.type';
+	import type { MapMarker, MapOverlay, MapStar } from '$types/map.type';
 	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
 	import { festesService } from '$services/festes.service';
 	import type { FestaLocationRow } from '$types/festivity.type';
@@ -188,32 +187,6 @@
 			url: '/data/geo/territoris.json',
 			style: { color: '#111a3b', weight: 3, fill: false },
 			interactive: false
-		}
-	];
-
-	// The portal axis: an imaginary straight line from the municipality of Girona
-	// (centroid ~[41.99, 2.83]) out to l'Alguer — the lone Italian territory in
-	// the map (Alghero, Sardinia; centroid ~[40.60, 8.27]). The portal sits on
-	// this line, at its midpoint out in the open Mediterranean.
-	const GIRONA: [number, number] = [41.988, 2.828];
-	const ALGUER: [number, number] = [40.598, 8.268];
-	const PORTAL_CENTER: [number, number] = [
-		(GIRONA[0] + ALGUER[0]) / 2,
-		(GIRONA[1] + ALGUER[1]) / 2
-	];
-
-	// Whether the portal sidebar — the /claim experience surfaced beside the map — is open.
-	let portalOpen = false;
-
-	// The mythical "Portal", floating in open Mediterranean water at the middle
-	// of the Girona–l'Alguer line. Clicking it opens the claim panel in a right sidebar.
-	const circles: MapCircle[] = [
-		{
-			center: PORTAL_CENTER,
-			radius: 30000,
-			style: { color: '#ce74ff', weight: 2, fillColor: '#ce74ff', fillOpacity: 0.35 },
-			label: 'Portal',
-			onClick: () => (portalOpen = true)
 		}
 	];
 
@@ -790,7 +763,6 @@
 				zoom={8}
 				minZoom={7}
 				{overlays}
-				{circles}
 				{markerLevels}
 				stars={festaStars}
 				{hiddenLineUrls}
@@ -809,22 +781,6 @@
 		{/if}
 	</div>
 
-	{#if portalOpen}
-		<aside
-			class="flex flex-col overflow-y-auto border-l border-base-300 bg-base-100 shadow-inner"
-			aria-label="Portal"
-		>
-			<div class="flex items-center justify-between gap-4 border-b border-base-300 px-4 py-3">
-				<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Portal</h2>
-				<button class="btn btn-circle btn-ghost btn-sm" on:click={() => (portalOpen = false)}>
-					✕
-				</button>
-			</div>
-			<div class="p-4">
-				<ClaimPanel />
-			</div>
-		</aside>
-	{/if}
 </div>
 
 <!-- Hidden, but mounted: the same claim panel the /claim page uses, kept alive only

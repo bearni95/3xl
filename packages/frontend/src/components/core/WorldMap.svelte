@@ -419,7 +419,9 @@
 			maxZoom,
 			worldCopyJump: true,
 			// No +/- zoom buttons — the map is driven by scroll/pinch only.
-			zoomControl: false
+			zoomControl: false,
+			// No "Leaflet" attribution badge — there's no basemap to attribute.
+			attributionControl: false
 		});
 
 		// No tile basemap: the map shows only its own overlays (polygons + pins) over
