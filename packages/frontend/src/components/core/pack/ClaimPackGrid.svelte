@@ -12,6 +12,9 @@
 
 	let host: HTMLDivElement;
 	let scene: ClaimPackGridScene | null = null;
+	// False until every pack is baked and the grid is laid out — drives the spinner
+	// that covers the canvas while it builds.
+	let ready = false;
 
 	// Pick a pack by id — used by the DOM festes list so a list click drives the same
 	// centre + zoom + cut as tapping the pack on the canvas.
@@ -22,6 +25,7 @@
 	onMount(() => {
 		if (!host) return;
 		scene = new ClaimPackGridScene(host, packs, {
+			onReady: () => (ready = true),
 			onSelect: (pack) => dispatch('select', pack),
 			onOpenComplete: () => dispatch('openComplete')
 		});
@@ -33,4 +37,15 @@
 	});
 </script>
 
-<div bind:this={host} class={classNames('relative h-full w-full overflow-hidden', classes)}></div>
+<div class={classNames('relative h-full w-full overflow-hidden', classes)}>
+	<div bind:this={host} class="h-full w-full"></div>
+
+	{#if !ready}
+		<div
+			class="absolute inset-0 flex items-center justify-center bg-base-200/80"
+			aria-busy="true"
+		>
+			<span class="loading loading-spinner loading-lg text-primary"></span>
+		</div>
+	{/if}
+</div>

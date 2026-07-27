@@ -27,16 +27,16 @@ import {
 	Container,
 	Graphics,
 	Sprite,
-	Text,
 	type FederatedPointerEvent
 } from 'pixi.js';
 import { PackSprite } from './PackSprite';
 import { CardSprite } from '$utils/card/CardSprite';
-import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 import type { ClaimPull } from './pull.type';
 import type { OpenerPack } from './opener-view.type';
 
 export interface ClaimPackGridSceneCallbacks {
+	/** Fires once every pack is baked and the grid is laid out — i.e. ready to show. */
+	onReady?: () => void;
 	/** Fires when a pack is picked, before the zoom. */
 	onSelect?: (pack: OpenerPack) => void;
 	/** Fires once the selected pack is fully sliced and its cards have fanned out. */
@@ -52,16 +52,14 @@ const GRID_COLS = 3;
 // slop that separates a tap from a pan, and a little springy overscroll.
 const NAV_GAP = 16;
 const NAV_PAD = 16;
-const CAPTION_H = 22; // room reserved under each pack for its show caption
 const TAP_SLOP = 6;
 const PAN_MARGIN = 48;
 
-/** One pack laid out in the grid: its descriptor, baked sprite + caption, its cell
- * (col,row), and the baked height (all packs share the baked column width). */
+/** One pack laid out in the grid: its descriptor, baked sprite, its cell (col,row),
+ * and the baked height (all packs share the baked column width). */
 interface GridEntry {
 	pack: OpenerPack;
 	sprite: PackSprite;
-	caption: Text;
 	col: number;
 	row: number;
 	bakedH: number;
@@ -156,10 +154,7 @@ export class ClaimPackGridScene {
 		this.topHalf = null;
 		this.bottomHalf = null;
 
-		for (const entry of this.entries) {
-			entry.sprite.destroy();
-			entry.caption.destroy();
-		}
+		for (const entry of this.entries) entry.sprite.destroy();
 		this.entries = [];
 		this.packSprite = null;
 
@@ -216,25 +211,10 @@ export class ClaimPackGridScene {
 					sprite.destroy();
 					return;
 				}
-				const caption = new Text({
-					text: restoreCatalanArticle(pack.label),
-					style: {
-						fontFamily: 'sans-serif',
-						fontSize: Math.min(15, Math.max(11, Math.round(this.bakedCardW * 0.09))),
-						fontWeight: '600',
-						fill: 0xffffff,
-						align: 'center',
-						wordWrap: true,
-						wordWrapWidth: this.bakedCardW
-					}
-				});
-				caption.anchor.set(0.5, 0);
 				this.gridLayer.addChild(sprite);
-				this.gridLayer.addChild(caption);
 				this.entries.push({
 					pack,
 					sprite,
-					caption,
 					col: i % this.cols,
 					row: Math.floor(i / this.cols),
 					bakedH: sprite.packHeight
@@ -246,6 +226,8 @@ export class ClaimPackGridScene {
 		this.state = 'grid';
 		this.layoutGrid(width, height);
 		this.attachNavigation();
+		// Every pack is baked and placed — the host can now hide its loading spinner.
+		this.callbacks.onReady?.();
 
 		// Stage-level pointer handlers drive the cut once a pack is focused; they are
 		// dormant (early-return) while the grid is shown.
@@ -283,18 +265,17 @@ export class ClaimPackGridScene {
 
 		this.rows = Math.ceil(n / this.cols);
 		this.maxBakedH = this.entries.reduce((m, e) => Math.max(m, e.bakedH), 0);
-		const rowPitch = this.maxBakedH + CAPTION_H + NAV_GAP;
+		const rowPitch = this.maxBakedH + NAV_GAP;
 
 		for (const entry of this.entries) {
 			const packX = NAV_PAD + entry.col * (this.bakedCardW + NAV_GAP);
 			const packY = NAV_PAD + entry.row * rowPitch;
 			entry.sprite.scale.set(1);
 			entry.sprite.position.set(packX, packY);
-			entry.caption.position.set(packX + this.bakedCardW / 2, packY + entry.bakedH + 4);
 		}
 
 		this.contentW = NAV_PAD * 2 + this.cols * this.bakedCardW + (this.cols - 1) * NAV_GAP;
-		this.contentH = NAV_PAD * 2 + this.rows * (this.maxBakedH + CAPTION_H) + (this.rows - 1) * NAV_GAP;
+		this.contentH = NAV_PAD * 2 + this.rows * this.maxBakedH + (this.rows - 1) * NAV_GAP;
 
 		// Fit the columns to the current width (a resize re-fits without re-baking).
 		this.gridScale = this.columnWidth(width, this.cols) / this.bakedCardW;
@@ -414,18 +395,18 @@ export class ClaimPackGridScene {
 		}
 	};
 
-	/** Screen point → the index of the pack under it, or null over a gap/caption. */
+	/** Screen point → the index of the pack under it, or null over a gap. */
 	private entryIndexAt(sx: number, sy: number): number | null {
 		if (this.bakedCardW === 0) return null;
 		const worldX = (sx - this.pan.x) / this.gridScale;
 		const worldY = (sy - this.pan.y) / this.gridScale;
-		const rowPitch = this.maxBakedH + CAPTION_H + NAV_GAP;
+		const rowPitch = this.maxBakedH + NAV_GAP;
 		const col = Math.floor((worldX - NAV_PAD) / (this.bakedCardW + NAV_GAP));
 		const row = Math.floor((worldY - NAV_PAD) / rowPitch);
 		if (col < 0 || col >= this.cols || row < 0) return null;
 		const localX = worldX - NAV_PAD - col * (this.bakedCardW + NAV_GAP);
 		const localY = worldY - NAV_PAD - row * rowPitch;
-		if (localX > this.bakedCardW || localY > this.maxBakedH) return null; // gutter/caption
+		if (localX > this.bakedCardW || localY > this.maxBakedH) return null; // gutter
 		const index = row * this.cols + col;
 		return index >= 0 && index < this.entries.length ? index : null;
 	}
@@ -473,10 +454,7 @@ export class ClaimPackGridScene {
 			...others.map((other) => this.fadeOut(other))
 		]).then(() => {
 			if (this.isDestroyed) return;
-			for (const other of others) {
-				other.sprite.destroy();
-				other.caption.destroy();
-			}
+			for (const other of others) other.sprite.destroy();
 			this.entries = [entry];
 			this.selScale = focusScale;
 			this.enterIdle();
@@ -526,7 +504,6 @@ export class ClaimPackGridScene {
 				}
 				const t = Math.min(1, (performance.now() - start) / duration);
 				entry.sprite.alpha = 1 - t;
-				entry.caption.alpha = 1 - t;
 				if (t < 1) requestAnimationFrame(tick);
 				else resolve();
 			};
