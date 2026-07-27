@@ -67,6 +67,21 @@ export interface MapMarker {
 	onClick?: () => void;
 }
 
+/**
+ * A star badge dropped on a point — used to flag the municipalities celebrating
+ * a festa major today, independent of the poster/region pins. Always drawn (no
+ * level-of-detail folding), so a town's star shows at every zoom, and rendered
+ * above the region pins so it reads as a highlight over the map.
+ */
+export interface MapStar {
+	/** Stable id (the municipality feature id), so the layer can diff on rebuild. */
+	id: string;
+	/** Where the star sits, as [lat, lng] — the municipality's centre. */
+	position: [number, number];
+	/** Text shown as the hover tooltip (e.g. the municipality name). */
+	label?: string;
+}
+
 /** A standalone circular region drawn on the map, independent of any GeoJSON. */
 export interface MapCircle {
 	/** Centre as [lat, lng]. */

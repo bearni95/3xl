@@ -21,8 +21,10 @@
 	} from '$utils/geo/region-tree';
 	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
-	import type { MapCircle, MapMarker, MapOverlay } from '$types/map.type';
+	import type { MapCircle, MapMarker, MapOverlay, MapStar } from '$types/map.type';
 	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
+	import { festesService } from '$services/festes.service';
+	import type { FestaLocationRow } from '$types/festivity.type';
 
 	// The municipality polygons, feeding the region tree and the map framing.
 	let municipalities: GeoJSON.FeatureCollection | null = null;
@@ -32,6 +34,11 @@
 	let assignmentsById = new Map<string, MunicipalityShow>();
 	// Held until the fetches settle so the map renders against the loaded data.
 	let ready = false;
+	// The municipalities celebrating a festa major today, read from Supabase — the
+	// same `festivities` fetch the /claim screen uses, so the map's stars and the
+	// day's booster packs agree on which towns are "de festa". Each town's `id`
+	// matches a municipality feature id, so it resolves to a polygon on the map.
+	let todayFestes: FestaLocationRow[] = [];
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
 	// The tier of pins WorldMap is currently drawing (0 = coarsest), reported back
@@ -88,6 +95,15 @@
 			);
 		}
 		ready = true;
+
+		// Today's festa-major towns, loaded after the map is ready so a slow (or
+		// unconfigured) Supabase never blocks the map: the stars simply pop in once
+		// they arrive, and stay empty if the fetch fails.
+		try {
+			todayFestes = await festesService.loadTodayFestes();
+		} catch {
+			todayFestes = [];
+		}
 	});
 
 	// Països Catalans polygons, built by @3xl/data's generate:geo from the
@@ -421,6 +437,26 @@
 
 	$: regionGeometry = buildRegionGeometry(municipalities, fillIndex);
 
+	// A gold star dropped on every municipality celebrating a festa major today,
+	// at the centre of the town's bounding box (its own key in the region geometry).
+	// A festa town whose polygon isn't on the map (no box) is skipped. Named deps
+	// (`todayFestes`, `regionGeometry`) so the stars repaint when either lands.
+	$: festaStars = (() => {
+		const boxes = regionGeometry.boxes;
+		const result: MapStar[] = [];
+		for (const festa of todayFestes) {
+			const box = boxes.get(festa.id);
+			if (!box) continue;
+			const [[south, west], [north, east]] = box;
+			result.push({
+				id: festa.id,
+				position: [(south + north) / 2, (west + east) / 2],
+				label: festa.name
+			});
+		}
+		return result;
+	})();
+
 	// One pin per imaged region that has a show, dropped at the centre of the
 	// region's bounding box, captioned with the show and tooltipped with the region
 	// name; clicking a pin opens that region. Pins clear of the selection are
@@ -561,6 +597,7 @@
 				{overlays}
 				{circles}
 				{markerLevels}
+				stars={festaStars}
 				{hiddenLineUrls}
 				{focusBounds}
 				{selectedIds}

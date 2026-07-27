@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import type L from 'leaflet';
-	import type { MapCircle, MapLine, MapMarker, MapOverlay } from '$types/map.type';
+	import type { MapCircle, MapLine, MapMarker, MapOverlay, MapStar } from '$types/map.type';
 
 	let {
 		center = [20, 0] as [number, number],
@@ -13,6 +13,7 @@
 		lines = [],
 		markers = [],
 		markerLevels = null,
+		stars = [],
 		highlightId = null,
 		highlightStyle = null,
 		selectedIds = new Set<string>(),
@@ -49,6 +50,11 @@
 		 * falls back to the previous rendering. Takes precedence over `markers`.
 		 */
 		markerLevels?: MapMarker[][] | null;
+		/**
+		 * Star badges dropped on individual points (e.g. today's festa-major towns),
+		 * drawn above the region pins and always shown regardless of zoom tier.
+		 */
+		stars?: MapStar[];
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
 		highlightId?: string | null;
 		/** Style merged over the highlighted feature's base style. */
@@ -99,6 +105,10 @@
 	let overlayGroups: L.GeoJSON[] = [];
 	// The pins layer, rebuilt whenever the markers prop changes.
 	let markerLayer: L.LayerGroup | null = null;
+	// The star-badge layer (e.g. today's festa-major towns), rebuilt whenever the
+	// stars prop changes. Kept separate from the region pins so it always shows,
+	// with no level-of-detail folding, and sits above them.
+	let starLayer: L.LayerGroup | null = null;
 	// municipality `properties.id` → the featureIds of the pin region it currently
 	// belongs to (at the tier on screen), rebuilt with the pins. Lets hovering
 	// anywhere in a pinned region's polygons light that whole region, not just the pin.
@@ -151,6 +161,14 @@
 		void markers;
 		void markerLevels;
 		if (ready) rebuildMarkers();
+	});
+
+	$effect(() => {
+		// Rebuild the star badges whenever the parent swaps the stars (e.g. a new
+		// day's festa-major towns arrive). Gated on `ready` so a set passed before
+		// mount still applies once the layer exists.
+		void stars;
+		if (ready) rebuildStars();
 	});
 
 	$effect(() => {
@@ -326,6 +344,36 @@
 		}
 	}
 
+	// A star badge's DOM: a gold ★ glyph, centred on its point, with a drop shadow
+	// so it stays legible over any region fill beneath it.
+	function starElement(): HTMLElement {
+		const star = document.createElement('div');
+		star.textContent = '★';
+		star.className =
+			'-translate-x-1/2 -translate-y-1/2 text-2xl leading-none text-warning drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]';
+		return star;
+	}
+
+	// (Re)build the star badges for the current view: clear the layer, keep only the
+	// stars inside the (padded) viewport, and drop a zero-sized divIcon at each. Runs
+	// on every stars change and whenever the map pans or zooms, so the culling tracks
+	// what's on screen. Unlike the region pins there's no level-of-detail — every
+	// festa-major town keeps its star at every zoom.
+	function rebuildStars() {
+		if (!mapInstance || !Leaf) return;
+		if (!starLayer) starLayer = Leaf.layerGroup().addTo(mapInstance);
+		starLayer.clearLayers();
+
+		const bounds = mapInstance.getBounds().pad(0.25);
+		for (const star of stars) {
+			if (!bounds.contains(star.position)) continue;
+			const icon = Leaf.divIcon({ html: starElement(), className: '', iconSize: [0, 0] });
+			const badge = Leaf.marker(star.position, { icon, riseOnHover: true });
+			if (star.label) badge.bindTooltip(star.label, { direction: 'top' });
+			badge.addTo(starLayer!);
+		}
+	}
+
 	onMount(async () => {
 		// Leaflet touches `window` at import time, so it must be loaded
 		// dynamically in the browser — never during SSR.
@@ -356,6 +404,7 @@
 		mapInstance.on('moveend zoomend', () => {
 			syncView();
 			rebuildMarkers();
+			rebuildStars();
 		});
 
 		// Fetch all overlays in parallel, then add them in array order so
