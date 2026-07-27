@@ -25,7 +25,7 @@
 
 import { Application, Container } from 'pixi.js';
 import { captureGlContextDisposer } from '$utils/pixi/release-context';
-import { CardSprite } from '$utils/card/CardSprite';
+import { CardSprite, cardBorderWidth } from '$utils/card/CardSprite';
 import type { CardModel } from '$utils/card/card-model.type';
 
 const CARD_ASPECT = 2 / 3; // portrait trading card (width / height)
@@ -103,8 +103,19 @@ export class CardScene {
 	// canvas width (scale stays 1), so navigation is a pure vertical scroll.
 	private pan = { x: 0, y: 0 };
 	private scale = 1;
-	// Baked grid geometry (world units), recomputed each (re)build.
-	private grid = { cols: 1, cardW: 0, cardH: 0, contentW: 0, contentH: 0 };
+	// Baked grid geometry (world units), recomputed each (re)build. `border` is the
+	// outset frame each card draws beyond its content; `cellW`/`cellH` are the full
+	// per-card footprint (content + border on both sides) the grid tiles.
+	private grid = {
+		cols: 1,
+		cardW: 0,
+		cardH: 0,
+		border: 0,
+		cellW: 0,
+		cellH: 0,
+		contentW: 0,
+		contentH: 0
+	};
 	// Whether the initial view has been framed (so a resize keeps the scroll offset).
 	private framed = false;
 
@@ -266,7 +277,7 @@ export class CardScene {
 	 */
 	private buildGrid(width: number, height: number): void {
 		if (this.cards.length === 0) {
-			this.grid = { cols: 1, cardW: 0, cardH: 0, contentW: 0, contentH: 0 };
+			this.grid = { cols: 1, cardW: 0, cardH: 0, border: 0, cellW: 0, cellH: 0, contentW: 0, contentH: 0 };
 			return;
 		}
 
@@ -275,18 +286,33 @@ export class CardScene {
 		// width, dynamically adapting as the slider changes the count.
 		const cols = Math.max(1, this.columns);
 		const availW = Math.max(1, width - NAV_PAD * 2);
-		const cardW = Math.max(1, (availW - NAV_GAP * (cols - 1)) / cols);
+		// Each card's full footprint (its content plus the outset border on both sides)
+		// tiles the row with NAV_GAP between footprints, so neighbouring borders never
+		// overlap. Since the border width itself depends on the card width, converge on
+		// the content width with a couple of iterations.
+		const cellW = (availW - NAV_GAP * (cols - 1)) / cols;
+		let cardW = Math.max(1, cellW);
+		let border = 0;
+		for (let k = 0; k < 4; k++) {
+			border = cardBorderWidth(cardW);
+			cardW = Math.max(1, cellW - 2 * border);
+		}
 		const cardH = cardW / CARD_ASPECT;
+		const cellH = cardH + 2 * border;
 		const rows = Math.ceil(this.cards.length / cols);
-		const contentW = NAV_PAD * 2 + cols * cardW + (cols - 1) * NAV_GAP;
-		const contentH = NAV_PAD * 2 + rows * cardH + (rows - 1) * NAV_GAP;
-		this.grid = { cols, cardW, cardH, contentW, contentH };
+		const contentW = NAV_PAD * 2 + cols * cellW + (cols - 1) * NAV_GAP;
+		const contentH = NAV_PAD * 2 + rows * cellH + (rows - 1) * NAV_GAP;
+		this.grid = { cols, cardW, cardH, border, cellW, cellH, contentW, contentH };
 
 		for (let i = 0; i < this.cards.length; i++) {
 			const row = Math.floor(i / cols);
 			const col = i % cols;
 			const sprite = this.makeSprite(i, cardW, cardH);
-			sprite.position.set(NAV_PAD + col * (cardW + NAV_GAP), NAV_PAD + row * (cardH + NAV_GAP));
+			// Inset the content by the border so the outset frame sits inside the cell.
+			sprite.position.set(
+				NAV_PAD + border + col * (cellW + NAV_GAP),
+				NAV_PAD + border + row * (cellH + NAV_GAP)
+			);
 		}
 
 		// Fixed fit-to-width: no zoom, ever. The first build starts scrolled to the
@@ -367,17 +393,18 @@ export class CardScene {
 
 	/** Screen point → the index of the card under it, or null if over a gap/empty. */
 	private cardIndexAt(sx: number, sy: number): number | null {
-		const { cols, cardW, cardH } = this.grid;
+		const { cols, cardW, cardH, border, cellW, cellH } = this.grid;
 		if (cardW === 0) return null;
 		const worldX = sx - this.pan.x;
 		const worldY = sy - this.pan.y;
-		const col = Math.floor((worldX - NAV_PAD) / (cardW + NAV_GAP));
-		const row = Math.floor((worldY - NAV_PAD) / (cardH + NAV_GAP));
+		const col = Math.floor((worldX - NAV_PAD) / (cellW + NAV_GAP));
+		const row = Math.floor((worldY - NAV_PAD) / (cellH + NAV_GAP));
 		if (col < 0 || col >= cols || row < 0) return null;
-		// Reject points that land in the gutter between cards.
-		const localX = worldX - NAV_PAD - col * (cardW + NAV_GAP);
-		const localY = worldY - NAV_PAD - row * (cardH + NAV_GAP);
-		if (localX > cardW || localY > cardH) return null;
+		// Card-local coords within the cell (past the border inset); reject points that
+		// land on the border or in the gutter between cards.
+		const localX = worldX - NAV_PAD - col * (cellW + NAV_GAP) - border;
+		const localY = worldY - NAV_PAD - row * (cellH + NAV_GAP) - border;
+		if (localX < 0 || localY < 0 || localX > cardW || localY > cardH) return null;
 		const index = row * cols + col;
 		return index >= 0 && index < this.cards.length ? index : null;
 	}

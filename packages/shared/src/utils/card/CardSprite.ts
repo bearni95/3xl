@@ -48,6 +48,15 @@ export const REFERENCE_SOURCE_HEIGHT = 150;
  * reads a little bigger than the strict fit — a deliberate 30% zoom. */
 const IDLE_SCALE_BOOST = 1.3;
 
+/**
+ * The width of the MTG-style frame drawn around a card of the given content width.
+ * The frame is *outset* — it extends this far beyond each edge — so a layout placing
+ * several cards must reserve this much space around each one to avoid overlap.
+ */
+export function cardBorderWidth(cardWidth: number): number {
+	return Math.max(6, Math.round(cardWidth * 0.05));
+}
+
 /** The d10 die icon (white SVG) shown next to the ATK value — the same one the
  * roster/team cards use for a character's stat. Served from @3xl/assets. */
 const D10_ICON_URL = '/assets/icons/skoll/d10.svg';
@@ -188,7 +197,7 @@ export class CardSprite extends Container {
 		// sits on the card edge (corner radius matched) and the stroke extends outward.
 		const borderColor =
 			this.card.rarity != null ? (RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2) : 0xf2f2f2;
-		const borderWidth = Math.max(6, Math.round(this.cardWidth * 0.05));
+		const borderWidth = cardBorderWidth(this.cardWidth);
 		const border = new Graphics();
 		border.roundRect(
 			-borderWidth / 2,
