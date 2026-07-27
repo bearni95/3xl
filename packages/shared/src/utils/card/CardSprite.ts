@@ -149,6 +149,14 @@ export class CardSprite extends Container {
 		footer.fill({ color: 0x000000, alpha: 0.1 });
 		this.addChild(footer);
 
+		// The labels row (the top half of the footer) gets its own extra 50% black band,
+		// layered on top of the shared footer band, so it reads darker than the values
+		// row below it.
+		const labelsBand = new Graphics();
+		labelsBand.rect(0, footerY, this.cardWidth, footerH / 2);
+		labelsBand.fill({ color: 0x000000, alpha: 0.5 });
+		this.addChild(labelsBand);
+
 		// A black silhouette copy of the art, sitting behind the full-colour sprite
 		// (added first, so lower z-index) and offset to the bottom-left — the
 		// character's animated shadow. A black tint multiplies every visible pixel's
