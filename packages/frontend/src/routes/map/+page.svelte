@@ -843,12 +843,12 @@
 	the map so a fight against a town's seeded OG team plays out without ever navigating
 	away. This is the only place combat is mounted — there is no standalone combat route
 	any more. A plain fixed panel (not a DaisyUI modal) at z-[1200] — above the map's
-	three corner panels (z-[1100]) — with a transparent background so the map shows
+	three corner panels (z-[1100]) — over a 30%-white wash so the map still reads
 	through behind it. CombatArena fields the player's active roster team against the
 	frozen OG spawns and handles all its own gating. Keyed so each new challenge remounts
 	a clean fight. -->
 {#if fightOpen}
-	<div class="fixed inset-0 z-[1200] flex items-center justify-center overflow-auto p-4">
+	<div class="fixed inset-0 z-[1200] flex items-center justify-center overflow-auto bg-white/30 p-4">
 		{#key fightSpawns.map((spawn) => spawn.characterId).join(',')}
 			<CombatArena ogTeam={fightSpawns} ogName={fightName} closable on:close={() => (fightOpen = false)} />
 		{/key}
