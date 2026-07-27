@@ -282,6 +282,7 @@
 				</div>
 			{:else}
 				<p class="mb-3 text-xs opacity-60">
+					Drag to pan, scroll or pinch to zoom.
 					{#if activeTeam}
 						Tap a card to add or remove it from the active team.
 					{:else}
@@ -289,10 +290,11 @@
 					{/if}
 				</p>
 				<!-- The roster is drawn on the shared card canvas — the same renderer the
-				     claim pack opener uses — instead of a DOM grid; tapping a card toggles
-				     its team membership. -->
+				     claim pack opener uses — instead of a DOM grid. Cards lay out in a
+				     responsive grid (1/2/3 columns, like the old grid) inside a world you
+				     pan and zoom like a map; tapping a card toggles its team membership. -->
 				<div class="h-[70vh] min-h-[32rem] overflow-hidden rounded-box bg-base-100 shadow-md">
-					<CardCanvas cards={cardModels} columns={3} onCardTap={handleCardTap} />
+					<CardCanvas cards={cardModels} layout="grid" pannable onCardTap={handleCardTap} />
 				</div>
 			{/if}
 		</div>

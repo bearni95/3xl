@@ -1,15 +1,20 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onDestroy, onMount } from 'svelte';
-	import { CardScene } from './CardScene';
+	import { CardScene, type CardLayout } from './CardScene';
 	import type { CardModel } from './card-model.type';
 
 	// A single card (convenience) — centred and fit to the host.
 	export let card: CardModel | null = null;
 	// Several cards — packed into a grid. Takes precedence over `card` when set.
 	export let cards: CardModel[] | null = null;
-	// Max cards per row when rendering a grid.
+	// Max cards per row when rendering a fit-layout grid.
 	export let columns: number = 3;
+	// Layout mode: 'fit' scales everything to the host; 'grid' lays cards out at a
+	// natural, responsive size in a navigable world (pair with `pannable`).
+	export let layout: CardLayout = 'fit';
+	// Enable map-style pan/zoom navigation (only meaningful in the 'grid' layout).
+	export let pannable: boolean = false;
 	// Optional per-card tap handler, called with the tapped card's index into the
 	// rendered array. When set, cards become interactive (the roster toggles team
 	// membership on tap); omit for a display-only canvas.
@@ -28,7 +33,7 @@
 
 	onMount(() => {
 		if (!host) return;
-		scene = new CardScene(host, { cards: models, columns, onCardTap });
+		scene = new CardScene(host, { cards: models, columns, layout, pannable, onCardTap });
 	});
 
 	onDestroy(() => {
