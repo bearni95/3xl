@@ -3,12 +3,14 @@
  *
  * Renders a booster pack into a RenderTexture, framed to match {@link CardSprite}:
  * the show's poster spans the full pack width and is never cropped — the pack's
- * height adapts to the poster's aspect ratio — with plain white header and footer
- * strips above and below it, and the place the pack belongs to set within the top
- * colour rectangle, below the triangles row (white with a black outline). Square
- * corners, a 2px
- * black border and a soft black drop shadow sit behind it. Exposes split(y), which
- * carves the rendered texture into top/bottom halves for the slice animation.
+ * height adapts to the poster's aspect ratio — with a coloured header band and a
+ * plain white footer strip above and below it, and the place the pack belongs to set
+ * within the header band below its teeth (white with a black outline). The header's
+ * top edge is serrated into teeth (the teeth are the band colour, the notches between
+ * them transparent), so the whole pack silhouette — a 2px black border and a soft
+ * black drop shadow follow it — is serrated rather than a rectangle with triangles
+ * painted over it. Exposes split(y), which carves the rendered texture into top/bottom
+ * halves for the slice animation.
  *
  * Ported from the yugioh-duel-sim booster opener; the cover is now a show poster
  * (loaded by URL) shown whole rather than a card's cropped artwork.
@@ -42,11 +44,12 @@ const DEFAULT_ART_ASPECT = 1.14;
 /** Fill for the header/footer strips — opaque white so they fully hide any poster
  * overflow behind them (the poster is a Sprite, not masked). */
 const STRIP_FILL = { color: 0xffffff, alpha: 1 } as const;
-/** A row of equilateral triangles marches across the top edge, bases on the start
- * of the top strip (y = 0). Their base is a target fraction of the pack width,
- * rounded to a whole count so they tile the width edge to edge. They are painted
- * the same colour as the header band — the row is made visible only by the
- * per-column overlays drawn on top. */
+/** The pack's top edge is serrated into equilateral teeth. Each tooth base is a
+ * target fraction of the pack width, rounded to a whole count so the row tiles the
+ * width edge to edge. The teeth are the header-band colour and the notches between
+ * them are transparent — the band's top edge literally zig-zags, so the whole pack
+ * silhouette (fill, border, drop shadow) is serrated rather than a rectangle with
+ * triangles painted over it. */
 const TRIANGLE_BASE_RATIO = 0.1;
 
 export interface PackSpriteOptions {
@@ -108,10 +111,17 @@ export class PackSprite extends Container {
 
 		const composition = this.buildComposition(cover);
 
-		// Render the rectangular composition into an intermediate texture, then
-		// re-render it through a rect-shaped Graphics with a texture fill so the
-		// 2px black border is baked into the final renderTex (which is also
-		// what `split()` needs).
+		// The pack silhouette: the serrated top edge, then the right/bottom/left
+		// corners. Used to bake the 2px border and to shape the drop shadow so both
+		// trace the teeth rather than a straight rectangle top.
+		const { points: topEdge } = this.serration();
+		const silhouette = [...topEdge, this.packW, this.packH, 0, this.packH];
+
+		// Render the composition (whose top notches are transparent) into an
+		// intermediate texture, then re-render it through a Graphics: a rect fills it
+		// with that texture (transparent notches stay transparent), and the silhouette
+		// poly bakes the 2px black border around the teeth into the final renderTex
+		// (which is also what `split()` needs).
 		const intermediate = RenderTexture.create({
 			width: this.packW,
 			height: this.packH,
@@ -123,7 +133,7 @@ export class PackSprite extends Container {
 		const framed = new Graphics();
 		framed.rect(0, 0, this.packW, this.packH);
 		framed.fill({ texture: intermediate });
-		framed.rect(0, 0, this.packW, this.packH);
+		framed.poly(silhouette);
 		framed.stroke({ width: 2, color: 0x000000, alpha: 1 });
 
 		this.renderTex = RenderTexture.create({
@@ -135,9 +145,10 @@ export class PackSprite extends Container {
 		framed.destroy();
 		intermediate.destroy(true);
 
-		// Soft black drop shadow behind the pack, offset down/right.
+		// Soft black drop shadow behind the pack, offset down/right. It follows the
+		// serrated silhouette so the shadow's top edge matches the teeth.
 		const shadow = new Graphics();
-		shadow.rect(0, 0, this.packW, this.packH);
+		shadow.poly(silhouette);
 		shadow.fill({ color: 0x000000, alpha: 0.55 });
 		shadow.filters = [new BlurFilter({ strength: 12 })];
 		shadow.position.set(4, 10);
@@ -237,6 +248,30 @@ export class PackSprite extends Container {
 		}
 	}
 
+	/**
+	 * The serrated top edge as a left-to-right polyline from (0, 0) to (packW, 0),
+	 * dipping to `depth` at each tooth centre and rising back to 0 at each tooth
+	 * boundary. Appending the pack's right/bottom/left corners to these points gives
+	 * the full pack silhouette; the header band reuses them for its own top edge. The
+	 * teeth tile the width edge to edge (their count is rounded so there is no gap or
+	 * overhang) and every vertex is snapped to a whole pixel so the row stays crisp.
+	 */
+	private serration(): { points: number[]; depth: number } {
+		const w = this.packW;
+		const triCount = Math.max(1, Math.round(w / (w * TRIANGLE_BASE_RATIO)));
+		const triBase = w / triCount;
+		const depth = Math.round(((triBase * Math.sqrt(3)) / 2) * 0.67);
+		const points: number[] = [0, 0];
+		for (let i = 0; i < triCount; i++) {
+			const xL = Math.round(i * triBase);
+			const xR = Math.round((i + 1) * triBase);
+			// Down to the notch bottom at this tooth's centre, then back up to the top
+			// edge at its right boundary (shared with the next tooth's left boundary).
+			points.push(Math.round((xL + xR) / 2), depth, xR, 0);
+		}
+		return { points, depth };
+	}
+
 	private buildComposition(cover: Texture | null): Container {
 		const root = new Container();
 		const w = this.packW;
@@ -250,8 +285,14 @@ export class PackSprite extends Container {
 		const artY = headerH;
 		const artH = h - headerH - footerH;
 
+		const { points: topEdge, depth: triHeight } = this.serration();
+
+		// White backing behind the art + footer. It starts below the serrated top
+		// strip (at the notch depth) so the notches between the top teeth stay
+		// transparent rather than showing white — the teeth themselves are painted by
+		// the header band below.
 		const bg = new Graphics();
-		bg.rect(0, 0, w, h);
+		bg.rect(0, triHeight, w, h - triHeight);
 		bg.fill({ color: 0xffffff, alpha: 1 });
 		root.addChild(bg);
 
@@ -268,9 +309,12 @@ export class PackSprite extends Container {
 
 		// Header + footer strips, outside the image — no text on them. The footer is
 		// plain white; the header is painted the cover's dominant top-row colour so
-		// the frame's top edge picks up the poster.
+		// the frame's top edge picks up the poster. The header's top edge is the
+		// serrated polyline: the teeth are the band colour and the notches between them
+		// are transparent (nothing is drawn there), so the top reads as a real serrated
+		// silhouette instead of black triangles painted over a rectangle.
 		const header = new Graphics();
-		header.rect(0, 0, w, headerH);
+		header.poly([...topEdge, w, headerH, 0, headerH]);
 		header.fill({ color: this.topColor, alpha: 1 });
 		root.addChild(header);
 
@@ -279,27 +323,9 @@ export class PackSprite extends Container {
 		footer.fill(STRIP_FILL);
 		root.addChild(footer);
 
-		// A row of equilateral triangles across the top, bases on y = 0 (the start of
-		// the top strip) and apexes pointing down into it. The base is rounded to a
-		// whole count so the row tiles the full width with no gap or overhang. Filled
-		// solid black so the teeth read clearly against the header band.
-		const triCount = Math.max(1, Math.round(w / (w * TRIANGLE_BASE_RATIO)));
-		const triBase = w / triCount;
-		const triHeight = Math.round(((triBase * Math.sqrt(3)) / 2) * 0.67);
-		const triangles = new Graphics();
-		for (let i = 0; i < triCount; i++) {
-			// Snap edges to whole pixels; neighbours share a boundary because they
-			// round the same value, so the row stays gapless and crisp.
-			const xL = Math.round(i * triBase);
-			const xR = Math.round((i + 1) * triBase);
-			triangles.poly([xL, 0, xR, 0, Math.round((xL + xR) / 2), triHeight]);
-		}
-		triangles.fill({ color: 0x000000, alpha: 1 });
-		root.addChild(triangles);
-
-		// The place the pack belongs to, contained within the top coloured rectangle
-		// (the header band) in the band area below the triangles row, in white with a
-		// black outline so it stays legible over the header colour. The spawn's two-digit
+		// The place the pack belongs to, contained within the top coloured band, below
+		// the serrated teeth, in white with a black outline so it stays legible over the
+		// header colour. The spawn's two-digit
 		// year (rolled at open time, so "now") is joined to it exactly as the card's meta
 		// strip does — e.g. `Barcelona '26`.
 		if (this.locationName) {
