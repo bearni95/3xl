@@ -3,8 +3,9 @@
  *
  * Renders a booster pack into a RenderTexture, framed to match {@link CardSprite}:
  * the show's poster spans the full pack width and is never cropped — the pack's
- * height adapts to the poster's aspect ratio — with plain white header and footer
- * strips above and below it, and the place the pack belongs to overlaid at the
+ * height adapts to the poster's aspect ratio. A transparent top strip carries a row
+ * of black triangle teeth plus alternating 50% black overlay bars; a plain white
+ * footer strip sits below. The place the pack belongs to is overlaid at the
  * top-centre of the poster (white with a black outline). Square corners, a 2px
  * black border and a soft black drop shadow sit behind it. Exposes split(y), which
  * carves the rendered texture into top/bottom halves for the slice animation.
@@ -74,9 +75,6 @@ export class PackSprite extends Container {
 	private packH: number;
 	private renderTex: RenderTexture | null = null;
 	private mainSprite: Sprite | null = null;
-	/** Fill for the top rectangle + triangles: the most frequent colour in the
-	 * cover's first pixel row, resolved in load(). White until then. */
-	private topColor = 0xffffff;
 
 	constructor(opts: PackSpriteOptions) {
 		super();
@@ -102,7 +100,6 @@ export class PackSprite extends Container {
 		// ratio sets the pack's height. Resolve the final footprint (fitted inside
 		// the caller's box) before composing.
 		this.resolveDimensions(cover);
-		this.topColor = this.detectTopColor(cover);
 
 		const composition = this.buildComposition(cover);
 
@@ -133,9 +130,11 @@ export class PackSprite extends Container {
 		framed.destroy();
 		intermediate.destroy(true);
 
-		// Soft black drop shadow behind the pack, offset down/right.
+		// Soft black drop shadow behind the pack, offset down/right. It starts below
+		// the transparent top strip so it doesn't bleed through the see-through area.
+		const headerH = Math.round(this.packW * HEADER_RATIO);
 		const shadow = new Graphics();
-		shadow.rect(0, 0, this.packW, this.packH);
+		shadow.rect(0, headerH, this.packW, this.packH - headerH);
 		shadow.fill({ color: 0x000000, alpha: 0.55 });
 		shadow.filters = [new BlurFilter({ strength: 12 })];
 		shadow.position.set(4, 10);
@@ -206,35 +205,6 @@ export class PackSprite extends Container {
 		this.packH = Math.round(width * heightPerWidth);
 	}
 
-	/**
-	 * The most frequent colour in the cover's first pixel row, as 0xRRGGBB. Reads
-	 * the poster's pixels once and tallies each colour across row 0; falls back to
-	 * white when there is no cover or the pixels can't be read.
-	 */
-	private detectTopColor(cover: Texture | null): number {
-		if (!cover || cover.width <= 0 || cover.height <= 0) return 0xffffff;
-		try {
-			const { pixels, width } = this.app.renderer.extract.pixels(cover);
-			const counts = new Map<number, number>();
-			let best = 0xffffff;
-			let bestCount = 0;
-			for (let x = 0; x < width; x++) {
-				const i = x * 4;
-				if (pixels[i + 3] === 0) continue; // skip fully transparent pixels
-				const color = (pixels[i] << 16) | (pixels[i + 1] << 8) | pixels[i + 2];
-				const n = (counts.get(color) ?? 0) + 1;
-				counts.set(color, n);
-				if (n > bestCount) {
-					bestCount = n;
-					best = color;
-				}
-			}
-			return best;
-		} catch {
-			return 0xffffff;
-		}
-	}
-
 	private buildComposition(cover: Texture | null): Container {
 		const root = new Container();
 		const w = this.packW;
@@ -243,13 +213,14 @@ export class PackSprite extends Container {
 		const footerH = Math.round(w * FOOTER_RATIO);
 		const footerY = h - footerH;
 
-		// The poster sits only in the art area between the strips; the header/footer
-		// bars sit outside it, over this white backing.
+		// The poster sits in the art area; the footer sits below it. The top strip is
+		// left transparent (no backing), so the page shows through it behind the
+		// triangles — only the art + footer get this white backing.
 		const artY = headerH;
 		const artH = h - headerH - footerH;
 
 		const bg = new Graphics();
-		bg.rect(0, 0, w, h);
+		bg.rect(0, artY, w, h - artY);
 		bg.fill({ color: 0xffffff, alpha: 1 });
 		root.addChild(bg);
 
@@ -264,14 +235,8 @@ export class PackSprite extends Container {
 			root.addChild(sprite);
 		}
 
-		// Header + footer strips, outside the image — no text on them. The footer is
-		// plain white; the header is painted the cover's dominant top-row colour so
-		// the frame's top edge picks up the poster.
-		const header = new Graphics();
-		header.rect(0, 0, w, headerH);
-		header.fill({ color: this.topColor, alpha: 1 });
-		root.addChild(header);
-
+		// The top strip is transparent (drawn nothing) — only the triangles and the
+		// overlay bars live up there. The footer stays a plain white strip.
 		const footer = new Graphics();
 		footer.rect(0, footerY, w, footerH);
 		footer.fill(STRIP_FILL);
@@ -294,6 +259,18 @@ export class PackSprite extends Container {
 		}
 		triangles.fill({ color: 0x000000, alpha: 1 });
 		root.addChild(triangles);
+
+		// Alternating vertical bars over the top strip: each a half-triangle wide,
+		// the strip's full height, tinted 50% black, with a gap of its own width
+		// between them (bar-gap-bar-gap) all the way to the right edge.
+		const barW = Math.max(1, Math.round(triBase / 2));
+		const bars = new Graphics();
+		for (let x = 0, col = 0; x < w; x += barW, col++) {
+			if (col % 2 !== 0) continue; // skip every other column — the gaps
+			bars.rect(x, 0, Math.min(barW, w - x), headerH);
+		}
+		bars.fill({ color: 0x000000, alpha: 0.5 });
+		root.addChild(bars);
 
 		// The place the pack belongs to, overlaid at the top-centre of the image in
 		// white with a black outline so it stays legible over the poster.
