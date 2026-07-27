@@ -96,6 +96,19 @@
 	$: recycleSelectedCount = selectedForRecycle.size;
 	$: recycleGrant = Math.floor(recycleSelectedCount / RECYCLE_GROUP_SIZE);
 
+	// Supabase/PostgREST errors are plain objects with a `message`, not Error
+	// instances, so a bare String(err) reads as "[object Object]". Pull the real
+	// message out (and fall back to the generic fields a DB error carries).
+	function recycleErrorMessage(err: unknown): string {
+		if (err instanceof Error) return err.message;
+		if (err && typeof err === 'object') {
+			const record = err as Record<string, unknown>;
+			const detail = record.message ?? record.hint ?? record.details;
+			if (typeof detail === 'string' && detail) return detail;
+		}
+		return 'Could not recycle those cards. Please try again.';
+	}
+
 	async function confirmRecycle(): Promise<void> {
 		if (recycleGrant < 1 || recycling) return;
 		recycling = true;
@@ -106,7 +119,7 @@
 			recycleMode = false;
 			selectedForRecycle = new Set();
 		} catch (err) {
-			recycleNotice = err instanceof Error ? err.message : String(err);
+			recycleNotice = recycleErrorMessage(err);
 		} finally {
 			recycling = false;
 		}
