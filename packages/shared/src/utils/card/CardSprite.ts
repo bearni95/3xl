@@ -373,47 +373,28 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The top title strip: the `[N]` rarity badge flush left, the character name
-	 * centred. The name is sized to the midpoint of its former size and the rarity
-	 * badge's, so it sits a touch smaller now that the badge shares the row.
+	 * The top title strip: the character name, centred. (The rarity badge no longer
+	 * shares this row — the rarity now reads from the card's coloured frame.)
 	 */
 	private makeHeader(headerH: number): Container {
 		const group = new Container();
 		const centerY = headerH / 2;
+		const nameSize = Math.max(9, Math.round(this.cardWidth * 0.072));
 
-		// Rarity badge, flush left in the title row: the bracketed tier number in its
-		// WoW quality colour with a black outline.
-		const raritySize = Math.max(9, Math.round(this.cardWidth * 0.072));
-		if (this.card.rarity != null) {
-			const rarity = new Text({
-				text: `[${this.card.rarity}]`,
-				style: {
-					fontFamily: 'sans-serif',
-					fontSize: raritySize,
-					fontWeight: '700',
-					fill: RARITY_COLOR[this.card.rarity] ?? 0xf2f2f2
-				}
-			});
-			rarity.anchor.set(0, 0.5);
-			rarity.position.set(this.cardWidth * 0.08, centerY);
-			group.addChild(rarity);
-		}
-
-		// Name, flush right — sized to match the rarity badge's text.
 		const name = new Text({
 			text: this.card.label,
 			style: {
 				fontFamily: 'sans-serif',
-				fontSize: raritySize,
+				fontSize: nameSize,
 				fontWeight: '700',
 				fill: 0xf2f2f2,
-				align: 'right',
+				align: 'center',
 				wordWrap: true,
 				wordWrapWidth: this.cardWidth * 0.9
 			}
 		});
-		name.anchor.set(1, 0.5);
-		name.position.set(this.cardWidth * 0.92, centerY);
+		name.anchor.set(0.5, 0.5);
+		name.position.set(this.cardWidth / 2, centerY);
 		group.addChild(name);
 
 		return group;
