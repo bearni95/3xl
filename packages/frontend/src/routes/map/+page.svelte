@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import AuthMenu from '$components/core/AuthMenu.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
@@ -274,8 +275,8 @@
 	];
 
 	// The open location's own node and its plurality ("most seen") show, surfaced in
-	// the top-left info card. This is the region's own show — not repeated anywhere in
-	// the bottom-left panel, whose table only lists the child rows beneath it.
+	// the always-on bottom-right info card. This is the region's own show — not repeated
+	// anywhere in the bottom-left panel, whose table only lists the child rows beneath it.
 	$: openNode = openRegion ? findNode(regionNodes, openRegion) : null;
 	$: openShow = openNode?.show ?? null;
 
@@ -549,46 +550,47 @@
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
-	{#if openRegion}
-		<aside
-			class="fixed left-4 top-20 z-[1100] w-[24rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
-			aria-label="Selected location"
-		>
-			<div class="flex flex-col gap-3 p-4">
-				<div class="breadcrumbs max-w-full text-sm">
-					<ul>
-						{#each crumbs as crumb, i}
-							<li>
-								{#if i === crumbs.length - 1}
-									<span class="font-semibold">{crumb.label}</span>
-								{:else}
-									<button type="button" class="link link-hover" on:click={() => open(crumb.key)}>
-										{crumb.label}
-									</button>
-								{/if}
-							</li>
-						{/each}
-					</ul>
-				</div>
+	<!-- The navbar's profile/sign-in panel, pinned always-visible top-left here. -->
+	<AuthMenu pinned />
 
-				{#if openShow}
-					<div class="flex items-center gap-3">
-						{#if openShow.posterUrl}
-							<img
-								src={openShow.posterUrl}
-								alt={openShow.name}
-								class="h-16 w-auto flex-none rounded shadow"
-							/>
-						{/if}
-						<div class="min-w-0">
-							<p class="text-xs font-bold uppercase tracking-wide opacity-60">Most seen</p>
-							<p class="truncate font-semibold">{openShow.name}</p>
-						</div>
-					</div>
-				{/if}
+	<aside
+		class="fixed bottom-4 right-4 z-[1100] w-[24rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
+		aria-label="Selected location"
+	>
+		<div class="flex flex-col gap-3 p-4">
+			<div class="breadcrumbs max-w-full text-sm">
+				<ul>
+					{#each crumbs as crumb, i}
+						<li>
+							{#if i === crumbs.length - 1}
+								<span class="font-semibold">{crumb.label}</span>
+							{:else}
+								<button type="button" class="link link-hover" on:click={() => open(crumb.key)}>
+									{crumb.label}
+								</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
 			</div>
-		</aside>
-	{/if}
+
+			{#if openShow}
+				<div class="flex items-center gap-3">
+					{#if openShow.posterUrl}
+						<img
+							src={openShow.posterUrl}
+							alt={openShow.name}
+							class="h-16 w-auto flex-none rounded shadow"
+						/>
+					{/if}
+					<div class="min-w-0">
+						<p class="text-xs font-bold uppercase tracking-wide opacity-60">Most seen</p>
+						<p class="truncate font-semibold">{openShow.name}</p>
+					</div>
+				</div>
+			{/if}
+		</div>
+	</aside>
 
 	<aside
 		class="fixed bottom-4 left-4 z-[1100] flex h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"

@@ -9,6 +9,11 @@
 	import ProfileCard from '$components/core/ProfileCard.svelte';
 	import MagicLinkForm from '$components/core/MagicLinkForm.svelte';
 
+	// When pinned, the trigger button is dropped and the panel renders as a
+	// fixed, always-visible card (used top-left on the map page) instead of the
+	// hover/click dropdown that hangs off the navbar.
+	export let pinned: boolean = false;
+
 	const status = authService.status;
 	const profile = authService.profile;
 
@@ -65,33 +70,39 @@
 	}
 </script>
 
-<div class="group relative">
-	{#if $status === AuthStatus.Loading}
-		<button type="button" class="btn btn-ghost btn-sm btn-disabled" aria-label="Loading account">
-			<span class="loading loading-spinner loading-sm"></span>
-		</button>
-	{:else if $status === AuthStatus.SignedIn && $profile}
-		<!-- Signed-in username; hovering slides the profile card down. -->
-		<button type="button" class="btn btn-ghost btn-sm gap-2">
-			<div class="avatar avatar-placeholder">
-				<div class="w-6 rounded-full bg-primary text-primary-content">
-					<span class="text-xs">{profileInitial}</span>
+<div class={pinned ? '' : 'group relative'}>
+	{#if !pinned}
+		{#if $status === AuthStatus.Loading}
+			<button type="button" class="btn btn-ghost btn-sm btn-disabled" aria-label="Loading account">
+				<span class="loading loading-spinner loading-sm"></span>
+			</button>
+		{:else if $status === AuthStatus.SignedIn && $profile}
+			<!-- Signed-in username; hovering slides the profile card down. -->
+			<button type="button" class="btn btn-ghost btn-sm gap-2">
+				<div class="avatar avatar-placeholder">
+					<div class="w-6 rounded-full bg-primary text-primary-content">
+						<span class="text-xs">{profileInitial}</span>
+					</div>
 				</div>
-			</div>
-			<span class="max-w-[10rem] truncate">{$profile.displayName}</span>
-		</button>
-	{:else}
-		<button type="button" class="btn btn-primary btn-sm" on:click={togglePanel}>Sign in</button>
+				<span class="max-w-[10rem] truncate">{$profile.displayName}</span>
+			</button>
+		{:else}
+			<button type="button" class="btn btn-primary btn-sm" on:click={togglePanel}>Sign in</button>
+		{/if}
 	{/if}
 
 	<!-- pt-2 keeps the hover area unbroken across the visual gap. -->
 	<div
 		class={classNames(
-			'absolute right-0 top-full z-20 origin-top pt-2 transition duration-200 ease-out',
-			'group-hover:visible group-hover:translate-y-0 group-hover:opacity-100',
-			$signInPanelOpen
-				? 'visible translate-y-0 opacity-100'
-				: 'invisible -translate-y-2 opacity-0'
+			pinned
+				? 'fixed left-4 top-20 z-[1100] visible translate-y-0 opacity-100'
+				: [
+						'absolute right-0 top-full z-20 origin-top pt-2 transition duration-200 ease-out',
+						'group-hover:visible group-hover:translate-y-0 group-hover:opacity-100',
+						$signInPanelOpen
+							? 'visible translate-y-0 opacity-100'
+							: 'invisible -translate-y-2 opacity-0'
+					]
 		)}
 	>
 		<div class="card w-80 bg-base-100 shadow-xl">

@@ -121,6 +121,12 @@ export class PackSprite extends Container {
 		const { points: topEdge } = this.serration();
 		const silhouette = [...topEdge, ...this.bottomEdge(topEdge)];
 
+		// Bake every texture at the renderer's resolution (device pixel ratio), not 1×,
+		// so the pack stays pixel-crisp on HiDPI/Retina canvases — at 1× it renders at
+		// half the device density and the cover, baked text, border and serrated teeth
+		// come out soft and jagged when the sprite is drawn full size.
+		const resolution = this.app.renderer.resolution;
+
 		// Render the composition (whose top notches are transparent) into an
 		// intermediate texture, then re-render it through a Graphics: a rect fills it
 		// with that texture (transparent notches stay transparent), and the silhouette
@@ -129,7 +135,7 @@ export class PackSprite extends Container {
 		const intermediate = RenderTexture.create({
 			width: this.packW,
 			height: this.packH,
-			resolution: 1
+			resolution
 		});
 		this.app.renderer.render({ container: composition, target: intermediate });
 		composition.destroy({ children: true });
@@ -143,7 +149,7 @@ export class PackSprite extends Container {
 		this.renderTex = RenderTexture.create({
 			width: this.packW,
 			height: this.packH,
-			resolution: 1
+			resolution
 		});
 		this.app.renderer.render({ container: framed, target: this.renderTex });
 		framed.destroy();
