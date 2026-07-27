@@ -279,9 +279,10 @@
 		...displayPath.map((node) => ({ label: restoreCatalanArticle(node.name), key: node.key as string | null }))
 	];
 
-	// The open location's own node and its plurality ("most seen") show, surfaced in
-	// the always-on bottom-right info card. This is the region's own show — not repeated
-	// anywhere in the bottom-left panel, whose table only lists the child rows beneath it.
+	// The open location's own node and its plurality ("most seen") show. Surfaced in the
+	// bottom-left panel when the open region is a leaf municipality (the table there lists
+	// child rows, so a leaf has nothing to list and shows the town's own show instead), and
+	// used to pick the roster the town's OG team rolls from.
 	$: openNode = openRegion ? findNode(regionNodes, openRegion) : null;
 	$: openShow = openNode?.show ?? null;
 
@@ -667,29 +668,6 @@
 	<!-- The navbar's profile/sign-in panel, pinned always-visible top-left here. -->
 	<AuthMenu pinned />
 
-	{#if openShow}
-		<aside
-			class="fixed bottom-4 right-4 z-[1100] w-[24rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
-			aria-label="Selected location"
-		>
-			<div class="flex flex-col gap-3 p-4">
-				<div class="flex items-center gap-3">
-					{#if openShow.posterUrl}
-						<img
-							src={openShow.posterUrl}
-							alt={openShow.name}
-							class="h-16 w-auto flex-none rounded shadow"
-						/>
-					{/if}
-					<div class="min-w-0">
-						<p class="text-xs font-bold uppercase tracking-wide opacity-60">Most seen</p>
-						<p class="truncate font-semibold">{openShow.name}</p>
-					</div>
-				</div>
-			</div>
-		</aside>
-	{/if}
-
 	<aside
 		class="fixed bottom-4 left-4 z-[1100] flex h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/70 shadow-lg"
 		aria-label="Map regions"
@@ -723,8 +701,8 @@
 			<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
 		{:else if regionRows.length === 0}
 			<!-- A leaf region (a municipality) has no children to drill into, so instead of
-				an empty table we surface its own top show — the same card the bottom-right
-				panel shows — plus the town's deterministic house team on the shared card
+				an empty table we surface its own top show — the only place the open location's
+				show appears — plus the town's deterministic house team on the shared card
 				canvas (three cards rolled from the town's seed and its show's roster). -->
 			<div class="flex min-h-0 flex-1 flex-col gap-3 p-4">
 				{#if openShow}
