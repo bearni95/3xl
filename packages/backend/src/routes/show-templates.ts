@@ -355,8 +355,8 @@ function ensureTables(): Promise<void> {
 									return;
 							end if;
 							select coalesce(exp, 0) into v_exp from player_profiles where user_id = v_uid;
-							-- `level` is the effective daily cap: level from exp plus any admin
-							-- grants for today, so the claim UI's "remaining / level" reflects them.
+							-- The returned level is the effective daily cap: level from exp plus
+							-- any admin grants for today, so the claim UI reflects granted claims.
 							select coalesce(sum(amount), 0) into v_granted from booster_grants
 									where user_id = v_uid and grant_date = v_today;
 							level := level_for_exp(coalesce(v_exp, 0)) + v_granted;
