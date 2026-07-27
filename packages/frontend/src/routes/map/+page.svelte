@@ -1,4 +1,5 @@
 <script lang="ts">
+	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -612,7 +613,15 @@
 		{/if}
 	</aside>
 
-	<div class="relative flex min-w-0 flex-1 flex-col">
+	<!-- When the festa pack panel is open it floats over the map's right edge; reserve
+		that width here so the map shrinks left instead of hiding the stars behind it —
+		every festa star stays on the visible map and clicking another one switches the
+		panel. WorldMap's ResizeObserver re-projects Leaflet as this padding changes. -->
+	<div
+		class={classNames('relative flex min-w-0 flex-1 flex-col transition-[padding]', {
+			'pr-[30rem]': festaModalId
+		})}
+	>
 		{#if ready}
 			<WorldMap
 				center={[41.8, 1.7]}

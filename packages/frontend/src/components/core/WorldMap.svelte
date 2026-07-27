@@ -109,6 +109,9 @@
 	// stars prop changes. Kept separate from the region pins so it always shows,
 	// with no level-of-detail folding, and sits above them.
 	let starLayer: L.LayerGroup | null = null;
+	// Watches the map container so Leaflet re-projects when the container resizes
+	// (e.g. a side panel opening reserves horizontal space). Torn down on destroy.
+	let resizeObserver: ResizeObserver | null = null;
 	// municipality `properties.id` → the featureIds of the pin region it currently
 	// belongs to (at the tier on screen), rebuilt with the pins. Lets hovering
 	// anywhere in a pinned region's polygons light that whole region, not just the pin.
@@ -411,6 +414,19 @@
 			rebuildStars();
 		});
 
+		// Keep Leaflet's cached viewport in sync with its container: when the parent
+		// shrinks the map to reserve room for an open side panel, invalidateSize
+		// re-projects the map (so markers/stars slide out from under the panel and
+		// stay clickable) and we re-cull to the new box. Without this, Leaflet keeps
+		// the stale size and the reserved gutter still overlaps live pins.
+		resizeObserver = new ResizeObserver(() => {
+			mapInstance?.invalidateSize({ animate: false });
+			syncView();
+			rebuildMarkers();
+			rebuildStars();
+		});
+		resizeObserver.observe(mapContainer);
+
 		// Fetch all overlays in parallel, then add them in array order so
 		// z-stacking is deterministic regardless of network timing.
 		const datasets = await Promise.all(
@@ -499,6 +515,7 @@
 	});
 
 	onDestroy(() => {
+		resizeObserver?.disconnect();
 		mapInstance?.remove();
 	});
 </script>
