@@ -78,8 +78,9 @@
 	// into openable packs. Kept here so clicking a star opens that town's pack at once,
 	// with no extra loading. Empty when signed out or before the show pool loads.
 	let claimPacks: OpenerPack[] = [];
-	// The municipality id whose festa-pack panel is open, or null when it's closed.
-	let festaModalId: string | null = null;
+	// The municipality whose festa pack the top-right panel's Booster tab shows, or
+	// null when no star has been clicked yet.
+	let packTownId: string | null = null;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
 	// The tier of pins WorldMap is currently drawing (0 = coarsest), reported back
@@ -219,15 +220,27 @@
 	// How many of the most recent captures the panel lists.
 	const RECENT_WINS_LIMIT = 20;
 
-	// The panel's two views: the latest captures, and the standing of every show
-	// across the whole map.
-	const PanelTab = { Latest: 'latest', Leaderboard: 'leaderboard' } as const;
+	// The panel's three views: the latest captures, the standing of every show across
+	// the whole map, and the booster pack of whichever festa town's star was clicked
+	// last — the pack opener lives here rather than in a panel of its own, so only one
+	// thing is ever pinned to the map's right edge.
+	const PanelTab = { Latest: 'latest', Leaderboard: 'leaderboard', Pack: 'pack' } as const;
 	type PanelTab = (typeof PanelTab)[keyof typeof PanelTab];
 	const panelTabs: { id: PanelTab; label: string }[] = [
 		{ id: PanelTab.Latest, label: 'Latest' },
-		{ id: PanelTab.Leaderboard, label: 'Leaderboard' }
+		{ id: PanelTab.Leaderboard, label: 'Leaderboard' },
+		{ id: PanelTab.Pack, label: 'Booster' }
 	];
 	let panelTab: PanelTab = PanelTab.Latest;
+
+	// What the tab strip's badge counts, per view: the rows each table lists, and for
+	// the pack tab how many of today's festa packs are openable at all.
+	$: panelCount =
+		panelTab === PanelTab.Latest
+			? recentWins.length
+			: panelTab === PanelTab.Leaderboard
+				? showStandings.length
+				: claimPacks.length;
 
 	// How many municipalities each show flies, and its share of them all. Tallied
 	// over `showsById`, which is already the seeded assignment with every held
@@ -595,13 +608,15 @@
 	);
 
 	// The top-right wins panel is the mirror image of the regions panel: same size,
-	// chrome and slide-away behaviour, off the right edge instead of the left. It
-	// steps aside for a fight, and for the festa pack panel too — that one is also
-	// pinned right and would otherwise sit straight on top of it.
+	// chrome and slide-away behaviour, off the right edge instead of the left. It steps
+	// aside for a fight, which owns the whole viewport. The Booster tab makes it taller:
+	// a pack has to be sliced open on a canvas, which the two tables' height leaves no
+	// room for.
 	$: winsPanelClasses = classNames(
-		'fixed right-4 top-20 z-[1100] flex h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box',
+		'fixed right-4 top-20 z-[1100] flex w-[36rem] flex-col overflow-hidden rounded-box',
 		'border border-base-300 bg-base-100/70 shadow-lg transition-transform duration-300 ease-in-out',
-		{ 'translate-x-[calc(100%+1.5rem)]': fightOpen || !!festaModalId }
+		panelTab === PanelTab.Pack ? 'h-[calc(100vh-6rem)]' : 'h-[40vh]',
+		{ 'translate-x-[calc(100%+1.5rem)]': fightOpen }
 	);
 
 	// Fight this town: snapshot whichever team currently sits on it — the holder's if
@@ -805,7 +820,8 @@
 
 	// A gold star dropped on every municipality celebrating a festa major today,
 	// at the centre of the town's bounding box (its own key in the region geometry).
-	// Clicking a star opens that town's festa booster pack in a modal. A festa town
+	// Clicking a star loads that town's festa booster pack into the top-right panel and
+	// flips the panel to its Booster tab, so the pack replaces the tables. A festa town
 	// whose polygon isn't on the map (no box) is skipped. Named deps (`todayFestes`,
 	// `regionGeometry`) so the stars repaint when either lands.
 	$: festaStars = (() => {
@@ -819,20 +835,28 @@
 				id: festa.id,
 				position: [(south + north) / 2, (west + east) / 2],
 				label: festa.name,
-				onClick: () => (festaModalId = festa.id)
+				onClick: () => openPack(festa.id)
 			});
 		}
 		return result;
 	})();
 
-	// The single pack the festa modal shows — the clicked town's, picked out of the
-	// full day's set — plus the town's name for the modal header. Null when the modal
-	// is closed, the player is signed out, or the town has no claimable show yet.
-	$: festaModalPack = festaModalId
-		? (claimPacks.find((pack) => pack.id === festaModalId) ?? null)
+	// Show a town's pack: remember which town, and bring the Booster tab forward so the
+	// pack is on screen straight away (the tab renders the opener, so this is what
+	// mounts its canvas).
+	function openPack(id: string): void {
+		packTownId = id;
+		panelTab = PanelTab.Pack;
+	}
+
+	// The single pack the Booster tab shows — the clicked town's, picked out of the full
+	// day's set — plus the town's name for the tab's header. Null when no star has been
+	// clicked, the player is signed out, or the town has no claimable show yet.
+	$: packForTown = packTownId
+		? (claimPacks.find((pack) => pack.id === packTownId) ?? null)
 		: null;
-	$: festaModalName = festaModalId
-		? (todayFestes.find((festa) => festa.id === festaModalId)?.name ?? null)
+	$: packTownName = packTownId
+		? (todayFestes.find((festa) => festa.id === packTownId)?.name ?? null)
 		: null;
 
 	// One pin per imaged region that has a show, dropped at the centre of the
@@ -1022,7 +1046,7 @@
 		{/if}
 	</aside>
 
-	<!-- The mirror of the regions panel, pinned top-right, on two tabs:
+	<!-- The mirror of the regions panel, pinned top-right, on three tabs:
 		— Latest: the towns players have most recently won off their sitting team, each
 		  with the show its current leading team comes from. Read straight out of
 		  `municipality_holders` (a row is only written when a town changes hands), so it
@@ -1030,7 +1054,10 @@
 		  Clicking a row drills the map into that town, exactly like a region row.
 		— Leaderboard: how much of the map each show flies, tallied over every
 		  municipality's current show — seeded, or the ruling team's where a town has been
-		  taken. -->
+		  taken.
+		— Booster: the festa pack of the town whose gold star was clicked last, on the
+		  single-pack opener canvas — the pack arrives already fitted and centred, ready
+		  to be sliced open, with no grid and no click-to-zoom step. -->
 	<aside class={winsPanelClasses} aria-label="Territory standings">
 		<div class="flex flex-none items-center justify-between gap-2 border-b border-base-300 px-4 py-3">
 			<div class="join">
@@ -1045,15 +1072,46 @@
 					</button>
 				{/each}
 			</div>
-			<span class="badge badge-ghost badge-sm">
-				{panelTab === PanelTab.Latest ? recentWins.length : showStandings.length}
-			</span>
+			<span class="badge badge-ghost badge-sm">{panelCount}</span>
 		</div>
 
 		{#if panelTab === PanelTab.Latest}
 			<TerritoryTable rows={recentWins} onSelect={openWin} />
-		{:else}
+		{:else if panelTab === PanelTab.Leaderboard}
 			<ShowStandingsTable rows={showStandings} />
+		{:else}
+			<!-- The clicked town's festa pack. Keyed on the town so clicking another star
+				remounts a fresh, unsliced pack rather than reusing the last one's scene. -->
+			<div class="flex min-h-0 flex-1 flex-col">
+				<div class="flex flex-none items-baseline gap-2 border-b border-base-300 px-4 py-2">
+					<h2 class="text-xs font-bold uppercase tracking-wide opacity-70">Sobre de festa</h2>
+					{#if packTownName}
+						<p class="truncate font-bold">{restoreCatalanArticle(packTownName)}</p>
+					{/if}
+				</div>
+				<div class="min-h-0 flex-1 p-3">
+					{#if packForTown}
+						{#key packForTown.id}
+							<ClaimPackOpener
+								coverUrl={packForTown.coverUrl}
+								locationName={packForTown.locationName}
+								claim={packForTown.claim}
+								classes="rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
+							/>
+						{/key}
+					{:else}
+						<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
+							<p class="max-w-xs text-sm opacity-60">
+								{#if packTownId}
+									Aquest municipi encara no té cap sobre per obrir. Inicia sessió i torna-ho a provar.
+								{:else}
+									Clica una estrella daurada del mapa per obrir el sobre de festa d'aquell municipi.
+								{/if}
+							</p>
+						</div>
+					{/if}
+				</div>
+			</div>
 		{/if}
 	</aside>
 
@@ -1094,52 +1152,6 @@
 <div class="hidden" aria-hidden="true">
 	<CharacterClaimPanel bind:packs={claimPacks} />
 </div>
-
-<!-- Star click → this town's festa booster pack on the single-pack opener canvas, in a
-	floating right-side panel: the pack arrives already fitted and centred, ready to be
-	sliced open — no grid, no click-to-zoom step. A fixed panel (no scale animation) so
-	the canvas measures its box at full size on mount and bakes the pack at the right fit. -->
-{#if festaModalId}
-	<aside
-		class="fixed bottom-4 right-4 top-20 z-[1100] flex w-[28rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/95 shadow-lg"
-		aria-label="Sobre de festa"
-	>
-		<div class="flex shrink-0 items-center justify-between gap-4 border-b border-base-300 px-4 py-3">
-			<div>
-				<h2 class="text-sm font-bold uppercase tracking-wide opacity-70">Sobre de festa</h2>
-				{#if festaModalName}
-					<p class="text-lg font-bold">{restoreCatalanArticle(festaModalName)}</p>
-				{/if}
-			</div>
-			<button
-				class="btn btn-circle btn-ghost btn-sm"
-				on:click={() => (festaModalId = null)}
-				aria-label="Tanca"
-			>
-				✕
-			</button>
-		</div>
-
-		<div class="min-h-0 flex-1 p-3">
-			{#if festaModalPack}
-				{#key festaModalPack.id}
-					<ClaimPackOpener
-						coverUrl={festaModalPack.coverUrl}
-						locationName={festaModalPack.locationName}
-						claim={festaModalPack.claim}
-						classes="rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
-					/>
-				{/key}
-			{:else}
-				<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
-					<p class="max-w-xs text-sm opacity-60">
-						Aquest municipi encara no té cap sobre per obrir. Inicia sessió i torna-ho a provar.
-					</p>
-				</div>
-			{/if}
-		</div>
-	</aside>
-{/if}
 
 <!-- Challenge → the board's combat arena, hosted as a full-viewport floating panel over
 	the map so a fight for a town plays out without ever navigating away. This is the
