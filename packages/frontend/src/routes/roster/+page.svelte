@@ -18,6 +18,7 @@
 		type CharacterSpawn
 	} from '$types/character-spawn.type';
 	import { combatStatsFromStat } from '$utils/spawn/stat';
+	import { teamDisplayName } from '$utils/spawn/team-name';
 	import { teammateColors } from '$utils/color/compare';
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
@@ -449,6 +450,33 @@
 	function onTeamCreate(): void {
 		teamService.createTeam();
 	}
+	function onTeamSelect(event: Event): void {
+		teamService.setActive((event.currentTarget as HTMLSelectElement).value);
+	}
+
+	// Every team as an option for the toolbar's picker. An unnamed team is labelled
+	// after its lead — the first filled slot — as its show plus its rolled colour, so
+	// the list reads as what each team is rather than as a row of blanks. The spawn
+	// list and the show map are threaded in so the labels re-resolve as they load and
+	// as picks change the lead.
+	$: teamChoices = ((
+		teams: typeof $team.teams,
+		spawnList: CharacterSpawn[],
+		_showNames: Map<string, string[]>
+	) =>
+		teams.map((entry) => {
+			const leadId = entry.memberIds.find((id): id is string => Boolean(id)) ?? null;
+			const lead = leadId ? (spawnList.find((spawn) => spawn.id === leadId) ?? null) : null;
+			return {
+				id: entry.id,
+				name: teamDisplayName(
+					entry.name,
+					lead
+						? { showName: showNamesFor(lead.characterId)[0] ?? null, color: lead.color }
+						: null
+				)
+			};
+		}))($team.teams, $spawns, characterShowNames);
 
 	// spawn id → its rolled spawn colour, for the team colour rule.
 	$: colorForSpawn = new Map($spawns.map((spawn) => [spawn.id, spawn.color]));
@@ -728,6 +756,21 @@
 						/>
 						<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
 					</label>
+					{#if teamChoices.length > 0}
+						<label class="flex items-center gap-2 text-xs">
+							<span class="whitespace-nowrap opacity-60">Team</span>
+							<select
+								class="select select-sm select-bordered w-48"
+								value={$team.activeTeamId ?? ''}
+								on:change={onTeamSelect}
+								aria-label="Active team"
+							>
+								{#each teamChoices as choice (choice.id)}
+									<option value={choice.id}>{choice.name}</option>
+								{/each}
+							</select>
+						</label>
+					{/if}
 					<button class="btn btn-primary btn-sm" on:click={onTeamCreate}>+ New team</button>
 				</div>
 			</div>
