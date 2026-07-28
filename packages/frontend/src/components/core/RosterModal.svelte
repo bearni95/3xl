@@ -570,7 +570,7 @@
 <svelte:window on:keydown={onKeydown} />
 
 <!-- The roster, raised over the map. z-[1300] puts it above both the map's pinned
-	corner panels (z-[1100]) and the combat arena (z-[1200]) — the arena is one of the
+	panel (z-[900]) and the combat arena (z-[1200]) — the arena is one of the
 	places that sends the player here, so it has to open on top of it. The box is a
 	fixed-height flex column: the toolbar and the recycle bar take what they need and
 	the card canvas gets the rest, which is what its WebGL scene is sized from. -->

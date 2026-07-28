@@ -737,18 +737,32 @@
 	// tab draws anything, so the short panel the two tables used to get left them with
 	// almost no rows. Whatever the header does not use goes to the tab, which is the only
 	// part that scrolls.
+	//
+	// z-[900] is the whole of its layering: above every Leaflet layer (the map's own
+	// panes and controls top out at 800) and below every modal. DaisyUI puts `.modal`
+	// at 999, so the profile card, the avatar picker, the username prompt and anything
+	// added later come up over the panel without each having to name a z-index — the
+	// panel is furniture, and a dialog is never behind its furniture. The two things
+	// that must clear it outright — the combat arena (1200) and the roster (1300) —
+	// carry their own z above the modal layer.
 	$: panelClasses = classNames(
-		'fixed z-[1100] flex flex-col overflow-hidden',
-		'border border-base-300 bg-base-100/70 shadow-lg',
-		'transition-[transform,height] duration-300 ease-in-out',
+		'fixed z-[900] flex flex-col overflow-hidden',
+		'border border-base-300 shadow-lg',
+		'transition-[transform,height,background-color] duration-300 ease-in-out',
 		// Mobile: the bottom sheet. It spans the full width and sits flush on the bottom
 		// edge, so only its top corners are rounded and its bottom border would be off
-		// screen anyway.
+		// screen anyway. The peek stays see-through so the map still reads under it, but
+		// pulled up to the full screen there is no map left to read — so the surface goes
+		// opaque, and fades back to the reduced alpha as it collapses. The two mobile
+		// alphas are written as one branch each (rather than an override on a shared base)
+		// so only ever one of them is on the element and neither can lose to source order.
 		'inset-x-0 bottom-0 rounded-t-[var(--radius-box)] border-b-0',
-		panelExpanded ? 'h-screen' : 'h-[30vh]',
+		panelExpanded ? 'h-screen max-md:bg-base-100' : 'h-[30vh] max-md:bg-base-100/70',
 		// md and up: the floating right-hand column, exactly as before — every mobile
-		// anchor is unset so the sheet's geometry doesn't leak into it.
+		// anchor is unset so the sheet's geometry doesn't leak into it, and it keeps the
+		// reduced alpha whatever the sheet's toggle was last left on.
 		'md:inset-x-auto md:bottom-auto md:right-4 md:top-4 md:w-[36rem] md:rounded-box md:border-b',
+		'md:bg-base-100/70',
 		// The panel is only as tall as what it holds, and stops there — a short town or a
 		// three-row table no longer drags an empty box down the whole viewport. The cap is
 		// what it used to take outright: past it the forward tab's own scroller takes over.
@@ -1636,7 +1650,7 @@
 	</aside>
 
 	<!-- The map keeps the full width at all times. The tabbed panel floats over its right
-		edge (a fixed z-[1100] aside, like the pinned auth menu) rather than reserving space
+		edge (a fixed z-[900] aside, like the pinned auth menu) rather than reserving space
 		here, so drilling into a region or opening a pack never re-frames or re-projects the
 		map — the view stays exactly where it was and clicking another star or another tab
 		just switches the panel's contents. -->
@@ -1678,8 +1692,9 @@
 <!-- Challenge → the board's combat arena, hosted as a full-viewport floating panel over
 	the map so a fight for a town plays out without ever navigating away. This is the
 	only place combat is mounted — there is no standalone combat route any more. A plain
-	fixed panel (not a DaisyUI modal) at z-[1200] — above the map's corner panels
-	(z-[1100]) — over a 30%-white wash so the map still reads through behind it.
+	fixed panel (not a DaisyUI modal) at z-[1200] — above the map's panel (z-[900]) and
+	above the modal layer (999) — over a 30%-white wash so the map still reads through
+	behind it.
 	CombatArena fields the player's active roster team against the town's sitting team
 	(its holder's, or the seeded OG one) and handles all its own gating; the town id and
 	the turnover it was on ride along so a win is reported against the right generation.

@@ -6,6 +6,7 @@
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { usernamePromptOpen } from '$services/usernamePrompt';
 	import { avatarPickerOpen } from '$services/avatarPicker';
+	import { profileModalOpen } from '$services/profileModal';
 	import { AuthStatus, type OAuthProvider } from '$types/profile.type';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
@@ -22,10 +23,6 @@
 	let signingOut = false;
 	let redirectingTo: OAuthProvider | null = null;
 	let errorMessage: string | null = null;
-	// Whether the embedded card's full-profile dialog is up. The embedded card is a
-	// glance card — no email, no sign-out — so the button beside the name raises the
-	// very same card the navbar drops down, in full.
-	let profileOpen = false;
 
 	onMount(() => authService.init());
 
@@ -61,26 +58,18 @@
 	}
 
 	function openUsernamePrompt(): void {
-		// Editing is reached through the full card, so hand the screen over to the
-		// username modal rather than stacking it over this dialog.
-		profileOpen = false;
 		usernamePromptOpen.set(true);
 	}
 
 	function openProfile(): void {
+		// The full card is a modal of its own, mounted at the layout root — raising it
+		// from here would trap it inside the map panel's stacking context.
 		errorMessage = null;
-		profileOpen = true;
+		profileModalOpen.set(true);
 	}
 
 	function openAvatarPicker(): void {
-		// Same handover as the username prompt: the picker takes the screen rather
-		// than stacking over the full-profile dialog.
-		profileOpen = false;
 		avatarPickerOpen.set(true);
-	}
-
-	function closeProfile(): void {
-		profileOpen = false;
 	}
 
 	function togglePanel(): void {
@@ -164,37 +153,6 @@
 		</div>
 	</div>
 </div>
-
-<!-- The embedded card's full profile, raised over whatever it is pinned on (the map).
-	Exactly the card the navbar hangs off the username — same component, uncompacted —
-	so the details list and the sign-out button read identically in both places, and a
-	sign-out error is shown here rather than behind the dialog. It closes itself as the
-	profile goes (signing out empties it) and on the backdrop. -->
-{#if profileOpen && $locale && $status === AuthStatus.SignedIn && $profile}
-	<div class="modal modal-open" role="dialog" aria-modal="true">
-		<div class="modal-box">
-			<ProfileCard
-				profile={$profile}
-				{signingOut}
-				on:signout={handleSignOut}
-				on:editusername={openUsernamePrompt}
-				on:editavatar={openAvatarPicker}
-			/>
-
-			{#if errorMessage}
-				<div class="alert alert-error mt-4">
-					<span>{errorMessage}</span>
-				</div>
-			{/if}
-		</div>
-		<button
-			type="button"
-			class="modal-backdrop"
-			aria-label={$_('common.close')}
-			on:click={closeProfile}
-		></button>
-	</div>
-{/if}
 
 <!-- Click-away layer to close the panel when it was opened programmatically. Only the
 	dropdown has anything to close — the embedded card is always on screen. -->
