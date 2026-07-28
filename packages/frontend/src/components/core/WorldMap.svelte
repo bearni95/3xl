@@ -436,12 +436,21 @@
 			worldCopyJump: true,
 			// No +/- zoom buttons — the map is driven by scroll/pinch only.
 			zoomControl: false,
-			// No "Leaflet" attribution badge — there's no basemap to attribute.
-			attributionControl: false
+			// The badge carries the Esri credit the imagery licence requires, so it
+			// stays on for as long as the satellite basemap is there.
+			attributionControl: true
 		});
 
-		// No tile basemap: the map shows only its own overlays (polygons + pins) over
-		// the bare container, with no satellite/road imagery behind them.
+		// Esri World Imagery: pure satellite tiles, no labels or roads.
+		// Note the {z}/{y}/{x} order — ArcGIS swaps y and x vs the OSM scheme.
+		Leaf.tileLayer(
+			'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+			{
+				attribution:
+					'Tiles &copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+				maxZoom: 19
+			}
+		).addTo(mapInstance);
 
 		mapInstance.setView(center, zoom);
 		// Keep the bindable zoom and centre in sync so callers can render a live
@@ -565,8 +574,8 @@
 	});
 </script>
 
-<!-- bg-transparent! overrides Leaflet's default grey container fill, so with no tile
-	basemap the map shows through to the page background instead of a white block. -->
+<!-- bg-transparent! overrides Leaflet's default grey container fill, so the page
+	background (not a grey block) is what shows while the satellite tiles stream in. -->
 <div
 	bind:this={mapContainer}
 	class={`bg-transparent! ${classes}`}
