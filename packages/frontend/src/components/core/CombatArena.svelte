@@ -79,9 +79,6 @@
 		defend: '/assets/icons/lorc/bordered-shield.svg'
 	};
 
-	/** The id the extra shot's button answers to, alongside the three orders. */
-	const BONUS_ORDER = 'bonus';
-
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
 
 	// The blue side is the player's active team; the red side (the CPU) either mirrors
@@ -293,40 +290,44 @@
 		controller?.attachBoard(engine);
 	}
 
-	// A button under a fighter was tapped. The board only reports which one; what an
-	// order means is the controller's, as it is for every other input.
+	/**
+	 * A button under a fighter was tapped. The board only reports which one; what an
+	 * order means is the controller's, as it is for every other input.
+	 *
+	 * The sword means *fire*, and whether that is the whole turn or an extra on top of
+	 * it is already decided by what else the fighter has been given: on a turn it is
+	 * spending charging or covering, a colour carrying red's second action fires
+	 * without giving that up, so the sword adds the shot instead of replacing the
+	 * order. Every other case — and every colour without red in it — reads as plain
+	 * Shoot.
+	 */
 	function giveOrder(fighterId: string, orderId: string): void {
-		if (orderId === BONUS_ORDER) {
-			controller?.setBonus(fighterId, !combatById.get(fighterId)?.bonus);
+		const fighter = combatById.get(fighterId);
+		const onTop = fighter && (fighter.bonus || fighter.canBonus);
+		if (orderId === 'shoot' && onTop) {
+			controller?.setBonus(fighterId, !fighter.bonus);
 			return;
 		}
 		controller?.setAction(fighterId, orderId as CombatAction);
 	}
 
 	/**
-	 * The buttons drawn under one of the player's fighters: the three orders, then
-	 * red's extra shot. Every one of them is always drawn — an order out of reach is
-	 * greyed rather than dropped, so a fighter's row never changes shape under the
-	 * cursor — and all of them lock while a turn is playing out.
+	 * The three orders drawn under one of the player's fighters. Every one of them is
+	 * always drawn — an order out of reach is greyed rather than dropped, so a
+	 * fighter's row never changes shape under the cursor — and all of them lock while a
+	 * turn is playing out. The sword lights for a shot however it was bought, as the
+	 * fighter's whole turn or as red's extra on top of another order.
 	 */
 	function orderButtons(fighter: FighterView, phase: CombatState['phase']): BoardOrder[] {
 		const locked = phase !== 'planning';
-		return [
-			...COMBAT_ACTIONS.map((action) => ({
-				id: action,
-				icon: ACTION_ICONS[action],
-				selected: fighter.action === action,
-				disabled: locked || (action === 'shoot' && !fighter.canShoot)
-			})),
-			{
-				id: BONUS_ORDER,
-				// The extra shot *is* a shot, so it carries the same sword — set apart by
-				// sitting last in the row rather than by a glyph of its own.
-				icon: ACTION_ICONS.shoot,
-				selected: fighter.bonus,
-				disabled: locked || (!fighter.bonus && !fighter.canBonus)
-			}
-		];
+		return COMBAT_ACTIONS.map((action) => ({
+			id: action,
+			icon: ACTION_ICONS[action],
+			selected: action === 'shoot' ? fighter.action === 'shoot' || fighter.bonus : fighter.action === action,
+			// A shot already added on top stays tappable so it can be taken back, even on
+			// a turn it could no longer be bought from scratch.
+			disabled: locked || (action === 'shoot' && !fighter.canShoot && !fighter.bonus)
+		}));
 	}
 
 	// Push the player's orders onto the board whenever the fight moves. Both `state`
