@@ -1,6 +1,6 @@
 import { Application, Assets, Graphics, Sprite, Texture } from 'pixi.js';
 import type { Manifest } from './mugen-player';
-import { captureGlContextDisposer } from '../pixi/release-context';
+import { destroyPixiApp } from '../pixi/release-context';
 
 /** One loaded idle frame with its pre-computed anchor fractions and source size. */
 interface LoadedFrame {
@@ -110,7 +110,7 @@ export class MugenLineup {
 		// browser force-loses the oldest live context, blanking whichever canvas that
 		// happened to be (usually the roster's card grid) and throwing every frame.
 		if (this.destroyed) {
-			this.disposeApp(app);
+			destroyPixiApp(app);
 			return;
 		}
 		this.app = app;
@@ -146,22 +146,10 @@ export class MugenLineup {
 		if (this.app) {
 			this.app.canvas?.removeEventListener('webglcontextlost', this.onContextLost);
 			this.app.canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
-			this.disposeApp(this.app);
+			destroyPixiApp(this.app);
 			this.app = null;
 		}
 		this.members = [];
-	}
-
-	/**
-	 * Destroy an app and hand its WebGL context back at once. A destroyed Pixi app
-	 * only frees its context on GC, so a surface built and torn down repeatedly (this
-	 * one) would otherwise accumulate orphaned contexts until the browser evicts a
-	 * live one.
-	 */
-	private disposeApp(app: Application): void {
-		const disposeContext = captureGlContextDisposer(app);
-		app.destroy(true, { children: true });
-		disposeContext();
 	}
 
 	/**

@@ -1,5 +1,5 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
-import { captureGlContextDisposer } from '../pixi/release-context';
+import { destroyPixiApp } from '../pixi/release-context';
 
 /** One decoded animation frame as described by the generated manifest. */
 export interface ManifestFrame {
@@ -143,7 +143,7 @@ export class MugenPlayer {
 		// contexts, so enough strays force-lose the oldest live one and blank whatever
 		// canvas that was.
 		if (this.destroyed) {
-			this.disposeApp(app);
+			destroyPixiApp(app);
 			throw new Error('MugenPlayer was destroyed while starting');
 		}
 		this.app = app;
@@ -177,22 +177,11 @@ export class MugenPlayer {
 		window.removeEventListener('keyup', this.onKeyUp);
 		this.held.clear();
 		if (this.app) {
-			this.disposeApp(this.app);
+			destroyPixiApp(this.app);
 			this.app = null;
 		}
 		this.sprite = null;
 		this.animations = {};
-	}
-
-	/**
-	 * Destroy an app and hand its WebGL context straight back. A destroyed Pixi app
-	 * only frees its context on GC, so surfaces built and torn down repeatedly would
-	 * otherwise accumulate orphaned contexts until the browser evicts a live one.
-	 */
-	private disposeApp(app: Application): void {
-		const disposeContext = captureGlContextDisposer(app);
-		app.destroy(true, { children: true });
-		disposeContext();
 	}
 
 	private async loadAssets(): Promise<Manifest> {

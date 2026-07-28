@@ -1,4 +1,5 @@
 import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import { destroyPixiApp } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
 
 export type { Manifest } from './mugen-player';
@@ -153,7 +154,7 @@ export class MugenFrameSheet {
 			this.mount = null;
 		}
 		if (this.app) {
-			this.app.destroy(true, { children: true });
+			destroyPixiApp(this.app);
 			this.app = null;
 		}
 		this.playing = [];

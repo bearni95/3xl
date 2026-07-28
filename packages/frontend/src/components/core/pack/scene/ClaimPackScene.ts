@@ -28,6 +28,7 @@ import {
 	type FederatedPointerEvent
 } from 'pixi.js';
 import { PackSprite } from './PackSprite';
+import { destroyPixiApp } from '$utils/pixi/release-context';
 import { CardSprite, cardBorderWidth } from '$utils/card/CardSprite';
 import type { ClaimPull } from './pull.type';
 
@@ -154,7 +155,7 @@ export class ClaimPackScene {
 		this.packSprite = null;
 
 		this.cardSprites = [];
-		this.app.destroy(true, { children: true, texture: false });
+		destroyPixiApp(this.app, { children: true, texture: false });
 	}
 
 	private async init(): Promise<void> {
@@ -169,7 +170,7 @@ export class ClaimPackScene {
 		});
 
 		if (this.isDestroyed) {
-			this.app.destroy(true, { children: true, texture: false });
+			destroyPixiApp(this.app, { children: true, texture: false });
 			return;
 		}
 

@@ -24,7 +24,7 @@
  */
 
 import { Application, Container } from 'pixi.js';
-import { captureGlContextDisposer } from '$utils/pixi/release-context';
+import { destroyPixiApp } from '$utils/pixi/release-context';
 import { CardSprite, cardBorderWidth } from '$utils/card/CardSprite';
 import type { CardModel } from '$utils/card/card-model.type';
 
@@ -175,11 +175,9 @@ export class CardScene {
 		this.app.canvas?.removeEventListener('webglcontextlost', this.onContextLost);
 		this.app.canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
 		this.cardSprites = [];
-		// Free the WebGL context immediately so navigating away doesn't leave an
-		// orphaned context that later evicts a live canvas (see the helper's note).
-		const disposeContext = captureGlContextDisposer(this.app);
-		this.app.destroy(true, { children: true, texture: false });
-		disposeContext();
+		// Never `destroy(true)` — see the helper: it would release Pixi's shared pools
+		// and break every other canvas still on the page.
+		destroyPixiApp(this.app, { children: true, texture: false });
 	}
 
 	private async init(): Promise<void> {
@@ -193,7 +191,7 @@ export class CardScene {
 			autoDensity: true
 		});
 		if (this.isDestroyed) {
-			this.app.destroy(true, { children: true, texture: false });
+			destroyPixiApp(this.app, { children: true, texture: false });
 			return;
 		}
 

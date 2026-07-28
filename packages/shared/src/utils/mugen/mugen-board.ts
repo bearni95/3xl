@@ -1,5 +1,5 @@
 import { Application, Assets, Graphics, Sprite, Text, Texture } from 'pixi.js';
-import { captureGlContextDisposer } from '../pixi/release-context';
+import { destroyPixiApp } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
 import { CardSprite, REFERENCE_SOURCE_HEIGHT } from '../card/CardSprite';
 import type { CardModel } from '../card/card-model.type';
@@ -436,7 +436,7 @@ export class MugenBoard {
 		// only allow a handful of contexts, so enough strays force-lose the oldest live
 		// one and blank whatever canvas that was.
 		if (this.destroyed) {
-			this.disposeApp(app);
+			destroyPixiApp(app);
 			return;
 		}
 		this.app = app;
@@ -586,7 +586,7 @@ export class MugenBoard {
 	destroy(): void {
 		this.destroyed = true;
 		if (this.app) {
-			this.disposeApp(this.app);
+			destroyPixiApp(this.app);
 			this.app = null;
 		}
 		this.actors = [];
@@ -596,16 +596,6 @@ export class MugenBoard {
 		this.cellPaint.clear();
 	}
 
-	/**
-	 * Destroy an app and hand its WebGL context straight back. A destroyed Pixi app
-	 * only frees its context on GC, so surfaces built and torn down repeatedly would
-	 * otherwise accumulate orphaned contexts until the browser evicts a live one.
-	 */
-	private disposeApp(app: Application): void {
-		const disposeContext = captureGlContextDisposer(app);
-		app.destroy(true, { children: true });
-		disposeContext();
-	}
 
 	/**
 	 * Project a point given in grid coordinates (column 0..COLS across the width,
