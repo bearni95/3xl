@@ -72,13 +72,12 @@
 	// Held until the fetches settle so the map renders against the loaded data.
 	let ready = false;
 	// The municipalities celebrating a festa major today, read from Supabase — the
-	// same `festivities` fetch the /claim screen uses, so the map's stars and the
+	// `festivities` fetch, so the map's stars and the
 	// day's booster packs agree on which towns are "de festa". Each town's `id`
 	// matches a municipality feature id, so it resolves to a polygon on the map.
 	let todayFestes: FestaLocationRow[] = [];
-	// All of today's booster packs, computed by a hidden CharacterClaimPanel — the
-	// same component the /claim page uses to turn today's festes + the player's shows
-	// into openable packs. Kept here so clicking a star opens that town's pack at once,
+	// All of today's booster packs, computed by a hidden CharacterClaimPanel, which
+	// turns today's festes + the player's shows into openable packs. Kept here so clicking a star opens that town's pack at once,
 	// with no extra loading. Empty when signed out or before the show pool loads.
 	let claimPacks: OpenerPack[] = [];
 	// The municipality whose festa pack the top-right panel's Booster tab shows, or
@@ -1140,13 +1139,11 @@
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
-	<!-- The navbar's profile/sign-in panel, pinned always-visible top-left here. -->
-	<AuthMenu pinned />
-
-	<!-- The one panel pinned over the map, top-right, on four tabs. The breadcrumbs sit
-		above the strip rather than inside any tab: they name the region the map is looking
-		at (clicked, or followed from the zoom), which is context every view is read
-		against, so they stay on screen whichever tab is forward.
+	<!-- The one panel pinned over the map, top-right, on four tabs. The profile card sits
+		at the very top, above the breadcrumbs, and the breadcrumbs above the tab strip
+		rather than inside any tab: who you are and how many packs you have left is read
+		against every view, as is the region the map is looking at (clicked, or followed
+		from the zoom), so both stay on screen whichever tab is forward.
 		— Location: the drill table for the open region — its siblings and its children —
 		  or, for a leaf municipality with nothing left to list, that town's show and the
 		  team sitting on it. The search box above it matches every location in the tree.
@@ -1159,12 +1156,19 @@
 		  municipality's current show — seeded, or the ruling team's where a town has been
 		  taken.
 		— Booster: a day's festa packs. Picked from the tab strip it lays every one of the
-		  day's packs out on the /claim page's grid canvas (two to a row at this width) —
+		  day's packs out on ClaimPackGrid's canvas (two to a row at this width) —
 		  pick one to zoom it up and slice it open. Its header's arrows walk the calendar,
 		  though only today's packs can actually be opened. Reached by clicking a town's
 		  gold star instead, it skips straight to that town's pack on the single-pack
 		  opener, already fitted and centred. -->
 	<aside class={panelClasses} aria-label="Map panel">
+		<!-- Its own section, on its own border: the account card belongs to the player,
+			not to any of the tabs, and never changes as they are switched. No padding
+			here — the card brings its own. -->
+		<div class="flex-none border-b border-base-300">
+			<AuthMenu embedded />
+		</div>
+
 		<div class="flex flex-none flex-col gap-3 border-b border-base-300 px-4 py-3">
 			<div class="breadcrumbs max-w-full py-0 text-sm">
 				<ul>
@@ -1306,8 +1310,8 @@
 		{:else}
 			<!-- Two ways in, one tab: a star click narrows it to that town's pack on the
 				single-pack opener, while picking the tab itself shows the whole day's packs
-				on the same grid canvas the /claim page uses — two to a row here, since the
-				panel is a third of that page's width. Either way the pack is sliced open in
+				on the shared ClaimPackGrid canvas — two to a row here, since the
+				panel is a third of the viewport's width. Either way the pack is sliced open in
 				place; "Tots els sobres" goes back to the grid. -->
 			<div class="flex min-h-0 flex-1 flex-col">
 				<!-- The day being browsed: an arrow at each end of the row and the date in the
@@ -1473,7 +1477,7 @@
 
 </div>
 
-<!-- Hidden, but mounted: the same claim panel the /claim page uses, kept alive only
+<!-- Hidden, but mounted: the claim panel, kept alive only
 	to compute today's booster packs (bind:packs) so a star click can open the town's
 	pack instantly. Its own UI is never shown here — but the two things it says that the
 	panel cannot do without are bound out of it: the daily allowance, and the reason a

@@ -10,10 +10,10 @@
 	import ProfileCard from '$components/core/ProfileCard.svelte';
 	import MagicLinkForm from '$components/core/MagicLinkForm.svelte';
 
-	// When pinned, the trigger button is dropped and the panel renders as a
-	// fixed, always-visible card (used top-left on the map page) instead of the
-	// hover/click dropdown that hangs off the navbar.
-	export let pinned: boolean = false;
+	// When embedded, the trigger button is dropped and the card renders in flow,
+	// always visible and full-width — it is a section of the map page's right-hand
+	// panel — instead of the hover/click dropdown that hangs off the navbar.
+	export let embedded: boolean = false;
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -23,18 +23,18 @@
 	let sentTo: string | null = null;
 	let errorMessage: string | null = null;
 
-	// The signed-in player's daily booster allowance, shown by the pinned map panel's
-	// ProfileCard. Only loaded when pinned (the navbar dropdown doesn't show it).
+	// The signed-in player's daily booster allowance, shown by the embedded map panel's
+	// ProfileCard. Only loaded when embedded (the navbar dropdown doesn't show it).
 	let boosters: BoostersStatus | null = null;
 
 	onMount(() => authService.init());
 
 	$: profileInitial = ($profile?.displayName || $profile?.email || '?').charAt(0).toUpperCase();
 
-	// Refresh the daily allowance whenever the pinned panel has a signed-in player.
+	// Refresh the daily allowance whenever the embedded panel has a signed-in player.
 	// Keyed on `$profile` so a claim spent elsewhere (or a level-up that raises the
 	// cap) re-reads it. All deps named so the statement actually re-runs.
-	$: if (pinned && $status === AuthStatus.SignedIn && $profile) {
+	$: if (embedded && $status === AuthStatus.SignedIn && $profile) {
 		void loadBoosters();
 	}
 
@@ -90,8 +90,8 @@
 	}
 </script>
 
-<div class={pinned ? '' : 'group relative'}>
-	{#if !pinned}
+<div class={embedded ? 'w-full' : 'group relative'}>
+	{#if !embedded}
 		{#if $status === AuthStatus.Loading}
 			<button type="button" class="btn btn-ghost btn-sm btn-disabled" aria-label="Loading account">
 				<span class="loading loading-spinner loading-sm"></span>
@@ -114,8 +114,8 @@
 	<!-- pt-2 keeps the hover area unbroken across the visual gap. -->
 	<div
 		class={classNames(
-			pinned
-				? 'fixed left-4 top-20 z-[1100] visible translate-y-0 opacity-100'
+			embedded
+				? 'w-full'
 				: [
 						'absolute right-0 top-full z-20 origin-top pt-2 transition duration-200 ease-out',
 						'group-hover:visible group-hover:translate-y-0 group-hover:opacity-100',
@@ -125,7 +125,9 @@
 					]
 		)}
 	>
-		<div class="card w-80 bg-base-100 shadow-xl">
+		<!-- Same card either way. Embedded it fills the panel section it sits in and drops
+			the dropdown's shadow, which would read as a seam inside a panel. -->
+		<div class={classNames('card bg-base-100', embedded ? 'w-full' : 'w-80 shadow-xl')}>
 			<div class="card-body gap-4">
 				<!-- Contents format i18n messages; wait for the locale to load. -->
 				{#if $locale}
@@ -137,8 +139,8 @@
 						<ProfileCard
 							profile={$profile}
 							{signingOut}
-							compact={pinned}
-							boosters={pinned ? boosters : null}
+							compact={embedded}
+							boosters={embedded ? boosters : null}
 							on:signout={handleSignOut}
 							on:editusername={openUsernamePrompt}
 						/>
@@ -165,8 +167,9 @@
 	</div>
 </div>
 
-<!-- Click-away layer to close the panel when it was opened programmatically. -->
-{#if $signInPanelOpen}
+<!-- Click-away layer to close the panel when it was opened programmatically. Only the
+	dropdown has anything to close — the embedded card is always on screen. -->
+{#if $signInPanelOpen && !embedded}
 	<button
 		type="button"
 		class="fixed inset-0 z-10 cursor-default"
