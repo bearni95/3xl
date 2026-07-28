@@ -2,7 +2,7 @@
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import { _, locale } from 'svelte-i18n';
-	import { characters } from '@3xl/data';
+	import { characters, type CharacterOption } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { spawnService } from '$services/spawn.service';
 	import { avatarPickerOpen } from '$services/avatarPicker';
@@ -66,11 +66,12 @@
 	$: ownedColors = ownedColorsByCharacter($spawns);
 	$: unlocked = avatarCharacterIds($spawns);
 
-	// Only characters that actually ship a portrait can be worn as one, the ones
-	// the player has completed the colour set of first.
-	$: pickable = characters
-		.filter((character) => faces.has(character.id))
-		.sort((a, b) => Number(unlocked.has(b.id)) - Number(unlocked.has(a.id)));
+	// Only characters that actually ship a portrait can be worn as one. They fall
+	// into two grids: the ones the player has completed the colour set of, then
+	// the ones still to collect.
+	$: pickable = characters.filter((character) => faces.has(character.id));
+	$: wearable = pickable.filter((character) => unlocked.has(character.id));
+	$: stillLocked = pickable.filter((character) => !unlocked.has(character.id));
 
 	async function loadFaces(): Promise<void> {
 		loading = true;
@@ -124,56 +125,8 @@
 					<span class="text-sm">{$_('common.loading')}</span>
 				</div>
 			{:else}
-				<div class="mt-4 grid max-h-[60vh] grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4 md:grid-cols-5">
-					{#each pickable as character (character.id)}
-						{@const selected = $profile?.avatarCharacterId === character.id}
-						{@const locked = !unlocked.has(character.id)}
-						<button
-							type="button"
-							class={classNames(
-								'flex flex-col items-center gap-1 rounded-box border-2 p-2 transition',
-								{
-									'border-primary ring-2 ring-primary': selected,
-									'border-transparent': !selected,
-									'hover:border-base-300 hover:bg-base-200': !selected && !locked
-								}
-							)}
-							title={locked ? $_('profile.avatar.locked') : character.label}
-							disabled={locked || saving !== null}
-							on:click={() => pick(character.id)}
-						>
-							<div class={classNames('relative', { 'opacity-40': locked })}>
-								<div class="h-20 w-20 overflow-hidden rounded-md bg-base-300">
-									<CharacterFace face={faces.get(character.id) ?? null} alt={character.label} />
-								</div>
-								{#if saving === character.id}
-									<span
-										class="absolute inset-0 flex items-center justify-center rounded-md bg-base-100/70"
-									>
-										<span class="loading loading-spinner loading-sm"></span>
-									</span>
-								{/if}
-							</div>
-							{#if locked}
-								{@const owned = ownedColors.get(character.id)}
-								<div class="flex w-20 overflow-hidden rounded-full">
-									{#each PRIDE_SPAWN_COLORS as color (color)}
-										<span
-											class={classNames('h-1.5 flex-1', colorClasses[color], {
-												'opacity-50': !owned?.has(color)
-											})}
-										></span>
-									{/each}
-								</div>
-							{/if}
-							<span
-								class={classNames('w-full truncate text-center text-xs', {
-									'opacity-40': locked
-								})}>{character.label}</span
-							>
-						</button>
-					{/each}
-				</div>
+				{@render grid(wearable)}
+				{@render grid(stillLocked)}
 			{/if}
 
 			{#if errorMessage}
@@ -196,3 +149,60 @@
 		></button>
 	</div>
 {/if}
+
+<!-- One grid of tiles. The picker draws two of them — what the player can wear,
+     then what they are still collecting — and neither scrolls on its own: the
+     modal box is what scrolls, so the two read as one list. -->
+{#snippet grid(list: CharacterOption[])}
+	{#if list.length}
+		<div class="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+			{#each list as character (character.id)}
+				{@const selected = $profile?.avatarCharacterId === character.id}
+				{@const locked = !unlocked.has(character.id)}
+				<button
+					type="button"
+					class={classNames(
+						'flex flex-col items-center gap-1 rounded-box border-2 p-2 transition',
+						{
+							'border-primary ring-2 ring-primary': selected,
+							'border-transparent': !selected,
+							'hover:border-base-300 hover:bg-base-200': !selected && !locked
+						}
+					)}
+					title={locked ? $_('profile.avatar.locked') : character.label}
+					disabled={locked || saving !== null}
+					on:click={() => pick(character.id)}
+				>
+					<div class={classNames('relative', { 'opacity-40': locked })}>
+						<div class="h-20 w-20 overflow-hidden rounded-md bg-base-300">
+							<CharacterFace face={faces.get(character.id) ?? null} alt={character.label} />
+						</div>
+						{#if saving === character.id}
+							<span class="absolute inset-0 flex items-center justify-center rounded-md bg-base-100/70">
+								<span class="loading loading-spinner loading-sm"></span>
+							</span>
+						{/if}
+					</div>
+					{#if locked}
+						{@const owned = ownedColors.get(character.id)}
+						<!-- The colour set, in rainbow order, over white: the colours still to
+						     claim are barely lit, so the row reads as how far off the set is. -->
+						<div class="flex w-20 overflow-hidden rounded-full bg-white">
+							{#each PRIDE_SPAWN_COLORS as color (color)}
+								<span
+									class={classNames('h-1.5 flex-1', colorClasses[color], {
+										'opacity-20': !owned?.has(color)
+									})}
+								></span>
+							{/each}
+						</div>
+					{/if}
+					<span
+						class={classNames('w-full truncate text-center text-xs', { 'opacity-40': locked })}
+						>{character.label}</span
+					>
+				</button>
+			{/each}
+		</div>
+	{/if}
+{/snippet}
