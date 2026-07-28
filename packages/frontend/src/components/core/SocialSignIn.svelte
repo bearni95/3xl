@@ -2,7 +2,7 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
 	import { _ } from 'svelte-i18n';
-	import { OAUTH_PROVIDERS, OAuthProvider } from '$types/profile.type';
+	import { OAUTH_PROVIDER_NAMES, OAUTH_PROVIDERS, OAuthProvider } from '$types/profile.type';
 	import ProviderIcon from '$components/core/ProviderIcon.svelte';
 
 	// Props
@@ -12,12 +12,6 @@
 	export let classes: string = '';
 
 	const dispatch = createEventDispatcher<{ signin: { provider: OAuthProvider } }>();
-
-	// Brand names are not translated — they read the same in every locale.
-	const providerNames: Record<OAuthProvider, string> = {
-		[OAuthProvider.Google]: 'Google',
-		[OAuthProvider.Discord]: 'Discord'
-	};
 
 	function handleClick(provider: OAuthProvider): void {
 		if (disabled || pending) return;
@@ -40,7 +34,7 @@
 			{:else}
 				<ProviderIcon {provider} />
 			{/if}
-			{$_('profile.continueWith', { values: { provider: providerNames[provider] } })}
+			{$_('profile.continueWith', { values: { provider: OAUTH_PROVIDER_NAMES[provider] } })}
 		</button>
 	{/each}
 </div>

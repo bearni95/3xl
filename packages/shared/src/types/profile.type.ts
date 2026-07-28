@@ -27,6 +27,15 @@ export const OAUTH_PROVIDERS: readonly OAuthProvider[] = [
 	OAuthProvider.Discord
 ];
 
+/**
+ * How each provider is named on screen. Brand names are not translated — they
+ * read the same in every locale.
+ */
+export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
+	[OAuthProvider.Google]: 'Google',
+	[OAuthProvider.Discord]: 'Discord'
+};
+
 /** Normalised view model of the signed-in account, decoupled from Supabase. */
 export interface Profile {
 	id: ID;
@@ -43,6 +52,12 @@ export interface Profile {
 	createdAt: string | null;
 	/** ISO timestamp of the most recent sign-in, if known. */
 	lastSignInAt: string | null;
+	/**
+	 * The third-party identities linked to the account, in the order Supabase
+	 * reports them. Empty for an account that only ever used the email link —
+	 * Supabase's own `email` identity is not a social provider and is dropped.
+	 */
+	providers: OAuthProvider[];
 	/**
 	 * Total accumulated experience, from the Supabase `player_profiles` table.
 	 * Starts at 0 for a fresh account and is only ever increased by winning fights

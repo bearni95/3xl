@@ -1,5 +1,5 @@
 import { AdapterClass } from './adapter.class';
-import type { Profile } from '../../types/profile.type';
+import { OAUTH_PROVIDERS, OAuthProvider, type Profile } from '../../types/profile.type';
 import { levelForExp } from '../../utils/progression/level';
 
 /**
@@ -15,6 +15,13 @@ export interface SupabaseUserLike {
 	user_metadata?: {
 		full_name?: string | null;
 		name?: string | null;
+		[key: string]: unknown;
+	} | null;
+	/** One entry per linked identity — `email` for the magic link, `google`/`discord` for OAuth. */
+	identities?: ReadonlyArray<{ provider?: string | null }> | null;
+	app_metadata?: {
+		provider?: string | null;
+		providers?: readonly string[] | null;
 		[key: string]: unknown;
 	} | null;
 }
@@ -46,9 +53,31 @@ export class ProfileAdapter extends AdapterClass {
 			displayName: username || email.split('@')[0] || 'Account',
 			createdAt: user.created_at ?? null,
 			lastSignInAt: user.last_sign_in_at ?? null,
+			providers: this.socialProviders(user),
 			exp: 0,
 			level: levelForExp(0)
 		};
+	}
+
+	/**
+	 * The social providers linked to `user`, deduplicated and in report order.
+	 * `identities` is the authoritative list (Supabase merges accounts that share
+	 * a verified email onto one user, so there can be several); `app_metadata`
+	 * is the fallback for sessions that were restored without them. Anything that
+	 * isn't a provider the app offers — `email` above all — is dropped.
+	 */
+	private socialProviders(user: SupabaseUserLike): OAuthProvider[] {
+		const raw = user.identities?.length
+			? user.identities.map((identity) => identity?.provider)
+			: (user.app_metadata?.providers ?? [user.app_metadata?.provider]);
+
+		const known = new Set<string>(OAUTH_PROVIDERS);
+		const seen = new Set<string>();
+		return (raw ?? []).filter((provider): provider is OAuthProvider => {
+			if (!provider || !known.has(provider) || seen.has(provider)) return false;
+			seen.add(provider);
+			return true;
+		});
 	}
 
 	/**

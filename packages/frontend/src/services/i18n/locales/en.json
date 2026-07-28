@@ -34,8 +34,8 @@
 		"magicLinkHint": "No password needed — just click the link in your inbox.",
 		"checkEmail": "Check your inbox at {email} for your sign-in link.",
 		"useAnotherEmail": "Use a different email",
-		"accountId": "Account ID",
 		"memberSince": "Member since",
+		"signedInWith": "Signed in with",
 		"daysElapsed": "{days, plural, =0 {Today} one {# day} other {# days}}",
 		"levelBadge": "Lv. {level}",
 		"exp": "Experience",
@@ -60,8 +60,5 @@
 		"unauthorized": "Unauthorized",
 		"forbidden": "Forbidden",
 		"serverError": "Server error"
-	},
-	"theme": {
-		"toggle": "Toggle light/dark theme"
 	}
 }

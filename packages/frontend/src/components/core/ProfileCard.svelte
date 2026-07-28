@@ -2,14 +2,15 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
 	import { _ } from 'svelte-i18n';
-	import type { Profile } from '$types/profile.type';
+	import { OAUTH_PROVIDER_NAMES, type Profile } from '$types/profile.type';
 	import { levelProgress } from '$utils/progression/level';
+	import ProviderIcon from '$components/core/ProviderIcon.svelte';
 
 	// Props
 	export let profile: Profile;
 	export let signingOut: boolean = false;
 	export let classes: string = '';
-	// Compact drops the whole details list — account id, member since, total exp — and
+	// Compact drops the whole details list — email, member since, sign-in provider — and
 	// the sign-out button, ending at the level bar. Used by the always-visible pinned
 	// map panel, which is a glance card, not the account-management dropdown.
 	export let compact: boolean = false;
@@ -108,17 +109,15 @@
 	</div>
 
 	<!-- The details list, and the divider that introduces it, are the dropdown's alone:
-		compact is nothing but the avatar block. Its total-exp figure is already in the
-		progress row above, so there is nothing left for compact to list. -->
+		compact is nothing but the avatar block. Everything listed here is account admin
+		— which address, since when, through whom — not the progression a glance card is
+		read for. -->
 	{#if !compact}
 		<div class="divider my-0"></div>
 
 		<dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
 			<dt class="text-base-content/60">{$_('profile.emailLabel')}</dt>
 			<dd class="truncate">{profile.email}</dd>
-
-			<dt class="text-base-content/60">{$_('profile.accountId')}</dt>
-			<dd class="truncate font-mono">{profile.id}</dd>
 
 			<dt class="text-base-content/60">{$_('profile.memberSince')}</dt>
 			<dd>
@@ -129,8 +128,20 @@
 				{/if}
 			</dd>
 
-			<dt class="text-base-content/60">{$_('profile.exp')}</dt>
-			<dd class="font-mono">{progress.exp.toLocaleString()}</dd>
+			<!-- Only accounts that signed in through a provider have this row: an
+				email-link account has nothing to name here, and an empty "—" would only
+				ask the reader to work out what it means. -->
+			{#if profile.providers.length}
+				<dt class="text-base-content/60">{$_('profile.signedInWith')}</dt>
+				<dd class="flex flex-wrap items-center gap-x-3 gap-y-1">
+					{#each profile.providers as provider (provider)}
+						<span class="flex items-center gap-1.5">
+							<ProviderIcon {provider} classes="h-4 w-4" />
+							{OAUTH_PROVIDER_NAMES[provider]}
+						</span>
+					{/each}
+				</dd>
+			{/if}
 		</dl>
 	{/if}
 

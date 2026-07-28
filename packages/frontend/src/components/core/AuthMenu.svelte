@@ -24,8 +24,8 @@
 	let sentTo: string | null = null;
 	let errorMessage: string | null = null;
 	// Whether the embedded card's full-profile dialog is up. The embedded card is a
-	// glance card — no email, no account id, no sign-out — so the button beside the
-	// name raises the very same card the navbar drops down, in full.
+	// glance card — no email, no sign-out — so the button beside the name raises the
+	// very same card the navbar drops down, in full.
 	let profileOpen = false;
 
 	onMount(() => authService.init());
