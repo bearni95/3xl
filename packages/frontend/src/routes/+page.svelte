@@ -716,27 +716,47 @@
 	let fightHolderName: string | null = null;
 	let fightOpen = false;
 
+	// --- The panel's mobile shape ------------------------------------------------
+	// Narrow viewports have no room for a 36rem column floating over the map, so below
+	// `md` the same panel becomes a sheet stuck to the bottom edge: 30vh of it showing,
+	// with the handle row at its top toggling it up to the full screen and back. Both
+	// states are plain heights on the one element, so the CSS height transition slides
+	// its top edge up and down — no second panel, no remount, nothing in the tabs
+	// (breadcrumbs, search, a half-sliced pack) resets on the way.
+	let panelExpanded = false;
+
 	// The single panel pinned over the map's right edge, holding all four views. It
-	// slides off the right edge while a fight is on, so the arena has the map to
-	// itself — translated (not unmounted) to keep the breadcrumb/search state alive and
-	// animate back in on close; `right-4` means it must travel its own width plus that
-	// gap to clear the viewport. One height for every tab now: the account card and the
+	// slides off while a fight is on, so the arena has the map to itself — translated
+	// (not unmounted) to keep the breadcrumb/search state alive and animate back in on
+	// close. It leaves the way it came in: off the right edge on the desktop panel
+	// (`right-4` means it must travel its own width plus that gap to clear the
+	// viewport), straight down off the bottom edge on the mobile sheet.
+	//
+	// One height for every tab on the desktop panel: the account card and the
 	// full-width team strip above the tab strip take a fixed slice of the panel before a
 	// tab draws anything, so the short panel the two tables used to get left them with
 	// almost no rows. Whatever the header does not use goes to the tab, which is the only
 	// part that scrolls.
 	$: panelClasses = classNames(
-		'fixed right-4 top-4 z-[1100] flex w-[36rem] flex-col',
-		'overflow-hidden rounded-box',
-		'border border-base-300 bg-base-100/70 shadow-lg transition-transform duration-300 ease-in-out',
+		'fixed z-[1100] flex flex-col overflow-hidden',
+		'border border-base-300 bg-base-100/70 shadow-lg',
+		'transition-[transform,height] duration-300 ease-in-out',
+		// Mobile: the bottom sheet. It spans the full width and sits flush on the bottom
+		// edge, so only its top corners are rounded and its bottom border would be off
+		// screen anyway.
+		'inset-x-0 bottom-0 rounded-t-[var(--radius-box)] border-b-0',
+		panelExpanded ? 'h-screen' : 'h-[30vh]',
+		// md and up: the floating right-hand column, exactly as before — every mobile
+		// anchor is unset so the sheet's geometry doesn't leak into it.
+		'md:inset-x-auto md:bottom-auto md:right-4 md:top-4 md:w-[36rem] md:rounded-box md:border-b',
 		// The panel is only as tall as what it holds, and stops there — a short town or a
 		// three-row table no longer drags an empty box down the whole viewport. The cap is
 		// what it used to take outright: past it the forward tab's own scroller takes over.
 		// The Booster tab is the exception. Its packs are a WebGL scene with no content
 		// height of its own — it draws into whatever box it is handed — so there is nothing
 		// there to hug, and it keeps the full height it has always had.
-		panelTab === PanelTab.Pack ? 'h-[calc(100vh-2rem)]' : 'max-h-[calc(100vh-2rem)]',
-		{ 'translate-x-[calc(100%+1.5rem)]': fightOpen }
+		panelTab === PanelTab.Pack ? 'md:h-[calc(100vh-2rem)]' : 'md:h-auto md:max-h-[calc(100vh-2rem)]',
+		{ 'translate-y-full md:translate-y-0 md:translate-x-[calc(100%+1.5rem)]': fightOpen }
 	);
 
 	// Fight this town: snapshot whichever team currently sits on it — the holder's if
@@ -1244,7 +1264,9 @@
 </script>
 
 <div class="flex h-screen">
-	<!-- The one panel pinned over the map, top-right, on four tabs. The profile card sits
+	<!-- The one panel pinned over the map, on four tabs — top-right on a wide viewport, a
+		bottom sheet below `md` (30vh showing, its handle row toggling it up to the full
+		screen). Same markup either way. The profile card sits
 		at the very top, above the breadcrumbs, and the breadcrumbs above the tab strip
 		rather than inside any tab: who you are and how many packs you have left is read
 		against every view, as is the region the map is looking at (clicked, or followed
@@ -1267,324 +1289,350 @@
 		  gold star instead, it skips straight to that town's pack on the single-pack
 		  opener, already fitted and centred. -->
 	<aside class={panelClasses} aria-label="Map panel">
-		<!-- Its own section, on its own border: the account card belongs to the player,
-			not to any of the tabs, and never changes as they are switched. Nothing but the
-			border separates it — it draws no surface of its own — so the padding is the
-			section's, and it is the breadcrumbs' below. -->
-		<div class="flex-none border-b border-base-300 px-4 py-3">
-			<AuthMenu embedded />
+		<!-- The sheet's handle row, mobile only: the whole row is the toggle between the
+			30vh peek and the full screen, drawn as the grab bar the gesture would use. The
+			panel animates the change itself (its height is transitioned), so this only has
+			to flip the flag. -->
+		<button
+			type="button"
+			class="flex flex-none items-center justify-center border-b border-base-300 py-2.5 md:hidden"
+			aria-expanded={panelExpanded}
+			aria-label={panelExpanded ? 'Collapse panel' : 'Expand panel'}
+			on:click={() => (panelExpanded = !panelExpanded)}
+		>
+			<span class="h-1.5 w-10 rounded-full bg-base-content/30"></span>
+		</button>
 
-			{#if activeTeamCards.length > 0}
-				<!-- The team this player fields, on the same card canvas a town's team is drawn
-					on — so the side challenging and the side holding read alike. Under the
-					account card because it is part of who the player is here, not part of any
-					tab. The grid layout sizes the row to fill the width exactly: each card is
-					as wide as its cell, at 1:1, never scaled down to fit a box. Its height is
-					therefore the width's — one row of TEAM_SIZE cards at the canvas's 2:3
-					portrait aspect comes to half the width, which is what aspect-[2/1] gives
-					it, so the whole row is on screen with nothing to pan or clip. The player's
-					own cards keep the canvas's default mirrored art, unlike a rival town's. -->
-				<div class="mt-3 aspect-[2/1] w-full overflow-hidden rounded-box bg-base-200">
-					<CardCanvas cards={activeTeamCards} columns={TEAM_SIZE} layout="grid" />
-				</div>
-			{/if}
-
-			<!-- The roster has no route of its own: it opens as a modal over the map, from
-				here. It belongs to this section rather than to the tab strip below for the
-				same reason the team strip does — it is the player's own cards, read against
-				whatever the map is showing, and it is where the team above is built. -->
-			<button
-				type="button"
-				class="btn btn-outline btn-sm mt-3 w-full"
-				on:click={() => rosterModalOpen.set(true)}
-			>
-				Roster
-			</button>
-		</div>
-
-		<div class="flex flex-none flex-col gap-3 border-b border-base-300 px-4 py-3">
-			<div class="breadcrumbs max-w-full py-0 text-sm">
-				<ul>
-					{#each crumbs as crumb, i}
-						<li>
-							{#if i === crumbs.length - 1}
-								<span class="font-semibold">{crumb.label}</span>
-							{:else}
-								<button type="button" class="link link-hover" on:click={() => open(crumb.key)}>
-									{crumb.label}
-								</button>
-							{/if}
-						</li>
-					{/each}
-				</ul>
-			</div>
-
-			<!-- One column per tab, so the four split the panel's width evenly however long
-				their labels are (Booster's grows a counter) instead of each being as wide as
-				its own text. Still a join: `grid` only overrides its inline-flex display —
-				the joined radii and collapsed borders come from child rules that hold in a
-				grid just as well. -->
-			<div class="join grid grid-cols-4">
-				{#each panelTabs as tab (tab.id)}
-					<!-- The tab that is forward is filled in the theme's primary; the rest stay
-						outlined. btn-active only darkened the outline, which barely read as a
-						selection at this size. -->
-					<button
-						type="button"
-						class={classNames(
-							'btn btn-sm join-item',
-							panelTab === tab.id ? 'btn-primary' : 'btn-outline'
-						)}
-						aria-pressed={panelTab === tab.id}
-						on:click={() => selectTab(tab.id)}
-					>
-						{tab.label}
-					</button>
-				{/each}
-			</div>
-		</div>
-
-		{#if panelTab === PanelTab.Location}
+		<!-- On the mobile sheet this is the one scroller: the sections below keep their
+			natural heights inside it (it is a plain block there, so their `flex-1` is
+			inert) and the whole panel scrolls as one, which is the only thing that works
+			when the header alone is taller than the collapsed 30vh. On the desktop panel it
+			is `display: contents` — it draws no box at all, so its children go back to being
+			the aside's own flex children and each tab keeps its own scroller. -->
+		<div class="min-h-0 flex-1 overflow-y-auto md:contents">
+			<!-- Its own section, on its own border: the account card belongs to the player,
+				not to any of the tabs, and never changes as they are switched. Nothing but the
+				border separates it — it draws no surface of its own — so the padding is the
+				section's, and it is the breadcrumbs' below. -->
 			<div class="flex-none border-b border-base-300 px-4 py-3">
-				<input
-					type="search"
-					class="input input-bordered input-sm w-full"
-					placeholder="Search locations…"
-					bind:value={searchQuery}
-				/>
-			</div>
+				<AuthMenu embedded />
 
-			{#if normalizedQuery}
-				<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
-			{:else if regionRows.length === 0}
-				<!-- A leaf region (a municipality) has no children to drill into, so instead of
-					an empty table we surface its own top show — the only place the open location's
-					show appears — plus the town's deterministic house team on the shared card
-					canvas (three cards rolled from the town's seed and its show's roster). -->
-				<div class="flex min-h-0 flex-1 flex-col gap-3 p-4">
-					{#if openShow}
-						<div class="flex flex-none items-center gap-3">
-							{#if openShow.posterUrl}
-								<img
-									src={openShow.posterUrl}
-									alt={openShow.name}
-									class="h-16 w-auto flex-none rounded shadow"
-								/>
-							{/if}
-							<div class="min-w-0">
-								<!-- A held town flies its ruling team's show, so the label says so
-									rather than claiming it is the town's most-seen one. -->
-								<p class="text-xs font-bold uppercase tracking-wide opacity-60">
-									{openHolder ? 'Ruling show' : 'Most seen'}
-								</p>
-								<p class="truncate font-semibold">{openShow.name}</p>
-							</div>
-						</div>
-					{:else}
-						<p class="flex-none text-center opacity-60">No show here yet.</p>
-					{/if}
-
-					{#if municipalityTeamCards.length > 0}
-						<!-- Whoever holds the town. Until a player beats it, that's the town's
-							built-in, seed-rolled "OG" (original) roster — the same for every
-							player, badged so it reads as the house team. Once somebody takes the
-							town it's their frozen winning team instead, and it's their name on
-							the badge. -->
-						<div class="flex flex-none items-center gap-2">
-							{#if openHolder}
-								<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
-								<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
-									{openHolder.holderName}
-								</span>
-							{:else}
-								<span class="badge badge-primary badge-sm font-bold">OG</span>
-								<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
-							{/if}
-							{#if holdsOpenTown}
-								<span class="badge badge-success badge-sm ml-auto">Yours</span>
-							{:else}
-								<!-- The same siege counter the two tables carry, for the one town the
-									panel is down to: wins banked over wins needed. It reads exactly as
-									the column a drill row shows for this municipality, so opening a
-									town never restates the figure in different terms. -->
-								<span
-									class="ml-auto flex flex-none items-center gap-1.5 text-xs tabular-nums"
-									title="Your wins banked / wins needed to take the town"
-								>
-									<span class="font-bold uppercase tracking-wide opacity-60">Siege</span>
-									<span class={siegeProgress.wins > 0 ? 'font-semibold' : 'opacity-70'}>
-										{siegeProgress.wins}/{siegeProgress.required}
-									</span>
-								</span>
-								<button type="button" class="btn btn-primary btn-xs flex-none" on:click={challenge}>
-									Challenge
-								</button>
-							{/if}
-						</div>
-						<!-- Sized like the player's own team strip above it: one row of TEAM_SIZE
-							cards at the canvas's 2:3 portrait aspect is half the width tall, which is
-							what aspect-[2/1] gives it. It takes that and no more — stretching it down
-							the rest of the panel only drew the same row over a taller field of empty
-							board. -->
-						<div class="relative aspect-[2/1] w-full flex-none overflow-hidden rounded-box bg-base-200">
-							<!-- The town's team is a rival team, so its cards use the board's rival
-								variant (unmirrored art), matching the rival's hand cards on the game
-								canvas. -->
-							<CardCanvas
-								cards={municipalityTeamCards}
-								columns={TEAM_SIZE}
-								layout="grid"
-								pannable
-								flipped={false}
-							/>
-						</div>
-					{/if}
-				</div>
-			{:else}
-				<RegionTable rows={regionRows} onSelect={select} />
-			{/if}
-		{:else if panelTab === PanelTab.Latest}
-			<TerritoryTable rows={recentWins} onSelect={openWin} />
-		{:else if panelTab === PanelTab.Leaderboard}
-			<ShowStandingsTable rows={showStandings} />
-		{:else}
-			<!-- Two ways in, one tab: a star click narrows it to that town's pack on the
-				single-pack opener, while picking the tab itself shows the whole day's packs
-				on the shared ClaimPackGrid canvas — two to a row here, since the
-				panel is a third of the viewport's width. Either way the pack is sliced open in
-				place; "Tots els sobres" goes back to the grid. -->
-			<div class="flex min-h-0 flex-1 flex-col">
-				<!-- The day being browsed: an arrow at each end of the row and the date in the
-					middle, where it doubles as the toggle for the month calendar. Only today's
-					packs open; any other day's grid is mounted read-only and drawn in black and
-					white, so it reads as a look-ahead (or look-back) at what that day holds. -->
-				<div class="flex flex-none items-center gap-2 border-b border-base-300 px-4 py-2">
-					<button
-						type="button"
-						class="btn btn-ghost btn-xs flex-none"
-						on:click={() => stepPackDate(-1)}
-						aria-label="Dia anterior"
-					>
-						‹
-					</button>
-					<button
-						type="button"
-						class="btn btn-ghost btn-xs min-w-0 flex-1"
-						on:click={toggleCalendar}
-						aria-expanded={calendarOpen}
-					>
-						<span class="truncate text-sm font-bold first-letter:uppercase">{packDateLabel}</span>
-					</button>
-					<button
-						type="button"
-						class="btn btn-ghost btn-xs flex-none"
-						on:click={() => stepPackDate(1)}
-						aria-label="Dia següent"
-					>
-						›
-					</button>
-				</div>
-
-				<!-- Why the last roll revealed nothing. `claim_booster` refuses for reasons the
-					player can act on (the allowance is spent, the town isn't de festa today), and
-					the panel that normally reports them is mounted hidden here — so a pack sliced
-					open onto an empty canvas would say nothing at all without this. -->
-				{#if isPackToday && claimError}
-					<div class="alert alert-error mx-3 mt-3 flex-none py-2 text-xs" role="alert">
-						<span>{claimError}</span>
-					</div>
-				{:else if isPackToday && lastRevealed === 0}
-					<!-- The pack opened and the roll came back with nothing, without an error to
-						go with it. Rare, but it must not read as a blank canvas. -->
-					<div class="alert alert-warning mx-3 mt-3 flex-none py-2 text-xs" role="alert">
-						<span>El sobre s'ha obert però no n'ha sortit cap carta.</span>
-					</div>
-				{:else if isPackToday && allowanceSpent}
-					<div class="alert alert-warning mx-3 mt-3 flex-none py-2 text-xs">
-						<span>Ja has obert tots els sobres d'avui. Se'n desbloquegen més a mitjanit.</span>
+				{#if activeTeamCards.length > 0}
+					<!-- The team this player fields, on the same card canvas a town's team is drawn
+						on — so the side challenging and the side holding read alike. Under the
+						account card because it is part of who the player is here, not part of any
+						tab. The grid layout sizes the row to fill the width exactly: each card is
+						as wide as its cell, at 1:1, never scaled down to fit a box. Its height is
+						therefore the width's — one row of TEAM_SIZE cards at the canvas's 2:3
+						portrait aspect comes to half the width, which is what aspect-[2/1] gives
+						it, so the whole row is on screen with nothing to pan or clip. The player's
+						own cards keep the canvas's default mirrored art, unlike a rival town's. -->
+					<div class="mt-3 aspect-[2/1] w-full overflow-hidden rounded-box bg-base-200">
+						<CardCanvas cards={activeTeamCards} columns={TEAM_SIZE} layout="grid" />
 					</div>
 				{/if}
 
-				<div class="relative min-h-0 flex-1 p-3">
-					<!-- The calendar lives over the pack canvas rather than above it, sliding down
-						from the date row and back up again — so opening it never re-sizes the
-						canvas underneath (a resized WebGL grid would have to re-lay itself out). -->
-					{#if calendarOpen}
-						<div class="absolute inset-x-3 top-3 z-10" transition:slide={{ duration: 200 }}>
-							<PackDateCalendar
-								month={calendarMonth}
-								value={packDate}
-								today={todayIso}
-								counts={calendarCounts}
-								loading={loadingCountsMonth === calendarMonth}
-								classes="shadow-xl"
-								on:month={(event) => (calendarMonth = event.detail)}
-								on:select={(event) => pickPackDate(event.detail)}
-							/>
+				<!-- The roster has no route of its own: it opens as a modal over the map, from
+					here. It belongs to this section rather than to the tab strip below for the
+					same reason the team strip does — it is the player's own cards, read against
+					whatever the map is showing, and it is where the team above is built. -->
+				<button
+					type="button"
+					class="btn btn-outline btn-sm mt-3 w-full"
+					on:click={() => rosterModalOpen.set(true)}
+				>
+					Roster
+				</button>
+			</div>
+
+			<div class="flex flex-none flex-col gap-3 border-b border-base-300 px-4 py-3">
+				<div class="breadcrumbs max-w-full py-0 text-sm">
+					<ul>
+						{#each crumbs as crumb, i}
+							<li>
+								{#if i === crumbs.length - 1}
+									<span class="font-semibold">{crumb.label}</span>
+								{:else}
+									<button type="button" class="link link-hover" on:click={() => open(crumb.key)}>
+										{crumb.label}
+									</button>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
+
+				<!-- One column per tab, so the four split the panel's width evenly however long
+					their labels are (Booster's grows a counter) instead of each being as wide as
+					its own text. Still a join: `grid` only overrides its inline-flex display —
+					the joined radii and collapsed borders come from child rules that hold in a
+					grid just as well. -->
+				<div class="join grid grid-cols-4">
+					{#each panelTabs as tab (tab.id)}
+						<!-- The tab that is forward is filled in the theme's primary; the rest stay
+							outlined. btn-active only darkened the outline, which barely read as a
+							selection at this size. -->
+						<button
+							type="button"
+							class={classNames(
+								'btn btn-sm join-item',
+								panelTab === tab.id ? 'btn-primary' : 'btn-outline'
+							)}
+							aria-pressed={panelTab === tab.id}
+							on:click={() => selectTab(tab.id)}
+						>
+							{tab.label}
+						</button>
+					{/each}
+				</div>
+			</div>
+
+			{#if panelTab === PanelTab.Location}
+				<div class="flex-none border-b border-base-300 px-4 py-3">
+					<input
+						type="search"
+						class="input input-bordered input-sm w-full"
+						placeholder="Search locations…"
+						bind:value={searchQuery}
+					/>
+				</div>
+
+				{#if normalizedQuery}
+					<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
+				{:else if regionRows.length === 0}
+					<!-- A leaf region (a municipality) has no children to drill into, so instead of
+						an empty table we surface its own top show — the only place the open location's
+						show appears — plus the town's deterministic house team on the shared card
+						canvas (three cards rolled from the town's seed and its show's roster). -->
+					<div class="flex min-h-0 flex-1 flex-col gap-3 p-4">
+						{#if openShow}
+							<div class="flex flex-none items-center gap-3">
+								{#if openShow.posterUrl}
+									<img
+										src={openShow.posterUrl}
+										alt={openShow.name}
+										class="h-16 w-auto flex-none rounded shadow"
+									/>
+								{/if}
+								<div class="min-w-0">
+									<!-- A held town flies its ruling team's show, so the label says so
+										rather than claiming it is the town's most-seen one. -->
+									<p class="text-xs font-bold uppercase tracking-wide opacity-60">
+										{openHolder ? 'Ruling show' : 'Most seen'}
+									</p>
+									<p class="truncate font-semibold">{openShow.name}</p>
+								</div>
+							</div>
+						{:else}
+							<p class="flex-none text-center opacity-60">No show here yet.</p>
+						{/if}
+
+						{#if municipalityTeamCards.length > 0}
+							<!-- Whoever holds the town. Until a player beats it, that's the town's
+								built-in, seed-rolled "OG" (original) roster — the same for every
+								player, badged so it reads as the house team. Once somebody takes the
+								town it's their frozen winning team instead, and it's their name on
+								the badge. -->
+							<div class="flex flex-none items-center gap-2">
+								{#if openHolder}
+									<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
+									<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
+										{openHolder.holderName}
+									</span>
+								{:else}
+									<span class="badge badge-primary badge-sm font-bold">OG</span>
+									<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
+								{/if}
+								{#if holdsOpenTown}
+									<span class="badge badge-success badge-sm ml-auto">Yours</span>
+								{:else}
+									<!-- The same siege counter the two tables carry, for the one town the
+										panel is down to: wins banked over wins needed. It reads exactly as
+										the column a drill row shows for this municipality, so opening a
+										town never restates the figure in different terms. -->
+									<span
+										class="ml-auto flex flex-none items-center gap-1.5 text-xs tabular-nums"
+										title="Your wins banked / wins needed to take the town"
+									>
+										<span class="font-bold uppercase tracking-wide opacity-60">Siege</span>
+										<span class={siegeProgress.wins > 0 ? 'font-semibold' : 'opacity-70'}>
+											{siegeProgress.wins}/{siegeProgress.required}
+										</span>
+									</span>
+									<button type="button" class="btn btn-primary btn-xs flex-none" on:click={challenge}>
+										Challenge
+									</button>
+								{/if}
+							</div>
+							<!-- Sized like the player's own team strip above it: one row of TEAM_SIZE
+								cards at the canvas's 2:3 portrait aspect is half the width tall, which is
+								what aspect-[2/1] gives it. It takes that and no more — stretching it down
+								the rest of the panel only drew the same row over a taller field of empty
+								board. -->
+							<div class="relative aspect-[2/1] w-full flex-none overflow-hidden rounded-box bg-base-200">
+								<!-- The town's team is a rival team, so its cards use the board's rival
+									variant (unmirrored art), matching the rival's hand cards on the game
+									canvas. -->
+								<CardCanvas
+									cards={municipalityTeamCards}
+									columns={TEAM_SIZE}
+									layout="grid"
+									pannable
+									flipped={false}
+								/>
+							</div>
+						{/if}
+					</div>
+				{:else}
+					<RegionTable rows={regionRows} onSelect={select} />
+				{/if}
+			{:else if panelTab === PanelTab.Latest}
+				<TerritoryTable rows={recentWins} onSelect={openWin} />
+			{:else if panelTab === PanelTab.Leaderboard}
+				<ShowStandingsTable rows={showStandings} />
+			{:else}
+				<!-- Two ways in, one tab: a star click narrows it to that town's pack on the
+					single-pack opener, while picking the tab itself shows the whole day's packs
+					on the shared ClaimPackGrid canvas — two to a row here, since the
+					panel is a third of the viewport's width. Either way the pack is sliced open in
+					place; "Tots els sobres" goes back to the grid. -->
+				<!-- The one tab that has to be told a height on the mobile sheet: its packs are a
+					WebGL scene that draws into whatever box it is handed, and inside the sheet's
+					scroller there is no leftover space to hand it. 60vh is enough of a stage to
+					pick and slice a pack on, and the sheet scrolls to it when collapsed. -->
+				<div class="flex min-h-0 flex-1 flex-col max-md:min-h-[60vh]">
+					<!-- The day being browsed: an arrow at each end of the row and the date in the
+						middle, where it doubles as the toggle for the month calendar. Only today's
+						packs open; any other day's grid is mounted read-only and drawn in black and
+						white, so it reads as a look-ahead (or look-back) at what that day holds. -->
+					<div class="flex flex-none items-center gap-2 border-b border-base-300 px-4 py-2">
+						<button
+							type="button"
+							class="btn btn-ghost btn-xs flex-none"
+							on:click={() => stepPackDate(-1)}
+							aria-label="Dia anterior"
+						>
+							‹
+						</button>
+						<button
+							type="button"
+							class="btn btn-ghost btn-xs min-w-0 flex-1"
+							on:click={toggleCalendar}
+							aria-expanded={calendarOpen}
+						>
+							<span class="truncate text-sm font-bold first-letter:uppercase">{packDateLabel}</span>
+						</button>
+						<button
+							type="button"
+							class="btn btn-ghost btn-xs flex-none"
+							on:click={() => stepPackDate(1)}
+							aria-label="Dia següent"
+						>
+							›
+						</button>
+					</div>
+
+					<!-- Why the last roll revealed nothing. `claim_booster` refuses for reasons the
+						player can act on (the allowance is spent, the town isn't de festa today), and
+						the panel that normally reports them is mounted hidden here — so a pack sliced
+						open onto an empty canvas would say nothing at all without this. -->
+					{#if isPackToday && claimError}
+						<div class="alert alert-error mx-3 mt-3 flex-none py-2 text-xs" role="alert">
+							<span>{claimError}</span>
+						</div>
+					{:else if isPackToday && lastRevealed === 0}
+						<!-- The pack opened and the roll came back with nothing, without an error to
+							go with it. Rare, but it must not read as a blank canvas. -->
+						<div class="alert alert-warning mx-3 mt-3 flex-none py-2 text-xs" role="alert">
+							<span>El sobre s'ha obert però no n'ha sortit cap carta.</span>
+						</div>
+					{:else if isPackToday && allowanceSpent}
+						<div class="alert alert-warning mx-3 mt-3 flex-none py-2 text-xs">
+							<span>Ja has obert tots els sobres d'avui. Se'n desbloquegen més a mitjanit.</span>
 						</div>
 					{/if}
 
-					{#if packTownId}
-						<!-- Keyed on the town so clicking another star remounts a fresh, unsliced
-							pack rather than reusing the last one's scene. -->
-						{#if packForTown}
-							{#key packForTown.id}
-								<ClaimPackOpener
-									coverUrl={packForTown.coverUrl}
-									locationName={packForTown.locationName}
-									claim={packForTown.claim}
-									onOpenComplete={onPackOpened}
-									classes="rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
+					<div class="relative min-h-0 flex-1 p-3">
+						<!-- The calendar lives over the pack canvas rather than above it, sliding down
+							from the date row and back up again — so opening it never re-sizes the
+							canvas underneath (a resized WebGL grid would have to re-lay itself out). -->
+						{#if calendarOpen}
+							<div class="absolute inset-x-3 top-3 z-10" transition:slide={{ duration: 200 }}>
+								<PackDateCalendar
+									month={calendarMonth}
+									value={packDate}
+									today={todayIso}
+									counts={calendarCounts}
+									loading={loadingCountsMonth === calendarMonth}
+									classes="shadow-xl"
+									on:month={(event) => (calendarMonth = event.detail)}
+									on:select={(event) => pickPackDate(event.detail)}
+								/>
+							</div>
+						{/if}
+
+						{#if packTownId}
+							<!-- Keyed on the town so clicking another star remounts a fresh, unsliced
+								pack rather than reusing the last one's scene. -->
+							{#if packForTown}
+								{#key packForTown.id}
+									<ClaimPackOpener
+										coverUrl={packForTown.coverUrl}
+										locationName={packForTown.locationName}
+										claim={packForTown.claim}
+										onOpenComplete={onPackOpened}
+										classes="rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
+									/>
+								{/key}
+							{:else}
+								<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
+									<p class="max-w-xs text-sm opacity-60">
+										Aquest municipi encara no té cap sobre per obrir. Inicia sessió i torna-ho a provar.
+									</p>
+								</div>
+							{/if}
+						{:else if loadingDate === packDate}
+							<div class="flex h-full items-center justify-center rounded-md bg-base-200">
+								<span class="loading loading-spinner loading-lg text-primary"></span>
+							</div>
+						{:else if dayPacks.length}
+							<!-- Two packs to a row at this width, and an opened one unfolds its cards
+								into two columns as well — the panel is far too narrow for the claim
+								page's three. Keyed on the day too, so stepping the date rebuilds the
+								grid from that day's packs. -->
+							{#key `${packDate}:${packsKey}:${gridSession}`}
+								<ClaimPackGrid
+									packs={dayPacks}
+									columns={2}
+									revealColumns={2}
+									interactive={isPackToday && !allowanceSpent}
+									classes={classNames('rounded-md bg-gradient-to-b from-base-300/80 to-base-200', {
+										'grayscale': !isPackToday,
+										'opacity-50': allowanceSpent
+									})}
+									on:select={(event) => {
+										clearPackFeedback();
+										gridPack = event.detail;
+									}}
+									on:openComplete={(event) => onPackOpened(event.detail)}
 								/>
 							{/key}
 						{:else}
 							<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
 								<p class="max-w-xs text-sm opacity-60">
-									Aquest municipi encara no té cap sobre per obrir. Inicia sessió i torna-ho a provar.
+									{#if isPackToday}
+										Ara mateix no hi ha cap sobre per obrir. Inicia sessió i clica una estrella daurada
+										del mapa.
+									{:else}
+										Cap municipi no celebra la festa major aquest dia.
+									{/if}
 								</p>
 							</div>
 						{/if}
-					{:else if loadingDate === packDate}
-						<div class="flex h-full items-center justify-center rounded-md bg-base-200">
-							<span class="loading loading-spinner loading-lg text-primary"></span>
-						</div>
-					{:else if dayPacks.length}
-						<!-- Two packs to a row at this width, and an opened one unfolds its cards
-							into two columns as well — the panel is far too narrow for the claim
-							page's three. Keyed on the day too, so stepping the date rebuilds the
-							grid from that day's packs. -->
-						{#key `${packDate}:${packsKey}:${gridSession}`}
-							<ClaimPackGrid
-								packs={dayPacks}
-								columns={2}
-								revealColumns={2}
-								interactive={isPackToday && !allowanceSpent}
-								classes={classNames('rounded-md bg-gradient-to-b from-base-300/80 to-base-200', {
-									'grayscale': !isPackToday,
-									'opacity-50': allowanceSpent
-								})}
-								on:select={(event) => {
-									clearPackFeedback();
-									gridPack = event.detail;
-								}}
-								on:openComplete={(event) => onPackOpened(event.detail)}
-							/>
-						{/key}
-					{:else}
-						<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
-							<p class="max-w-xs text-sm opacity-60">
-								{#if isPackToday}
-									Ara mateix no hi ha cap sobre per obrir. Inicia sessió i clica una estrella daurada
-									del mapa.
-								{:else}
-									Cap municipi no celebra la festa major aquest dia.
-								{/if}
-							</p>
-						</div>
-					{/if}
+					</div>
 				</div>
-			</div>
-		{/if}
+			{/if}
+		</div>
 	</aside>
 
 	<!-- The map keeps the full width at all times. The tabbed panel floats over its right
