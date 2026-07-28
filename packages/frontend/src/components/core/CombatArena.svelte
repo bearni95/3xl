@@ -56,11 +56,12 @@
 	// still on its seeded OG team. Reported so the server can tell a win against the
 	// sitting team from one against a team that has since been replaced.
 	export let ogTurnover = 0;
-	// Who occupies the town right now, for the header and the endgame copy. Null
-	// while it is still on its seeded OG team.
+	// Who occupies the town right now, shown in the header. Null while it is still on
+	// its seeded OG team.
 	export let ogHolderName: string | null = null;
-	// When true the arena renders a close control and a "Leave" endgame action, and
-	// dispatches `close` (used when hosted in a modal, e.g. the map page).
+	// When true the arena renders a close control to walk out of a fight in progress
+	// (used when hosted in a modal, e.g. the map page). `close` is dispatched either
+	// way — a decided fight closes itself.
 	export let closable = false;
 
 	// `territory` fires once the server has settled what a finished fight did to the
@@ -273,17 +274,16 @@
 	}
 
 	$: grids = buildGrids(slots, spawnById, rarityByCharacter, showNamesByCharacter, municipalityNames);
-	// Bumped by "Play again" so the Pixi board remounts with a clean slate.
-	let gameKey = 0;
 	// Remounts the Pixi board (and thus repositions everyone) on any slot change,
 	// spawn-colour change (so home cells repaint once colours load), spawn-stat change
-	// (so the outside-grid cards repaint), rarity/show/place load (so the cards gain
-	// their badge, show and location once those sources resolve), or restart.
+	// (so the outside-grid cards repaint), or rarity/show/place load (so the cards gain
+	// their badge, show and location once those sources resolve). A finished fight
+	// never restarts in place — the arena closes — so there is nothing else to key on.
 	$: boardKey = `${slots.join(',')}:${slots
 		.map((id) => `${spawnById.get(id)?.color ?? ''}/${spawnById.get(id)?.stat ?? ''}`)
 		.join(
 			','
-		)}:${rarityByCharacter.size}:${showNamesByCharacter.size}:${municipalityNames?.size ?? 0}:${gameKey}`;
+		)}:${rarityByCharacter.size}:${showNamesByCharacter.size}:${municipalityNames?.size ?? 0}`;
 
 	// One badge per character on the board, in board order (red half then blue).
 	// Static display info (name, face, colour, moves); the live combat state (charges,
@@ -450,20 +450,9 @@
 		if (board) controller.attachBoard(board);
 	}
 
-	// The experience the finished fight earned, as the server settled it — winning
-	// is the game's only source of experience. Null until the award lands (and for
-	// a fight that earned nothing the endgame modal just shows no reward line).
-	let reward: CombatReward | null = null;
-	let rewardPending = false;
-	let rewardError = '';
 	// The controller whose result has already been reported, so the award fires
-	// exactly once per game: "Play again" builds a fresh controller, which arms it.
+	// exactly once per game.
 	let reportedFor: CombatController | null = null;
-
-	// The fight just took the town, so the team on the other side of the board is
-	// now the player's own. A player may not challenge their own team, so this fight
-	// cannot be replayed — the endgame drops "Play again" (see the modal below).
-	$: townTaken = reward?.territory?.captured === true;
 
 	// Report the fight the moment it is decided. Both `state` and `controller` are
 	// named here so Svelte's legacy reactive tracking sees them as dependencies.
@@ -483,6 +472,11 @@
 		);
 	}
 
+	// A decided fight is over: report it, then leave. There is nothing left to play
+	// on the board, so the arena closes itself rather than putting a dialog over it.
+	// The close waits on the report so the host still gets the `territory` event —
+	// that is what redraws the town — and a report that fails closes just the same:
+	// the server is the ledger, and it simply banked nothing.
 	async function reportOutcome(
 		current: CombatState | null,
 		ctrl: CombatController | null
@@ -490,27 +484,25 @@
 		if (!current?.outcome || !ctrl || reportedFor === ctrl) return;
 		reportedFor = ctrl;
 		const report = ctrl.report();
-		if (!report) return;
-		rewardPending = true;
-		rewardError = '';
-		try {
-			// The amount — and whether the town changed hands — are the server's to
-			// decide; this only states what happened and which town it happened over.
-			reward = await authService.reportCombat({
-				...report,
-				fighters: inTeamOrder(report.fighters),
-				locationId: ogLocationId,
-				holderTurnover: ogTurnover
-			});
-			// Let the host redraw the town: a capture rewrites its team and its
-			// turnover, and even a banked win moves the progress it shows.
-			if (reward?.territory) dispatch('territory', reward.territory);
-		} catch (error) {
-			reward = null;
-			rewardError = error instanceof Error ? error.message : String(error);
-		} finally {
-			rewardPending = false;
+		if (report) {
+			try {
+				// The amount — and whether the town changed hands — are the server's to
+				// decide; this only states what happened and which town it happened over.
+				const reward: CombatReward | null = await authService.reportCombat({
+					...report,
+					fighters: inTeamOrder(report.fighters),
+					locationId: ogLocationId,
+					holderTurnover: ogTurnover
+				});
+				// Let the host redraw the town: a capture rewrites its team and its
+				// turnover, and even a banked win moves the progress it shows.
+				if (reward?.territory) dispatch('territory', reward.territory);
+			} catch {
+				// Nothing is drawn from the award any more, so a failed one costs nothing
+				// but itself.
+			}
 		}
+		close();
 	}
 
 	onMount(() => authService.init());
@@ -532,21 +524,6 @@
 		void setup();
 	}
 
-	// Restart from the endgame modal: remount the board and rebuild the fight. The
-	// last fight's reward is cleared so the next endgame reports its own.
-	function playAgain(): void {
-		gameKey += 1;
-		reward = null;
-		rewardError = '';
-		void setup();
-	}
-
-	// Endgame modal copy, keyed by outcome.
-	const outcomeTitles: Record<string, string> = {
-		win: 'Victory!',
-		lose: 'Defeat',
-		draw: 'Draw'
-	};
 </script>
 
 <!-- A fighter's banked charges, as MAX_CHARGES pips filled left to right. A shot
@@ -808,92 +785,3 @@
 		</div>
 	{/if}
 </div>
-
-<!-- Endgame modal: blocks the arena once the game is decided. No backdrop
-     dismissal — the only ways out are a new game or (when closable) leaving. -->
-{#if state?.outcome}
-	<div class="modal modal-open">
-		<div class="modal-box text-center">
-			<h3
-				class={classNames('text-3xl font-bold', {
-					'text-success': state.outcome === 'win',
-					'text-error': state.outcome === 'lose'
-				})}
-			>
-				{outcomeTitles[state.outcome]}
-			</h3>
-			<p class="py-3 text-sm opacity-70">{state.status}</p>
-			<!-- What the fight paid out. A win earns the whole span of the player's
-			     current level scaled by how much of the team was still standing, so a
-			     win with nobody lost is exactly one level's worth; a loss earns nothing
-			     and says so. -->
-			{#if rewardPending}
-				<p class="text-sm opacity-60">
-					<span class="loading loading-spinner loading-xs align-middle"></span>
-					Tallying experience…
-				</p>
-			{:else if rewardError}
-				<p class="text-error text-sm">Experience could not be awarded: {rewardError}</p>
-			{:else if reward}
-				{#if reward.awarded > 0}
-					<p class="text-success text-2xl font-bold">+{reward.awarded.toLocaleString()} XP</p>
-					<p class="text-xs opacity-60">
-						{reward.hpLeft}/{reward.hpMax} of the team came through level {reward.level}'s
-						{reward.span.toLocaleString()} XP
-						{#if reward.hpLeft === reward.hpMax}
-							— nobody lost, a whole level earned.
-						{/if}
-					</p>
-				{:else if reward.span === 0}
-					<p class="text-sm opacity-60">Max level — no experience left to earn.</p>
-				{:else}
-					<p class="text-sm opacity-60">No experience — only winning pays out.</p>
-				{/if}
-			{/if}
-			<!-- What the fight did to the town. Taking one needs as many wins as the town
-			     has changed hands, plus one — so a town nobody has taken falls to a single
-			     win and every flip since makes the sitting team harder to shift. -->
-			{#if reward?.territory}
-				{@const town = reward.territory}
-				<div class="mt-3 border-t border-base-300 pt-3">
-					{#if town.stale}
-						<p class="text-warning text-sm">
-							This town changed hands while you were fighting — that team no longer holds it, so
-							the win banked nothing. Challenge the new occupant.
-						</p>
-					{:else if town.captured}
-						<p class="text-success text-lg font-bold">Town taken!</p>
-						<p class="text-xs opacity-60">
-							{ogName ? `${ogName} is yours` : 'The town is yours'} — your team holds it now. The
-							next challenger will need {town.turnover + 1} wins to take it off you.
-						</p>
-					{:else if town.wins > 0}
-						<p class="text-sm font-semibold">{town.wins} of {town.required} wins</p>
-						<p class="text-xs opacity-60">
-							Beat them {town.required - town.wins} more time{town.required - town.wins === 1
-								? ''
-								: 's'} to take the town.
-						</p>
-					{:else}
-						<p class="text-xs opacity-60">
-							No ground gained — only wins count towards taking the town ({town.required} needed).
-						</p>
-					{/if}
-				</div>
-			{/if}
-			<!-- Taking the town ends the challenge: its sitting team is now the player's
-			     own, and nobody may fight their own team — so there is no rematch to
-			     offer, only the way out. The server refuses such a report anyway. -->
-			<div class="modal-action justify-center">
-				{#if !townTaken}
-					<button type="button" class="btn btn-primary" on:click={playAgain}>Play again</button>
-				{/if}
-				{#if closable}
-					<button type="button" class="btn btn-ghost" on:click={close}>
-						{townTaken ? 'Done' : 'Leave'}
-					</button>
-				{/if}
-			</div>
-		</div>
-	</div>
-{/if}

@@ -538,7 +538,7 @@ export class CombatController {
 		this.setStatus(`Turn ${this.turn} — give your orders.`);
 	}
 
-	/** End the game with an outcome; the page shows it in a blocking modal. */
+	/** End the game with an outcome; the arena reports it and closes. */
 	private end(outcome: CombatOutcome, detail: string): void {
 		this.phase = 'done';
 		this.outcome = outcome;
