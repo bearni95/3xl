@@ -23,7 +23,7 @@
  * (`CardCanvas.svelte`) creates and destroys it.
  */
 
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Text } from 'pixi.js';
 import { destroyPixiApp } from '$utils/pixi/release-context';
 import { CardSprite, cardBorderWidth } from '$utils/card/CardSprite';
 import type { CardModel } from '$utils/card/card-model.type';
@@ -43,6 +43,33 @@ const NAV_PAD = 16;
 const TAP_SLOP = 6;
 // A little overscroll past the grid edges, so panning feels springy, not walled.
 const PAN_MARGIN = 48;
+// Vertical room between the leading slot band and the roster below it, with a rule
+// drawn down its middle — enough that the two read as separate sections.
+const SLOT_SEPARATION = 40;
+
+/**
+ * Baked grid geometry (world units), recomputed on each (re)build. `border` is the
+ * outset frame each card draws beyond its content; `cellW`/`cellH` are the full
+ * per-card footprint (content + border on both sides) the grid tiles. The `slot*`
+ * and `button*` fields describe the leading team band: how many rows it takes, how
+ * tall one of its rows is (a card plus its Remove button), and the total height it
+ * pushes the roster down by (including the separating rule).
+ */
+const EMPTY_GRID = {
+	cols: 1,
+	cardW: 0,
+	cardH: 0,
+	border: 0,
+	cellW: 0,
+	cellH: 0,
+	contentW: 0,
+	contentH: 0,
+	slotRows: 0,
+	slotRowH: 0,
+	slotBandH: 0,
+	buttonH: 0,
+	buttonGap: 0
+};
 
 export type CardLayout = 'fit' | 'grid';
 
@@ -69,6 +96,11 @@ export interface CardSceneOptions {
 	 * default) starts the grid straight on the cards.
 	 */
 	slots?: (CardModel | null)[];
+	/**
+	 * Called with a slot's index when its Remove button is tapped. Without it the
+	 * buttons are still drawn but do nothing, so pass it wherever slots are shown.
+	 */
+	onSlotRemove?: (index: number) => void;
 	/** Max cards per row in `'fit'` layout (default 3). Ignored in `'grid'`. */
 	columns?: number;
 	/**
@@ -98,6 +130,7 @@ export class CardScene {
 	private slots: (CardModel | null)[];
 	private columns: number;
 	private onCardTap?: (index: number) => void;
+	private onSlotRemove?: (index: number) => void;
 	private layout: CardLayout;
 	private pannable: boolean;
 	private flipped: boolean;
@@ -110,6 +143,7 @@ export class CardScene {
 	// can be redrawn on its own.
 	private slotSprites: CardSprite[] = [];
 	private slotFrames: Graphics[] = [];
+	private slotLabels: Text[] = [];
 
 	// Recycle-style selection overlay: when active, cards whose index isn't in
 	// `selectedIndices` are dimmed so the selected ones stand out. Kept as scene
@@ -133,22 +167,8 @@ export class CardScene {
 	// canvas width (scale stays 1), so navigation is a pure vertical scroll.
 	private pan = { x: 0, y: 0 };
 	private scale = 1;
-	// Baked grid geometry (world units), recomputed each (re)build. `border` is the
-	// outset frame each card draws beyond its content; `cellW`/`cellH` are the full
-	// per-card footprint (content + border on both sides) the grid tiles.
-	private grid = {
-		cols: 1,
-		cardW: 0,
-		cardH: 0,
-		border: 0,
-		cellW: 0,
-		cellH: 0,
-		contentW: 0,
-		contentH: 0,
-		// How many leading rows the slots take, so a hit test can tell a slot from a
-		// card and map the rest back to the right card index.
-		slotRows: 0
-	};
+	// Baked grid geometry (world units) — see EMPTY_GRID.
+	private grid = { ...EMPTY_GRID };
 	// Whether the initial view has been framed (so a resize keeps the scroll offset).
 	private framed = false;
 
@@ -158,6 +178,7 @@ export class CardScene {
 	private dragStart = { x: 0, y: 0 };
 	private panStart = { x: 0, y: 0 };
 	private downCardIndex: number | null = null;
+	private downSlotButton: number | null = null;
 
 	constructor(host: HTMLElement, options: CardSceneOptions) {
 		this.host = host;
@@ -165,6 +186,7 @@ export class CardScene {
 		this.slots = options.slots ?? [];
 		this.columns = Math.max(1, options.columns ?? 3);
 		this.onCardTap = options.onCardTap;
+		this.onSlotRemove = options.onSlotRemove;
 		this.layout = options.layout ?? 'fit';
 		this.pannable = Boolean(options.pannable) && this.layout === 'grid';
 		this.flipped = options.flipped ?? true;
@@ -223,6 +245,7 @@ export class CardScene {
 		this.cardSprites = [];
 		this.slotSprites = [];
 		this.slotFrames = [];
+		this.slotLabels = [];
 		// Never `destroy(true)` — see the helper: it would release Pixi's shared pools
 		// and break every other canvas still on the page.
 		destroyPixiApp(this.app, { children: true, texture: false });
@@ -286,7 +309,8 @@ export class CardScene {
 		this.cardSprites = [];
 		this.slotSprites = [];
 		this.slotFrames = [];
-		// The empty-slot frames are plain Graphics with nothing tracking them; clear
+		this.slotLabels = [];
+		// The slot frames, buttons and the divider are plain display objects; clear
 		// whatever is left on the layer so rebuilds don't stack them up.
 		for (const child of this.cardLayer.removeChildren()) child.destroy();
 		this.builtW = width;
@@ -344,17 +368,7 @@ export class CardScene {
 	 */
 	private buildGrid(width: number, height: number): void {
 		if (this.cards.length === 0 && this.slots.length === 0) {
-			this.grid = {
-				cols: 1,
-				cardW: 0,
-				cardH: 0,
-				border: 0,
-				cellW: 0,
-				cellH: 0,
-				contentW: 0,
-				contentH: 0,
-				slotRows: 0
-			};
+			this.grid = { ...EMPTY_GRID };
 			return;
 		}
 
@@ -376,21 +390,54 @@ export class CardScene {
 		}
 		const cardH = cardW / CARD_ASPECT;
 		const cellH = cardH + 2 * border;
-		// The slots take the leading rows, the roster picks up on the row after them.
-		// At the usual column counts the slots are a single extra row; a narrow grid
-		// (fewer columns than slots) simply wraps them over more.
+		// The slots take the leading rows, the roster picks up below them. At the usual
+		// column counts the slots are a single extra row; a narrow grid (fewer columns
+		// than slots) simply wraps them over more. Each slot row is taller than a card
+		// row: it carries a Remove button under every filled slot.
 		const slotRows = this.slots.length === 0 ? 0 : Math.ceil(this.slots.length / cols);
-		const rows = slotRows + Math.ceil(this.cards.length / cols);
+		const buttonH = slotRows === 0 ? 0 : Math.max(16, Math.round(cardW * 0.14));
+		const buttonGap = slotRows === 0 ? 0 : Math.max(4, Math.round(cardW * 0.04));
+		const slotRowH = cellH + buttonGap + buttonH;
+		// The band the slots occupy, including the rule that separates them from the
+		// roster below.
+		const slotBandH = slotRows === 0 ? 0 : slotRows * (slotRowH + NAV_GAP) + SLOT_SEPARATION;
+		const cardRows = Math.ceil(this.cards.length / cols);
+		const cardsH = cardRows === 0 ? 0 : cardRows * cellH + (cardRows - 1) * NAV_GAP;
 		const contentW = NAV_PAD * 2 + cols * cellW + (cols - 1) * NAV_GAP;
-		const contentH = NAV_PAD * 2 + rows * cellH + (rows - 1) * NAV_GAP;
-		this.grid = { cols, cardW, cardH, border, cellW, cellH, contentW, contentH, slotRows };
+		const contentH = NAV_PAD * 2 + slotBandH + cardsH;
+		this.grid = {
+			cols,
+			cardW,
+			cardH,
+			border,
+			cellW,
+			cellH,
+			contentW,
+			contentH,
+			slotRows,
+			slotRowH,
+			slotBandH,
+			buttonH,
+			buttonGap
+		};
 
 		this.layoutSlots();
+
+		// The rule between the team band and the roster, centred in the gap the band
+		// leaves below its last row — so the first row reads as its own section rather
+		// than as three more cards.
+		if (slotRows > 0 && cardRows > 0) {
+			const divider = new Graphics();
+			const y = NAV_PAD + slotRows * (slotRowH + NAV_GAP) + SLOT_SEPARATION / 2;
+			divider.moveTo(NAV_PAD, y).lineTo(contentW - NAV_PAD, y);
+			divider.stroke({ width: 2, color: 0xffffff, alpha: 0.25 });
+			this.cardLayer.addChild(divider);
+		}
 
 		for (let i = 0; i < this.cards.length; i++) {
 			const sprite = this.makeSprite(i, cardW, cardH);
 			// Inset the content by the border so the outset frame sits inside the cell.
-			sprite.position.set(this.cellX(i % cols), this.cellY(slotRows + Math.floor(i / cols)));
+			sprite.position.set(this.cellX(i % cols), this.cardCellY(Math.floor(i / cols)));
 		}
 
 		// Fixed fit-to-width: no zoom, ever. The first build starts scrolled to the
@@ -442,25 +489,42 @@ export class CardScene {
 		return NAV_PAD + this.grid.border + col * (this.grid.cellW + NAV_GAP);
 	}
 
-	/** Cell origin by row. */
-	private cellY(row: number): number {
-		return NAV_PAD + this.grid.border + row * (this.grid.cellH + NAV_GAP);
+	/** Top of a slot row's cell (before the border inset). */
+	private slotCellTop(row: number): number {
+		return NAV_PAD + row * (this.grid.slotRowH + NAV_GAP);
+	}
+
+	/** Cell origin of a roster card's row — below the whole slot band. */
+	private cardCellY(row: number): number {
+		return (
+			NAV_PAD + this.grid.slotBandH + this.grid.border + row * (this.grid.cellH + NAV_GAP)
+		);
+	}
+
+	/** Top of a slot's Remove button, directly under that slot's card. */
+	private slotButtonTop(row: number): number {
+		return this.slotCellTop(row) + this.grid.cellH + this.grid.buttonGap;
 	}
 
 	/**
 	 * Draw the leading slot row(s) from the current geometry: a card where the slot is
-	 * filled, a card-sized empty frame where it isn't. Split out from the grid build so
-	 * a slot changing (a pick added to the team) can redraw this row alone.
+	 * filled — with a Remove button beneath it — and a card-sized empty frame where it
+	 * isn't. Split out from the grid build so a slot changing (a pick added to the
+	 * team) can redraw this row alone.
 	 */
 	private layoutSlots(): void {
-		const { cols, cardW, cardH } = this.grid;
+		const { cols, cardW, cardH, border } = this.grid;
 		if (cardW === 0) return;
 		for (let i = 0; i < this.slots.length; i++) {
 			const slot = this.slots[i];
+			const row = Math.floor(i / cols);
 			const x = this.cellX(i % cols);
-			const y = this.cellY(Math.floor(i / cols));
+			const y = this.slotCellTop(row) + border;
 			if (slot) {
 				this.makeSlotSprite(slot, cardW, cardH).position.set(x, y);
+				const button = this.makeRemoveButton(x, this.slotButtonTop(row), cardW);
+				this.cardLayer.addChild(button);
+				this.slotFrames.push(button);
 			} else {
 				const frame = this.makeEmptySlot(x, y, cardW, cardH);
 				this.cardLayer.addChild(frame);
@@ -474,9 +538,39 @@ export class CardScene {
 	private rebuildSlots(): void {
 		for (const sprite of this.slotSprites) sprite.destroy();
 		for (const frame of this.slotFrames) frame.destroy();
+		for (const label of this.slotLabels) label.destroy();
 		this.slotSprites = [];
 		this.slotFrames = [];
+		this.slotLabels = [];
 		this.layoutSlots();
+	}
+
+	/**
+	 * The Remove button under a filled slot: a card-wide pill with a centred label.
+	 * Drawn, not interactive — the grid does its own tap-vs-pan hit testing, and
+	 * {@link slotButtonIndexAt} matches this geometry.
+	 */
+	private makeRemoveButton(x: number, y: number, cardW: number): Graphics {
+		const { buttonH } = this.grid;
+		const button = new Graphics();
+		button.roundRect(x, y, cardW, buttonH, buttonH / 2);
+		button.fill({ color: 0x000000, alpha: 0.55 });
+		button.stroke({ width: 1, color: 0xffffff, alpha: 0.35 });
+
+		const label = new Text({
+			text: 'Remove',
+			style: {
+				fontFamily: 'sans-serif',
+				fontSize: Math.max(9, Math.round(buttonH * 0.55)),
+				fontWeight: '600',
+				fill: 0xffffff
+			}
+		});
+		label.anchor.set(0.5, 0.5);
+		label.position.set(x + cardW / 2, y + buttonH / 2);
+		this.cardLayer.addChild(label);
+		this.slotLabels.push(label);
+		return button;
 	}
 
 	/** Build one card sprite, add it to the layer, and track it. */
@@ -577,23 +671,45 @@ export class CardScene {
 
 	/** Screen point → the index of the card under it, or null if over a gap/empty. */
 	private cardIndexAt(sx: number, sy: number): number | null {
-		const { cols, cardW, cardH, border, cellW, cellH, slotRows } = this.grid;
+		const { cols, cardW, cardH, border, cellW, cellH, slotBandH } = this.grid;
 		if (cardW === 0) return null;
 		const worldX = sx - this.pan.x;
 		const worldY = sy - this.pan.y;
+		// The roster starts below the slot band; a point above it is over the team
+		// section, and must not fall through to whatever card index sits there.
+		const cardsTop = NAV_PAD + slotBandH;
+		if (worldY < cardsTop) return null;
 		const col = Math.floor((worldX - NAV_PAD) / (cellW + NAV_GAP));
-		const row = Math.floor((worldY - NAV_PAD) / (cellH + NAV_GAP));
+		const row = Math.floor((worldY - cardsTop) / (cellH + NAV_GAP));
 		if (col < 0 || col >= cols || row < 0) return null;
-		// The leading slot rows are display-only: a tap there is not a card tap, and
-		// must not fall through to the card that would otherwise sit at that index.
-		if (row < slotRows) return null;
 		// Card-local coords within the cell (past the border inset); reject points that
 		// land on the border or in the gutter between cards.
 		const localX = worldX - NAV_PAD - col * (cellW + NAV_GAP) - border;
-		const localY = worldY - NAV_PAD - row * (cellH + NAV_GAP) - border;
+		const localY = worldY - cardsTop - row * (cellH + NAV_GAP) - border;
 		if (localX < 0 || localY < 0 || localX > cardW || localY > cardH) return null;
-		const index = (row - slotRows) * cols + col;
+		const index = row * cols + col;
 		return index >= 0 && index < this.cards.length ? index : null;
+	}
+
+	/**
+	 * Screen point → the index of the slot whose Remove button is under it, or null.
+	 * Mirrors the geometry {@link makeRemoveButton} draws; only filled slots have one.
+	 */
+	private slotButtonIndexAt(sx: number, sy: number): number | null {
+		const { cols, cardW, cellW, border, slotRows, slotRowH, buttonH } = this.grid;
+		if (cardW === 0 || slotRows === 0) return null;
+		const worldX = sx - this.pan.x;
+		const worldY = sy - this.pan.y;
+		const row = Math.floor((worldY - NAV_PAD) / (slotRowH + NAV_GAP));
+		if (row < 0 || row >= slotRows) return null;
+		const top = this.slotButtonTop(row);
+		if (worldY < top || worldY > top + buttonH) return null;
+		const col = Math.floor((worldX - NAV_PAD) / (cellW + NAV_GAP));
+		if (col < 0 || col >= cols) return null;
+		const localX = worldX - NAV_PAD - col * (cellW + NAV_GAP) - border;
+		if (localX < 0 || localX > cardW) return null;
+		const index = row * cols + col;
+		return index < this.slots.length && this.slots[index] ? index : null;
 	}
 
 	private localPoint(event: PointerEvent): { x: number; y: number } {
@@ -648,6 +764,7 @@ export class CardScene {
 		this.dragStart = { x, y };
 		this.panStart = { ...this.pan };
 		this.downCardIndex = this.cardIndexAt(x, y);
+		this.downSlotButton = this.slotButtonIndexAt(x, y);
 		this.app.canvas.style.cursor = 'grabbing';
 	};
 
@@ -672,12 +789,15 @@ export class CardScene {
 		} catch {
 			// ignore — capture may already be gone
 		}
-		// A clean tap (no meaningful movement) on a card selects it.
-		if (!this.dragMoved && this.downCardIndex != null) {
-			this.onCardTap?.(this.downCardIndex);
+		// A clean tap (no meaningful movement) on a card selects it; on a slot's Remove
+		// button, drops that pick. The button wins — it is drawn over no card.
+		if (!this.dragMoved) {
+			if (this.downSlotButton != null) this.onSlotRemove?.(this.downSlotButton);
+			else if (this.downCardIndex != null) this.onCardTap?.(this.downCardIndex);
 		}
 		this.dragPointerId = null;
 		this.downCardIndex = null;
+		this.downSlotButton = null;
 		this.app.canvas.style.cursor = 'grab';
 	};
 }

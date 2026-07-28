@@ -9,9 +9,11 @@
 	// Several cards — packed into a grid. Takes precedence over `card` when set.
 	export let cards: CardModel[] | null = null;
 	// Fixed cells drawn before the cards in the 'grid' layout — the roster's active
-	// team. A filled entry draws its card, a null one a card-sized empty frame; both
-	// are display-only (a tap on them is not a card tap).
+	// team. A filled entry draws its card, a null one a card-sized empty frame. The
+	// cards themselves aren't tappable; each filled one carries a Remove button.
 	export let slots: (CardModel | null)[] = [];
+	// Called with a slot's index when its Remove button is tapped.
+	export let onSlotRemove: ((index: number) => void) | undefined = undefined;
 	// Max cards per row when rendering a fit-layout grid.
 	export let columns: number = 3;
 	// Layout mode: 'fit' scales everything to the host; 'grid' lays cards out at a
@@ -66,7 +68,8 @@
 			layout,
 			pannable,
 			flipped,
-			onCardTap
+			onCardTap,
+			onSlotRemove
 		});
 	});
 

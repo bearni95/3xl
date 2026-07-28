@@ -405,6 +405,14 @@
 		toggleTeamMember(spawn.id);
 	}
 
+	// The Remove button under a slot in the canvas's team row — the same path as the
+	// panel's ✕: empty that slot, then re-apply the colour rule the lead sets.
+	function handleSlotRemove(index: number): void {
+		if (!activeTeam) return;
+		teamService.clearMember(activeTeam.id, index);
+		enforceTeamColors(activeTeam.id);
+	}
+
 	// The indices (into the cards on the current page) of the spawns selected for
 	// recycling, so the canvas can dim the rest. Recomputed as the selection, the
 	// filters or the page change — a card selected while filtered out or on another
@@ -747,6 +755,7 @@
 						bind:this={cardCanvas}
 						cards={cardModels}
 						slots={teamSlotCards}
+						onSlotRemove={handleSlotRemove}
 						columns={$columns}
 						layout="grid"
 						pannable
