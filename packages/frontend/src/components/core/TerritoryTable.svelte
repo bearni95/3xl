@@ -37,13 +37,15 @@
 					<td class="opacity-70">
 						<span class="truncate">{row.holderName}</span>
 					</td>
-					<!-- The show's glyph sits ahead of its name, drawn in the cell's own colour
-						and at its own font size, so it reads as part of the label rather than as a
-						pasted-on image. A show with no icon drawn yet renders by name alone. -->
+					<!-- The show's glyph sits ahead of its name, drawn in the cell's own colour so
+						it reads as part of the label rather than as a pasted-on image. It is pinned
+						to 24px rather than left to track the cell's font size, so the artwork stays
+						legible at the table's small type. A show with no icon drawn yet renders by
+						name alone. -->
 					<td class="opacity-70">
 						<span class="flex items-center gap-1.5">
 							{#if showIcon}
-								<ShowIcon name={showIcon} />
+								<ShowIcon name={showIcon} classes="[&>svg]:size-6" />
 							{/if}
 							<span class="truncate">{row.showName ?? '—'}</span>
 						</span>

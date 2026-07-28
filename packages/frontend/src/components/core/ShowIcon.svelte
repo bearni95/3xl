@@ -38,8 +38,11 @@
 
 	$: markup = markupByName.get(name) ?? null;
 
-	// The glyph is sized in `em` by the generator, so it tracks the font size of
-	// whatever it sits in; `text-current` keeps it on the surrounding text's colour.
+	// The glyph is sized in `em` by the generator, so by default it tracks the font
+	// size of whatever it sits in; a caller that wants a fixed size overrides the
+	// svg's own width/height through `classes` (e.g. `[&>svg]:size-6`), which wins
+	// because a CSS rule outranks a presentation attribute. `text-current` keeps it
+	// on the surrounding text's colour either way.
 	$: computedClasses = classNames('inline-flex flex-none items-center text-current', classes);
 </script>
 

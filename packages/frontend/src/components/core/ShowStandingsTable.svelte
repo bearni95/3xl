@@ -25,13 +25,14 @@
 			{#each rows as row (row.id)}
 				{@const showIcon = showIconName(row.id)}
 				<tr>
-					<!-- The show's glyph ahead of its name, drawn in the cell's own colour and at
-						its own font size so it reads as part of the label. A show with no icon
-						drawn yet renders by name alone. -->
+					<!-- The show's glyph ahead of its name, drawn in the cell's own colour so it
+						reads as part of the label. Pinned to 24px rather than left to track the
+						cell's font size, so the artwork stays legible at the table's small type. A
+						show with no icon drawn yet renders by name alone. -->
 					<td class="font-medium">
 						<span class="flex items-center gap-1.5">
 							{#if showIcon}
-								<ShowIcon name={showIcon} />
+								<ShowIcon name={showIcon} classes="[&>svg]:size-6" />
 							{/if}
 							<span class="truncate">{row.name}</span>
 						</span>
