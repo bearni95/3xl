@@ -53,6 +53,7 @@
 		type RegionShow,
 		type RegionType
 	} from '$utils/geo/region-tree';
+	import { buildRegionSieges } from '$utils/geo/region-siege';
 	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
 	import { buildShowStandings } from '$utils/geo/show-standings';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
@@ -486,7 +487,14 @@
 	// path when a region is clicked, else the zoom focus path minus its frontier pin.
 	$: displayPath = selected ? openPath : focusPath.slice(0, -1);
 
-	$: regionRows = regionRowsForSelection(regionNodes, openRegion);
+	// Every region's siege counter, so the drill table carries the same wins/needed
+	// figure the latest-wins table does: a municipality's own — its holder row's
+	// turnover sets the bar and the reader's own siege row the banked wins, with the
+	// untaken town falling back to 0/1 — and, above that tier, the sum over every town
+	// in the region. Named deps so it re-derives as the holders and sieges reload.
+	$: regionSieges = buildRegionSieges(regionNodes, holders, sieges);
+
+	$: regionRows = regionRowsForSelection(regionNodes, openRegion, regionSieges);
 
 	// Free-text search across every location in the whole tree (all tiers), matched
 	// against each region's displayed name (case- and accent-insensitive). While the

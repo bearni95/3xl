@@ -14,6 +14,8 @@
  * (Andorra, l'Alguer) also have no comarca and hang directly off their parent.
  */
 
+import type { RegionSiege } from './region-siege';
+
 /** The trimmed show shape shown against a region (matches MunicipalityShow.show). */
 export interface RegionShow {
 	id: number;
@@ -192,6 +194,11 @@ export interface RegionRow {
 	show?: RegionShow;
 	/** Whether drilling into this region reveals a deeper level. */
 	hasChildren: boolean;
+	/**
+	 * The reader's siege counter for this region — a municipality's own, or the sum
+	 * of every municipality beneath a grouping (see buildRegionSieges).
+	 */
+	siege: RegionSiege;
 }
 
 /** The chain of nodes from a root territory down to `key`, or [] if not found. */
@@ -213,7 +220,8 @@ export function nodePath(nodes: RegionNode[], key: string): RegionNode[] {
  */
 export function regionRowsForSelection(
 	nodes: RegionNode[],
-	selected: string | null
+	selected: string | null,
+	sieges: ReadonlyMap<string, RegionSiege>
 ): RegionRow[] {
 	// The open region's node (its last path entry); an unknown key falls back to
 	// the top view. A leaf municipality has no children, so its level is empty.
@@ -224,7 +232,10 @@ export function regionRowsForSelection(
 		name: node.name,
 		type: node.type,
 		show: node.show,
-		hasChildren: node.children.length > 0
+		hasChildren: node.children.length > 0,
+		// Every node in the tree is in the siege map; a region built without one
+		// (nothing loaded yet) simply reads as no progress against no towns.
+		siege: sieges.get(node.key) ?? { wins: 0, required: 0 }
 	}));
 }
 
