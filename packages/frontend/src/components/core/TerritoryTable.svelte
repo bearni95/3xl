@@ -7,6 +7,11 @@
 	export let onSelect: (row: TerritoryWinRow) => void;
 </script>
 
+<!-- The siege column is the reader's own: `municipality_sieges` is RLS-scoped, so the
+	banked wins are theirs and read 0 while signed out. The required count is the town's,
+	and is the same for everyone. -->
+
+
 <div class="min-h-0 flex-1 overflow-y-auto">
 	<table class="table table-pin-rows table-sm">
 		<thead>
@@ -14,6 +19,7 @@
 				<th>Municipality</th>
 				<th>Leading team</th>
 				<th>Show</th>
+				<th class="text-right" title="Your wins banked / wins needed to take the town">Siege</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -29,10 +35,15 @@
 						<span class="truncate">{row.holderName}</span>
 					</td>
 					<td class="opacity-70">{row.showName ?? '—'}</td>
+					<td class="text-right tabular-nums">
+						<span class={row.wins > 0 ? 'font-semibold' : 'opacity-70'}>
+							{row.wins}/{row.required}
+						</span>
+					</td>
 				</tr>
 			{:else}
 				<tr>
-					<td colspan="3" class="py-4 text-center opacity-60">No towns won yet.</td>
+					<td colspan="4" class="py-4 text-center opacity-60">No towns won yet.</td>
 				</tr>
 			{/each}
 		</tbody>

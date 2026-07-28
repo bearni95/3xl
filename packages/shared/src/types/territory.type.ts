@@ -138,6 +138,13 @@ export interface TerritoryWinRow {
 	holderName: string;
 	/** The show the sitting team belongs to, or null when it belongs to none. */
 	showName: string | null;
+	/**
+	 * Wins the reader has banked against this town's sitting team, from their own
+	 * `municipality_sieges` row (RLS-scoped, so 0 when signed out).
+	 */
+	wins: number;
+	/** Wins it takes to dethrone that team — {@link requiredWins} of its turnover. */
+	required: number;
 	/** ISO timestamp the town was taken, newest first in the table. */
 	takenAt: string;
 }

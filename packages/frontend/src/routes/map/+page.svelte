@@ -244,11 +244,16 @@
 		])
 	);
 
-	// The most recently captured towns, each named and labelled with the show its
-	// sitting team belongs to. All three inputs are named as arguments so the rows
-	// rebuild as the holders reload, the polygons land and the ruling shows resolve.
+	// The most recently captured towns, each named, labelled with the show its sitting
+	// team belongs to, and carrying the siege it would take to dethrone that team: the
+	// wins required (from the town's own turnover count) and the wins the reader has
+	// banked so far (their own `municipality_sieges` row — RLS means it is nobody
+	// else's, and zero when signed out). Both figures come out of Supabase; neither is
+	// invented here. Every input is named as an argument so the rows rebuild as the
+	// holders and sieges reload, the polygons land and the ruling shows resolve.
 	function buildRecentWins(
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
+		banked: ReadonlyMap<string, MunicipalitySiege>,
 		names: ReadonlyMap<string, string>,
 		ruling: ReadonlyMap<string, RegionShow>
 	): TerritoryWinRow[] {
@@ -257,6 +262,7 @@
 			.slice(0, RECENT_WINS_LIMIT)
 			.map((holder) => {
 				const name = names.get(holder.locationId);
+				const progress = territoryService.progressFor(holder.locationId, occupied, banked);
 				return {
 					locationId: holder.locationId,
 					// A holder whose polygon isn't loaded still has to be listed, so it falls
@@ -264,12 +270,14 @@
 					name: name ? restoreCatalanArticle(name) : holder.locationId,
 					holderName: holder.holderName,
 					showName: ruling.get(holder.locationId)?.name ?? null,
+					wins: progress.wins,
+					required: progress.required,
 					takenAt: holder.takenAt
 				};
 			});
 	}
 
-	$: recentWins = buildRecentWins(holders, municipalityNamesById, rulingShowById);
+	$: recentWins = buildRecentWins(holders, sieges, municipalityNamesById, rulingShowById);
 
 	// Clicking a row opens that town exactly as picking it out of the region table
 	// does: the URL region param drives the map framing and the bottom-left panel.
