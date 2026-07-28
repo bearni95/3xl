@@ -101,11 +101,11 @@
 								<img
 									src={faces.get(character.id)}
 									alt={character.label}
-									class="h-20 w-20 rounded-full bg-base-200 object-contain"
+									class="h-20 w-20 rounded-md bg-base-200 object-contain"
 								/>
 								{#if saving === character.id}
 									<span
-										class="absolute inset-0 flex items-center justify-center rounded-full bg-base-100/70"
+										class="absolute inset-0 flex items-center justify-center rounded-md bg-base-100/70"
 									>
 										<span class="loading loading-spinner loading-sm"></span>
 									</span>
