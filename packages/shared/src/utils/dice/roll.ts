@@ -56,6 +56,23 @@ export function attackHitChance(atk: number, def: number): number {
 }
 
 /**
+ * The HP of damage a throw of `dice` d10 can do against `def`, from the worst roll
+ * to the best. Every die that beats the defence is a flat 1 HP, so the best case is
+ * one per die and the worst is none of them — except at the extremes, where the dice
+ * have no say: a `def` of 10 or more turns every die aside (0 either way) and one
+ * below 1 cannot be missed (every die lands, so the worst roll is the best one).
+ * This is what the arena's colour buttons state, since the colour picked is a choice
+ * of how many dice — and therefore how much damage — is on the table.
+ */
+export function damageRange(dice: number, def: number): { min: number; max: number } {
+	const count = Math.max(0, dice);
+	const chance = dieHitChance(def);
+	if (chance <= 0) return { min: 0, max: 0 };
+	if (chance >= 1) return { min: count, max: count };
+	return { min: 0, max: count };
+}
+
+/**
  * A probability formatted as the percentage to *display*, e.g. `"90%"`, `"99.9%"`.
  *
  * Whole percents everywhere except the two extremes, where rounding would state

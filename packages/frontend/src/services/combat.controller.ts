@@ -55,7 +55,7 @@ import {
 } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
 import { strikeDice, strikeMultiplier, throwableColors } from '$utils/color/compare';
-import { attackHitChance, resolveAttack, rollDie } from '$utils/dice/roll';
+import { damageRange, resolveAttack, rollDie } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
 export type FighterSide = 'error' | 'info';
@@ -131,13 +131,10 @@ export interface ColorThrow {
 	multiplier: number;
 	/** Dice this colour throws — the fighter's ATK scaled by {@link multiplier}. */
 	dice: number;
-	/**
-	 * The odds this throw lands at least one hit: the chance at least one of
-	 * {@link dice} d10 beats the opponent's DEF. Shown beside the dice, so the figure
-	 * can be read back off the numbers that produced it — a lone die against DEF 1 is
-	 * 90%, five of them 99.999%, and those must not look alike.
-	 */
-	hitChance: number;
+	/** The least HP this throw can take off the opponent (every die turned aside). */
+	minDamage: number;
+	/** The most it can take off (every die beating the opponent's DEF). */
+	maxDamage: number;
 }
 
 /**
@@ -157,8 +154,8 @@ export interface MatchupPreview {
 	/**
 	 * What each colour this fighter can throw is worth against that opponent, in the
 	 * display order of {@link throwableColors}. This is the whole point of the colour
-	 * picker: the choice is a choice of how many dice to roll, so the buttons state
-	 * the handful (and its odds) each colour buys.
+	 * picker: the choice is a choice of how many dice to roll, so the buttons state the
+	 * damage each colour puts on the table.
 	 */
 	throws: ColorThrow[];
 }
@@ -309,11 +306,13 @@ export class CombatController {
 				opponentDef: opponent.def,
 				throws: throwableColors(fighter.color).map((color) => {
 					const dice = strikeDice(fighter.atk, color, opponent.color);
+					const { min, max } = damageRange(dice, opponent.def);
 					return {
 						color,
 						multiplier: strikeMultiplier(color, opponent.color),
 						dice,
-						hitChance: attackHitChance(dice, opponent.def)
+						minDamage: min,
+						maxDamage: max
 					};
 				})
 			});

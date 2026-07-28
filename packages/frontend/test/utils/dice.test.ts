@@ -4,6 +4,7 @@ import {
 	resolveAttack,
 	dieHitChance,
 	attackHitChance,
+	damageRange,
 	formatChancePercent
 } from '$utils/dice/roll';
 
@@ -94,6 +95,22 @@ describe('dice', () => {
 		expect(attackHitChance(-2, 5)).toBe(0);
 		expect(attackHitChance(9, 10)).toBe(0);
 		expect(attackHitChance(9, 0)).toBe(1);
+	});
+
+	it('damageRange spans nothing to one HP per die', () => {
+		// Each die that beats the DEF is a flat 1 HP, so a handful of 6 offers 0–6.
+		expect(damageRange(6, 5)).toEqual({ min: 0, max: 6 });
+		expect(damageRange(1, 9)).toEqual({ min: 0, max: 1 });
+	});
+
+	it('damageRange collapses where the dice have no say', () => {
+		// A DEF no die can beat takes nothing however many are thrown…
+		expect(damageRange(8, 10)).toEqual({ min: 0, max: 0 });
+		// …and one no die can miss takes every die, so the worst roll is the best one.
+		expect(damageRange(8, 0)).toEqual({ min: 8, max: 8 });
+		// No dice, no damage.
+		expect(damageRange(0, 5)).toEqual({ min: 0, max: 0 });
+		expect(damageRange(-3, 5)).toEqual({ min: 0, max: 0 });
 	});
 
 	it('displays the number of dice thrown at DEF 1, not a lumped-together 99%', () => {

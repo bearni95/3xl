@@ -25,7 +25,6 @@
 		type CombatColor
 	} from '$types/character-definition.type';
 	import { throwableColors } from '$utils/color/compare';
-	import { formatChancePercent } from '$utils/dice/roll';
 	import { characters as availableCharacters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
@@ -556,12 +555,12 @@
 	     active button marks the current choice. Only the player picks colours — the
 	     rival fights on its pre-rolled defaults and has no picker.
 
-	     Each button states what its colour buys against the rival this character is
-	     next up against (see the controller's MatchupPreview): the handful of dice the
-	     colour multiplier turns this character's ATK into, and the odds that handful
-	     lands at least one hit on that rival's DEF. So the three buttons read
-	     differently — picking a colour is picking how many dice to roll — and they all
-	     move on as each pick fills the next duel cell. -->
+	     Each button states the damage its colour puts on the table against the rival
+	     this character is next up against (see the controller's MatchupPreview): the
+	     worst and best the throw can do, from every die turned aside to every one of
+	     them landing. So the three buttons read differently — a dominant colour doubles
+	     the dice, and with them the damage on offer — and they all move on as each pick
+	     fills the next duel cell. -->
 	{@const preview = combat?.preview ?? null}
 	<div class="flex w-full flex-col gap-1">
 		{#if preview}
@@ -585,10 +584,13 @@
 				>
 					<span class="capitalize">{color}</span>
 					{#if throwFor}
-						<!-- Name the roll behind the percentage, so it can be checked rather
-						     than trusted: "1d10" against DEF 1 is 90%, "5d10" is 99.9%. -->
+						<!-- The HP this throw can take off, worst to best. A range with both
+						     ends the same (a defence the dice can't miss, or can't beat) reads
+						     as the single number it is rather than "4–4". -->
 						<span class="ml-auto text-xs font-normal tabular-nums opacity-80">
-							{throwFor.dice}d10 · {formatChancePercent(throwFor.hitChance)}
+							{throwFor.minDamage === throwFor.maxDamage
+								? throwFor.maxDamage
+								: `${throwFor.minDamage}–${throwFor.maxDamage}`} dmg
 						</span>
 					{/if}
 				</button>
