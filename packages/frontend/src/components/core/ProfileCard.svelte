@@ -61,7 +61,14 @@
 					drops down, details list and sign-out included) — which is where the username
 					is then edited, since the full card carries that button itself. -->
 				{#if compact}
-					<button type="button" class="btn btn-ghost btn-xs" on:click={handleOpenProfile}>
+					<!-- Primary, and pushed to the far end of the row by the name's slack: it is
+						the one thing there is to do from the glance card, so it reads as the card's
+						action rather than as an afterthought hanging off the name. -->
+					<button
+						type="button"
+						class="btn btn-primary btn-xs ml-auto flex-none"
+						on:click={handleOpenProfile}
+					>
 						{$_('profile.title')}
 					</button>
 				{:else}
