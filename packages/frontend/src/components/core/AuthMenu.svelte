@@ -7,6 +7,7 @@
 	import { usernamePromptOpen } from '$services/usernamePrompt';
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { profileModalOpen } from '$services/profileModal';
+	import { rosterModalOpen } from '$services/rosterModal';
 	import { AuthStatus, type OAuthProvider } from '$types/profile.type';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
@@ -66,6 +67,12 @@
 		// from here would trap it inside the map panel's stacking context.
 		errorMessage = null;
 		profileModalOpen.set(true);
+	}
+
+	function openRoster(): void {
+		// Like the profile card, the roster is a modal mounted at the layout root — the
+		// glance card only raises it.
+		rosterModalOpen.set(true);
 	}
 
 	function openAvatarPicker(): void {
@@ -137,6 +144,7 @@
 							on:signout={handleSignOut}
 							on:editusername={openUsernamePrompt}
 							on:openprofile={openProfile}
+							on:openroster={openRoster}
 							on:editavatar={openAvatarPicker}
 						/>
 					{:else}
