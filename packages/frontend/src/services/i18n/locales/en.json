@@ -25,7 +25,9 @@
 	},
 	"profile": {
 		"title": "Profile",
-		"signInPrompt": "Enter your email and we'll send you a secure sign-in link. New here? The same link creates your account.",
+		"signInPrompt": "Continue with an account you already have, or we'll email you a secure sign-in link. New here? Either one creates your account.",
+		"continueWith": "Continue with {provider}",
+		"orDivider": "or",
 		"emailLabel": "Email address",
 		"emailPlaceholder": "you@example.com",
 		"sendMagicLink": "Send magic link",

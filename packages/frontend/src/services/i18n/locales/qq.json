@@ -26,6 +26,8 @@
 	"profile": {
 		"title": "QQQQQ",
 		"signInPrompt": "QQQQQ",
+		"continueWith": "QQQQQ",
+		"orDivider": "QQQQQ",
 		"emailLabel": "QQQQQ",
 		"emailPlaceholder": "QQQQQ",
 		"sendMagicLink": "QQQQQ",

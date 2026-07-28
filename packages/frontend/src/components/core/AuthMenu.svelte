@@ -5,9 +5,10 @@
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { usernamePromptOpen } from '$services/usernamePrompt';
-	import { AuthStatus } from '$types/profile.type';
+	import { AuthStatus, type OAuthProvider } from '$types/profile.type';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
 	import MagicLinkForm from '$components/core/MagicLinkForm.svelte';
+	import SocialSignIn from '$components/core/SocialSignIn.svelte';
 
 	// When embedded, the trigger button is dropped and the card renders in flow,
 	// always visible and full-width — it is a section of the map page's right-hand
@@ -19,6 +20,7 @@
 
 	let signingOut = false;
 	let sending = false;
+	let redirectingTo: OAuthProvider | null = null;
 	let sentTo: string | null = null;
 	let errorMessage: string | null = null;
 
@@ -39,6 +41,22 @@
 		}
 	}
 
+	async function handleProviderSignIn(
+		event: CustomEvent<{ provider: OAuthProvider }>
+	): Promise<void> {
+		if (redirectingTo) return;
+		errorMessage = null;
+		redirectingTo = event.detail.provider;
+		try {
+			// On success the browser leaves for the provider's consent screen, so the
+			// spinner stays up until the page is gone. Only a failure lands here.
+			await authService.signInWithProvider(event.detail.provider);
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : $_('errors.generic');
+			redirectingTo = null;
+		}
+	}
+
 	async function handleSignOut(): Promise<void> {
 		if (signingOut) return;
 		errorMessage = null;
@@ -55,6 +73,7 @@
 	function resetFlow(): void {
 		sentTo = null;
 		errorMessage = null;
+		redirectingTo = null;
 	}
 
 	function openUsernamePrompt(): void {
@@ -134,7 +153,19 @@
 						</button>
 					{:else}
 						<p class="text-sm text-base-content/70">{$_('profile.signInPrompt')}</p>
-						<MagicLinkForm loading={sending} on:submit={handleMagicLink} />
+						<SocialSignIn
+							pending={redirectingTo}
+							disabled={sending}
+							on:signin={handleProviderSignIn}
+						/>
+						<div class="divider my-0 text-xs text-base-content/50">
+							{$_('profile.orDivider')}
+						</div>
+						<MagicLinkForm
+							loading={sending}
+							disabled={redirectingTo !== null}
+							on:submit={handleMagicLink}
+						/>
 					{/if}
 
 					{#if errorMessage}

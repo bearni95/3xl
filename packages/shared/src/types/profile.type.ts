@@ -10,6 +10,23 @@ export enum AuthStatus {
 	SignedIn = 'signed-in'
 }
 
+/**
+ * Third-party identity providers the game can sign in with, alongside the
+ * passwordless email link. The values are Supabase's own provider ids — they go
+ * straight into `signInWithOAuth({ provider })` — and each one must also be
+ * enabled, with its client id/secret, in the Supabase dashboard.
+ */
+export enum OAuthProvider {
+	Google = 'google',
+	Discord = 'discord'
+}
+
+/** The providers offered on the sign-in panel, in the order they are shown. */
+export const OAUTH_PROVIDERS: readonly OAuthProvider[] = [
+	OAuthProvider.Google,
+	OAuthProvider.Discord
+];
+
 /** Normalised view model of the signed-in account, decoupled from Supabase. */
 export interface Profile {
 	id: ID;

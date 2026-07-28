@@ -1,7 +1,7 @@
 import { writable, type Readable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { profileAdapter } from '$adapters/classes/profile.adapter';
-import { AuthStatus, type Profile } from '$types/profile.type';
+import { AuthStatus, type OAuthProvider, type Profile } from '$types/profile.type';
 import type { CombatReport, CombatReward } from '$types/combat.type';
 import { MIN_LEVEL } from '$utils/progression/level';
 import { getSupabaseClient, isSupabaseConfigured } from '$services/supabase.client';
@@ -165,6 +165,29 @@ class AuthService {
 			options: {
 				shouldCreateUser: true,
 				emailRedirectTo: browser ? `${window.location.origin}/` : undefined
+			}
+		});
+		if (error) throw error;
+	}
+
+	/**
+	 * Hand the browser over to `provider`'s consent screen (Google, Discord, …)
+	 * and come back to the app with a session. Like the magic link this covers
+	 * both sign-in and registration: Supabase creates the account on first use,
+	 * and an account that already exists under the same verified email is linked
+	 * to rather than duplicated.
+	 *
+	 * The call navigates away, so it only resolves on failure — everything after
+	 * it happens on the return trip, where `detectSessionInUrl` completes the
+	 * exchange and the `onAuthStateChange` subscription in {@link init} picks the
+	 * session up.
+	 */
+	async signInWithProvider(provider: OAuthProvider): Promise<void> {
+		const supabase = getSupabaseClient();
+		const { error } = await supabase.auth.signInWithOAuth({
+			provider,
+			options: {
+				redirectTo: browser ? `${window.location.origin}/` : undefined
 			}
 		});
 		if (error) throw error;

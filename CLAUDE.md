@@ -3,7 +3,7 @@
 This document guides Claude (and developers) on implementing features in this
 project: a browser game built on SvelteKit whose characters are imported from
 **MUGEN** sprite archives, with a **Països Catalans** (Catalan Countries) Leaflet
-map and Supabase magic-link auth. It's a pnpm monorepo with two SvelteKit apps
+map and Supabase auth (magic link, Google, Discord). It's a pnpm monorepo with two SvelteKit apps
 (player + admin) and a small authoring backend. Follow these conventions strictly
 to keep the codebase consistent.
 
@@ -187,12 +187,28 @@ frontend reads the `PUBLIC_`-prefixed ones via SvelteKit's `$env/dynamic/public`
 | Var                        | Used by  | Purpose                                   |
 | -------------------------- | -------- | ----------------------------------------- |
 | `TMDB_API_KEY`             | backend  | Server-only TMDB key (never sent to browser). |
-| `PUBLIC_SUPABASE_URL`      | frontend | Supabase project URL for magic-link auth. |
+| `PUBLIC_SUPABASE_URL`      | frontend | Supabase project URL for auth (magic link + OAuth). |
 | `PUBLIC_SUPABASE_ANON_KEY` | frontend | Supabase anon key.                        |
 | `SUPABASE_DB_KEY`          | backend  | Supabase **database password** — backend connects to Postgres to sync `character_templates` (never sent to browser). |
 
 The Supabase client degrades gracefully when the `PUBLIC_SUPABASE_*` vars are unset,
 so auth-less local dev still works.
+
+### Sign-in providers
+
+The sign-in panel offers a passwordless email link plus the OAuth providers listed in
+`OAUTH_PROVIDERS` (`@3xl/shared/types/profile.type`) — **Google** and **Discord**. Their
+client ids/secrets are *not* env vars: they are configured per project in the Supabase
+dashboard (Authentication → Providers), where each provider must be enabled and given
+Supabase's callback URL (`<PUBLIC_SUPABASE_URL>/auth/v1/callback`) as its redirect URI.
+The app returns to the site root after consent, so `http://localhost:2000` (and the
+deployed origin) must also be listed under Authentication → URL Configuration.
+
+Adding a provider is: enable it in the dashboard, add its id to the `OAuthProvider` enum
+and `OAUTH_PROVIDERS`, and add its brand mark to `ProviderIcon.svelte`. Supabase links
+identities that share a *verified* email onto one user, so a player who signs in by a
+different route keeps the same account. Google and Discord supply a name in
+`user_metadata`, so those accounts skip the username prompt that email sign-ups get.
 
 ---
 
