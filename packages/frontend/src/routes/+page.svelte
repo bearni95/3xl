@@ -1400,7 +1400,12 @@
 								</button>
 							{/if}
 						</div>
-						<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
+						<!-- Sized like the player's own team strip above it: one row of TEAM_SIZE
+							cards at the canvas's 2:3 portrait aspect is half the width tall, which is
+							what aspect-[2/1] gives it. It takes that and no more — stretching it down
+							the rest of the panel only drew the same row over a taller field of empty
+							board. -->
+						<div class="relative aspect-[2/1] w-full flex-none overflow-hidden rounded-box bg-base-200">
 							<!-- The town's team is a rival team, so its cards use the board's rival
 								variant (unmirrored art), matching the rival's hand cards on the game
 								canvas. -->
