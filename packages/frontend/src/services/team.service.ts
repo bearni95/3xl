@@ -1,5 +1,8 @@
+import { derived, type Readable } from 'svelte/store';
 import { ObjectServiceClass } from '$services/classes/object-service.class';
+import { spawnService } from '$services/spawn.service';
 import type { ID } from '$types/core.type';
+import type { SpawnColor } from '$types/character-spawn.type';
 import { COMBAT_TEAM_SIZE } from '$types/combat.type';
 
 /**
@@ -126,3 +129,20 @@ class TeamService extends ObjectServiceClass<TeamsState> {
 }
 
 export const teamService = new TeamService();
+
+/**
+ * The active team's colour: the rolled colour of its lead — the first filled slot
+ * — which is the colour the rest of the team is bound to (see `teammateColors`).
+ * Null when no team is active, when the active one is still empty, or before the
+ * player's spawns have loaded, so anything painted with it can fall back to
+ * nothing rather than to a wrong colour.
+ */
+export const activeTeamColor: Readable<SpawnColor | null> = derived(
+	[teamService.store, spawnService.spawns],
+	([state, spawns]) => {
+		const team = state.teams.find((entry) => entry.id === state.activeTeamId) ?? null;
+		const leadId = team?.memberIds.find((id): id is string => Boolean(id)) ?? null;
+		if (!leadId) return null;
+		return spawns.find((spawn) => spawn.id === leadId)?.color ?? null;
+	}
+);

@@ -2,6 +2,8 @@
 	import classNames from 'classnames';
 	import { characters } from '@3xl/data';
 	import { characterFaceUrl } from '$utils/mugen/character-face';
+	import { activeTeamColor } from '$services/team.service';
+	import { SpawnColor } from '$types/character-spawn.type';
 
 	// The character the player wears, or null for the initial-letter avatar every
 	// account starts on. Only the character is stored on the profile — the
@@ -15,6 +17,20 @@
 	export let classes: string = '';
 
 	let faceUrl: string | null = null;
+
+	// The backdrop is the player's colours, not the theme's: whichever colour the
+	// active team is bound to, and nothing at all when there is no team to read one
+	// from. Same swatches as the portrait rings and the card scene.
+	const colorClasses: Record<SpawnColor, string> = {
+		[SpawnColor.Red]: 'bg-red-500 text-white',
+		[SpawnColor.Yellow]: 'bg-yellow-400 text-neutral-900',
+		[SpawnColor.Blue]: 'bg-blue-500 text-white',
+		[SpawnColor.Orange]: 'bg-orange-500 text-white',
+		[SpawnColor.Green]: 'bg-green-500 text-white',
+		[SpawnColor.Purple]: 'bg-purple-500 text-white'
+	};
+
+	$: backdropClasses = $activeTeamColor ? colorClasses[$activeTeamColor] : 'text-base-content';
 
 	// `characterId` is named directly so the statement re-runs on every change.
 	$: void loadFace(characterId);
@@ -41,7 +57,7 @@
 </script>
 
 <div class={classNames('avatar', { 'avatar-placeholder': !faceUrl }, classes)}>
-	<div class={classNames(size, 'rounded-full bg-primary text-primary-content')}>
+	<div class={classNames(size, 'rounded-md', backdropClasses)}>
 		{#if faceUrl}
 			<img src={faceUrl} alt="" class="object-contain" />
 		{:else}

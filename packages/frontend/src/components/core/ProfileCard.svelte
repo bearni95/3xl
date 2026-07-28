@@ -59,7 +59,7 @@
 			of every character portrait, and whichever is chosen is worn right here. -->
 		<button
 			type="button"
-			class="flex-none rounded-full transition hover:ring-2 hover:ring-primary"
+			class="flex-none rounded-md transition hover:ring-2 hover:ring-primary"
 			title={$_('profile.avatar.edit')}
 			aria-label={$_('profile.avatar.edit')}
 			on:click={handleEditAvatar}
