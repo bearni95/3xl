@@ -199,7 +199,7 @@ export class CardSprite extends Container {
 		this.addChild(this.makeShowRow(artY, showRowH));
 		this.addChild(this.makeMeta(footerY - metaH, metaH));
 		this.addChild(this.makeStats(footerY, footerH));
-		this.addChild(this.makeCopiesBadge(artY));
+		this.addChild(this.makeCopiesBadge());
 
 		// Thick MTG-style frame around the whole card, in the rarity's quality colour
 		// (the same colour as the rarity badge text). Outset beyond the card bounds so it
@@ -510,12 +510,13 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The duplicate count, as an `×N` pill in the top-right corner of the colour
-	 * square — how many copies of this character the viewer owns. Empty (an unused
-	 * container) for a card the viewer holds once, or one that doesn't track copies at
-	 * all: a lone card needs no count. `artY` is the top edge of the colour square.
+	 * The duplicate count, as an `×N` pill in the top-right corner of the card — how
+	 * many copies of this character the viewer owns. It sits over the name header,
+	 * above everything else the card draws. Empty (an unused container) for a card the
+	 * viewer holds once, or one that doesn't track copies at all: a lone card needs no
+	 * count.
 	 */
-	private makeCopiesBadge(artY: number): Container {
+	private makeCopiesBadge(): Container {
 		const group = new Container();
 		const copies = this.card.copies ?? 1;
 		if (copies < 2) return group;
@@ -536,7 +537,7 @@ export class CardSprite extends Container {
 		const height = label.height + padY * 2;
 		const margin = Math.max(3, Math.round(this.cardWidth * 0.03));
 		const x = this.cardWidth - margin - width;
-		const y = artY + margin;
+		const y = margin;
 
 		const pill = new Graphics();
 		pill.roundRect(x, y, width, height, height / 2);
