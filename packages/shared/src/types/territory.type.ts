@@ -47,8 +47,6 @@ export interface HolderTeamMember {
 	characterId: string;
 	/** The colour the winning spawn had rolled. */
 	color: SpawnColor;
-	/** The gameplay stat the winning spawn had rolled (SPAWN_STAT_MIN..MAX). */
-	stat: number;
 }
 
 /** A municipality currently occupied by a player, as everyone sees it. */

@@ -91,32 +91,32 @@ describe('level span', () => {
 
 describe('combat experience award', () => {
 	it('pays a flawless win the whole span of the current level', () => {
-		// Untouched at level 1: exactly the 300 xp that reaches level 2.
-		expect(combatExpAward({ exp: 0, won: true, hpLeft: 30, hpMax: 30 })).toBe(300);
+		// Nobody down at level 1: exactly the 300 xp that reaches level 2.
+		expect(combatExpAward({ exp: 0, won: true, survivors: 3, fielded: 3 })).toBe(300);
 		// Level 2 (300..900) pays its own full 600 span, from the level's base —
 		// so it overshoots into level 3 for a player who was already partway.
-		expect(combatExpAward({ exp: 600, won: true, hpLeft: 24, hpMax: 24 })).toBe(600);
+		expect(combatExpAward({ exp: 600, won: true, survivors: 3, fielded: 3 })).toBe(600);
 	});
 
-	it('scales linearly with the compound HP the team kept', () => {
-		expect(combatExpAward({ exp: 0, won: true, hpLeft: 15, hpMax: 30 })).toBe(150);
-		expect(combatExpAward({ exp: 0, won: true, hpLeft: 3, hpMax: 30 })).toBe(30);
+	it('scales linearly with the fighters the team kept standing', () => {
+		expect(combatExpAward({ exp: 0, won: true, survivors: 2, fielded: 4 })).toBe(150);
 		// Rounded to whole experience.
-		expect(combatExpAward({ exp: 0, won: true, hpLeft: 1, hpMax: 7 })).toBe(43);
+		expect(combatExpAward({ exp: 0, won: true, survivors: 1, fielded: 3 })).toBe(100);
+		expect(combatExpAward({ exp: 0, won: true, survivors: 2, fielded: 3 })).toBe(200);
 	});
 
 	it('pays nothing for a loss, a draw, or a wipeout win', () => {
-		expect(combatExpAward({ exp: 0, won: false, hpLeft: 30, hpMax: 30 })).toBe(0);
-		expect(combatExpAward({ exp: 0, won: true, hpLeft: 0, hpMax: 30 })).toBe(0);
+		expect(combatExpAward({ exp: 0, won: false, survivors: 3, fielded: 3 })).toBe(0);
+		expect(combatExpAward({ exp: 0, won: true, survivors: 0, fielded: 3 })).toBe(0);
 	});
 
 	it('pays nothing at the level cap', () => {
-		expect(combatExpAward({ exp: 400_000, won: true, hpLeft: 30, hpMax: 30 })).toBe(0);
+		expect(combatExpAward({ exp: 400_000, won: true, survivors: 3, fielded: 3 })).toBe(0);
 	});
 
-	it('never exceeds the span or goes negative on absurd HP', () => {
-		expect(combatExpAward({ exp: 0, won: true, hpLeft: 9_000, hpMax: 30 })).toBe(300);
-		expect(combatExpAward({ exp: 0, won: true, hpLeft: -5, hpMax: 30 })).toBe(0);
-		expect(combatExpAward({ exp: 0, won: true, hpLeft: 10, hpMax: 0 })).toBe(0);
+	it('never exceeds the span or goes negative on an absurd count', () => {
+		expect(combatExpAward({ exp: 0, won: true, survivors: 9_000, fielded: 3 })).toBe(300);
+		expect(combatExpAward({ exp: 0, won: true, survivors: -5, fielded: 3 })).toBe(0);
+		expect(combatExpAward({ exp: 0, won: true, survivors: 3, fielded: 0 })).toBe(0);
 	});
 });

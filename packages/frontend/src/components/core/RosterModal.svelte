@@ -12,12 +12,7 @@
 	import { AuthStatus } from '$types/profile.type';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import type { CombatColor } from '$types/character-definition.type';
-	import {
-		SPAWN_STAT_MAX,
-		SPAWN_STAT_MIN,
-		SpawnColor,
-		type CharacterSpawn
-	} from '$types/character-spawn.type';
+	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 	import { teamDisplayName } from '$utils/spawn/team-name';
 	import { teammateColors } from '$utils/color/compare';
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
@@ -58,22 +53,14 @@
 	let filterColor: SpawnColor | typeof ANY = ANY;
 	let filterShow: string | typeof ANY = ANY;
 	let filterRarity: number | typeof ANY = ANY;
-	let filterMinStat = SPAWN_STAT_MIN;
 
 	// Every spawn colour, for the colour dropdown (labels are the enum values).
 	const COLOR_OPTIONS = Object.values(SpawnColor);
-	// Selectable minimum stats (SPAWN_STAT_MIN reads as "any").
-	const STAT_OPTIONS = Array.from(
-		{ length: SPAWN_STAT_MAX - SPAWN_STAT_MIN + 1 },
-		(_, i) => SPAWN_STAT_MIN + i
-	);
-
 	function resetFilters(): void {
 		filterName = '';
 		filterColor = ANY;
 		filterShow = ANY;
 		filterRarity = ANY;
-		filterMinStat = SPAWN_STAT_MIN;
 	}
 
 	// --- Pagination ---
@@ -91,8 +78,7 @@
 		filterName.trim() !== '' ||
 		filterColor !== ANY ||
 		filterShow !== ANY ||
-		filterRarity !== ANY ||
-		filterMinStat !== SPAWN_STAT_MIN;
+		filterRarity !== ANY;
 
 	// --- Recycle mode (trade cards back for extra daily claims) ---
 	// While active, tapping a card selects it for recycling instead of toggling its
@@ -272,7 +258,6 @@
 		color: SpawnColor | typeof ANY,
 		show: string | typeof ANY,
 		rarity: number | typeof ANY,
-		minStat: number,
 		names: Map<string, string[]>,
 		rarities: Map<string, number>,
 		teamColors: Set<string> | null
@@ -283,7 +268,6 @@
 			if (color !== ANY && spawn.color !== color) return false;
 			if (show !== ANY && !(names.get(spawn.characterId) ?? []).includes(show)) return false;
 			if (rarity !== ANY && (rarities.get(spawn.characterId) ?? null) !== rarity) return false;
-			if (spawn.stat < minStat) return false;
 			if (teamColors && !teamColors.has(spawn.color)) return false;
 			return true;
 		});
@@ -292,7 +276,6 @@
 		filterColor,
 		filterShow,
 		filterRarity,
-		filterMinStat,
 		characterShowNames,
 		rarityByCharacter,
 		teamColorFilter
@@ -302,7 +285,7 @@
 	// walks it a page at a time. So any filter change re-pages from the start — the
 	// narrowed roster always opens on its first page rather than on a page number that
 	// meant something under the old filters.
-	$: filterName, filterColor, filterShow, filterRarity, filterMinStat, (page = 0);
+	$: filterName, filterColor, filterShow, filterRarity, (page = 0);
 
 	// A page is ROWS_PER_PAGE rows at the current column count, so the slider resizes
 	// the page as well as the cards.
@@ -635,16 +618,7 @@
 					</select>
 				</label>
 
-				<label class="flex flex-col gap-1 text-xs">
-					<span class="opacity-60">Min stat</span>
-					<select class="select select-sm select-bordered w-32" bind:value={filterMinStat}>
-						{#each STAT_OPTIONS as stat (stat)}
-							<option value={stat}>{stat === SPAWN_STAT_MIN ? 'Any stat' : `≥ ${stat}`}</option>
-						{/each}
-					</select>
-				</label>
-
-				<div class="ml-auto flex items-center gap-3">
+					<div class="ml-auto flex items-center gap-3">
 					<span class="badge badge-lg badge-primary" title="Cards shown / total claimed">
 						{filteredSpawns.length} / {$spawns.length}
 					</span>

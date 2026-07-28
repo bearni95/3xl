@@ -148,8 +148,7 @@ class AuthService {
 			p_outcome: report.outcome,
 			p_fighters: report.fighters.map((fighter) => ({
 				spawn_id: fighter.spawnId,
-				hp_left: Math.max(0, Math.round(fighter.hpLeft)),
-				max_hp: Math.max(0, Math.round(fighter.maxHp))
+				down: fighter.down
 			})),
 			p_location_id: report.locationId ?? null,
 			p_holder_turnover: Math.max(0, Math.trunc(report.holderTurnover ?? 0))
@@ -163,8 +162,8 @@ class AuthService {
 			total: Number(row.total_exp ?? 0),
 			level: Number(row.at_level ?? MIN_LEVEL),
 			span: Number(row.span_exp ?? 0),
-			hpLeft: Number(row.team_hp_left ?? 0),
-			hpMax: Number(row.team_hp_max ?? 0),
+			survivors: Number(row.team_survivors ?? 0),
+			fielded: Number(row.team_fielded ?? 0),
 			// The territory columns come back null for a report that named no town.
 			territory:
 				report.locationId && row.town_required != null

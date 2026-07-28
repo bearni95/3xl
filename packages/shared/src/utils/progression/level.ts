@@ -88,31 +88,31 @@ export interface CombatExpInput {
 	exp: number;
 	/** Whether the player won: anything else earns nothing. */
 	won: boolean;
-	/** Compound HP the player's team ended the fight with. */
-	hpLeft: number;
-	/** Compound HP the player's team started the fight with. */
-	hpMax: number;
+	/** Fighters the player's team ended the fight still standing. */
+	survivors: number;
+	/** Fighters the player's team fielded. */
+	fielded: number;
 }
 
 /**
  * Experience for one finished fight.
  *
  * A loss (or a draw) earns nothing. A win earns a share of {@link levelSpanExp}
- * for the player's current level, scaled linearly by how much of its compound HP
- * the team has left: a flawless win — every fighter untouched — earns the level's
- * entire span, taking the player from the base of their level to the next one,
- * while a win scraped through at 1 HP earns almost nothing. Rounded to whole
- * experience, and never negative.
+ * for the player's current level, scaled linearly by how much of the team is left
+ * standing: a flawless win — nobody taken down — earns the level's entire span,
+ * taking the player from the base of their level to the next one, while a win with
+ * one of three left earns a third of it. Rounded to whole experience, and never
+ * negative.
  *
  * Mirrors the `award_combat_exp` RPC, which is the authority — this exists so the
  * UI can preview and explain the same number.
  */
-export function combatExpAward({ exp, won, hpLeft, hpMax }: CombatExpInput): number {
+export function combatExpAward({ exp, won, survivors, fielded }: CombatExpInput): number {
 	if (!won) return 0;
 	const span = levelSpanExp(levelForExp(exp));
-	if (span <= 0 || !Number.isFinite(hpMax) || hpMax <= 0) return 0;
-	const left = Number.isFinite(hpLeft) ? Math.min(Math.max(hpLeft, 0), hpMax) : 0;
-	return Math.round((span * left) / hpMax);
+	if (span <= 0 || !Number.isFinite(fielded) || fielded <= 0) return 0;
+	const left = Number.isFinite(survivors) ? Math.min(Math.max(survivors, 0), fielded) : 0;
+	return Math.round((span * left) / fielded);
 }
 
 /** A player's level and their progress through it, derived from an experience total. */

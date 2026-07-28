@@ -93,8 +93,6 @@ export function ensureTables(): Promise<void> {
 						show_id bigint references show_templates (id) on delete set null,
 						location_id text,
 						color text,
-						-- Gameplay stat, rolled at claim time (SPAWN_STAT_MIN..SPAWN_STAT_MAX).
-						stat smallint not null default 1,
 						created_at timestamptz not null default now()
 					);
 				alter table character_spawns add column if not exists location_id text;
@@ -114,19 +112,11 @@ export function ensureTables(): Promise<void> {
 					from (select id, random() as r from character_spawns where color is null) seeded
 				) pick
 				where cs.id = pick.id;
-				-- Backfill the stat column on tables provisioned before it existed, then
-				-- clamp any stored values into range so the check constraint below holds.
-				alter table character_spawns add column if not exists stat smallint;
-				update character_spawns set stat = 1 where stat is null;
-				update character_spawns set stat = least(9, greatest(1, stat))
-					where stat < 1 or stat > 9;
-				alter table character_spawns alter column stat set default 1;
-				alter table character_spawns alter column stat set not null;
-				-- Range constraint, dropped/re-added so it's idempotent. Keep the bounds
-				-- in sync with SPAWN_STAT_MIN/SPAWN_STAT_MAX in @3xl/shared.
+				-- A claimed card once carried a rolled 1..9 gameplay stat as well. Nothing
+				-- reads it any more — a fighter's colour is the whole of what it brings to
+				-- a fight — so drop the column and the range check that guarded it.
 				alter table character_spawns drop constraint if exists character_spawns_stat_range;
-				alter table character_spawns
-					add constraint character_spawns_stat_range check (stat between 1 and 9);
+				alter table character_spawns drop column if exists stat;
 				alter table character_spawns enable row level security;
 				drop policy if exists character_spawns_select_own on character_spawns;
 				create policy character_spawns_select_own on character_spawns
@@ -280,7 +270,7 @@ export function ensureTables(): Promise<void> {
 					--   * the player may open at most (their level, capped at 20) packs per
 					--     day, the day resetting at midnight Europe/Madrid.
 					-- It then rolls 5 cards from the show's assigned, template-backed roster
-					-- (weighted by rarity, colour and stat exactly as the frontend used to)
+					-- (weighted by rarity and colour exactly as the frontend used to)
 					-- and returns the inserted spawns. A per-user advisory lock serialises
 					-- concurrent opens so the limit can't be raced. security definer: it
 					-- inserts despite character_spawns now having no client insert policy.
@@ -304,7 +294,6 @@ export function ensureTables(): Promise<void> {
 							v_roll numeric;
 							v_pick text;
 							v_color text;
-							v_stat int;
 							v_row character_spawns%rowtype;
 							i int;
 							j int;
@@ -382,10 +371,8 @@ export function ensureTables(): Promise<void> {
 											when v_roll < 11 then 'green'
 											else 'purple'
 									end;
-									-- Uniform stat 1..9 (randomSpawnStat / SPAWN_STAT_MIN..MAX).
-									v_stat := 1 + floor(random() * 9)::int;
-									insert into character_spawns (user_id, character_id, show_id, location_id, color, stat)
-											values (v_uid, v_pick, p_show_id, p_location_id, v_color, v_stat)
+									insert into character_spawns (user_id, character_id, show_id, location_id, color)
+											values (v_uid, v_pick, p_show_id, p_location_id, v_color)
 											returning * into v_row;
 									return next v_row;
 							end loop;
@@ -470,9 +457,9 @@ export function ensureTables(): Promise<void> {
 							id uuid primary key default gen_random_uuid(),
 							user_id uuid not null references auth.users (id) on delete cascade,
 							outcome text not null check (outcome in ('win', 'lose', 'draw')),
-							-- Compound team HP at the end / at the start, after server-side clamping.
-							hp_left integer not null,
-							hp_max integer not null,
+							-- Fighters left standing at the end / fielded at the start, as counted here.
+							survivors integer not null default 0,
+							fielded integer not null default 0,
 							-- The level whose span was at stake, and the span itself.
 							level integer not null,
 							level_span bigint not null,
@@ -480,6 +467,14 @@ export function ensureTables(): Promise<void> {
 							exp_awarded bigint not null,
 							fought_at timestamptz not null default now()
 						);
+					-- Fights recorded while the award was weighed by compound HP carried
+					-- hp_left/hp_max instead. The two are not the same measure, so the columns are
+					-- replaced rather than renamed: an old row keeps the award it actually paid and
+					-- reads as 0 of 0 fighters, which is honestly "not recorded".
+					alter table combat_results add column if not exists survivors integer not null default 0;
+					alter table combat_results add column if not exists fielded integer not null default 0;
+					alter table combat_results drop column if exists hp_left;
+					alter table combat_results drop column if exists hp_max;
 					create index if not exists combat_results_user_day_idx
 						on combat_results (user_id, fought_at);
 					alter table combat_results enable row level security;
@@ -554,7 +549,7 @@ export function ensureTables(): Promise<void> {
 							-- Display name resolved server-side when the town was taken, so the map
 							-- can name the occupant without reading auth.users from the browser.
 							holder_name text,
-							-- [{"character_id": text, "color": text, "stat": int}, …] in fielded order.
+							-- [{"character_id": text, "color": text}, …] in fielded order.
 							team jsonb not null default '[]'::jsonb,
 							turnover integer not null default 1,
 							taken_at timestamptz not null default now()
@@ -659,17 +654,16 @@ export function ensureTables(): Promise<void> {
 					-- Award experience for one finished fight:
 					--   * a loss or a draw earns nothing;
 					--   * a win earns a share of the player's CURRENT level's full span (see
-					--     level_span_exp), scaled linearly by the compound HP their team is left
-					--     with: sum(hp_left) / sum(max_hp). A flawless win — no damage taken —
+					--     level_span_exp), scaled linearly by how much of their team is left
+					--     standing: survivors / fielded. A flawless win — nobody taken down —
 					--     earns the entire span, i.e. one whole level's worth measured from the
-					--     base of the level; a win at half health earns half of it.
+					--     base of the level; a win with one of three left earns a third of it.
 					-- Combat runs in the browser, so the report is treated as a claim and bounded
-					-- rather than trusted: every spawn must belong to the caller, each fighter's
-					-- max_hp is re-derived from its stat (the HP attribute, DEF + 1, is the pool
-					-- itself) rather than read from the report, and hp_left is clamped to [0, that max],
+					-- rather than trusted: every spawn must belong to the caller, the team is
+					-- counted here rather than read from the report (at most 3, each named once),
 					-- and the amount itself is never sent by the client — it is derived here from
 					-- the player's stored experience. p_fighters is the player's side only, as
-					-- [{"spawn_id": uuid, "hp_left": number, "max_hp": number}]. The OUT names
+					-- [{"spawn_id": uuid, "down": boolean}]. The OUT names
 					-- deliberately avoid the column names used in the body. security definer: it
 					-- writes player_profiles and combat_results, neither client-writable.
 					--
@@ -697,8 +691,8 @@ export function ensureTables(): Promise<void> {
 							total_exp bigint,
 							at_level int,
 							span_exp bigint,
-							team_hp_left int,
-							team_hp_max int,
+							team_survivors int,
+							team_fielded int,
 							town_captured boolean,
 							town_wins int,
 							town_required int,
@@ -716,8 +710,7 @@ export function ensureTables(): Promise<void> {
 							v_exp bigint;
 							v_level int;
 							v_span bigint;
-							v_hp_left int;
-							v_hp_max int;
+							v_standing int;
 							v_award bigint;
 							v_total bigint;
 							v_holder uuid;
@@ -740,34 +733,25 @@ export function ensureTables(): Promise<void> {
 							end if;
 							-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
 							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
-							-- The reported team, bounded against what the caller actually owns.
+							-- The reported team, bounded against what the caller actually owns. A fighter
+							-- is standing or it is down, so the survivors are simply counted over the
+							-- fighters that turned out to be the caller's own.
 							with reported as (
-								select f.spawn_id, f.hp_left, f.max_hp
+								select f.spawn_id, coalesce(f.down, false) as down
 								from jsonb_to_recordset(p_fighters)
-									as f(spawn_id uuid, hp_left numeric, max_hp numeric)
+									as f(spawn_id uuid, down boolean)
 							),
 							owned as (
-								select
-									r.hp_left,
-									-- HP pool: the HP attribute itself (DEF + 1, DEF being the stat's
-									-- complement clamped 1..9) — re-derived, never read from the report.
-									(greatest(1, least(9, 10 - cs.stat)) + 1) as hp_pool
+								select r.down
 								from reported r
 								join character_spawns cs on cs.id = r.spawn_id and cs.user_id = v_uid
-							),
-							bounded as (
-								select
-									o.hp_pool as capped_max,
-									coalesce(o.hp_left, 0) as raw_left
-								from owned o
 							)
 							select
 								(select count(*) from reported),
 								(select count(distinct spawn_id) from reported),
 								(select count(*) from owned),
-								coalesce((select sum(capped_max) from bounded), 0)::int,
-								coalesce((select sum(least(greatest(raw_left, 0), capped_max)) from bounded), 0)::int
-							into v_reported, v_distinct, v_owned, v_hp_max, v_hp_left;
+								(select count(*) from owned where not down)
+							into v_reported, v_distinct, v_owned, v_standing;
 							if v_reported = 0 then
 								raise exception 'A combat report must list the fighters that took part.';
 							end if;
@@ -785,14 +769,14 @@ export function ensureTables(): Promise<void> {
 							v_exp := coalesce(v_exp, 0);
 							v_level := level_for_exp(v_exp);
 							v_span := level_span_exp(v_level);
-							if p_outcome = 'win' and v_span > 0 and v_hp_max > 0 then
-								v_award := round(v_span::numeric * v_hp_left::numeric / v_hp_max::numeric);
+							if p_outcome = 'win' and v_span > 0 and v_owned > 0 then
+								v_award := round(v_span::numeric * v_standing::numeric / v_owned::numeric);
 							else
 								v_award := 0;
 							end if;
 							insert into combat_results
-								(user_id, outcome, hp_left, hp_max, level, level_span, exp_awarded)
-								values (v_uid, p_outcome, v_hp_left, v_hp_max, v_level, v_span, v_award);
+								(user_id, outcome, survivors, fielded, level, level_span, exp_awarded)
+								values (v_uid, p_outcome, v_standing, v_owned, v_level, v_span, v_award);
 							if v_award > 0 then
 								insert into player_profiles (user_id, exp)
 									values (v_uid, v_award)
@@ -861,8 +845,7 @@ export function ensureTables(): Promise<void> {
 										select jsonb_agg(
 												jsonb_build_object(
 													'character_id', cs.character_id,
-													'color', cs.color,
-													'stat', cs.stat
+													'color', cs.color
 												) order by f.ord
 											)
 											into v_team
@@ -921,8 +904,8 @@ export function ensureTables(): Promise<void> {
 							total_exp := coalesce(v_total, v_exp);
 							at_level := v_level;
 							span_exp := v_span;
-							team_hp_left := v_hp_left;
-							team_hp_max := v_hp_max;
+							team_survivors := v_standing;
+							team_fielded := v_owned;
 							return next;
 					end;
 					$award_combat_exp$;

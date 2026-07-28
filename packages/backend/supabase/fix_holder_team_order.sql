@@ -17,8 +17,8 @@
 
 update public.municipality_holders
 set team = jsonb_build_array(
-		jsonb_build_object('character_id', 'sanji', 'color', 'red', 'stat', 3),
-		jsonb_build_object('character_id', 'sanji', 'color', 'orange', 'stat', 6),
-		jsonb_build_object('character_id', 'fatbuu', 'color', 'purple', 'stat', 1)
+		jsonb_build_object('character_id', 'sanji', 'color', 'red'),
+		jsonb_build_object('character_id', 'sanji', 'color', 'orange'),
+		jsonb_build_object('character_id', 'fatbuu', 'color', 'purple')
 	)
 where location_id in ('ES_08121', 'ES_08088');

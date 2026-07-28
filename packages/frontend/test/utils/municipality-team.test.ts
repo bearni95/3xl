@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildMunicipalityTeam } from '$utils/spawn/municipality-team';
 import { teammateColors } from '$utils/color/compare';
-import { SpawnColor, SPAWN_STAT_MIN, SPAWN_STAT_MAX } from '$types/character-spawn.type';
+import { SpawnColor } from '$types/character-spawn.type';
 import type { CombatColor } from '$types/character-definition.type';
 
 const POOL = ['luffy', 'zoro', 'nami', 'sanji', 'chopper'];
@@ -43,13 +43,11 @@ describe('buildMunicipalityTeam', () => {
 		}
 	});
 
-	it('rolls a valid colour and in-range stat for every member', () => {
+	it('rolls a valid colour for every member', () => {
 		const colors = new Set<string>(Object.values(SpawnColor));
 		for (let seed = 0; seed < 100; seed++) {
 			for (const member of buildMunicipalityTeam(seed, POOL, 3)) {
 				expect(colors.has(member.color)).toBe(true);
-				expect(member.stat).toBeGreaterThanOrEqual(SPAWN_STAT_MIN);
-				expect(member.stat).toBeLessThanOrEqual(SPAWN_STAT_MAX);
 			}
 		}
 	});

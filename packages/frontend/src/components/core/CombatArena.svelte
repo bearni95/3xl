@@ -146,7 +146,7 @@
 	// The two sides can field the SAME spawn line-up (a mirror match), so a bare spawn
 	// id is not unique across the board. Every board actor / fighter is identified by a
 	// per-side instance id (`error:<spawnId>`); the underlying spawn (for its assets,
-	// definition, colour and stat) is recovered via spawnById. Without this, id lookups
+	// definition and colour) is recovered via spawnById. Without this, id lookups
 	// (board actors, the combat controller) collide between the two sides and combat
 	// never starts.
 	function instanceId(side: 'error' | 'info', spawnId: string): string {

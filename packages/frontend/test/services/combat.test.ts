@@ -36,8 +36,6 @@ function seed(
 		side,
 		color,
 		moves: [],
-		spd: 5,
-		hpPool: 5,
 		...extra
 	};
 }
@@ -487,11 +485,11 @@ describe('the stand-off', () => {
 			expect(controller.report()).toBeNull();
 		});
 
-		it('states the player side only, whole for the standing and empty for the lost', async () => {
+		it('states the player side only, standing or down', async () => {
 			const controller = new CombatController([
 				seed('r0', 'error', 'yellow'),
-				seed('p0', 'info', 'yellow', { hpPool: 7 }),
-				seed('p1', 'info', 'red', { hpPool: 4 })
+				seed('p0', 'info', 'yellow'),
+				seed('p1', 'info', 'red')
 			]);
 			// P0 trades shots with the rival: both fall, and P1 is left holding the field.
 			controller.setAction('p0', 'shoot');
@@ -505,8 +503,8 @@ describe('the stand-off', () => {
 			// A fighter is standing or it is not: no half-measures either way.
 			const p0 = report.fighters.find((f) => f.spawnId === 'p0')!;
 			const p1 = report.fighters.find((f) => f.spawnId === 'p1')!;
-			expect(p0).toEqual({ spawnId: 'p0', hpLeft: 0, maxHp: 7 });
-			expect(p1).toEqual({ spawnId: 'p1', hpLeft: 4, maxHp: 4 });
+			expect(p0).toEqual({ spawnId: 'p0', down: true });
+			expect(p1).toEqual({ spawnId: 'p1', down: false });
 		});
 	});
 });

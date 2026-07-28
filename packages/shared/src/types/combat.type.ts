@@ -6,10 +6,10 @@
  * controller), so the *result* is reported rather than replayed server-side. The
  * report is therefore treated as a claim, not as truth: the `award_combat_exp`
  * RPC (see @3xl/backend's schema, mirrored in supabase/combat_results.sql) checks
- * every spawn in it belongs to the caller and clamps each fighter's HP into the
- * range that spawn's stat could possibly have rolled, then computes the award
- * itself from the player's *stored* experience. The browser never states an
- * amount.
+ * every spawn in it belongs to the caller and counts the survivors itself — a team
+ * is at most {@link COMBAT_TEAM_SIZE} fighters, so an inflated report buys nothing
+ * — then computes the award from the player's *stored* experience. The browser
+ * never states an amount.
  *
  * The same RPC also settles **territory** in the same transaction: a fight picked
  * on the map names the town it was fought over, and a win banks one siege win
@@ -33,11 +33,9 @@ export const COMBAT_TEAM_SIZE = 3;
 export interface CombatFighterReport {
 	/** The `character_spawns` row this fighter was fielded from. Must be the caller's. */
 	spawnId: string;
-	/** HP left at the end (0 for a knocked-out fighter). */
-	hpLeft: number;
-	/** The HP pool this fighter started on (its HP attribute). Informational — the
-	 * RPC re-derives it from the spawn's stat rather than trusting this. */
-	maxHp: number;
+	/** Whether it was taken down. There is no health in this game — a fighter is
+	 * standing or it is out — so this is the whole of its state at the end. */
+	down: boolean;
 }
 
 /** A finished fight, as reported by the browser to `award_combat_exp`. */
@@ -99,10 +97,10 @@ export interface CombatReward {
 	level: number;
 	/** The full span of that level: the maximum a flawless win could earn. */
 	span: number;
-	/** Compound HP the team ended with, after server-side clamping. */
-	hpLeft: number;
-	/** Compound HP the team started with, after server-side clamping. */
-	hpMax: number;
+	/** Fighters left standing at the end, as the server counted them. */
+	survivors: number;
+	/** Fighters the team fielded, as the server counted them. */
+	fielded: number;
 	/** What the fight did to the town it was fought over, or null when no town was
 	 * at stake (a report with no `locationId`, or one the server credited nothing for). */
 	territory: TerritoryResult | null;

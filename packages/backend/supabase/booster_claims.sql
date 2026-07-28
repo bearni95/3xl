@@ -92,9 +92,9 @@ $$;
 
 -- Open a booster pack for the caller, enforced entirely server-side (see header).
 -- Rolls 5 cards from the show's assigned, template-backed roster — weighted by
--- rarity (each higher tier 2x rarer), plus a weighted colour (primaries 3/12,
--- secondaries 1/12) and a uniform stat 1..9, matching the @3xl/shared spawn
--- utils — and returns the inserted spawns. A per-user advisory lock serialises
+-- rarity (each higher tier 2x rarer) plus a weighted colour (primaries 3/12,
+-- secondaries 1/12), matching the @3xl/shared spawn utils — and returns the
+-- inserted spawns. A per-user advisory lock serialises
 -- concurrent opens so the daily limit can't be raced. security definer: it
 -- inserts despite character_spawns having no client insert policy.
 create or replace function public.claim_booster(p_show_id bigint, p_location_id text)
@@ -117,7 +117,6 @@ declare
 	v_roll numeric;
 	v_pick text;
 	v_color text;
-	v_stat int;
 	v_row public.character_spawns%rowtype;
 	i int;
 	j int;
@@ -204,11 +203,8 @@ begin
 			else 'purple'
 		end;
 
-		-- Uniform stat 1..9.
-		v_stat := 1 + floor(random() * 9)::int;
-
-		insert into public.character_spawns (user_id, character_id, show_id, location_id, color, stat)
-			values (v_uid, v_pick, p_show_id, p_location_id, v_color, v_stat)
+		insert into public.character_spawns (user_id, character_id, show_id, location_id, color)
+			values (v_uid, v_pick, p_show_id, p_location_id, v_color)
 			returning * into v_row;
 		return next v_row;
 	end loop;

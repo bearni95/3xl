@@ -164,7 +164,7 @@ class SpawnService {
 		const supabase = getSupabaseClient();
 		const { data, error } = await supabase
 			.from('character_spawns')
-			.select('id, user_id, character_id, show_id, location_id, color, stat, created_at')
+			.select('id, user_id, character_id, show_id, location_id, color, created_at')
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false });
 		if (error) throw error;
@@ -185,8 +185,8 @@ class SpawnService {
 	 *     the day resetting at midnight Europe/Madrid.
 	 *
 	 * The RPC rolls {@link BOOSTER_SIZE} cards — each weighted by rarity (every
-	 * higher tier 2× rarer), plus its own weighted colour and stat (1..9), exactly
-	 * as before but in the DB — and returns the inserted spawns. On a rejected
+	 * higher tier 2× rarer), plus its own weighted colour, exactly as before but in
+	 * the DB — and returns the inserted spawns. On a rejected
 	 * claim it throws with a message describing why (limit reached, wrong day, …).
 	 * The new spawns are prepended to the store and returned in pull order.
 	 */

@@ -7,15 +7,15 @@ import {
 	type MunicipalityHolderRow,
 	type MunicipalitySiege
 } from '$types/territory.type';
-import { DEFAULT_SPAWN_STAT, SpawnColor } from '$types/character-spawn.type';
+import { SpawnColor } from '$types/character-spawn.type';
 
 const row = (overrides: Partial<MunicipalityHolderRow> = {}): MunicipalityHolderRow => ({
 	location_id: 'ES_08028',
 	user_id: 'user-1',
 	holder_name: 'Bernat',
 	team: [
-		{ character_id: 'luffy', color: 'purple', stat: 4 },
-		{ character_id: 'zoro', color: 'red', stat: 7 }
+		{ character_id: 'luffy', color: 'purple' },
+		{ character_id: 'zoro', color: 'red' }
 	],
 	turnover: 2,
 	taken_at: '2026-07-27T10:00:00.000Z',
@@ -30,8 +30,8 @@ describe('territoryAdapter.fromHolderRow', () => {
 			userId: 'user-1',
 			holderName: 'Bernat',
 			team: [
-				{ characterId: 'luffy', color: SpawnColor.Purple, stat: 4 },
-				{ characterId: 'zoro', color: SpawnColor.Red, stat: 7 }
+				{ characterId: 'luffy', color: SpawnColor.Purple },
+				{ characterId: 'zoro', color: SpawnColor.Red }
 			],
 			turnover: 2,
 			takenAt: '2026-07-27T10:00:00.000Z'
@@ -53,18 +53,17 @@ describe('territoryAdapter.fromHolderRow', () => {
 
 	it('drops team entries that carry no usable character id', () => {
 		const holder = territoryAdapter.fromHolderRow(
-			row({ team: [{ character_id: 'luffy', color: 'red', stat: 3 }, { color: 'red' }, null, 7] })
+			row({ team: [{ character_id: 'luffy', color: 'red' }, { color: 'red' }, null, 7] })
 		);
 		expect(holder.team).toHaveLength(1);
 		expect(holder.team[0].characterId).toBe('luffy');
 	});
 
-	it('falls back on an unusable colour or stat, as a spawn would', () => {
+	it('falls back on an unusable colour, as a spawn would', () => {
 		const holder = territoryAdapter.fromHolderRow(
-			row({ team: [{ character_id: 'luffy', color: 'chartreuse', stat: null }] })
+			row({ team: [{ character_id: 'luffy', color: 'chartreuse' }] })
 		);
 		expect(holder.team[0].color).toBe(SpawnColor.Red);
-		expect(holder.team[0].stat).toBe(DEFAULT_SPAWN_STAT);
 	});
 
 	it('treats a non-array team as no team at all', () => {
@@ -101,8 +100,8 @@ describe('territoryAdapter.toTeamRolls', () => {
 	it('projects a holder team into the shape the map already renders seeded teams in', () => {
 		const holder = territoryAdapter.fromHolderRow(row());
 		expect(territoryAdapter.toTeamRolls(holder.team)).toEqual([
-			{ characterId: 'luffy', color: SpawnColor.Purple, stat: 4 },
-			{ characterId: 'zoro', color: SpawnColor.Red, stat: 7 }
+			{ characterId: 'luffy', color: SpawnColor.Purple },
+			{ characterId: 'zoro', color: SpawnColor.Red }
 		]);
 	});
 });

@@ -9,11 +9,10 @@
 --     experience between the threshold where that level begins and the one where
 --     the next begins (300 at level 1, 600 at level 2, 1800 at level 3, …). The
 --     whole span, not just the part not yet earned.
---   * That span is scaled linearly by the compound HP the player's team is left
---     with: (sum of hp_left) / (sum of max_hp). A flawless win — no damage taken
---     on any fighter — earns the entire span, i.e. exactly one level's worth from
---     the base of the level; a win at half health earns half of it; a win scraped
---     through at 1 HP earns almost nothing.
+--   * That span is scaled linearly by how much of the player's team is left
+--     standing: survivors / fielded. A flawless win — nobody taken down — earns
+--     the entire span, i.e. exactly one level's worth from the base of the level;
+--     a win with one of three left earns a third of it.
 --   * At level 20 the span is 0, so a maxed player earns nothing further.
 --
 -- Combat itself runs in the browser (PixiJS board + combat controller), so it
@@ -22,10 +21,10 @@
 --
 --   * Every spawn in it must be one of the caller's own `character_spawns` rows;
 --     a report naming a spawn the caller doesn't own is rejected outright.
---   * Each fighter's max_hp is not read from the report at all: the HP pool is
---     exactly that spawn's HP attribute (DEF + 1, DEF being the stat's
---     complement), so it is re-derived here, and hp_left is clamped to [0, that
---     max]. An inflated pool therefore buys nothing.
+--   * The team is counted here, not read from the report: at most 3 fighters, each
+--     of them the caller's, each named once. A fighter is standing or it is down —
+--     there is no health in this game — so the only thing the client states about
+--     one is that flag, and the ratio it can inflate is bounded by the team size.
 --   * The amount is never sent by the client: it is derived here from the
 --     player's *stored* experience, which the client cannot write (player_profiles
 --     has no insert/update policy and there is no longer an add_player_exp RPC).
@@ -57,9 +56,9 @@ create table if not exists public.combat_results (
 	id uuid primary key default gen_random_uuid(),
 	user_id uuid not null references auth.users (id) on delete cascade,
 	outcome text not null check (outcome in ('win', 'lose', 'draw')),
-	-- Compound team HP at the end / at the start, after server-side clamping.
-	hp_left integer not null,
-	hp_max integer not null,
+	-- Fighters left standing at the end / fielded at the start, as counted here.
+	survivors integer not null,
+	fielded integer not null,
 	-- The level whose span was at stake, and the span itself.
 	level integer not null,
 	level_span bigint not null,
@@ -67,6 +66,16 @@ create table if not exists public.combat_results (
 	exp_awarded bigint not null,
 	fought_at timestamptz not null default now()
 );
+
+-- Fights recorded while the award was weighed by compound HP carried hp_left/hp_max
+-- instead. The two are not the same measure, so the columns are replaced rather than
+-- renamed: an old row keeps the award it actually paid (outcome, level, exp_awarded)
+-- and reads as 0 of 0 fighters, which is honestly "not recorded" rather than an HP
+-- sum wearing a headcount's name.
+alter table public.combat_results add column if not exists survivors integer not null default 0;
+alter table public.combat_results add column if not exists fielded integer not null default 0;
+alter table public.combat_results drop column if exists hp_left;
+alter table public.combat_results drop column if exists hp_max;
 
 create index if not exists combat_results_user_day_idx
 	on public.combat_results (user_id, fought_at);
@@ -119,10 +128,10 @@ $$;
 
 -- Award experience for one finished fight (see the header for the rules and the
 -- trust model). `p_fighters` is the player's side only, as a JSON array of
--- {"spawn_id": uuid, "hp_left": number, "max_hp": number}. Returns what was
--- awarded and the state that produced it, so the endgame screen can explain the
--- number. security definer: it writes player_profiles and combat_results, neither
--- of which the anon key may write.
+-- {"spawn_id": uuid, "down": boolean}. Returns what was awarded and the state that
+-- produced it, so the endgame screen can explain the number. security definer: it
+-- writes player_profiles and combat_results, neither of which the anon key may
+-- write.
 --
 -- `p_location_id` names the town the fight was picked over on the map (null for a
 -- fight with nothing at stake) and `p_holder_turnover` is the town's turnover as
@@ -155,8 +164,8 @@ returns table (
 	total_exp bigint,
 	at_level int,
 	span_exp bigint,
-	team_hp_left int,
-	team_hp_max int,
+	team_survivors int,
+	team_fielded int,
 	-- Territory, all null when the report named no town.
 	town_captured boolean,
 	town_wins int,
@@ -175,8 +184,7 @@ declare
 	v_exp bigint;
 	v_level int;
 	v_span bigint;
-	v_hp_left int;
-	v_hp_max int;
+	v_standing int;
 	v_award bigint;
 	v_total bigint;
 	v_holder uuid;
@@ -201,35 +209,25 @@ begin
 	-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
 	perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
 
-	-- The reported team, bounded against what the caller actually owns. The HP pool
-	-- is re-derived rather than trusted: it is exactly the spawn's HP attribute
-	-- (DEF + 1, DEF = the stat's complement clamped to 1..9), and the reported
-	-- hp_left is then clamped to [0, that].
+	-- The reported team, bounded against what the caller actually owns. A fighter is
+	-- standing or it is down, so the survivors are simply counted over the fighters
+	-- that turned out to be the caller's own.
 	with reported as (
-		select f.spawn_id, f.hp_left, f.max_hp
+		select f.spawn_id, coalesce(f.down, false) as down
 		from jsonb_to_recordset(p_fighters)
-			as f(spawn_id uuid, hp_left numeric, max_hp numeric)
+			as f(spawn_id uuid, down boolean)
 	),
 	owned as (
-		select
-			r.hp_left,
-			(greatest(1, least(9, 10 - cs.stat)) + 1) as hp_pool
+		select r.down
 		from reported r
 		join public.character_spawns cs on cs.id = r.spawn_id and cs.user_id = v_uid
-	),
-	bounded as (
-		select
-			o.hp_pool as capped_max,
-			coalesce(o.hp_left, 0) as raw_left
-		from owned o
 	)
 	select
 		(select count(*) from reported),
 		(select count(distinct spawn_id) from reported),
 		(select count(*) from owned),
-		coalesce((select sum(capped_max) from bounded), 0)::int,
-		coalesce((select sum(least(greatest(raw_left, 0), capped_max)) from bounded), 0)::int
-	into v_reported, v_distinct, v_owned, v_hp_max, v_hp_left;
+		(select count(*) from owned where not down)
+	into v_reported, v_distinct, v_owned, v_standing;
 
 	if v_reported = 0 then
 		raise exception 'A combat report must list the fighters that took part.';
@@ -250,17 +248,17 @@ begin
 	v_level := public.level_for_exp(v_exp);
 	v_span := public.level_span_exp(v_level);
 
-	-- A win earns the level's whole span, scaled by the team's surviving HP; a
-	-- loss or a draw earns nothing.
-	if p_outcome = 'win' and v_span > 0 and v_hp_max > 0 then
-		v_award := round(v_span::numeric * v_hp_left::numeric / v_hp_max::numeric);
+	-- A win earns the level's whole span, scaled by the share of the team still
+	-- standing; a loss or a draw earns nothing.
+	if p_outcome = 'win' and v_span > 0 and v_owned > 0 then
+		v_award := round(v_span::numeric * v_standing::numeric / v_owned::numeric);
 	else
 		v_award := 0;
 	end if;
 
 	insert into public.combat_results
-		(user_id, outcome, hp_left, hp_max, level, level_span, exp_awarded)
-		values (v_uid, p_outcome, v_hp_left, v_hp_max, v_level, v_span, v_award);
+		(user_id, outcome, survivors, fielded, level, level_span, exp_awarded)
+		values (v_uid, p_outcome, v_standing, v_owned, v_level, v_span, v_award);
 
 	if v_award > 0 then
 		insert into public.player_profiles (user_id, exp)
@@ -337,8 +335,7 @@ begin
 				select jsonb_agg(
 						jsonb_build_object(
 							'character_id', cs.character_id,
-							'color', cs.color,
-							'stat', cs.stat
+							'color', cs.color
 						) order by f.ord
 					)
 					into v_team
@@ -402,8 +399,8 @@ begin
 	total_exp := coalesce(v_total, v_exp);
 	at_level := v_level;
 	span_exp := v_span;
-	team_hp_left := v_hp_left;
-	team_hp_max := v_hp_max;
+	team_survivors := v_standing;
+	team_fielded := v_owned;
 	return next;
 end;
 $$;

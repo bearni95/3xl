@@ -1,7 +1,6 @@
 import { AdapterClass } from './adapter.class';
 import { SpawnColor, type CharacterSpawn, type CharacterSpawnRow } from '../../types/character-spawn.type';
 import { isSpawnColor } from '../../utils/spawn/color';
-import { normalizeSpawnStat } from '../../utils/spawn/stat';
 
 /**
  * Transforms `character_spawns` rows between Supabase's snake_case shape and the
@@ -23,8 +22,6 @@ export class SpawnAdapter extends AdapterClass {
 			locationId: row.location_id ?? '',
 			// Legacy rows predate colours; fall back to a stable primary.
 			color: isSpawnColor(row.color) ? row.color : SpawnColor.Red,
-			// Legacy rows predate the stat; fall back to the default (1).
-			stat: normalizeSpawnStat(row.stat),
 			createdAt: row.created_at
 		};
 	}

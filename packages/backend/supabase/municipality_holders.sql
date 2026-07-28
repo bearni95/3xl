@@ -36,12 +36,11 @@ create table if not exists public.municipality_holders (
 	-- Display name resolved server-side when the town was taken, so the map never
 	-- has to read auth.users from the browser.
 	holder_name text,
-	-- The winning team frozen as [{"character_id": text, "color": text,
-	-- "stat": int}, …] in fielded order. A flat copy, not `character_spawns`
-	-- references: those rows are RLS-scoped to their owner, so no other player
-	-- could read them — and the occupying team must be visible to everyone. It
-	-- also pins the garrison at the strength that won the town, whatever the
-	-- holder later does with the cards.
+	-- The winning team frozen as [{"character_id": text, "color": text}, …] in
+	-- fielded order. A flat copy, not `character_spawns` references: those rows are
+	-- RLS-scoped to their owner, so no other player could read them — and the
+	-- occupying team must be visible to everyone. It also pins the garrison as it
+	-- won the town, whatever the holder later does with the cards.
 	team jsonb not null default '[]'::jsonb,
 	-- How many times the town has changed hands. Also the bar for the next
 	-- challenger: taking it needs turnover + 1 wins.

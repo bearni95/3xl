@@ -114,13 +114,6 @@ export interface FighterSeed {
 	color: CombatColor;
 	/** The moves this character's JSON definition declares (used for animation). */
 	moves: CharacterMove[];
-	/** Speed rating. Nothing in the rules turns on it — it only orders the bullets of
-	 * a single turn, so the fastest shooter's is the one a passive guard eats. */
-	spd: number;
-	/** The spawn's HP attribute. No longer health — one hit takes anybody down — but
-	 * it is the pool {@link CombatController.report} states a survivor came through
-	 * whole, which is how the RPC weighs the fight's experience. */
-	hpPool: number;
 }
 
 export interface Fighter extends FighterSeed {
@@ -265,14 +258,12 @@ export class CombatController {
 
 	/**
 	 * The finished game as an experience claim: the outcome plus every fighter the
-	 * player fielded. A fighter is not damaged in this game, it is standing or it is
-	 * not — so a survivor is reported as having come through its whole HP pool intact
-	 * and a casualty as having none of it left, which is what makes the RPC's award
-	 * (a share of the level scaled by compound HP) come out as the share of the team
-	 * still on its feet. Only the player's side is reported — the rivals earn nothing
-	 * — and only once the game is actually over, so a fight abandoned mid-turn yields
-	 * `null` and pays out nothing. The server re-derives the award from this; nothing
-	 * here decides an amount.
+	 * player fielded, each simply standing or down. There is no health in this game —
+	 * one hit takes anybody down — so the share of the level the RPC pays out is the
+	 * share of the team still on its feet, counted from these flags. Only the player's
+	 * side is reported — the rivals earn nothing — and only once the game is actually
+	 * over, so a fight abandoned mid-turn yields `null` and pays out nothing. The
+	 * server re-derives the award from this; nothing here decides an amount.
 	 */
 	report(): CombatReport | null {
 		if (this.phase !== 'done' || !this.outcome) return null;
@@ -280,8 +271,7 @@ export class CombatController {
 			outcome: this.outcome,
 			fighters: this.players().map((fighter) => ({
 				spawnId: fighter.spawnId,
-				hpLeft: fighter.down ? 0 : fighter.hpPool,
-				maxHp: fighter.hpPool
+				down: fighter.down
 			}))
 		};
 	}
@@ -361,8 +351,9 @@ export class CombatController {
 			if (fighter.action === 'shoot') fire(false);
 			if (fighter.bonus) fire(true);
 		}
-		// The order the bullets land in: the fastest shooter's arrives first.
-		shots.sort((a, b) => b.shooter.spd - a.shooter.spd);
+		// The bullets land in the order the fighters stand in — top→bottom down each
+		// side's line, red before blue. Nothing about a fighter makes its shot arrive
+		// sooner: the running order is the board's, not a rating's.
 
 		this.log = [];
 		this.setStatus('Orders are revealed.');

@@ -10,7 +10,6 @@ import type {
 	MunicipalitySiegeRow
 } from '../../types/territory.type';
 import { isSpawnColor } from '../../utils/spawn/color';
-import { normalizeSpawnStat } from '../../utils/spawn/stat';
 import type { TeamMemberRoll } from '../../utils/spawn/municipality-team';
 
 /**
@@ -62,7 +61,7 @@ export class TerritoryAdapter extends AdapterClass {
 
 	/**
 	 * Parse the stored `team` jsonb into members, skipping any entry without a
-	 * usable character id. Colour and stat fall back exactly as a spawn's would.
+	 * usable character id. The colour falls back exactly as a spawn's would.
 	 */
 	private teamFromJson(value: unknown): HolderTeamMember[] {
 		if (!Array.isArray(value)) return [];
@@ -74,8 +73,7 @@ export class TerritoryAdapter extends AdapterClass {
 			if (!characterId) continue;
 			members.push({
 				characterId,
-				color: isSpawnColor(record.color) ? record.color : SpawnColor.Red,
-				stat: normalizeSpawnStat(record.stat)
+				color: isSpawnColor(record.color) ? record.color : SpawnColor.Red
 			});
 		}
 		return members;
@@ -89,8 +87,7 @@ export class TerritoryAdapter extends AdapterClass {
 	toTeamRolls(team: readonly HolderTeamMember[]): TeamMemberRoll[] {
 		return team.map((member) => ({
 			characterId: member.characterId,
-			color: member.color,
-			stat: member.stat
+			color: member.color
 		}));
 	}
 }

@@ -36,15 +36,9 @@ export interface CharacterSpawn {
 	 * a spawn cannot be claimed without a location.
 	 */
 	locationId: string;
-	/** The colour rolled for this spawn (weighted — see {@link SpawnColor}). */
+	/** The colour rolled for this spawn (weighted — see {@link SpawnColor}). It is
+	 * the whole of what one claimed card brings to a fight that another doesn't. */
 	color: SpawnColor;
-	/**
-	 * The gameplay stat rolled for this spawn, an integer in
-	 * [{@link SPAWN_STAT_MIN}, {@link SPAWN_STAT_MAX}]. Rolled once at claim time
-	 * (like {@link color}); legacy spawns that predate the stat read as
-	 * {@link DEFAULT_SPAWN_STAT}.
-	 */
-	stat: number;
 	/** ISO timestamp the spawn was created. */
 	createdAt: string;
 }
@@ -68,13 +62,6 @@ export interface Booster {
 	spawns: CharacterSpawn[];
 }
 
-/** Inclusive bounds a rolled spawn stat is constrained to. */
-export const SPAWN_STAT_MIN = 1;
-export const SPAWN_STAT_MAX = 9;
-
-/** Value legacy spawns (or invalid/out-of-range ones) read as. */
-export const DEFAULT_SPAWN_STAT = 1;
-
 /**
  * Raw `character_spawns` row as returned by the Supabase client (snake_case,
  * bigint show id serialised as string). Transformed into {@link CharacterSpawn}
@@ -87,7 +74,6 @@ export interface CharacterSpawnRow {
 	show_id: string | number | null;
 	location_id: string | null;
 	color: string | null;
-	stat: number | string | null;
 	created_at: string;
 }
 
