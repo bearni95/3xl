@@ -22,17 +22,21 @@
 
 	// The backdrop is the player's colours, not the theme's: whichever colour the
 	// active team is bound to, and nothing at all when there is no team to read one
-	// from. Same swatches as the portrait rings and the card scene.
+	// from. Same swatches as the portrait rings and the card scene. The border is
+	// that very colour too — a portrait fills the box edge to edge, so the frame is
+	// what's left of the backdrop once it's in.
 	const colorClasses: Record<SpawnColor, string> = {
-		[SpawnColor.Red]: 'bg-red-500 text-white',
-		[SpawnColor.Yellow]: 'bg-yellow-400 text-neutral-900',
-		[SpawnColor.Blue]: 'bg-blue-500 text-white',
-		[SpawnColor.Orange]: 'bg-orange-500 text-white',
-		[SpawnColor.Green]: 'bg-green-500 text-white',
-		[SpawnColor.Purple]: 'bg-purple-500 text-white'
+		[SpawnColor.Red]: 'bg-red-500 border-red-500 text-white',
+		[SpawnColor.Yellow]: 'bg-yellow-400 border-yellow-400 text-neutral-900',
+		[SpawnColor.Blue]: 'bg-blue-500 border-blue-500 text-white',
+		[SpawnColor.Orange]: 'bg-orange-500 border-orange-500 text-white',
+		[SpawnColor.Green]: 'bg-green-500 border-green-500 text-white',
+		[SpawnColor.Purple]: 'bg-purple-500 border-purple-500 text-white'
 	};
 
-	$: backdropClasses = $activeTeamColor ? colorClasses[$activeTeamColor] : 'text-base-content';
+	$: backdropClasses = $activeTeamColor
+		? colorClasses[$activeTeamColor]
+		: 'border-transparent text-base-content';
 
 	// `characterId` is named directly so the statement re-runs on every change.
 	$: void loadFace(characterId);
@@ -59,7 +63,7 @@
 </script>
 
 <div class={classNames('avatar', { 'avatar-placeholder': !face }, classes)}>
-	<div class={classNames(size, 'rounded-md', backdropClasses)}>
+	<div class={classNames(size, 'rounded-md border-2', backdropClasses)}>
 		{#if face}
 			<CharacterFace {face} />
 		{:else}
