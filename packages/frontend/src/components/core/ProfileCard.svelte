@@ -45,7 +45,11 @@
 				<span class="text-xl">{initial}</span>
 			</div>
 		</div>
-		<div class="flex min-w-0 flex-col">
+		<!-- Beside the avatar: the name, and under it the level — which is what sits where
+			the email used to. Progression is what a player reads their own card for; the
+			address they signed in with is account admin, so it moves down to the
+			dropdown's details list. flex-1 so the bar spans the rest of the row. -->
+		<div class="flex min-w-0 flex-1 flex-col gap-1">
 			<div class="flex items-center gap-2">
 				<span class="truncate text-lg font-semibold">{profile.displayName}</span>
 				<button
@@ -56,48 +60,46 @@
 					{profile.username ? $_('profile.username.edit') : $_('profile.username.set')}
 				</button>
 			</div>
-			<span class="truncate text-sm text-base-content/70">{profile.email}</span>
-		</div>
-	</div>
 
-	<div class="divider my-0"></div>
-
-	<!-- Level + experience, derived from the stored exp via the D&D 5e table. -->
-	<div class="flex flex-col gap-1">
-		<div class="flex items-center justify-between text-sm">
-			<!-- "Lv. 10" as plain text. It needs no badge and no word beside it: the bar
-				underneath already says this is the level. -->
-			<span class="font-semibold">
-				{$_('profile.levelBadge', { values: { level: progress.level } })}
-			</span>
-			<span class="font-mono text-base-content/70">
-				{#if progress.atMax}
-					{$_('profile.expMax', { values: { exp: progress.exp.toLocaleString() } })}
-				{:else}
-					{$_('profile.expProgress', {
-						values: {
-							into: progress.expIntoLevel.toLocaleString(),
-							span: (progress.expForLevelSpan ?? 0).toLocaleString()
-						}
-					})}
-				{/if}
-			</span>
+			<!-- Level + experience, derived from the stored exp via the D&D 5e table.
+				"Lv. 10" as plain text: it needs no badge and no word beside it, since the
+				bar underneath already says this is the level. -->
+			<div class="flex items-center justify-between gap-2 text-sm">
+				<span class="font-semibold">
+					{$_('profile.levelBadge', { values: { level: progress.level } })}
+				</span>
+				<span class="font-mono text-base-content/70">
+					{#if progress.atMax}
+						{$_('profile.expMax', { values: { exp: progress.exp.toLocaleString() } })}
+					{:else}
+						{$_('profile.expProgress', {
+							values: {
+								into: progress.expIntoLevel.toLocaleString(),
+								span: (progress.expForLevelSpan ?? 0).toLocaleString()
+							}
+						})}
+					{/if}
+				</span>
+			</div>
+			<progress
+				class="progress progress-primary w-full"
+				value={expPercent}
+				max="100"
+				aria-label={$_('profile.exp')}
+			></progress>
 		</div>
-		<progress
-			class="progress progress-primary w-full"
-			value={expPercent}
-			max="100"
-			aria-label={$_('profile.exp')}
-		></progress>
 	</div>
 
 	<!-- The details list, and the divider that introduces it, are the dropdown's alone:
-		compact ends at the level bar. Its total-exp figure is already in the progress
-		row above, so there is nothing left for compact to list. -->
+		compact is nothing but the avatar block. Its total-exp figure is already in the
+		progress row above, so there is nothing left for compact to list. -->
 	{#if !compact}
 		<div class="divider my-0"></div>
 
 		<dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+			<dt class="text-base-content/60">{$_('profile.emailLabel')}</dt>
+			<dd class="truncate">{profile.email}</dd>
+
 			<dt class="text-base-content/60">{$_('profile.accountId')}</dt>
 			<dd class="truncate font-mono">{profile.id}</dd>
 
