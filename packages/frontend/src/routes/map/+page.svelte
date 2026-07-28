@@ -100,7 +100,11 @@
 	// Point the URL at a region (or clear it), which reactively re-derives every
 	// piece of open/expanded/selected state below. Pushed as history so the back
 	// button walks the drill path; focus and scroll are preserved across the nav.
+	// The Location tab is brought forward with it: opening a region from a pin, a
+	// crumb, a search hit or a won-town row has to put that region on screen, and
+	// the panel is the only place it is drawn.
 	function open(key: string | null) {
+		panelTab = PanelTab.Location;
 		const params = new URLSearchParams($page.url.searchParams);
 		if (key) params.set('region', key);
 		else params.delete('region');
@@ -221,27 +225,42 @@
 	// How many of the most recent captures the panel lists.
 	const RECENT_WINS_LIMIT = 20;
 
-	// The panel's three views: the latest captures, the standing of every show across
-	// the whole map, and the booster pack of whichever festa town's star was clicked
-	// last — the pack opener lives here rather than in a panel of its own, so only one
-	// thing is ever pinned to the map's right edge.
-	const PanelTab = { Latest: 'latest', Leaderboard: 'leaderboard', Pack: 'pack' } as const;
+	// The panel's four views: the open region (the drill table, or a leaf town's show
+	// and house team), the latest captures, the standing of every show across the whole
+	// map, and the booster pack of whichever festa town's star was clicked last. Every
+	// one of them lives here rather than in a panel of its own, so only one thing is
+	// ever pinned over the map — the breadcrumbs above the strip stay put across all
+	// four, since they name what the map is looking at whichever view is forward.
+	const PanelTab = {
+		Location: 'location',
+		Latest: 'latest',
+		Leaderboard: 'leaderboard',
+		Pack: 'pack'
+	} as const;
 	type PanelTab = (typeof PanelTab)[keyof typeof PanelTab];
 	const panelTabs: { id: PanelTab; label: string }[] = [
+		{ id: PanelTab.Location, label: 'Location' },
 		{ id: PanelTab.Latest, label: 'Latest' },
 		{ id: PanelTab.Leaderboard, label: 'Leaderboard' },
 		{ id: PanelTab.Pack, label: 'Booster' }
 	];
-	let panelTab: PanelTab = PanelTab.Latest;
+	// Opens on the location view: it is what the map itself is showing, and it follows
+	// the zoom even before anything has been clicked.
+	let panelTab: PanelTab = PanelTab.Location;
 
-	// What the tab strip's badge counts, per view: the rows each table lists, and for
-	// the pack tab how many of today's festa packs are openable at all.
+	// What the tab strip's badge counts, per view: the rows each table lists — the
+	// search hits while the box holds text, else the current drill level's regions —
+	// and for the pack tab how many of the browsed day's packs there are.
 	$: panelCount =
-		panelTab === PanelTab.Latest
-			? recentWins.length
-			: panelTab === PanelTab.Leaderboard
-				? showStandings.length
-				: dayPacks.length;
+		panelTab === PanelTab.Location
+			? normalizedQuery
+				? searchResults.length
+				: regionRows.length
+			: panelTab === PanelTab.Latest
+				? recentWins.length
+				: panelTab === PanelTab.Leaderboard
+					? showStandings.length
+					: dayPacks.length;
 
 	// How many municipalities each show flies, and its share of them all. Tallied
 	// over `showsById`, which is already the seeded assignment with every held
@@ -297,7 +316,8 @@
 	$: recentWins = buildRecentWins(holders, sieges, municipalityNamesById, rulingShowById);
 
 	// Clicking a row opens that town exactly as picking it out of the region table
-	// does: the URL region param drives the map framing and the bottom-left panel.
+	// does: the URL region param drives the map framing and the Location tab, which
+	// `open` brings forward — so the row hands the panel straight over to the town.
 	function openWin(row: TerritoryWinRow) {
 		open(row.locationId);
 	}
@@ -496,15 +516,15 @@
 	];
 
 	// The open location's own node and its plurality ("most seen") show. Surfaced in the
-	// bottom-left panel when the open region is a leaf municipality (the table there lists
-	// child rows, so a leaf has nothing to list and shows the town's own show instead), and
-	// used to pick the roster the town's OG team rolls from.
+	// panel's Location tab when the open region is a leaf municipality (the table there
+	// lists child rows, so a leaf has nothing to list and shows the town's own show
+	// instead), and used to pick the roster the town's OG team rolls from.
 	$: openNode = openRegion ? findNode(regionNodes, openRegion) : null;
 	$: openShow = openNode?.show ?? null;
 
 	// --- The open municipality's deterministic "house team" ---------------------
 	// A leaf region (a municipality) has no children to drill into; instead of an
-	// empty table the bottom-left panel previews the town's team: three cards rolled
+	// empty table the Location tab previews the town's team: three cards rolled
 	// deterministically from the town's own seed, drawn from its top show's roster.
 	// It's a read-only, client-side mirror of the claim roll (a card is never written
 	// to Supabase from here) — only the show→character assignment is read below.
@@ -598,25 +618,19 @@
 	let fightHolderName: string | null = null;
 	let fightOpen = false;
 
-	// The bottom-left regions panel slides off the left edge while a fight is on, so the
-	// arena has the map to itself. Translated (not unmounted) to keep the breadcrumb/search
-	// state alive and animate back in on close; `left-4` means it must travel its own width
-	// plus that gap to clear the viewport.
-	$: regionPanelClasses = classNames(
-		'fixed bottom-4 left-4 z-[1100] flex h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box',
-		'border border-base-300 bg-base-100/70 shadow-lg transition-transform duration-300 ease-in-out',
-		{ 'translate-x-[calc(-100%-1.5rem)]': fightOpen }
-	);
-
-	// The top-right wins panel is the mirror image of the regions panel: same size,
-	// chrome and slide-away behaviour, off the right edge instead of the left. It steps
-	// aside for a fight, which owns the whole viewport. The Booster tab makes it taller:
-	// a pack has to be sliced open on a canvas, which the two tables' height leaves no
-	// room for.
-	$: winsPanelClasses = classNames(
+	// The single panel pinned over the map's right edge, holding all four views. It
+	// slides off the right edge while a fight is on, so the arena has the map to
+	// itself — translated (not unmounted) to keep the breadcrumb/search state alive and
+	// animate back in on close; `right-4` means it must travel its own width plus that
+	// gap to clear the viewport. The Booster and Location tabs make it taller: a pack
+	// sliced open on a canvas, and a leaf town's team cards, both need more room than
+	// the two tables do.
+	$: panelClasses = classNames(
 		'fixed right-4 top-20 z-[1100] flex w-[36rem] flex-col overflow-hidden rounded-box',
 		'border border-base-300 bg-base-100/70 shadow-lg transition-transform duration-300 ease-in-out',
-		panelTab === PanelTab.Pack ? 'h-[calc(100vh-6rem)]' : 'h-[40vh]',
+		panelTab === PanelTab.Pack || panelTab === PanelTab.Location
+			? 'h-[calc(100vh-6rem)]'
+			: 'h-[40vh]',
 		{ 'translate-x-[calc(100%+1.5rem)]': fightOpen }
 	);
 
@@ -1040,9 +1054,30 @@
 	<!-- The navbar's profile/sign-in panel, pinned always-visible top-left here. -->
 	<AuthMenu pinned />
 
-	<aside class={regionPanelClasses} aria-label="Map regions">
-		<div class="flex flex-col gap-3 border-b border-base-300 px-4 py-3">
-			<div class="breadcrumbs max-w-full text-sm">
+	<!-- The one panel pinned over the map, top-right, on four tabs. The breadcrumbs sit
+		above the strip rather than inside any tab: they name the region the map is looking
+		at (clicked, or followed from the zoom), which is context every view is read
+		against, so they stay on screen whichever tab is forward.
+		— Location: the drill table for the open region — its siblings and its children —
+		  or, for a leaf municipality with nothing left to list, that town's show and the
+		  team sitting on it. The search box above it matches every location in the tree.
+		— Latest: the towns players have most recently won off their sitting team, each
+		  with the show its current leading team comes from. Read straight out of
+		  `municipality_holders` (a row is only written when a town changes hands), so it
+		  stays empty until the first town falls and refreshes after every settled fight.
+		  Clicking a row drills the map into that town, exactly like a region row.
+		— Leaderboard: how much of the map each show flies, tallied over every
+		  municipality's current show — seeded, or the ruling team's where a town has been
+		  taken.
+		— Booster: a day's festa packs. Picked from the tab strip it lays every one of the
+		  day's packs out on the /claim page's grid canvas (two to a row at this width) —
+		  pick one to zoom it up and slice it open. Its header's arrows walk the calendar,
+		  though only today's packs can actually be opened. Reached by clicking a town's
+		  gold star instead, it skips straight to that town's pack on the single-pack
+		  opener, already fitted and centred. -->
+	<aside class={panelClasses} aria-label="Map panel">
+		<div class="flex flex-none flex-col gap-3 border-b border-base-300 px-4 py-3">
+			<div class="breadcrumbs max-w-full py-0 text-sm">
 				<ul>
 					{#each crumbs as crumb, i}
 						<li>
@@ -1058,139 +1093,124 @@
 				</ul>
 			</div>
 
-			<input
-				type="search"
-				class="input input-bordered input-sm w-full"
-				placeholder="Search locations…"
-				bind:value={searchQuery}
-			/>
+			<div class="flex items-center justify-between gap-2">
+				<div class="join">
+					{#each panelTabs as tab (tab.id)}
+						<button
+							type="button"
+							class={classNames('btn btn-outline btn-sm join-item', { 'btn-active': panelTab === tab.id })}
+							aria-pressed={panelTab === tab.id}
+							on:click={() => selectTab(tab.id)}
+						>
+							{tab.label}
+						</button>
+					{/each}
+				</div>
+				<span class="badge badge-ghost badge-sm">{panelCount}</span>
+			</div>
 		</div>
 
-		{#if normalizedQuery}
-			<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
-		{:else if regionRows.length === 0}
-			<!-- A leaf region (a municipality) has no children to drill into, so instead of
-				an empty table we surface its own top show — the only place the open location's
-				show appears — plus the town's deterministic house team on the shared card
-				canvas (three cards rolled from the town's seed and its show's roster). -->
-			<div class="flex min-h-0 flex-1 flex-col gap-3 p-4">
-				{#if openShow}
-					<div class="flex flex-none items-center gap-3">
-						{#if openShow.posterUrl}
-							<img
-								src={openShow.posterUrl}
-								alt={openShow.name}
-								class="h-16 w-auto flex-none rounded shadow"
-							/>
-						{/if}
-						<div class="min-w-0">
-							<!-- A held town flies its ruling team's show, so the label says so
-								rather than claiming it is the town's most-seen one. -->
-							<p class="text-xs font-bold uppercase tracking-wide opacity-60">
-								{openHolder ? 'Ruling show' : 'Most seen'}
-							</p>
-							<p class="truncate font-semibold">{openShow.name}</p>
+		{#if panelTab === PanelTab.Location}
+			<div class="flex-none border-b border-base-300 px-4 py-3">
+				<input
+					type="search"
+					class="input input-bordered input-sm w-full"
+					placeholder="Search locations…"
+					bind:value={searchQuery}
+				/>
+			</div>
+
+			{#if normalizedQuery}
+				<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
+			{:else if regionRows.length === 0}
+				<!-- A leaf region (a municipality) has no children to drill into, so instead of
+					an empty table we surface its own top show — the only place the open location's
+					show appears — plus the town's deterministic house team on the shared card
+					canvas (three cards rolled from the town's seed and its show's roster). -->
+				<div class="flex min-h-0 flex-1 flex-col gap-3 p-4">
+					{#if openShow}
+						<div class="flex flex-none items-center gap-3">
+							{#if openShow.posterUrl}
+								<img
+									src={openShow.posterUrl}
+									alt={openShow.name}
+									class="h-16 w-auto flex-none rounded shadow"
+								/>
+							{/if}
+							<div class="min-w-0">
+								<!-- A held town flies its ruling team's show, so the label says so
+									rather than claiming it is the town's most-seen one. -->
+								<p class="text-xs font-bold uppercase tracking-wide opacity-60">
+									{openHolder ? 'Ruling show' : 'Most seen'}
+								</p>
+								<p class="truncate font-semibold">{openShow.name}</p>
+							</div>
 						</div>
-					</div>
-				{:else}
-					<p class="flex-none text-center opacity-60">No show here yet.</p>
-				{/if}
-
-				{#if municipalityTeamCards.length > 0}
-					<!-- Whoever holds the town. Until a player beats it, that's the town's
-						built-in, seed-rolled "OG" (original) roster — the same for every
-						player, badged so it reads as the house team. Once somebody takes the
-						town it's their frozen winning team instead, and it's their name on
-						the badge. -->
-					<div class="flex flex-none items-center gap-2">
-						{#if openHolder}
-							<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
-							<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
-								{openHolder.holderName}
-							</span>
-						{:else}
-							<span class="badge badge-primary badge-sm font-bold">OG</span>
-							<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
-						{/if}
-						{#if holdsOpenTown}
-							<span class="badge badge-success badge-sm ml-auto">Yours</span>
-						{:else}
-							<button type="button" class="btn btn-primary btn-xs ml-auto" on:click={challenge}>
-								Challenge
-							</button>
-						{/if}
-					</div>
-					<!-- What it takes to dethrone them: one win for a town nobody has taken,
-						and one more for every time it has since changed hands — so the longer a
-						town has been fought over, the harder its leader is to shift. -->
-					{#if !holdsOpenTown}
-						<p class="flex-none text-xs opacity-60">
-							{#if siegeProgress.required === 1}
-								Beat them once to take the town.
-							{:else}
-								Beat them {siegeProgress.required} times to take the town — it has changed hands
-								{siegeProgress.turnover}
-								{siegeProgress.turnover === 1 ? 'time' : 'times'}.
-							{/if}
-							{#if siegeProgress.wins > 0}
-								<span class="font-semibold opacity-100">
-									{siegeProgress.wins}/{siegeProgress.required} won.
-								</span>
-							{/if}
-						</p>
+					{:else}
+						<p class="flex-none text-center opacity-60">No show here yet.</p>
 					{/if}
-					<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
-						<!-- The town's team is a rival team, so its cards use the board's rival
-							variant (unmirrored art), matching the rival's hand cards on the game
-							canvas. -->
-						<CardCanvas
-							cards={municipalityTeamCards}
-							columns={TEAM_SIZE}
-							layout="grid"
-							pannable
-							flipped={false}
-						/>
-					</div>
-				{/if}
-			</div>
-		{:else}
-			<RegionTable rows={regionRows} onSelect={select} />
-		{/if}
-	</aside>
 
-	<!-- The mirror of the regions panel, pinned top-right, on three tabs:
-		— Latest: the towns players have most recently won off their sitting team, each
-		  with the show its current leading team comes from. Read straight out of
-		  `municipality_holders` (a row is only written when a town changes hands), so it
-		  stays empty until the first town falls and refreshes after every settled fight.
-		  Clicking a row drills the map into that town, exactly like a region row.
-		— Leaderboard: how much of the map each show flies, tallied over every
-		  municipality's current show — seeded, or the ruling team's where a town has been
-		  taken.
-		— Booster: a day's festa packs. Picked from the tab strip it lays every one of the
-		  day's packs out on the /claim page's grid canvas (two to a row at this width) —
-		  pick one to zoom it up and slice it open. Its header's arrows walk the calendar,
-		  though only today's packs can actually be opened. Reached by clicking a town's
-		  gold star instead, it skips straight to that town's pack on the single-pack
-		  opener, already fitted and centred. -->
-	<aside class={winsPanelClasses} aria-label="Territory standings">
-		<div class="flex flex-none items-center justify-between gap-2 border-b border-base-300 px-4 py-3">
-			<div class="join">
-				{#each panelTabs as tab (tab.id)}
-					<button
-						type="button"
-						class={classNames('btn btn-outline btn-sm join-item', { 'btn-active': panelTab === tab.id })}
-						aria-pressed={panelTab === tab.id}
-						on:click={() => selectTab(tab.id)}
-					>
-						{tab.label}
-					</button>
-				{/each}
-			</div>
-			<span class="badge badge-ghost badge-sm">{panelCount}</span>
-		</div>
-
-		{#if panelTab === PanelTab.Latest}
+					{#if municipalityTeamCards.length > 0}
+						<!-- Whoever holds the town. Until a player beats it, that's the town's
+							built-in, seed-rolled "OG" (original) roster — the same for every
+							player, badged so it reads as the house team. Once somebody takes the
+							town it's their frozen winning team instead, and it's their name on
+							the badge. -->
+						<div class="flex flex-none items-center gap-2">
+							{#if openHolder}
+								<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
+								<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
+									{openHolder.holderName}
+								</span>
+							{:else}
+								<span class="badge badge-primary badge-sm font-bold">OG</span>
+								<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
+							{/if}
+							{#if holdsOpenTown}
+								<span class="badge badge-success badge-sm ml-auto">Yours</span>
+							{:else}
+								<button type="button" class="btn btn-primary btn-xs ml-auto" on:click={challenge}>
+									Challenge
+								</button>
+							{/if}
+						</div>
+						<!-- What it takes to dethrone them: one win for a town nobody has taken,
+							and one more for every time it has since changed hands — so the longer a
+							town has been fought over, the harder its leader is to shift. -->
+						{#if !holdsOpenTown}
+							<p class="flex-none text-xs opacity-60">
+								{#if siegeProgress.required === 1}
+									Beat them once to take the town.
+								{:else}
+									Beat them {siegeProgress.required} times to take the town — it has changed hands
+									{siegeProgress.turnover}
+									{siegeProgress.turnover === 1 ? 'time' : 'times'}.
+								{/if}
+								{#if siegeProgress.wins > 0}
+									<span class="font-semibold opacity-100">
+										{siegeProgress.wins}/{siegeProgress.required} won.
+									</span>
+								{/if}
+							</p>
+						{/if}
+						<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
+							<!-- The town's team is a rival team, so its cards use the board's rival
+								variant (unmirrored art), matching the rival's hand cards on the game
+								canvas. -->
+							<CardCanvas
+								cards={municipalityTeamCards}
+								columns={TEAM_SIZE}
+								layout="grid"
+								pannable
+								flipped={false}
+							/>
+						</div>
+					{/if}
+				</div>
+			{:else}
+				<RegionTable rows={regionRows} onSelect={select} />
+			{/if}
+		{:else if panelTab === PanelTab.Latest}
 			<TerritoryTable rows={recentWins} onSelect={openWin} />
 		{:else if panelTab === PanelTab.Leaderboard}
 			<ShowStandingsTable rows={showStandings} />
@@ -1301,11 +1321,11 @@
 		{/if}
 	</aside>
 
-	<!-- The map keeps the full width at all times. The festa pack panel floats over its
-		right edge (a fixed z-[1100] aside, like the other corner panels) rather than
-		reserving space here, so opening a pack never re-frames or re-projects the map —
-		the view stays exactly where it was and clicking another star just switches the
-		panel's contents. -->
+	<!-- The map keeps the full width at all times. The tabbed panel floats over its right
+		edge (a fixed z-[1100] aside, like the pinned auth menu) rather than reserving space
+		here, so drilling into a region or opening a pack never re-frames or re-projects the
+		map — the view stays exactly where it was and clicking another star or another tab
+		just switches the panel's contents. -->
 	<div class="relative flex min-w-0 flex-1 flex-col">
 		{#if ready}
 			<WorldMap
@@ -1342,7 +1362,7 @@
 <!-- Challenge → the board's combat arena, hosted as a full-viewport floating panel over
 	the map so a fight for a town plays out without ever navigating away. This is the
 	only place combat is mounted — there is no standalone combat route any more. A plain
-	fixed panel (not a DaisyUI modal) at z-[1200] — above the map's three corner panels
+	fixed panel (not a DaisyUI modal) at z-[1200] — above the map's corner panels
 	(z-[1100]) — over a 30%-white wash so the map still reads through behind it.
 	CombatArena fields the player's active roster team against the town's sitting team
 	(its holder's, or the seeded OG one) and handles all its own gating; the town id and
