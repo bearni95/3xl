@@ -8,6 +8,7 @@
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
 	import TerritoryTable from '$components/core/TerritoryTable.svelte';
+	import ShowStandingsTable from '$components/core/ShowStandingsTable.svelte';
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
@@ -48,6 +49,7 @@
 		type RegionType
 	} from '$utils/geo/region-tree';
 	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
+	import { buildShowStandings } from '$utils/geo/show-standings';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import type { MapMarker, MapOverlay, MapStar } from '$types/map.type';
 	import type {
@@ -216,6 +218,22 @@
 
 	// How many of the most recent captures the panel lists.
 	const RECENT_WINS_LIMIT = 20;
+
+	// The panel's two views: the latest captures, and the standing of every show
+	// across the whole map.
+	const PanelTab = { Latest: 'latest', Leaderboard: 'leaderboard' } as const;
+	type PanelTab = (typeof PanelTab)[keyof typeof PanelTab];
+	const panelTabs: { id: PanelTab; label: string }[] = [
+		{ id: PanelTab.Latest, label: 'Latest' },
+		{ id: PanelTab.Leaderboard, label: 'Leaderboard' }
+	];
+	let panelTab: PanelTab = PanelTab.Latest;
+
+	// How many municipalities each show flies, and its share of them all. Tallied
+	// over `showsById`, which is already the seeded assignment with every held
+	// town's ruling show written over it — so a conquest moves a town from one
+	// show's tally to another's the moment the holders reload.
+	$: showStandings = buildShowStandings(showsById);
 
 	// Municipality feature id → its raw name, so a holder row (which stores only the
 	// feature id) can be named without walking the region tree.
@@ -991,19 +1009,39 @@
 		{/if}
 	</aside>
 
-	<!-- The mirror of the regions panel, pinned top-right: the towns players have most
-		recently won off their sitting team, each with the show its current leading team
-		comes from. Read straight out of `municipality_holders` (a row is only written when
-		a town changes hands), so it stays empty until the first town falls, and refreshes
-		with the rest of the territory state after every settled fight. Clicking a row
-		drills the map into that town, exactly like a region row. -->
-	<aside class={winsPanelClasses} aria-label="Latest towns won">
+	<!-- The mirror of the regions panel, pinned top-right, on two tabs:
+		— Latest: the towns players have most recently won off their sitting team, each
+		  with the show its current leading team comes from. Read straight out of
+		  `municipality_holders` (a row is only written when a town changes hands), so it
+		  stays empty until the first town falls and refreshes after every settled fight.
+		  Clicking a row drills the map into that town, exactly like a region row.
+		— Leaderboard: how much of the map each show flies, tallied over every
+		  municipality's current show — seeded, or the ruling team's where a town has been
+		  taken. -->
+	<aside class={winsPanelClasses} aria-label="Territory standings">
 		<div class="flex flex-none items-center justify-between gap-2 border-b border-base-300 px-4 py-3">
-			<span class="text-sm font-semibold">Latest towns won</span>
-			<span class="badge badge-ghost badge-sm">{recentWins.length}</span>
+			<div class="join">
+				{#each panelTabs as tab (tab.id)}
+					<button
+						type="button"
+						class={classNames('btn btn-outline btn-sm join-item', { 'btn-active': panelTab === tab.id })}
+						aria-pressed={panelTab === tab.id}
+						on:click={() => (panelTab = tab.id)}
+					>
+						{tab.label}
+					</button>
+				{/each}
+			</div>
+			<span class="badge badge-ghost badge-sm">
+				{panelTab === PanelTab.Latest ? recentWins.length : showStandings.length}
+			</span>
 		</div>
 
-		<TerritoryTable rows={recentWins} onSelect={openWin} />
+		{#if panelTab === PanelTab.Latest}
+			<TerritoryTable rows={recentWins} onSelect={openWin} />
+		{:else}
+			<ShowStandingsTable rows={showStandings} />
+		{/if}
 	</aside>
 
 	<!-- The map keeps the full width at all times. The festa pack panel floats over its
