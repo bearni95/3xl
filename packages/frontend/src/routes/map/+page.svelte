@@ -699,18 +699,15 @@
 	// slides off the right edge while a fight is on, so the arena has the map to
 	// itself — translated (not unmounted) to keep the breadcrumb/search state alive and
 	// animate back in on close; `right-4` means it must travel its own width plus that
-	// gap to clear the viewport. The Booster and Location tabs make it taller: a pack
-	// sliced open on a canvas, and a leaf town's team cards, both need more room than
-	// the two tables do. Even for the tables the panel can no longer be short, though:
-	// the account card and the active-team strip above the tab strip take a fixed slice
-	// of it before a single row is drawn, and the min-height is what keeps a few rows on
-	// screen on a laptop, where a viewport fraction alone would not.
+	// gap to clear the viewport. One height for every tab now: the account card and the
+	// full-width team strip above the tab strip take a fixed slice of the panel before a
+	// tab draws anything, so the short panel the two tables used to get left them with
+	// almost no rows. Whatever the header does not use goes to the tab, which is the only
+	// part that scrolls.
 	$: panelClasses = classNames(
-		'fixed right-4 top-20 z-[1100] flex w-[36rem] flex-col overflow-hidden rounded-box',
+		'fixed right-4 top-20 z-[1100] flex h-[calc(100vh-6rem)] w-[36rem] flex-col',
+		'overflow-hidden rounded-box',
 		'border border-base-300 bg-base-100/70 shadow-lg transition-transform duration-300 ease-in-out',
-		panelTab === PanelTab.Pack || panelTab === PanelTab.Location
-			? 'h-[calc(100vh-6rem)]'
-			: 'h-[60vh] min-h-[26rem]',
 		{ 'translate-x-[calc(100%+1.5rem)]': fightOpen }
 	);
 
@@ -1253,11 +1250,14 @@
 				<!-- The team this player fields, on the same card canvas a town's team is drawn
 					on — so the side challenging and the side holding read alike. Under the
 					account card because it is part of who the player is here, not part of any
-					tab. The fit layout scales the whole team into this strip, so all of it is
-					visible at once with nothing to pan; the player's own cards keep the
-					canvas's default mirrored art, unlike a town's rival team. -->
-				<div class="mt-3 h-32 overflow-hidden rounded-box bg-base-200">
-					<CardCanvas cards={activeTeamCards} columns={TEAM_SIZE} layout="fit" />
+					tab. The grid layout sizes the row to fill the width exactly: each card is
+					as wide as its cell, at 1:1, never scaled down to fit a box. Its height is
+					therefore the width's — one row of TEAM_SIZE cards at the canvas's 2:3
+					portrait aspect comes to half the width, which is what aspect-[2/1] gives
+					it, so the whole row is on screen with nothing to pan or clip. The player's
+					own cards keep the canvas's default mirrored art, unlike a rival town's. -->
+				<div class="mt-3 aspect-[2/1] w-full overflow-hidden rounded-box bg-base-200">
+					<CardCanvas cards={activeTeamCards} columns={TEAM_SIZE} layout="grid" />
 				</div>
 			{/if}
 		</div>
