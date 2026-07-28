@@ -556,25 +556,25 @@
 	     active button marks the current choice. Only the player picks colours — the
 	     rival fights on its pre-rolled defaults and has no picker.
 
-	     Each button also reads the odds this character's attack lands on the rival it
-	     is next up against (see the controller's MatchupPreview). The figure is the
-	     same on all three: the colour thrown scales the hits into damage, it never
-	     decides whether the dice connect — so it moves with the opponent, not the
-	     colour, and updates as each pick fills the next duel cell. -->
+	     Each button states what its colour buys against the rival this character is
+	     next up against (see the controller's MatchupPreview): the handful of dice the
+	     colour multiplier turns this character's ATK into, and the odds that handful
+	     lands at least one hit on that rival's DEF. So the three buttons read
+	     differently — picking a colour is picking how many dice to roll — and they all
+	     move on as each pick fills the next duel cell. -->
 	{@const preview = combat?.preview ?? null}
 	<div class="flex w-full flex-col gap-1">
 		{#if preview}
-			<!-- Name the roll behind the percentage, so it can be checked rather than
-			     trusted: "1d10 vs DEF 1" is 90%, "5d10 vs DEF 1" is 99.9%. -->
 			<p class="truncate text-center text-[11px] leading-tight opacity-70">
 				vs <span class="font-semibold">{preview.opponentName}</span>
 			</p>
 			<p class="truncate text-center text-[10px] leading-tight opacity-50">
-				{preview.dice}d10 vs DEF {preview.opponentDef}
+				DEF {preview.opponentDef}
 			</p>
 		{/if}
 		<div class="join join-vertical w-full">
 			{#each throwableColors(badge.color) as color (color)}
+				{@const throwFor = preview?.throws.find((option) => option.color === color) ?? null}
 				<button
 					type="button"
 					class={classNames('btn join-item btn-sm btn-block', colorFill[color], {
@@ -584,9 +584,11 @@
 					on:click={() => selectColor(badge.id, color)}
 				>
 					<span class="capitalize">{color}</span>
-					{#if preview}
+					{#if throwFor}
+						<!-- Name the roll behind the percentage, so it can be checked rather
+						     than trusted: "1d10" against DEF 1 is 90%, "5d10" is 99.9%. -->
 						<span class="ml-auto text-xs font-normal tabular-nums opacity-80">
-							{formatChancePercent(preview.hitChance)}
+							{throwFor.dice}d10 · {formatChancePercent(throwFor.hitChance)}
 						</span>
 					{/if}
 				</button>

@@ -45,10 +45,10 @@ export function dieHitChance(def: number): number {
 
 /**
  * The odds an attack of `atk` ten-sided dice lands **at least one** hit against
- * `def` — the complement of every die failing to beat it, `1 − (1 − p)^atk`. This is what the
- * arena previews on a fighter's colour buttons: whether the throw connects at all
- * is decided by these dice, so the thrown colour does not enter into it (it only
- * scales the hits that land into HP of damage).
+ * `def` — the complement of every die failing to beat it, `1 − (1 − p)^atk`. This is
+ * what the arena previews on a fighter's colour buttons, one figure per colour: the
+ * thrown colour sets how many dice `atk` is worth (see `strikeDice`), so a dominant
+ * colour is genuinely likelier to connect and a weak one genuinely likelier to whiff.
  */
 export function attackHitChance(atk: number, def: number): number {
 	const misses = 1 - dieHitChance(def);

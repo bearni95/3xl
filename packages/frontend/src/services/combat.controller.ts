@@ -16,11 +16,11 @@
  *
  * Each duel is one encounter on a purple meeting cell: the faster fighter (higher
  * SPD, ties broken by a coin flip) attacks first, then the other answers back if
- * it survives. An attack rolls ATK d10 and every die that beats the
- * defender's DEF is a hit — landing on the DEF exactly is turned aside; the thrown
- * colour vs the defender's colour then scales
- * those hits (the strike table's ×0.5 / ×1 / ×2, rounded) into the HP of damage
- * dealt. A fighter reduced to 0 HP is knocked out — it holds its hurt pose, fades
+ * it survives. The thrown colour vs the defender's colour decides how big the
+ * handful is: ATK scaled by the strike table's ×0.5 / ×1 / ×2 (rounded, never below
+ * one die). Those dice are then rolled, and every one that beats the defender's DEF
+ * is a hit worth a flat 1 HP of damage — landing on the DEF exactly is turned
+ * aside. A fighter reduced to 0 HP is knocked out — it holds its hurt pose, fades
  * off the board and is removed from the game entirely. Barring a knockout,
  * whoever is left with the most current HP claims the duel cell (a tie in HP keeps
  * the status quo); HP persists across encounters.
@@ -54,7 +54,7 @@ import {
 	type CombatColor
 } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
-import { strikeMultiplier, throwableColors } from '$utils/color/compare';
+import { strikeDice, strikeMultiplier, throwableColors } from '$utils/color/compare';
 import { attackHitChance, resolveAttack, rollDie } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
@@ -123,6 +123,23 @@ export interface Fighter extends FighterSeed {
 	actionIndex: number | null;
 }
 
+/** What one of a fighter's throwable colours is worth in the duel it is lined up
+ * for: the handful that colour buys against that particular opponent. */
+export interface ColorThrow {
+	color: CombatColor;
+	/** The strike table's ×0.5 / ×1 / ×2 for this colour against the opponent's. */
+	multiplier: number;
+	/** Dice this colour throws — the fighter's ATK scaled by {@link multiplier}. */
+	dice: number;
+	/**
+	 * The odds this throw lands at least one hit: the chance at least one of
+	 * {@link dice} d10 beats the opponent's DEF. Shown beside the dice, so the figure
+	 * can be read back off the numbers that produced it — a lone die against DEF 1 is
+	 * 90%, five of them 99.999%, and those must not look alike.
+	 */
+	hitChance: number;
+}
+
 /**
  * The duel a fighter is lined up for, as the page previews it before any dice are
  * thrown. For a fighter that has yet to commit a colour this is the *next-up* duel —
@@ -135,19 +152,15 @@ export interface MatchupPreview {
 	/** The fighter waiting on the other side of it. */
 	opponentId: string;
 	opponentName: string;
-	/** Dice this fighter throws at it — its own ATK. */
-	dice: number;
-	/** The DEF those dice have to beat — the opponent's. */
+	/** The DEF this fighter's dice have to beat — the opponent's. */
 	opponentDef: number;
 	/**
-	 * The odds this fighter's attack lands at least one hit on that opponent: the
-	 * chance at least one of {@link dice} d10 beats {@link opponentDef}. Shown beside
-	 * both, so the figure can be read back off the numbers that produced it — a lone
-	 * die against DEF 1 is 90%, five of them 99.999%, and those must not look alike.
-	 * Colour-independent: the thrown colour only scales hits into damage, it never
-	 * decides whether the dice connect.
+	 * What each colour this fighter can throw is worth against that opponent, in the
+	 * display order of {@link throwableColors}. This is the whole point of the colour
+	 * picker: the choice is a choice of how many dice to roll, so the buttons state
+	 * the handful (and its odds) each colour buys.
 	 */
-	hitChance: number;
+	throws: ColorThrow[];
 }
 
 /** A fighter as the page renders it: its live combat state plus the derived
@@ -293,9 +306,16 @@ export class CombatController {
 				duelIndex,
 				opponentId: opponent.id,
 				opponentName: opponent.name,
-				dice: fighter.atk,
 				opponentDef: opponent.def,
-				hitChance: attackHitChance(fighter.atk, opponent.def)
+				throws: throwableColors(fighter.color).map((color) => {
+					const dice = strikeDice(fighter.atk, color, opponent.color);
+					return {
+						color,
+						multiplier: strikeMultiplier(color, opponent.color),
+						dice,
+						hitChance: attackHitChance(dice, opponent.def)
+					};
+				})
 			});
 		};
 		for (const [id, duel] of duels) {
@@ -664,23 +684,22 @@ export class CombatController {
 	}
 
 	/**
-	 * `attacker` makes one attack against `defender`: it rolls one d10 per point of
-	 * its ATK and every die that beats the defender's DEF counts as a hit — a die
-	 * landing on the DEF itself is turned aside. Each hit
-	 * costs the defender one HP; reaching 0 knocks it out. Plays the attacker's melee
-	 * animation while the defender flinches.
-	 *
-	 * (Colour matching is on hold: the thrown colour still tints the animation and
-	 * the floating readout, but no longer scales the damage — that reworks later.)
+	 * `attacker` makes one attack against `defender`. The colour pairing sizes the
+	 * handful first: the strike table maps the thrown colour against the defender's
+	 * colour to ×0.5 / ×1 / ×2, and the attacker's ATK scaled by it (rounded, at
+	 * least one) is how many d10 it rolls. Every die that beats the defender's DEF
+	 * counts as a hit — a die landing on the DEF itself is turned aside — and each hit
+	 * costs the defender a flat one HP; reaching 0 knocks it out. Plays the attacker's
+	 * melee animation while the defender flinches.
 	 */
 	private async strike(attacker: Fighter, defender: Fighter): Promise<void> {
 		const thrown = attacker.moveColor ?? attacker.color;
-		const { hits } = resolveAttack(attacker.atk, defender.def);
-		// The colour pairing scales the raw hits into damage: the strike table maps
-		// the thrown colour against the defender's colour to ×0.5 / ×1 / ×2, and the
-		// product is rounded to whole HP of damage.
 		const multiplier = strikeMultiplier(thrown, defender.color);
-		const damage = Math.round(hits * multiplier);
+		const dice = strikeDice(attacker.atk, thrown, defender.color);
+		// Every die that beats the DEF is one HP: the colour has already had its say,
+		// in how many dice there were to roll.
+		const { hits } = resolveAttack(dice, defender.def);
+		const damage = hits;
 
 		// Attacker and defender are always distinct actors, so the move, the flinch
 		// and the slash landing on the defender all play together — the slash is
@@ -699,7 +718,7 @@ export class CombatController {
 		// Float the damage dealt above the attacker, coloured in the thrown colour.
 		this.board?.showStrikeLabel(attacker.id, damage, thrown);
 		// setStatus emits, so the cards' live HP updates the moment a hit lands.
-		this.setStatus(this.strikeLine(attacker, defender, hits, multiplier, damage));
+		this.setStatus(this.strikeLine(attacker, defender, dice, multiplier, damage));
 
 		// At 0 HP the defender is knocked out: home it goes, dimmed and done.
 		if (defender.hp === 0 && !defender.defeated) {
@@ -721,19 +740,21 @@ export class CombatController {
 		await this.board?.knockOut(fighter.id);
 	}
 
-	/** One status line summarising an attack roll, the colour multiplier and the
-	 * damage it dealt. */
+	/** One status line summarising an attack: the handful the colour bought, and the
+	 * damage its hits dealt. */
 	private strikeLine(
 		attacker: Fighter,
 		defender: Fighter,
-		hits: number,
+		dice: number,
 		multiplier: number,
 		damage: number
 	): string {
-		const roll = `${attacker.name} rolls ${attacker.atk}d10 vs ${defender.name}'s DEF ${defender.def}`;
-		if (hits === 0) return `${roll} — no hits.`;
-		const hit = hits === 1 ? '1 hit' : `${hits} hits`;
-		return `${roll} — ${hit} ×${multiplier} = ${damage} dmg, ${defender.name} down to ${defender.hp} HP.`;
+		// Name the multiplier alongside the dice it produced, so the handful can be read
+		// back off the attacker's ATK rather than taken on trust.
+		const roll = `${attacker.name} rolls ${attacker.atk}×${multiplier} = ${dice}d10 vs ${defender.name}'s DEF ${defender.def}`;
+		if (damage === 0) return `${roll} — no hits.`;
+		const hit = damage === 1 ? '1 hit' : `${damage} hits`;
+		return `${roll} — ${hit} = ${damage} dmg, ${defender.name} down to ${defender.hp} HP.`;
 	}
 
 	/** One status line summarising how the encounter resolved. */

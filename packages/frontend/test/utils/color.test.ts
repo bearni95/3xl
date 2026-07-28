@@ -3,6 +3,7 @@ import {
 	STRIKE_MULTIPLIERS,
 	isPrimaryColor,
 	isTeammateColor,
+	strikeDice,
 	strikeMultiplier,
 	teammateColors,
 	throwableColors
@@ -80,6 +81,22 @@ describe('color strike table', () => {
 				);
 			}
 		}
+	});
+
+	it('strikeDice scales ATK by the colour multiplier', () => {
+		// Dominant doubles the handful, even leaves it alone, weak halves it.
+		expect(strikeDice(4, 'red', 'red')).toBe(8);
+		expect(strikeDice(4, 'red', 'yellow')).toBe(4);
+		expect(strikeDice(4, 'red', 'purple')).toBe(2);
+	});
+
+	it('strikeDice rounds to whole dice and never leaves nothing to roll', () => {
+		// An odd ATK halved lands on a half-die: round up rather than down.
+		expect(strikeDice(3, 'red', 'purple')).toBe(2);
+		expect(strikeDice(5, 'red', 'purple')).toBe(3);
+		// The smallest ATK there is, on its worst colour, still throws one die.
+		expect(strikeDice(1, 'red', 'purple')).toBe(1);
+		expect(strikeDice(0, 'red', 'purple')).toBe(1);
 	});
 
 	it('throwableColors yields the compound first, then its two components', () => {
