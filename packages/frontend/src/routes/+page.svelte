@@ -1382,30 +1382,24 @@
 							{#if holdsOpenTown}
 								<span class="badge badge-success badge-sm ml-auto">Yours</span>
 							{:else}
-								<button type="button" class="btn btn-primary btn-xs ml-auto" on:click={challenge}>
+								<!-- The same siege counter the two tables carry, for the one town the
+									panel is down to: wins banked over wins needed. It reads exactly as
+									the column a drill row shows for this municipality, so opening a
+									town never restates the figure in different terms. -->
+								<span
+									class="ml-auto flex flex-none items-center gap-1.5 text-xs tabular-nums"
+									title="Your wins banked / wins needed to take the town"
+								>
+									<span class="font-bold uppercase tracking-wide opacity-60">Siege</span>
+									<span class={siegeProgress.wins > 0 ? 'font-semibold' : 'opacity-70'}>
+										{siegeProgress.wins}/{siegeProgress.required}
+									</span>
+								</span>
+								<button type="button" class="btn btn-primary btn-xs flex-none" on:click={challenge}>
 									Challenge
 								</button>
 							{/if}
 						</div>
-						<!-- What it takes to dethrone them: one win for a town nobody has taken,
-							and one more for every time it has since changed hands — so the longer a
-							town has been fought over, the harder its leader is to shift. -->
-						{#if !holdsOpenTown}
-							<p class="flex-none text-xs opacity-60">
-								{#if siegeProgress.required === 1}
-									Beat them once to take the town.
-								{:else}
-									Beat them {siegeProgress.required} times to take the town — it has changed hands
-									{siegeProgress.turnover}
-									{siegeProgress.turnover === 1 ? 'time' : 'times'}.
-								{/if}
-								{#if siegeProgress.wins > 0}
-									<span class="font-semibold opacity-100">
-										{siegeProgress.wins}/{siegeProgress.required} won.
-									</span>
-								{/if}
-							</p>
-						{/if}
 						<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
 							<!-- The town's team is a rival team, so its cards use the board's rival
 								variant (unmirrored art), matching the rival's hand cards on the game
