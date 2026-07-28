@@ -9,6 +9,11 @@
 	// How many packs a row holds. Three suits a full-width canvas; a narrow host (the
 	// map's side panel) asks for fewer so each pack still reads. Read once, at mount.
 	export let columns: number = 3;
+	// How many columns an opened pack's cards fan into, likewise read once at mount.
+	export let revealColumns: number = 3;
+	// False shows the packs but opens none of them — a read-only grid (the map panel
+	// browsing a day other than today, whose packs nobody can claim).
+	export let interactive: boolean = true;
 	export let classes: string = '';
 
 	const dispatch = createEventDispatcher<{ select: OpenerPack; openComplete: void }>();
@@ -35,7 +40,7 @@
 				onSelect: (pack) => dispatch('select', pack),
 				onOpenComplete: () => dispatch('openComplete')
 			},
-			columns
+			{ columns, revealColumns, interactive }
 		);
 	});
 

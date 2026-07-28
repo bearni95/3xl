@@ -44,12 +44,29 @@ export interface ClaimPackGridSceneCallbacks {
 	onCardClick?: (pull: ClaimPull, index: number) => void;
 }
 
+/** Layout and interaction knobs the host sets once, at construction. */
+export interface ClaimPackGridSceneOptions {
+	/** Packs per row in the grid. Defaults to {@link GRID_COLS}. */
+	columns?: number;
+	/** Columns the opened pack's cards fan into. Defaults to {@link REVEAL_COLS}. */
+	revealColumns?: number;
+	/**
+	 * Whether a pack can be picked at all. False lays the grid out as a read-only
+	 * display — it still scrolls, but no tap opens anything. Used for the days the
+	 * map's booster panel browses to that are not today, whose packs no player can
+	 * claim.
+	 */
+	interactive?: boolean;
+}
+
 type SceneState = 'loading' | 'grid' | 'zooming' | 'idle' | 'cutting' | 'revealing' | 'fanned';
 
 const CARD_ASPECT = 2 / 3; // portrait trading card (reveal cards)
 // How many packs a row holds by default — right for the claim page's full-width
 // canvas. A narrower host (the map's side panel) passes its own count instead.
 const GRID_COLS = 3;
+// How many columns the revealed cards fan into by default, likewise overridable.
+const REVEAL_COLS = 3;
 // Grid navigation geometry, matching the roster grid: gap + outer padding, the tap
 // slop that separates a tap from a pan, and a little springy overscroll.
 const NAV_GAP = 16;
@@ -92,6 +109,9 @@ export class ClaimPackGridScene {
 	// The widest a row is allowed to get (the caller's column count); the actual `cols`
 	// is this capped to how many packs there are.
 	private maxCols = GRID_COLS;
+	// Columns the revealed cards fan into, and whether a pack can be picked at all.
+	private revealCols = REVEAL_COLS;
+	private interactive = true;
 	private rows = 1;
 	private gridScale = 1;
 	private contentW = 0;
@@ -127,12 +147,14 @@ export class ClaimPackGridScene {
 		host: HTMLElement,
 		packs: OpenerPack[],
 		callbacks: ClaimPackGridSceneCallbacks = {},
-		columns: number = GRID_COLS
+		options: ClaimPackGridSceneOptions = {}
 	) {
 		this.host = host;
 		this.callbacks = callbacks;
 		this.packs = packs;
-		this.maxCols = Math.max(1, Math.round(columns));
+		this.maxCols = Math.max(1, Math.round(options.columns ?? GRID_COLS));
+		this.revealCols = Math.max(1, Math.round(options.revealColumns ?? REVEAL_COLS));
+		this.interactive = options.interactive ?? true;
 		this.app = new Application();
 
 		this.rootLayer = new Container();
@@ -433,7 +455,8 @@ export class ClaimPackGridScene {
 	 * the cut flow.
 	 */
 	selectPack(id: string): void {
-		if (this.state !== 'grid') return;
+		// A read-only grid still scrolls, but nothing in it opens.
+		if (!this.interactive || this.state !== 'grid') return;
 		const entry = this.entries.find((e) => e.pack.id === id);
 		if (!entry) return;
 
@@ -790,7 +813,7 @@ export class ClaimPackGridScene {
 	}
 
 	private gridDims(n: number): { cols: number; rows: number } {
-		const cols = Math.min(3, Math.max(1, n));
+		const cols = Math.min(this.revealCols, Math.max(1, n));
 		const rows = Math.ceil(n / cols);
 		return { cols, rows };
 	}

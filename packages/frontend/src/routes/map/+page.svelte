@@ -58,7 +58,7 @@
 		MunicipalityShowsCollection,
 		ShowsCollection
 	} from '$types/show.type';
-	import { festesService } from '$services/festes.service';
+	import { festesService, catalanTodayIso } from '$services/festes.service';
 	import type { FestaLocationRow } from '$types/festivity.type';
 
 	// The municipality polygons, feeding the region tree and the map framing.
@@ -241,7 +241,7 @@
 			? recentWins.length
 			: panelTab === PanelTab.Leaderboard
 				? showStandings.length
-				: claimPacks.length;
+				: dayPacks.length;
 
 	// How many municipalities each show flies, and its share of them all. Tallied
 	// over `showsById`, which is already the seeded assignment with every held
@@ -844,11 +844,93 @@
 
 	// Show a town's pack: remember which town, and bring the Booster tab forward so the
 	// pack is on screen straight away (the tab renders the opener, so this is what
-	// mounts its canvas).
+	// mounts its canvas). The stars only ever mark today's festes, so this also walks
+	// the browsed day back to today.
 	function openPack(id: string): void {
+		packDate = todayIso;
 		packTownId = id;
 		panelTab = PanelTab.Pack;
 	}
+
+	// --- Which day's packs the Booster tab shows ---------------------------------
+	// The tab opens on today and its arrows walk the festivity calendar a day at a
+	// time. Only today's packs can be opened — `claim_booster` mints a booster solely
+	// for a town that is de festa today, and the server is the one enforcing it — so
+	// every other day is a read-only preview of the packs that day holds.
+
+	// Today in Catalan time, the same day boundary the server claims against.
+	const todayIso = catalanTodayIso();
+	let packDate = todayIso;
+	$: isPackToday = packDate === todayIso;
+
+	// Step the browsed day, and drop back to that day's grid. The date is rebuilt from
+	// its own parts in UTC rather than parsed and offset, so the arithmetic stays on
+	// calendar days and no DST change can shift it.
+	function stepPackDate(days: number): void {
+		const [year, month, day] = packDate.split('-').map(Number);
+		packDate = new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+		showPackGrid();
+	}
+
+	// Festes for every day browsed so far, so stepping back and forth doesn't re-query
+	// Supabase. Today's are already loaded into `todayFestes` (the map's stars read the
+	// same set), so only other days land here.
+	let festesByDate = new Map<string, FestaLocationRow[]>();
+	// The day currently being fetched, so the panel can show a spinner for it.
+	let loadingDate: string | null = null;
+
+	async function loadFestesFor(iso: string): Promise<void> {
+		if (iso === todayIso || festesByDate.has(iso)) return;
+		loadingDate = iso;
+		let rows: FestaLocationRow[] = [];
+		try {
+			rows = await festesService.loadFestesForDate(iso);
+		} catch {
+			// A failed day simply reads as having no festes.
+			rows = [];
+		}
+		festesByDate.set(iso, rows);
+		festesByDate = festesByDate;
+		if (loadingDate === iso) loadingDate = null;
+	}
+
+	$: void loadFestesFor(packDate);
+
+	// The browsed day's celebrating towns, and the packs the grid lays out for them:
+	// today's are the real, openable ones the claim panel computed (each carrying its
+	// own roll), while another day's are built here from the map's baked town→show
+	// assignment — cover art and a name, with a roll that can never fire because the
+	// grid is mounted read-only for those days.
+	$: dayFestes = isPackToday ? todayFestes : (festesByDate.get(packDate) ?? []);
+
+	function buildPreviewPacks(
+		festes: FestaLocationRow[],
+		assignments: ReadonlyMap<string, MunicipalityShow>
+	): OpenerPack[] {
+		return festes.map((festa) => {
+			const show = assignments.get(festa.id)?.show ?? null;
+			return {
+				id: festa.id,
+				coverUrl: show?.posterUrl ?? null,
+				locationName: festa.name,
+				label: show?.name ?? festa.name,
+				claim: async () => []
+			};
+		});
+	}
+
+	$: dayPacks = isPackToday ? claimPacks : buildPreviewPacks(dayFestes, assignmentsById);
+
+	// The browsed day, written out in Catalan. Formatted at midday UTC so the calendar
+	// day can't slip either way, and rendered with a CSS-capitalised first letter —
+	// Catalan weekday names come out lowercase.
+	const packDateFormat = new Intl.DateTimeFormat('ca-ES', {
+		weekday: 'long',
+		day: 'numeric',
+		month: 'long',
+		timeZone: 'UTC'
+	});
+	$: packDateLabel = packDateFormat.format(new Date(`${packDate}T12:00:00Z`));
 
 	// The pack picked on the grid canvas — named in the header, and the reason the
 	// "all packs" control shows. Plus a counter bumped to remount the grid, since a
@@ -870,10 +952,10 @@
 		panelTab = id;
 	}
 
-	// The grid remounts whenever the day's set of packs changes (they load in, or the
-	// player signs in), so a stale grid never lingers. The closures are rebuilt on every
-	// recompute while the ids stay stable, so key on the ids alone.
-	$: packsKey = claimPacks.map((pack) => pack.id).join(',');
+	// The grid remounts whenever the browsed day's set of packs changes (a new day, they
+	// load in, or the player signs in), so a stale grid never lingers. The closures are
+	// rebuilt on every recompute while the ids stay stable, so key on the ids alone.
+	$: packsKey = dayPacks.map((pack) => pack.id).join(',');
 
 	// The single pack the Booster tab shows — the clicked town's, picked out of the full
 	// day's set — plus the town's name for the tab's header. Null when no star has been
@@ -1081,11 +1163,12 @@
 		— Leaderboard: how much of the map each show flies, tallied over every
 		  municipality's current show — seeded, or the ruling team's where a town has been
 		  taken.
-		— Booster: today's festa packs. Picked from the tab strip it lays every one of them
-		  out on the /claim page's grid canvas (two to a row at this width) — pick one to
-		  zoom it up and slice it open. Reached by clicking a town's gold star instead, it
-		  skips straight to that town's pack on the single-pack opener, already fitted and
-		  centred. -->
+		— Booster: a day's festa packs. Picked from the tab strip it lays every one of the
+		  day's packs out on the /claim page's grid canvas (two to a row at this width) —
+		  pick one to zoom it up and slice it open. Its header's arrows walk the calendar,
+		  though only today's packs can actually be opened. Reached by clicking a town's
+		  gold star instead, it skips straight to that town's pack on the single-pack
+		  opener, already fitted and centred. -->
 	<aside class={winsPanelClasses} aria-label="Territory standings">
 		<div class="flex flex-none items-center justify-between gap-2 border-b border-base-300 px-4 py-3">
 			<div class="join">
@@ -1114,19 +1197,46 @@
 				panel is a third of that page's width. Either way the pack is sliced open in
 				place; "Tots els sobres" goes back to the grid. -->
 			<div class="flex min-h-0 flex-1 flex-col">
-				<div class="flex flex-none items-baseline gap-2 border-b border-base-300 px-4 py-2">
-					<h2 class="flex-none text-xs font-bold uppercase tracking-wide opacity-70">
-						{packTownId ? 'Sobre de festa' : "Sobres de festa d'avui"}
-					</h2>
-					{#if packTownId && packTownName}
-						<p class="truncate font-bold">{restoreCatalanArticle(packTownName)}</p>
-					{:else if gridPack}
-						<p class="truncate font-bold">{gridPack.label}</p>
-					{/if}
-					{#if packTownId || gridPack}
-						<button type="button" class="btn btn-ghost btn-xs ml-auto flex-none" on:click={showPackGrid}>
-							Tots els sobres
+				<!-- The day being browsed, and the arrows that walk the calendar. Only today's
+					packs open; any other day's grid is mounted read-only and dimmed back, so it
+					reads as a look-ahead (or look-back) at what that day holds. -->
+				<div class="flex flex-none items-center gap-2 border-b border-base-300 px-4 py-2">
+					<div class="join flex-none">
+						<button
+							type="button"
+							class="btn btn-ghost btn-xs join-item"
+							on:click={() => stepPackDate(-1)}
+							aria-label="Dia anterior"
+						>
+							‹
 						</button>
+						<button
+							type="button"
+							class="btn btn-ghost btn-xs join-item"
+							on:click={() => stepPackDate(1)}
+							aria-label="Dia següent"
+						>
+							›
+						</button>
+					</div>
+					<p class="truncate text-sm font-bold first-letter:uppercase">{packDateLabel}</p>
+					{#if isPackToday}
+						<span class="badge badge-primary badge-xs flex-none">Avui</span>
+					{:else}
+						<span class="badge badge-ghost badge-xs flex-none">Només consulta</span>
+					{/if}
+
+					{#if packTownId || gridPack}
+						<div class="ml-auto flex min-w-0 items-center gap-2">
+							<span class="truncate text-sm font-bold">
+								{packTownId
+									? restoreCatalanArticle(packTownName ?? '')
+									: (gridPack?.label ?? '')}
+							</span>
+							<button type="button" class="btn btn-ghost btn-xs flex-none" on:click={showPackGrid}>
+								Tots els sobres
+							</button>
+						</div>
 					{/if}
 				</div>
 				<div class="min-h-0 flex-1 p-3">
@@ -1149,20 +1259,36 @@
 								</p>
 							</div>
 						{/if}
-					{:else if claimPacks.length}
-						{#key `${packsKey}:${gridSession}`}
+					{:else if loadingDate === packDate}
+						<div class="flex h-full items-center justify-center rounded-md bg-base-200">
+							<span class="loading loading-spinner loading-lg text-primary"></span>
+						</div>
+					{:else if dayPacks.length}
+						<!-- Two packs to a row at this width, and an opened one unfolds its cards
+							into two columns as well — the panel is far too narrow for the claim
+							page's three. Keyed on the day too, so stepping the date rebuilds the
+							grid from that day's packs. -->
+						{#key `${packDate}:${packsKey}:${gridSession}`}
 							<ClaimPackGrid
-								packs={claimPacks}
+								packs={dayPacks}
 								columns={2}
-								classes="rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
+								revealColumns={2}
+								interactive={isPackToday}
+								classes={classNames('rounded-md bg-gradient-to-b from-base-300/80 to-base-200', {
+									'opacity-50': !isPackToday
+								})}
 								on:select={(event) => (gridPack = event.detail)}
 							/>
 						{/key}
 					{:else}
 						<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
 							<p class="max-w-xs text-sm opacity-60">
-								Ara mateix no hi ha cap sobre per obrir. Inicia sessió i clica una estrella daurada
-								del mapa.
+								{#if isPackToday}
+									Ara mateix no hi ha cap sobre per obrir. Inicia sessió i clica una estrella daurada
+									del mapa.
+								{:else}
+									Cap municipi no celebra la festa major aquest dia.
+								{/if}
 							</p>
 						</div>
 					{/if}

@@ -38,13 +38,24 @@ class FestesService {
 	 * configured, so auth-less local dev degrades to "cap municipi de festa".
 	 */
 	async loadTodayFestes(): Promise<FestaLocationRow[]> {
+		return this.loadFestesForDate(catalanTodayIso());
+	}
+
+	/**
+	 * The municipalities celebrating a local holiday on `date` (a `YYYY-MM-DD` in
+	 * Catalan time, as {@link catalanTodayIso} produces), name-sorted. Any day can be
+	 * read — the map's booster panel browses the calendar back and forth — but only
+	 * today's towns can actually be claimed against; the `claim_booster` RPC enforces
+	 * that server-side regardless of what is on screen.
+	 */
+	async loadFestesForDate(date: string): Promise<FestaLocationRow[]> {
 		if (!isSupabaseConfigured()) return [];
 
 		const supabase = getSupabaseClient();
 		const { data, error } = await supabase
 			.from('festivities')
 			.select('festa_locations!inner(id, name, comarca, prov, territory)')
-			.eq('date', catalanTodayIso());
+			.eq('date', date);
 		if (error) throw error;
 
 		// Flatten the join (one location per festivity row) and de-duplicate by id
