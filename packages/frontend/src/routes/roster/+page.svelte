@@ -694,7 +694,7 @@
 			{:else}
 				<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
 					<p class="text-xs opacity-60">
-						Drag or scroll to move through your cards.
+						Scroll to move through your cards.
 						{#if recycleMode}
 							Tap a card to select or deselect it for recycling.
 						{:else if activeTeam}

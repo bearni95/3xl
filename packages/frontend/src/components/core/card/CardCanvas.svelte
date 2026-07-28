@@ -19,7 +19,7 @@
 	// Layout mode: 'fit' scales everything to the host; 'grid' lays cards out at a
 	// natural, responsive size in a navigable world (pair with `pannable`).
 	export let layout: CardLayout = 'fit';
-	// Enable map-style pan/zoom navigation (only meaningful in the 'grid' layout).
+	// Enable wheel scrolling and card clicks (only meaningful in the 'grid' layout).
 	export let pannable: boolean = false;
 	// Horizontally mirror each card's idle art. Defaults to true (the player's normal
 	// look); set false for the board's rival variant (original, unmirrored art).

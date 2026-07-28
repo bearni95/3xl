@@ -12,8 +12,9 @@
  *  - `'grid'` — the `columns` cards per row always span the canvas width exactly
  *    (fit-to-width, so the zoom is fixed and re-fits when the column count
  *    changes), and the rows extend into a taller-than-canvas world. With
- *    `pannable` the world scrolls vertically — drag or wheel to move through the
- *    rows; there is no free zoom (the column count is the density control).
+ *    `pannable` the world scrolls vertically — the wheel moves through the rows;
+ *    there is no dragging and no free zoom (the column count is the density
+ *    control).
  *
  * This is the drop-in primitive for rendering character cards anywhere — the pack
  * opener uses {@link ClaimPackScene} for its bespoke reveal choreography, but any
@@ -38,10 +39,7 @@ const FILL = 0.92;
 // `gap-4` (16px). Cards are sized to fill the container width at these columns.
 const NAV_GAP = 16;
 const NAV_PAD = 16;
-// How far a pointer may travel between down and up and still count as a tap
-// (rather than a pan), in screen pixels.
-const TAP_SLOP = 6;
-// A little overscroll past the grid edges, so panning feels springy, not walled.
+// A little overscroll past the grid edges, so scrolling feels springy, not walled.
 const PAN_MARGIN = 48;
 // Vertical room between the leading slot band and the roster below it, with a rule
 // drawn down its middle — enough that the two read as separate sections.
@@ -111,7 +109,7 @@ export interface CardSceneOptions {
 	onCardTap?: (index: number) => void;
 	/** Layout mode (default `'fit'`). */
 	layout?: CardLayout;
-	/** Enable map-style pan/zoom navigation (only meaningful in `'grid'`). */
+	/** Enable wheel scrolling and card clicks (only meaningful in `'grid'`). */
 	pannable?: boolean;
 	/**
 	 * Horizontally mirror each card's idle art (default `true` — the normal look
@@ -172,13 +170,6 @@ export class CardScene {
 	// Whether the initial view has been framed (so a resize keeps the scroll offset).
 	private framed = false;
 
-	// In-flight drag gesture (a single pointer; the grid has no pinch/zoom).
-	private dragPointerId: number | null = null;
-	private dragMoved = false;
-	private dragStart = { x: 0, y: 0 };
-	private panStart = { x: 0, y: 0 };
-	private downCardIndex: number | null = null;
-	private downSlotButton: number | null = null;
 
 	constructor(host: HTMLElement, options: CardSceneOptions) {
 		this.host = host;
@@ -346,8 +337,7 @@ export class CardScene {
 			const sprite = this.makeSprite(i, cardW, cardH);
 			sprite.pivot.set(cardW / 2, cardH / 2);
 			sprite.position.set(rowStartX + col * cellW, firstRowY + row * cellH);
-			// Display-only fit canvases still support a simple per-sprite tap (no pan
-			// to disambiguate against); grid layout does its own tap-vs-pan handling.
+			// Fit canvases tap per sprite; the grid hit-tests its own geometry instead.
 			if (this.onCardTap && !this.pannable) {
 				const index = i;
 				sprite.eventMode = 'static';
@@ -547,7 +537,7 @@ export class CardScene {
 
 	/**
 	 * The Remove button under a filled slot: a card-wide pill with a centred label.
-	 * Drawn, not interactive — the grid does its own tap-vs-pan hit testing, and
+	 * Drawn, not interactive — the grid hit-tests clicks against its own geometry, and
 	 * {@link slotButtonIndexAt} matches this geometry.
 	 */
 	private makeRemoveButton(x: number, y: number, cardW: number): Graphics {
@@ -712,32 +702,22 @@ export class CardScene {
 		return index < this.slots.length && this.slots[index] ? index : null;
 	}
 
-	private localPoint(event: PointerEvent): { x: number; y: number } {
+	private localPoint(event: MouseEvent): { x: number; y: number } {
 		const rect = this.app.canvas.getBoundingClientRect();
 		return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 	}
 
 	private attachNavigation(): void {
 		const canvas = this.app.canvas;
-		canvas.style.touchAction = 'none';
-		canvas.style.cursor = 'grab';
 		canvas.addEventListener('wheel', this.onWheel, { passive: false });
-		canvas.addEventListener('pointerdown', this.onPointerDown);
-		canvas.addEventListener('pointermove', this.onPointerMove);
-		canvas.addEventListener('pointerup', this.onPointerUp);
-		canvas.addEventListener('pointercancel', this.onPointerUp);
-		canvas.addEventListener('pointerleave', this.onPointerUp);
+		canvas.addEventListener('click', this.onClick);
 	}
 
 	private detachNavigation(): void {
 		const canvas = this.app.canvas;
 		if (!canvas) return;
 		canvas.removeEventListener('wheel', this.onWheel);
-		canvas.removeEventListener('pointerdown', this.onPointerDown);
-		canvas.removeEventListener('pointermove', this.onPointerMove);
-		canvas.removeEventListener('pointerup', this.onPointerUp);
-		canvas.removeEventListener('pointercancel', this.onPointerUp);
-		canvas.removeEventListener('pointerleave', this.onPointerUp);
+		canvas.removeEventListener('click', this.onClick);
 	}
 
 	/** The wheel scrolls the rows vertically (zoom is fixed — the slider is the
@@ -750,54 +730,19 @@ export class CardScene {
 		this.applyTransform();
 	};
 
-	private onPointerDown = (event: PointerEvent): void => {
-		// One pointer drives the scroll; ignore extra fingers (there is no pinch).
-		if (this.dragPointerId !== null) return;
+	/**
+	 * A click selects the card under it, or — when it lands on a slot's Remove button
+	 * — drops that pick. The button wins: it is drawn over no card. With no drag to
+	 * disambiguate against, a click is a click.
+	 */
+	private onClick = (event: MouseEvent): void => {
 		const { x, y } = this.localPoint(event);
-		this.dragPointerId = event.pointerId;
-		try {
-			this.app.canvas.setPointerCapture(event.pointerId);
-		} catch {
-			// Capture is best-effort; navigation still works without it.
+		const slotButton = this.slotButtonIndexAt(x, y);
+		if (slotButton != null) {
+			this.onSlotRemove?.(slotButton);
+			return;
 		}
-		this.dragMoved = false;
-		this.dragStart = { x, y };
-		this.panStart = { ...this.pan };
-		this.downCardIndex = this.cardIndexAt(x, y);
-		this.downSlotButton = this.slotButtonIndexAt(x, y);
-		this.app.canvas.style.cursor = 'grabbing';
-	};
-
-	private onPointerMove = (event: PointerEvent): void => {
-		if (event.pointerId !== this.dragPointerId) return;
-		const { x, y } = this.localPoint(event);
-		const dx = x - this.dragStart.x;
-		const dy = y - this.dragStart.y;
-		if (Math.hypot(dx, dy) > TAP_SLOP) this.dragMoved = true;
-		// Fit-to-width means the horizontal axis is clamped back to centre; the drag
-		// still updates it so a diagonal gesture reads naturally.
-		this.pan.x = this.panStart.x + dx;
-		this.pan.y = this.panStart.y + dy;
-		this.clampPan();
-		this.applyTransform();
-	};
-
-	private onPointerUp = (event: PointerEvent): void => {
-		if (event.pointerId !== this.dragPointerId) return;
-		try {
-			this.app.canvas.releasePointerCapture(event.pointerId);
-		} catch {
-			// ignore — capture may already be gone
-		}
-		// A clean tap (no meaningful movement) on a card selects it; on a slot's Remove
-		// button, drops that pick. The button wins — it is drawn over no card.
-		if (!this.dragMoved) {
-			if (this.downSlotButton != null) this.onSlotRemove?.(this.downSlotButton);
-			else if (this.downCardIndex != null) this.onCardTap?.(this.downCardIndex);
-		}
-		this.dragPointerId = null;
-		this.downCardIndex = null;
-		this.downSlotButton = null;
-		this.app.canvas.style.cursor = 'grab';
+		const cardIndex = this.cardIndexAt(x, y);
+		if (cardIndex != null) this.onCardTap?.(cardIndex);
 	};
 }
