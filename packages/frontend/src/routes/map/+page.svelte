@@ -1272,9 +1272,15 @@
 				grid just as well. -->
 			<div class="join grid grid-cols-4">
 				{#each panelTabs as tab (tab.id)}
+					<!-- The tab that is forward is filled in the theme's primary; the rest stay
+						outlined. btn-active only darkened the outline, which barely read as a
+						selection at this size. -->
 					<button
 						type="button"
-						class={classNames('btn btn-outline btn-sm join-item', { 'btn-active': panelTab === tab.id })}
+						class={classNames(
+							'btn btn-sm join-item',
+							panelTab === tab.id ? 'btn-primary' : 'btn-outline'
+						)}
 						aria-pressed={panelTab === tab.id}
 						on:click={() => selectTab(tab.id)}
 					>
