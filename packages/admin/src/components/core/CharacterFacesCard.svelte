@@ -131,7 +131,7 @@
 					<img
 						src={`${character.basePath}/${face.file}`}
 						alt={`${faceLabel(face.image)} portrait`}
-						class="h-20 w-20 bg-base-300 object-contain"
+						class="h-40 w-40 bg-base-300 object-contain"
 					/>
 					<span class="text-[10px] leading-none opacity-60">
 						{faceLabel(face.image)}{face.file === defaultFace ? ' · default' : ''}
