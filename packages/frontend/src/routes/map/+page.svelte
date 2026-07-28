@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { characters } from '@3xl/data';
@@ -1340,19 +1341,6 @@
 					</button>
 				</div>
 
-				{#if calendarOpen}
-					<div class="flex-none px-3 pt-3">
-						<PackDateCalendar
-							month={calendarMonth}
-							value={packDate}
-							today={todayIso}
-							counts={calendarCounts}
-							loading={loadingCountsMonth === calendarMonth}
-							on:month={(event) => (calendarMonth = event.detail)}
-							on:select={(event) => pickPackDate(event.detail)}
-						/>
-					</div>
-				{/if}
 				<!-- Why the last roll revealed nothing. `claim_booster` refuses for reasons the
 					player can act on (the allowance is spent, the town isn't de festa today), and
 					the panel that normally reports them is mounted hidden here — so a pack sliced
@@ -1373,7 +1361,25 @@
 					</div>
 				{/if}
 
-				<div class="min-h-0 flex-1 p-3">
+				<div class="relative min-h-0 flex-1 p-3">
+					<!-- The calendar lives over the pack canvas rather than above it, sliding down
+						from the date row and back up again — so opening it never re-sizes the
+						canvas underneath (a resized WebGL grid would have to re-lay itself out). -->
+					{#if calendarOpen}
+						<div class="absolute inset-x-3 top-3 z-10" transition:slide={{ duration: 200 }}>
+							<PackDateCalendar
+								month={calendarMonth}
+								value={packDate}
+								today={todayIso}
+								counts={calendarCounts}
+								loading={loadingCountsMonth === calendarMonth}
+								classes="shadow-xl"
+								on:month={(event) => (calendarMonth = event.detail)}
+								on:select={(event) => pickPackDate(event.detail)}
+							/>
+						</div>
+					{/if}
+
 					{#if packTownId}
 						<!-- Keyed on the town so clicking another star remounts a fresh, unsliced
 							pack rather than reusing the last one's scene. -->
