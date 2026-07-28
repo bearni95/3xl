@@ -4,13 +4,16 @@
 	import { _, locale } from 'svelte-i18n';
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
+	import { spawnService } from '$services/spawn.service';
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { AuthStatus } from '$types/profile.type';
 	import CharacterFace from '$components/core/CharacterFace.svelte';
 	import { characterFace, type CharacterFace as Face } from '$utils/mugen/character-face';
+	import { avatarCharacterIds } from '$utils/spawn/avatar';
 
 	const status = authService.status;
 	const profile = authService.profile;
+	const spawns = spawnService.spawns;
 
 	// character id → its active face portrait with the square framed on it, the
 	// very ones the admin picked and cropped on /characters/faces. Loaded once,
@@ -18,6 +21,11 @@
 	let faces = new Map<string, Face>();
 	let loading = false;
 	let loaded = false;
+	// The player's cards, loaded once per signed-in player — they decide which
+	// portraits are wearable at all, so the grid waits for them too rather than
+	// flashing every tile as locked.
+	let spawnsLoadedFor: string | null = null;
+	let spawnsLoading = false;
 	// The character being saved, so only its own tile spins.
 	let saving: string | null = null;
 	let errorMessage: string | null = null;
@@ -26,10 +34,27 @@
 
 	$: signedIn = $status === AuthStatus.SignedIn && !!$profile;
 	$: open = signedIn && $avatarPickerOpen;
+	$: currentUserId = signedIn && $profile ? String($profile.id) : null;
 	$: if (open && !loaded && !loading) void loadFaces();
+	$: if (open && currentUserId && currentUserId !== spawnsLoadedFor) {
+		spawnsLoadedFor = currentUserId;
+		spawnsLoading = true;
+		void spawnService
+			.loadSpawns(currentUserId)
+			.catch(() => {})
+			.finally(() => (spawnsLoading = false));
+	}
 
-	// Only characters that actually ship a portrait can be worn as one.
-	$: pickable = characters.filter((character) => faces.has(character.id));
+	// A portrait is earned, not just picked: the player must hold that character in
+	// all six spawn colours. The `set_player_avatar` RPC enforces the same rule, so
+	// a locked tile is one the server would refuse.
+	$: unlocked = avatarCharacterIds($spawns);
+
+	// Only characters that actually ship a portrait can be worn as one, the ones
+	// the player has completed the colour set of first.
+	$: pickable = characters
+		.filter((character) => faces.has(character.id))
+		.sort((a, b) => Number(unlocked.has(b.id)) - Number(unlocked.has(a.id)));
 
 	async function loadFaces(): Promise<void> {
 		loading = true;
@@ -53,7 +78,7 @@
 	}
 
 	async function pick(characterId: string): Promise<void> {
-		if (saving) return;
+		if (saving || !unlocked.has(characterId)) return;
 		errorMessage = null;
 		saving = characterId;
 		try {
@@ -77,7 +102,7 @@
 		<div class="modal-box max-w-3xl">
 			<h3 class="text-lg font-semibold">{$_('profile.avatar.title')}</h3>
 
-			{#if loading && !loaded}
+			{#if (loading && !loaded) || spawnsLoading}
 				<div class="flex items-center gap-2 py-8 opacity-70">
 					<span class="loading loading-spinner loading-sm"></span>
 					<span class="text-sm">{$_('common.loading')}</span>
@@ -86,16 +111,20 @@
 				<div class="mt-4 grid max-h-[60vh] grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4 md:grid-cols-5">
 					{#each pickable as character (character.id)}
 						{@const selected = $profile?.avatarCharacterId === character.id}
+						{@const locked = !unlocked.has(character.id)}
 						<button
 							type="button"
 							class={classNames(
 								'flex flex-col items-center gap-1 rounded-box border-2 p-2 transition',
 								{
 									'border-primary ring-2 ring-primary': selected,
-									'border-transparent hover:border-base-300 hover:bg-base-200': !selected
+									'border-transparent': !selected,
+									'hover:border-base-300 hover:bg-base-200': !selected && !locked,
+									'opacity-40': locked
 								}
 							)}
-							disabled={saving !== null}
+							title={locked ? $_('profile.avatar.locked') : character.label}
+							disabled={locked || saving !== null}
 							on:click={() => pick(character.id)}
 						>
 							<div class="relative">

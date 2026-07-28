@@ -163,11 +163,15 @@ export function ensureTables(): Promise<void> {
 				-- definer because player_profiles has no client write policy — this
 				-- writes exactly one cosmetic column and can never touch exp. The id
 				-- must be a known character template, so a crafted call can't store an
-				-- arbitrary string.
+				-- arbitrary string, and the caller must have *earned* the portrait: they
+				-- need a card of that character in each of the six spawn colours (see
+				-- SpawnColor in @3xl/shared). That check lives here rather than in the
+				-- browser, so a crafted call cannot wear an uncollected face.
 				create or replace function set_player_avatar(p_character_id text)
 				returns text language plpgsql security definer set search_path = public as $set_player_avatar$
 				declare
 						v_uid uuid := auth.uid();
+						v_colors int;
 				begin
 						if v_uid is null then
 								raise exception 'You must be signed in to choose an avatar.';
@@ -176,6 +180,16 @@ export function ensureTables(): Promise<void> {
 								select 1 from character_templates t where t.id = p_character_id
 						) then
 								raise exception 'Unknown character: %', p_character_id;
+						end if;
+						if p_character_id is not null then
+								select count(distinct cs.color) into v_colors
+								from character_spawns cs
+								where cs.user_id = v_uid
+									and cs.character_id = p_character_id
+									and cs.color in ('red', 'yellow', 'blue', 'orange', 'green', 'purple');
+								if v_colors < 6 then
+										raise exception 'Collect this character in all six colours to wear its portrait.';
+								end if;
 						end if;
 						insert into player_profiles (user_id, avatar_character_id)
 								values (v_uid, p_character_id)

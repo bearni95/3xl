@@ -52,7 +52,10 @@ create policy player_profiles_select_own on public.player_profiles
 -- Set (or clear, with null) the caller's avatar character. security definer
 -- because the table takes no client writes: this touches exactly one cosmetic
 -- column and can never reach `exp`. The id must name a known character template,
--- so a crafted call cannot store an arbitrary string.
+-- so a crafted call cannot store an arbitrary string — and the portrait has to be
+-- earned: the caller needs a `character_spawns` card of that character in each of
+-- the six spawn colours (SpawnColor in @3xl/shared). The picker in the frontend
+-- greys out what it can't offer, but this is the rule that decides.
 create or replace function public.set_player_avatar(p_character_id text)
 returns text
 language plpgsql
@@ -61,6 +64,7 @@ set search_path = public
 as $$
 declare
 	v_uid uuid := auth.uid();
+	v_colors int;
 begin
 	if v_uid is null then
 		raise exception 'You must be signed in to choose an avatar.';
@@ -69,6 +73,16 @@ begin
 		select 1 from public.character_templates t where t.id = p_character_id
 	) then
 		raise exception 'Unknown character: %', p_character_id;
+	end if;
+	if p_character_id is not null then
+		select count(distinct cs.color) into v_colors
+		from public.character_spawns cs
+		where cs.user_id = v_uid
+			and cs.character_id = p_character_id
+			and cs.color in ('red', 'yellow', 'blue', 'orange', 'green', 'purple');
+		if v_colors < 6 then
+			raise exception 'Collect this character in all six colours to wear its portrait.';
+		end if;
 	end if;
 	insert into public.player_profiles (user_id, avatar_character_id)
 		values (v_uid, p_character_id)

@@ -47,6 +47,7 @@
 		},
 		"avatar": {
 			"title": "Choose your avatar",
+			"locked": "Collect this character in all six colours to wear its portrait.",
 			"edit": "Change avatar"
 		}
 	},
