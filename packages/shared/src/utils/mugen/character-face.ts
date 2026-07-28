@@ -1,6 +1,6 @@
 import type { Manifest, ManifestFace } from '$utils/mugen/mugen-player';
 import type { CharacterDefinition, FaceCrop } from '$types/character-definition.type';
-import { clampFaceCrop } from '$utils/mugen/face-crop';
+import { clampFaceCrop, defaultFaceCrop } from '$utils/mugen/face-crop';
 
 /** A character's active portrait: the file, its intrinsic size, and its framing. */
 export interface CharacterFace {
@@ -11,7 +11,10 @@ export interface CharacterFace {
 	height: number;
 	/**
 	 * The square framed on this portrait in the admin Faces tab, already clamped
-	 * to the sprite, or null when none is authored (show the whole portrait).
+	 * to the sprite — falling back to {@link defaultFaceCrop}, the very square that
+	 * screen shows before anyone drags it, so a face is *always* framed to a
+	 * square. Null only when the manifest doesn't describe the sprite's size, and
+	 * there is no pixel space to crop in.
 	 */
 	crop: FaceCrop | null;
 }
@@ -46,9 +49,14 @@ export async function resolveCharacterFace(
 		(manifest.face?.file === faceFile ? manifest.face : null);
 	const width = entry?.width ?? 0;
 	const height = entry?.height ?? 0;
+	// A stored crop is in one specific sprite's pixels, so it only counts while it
+	// is that sprite that's picked — exactly the rule the admin Faces tab applies.
+	// With none (or one authored against another portrait) the face still gets a
+	// square: the default one that screen frames, top-anchored and centred.
+	const stored = definition.face === faceFile ? (definition.faceCrop ?? null) : null;
 	const crop =
-		definition.faceCrop && width > 0 && height > 0
-			? clampFaceCrop(definition.faceCrop, width, height)
+		width > 0 && height > 0
+			? clampFaceCrop(stored ?? defaultFaceCrop(width, height), width, height)
 			: null;
 
 	return { url: `${basePath}/${faceFile}`, width, height, crop };
