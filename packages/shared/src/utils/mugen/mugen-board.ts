@@ -226,6 +226,15 @@ const ORDER_IDLE_FILL = 0x1f2937;
 const ORDER_DISABLED_FILL = 0x374151;
 /** How far the glyph on a disabled button fades toward its background. */
 const ORDER_DISABLED_ALPHA = 0.35;
+/**
+ * Room kept below the board for a strip of order buttons, as a multiple of the
+ * near-edge cell size. The crop is taken once, before any orders exist, and the
+ * strips hang below their fighter's feet — including the fighter standing on the
+ * near row, whose feet *are* the bottom of the crop. Without this the buttons under
+ * it would be cut off by the canvas edge. Generous enough for the largest strip a
+ * near-row fighter can carry.
+ */
+const ORDER_RESERVE_RATIO = 0.5;
 
 /** Lifetime of a strike slash overlay (ms). */
 const SLASH_MS = 420;
@@ -514,10 +523,11 @@ export class MugenBoard {
 
 	/**
 	 * Shrink the canvas to the bounding box of everything drawn (grid + characters),
-	 * so the hex grid sits flush against the left/right edges and the
-	 * canvas is exactly tall enough for the grid plus the front-row characters that
-	 * stand below its near edge. The stage is offset so the content stays in view;
-	 * the projection's design size is left untouched so hex positions don't shift.
+	 * so the hex grid sits flush against the left/right edges and the canvas is exactly
+	 * tall enough for the grid, the front-row characters standing below its near edge,
+	 * and the order buttons that hang below *them*. The stage is offset so the content
+	 * stays in view; the projection's design size is left untouched so hex positions
+	 * don't shift.
 	 */
 	private fitToContent(): void {
 		if (!this.app) return;
@@ -525,10 +535,13 @@ export class MugenBoard {
 		// A little breathing room so nothing sits hard against the edge (and to absorb
 		// the small per-frame bounds wobble as animations play).
 		const margin = 8;
+		// Plus standing room under the near row for the order buttons, which are hung
+		// below a fighter's feet long after this crop is taken.
+		const reserve = this.options.cellSize * ORDER_RESERVE_RATIO;
 		const left = Math.floor(bounds.minX - margin);
 		const top = Math.floor(bounds.minY - margin);
 		const width = Math.ceil(bounds.maxX + margin) - left;
-		const height = Math.ceil(bounds.maxY + margin) - top;
+		const height = Math.ceil(bounds.maxY + margin + reserve) - top;
 		this.app.stage.position.set(-left, -top);
 		this.app.renderer.resize(width, height);
 	}
