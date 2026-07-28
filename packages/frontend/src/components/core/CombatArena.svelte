@@ -543,16 +543,27 @@
 	<div class="flex w-full flex-col gap-1">
 		{@render charges(fighter)}
 		<!-- The three orders as one row of glyphs. Nothing is written on them, so each
-		     carries the order's name for anything that cannot see it. -->
+		     carries the order's name for anything that cannot see it.
+		
+		     An order that cannot be taken is disabled, never dropped — but disabling has
+		     to be *seen*, and DaisyUI answers a disabled button by dropping its
+		     foreground to a fifth of base-content. The glyph paints in that foreground
+		     (that is the point of inlining it), so left alone a disabled order reads as
+		     an empty slab rather than as an order that is out of reach. Hence the
+		     explicit disabled colours: a plainly present button, plainly greyed. -->
 		<div class="join w-full">
 			{#each COMBAT_ACTIONS as action (action)}
 				{@const unavailable = action === 'shoot' && !fighter?.canShoot}
 				<button
 					type="button"
-					class={classNames('btn join-item btn-lg min-w-0 flex-1 px-0', {
-						'btn-primary': fighter?.action === action,
-						'btn-neutral': fighter?.action !== action
-					})}
+					class={classNames(
+						'btn join-item btn-lg min-w-0 flex-1 px-0',
+						'disabled:!bg-base-300 disabled:!text-base-content/60',
+						{
+							'btn-primary': fighter?.action === action,
+							'btn-neutral': fighter?.action !== action
+						}
+					)}
 					aria-label={actionLabel(action)}
 					disabled={locked || unavailable}
 					on:click={() => controller?.setAction(badge.id, action)}
@@ -569,7 +580,7 @@
 		<label
 			class={classNames('flex items-center justify-center gap-1 text-[11px]', {
 				'cursor-pointer': !bonusLocked,
-				'opacity-40': bonusLocked
+				'opacity-60': bonusLocked
 			})}
 		>
 			<input

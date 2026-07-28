@@ -18,6 +18,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			$lib: resolve(__dirname, './src/lib'),
+			$components: resolve(__dirname, './src/components'),
 			$services: resolve(__dirname, './src/services'),
 			// types/utils/adapters now live in the @3xl/shared workspace package.
 			$adapters: resolve(__dirname, '../shared/src/adapters'),
