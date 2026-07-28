@@ -9,7 +9,7 @@
  * The cluster is tilted diagonally so the red half sits **lower** on screen
  * (nearer the viewer, smaller r) and to the left, while the blue half sits
  * higher (further into the board) and to the right. Each column therefore spans
- * its own explicit [minR, maxR] range ({@link ROW_RANGE}) — the red columns run
+ * its own explicit [minR, maxR] range ({@link ROW_RANGE}) — the red column runs
  * through low r, the blue columns through high r — rather than the symmetric
  * upright hexagon the field used to be.
  */
@@ -28,15 +28,17 @@ export const HEX_RADIUS = 3;
 
 /**
  * The [minR, maxR] row range each column occupies (inclusive). Columns not
- * listed have no cells. This is the whole board shape: red columns (q < 0) run
- * through the low (near, lower-on-screen) rows, blue columns (q > 0) through the
- * high (far, higher-on-screen) rows, so the halves read as a diagonal — red
+ * listed have no cells. This is the whole board shape: the red column (q < 0) runs
+ * through the low (near, lower-on-screen) rows, the blue columns (q > 0) through
+ * the high (far, higher-on-screen) rows, so the halves read as a diagonal — red
  * lower-left, blue upper-right. The central purple column sits a row lower than
  * its neighbours (its top cell recessed), and the inner blue column runs the
- * full depth so every purple duel cell keeps a blue east-neighbour to face.
+ * full depth so every purple cell keeps a blue east-neighbour to face.
+ *
+ * The red half is a single column deep: the rivals open on the purple column
+ * itself and have exactly one column of their own to be pushed back onto.
  */
 const ROW_RANGE = new Map<number, [number, number]>([
-	[-2, [-2, 0]],
 	[-1, [-3, 0]],
 	[0, [-3, -1]],
 	[1, [-4, -1]],

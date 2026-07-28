@@ -3,9 +3,11 @@ import { get } from 'svelte/store';
 import {
 	CombatController,
 	MAX_CHARGES,
+	RIVAL_RANKS,
 	type CombatState,
 	type FighterSeed
 } from '$services/combat.controller';
+import { cellSide, isBoardCell } from '$utils/mugen/hex';
 import type { CombatColor } from '$types/character-definition.type';
 
 /**
@@ -315,6 +317,33 @@ describe('the stand-off', () => {
 			controller.setTarget('p0', 'r0');
 			expect(fighterOf(get(controller), 'p0').targetId).not.toBe('p1');
 			expect(fighterOf(get(controller), 'p0').targetId).not.toBe('r0');
+		});
+	});
+
+	describe('the ground the rivals give up', () => {
+		it('has a rank per loss, each one cell smaller than the last', () => {
+			expect(RIVAL_RANKS.map((rank) => rank.length)).toEqual([3, 2, 1]);
+		});
+
+		it('stands them on real cells — the opening rank purple, the rest their own half', () => {
+			for (const cell of RIVAL_RANKS[0]) {
+				expect(isBoardCell(cell.q, cell.r)).toBe(true);
+				// They open as far forward as the board allows: the shared purple column.
+				expect(cellSide(cell.q)).toBe('purple');
+			}
+			for (const rank of RIVAL_RANKS.slice(1)) {
+				for (const cell of rank) {
+					expect(isBoardCell(cell.q, cell.r)).toBe(true);
+					expect(cellSide(cell.q)).toBe('red');
+				}
+			}
+		});
+
+		it('never sends two survivors to the same cell', () => {
+			for (const rank of RIVAL_RANKS) {
+				const keys = rank.map((cell) => `${cell.q},${cell.r}`);
+				expect(new Set(keys).size).toBe(keys.length);
+			}
 		});
 	});
 

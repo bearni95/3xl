@@ -24,7 +24,7 @@
  * where it is aiming.
  *
  * The rivals open **on the central column**, as far forward as the board allows, and
- * are pushed back a column every time one of them is taken down — the survivors fall
+ * are pushed further out every time one of them is taken down — the survivors fall
  * back to what is from then on their starting ground (see {@link RIVAL_RANKS}). So
  * the board itself shows how the fight is going, without a single HP bar: the meter
  * under each fighter counts its charges, not its health.
@@ -64,22 +64,27 @@ export const MAX_TURNS = 20;
 
 /**
  * The ground the rival line holds, a rank per fighter it has lost: they open on the
- * central column (rank 0) and give up a column every time one of them goes down, so
- * `RIVAL_RANKS[n]` holds exactly the `3 − n` cells the survivors stand on after `n`
- * knockouts. Each rank is listed top→bottom on screen, the same order the board
- * draws that side's cards in.
+ * central column (rank 0) and are pushed further from it every time one of them goes
+ * down, so `RIVAL_RANKS[n]` holds exactly the `3 − n` cells the survivors stand on
+ * after `n` knockouts. The red half is one column deep, so the last two ranks are
+ * both on it — the retreat carries on along the column, each rank sitting further
+ * out to the left than the one before.
+ *
+ * Each rank is listed top→bottom on screen (which on a given column is `r`
+ * descending), the same order the board draws that side's cards in and the order the
+ * survivors are walked back in, so nobody crosses anybody on the way.
  */
 export const RIVAL_RANKS: Hex[][] = [
 	[
-		{ q: 0, r: -3 },
+		{ q: 0, r: -1 },
 		{ q: 0, r: -2 },
-		{ q: 0, r: -1 }
+		{ q: 0, r: -3 }
 	],
 	[
-		{ q: -1, r: -2 },
-		{ q: -1, r: -1 }
+		{ q: -1, r: -1 },
+		{ q: -1, r: -2 }
 	],
-	[{ q: -2, r: -1 }]
+	[{ q: -1, r: -3 }]
 ];
 
 /** Animation played when a fighter fires and its definition binds no ranged move. */

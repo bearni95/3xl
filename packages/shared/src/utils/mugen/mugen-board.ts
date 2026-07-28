@@ -211,7 +211,7 @@ const AURA_HEIGHT_RATIO = 1.25;
  * `q`/`r` of its own.
  */
 const LEAD_CELLS: [Hex, Hex] = [
-	{ q: -2, r: -1 },
+	{ q: -1, r: -1 },
 	{ q: 2, r: -3 }
 ];
 
