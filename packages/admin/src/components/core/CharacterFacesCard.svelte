@@ -94,24 +94,29 @@
 	}
 
 	$: cardClasses = classNames(
-		'card items-stretch gap-2 border-2 border-transparent bg-base-100 p-3 shadow-md',
+		'card flex-row items-center gap-4 bg-base-100 p-3 shadow-md',
 		classes
 	);
 </script>
 
 <div class={cardClasses}>
-	<span class="truncate text-center text-sm font-medium">{character.label}</span>
+	<div class="flex w-40 shrink-0 flex-col gap-1">
+		<span class="truncate text-sm font-medium" title={character.label}>{character.label}</span>
+		{#if saveError}
+			<span class="text-xs text-error">{saveError}</span>
+		{/if}
+	</div>
 
 	{#if loading}
-		<div class="flex items-center justify-center gap-2 py-4 opacity-70">
+		<div class="flex flex-1 items-center gap-2 opacity-70">
 			<span class="loading loading-spinner loading-sm"></span>
 		</div>
 	{:else if loadError}
-		<span class="text-xs text-error">{loadError}</span>
+		<span class="flex-1 text-xs text-error">{loadError}</span>
 	{:else if faces.length === 0}
-		<span class="py-4 text-center text-xs opacity-60">No group-9000 portraits</span>
+		<span class="flex-1 text-xs opacity-60">No group-9000 portraits</span>
 	{:else}
-		<div class="flex flex-wrap justify-center gap-2">
+		<div class="flex flex-1 flex-wrap items-end gap-2">
 			{#each faces as face (face.file)}
 				{@const selected = activeFile === face.file}
 				<button
@@ -126,7 +131,7 @@
 					<img
 						src={`${character.basePath}/${face.file}`}
 						alt={`${faceLabel(face.image)} portrait`}
-						class="h-16 w-16 bg-base-300 object-contain"
+						class="h-20 w-20 bg-base-300 object-contain"
 					/>
 					<span class="text-[10px] leading-none opacity-60">
 						{faceLabel(face.image)}{face.file === defaultFace ? ' · default' : ''}
@@ -135,22 +140,17 @@
 			{/each}
 		</div>
 
-		<div class="flex justify-end">
-			<button
-				class="btn btn-secondary btn-xs"
-				type="button"
-				disabled={!dirty || saving}
-				on:click={save}
-			>
-				{#if saving}
-					<span class="loading loading-spinner loading-xs"></span>
-				{:else}
-					Save
-				{/if}
-			</button>
-		</div>
-		{#if saveError}
-			<span class="text-xs text-error">{saveError}</span>
-		{/if}
+		<button
+			class="btn btn-secondary btn-sm shrink-0"
+			type="button"
+			disabled={!dirty || saving}
+			on:click={save}
+		>
+			{#if saving}
+				<span class="loading loading-spinner loading-xs"></span>
+			{:else}
+				Save
+			{/if}
+		</button>
 	{/if}
 </div>

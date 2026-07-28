@@ -38,7 +38,7 @@
 			<a class="link link-primary text-sm" href="/characters">← Back to character frames</a>
 		</header>
 
-		<CharacterShowGroups {characters} {rarityById} let:character>
+		<CharacterShowGroups {characters} {rarityById} variant="tabs" let:character>
 			<CharacterFacesCard {character} />
 		</CharacterShowGroups>
 	</div>
