@@ -16,7 +16,7 @@
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
-	import { spawnService } from '$services/spawn.service';
+	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { authService } from '$services/auth.service';
 	import { territoryService } from '$services/territory.service';
 	import { territoryAdapter } from '$adapters/classes/territory.adapter';
@@ -861,6 +861,7 @@
 	// mounts its canvas). The stars only ever mark today's festes, so this also walks
 	// the browsed day back to today.
 	function openPack(id: string): void {
+		clearPackFeedback();
 		packDate = todayIso;
 		packTownId = id;
 		panelTab = PanelTab.Pack;
@@ -946,6 +947,43 @@
 	});
 	$: packDateLabel = packDateFormat.format(new Date(`${packDate}T12:00:00Z`));
 
+	// What the hidden claim panel reports back about opening a pack: the player's
+	// remaining daily allowance, and why the last roll was refused (empty when it
+	// wasn't). The server is what enforces both — every refusal in `claim_booster`
+	// (signed out, town not de festa today, allowance spent, show with no claimable
+	// characters) surfaces here, and the pack reveals no cards. Shown in the Booster
+	// tab, because a pack that opens onto nothing has to say why.
+	let claimError = '';
+	let boosters: BoostersStatus | null = null;
+
+	// Nothing left to open today: the packs stay on screen but stop being openable, so
+	// the tab says so up front instead of letting a pack slice open onto nothing. Null
+	// (signed out, or the status hasn't loaded) leaves them openable — the server has
+	// the last word either way.
+	$: allowanceSpent = !!boosters && boosters.remaining <= 0;
+
+	// How many cards the last pack opened in this panel revealed, or null before any
+	// has been opened. Zero means the pack sliced open onto an empty canvas: the roll
+	// resolved to nothing. That is normally a refusal (and `claimError` then says which),
+	// but it is reported separately so an empty reveal is never silent.
+	let lastRevealed: number | null = null;
+
+	// Drop whatever the last open said, so its alert doesn't hang over the next pack.
+	function clearPackFeedback(): void {
+		lastRevealed = null;
+		claimError = '';
+	}
+
+	function onPackOpened(revealed: number): void {
+		lastRevealed = revealed;
+		// A successful open spends one of the day's packs; re-read the allowance so the
+		// counter in the header follows along.
+		void spawnService
+			.boostersStatus()
+			.then((status) => (boosters = status))
+			.catch(() => {});
+	}
+
 	// The pack picked on the grid canvas — named in the header, and the reason the
 	// "all packs" control shows. Plus a counter bumped to remount the grid, since a
 	// picked pack has zoomed in and only a fresh scene lays the full grid back out.
@@ -958,6 +996,7 @@
 	// picked. Every remount is a fresh WebGL context, and the browser hands out a
 	// limited number of those across the whole page.
 	function showPackGrid(): void {
+		clearPackFeedback();
 		if (gridPack) gridSession += 1;
 		packTownId = null;
 		gridPack = null;
@@ -1246,6 +1285,20 @@
 					<p class="truncate text-sm font-bold first-letter:uppercase">{packDateLabel}</p>
 					{#if isPackToday}
 						<span class="badge badge-primary badge-xs flex-none">Avui</span>
+						<!-- What's left of the daily allowance. The server counts it, and refuses
+							the roll once it is spent — so it belongs on screen before a pack is
+							sliced open, not after it reveals nothing. -->
+						{#if boosters}
+							<span
+								class={classNames('badge badge-xs flex-none tabular-nums', {
+									'badge-warning': boosters.remaining === 0,
+									'badge-ghost': boosters.remaining > 0
+								})}
+								title="Els sobres que et queden avui. El límit és el teu nivell i es reinicia a mitjanit."
+							>
+								{boosters.remaining}/{boosters.level}
+							</span>
+						{/if}
 					{:else}
 						<span class="badge badge-ghost badge-xs flex-none">Només consulta</span>
 					{/if}
@@ -1263,6 +1316,26 @@
 						</div>
 					{/if}
 				</div>
+				<!-- Why the last roll revealed nothing. `claim_booster` refuses for reasons the
+					player can act on (the allowance is spent, the town isn't de festa today), and
+					the panel that normally reports them is mounted hidden here — so a pack sliced
+					open onto an empty canvas would say nothing at all without this. -->
+				{#if isPackToday && claimError}
+					<div class="alert alert-error mx-3 mt-3 flex-none py-2 text-xs" role="alert">
+						<span>{claimError}</span>
+					</div>
+				{:else if isPackToday && lastRevealed === 0}
+					<!-- The pack opened and the roll came back with nothing, without an error to
+						go with it. Rare, but it must not read as a blank canvas. -->
+					<div class="alert alert-warning mx-3 mt-3 flex-none py-2 text-xs" role="alert">
+						<span>El sobre s'ha obert però no n'ha sortit cap carta.</span>
+					</div>
+				{:else if isPackToday && allowanceSpent}
+					<div class="alert alert-warning mx-3 mt-3 flex-none py-2 text-xs">
+						<span>Ja has obert tots els sobres d'avui. Se'n desbloquegen més a mitjanit.</span>
+					</div>
+				{/if}
+
 				<div class="min-h-0 flex-1 p-3">
 					{#if packTownId}
 						<!-- Keyed on the town so clicking another star remounts a fresh, unsliced
@@ -1273,6 +1346,7 @@
 									coverUrl={packForTown.coverUrl}
 									locationName={packForTown.locationName}
 									claim={packForTown.claim}
+									onOpenComplete={onPackOpened}
 									classes="rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
 								/>
 							{/key}
@@ -1297,11 +1371,15 @@
 								packs={dayPacks}
 								columns={2}
 								revealColumns={2}
-								interactive={isPackToday}
+								interactive={isPackToday && !allowanceSpent}
 								classes={classNames('rounded-md bg-gradient-to-b from-base-300/80 to-base-200', {
-									'opacity-50': !isPackToday
+									'opacity-50': !isPackToday || allowanceSpent
 								})}
-								on:select={(event) => (gridPack = event.detail)}
+								on:select={(event) => {
+									clearPackFeedback();
+									gridPack = event.detail;
+								}}
+								on:openComplete={(event) => onPackOpened(event.detail)}
 							/>
 						{/key}
 					{:else}
@@ -1353,10 +1431,12 @@
 
 <!-- Hidden, but mounted: the same claim panel the /claim page uses, kept alive only
 	to compute today's booster packs (bind:packs) so a star click can open the town's
-	pack instantly. Its own UI (auth, allowance) is never shown here — the modal below
-	surfaces just the pack canvas. -->
+	pack instantly. Its own UI is never shown here — but the two things it says that the
+	panel cannot do without are bound out of it: the daily allowance, and the reason a
+	roll was refused. Without those a spent allowance (or any other `claim_booster`
+	refusal) reads as a pack that opens onto nothing at all. -->
 <div class="hidden" aria-hidden="true">
-	<CharacterClaimPanel bind:packs={claimPacks} />
+	<CharacterClaimPanel bind:packs={claimPacks} bind:claimError bind:boosters />
 </div>
 
 <!-- Challenge → the board's combat arena, hosted as a full-viewport floating panel over

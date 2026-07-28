@@ -42,9 +42,13 @@
 	let showEntryById = new Map<number, ShowEntry>();
 
 	// The show currently being opened (locks out concurrent opens), plus the error
-	// from the last open attempt, if any.
+	// from the last open attempt, if any. `claimError` is bindable because a host that
+	// only borrows this panel's packs (the map's booster tab renders the panel hidden,
+	// for its packs alone) still has to be able to say why a pack opened to nothing —
+	// every one of `claim_booster`'s refusals lands here, and a pack that reveals no
+	// cards is otherwise indistinguishable from a bug.
 	let claimingId: number | null = null;
-	let claimError = '';
+	export let claimError = '';
 
 	// Guards the one-time load so the reactive block doesn't refire on every store tick.
 	let loadedForUser: string | null = null;
@@ -63,8 +67,9 @@
 
 	// The signed-in player's daily booster allowance, loaded from the server (which
 	// also enforces it). Drives the "N packs left today" hint and blocks opening
-	// once spent. Null until loaded / when signed out.
-	let boosters: BoostersStatus | null = null;
+	// once spent. Null until loaded / when signed out. Bindable for the same reason as
+	// `claimError`: a host rendering only the packs still needs to show what's left.
+	export let boosters: BoostersStatus | null = null;
 
 	onMount(() => {
 		authService.init();

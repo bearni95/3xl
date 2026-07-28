@@ -16,7 +16,7 @@
 	export let interactive: boolean = true;
 	export let classes: string = '';
 
-	const dispatch = createEventDispatcher<{ select: OpenerPack; openComplete: void }>();
+	const dispatch = createEventDispatcher<{ select: OpenerPack; openComplete: number }>();
 
 	let host: HTMLDivElement;
 	let scene: ClaimPackGridScene | null = null;
@@ -30,7 +30,13 @@
 		scene?.selectPack(id);
 	}
 
-	onMount(() => {
+	// How many times the canvas has been rebuilt after losing its GPU context. A page
+	// that has genuinely run out of contexts would hand back a dead one every time, so
+	// give up rather than loop.
+	let rebuilds = 0;
+	const MAX_REBUILDS = 2;
+
+	function build(): void {
 		if (!host) return;
 		scene = new ClaimPackGridScene(
 			host,
@@ -38,11 +44,26 @@
 			{
 				onReady: () => (ready = true),
 				onSelect: (pack) => dispatch('select', pack),
-				onOpenComplete: () => dispatch('openComplete')
+				onOpenComplete: (revealed) => dispatch('openComplete', revealed),
+				onContextLost: rebuild
 			},
 			{ columns, revealColumns, interactive }
 		);
-	});
+	}
+
+	// The canvas lost its GPU context for good: a renderer in that state never draws
+	// again, so throw it away and lay the grid out on a fresh one. Whatever was open at
+	// the time is lost — but a blank canvas was too.
+	function rebuild(): void {
+		if (rebuilds >= MAX_REBUILDS || !host?.isConnected) return;
+		rebuilds += 1;
+		scene?.destroy();
+		scene = null;
+		ready = false;
+		build();
+	}
+
+	onMount(build);
 
 	onDestroy(() => {
 		scene?.destroy();

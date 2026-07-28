@@ -32,8 +32,15 @@ import { CardSprite, cardBorderWidth } from '$utils/card/CardSprite';
 import type { ClaimPull } from './pull.type';
 
 export interface ClaimPackSceneCallbacks {
-	onOpenComplete?: () => void;
+	/** Fires once the pack is open and its cards have fanned out, with how many were
+	 * revealed — zero when the roll was refused, which a host may want to explain. */
+	onOpenComplete?: (revealed: number) => void;
 	onCardClick?: (pull: ClaimPull, index: number) => void;
+	/**
+	 * Fires when the canvas lost its GPU context and the browser did not hand one back.
+	 * The renderer never draws again after that, so the host must rebuild the scene.
+	 */
+	onContextLost?: () => void;
 }
 
 export interface ClaimPackInput {
@@ -59,6 +66,9 @@ type SceneState =
 	| 'focused'
 	| 'unfocusing';
 
+// How long to wait for the browser to restore a lost GPU context before giving up on
+// it and asking the host to rebuild the scene.
+const CONTEXT_RESTORE_GRACE = 1200;
 const PACK_ASPECT = 5 / 8; // width / height (portrait)
 const CARD_ASPECT = 2 / 3; // portrait trading card
 
@@ -93,6 +103,8 @@ export class ClaimPackScene {
 
 	private state: SceneState = 'loading';
 	private isDestroyed = false;
+	// True between losing the GPU context and getting one back.
+	private contextLost = false;
 	private resizeObserver: ResizeObserver | null = null;
 	// Current cut Y in pack-local coordinates (0 = top edge of pack).
 	private cutY: number = 0;
@@ -223,11 +235,19 @@ export class ClaimPackScene {
 	private onContextLost = (event: Event): void => {
 		// Without preventDefault the browser never fires `webglcontextrestored`.
 		event.preventDefault();
+		this.contextLost = true;
 		this.app.ticker?.stop();
+		// If the browser doesn't hand one back, a parked ticker is just a blank canvas
+		// without the error spam — so hand the problem to the host, which can rebuild.
+		window.setTimeout(() => {
+			if (this.isDestroyed || !this.contextLost) return;
+			this.callbacks.onContextLost?.();
+		}, CONTEXT_RESTORE_GRACE);
 	};
 
 	private onContextRestored = (): void => {
 		if (this.isDestroyed) return;
+		this.contextLost = false;
 		this.app.ticker?.start();
 	};
 
@@ -407,7 +427,7 @@ export class ClaimPackScene {
 		}
 
 		this.state = 'fanned';
-		this.callbacks.onOpenComplete?.();
+		this.callbacks.onOpenComplete?.(this.pulls.length);
 	}
 
 	private placeHalf(half: Sprite, originX: number, originY: number): void {

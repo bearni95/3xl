@@ -39,9 +39,16 @@ export interface ClaimPackGridSceneCallbacks {
 	onReady?: () => void;
 	/** Fires when a pack is picked, before the zoom. */
 	onSelect?: (pack: OpenerPack) => void;
-	/** Fires once the selected pack is fully sliced and its cards have fanned out. */
-	onOpenComplete?: () => void;
+	/** Fires once the selected pack is fully sliced and its cards have fanned out,
+	 * with how many were revealed — zero when the roll was refused. */
+	onOpenComplete?: (revealed: number) => void;
 	onCardClick?: (pull: ClaimPull, index: number) => void;
+	/**
+	 * Fires when the canvas lost its GPU context and the browser did not hand one
+	 * back — the renderer will never draw again, so the host has to rebuild the scene
+	 * from scratch if it wants a working canvas.
+	 */
+	onContextLost?: () => void;
 }
 
 /** Layout and interaction knobs the host sets once, at construction. */
@@ -69,6 +76,9 @@ const GRID_COLS = 3;
 const REVEAL_COLS = 3;
 // Grid navigation geometry, matching the roster grid: gap + outer padding, the tap
 // slop that separates a tap from a pan, and a little springy overscroll.
+// How long to wait for the browser to restore a lost GPU context before giving up on
+// it and asking the host to rebuild the scene.
+const CONTEXT_RESTORE_GRACE = 1200;
 const NAV_GAP = 16;
 const NAV_PAD = 16;
 const TAP_SLOP = 6;
@@ -139,6 +149,8 @@ export class ClaimPackGridScene {
 
 	private state: SceneState = 'loading';
 	private isDestroyed = false;
+	// True between losing the GPU context and getting one back.
+	private contextLost = false;
 	private resizeObserver: ResizeObserver | null = null;
 	private builtW = 0;
 	private builtH = 0;
@@ -306,11 +318,20 @@ export class ClaimPackGridScene {
 	private onContextLost = (event: Event): void => {
 		// Without preventDefault the browser never fires `webglcontextrestored`.
 		event.preventDefault();
+		this.contextLost = true;
 		this.app.ticker?.stop();
+		// Give the browser its chance to hand a context back. When it doesn't, parking
+		// the ticker has only made the canvas quietly blank instead of noisily blank —
+		// so tell the host, which can rebuild the scene on a fresh context.
+		window.setTimeout(() => {
+			if (this.isDestroyed || !this.contextLost) return;
+			this.callbacks.onContextLost?.();
+		}, CONTEXT_RESTORE_GRACE);
 	};
 
 	private onContextRestored = (): void => {
 		if (this.isDestroyed) return;
+		this.contextLost = false;
 		this.app.ticker?.start();
 	};
 
@@ -790,7 +811,7 @@ export class ClaimPackGridScene {
 		this.entries = [];
 
 		this.state = 'fanned';
-		this.callbacks.onOpenComplete?.();
+		this.callbacks.onOpenComplete?.(this.pulls.length);
 	}
 
 	/** Place a baked half at the given screen top-left, rendered at selScale. */
