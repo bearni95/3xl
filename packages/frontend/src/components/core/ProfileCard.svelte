@@ -14,7 +14,7 @@
 	// map panel, which is a glance card, not the account-management dropdown.
 	export let compact: boolean = false;
 
-	const dispatch = createEventDispatcher<{ signout: void; editusername: void }>();
+	const dispatch = createEventDispatcher<{ signout: void; editusername: void; openprofile: void }>();
 
 	/** Whole days elapsed since `value`, or `null` when it's missing/invalid. */
 	function fullDaysSince(value: string | null): number | null {
@@ -30,6 +30,10 @@
 
 	function handleEditUsername(): void {
 		dispatch('editusername');
+	}
+
+	function handleOpenProfile(): void {
+		dispatch('openprofile');
 	}
 
 	$: initial = (profile.displayName || profile.email || '?').charAt(0).toUpperCase();
@@ -52,13 +56,19 @@
 		<div class="flex min-w-0 flex-1 flex-col gap-1">
 			<div class="flex items-center gap-2">
 				<span class="truncate text-lg font-semibold">{profile.displayName}</span>
-				<button
-					type="button"
-					class="btn btn-ghost btn-xs"
-					on:click={handleEditUsername}
-				>
-					{profile.username ? $_('profile.username.edit') : $_('profile.username.set')}
-				</button>
+				<!-- The button beside the name does whatever this card cannot: compact holds
+					nothing but the avatar block, so it opens the full card (the one the navbar
+					drops down, details list and sign-out included) — which is where the username
+					is then edited, since the full card carries that button itself. -->
+				{#if compact}
+					<button type="button" class="btn btn-ghost btn-xs" on:click={handleOpenProfile}>
+						{$_('profile.title')}
+					</button>
+				{:else}
+					<button type="button" class="btn btn-ghost btn-xs" on:click={handleEditUsername}>
+						{profile.username ? $_('profile.username.edit') : $_('profile.username.set')}
+					</button>
+				{/if}
 			</div>
 
 			<!-- Level + experience, derived from the stored exp via the D&D 5e table.

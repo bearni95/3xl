@@ -23,6 +23,10 @@
 	let redirectingTo: OAuthProvider | null = null;
 	let sentTo: string | null = null;
 	let errorMessage: string | null = null;
+	// Whether the embedded card's full-profile dialog is up. The embedded card is a
+	// glance card — no email, no account id, no sign-out — so the button beside the
+	// name raises the very same card the navbar drops down, in full.
+	let profileOpen = false;
 
 	onMount(() => authService.init());
 
@@ -77,7 +81,19 @@
 	}
 
 	function openUsernamePrompt(): void {
+		// Editing is reached through the full card, so hand the screen over to the
+		// username modal rather than stacking it over this dialog.
+		profileOpen = false;
 		usernamePromptOpen.set(true);
+	}
+
+	function openProfile(): void {
+		errorMessage = null;
+		profileOpen = true;
+	}
+
+	function closeProfile(): void {
+		profileOpen = false;
 	}
 
 	function togglePanel(): void {
@@ -143,6 +159,7 @@
 							compact={embedded}
 							on:signout={handleSignOut}
 							on:editusername={openUsernamePrompt}
+							on:openprofile={openProfile}
 						/>
 					{:else if sentTo}
 						<div class="alert alert-success">
@@ -178,6 +195,36 @@
 		</div>
 	</div>
 </div>
+
+<!-- The embedded card's full profile, raised over whatever it is pinned on (the map).
+	Exactly the card the navbar hangs off the username — same component, uncompacted —
+	so the details list and the sign-out button read identically in both places, and a
+	sign-out error is shown here rather than behind the dialog. It closes itself as the
+	profile goes (signing out empties it) and on the backdrop. -->
+{#if profileOpen && $locale && $status === AuthStatus.SignedIn && $profile}
+	<div class="modal modal-open" role="dialog" aria-modal="true">
+		<div class="modal-box">
+			<ProfileCard
+				profile={$profile}
+				{signingOut}
+				on:signout={handleSignOut}
+				on:editusername={openUsernamePrompt}
+			/>
+
+			{#if errorMessage}
+				<div class="alert alert-error mt-4">
+					<span>{errorMessage}</span>
+				</div>
+			{/if}
+		</div>
+		<button
+			type="button"
+			class="modal-backdrop"
+			aria-label={$_('common.close')}
+			on:click={closeProfile}
+		></button>
+	</div>
+{/if}
 
 <!-- Click-away layer to close the panel when it was opened programmatically. Only the
 	dropdown has anything to close — the embedded card is always on screen. -->
