@@ -178,3 +178,33 @@ describe('siegeProgress', () => {
 		});
 	});
 });
+
+describe('territoryAdapter.fromChallengeRow', () => {
+	it('maps a spent challenge row into the internal model', () => {
+		expect(
+			territoryAdapter.fromChallengeRow({
+				location_id: 'ES_08028',
+				challenge_date: '2026-07-28',
+				started_at: '2026-07-28T09:30:00.000Z',
+				settled_at: '2026-07-28T09:41:00.000Z'
+			})
+		).toEqual({
+			locationId: 'ES_08028',
+			date: '2026-07-28',
+			startedAt: '2026-07-28T09:30:00.000Z',
+			settledAt: '2026-07-28T09:41:00.000Z'
+		});
+	});
+
+	it('reads a challenge started but never reported as unsettled', () => {
+		const challenge = territoryAdapter.fromChallengeRow({
+			location_id: 'ES_17999',
+			challenge_date: '2026-07-28',
+			started_at: '2026-07-28T09:30:00.000Z',
+			settled_at: null
+		});
+		// The day is spent either way — an open slot still closes the town off.
+		expect(challenge.settledAt).toBeNull();
+		expect(challenge.date).toBe('2026-07-28');
+	});
+});

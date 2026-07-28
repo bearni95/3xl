@@ -2,6 +2,8 @@ import { AdapterClass } from './adapter.class';
 import { SpawnColor } from '../../types/character-spawn.type';
 import type {
 	HolderTeamMember,
+	MunicipalityChallenge,
+	MunicipalityChallengeRow,
 	MunicipalityHolder,
 	MunicipalityHolderRow,
 	MunicipalitySiege,
@@ -12,8 +14,9 @@ import { normalizeSpawnStat } from '../../utils/spawn/stat';
 import type { TeamMemberRoll } from '../../utils/spawn/municipality-team';
 
 /**
- * Transforms `municipality_holders` / `municipality_sieges` rows between
- * Supabase's snake_case shape and the internal territory models.
+ * Transforms `municipality_holders` / `municipality_sieges` /
+ * `municipality_challenges` rows between Supabase's snake_case shape and the
+ * internal territory models.
  *
  * The holder's team travels as a `jsonb` array rather than as rows, so it arrives
  * as unvalidated JSON and is parsed defensively here: anything that isn't a
@@ -44,6 +47,16 @@ export class TerritoryAdapter extends AdapterClass {
 			userId: row.user_id,
 			wins: Math.max(0, Math.trunc(Number(row.wins ?? 0)) || 0),
 			turnover: Math.max(0, Math.trunc(Number(row.turnover ?? 0)) || 0)
+		};
+	}
+
+	/** Transform a raw `municipality_challenges` row into the internal model. */
+	fromChallengeRow(row: MunicipalityChallengeRow): MunicipalityChallenge {
+		return {
+			locationId: row.location_id,
+			date: row.challenge_date,
+			startedAt: row.started_at,
+			settledAt: row.settled_at ?? null
 		};
 	}
 

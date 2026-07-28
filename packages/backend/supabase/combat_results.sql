@@ -39,6 +39,11 @@
 -- town's sitting team, and enough of them flip the town to the winner. See
 -- municipality_holders.sql for the tables and the rules.
 --
+-- Territory is also where the once-a-day challenge limit is enforced: settling a
+-- fight spends that town's challenge for the Catalan day, and a second report
+-- against a town already settled today is rejected outright — experience and all.
+-- See municipality_challenges.sql.
+--
 -- @3xl/backend provisions all of this automatically alongside the other tables
 -- (see ../src/routes/show-templates.ts), so you normally do NOT need to run this
 -- file — it's kept for reference and for provisioning by hand.
@@ -127,7 +132,9 @@ $$;
 -- every siege on it, and raises the bar for the next challenger. A fight against a
 -- generation that has since been superseded banks nothing and comes back flagged
 -- `town_stale`. A town the caller already holds cannot be fought for at all — the
--- report is rejected outright, experience included. See municipality_holders.sql.
+-- report is rejected outright, experience included. So is a town the caller has
+-- already had a fight settled against today. See municipality_holders.sql and
+-- municipality_challenges.sql.
 --
 -- (The OUT parameter names deliberately avoid the column names used in the body —
 -- plpgsql would otherwise have to disambiguate them against the query.)
@@ -160,6 +167,8 @@ returns table (
 language plpgsql security definer set search_path = public as $$
 declare
 	v_uid uuid := auth.uid();
+	v_today date := (now() at time zone 'Europe/Madrid')::date;
+	v_challenge timestamptz;
 	v_reported int;
 	v_distinct int;
 	v_owned int;
@@ -279,6 +288,26 @@ begin
 		if v_holder is not null and v_holder = v_uid then
 			raise exception 'You already hold this town — you cannot challenge your own team.';
 		end if;
+
+		-- One challenge per town per Catalan day (see municipality_challenges.sql).
+		-- The slot is normally already open — start_challenge claimed it when the
+		-- arena opened — and settling it here closes it. A report against a slot that
+		-- is already settled is a second fight against the same town today: reject it
+		-- outright, rolling back the experience with it, exactly as a fight against
+		-- one's own town is. A report with no slot at all (a client that never called
+		-- start_challenge) claims and settles one in the same statement, so skipping
+		-- that call buys nothing.
+		insert into public.municipality_challenges
+			(user_id, location_id, challenge_date, settled_at)
+			values (v_uid, p_location_id, v_today, now())
+			on conflict (user_id, location_id, challenge_date) do update
+				set settled_at = now()
+				where municipality_challenges.settled_at is null
+			returning municipality_challenges.settled_at into v_challenge;
+		if v_challenge is null then
+			raise exception 'You have already challenged this town today. New challenges at midnight.';
+		end if;
+
 		-- No row at all means the town is still on its seeded OG team: turnover 0.
 		v_turnover := coalesce(v_turnover, 0);
 		v_required := greatest(1, v_turnover + 1);

@@ -22,6 +22,13 @@
  * which does the territory bookkeeping in the same transaction as the experience
  * award. The browser reports which town it fought and which generation it fought;
  * it never states a win count, a required count or an occupant.
+ *
+ * A siege is therefore paced rather than ground out: a player may challenge each
+ * town **once per Catalan day**, midnight Europe/Madrid to midnight, exactly as
+ * the booster allowance resets. The spent day is a {@link MunicipalityChallenge}
+ * row, written by the `start_challenge` RPC when the fight opens and settled by
+ * `award_combat_exp` when it is reported — so taking a town that has changed
+ * hands twice takes at least three days.
  */
 
 import { SpawnColor } from './character-spawn.type';
@@ -76,6 +83,31 @@ export interface MunicipalitySiege {
 	wins: number;
 	/** The holder generation these wins count against. */
 	turnover: number;
+}
+
+/**
+ * One town's challenge slot for one Catalan day, spent by the player it belongs
+ * to. Its mere existence is the limit: a town with a row for today has been
+ * challenged today and cannot be challenged again until midnight Europe/Madrid,
+ * whether that fight was won, lost, or walked away from.
+ *
+ * Written server-side only — `start_challenge` opens it, `award_combat_exp`
+ * settles it. RLS scopes it to its owner, so the set a client loads is always
+ * the signed-in player's own.
+ */
+export interface MunicipalityChallenge {
+	/** The town, as its geojson feature id. */
+	locationId: string;
+	/** The Catalan day the challenge was spent on, `YYYY-MM-DD`. */
+	date: string;
+	/** ISO timestamp the challenge was opened. */
+	startedAt: string;
+	/**
+	 * ISO timestamp the fight was reported, or null while it is still open — a
+	 * challenge started and never finished. Either way the day is spent; this only
+	 * tells the server whether a report against it is the first one.
+	 */
+	settledAt: string | null;
 }
 
 /**
@@ -170,4 +202,12 @@ export interface MunicipalitySiegeRow {
 	user_id: string;
 	wins: number | string | null;
 	turnover: number | string | null;
+}
+
+/** Raw `municipality_challenges` row as the Supabase client returns it. */
+export interface MunicipalityChallengeRow {
+	location_id: string;
+	challenge_date: string;
+	started_at: string;
+	settled_at: string | null;
 }

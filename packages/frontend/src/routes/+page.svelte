@@ -27,6 +27,7 @@
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import type {
+		MunicipalityChallenge,
 		MunicipalityHolder,
 		MunicipalitySiege,
 		TerritoryWinRow
@@ -202,12 +203,16 @@
 	// that is what the panel shows and what a challenger fights; the seeded roll
 	// below is only the fallback for towns nobody has taken yet. Taking a town needs
 	// as many wins as it has changed hands, plus one — so every flip makes the
-	// sitting team harder to shift.
+	// sitting team harder to shift. Those wins can only be banked one a day per town:
+	// a player gets one challenge per municipality per Catalan day, so a town that has
+	// flipped twice takes at least three days to take.
 
-	// Every occupied town, and this player's banked wins, keyed by municipality id.
-	// Reassigned wholesale (never mutated) so the reactive statements below re-run.
+	// Every occupied town, this player's banked wins, and the towns they have already
+	// challenged today, keyed by municipality id. Reassigned wholesale (never mutated)
+	// so the reactive statements below re-run.
 	let holders = new Map<string, MunicipalityHolder>();
 	let sieges = new Map<string, MunicipalitySiege>();
+	let challenges = new Map<string, MunicipalityChallenge>();
 
 	// The signed-in player, so a town they already hold isn't offered as a target.
 	const profile = authService.profile;
@@ -222,6 +227,17 @@
 			sieges = await territoryService.loadSieges();
 		} catch {
 			sieges = new Map();
+		}
+		await reloadChallenges();
+	}
+
+	// The day's spent challenges on their own — re-read whenever one is spent or a
+	// fight settles, so the Challenge button closes the town off without a reload.
+	async function reloadChallenges(): Promise<void> {
+		try {
+			challenges = await territoryService.loadChallenges();
+		} catch {
+			challenges = new Map();
 		}
 	}
 
@@ -331,9 +347,10 @@
 		open(row.locationId);
 	}
 
-	// Sieges are RLS-scoped to the reader, so the set loaded before sign-in is
-	// nobody's. Reload whenever the signed-in account changes (including signing out,
-	// which empties it). `$profile` is named directly so the statement tracks it.
+	// Sieges and today's spent challenges are both RLS-scoped to the reader, so the
+	// sets loaded before sign-in are nobody's. Reload whenever the signed-in account
+	// changes (including signing out, which empties them). `$profile` is named
+	// directly so the statement tracks it.
 	let siegesForUser: string | null = null;
 	$: if (ready && ($profile ? String($profile.id) : null) !== siegesForUser) {
 		siegesForUser = $profile ? String($profile.id) : null;
@@ -341,6 +358,7 @@
 			.loadSieges()
 			.then((loaded) => (sieges = loaded))
 			.catch(() => (sieges = new Map()));
+		void reloadChallenges();
 	}
 
 	// The colour every division line is drawn in — Tailwind's red-500, read as the
@@ -609,6 +627,11 @@
 	// A player can't challenge a town they already hold — there is nothing to take.
 	$: holdsOpenTown = !!openHolder && !!$profile && openHolder.userId === String($profile.id);
 
+	// Nor one they have already been to today: a town is good for one challenge per
+	// Catalan day. The server is what enforces it (`start_challenge`); this only
+	// closes the button so the fight isn't opened onto a refusal.
+	$: challengedOpenTown = !!openRegion && challenges.has(openRegion);
+
 	// Kick off face loading for whichever team members are on screen.
 	$: void loadFaces(municipalityTeam.map((member) => member.characterId));
 
@@ -716,6 +739,11 @@
 	let fightHolderName: string | null = null;
 	let fightOpen = false;
 
+	// True while the day's challenge is being claimed off the server, so a double
+	// click can't fire two `start_challenge` calls (the second of which the server
+	// would refuse anyway).
+	let challengeStarting = false;
+
 	// --- The panel's mobile shape ------------------------------------------------
 	// Narrow viewports have no room for a 36rem column floating over the map, so below
 	// `md` the same panel becomes a sheet stuck to the bottom edge: 30vh of it showing,
@@ -773,12 +801,43 @@
 		{ 'translate-y-full md:translate-y-0 md:translate-x-[calc(100%+1.5rem)]': fightOpen }
 	);
 
-	// Fight this town: snapshot whichever team currently sits on it — the holder's if
-	// a player has taken it, the seeded roll otherwise — into synthetic spawns and
-	// open the combat modal. Nothing is written here; the town only changes hands
-	// server-side, once the fight is reported and enough wins have been banked.
-	function challenge(): void {
-		if (municipalityTeam.length === 0 || holdsOpenTown) return;
+	// Fight this town: spend the day's challenge on it, then snapshot whichever team
+	// currently sits on it — the holder's if a player has taken it, the seeded roll
+	// otherwise — into synthetic spawns and open the combat modal. The town only
+	// changes hands server-side, once the fight is reported and enough wins have been
+	// banked.
+	//
+	// The day's challenge is claimed *before* the arena opens, and by the server: a
+	// town is good for one fight per Catalan day, and it is spent on opening rather
+	// than on reporting, so walking out of a fight that is going badly doesn't hand
+	// back a free retry. A refusal (the town already fought today, another tab having
+	// taken the slot first) leaves the arena closed and re-reads the day's challenges,
+	// which closes the button too.
+	//
+	// Signed out there is no ledger to spend from — and no fight that could ever be
+	// reported — so nothing is claimed and the arena opens exactly as it used to,
+	// onto its own "no active team" gate.
+	async function challenge(): Promise<void> {
+		if (municipalityTeam.length === 0 || holdsOpenTown || challengedOpenTown) return;
+		if (challengeStarting) return;
+		const townId = openRegion;
+		if (!townId) return;
+
+		if ($profile) {
+			challengeStarting = true;
+			try {
+				await territoryService.startChallenge(townId);
+			} catch {
+				await reloadChallenges();
+				return;
+			} finally {
+				challengeStarting = false;
+			}
+			// The panel may have moved on while the RPC was in flight; the spent challenge
+			// belongs to the town that was clicked, so only that town's fight may open.
+			if (openRegion !== townId) return;
+		}
+
 		fightSpawns = ogTeamSpawns(municipalityTeam, openRegion ?? '');
 		fightName = municipalityFeature ? String(municipalityFeature.properties?.name ?? '') : null;
 		fightLocationId = openRegion;
@@ -1461,7 +1520,18 @@
 											{siegeProgress.wins}/{siegeProgress.required}
 										</span>
 									</span>
-									<button type="button" class="btn btn-primary btn-xs flex-none" on:click={challenge}>
+									<!-- One challenge per town per day: once today's has been spent the
+										button closes until Catalan midnight, and says so. The server
+										enforces it either way (`start_challenge`). -->
+									<button
+										type="button"
+										class="btn btn-primary btn-xs flex-none"
+										disabled={challengedOpenTown || challengeStarting}
+										title={challengedOpenTown
+											? 'Already challenged today — the next one unlocks at midnight'
+											: 'Fight this town for its team'}
+										on:click={challenge}
+									>
 										Challenge
 									</button>
 								{/if}

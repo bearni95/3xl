@@ -53,8 +53,12 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // ./festivities). `municipality_holders` / `municipality_sieges` (who occupies
 // each town on the map, and how far each challenger has got towards taking it)
 // round it off — world-readable but written only by award_combat_exp, which
-// settles territory in the same transaction as the experience award. All DDL is
-// idempotent.
+// settles territory in the same transaction as the experience award. Alongside
+// them, `municipality_challenges` plus the `start_challenge` RPC hold the other
+// daily rule: a player may challenge each town once per day, resetting at midnight
+// Europe/Madrid like the booster allowance — claimed when the arena opens, settled
+// by award_combat_exp, which refuses a second settled report against the same town
+// on the same day. All DDL is idempotent.
 let ensured: Promise<void> | null = null;
 /**
  * Provision the whole authoring/gameplay schema (tables, RLS, RPCs) idempotently,
@@ -579,6 +583,75 @@ export function ensureTables(): Promise<void> {
 					drop policy if exists municipality_sieges_select_own on municipality_sieges;
 					create policy municipality_sieges_select_own on municipality_sieges
 							for select using (auth.uid() = user_id);
+					-- One challenge per player per town per Catalan day: the pacing behind the
+					-- siege bar. Taking a town needs turnover + 1 wins, which only means
+					-- something if the same town can't be refought until they land — so a row
+					-- here IS the limit, and its mere existence for today's date closes the
+					-- town off until midnight Europe/Madrid, whatever the fight's outcome was
+					-- or whether it was ever finished. The day is spent when the arena opens
+					-- (start_challenge below), not when the fight is reported: a fight
+					-- abandoned halfway still used it up, which is exactly what stops a
+					-- player restarting a fight that was going badly. No client write path;
+					-- start_challenge and award_combat_exp are the only writers, and a player
+					-- reads only their own rows.
+					create table if not exists municipality_challenges (
+							user_id uuid not null references auth.users (id) on delete cascade,
+							location_id text not null,
+							challenge_date date not null
+								default (now() at time zone 'Europe/Madrid')::date,
+							started_at timestamptz not null default now(),
+							-- When the fight was reported, or null while it is still open. The day
+							-- is spent either way; this only tells award_combat_exp whether a
+							-- report against this slot is the first one.
+							settled_at timestamptz,
+							primary key (user_id, location_id, challenge_date)
+						);
+					alter table municipality_challenges enable row level security;
+					drop policy if exists municipality_challenges_select_own on municipality_challenges;
+					create policy municipality_challenges_select_own on municipality_challenges
+							for select using (auth.uid() = user_id);
+					-- Spend today's challenge on a town, called when the arena opens. Claims
+					-- the day's slot atomically and raises when it is already taken, so two
+					-- tabs can't both open a fight for the same town on the same day. Refuses
+					-- a town the caller already holds, matching award_combat_exp. The OUT
+					-- names deliberately avoid the table's columns (plpgsql would otherwise
+					-- have to disambiguate them against the insert).
+					create or replace function start_challenge(p_location_id text)
+					returns table (town_id text, challenge_day date, opened_at timestamptz)
+					language plpgsql security definer set search_path = public as $start_challenge$
+					declare
+							v_uid uuid := auth.uid();
+							v_today date := (now() at time zone 'Europe/Madrid')::date;
+							v_holder uuid;
+							v_started timestamptz;
+					begin
+							if v_uid is null then
+								raise exception 'You must be signed in to challenge a town.';
+							end if;
+							if p_location_id is null or p_location_id = '' then
+								raise exception 'A town is required to start a challenge.';
+							end if;
+							-- Serialise this player's mutations, matching claim_booster.
+							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+							select h.user_id into v_holder from municipality_holders h
+								where h.location_id = p_location_id;
+							if v_holder is not null and v_holder = v_uid then
+								raise exception 'You already hold this town — you cannot challenge your own team.';
+							end if;
+							insert into municipality_challenges (user_id, location_id, challenge_date)
+								values (v_uid, p_location_id, v_today)
+								on conflict (user_id, location_id, challenge_date) do nothing
+								returning municipality_challenges.started_at into v_started;
+							if v_started is null then
+								raise exception 'You have already challenged this town today. New challenges at midnight.';
+							end if;
+							town_id := p_location_id;
+							challenge_day := v_today;
+							opened_at := v_started;
+							return next;
+					end;
+					$start_challenge$;
+					grant execute on function start_challenge(text) to authenticated;
 					-- The pre-territory two-argument signature is dropped rather than replaced:
 					-- leaving it in place would give PostgREST two overloads to choose between
 					-- and make every rpc('award_combat_exp') call ambiguous.
@@ -635,6 +708,8 @@ export function ensureTables(): Promise<void> {
 					language plpgsql security definer set search_path = public as $award_combat_exp$
 					declare
 							v_uid uuid := auth.uid();
+							v_today date := (now() at time zone 'Europe/Madrid')::date;
+							v_challenge timestamptz;
 							v_reported int;
 							v_distinct int;
 							v_owned int;
@@ -741,6 +816,23 @@ export function ensureTables(): Promise<void> {
 								-- paying out for a fight that should not have happened.
 								if v_holder is not null and v_holder = v_uid then
 									raise exception 'You already hold this town — you cannot challenge your own team.';
+								end if;
+								-- One challenge per town per Catalan day. The slot is normally already
+								-- open (start_challenge claimed it when the arena opened) and settling
+								-- it here closes it; a report against a slot already settled is a
+								-- second fight against the same town today, so it is rejected outright,
+								-- rolling back the experience with it. A report with no slot at all (a
+								-- client that never called start_challenge) claims and settles one in
+								-- the same statement, so skipping that call buys nothing.
+								insert into municipality_challenges
+									(user_id, location_id, challenge_date, settled_at)
+									values (v_uid, p_location_id, v_today, now())
+									on conflict (user_id, location_id, challenge_date) do update
+										set settled_at = now()
+										where municipality_challenges.settled_at is null
+									returning municipality_challenges.settled_at into v_challenge;
+								if v_challenge is null then
+									raise exception 'You have already challenged this town today. New challenges at midnight.';
 								end if;
 								-- No row at all means the town is still on its seeded OG team: turnover 0.
 								v_turnover := coalesce(v_turnover, 0);

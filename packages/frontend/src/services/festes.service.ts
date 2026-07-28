@@ -1,5 +1,6 @@
 import { getSupabaseClient, isSupabaseConfigured } from '$services/supabase.client';
 import type { FestaLocationRow } from '$types/festivity.type';
+import { catalanDayIso } from '$utils/festes/catalan-day';
 
 /**
  * Reads the festivity calendar back out of Supabase — the same `festa_locations`
@@ -24,10 +25,10 @@ interface TodayFestivityRow {
  * Today as a `YYYY-MM-DD` string in Catalan (Europe/Madrid) time — the same day
  * boundary the `claim_booster` RPC enforces against, so the list a player sees
  * matches the dates the server will accept regardless of the device's timezone.
- * `en-CA` formats a Gregorian date as `YYYY-MM-DD`.
+ * Re-exported from the shared helper every daily rule now measures its day with.
  */
 export function catalanTodayIso(): string {
-	return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date());
+	return catalanDayIso();
 }
 
 class FestesService {
