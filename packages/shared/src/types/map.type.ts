@@ -60,6 +60,12 @@ export interface MapMarker {
 	 * panel's tables fall back to the show's name alone.
 	 */
 	iconSvg: string | null;
+	/**
+	 * Classes painted onto the pin's frame — the region's own colour, as a fill
+	 * plus the ink that reads on it. Null leaves the frame on the neutral base
+	 * surface, which is also what a region with no colour yet gets.
+	 */
+	frameClasses?: string | null;
 	/** Primary caption under the image (the show name). */
 	title: string;
 	/** Secondary text for the hover tooltip (e.g. the region name). */

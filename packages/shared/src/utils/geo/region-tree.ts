@@ -15,6 +15,7 @@
  */
 
 import type { RegionSiege } from './region-siege';
+import type { SpawnColor } from '../../types/character-spawn.type';
 
 /** The trimmed show shape shown against a region (matches MunicipalityShow.show). */
 export interface RegionShow {
@@ -29,6 +30,8 @@ export interface RegionMunicipality {
 	name: string;
 	/** The seeded show assigned to this municipality, when a lookup is given. */
 	show?: RegionShow;
+	/** The colour the municipality's team flies, when a lookup is given. */
+	color?: SpawnColor;
 }
 
 /** A green comarca grouping the municipalities within it. */
@@ -39,6 +42,8 @@ export interface RegionComarca {
 	municipis: RegionMunicipality[];
 	/** The most common show among this comarca's municipalities (simple count). */
 	show?: RegionShow;
+	/** The most common colour among this comarca's municipalities (simple count). */
+	color?: SpawnColor;
 }
 
 /** A yellow province: its comarques plus any comarca-less municipalities. */
@@ -52,6 +57,8 @@ export interface RegionProvince {
 	count: number;
 	/** The most common show across every municipality in the province. */
 	show?: RegionShow;
+	/** The most common colour across every municipality in the province. */
+	color?: SpawnColor;
 }
 
 /**
@@ -72,6 +79,8 @@ export interface RegionTerritory {
 	count: number;
 	/** The most common show across every municipality in the territory. */
 	show?: RegionShow;
+	/** The most common colour across every municipality in the territory. */
+	color?: SpawnColor;
 }
 
 /**
@@ -99,6 +108,7 @@ export interface RegionNode {
 	name: string;
 	type: RegionType;
 	show?: RegionShow;
+	color?: SpawnColor;
 	children: RegionNode[];
 }
 
@@ -109,6 +119,7 @@ export function buildRegionNodes(territories: RegionTerritory[]): RegionNode[] {
 		name: municipality.name,
 		type: 'Municipality',
 		show: municipality.show,
+		color: municipality.color,
 		children: []
 	});
 
@@ -117,6 +128,7 @@ export function buildRegionNodes(territories: RegionTerritory[]): RegionNode[] {
 		name: comarca.name,
 		type: 'Comarca',
 		show: comarca.show,
+		color: comarca.color,
 		children: comarca.municipis.map(municipalityNode)
 	});
 
@@ -130,6 +142,7 @@ export function buildRegionNodes(territories: RegionTerritory[]): RegionNode[] {
 					name: province.name,
 					type: 'Province' as const,
 					show: province.show,
+					color: province.color,
 					children: [
 						...province.comarques.map((comarca) => comarcaNode(provinceKey, comarca)),
 						...province.municipis.map(municipalityNode)
@@ -147,6 +160,7 @@ export function buildRegionNodes(territories: RegionTerritory[]): RegionNode[] {
 			name: territory.name,
 			type: 'Territory' as const,
 			show: territory.show,
+			color: territory.color,
 			children
 		};
 	});
@@ -353,6 +367,28 @@ function majorityShow(municipis: RegionMunicipality[]): RegionShow | undefined {
 	return best?.show;
 }
 
+/**
+ * The plurality colour among a set of municipalities — the colour flown by the
+ * most of them, counted and tie-broken exactly as {@link majorityShow} counts
+ * shows, so a region's colour and its show are read off the same towns the same
+ * way. Municipalities with no colour (nothing rolled for them yet) are ignored.
+ */
+function majorityColor(municipis: RegionMunicipality[]): SpawnColor | undefined {
+	const tally = new Map<SpawnColor, number>();
+	for (const municipality of municipis) {
+		if (!municipality.color) continue;
+		tally.set(municipality.color, (tally.get(municipality.color) ?? 0) + 1);
+	}
+
+	let best: { color: SpawnColor; count: number } | undefined;
+	for (const [color, count] of tally) {
+		if (!best || count > best.count || (count === best.count && color < best.color)) {
+			best = { color, count };
+		}
+	}
+	return best?.color;
+}
+
 function slugify(value: string): string {
 	return value
 		.toLowerCase()
@@ -380,7 +416,8 @@ interface RawProvince {
  */
 export function buildRegionTree(
 	municipalities: GeoJSON.FeatureCollection | null | undefined,
-	shows?: Map<string, RegionShow>
+	shows?: Map<string, RegionShow>,
+	colors?: Map<string, SpawnColor>
 ): RegionTerritory[] {
 	if (!municipalities) return [];
 
@@ -426,20 +463,30 @@ export function buildRegionTree(
 		comarca.municipis.push(municipality);
 	}
 
-	const withShow = (municipality: RegionMunicipality): RegionMunicipality => {
+	// A municipality carries what the lookups know about it: the show it flies and
+	// the colour its team flies, both keyed by feature id and both optional, so a
+	// tree built without them is exactly the bare tree.
+	const withLookups = (municipality: RegionMunicipality): RegionMunicipality => {
 		const show = shows?.get(municipality.id);
-		return show ? { ...municipality, show } : municipality;
+		const color = colors?.get(municipality.id);
+		if (!show && !color) return municipality;
+		return { ...municipality, ...(show ? { show } : {}), ...(color ? { color } : {}) };
 	};
 
 	// Resolve one raw province into its sorted comarques + direct municipalities.
 	const resolveProvince = (raw: RawProvince) => {
 		const comarques = [...raw.comarques.values()]
 			.map((comarca) => {
-				const municipis = comarca.municipis.map(withShow).sort(byName);
-				return { ...comarca, municipis, show: majorityShow(municipis) };
+				const municipis = comarca.municipis.map(withLookups).sort(byName);
+				return {
+					...comarca,
+					municipis,
+					show: majorityShow(municipis),
+					color: majorityColor(municipis)
+				};
 			})
 			.sort(byName);
-		const municipis = raw.municipis.map(withShow).sort(byName);
+		const municipis = raw.municipis.map(withLookups).sort(byName);
 		const everyMunicipality = [...comarques.flatMap((comarca) => comarca.municipis), ...municipis];
 		return { comarques, municipis, everyMunicipality };
 	};
@@ -462,7 +509,8 @@ export function buildRegionTree(
 							count: raw.count,
 							comarques,
 							municipis,
-							show: majorityShow(within)
+							show: majorityShow(within),
+							color: majorityColor(within)
 						};
 					})
 					.sort(byName);
@@ -473,7 +521,8 @@ export function buildRegionTree(
 					provincies,
 					comarques: [],
 					municipis: [],
-					show: majorityShow(everyMunicipality)
+					show: majorityShow(everyMunicipality),
+					color: majorityColor(everyMunicipality)
 				};
 			}
 
@@ -485,7 +534,8 @@ export function buildRegionTree(
 				provincies: [],
 				comarques,
 				municipis,
-				show: majorityShow(within)
+				show: majorityShow(within),
+				color: majorityColor(within)
 			};
 		})
 		.sort((a, b) => b.count - a.count);

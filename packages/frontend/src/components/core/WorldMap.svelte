@@ -234,16 +234,20 @@
 			wrap.appendChild(location);
 		}
 
-		// The glyph is inlined rather than pointed at by an <img> so it inherits the
-		// frame's colour (see show-icon-markup). Decorative: the show is named in the
-		// caption right below, so announcing the glyph too would read it twice. Sized
-		// through a CSS rule, which outranks the svg's own 1em width/height attributes.
-		if (marker.iconSvg) {
+		// A square tile in the region's colour carrying the show's glyph. The glyph is
+		// inlined rather than pointed at by an <img> so it inherits the tile's ink
+		// (see show-icon-markup) — which is why the fill and the ink arrive together
+		// in `frameClasses`. Sized through a CSS rule, which outranks the svg's own
+		// 1em width/height attributes. Decorative: the show is named in the caption
+		// right below, so announcing the glyph too would read it twice. A pin with
+		// neither a colour nor a glyph is caption-only and skips the tile entirely.
+		if (marker.iconSvg || marker.frameClasses) {
 			const frame = document.createElement('div');
 			frame.className =
-				'flex items-center justify-center rounded-lg border-2 border-base-100 bg-base-100 p-1.5 text-base-content shadow-lg [&>svg]:size-10';
+				'flex size-12 items-center justify-center rounded-lg border-2 border-base-100 shadow-lg [&>svg]:size-8 ' +
+				(marker.frameClasses ?? 'bg-base-100 text-base-content');
 			frame.setAttribute('aria-hidden', 'true');
-			frame.innerHTML = marker.iconSvg;
+			if (marker.iconSvg) frame.innerHTML = marker.iconSvg;
 			wrap.appendChild(frame);
 		}
 

@@ -43,7 +43,7 @@
 	import { showIconMarkup } from '$components/core/show-icon-markup';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import type { CardModel } from '$utils/card/card-model.type';
-	import type { CharacterSpawn } from '$types/character-spawn.type';
+	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 	import {
 		buildRegionTree,
 		buildFillIndex,
@@ -471,9 +471,65 @@
 
 	$: showsById = buildTownShows(assignmentsById, rulingShowById);
 
+	// --- Which colour a town flies -----------------------------------------------
+	// The same compounding as the show above, one field over: a town's colour is its
+	// team's LEAD's colour, exactly as its show is its lead's show — the seeded OG
+	// roll's lead for a town nobody has taken, the winning team's lead once one has.
+	// Fed into the region tree beside the shows, so a comarca, a province and a
+	// territory each take the plurality colour of the towns beneath them just as they
+	// take their plurality show, and a conquest re-colours every tier above it.
+
+	// Municipality id → the GPS seed its team is rolled from — the very seed that
+	// assigned its show. Hashing it walks every vertex of the polygon, so it is done
+	// once off the geometry and kept: the colours below re-derive as towns change
+	// hands without touching the shapes again.
+	function buildMunicipalitySeeds(
+		collection: GeoJSON.FeatureCollection | null
+	): Map<string, number> {
+		const seeds = new Map<string, number>();
+		if (!collection) return seeds;
+		for (const feature of collection.features) {
+			const id = String(feature.properties?.id ?? '');
+			if (id) seeds.set(id, coordinateSeed(feature.geometry));
+		}
+		return seeds;
+	}
+
+	$: municipalitySeeds = buildMunicipalitySeeds(municipalities);
+
+	// Municipality id → the colour it flies. Every town gets its seeded team's lead
+	// colour, overridden by the lead of whoever holds it — the same seed/override
+	// pair buildTownShows draws the shows from. A town whose show has no roster
+	// loaded yet (the assignment comes from Supabase) simply has no colour, and its
+	// pin stays neutral rather than guessing one.
+	function buildTownColors(
+		seeds: ReadonlyMap<string, number>,
+		shows: ReadonlyMap<string, RegionShow>,
+		pools: ReadonlyMap<number, string[]>,
+		occupied: ReadonlyMap<string, MunicipalityHolder>
+	): Map<string, SpawnColor> {
+		const colors = new Map<string, SpawnColor>();
+		for (const [id, show] of shows) {
+			const seed = seeds.get(id);
+			if (seed == null) continue;
+			// Only the lead is wanted, and the roll shuffles the whole pool before it
+			// takes any member, so asking for a team of one lands on the very same lead
+			// (character, colour and stat) as the full TEAM_SIZE roll the panel draws.
+			const lead = buildMunicipalityTeam(seed, pools.get(show.id) ?? [], 1)[0];
+			if (lead) colors.set(id, lead.color);
+		}
+		for (const holder of occupied.values()) {
+			const lead = holder.team[0];
+			if (lead) colors.set(holder.locationId, lead.color);
+		}
+		return colors;
+	}
+
+	$: colorsById = buildTownColors(municipalitySeeds, showsById, showCharacterIds, holders);
+
 	// The red → yellow → green → blue region hierarchy (territory → province →
 	// comarca → municipality) mirrored from the map's divisions, for the tree.
-	$: regionTree = buildRegionTree(municipalities, showsById);
+	$: regionTree = buildRegionTree(municipalities, showsById, colorsById);
 
 	// The nested region nodes. The table shows only two tiers at a time — the open
 	// region's siblings and its children (see regionRowsForSelection) — while the
@@ -1273,6 +1329,19 @@
 		? (claimPacks.find((pack) => pack.id === packTownId) ?? null)
 		: null;
 
+	// A pin frame's fill per region colour: the same six swatches the cards, the
+	// avatar rings and the combat buttons paint with, each with the ink that reads
+	// on it — yellow is the one light enough to want black. Written out in full
+	// because Tailwind only emits classes it can see spelled in the source.
+	const pinColorClasses: Record<SpawnColor, string> = {
+		[SpawnColor.Red]: 'bg-red-500 text-white',
+		[SpawnColor.Yellow]: 'bg-yellow-400 text-black',
+		[SpawnColor.Blue]: 'bg-blue-500 text-white',
+		[SpawnColor.Orange]: 'bg-orange-500 text-white',
+		[SpawnColor.Green]: 'bg-green-500 text-white',
+		[SpawnColor.Purple]: 'bg-purple-500 text-white'
+	};
+
 	// One pin per region that has a show, dropped at the centre of the region's
 	// bounding box, captioned with the show and tooltipped with the region name;
 	// clicking a pin opens that region. Pins clear of the selection are flagged
@@ -1283,6 +1352,9 @@
 	// reads as a picture dropped on the map, while the flat monochrome glyph reads
 	// as a marking of the territory. A show with no glyph drawn yet keeps its pin
 	// and shows by name alone, exactly as it does in those tables.
+	//
+	// The frame behind the glyph is filled with the region's colour, so a pin says
+	// both what a region flies and in which colour it flies it.
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
@@ -1299,6 +1371,7 @@
 				position: [(south + north) / 2, (west + east) / 2],
 				bounds: box,
 				iconSvg: showIconMarkup(showIconName(node.show.id)),
+				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
 				subtitle: restoreCatalanArticle(node.name),
 				featureIds: geometry.muniIds.get(node.key) ?? [],
