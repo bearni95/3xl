@@ -256,7 +256,8 @@
 		rarity: number | typeof ANY,
 		minStat: number,
 		names: Map<string, string[]>,
-		rarities: Map<string, number>
+		rarities: Map<string, number>,
+		teamColors: Set<string> | null
 	) => {
 		const needle = name.trim().toLowerCase();
 		return $spawns.filter((spawn) => {
@@ -265,9 +266,19 @@
 			if (show !== ANY && !(names.get(spawn.characterId) ?? []).includes(show)) return false;
 			if (rarity !== ANY && (rarities.get(spawn.characterId) ?? null) !== rarity) return false;
 			if (spawn.stat < minStat) return false;
+			if (teamColors && !teamColors.has(spawn.color)) return false;
 			return true;
 		});
-	})(filterName, filterColor, filterShow, filterRarity, filterMinStat, characterShowNames, rarityByCharacter);
+	})(
+		filterName,
+		filterColor,
+		filterShow,
+		filterRarity,
+		filterMinStat,
+		characterShowNames,
+		rarityByCharacter,
+		teamColorFilter
+	);
 
 	// The filters and the pager work on the same list: filtering narrows it, the pager
 	// walks it a page at a time. So any filter change re-pages from the start — the
@@ -390,6 +401,20 @@
 	$: activeMemberIds = new Set(
 		(activeTeam?.memberIds ?? []).filter((id): id is string => Boolean(id))
 	);
+
+	// The colours the selected team can carry — its lead's own colour plus the ones
+	// that share a colour with it (see teammateColors) — folded into the header
+	// filters, so picking a team narrows the grid to the cards it could actually take.
+	// It is the lead that sets the rule, so this is null (nothing narrowed) with no
+	// team selected and with a team whose lead slot is still empty, where any card is
+	// a legal first pick. Also null in recycle mode: there a tap recycles rather than
+	// recruits, and hiding most of the roster would make recycling impossible.
+	$: teamColorFilter = ((team: typeof activeTeam, colors: Map<string, SpawnColor>, recycling: boolean) => {
+		const leadId = team?.memberIds[0] ?? null;
+		const leadColor = leadId ? (colors.get(leadId) ?? null) : null;
+		if (!leadColor || recycling) return null;
+		return new Set<string>(teammateColors(leadColor as unknown as CombatColor));
+	})(activeTeam, colorForSpawn, recycleMode);
 
 	// Whether a spawn (not already on the active team) may be added right now: there
 	// must be a free slot, and — for a non-lead slot — its colour must be one the
