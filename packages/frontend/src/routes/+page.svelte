@@ -726,7 +726,7 @@
 	// almost no rows. Whatever the header does not use goes to the tab, which is the only
 	// part that scrolls.
 	$: panelClasses = classNames(
-		'fixed right-4 top-20 z-[1100] flex w-[36rem] flex-col',
+		'fixed right-4 top-4 z-[1100] flex w-[36rem] flex-col',
 		'overflow-hidden rounded-box',
 		'border border-base-300 bg-base-100/70 shadow-lg transition-transform duration-300 ease-in-out',
 		// The panel is only as tall as what it holds, and stops there — a short town or a
@@ -735,7 +735,7 @@
 		// The Booster tab is the exception. Its packs are a WebGL scene with no content
 		// height of its own — it draws into whatever box it is handed — so there is nothing
 		// there to hug, and it keeps the full height it has always had.
-		panelTab === PanelTab.Pack ? 'h-[calc(100vh-6rem)]' : 'max-h-[calc(100vh-6rem)]',
+		panelTab === PanelTab.Pack ? 'h-[calc(100vh-2rem)]' : 'max-h-[calc(100vh-2rem)]',
 		{ 'translate-x-[calc(100%+1.5rem)]': fightOpen }
 	);
 
@@ -1243,7 +1243,7 @@
 	// through its framing (focusBounds) and its pins, which still fade outside it.
 </script>
 
-<div class="flex h-[calc(100vh-4rem)]">
+<div class="flex h-screen">
 	<!-- The one panel pinned over the map, top-right, on four tabs. The profile card sits
 		at the very top, above the breadcrumbs, and the breadcrumbs above the tab strip
 		rather than inside any tab: who you are and how many packs you have left is read
