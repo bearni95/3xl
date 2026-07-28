@@ -89,10 +89,13 @@ const TAP_SLOP = 6;
 const PAN_MARGIN = 48;
 
 /** One pack laid out in the grid: its descriptor, baked sprite, its cell (col,row),
- * and the baked height (all packs share the baked column width). */
+ * and the baked height (all packs share the baked column width). While the grid is
+ * shown the sprite's drop shadow is borrowed into the scene's shadow layer, so the
+ * entry carries it too — its transform has to be kept in step with the sprite's. */
 interface GridEntry {
 	pack: OpenerPack;
 	sprite: PackSprite;
+	shadow: Container | null;
 	col: number;
 	row: number;
 	bakedH: number;
@@ -107,6 +110,8 @@ export class ClaimPackGridScene {
 	private rootLayer: Container;
 	private cardLayer: Container; // reveal cards (screen space)
 	private gridLayer: Container; // the grid of packs (panned)
+	private shadowLayer: Container; // every grid pack's drop shadow, under every pack
+	private packLayer: Container; // the grid packs themselves
 	private focusLayer: Container; // the selected pack while opening (screen space)
 	private uiLayer: Container; // cut indicator + slash flash (screen space)
 	private cutIndicator: Graphics;
@@ -176,6 +181,8 @@ export class ClaimPackGridScene {
 		this.rootLayer = new Container();
 		this.cardLayer = new Container();
 		this.gridLayer = new Container();
+		this.shadowLayer = new Container();
+		this.packLayer = new Container();
 		this.focusLayer = new Container();
 		this.uiLayer = new Container();
 		this.cutIndicator = new Graphics();
@@ -235,6 +242,12 @@ export class ClaimPackGridScene {
 		this.app.stage.addChild(this.rootLayer);
 		this.rootLayer.addChild(this.cardLayer);
 		this.rootLayer.addChild(this.gridLayer);
+		// Every pack's shadow is drawn first, as one layer under the whole grid: a
+		// shadow reaches further past its pack than the gutter between cells, so left
+		// inside its own pack it would fall on the neighbours (and, since the packs are
+		// added in bake-completion order, on a different set of them every load).
+		this.gridLayer.addChild(this.shadowLayer);
+		this.gridLayer.addChild(this.packLayer);
 		this.rootLayer.addChild(this.focusLayer);
 		this.rootLayer.addChild(this.uiLayer);
 		this.uiLayer.addChild(this.cutIndicator);
@@ -262,10 +275,13 @@ export class ClaimPackGridScene {
 					sprite.destroy();
 					return;
 				}
-				this.gridLayer.addChild(sprite);
+				this.packLayer.addChild(sprite);
+				const shadow = sprite.detachShadow();
+				if (shadow) this.shadowLayer.addChild(shadow);
 				this.entries.push({
 					pack,
 					sprite,
+					shadow,
 					col: i % this.cols,
 					row: Math.floor(i / this.cols),
 					bakedH: sprite.packHeight
@@ -377,6 +393,10 @@ export class ClaimPackGridScene {
 			const packY = NAV_PAD + entry.row * rowPitch + (this.maxBakedH - entry.bakedH) / 2;
 			entry.sprite.scale.set(1);
 			entry.sprite.position.set(packX, packY);
+			// The borrowed shadow is drawn in a sibling layer, in the same world units,
+			// so it takes the pack's transform to stay under it.
+			entry.shadow?.scale.set(1);
+			entry.shadow?.position.set(packX, packY);
 		}
 
 		this.contentW = NAV_PAD * 2 + this.cols * this.bakedCardW + (this.cols - 1) * NAV_GAP;
@@ -535,6 +555,13 @@ export class ClaimPackGridScene {
 		this.detachNavigation();
 		this.cutIndicator.clear();
 
+		// The grid is over: give every pack its own shadow back, so the picked one keeps
+		// it through the zoom and the rest fade out with theirs.
+		for (const other of this.entries) {
+			other.sprite.reclaimShadow();
+			other.shadow = null;
+		}
+
 		this.packSprite = entry.sprite;
 		this.activeClaim = entry.pack.claim;
 
@@ -542,7 +569,7 @@ export class ClaimPackGridScene {
 		// on-screen spot, so the zoom is a clean screen-space tween.
 		const screenX = entry.sprite.x * this.gridScale + this.pan.x;
 		const screenY = entry.sprite.y * this.gridScale + this.pan.y;
-		this.gridLayer.removeChild(entry.sprite);
+		this.packLayer.removeChild(entry.sprite);
 		this.focusLayer.addChild(entry.sprite);
 		entry.sprite.scale.set(this.gridScale);
 		entry.sprite.position.set(screenX, screenY);

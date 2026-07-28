@@ -65,6 +65,15 @@ const COVER_WIDTHS = [342, 500, 780];
  * roughly twice the pixels, which is a poor trade for a few per cent of sharpness.
  */
 const COVER_TOLERANCE = 0.9;
+/**
+ * Drop-shadow blur and offset, in baked pack units. Pixi pads a blur by twice its
+ * strength, so the shadow reaches ~24px past the silhouette on every side, and 28/34px
+ * down and right once the offset is added — further than the gutter a grid leaves
+ * between packs. See {@link PackSprite.detachShadow} for what that costs a grid.
+ */
+const SHADOW_BLUR = 12;
+const SHADOW_OFFSET_X = 4;
+const SHADOW_OFFSET_Y = 10;
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
@@ -99,6 +108,10 @@ export class PackSprite extends Container {
 	/** Fill for the serrated bottom band: the most frequent colour in the cover's
 	 * last pixel row, resolved in load(). White until then. */
 	private bottomColor = 0xffffff;
+	/** The soft drop shadow, built in load(): a group holding the blurred silhouette at
+	 * its down/right offset, so the group itself sits at the pack's own origin. Normally
+	 * the first child of this container; a grid may borrow it — see {@link detachShadow}. */
+	private shadow: Container | null = null;
 
 	constructor(opts: PackSpriteOptions) {
 		super();
@@ -176,12 +189,18 @@ export class PackSprite extends Container {
 
 		// Soft black drop shadow behind the pack, offset down/right. It follows the
 		// serrated silhouette so the shadow's top and bottom edges match the teeth.
+		// The offset lives on the Graphics inside a group pinned to the pack's origin, so
+		// the group can be lent out (see detachShadow) and simply take the pack's own
+		// position and scale.
 		const shadow = new Graphics();
 		shadow.poly(silhouette);
 		shadow.fill({ color: 0x000000, alpha: 0.55 });
-		shadow.filters = [new BlurFilter({ strength: 12 })];
-		shadow.position.set(4, 10);
-		this.addChild(shadow);
+		shadow.filters = [new BlurFilter({ strength: SHADOW_BLUR })];
+		shadow.position.set(SHADOW_OFFSET_X, SHADOW_OFFSET_Y);
+		const shadowGroup = new Container();
+		shadowGroup.addChild(shadow);
+		this.shadow = shadowGroup;
+		this.addChild(shadowGroup);
 
 		this.mainSprite = new Sprite(this.renderTex);
 		this.mainSprite.width = this.packW;
@@ -231,7 +250,36 @@ export class PackSprite extends Container {
 		return { top, bottom };
 	}
 
+	/**
+	 * Hand the drop shadow out of this container so a caller can draw it in a layer of
+	 * its own. A grid needs this: the shadow spreads further past the pack than the
+	 * gutter between cells (see SHADOW_BLUR), so a shadow drawn inside its own pack
+	 * lands on top of whichever neighbours were added before it. Collected in one layer
+	 * beneath every pack, the same shadows fall only on the background.
+	 *
+	 * The shadow keeps its pack-local coordinates, so the caller must mirror the pack's
+	 * position and scale onto it (and {@link reclaimShadow} before moving the pack
+	 * elsewhere). Destroying the pack destroys the shadow either way.
+	 */
+	detachShadow(): Container | null {
+		if (!this.shadow) return null;
+		this.removeChild(this.shadow);
+		return this.shadow;
+	}
+
+	/** Put a {@link detachShadow}n shadow back underneath the pack, where it started —
+	 * at the pack's origin, whatever transform the borrower left on it. */
+	reclaimShadow(): void {
+		if (!this.shadow || this.shadow.parent === this) return;
+		this.shadow.position.set(0, 0);
+		this.shadow.scale.set(1);
+		this.addChildAt(this.shadow, 0);
+	}
+
 	override destroy(options?: Parameters<Container['destroy']>[0]): void {
+		// A shadow lent out to another container is not ours to leave behind.
+		if (this.shadow && this.shadow.parent !== this) this.shadow.destroy({ children: true });
+		this.shadow = null;
 		if (this.renderTex) {
 			this.renderTex.destroy(true);
 			this.renderTex = null;
