@@ -4,6 +4,7 @@
 	import { _ } from 'svelte-i18n';
 	import { OAUTH_PROVIDER_NAMES, type Profile } from '$types/profile.type';
 	import { levelProgress } from '$utils/progression/level';
+	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ProviderIcon from '$components/core/ProviderIcon.svelte';
 
 	// Props
@@ -15,7 +16,12 @@
 	// map panel, which is a glance card, not the account-management dropdown.
 	export let compact: boolean = false;
 
-	const dispatch = createEventDispatcher<{ signout: void; editusername: void; openprofile: void }>();
+	const dispatch = createEventDispatcher<{
+		signout: void;
+		editusername: void;
+		openprofile: void;
+		editavatar: void;
+	}>();
 
 	/** Whole days elapsed since `value`, or `null` when it's missing/invalid. */
 	function fullDaysSince(value: string | null): number | null {
@@ -37,6 +43,10 @@
 		dispatch('openprofile');
 	}
 
+	function handleEditAvatar(): void {
+		dispatch('editavatar');
+	}
+
 	$: initial = (profile.displayName || profile.email || '?').charAt(0).toUpperCase();
 	$: progress = levelProgress(profile.exp);
 	$: expPercent = Math.round(progress.fraction * 100);
@@ -45,11 +55,17 @@
 
 <div class={classNames('flex flex-col gap-4', classes)}>
 	<div class="flex items-center gap-4">
-		<div class="avatar avatar-placeholder">
-			<div class="w-14 rounded-full bg-primary text-primary-content">
-				<span class="text-xl">{initial}</span>
-			</div>
-		</div>
+		<!-- The picture is the way into the avatar picker: clicking it raises the modal
+			of every character portrait, and whichever is chosen is worn right here. -->
+		<button
+			type="button"
+			class="flex-none rounded-full transition hover:ring-2 hover:ring-primary"
+			title={$_('profile.avatar.edit')}
+			aria-label={$_('profile.avatar.edit')}
+			on:click={handleEditAvatar}
+		>
+			<PlayerAvatar characterId={profile.avatarCharacterId} {initial} />
+		</button>
 		<!-- Beside the avatar: the name, and under it the level — which is what sits where
 			the email used to. Progression is what a player reads their own card for; the
 			address they signed in with is account admin, so it moves down to the

@@ -70,4 +70,12 @@ export interface Profile {
 	 * (`levelForExp`). Not stored — always computed from {@link exp}.
 	 */
 	level: number;
+	/**
+	 * The character whose portrait the player wears as their profile picture, from
+	 * the Supabase `player_profiles` table, or `null` for the initial-letter
+	 * avatar every account starts on. Only the character is stored: which portrait
+	 * it shows is the definition's own face, authored in the admin, so the avatar
+	 * follows whatever is picked there. Set through the `set_player_avatar` RPC.
+	 */
+	avatarCharacterId: string | null;
 }

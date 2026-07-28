@@ -5,7 +5,9 @@
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { usernamePromptOpen } from '$services/usernamePrompt';
+	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { AuthStatus, type OAuthProvider } from '$types/profile.type';
+	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
 	import MagicLinkForm from '$components/core/MagicLinkForm.svelte';
 	import SocialSignIn from '$components/core/SocialSignIn.svelte';
@@ -92,6 +94,13 @@
 		profileOpen = true;
 	}
 
+	function openAvatarPicker(): void {
+		// Same handover as the username prompt: the picker takes the screen rather
+		// than stacking over the full-profile dialog.
+		profileOpen = false;
+		avatarPickerOpen.set(true);
+	}
+
 	function closeProfile(): void {
 		profileOpen = false;
 	}
@@ -114,11 +123,12 @@
 		{:else if $status === AuthStatus.SignedIn && $profile}
 			<!-- Signed-in username; hovering slides the profile card down. -->
 			<button type="button" class="btn btn-ghost btn-sm gap-2">
-				<div class="avatar avatar-placeholder">
-					<div class="w-6 rounded-full bg-primary text-primary-content">
-						<span class="text-xs">{profileInitial}</span>
-					</div>
-				</div>
+				<PlayerAvatar
+					characterId={$profile.avatarCharacterId}
+					initial={profileInitial}
+					size="w-6"
+					textClasses="text-xs"
+				/>
 				<span class="max-w-[10rem] truncate">{$profile.displayName}</span>
 			</button>
 		{:else}
@@ -160,6 +170,7 @@
 							on:signout={handleSignOut}
 							on:editusername={openUsernamePrompt}
 							on:openprofile={openProfile}
+							on:editavatar={openAvatarPicker}
 						/>
 					{:else if sentTo}
 						<div class="alert alert-success">
@@ -209,6 +220,7 @@
 				{signingOut}
 				on:signout={handleSignOut}
 				on:editusername={openUsernamePrompt}
+				on:editavatar={openAvatarPicker}
 			/>
 
 			{#if errorMessage}

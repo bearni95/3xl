@@ -34,9 +34,10 @@ export class ProfileAdapter extends AdapterClass {
 	/**
 	 * Transform a Supabase auth user into the internal {@link Profile} model.
 	 *
-	 * Experience lives in a separate `player_profiles` table, not on the auth
-	 * user, so it isn't available here — `exp` defaults to 0 (level 1). The auth
-	 * service overlays the loaded total via {@link withExp} once it has fetched it.
+	 * Experience and the chosen avatar live in a separate `player_profiles` table,
+	 * not on the auth user, so neither is available here — `exp` defaults to 0
+	 * (level 1) and the avatar to none. The auth service overlays both via
+	 * {@link withExp} / {@link withAvatar} once it has fetched the row.
 	 */
 	fromSupabaseUser(user: SupabaseUserLike): Profile {
 		const email = user.email ?? '';
@@ -55,7 +56,8 @@ export class ProfileAdapter extends AdapterClass {
 			lastSignInAt: user.last_sign_in_at ?? null,
 			providers: this.socialProviders(user),
 			exp: 0,
-			level: levelForExp(0)
+			level: levelForExp(0),
+			avatarCharacterId: null
 		};
 	}
 
@@ -88,6 +90,17 @@ export class ProfileAdapter extends AdapterClass {
 	withExp(profile: Profile, exp: number): Profile {
 		const total = Number.isFinite(exp) && exp > 0 ? Math.trunc(exp) : 0;
 		return { ...profile, exp: total, level: levelForExp(total) };
+	}
+
+	/**
+	 * Return a copy of `profile` wearing `characterId`'s portrait, or the
+	 * initial-letter avatar when it is null/blank. Used by the auth service to
+	 * fold in the stored `player_profiles.avatar_character_id`, and again after
+	 * the player picks a new one.
+	 */
+	withAvatar(profile: Profile, characterId: string | null): Profile {
+		const id = typeof characterId === 'string' && characterId.trim() ? characterId : null;
+		return { ...profile, avatarCharacterId: id };
 	}
 }
 

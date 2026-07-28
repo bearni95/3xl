@@ -52,6 +52,11 @@
 			"later": "QQQQQ",
 			"set": "QQQQQ",
 			"edit": "QQQQQ"
+		},
+		"avatar": {
+			"title": "QQQQQ",
+			"prompt": "QQQQQ",
+			"edit": "QQQQQ"
 		}
 	},
 	"errors": {

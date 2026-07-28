@@ -145,10 +145,47 @@ export function ensureTables(): Promise<void> {
 						created_at timestamptz not null default now(),
 						updated_at timestamptz not null default now()
 					);
+				-- The character whose portrait the player uses as their profile picture,
+				-- chosen from the avatar picker on the map panel's account card. Purely
+				-- cosmetic, and the only part of this row a player sets themselves —
+				-- through set_player_avatar below, since the table takes no client
+				-- writes at all. Null (the default) leaves them on the initial-letter
+				-- avatar. Which portrait each character shows is not stored here: it is
+				-- the definition's own face, authored in the admin /characters/faces
+				-- screen, so re-picking it there moves every player's avatar with it.
+				alter table player_profiles add column if not exists avatar_character_id text
+					references character_templates (id) on delete set null;
 				alter table player_profiles enable row level security;
 				drop policy if exists player_profiles_select_own on player_profiles;
 				create policy player_profiles_select_own on player_profiles
 						for select using (auth.uid() = user_id);
+				-- Set (or clear, with null) the caller's avatar character. security
+				-- definer because player_profiles has no client write policy — this
+				-- writes exactly one cosmetic column and can never touch exp. The id
+				-- must be a known character template, so a crafted call can't store an
+				-- arbitrary string.
+				create or replace function set_player_avatar(p_character_id text)
+				returns text language plpgsql security definer set search_path = public as $set_player_avatar$
+				declare
+						v_uid uuid := auth.uid();
+				begin
+						if v_uid is null then
+								raise exception 'You must be signed in to choose an avatar.';
+						end if;
+						if p_character_id is not null and not exists (
+								select 1 from character_templates t where t.id = p_character_id
+						) then
+								raise exception 'Unknown character: %', p_character_id;
+						end if;
+						insert into player_profiles (user_id, avatar_character_id)
+								values (v_uid, p_character_id)
+								on conflict (user_id) do update
+										set avatar_character_id = excluded.avatar_character_id,
+												updated_at = now();
+						return p_character_id;
+				end;
+				$set_player_avatar$;
+				grant execute on function set_player_avatar(text) to authenticated;
 				-- Retire the client-driven award path: add_player_exp(amount) took the
 				-- increment straight from the browser, so anyone holding the anon key could
 				-- grant themselves any total. Experience now comes from combat only, via

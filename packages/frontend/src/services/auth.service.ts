@@ -56,9 +56,10 @@ class AuthService {
 		if (user) {
 			this.profileStore.set(profileAdapter.fromSupabaseUser(user));
 			this.statusStore.set(AuthStatus.SignedIn);
-			// Experience lives in a separate table; fetch it and fold it in. Fire and
-			// forget — the profile renders immediately at exp 0 and updates on load.
-			void this.loadExp();
+			// Experience and the chosen avatar live in a separate table; fetch them and
+			// fold them in. Fire and forget — the profile renders immediately at exp 0
+			// on the letter avatar, and updates on load.
+			void this.loadPlayerProfile();
 		} else {
 			this.profileStore.set(null);
 			this.statusStore.set(AuthStatus.SignedOut);
@@ -66,24 +67,26 @@ class AuthService {
 	}
 
 	/**
-	 * Load the signed-in player's experience total from Supabase and merge it into
-	 * the profile store (recomputing the level). A player with no `player_profiles`
-	 * row yet reads as 0 exp — the row is created lazily on their first exp gain.
-	 * No-ops when signed out or Supabase is unconfigured; failures are swallowed so
-	 * a missing table never breaks sign-in.
+	 * Load the signed-in player's `player_profiles` row from Supabase — their
+	 * experience total and their chosen avatar character — and merge it into the
+	 * profile store (recomputing the level). A player with no row yet reads as 0
+	 * exp and no avatar; the row is created lazily on their first exp gain or
+	 * avatar pick. No-ops when signed out or Supabase is unconfigured; failures are
+	 * swallowed so a missing table never breaks sign-in.
 	 */
-	private async loadExp(): Promise<void> {
+	private async loadPlayerProfile(): Promise<void> {
 		if (!isSupabaseConfigured()) return;
 		try {
 			const supabase = getSupabaseClient();
 			const { data, error } = await supabase
 				.from('player_profiles')
-				.select('exp')
+				.select('exp, avatar_character_id')
 				.maybeSingle();
 			if (error) throw error;
 			this.mergeExp(Number(data?.exp ?? 0));
+			this.mergeAvatar((data?.avatar_character_id as string | null) ?? null);
 		} catch (error) {
-			console.warn('Failed to load player experience', error);
+			console.warn('Failed to load player profile', error);
 		}
 	}
 
@@ -92,6 +95,31 @@ class AuthService {
 		this.profileStore.update((profile) =>
 			profile ? profileAdapter.withExp(profile, exp) : profile
 		);
+	}
+
+	/** Overlay the chosen avatar character onto the current profile. */
+	private mergeAvatar(characterId: string | null): void {
+		this.profileStore.update((profile) =>
+			profile ? profileAdapter.withAvatar(profile, characterId) : profile
+		);
+	}
+
+	/**
+	 * Wear `characterId`'s portrait as the profile picture (null clears it back to
+	 * the initial-letter avatar). Goes through the `set_player_avatar` RPC rather
+	 * than a table write: `player_profiles` takes no client writes at all, so the
+	 * same row's experience stays out of the browser's reach. The RPC also rejects
+	 * ids that name no character template. Throws on failure so the caller can
+	 * report it; the store is only updated once Supabase has stored the choice.
+	 */
+	async setAvatar(characterId: string | null): Promise<void> {
+		if (!isSupabaseConfigured()) return;
+		const supabase = getSupabaseClient();
+		const { error } = await supabase.rpc('set_player_avatar', {
+			p_character_id: characterId
+		});
+		if (error) throw error;
+		this.mergeAvatar(characterId);
 	}
 
 	/**
