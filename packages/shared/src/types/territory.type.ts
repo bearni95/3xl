@@ -123,6 +123,25 @@ export function siegeProgress(
 	};
 }
 
+/**
+ * One line of the map's "latest towns won" table: a town that has changed hands,
+ * named alongside the show its sitting team belongs to. Assembled on the client
+ * from the holder rows, the municipality polygons (for the name) and the
+ * character → show assignment (for the show).
+ */
+export interface TerritoryWinRow {
+	/** The town, as its geojson feature id — also the row key. */
+	locationId: string;
+	/** The town's display name, ready to render. */
+	name: string;
+	/** The occupier's display name. */
+	holderName: string;
+	/** The show the sitting team belongs to, or null when it belongs to none. */
+	showName: string | null;
+	/** ISO timestamp the town was taken, newest first in the table. */
+	takenAt: string;
+}
+
 /** Raw `municipality_holders` row as the Supabase client returns it. */
 export interface MunicipalityHolderRow {
 	location_id: string;

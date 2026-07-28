@@ -7,6 +7,7 @@
 	import AuthMenu from '$components/core/AuthMenu.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
+	import TerritoryTable from '$components/core/TerritoryTable.svelte';
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
@@ -17,12 +18,17 @@
 	import { authService } from '$services/auth.service';
 	import { territoryService } from '$services/territory.service';
 	import { territoryAdapter } from '$adapters/classes/territory.adapter';
-	import type { MunicipalityHolder, MunicipalitySiege } from '$types/territory.type';
+	import type {
+		MunicipalityHolder,
+		MunicipalitySiege,
+		TerritoryWinRow
+	} from '$types/territory.type';
 	import type { TerritoryResult } from '$types/combat.type';
 	import { TEAM_SIZE } from '$services/team.service';
 	import { buildMunicipalityTeam, ogTeamSpawns } from '$utils/spawn/municipality-team';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
 	import { combatStatsFromStat } from '$utils/spawn/stat';
+	import { teamShowName } from '$utils/spawn/team-show';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import type { CardModel } from '$utils/card/card-model.type';
 	import type { CharacterSpawn } from '$types/character-spawn.type';
@@ -143,6 +149,16 @@
 			showCharacterIds = new Map();
 		}
 
+		// The reverse assignment — character → the shows it belongs to — so a town's
+		// sitting team (which stores only character ids) can be labelled with the show
+		// it comes from in the top-right table. Same fallback as everything else here:
+		// no Supabase, no show names, and the table simply shows a dash.
+		try {
+			characterShowNames = await spawnService.loadCharacterShowNames();
+		} catch {
+			characterShowNames = new Map();
+		}
+
 		// Who actually occupies each town, plus this player's own siege progress.
 		// Loaded last and independently: a town with no holder simply stays on its
 		// seeded OG team, which is exactly what an unconfigured or failing Supabase
@@ -182,6 +198,65 @@
 	// with whatever it now holds (a capture rewrites its team, turnover and holder).
 	function onTerritory(_result: TerritoryResult): void {
 		void reloadTerritory();
+	}
+
+	// --- The latest towns won (top-right panel) ---------------------------------
+	// `municipality_holders` only gets a row when a town actually changes hands, so
+	// the holder set the map already loads *is* the log of the towns players have
+	// most recently won — newest capture first, capped so the panel stays a leaderboard
+	// rather than a dump of every town ever taken.
+
+	// How many of the most recent captures the panel lists.
+	const RECENT_WINS_LIMIT = 20;
+
+	// character id → the names of the Supabase shows it belongs to, read once so a
+	// sitting team can be labelled with the show it comes from. Empty when Supabase
+	// is unconfigured or unreadable, which leaves the show column blank.
+	let characterShowNames = new Map<string, string[]>();
+
+	// Municipality feature id → its raw name, so a holder row (which stores only the
+	// feature id) can be named without walking the region tree.
+	$: municipalityNamesById = new Map(
+		(municipalities?.features ?? []).map((feature) => [
+			String(feature.properties?.id),
+			String(feature.properties?.name ?? '')
+		])
+	);
+
+	// The most recently captured towns, each named and labelled with the show its
+	// sitting team belongs to. All three inputs are named as arguments so the rows
+	// rebuild as the holders reload, the polygons land and the show names arrive.
+	function buildRecentWins(
+		occupied: ReadonlyMap<string, MunicipalityHolder>,
+		names: ReadonlyMap<string, string>,
+		showNames: ReadonlyMap<string, string[]>
+	): TerritoryWinRow[] {
+		return [...occupied.values()]
+			.sort((a, b) => b.takenAt.localeCompare(a.takenAt))
+			.slice(0, RECENT_WINS_LIMIT)
+			.map((holder) => {
+				const name = names.get(holder.locationId);
+				return {
+					locationId: holder.locationId,
+					// A holder whose polygon isn't loaded still has to be listed, so it falls
+					// back to its feature id rather than being dropped.
+					name: name ? restoreCatalanArticle(name) : holder.locationId,
+					holderName: holder.holderName,
+					showName: teamShowName(
+						holder.team.map((member) => member.characterId),
+						showNames
+					),
+					takenAt: holder.takenAt
+				};
+			});
+	}
+
+	$: recentWins = buildRecentWins(holders, municipalityNamesById, characterShowNames);
+
+	// Clicking a row opens that town exactly as picking it out of the region table
+	// does: the URL region param drives the map framing and the bottom-left panel.
+	function openWin(row: TerritoryWinRow) {
+		open(row.locationId);
 	}
 
 	// Sieges are RLS-scoped to the reader, so the set loaded before sign-in is
@@ -436,6 +511,16 @@
 		'fixed bottom-4 left-4 z-[1100] flex h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box',
 		'border border-base-300 bg-base-100/70 shadow-lg transition-transform duration-300 ease-in-out',
 		{ 'translate-x-[calc(-100%-1.5rem)]': fightOpen }
+	);
+
+	// The top-right wins panel is the mirror image of the regions panel: same size,
+	// chrome and slide-away behaviour, off the right edge instead of the left. It
+	// steps aside for a fight, and for the festa pack panel too — that one is also
+	// pinned right and would otherwise sit straight on top of it.
+	$: winsPanelClasses = classNames(
+		'fixed right-4 top-20 z-[1100] flex h-[40vh] w-[36rem] flex-col overflow-hidden rounded-box',
+		'border border-base-300 bg-base-100/70 shadow-lg transition-transform duration-300 ease-in-out',
+		{ 'translate-x-[calc(100%+1.5rem)]': fightOpen || !!festaModalId }
 	);
 
 	// Fight this town: snapshot whichever team currently sits on it — the holder's if
@@ -850,6 +935,21 @@
 		{:else}
 			<RegionTable rows={regionRows} onSelect={select} />
 		{/if}
+	</aside>
+
+	<!-- The mirror of the regions panel, pinned top-right: the towns players have most
+		recently won off their sitting team, each with the show its current leading team
+		comes from. Read straight out of `municipality_holders` (a row is only written when
+		a town changes hands), so it stays empty until the first town falls, and refreshes
+		with the rest of the territory state after every settled fight. Clicking a row
+		drills the map into that town, exactly like a region row. -->
+	<aside class={winsPanelClasses} aria-label="Latest towns won">
+		<div class="flex flex-none items-center justify-between gap-2 border-b border-base-300 px-4 py-3">
+			<span class="text-sm font-semibold">Latest towns won</span>
+			<span class="badge badge-ghost badge-sm">{recentWins.length}</span>
+		</div>
+
+		<TerritoryTable rows={recentWins} onSelect={openWin} />
 	</aside>
 
 	<!-- The map keeps the full width at all times. The festa pack panel floats over its
