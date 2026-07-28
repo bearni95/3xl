@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { ShowStanding } from '$utils/geo/show-standings';
+	import { showIconName } from '$utils/show/show-icon';
+	import ShowIcon from '$components/core/ShowIcon.svelte';
 
 	// Every show that flies over at least one municipality, biggest first. Nothing
 	// to drill into — a show isn't a place — so the rows are plain, not clickable.
@@ -21,9 +23,18 @@
 		</thead>
 		<tbody>
 			{#each rows as row (row.id)}
+				{@const showIcon = showIconName(row.id)}
 				<tr>
+					<!-- The show's glyph ahead of its name, drawn in the cell's own colour and at
+						its own font size so it reads as part of the label. A show with no icon
+						drawn yet renders by name alone. -->
 					<td class="font-medium">
-						<span class="truncate">{row.name}</span>
+						<span class="flex items-center gap-1.5">
+							{#if showIcon}
+								<ShowIcon name={showIcon} />
+							{/if}
+							<span class="truncate">{row.name}</span>
+						</span>
 					</td>
 					<td class="text-right tabular-nums opacity-70">{row.count}</td>
 					<td class="text-right tabular-nums opacity-70">{share(row.share)}</td>

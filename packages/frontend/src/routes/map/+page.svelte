@@ -263,13 +263,16 @@
 			.map((holder) => {
 				const name = names.get(holder.locationId);
 				const progress = territoryService.progressFor(holder.locationId, occupied, banked);
+				const show = ruling.get(holder.locationId) ?? null;
 				return {
 					locationId: holder.locationId,
 					// A holder whose polygon isn't loaded still has to be listed, so it falls
 					// back to its feature id rather than being dropped.
 					name: name ? restoreCatalanArticle(name) : holder.locationId,
 					holderName: holder.holderName,
-					showName: ruling.get(holder.locationId)?.name ?? null,
+					showName: show?.name ?? null,
+					// Carried so the table can badge the row with the show's icon.
+					showId: show?.id ?? null,
 					wins: progress.wins,
 					required: progress.required,
 					takenAt: holder.takenAt

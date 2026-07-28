@@ -53,8 +53,20 @@ municipality at build time from Wikidata (Catalunya / Catalunya Nord), a GADM-de
 layer (País Valencià), and the comarques de les illes Balears (Illes Balears); Andorra and
 l'Alguer have no comarca tier. See the script header for the full sourcing notes.
 
+**Data flow — show icons:** `@3xl/assets`' `generate-show-icons.js` takes the Noun
+Project SVGs dropped at the repo root, strips the attribution `<text>` baked into every
+download, crops the viewBox to the artwork, and re-emits it at `width`/`height` `1em`
+with `fill="currentColor"`, into `public/icons/shows/<slug>.svg` — then deletes the root
+original (it is a move) and records the stripped credit in that folder's `license.txt`.
+Unlike the game-icons.net set, these are **not** rendered through `Icon.svelte`: an
+`<img>` cannot inherit colour, so `ShowIcon.svelte` inlines them (via `import.meta.glob`
++ `?raw`) and they take the colour and size of the text beside them. Which show gets
+which glyph is the hand-maintained `showIconName` map in
+`@3xl/shared/utils/show/show-icon.ts`, keyed by TMDB show id.
+
 **Do not hand-edit generated files** (`registry.generated.ts`, `manifest.json`,
-`mugen-moves.json`, `public/geo/*.json`) or decoded assets — re-run the relevant script.
+`mugen-moves.json`, `public/geo/*.json`, `public/icons/shows/*`) or decoded assets —
+re-run the relevant script.
 
 **Root scripts** (from repo root):
 
@@ -71,6 +83,7 @@ pnpm import:mugen   # (re)build the character registry from MUGEN archives
 pnpm generate:sprites
 pnpm generate:auras
 pnpm generate:geo   # rebuild the Països Catalans map layers
+pnpm generate:show-icons  # move any root *.svg into the show-icon set
 pnpm clean          # remove build output across all packages
 ```
 

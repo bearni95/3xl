@@ -1,0 +1,6 @@
+Icons in this directory come from The Noun Project (thenounproject.com) and are
+used under the licence attached to each download. The credit below is the
+attribution that shipped inside each SVG, harvested by generate-show-icons.js
+before the artwork was cropped (the icons themselves no longer carry it).
+
+- bow-and-arrow.svg — Created by Studio Danro from Noun Project

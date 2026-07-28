@@ -139,6 +139,11 @@ export interface TerritoryWinRow {
 	/** The show the sitting team belongs to, or null when it belongs to none. */
 	showName: string | null;
 	/**
+	 * That show's TMDB id, carried alongside the name purely so the table can look
+	 * up the show's icon. Null exactly when `showName` is.
+	 */
+	showId: number | null;
+	/**
 	 * Wins the reader has banked against this town's sitting team, from their own
 	 * `municipality_sieges` row (RLS-scoped, so 0 when signed out).
 	 */
