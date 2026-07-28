@@ -1163,9 +1163,10 @@
 		  opener, already fitted and centred. -->
 	<aside class={panelClasses} aria-label="Map panel">
 		<!-- Its own section, on its own border: the account card belongs to the player,
-			not to any of the tabs, and never changes as they are switched. No padding
-			here — the card brings its own. -->
-		<div class="flex-none border-b border-base-300">
+			not to any of the tabs, and never changes as they are switched. Nothing but the
+			border separates it — it draws no surface of its own — so the padding is the
+			section's, and it is the breadcrumbs' below. -->
+		<div class="flex-none border-b border-base-300 px-4 py-3">
 			<AuthMenu embedded />
 		</div>
 

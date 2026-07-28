@@ -125,10 +125,12 @@
 					]
 		)}
 	>
-		<!-- Same card either way. Embedded it fills the panel section it sits in and drops
-			the dropdown's shadow, which would read as a seam inside a panel. -->
-		<div class={classNames('card bg-base-100', embedded ? 'w-full' : 'w-80 shadow-xl')}>
-			<div class="card-body gap-4">
+		<!-- Same contents either way, but embedded it is not a card of its own: the panel
+			section it sits in already brings the surface, the rounded corners and the
+			border, so a second box drawn inside it only reads as a seam. No background, no
+			radius, no shadow, no width — and the padding is the host section's. -->
+		<div class={embedded ? 'w-full' : 'card w-80 bg-base-100 shadow-xl'}>
+			<div class={classNames('gap-4', embedded ? 'flex flex-col' : 'card-body')}>
 				<!-- Contents format i18n messages; wait for the locale to load. -->
 				{#if $locale}
 					{#if !authService.configured}
