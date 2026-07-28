@@ -29,6 +29,7 @@ import {
 	Texture
 } from 'pixi.js';
 import { textureCache } from '$utils/card/texture-cache';
+import { tmdbImageAtSize } from '$utils/tmdb/image-size';
 import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 import { spawnYearLabel } from '$utils/spawn/year';
 
@@ -49,6 +50,15 @@ const DEFAULT_ART_ASPECT = 1.14;
  * silhouette (fill, border, drop shadow) is serrated rather than a rectangle with
  * triangles painted over it. */
 const TRIANGLE_BASE_RATIO = 0.1;
+/**
+ * TMDB size the cover is fetched at. The saved-show collection stores its posters as
+ * w342 thumbnails — the size the admin gallery and the map's pins want — but a pack
+ * draws its cover the full width of the pack and then zooms it up to fill the canvas,
+ * so at w342 the poster is being upscaled several times over and looks it. w780 is the
+ * next size up that still covers the largest a pack is ever drawn, without pulling the
+ * multi-megabyte `original` for every pack in a grid.
+ */
+const COVER_SIZE = 'w780';
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
@@ -102,7 +112,10 @@ export class PackSprite extends Container {
 	}
 
 	async load(): Promise<void> {
-		const cover = await textureCache.poster(this.coverUrl);
+		// Ask for the cover at a size that matches how big the pack draws it, rather
+		// than the w342 thumbnail the collection bakes (see COVER_SIZE). Falls back to
+		// whatever URL was handed in when it isn't a TMDB one.
+		const cover = await textureCache.poster(tmdbImageAtSize(this.coverUrl, COVER_SIZE));
 
 		// The cover spans the full pack width and is never cropped, so its aspect
 		// ratio sets the pack's height. Resolve the final footprint (fitted inside

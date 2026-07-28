@@ -486,17 +486,77 @@ export class ClaimPackGridScene {
 		const targetX = width / 2 - (entry.sprite.packWidth * focusScale) / 2;
 		const targetY = height / 2 - (entry.sprite.packHeight * focusScale) / 2;
 
+		// Compose a second copy of the pack at the size the zoom lands on, while the zoom
+		// itself plays — so the pack that comes to rest is drawn 1:1 rather than upscaled.
+		const sharper = this.bakeFocusPack(entry.pack, entry.sprite.packWidth * focusScale, focusScale);
+
 		const others = this.entries.filter((e) => e !== entry);
 		void Promise.all([
 			this.tweenPackFocus(entry.sprite, screenX, screenY, this.gridScale, targetX, targetY, focusScale),
 			...others.map((other) => this.fadeOut(other))
-		]).then(() => {
+		]).then(async () => {
 			if (this.isDestroyed) return;
 			for (const other of others) other.sprite.destroy();
 			this.entries = [entry];
 			this.selScale = focusScale;
+
+			const sharp = await sharper;
+			if (this.isDestroyed) {
+				sharp?.destroy();
+				return;
+			}
+			if (sharp) this.swapFocusPack(entry, sharp, targetX, targetY);
 			this.enterIdle();
 		});
+	}
+
+	/**
+	 * Compose one more copy of a pack, this time at the width the focus zoom lands on.
+	 * The grid bakes every pack at the column width, which is right for the grid but two
+	 * or three times smaller than a focused pack is drawn — and a render texture stretched
+	 * that far is exactly the soft text, furry teeth and smeared poster you'd expect. The
+	 * cover bitmap is already loaded by then, so this is pure drawing and no network, and
+	 * only ever one pack is held at this size, so the grid's memory doesn't move. Null when
+	 * the pack is already drawn at (or above) its baked size, or the scene went away mid-bake.
+	 */
+	private async bakeFocusPack(
+		pack: OpenerPack,
+		width: number,
+		scale: number
+	): Promise<PackSprite | null> {
+		if (scale <= 1.01) return null;
+		const sprite = new PackSprite({
+			coverUrl: pack.coverUrl,
+			locationName: pack.locationName,
+			app: this.app,
+			width,
+			// A tall box so the fit is width-bound, exactly as the grid bake does it —
+			// the pack comes out `width` wide at the poster's own aspect.
+			height: width * 8
+		});
+		await sprite.load();
+		if (this.isDestroyed) {
+			sprite.destroy();
+			return null;
+		}
+		return sprite;
+	}
+
+	/** Put the sharply-baked copy in the focused pack's place and drop the stretched one. */
+	private swapFocusPack(entry: GridEntry, sharp: PackSprite, x: number, y: number): void {
+		this.focusLayer.removeChild(entry.sprite);
+		entry.sprite.destroy();
+
+		sharp.position.set(x, y);
+		sharp.scale.set(1);
+		this.focusLayer.addChild(sharp);
+
+		entry.sprite = sharp;
+		entry.bakedH = sharp.packHeight;
+		this.packSprite = sharp;
+		// Drawn 1:1 now, so the focused pack's local units are screen pixels and the cut
+		// geometry below (which is all selScale-relative) needs no scaling at all.
+		this.selScale = 1;
 	}
 
 	private tweenPackFocus(
