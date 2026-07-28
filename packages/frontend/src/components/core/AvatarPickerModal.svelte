@@ -50,14 +50,23 @@
 			.finally(() => (spawnsLoading = false));
 	}
 
-	// The same swatches the portrait rings and the card scene use.
-	const colorClasses: Record<SpawnColor, string> = {
+	// The same swatches the portrait rings and the card scene use. A colour the
+	// player holds fills its circle; one still to claim is only outlined in it.
+	const colorFills: Record<SpawnColor, string> = {
 		[SpawnColor.Red]: 'bg-red-500',
 		[SpawnColor.Yellow]: 'bg-yellow-400',
 		[SpawnColor.Blue]: 'bg-blue-500',
 		[SpawnColor.Orange]: 'bg-orange-500',
 		[SpawnColor.Green]: 'bg-green-500',
 		[SpawnColor.Purple]: 'bg-purple-500'
+	};
+	const colorBorders: Record<SpawnColor, string> = {
+		[SpawnColor.Red]: 'border-red-500',
+		[SpawnColor.Yellow]: 'border-yellow-400',
+		[SpawnColor.Blue]: 'border-blue-500',
+		[SpawnColor.Orange]: 'border-orange-500',
+		[SpawnColor.Green]: 'border-green-500',
+		[SpawnColor.Purple]: 'border-purple-500'
 	};
 
 	// A portrait is earned, not just picked: the player must hold that character in
@@ -185,22 +194,20 @@
 					</div>
 					{#if locked}
 						{@const owned = ownedColors.get(character.id)}
-						<!-- The colour set, in rainbow order, over white: the colours still to
-						     claim are barely lit, so the row reads as how far off the set is. -->
-						<div class="flex w-20 overflow-hidden rounded-full bg-white">
+						<!-- The colour set, in rainbow order: a colour the player holds is a
+						     circle filled with it, one still to claim an empty ring of it. -->
+						<div class="flex w-20 justify-between">
 							{#each PRIDE_SPAWN_COLORS as color (color)}
 								<span
-									class={classNames('h-1.5 flex-1', colorClasses[color], {
-										'opacity-20': !owned?.has(color)
-									})}
+									class={classNames(
+										'h-2.5 w-2.5 rounded-full border',
+										colorBorders[color],
+										owned?.has(color) ? colorFills[color] : 'bg-white'
+									)}
 								></span>
 							{/each}
 						</div>
 					{/if}
-					<span
-						class={classNames('w-full truncate text-center text-xs', { 'opacity-40': locked })}
-						>{character.label}</span
-					>
 				</button>
 			{/each}
 		</div>
