@@ -1265,7 +1265,12 @@
 				</ul>
 			</div>
 
-			<div class="join">
+			<!-- One column per tab, so the four split the panel's width evenly however long
+				their labels are (Booster's grows a counter) instead of each being as wide as
+				its own text. Still a join: `grid` only overrides its inline-flex display —
+				the joined radii and collapsed borders come from child rules that hold in a
+				grid just as well. -->
+			<div class="join grid grid-cols-4">
 				{#each panelTabs as tab (tab.id)}
 					<button
 						type="button"
