@@ -9,7 +9,8 @@
  *
  *   · red    → it may fire **on top of** a non-attacking move (charge or defend).
  *   · yellow → it **starts** the battle with one charge already banked.
- *   · blue   → one shot is turned aside for free on any turn it isn't defending.
+ *   · blue   → the **first** shot to reach it on a turn it isn't defending is turned
+ *              aside for free. One shot, once in the battle.
  *
  * A compound colour carries the traits of the two primaries it mixes, and only
  * those — so purple (red + blue) shoots off a defend and shrugs off a bullet, but
@@ -36,10 +37,10 @@ export interface ColorTraits {
 	/** Yellow: the fighter enters the battle with one charge already banked. */
 	headStart: boolean;
 	/**
-	 * Blue: on any turn the fighter doesn't spend defending, the first shot aimed at
-	 * it is turned aside anyway. It stops one shot per turn, not one per battle, and
-	 * a second shot in the same turn goes through — so focused fire is what answers
-	 * it.
+	 * Blue: the first shot to reach the fighter on a turn it isn't defending is turned
+	 * aside anyway. It is worth **one shot in the whole battle**, not one a turn —
+	 * shots come straight across the lane, so a fighter takes at most one a turn and a
+	 * guard that came back each turn would simply never let anything through.
 	 */
 	passiveGuard: boolean;
 }

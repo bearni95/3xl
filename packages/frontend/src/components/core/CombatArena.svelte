@@ -71,17 +71,6 @@
 		dispatch('close');
 	}
 
-	// Filled button styling per combat color, for the target chips (a chip is drawn
-	// in the colour of the rival it aims at).
-	const colorFill: Record<CombatColor, string> = {
-		red: 'bg-red-500 hover:bg-red-600 border-red-500 text-white',
-		blue: 'bg-blue-500 hover:bg-blue-600 border-blue-500 text-white',
-		yellow: 'bg-yellow-400 hover:bg-yellow-500 border-yellow-400 text-black',
-		purple: 'bg-purple-500 hover:bg-purple-600 border-purple-500 text-white',
-		orange: 'bg-orange-500 hover:bg-orange-600 border-orange-500 text-white',
-		green: 'bg-green-500 hover:bg-green-600 border-green-500 text-white'
-	};
-
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
 
 	// The blue side is the player's active team; the red side (the CPU) either mirrors
@@ -346,11 +335,6 @@
 	// `lineups`.
 	$: lineups = [orderByCell('error', badges), orderByCell('info', badges)];
 
-	// The rivals still standing, in line-up order — what a shot can be aimed at.
-	$: targets = (state?.fighters ?? []).filter(
-		(fighter) => fighter.side === 'error' && !fighter.down
-	);
-
 	function orderByCell(side: 'error' | 'info', list: Badge[]): Badge[] {
 		return list.filter((badge) => badge.side === side).sort((a, b) => a.gridY - b.gridY);
 	}
@@ -542,28 +526,6 @@
 	</div>
 {/snippet}
 
-<!-- The rivals a shot can be aimed at, one chip each in that rival's own colour.
-     They read left to right in the same order the rival cards are drawn above the
-     board, so a chip names a card by position as well as by name. -->
-{#snippet targetChips(fighterId: string, chosen: string | null, pick: (id: string) => void, locked: boolean)}
-	<div class="flex w-full gap-1">
-		{#each targets as target (target.id)}
-			<button
-				type="button"
-				class={classNames(
-					'btn btn-xs min-w-0 flex-1 px-1 text-[10px] font-semibold',
-					colorFill[target.color],
-					{ 'ring-2 ring-base-content ring-inset': chosen === target.id }
-				)}
-				disabled={locked}
-				on:click={() => pick(target.id)}
-			>
-				<span class="truncate">{target.name}</span>
-			</button>
-		{/each}
-	</div>
-{/snippet}
-
 {#snippet orderPicker(badge: Badge, fighter: FighterView | undefined)}
 	{@const locked = state?.phase !== 'planning' || !!fighter?.down}
 	<div class="flex w-full flex-col gap-1">
@@ -581,12 +543,15 @@
 					on:click={() => controller?.setAction(badge.id, action)}
 				>
 					{actionLabel(action)}
+					{#if action === 'shoot' && fighter?.opponentName}
+						<!-- Whom, not which: the lane already decided that. -->
+						<span class="ml-auto min-w-0 truncate text-xs font-normal opacity-80">
+							{fighter.opponentName}
+						</span>
+					{/if}
 				</button>
 			{/each}
 		</div>
-		{#if fighter?.action === 'shoot'}
-			{@render targetChips(badge.id, fighter.targetId, (id) => controller?.setTarget(badge.id, id), locked)}
-		{/if}
 		<!-- Red's extra shot: only ever offered to a colour that carries it, on a turn
 		     it is spending on something other than shooting, and only while it has a
 		     charge left to pay for it. -->
@@ -601,14 +566,6 @@
 				/>
 				<span>Extra shot</span>
 			</label>
-			{#if fighter.bonus}
-				{@render targetChips(
-					badge.id,
-					fighter.bonusTargetId,
-					(id) => controller?.setBonusTarget(badge.id, id),
-					locked
-				)}
-			{/if}
 		{/if}
 	</div>
 {/snippet}

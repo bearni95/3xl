@@ -10,18 +10,19 @@
  *     way to get one, and it leaves the fighter wide open.
  *   · **Defend** turns aside every shot aimed at the fighter that turn, but banks
  *     nothing — spend the whole fight defending and you never fire.
- *   · **Shoot** spends a charge and fires at a chosen enemy. A shot that isn't
- *     turned aside takes its target down: **one hit is all it takes**, whoever it
- *     lands on. Shooting is also not defending, so two fighters who shoot each other
- *     on the same turn both fall.
+ *   · **Shoot** spends a charge and fires **straight across the lane**. Nobody
+ *     shoots sideways: a fighter can only ever hit the one holding the same place in
+ *     the enemy line that it holds in its own, so a turn asks whether to fire, never
+ *     at whom. A shot that isn't turned aside takes its target down: **one hit is all
+ *     it takes**, whoever it lands on. Shooting is also not defending, so two fighters
+ *     who shoot each other across a lane both fall.
  *
  * What separates one card from another is nothing but its **colour** (see
  * `colorTraits` in @3xl/shared): red may fire *on top of* a charge or a defend,
- * yellow opens the battle with a charge already banked, and blue turns aside the
- * first shot of any turn it doesn't spend defending. A compound colour carries the
- * two traits of the primaries it mixes — so the counter to blue's free guard is two
- * shots at it in the one turn, and the counter to red's second action is not being
- * where it is aiming.
+ * yellow opens the battle with a charge already banked, and blue turns one shot aside
+ * for free — once in the battle, on a turn it wasn't defending anyway. A compound
+ * colour carries the two traits of the primaries it mixes, so every colour gives
+ * something up.
  *
  * The rivals open **on the central column**, as far forward as the board allows, and
  * are pushed further out every time one of them is taken down — the survivors fall
@@ -41,7 +42,7 @@ import type { MugenBoard } from '$utils/mugen/mugen-board';
 import { findMove, type CharacterMove, type CombatColor } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
 import { colorTraits, type ColorTraits } from '$utils/color/traits';
-import { pickOne, pickWeighted } from '$utils/dice/roll';
+import { pickWeighted } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
 export type FighterSide = 'error' | 'info';
@@ -123,14 +124,10 @@ export interface Fighter extends FighterSeed {
 	down: boolean;
 	/** The order it will carry out this turn, or null before one is given. */
 	action: CombatAction | null;
-	/** Who its shot is aimed at, when {@link action} is `shoot`. */
-	targetId: string | null;
 	/** Red's extra: a shot fired on top of a charge or a defend. */
 	bonus: boolean;
-	/** Who that extra shot is aimed at. */
-	bonusTargetId: string | null;
-	/** Set while a turn resolves, once blue's free guard has eaten a shot. */
-	guarded: boolean;
+	/** Set once blue's free guard has been spent — it is worth one shot a battle. */
+	guardSpent: boolean;
 }
 
 /** A fighter as the page renders it. A rival's orders are withheld until they are
@@ -148,14 +145,20 @@ export interface FighterView {
 	/** The order this fighter is carrying out, or null — for a rival, null also
 	 * means "not yet revealed". */
 	action: CombatAction | null;
-	targetId: string | null;
 	bonus: boolean;
-	bonusTargetId: string | null;
-	/** Whether Shoot is a legal order for it right now (it has a charge to spend). */
+	/** Whether blue's free guard is still in hand (false once spent, or on a colour
+	 * that never had one). */
+	guarded: boolean;
+	/** The fighter directly opposite — the only one it can shoot, and the only one
+	 * that can shoot it. Null when its lane has been emptied. */
+	opponentId: string | null;
+	opponentName: string | null;
+	/** Whether Shoot is a legal order for it right now: a charge to spend, and
+	 * somebody opposite to spend it on. */
 	canShoot: boolean;
 	/** Whether its colour and charges let it add a shot to a charge or a defend. */
 	canBonus: boolean;
-	/** Whether its order is complete — given, and with a live target for every shot. */
+	/** Whether its order is complete — given, and firing only when it can. */
 	ordered: boolean;
 }
 
@@ -243,10 +246,8 @@ export class CombatController {
 				charges: traits.headStart ? 1 : 0,
 				down: false,
 				action: null,
-				targetId: null,
 				bonus: false,
-				bonusTargetId: null,
-				guarded: false
+				guardSpent: false
 			};
 		});
 		this.planRivals();
@@ -294,25 +295,11 @@ export class CombatController {
 	setAction(id: string, action: CombatAction): void {
 		const fighter = this.playerReady(id);
 		if (!fighter) return;
-		if (action === 'shoot' && fighter.charges < 1) return;
+		if (action === 'shoot' && !this.canShoot(fighter)) return;
 		fighter.action = action;
-		if (action === 'shoot') {
-			// A shot always needs somebody to be aimed at; default to whoever this
-			// fighter was already aiming at, else the first rival standing.
-			fighter.targetId = this.liveTarget(fighter, fighter.targetId);
-			// The extra shot rides on a *non-attacking* order, so taking the shot as the
-			// order itself gives it up — nobody fires twice.
-			fighter.bonus = false;
-			fighter.bonusTargetId = null;
-		}
-		this.emit();
-	}
-
-	/** Aim a player fighter's shot at a rival. */
-	setTarget(id: string, targetId: string): void {
-		const fighter = this.playerReady(id);
-		if (!fighter || !this.isLiveEnemy(fighter, targetId)) return;
-		fighter.targetId = targetId;
+		// The extra shot rides on a *non-attacking* order, so taking the shot as the
+		// order itself gives it up — nobody fires twice.
+		if (action === 'shoot') fighter.bonus = false;
 		this.emit();
 	}
 
@@ -322,15 +309,6 @@ export class CombatController {
 		if (!fighter) return;
 		if (on && !this.canBonus(fighter)) return;
 		fighter.bonus = on;
-		fighter.bonusTargetId = on ? this.liveTarget(fighter, fighter.bonusTargetId) : null;
-		this.emit();
-	}
-
-	/** Aim a player fighter's extra shot at a rival. */
-	setBonusTarget(id: string, targetId: string): void {
-		const fighter = this.playerReady(id);
-		if (!fighter || !fighter.bonus || !this.isLiveEnemy(fighter, targetId)) return;
-		fighter.bonusTargetId = targetId;
 		this.emit();
 	}
 
@@ -359,24 +337,24 @@ export class CombatController {
 	 */
 	private async resolve(): Promise<void> {
 		const acting = this.fighters.filter((fighter) => !fighter.down && fighter.action);
-		for (const fighter of acting) fighter.guarded = false;
 
-		// Every shot of the turn, in the order the bullets land: the fastest shooter's
-		// arrives first, so a blue fighter's free guard eats that one and the shots
-		// behind it go through.
+		// Every shot of the turn, aimed straight across the lane and worked out before
+		// any of it plays, so who is opposite whom is settled by where everybody stood
+		// when the orders were given — not by who has fallen part-way through the volley.
 		const shots: Shot[] = [];
 		for (const fighter of acting) {
-			// A charge is only ever spent on a shot that is actually fired: at somebody
-			// still standing, and only while there is a charge left to pay for it.
-			const fire = (targetId: string | null, extra: boolean): void => {
-				const target = targetId ? this.find(targetId) : undefined;
-				if (!target || target.down || fighter.charges < 1) return;
+			// A charge is only ever spent on a shot that is actually fired: at the fighter
+			// opposite, and only while there is a charge left to pay for it.
+			const fire = (extra: boolean): void => {
+				const target = this.opposite(fighter);
+				if (!target || fighter.charges < 1) return;
 				fighter.charges -= 1;
 				shots.push({ shooter: fighter, target, extra });
 			};
-			if (fighter.action === 'shoot') fire(fighter.targetId, false);
-			if (fighter.bonus) fire(fighter.bonusTargetId, true);
+			if (fighter.action === 'shoot') fire(false);
+			if (fighter.bonus) fire(true);
 		}
+		// The order the bullets land in: the fastest shooter's arrives first.
 		shots.sort((a, b) => b.shooter.spd - a.shooter.spd);
 
 		this.log = [];
@@ -438,8 +416,8 @@ export class CombatController {
 			// Brace again on the bullet, so the block is seen and not just labelled.
 			const guard = findMove(target, 'defent');
 			if (guard) void this.board?.playMove(target.id, guard);
-		} else if (target.traits.passiveGuard && !target.guarded) {
-			target.guarded = true;
+		} else if (target.traits.passiveGuard && !target.guardSpent) {
+			target.guardSpent = true;
 			this.log.push(`${from} at ${target.name} — turned aside by its guard.`);
 			this.board?.showCallout(target.id, 'GUARD', target.color);
 		} else {
@@ -528,10 +506,7 @@ export class CombatController {
 		this.turn += 1;
 		for (const fighter of this.fighters) {
 			fighter.action = null;
-			fighter.targetId = null;
 			fighter.bonus = false;
-			fighter.bonusTargetId = null;
-			fighter.guarded = false;
 		}
 		this.planRivals();
 		this.phase = 'planning';
@@ -554,21 +529,25 @@ export class CombatController {
 	 * are committing blind to each other, so the rivals' choices must already be made
 	 * (and kept out of {@link view}) while the player is still deciding.
 	 *
-	 * The reasoning is short: a rival with nothing banked has to load (though it will
-	 * sometimes duck behind a guard instead if anything opposite could fire), and one
-	 * with a charge weighs firing against covering. When nobody opposite can shoot at
-	 * all, defending is worthless and it never picks it. Shots go at whoever is
-	 * holding the most charges — the fighter most likely to fire back.
+	 * With nothing to aim, the whole decision is the lane it stands in. A rival reads
+	 * only the fighter opposite, because that is the only one that can shoot it and the
+	 * only one it can shoot: with nothing banked it loads (ducking behind a guard now
+	 * and then, but only while the one opposite could fire), and with a charge in hand
+	 * it weighs firing against covering. Against somebody who cannot shoot back this
+	 * turn, covering is worthless and it never picks it.
 	 */
 	private planRivals(): void {
-		const threatened = this.players().some((fighter) => !fighter.down && fighter.charges > 0);
 		for (const rival of this.rivals()) {
 			if (rival.down) continue;
-			const target = this.threatOpposite(rival);
+			const target = this.opposite(rival);
 			if (!target) {
+				// Nobody in this lane: there is nothing to shoot and nothing to fear, so
+				// it may as well go on loading.
 				rival.action = 'charge';
+				rival.bonus = false;
 				continue;
 			}
+			const threatened = target.charges > 0;
 			if (rival.charges < 1) {
 				rival.action = threatened
 					? (pickWeighted(['charge', 'defend'], [3, 1]) ?? 'charge')
@@ -579,26 +558,9 @@ export class CombatController {
 				rival.action =
 					pickWeighted<CombatAction>(['shoot', 'defend', 'charge'], [9, 7, 4]) ?? 'shoot';
 			}
-			if (rival.action === 'shoot') {
-				rival.targetId = target.id;
-				rival.bonus = false;
-				rival.bonusTargetId = null;
-			} else {
-				rival.targetId = null;
-				// Red's extra: free damage on a turn it was spending on something else.
-				rival.bonus = this.canBonus(rival);
-				rival.bonusTargetId = rival.bonus ? target.id : null;
-			}
+			// Red's extra: free damage on a turn it was spending on something else.
+			rival.bonus = rival.action === 'shoot' ? false : this.canBonus(rival);
 		}
-	}
-
-	/** The enemy a fighter should be shooting at: whoever opposite holds the most
-	 * charges (ties broken at random), or null when nobody is left. */
-	private threatOpposite(fighter: Fighter): Fighter | null {
-		const enemies = this.enemiesOf(fighter);
-		if (enemies.length === 0) return null;
-		const most = Math.max(...enemies.map((enemy) => enemy.charges));
-		return pickOne(enemies.filter((enemy) => enemy.charges === most)) ?? enemies[0];
 	}
 
 	// --- State ----------------------------------------------------------------
@@ -622,6 +584,7 @@ export class CombatController {
 	 */
 	private view(fighter: Fighter): FighterView {
 		const secret = fighter.side === 'error' && this.phase === 'planning';
+		const opponent = this.opposite(fighter);
 		return {
 			id: fighter.id,
 			spawnId: fighter.spawnId,
@@ -633,10 +596,11 @@ export class CombatController {
 			maxCharges: MAX_CHARGES,
 			down: fighter.down,
 			action: secret ? null : fighter.action,
-			targetId: secret ? null : fighter.targetId,
 			bonus: secret ? false : fighter.bonus,
-			bonusTargetId: secret ? null : fighter.bonusTargetId,
-			canShoot: !fighter.down && fighter.charges > 0,
+			guarded: fighter.traits.passiveGuard && !fighter.guardSpent,
+			opponentId: opponent?.id ?? null,
+			opponentName: opponent?.name ?? null,
+			canShoot: this.canShoot(fighter),
 			canBonus: this.canBonus(fighter),
 			ordered: this.isOrdered(fighter)
 		};
@@ -659,9 +623,30 @@ export class CombatController {
 		return this.fighters.filter((fighter) => fighter.side === 'error');
 	}
 
-	/** Everybody on the other side who is still standing. */
-	private enemiesOf(fighter: Fighter): Fighter[] {
-		return this.fighters.filter((other) => other.side !== fighter.side && !other.down);
+	/** One side's fighters still standing, in line-up order — which is the order they
+	 * hold the board, top→bottom, and so the order the lanes are counted in. */
+	private standing(side: FighterSide): Fighter[] {
+		return this.fighters.filter((fighter) => fighter.side === side && !fighter.down);
+	}
+
+	/**
+	 * The fighter directly opposite: the one holding the same place in the enemy line
+	 * that this one holds in its own. Nobody shoots across the board — a fighter's lane
+	 * is the whole of who it can hit and who can hit it, so the choice a turn offers is
+	 * only ever *whether* to fire, never at whom.
+	 *
+	 * The count is taken over those still standing, so the two lines re-pair as they
+	 * thin: the rivals physically close up (they fall back onto a rank with a cell per
+	 * survivor, see {@link RIVAL_RANKS}) and the player's line closes up with them.
+	 * A fighter left over when its side outnumbers the other has an empty lane — it can
+	 * neither shoot nor be shot until the lines even out again, which is what keeps a
+	 * side that is a fighter down from simply being outgunned three to one.
+	 */
+	private opposite(fighter: Fighter): Fighter | null {
+		if (fighter.down) return null;
+		const lane = this.standing(fighter.side).indexOf(fighter);
+		if (lane < 0) return null;
+		return this.standing(fighter.side === 'info' ? 'error' : 'info')[lane] ?? null;
 	}
 
 	/** The player fighter this id names, if it may still be given orders. */
@@ -672,32 +657,25 @@ export class CombatController {
 		return fighter;
 	}
 
-	private isLiveEnemy(fighter: Fighter, id: string): boolean {
-		return this.enemiesOf(fighter).some((enemy) => enemy.id === id);
-	}
-
-	/** Keep `preferred` if it is still a live enemy, else fall to the first one. */
-	private liveTarget(fighter: Fighter, preferred: string | null): string | null {
-		const enemies = this.enemiesOf(fighter);
-		if (preferred && enemies.some((enemy) => enemy.id === preferred)) return preferred;
-		return enemies[0]?.id ?? null;
+	/** Whether this fighter could fire at all right now: a charge to spend, and
+	 * somebody standing in the lane to spend it on. */
+	private canShoot(fighter: Fighter): boolean {
+		return !fighter.down && fighter.charges > 0 && this.opposite(fighter) !== null;
 	}
 
 	/** Whether this fighter could add red's extra shot to its order right now: its
-	 * colour allows it, it has a charge for it, and its order is a non-attacking one. */
+	 * colour allows it, it can fire, and its order is a non-attacking one. */
 	private canBonus(fighter: Fighter): boolean {
-		if (fighter.down || !fighter.traits.doubleAction) return false;
-		if (fighter.action === 'shoot' || fighter.charges < 1) return false;
-		return this.enemiesOf(fighter).length > 0;
+		if (!fighter.traits.doubleAction || fighter.action === 'shoot') return false;
+		return this.canShoot(fighter);
 	}
 
-	/** Whether a fighter's order is complete: given, with a live target per shot. */
+	/** Whether a fighter's order is complete: given, and only firing where it can. */
 	private isOrdered(fighter: Fighter): boolean {
 		if (fighter.down) return true;
 		if (!fighter.action) return false;
-		if (fighter.action === 'shoot' && !this.isLiveEnemy(fighter, fighter.targetId ?? ''))
-			return false;
-		if (fighter.bonus && !this.isLiveEnemy(fighter, fighter.bonusTargetId ?? '')) return false;
+		if (fighter.action === 'shoot' && !this.canShoot(fighter)) return false;
+		if (fighter.bonus && this.opposite(fighter) === null) return false;
 		return true;
 	}
 

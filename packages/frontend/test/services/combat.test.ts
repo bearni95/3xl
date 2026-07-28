@@ -93,13 +93,15 @@ describe('the stand-off', () => {
 		it('banks one charge a turn, and stops at the cap', async () => {
 			const controller = new CombatController([
 				seed('r0', 'error', 'blue'),
-				seed('p0', 'info', 'blue')
+				seed('p0', 'info', 'blue'), // holds the only lane, and covers it every turn
+				seed('p1', 'info', 'blue') // the empty lane: nothing can reach it, so it just loads
 			]);
 			for (let turn = 1; turn <= MAX_CHARGES + 2; turn++) {
-				controller.setAction('p0', 'charge');
+				controller.setAction('p0', 'defend');
+				controller.setAction('p1', 'charge');
 				await playTurn(controller);
 			}
-			expect(fighterOf(get(controller), 'p0').charges).toBe(MAX_CHARGES);
+			expect(fighterOf(get(controller), 'p1').charges).toBe(MAX_CHARGES);
 		});
 
 		it('spends a charge on the shot it fires', async () => {
@@ -128,13 +130,11 @@ describe('the stand-off', () => {
 			expect(state.outcome).toBe('win');
 		});
 
-		it('blocks every shot aimed at a fighter that defends', async () => {
+		it('blocks the shot aimed at a fighter that defends', async () => {
 			const controller = new CombatController([
-				// Yellow rivals open armed, and with nobody opposite holding a charge they
-				// have nothing to fear — so all three fire, and all three fire at P0.
+				// A yellow rival opens armed, and with nobody opposite holding a charge it
+				// has nothing to fear — so it fires on turn one.
 				seed('r0', 'error', 'yellow'),
-				seed('r1', 'error', 'yellow'),
-				seed('r2', 'error', 'yellow'),
 				seed('p0', 'info', 'red')
 			]);
 			controller.setAction('p0', 'defend');
@@ -155,19 +155,75 @@ describe('the stand-off', () => {
 			expect(state.outcome).toBe('draw');
 		});
 
-		it('wastes a bullet on somebody already falling, rather than sparing them', async () => {
+		it('takes a fighter down through the lane it stands in', async () => {
 			const controller = new CombatController([
 				seed('r0', 'error', 'yellow'),
-				seed('r1', 'error', 'yellow'),
 				seed('p0', 'info', 'red')
 			]);
 			controller.setAction('p0', 'charge');
 			await playTurn(controller);
 			const state = get(controller);
 			expect(fighterOf(state, 'p0').down).toBe(true);
-			// Two shots, one target: the second one lands on a fighter already going down.
-			expect(state.log.some((line) => line.includes('already falling'))).toBe(true);
 			expect(state.outcome).toBe('lose');
+		});
+	});
+
+	describe('lanes', () => {
+		it('faces every fighter the one holding the same place in the other line', () => {
+			const state = get(
+				new CombatController([
+					seed('r0', 'error', 'blue'),
+					seed('r1', 'error', 'blue'),
+					seed('p0', 'info', 'blue'),
+					seed('p1', 'info', 'blue')
+				])
+			);
+			expect(fighterOf(state, 'p0').opponentId).toBe('r0');
+			expect(fighterOf(state, 'p1').opponentId).toBe('r1');
+			expect(fighterOf(state, 'r0').opponentId).toBe('p0');
+			expect(fighterOf(state, 'r1').opponentId).toBe('p1');
+		});
+
+		it('leaves the odd fighter out of a longer line with nobody to shoot', () => {
+			const state = get(
+				new CombatController([
+					seed('r0', 'error', 'blue'),
+					seed('p0', 'info', 'yellow'),
+					seed('p1', 'info', 'yellow') // armed, but its lane is empty
+				])
+			);
+			expect(fighterOf(state, 'p0').canShoot).toBe(true);
+			expect(fighterOf(state, 'p1').opponentId).toBeNull();
+			expect(fighterOf(state, 'p1').canShoot).toBe(false);
+		});
+
+		it('re-pairs the lines as they thin', async () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'red'),
+				seed('r1', 'error', 'red'),
+				seed('p0', 'info', 'yellow'),
+				seed('p1', 'info', 'yellow')
+			]);
+			expect(fighterOf(get(controller), 'p0').opponentId).toBe('r0');
+			// P0 shoots its opposite down; the rival line closes up behind it.
+			controller.setAction('p0', 'shoot');
+			controller.setAction('p1', 'charge');
+			await playTurn(controller);
+			const state = get(controller);
+			expect(fighterOf(state, 'r0').down).toBe(true);
+			expect(fighterOf(state, 'p0').opponentId).toBe('r1');
+			// And the fighter behind it now has the empty lane.
+			expect(fighterOf(state, 'p1').opponentId).toBeNull();
+		});
+
+		it('refuses Shoot to a fighter whose lane is empty, however well charged', () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'blue'),
+				seed('p0', 'info', 'blue'),
+				seed('p1', 'info', 'yellow')
+			]);
+			controller.setAction('p1', 'shoot');
+			expect(fighterOf(get(controller), 'p1').action).toBeNull();
 		});
 	});
 
@@ -185,32 +241,22 @@ describe('the stand-off', () => {
 			expect(fighterOf(state, 'p0').charges).toBe(1);
 		});
 
-		it('stops one shot a turn, not two — focused fire is the answer to it', async () => {
-			const controller = new CombatController([
-				seed('r0', 'error', 'yellow'),
-				seed('r1', 'error', 'yellow'),
-				seed('p0', 'info', 'blue')
-			]);
-			controller.setAction('p0', 'charge');
-			await playTurn(controller);
-			expect(fighterOf(get(controller), 'p0').down).toBe(true);
-		});
-
-		it('comes back the next turn — it is not spent for the battle', async () => {
+		it('is spent for the battle — the next shot through the lane lands', async () => {
 			const controller = new CombatController([
 				seed('r0', 'error', 'yellow'),
 				seed('p0', 'info', 'blue')
 			]);
-			// Turn one: the rival's opening shot is guarded away.
-			controller.setAction('p0', 'charge');
-			await playTurn(controller);
-			expect(fighterOf(get(controller), 'r0').charges).toBe(0);
-			// Turn two: the rival reloads, turn three it fires again — and is guarded again.
-			controller.setAction('p0', 'charge');
-			await playTurn(controller);
+			// Turn one: the rival's opening shot is guarded away, and the guard goes with it.
 			controller.setAction('p0', 'charge');
 			await playTurn(controller);
 			expect(fighterOf(get(controller), 'p0').down).toBe(false);
+			expect(fighterOf(get(controller), 'p0').guarded).toBe(false);
+			// Turn two the rival reloads; turn three it fires again, and this one lands.
+			controller.setAction('p0', 'charge');
+			await playTurn(controller);
+			controller.setAction('p0', 'charge');
+			await playTurn(controller);
+			expect(fighterOf(get(controller), 'p0').down).toBe(true);
 		});
 	});
 
@@ -287,36 +333,19 @@ describe('the stand-off', () => {
 			expect(get(controller).log.join(' ')).toContain('R0');
 		});
 
-		it('aims a shot at the first rival by default, and lets it be re-aimed', () => {
+		it('names the one fighter a shot can go to, rather than offering a choice', () => {
 			const controller = new CombatController([
 				seed('r0', 'error', 'blue'),
 				seed('r1', 'error', 'blue'),
-				seed('p0', 'info', 'yellow')
-			]);
-			controller.setAction('p0', 'shoot');
-			expect(fighterOf(get(controller), 'p0').targetId).toBe('r0');
-			controller.setTarget('p0', 'r1');
-			expect(fighterOf(get(controller), 'p0').targetId).toBe('r1');
-		});
-
-		it('refuses a target that is not a live enemy', async () => {
-			const controller = new CombatController([
-				seed('r0', 'error', 'red'),
-				seed('r1', 'error', 'red'),
 				seed('p0', 'info', 'yellow'),
-				seed('p1', 'info', 'blue')
+				seed('p1', 'info', 'yellow')
 			]);
 			controller.setAction('p0', 'shoot');
-			controller.setAction('p1', 'charge');
-			await playTurn(controller); // r0 goes down
-			controller.setAction('p0', 'charge');
-			controller.setAction('p1', 'charge');
-			// A teammate was never a target, and neither is the rival already down.
-			controller.setAction('p0', 'charge');
-			controller.setTarget('p0', 'p1');
-			controller.setTarget('p0', 'r0');
-			expect(fighterOf(get(controller), 'p0').targetId).not.toBe('p1');
-			expect(fighterOf(get(controller), 'p0').targetId).not.toBe('r0');
+			const state = get(controller);
+			// The order is complete the moment it is given: there was never anything to aim.
+			expect(fighterOf(state, 'p0').ordered).toBe(true);
+			expect(fighterOf(state, 'p0').opponentName).toBe('R0');
+			expect(fighterOf(state, 'p1').opponentName).toBe('R1');
 		});
 	});
 
