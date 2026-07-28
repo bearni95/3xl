@@ -22,13 +22,15 @@
 	import { authService } from '$services/auth.service';
 	import { territoryService } from '$services/territory.service';
 	import { territoryAdapter } from '$adapters/classes/territory.adapter';
+	import { locationAdapter } from '$adapters/classes/location.adapter';
+	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import type {
 		MunicipalityHolder,
 		MunicipalitySiege,
 		TerritoryWinRow
 	} from '$types/territory.type';
 	import type { TerritoryResult } from '$types/combat.type';
-	import { TEAM_SIZE } from '$services/team.service';
+	import { TEAM_SIZE, teamService } from '$services/team.service';
 	import { buildMunicipalityTeam, ogTeamSpawns } from '$utils/spawn/municipality-team';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
 	import { combatStatsFromStat } from '$utils/spawn/stat';
@@ -614,6 +616,72 @@
 			...combatStatsFromStat(member.stat)
 		})))(characterFaces);
 
+	// --- The player's own active team (the panel's account section) --------------
+	// Drawn on the very same CardCanvas as a town's team, right under the account card:
+	// the side this player would field, so what they are challenging with is read
+	// against the town they are looking at without leaving the map for the roster.
+	// Slots hold spawn ids, so the team is only renderable once the player's spawns are
+	// in; empty slots are simply left out, and a team with none drawn shows nothing.
+	const teamStore = teamService.store;
+	const playerSpawns = spawnService.spawns;
+
+	// The signed-in player's id, or null — what their spawns are loaded for.
+	$: currentUserId = $profile ? String($profile.id) : null;
+
+	// One load per signed-in player, exactly as the roster and the arena do it. A
+	// failure leaves the strip empty rather than breaking the panel.
+	let spawnsLoadedFor: string | null = null;
+	$: if (currentUserId && currentUserId !== spawnsLoadedFor) {
+		spawnsLoadedFor = currentUserId;
+		void spawnService.loadSpawns(currentUserId).catch(() => {});
+	}
+
+	// Whichever roster team is marked active (teams live in localStorage), and the
+	// spawns its filled slots name, in slot order — the leader first, as on the board.
+	$: activeTeam = $teamStore.teams.find((team) => team.id === $teamStore.activeTeamId) ?? null;
+	$: playerSpawnById = new Map($playerSpawns.map((spawn) => [spawn.id, spawn]));
+	$: activeTeamSpawns = (activeTeam?.memberIds ?? [])
+		.map((id) => (id ? (playerSpawnById.get(id) ?? null) : null))
+		.filter((spawn): spawn is CharacterSpawn => !!spawn);
+
+	// Their portraits, through the same lazy loader the town's team uses.
+	$: void loadFaces(activeTeamSpawns.map((spawn) => spawn.characterId));
+
+	// geojson feature id → municipality name, so each card can name where it was
+	// claimed. Null until the layer the map is drawn from has loaded.
+	$: municipalityNames = municipalities ? locationAdapter.municipalityNames(municipalities) : null;
+
+	/** A spawn's claim place; the Ultramar sentinel and any unresolved id read as Ultramar. */
+	function claimPlaceFor(id: string | null | undefined, names: Map<string, string> | null): string {
+		if (id && id !== ULTRAMAR_ID) {
+			const name = names?.get(id);
+			if (name) return restoreCatalanArticle(name);
+		}
+		return ULTRAMAR.municipality;
+	}
+
+	// The active team as display CardModels. Same shape as the town's, from the
+	// player's own spawns instead of a seeded roll: the rolled colour and stat are
+	// theirs, and the claim place is where they pulled it. No rarity or show — this
+	// panel reads neither of those Supabase layers, and the strip is a glance at who
+	// is fielded, not the roster's full card. Both resolved maps are threaded in so
+	// the statement re-runs as faces and place names arrive.
+	$: activeTeamCards = ((
+		faces: Map<string, string | null>,
+		names: Map<string, string> | null
+	): CardModel[] =>
+		activeTeamSpawns.map((spawn) => ({
+			label: charactersById.get(spawn.characterId)?.label ?? spawn.characterId,
+			basePath: charactersById.get(spawn.characterId)?.basePath ?? null,
+			faceUrl: faces.get(spawn.characterId) ?? null,
+			color: spawn.color,
+			rarity: null,
+			showName: null,
+			locationName: claimPlaceFor(spawn.locationId, names),
+			spawnedAt: spawn.createdAt,
+			...combatStatsFromStat(spawn.stat)
+		})))(characterFaces, municipalityNames);
+
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
 	// plus everything the fight has to be reported against — the town's id, the
 	// turnover generation it was on and who held it — all frozen at click time. Null
@@ -633,13 +701,16 @@
 	// animate back in on close; `right-4` means it must travel its own width plus that
 	// gap to clear the viewport. The Booster and Location tabs make it taller: a pack
 	// sliced open on a canvas, and a leaf town's team cards, both need more room than
-	// the two tables do.
+	// the two tables do. Even for the tables the panel can no longer be short, though:
+	// the account card and the active-team strip above the tab strip take a fixed slice
+	// of it before a single row is drawn, and the min-height is what keeps a few rows on
+	// screen on a laptop, where a viewport fraction alone would not.
 	$: panelClasses = classNames(
 		'fixed right-4 top-20 z-[1100] flex w-[36rem] flex-col overflow-hidden rounded-box',
 		'border border-base-300 bg-base-100/70 shadow-lg transition-transform duration-300 ease-in-out',
 		panelTab === PanelTab.Pack || panelTab === PanelTab.Location
 			? 'h-[calc(100vh-6rem)]'
-			: 'h-[40vh]',
+			: 'h-[60vh] min-h-[26rem]',
 		{ 'translate-x-[calc(100%+1.5rem)]': fightOpen }
 	);
 
@@ -1177,6 +1248,18 @@
 			section's, and it is the breadcrumbs' below. -->
 		<div class="flex-none border-b border-base-300 px-4 py-3">
 			<AuthMenu embedded />
+
+			{#if activeTeamCards.length > 0}
+				<!-- The team this player fields, on the same card canvas a town's team is drawn
+					on — so the side challenging and the side holding read alike. Under the
+					account card because it is part of who the player is here, not part of any
+					tab. The fit layout scales the whole team into this strip, so all of it is
+					visible at once with nothing to pan; the player's own cards keep the
+					canvas's default mirrored art, unlike a town's rival team. -->
+				<div class="mt-3 h-32 overflow-hidden rounded-box bg-base-200">
+					<CardCanvas cards={activeTeamCards} columns={TEAM_SIZE} layout="fit" />
+				</div>
+			{/if}
 		</div>
 
 		<div class="flex flex-none flex-col gap-3 border-b border-base-300 px-4 py-3">
