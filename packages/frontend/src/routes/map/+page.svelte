@@ -196,11 +196,19 @@
 			.catch(() => (sieges = new Map()));
 	}
 
+	// The colour every division line is drawn in — Tailwind's red-500, read as the
+	// CSS variable the theme emits so the borders track the palette instead of
+	// pinning a hex. Leaflet writes this straight onto the SVG `stroke` attribute,
+	// where `var()` resolves like any other CSS value. The literal fallback matters:
+	// the variable is only emitted while some utility in the app still uses red-500,
+	// and an unresolvable var() computes to `none` — silently erasing every border.
+	const lineColor = 'var(--color-red-500, oklch(63.7% 0.237 25.331))';
+
 	// Països Catalans polygons, built by @3xl/data's generate:geo from the
 	// Eurostat LAU set (WGS84) and served from that package's public/ at /data.
 	// Drawn bottom-up: municipality lines, comarca lines, province lines, territory
-	// lines (green comarca lines sit under the yellow province ones, so shared
-	// borders read as province).
+	// lines. Every tier is the same red now, so a shared border reads by its weight
+	// alone — the coarser the division, the thicker the line over it.
 	//
 	// Every tier is stroke-only — no polygon carries a fill, so the satellite
 	// basemap reads through the whole map and the divisions are pure borders over
@@ -213,26 +221,26 @@
 	const overlays: MapOverlay[] = [
 		{
 			url: '/data/geo/municipis.json',
-			// The municipality borders draw in the same navy as every coarser tier, but
+			// The municipality borders draw in the same red as every coarser tier, but
 			// only when this tier is the one imaged (the finest zoom) — the tier logic
 			// below drops the stroke (opacity 0) at coarser views, so only the coarser
 			// divisions show there while the town borders return once you zoom in.
-			style: { color: '#111a3b', weight: 1, fill: false },
+			style: { color: lineColor, weight: 1, fill: false },
 			interactive: false
 		},
 		{
 			url: '/data/geo/comarques.json',
-			style: { color: '#111a3b', weight: 1.5, fill: false },
+			style: { color: lineColor, weight: 1.5, fill: false },
 			interactive: false
 		},
 		{
 			url: '/data/geo/provincies.json',
-			style: { color: '#111a3b', weight: 2, fill: false },
+			style: { color: lineColor, weight: 2, fill: false },
 			interactive: false
 		},
 		{
 			url: '/data/geo/territoris.json',
-			style: { color: '#111a3b', weight: 3, fill: false },
+			style: { color: lineColor, weight: 3, fill: false },
 			interactive: false
 		}
 	];
