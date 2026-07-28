@@ -172,6 +172,7 @@ export class ClaimPackGridScene {
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
 		this.detachNavigation();
+		this.detachContextGuards();
 		try {
 			this.app.stage.off('pointermove', this.onStagePointerMove);
 			this.app.stage.off('pointerdown', this.onStagePointerDown);
@@ -213,6 +214,7 @@ export class ClaimPackGridScene {
 
 		this.host.appendChild(this.app.canvas);
 		this.app.canvas.style.touchAction = 'none';
+		this.attachContextGuards();
 
 		this.app.stage.addChild(this.rootLayer);
 		this.rootLayer.addChild(this.cardLayer);
@@ -280,6 +282,37 @@ export class ClaimPackGridScene {
 		const height = Math.max(320, Math.floor(rect.height || 600));
 		return { width, height };
 	}
+
+	// --- Surviving a lost GPU context ------------------------------------------
+	// The browser can take a canvas's WebGL context away at any time — it has a hard
+	// cap on how many live at once, and this canvas shares a page with the map's other
+	// ones. Pixi frees its GPU resources on the loss, but its ticker keeps calling
+	// render, which then throws on a half-torn-down batcher every single frame: the
+	// canvas goes blank permanently and takes whatever it was mid-way through (an open
+	// pack's reveal, say) with it. Park the ticker for as long as the context is gone,
+	// and start it again when the browser hands one back — Pixi rebuilds its resources
+	// on restore, so the scene simply carries on.
+
+	private attachContextGuards(): void {
+		this.app.canvas.addEventListener('webglcontextlost', this.onContextLost);
+		this.app.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
+	}
+
+	private detachContextGuards(): void {
+		this.app.canvas?.removeEventListener('webglcontextlost', this.onContextLost);
+		this.app.canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
+	}
+
+	private onContextLost = (event: Event): void => {
+		// Without preventDefault the browser never fires `webglcontextrestored`.
+		event.preventDefault();
+		this.app.ticker?.stop();
+	};
+
+	private onContextRestored = (): void => {
+		if (this.isDestroyed) return;
+		this.app.ticker?.start();
+	};
 
 	/** The width one column gets at the given canvas width — a full-width pack. */
 	private columnWidth(width: number, cols: number): number {

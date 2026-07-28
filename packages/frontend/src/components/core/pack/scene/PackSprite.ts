@@ -51,14 +51,20 @@ const DEFAULT_ART_ASPECT = 1.14;
  * triangles painted over it. */
 const TRIANGLE_BASE_RATIO = 0.1;
 /**
- * TMDB size the cover is fetched at. The saved-show collection stores its posters as
- * w342 thumbnails — the size the admin gallery and the map's pins want — but a pack
- * draws its cover the full width of the pack and then zooms it up to fill the canvas,
- * so at w342 the poster is being upscaled several times over and looks it. w780 is the
- * next size up that still covers the largest a pack is ever drawn, without pulling the
- * multi-megabyte `original` for every pack in a grid.
+ * TMDB poster widths worth asking for, smallest first. The saved-show collection bakes
+ * its posters as w342 thumbnails — the size the admin's gallery and the map's pins want
+ * — so a pack drawn wider than that was showing an upscale. But the size is not free to
+ * raise across the board either: a grid holds every one of a day's covers in GPU memory
+ * at once, next to the map's other canvases, and asking for w780 throughout is four
+ * times the texture bytes of w342. So each pack asks for the smallest width that covers
+ * how big it actually draws.
  */
-const COVER_SIZE = 'w780';
+const COVER_WIDTHS = [342, 500, 780];
+/**
+ * How short of the needed width a rung may fall and still be taken. The next rung up is
+ * roughly twice the pixels, which is a poor trade for a few per cent of sharpness.
+ */
+const COVER_TOLERANCE = 0.9;
 
 export interface PackSpriteOptions {
 	/** Show poster URL used as the cover art, or null for a plain frame. */
@@ -112,10 +118,10 @@ export class PackSprite extends Container {
 	}
 
 	async load(): Promise<void> {
-		// Ask for the cover at a size that matches how big the pack draws it, rather
-		// than the w342 thumbnail the collection bakes (see COVER_SIZE). Falls back to
+		// Ask for the cover at a size that matches how big this pack draws it, rather
+		// than the w342 thumbnail the collection bakes (see COVER_WIDTHS). Falls back to
 		// whatever URL was handed in when it isn't a TMDB one.
-		const cover = await textureCache.poster(tmdbImageAtSize(this.coverUrl, COVER_SIZE));
+		const cover = await textureCache.poster(tmdbImageAtSize(this.coverUrl, this.coverSize()));
 
 		// The cover spans the full pack width and is never cropped, so its aspect
 		// ratio sets the pack's height. Resolve the final footprint (fitted inside
@@ -181,6 +187,18 @@ export class PackSprite extends Container {
 		this.mainSprite.width = this.packW;
 		this.mainSprite.height = this.packH;
 		this.addChild(this.mainSprite);
+	}
+
+	/**
+	 * The TMDB size token for this pack's cover: the smallest rung that covers the
+	 * device pixels the cover is drawn across — the pack's box width times the canvas
+	 * resolution — capped at the largest rung. A small grid pack keeps the cheap
+	 * thumbnail; only a pack drawn large pulls a large poster.
+	 */
+	private coverSize(): string {
+		const needed = this.packW * this.app.renderer.resolution * COVER_TOLERANCE;
+		const width = COVER_WIDTHS.find((rung) => rung >= needed) ?? COVER_WIDTHS[COVER_WIDTHS.length - 1];
+		return `w${width}`;
 	}
 
 	/**

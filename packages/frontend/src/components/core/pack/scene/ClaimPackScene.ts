@@ -122,6 +122,7 @@ export class ClaimPackScene {
 		this.isDestroyed = true;
 		this.resizeObserver?.disconnect();
 		this.resizeObserver = null;
+		this.detachContextGuards();
 		try {
 			this.app.stage.off('pointermove', this.onPointerMove);
 			this.app.stage.off('pointerdown', this.onPointerDown);
@@ -162,6 +163,7 @@ export class ClaimPackScene {
 
 		this.host.appendChild(this.app.canvas);
 		this.app.canvas.style.touchAction = 'none';
+		this.attachContextGuards();
 
 		this.app.stage.addChild(this.rootLayer);
 		this.rootLayer.addChild(this.cardLayer);
@@ -200,6 +202,34 @@ export class ClaimPackScene {
 			this.resizeObserver.observe(this.host);
 		}
 	}
+
+	// --- Surviving a lost GPU context ------------------------------------------
+	// The browser caps how many WebGL contexts live at once and takes them back when
+	// it has to — this canvas shares a page with the map's others. Pixi frees its GPU
+	// resources on the loss but its ticker keeps calling render, which then throws on a
+	// half-torn-down batcher every frame and leaves the canvas blank for good. Park the
+	// ticker while the context is gone; Pixi rebuilds on restore, so the scene resumes.
+
+	private attachContextGuards(): void {
+		this.app.canvas.addEventListener('webglcontextlost', this.onContextLost);
+		this.app.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
+	}
+
+	private detachContextGuards(): void {
+		this.app.canvas?.removeEventListener('webglcontextlost', this.onContextLost);
+		this.app.canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
+	}
+
+	private onContextLost = (event: Event): void => {
+		// Without preventDefault the browser never fires `webglcontextrestored`.
+		event.preventDefault();
+		this.app.ticker?.stop();
+	};
+
+	private onContextRestored = (): void => {
+		if (this.isDestroyed) return;
+		this.app.ticker?.start();
+	};
 
 	private measure(): { width: number; height: number } {
 		const rect = this.host.getBoundingClientRect();

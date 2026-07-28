@@ -939,10 +939,14 @@
 	let gridSession = 0;
 
 	// Back to the whole day's grid, from a star-opened town or a picked pack alike.
+	// The session bump remounts the canvas, which is the only way to rebuild a grid a
+	// pack has already zoomed out of — so it is spent only when a pack really was
+	// picked. Every remount is a fresh WebGL context, and the browser hands out a
+	// limited number of those across the whole page.
 	function showPackGrid(): void {
+		if (gridPack) gridSession += 1;
 		packTownId = null;
 		gridPack = null;
-		gridSession += 1;
 	}
 
 	// Picking the Booster tab by its own button always lands on the grid of every pack
