@@ -21,7 +21,8 @@
 	import { teammateColors } from '$utils/color/compare';
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
-	import { responsiveGridColumns } from '$components/core/card/CardScene';
+	import { responsiveGridColumns, type SlotSummary } from '$components/core/card/CardScene';
+	import { SPAWN_COLOR_HEX } from '$utils/spawn/color';
 	import type { CardModel } from '$utils/card/card-model.type';
 	import TeamPanel from '$components/core/TeamPanel.svelte';
 	import localStorageWritableStore from '$utils/localStorageWritableStore';
@@ -405,6 +406,28 @@
 		toggleTeamMember(spawn.id);
 	}
 
+	// The team's summary for the head of the canvas's team row: the colour it is led
+	// by, that lead's show(s) and where it was claimed — the same three facts, read the
+	// same way, as the side panel's summary (the lead is the first filled slot). Null
+	// with no team selected; a team with no picks yet reads as em-dashes.
+	$: teamSummary = ((
+		team: typeof activeTeam,
+		spawnList: CharacterSpawn[],
+		_names: Map<string, string> | null,
+		_showNames: Map<string, string[]>
+	): SlotSummary | null => {
+		if (!team) return null;
+		const leadId = team.memberIds.find((id): id is string => Boolean(id)) ?? null;
+		const lead = leadId ? (spawnList.find((entry) => entry.id === leadId) ?? null) : null;
+		if (!lead) return { color: null, colorHex: null, showName: null, regionName: null };
+		return {
+			color: lead.color,
+			colorHex: SPAWN_COLOR_HEX[lead.color] ?? null,
+			showName: showNamesFor(lead.characterId).join(', ') || 'No show',
+			regionName: locationNameFor(lead.locationId)
+		};
+	})(activeTeam, $spawns, municipalityNames, characterShowNames);
+
 	// The Remove button under a slot in the canvas's team row — the same path as the
 	// panel's ✕: empty that slot, then re-apply the colour rule the lead sets.
 	function handleSlotRemove(index: number): void {
@@ -755,6 +778,7 @@
 						bind:this={cardCanvas}
 						cards={cardModels}
 						slots={teamSlotCards}
+						summary={teamSummary}
 						onSlotRemove={handleSlotRemove}
 						columns={$columns}
 						layout="grid"

@@ -48,10 +48,11 @@ const SLOT_SEPARATION = 40;
 /**
  * Baked grid geometry (world units), recomputed on each (re)build. `border` is the
  * outset frame each card draws beyond its content; `cellW`/`cellH` are the full
- * per-card footprint (content + border on both sides) the grid tiles. The `slot*`
- * and `button*` fields describe the leading team band: how many rows it takes, how
- * tall one of its rows is (a card plus its Remove button), and the total height it
- * pushes the roster down by (including the separating rule).
+ * per-card footprint (content + border on both sides) the grid tiles. The `band*`
+ * and `button*` fields describe the leading team band, which is laid out on its own
+ * terms: how many cells it holds (the summary plus one per slot), how wide and tall
+ * those cells are, and the total height it pushes the roster down by (its row, the
+ * Remove buttons and the separating rule).
  */
 const EMPTY_GRID = {
 	cols: 1,
@@ -62,14 +63,34 @@ const EMPTY_GRID = {
 	cellH: 0,
 	contentW: 0,
 	contentH: 0,
-	slotRows: 0,
-	slotRowH: 0,
+	bandCells: 0,
+	bandCellW: 0,
+	bandCardW: 0,
+	bandCardH: 0,
+	bandBorder: 0,
+	bandRowH: 0,
 	slotBandH: 0,
 	buttonH: 0,
 	buttonGap: 0
 };
 
 export type CardLayout = 'fit' | 'grid';
+
+/**
+ * The three facts about a team drawn in the cell at the head of the slot band —
+ * the same summary the roster's side panel lists for the active team. Any field may
+ * be null (a team with no lead yet has none of them), and reads as an em-dash.
+ */
+export interface SlotSummary {
+	/** The lead's colour, by name (e.g. `'red'`). */
+	color: string | null;
+	/** That colour as 24-bit RGB, drawn as a dot beside the name. */
+	colorHex: number | null;
+	/** The show(s) the lead belongs to. */
+	showName: string | null;
+	/** Where the lead was claimed. */
+	regionName: string | null;
+}
 
 /**
  * Column count mirroring the old `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3`
@@ -94,6 +115,11 @@ export interface CardSceneOptions {
 	 * default) starts the grid straight on the cards.
 	 */
 	slots?: (CardModel | null)[];
+	/**
+	 * Drawn in a card-sized cell at the head of the slot band, before the slots
+	 * themselves. Null (the default) starts the band on the first slot.
+	 */
+	summary?: SlotSummary | null;
 	/**
 	 * Called with a slot's index when its Remove button is tapped. Without it the
 	 * buttons are still drawn but do nothing, so pass it wherever slots are shown.
@@ -126,6 +152,8 @@ export class CardScene {
 	// Fixed cells laid out before the cards — the active team's slots. A null entry is
 	// an empty slot, drawn as a card-sized outline.
 	private slots: (CardModel | null)[];
+	// Drawn in the band's first cell, ahead of the slots.
+	private summary: SlotSummary | null;
 	private columns: number;
 	private onCardTap?: (index: number) => void;
 	private onSlotRemove?: (index: number) => void;
@@ -140,8 +168,9 @@ export class CardScene {
 	// the empty frames standing in for the unfilled ones. Both are tracked so the row
 	// can be redrawn on its own.
 	private slotSprites: CardSprite[] = [];
-	private slotFrames: Graphics[] = [];
-	private slotLabels: Text[] = [];
+	// Everything in the band that isn't a card: the summary cell, the empty frames and
+	// the Remove buttons.
+	private slotDecor: Container[] = [];
 
 	// Recycle-style selection overlay: when active, cards whose index isn't in
 	// `selectedIndices` are dimmed so the selected ones stand out. Kept as scene
@@ -175,6 +204,7 @@ export class CardScene {
 		this.host = host;
 		this.cards = options.cards;
 		this.slots = options.slots ?? [];
+		this.summary = options.summary ?? null;
 		this.columns = Math.max(1, options.columns ?? 3);
 		this.onCardTap = options.onCardTap;
 		this.onSlotRemove = options.onSlotRemove;
@@ -187,31 +217,39 @@ export class CardScene {
 	}
 
 	/**
-	 * Replace the drawn cards (and optionally the column count and the leading slot
-	 * row) and rebuild. Cards often arrive asynchronously after the host mounts (a
-	 * roster loads its spawns), so the hosting component calls this reactively; before
-	 * init completes it only stages them for the initial build. All three arrive
-	 * together in one call so a change to any of them costs a single rebuild.
+	 * Replace the drawn cards (and optionally the column count, the leading slot row
+	 * and its summary cell) and rebuild. Cards often arrive asynchronously after the
+	 * host mounts (a roster loads its spawns), so the hosting component calls this
+	 * reactively; before init completes it only stages them for the initial build. All
+	 * of it arrives in one call so a change to any part costs a single rebuild.
 	 */
-	setCards(cards: CardModel[], columns?: number, slots?: (CardModel | null)[]): void {
+	setCards(
+		cards: CardModel[],
+		columns?: number,
+		slots?: (CardModel | null)[],
+		summary?: SlotSummary | null
+	): void {
 		const cardsChanged = cards !== this.cards;
 		const columnsChanged = columns != null && Math.max(1, columns) !== this.columns;
-		const slotsChanged = slots != null && slots !== this.slots;
+		const bandChanged =
+			(slots != null && slots !== this.slots) ||
+			(summary !== undefined && summary !== this.summary);
 		this.cards = cards;
 		if (columns != null) this.columns = Math.max(1, columns);
 		if (slots != null) this.slots = slots;
+		if (summary !== undefined) this.summary = summary;
 		if (!this.ready || this.isDestroyed) return;
 
-		// Only the slots moved, and they still occupy the same rows: redraw that row on
-		// its own. A full rebuild here would restart the idle animation of every card on
-		// the page each time a pick joins or leaves the team.
+		// Only the band moved, and it still occupies the same rows: redraw it on its
+		// own. A full rebuild here would restart the idle animation of every card on the
+		// page each time a pick joins or leaves the team.
 		if (
-			slotsChanged &&
+			bandChanged &&
 			!cardsChanged &&
 			!columnsChanged &&
 			this.layout === 'grid' &&
 			this.grid.cardW > 0 &&
-			this.slotRowCount() === this.grid.slotRows
+			this.slotCellCount() === this.grid.bandCells
 		) {
 			this.rebuildSlots();
 			return;
@@ -221,10 +259,11 @@ export class CardScene {
 		this.build(width, height);
 	}
 
-	/** How many rows the current slots take at the current column count. */
-	private slotRowCount(): number {
-		return this.slots.length === 0 ? 0 : Math.ceil(this.slots.length / Math.max(1, this.columns));
+	/** How many cells the band holds: the summary, if any, then one per slot. */
+	private slotCellCount(): number {
+		return this.slots.length + (this.summary ? 1 : 0);
 	}
+
 
 	destroy(): void {
 		this.isDestroyed = true;
@@ -235,8 +274,7 @@ export class CardScene {
 		this.app.canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
 		this.cardSprites = [];
 		this.slotSprites = [];
-		this.slotFrames = [];
-		this.slotLabels = [];
+		this.slotDecor = [];
 		// Never `destroy(true)` — see the helper: it would release Pixi's shared pools
 		// and break every other canvas still on the page.
 		destroyPixiApp(this.app, { children: true, texture: false });
@@ -299,9 +337,8 @@ export class CardScene {
 		for (const sprite of this.slotSprites) sprite.destroy();
 		this.cardSprites = [];
 		this.slotSprites = [];
-		this.slotFrames = [];
-		this.slotLabels = [];
-		// The slot frames, buttons and the divider are plain display objects; clear
+		this.slotDecor = [];
+		// The summary, slot frames, buttons and the divider are plain display objects; clear
 		// whatever is left on the layer so rebuilds don't stack them up.
 		for (const child of this.cardLayer.removeChildren()) child.destroy();
 		this.builtW = width;
@@ -357,7 +394,7 @@ export class CardScene {
 	 * sprite and the idle animations never restart.
 	 */
 	private buildGrid(width: number, height: number): void {
-		if (this.cards.length === 0 && this.slots.length === 0) {
+		if (this.cards.length === 0 && this.slotCellCount() === 0) {
 			this.grid = { ...EMPTY_GRID };
 			return;
 		}
@@ -380,17 +417,36 @@ export class CardScene {
 		}
 		const cardH = cardW / CARD_ASPECT;
 		const cellH = cardH + 2 * border;
-		// The slots take the leading rows, the roster picks up below them. At the usual
-		// column counts the slots are a single extra row; a narrow grid (fewer columns
-		// than slots) simply wraps them over more. Each slot row is taller than a card
-		// row: it carries a Remove button under every filled slot.
-		const slotRows = this.slots.length === 0 ? 0 : Math.ceil(this.slots.length / cols);
-		const buttonH = slotRows === 0 ? 0 : Math.max(16, Math.round(cardW * 0.14));
-		const buttonGap = slotRows === 0 ? 0 : Math.max(4, Math.round(cardW * 0.04));
-		const slotRowH = cellH + buttonGap + buttonH;
-		// The band the slots occupy, including the rule that separates them from the
-		// roster below.
-		const slotBandH = slotRows === 0 ? 0 : slotRows * (slotRowH + NAV_GAP) + SLOT_SEPARATION;
+
+		// The team band is one row, always: its cells (the summary, then one per slot)
+		// share the width between them rather than following the column slider, so the
+		// summary stays beside the picks whatever the roster's density is. Its cards are
+		// therefore sized on their own, and its row is taller than a roster row by the
+		// Remove button under each filled slot.
+		const bandCells = this.slotCellCount();
+		let bandCellW = 0;
+		let bandCardW = 0;
+		let bandCardH = 0;
+		let bandBorder = 0;
+		let buttonH = 0;
+		let buttonGap = 0;
+		let bandRowH = 0;
+		let slotBandH = 0;
+		if (bandCells > 0) {
+			bandCellW = (availW - NAV_GAP * (bandCells - 1)) / bandCells;
+			bandCardW = Math.max(1, bandCellW);
+			for (let k = 0; k < 4; k++) {
+				bandBorder = cardBorderWidth(bandCardW);
+				bandCardW = Math.max(1, bandCellW - 2 * bandBorder);
+			}
+			bandCardH = bandCardW / CARD_ASPECT;
+			buttonH = Math.max(16, Math.round(bandCardW * 0.14));
+			buttonGap = Math.max(4, Math.round(bandCardW * 0.04));
+			bandRowH = bandCardH + 2 * bandBorder + buttonGap + buttonH;
+			// Plus the gap and rule that separate the band from the roster below.
+			slotBandH = bandRowH + NAV_GAP + SLOT_SEPARATION;
+		}
+
 		const cardRows = Math.ceil(this.cards.length / cols);
 		const cardsH = cardRows === 0 ? 0 : cardRows * cellH + (cardRows - 1) * NAV_GAP;
 		const contentW = NAV_PAD * 2 + cols * cellW + (cols - 1) * NAV_GAP;
@@ -404,8 +460,12 @@ export class CardScene {
 			cellH,
 			contentW,
 			contentH,
-			slotRows,
-			slotRowH,
+			bandCells,
+			bandCellW,
+			bandCardW,
+			bandCardH,
+			bandBorder,
+			bandRowH,
 			slotBandH,
 			buttonH,
 			buttonGap
@@ -414,11 +474,11 @@ export class CardScene {
 		this.layoutSlots();
 
 		// The rule between the team band and the roster, centred in the gap the band
-		// leaves below its last row — so the first row reads as its own section rather
-		// than as three more cards.
-		if (slotRows > 0 && cardRows > 0) {
+		// leaves below itself — so that row reads as its own section rather than as
+		// three more cards.
+		if (bandCells > 0 && cardRows > 0) {
 			const divider = new Graphics();
-			const y = NAV_PAD + slotRows * (slotRowH + NAV_GAP) + SLOT_SEPARATION / 2;
+			const y = NAV_PAD + bandRowH + NAV_GAP + SLOT_SEPARATION / 2;
 			divider.moveTo(NAV_PAD, y).lineTo(contentW - NAV_PAD, y);
 			divider.stroke({ width: 2, color: 0xffffff, alpha: 0.25 });
 			this.cardLayer.addChild(divider);
@@ -479,9 +539,20 @@ export class CardScene {
 		return NAV_PAD + this.grid.border + col * (this.grid.cellW + NAV_GAP);
 	}
 
-	/** Top of a slot row's cell (before the border inset). */
-	private slotCellTop(row: number): number {
-		return NAV_PAD + row * (this.grid.slotRowH + NAV_GAP);
+	/** Left edge of a band cell's content (past its border inset). */
+	private bandCellX(cell: number): number {
+		return NAV_PAD + this.grid.bandBorder + cell * (this.grid.bandCellW + NAV_GAP);
+	}
+
+	/** Top of the band's cards (past the border inset). The band is one row. */
+	private bandCardTop(): number {
+		return NAV_PAD + this.grid.bandBorder;
+	}
+
+	/** Top of the Remove buttons, directly under the band's cards. */
+	private bandButtonTop(): number {
+		const { bandCardH, bandBorder, buttonGap } = this.grid;
+		return NAV_PAD + bandCardH + 2 * bandBorder + buttonGap;
 	}
 
 	/** Cell origin of a roster card's row — below the whole slot band. */
@@ -491,47 +562,50 @@ export class CardScene {
 		);
 	}
 
-	/** Top of a slot's Remove button, directly under that slot's card. */
-	private slotButtonTop(row: number): number {
-		return this.slotCellTop(row) + this.grid.cellH + this.grid.buttonGap;
-	}
-
 	/**
-	 * Draw the leading slot row(s) from the current geometry: a card where the slot is
-	 * filled — with a Remove button beneath it — and a card-sized empty frame where it
-	 * isn't. Split out from the grid build so a slot changing (a pick added to the
-	 * team) can redraw this row alone.
+	 * Draw the team band from the current geometry: the summary cell, then a card where
+	 * a slot is filled — with a Remove button beneath it — and a card-sized empty frame
+	 * where it isn't. Split out from the grid build so the band changing (a pick joining
+	 * the team) can redraw it alone.
 	 */
 	private layoutSlots(): void {
-		const { cols, cardW, cardH, border } = this.grid;
-		if (cardW === 0) return;
+		const { bandCardW, bandCardH } = this.grid;
+		if (bandCardW === 0) return;
+
+		const y = this.bandCardTop();
+		// The summary takes the first cell of the band, so the picks start one along.
+		const leading = this.summary ? 1 : 0;
+		if (this.summary) {
+			this.addDecor(
+				this.makeSummaryCell(this.bandCellX(0), y, bandCardW, bandCardH, this.summary)
+			);
+		}
+
 		for (let i = 0; i < this.slots.length; i++) {
 			const slot = this.slots[i];
-			const row = Math.floor(i / cols);
-			const x = this.cellX(i % cols);
-			const y = this.slotCellTop(row) + border;
+			const x = this.bandCellX(i + leading);
 			if (slot) {
-				this.makeSlotSprite(slot, cardW, cardH).position.set(x, y);
-				const button = this.makeRemoveButton(x, this.slotButtonTop(row), cardW);
-				this.cardLayer.addChild(button);
-				this.slotFrames.push(button);
+				this.makeSlotSprite(slot, bandCardW, bandCardH).position.set(x, y);
+				this.addDecor(this.makeRemoveButton(x, this.bandButtonTop(), bandCardW));
 			} else {
-				const frame = this.makeEmptySlot(x, y, cardW, cardH);
-				this.cardLayer.addChild(frame);
-				this.slotFrames.push(frame);
+				this.addDecor(this.makeEmptySlot(x, y, bandCardW, bandCardH));
 			}
 		}
+	}
+
+	/** Add a non-card piece of the slot band to the layer and track it for teardown. */
+	private addDecor(decor: Container): void {
+		this.cardLayer.addChild(decor);
+		this.slotDecor.push(decor);
 	}
 
 	/** Redraw just the slot row, leaving every card sprite (and its running idle
 	 * animation) alone. Only valid while the row count and geometry hold. */
 	private rebuildSlots(): void {
 		for (const sprite of this.slotSprites) sprite.destroy();
-		for (const frame of this.slotFrames) frame.destroy();
-		for (const label of this.slotLabels) label.destroy();
+		for (const decor of this.slotDecor) decor.destroy();
 		this.slotSprites = [];
-		this.slotFrames = [];
-		this.slotLabels = [];
+		this.slotDecor = [];
 		this.layoutSlots();
 	}
 
@@ -540,12 +614,14 @@ export class CardScene {
 	 * Drawn, not interactive — the grid hit-tests clicks against its own geometry, and
 	 * {@link slotButtonIndexAt} matches this geometry.
 	 */
-	private makeRemoveButton(x: number, y: number, cardW: number): Graphics {
+	private makeRemoveButton(x: number, y: number, cardW: number): Container {
 		const { buttonH } = this.grid;
-		const button = new Graphics();
-		button.roundRect(x, y, cardW, buttonH, buttonH / 2);
-		button.fill({ color: 0x000000, alpha: 0.55 });
-		button.stroke({ width: 1, color: 0xffffff, alpha: 0.35 });
+		const group = new Container();
+		const pill = new Graphics();
+		pill.roundRect(x, y, cardW, buttonH, buttonH / 2);
+		pill.fill({ color: 0x000000, alpha: 0.55 });
+		pill.stroke({ width: 1, color: 0xffffff, alpha: 0.35 });
+		group.addChild(pill);
 
 		const label = new Text({
 			text: 'Remove',
@@ -558,9 +634,91 @@ export class CardScene {
 		});
 		label.anchor.set(0.5, 0.5);
 		label.position.set(x + cardW / 2, y + buttonH / 2);
-		this.cardLayer.addChild(label);
-		this.slotLabels.push(label);
-		return button;
+		group.addChild(label);
+		return group;
+	}
+
+	/**
+	 * The team's summary, in a card-sized cell at the head of the band: the colour it
+	 * is led by, the show that lead belongs to and the region it was claimed in — the
+	 * same three facts the side panel lists, so the canvas doesn't send the player back
+	 * to the sidebar to read them. Values are em-dashes until the team has a lead.
+	 */
+	private makeSummaryCell(
+		x: number,
+		y: number,
+		cardW: number,
+		cardH: number,
+		summary: SlotSummary
+	): Container {
+		const group = new Container();
+		const radius = Math.max(6, cardW * 0.05);
+		const panel = new Graphics();
+		panel.roundRect(x, y, cardW, cardH, radius);
+		panel.fill({ color: 0x000000, alpha: 0.35 });
+		panel.stroke({ width: Math.max(1, cardBorderWidth(cardW) / 2), color: 0xffffff, alpha: 0.25 });
+		group.addChild(panel);
+
+		const pad = Math.round(cardW * 0.09);
+		const labelSize = Math.max(8, Math.round(cardW * 0.062));
+		const valueSize = Math.max(10, Math.round(cardW * 0.082));
+		const rows: { label: string; value: string; swatch: number | null }[] = [
+			{ label: 'COLOUR', value: summary.color ?? '—', swatch: summary.colorHex },
+			{ label: 'SHOW', value: summary.showName ?? '—', swatch: null },
+			{ label: 'REGION', value: summary.regionName ?? '—', swatch: null }
+		];
+		// Three evenly-spaced blocks down the cell, each a caption over its value.
+		const blockH = (cardH - pad * 2) / rows.length;
+		const maxTextW = cardW - pad * 2;
+
+		rows.forEach((row, index) => {
+			const top = y + pad + index * blockH;
+			const caption = new Text({
+				text: row.label,
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize: labelSize,
+					fontWeight: '700',
+					fill: 0xffffff
+				}
+			});
+			caption.alpha = 0.5;
+			caption.position.set(x + pad, top);
+			group.addChild(caption);
+
+			// The colour row leads with a dot of the colour itself, so it reads without
+			// having to know the names.
+			const swatchR = row.swatch != null ? valueSize * 0.42 : 0;
+			const valueX = x + pad + (swatchR > 0 ? swatchR * 2 + Math.round(cardW * 0.03) : 0);
+			const valueY = top + labelSize * 1.5;
+			if (row.swatch != null) {
+				const dot = new Graphics();
+				dot.circle(x + pad + swatchR, valueY + valueSize * 0.6, swatchR);
+				dot.fill(row.swatch);
+				group.addChild(dot);
+			}
+
+			const value = new Text({
+				text: row.value,
+				style: {
+					fontFamily: 'sans-serif',
+					fontSize: valueSize,
+					fontWeight: '600',
+					fill: 0xffffff
+				}
+			});
+			// Trim to the cell so a long show or place name can't spill out of it.
+			const limit = maxTextW - (valueX - (x + pad));
+			let trimmed = row.value;
+			while (trimmed.length > 1 && value.width > limit) {
+				trimmed = trimmed.slice(0, -1);
+				value.text = `${trimmed.trimEnd()}…`;
+			}
+			value.position.set(valueX, valueY);
+			group.addChild(value);
+		});
+
+		return group;
 	}
 
 	/** Build one card sprite, add it to the layer, and track it. */
@@ -686,20 +844,20 @@ export class CardScene {
 	 * Mirrors the geometry {@link makeRemoveButton} draws; only filled slots have one.
 	 */
 	private slotButtonIndexAt(sx: number, sy: number): number | null {
-		const { cols, cardW, cellW, border, slotRows, slotRowH, buttonH } = this.grid;
-		if (cardW === 0 || slotRows === 0) return null;
+		const { bandCells, bandCellW, bandCardW, bandBorder, buttonH } = this.grid;
+		if (bandCells === 0 || bandCardW === 0) return null;
 		const worldX = sx - this.pan.x;
 		const worldY = sy - this.pan.y;
-		const row = Math.floor((worldY - NAV_PAD) / (slotRowH + NAV_GAP));
-		if (row < 0 || row >= slotRows) return null;
-		const top = this.slotButtonTop(row);
+		const top = this.bandButtonTop();
 		if (worldY < top || worldY > top + buttonH) return null;
-		const col = Math.floor((worldX - NAV_PAD) / (cellW + NAV_GAP));
-		if (col < 0 || col >= cols) return null;
-		const localX = worldX - NAV_PAD - col * (cellW + NAV_GAP) - border;
-		if (localX < 0 || localX > cardW) return null;
-		const index = row * cols + col;
-		return index < this.slots.length && this.slots[index] ? index : null;
+		const cell = Math.floor((worldX - NAV_PAD) / (bandCellW + NAV_GAP));
+		if (cell < 0 || cell >= bandCells) return null;
+		const localX = worldX - NAV_PAD - cell * (bandCellW + NAV_GAP) - bandBorder;
+		if (localX < 0 || localX > bandCardW) return null;
+		// The summary, when present, holds the band's first cell — so the slots are one
+		// along, and the summary itself has no button.
+		const index = cell - (this.summary ? 1 : 0);
+		return index >= 0 && index < this.slots.length && this.slots[index] ? index : null;
 	}
 
 	private localPoint(event: MouseEvent): { x: number; y: number } {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onDestroy, onMount } from 'svelte';
-	import { CardScene, type CardLayout } from './CardScene';
+	import { CardScene, type CardLayout, type SlotSummary } from './CardScene';
 	import type { CardModel } from '$utils/card/card-model.type';
 
 	// A single card (convenience) — centred and fit to the host.
@@ -12,6 +12,9 @@
 	// team. A filled entry draws its card, a null one a card-sized empty frame. The
 	// cards themselves aren't tappable; each filled one carries a Remove button.
 	export let slots: (CardModel | null)[] = [];
+	// Drawn in a card-sized cell at the head of the slot band: the team's colour, show
+	// and region. Null starts the band on the first slot.
+	export let summary: SlotSummary | null = null;
 	// Called with a slot's index when its Remove button is tapped.
 	export let onSlotRemove: ((index: number) => void) | undefined = undefined;
 	// Max cards per row when rendering a fit-layout grid.
@@ -53,7 +56,7 @@
 	// Cards, column count and slots often change after mount (a roster loads its
 	// spawns asynchronously), so push updates into the live scene reactively — in one
 	// call, so a change to any of them costs a single rebuild.
-	$: scene?.setCards(models, columns, slots);
+	$: scene?.setCards(models, columns, slots, summary);
 
 	// Push selection changes into the live scene (dims unselected cards) without a
 	// rebuild, so tapping cards on and off never restarts their idle animations.
@@ -64,6 +67,7 @@
 		scene = new CardScene(host, {
 			cards: models,
 			slots,
+			summary,
 			columns,
 			layout,
 			pannable,
