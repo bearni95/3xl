@@ -1,8 +1,7 @@
-import { Application, Assets, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { destroyPixiApp } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
-import { CardSprite, REFERENCE_SOURCE_HEIGHT } from '../card/CardSprite';
-import type { CardModel } from '../card/card-model.type';
+import { REFERENCE_SOURCE_HEIGHT } from '../card/CardSprite';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
 	boardCells,
@@ -37,13 +36,6 @@ export interface BoardCharacter {
 	 * combat walks the actor; without it both fall back to `run`.
 	 */
 	id?: string;
-	/**
-	 * The character's display card, drawn in the empty space around the hex grid (a
-	 * {@link CardSprite}). When set on the grid's centre character and its extras, the
-	 * board lays that side's cards out in a row outside the grid — rival above, player
-	 * below. Omit to draw no card for this character.
-	 */
-	card?: CardModel;
 }
 
 /** A character placed on a specific hex cell (axial coordinates). */
@@ -176,16 +168,6 @@ export function cellScreenY(q: number, r: number, farRatio: number = DEFAULTS.fa
  * scales by the same source→screen ratio, so shorter/taller sprites read shorter/taller. */
 const CHAR_HEIGHT_RATIO = 1.3;
 
-// --- Character cards (drawn outside the hex grid) ---------------------------
-/** Portrait trading-card aspect (width / height) — mirrors the card renderer. */
-const CARD_ASPECT = 2 / 3;
-/** A card's width as a multiple of the near-edge cell size. */
-const CARD_WIDTH_RATIO = 1.25;
-/** Horizontal gap between cards in a side's row, as a fraction of card width. */
-const CARD_GAP_RATIO = 0.14;
-/** Clear space between a side's card row and the nearest board content, as a
- * fraction of card height, so the cards never overlap the grid or characters. */
-const CARD_BAND_GAP_RATIO = 0.14;
 /** Horizontal speed (canvas px/s) a character runs between cells during combat. */
 const MOVE_SPEED = 260;
 /** Speed (canvas px/s) a fired projectile travels from shooter to target. */
@@ -225,6 +207,25 @@ const COMBAT_COLOR_HEX: Record<string, number> = {
 
 /** Hex for a combat colour name, defaulting to white for anything unknown. */
 export const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color] ?? 0xffffff;
+
+// --- Order buttons (drawn on the board, under the fighter they command) ------
+/** A strip's width as a multiple of the actor's nominal width, and the gap (px)
+ * from the actor's feet down to the top of the strip. */
+const ORDER_WIDTH_RATIO = 1.15;
+const ORDER_GAP = 8;
+/** A button's height as a fraction of its own width. */
+const ORDER_ASPECT = 0.9;
+/** Gap between buttons in a strip, as a fraction of a button's width. */
+const ORDER_SPACING_RATIO = 0.12;
+/** The glyph's size inside a button, as a fraction of the button's height. */
+const ORDER_ICON_RATIO = 0.62;
+/** Corner rounding, as a fraction of a button's height. */
+const ORDER_RADIUS_RATIO = 0.22;
+/** Fill of a button nobody has chosen, and of one that cannot be chosen. */
+const ORDER_IDLE_FILL = 0x1f2937;
+const ORDER_DISABLED_FILL = 0x374151;
+/** How far the glyph on a disabled button fades toward its background. */
+const ORDER_DISABLED_ALPHA = 0.35;
 
 /** Lifetime of a strike slash overlay (ms). */
 const SLASH_MS = 420;
@@ -294,6 +295,39 @@ interface SlashEffect {
 	elapsed: number;
 }
 
+/**
+ * One order a fighter can be given, drawn as a button under it. The board knows
+ * nothing about what an order *means* — it draws what it is handed and reports which
+ * one was tapped, by the caller's own id.
+ */
+export interface BoardOrder {
+	/** The caller's id for this order, handed back when the button is tapped. */
+	id: string;
+	/** URL of the glyph drawn inside the button (an SVG under /assets). The artwork
+	 * must be white: it is tinted, and tinting only ever darkens. */
+	icon: string;
+	/** Drawn as the chosen one, in its side's colour. */
+	selected: boolean;
+	/** Drawn greyed, and taps on it are ignored. */
+	disabled: boolean;
+}
+
+/** One drawn order button, kept so its look can be updated without rebuilding it. */
+interface OrderButton {
+	id: string;
+	container: Container;
+	face: Graphics;
+	glyph: Sprite;
+	selected: boolean;
+	disabled: boolean;
+}
+
+/** The row of order buttons under one fighter. */
+interface OrderStrip {
+	container: Container;
+	buttons: OrderButton[];
+}
+
 /** A character standing (and, during combat, running) on the board. */
 interface Actor {
 	/** Stable id (character id or basePath's first segment), used to command it. */
@@ -337,6 +371,9 @@ interface Actor {
 	/** Floating callout (what its turn amounted to) above the actor, so a turn every
 	 * fighter acts in at once can be read one fighter at a time. Null when clear. */
 	label: Text | null;
+	/** The row of order buttons drawn under this fighter, or null when it commands
+	 * nothing (every rival, and the player's side once the fight is over). */
+	orders: OrderStrip | null;
 	/** Nominal on-screen size (px) of the character at its fit scale, measured
 	 * from its base animation frames; sizes the aura that envelops it. */
 	displayWidth: number;
@@ -376,8 +413,10 @@ export class MugenBoard {
 	private cellPaint = new Map<string, Graphics>();
 	/** Loaded aura frame textures, keyed by aura color name. */
 	private auraTextures = new Map<string, Texture[]>();
+	private iconTextures = new Map<string, Texture>();
+	/** What to call when an order button is tapped; set by {@link onOrder}. */
+	private orderHandler: ((actorId: string, orderId: string) => void) | null = null;
 	/** Character cards drawn in the empty space around the grid (rival + player). */
-	private cardSprites: CardSprite[] = [];
 
 	/** Canvas size, cached so {@link project} can map grid coords to screen space. */
 	private canvasWidth = 0;
@@ -419,6 +458,8 @@ export class MugenBoard {
 		// Sort stage children by zIndex so characters nearer the viewer (lower rows,
 		// larger screen-y) paint over those set further back into the board's depth.
 		app.stage.sortableChildren = true;
+		// Order buttons live on the board, so the stage has to be hit-tested for taps.
+		app.stage.eventMode = 'static';
 		// Render as a block so the canvas doesn't reserve inline-baseline descender
 		// space below it, and let it scale down responsively while keeping its
 		// aspect ratio rather than forcing its full pixel size.
@@ -456,22 +497,16 @@ export class MugenBoard {
 			await this.addActor(extra, extra.q, extra.r, true);
 		}
 
-		// Lay the character cards out in the empty space above (rival) and below
-		// (player) the board, before cropping — so the crop grows the canvas taller to
-		// include them.
 		// Every actor above was loaded asynchronously; the board may have been torn
 		// down in the meantime, and destroy() has already freed the app.
 		if (this.destroyed) return;
 
-		this.layoutCards();
-
 		// Crop the view to what's actually drawn: the hex grid (the widest element)
 		// ends up flush with the canvas edges — so it fills the width when the canvas
 		// is scaled to its container — and the height becomes the grid's height plus
-		// the room the front-row characters need below it, plus the card bands above
-		// and below. The projection keeps using the original design size
-		// (canvasWidth/Height), so combat movement still lands on the right cells; we
-		// only translate the stage and resize the framebuffer.
+		// the room the front-row characters need below it. The projection keeps using
+		// the original design size (canvasWidth/Height), so combat movement still lands
+		// on the right cells; we only translate the stage and resize the framebuffer.
 		this.fitToContent();
 
 		app.ticker.add(this.tick);
@@ -498,69 +533,6 @@ export class MugenBoard {
 		this.app.renderer.resize(width, height);
 	}
 
-	/**
-	 * Draw each side's character cards in the empty space around the hex grid: the
-	 * rival (first grid) in a row above the board, the player (second grid) in a row
-	 * below it. Runs after the grid and characters are placed but before
-	 * {@link fitToContent}, so the two bands grow the cropped canvas taller. Each band
-	 * is anchored just clear of everything already drawn (measured from the current
-	 * stage bounds), so the cards never overlap the grid or the characters standing on
-	 * it. The cards loop their idle art on the same ticker, via {@link CardSprite}.
-	 */
-	private layoutCards(): void {
-		if (!this.app) return;
-		const rival = this.collectCards(this.options.grids[0], leadCell(this.options.grids[0], LEAD_CELLS[0]));
-		const player = this.collectCards(this.options.grids[1], leadCell(this.options.grids[1], LEAD_CELLS[1]));
-		if (rival.length === 0 && player.length === 0) return;
-
-		// Card geometry, sized to the grid so a side's row spans a comfortable fraction
-		// of the board width.
-		const cardW = Math.round(this.options.cellSize * CARD_WIDTH_RATIO);
-		const cardH = Math.round(cardW / CARD_ASPECT);
-		const gap = Math.round(cardW * CARD_GAP_RATIO);
-		const bandGap = Math.round(cardH * CARD_BAND_GAP_RATIO);
-
-		// Anchor the bands to the bounds of what's already drawn (grid + characters), so
-		// the top row sits above the far row's heads and the bottom row below the near
-		// row's feet — never overlapping the board.
-		const bounds = this.app.stage.getBounds();
-		const centerX = (bounds.minX + bounds.maxX) / 2;
-
-		const placeRow = (cards: CardModel[], topY: number, flipped: boolean): void => {
-			const rowW = cards.length * cardW + (cards.length - 1) * gap;
-			const startX = centerX - rowW / 2;
-			cards.forEach((card, i) => {
-				const sprite = new CardSprite({ card, width: cardW, height: cardH, app: this.app!, flipped });
-				sprite.position.set(startX + i * (cardW + gap), topY);
-				// The cards sit in empty space, but keep them above everything regardless.
-				sprite.zIndex = 100000;
-				this.app!.stage.addChild(sprite);
-				this.cardSprites.push(sprite);
-			});
-		};
-
-		// The rival row (top) keeps the original, unmirrored art; the player row (bottom)
-		// uses the flipped default, so the two sides' cards face each other.
-		if (rival.length > 0) placeRow(rival, bounds.minY - bandGap - cardH, false);
-		if (player.length > 0) placeRow(player, bounds.maxY + bandGap, true);
-	}
-
-	/**
-	 * The display cards for one side, ordered by where the characters stand top→bottom
-	 * on the board: the character highest up the canvas comes first (leftmost card),
-	 * then the middle one, then the lowest. The lead character stands on `lead`; each
-	 * extra on its own hex. Characters without a card are skipped.
-	 */
-	private collectCards(grid: BoardGrid, lead: Hex): CardModel[] {
-		const entries: { card: CardModel; q: number; r: number }[] = [];
-		if (grid.character.card) entries.push({ card: grid.character.card, q: lead.q, r: lead.r });
-		for (const extra of grid.extras ?? []) {
-			if (extra.card) entries.push({ card: extra.card, q: extra.q, r: extra.r });
-		}
-		entries.sort((a, b) => this.hexMark(a.q, a.r).y - this.hexMark(b.q, b.r).y);
-		return entries.map((entry) => entry.card);
-	}
-
 	/** Tear everything down. Safe to call more than once. */
 	destroy(): void {
 		this.destroyed = true;
@@ -571,7 +543,6 @@ export class MugenBoard {
 		this.actors = [];
 		this.projectiles = [];
 		this.slashes = [];
-		this.cardSprites = [];
 		this.cellPaint.clear();
 	}
 
@@ -758,6 +729,7 @@ export class MugenBoard {
 			fade: null,
 			aura: null,
 			label: null,
+			orders: null,
 			// Nominal size from the base frames at fit scale — stable across poses,
 			// unlike the live sprite whose size tracks the current frame's texture.
 			displayWidth: Math.max(...baseFrames.map((frame) => frame.width)) * fitScale,
@@ -865,6 +837,7 @@ export class MugenBoard {
 			actor.sprite.zIndex = actor.y;
 			this.applyFrame(actor);
 			this.updateAura(actor, deltaMs);
+			this.updateOrders(actor);
 			this.updateLabel(actor);
 		}
 		this.updateProjectiles(deltaMs);
@@ -1048,6 +1021,7 @@ export class MugenBoard {
 	private removeActor(actor: Actor): void {
 		this.clearAura(actor.id);
 		this.clearCallout(actor.id);
+		this.clearOrders(actor);
 		actor.sprite.parent?.removeChild(actor.sprite);
 		actor.sprite.destroy();
 		this.actors = this.actors.filter((a) => a.id !== actor.id);
@@ -1533,6 +1507,182 @@ export class MugenBoard {
 	/** Clear every callout on the board. */
 	clearCallouts(): void {
 		for (const actor of this.actors) this.clearCallout(actor.id);
+	}
+
+	// --- Order buttons --------------------------------------------------------
+
+	/**
+	 * Say what happens when an order button is tapped. The board reports the actor it
+	 * belongs to and the caller's own id for the order; it never decides anything
+	 * about what an order is or whether it was sensible.
+	 */
+	onOrder(handler: (actorId: string, orderId: string) => void): void {
+		this.orderHandler = handler;
+	}
+
+	/**
+	 * Give a fighter the row of orders it can be given, drawn as buttons under its
+	 * feet — where the association is unambiguous, because they are literally beneath
+	 * the character they command.
+	 *
+	 * Called on every change of the fight's state, so it rebuilds only when the *set*
+	 * of orders changes and otherwise just repaints the buttons it already has: a
+	 * strip torn down and rebuilt each time would drop the pointer state mid-tap and
+	 * flicker its glyphs while their textures reloaded. An empty list clears the strip.
+	 */
+	setOrders(actorId: string, orders: BoardOrder[]): void {
+		const actor = this.findActor(actorId);
+		if (!actor || !this.app) return;
+		if (orders.length === 0) {
+			this.clearOrders(actor);
+			return;
+		}
+
+		const sameSet =
+			actor.orders?.buttons.length === orders.length &&
+			actor.orders.buttons.every((button, i) => button.id === orders[i].id);
+		if (!sameSet) {
+			this.clearOrders(actor);
+			actor.orders = this.buildOrders(actor, orders);
+		}
+
+		const strip = actor.orders;
+		if (!strip) return;
+		orders.forEach((order, i) => {
+			const button = strip.buttons[i];
+			if (!button) return;
+			if (button.selected === order.selected && button.disabled === order.disabled) return;
+			button.selected = order.selected;
+			button.disabled = order.disabled;
+			this.paintOrder(actor, button);
+		});
+		this.updateOrders(actor);
+	}
+
+	/** Build a fighter's strip: one button per order, glyphs loaded as they arrive. */
+	private buildOrders(actor: Actor, orders: BoardOrder[]): OrderStrip {
+		const container = new Container();
+		container.sortableChildren = false;
+		this.app!.stage.addChild(container);
+
+		const buttons = orders.map((order) => {
+			const face = new Graphics();
+			const glyph = new Sprite();
+			glyph.anchor.set(0.5);
+			const button: OrderButton = {
+				id: order.id,
+				container: new Container(),
+				face,
+				glyph,
+				selected: order.selected,
+				disabled: order.disabled
+			};
+			button.container.addChild(face, glyph);
+			// The button itself takes the tap, so the hit area is exactly its face.
+			button.container.eventMode = 'static';
+			button.container.cursor = 'pointer';
+			button.container.on('pointertap', () => {
+				if (button.disabled) return;
+				this.orderHandler?.(actor.id, button.id);
+			});
+			container.addChild(button.container);
+
+			void this.loadIcon(order.icon).then((texture) => {
+				// The strip may have been rebuilt (or the board torn down) while loading.
+				if (!texture || glyph.destroyed) return;
+				glyph.texture = texture;
+				this.layOutOrders(actor);
+			});
+			this.paintOrder(actor, button);
+			return button;
+		});
+
+		const strip: OrderStrip = { container, buttons };
+		actor.orders = strip;
+		this.layOutOrders(actor);
+		return strip;
+	}
+
+	/** Repaint one button for its current state: chosen, plain, or out of reach. */
+	private paintOrder(actor: Actor, button: OrderButton): void {
+		const { width, height } = this.orderSize(actor);
+		const radius = height * ORDER_RADIUS_RATIO;
+		// The chosen order takes its own side's colour, so a fighter's orders read as
+		// belonging to it rather than to some palette of the interface's own.
+		const chosen = cellSide(actor.homeCell) === 'blue' ? this.options.grids[1].color : this.options.grids[0].color;
+		const fill = button.disabled ? ORDER_DISABLED_FILL : button.selected ? chosen : ORDER_IDLE_FILL;
+
+		button.face.clear();
+		button.face.roundRect(-width / 2, -height / 2, width, height, radius);
+		button.face.fill({ color: fill });
+		button.face.roundRect(-width / 2, -height / 2, width, height, radius);
+		button.face.stroke({ width: 2, color: 0x000000, alpha: 0.45 });
+
+		// Tint only ever darkens, so the glyph artwork is white and the tint is what
+		// gives it its colour. A disabled glyph fades toward its own background rather
+		// than vanishing, so an order out of reach still reads as an order.
+		button.glyph.tint = 0xffffff;
+		button.glyph.alpha = button.disabled ? ORDER_DISABLED_ALPHA : 1;
+	}
+
+	/** A button's drawn size for this actor: the strip spans the actor's own width. */
+	private orderSize(actor: Actor): { width: number; height: number; gap: number } {
+		const count = Math.max(1, actor.orders?.buttons.length ?? 1);
+		const stripWidth = actor.displayWidth * ORDER_WIDTH_RATIO;
+		const width = stripWidth / (count + (count - 1) * ORDER_SPACING_RATIO);
+		return { width, height: width * ORDER_ASPECT, gap: width * ORDER_SPACING_RATIO };
+	}
+
+	/** Place the buttons side by side and size their glyphs to fit. */
+	private layOutOrders(actor: Actor): void {
+		const strip = actor.orders;
+		if (!strip) return;
+		const { width, height, gap } = this.orderSize(actor);
+		const step = width + gap;
+		const start = -((strip.buttons.length - 1) * step) / 2;
+		strip.buttons.forEach((button, i) => {
+			button.container.x = start + i * step;
+			this.paintOrder(actor, button);
+			const glyph = button.glyph;
+			if (glyph.texture && glyph.texture.width > 0) {
+				const target = height * ORDER_ICON_RATIO;
+				glyph.scale.set(target / Math.max(glyph.texture.width, glyph.texture.height));
+			}
+		});
+	}
+
+	/** Keep a fighter's strip planted just below its feet as it moves. */
+	private updateOrders(actor: Actor): void {
+		const strip = actor.orders;
+		if (!strip) return;
+		const { height } = this.orderSize(actor);
+		strip.container.x = actor.x;
+		strip.container.y = actor.y + ORDER_GAP + height / 2;
+		// Above the board and its own fighter, below the callouts and slashes.
+		strip.container.zIndex = actor.y + 5000;
+	}
+
+	/** Take a fighter's strip off the board. */
+	private clearOrders(actor: Actor): void {
+		const strip = actor.orders;
+		if (!strip) return;
+		actor.orders = null;
+		strip.container.parent?.removeChild(strip.container);
+		strip.container.destroy({ children: true });
+	}
+
+	/** Load (and cache) one button glyph. Resolves to null if it cannot be had, so a
+	 * missing icon costs the button its picture and nothing else. */
+	private async loadIcon(url: string): Promise<Texture | null> {
+		const cached = this.iconTextures.get(url);
+		if (cached) return cached;
+		try {
+			const texture = await Assets.load<Texture>(url);
+			this.iconTextures.set(url, texture);
+			return texture;
+		} catch {
+			return null;
+		}
 	}
 
 	/** Load (and cache) the frame textures of one aura color. Resolves to an

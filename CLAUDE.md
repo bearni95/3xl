@@ -61,19 +61,25 @@ original (it is a move) and records the stripped credit in that folder's `licens
 Which show gets which glyph is the hand-maintained `showIconName` map in
 `@3xl/shared/utils/show/show-icon.ts`, keyed by TMDB show id.
 
-**Icons.** Both sets — the show glyphs above and the game-icons.net artwork under
-`public/icons/<artist>/` — are **inlined** into the bundle by `icon-markup.ts` (via
-`import.meta.glob` + `?raw`), keyed `<folder>/<slug>` (`shows/straw-hat`,
-`lorc/broadsword`). An `<img>` is an opaque document whose artwork cannot inherit
-anything from the page, so inlining is what lets a glyph's `fill="currentColor"`
-resolve against the surrounding text — its colour *and* its size follow whatever it
-sits in. `Icon.svelte` renders one; `ShowIcon.svelte` is the show-specific wrapper.
-A game-icons.net SVG ships on an opaque black square with white artwork, so strip
-that background path and swap the fill for `currentColor` before committing it.
+**Icons.** Where an icon is *drawn* decides how it is stored, and the two are not
+interchangeable:
 
-One icon stays URL-fetched rather than inlined — the map's star badge — because it is
-drawn into a Leaflet marker, which a stylesheet doesn't reach; it carries a baked fill
-of its own.
+- **Into the document** — the show glyphs above. Inlined into the bundle by
+  `icon-markup.ts` (`import.meta.glob` + `?raw`), keyed `<folder>/<slug>`
+  (`shows/straw-hat`), and rendered by `ShowIcon.svelte`. An `<img>` is an opaque
+  document whose artwork cannot inherit anything from the page, so inlining is what
+  lets `fill="currentColor"` resolve against the surrounding text — colour *and* size
+  follow whatever the glyph sits in.
+- **Into a canvas** — the game-icons.net artwork under `public/icons/<artist>/`:
+  the combat orders' glyphs go into a Pixi texture and the map's star badge into a
+  Leaflet marker. Neither is a place a stylesheet reaches, so these are fetched by
+  URL and carry a baked **white** fill, which the canvas then tints (tinting only
+  ever darkens, so white artwork is what makes any colour reachable). A
+  game-icons.net SVG ships as white artwork on an opaque black square: strip the
+  background path and keep the white before committing it.
+
+Inlining a canvas glyph would put white on white, which is why `icon-markup.ts`'s
+glob deliberately takes only the show set.
 
 **Do not hand-edit generated files** (`registry.generated.ts`, `manifest.json`,
 `mugen-moves.json`, `public/geo/*.json`, `public/icons/shows/*`) or decoded assets —

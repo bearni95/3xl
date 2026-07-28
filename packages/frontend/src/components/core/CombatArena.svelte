@@ -2,11 +2,11 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
-	import Icon from '$components/core/Icon.svelte';
 	import { cellScreenY, combatColorHex } from '$utils/mugen/mugen-board';
 	import type {
 		BoardCharacter,
 		BoardGrid,
+		BoardOrder,
 		MugenBoard as MugenBoardEngine,
 		PlacedCharacter
 	} from '$utils/mugen/mugen-board';
@@ -37,11 +37,8 @@
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { spawnService } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE, type Team } from '$services/team.service';
-	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { AuthStatus } from '$types/profile.type';
-	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
-	import { DEFAULT_SPAWN_STAT, SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
-	import { combatStatsFromStat } from '$utils/spawn/stat';
+	import type { CharacterSpawn } from '$types/character-spawn.type';
 
 	// The opponent's team when this is a challenge: synthetic OG spawns (see
 	// `ogTeamSpawns`). When a full team (TEAM_SIZE) is supplied the red (CPU) side
@@ -73,12 +70,17 @@
 	}
 
 	// The glyph each order is given, from the game-icons.net set in @3xl/assets:
-	// energy gathering to charge, a sword to shoot, a shield to defend.
+	// energy gathering to charge, a shield to defend, a sword to shoot. These are
+	// loaded by the board as Pixi textures, so they are named by URL rather than by
+	// the `<folder>/<slug>` an inlined icon goes by.
 	const ACTION_ICONS: Record<CombatAction, string> = {
-		charge: 'lorc/rolling-energy',
-		shoot: 'lorc/broadsword',
-		defend: 'lorc/bordered-shield'
+		charge: '/assets/icons/lorc/rolling-energy.svg',
+		shoot: '/assets/icons/lorc/broadsword.svg',
+		defend: '/assets/icons/lorc/bordered-shield.svg'
 	};
+
+	/** The id the extra shot's button answers to, alongside the three orders. */
+	const BONUS_ORDER = 'bonus';
 
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
 
@@ -103,48 +105,16 @@
 	// A full OG team means the red side fields it instead of mirroring the player's.
 	$: challengeReady = ogTeam.length === TEAM_SIZE;
 
-	// character id → rarity tier from Supabase `character_templates`, character id →
-	// its related show names, and geojson feature id → municipality name — the same
-	// three sources the roster/claim cards read, so the cards drawn outside the board
-	// grid show their rarity badge, show and claim place (not just name and stats).
-	let rarityByCharacter = new Map<string, number>();
-	let showNamesByCharacter = new Map<string, string[]>();
-	let municipalityNames: Map<string, string> | null = null;
-
 	// Load the player's spawns once signed in, so their rolled colours are available.
-	// Rarities, show names and place names load alongside, so the outside-grid cards
-	// can show them.
+	// Nothing else is fetched: the board draws fighters and the orders they can be
+	// given, and a fighter's rarity, show and claim place belonged to the trading card
+	// that used to sit beside it.
 	let loadedForUser: string | null = null;
 	let spawnsLoaded = false;
 	$: if (currentUserId && currentUserId !== loadedForUser) {
 		loadedForUser = currentUserId;
 		spawnsLoaded = false;
 		void spawnService.loadSpawns(currentUserId).then(() => (spawnsLoaded = true));
-		void spawnService.loadRarities().then((rarities) => (rarityByCharacter = rarities));
-		void spawnService.loadCharacterShowNames().then((names) => (showNamesByCharacter = names));
-		void loadMunicipalityNames();
-	}
-
-	// Resolve geojson feature ids to municipality names for the cards' place labels.
-	// Optional — a missing/failed layer just falls back to the Ultramar sentinel.
-	async function loadMunicipalityNames(): Promise<void> {
-		try {
-			const response = await fetch('/data/geo/municipis.json');
-			const municipalities = (await response.json()) as GeoJSON.FeatureCollection;
-			municipalityNames = locationAdapter.municipalityNames(municipalities);
-		} catch {
-			municipalityNames = null;
-		}
-	}
-
-	// A spawn's claim place, resolved from its geojson location id (the Ultramar
-	// sentinel and any unresolved id read as Ultramar) — mirrors the roster.
-	function locationNameFor(id: string | null | undefined): string {
-		if (id && id !== ULTRAMAR_ID) {
-			const name = municipalityNames?.get(id);
-			if (name) return name;
-		}
-		return ULTRAMAR.municipality;
 	}
 
 	// Every fieldable spawn by id: the player's own claimed spawns plus (in a
@@ -195,32 +165,14 @@
 	function boardCharacter(
 		spawnId: string,
 		side: 'error' | 'info',
-		spawns: Map<string, CharacterSpawn>,
-		rarities: Map<string, number>,
-		showNames: Map<string, string[]>,
-		names: Map<string, string> | null
+		spawns: Map<string, CharacterSpawn>
 	): BoardCharacter {
 		const spawn = spawns.get(spawnId);
 		const option = (spawn && characterById.get(spawn.characterId)) ?? availableCharacters[0];
 		return {
 			id: instanceId(side, spawnId),
 			basePath: option.basePath,
-			animation: 'idle',
-			// The display card drawn outside the grid (rival above, player below): the
-			// idle art loads from basePath. Rarity, show and claim place come from the
-			// same three Supabase/geo sources the roster and claim cards read
-			// (`showNames`/`names` are passed so the reactive build re-runs — and the
-			// board remounts — once those layers load).
-			card: {
-				label: option.label,
-				basePath: option.basePath,
-				faceUrl: null,
-				color: spawn?.color ?? SpawnColor.Red,
-				rarity: spawn ? (rarities.get(spawn.characterId) ?? null) : null,
-				showName: spawn ? (showNames.get(spawn.characterId)?.join(', ') || null) : null,
-				locationName: spawn ? locationNameFor(spawn.locationId) : null,
-				spawnedAt: spawn?.createdAt ?? null
-			}
+			animation: 'idle'
 		};
 	}
 
@@ -239,24 +191,21 @@
 	// Left: the rival line on the central column; right: the player's team on the far
 	// column of its own half. Each side's first slot leads (it is the grid's own
 	// character, the rest are extras) and stands on the topmost cell, so team order and
-	// the board's left→right card order are one and the same. Rebuilt whenever a slot
-	// or a spawn changes. `spawns` is passed in explicitly so Svelte's legacy reactive
+	// the board's top→bottom order are one and the same. Rebuilt whenever a slot or a
+	// spawn changes. `spawns` is passed in explicitly so Svelte's legacy reactive
 	// tracking sees the spawn map as a dependency of `grids`.
 	function buildGrids(
 		ids: string[],
-		spawns: Map<string, CharacterSpawn>,
-		rarities: Map<string, number>,
-		showNames: Map<string, string[]>,
-		names: Map<string, string> | null
+		spawns: Map<string, CharacterSpawn>
 	): [BoardGrid, BoardGrid] {
 		const half = (side: 'error' | 'info', offset: number, cells: Hex[], fallback: number) => ({
 			color: leaderColorHex(ids[offset], spawns, fallback),
 			character: {
-				...boardCharacter(ids[offset], side, spawns, rarities, showNames, names),
+				...boardCharacter(ids[offset], side, spawns),
 				...cells[0]
 			},
 			extras: cells.slice(1).map((cell, i) => ({
-				...boardCharacter(ids[offset + 1 + i], side, spawns, rarities, showNames, names),
+				...boardCharacter(ids[offset + 1 + i], side, spawns),
 				...cell
 			}))
 		});
@@ -266,17 +215,14 @@
 		];
 	}
 
-	$: grids = buildGrids(slots, spawnById, rarityByCharacter, showNamesByCharacter, municipalityNames);
-	// Remounts the Pixi board (and thus repositions everyone) on any slot change,
-	// spawn-colour change (so home cells repaint once colours load), spawn-stat change
-	// (so the outside-grid cards repaint), or rarity/show/place load (so the cards gain
-	// their badge, show and location once those sources resolve). A finished fight
-	// never restarts in place — the arena closes — so there is nothing else to key on.
+	$: grids = buildGrids(slots, spawnById);
+	// Remounts the Pixi board (and thus repositions everyone) on any slot change or
+	// spawn-colour change (so home cells and order buttons repaint once colours load).
+	// A finished fight never restarts in place — the arena closes — so there is nothing
+	// else to key on.
 	$: boardKey = `${slots.join(',')}:${slots
-		.map((id) => `${spawnById.get(id)?.color ?? ''}/${spawnById.get(id)?.stat ?? ''}`)
-		.join(
-			','
-		)}:${rarityByCharacter.size}:${showNamesByCharacter.size}:${municipalityNames?.size ?? 0}`;
+		.map((id) => spawnById.get(id)?.color ?? '')
+		.join(',')}`;
 
 	// One badge per character on the board, in board order (red half then blue).
 	// Static display info (name, face, colour, moves); the live combat state (charges,
@@ -292,8 +238,6 @@
 		/** The character's combat color — its Supabase spawn colour, and the whole of
 		 * what it does differently in a fight. */
 		color: CombatColor;
-		/** The character's Supabase spawn gameplay stat (1..10). */
-		stat: number;
 		/**
 		 * Top→bottom screen position of the character's cell on the canvas (arbitrary
 		 * units that increase downward; only the ordering matters). Used to lay the
@@ -345,7 +289,59 @@
 
 	function onBoardReady(engine: MugenBoardEngine): void {
 		board = engine;
+		engine.onOrder(giveOrder);
 		controller?.attachBoard(engine);
+	}
+
+	// A button under a fighter was tapped. The board only reports which one; what an
+	// order means is the controller's, as it is for every other input.
+	function giveOrder(fighterId: string, orderId: string): void {
+		if (orderId === BONUS_ORDER) {
+			controller?.setBonus(fighterId, !combatById.get(fighterId)?.bonus);
+			return;
+		}
+		controller?.setAction(fighterId, orderId as CombatAction);
+	}
+
+	/**
+	 * The buttons drawn under one of the player's fighters: the three orders, then
+	 * red's extra shot. Every one of them is always drawn — an order out of reach is
+	 * greyed rather than dropped, so a fighter's row never changes shape under the
+	 * cursor — and all of them lock while a turn is playing out.
+	 */
+	function orderButtons(fighter: FighterView, phase: CombatState['phase']): BoardOrder[] {
+		const locked = phase !== 'planning';
+		return [
+			...COMBAT_ACTIONS.map((action) => ({
+				id: action,
+				icon: ACTION_ICONS[action],
+				selected: fighter.action === action,
+				disabled: locked || (action === 'shoot' && !fighter.canShoot)
+			})),
+			{
+				id: BONUS_ORDER,
+				// The extra shot *is* a shot, so it carries the same sword — set apart by
+				// sitting last in the row rather than by a glyph of its own.
+				icon: ACTION_ICONS.shoot,
+				selected: fighter.bonus,
+				disabled: locked || (!fighter.bonus && !fighter.canBonus)
+			}
+		];
+	}
+
+	// Push the player's orders onto the board whenever the fight moves. Both `state`
+	// and `board` are named so Svelte's legacy reactive tracking sees them as
+	// dependencies; the board itself only redraws what actually changed.
+	$: syncOrders(state, board);
+
+	function syncOrders(current: CombatState | null, engine: MugenBoardEngine | null): void {
+		if (!engine || !current) return;
+		for (const fighter of current.fighters) {
+			// Only the player is given orders; the rivals commit theirs out of sight, and
+			// a fighter that has gone down has left the board along with its buttons.
+			if (fighter.side !== 'info' || fighter.down) continue;
+			engine.setOrders(fighter.id, orderButtons(fighter, current.phase));
+		}
 	}
 
 	// Bumped on every setup() call so a stale in-flight load can't clobber a
@@ -357,13 +353,7 @@
 	// playable line-up changes.
 	async function setup(): Promise<void> {
 		const token = ++setupToken;
-		const currentGrids = buildGrids(
-			slots,
-			spawnById,
-			rarityByCharacter,
-			showNamesByCharacter,
-			municipalityNames
-		);
+		const currentGrids = buildGrids(slots, spawnById);
 		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] = [
 			...rosterFor(
 				[currentGrids[0].character as PlacedCharacter, ...(currentGrids[0].extras ?? [])],
@@ -378,7 +368,7 @@
 		const loaded = await Promise.all(
 			roster.map(async (entry) => {
 				// `entry.id` is the per-side instance id (`error:<spawnId>`); recover the
-				// spawn (its rolled colour and stat) and the character id (which keys the
+				// spawn (its rolled colour) and the character id (which keys the
 				// definition JSON) from it, falling back to the basePath-derived id.
 				const spawn = spawnById.get(spawnIdOf(entry.id));
 				const characterId = spawn?.characterId ?? characterIdOf(entry.basePath);
@@ -395,17 +385,13 @@
 					(COMPOUND_COLORS.includes(definition.color!) ? definition.color! : DEFAULT_COLOR);
 				// Face: the portrait the definition picked in /admin/characters, else
 				// the manifest's default. Both resolve to a file under the char's frames.
-				// Gameplay stat comes from the spawn; a slot with no spawn stat reads as
-				// the default (like legacy spawns).
-				const stat: number = spawn?.stat ?? DEFAULT_SPAWN_STAT;
 				const faceFile = definition.face || manifest.face?.file || null;
 				return {
 					...entry,
 					name: manifest.name,
 					face: faceFile ? `${entry.basePath}/${faceFile}` : null,
 					moves: definition.moves ?? [],
-					color,
-					stat
+					color
 				};
 			})
 		);
@@ -413,25 +399,19 @@
 
 		badges = loaded;
 
-		// Hand the fighters to the combat controller and wire its store. Nothing but the
-		// colour changes how a fighter plays; the rolled stat only supplies the order a
-		// turn's bullets land in (SPD) and the HP pool a survivor is reported to have
-		// come through whole, which is what the experience award is weighed by.
-		const seeds: FighterSeed[] = badges.map((badge) => {
-			const { spd, hp } = combatStatsFromStat(badge.stat);
-			return {
-				id: badge.id,
-				// The spawn behind the instance id, so a won fight can be reported for
-				// experience against the actual `character_spawns` rows fielded.
-				spawnId: spawnIdOf(badge.id),
-				name: badge.name,
-				side: badge.side,
-				color: badge.color,
-				moves: badge.moves,
-				spd,
-				hpPool: hp
-			};
-		});
+		// Hand the fighters to the combat controller and wire its store. Its colour is
+		// the whole of what makes one fighter play differently from another — there is
+		// nothing else to a card in a fight.
+		const seeds: FighterSeed[] = badges.map((badge) => ({
+			id: badge.id,
+			// The spawn behind the instance id, so a won fight can be reported for
+			// experience against the actual `character_spawns` rows fielded.
+			spawnId: spawnIdOf(badge.id),
+			name: badge.name,
+			side: badge.side,
+			color: badge.color,
+			moves: badge.moves
+		}));
 		unsubscribe?.();
 		controller = new CombatController(seeds);
 		unsubscribe = controller.subscribe((next) => (state = next));
@@ -497,14 +477,12 @@
 
 	onDestroy(() => unsubscribe?.());
 
-	// (Re)build the fight whenever the playable line-up, its colours, or its stats
-	// change. The key folds in each slot's character id and its resolved spawn
-	// colour and stat, so the controller is rebuilt only on a real change — not on
-	// every unrelated tick.
+	// (Re)build the fight whenever the playable line-up or its colours change. The key
+	// folds in each slot's character id and its resolved spawn colour, so the
+	// controller is rebuilt only on a real change — not on every unrelated tick.
 	$: fightKey =
 		playable && spawnsLoaded
-			? `${slots.join(',')}|${slots.map((id) => spawnById.get(id)?.color ?? '').join(',')}` +
-				`|${slots.map((id) => spawnById.get(id)?.stat ?? '').join(',')}`
+			? `${slots.join(',')}|${slots.map((id) => spawnById.get(id)?.color ?? '').join(',')}`
 			: '';
 	let lastFightKey = '';
 	$: if (fightKey && fightKey !== lastFightKey) {
@@ -527,66 +505,6 @@
 				})}
 			></span>
 		{/each}
-	</div>
-{/snippet}
-
-{#snippet orderPicker(badge: Badge, fighter: FighterView | undefined)}
-	{@const locked = state?.phase !== 'planning' || !!fighter?.down}
-	<!-- An extra shot already taken stays clickable so it can be taken back, even on a
-	     turn it could no longer be chosen from scratch. -->
-	{@const bonusLocked = locked || (!fighter?.bonus && !fighter?.canBonus)}
-	<div class="flex w-full flex-col gap-1">
-		{@render charges(fighter)}
-		<!-- The three orders as one row of glyphs. Nothing is written on them, so each
-		     carries the order's name for anything that cannot see it.
-		
-		     An order that cannot be taken is disabled, never dropped — but disabling has
-		     to be *seen*, and DaisyUI answers a disabled button by dropping its
-		     foreground to a fifth of base-content. The glyph paints in that foreground
-		     (that is the point of inlining it), so left alone a disabled order reads as
-		     an empty slab rather than as an order that is out of reach. Hence the
-		     explicit disabled colours: a plainly present button, plainly greyed. -->
-		<div class="join w-full">
-			{#each COMBAT_ACTIONS as action (action)}
-				{@const unavailable = action === 'shoot' && !fighter?.canShoot}
-				<button
-					type="button"
-					class={classNames(
-						'btn join-item btn-lg min-w-0 flex-1 px-0',
-						'disabled:!bg-base-300 disabled:!text-base-content/60',
-						{
-							'btn-primary': fighter?.action === action,
-							'btn-neutral': fighter?.action !== action
-						}
-					)}
-					aria-label={actionLabel(action)}
-					disabled={locked || unavailable}
-					on:click={() => controller?.setAction(badge.id, action)}
-				>
-					<Icon name={ACTION_ICONS[action]} classes="[&>svg]:size-6" />
-				</button>
-			{/each}
-		</div>
-		<!-- Red's extra shot. Only a colour that carries red can ever take it, and only
-		     on a turn it is spending on something other than shooting, with a charge
-		     left to pay for it — but it is drawn whatever the answer is, greyed out
-		     rather than absent, so a fighter's picker is the same shape every turn and
-		     the row of them never shifts under the cursor. -->
-		<label
-			class={classNames('flex items-center justify-center gap-1 text-[11px]', {
-				'cursor-pointer': !bonusLocked,
-				'opacity-60': bonusLocked
-			})}
-		>
-			<input
-				type="checkbox"
-				class="checkbox checkbox-xs"
-				checked={!!fighter?.bonus}
-				disabled={bonusLocked}
-				on:change={(event) => controller?.setBonus(badge.id, event.currentTarget.checked)}
-			/>
-			<span>Extra shot</span>
-		</label>
 	</div>
 {/snippet}
 
@@ -615,26 +533,20 @@
 	</div>
 {/snippet}
 
-<!-- A line-up laid out horizontally, above (CPU) or below (player) the board.
-     Stays a single row on every screen — on mobile it scrolls sideways rather
-     than wrapping the cards into a stack. The column width and the row's gap
-     mirror the canvas card band (150px cards, 21px apart, centred), so each
-     column sits directly under (or over) its card. -->
-{#snippet row(list: Badge[], rival: boolean)}
+<!-- The rival line, in the order they hold the board top→bottom. Stays a single row
+     on every screen — on mobile it scrolls sideways rather than stacking. -->
+{#snippet rivalRow(list: Badge[])}
 	<div class="w-full overflow-x-auto">
-		<div class="mx-auto flex w-max flex-row flex-nowrap items-start gap-[21px] px-2 text-sm">
+		<div class="mx-auto flex w-max flex-row flex-nowrap items-start gap-3 px-2 text-sm">
 			{#each list as badge (badge.id)}
 				{@const fighter = combatById.get(badge.id)}
 				<div
-					class={classNames('flex w-[150px] shrink-0 flex-col items-center transition-opacity', {
+					class={classNames('flex w-[130px] shrink-0 flex-col items-center transition-opacity', {
 						'opacity-40': fighter?.down
 					})}
 				>
-					{#if rival}
-						{@render rivalOrder(fighter)}
-					{:else}
-						{@render orderPicker(badge, fighter)}
-					{/if}
+					<p class="w-full truncate text-center text-xs font-semibold">{badge.name}</p>
+					{@render rivalOrder(fighter)}
 				</div>
 			{/each}
 		</div>
@@ -722,15 +634,13 @@
 			})}
 		>
 			<div class="card-body items-center gap-3">
-				<!-- What the rivals are up to, above the board and over their own cards. -->
-				{@render row(lineups[0], true)}
+				<!-- What the rivals are up to, above the board they stand on. -->
+				{@render rivalRow(lineups[0])}
 				<div class="flex w-full min-w-0 flex-col items-center gap-3">
 					{#key boardKey}
 						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
 					{/key}
 				</div>
-				<!-- The player's orders, as a row after the game canvas. -->
-				{@render row(lineups[1], false)}
 				{#if state}
 					<div class="flex w-full flex-col items-center gap-2">
 						<button
