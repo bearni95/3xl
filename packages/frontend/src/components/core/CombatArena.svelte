@@ -207,8 +207,6 @@
 			id: instanceId(side, spawnId),
 			basePath: option.basePath,
 			animation: 'idle',
-			// The spawn's rolled colour fills this fighter's charge meter on the board.
-			combatColor: spawn?.color,
 			// The display card drawn outside the grid (rival above, player below): the
 			// idle art loads from basePath, and the attributes mirror the board's
 			// derivation from the rolled stat. Rarity, show and claim place come from the

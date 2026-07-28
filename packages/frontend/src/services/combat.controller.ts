@@ -27,8 +27,8 @@
  * The rivals open **on the central column**, as far forward as the board allows, and
  * are pushed further out every time one of them is taken down — the survivors fall
  * back to what is from then on their starting ground (see {@link RIVAL_RANKS}). So
- * the board itself shows how the fight is going, without a single HP bar: the meter
- * under each fighter counts its charges, not its health.
+ * the board itself shows how the fight is going, with nothing drawn under anybody's
+ * feet: there is no health to track, and an aura says who is holding a charge.
  *
  * The game ends when a side is wiped out (both at once is a draw), or at
  * {@link MAX_TURNS}, where the side with more fighters left wins. Winning is the
@@ -281,10 +281,9 @@ export class CombatController {
 	/** Give the controller the running board engine so it can drive it. */
 	attachBoard(board: MugenBoard): void {
 		this.board = board;
-		// Seed every fighter's meter with the charges it opens on, so yellow's head
-		// start is visible before a single order is given.
+		// Light the aura of anyone already holding a charge, so yellow's head start
+		// shows on the board before a single order is given.
 		for (const fighter of this.fighters) {
-			board.setMeter(fighter.id, fighter.charges, MAX_CHARGES);
 			if (fighter.charges > 0) void this.raiseAura(fighter);
 		}
 	}
@@ -687,12 +686,11 @@ export class CombatController {
 
 	// --- Board ----------------------------------------------------------------
 
-	/** Push every fighter's charges to its meter, and light (or put out) the aura
-	 * that says at a glance who is holding one. */
+	/** Light (or put out) the aura that says at a glance who is holding a charge. The
+	 * count itself is read off the pips beside each fighter's picker, not the board. */
 	private syncCharges(): void {
 		for (const fighter of this.fighters) {
 			if (fighter.down) continue;
-			this.board?.setMeter(fighter.id, fighter.charges, MAX_CHARGES);
 			if (fighter.charges > 0) void this.raiseAura(fighter);
 			else this.dropAura(fighter);
 		}
