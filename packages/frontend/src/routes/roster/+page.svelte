@@ -58,6 +58,16 @@
 		filterMinStat = SPAWN_STAT_MIN;
 	}
 
+	// --- Pagination ---
+	// The canvas only ever builds one page of cards: at most ROWS_PER_PAGE rows at the
+	// column count the slider is set to, so a large roster never instantiates a sprite
+	// (and its sheet animation) per claimed card. Widening the columns therefore also
+	// widens the page — the row budget is what's fixed.
+	const ROWS_PER_PAGE = 10;
+	let page = 0; // zero-based
+	// The card canvas, so turning a page can scroll it back to the top.
+	let cardCanvas: CardCanvas | undefined;
+
 	// Whether any filter is narrowing the roster (drives the Clear button).
 	$: filtersActive =
 		filterName.trim() !== '' ||
@@ -259,7 +269,32 @@
 		});
 	})(filterName, filterColor, filterShow, filterRarity, filterMinStat, characterShowNames, rarityByCharacter);
 
-	// The filtered spawns as display CardModels for the shared card renderer — the
+	// The filters and the pager work on the same list: filtering narrows it, the pager
+	// walks it a page at a time. So any filter change re-pages from the start — the
+	// narrowed roster always opens on its first page rather than on a page number that
+	// meant something under the old filters.
+	$: filterName, filterColor, filterShow, filterRarity, filterMinStat, (page = 0);
+
+	// A page is ROWS_PER_PAGE rows at the current column count, so the slider resizes
+	// the page as well as the cards.
+	$: pageSize = Math.max(1, $columns) * ROWS_PER_PAGE;
+	$: pageCount = Math.max(1, Math.ceil(filteredSpawns.length / pageSize));
+	// Clamp whenever the page count shrinks (a wider column count, or cards recycled
+	// away) so the view never sits past the last page.
+	$: if (page > pageCount - 1) page = pageCount - 1;
+	$: pageStart = page * pageSize;
+	// The one page of spawns the canvas actually draws — everything below indexes into
+	// this, not the full filtered list.
+	$: pagedSpawns = filteredSpawns.slice(pageStart, pageStart + pageSize);
+
+	function goToPage(next: number): void {
+		page = Math.min(Math.max(0, next), pageCount - 1);
+	}
+
+	// A new page opens at its top; rebuilds otherwise keep the scroll offset.
+	$: page, cardCanvas?.scrollToTop();
+
+	// The current page's spawns as display CardModels for the shared card renderer — the
 	// same shape the claim pack opener draws (label + sprite from the local registry,
 	// face fallback, rolled colour/stat, rarity, show, claim place and year). The four
 	// combat attributes mirror the board: ATK is the rolled stat, DEF its complement,
@@ -273,7 +308,7 @@
 		rarities: Map<string, number>,
 		_showNames: Map<string, string[]>
 	): CardModel[] =>
-		filteredSpawns.map((spawn) => ({
+		pagedSpawns.map((spawn) => ({
 			label: labelFor(spawn.characterId),
 			basePath: basePathFor(spawn.characterId),
 			faceUrl: faces.get(spawn.characterId) ?? null,
@@ -287,9 +322,10 @@
 
 	// Tapping a card on the canvas toggles that spawn on the active team (add to the
 	// first free slot, or remove it) — the canvas replaces the old per-card buttons.
-	// The tapped index maps 1:1 to the *filtered* spawns the cards were built from.
+	// The tapped index maps 1:1 to the spawns *on the current page*, which is what the
+	// cards were built from.
 	function handleCardTap(index: number): void {
-		const spawn = filteredSpawns[index];
+		const spawn = pagedSpawns[index];
 		if (!spawn) return;
 		if (recycleMode) {
 			toggleRecycleSelection(spawn.id);
@@ -298,12 +334,12 @@
 		toggleTeamMember(spawn.id);
 	}
 
-	// The indices (into the currently-filtered cards) of the spawns selected for
-	// recycling, so the canvas can dim the rest. Recomputed as the selection or the
-	// filtered list changes — a card selected while filtered out stays counted but
-	// simply isn't shown until it matches the filters again.
+	// The indices (into the cards on the current page) of the spawns selected for
+	// recycling, so the canvas can dim the rest. Recomputed as the selection, the
+	// filters or the page change — a card selected while filtered out or on another
+	// page stays counted but simply isn't shown until it comes back into view.
 	$: recycleSelectedIndices = new Set(
-		filteredSpawns.reduce<number[]>((indices, spawn, index) => {
+		pagedSpawns.reduce<number[]>((indices, spawn, index) => {
 			if (selectedForRecycle.has(spawn.id)) indices.push(index);
 			return indices;
 		}, [])
@@ -567,28 +603,56 @@
 							Select a team to start adding characters by tapping their card.
 						{/if}
 					</p>
-					<label class="flex items-center gap-2 text-xs">
-						<span class="whitespace-nowrap opacity-60">Columns</span>
-						<input
-							type="range"
-							min={MIN_COLUMNS}
-							max={MAX_COLUMNS}
-							class="range range-primary range-xs w-40"
-							bind:value={$columns}
-							aria-label="Grid columns"
-						/>
-						<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
-					</label>
+					<div class="flex flex-wrap items-center gap-3">
+						{#if pageCount > 1}
+							<div class="join">
+								<button
+									class="btn join-item btn-sm"
+									disabled={page === 0}
+									on:click={() => goToPage(page - 1)}
+									aria-label="Previous page"
+								>
+									‹
+								</button>
+								<span class="btn no-animation join-item pointer-events-none btn-sm font-normal">
+									Page {page + 1} / {pageCount}
+								</span>
+								<button
+									class="btn join-item btn-sm"
+									disabled={page >= pageCount - 1}
+									on:click={() => goToPage(page + 1)}
+									aria-label="Next page"
+								>
+									›
+								</button>
+							</div>
+						{/if}
+						<label class="flex items-center gap-2 text-xs">
+							<span class="whitespace-nowrap opacity-60">Columns</span>
+							<input
+								type="range"
+								min={MIN_COLUMNS}
+								max={MAX_COLUMNS}
+								class="range range-primary range-xs w-40"
+								bind:value={$columns}
+								aria-label="Grid columns"
+							/>
+							<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
+						</label>
+					</div>
 				</div>
 				<!-- The roster is drawn on the shared card canvas — the same renderer the
 				     claim pack opener uses — instead of a DOM grid. The columns always
 				     fill the canvas width (default 1/2/3 by viewport, then the slider),
 				     and the rows scroll vertically; tapping a card toggles its team
-				     membership. -->
+				     membership. Only the current page's cards are built — the filters
+				     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at
+				     a time. -->
 				<div
 					class="relative h-[70vh] min-h-[32rem] overflow-hidden rounded-box bg-base-100 shadow-md"
 				>
 					<CardCanvas
+						bind:this={cardCanvas}
 						cards={cardModels}
 						columns={$columns}
 						layout="grid"

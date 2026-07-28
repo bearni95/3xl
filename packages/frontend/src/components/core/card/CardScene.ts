@@ -343,6 +343,19 @@ export class CardScene {
 	}
 
 	/**
+	 * Scroll the grid back to its first row. Rebuilds deliberately keep the scroll
+	 * offset (a resize or a column change shouldn't lose the player's place), so a
+	 * host that swaps the cards for a different *set* — the roster's pager turning a
+	 * page — calls this to open the new page at its top.
+	 */
+	scrollToTop(): void {
+		if (this.layout !== 'grid') return;
+		this.pan.y = 0;
+		this.clampPan();
+		this.applyTransform();
+	}
+
+	/**
 	 * Toggle a recycle-style selection overlay: when `active`, every card whose
 	 * index isn't in `indices` is dimmed and the selected ones stay at full opacity.
 	 * Applied to the live sprites without a rebuild, so the idle animations keep

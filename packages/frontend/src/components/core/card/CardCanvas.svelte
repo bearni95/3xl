@@ -33,6 +33,14 @@
 	let host: HTMLDivElement;
 	let scene: CardScene | null = null;
 
+	// Scroll a grid canvas back to its first row. Exposed for hosts that swap the
+	// cards for a different set (the roster's pager) and want the new set to open at
+	// the top instead of inheriting the previous scroll offset — call it through
+	// `bind:this`.
+	export function scrollToTop(): void {
+		scene?.scrollToTop();
+	}
+
 	// Normalise the two convenience props into the array the scene wants.
 	$: models = cards ?? (card ? [card] : []);
 
