@@ -56,5 +56,12 @@
 		"atk": 5,
 		"def": 5,
 		"hp": 5
+	},
+	"color": "purple",
+	"face": "spr_9000_2.png",
+	"faceCrop": {
+		"x": 0,
+		"y": 50,
+		"size": 341
 	}
 }
