@@ -683,13 +683,21 @@ export function ensureTables(): Promise<void> {
 								perform pg_advisory_xact_lock(hashtextextended('municipality:' || p_location_id, 0));
 								select h.user_id, h.turnover into v_holder, v_turnover
 									from municipality_holders h where h.location_id = p_location_id;
+								-- A town whose sitting team is the caller's own cannot be fought for:
+								-- there is nothing to take off yourself. The map never offers the
+								-- challenge, so a report that names one did not come from the game —
+								-- reject it outright, rolling back the experience with it, rather than
+								-- paying out for a fight that should not have happened.
+								if v_holder is not null and v_holder = v_uid then
+									raise exception 'You already hold this town — you cannot challenge your own team.';
+								end if;
 								-- No row at all means the town is still on its seeded OG team: turnover 0.
 								v_turnover := coalesce(v_turnover, 0);
 								v_required := greatest(1, v_turnover + 1);
 								-- The browser fought whatever team it had loaded; if the town has
 								-- flipped since, that was not the sitting team and the win buys nothing.
 								v_stale := coalesce(p_holder_turnover, 0) <> v_turnover;
-								if p_outcome = 'win' and not v_stale and v_holder is distinct from v_uid then
+								if p_outcome = 'win' and not v_stale then
 									-- Bank the win. A stored siege from an older generation is not added
 									-- to — it restarts at this win, since it was earned against a team
 									-- that no longer sits there.
@@ -752,8 +760,8 @@ export function ensureTables(): Promise<void> {
 										v_wins := v_required;
 									end if;
 								else
-									-- Nothing banked (a loss, a draw, a stale fight, or the player's own
-									-- town): report the progress they already had against this generation.
+									-- Nothing banked (a loss, a draw or a stale fight): report the
+									-- progress they already had against this generation.
 									select s.wins into v_wins from municipality_sieges s
 										where s.location_id = p_location_id
 											and s.user_id = v_uid

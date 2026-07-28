@@ -455,6 +455,11 @@
 	// exactly once per game: "Play again" builds a fresh controller, which arms it.
 	let reportedFor: CombatController | null = null;
 
+	// The fight just took the town, so the team on the other side of the board is
+	// now the player's own. A player may not challenge their own team, so this fight
+	// cannot be replayed — the endgame drops "Play again" (see the modal below).
+	$: townTaken = reward?.territory?.captured === true;
+
 	// Report the fight the moment it is decided. Both `state` and `controller` are
 	// named here so Svelte's legacy reactive tracking sees them as dependencies.
 	$: void reportOutcome(state, controller);
@@ -759,10 +764,17 @@
 					{/if}
 				</div>
 			{/if}
+			<!-- Taking the town ends the challenge: its sitting team is now the player's
+			     own, and nobody may fight their own team — so there is no rematch to
+			     offer, only the way out. The server refuses such a report anyway. -->
 			<div class="modal-action justify-center">
-				<button type="button" class="btn btn-primary" on:click={playAgain}>Play again</button>
+				{#if !townTaken}
+					<button type="button" class="btn btn-primary" on:click={playAgain}>Play again</button>
+				{/if}
 				{#if closable}
-					<button type="button" class="btn btn-ghost" on:click={close}>Leave</button>
+					<button type="button" class="btn btn-ghost" on:click={close}>
+						{townTaken ? 'Done' : 'Leave'}
+					</button>
 				{/if}
 			</div>
 		</div>
