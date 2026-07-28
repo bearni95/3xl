@@ -17,6 +17,7 @@
 	import PackDateCalendar from '$components/core/pack/PackDateCalendar.svelte';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
+	import Countdown from '$components/core/Countdown.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
@@ -62,6 +63,7 @@
 	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
 	import { buildShowStandings } from '$utils/geo/show-standings';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
+	import { nextCatalanMidnight } from '$utils/festes/catalan-day';
 	import type { MapMarker, MapOverlay, MapStar } from '$types/map.type';
 	import type {
 		MunicipalityShow,
@@ -689,6 +691,11 @@
 	// Catalan day. The server is what enforces it (`start_challenge`); this only
 	// closes the button so the fight isn't opened onto a refusal.
 	$: challengedOpenTown = !!openRegion && challenges.has(openRegion);
+
+	// And when it opens up again: the next Catalan midnight, which is the boundary
+	// `start_challenge` measures the day against. Recomputed as the panel moves to
+	// another town so a countdown left running past midnight gets the new deadline.
+	$: challengeUnlocksAt = challengedOpenTown ? nextCatalanMidnight().getTime() : 0;
 
 	// Kick off face loading for whichever team members are on screen.
 	$: void loadFaces(municipalityTeam.map((member) => member.characterId));
@@ -1601,19 +1608,28 @@
 										</span>
 									</span>
 									<!-- One challenge per town per day: once today's has been spent the
-										button closes until Catalan midnight, and says so. The server
-										enforces it either way (`start_challenge`). -->
-									<button
-										type="button"
-										class="btn btn-primary btn-xs flex-none"
-										disabled={challengedOpenTown || challengeStarting}
-										title={challengedOpenTown
-											? 'Already challenged today — the next one unlocks at midnight'
-											: 'Fight this town for its team'}
-										on:click={challenge}
-									>
-										Challenge
-									</button>
+										button gives way to the time left until Catalan midnight, which is
+										when the town can be fought again. The server enforces the limit
+										either way (`start_challenge`); when the countdown runs out the
+										day's challenges are re-read and the button comes back. -->
+									{#if challengedOpenTown}
+										<Countdown
+											until={challengeUnlocksAt}
+											title="Already challenged today — the next one unlocks at midnight"
+											classes="badge badge-ghost badge-sm flex-none font-semibold"
+											on:elapsed={() => void reloadChallenges()}
+										/>
+									{:else}
+										<button
+											type="button"
+											class="btn btn-primary btn-xs flex-none"
+											disabled={challengeStarting}
+											title="Fight this town for its team"
+											on:click={challenge}
+										>
+											Challenge
+										</button>
+									{/if}
 								{/if}
 							</div>
 							<!-- Sized like the player's own team strip above it: one row of TEAM_SIZE
