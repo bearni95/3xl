@@ -16,7 +16,7 @@
 		type FighterView,
 		type FighterSeed
 	} from '$services/combat.controller';
-	import type { CombatReward, TerritoryResult } from '$types/combat.type';
+	import type { CombatReport, CombatReward, TerritoryResult } from '$types/combat.type';
 	import {
 		COMPOUND_COLORS,
 		DEFAULT_COLOR,
@@ -464,6 +464,22 @@
 	// named here so Svelte's legacy reactive tracking sees them as dependencies.
 	$: void reportOutcome(state, controller);
 
+	// The player's fighters back in the order the team was built — slots 3–5, i.e.
+	// the roster's team order, lead first. The controller hands them over in the
+	// board's top→bottom drawing order instead (see `rosterFor`, which sorts by cell
+	// so the nth card takes the nth duel), and that order is not the team's: it puts
+	// the lead second. It only matters at the report, because a captured town freezes
+	// the reported line-up verbatim as its garrison — so without this the map's panel
+	// would draw the town's team with its lead out of place ever after.
+	function inTeamOrder(fighters: CombatReport['fighters']): CombatReport['fighters'] {
+		const fielded = slots.slice(TEAM_SIZE);
+		if (fielded.length === 0) return fighters;
+		const rank = new Map(fielded.map((spawnId, index) => [spawnId, index]));
+		return [...fighters].sort(
+			(a, b) => (rank.get(a.spawnId) ?? fielded.length) - (rank.get(b.spawnId) ?? fielded.length)
+		);
+	}
+
 	async function reportOutcome(
 		current: CombatState | null,
 		ctrl: CombatController | null
@@ -479,6 +495,7 @@
 			// decide; this only states what happened and which town it happened over.
 			reward = await authService.reportCombat({
 				...report,
+				fighters: inTeamOrder(report.fighters),
 				locationId: ogLocationId,
 				holderTurnover: ogTurnover
 			});
