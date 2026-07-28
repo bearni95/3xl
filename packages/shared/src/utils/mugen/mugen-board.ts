@@ -1430,11 +1430,11 @@ export class MugenBoard {
 			actor.frameElapsed = 0;
 		}
 		this.applyFrame(actor);
-		// Stop everything else that could drive the sprite while it fades.
-		actor.oneShot = null;
-		actor.moving = false;
-		actor.pathQueue = [];
-		actor.onArrive = null;
+		// Stop everything else that could drive the sprite while it fades — settling
+		// rather than dropping, so nothing is left awaiting a pose or a walk that this
+		// knockout has just cancelled.
+		this.settleOneShot(actor);
+		this.settleWalk(actor);
 		this.clearAura(id);
 		return new Promise((resolve) => {
 			actor.fade = { total: KNOCKOUT_FADE_MS, elapsed: 0, resolve };
@@ -1704,13 +1704,38 @@ export class MugenBoard {
 	}
 
 	/**
+	 * Finish whatever one-shot currently owns an actor's sprite, resolving whoever is
+	 * awaiting it. A pose is over the moment something takes the sprite off it, and a
+	 * caller waiting on the pose it no longer owns would otherwise wait for ever —
+	 * which strands the turn playing it out.
+	 */
+	private settleOneShot(actor: Actor): void {
+		const shot = actor.oneShot;
+		if (!shot) return;
+		actor.oneShot = null;
+		shot.resolve();
+	}
+
+	/** Likewise for a walk in progress: drop the route and resolve the arrival. */
+	private settleWalk(actor: Actor): void {
+		actor.moving = false;
+		actor.pathQueue = [];
+		actor.finalTarget = null;
+		const arrived = actor.onArrive;
+		actor.onArrive = null;
+		arrived?.();
+	}
+
+	/**
 	 * Play a loaded raw animation as a one-shot and resolve when it finishes. If
 	 * the actor has no such animation, resolves immediately so combat still flows.
+	 * Any pose already playing is settled first — it has lost the sprite.
 	 */
 	private playAnimationOnce(id: string, name: string): Promise<void> {
 		const actor = this.findActor(id);
 		const frames = actor && name ? actor.animations[name] : undefined;
 		if (!actor || !name || !frames || frames.length === 0) return Promise.resolve();
+		this.settleOneShot(actor);
 		const total = frames.reduce((sum, frame) => sum + frame.duration, 0);
 		this.setAnimation(actor, name);
 		actor.frameIndex = 0;

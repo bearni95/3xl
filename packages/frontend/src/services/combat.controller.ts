@@ -192,6 +192,12 @@ interface Casualty {
 
 const pause = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** How long the revealed orders are left to be read before the shooting starts. */
+const REVEAL_MS = 600;
+
+/** The beat held after each shot has been answered, before the next is taken. */
+const SHOT_BEAT_MS = 320;
+
 /** 'charge' → 'Charge', for the pickers' labels and the status lines. */
 export const actionLabel = (action: CombatAction): string =>
 	action.charAt(0).toUpperCase() + action.slice(1);
@@ -339,10 +345,17 @@ export class CombatController {
 	// --- Resolution -----------------------------------------------------------
 
 	/**
-	 * Carry out the turn both sides committed to. Everything happens at once, so the
-	 * whole turn is worked out from the state the orders were given in: charges are
-	 * spent, every shot is fired, and only then is each one measured against what its
-	 * target chose to do. A fighter felled by one bullet still fires its own.
+	 * Carry out the turn both sides committed to.
+	 *
+	 * The turn *happens* all at once — every charge is spent and every shot is aimed
+	 * off the state the orders were given in, before a single bullet is measured — but
+	 * it is *shown* one shot at a time. A volley resolved simultaneously on screen is
+	 * six things to read in one instant and reads as a stutter; taken in turn, each
+	 * shot flies, is answered, and is seen to be answered before the next is fired.
+	 *
+	 * Serialising the playback changes nothing about the outcome: the shot list is
+	 * fixed before any of it plays, so a fighter felled early in the volley still
+	 * fires the shot it had already taken, and only falls when the shooting stops.
 	 */
 	private async resolve(): Promise<void> {
 		const acting = this.fighters.filter((fighter) => !fighter.down && fighter.action);
@@ -367,54 +380,16 @@ export class CombatController {
 		shots.sort((a, b) => b.shooter.spd - a.shooter.spd);
 
 		this.log = [];
-		this.setStatus('Orders revealed.');
-		await this.showOrders(acting);
-		await pause(500);
+		this.setStatus('Orders are revealed.');
+		this.showOrders(acting);
+		await pause(REVEAL_MS);
 
-		// Fire everything together — the point of the game is that nobody sees the
-		// other side's bullet leave in time to do anything about it.
-		await Promise.all(
-			shots.map((shot) =>
-				this.board?.shoot(shot.shooter.id, shot.target.id, this.shotMove(shot.shooter))
-			)
-		);
-
-		// Now measure each shot against what its target chose. A target already felled
-		// this turn takes the extra bullet all the same — it just changes nothing.
 		const felled: Casualty[] = [];
-		for (const shot of shots) {
-			const { shooter, target } = shot;
-			const from = shot.extra ? `${shooter.name}'s extra shot` : `${shooter.name} shoots`;
-			if (target.down) {
-				this.log.push(`${from} — ${target.name} was already falling.`);
-				continue;
-			}
-			if (target.action === 'defend') {
-				this.log.push(`${from} at ${target.name}, who blocked it.`);
-				this.board?.showCallout(target.id, 'BLOCK', target.color);
-				continue;
-			}
-			if (target.traits.passiveGuard && !target.guarded) {
-				target.guarded = true;
-				this.log.push(`${from} at ${target.name} — turned aside by its guard.`);
-				this.board?.showCallout(target.id, 'GUARD', target.color);
-				continue;
-			}
-			target.down = true;
-			felled.push({ fighter: target, by: shooter });
-			this.log.push(`${from} — ${target.name} is down.`);
-		}
+		for (const shot of shots) await this.playShot(shot, felled);
 
+		// The fallen have held their flinch through the rest of the volley; now the
+		// shooting is over they leave the board together.
 		if (felled.length > 0) {
-			this.emit();
-			await Promise.all(
-				felled.map(({ fighter, by }) => {
-					// The slash is drawn in the colour of whoever's bullet got through.
-					this.board?.showSlash(fighter.id, by.color);
-					this.board?.showCallout(fighter.id, 'HIT!', by.color);
-					return this.board?.playHurt(fighter.id);
-				})
-			);
 			await Promise.all(
 				felled.map(({ fighter }) => {
 					// The board removes the actor outright, aura and all.
@@ -436,31 +411,69 @@ export class CombatController {
 		}
 		this.syncCharges();
 
-		// Ground given up: the rival line falls back a column for every one of them
-		// that has gone down.
+		// Ground given up: the rival line falls back for every one of them that has gone
+		// down.
 		if (felled.some(({ fighter }) => fighter.side === 'error')) await this.fallBack();
 
 		this.finishTurn();
 	}
 
-	/** Put each acting fighter's order on the board: the loaders flare, the guards
-	 * brace, and the shooters are left to their own firing pose. */
-	private async showOrders(acting: Fighter[]): Promise<void> {
+	/**
+	 * One shot, played out on its own: it flies, and what its target chose to do about
+	 * it is settled and shown before the next shot is taken. A target already hit
+	 * earlier in the volley takes this one too — it just changes nothing, because it
+	 * was already going down.
+	 */
+	private async playShot(shot: Shot, felled: Casualty[]): Promise<void> {
+		const { shooter, target, extra } = shot;
+		const from = extra ? `${shooter.name}'s extra shot` : `${shooter.name} shoots`;
+		this.setStatus(`${shooter.name} fires at ${target.name}.`);
+		await this.board?.shoot(shooter.id, target.id, this.shotMove(shooter));
+
+		if (target.down) {
+			this.log.push(`${from} — ${target.name} was already falling.`);
+		} else if (target.action === 'defend') {
+			this.log.push(`${from} at ${target.name}, who blocked it.`);
+			this.board?.showCallout(target.id, 'BLOCK', target.color);
+			// Brace again on the bullet, so the block is seen and not just labelled.
+			const guard = findMove(target, 'defent');
+			if (guard) void this.board?.playMove(target.id, guard);
+		} else if (target.traits.passiveGuard && !target.guarded) {
+			target.guarded = true;
+			this.log.push(`${from} at ${target.name} — turned aside by its guard.`);
+			this.board?.showCallout(target.id, 'GUARD', target.color);
+		} else {
+			target.down = true;
+			felled.push({ fighter: target, by: shooter });
+			this.log.push(`${from} — ${target.name} is down.`);
+			// The slash is drawn in the colour of whoever's bullet got through.
+			this.board?.showSlash(target.id, shooter.color);
+			this.board?.showCallout(target.id, 'HIT!', shooter.color);
+			await this.board?.playHurt(target.id);
+		}
+		this.emit();
+		await pause(SHOT_BEAT_MS);
+	}
+
+	/**
+	 * Put every acting fighter's order on the board at once: the loaders flare, the
+	 * guards brace, and the shooters are left to their own firing pose. Both are
+	 * started and left to run — the turn is not held up while an aura's textures are
+	 * fetched, nor while a pose plays out, since the reveal is one thing to read and
+	 * the shooting is what unfolds after it.
+	 */
+	private showOrders(acting: Fighter[]): void {
 		this.board?.clearCallouts();
-		await Promise.all(
-			acting.map((fighter) => {
-				if (fighter.action === 'charge') {
-					this.board?.showCallout(fighter.id, 'CHARGE', fighter.color);
-					return this.raiseAura(fighter);
-				}
-				if (fighter.action === 'defend') {
-					this.board?.showCallout(fighter.id, 'GUARD', fighter.color);
-					const move = findMove(fighter, 'defent');
-					return move ? this.board?.playMove(fighter.id, move) : undefined;
-				}
-				return undefined;
-			})
-		);
+		for (const fighter of acting) {
+			if (fighter.action === 'charge') {
+				this.board?.showCallout(fighter.id, 'CHARGE', fighter.color);
+				void this.raiseAura(fighter);
+			} else if (fighter.action === 'defend') {
+				this.board?.showCallout(fighter.id, 'GUARD', fighter.color);
+				const move = findMove(fighter, 'defent');
+				if (move) void this.board?.playMove(fighter.id, move);
+			}
+		}
 	}
 
 	/**
