@@ -47,7 +47,6 @@
 		},
 		"avatar": {
 			"title": "Choose your avatar",
-			"prompt": "Pick the character whose portrait you want as your profile picture.",
 			"edit": "Change avatar"
 		}
 	},

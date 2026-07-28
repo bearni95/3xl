@@ -76,7 +76,6 @@
 	<div class="modal modal-open" role="dialog" aria-modal="true">
 		<div class="modal-box max-w-3xl">
 			<h3 class="text-lg font-semibold">{$_('profile.avatar.title')}</h3>
-			<p class="mt-1 text-sm text-base-content/70">{$_('profile.avatar.prompt')}</p>
 
 			{#if loading && !loaded}
 				<div class="flex items-center gap-2 py-8 opacity-70">
@@ -100,7 +99,7 @@
 							on:click={() => pick(character.id)}
 						>
 							<div class="relative">
-								<div class="h-20 w-20 overflow-hidden rounded-md bg-base-200">
+								<div class="h-20 w-20 overflow-hidden rounded-md bg-base-300">
 									<CharacterFace face={faces.get(character.id) ?? null} alt={character.label} />
 								</div>
 								{#if saving === character.id}
