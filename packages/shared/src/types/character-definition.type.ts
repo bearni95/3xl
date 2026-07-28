@@ -3,8 +3,8 @@
  * (scripts/generate-sprites.js) exposing 80-100+ raw animations keyed by name
  * (`idle`, `walk`, `action-200`, …). A CharacterDefinition binds a small,
  * meaningful subset of those raw animations to the logical slots the game
- * actually drives — the movement animations the root page plays, plus three
- * combat moves — and layers custom gameplay params on top.
+ * actually drives — the movement animations the root page plays, plus the
+ * character's combat moves — and layers custom gameplay params on top.
  *
  * Definitions live as JSON in @3xl/data under `public/characters/<id>/definition.json`,
  * are committed to the git tree, and are edited from /admin/characters through
@@ -38,7 +38,7 @@ export interface CharacterMove {
 	source: string;
 	/**
 	 * The sprite that flies when this move fires. Only meaningful on moves whose
-	 * type is in {@link PROJECTILE_MOVES} (ranged and final).
+	 * type is in {@link PROJECTILE_MOVES} (ranged).
 	 */
 	projectile?: AnimationBinding;
 }
@@ -58,7 +58,7 @@ export type MovementAnimationName = 'idle' | 'hurt';
 export type DirectionName = 'move-left' | 'move-right';
 
 /** The shared move types a character's moves can be tagged with. */
-export type MoveKind = 'melee' | 'ranged' | 'final' | 'defent';
+export type MoveKind = 'melee' | 'ranged' | 'defent';
 
 /** The three primary combat colors; each beats the next in a cycle. */
 export type PrimaryColor = 'red' | 'blue' | 'yellow';
@@ -144,10 +144,10 @@ export const MOVEMENT_ANIMATIONS: MovementAnimationName[] = ['idle', 'hurt'];
 export const DIRECTION_NAMES: DirectionName[] = ['move-left', 'move-right'];
 
 /** Shared move types in display order. */
-export const MOVE_KINDS: MoveKind[] = ['melee', 'ranged', 'final', 'defent'];
+export const MOVE_KINDS: MoveKind[] = ['melee', 'ranged', 'defent'];
 
 /** Move types that fire a projectile (the move carries its own binding). */
-export const PROJECTILE_MOVES: MoveKind[] = ['ranged', 'final'];
+export const PROJECTILE_MOVES: MoveKind[] = ['ranged'];
 
 /**
  * First move a character has tagged with `type` that actually has an animation

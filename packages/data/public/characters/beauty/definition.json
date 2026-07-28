@@ -38,15 +38,6 @@
 			}
 		},
 		{
-			"name": "Final",
-			"type": "final",
-			"source": "action-2000",
-			"projectile": {
-				"source": "",
-				"loop": true
-			}
-		},
-		{
 			"name": "Defent",
 			"type": "defent",
 			"source": "guard-stand"

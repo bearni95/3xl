@@ -710,9 +710,9 @@ export class CombatController {
 		this.board?.clearAura(fighter.id);
 	}
 
-	/** The animation a fighter fires with: its own ranged move, its final if that is
-	 * all it binds, or the empty fallback (which still flies a plain shot). */
+	/** The animation a fighter fires with: its own ranged move, or the empty
+	 * fallback (which still flies a plain shot) for the melee-only fighters. */
 	private shotMove(fighter: Fighter): CharacterMove {
-		return findMove(fighter, 'ranged') ?? findMove(fighter, 'final') ?? FALLBACK_SHOT;
+		return findMove(fighter, 'ranged') ?? FALLBACK_SHOT;
 	}
 }
