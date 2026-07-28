@@ -17,6 +17,8 @@
 	import PackDateCalendar from '$components/core/pack/PackDateCalendar.svelte';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
+	import RosterModal from '$components/core/RosterModal.svelte';
+	import { rosterModalOpen } from '$services/rosterModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { authService } from '$services/auth.service';
@@ -1286,6 +1288,18 @@
 					<CardCanvas cards={activeTeamCards} columns={TEAM_SIZE} layout="grid" />
 				</div>
 			{/if}
+
+			<!-- The roster has no route of its own: it opens as a modal over the map, from
+				here. It belongs to this section rather than to the tab strip below for the
+				same reason the team strip does — it is the player's own cards, read against
+				whatever the map is showing, and it is where the team above is built. -->
+			<button
+				type="button"
+				class="btn btn-outline btn-sm mt-3 w-full"
+				on:click={() => rosterModalOpen.set(true)}
+			>
+				Roster
+			</button>
 		</div>
 
 		<div class="flex flex-none flex-col gap-3 border-b border-base-300 px-4 py-3">
@@ -1640,4 +1654,12 @@
 			/>
 		{/key}
 	</div>
+{/if}
+
+<!-- The roster, over the map. Mounted only while it is open — it builds a card canvas
+	of its own, and every mount is a fresh WebGL context the browser hands out a limited
+	number of. Opened from the panel's Roster button and from the arena's "no active
+	team" card, both through `rosterModalOpen`. -->
+{#if $rosterModalOpen}
+	<RosterModal />
 {/if}

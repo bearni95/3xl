@@ -28,6 +28,7 @@
 	import { characters as availableCharacters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
+	import { rosterModalOpen } from '$services/rosterModal';
 	import { spawnService } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE, type Team } from '$services/team.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
@@ -688,7 +689,14 @@
 						Your active team needs all {TEAM_SIZE} slots filled to play — finish it on your roster.
 					{/if}
 				</p>
-				<a class="btn btn-primary btn-sm w-fit" href="/roster">Go to roster</a>
+				<!-- The roster is a modal over the map, not a page, so this raises it right
+					over the arena rather than navigating out of the fight. -->
+				<button
+					class="btn btn-primary btn-sm w-fit"
+					on:click={() => rosterModalOpen.set(true)}
+				>
+					Open roster
+				</button>
 			</div>
 		</div>
 	{:else}

@@ -4,6 +4,7 @@
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
+	import { rosterModalOpen } from '$services/rosterModal';
 	import { spawnService, RECYCLE_GROUP_SIZE } from '$services/spawn.service';
 	import { teamService } from '$services/team.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
@@ -26,6 +27,18 @@
 	import { SPAWN_COLOR_HEX } from '$utils/spawn/color';
 	import type { CardModel } from '$utils/card/card-model.type';
 	import localStorageWritableStore from '$utils/localStorageWritableStore';
+
+	// The roster is a modal now, so it is only ever mounted while it is open — the
+	// host raises it with `rosterModalOpen`, and everything below (the spawn load,
+	// the face fetches, the card canvas's WebGL context) starts with the mount and
+	// goes with the close.
+	function close(): void {
+		rosterModalOpen.set(false);
+	}
+
+	function onKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') close();
+	}
 
 	// Bounds for the grid-column slider. It defaults to the responsive value the
 	// old DOM grid used (1/2/3 by viewport), which the player can then override.
@@ -554,256 +567,284 @@
 	}
 </script>
 
-<div class="flex min-h-screen flex-col gap-6 bg-base-200 p-8">
-	{#if $status === AuthStatus.SignedIn && $spawns.length > 0}
-		<!-- Filter toolbar: narrows the cards shown on the canvas. Every control ANDs
-		     with the others; the count shows the filtered-vs-total tally. -->
-		<div class="flex flex-wrap items-end gap-3 rounded-box bg-base-100 p-4 shadow-md">
-			<label class="flex flex-col gap-1 text-xs">
-				<span class="opacity-60">Name</span>
-				<input
-					type="search"
-					class="input input-sm input-bordered w-44"
-					placeholder="Search by name"
-					bind:value={filterName}
-				/>
-			</label>
+<svelte:window on:keydown={onKeydown} />
 
-			<label class="flex flex-col gap-1 text-xs">
-				<span class="opacity-60">Colour</span>
-				<select class="select select-sm select-bordered w-36 capitalize" bind:value={filterColor}>
-					<option value={ANY}>All colours</option>
-					{#each COLOR_OPTIONS as color (color)}
-						<option value={color}>{color}</option>
-					{/each}
-				</select>
-			</label>
-
-			<label class="flex flex-col gap-1 text-xs">
-				<span class="opacity-60">Show</span>
-				<select
-					class="select select-sm select-bordered w-44"
-					bind:value={filterShow}
-					disabled={showFilterOptions.length === 0}
-				>
-					<option value={ANY}>All shows</option>
-					{#each showFilterOptions as show (show)}
-						<option value={show}>{show}</option>
-					{/each}
-				</select>
-			</label>
-
-			<label class="flex flex-col gap-1 text-xs">
-				<span class="opacity-60">Rarity</span>
-				<select
-					class="select select-sm select-bordered w-36"
-					bind:value={filterRarity}
-					disabled={rarityFilterOptions.length === 0}
-				>
-					<option value={ANY}>All rarities</option>
-					{#each rarityFilterOptions as rarity (rarity)}
-						<option value={rarity}>{wowRarityLabel(rarity) ?? `Tier ${rarity}`}</option>
-					{/each}
-				</select>
-			</label>
-
-			<label class="flex flex-col gap-1 text-xs">
-				<span class="opacity-60">Min stat</span>
-				<select class="select select-sm select-bordered w-32" bind:value={filterMinStat}>
-					{#each STAT_OPTIONS as stat (stat)}
-						<option value={stat}>{stat === SPAWN_STAT_MIN ? 'Any stat' : `≥ ${stat}`}</option>
-					{/each}
-				</select>
-			</label>
-
-			<div class="ml-auto flex items-center gap-3">
-				<span class="badge badge-lg badge-primary" title="Cards shown / total claimed">
-					{filteredSpawns.length} / {$spawns.length}
-				</span>
-				<button
-					class="btn btn-ghost btn-sm"
-					disabled={!filtersActive}
-					on:click={resetFilters}
-				>
-					Clear
-				</button>
-				<button
-					class="btn btn-sm"
-					class:btn-outline={!recycleMode}
-					class:btn-warning={recycleMode}
-					on:click={() => (recycleMode ? cancelRecycle() : enterRecycleMode())}
-				>
-					{recycleMode ? 'Cancel' : 'Recycle'}
-				</button>
-			</div>
+<!-- The roster, raised over the map. z-[1300] puts it above both the map's pinned
+	corner panels (z-[1100]) and the combat arena (z-[1200]) — the arena is one of the
+	places that sends the player here, so it has to open on top of it. The box is a
+	fixed-height flex column: the toolbar and the recycle bar take what they need and
+	the card canvas gets the rest, which is what its WebGL scene is sized from. -->
+<div class="modal modal-open z-[1300]" role="dialog" aria-modal="true">
+	<div class="modal-box flex h-[90vh] w-11/12 max-w-7xl flex-col gap-4 overflow-hidden">
+		<div class="flex flex-none items-center gap-3">
+			<h2 class="text-lg font-bold">Roster</h2>
+			<button
+				type="button"
+				class="btn btn-circle btn-ghost btn-sm ml-auto"
+				aria-label="Close roster"
+				on:click={close}
+			>
+				✕
+			</button>
 		</div>
 
-		{#if recycleMode}
-			<!-- Recycle bar: tap cards to select them, then trade each full group of
-			     RECYCLE_GROUP_SIZE back for one extra daily claim. -->
-			<div
-				class="flex flex-wrap items-center gap-3 rounded-box bg-warning/10 p-4 text-sm shadow-md"
-			>
-				<span class="font-medium">
-					Tap cards to select them. Every {RECYCLE_GROUP_SIZE} recycled grants one extra claim today.
-				</span>
-				<span class="badge badge-warning" title="Cards selected → extra claims earned">
-					{recycleSelectedCount} selected → {recycleGrant} claim{recycleGrant === 1 ? '' : 's'}
-				</span>
+		{#if $status === AuthStatus.SignedIn && $spawns.length > 0}
+			<!-- Filter toolbar: narrows the cards shown on the canvas. Every control ANDs
+			     with the others; the count shows the filtered-vs-total tally. -->
+			<div class="flex flex-none flex-wrap items-end gap-3 rounded-box bg-base-200 p-4">
+				<label class="flex flex-col gap-1 text-xs">
+					<span class="opacity-60">Name</span>
+					<input
+						type="search"
+						class="input input-sm input-bordered w-44"
+						placeholder="Search by name"
+						bind:value={filterName}
+					/>
+				</label>
+
+				<label class="flex flex-col gap-1 text-xs">
+					<span class="opacity-60">Colour</span>
+					<select class="select select-sm select-bordered w-36 capitalize" bind:value={filterColor}>
+						<option value={ANY}>All colours</option>
+						{#each COLOR_OPTIONS as color (color)}
+							<option value={color}>{color}</option>
+						{/each}
+					</select>
+				</label>
+
+				<label class="flex flex-col gap-1 text-xs">
+					<span class="opacity-60">Show</span>
+					<select
+						class="select select-sm select-bordered w-44"
+						bind:value={filterShow}
+						disabled={showFilterOptions.length === 0}
+					>
+						<option value={ANY}>All shows</option>
+						{#each showFilterOptions as show (show)}
+							<option value={show}>{show}</option>
+						{/each}
+					</select>
+				</label>
+
+				<label class="flex flex-col gap-1 text-xs">
+					<span class="opacity-60">Rarity</span>
+					<select
+						class="select select-sm select-bordered w-36"
+						bind:value={filterRarity}
+						disabled={rarityFilterOptions.length === 0}
+					>
+						<option value={ANY}>All rarities</option>
+						{#each rarityFilterOptions as rarity (rarity)}
+							<option value={rarity}>{wowRarityLabel(rarity) ?? `Tier ${rarity}`}</option>
+						{/each}
+					</select>
+				</label>
+
+				<label class="flex flex-col gap-1 text-xs">
+					<span class="opacity-60">Min stat</span>
+					<select class="select select-sm select-bordered w-32" bind:value={filterMinStat}>
+						{#each STAT_OPTIONS as stat (stat)}
+							<option value={stat}>{stat === SPAWN_STAT_MIN ? 'Any stat' : `≥ ${stat}`}</option>
+						{/each}
+					</select>
+				</label>
+
 				<div class="ml-auto flex items-center gap-3">
-					<button class="btn btn-ghost btn-sm" on:click={cancelRecycle} disabled={recycling}>
-						Cancel
+					<span class="badge badge-lg badge-primary" title="Cards shown / total claimed">
+						{filteredSpawns.length} / {$spawns.length}
+					</span>
+					<button
+						class="btn btn-ghost btn-sm"
+						disabled={!filtersActive}
+						on:click={resetFilters}
+					>
+						Clear
 					</button>
 					<button
-						class="btn btn-warning btn-sm"
-						disabled={recycleGrant < 1 || recycling}
-						on:click={confirmRecycle}
+						class="btn btn-sm"
+						class:btn-outline={!recycleMode}
+						class:btn-warning={recycleMode}
+						on:click={() => (recycleMode ? cancelRecycle() : enterRecycleMode())}
 					>
-						{#if recycling}
-							<span class="loading loading-spinner loading-xs"></span>
+						{recycleMode ? 'Cancel' : 'Recycle'}
+					</button>
+				</div>
+			</div>
+
+			{#if recycleMode}
+				<!-- Recycle bar: tap cards to select them, then trade each full group of
+				     RECYCLE_GROUP_SIZE back for one extra daily claim. -->
+				<div
+					class="flex flex-none flex-wrap items-center gap-3 rounded-box bg-warning/10 p-4 text-sm"
+				>
+					<span class="font-medium">
+						Tap cards to select them. Every {RECYCLE_GROUP_SIZE} recycled grants one extra claim today.
+					</span>
+					<span class="badge badge-warning" title="Cards selected → extra claims earned">
+						{recycleSelectedCount} selected → {recycleGrant} claim{recycleGrant === 1 ? '' : 's'}
+					</span>
+					<div class="ml-auto flex items-center gap-3">
+						<button class="btn btn-ghost btn-sm" on:click={cancelRecycle} disabled={recycling}>
+							Cancel
+						</button>
+						<button
+							class="btn btn-warning btn-sm"
+							disabled={recycleGrant < 1 || recycling}
+							on:click={confirmRecycle}
+						>
+							{#if recycling}
+								<span class="loading loading-spinner loading-xs"></span>
+							{/if}
+							Recycle {recycleSelectedCount} card{recycleSelectedCount === 1 ? '' : 's'}
+						</button>
+					</div>
+				</div>
+			{/if}
+
+			{#if recycleNotice}
+				<div class="alert alert-info flex-none py-2 text-sm"><span>{recycleNotice}</span></div>
+			{/if}
+		{/if}
+
+		<div class="flex min-h-0 flex-1 flex-col">
+			{#if !authService.configured}
+				<div class="alert alert-warning text-sm">
+					<span>Sign-in is unavailable — Supabase is not configured.</span>
+				</div>
+			{:else if $status === AuthStatus.Loading}
+				<div class="flex justify-center py-12">
+					<span class="loading loading-spinner loading-md"></span>
+				</div>
+			{:else if $status !== AuthStatus.SignedIn}
+				<div class="card max-w-md bg-base-200">
+					<div class="card-body gap-4">
+						<p class="text-sm opacity-70">Sign in to see the characters you've claimed.</p>
+						<!-- The sign-in card is in the map's own panel, behind this modal, so the
+						     prompt hands the screen back to it rather than stacking another one. -->
+						<button
+							class="btn btn-primary btn-sm w-fit"
+							on:click={() => {
+								close();
+								signInPanelOpen.set(true);
+							}}
+						>
+							Sign in
+						</button>
+					</div>
+				</div>
+			{:else if error}
+				<div class="alert alert-error text-sm"><span>{error}</span></div>
+			{:else if loading}
+				<div class="flex items-center gap-2 text-sm opacity-70">
+					<span class="loading loading-spinner loading-xs"></span>
+					Loading your roster…
+				</div>
+			{:else if $spawns.length === 0}
+				<div class="card max-w-md bg-base-200">
+					<div class="card-body gap-4">
+						<p class="text-sm opacity-70">
+							You haven't claimed any characters yet. Head to the map and open one of today's
+							booster packs to spawn your first one.
+						</p>
+						<button class="btn btn-primary btn-sm w-fit" on:click={close}>Open the map</button>
+					</div>
+				</div>
+			{:else}
+				<div class="mb-3 flex flex-none flex-wrap items-center justify-between gap-3">
+					<p class="text-xs opacity-60">
+						Scroll to move through your cards.
+						{#if recycleMode}
+							Tap a card to select or deselect it for recycling.
+						{:else if activeTeam}
+							Tap a card to add or remove it from the active team.
+						{:else}
+							Select a team to start adding characters by tapping their card.
 						{/if}
-						Recycle {recycleSelectedCount} card{recycleSelectedCount === 1 ? '' : 's'}
-					</button>
-				</div>
-			</div>
-		{/if}
-
-		{#if recycleNotice}
-			<div class="alert alert-info py-2 text-sm"><span>{recycleNotice}</span></div>
-		{/if}
-	{/if}
-
-	<div class="flex-1">
-		{#if !authService.configured}
-			<div class="alert alert-warning text-sm">
-				<span>Sign-in is unavailable — Supabase is not configured.</span>
-			</div>
-		{:else if $status === AuthStatus.Loading}
-			<div class="flex justify-center py-12">
-				<span class="loading loading-spinner loading-md"></span>
-			</div>
-		{:else if $status !== AuthStatus.SignedIn}
-			<div class="card max-w-md bg-base-100 shadow-xl">
-				<div class="card-body gap-4">
-					<p class="text-sm opacity-70">Sign in to see the characters you've claimed.</p>
-					<button class="btn btn-primary btn-sm w-fit" on:click={() => signInPanelOpen.set(true)}>
-						Sign in
-					</button>
-				</div>
-			</div>
-		{:else if error}
-			<div class="alert alert-error text-sm"><span>{error}</span></div>
-		{:else if loading}
-			<div class="flex items-center gap-2 text-sm opacity-70">
-				<span class="loading loading-spinner loading-xs"></span>
-				Loading your roster…
-			</div>
-		{:else if $spawns.length === 0}
-			<div class="card max-w-md bg-base-100 shadow-xl">
-				<div class="card-body gap-4">
-					<p class="text-sm opacity-70">
-						You haven't claimed any characters yet. Head to the map and open one of today's
-						booster packs to spawn your first one.
 					</p>
-					<a class="btn btn-primary btn-sm w-fit" href="/">Open the map</a>
+					<div class="flex flex-wrap items-center gap-3">
+						{#if pageCount > 1}
+							<div class="join">
+								<button
+									class="btn join-item btn-sm"
+									disabled={page === 0}
+									on:click={() => goToPage(page - 1)}
+									aria-label="Previous page"
+								>
+									‹
+								</button>
+								<span class="btn no-animation join-item pointer-events-none btn-sm font-normal">
+									Page {page + 1} / {pageCount}
+								</span>
+								<button
+									class="btn join-item btn-sm"
+									disabled={page >= pageCount - 1}
+									on:click={() => goToPage(page + 1)}
+									aria-label="Next page"
+								>
+									›
+								</button>
+							</div>
+						{/if}
+						<label class="flex items-center gap-2 text-xs">
+							<span class="whitespace-nowrap opacity-60">Columns</span>
+							<input
+								type="range"
+								min={MIN_COLUMNS}
+								max={MAX_COLUMNS}
+								class="range range-primary range-xs w-40"
+								bind:value={$columns}
+								aria-label="Grid columns"
+							/>
+							<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
+						</label>
+						{#if teamChoices.length > 0}
+							<label class="flex items-center gap-2 text-xs">
+								<span class="whitespace-nowrap opacity-60">Team</span>
+								<select
+									class="select select-sm select-bordered w-48"
+									value={$team.activeTeamId ?? ''}
+									on:change={onTeamSelect}
+									aria-label="Active team"
+								>
+									{#each teamChoices as choice (choice.id)}
+										<option value={choice.id}>{choice.name}</option>
+									{/each}
+								</select>
+							</label>
+						{/if}
+						<button class="btn btn-primary btn-sm" on:click={onTeamCreate}>+ New team</button>
+					</div>
 				</div>
-			</div>
-		{:else}
-			<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-				<p class="text-xs opacity-60">
-					Scroll to move through your cards.
-					{#if recycleMode}
-						Tap a card to select or deselect it for recycling.
-					{:else if activeTeam}
-						Tap a card to add or remove it from the active team.
-					{:else}
-						Select a team to start adding characters by tapping their card.
-					{/if}
-				</p>
-				<div class="flex flex-wrap items-center gap-3">
-					{#if pageCount > 1}
-						<div class="join">
-							<button
-								class="btn join-item btn-sm"
-								disabled={page === 0}
-								on:click={() => goToPage(page - 1)}
-								aria-label="Previous page"
-							>
-								‹
-							</button>
-							<span class="btn no-animation join-item pointer-events-none btn-sm font-normal">
-								Page {page + 1} / {pageCount}
-							</span>
-							<button
-								class="btn join-item btn-sm"
-								disabled={page >= pageCount - 1}
-								on:click={() => goToPage(page + 1)}
-								aria-label="Next page"
-							>
-								›
-							</button>
+				<!-- The roster is drawn on the shared card canvas — the same renderer the
+				     claim pack opener uses — instead of a DOM grid. The columns always
+				     fill the canvas width (default 1/2/3 by viewport, then the slider),
+				     and the rows scroll vertically; tapping a card toggles its team
+				     membership. Only the current page's cards are built — the filters
+				     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at
+				     a time. It takes whatever the modal's fixed height leaves it. -->
+				<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
+					<CardCanvas
+						bind:this={cardCanvas}
+						cards={cardModels}
+						slots={teamSlotCards}
+						summary={teamSummary}
+						onSlotRemove={handleSlotRemove}
+						columns={$columns}
+						layout="grid"
+						pannable
+						onCardTap={handleCardTap}
+						selectionMode={recycleMode}
+						selectedIndices={recycleSelectedIndices}
+					/>
+					{#if filteredSpawns.length === 0}
+						<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+							<p class="text-sm opacity-60">No characters match these filters.</p>
+							<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
 						</div>
 					{/if}
-					<label class="flex items-center gap-2 text-xs">
-						<span class="whitespace-nowrap opacity-60">Columns</span>
-						<input
-							type="range"
-							min={MIN_COLUMNS}
-							max={MAX_COLUMNS}
-							class="range range-primary range-xs w-40"
-							bind:value={$columns}
-							aria-label="Grid columns"
-						/>
-						<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
-					</label>
-					{#if teamChoices.length > 0}
-						<label class="flex items-center gap-2 text-xs">
-							<span class="whitespace-nowrap opacity-60">Team</span>
-							<select
-								class="select select-sm select-bordered w-48"
-								value={$team.activeTeamId ?? ''}
-								on:change={onTeamSelect}
-								aria-label="Active team"
-							>
-								{#each teamChoices as choice (choice.id)}
-									<option value={choice.id}>{choice.name}</option>
-								{/each}
-							</select>
-						</label>
-					{/if}
-					<button class="btn btn-primary btn-sm" on:click={onTeamCreate}>+ New team</button>
 				</div>
-			</div>
-			<!-- The roster is drawn on the shared card canvas — the same renderer the
-			     claim pack opener uses — instead of a DOM grid. The columns always
-			     fill the canvas width (default 1/2/3 by viewport, then the slider),
-			     and the rows scroll vertically; tapping a card toggles its team
-			     membership. Only the current page's cards are built — the filters
-			     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at
-			     a time. -->
-			<div
-				class="relative h-[70vh] min-h-[32rem] overflow-hidden rounded-box bg-base-100 shadow-md"
-			>
-				<CardCanvas
-					bind:this={cardCanvas}
-					cards={cardModels}
-					slots={teamSlotCards}
-					summary={teamSummary}
-					onSlotRemove={handleSlotRemove}
-					columns={$columns}
-					layout="grid"
-					pannable
-					onCardTap={handleCardTap}
-					selectionMode={recycleMode}
-					selectedIndices={recycleSelectedIndices}
-				/>
-				{#if filteredSpawns.length === 0}
-					<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
-						<p class="text-sm opacity-60">No characters match these filters.</p>
-						<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
-					</div>
-				{/if}
-			</div>
-		{/if}
+			{/if}
+		</div>
 	</div>
+	<button type="button" class="modal-backdrop" aria-label="Close roster" on:click={close}></button>
 </div>
