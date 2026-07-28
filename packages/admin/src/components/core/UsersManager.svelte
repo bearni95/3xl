@@ -95,7 +95,7 @@
 		<p class="text-sm opacity-70">
 			Each player's daily booster cap is their level (from experience, capped at 20). Granting adds
 			extra claims <strong>for today only</strong> — they stack on top of the cap and reset at Catalan
-			midnight (Europe/Madrid), exactly as the frontend <code class="font-mono">/claim</code> page enforces.
+			midnight (Europe/Madrid), exactly as the frontend's booster panel enforces.
 		</p>
 
 		{#if loadError}

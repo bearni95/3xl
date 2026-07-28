@@ -10,7 +10,7 @@ import { ensureTables } from './show-templates';
  * their per-player game state, plus the ability to grant a player extra daily
  * booster claims for the current day.
  *
- * The daily claim limit the frontend /claim panel enforces is a player's level
+ * The daily claim limit the frontend's claim panel enforces is a player's level
  * (from accumulated experience) capped at 20, resetting at midnight Europe/Madrid
  * (see ../../supabase/booster_claims.sql and ./show-templates.ts). A grant is an
  * additive, day-scoped bump to that cap: a row in `booster_grants` for today's

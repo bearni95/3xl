@@ -36,7 +36,7 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // (re)declare `character_templates` here because `show_characters` references it,
 // and that table is otherwise only created lazily by ./character-templates —
 // which may not have run yet. `character_spawns` (the per-player claimed
-// instances behind the frontend /claim panel) is provisioned here too, since it
+// instances behind the frontend's claim panel) is provisioned here too, since it
 // references both `character_templates` and `show_templates`; unlike the other
 // tables it's RLS-protected (each player only sees/creates their own spawns), as
 // the frontend writes it directly with the anon key. `player_profiles` (the

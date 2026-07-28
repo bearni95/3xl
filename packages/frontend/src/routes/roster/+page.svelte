@@ -549,9 +549,10 @@
 				<div class="card max-w-md bg-base-100 shadow-xl">
 					<div class="card-body gap-4">
 						<p class="text-sm opacity-70">
-							You haven't claimed any characters yet. Head to the claim page to spawn your first one.
+							You haven't claimed any characters yet. Head to the map and open one of today's
+							booster packs to spawn your first one.
 						</p>
-						<a class="btn btn-primary btn-sm w-fit" href="/claim">Claim a character</a>
+						<a class="btn btn-primary btn-sm w-fit" href="/map">Open the map</a>
 					</div>
 				</div>
 			{:else}

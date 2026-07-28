@@ -18,7 +18,7 @@ export enum SpawnColor {
  *
  * A spawn links a user to a character *template* (never the heavy MUGEN
  * definition) and records which show it was rolled from. It's the persistent
- * record behind the frontend `/claim` panel, where a player spawns a random
+ * record behind the frontend's claim panel, where a player spawns a random
  * character drawn from a show's assigned roster (`show_characters`).
  */
 export interface CharacterSpawn {
