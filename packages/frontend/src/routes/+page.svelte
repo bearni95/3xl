@@ -178,6 +178,15 @@
 			showCharacterIds = new Map();
 		}
 
+		// Every character's own show names, read the same way the roster and the arena
+		// read them, so a card drawn here names its show exactly as it does there.
+		// Loaded on its own so a failure only costs the show row, not the team preview.
+		try {
+			characterShowNames = await spawnService.loadCharacterShowNames();
+		} catch {
+			characterShowNames = new Map();
+		}
+
 		// Who actually occupies each town, plus this player's own siege progress.
 		// Loaded last and independently: a town with no holder simply stays on its
 		// seeded OG team, which is exactly what an unconfigured or failing Supabase
@@ -534,6 +543,17 @@
 	// unconfigured or unreadable — the team preview simply stays hidden then.
 	let showCharacterIds = new Map<number, string[]>();
 
+	// character id → the names of the shows it belongs to, read once from Supabase
+	// (`show_characters` joined to `show_templates`). A card's show is the character's,
+	// not the context it happens to be drawn in, so both canvases in this panel read it
+	// from here — the same source the roster and the combat board use.
+	let characterShowNames = new Map<string, string[]>();
+
+	/** A character's shows as one card label, or null when it belongs to none. */
+	function cardShowName(characterId: string, shows: ReadonlyMap<string, string[]>): string | null {
+		return shows.get(characterId)?.join(', ') || null;
+	}
+
 	// character id → resolved active-face portrait, loaded lazily as team members
 	// appear (mirrors the roster's face loading).
 	let characterFaces = new Map<string, string | null>();
@@ -583,24 +603,28 @@
 	$: void loadFaces(municipalityTeam.map((member) => member.characterId));
 
 	// The team as display CardModels for the shared renderer — the same shape the
-	// claim/roster cards use. `characterFaces` is threaded in so the statement re-runs
-	// as faces resolve. The four combat attributes derive from the rolled stat exactly
-	// as the claim flow's buildPull does. A held town's cards carry no show: they are
-	// the occupier's own claimed characters, not a roll from the town's top show.
-	$: municipalityTeamCards = ((faces: Map<string, string | null>): CardModel[] =>
+	// claim/roster cards use. `characterFaces` and `characterShowNames` are threaded in
+	// so the statement re-runs as faces and shows resolve. The four combat attributes
+	// derive from the rolled stat exactly as the claim flow's buildPull does. The show
+	// row names each character's own show — a held town fields the occupier's claimed
+	// characters, so labelling them with the town's top show would be a lie.
+	$: municipalityTeamCards = ((
+		faces: Map<string, string | null>,
+		shows: Map<string, string[]>
+	): CardModel[] =>
 		municipalityTeam.map((member) => ({
 			label: charactersById.get(member.characterId)?.label ?? member.characterId,
 			basePath: charactersById.get(member.characterId)?.basePath ?? null,
 			faceUrl: faces.get(member.characterId) ?? null,
 			color: member.color,
 			rarity: null,
-			showName: openHolder ? null : (openShow?.name ?? null),
+			showName: cardShowName(member.characterId, shows),
 			locationName: municipalityFeature
 				? restoreCatalanArticle(String(municipalityFeature.properties?.name ?? ''))
 				: null,
 			spawnedAt: null,
 			...combatStatsFromStat(member.stat)
-		})))(characterFaces);
+		})))(characterFaces, characterShowNames);
 
 	// --- The player's own active team (the panel's account section) --------------
 	// Drawn on the very same CardCanvas as a town's team, right under the account card:
@@ -648,12 +672,13 @@
 
 	// The active team as display CardModels. Same shape as the town's, from the
 	// player's own spawns instead of a seeded roll: the rolled colour and stat are
-	// theirs, and the claim place is where they pulled it. No rarity or show — this
-	// panel reads neither of those Supabase layers, and the strip is a glance at who
-	// is fielded, not the roster's full card. Both resolved maps are threaded in so
-	// the statement re-runs as faces and place names arrive.
+	// theirs, the claim place is where they pulled it, and the show row names the
+	// character's own show as it does on the roster and the combat board. No rarity —
+	// this panel doesn't read that Supabase layer. Every resolved map is threaded in so
+	// the statement re-runs as faces, shows and place names arrive.
 	$: activeTeamCards = ((
 		faces: Map<string, string | null>,
+		shows: Map<string, string[]>,
 		names: Map<string, string> | null
 	): CardModel[] =>
 		activeTeamSpawns.map((spawn) => ({
@@ -662,11 +687,11 @@
 			faceUrl: faces.get(spawn.characterId) ?? null,
 			color: spawn.color,
 			rarity: null,
-			showName: null,
+			showName: cardShowName(spawn.characterId, shows),
 			locationName: claimPlaceFor(spawn.locationId, names),
 			spawnedAt: spawn.createdAt,
 			...combatStatsFromStat(spawn.stat)
-		})))(characterFaces, municipalityNames);
+		})))(characterFaces, characterShowNames, municipalityNames);
 
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
 	// plus everything the fight has to be reported against — the town's id, the
