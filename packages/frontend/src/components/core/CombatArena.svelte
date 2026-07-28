@@ -2,6 +2,7 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
+	import Icon from '$components/core/Icon.svelte';
 	import { cellScreenY, combatColorHex } from '$utils/mugen/mugen-board';
 	import type {
 		BoardCharacter,
@@ -70,6 +71,14 @@
 	function close(): void {
 		dispatch('close');
 	}
+
+	// The glyph each order is given, from the game-icons.net set in @3xl/assets:
+	// energy gathering to charge, a sword to shoot, a shield to defend.
+	const ACTION_ICONS: Record<CombatAction, string> = {
+		charge: 'lorc/rolling-energy',
+		shoot: 'lorc/broadsword',
+		defend: 'lorc/bordered-shield'
+	};
 
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
 
@@ -530,25 +539,22 @@
 	{@const locked = state?.phase !== 'planning' || !!fighter?.down}
 	<div class="flex w-full flex-col gap-1">
 		{@render charges(fighter)}
-		<div class="join join-vertical w-full">
+		<!-- The three orders as one row of glyphs. Nothing is written on them, so each
+		     carries the order's name for anything that cannot see it. -->
+		<div class="join w-full">
 			{#each COMBAT_ACTIONS as action (action)}
 				{@const unavailable = action === 'shoot' && !fighter?.canShoot}
 				<button
 					type="button"
-					class={classNames('btn join-item btn-sm btn-block', {
+					class={classNames('btn join-item btn-lg min-w-0 flex-1 px-0', {
 						'btn-primary': fighter?.action === action,
 						'btn-neutral btn-outline': fighter?.action !== action
 					})}
+					aria-label={actionLabel(action)}
 					disabled={locked || unavailable}
 					on:click={() => controller?.setAction(badge.id, action)}
 				>
-					{actionLabel(action)}
-					{#if action === 'shoot' && fighter?.opponentName}
-						<!-- Whom, not which: the lane already decided that. -->
-						<span class="ml-auto min-w-0 truncate text-xs font-normal opacity-80">
-							{fighter.opponentName}
-						</span>
-					{/if}
+					<Icon name={ACTION_ICONS[action]} classes="[&>svg]:size-6" />
 				</button>
 			{/each}
 		</div>

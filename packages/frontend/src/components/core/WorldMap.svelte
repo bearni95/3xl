@@ -236,7 +236,7 @@
 
 		// A square tile in the region's colour carrying the show's glyph. The glyph is
 		// inlined rather than pointed at by an <img> so it inherits the tile's ink
-		// (see show-icon-markup) — which is why the fill and the ink arrive together
+		// (see icon-markup) — which is why the fill and the ink arrive together
 		// in `frameClasses`. Sized through a CSS rule, which outranks the svg's own
 		// 1em width/height attributes. Decorative: the show is named in the caption
 		// right below, so announcing the glyph too would read it twice. A pin with

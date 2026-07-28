@@ -1,12 +1,12 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import { showIconMarkup } from '$components/core/show-icon-markup';
+	import { iconMarkup } from '$components/core/icon-markup';
 
 	// The icon's name as `showIconName` gives it, e.g. "shows/bow-and-arrow".
 	export let name: string;
 	export let classes: string = '';
 
-	$: markup = showIconMarkup(name);
+	$: markup = iconMarkup(name);
 
 	// The glyph is sized in `em` by the generator, so by default it tracks the font
 	// size of whatever it sits in; a caller that wants a fixed size overrides the

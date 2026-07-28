@@ -41,7 +41,7 @@
 	import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
 	import { showPosterUrl } from '$utils/geo/municipality-show';
 	import { showIconName } from '$utils/show/show-icon';
-	import { showIconMarkup } from '$components/core/show-icon-markup';
+	import { iconMarkup } from '$components/core/icon-markup';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import type { CardModel } from '$utils/card/card-model.type';
 	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
@@ -1377,7 +1377,7 @@
 				id: node.key,
 				position: [(south + north) / 2, (west + east) / 2],
 				bounds: box,
-				iconSvg: showIconMarkup(showIconName(node.show.id)),
+				iconSvg: iconMarkup(showIconName(node.show.id)),
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
 				subtitle: restoreCatalanArticle(node.name),

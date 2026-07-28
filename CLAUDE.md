@@ -58,11 +58,22 @@ Project SVGs dropped at the repo root, strips the attribution `<text>` baked int
 download, crops the viewBox to the artwork, and re-emits it at `width`/`height` `1em`
 with `fill="currentColor"`, into `public/icons/shows/<slug>.svg` — then deletes the root
 original (it is a move) and records the stripped credit in that folder's `license.txt`.
-Unlike the game-icons.net set, these are **not** rendered through `Icon.svelte`: an
-`<img>` cannot inherit colour, so `ShowIcon.svelte` inlines them (via `import.meta.glob`
-+ `?raw`) and they take the colour and size of the text beside them. Which show gets
-which glyph is the hand-maintained `showIconName` map in
+Which show gets which glyph is the hand-maintained `showIconName` map in
 `@3xl/shared/utils/show/show-icon.ts`, keyed by TMDB show id.
+
+**Icons.** Both sets — the show glyphs above and the game-icons.net artwork under
+`public/icons/<artist>/` — are **inlined** into the bundle by `icon-markup.ts` (via
+`import.meta.glob` + `?raw`), keyed `<folder>/<slug>` (`shows/straw-hat`,
+`lorc/broadsword`). An `<img>` is an opaque document whose artwork cannot inherit
+anything from the page, so inlining is what lets a glyph's `fill="currentColor"`
+resolve against the surrounding text — its colour *and* its size follow whatever it
+sits in. `Icon.svelte` renders one; `ShowIcon.svelte` is the show-specific wrapper.
+A game-icons.net SVG ships on an opaque black square with white artwork, so strip
+that background path and swap the fill for `currentColor` before committing it.
+
+Two icons stay URL-fetched rather than inlined — the map's star badge and the card
+renderer's d10 — because they are drawn into a Leaflet marker and a Pixi texture,
+neither of which a stylesheet reaches; they carry a baked fill of their own.
 
 **Do not hand-edit generated files** (`registry.generated.ts`, `manifest.json`,
 `mugen-moves.json`, `public/geo/*.json`, `public/icons/shows/*`) or decoded assets —
