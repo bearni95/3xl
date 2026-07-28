@@ -72,30 +72,155 @@ export class MugenLineup {
 	private app: Application | null = null;
 	private members: Member[] = [];
 
+	// The slots as last requested — the source every (re)build reads, so a change
+	// arriving mid-load is what ends up on screen.
+	private basePaths: (string | null)[];
+	private cellColors: (number | null)[];
+	// The slot key the stage currently shows, and the one a build in flight is
+	// heading for, so a repeat of either is a no-op rather than another rebuild.
+	private builtKey: string | null = null;
+	private pendingKey: string | null = null;
+	// Bumped per build, so a slower earlier load can never overwrite a newer one.
+	private buildToken = 0;
+	// Set the moment teardown starts, so an async boot or load that is already in
+	// flight can bail out instead of resurrecting a destroyed lineup.
+	private destroyed = false;
+
 	constructor(options: MugenLineupOptions = {}) {
 		this.options = { ...DEFAULTS, ...options };
+		this.basePaths = this.options.basePaths;
+		this.cellColors = this.options.cellColors;
 	}
 
 	/** Boot Pixi inside `container`, load each slot's idle frames and start. */
 	async start(container: HTMLElement): Promise<void> {
-		const { basePaths, cellWidth, cellHeight, gap } = this.options;
-		const count = basePaths.length;
-		const width = count * cellWidth + Math.max(0, count - 1) * gap;
-
 		const app = new Application();
 		await app.init({
-			width: Math.max(width, cellWidth),
-			height: cellHeight,
+			width: this.canvasWidth(),
+			height: this.options.cellHeight,
 			backgroundColor: this.options.backgroundColor,
 			backgroundAlpha: this.options.backgroundAlpha,
 			antialias: false,
 			roundPixels: true
 		});
+		// The host can unmount while `init` is in flight — leaving a page, or a team
+		// switch tearing the lineup down mid-boot. Without this check the app would be
+		// created *after* destroy() had already run, holding a WebGL context and a
+		// render loop that nothing can ever reach to stop. Enough of those and the
+		// browser force-loses the oldest live context, blanking whichever canvas that
+		// happened to be (usually the roster's card grid) and throwing every frame.
+		if (this.destroyed) {
+			this.disposeApp(app);
+			return;
+		}
 		this.app = app;
 		container.appendChild(app.canvas);
+		app.canvas.addEventListener('webglcontextlost', this.onContextLost);
+		app.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
+		app.ticker.add(this.tick);
+		await this.rebuild();
+	}
+
+	/**
+	 * Point the lineup at a different set of slots. The Pixi app is kept and only the
+	 * stage contents are swapped, so picks changing — or another team coming forward —
+	 * costs nothing but a texture load. Recreating the component instead would spend a
+	 * WebGL context per change, and browsers only allow a handful at a time.
+	 */
+	setMembers(basePaths: (string | null)[], cellColors: (number | null)[]): void {
+		this.basePaths = basePaths;
+		this.cellColors = cellColors;
+		// Before the app exists the initial build picks these up on its own.
+		if (!this.app || this.destroyed) return;
+		const key = this.slotKey();
+		if (key === this.builtKey || key === this.pendingKey) return;
+		void this.rebuild();
+	}
+
+	/** Tear everything down. Safe to call more than once. */
+	destroy(): void {
+		this.destroyed = true;
+		// Invalidate any load in flight, so it drops its result instead of building
+		// onto a stage that is about to go away.
+		this.buildToken++;
+		if (this.app) {
+			this.app.canvas?.removeEventListener('webglcontextlost', this.onContextLost);
+			this.app.canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
+			this.disposeApp(this.app);
+			this.app = null;
+		}
+		this.members = [];
+	}
+
+	/**
+	 * Destroy an app and hand its WebGL context back at once. A destroyed Pixi app
+	 * only frees its context on GC, so a surface built and torn down repeatedly (this
+	 * one) would otherwise accumulate orphaned contexts until the browser evicts a
+	 * live one.
+	 */
+	private disposeApp(app: Application): void {
+		const disposeContext = captureGlContextDisposer(app);
+		app.destroy(true, { children: true });
+		disposeContext();
+	}
+
+	/**
+	 * A context loss (the browser reclaiming one under pressure) leaves the renderer
+	 * unable to draw: keep rendering and it throws every frame. Stop the loop until
+	 * the context comes back, then rebuild against the restored one.
+	 */
+	private onContextLost = (event: Event): void => {
+		// preventDefault marks the context restorable; without it the browser never
+		// fires `webglcontextrestored`.
+		event.preventDefault();
+		this.app?.ticker?.stop();
+	};
+
+	private onContextRestored = (): void => {
+		if (this.destroyed || !this.app) return;
+		this.app.ticker.start();
+		this.builtKey = null;
+		void this.rebuild();
+	};
+
+	/** Canvas width for the current slot count: one cell each, gaps between. */
+	private canvasWidth(): number {
+		const { cellWidth, gap } = this.options;
+		const count = this.basePaths.length;
+		return Math.max(count * cellWidth + Math.max(0, count - 1) * gap, cellWidth);
+	}
+
+	/** Identity of the slots as drawn — the folders and their backdrop colours. */
+	private slotKey(): string {
+		return `${this.basePaths.join('|')}#${this.cellColors.join('|')}`;
+	}
+
+	/**
+	 * Draw the current slots: load every idle animation first, then swap the stage in
+	 * one go, so the lineup never blanks mid-change and a stale load (one whose token
+	 * has since been superseded) is dropped on arrival.
+	 */
+	private async rebuild(): Promise<void> {
+		const app = this.app;
+		if (!app || this.destroyed) return;
+
+		const token = ++this.buildToken;
+		const key = this.slotKey();
+		this.pendingKey = key;
+		const { basePaths, cellColors } = this;
+		const { cellWidth, cellHeight, gap } = this.options;
+
+		// Load every slot's idle frames (empty slots stay null).
+		const framesPerSlot = await Promise.all(
+			basePaths.map((basePath) => (basePath ? this.loadIdle(basePath) : Promise.resolve(null)))
+		);
+		if (this.destroyed || this.app !== app || token !== this.buildToken) return;
+
+		for (const child of app.stage.removeChildren()) child.destroy();
+		this.members = [];
+		app.renderer.resize(this.canvasWidth(), cellHeight);
 
 		// Paint each slot's spawn-colour backdrop first, so the sprites sit on top.
-		const { cellColors } = this.options;
 		basePaths.forEach((_basePath, index) => {
 			const color = cellColors[index];
 			if (color == null) return;
@@ -103,11 +228,6 @@ export class MugenLineup {
 			const backdrop = new Graphics().rect(cellX, 0, cellWidth, cellHeight).fill(color);
 			app.stage.addChild(backdrop);
 		});
-
-		// Load every slot's idle frames (empty slots stay null).
-		const framesPerSlot = await Promise.all(
-			basePaths.map((basePath) => (basePath ? this.loadIdle(basePath) : Promise.resolve(null)))
-		);
 
 		// Feet sit on a shared baseline just above the canvas bottom.
 		const baselineY = cellHeight - 2;
@@ -138,20 +258,8 @@ export class MugenLineup {
 			this.members.push(member);
 		});
 
-		app.ticker.add(this.tick);
-	}
-
-	/** Tear everything down. Safe to call more than once. */
-	destroy(): void {
-		if (this.app) {
-			// Free the WebGL context immediately — this lineup is remounted on every
-			// team switch, so leaked contexts would pile up and evict a live canvas.
-			const disposeContext = captureGlContextDisposer(this.app);
-			this.app.destroy(true, { children: true });
-			disposeContext();
-			this.app = null;
-		}
-		this.members = [];
+		this.builtKey = key;
+		this.pendingKey = null;
 	}
 
 	private async loadIdle(basePath: string): Promise<LoadedFrame[]> {

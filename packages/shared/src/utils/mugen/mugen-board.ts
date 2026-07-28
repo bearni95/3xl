@@ -1,4 +1,5 @@
 import { Application, Assets, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import { captureGlContextDisposer } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
 import { CardSprite, REFERENCE_SOURCE_HEIGHT } from '../card/CardSprite';
 import type { CardModel } from '../card/card-model.type';
@@ -387,6 +388,9 @@ interface Actor {
 export class MugenBoard {
 	private readonly options: Required<MugenBoardOptions>;
 	private app: Application | null = null;
+	// Set the moment teardown starts, so a boot already in flight can bail out
+	// instead of resurrecting a destroyed board.
+	private destroyed = false;
 	private actors: Actor[] = [];
 	/** In-flight ranged projectiles, advanced each tick until they land. */
 	private projectiles: Projectile[] = [];
@@ -426,6 +430,15 @@ export class MugenBoard {
 			antialias: false,
 			roundPixels: true
 		});
+		// The host can unmount while the boot is in flight (combat closed as it opens).
+		// Without this the app would be created after destroy() had already run,
+		// stranding a WebGL context and a render loop nothing can reach — and browsers
+		// only allow a handful of contexts, so enough strays force-lose the oldest live
+		// one and blank whatever canvas that was.
+		if (this.destroyed) {
+			this.disposeApp(app);
+			return;
+		}
 		this.app = app;
 		// Sort stage children by zIndex so characters nearer the viewer (lower rows,
 		// larger screen-y) paint over those set further back into the board's depth.
@@ -467,6 +480,10 @@ export class MugenBoard {
 		// Lay the character cards out in the empty space above (rival) and below
 		// (player) the board, before cropping — so the crop grows the canvas taller to
 		// include them.
+		// Every actor above was loaded asynchronously; the board may have been torn
+		// down in the meantime, and destroy() has already freed the app.
+		if (this.destroyed) return;
+
 		this.layoutCards();
 
 		// Crop the view to what's actually drawn: the hex grid (the widest element)
@@ -567,8 +584,9 @@ export class MugenBoard {
 
 	/** Tear everything down. Safe to call more than once. */
 	destroy(): void {
+		this.destroyed = true;
 		if (this.app) {
-			this.app.destroy(true, { children: true });
+			this.disposeApp(this.app);
 			this.app = null;
 		}
 		this.actors = [];
@@ -576,6 +594,17 @@ export class MugenBoard {
 		this.slashes = [];
 		this.cardSprites = [];
 		this.cellPaint.clear();
+	}
+
+	/**
+	 * Destroy an app and hand its WebGL context straight back. A destroyed Pixi app
+	 * only frees its context on GC, so surfaces built and torn down repeatedly would
+	 * otherwise accumulate orphaned contexts until the browser evicts a live one.
+	 */
+	private disposeApp(app: Application): void {
+		const disposeContext = captureGlContextDisposer(app);
+		app.destroy(true, { children: true });
+		disposeContext();
 	}
 
 	/**

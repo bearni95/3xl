@@ -132,14 +132,14 @@
 								<!-- All three picks' idle animations on a single canvas, each
 								     height-normalised like the board, mirrored, over its spawn colour. -->
 								<figure class="flex h-28 w-64 items-center justify-center overflow-hidden rounded bg-base-300">
-									{#key memberBasePaths.join(',')}
-										<MugenLineup
-											basePaths={memberBasePaths}
-											colors={memberColors}
-											cellWidth={80}
-											cellHeight={112}
-										/>
-									{/key}
+									<!-- No {#key} around this: the lineup swaps its own slots in place, and
+									     remounting it would build (and strand) a WebGL context per change. -->
+									<MugenLineup
+										basePaths={memberBasePaths}
+										colors={memberColors}
+										cellWidth={80}
+										cellHeight={112}
+									/>
 								</figure>
 								<!-- Municipality name under each pick, aligned to its canvas cell
 								     (three 80px cells with an 8px gap = 256px = w-64). -->

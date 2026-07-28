@@ -1,4 +1,5 @@
 import { Application, Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { captureGlContextDisposer } from '../pixi/release-context';
 
 /** One decoded animation frame as described by the generated manifest. */
 export interface ManifestFrame {
@@ -96,6 +97,9 @@ const GAME_ANIMATIONS = new Set(['idle', 'walk', 'run']);
 export class MugenPlayer {
 	private readonly options: Required<MugenPlayerOptions>;
 	private app: Application | null = null;
+	// Set the moment teardown starts, so a boot already in flight can bail out
+	// instead of resurrecting a destroyed player.
+	private destroyed = false;
 	private sprite: Sprite | null = null;
 	private animations: Record<string, LoadedFrame[]> = {};
 
@@ -133,10 +137,20 @@ export class MugenPlayer {
 			antialias: false,
 			roundPixels: true
 		});
+		// The host can unmount while the boot is in flight. Without this the app would
+		// be created after destroy() had already run, stranding a WebGL context and a
+		// render loop nothing can reach — and browsers only allow a handful of
+		// contexts, so enough strays force-lose the oldest live one and blank whatever
+		// canvas that was.
+		if (this.destroyed) {
+			this.disposeApp(app);
+			throw new Error('MugenPlayer was destroyed while starting');
+		}
 		this.app = app;
 		container.appendChild(app.canvas);
 
 		const manifest = await this.loadAssets();
+		if (this.destroyed) throw new Error('MugenPlayer was destroyed while starting');
 
 		this.drawGround(width, height);
 
@@ -158,15 +172,27 @@ export class MugenPlayer {
 
 	/** Tear everything down. Safe to call more than once. */
 	destroy(): void {
+		this.destroyed = true;
 		window.removeEventListener('keydown', this.onKeyDown);
 		window.removeEventListener('keyup', this.onKeyUp);
 		this.held.clear();
 		if (this.app) {
-			this.app.destroy(true, { children: true });
+			this.disposeApp(this.app);
 			this.app = null;
 		}
 		this.sprite = null;
 		this.animations = {};
+	}
+
+	/**
+	 * Destroy an app and hand its WebGL context straight back. A destroyed Pixi app
+	 * only frees its context on GC, so surfaces built and torn down repeatedly would
+	 * otherwise accumulate orphaned contexts until the browser evicts a live one.
+	 */
+	private disposeApp(app: Application): void {
+		const disposeContext = captureGlContextDisposer(app);
+		app.destroy(true, { children: true });
+		disposeContext();
 	}
 
 	private async loadAssets(): Promise<Manifest> {

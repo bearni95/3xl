@@ -19,10 +19,15 @@
 	let lineup: MugenLineup | null = null;
 
 	$: wrapperClasses = classNames('inline-flex leading-none', classes);
+	$: cellColors = colors.map((color) => (color ? SPAWN_COLOR_HEX[color] : null));
+
+	// Slot changes — a pick added or removed, or a different team coming forward —
+	// are pushed into the live lineup. Rebuilding the component instead would spend a
+	// WebGL context per change, and the browser only allows a handful at once.
+	$: lineup?.setMembers(basePaths, cellColors);
 
 	async function build(): Promise<void> {
 		const { MugenLineup } = await import('$utils/mugen/mugen-lineup');
-		const cellColors = colors.map((color) => (color ? SPAWN_COLOR_HEX[color] : null));
 		lineup = new MugenLineup({ basePaths, cellColors, cellWidth, cellHeight, gap });
 		await lineup.start(host);
 	}
