@@ -36,6 +36,9 @@
 		remove: { teamId: string };
 		rename: { teamId: string; name: string };
 		activate: { teamId: string };
+		// One slot emptied, by index — the parent owns the colour rule that a removed
+		// lead may invalidate.
+		clearMember: { teamId: string; index: number };
 	}>();
 
 	$: labelById = new Map(options.map((option) => [option.id, option.label]));
@@ -164,9 +167,16 @@
 											{isLead ? 'Lead' : `#${index + 1}`}
 										</span>
 										{#if memberId}
-											<span class="badge badge-outline badge-sm">
-												{labelById.get(memberId) ?? memberId}
-											</span>
+											{@const memberLabel = labelById.get(memberId) ?? memberId}
+											<span class="badge badge-outline badge-sm">{memberLabel}</span>
+											<button
+												class="btn btn-ghost btn-xs btn-square"
+												title="Remove from team"
+												aria-label="Remove {memberLabel} from team"
+												on:click={() => dispatch('clearMember', { teamId: team.id, index })}
+											>
+												✕
+											</button>
 										{:else}
 											<span class="text-xs opacity-40">— Empty slot —</span>
 										{/if}

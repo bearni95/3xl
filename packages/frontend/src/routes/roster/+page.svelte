@@ -373,6 +373,13 @@
 	function onTeamActivate(event: CustomEvent<{ teamId: string }>): void {
 		teamService.setActive(event.detail.teamId);
 	}
+	// The panel's per-slot ✕. Same path as untapping the card: empty the slot, then
+	// re-apply the colour rule, since dropping the lead can leave teammates whose
+	// colour nothing on the team allows any more.
+	function onTeamClearMember(event: CustomEvent<{ teamId: string; index: number }>): void {
+		teamService.clearMember(event.detail.teamId, event.detail.index);
+		enforceTeamColors(event.detail.teamId);
+	}
 
 	// spawn id → its rolled spawn colour, for the team colour rule.
 	$: colorForSpawn = new Map(teamOptions.map((option) => [option.id, option.color]));
@@ -681,6 +688,7 @@
 					on:remove={onTeamRemove}
 					on:rename={onTeamRename}
 					on:activate={onTeamActivate}
+					on:clearMember={onTeamClearMember}
 				/>
 			</aside>
 		{/if}
