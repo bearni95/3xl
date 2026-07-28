@@ -65,11 +65,10 @@
 	<!-- Level + experience, derived from the stored exp via the D&D 5e table. -->
 	<div class="flex flex-col gap-1">
 		<div class="flex items-center justify-between text-sm">
-			<span class="flex items-center gap-2">
-				<span class="badge badge-primary badge-sm font-semibold">
-					{$_('profile.levelBadge', { values: { level: progress.level } })}
-				</span>
-				<span class="text-base-content/60">{$_('profile.level')}</span>
+			<!-- "Lv. 10" as plain text. It needs no badge and no word beside it: the bar
+				underneath already says this is the level. -->
+			<span class="font-semibold">
+				{$_('profile.levelBadge', { values: { level: progress.level } })}
 			</span>
 			<span class="font-mono text-base-content/70">
 				{#if progress.atMax}
