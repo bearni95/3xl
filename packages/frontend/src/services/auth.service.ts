@@ -183,27 +183,10 @@ class AuthService {
 	}
 
 	/**
-	 * Send a passwordless magic link to `email`. Creates the account if it does
-	 * not exist yet, so this covers both sign-in and registration.
-	 */
-	async sendMagicLink(email: string): Promise<void> {
-		const supabase = getSupabaseClient();
-		const { error } = await supabase.auth.signInWithOtp({
-			email,
-			options: {
-				shouldCreateUser: true,
-				emailRedirectTo: browser ? `${window.location.origin}/` : undefined
-			}
-		});
-		if (error) throw error;
-	}
-
-	/**
-	 * Hand the browser over to `provider`'s consent screen (Google, Discord, …)
-	 * and come back to the app with a session. Like the magic link this covers
-	 * both sign-in and registration: Supabase creates the account on first use,
-	 * and an account that already exists under the same verified email is linked
-	 * to rather than duplicated.
+	 * Hand the browser over to `provider`'s consent screen (Google) and come back
+	 * to the app with a session. This covers both sign-in and registration:
+	 * Supabase creates the account on first use, and an account that already
+	 * exists under the same verified email is linked to rather than duplicated.
 	 *
 	 * The call navigates away, so it only resolves on failure — everything after
 	 * it happens on the return trip, where `detectSessionInUrl` completes the

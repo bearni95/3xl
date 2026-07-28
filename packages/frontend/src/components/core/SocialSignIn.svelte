@@ -2,7 +2,7 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
 	import { _ } from 'svelte-i18n';
-	import { OAUTH_PROVIDER_NAMES, OAUTH_PROVIDERS, OAuthProvider } from '$types/profile.type';
+	import { OAUTH_PROVIDER_NAMES, OAuthProvider } from '$types/profile.type';
 	import ProviderIcon from '$components/core/ProviderIcon.svelte';
 
 	// Props
@@ -13,28 +13,30 @@
 
 	const dispatch = createEventDispatcher<{ signin: { provider: OAuthProvider } }>();
 
-	function handleClick(provider: OAuthProvider): void {
+	// Google is the only way in. Other identities stay understood (an account linked
+	// to one keeps working), they are simply not offered here.
+	const provider = OAuthProvider.Google;
+
+	function handleClick(): void {
 		if (disabled || pending) return;
 		dispatch('signin', { provider });
 	}
 </script>
 
 <div class={classNames('flex flex-col gap-2', classes)}>
-	{#each OAUTH_PROVIDERS as provider (provider)}
-		<button
-			type="button"
-			disabled={disabled || pending !== null}
-			class={classNames('btn btn-outline w-full justify-start gap-3', {
-				'btn-disabled': disabled || pending !== null
-			})}
-			on:click={() => handleClick(provider)}
-		>
-			{#if pending === provider}
-				<span class="loading loading-spinner loading-sm"></span>
-			{:else}
-				<ProviderIcon {provider} />
-			{/if}
-			{$_('profile.continueWith', { values: { provider: OAUTH_PROVIDER_NAMES[provider] } })}
-		</button>
-	{/each}
+	<button
+		type="button"
+		disabled={disabled || pending !== null}
+		class={classNames('btn btn-outline w-full justify-start gap-3', {
+			'btn-disabled': disabled || pending !== null
+		})}
+		on:click={handleClick}
+	>
+		{#if pending === provider}
+			<span class="loading loading-spinner loading-sm"></span>
+		{:else}
+			<ProviderIcon {provider} />
+		{/if}
+		{$_('profile.continueWith', { values: { provider: OAUTH_PROVIDER_NAMES[provider] } })}
+	</button>
 </div>

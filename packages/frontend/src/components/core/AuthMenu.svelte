@@ -9,7 +9,6 @@
 	import { AuthStatus, type OAuthProvider } from '$types/profile.type';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
-	import MagicLinkForm from '$components/core/MagicLinkForm.svelte';
 	import SocialSignIn from '$components/core/SocialSignIn.svelte';
 
 	// When embedded, the trigger button is dropped and the card renders in flow,
@@ -21,9 +20,7 @@
 	const profile = authService.profile;
 
 	let signingOut = false;
-	let sending = false;
 	let redirectingTo: OAuthProvider | null = null;
-	let sentTo: string | null = null;
 	let errorMessage: string | null = null;
 	// Whether the embedded card's full-profile dialog is up. The embedded card is a
 	// glance card — no email, no sign-out — so the button beside the name raises the
@@ -33,19 +30,6 @@
 	onMount(() => authService.init());
 
 	$: profileInitial = ($profile?.displayName || $profile?.email || '?').charAt(0).toUpperCase();
-
-	async function handleMagicLink(event: CustomEvent<{ email: string }>): Promise<void> {
-		errorMessage = null;
-		sending = true;
-		try {
-			await authService.sendMagicLink(event.detail.email);
-			sentTo = event.detail.email;
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : $_('errors.generic');
-		} finally {
-			sending = false;
-		}
-	}
 
 	async function handleProviderSignIn(
 		event: CustomEvent<{ provider: OAuthProvider }>
@@ -74,12 +58,6 @@
 		} finally {
 			signingOut = false;
 		}
-	}
-
-	function resetFlow(): void {
-		sentTo = null;
-		errorMessage = null;
-		redirectingTo = null;
 	}
 
 	function openUsernamePrompt(): void {
@@ -172,28 +150,8 @@
 							on:openprofile={openProfile}
 							on:editavatar={openAvatarPicker}
 						/>
-					{:else if sentTo}
-						<div class="alert alert-success">
-							<span>{$_('profile.checkEmail', { values: { email: sentTo } })}</span>
-						</div>
-						<button type="button" class="btn btn-ghost btn-sm" on:click={resetFlow}>
-							{$_('profile.useAnotherEmail')}
-						</button>
 					{:else}
-						<p class="text-sm text-base-content/70">{$_('profile.signInPrompt')}</p>
-						<SocialSignIn
-							pending={redirectingTo}
-							disabled={sending}
-							on:signin={handleProviderSignIn}
-						/>
-						<div class="divider my-0 text-xs text-base-content/50">
-							{$_('profile.orDivider')}
-						</div>
-						<MagicLinkForm
-							loading={sending}
-							disabled={redirectingTo !== null}
-							on:submit={handleMagicLink}
-						/>
+						<SocialSignIn pending={redirectingTo} on:signin={handleProviderSignIn} />
 					{/if}
 
 					{#if errorMessage}
