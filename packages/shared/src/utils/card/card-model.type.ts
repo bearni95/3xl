@@ -42,6 +42,13 @@ export interface CardModel {
 	 */
 	locationName: string | null;
 	/**
+	 * How many copies of this character the viewer owns. Drawn as an `×N` badge in
+	 * the top-right of the art, and only when there is more than one — a single copy
+	 * needs no count. Leave unset (or 1) wherever duplicates aren't a concept, such as
+	 * a freshly opened pack.
+	 */
+	copies?: number | null;
+	/**
 	 * ISO timestamp the card was spawned/claimed (the spawn's `createdAt`). Its year
 	 * is shown as a two-digit suffix beside {@link locationName} in the meta strip
 	 * (e.g. `'25`). Null to omit the year.

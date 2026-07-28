@@ -199,6 +199,7 @@ export class CardSprite extends Container {
 		this.addChild(this.makeShowRow(artY, showRowH));
 		this.addChild(this.makeMeta(footerY - metaH, metaH));
 		this.addChild(this.makeStats(footerY, footerH));
+		this.addChild(this.makeCopiesBadge(artY));
 
 		// Thick MTG-style frame around the whole card, in the rarity's quality colour
 		// (the same colour as the rarity badge text). Outset beyond the card bounds so it
@@ -504,6 +505,47 @@ export class CardSprite extends Container {
 			loc.position.set(this.cardWidth / 2, centerY);
 			group.addChild(loc);
 		}
+
+		return group;
+	}
+
+	/**
+	 * The duplicate count, as an `×N` pill in the top-right corner of the colour
+	 * square — how many copies of this character the viewer owns. Empty (an unused
+	 * container) for a card the viewer holds once, or one that doesn't track copies at
+	 * all: a lone card needs no count. `artY` is the top edge of the colour square.
+	 */
+	private makeCopiesBadge(artY: number): Container {
+		const group = new Container();
+		const copies = this.card.copies ?? 1;
+		if (copies < 2) return group;
+
+		const label = new Text({
+			text: `×${copies}`,
+			style: {
+				fontFamily: 'sans-serif',
+				fontSize: Math.max(9, Math.round(this.cardWidth * 0.07)),
+				fontWeight: '700',
+				fill: 0xffffff
+			}
+		});
+		// A dark pill behind it, so the count reads over any art or colour beneath.
+		const padX = Math.max(4, Math.round(this.cardWidth * 0.035));
+		const padY = Math.max(2, Math.round(this.cardWidth * 0.012));
+		const width = label.width + padX * 2;
+		const height = label.height + padY * 2;
+		const margin = Math.max(3, Math.round(this.cardWidth * 0.03));
+		const x = this.cardWidth - margin - width;
+		const y = artY + margin;
+
+		const pill = new Graphics();
+		pill.roundRect(x, y, width, height, height / 2);
+		pill.fill({ color: 0x000000, alpha: 0.7 });
+		group.addChild(pill);
+
+		label.anchor.set(0.5, 0.5);
+		label.position.set(x + width / 2, y + height / 2);
+		group.addChild(label);
 
 		return group;
 	}

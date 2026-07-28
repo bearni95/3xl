@@ -305,6 +305,14 @@
 	// A new page opens at its top; rebuilds otherwise keep the scroll offset.
 	$: page, cardCanvas?.scrollToTop();
 
+	// character id → how many copies of it the player owns, so a duplicated character
+	// carries an ×N badge. Counted over the whole roster, not the filtered or paged
+	// view: it says what you own, so it doesn't move as you filter or turn a page.
+	$: copiesByCharacter = $spawns.reduce(
+		(counts, spawn) => counts.set(spawn.characterId, (counts.get(spawn.characterId) ?? 0) + 1),
+		new Map<string, number>()
+	);
+
 	// The current page's spawns as display CardModels for the shared card renderer — the
 	// same shape the claim pack opener draws (label + sprite from the local registry,
 	// face fallback, rolled colour/stat, rarity, show, claim place and year). The four
@@ -317,7 +325,8 @@
 		faces: Map<string, string | null>,
 		_names: Map<string, string> | null,
 		rarities: Map<string, number>,
-		_showNames: Map<string, string[]>
+		_showNames: Map<string, string[]>,
+		copies: Map<string, number>
 	): CardModel[] =>
 		pagedSpawns.map((spawn) => ({
 			label: labelFor(spawn.characterId),
@@ -328,8 +337,15 @@
 			showName: showNamesFor(spawn.characterId).join(', ') || null,
 			locationName: locationNameFor(spawn.locationId),
 			spawnedAt: spawn.createdAt,
+			copies: copies.get(spawn.characterId) ?? 1,
 			...combatStatsFromStat(spawn.stat)
-		})))(characterFaces, municipalityNames, rarityByCharacter, characterShowNames);
+		})))(
+		characterFaces,
+		municipalityNames,
+		rarityByCharacter,
+		characterShowNames,
+		copiesByCharacter
+	);
 
 	// Tapping a card on the canvas toggles that spawn on the active team (add to the
 	// first free slot, or remove it) — the canvas replaces the old per-card buttons.
