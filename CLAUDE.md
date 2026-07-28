@@ -71,9 +71,9 @@ sits in. `Icon.svelte` renders one; `ShowIcon.svelte` is the show-specific wrapp
 A game-icons.net SVG ships on an opaque black square with white artwork, so strip
 that background path and swap the fill for `currentColor` before committing it.
 
-Two icons stay URL-fetched rather than inlined — the map's star badge and the card
-renderer's d10 — because they are drawn into a Leaflet marker and a Pixi texture,
-neither of which a stylesheet reaches; they carry a baked fill of their own.
+One icon stays URL-fetched rather than inlined — the map's star badge — because it is
+drawn into a Leaflet marker, which a stylesheet doesn't reach; it carries a baked fill
+of its own.
 
 **Do not hand-edit generated files** (`registry.generated.ts`, `manifest.json`,
 `mugen-moves.json`, `public/geo/*.json`, `public/icons/shows/*`) or decoded assets —

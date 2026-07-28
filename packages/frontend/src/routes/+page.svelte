@@ -37,7 +37,6 @@
 	import { TEAM_SIZE, teamService } from '$services/team.service';
 	import { buildMunicipalityTeam, ogTeamSpawns } from '$utils/spawn/municipality-team';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
-	import { combatStatsFromStat } from '$utils/spawn/stat';
 	import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
 	import { showPosterUrl } from '$utils/geo/municipality-show';
 	import { showIconName } from '$utils/show/show-icon';
@@ -702,10 +701,9 @@
 
 	// The team as display CardModels for the shared renderer — the same shape the
 	// claim/roster cards use. `characterFaces` and `characterShowNames` are threaded in
-	// so the statement re-runs as faces and shows resolve. The four combat attributes
-	// derive from the rolled stat exactly as the claim flow's buildPull does. The show
-	// row names each character's own show — a held town fields the occupier's claimed
-	// characters, so labelling them with the town's top show would be a lie.
+	// so the statement re-runs as faces and shows resolve. The show row names each
+	// character's own show — a held town fields the occupier's claimed characters, so
+	// labelling them with the town's top show would be a lie.
 	$: municipalityTeamCards = ((
 		faces: Map<string, string | null>,
 		shows: Map<string, string[]>
@@ -720,8 +718,7 @@
 			locationName: municipalityFeature
 				? restoreCatalanArticle(String(municipalityFeature.properties?.name ?? ''))
 				: null,
-			spawnedAt: null,
-			...combatStatsFromStat(member.stat)
+			spawnedAt: null
 		})))(characterFaces, characterShowNames);
 
 	// --- The player's own active team (the panel's account section) --------------
@@ -769,8 +766,8 @@
 	}
 
 	// The active team as display CardModels. Same shape as the town's, from the
-	// player's own spawns instead of a seeded roll: the rolled colour and stat are
-	// theirs, the claim place is where they pulled it, and the show row names the
+	// player's own spawns instead of a seeded roll: the rolled colour is theirs, the
+	// claim place is where they pulled it, and the show row names the
 	// character's own show as it does on the roster and the combat board. No rarity —
 	// this panel doesn't read that Supabase layer. Every resolved map is threaded in so
 	// the statement re-runs as faces, shows and place names arrive.
@@ -787,8 +784,7 @@
 			rarity: null,
 			showName: cardShowName(spawn.characterId, shows),
 			locationName: claimPlaceFor(spawn.locationId, names),
-			spawnedAt: spawn.createdAt,
-			...combatStatsFromStat(spawn.stat)
+			spawnedAt: spawn.createdAt
 		})))(characterFaces, characterShowNames, municipalityNames);
 
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)

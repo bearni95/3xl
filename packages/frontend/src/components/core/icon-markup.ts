@@ -8,10 +8,9 @@
 // — which is what `fill="currentColor"` in the SVG resolves against once it is
 // inline.
 //
-// (Two icons are still fetched by URL rather than inlined — the map's star badge
-// and the card renderer's d10 — because those are drawn into a Leaflet marker and
-// a Pixi texture, neither of which is a place a stylesheet reaches. They carry a
-// baked fill of their own and do not come through here.)
+// (One icon is still fetched by URL rather than inlined — the map's star badge —
+// because it is drawn into a Leaflet marker, which is not a place a stylesheet
+// reaches. It carries a baked fill of its own and does not come through here.)
 //
 // Pulled in with a glob rather than a hand-written import list so that adding an
 // icon is only ever dropping the SVG into the right folder. Eager, so there is no

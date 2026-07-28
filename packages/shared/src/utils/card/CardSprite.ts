@@ -4,12 +4,12 @@
  * A single character trading card, drawn as a Pixi `Container` and reusable in
  * any canvas (the pack opener's reveal, a collection grid, …). It mirrors
  * RosterCard: the character's colour is the portrait backdrop, a dark header strip
- * at the top carries the rarity badge (left) and the character name (centred), the
- * character's looping idle animation plays in the square colour area below it, with
- * the show name overlaid transparently across the top of that square and a free-text
- * location label overlaid across its bottom; a dark footer below carries its
- * ATK/DEF/SPD/HP stats. The idle frames (and the fallback face) are lazy-loaded via
- * the shared cache; the host scene drives all positioning and tweens.
+ * at the top carries the rarity badge (left) and the character name (centred), and
+ * the character's looping idle animation plays in the colour field filling the rest
+ * of the card, with the show name overlaid transparently across the top of that
+ * field and a free-text location label overlaid across its bottom. The idle frames
+ * (and the fallback face) are lazy-loaded via the shared cache; the host scene
+ * drives all positioning and tweens.
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
@@ -64,10 +64,6 @@ const IDLE_SCALE_BOOST = 1.3;
 export function cardBorderWidth(cardWidth: number): number {
 	return Math.max(6, Math.round(cardWidth * 0.05));
 }
-
-/** The d10 die icon (white SVG) shown after the ATK value — the same one the
- * roster/team cards use for a character's stat. Served from @3xl/assets. */
-const D10_ICON_URL = '/assets/icons/skoll/d10.svg';
 
 // Canonical WoW quality colours, indexed by rarity tier — so the rarity label
 // reads in its quality colour (Common grey → Legendary orange → …).
@@ -124,21 +120,19 @@ export class CardSprite extends Container {
 		this.flipped = opts.flipped ?? true;
 
 		const radius = Math.max(6, this.cardWidth * 0.05);
-		// Top→bottom: a name header, the art, an ATK/DEF/SPD/HP footer. The coloured art
-		// area is a full-width SQUARE (side = card width); only the name header and stats
-		// footer take a band of their own, splitting the vertical space left over by
-		// their prior ratios (name .14, stats .15 of card height; sum .29). The
+		// Top→bottom: a name header, then the art. Only the name header takes a band of
+		// its own — it keeps the height it had when a stats footer shared the chrome with
+		// it (name .14 of the .29 the two bands split between them) — and the coloured art
+		// field fills everything below it, all the way to the card's bottom edge. The
 		// rarity/show and location rows have no band — they are overlaid, transparently,
-		// on the top and bottom of the colour square (see makeShowRow / makeMeta).
+		// on the top and bottom of the colour field (see makeShowRow / makeMeta).
 		const artSide = this.cardWidth;
-		const chrome = this.cardHeight - artSide; // vertical space for the header + footer
+		const chrome = this.cardHeight - artSide; // vertical space the header is sized from
 		const headerH = Math.round(chrome * (0.14 / 0.29));
 		const artY = headerH;
-		const footerY = artY + artSide; // the square's bottom edge = the footer's top
-		const footerH = this.cardHeight - footerY;
-		this.artArea = { x: 0, y: artY, w: artSide, h: artSide };
+		this.artArea = { x: 0, y: artY, w: artSide, h: this.cardHeight - artY };
 		// The rarity/show and location rows are drawn (with no background) over the top
-		// and bottom of the colour square respectively.
+		// and bottom of the colour field respectively.
 		const showRowH = Math.round(this.cardHeight * 0.1);
 		const metaH = Math.round(this.cardHeight * 0.1);
 
@@ -153,31 +147,11 @@ export class CardSprite extends Container {
 
 		// Header strip at the top, carrying the character name — black at 70% opacity.
 		// The rarity/show row is not part of it — it floats transparently over the
-		// colour square below.
+		// colour field below.
 		const header = new Graphics();
 		header.rect(0, 0, this.cardWidth, headerH);
 		header.fill({ color: 0x000000, alpha: 0.7 });
 		this.addChild(header);
-
-		// Footer strip at the bottom, carrying the ATK/DEF/SPD/HP stats — black at 10%
-		// opacity, matching the header. The location row is not part of it — it floats
-		// transparently over the bottom of the colour square above.
-		const footer = new Graphics();
-		footer.rect(0, footerY, this.cardWidth, footerH);
-		footer.fill({ color: 0x000000, alpha: 0.1 });
-		this.addChild(footer);
-
-		// The labels row (top half) and the values row (bottom half) each get their own
-		// extra black band, layered on top of the shared footer band: 60% for the labels
-		// row, 50% for the values row.
-		const labelsBand = new Graphics();
-		labelsBand.rect(0, footerY, this.cardWidth, footerH / 2);
-		labelsBand.fill({ color: 0x000000, alpha: 0.6 });
-		this.addChild(labelsBand);
-		const valuesBand = new Graphics();
-		valuesBand.rect(0, footerY + footerH / 2, this.cardWidth, footerH / 2);
-		valuesBand.fill({ color: 0x000000, alpha: 0.5 });
-		this.addChild(valuesBand);
 
 		// A black silhouette copy of the art, sitting behind the full-colour sprite
 		// (added first, so lower z-index) and offset to the bottom-left — the
@@ -197,8 +171,7 @@ export class CardSprite extends Container {
 
 		this.addChild(this.makeHeader(headerH));
 		this.addChild(this.makeShowRow(artY, showRowH));
-		this.addChild(this.makeMeta(footerY - metaH, metaH));
-		this.addChild(this.makeStats(footerY, footerH));
+		this.addChild(this.makeMeta(this.cardHeight - metaH, metaH));
 		this.addChild(this.makeCopiesBadge());
 
 		// Thick MTG-style frame around the whole card, in the rarity's quality colour
@@ -293,10 +266,10 @@ export class CardSprite extends Container {
 		this.idleFrames = frames;
 		const pad = this.cardWidth * 0.08;
 		const boxW = this.artArea.w - pad * 2;
-		// The colour field is now a full-width square, but the character keeps the size
-		// it had before that change: scale it against the *pre-square* art height
-		// (0.75·cardWidth, the old box) rather than the taller square, so squaring the
-		// field never resizes the idle. The square is only used to centre it below.
+		// The colour field now runs from the header to the card's bottom edge, but the
+		// character keeps the size it had when the field was a shorter box: scale it
+		// against that original art height (0.75·cardWidth) rather than the taller field,
+		// so growing the field never resizes the idle — it only centres it below.
 		const boxH = this.cardWidth * 0.75 - pad * 2;
 
 		const maxHeight = Math.max(...frames.map((f) => f.height));
@@ -439,9 +412,9 @@ export class CardSprite extends Container {
 	}
 
 	/**
-	 * The row overlaid (with no background) on the top of the colour square: the show
+	 * The row overlaid (with no background) on the top of the colour field: the show
 	 * name centred. The show name is truncated to the row width. `topY` is the top edge
-	 * of the colour square.
+	 * of the colour field.
 	 */
 	private makeShowRow(topY: number, showRowH: number): Container {
 		const group = new Container();
@@ -472,10 +445,10 @@ export class CardSprite extends Container {
 
 	/**
 	 * The location row overlaid (with no background) on the bottom of the colour
-	 * square: the location label, with the spawn year as a two-digit suffix (e.g.
+	 * field: the location label, with the spawn year as a two-digit suffix (e.g.
 	 * `Barcelona '25`), centred in the row. Omitted when the card carries neither a
 	 * location nor a spawn date. `metaY` is the top of the row (its bottom sits on the
-	 * square's bottom edge).
+	 * card's bottom edge).
 	 */
 	private makeMeta(metaY: number, metaH: number): Container {
 		const group = new Container();
@@ -561,84 +534,4 @@ export class CardSprite extends Container {
 		}
 	}
 
-	/**
-	 * The footer stat row: the four combat attributes the board fields — SPD, ATK, DEF
-	 * and HP (SPD leads the row) — each a value under a small caption. (The rarity badge
-	 * now lives in the show row under the name, not here.) The four sit in four
-	 * evenly-spaced columns across the width; every caption is a small text label ('SPD',
-	 * 'ATK', …). The ATK value trails a d10 die icon (the shared Skoll set, as on the
-	 * roster/team cards), the DEF value trails a '+' sign, and SPD and HP carry no
-	 * suffix — HP is a flat pool, not a dice count.
-	 */
-	private makeStats(footerY: number, footerH: number): Container {
-		const group = new Container();
-		// Two even rows: the labels centred in the top half, the values in the bottom.
-		const captionY = footerY + footerH * 0.25;
-		const valueY = footerY + footerH * 0.75;
-		const captionSize = Math.max(7, Math.round(this.cardWidth * 0.05));
-		const valueSize = Math.max(11, Math.round(this.cardWidth * 0.09));
-		// The labels row (captions) sits at 95% opacity; the values row is fully opaque.
-		const captionAlpha = 0.95;
-		const valueAlpha = 1;
-
-		// Cell centres: four evenly-spaced columns (each column's midpoint), so the
-		// stats read as a 4-up row rather than the old 5-up layout that reserved the
-		// middle for the rarity badge. SPD leads the row, then ATK, DEF, HP.
-		const cells: { x: number; label: string; value: number; icon?: string; suffix?: string }[] = [
-			{ x: this.cardWidth * 0.125, label: 'SPD', value: this.card.spd },
-			{ x: this.cardWidth * 0.375, label: 'ATK', value: this.card.atk, icon: D10_ICON_URL },
-			{ x: this.cardWidth * 0.625, label: 'DEF', value: this.card.def, suffix: '+' },
-			{ x: this.cardWidth * 0.875, label: 'HP', value: this.card.hp }
-		];
-
-		const gap = Math.max(2, Math.round(this.cardWidth * 0.02));
-
-		for (const cell of cells) {
-			const caption = new Text({
-				text: cell.label,
-				style: {
-					fontFamily: 'sans-serif',
-					fontSize: captionSize,
-					fontWeight: '700',
-					fill: 0xffffff
-				}
-			});
-			caption.anchor.set(0.5, 0.5);
-			caption.position.set(cell.x, captionY);
-			caption.alpha = captionAlpha;
-			group.addChild(caption);
-
-			const value = new Text({
-				text: `${cell.value}${cell.suffix ?? ''}`,
-				style: { fontFamily: 'sans-serif', fontSize: valueSize, fontWeight: '700', fill: 0xffffff }
-			});
-			value.anchor.set(0.5, 0.5);
-			value.position.set(cell.x, valueY);
-			value.alpha = valueAlpha;
-			group.addChild(value);
-
-			if (cell.icon) {
-				// The die icon loads async; it trails the number, the number+icon pair
-				// re-centred on the column once it's ready.
-				void textureCache.icon(cell.icon).then((tex) => {
-					if (this.destroyed || group.destroyed || !tex) return;
-					const iconH = valueSize;
-					const iconW = tex.width * (iconH / tex.height);
-					const total = value.width + gap + iconW;
-					// Left-align the number, then hang the icon off its right edge, so the
-					// combined pair stays centred on the column.
-					value.anchor.set(0, 0.5);
-					value.position.set(cell.x - total / 2, valueY);
-					const icon = new Sprite(tex);
-					icon.anchor.set(0, 0.5);
-					icon.scale.set(iconH / tex.height);
-					icon.position.set(cell.x - total / 2 + value.width + gap, valueY);
-					icon.alpha = valueAlpha;
-					group.addChild(icon);
-				});
-			}
-		}
-
-		return group;
-	}
 }

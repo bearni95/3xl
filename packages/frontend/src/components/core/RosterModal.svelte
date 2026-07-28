@@ -18,7 +18,6 @@
 		SpawnColor,
 		type CharacterSpawn
 	} from '$types/character-spawn.type';
-	import { combatStatsFromStat } from '$utils/spawn/stat';
 	import { teamDisplayName } from '$utils/spawn/team-name';
 	import { teammateColors } from '$utils/color/compare';
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
@@ -334,12 +333,9 @@
 
 	// The current page's spawns as display CardModels for the shared card renderer — the
 	// same shape the claim pack opener draws (label + sprite from the local registry,
-	// face fallback, rolled colour/stat, rarity, show, claim place and year). The four
-	// combat attributes mirror the board: ATK is the rolled stat, DEF its complement,
-	// SPD is ATK − 1 and HP is DEF + 1 — the same derivation as the claim flow's
-	// buildPull. The resolved maps are threaded in explicitly so the statement re-runs
-	// as faces, place names, rarities and show names load in (a bare helper call would
-	// hide those deps).
+	// face fallback, rolled colour, rarity, show, claim place and year). The resolved
+	// maps are threaded in explicitly so the statement re-runs as faces, place names,
+	// rarities and show names load in (a bare helper call would hide those deps).
 	// One spawn as a display card. The resolved maps come in as arguments rather than
 	// being read off the component, so every caller has to name them and their
 	// reactive statement tracks them.
@@ -358,8 +354,7 @@
 			showName: showNamesFor(spawn.characterId).join(', ') || null,
 			locationName: locationNameFor(spawn.locationId),
 			spawnedAt: spawn.createdAt,
-			copies: copies.get(spawn.characterId) ?? 1,
-			...combatStatsFromStat(spawn.stat)
+			copies: copies.get(spawn.characterId) ?? 1
 		};
 	}
 

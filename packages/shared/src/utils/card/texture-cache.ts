@@ -82,12 +82,6 @@ export const textureCache = {
 		return load(url);
 	},
 
-	/** Texture for a UI icon (e.g. the d10 SVG in the stat row), or null. */
-	icon(url: string | null): Promise<Texture | null> {
-		if (!url) return Promise.resolve(null);
-		return load(url);
-	},
-
 	/** Synchronously returns an already-loaded texture for a URL, else null. */
 	cached(url: string | null): Texture | null {
 		if (!url) return null;

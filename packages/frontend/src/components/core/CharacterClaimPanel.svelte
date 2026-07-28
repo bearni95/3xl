@@ -8,7 +8,6 @@
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import { AuthStatus } from '$types/profile.type';
 	import type { CharacterSpawn, ClaimableShow } from '$types/character-spawn.type';
-	import { combatStatsFromStat } from '$utils/spawn/stat';
 	import type { GeoRegion } from '$types/location.type';
 	import type { MunicipalityShowsCollection, ShowEntry, ShowsCollection } from '$types/show.type';
 	import { showPosterUrlForSeed } from '$utils/geo/municipality-show';
@@ -233,8 +232,7 @@
 	}
 
 	// Assemble the display card for one claimed spawn: label + face from the local
-	// registry, colour/stat off the spawn. The combat attributes mirror the board —
-	// ATK is the rolled spawn stat, DEF its complement, SPD is ATK − 1 and HP is DEF + 1.
+	// registry, colour off the spawn.
 	async function buildPull(spawn: CharacterSpawn, showName: string | null): Promise<ClaimPull> {
 		const basePath = charactersById.get(spawn.characterId)?.basePath ?? null;
 		const faceUrl = basePath
@@ -249,8 +247,7 @@
 			rarity: rarityByCharacter.get(spawn.characterId) ?? null,
 			showName,
 			locationName: lastLocationName || null,
-			spawnedAt: spawn.createdAt,
-			...combatStatsFromStat(spawn.stat)
+			spawnedAt: spawn.createdAt
 		};
 	}
 

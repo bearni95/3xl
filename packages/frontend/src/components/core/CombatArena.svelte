@@ -202,14 +202,12 @@
 	): BoardCharacter {
 		const spawn = spawns.get(spawnId);
 		const option = (spawn && characterById.get(spawn.characterId)) ?? availableCharacters[0];
-		const stat = spawn?.stat ?? DEFAULT_SPAWN_STAT;
 		return {
 			id: instanceId(side, spawnId),
 			basePath: option.basePath,
 			animation: 'idle',
 			// The display card drawn outside the grid (rival above, player below): the
-			// idle art loads from basePath, and the attributes mirror the board's
-			// derivation from the rolled stat. Rarity, show and claim place come from the
+			// idle art loads from basePath. Rarity, show and claim place come from the
 			// same three Supabase/geo sources the roster and claim cards read
 			// (`showNames`/`names` are passed so the reactive build re-runs — and the
 			// board remounts — once those layers load).
@@ -221,8 +219,7 @@
 				rarity: spawn ? (rarities.get(spawn.characterId) ?? null) : null,
 				showName: spawn ? (showNames.get(spawn.characterId)?.join(', ') || null) : null,
 				locationName: spawn ? locationNameFor(spawn.locationId) : null,
-				spawnedAt: spawn?.createdAt ?? null,
-				...combatStatsFromStat(stat)
+				spawnedAt: spawn?.createdAt ?? null
 			}
 		};
 	}

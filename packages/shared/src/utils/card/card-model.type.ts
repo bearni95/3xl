@@ -54,13 +54,4 @@ export interface CardModel {
 	 * (e.g. `'25`). Null to omit the year.
 	 */
 	spawnedAt: string | null;
-	/** Attack: the character's ATK stat, drawn in the footer beneath the d10 icon. */
-	atk: number;
-	/** Defence: the character's DEF stat (the ATK complement), drawn in the footer. */
-	def: number;
-	/** Speed: the character's SPD stat (ATK − 1), drawn in the footer. */
-	spd: number;
-	/** HP attribute (DEF + 1): the character's HP pool at battle start, drawn in the
-	 * footer. */
-	hp: number;
 }
