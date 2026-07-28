@@ -38,8 +38,8 @@
 			}
 		},
 		{
-			"name": "Defent",
-			"type": "defent",
+			"name": "Defend",
+			"type": "defend",
 			"source": "guard-stand"
 		}
 	],

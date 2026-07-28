@@ -518,7 +518,7 @@ function autoBindDefinition(id, manifest, basePath) {
 				source: pickRange(1000, 1999),
 				projectile: { source: '', loop: true }
 			},
-			{ name: 'Defent', type: 'defent', source: pick('guard-stand', 'guard-crouch') }
+			{ name: 'Defend', type: 'defend', source: pick('guard-stand', 'guard-crouch') }
 		].filter((move) => move.source !== ''),
 		stats: { atk: 5, def: 5, hp: 5 }
 	};

@@ -58,7 +58,7 @@ export type MovementAnimationName = 'idle' | 'hurt';
 export type DirectionName = 'move-left' | 'move-right';
 
 /** The shared move types a character's moves can be tagged with. */
-export type MoveKind = 'melee' | 'ranged' | 'defent';
+export type MoveKind = 'melee' | 'ranged' | 'defend';
 
 /** The three primary combat colors; each beats the next in a cycle. */
 export type PrimaryColor = 'red' | 'blue' | 'yellow';
@@ -144,7 +144,7 @@ export const MOVEMENT_ANIMATIONS: MovementAnimationName[] = ['idle', 'hurt'];
 export const DIRECTION_NAMES: DirectionName[] = ['move-left', 'move-right'];
 
 /** Shared move types in display order. */
-export const MOVE_KINDS: MoveKind[] = ['melee', 'ranged', 'defent'];
+export const MOVE_KINDS: MoveKind[] = ['melee', 'ranged', 'defend'];
 
 /** Move types that fire a projectile (the move carries its own binding). */
 export const PROJECTILE_MOVES: MoveKind[] = ['ranged'];

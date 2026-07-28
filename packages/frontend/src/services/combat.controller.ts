@@ -414,7 +414,7 @@ export class CombatController {
 			this.log.push(`${from} at ${target.name}, who blocked it.`);
 			this.board?.showCallout(target.id, 'BLOCK', target.color);
 			// Brace again on the bullet, so the block is seen and not just labelled.
-			const guard = findMove(target, 'defent');
+			const guard = findMove(target, 'defend');
 			if (guard) void this.board?.playMove(target.id, guard);
 		} else if (target.traits.passiveGuard && !target.guardSpent) {
 			target.guardSpent = true;
@@ -448,7 +448,7 @@ export class CombatController {
 				void this.raiseAura(fighter);
 			} else if (fighter.action === 'defend') {
 				this.board?.showCallout(fighter.id, 'GUARD', fighter.color);
-				const move = findMove(fighter, 'defent');
+				const move = findMove(fighter, 'defend');
 				if (move) void this.board?.playMove(fighter.id, move);
 			}
 		}
