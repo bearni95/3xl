@@ -24,7 +24,6 @@
 	import { responsiveGridColumns, type SlotSummary } from '$components/core/card/CardScene';
 	import { SPAWN_COLOR_HEX } from '$utils/spawn/color';
 	import type { CardModel } from '$utils/card/card-model.type';
-	import TeamPanel from '$components/core/TeamPanel.svelte';
 	import localStorageWritableStore from '$utils/localStorageWritableStore';
 
 	// Bounds for the grid-column slider. It defaults to the responsive value the
@@ -447,44 +446,12 @@
 		}, [])
 	);
 
-	// Every claimed spawn, offered as an individual team pick — each spawn is its own
-	// entry (the same character claimed twice yields two options with their own rolled
-	// colour, stat and place). Keyed by spawn id so the TeamPanel can resolve a team's
-	// slots. `municipalityNames` is passed in explicitly so this reactive block re-runs
-	// once the layer loads — a bare locationNameFor() call wouldn't track it.
-	$: teamOptions = ((names: Map<string, string> | null) =>
-		$spawns.map((spawn) => ({
-			id: spawn.id,
-			label: labelFor(spawn.characterId),
-			basePath: basePathFor(spawn.characterId),
-			color: spawn.color,
-			stat: spawn.stat,
-			location: names?.get(spawn.locationId) ?? ULTRAMAR.municipality,
-			shows: showNamesFor(spawn.characterId)
-		})))(municipalityNames);
-
 	function onTeamCreate(): void {
 		teamService.createTeam();
 	}
-	function onTeamRemove(event: CustomEvent<{ teamId: string }>): void {
-		teamService.removeTeam(event.detail.teamId);
-	}
-	function onTeamRename(event: CustomEvent<{ teamId: string; name: string }>): void {
-		teamService.renameTeam(event.detail.teamId, event.detail.name);
-	}
-	function onTeamActivate(event: CustomEvent<{ teamId: string }>): void {
-		teamService.setActive(event.detail.teamId);
-	}
-	// The panel's per-slot ✕. Same path as untapping the card: empty the slot, then
-	// re-apply the colour rule, since dropping the lead can leave teammates whose
-	// colour nothing on the team allows any more.
-	function onTeamClearMember(event: CustomEvent<{ teamId: string; index: number }>): void {
-		teamService.clearMember(event.detail.teamId, event.detail.index);
-		enforceTeamColors(event.detail.teamId);
-	}
 
 	// spawn id → its rolled spawn colour, for the team colour rule.
-	$: colorForSpawn = new Map(teamOptions.map((option) => [option.id, option.color]));
+	$: colorForSpawn = new Map($spawns.map((spawn) => [spawn.id, spawn.color]));
 
 	// The currently-selected team and the spawn ids already on it, driving the tap
 	// toggle and the colour rule below.
@@ -678,138 +645,122 @@
 		{/if}
 	{/if}
 
-	<div class="flex flex-col gap-6 lg:flex-row lg:items-start">
-		<div class="flex-1">
-			{#if !authService.configured}
-				<div class="alert alert-warning text-sm">
-					<span>Sign-in is unavailable — Supabase is not configured.</span>
+	<div class="flex-1">
+		{#if !authService.configured}
+			<div class="alert alert-warning text-sm">
+				<span>Sign-in is unavailable — Supabase is not configured.</span>
+			</div>
+		{:else if $status === AuthStatus.Loading}
+			<div class="flex justify-center py-12">
+				<span class="loading loading-spinner loading-md"></span>
+			</div>
+		{:else if $status !== AuthStatus.SignedIn}
+			<div class="card max-w-md bg-base-100 shadow-xl">
+				<div class="card-body gap-4">
+					<p class="text-sm opacity-70">Sign in to see the characters you've claimed.</p>
+					<button class="btn btn-primary btn-sm w-fit" on:click={() => signInPanelOpen.set(true)}>
+						Sign in
+					</button>
 				</div>
-			{:else if $status === AuthStatus.Loading}
-				<div class="flex justify-center py-12">
-					<span class="loading loading-spinner loading-md"></span>
-				</div>
-			{:else if $status !== AuthStatus.SignedIn}
-				<div class="card max-w-md bg-base-100 shadow-xl">
-					<div class="card-body gap-4">
-						<p class="text-sm opacity-70">Sign in to see the characters you've claimed.</p>
-						<button class="btn btn-primary btn-sm w-fit" on:click={() => signInPanelOpen.set(true)}>
-							Sign in
-						</button>
-					</div>
-				</div>
-			{:else if error}
-				<div class="alert alert-error text-sm"><span>{error}</span></div>
-			{:else if loading}
-				<div class="flex items-center gap-2 text-sm opacity-70">
-					<span class="loading loading-spinner loading-xs"></span>
-					Loading your roster…
-				</div>
-			{:else if $spawns.length === 0}
-				<div class="card max-w-md bg-base-100 shadow-xl">
-					<div class="card-body gap-4">
-						<p class="text-sm opacity-70">
-							You haven't claimed any characters yet. Head to the map and open one of today's
-							booster packs to spawn your first one.
-						</p>
-						<a class="btn btn-primary btn-sm w-fit" href="/">Open the map</a>
-					</div>
-				</div>
-			{:else}
-				<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-					<p class="text-xs opacity-60">
-						Scroll to move through your cards.
-						{#if recycleMode}
-							Tap a card to select or deselect it for recycling.
-						{:else if activeTeam}
-							Tap a card to add or remove it from the active team.
-						{:else}
-							Select a team to start adding characters by tapping their card.
-						{/if}
+			</div>
+		{:else if error}
+			<div class="alert alert-error text-sm"><span>{error}</span></div>
+		{:else if loading}
+			<div class="flex items-center gap-2 text-sm opacity-70">
+				<span class="loading loading-spinner loading-xs"></span>
+				Loading your roster…
+			</div>
+		{:else if $spawns.length === 0}
+			<div class="card max-w-md bg-base-100 shadow-xl">
+				<div class="card-body gap-4">
+					<p class="text-sm opacity-70">
+						You haven't claimed any characters yet. Head to the map and open one of today's
+						booster packs to spawn your first one.
 					</p>
-					<div class="flex flex-wrap items-center gap-3">
-						{#if pageCount > 1}
-							<div class="join">
-								<button
-									class="btn join-item btn-sm"
-									disabled={page === 0}
-									on:click={() => goToPage(page - 1)}
-									aria-label="Previous page"
-								>
-									‹
-								</button>
-								<span class="btn no-animation join-item pointer-events-none btn-sm font-normal">
-									Page {page + 1} / {pageCount}
-								</span>
-								<button
-									class="btn join-item btn-sm"
-									disabled={page >= pageCount - 1}
-									on:click={() => goToPage(page + 1)}
-									aria-label="Next page"
-								>
-									›
-								</button>
-							</div>
-						{/if}
-						<label class="flex items-center gap-2 text-xs">
-							<span class="whitespace-nowrap opacity-60">Columns</span>
-							<input
-								type="range"
-								min={MIN_COLUMNS}
-								max={MAX_COLUMNS}
-								class="range range-primary range-xs w-40"
-								bind:value={$columns}
-								aria-label="Grid columns"
-							/>
-							<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
-						</label>
-					</div>
+					<a class="btn btn-primary btn-sm w-fit" href="/">Open the map</a>
 				</div>
-				<!-- The roster is drawn on the shared card canvas — the same renderer the
-				     claim pack opener uses — instead of a DOM grid. The columns always
-				     fill the canvas width (default 1/2/3 by viewport, then the slider),
-				     and the rows scroll vertically; tapping a card toggles its team
-				     membership. Only the current page's cards are built — the filters
-				     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at
-				     a time. -->
-				<div
-					class="relative h-[70vh] min-h-[32rem] overflow-hidden rounded-box bg-base-100 shadow-md"
-				>
-					<CardCanvas
-						bind:this={cardCanvas}
-						cards={cardModels}
-						slots={teamSlotCards}
-						summary={teamSummary}
-						onSlotRemove={handleSlotRemove}
-						columns={$columns}
-						layout="grid"
-						pannable
-						onCardTap={handleCardTap}
-						selectionMode={recycleMode}
-						selectedIndices={recycleSelectedIndices}
-					/>
-					{#if filteredSpawns.length === 0}
-						<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
-							<p class="text-sm opacity-60">No characters match these filters.</p>
-							<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
+			</div>
+		{:else}
+			<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+				<p class="text-xs opacity-60">
+					Scroll to move through your cards.
+					{#if recycleMode}
+						Tap a card to select or deselect it for recycling.
+					{:else if activeTeam}
+						Tap a card to add or remove it from the active team.
+					{:else}
+						Select a team to start adding characters by tapping their card.
+					{/if}
+				</p>
+				<div class="flex flex-wrap items-center gap-3">
+					{#if pageCount > 1}
+						<div class="join">
+							<button
+								class="btn join-item btn-sm"
+								disabled={page === 0}
+								on:click={() => goToPage(page - 1)}
+								aria-label="Previous page"
+							>
+								‹
+							</button>
+							<span class="btn no-animation join-item pointer-events-none btn-sm font-normal">
+								Page {page + 1} / {pageCount}
+							</span>
+							<button
+								class="btn join-item btn-sm"
+								disabled={page >= pageCount - 1}
+								on:click={() => goToPage(page + 1)}
+								aria-label="Next page"
+							>
+								›
+							</button>
 						</div>
 					{/if}
+					<label class="flex items-center gap-2 text-xs">
+						<span class="whitespace-nowrap opacity-60">Columns</span>
+						<input
+							type="range"
+							min={MIN_COLUMNS}
+							max={MAX_COLUMNS}
+							class="range range-primary range-xs w-40"
+							bind:value={$columns}
+							aria-label="Grid columns"
+						/>
+						<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
+					</label>
+					<button class="btn btn-primary btn-sm" on:click={onTeamCreate}>+ New team</button>
 				</div>
-			{/if}
-		</div>
-
-		{#if $status === AuthStatus.SignedIn}
-			<aside class="w-full lg:w-80 lg:shrink-0">
-				<TeamPanel
-					teams={$team.teams}
-					activeTeamId={$team.activeTeamId}
-					options={teamOptions}
-					on:create={onTeamCreate}
-					on:remove={onTeamRemove}
-					on:rename={onTeamRename}
-					on:activate={onTeamActivate}
-					on:clearMember={onTeamClearMember}
+			</div>
+			<!-- The roster is drawn on the shared card canvas — the same renderer the
+			     claim pack opener uses — instead of a DOM grid. The columns always
+			     fill the canvas width (default 1/2/3 by viewport, then the slider),
+			     and the rows scroll vertically; tapping a card toggles its team
+			     membership. Only the current page's cards are built — the filters
+			     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at
+			     a time. -->
+			<div
+				class="relative h-[70vh] min-h-[32rem] overflow-hidden rounded-box bg-base-100 shadow-md"
+			>
+				<CardCanvas
+					bind:this={cardCanvas}
+					cards={cardModels}
+					slots={teamSlotCards}
+					summary={teamSummary}
+					onSlotRemove={handleSlotRemove}
+					columns={$columns}
+					layout="grid"
+					pannable
+					onCardTap={handleCardTap}
+					selectionMode={recycleMode}
+					selectedIndices={recycleSelectedIndices}
 				/>
-			</aside>
+				{#if filteredSpawns.length === 0}
+					<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+						<p class="text-sm opacity-60">No characters match these filters.</p>
+						<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
+					</div>
+				{/if}
+			</div>
 		{/if}
 	</div>
 </div>

@@ -1,8 +1,8 @@
 // Tell which TV show a team belongs to.
 //
 // A team's show is its LEAD's show — the character in the first slot, exactly as
-// the roster defines it (see TeamPanel: the lead is the first filled member, and
-// the shows it belongs to are the team's shows). The rest of the line-up does not
+// the roster defines it (the lead is the first filled member, and the shows it
+// belongs to are the team's shows). The rest of the line-up does not
 // get a vote: a team led by a One Piece character is a One Piece team even with two
 // Dragon Ball fighters behind it.
 //
