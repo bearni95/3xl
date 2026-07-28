@@ -259,20 +259,6 @@
 	// the zoom even before anything has been clicked.
 	let panelTab: PanelTab = PanelTab.Location;
 
-	// What the tab strip's badge counts, per view: the rows each table lists — the
-	// search hits while the box holds text, else the current drill level's regions —
-	// and for the pack tab how many of the browsed day's packs there are.
-	$: panelCount =
-		panelTab === PanelTab.Location
-			? normalizedQuery
-				? searchResults.length
-				: regionRows.length
-			: panelTab === PanelTab.Latest
-				? recentWins.length
-				: panelTab === PanelTab.Leaderboard
-					? showStandings.length
-					: dayPacks.length;
-
 	// How many municipalities each show flies, and its share of them all. Tallied
 	// over `showsById`, which is already the seeded assignment with every held
 	// town's ruling show written over it — so a conquest moves a town from one
@@ -1279,20 +1265,17 @@
 				</ul>
 			</div>
 
-			<div class="flex items-center justify-between gap-2">
-				<div class="join">
-					{#each panelTabs as tab (tab.id)}
-						<button
-							type="button"
-							class={classNames('btn btn-outline btn-sm join-item', { 'btn-active': panelTab === tab.id })}
-							aria-pressed={panelTab === tab.id}
-							on:click={() => selectTab(tab.id)}
-						>
-							{tab.label}
-						</button>
-					{/each}
-				</div>
-				<span class="badge badge-ghost badge-sm">{panelCount}</span>
+			<div class="join">
+				{#each panelTabs as tab (tab.id)}
+					<button
+						type="button"
+						class={classNames('btn btn-outline btn-sm join-item', { 'btn-active': panelTab === tab.id })}
+						aria-pressed={panelTab === tab.id}
+						on:click={() => selectTab(tab.id)}
+					>
+						{tab.label}
+					</button>
+				{/each}
 			</div>
 		</div>
 
