@@ -1402,16 +1402,7 @@
 										{siegeProgress.wins}/{siegeProgress.required}
 									</span>
 								</span>
-								<!-- Yellow-500 rather than the theme's primary, fed in as DaisyUI's own
-									`--btn-color` so the button keeps the whole treatment it derives from it
-									— border, depth, hover shade, focus outline — instead of a flat colour
-									painted over a primary button. Its text is the deepest yellow, which is
-									what stays legible on that fill under both themes. -->
-								<button
-									type="button"
-									class="btn btn-xs flex-none text-yellow-950 [--btn-color:var(--color-yellow-500)]"
-									on:click={challenge}
-								>
+								<button type="button" class="btn btn-primary btn-xs flex-none" on:click={challenge}>
 									Challenge
 								</button>
 							{/if}

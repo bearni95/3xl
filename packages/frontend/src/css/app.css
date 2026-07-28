@@ -1,6 +1,27 @@
 @import 'tailwindcss';
+
+/* Synthwave is the game's one theme, and it is customised rather than used as
+   shipped: `themes: false` stops DaisyUI emitting any of its built-ins, and the
+   `daisyui/theme` block below re-declares synthwave by name — DaisyUI merges the
+   tokens given here over the built-in ones, so only what is listed changes.
+
+   `color-scheme` has to be repeated: the merge reads it from the plugin options,
+   which default to `normal`, so leaving it out would drop synthwave's darkness
+   and give the browser light form controls and scrollbars.
+
+   Primary is Tailwind's yellow-500 (and its content colour yellow-950, the shade
+   that stays legible on that fill). It is spelled out as the literal oklch rather
+   than `var(--color-yellow-500)` so the theme block stays self-contained — these
+   custom properties are what every `*-primary` utility resolves through. */
 @plugin "daisyui" {
-	themes: synthwave --default;
+	themes: false;
+}
+@plugin "daisyui/theme" {
+	name: 'synthwave';
+	default: true;
+	color-scheme: dark;
+	--color-primary: oklch(79.5% 0.184 86.047);
+	--color-primary-content: oklch(28.6% 0.066 53.813);
 }
 
 /* ============================================
