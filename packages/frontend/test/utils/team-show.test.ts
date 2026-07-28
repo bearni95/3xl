@@ -1,29 +1,35 @@
 import { describe, it, expect } from 'vitest';
-import { teamShowName } from '$utils/spawn/team-show';
+import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
 
-const SHOWS = new Map<string, string[]>([
-	['luffy', ['One Piece']],
-	['zoro', ['One Piece']],
-	['goku', ['Dragon Ball', 'Dragon Ball Z']],
-	['vegeta', ['Dragon Ball Z']]
+// One Piece (1) and Dragon Ball Z (2), with Goku also in Dragon Ball (3).
+const CHARACTERS_BY_SHOW = new Map<number, string[]>([
+	[1, ['luffy', 'zoro']],
+	[2, ['goku', 'vegeta']],
+	[3, ['goku']]
 ]);
 
-describe('teamShowName', () => {
-	it('names the show most of the team belongs to', () => {
-		expect(teamShowName(['goku', 'vegeta', 'luffy'], SHOWS)).toBe('Dragon Ball Z');
-	});
+const BY_CHARACTER = showIdsByCharacter(CHARACTERS_BY_SHOW);
 
-	it('counts every show a character belongs to', () => {
-		expect(teamShowName(['goku'], SHOWS)).toBe('Dragon Ball');
+describe('showIdsByCharacter', () => {
+	it('reverses the assignment, keeping every show a character belongs to', () => {
+		expect(BY_CHARACTER.get('luffy')).toEqual([1]);
+		expect(BY_CHARACTER.get('goku')).toEqual([2, 3]);
+		expect(BY_CHARACTER.has('unknown')).toBe(false);
+	});
+});
+
+describe('teamShowId', () => {
+	it('names the show most of the team belongs to', () => {
+		expect(teamShowId(['goku', 'vegeta', 'luffy'], BY_CHARACTER)).toBe(2);
 	});
 
 	it('breaks a tie in favour of the earliest member', () => {
-		expect(teamShowName(['luffy', 'vegeta'], SHOWS)).toBe('One Piece');
-		expect(teamShowName(['vegeta', 'luffy'], SHOWS)).toBe('Dragon Ball Z');
+		expect(teamShowId(['luffy', 'vegeta'], BY_CHARACTER)).toBe(1);
+		expect(teamShowId(['vegeta', 'luffy'], BY_CHARACTER)).toBe(2);
 	});
 
 	it('returns null for an empty team or one with no assigned show', () => {
-		expect(teamShowName([], SHOWS)).toBeNull();
-		expect(teamShowName(['unknown'], SHOWS)).toBeNull();
+		expect(teamShowId([], BY_CHARACTER)).toBeNull();
+		expect(teamShowId(['unknown'], BY_CHARACTER)).toBeNull();
 	});
 });

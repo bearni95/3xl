@@ -28,7 +28,8 @@
 	import { buildMunicipalityTeam, ogTeamSpawns } from '$utils/spawn/municipality-team';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
 	import { combatStatsFromStat } from '$utils/spawn/stat';
-	import { teamShowName } from '$utils/spawn/team-show';
+	import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
+	import { showPosterUrl } from '$utils/geo/municipality-show';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import type { CardModel } from '$utils/card/card-model.type';
 	import type { CharacterSpawn } from '$types/character-spawn.type';
@@ -43,12 +44,17 @@
 		type FillLevel,
 		type RegionRow,
 		type RegionNode,
+		type RegionShow,
 		type RegionType
 	} from '$utils/geo/region-tree';
 	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import type { MapMarker, MapOverlay, MapStar } from '$types/map.type';
-	import type { MunicipalityShow, MunicipalityShowsCollection } from '$types/show.type';
+	import type {
+		MunicipalityShow,
+		MunicipalityShowsCollection,
+		ShowsCollection
+	} from '$types/show.type';
 	import { festesService } from '$services/festes.service';
 	import type { FestaLocationRow } from '$types/festivity.type';
 
@@ -110,11 +116,12 @@
 		// assignment (for the poster fill + sidebar) in parallel; both are
 		// optional, so settle each independently and always flip `ready` so the
 		// map renders regardless.
-		const [municipisResult, showsResult] = await Promise.allSettled([
+		const [municipisResult, showsResult, savedShowsResult] = await Promise.allSettled([
 			fetch('/data/geo/municipis.json').then((response) => response.json()),
 			fetch('/data/municipality-shows.json').then(
 				(response) => response.json() as Promise<MunicipalityShowsCollection>
-			)
+			),
+			fetch('/data/shows.json').then((response) => response.json() as Promise<ShowsCollection>)
 		]);
 
 		if (municipisResult.status === 'fulfilled') {
@@ -125,6 +132,17 @@
 			// Municipalities fall back to their flat fill if the assignment fails.
 			assignmentsById = new Map(
 				showsResult.value.assignments.map((assignment) => [assignment.id, assignment])
+			);
+		}
+		if (savedShowsResult.status === 'fulfilled') {
+			// Every authored show, so a ruling team's show id resolves to a name and a
+			// poster even for shows no municipality was seeded with. Failing to load it
+			// simply leaves every town on its seeded show.
+			savedShowById = new Map(
+				(savedShowsResult.value.shows ?? []).map((entry) => [
+					entry.show.id,
+					{ id: entry.show.id, name: entry.show.name, posterUrl: showPosterUrl(entry) }
+				])
 			);
 		}
 		ready = true;
@@ -147,16 +165,6 @@
 			showCharacterIds = new Map(claimable.map((show) => [show.id, show.characterIds]));
 		} catch {
 			showCharacterIds = new Map();
-		}
-
-		// The reverse assignment — character → the shows it belongs to — so a town's
-		// sitting team (which stores only character ids) can be labelled with the show
-		// it comes from in the top-right table. Same fallback as everything else here:
-		// no Supabase, no show names, and the table simply shows a dash.
-		try {
-			characterShowNames = await spawnService.loadCharacterShowNames();
-		} catch {
-			characterShowNames = new Map();
 		}
 
 		// Who actually occupies each town, plus this player's own siege progress.
@@ -209,11 +217,6 @@
 	// How many of the most recent captures the panel lists.
 	const RECENT_WINS_LIMIT = 20;
 
-	// character id → the names of the Supabase shows it belongs to, read once so a
-	// sitting team can be labelled with the show it comes from. Empty when Supabase
-	// is unconfigured or unreadable, which leaves the show column blank.
-	let characterShowNames = new Map<string, string[]>();
-
 	// Municipality feature id → its raw name, so a holder row (which stores only the
 	// feature id) can be named without walking the region tree.
 	$: municipalityNamesById = new Map(
@@ -225,11 +228,11 @@
 
 	// The most recently captured towns, each named and labelled with the show its
 	// sitting team belongs to. All three inputs are named as arguments so the rows
-	// rebuild as the holders reload, the polygons land and the show names arrive.
+	// rebuild as the holders reload, the polygons land and the ruling shows resolve.
 	function buildRecentWins(
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
 		names: ReadonlyMap<string, string>,
-		showNames: ReadonlyMap<string, string[]>
+		ruling: ReadonlyMap<string, RegionShow>
 	): TerritoryWinRow[] {
 		return [...occupied.values()]
 			.sort((a, b) => b.takenAt.localeCompare(a.takenAt))
@@ -242,16 +245,13 @@
 					// back to its feature id rather than being dropped.
 					name: name ? restoreCatalanArticle(name) : holder.locationId,
 					holderName: holder.holderName,
-					showName: teamShowName(
-						holder.team.map((member) => member.characterId),
-						showNames
-					),
+					showName: ruling.get(holder.locationId)?.name ?? null,
 					takenAt: holder.takenAt
 				};
 			});
 	}
 
-	$: recentWins = buildRecentWins(holders, municipalityNamesById, characterShowNames);
+	$: recentWins = buildRecentWins(holders, municipalityNamesById, rulingShowById);
 
 	// Clicking a row opens that town exactly as picking it out of the region table
 	// does: the URL region param drives the map framing and the bottom-left panel.
@@ -320,12 +320,62 @@
 		}
 	];
 
-	// Municipality id → its seeded show, drawn from the full baked assignment
-	// (every municipality, not just the rendered neighbourhood), so the tree can
-	// label each town and tally each region's plurality show.
-	$: showsById = new Map(
-		[...assignmentsById].map(([id, assignment]) => [id, assignment.show])
-	);
+	// --- Which show a town flies -------------------------------------------------
+	// A town starts on the show the build baked onto it, but once a player takes it
+	// the town flies the ruling team's show instead: the pins, the sidebar and every
+	// coarser region's plurality tally all read from the single map below, so a
+	// conquest re-labels the town everywhere the map names a show at once.
+
+	// Every authored show by id (name + poster), read from /data/shows.json — the
+	// same source the baked assignment posters come from, so an overridden town's pin
+	// draws exactly like a seeded one. Empty until the fetch lands.
+	let savedShowById = new Map<number, RegionShow>();
+
+	// character id → the shows it belongs to, reversed from the show → characters
+	// assignment the claim flow already loads.
+	$: showsByCharacter = showIdsByCharacter(showCharacterIds);
+
+	// Municipality id → the show its ruling team belongs to, for every town a player
+	// holds. A team whose characters are in no show, or whose show isn't in the saved
+	// collection, yields no entry — that town simply keeps its seeded show rather than
+	// losing its pin. A ruling show with no poster does replace the seeded one, and its
+	// town then goes unpinned exactly as a town seeded with a poster-less show already
+	// does. Named deps so it re-derives as holders and the saved shows land.
+	function buildRulingShows(
+		occupied: ReadonlyMap<string, MunicipalityHolder>,
+		byCharacter: ReadonlyMap<string, number[]>,
+		saved: ReadonlyMap<number, RegionShow>
+	): Map<string, RegionShow> {
+		const ruling = new Map<string, RegionShow>();
+		for (const holder of occupied.values()) {
+			const showId = teamShowId(
+				holder.team.map((member) => member.characterId),
+				byCharacter
+			);
+			const show = showId == null ? null : saved.get(showId);
+			if (show) ruling.set(holder.locationId, show);
+		}
+		return ruling;
+	}
+
+	$: rulingShowById = buildRulingShows(holders, showsByCharacter, savedShowById);
+
+	// Municipality id → the show it flies: the baked seed for every town (the full
+	// assignment, not just the rendered neighbourhood), overridden by the ruling
+	// team's show wherever a player holds the town. This feeds the region tree, so
+	// the override rides all the way up — a comarca or province tallies its
+	// plurality over the shows its towns actually fly today.
+	function buildTownShows(
+		assignments: ReadonlyMap<string, MunicipalityShow>,
+		ruling: ReadonlyMap<string, RegionShow>
+	): Map<string, RegionShow> {
+		const shows = new Map<string, RegionShow>();
+		for (const [id, assignment] of assignments) shows.set(id, assignment.show);
+		for (const [id, show] of ruling) shows.set(id, show);
+		return shows;
+	}
+
+	$: showsById = buildTownShows(assignmentsById, rulingShowById);
 
 	// The red → yellow → green → blue region hierarchy (territory → province →
 	// comarca → municipality) mirrored from the map's divisions, for the tree.
@@ -867,7 +917,11 @@
 							/>
 						{/if}
 						<div class="min-w-0">
-							<p class="text-xs font-bold uppercase tracking-wide opacity-60">Most seen</p>
+							<!-- A held town flies its ruling team's show, so the label says so
+								rather than claiming it is the town's most-seen one. -->
+							<p class="text-xs font-bold uppercase tracking-wide opacity-60">
+								{openHolder ? 'Ruling show' : 'Most seen'}
+							</p>
 							<p class="truncate font-semibold">{openShow.name}</p>
 						</div>
 					</div>
