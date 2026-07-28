@@ -13,6 +13,7 @@
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
 	import ClaimPackGrid from '$components/core/pack/ClaimPackGrid.svelte';
+	import PackDateCalendar from '$components/core/pack/PackDateCalendar.svelte';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
@@ -863,6 +864,7 @@
 	function openPack(id: string): void {
 		clearPackFeedback();
 		packDate = todayIso;
+		calendarMonth = todayIso.slice(0, 7);
 		packTownId = id;
 		panelTab = PanelTab.Pack;
 	}
@@ -884,8 +886,58 @@
 	function stepPackDate(days: number): void {
 		const [year, month, day] = packDate.split('-').map(Number);
 		packDate = new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+		calendarMonth = packDate.slice(0, 7);
 		showPackGrid();
 	}
+
+	// --- The calendar behind the date ---------------------------------------------
+	// The date in the header toggles open a month calendar that prints, on every day,
+	// how many municipalities are de festa then; picking a day browses to it.
+
+	let calendarOpen = false;
+	let calendarMonth = packDate.slice(0, 7);
+
+	function toggleCalendar(): void {
+		calendarOpen = !calendarOpen;
+		if (calendarOpen) calendarMonth = packDate.slice(0, 7);
+	}
+
+	function pickPackDate(iso: string): void {
+		packDate = iso;
+		calendarMonth = iso.slice(0, 7);
+		calendarOpen = false;
+		showPackGrid();
+	}
+
+	// Per-month festa counts, kept once fetched so paging back and forth through the
+	// calendar doesn't re-query Supabase, plus the month currently in flight.
+	let countsByMonth = new Map<string, Map<string, number>>();
+	let loadingCountsMonth: string | null = null;
+
+	async function loadCountsFor(month: string): Promise<void> {
+		if (countsByMonth.has(month)) return;
+		loadingCountsMonth = month;
+		const [year, monthNumber] = month.split('-').map(Number);
+		// Day 0 of the next month is the last day of this one.
+		const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+		let counts = new Map<string, number>();
+		try {
+			counts = await festesService.loadFestaCountsForRange(
+				`${month}-01`,
+				`${month}-${String(lastDay).padStart(2, '0')}`
+			);
+		} catch {
+			// A failed month simply reads as having no festes.
+			counts = new Map();
+		}
+		countsByMonth.set(month, counts);
+		countsByMonth = countsByMonth;
+		if (loadingCountsMonth === month) loadingCountsMonth = null;
+	}
+
+	// Only fetched while the calendar is on screen — a panel nobody opened costs nothing.
+	$: if (calendarOpen) void loadCountsFor(calendarMonth);
+	$: calendarCounts = countsByMonth.get(calendarMonth) ?? new Map<string, number>();
 
 	// Festes for every day browsed so far, so stepping back and forth doesn't re-query
 	// Supabase. Today's are already loaded into `todayFestes` (the map's stars read the
@@ -1015,13 +1067,10 @@
 	$: packsKey = dayPacks.map((pack) => pack.id).join(',');
 
 	// The single pack the Booster tab shows — the clicked town's, picked out of the full
-	// day's set — plus the town's name for the tab's header. Null when no star has been
-	// clicked, the player is signed out, or the town has no claimable show yet.
+	// day's set. Null when no star has been clicked, the player is signed out, or the
+	// town has no claimable show yet.
 	$: packForTown = packTownId
 		? (claimPacks.find((pack) => pack.id === packTownId) ?? null)
-		: null;
-	$: packTownName = packTownId
-		? (todayFestes.find((festa) => festa.id === packTownId)?.name ?? null)
 		: null;
 
 	// One pin per imaged region that has a show, dropped at the centre of the
@@ -1260,62 +1309,50 @@
 				panel is a third of that page's width. Either way the pack is sliced open in
 				place; "Tots els sobres" goes back to the grid. -->
 			<div class="flex min-h-0 flex-1 flex-col">
-				<!-- The day being browsed, and the arrows that walk the calendar. Only today's
-					packs open; any other day's grid is mounted read-only and dimmed back, so it
-					reads as a look-ahead (or look-back) at what that day holds. -->
+				<!-- The day being browsed: an arrow at each end of the row and the date in the
+					middle, where it doubles as the toggle for the month calendar. Only today's
+					packs open; any other day's grid is mounted read-only and drawn in black and
+					white, so it reads as a look-ahead (or look-back) at what that day holds. -->
 				<div class="flex flex-none items-center gap-2 border-b border-base-300 px-4 py-2">
-					<div class="join flex-none">
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs join-item"
-							on:click={() => stepPackDate(-1)}
-							aria-label="Dia anterior"
-						>
-							‹
-						</button>
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs join-item"
-							on:click={() => stepPackDate(1)}
-							aria-label="Dia següent"
-						>
-							›
-						</button>
-					</div>
-					<p class="truncate text-sm font-bold first-letter:uppercase">{packDateLabel}</p>
-					{#if isPackToday}
-						<span class="badge badge-primary badge-xs flex-none">Avui</span>
-						<!-- What's left of the daily allowance. The server counts it, and refuses
-							the roll once it is spent — so it belongs on screen before a pack is
-							sliced open, not after it reveals nothing. -->
-						{#if boosters}
-							<span
-								class={classNames('badge badge-xs flex-none tabular-nums', {
-									'badge-warning': boosters.remaining === 0,
-									'badge-ghost': boosters.remaining > 0
-								})}
-								title="Els sobres que et queden avui. El límit és el teu nivell i es reinicia a mitjanit."
-							>
-								{boosters.remaining}/{boosters.level}
-							</span>
-						{/if}
-					{:else}
-						<span class="badge badge-ghost badge-xs flex-none">Només consulta</span>
-					{/if}
-
-					{#if packTownId || gridPack}
-						<div class="ml-auto flex min-w-0 items-center gap-2">
-							<span class="truncate text-sm font-bold">
-								{packTownId
-									? restoreCatalanArticle(packTownName ?? '')
-									: (gridPack?.label ?? '')}
-							</span>
-							<button type="button" class="btn btn-ghost btn-xs flex-none" on:click={showPackGrid}>
-								Tots els sobres
-							</button>
-						</div>
-					{/if}
+					<button
+						type="button"
+						class="btn btn-ghost btn-xs flex-none"
+						on:click={() => stepPackDate(-1)}
+						aria-label="Dia anterior"
+					>
+						‹
+					</button>
+					<button
+						type="button"
+						class="btn btn-ghost btn-xs min-w-0 flex-1"
+						on:click={toggleCalendar}
+						aria-expanded={calendarOpen}
+					>
+						<span class="truncate text-sm font-bold first-letter:uppercase">{packDateLabel}</span>
+					</button>
+					<button
+						type="button"
+						class="btn btn-ghost btn-xs flex-none"
+						on:click={() => stepPackDate(1)}
+						aria-label="Dia següent"
+					>
+						›
+					</button>
 				</div>
+
+				{#if calendarOpen}
+					<div class="flex-none px-3 pt-3">
+						<PackDateCalendar
+							month={calendarMonth}
+							value={packDate}
+							today={todayIso}
+							counts={calendarCounts}
+							loading={loadingCountsMonth === calendarMonth}
+							on:month={(event) => (calendarMonth = event.detail)}
+							on:select={(event) => pickPackDate(event.detail)}
+						/>
+					</div>
+				{/if}
 				<!-- Why the last roll revealed nothing. `claim_booster` refuses for reasons the
 					player can act on (the allowance is spent, the town isn't de festa today), and
 					the panel that normally reports them is mounted hidden here — so a pack sliced
@@ -1373,7 +1410,8 @@
 								revealColumns={2}
 								interactive={isPackToday && !allowanceSpent}
 								classes={classNames('rounded-md bg-gradient-to-b from-base-300/80 to-base-200', {
-									'opacity-50': !isPackToday || allowanceSpent
+									'grayscale': !isPackToday,
+									'opacity-50': allowanceSpent
 								})}
 								on:select={(event) => {
 									clearPackFeedback();

@@ -70,6 +70,39 @@ class FestesService {
 
 		return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'ca'));
 	}
+
+	/**
+	 * How many municipalities are de festa on each date between `from` and `to`
+	 * (inclusive, `YYYY-MM-DD`) — what the booster panel's calendar prints on each
+	 * day. `festivities` holds one row per (location, date), so the tally is just
+	 * the row count per date.
+	 *
+	 * Read in pages: PostgREST caps a response at 1000 rows and a peak festa-major
+	 * month runs well past that, which would silently under-count the busiest days.
+	 */
+	async loadFestaCountsForRange(from: string, to: string): Promise<Map<string, number>> {
+		const counts = new Map<string, number>();
+		if (!isSupabaseConfigured()) return counts;
+
+		const supabase = getSupabaseClient();
+		const pageSize = 1000;
+		for (let offset = 0; ; offset += pageSize) {
+			const { data, error } = await supabase
+				.from('festivities')
+				.select('date')
+				.gte('date', from)
+				.lte('date', to)
+				.order('date')
+				.range(offset, offset + pageSize - 1);
+			if (error) throw error;
+
+			const rows = (data ?? []) as { date: string }[];
+			for (const row of rows) counts.set(row.date, (counts.get(row.date) ?? 0) + 1);
+			if (rows.length < pageSize) break;
+		}
+
+		return counts;
+	}
 }
 
 export const festesService = new FestesService();
