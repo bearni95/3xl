@@ -548,7 +548,7 @@
 					type="button"
 					class={classNames('btn join-item btn-lg min-w-0 flex-1 px-0', {
 						'btn-primary': fighter?.action === action,
-						'btn-neutral btn-outline': fighter?.action !== action
+						'btn-neutral': fighter?.action !== action
 					})}
 					aria-label={actionLabel(action)}
 					disabled={locked || unavailable}
