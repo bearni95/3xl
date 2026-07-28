@@ -1,212 +1,215 @@
 /**
- * Orchestrates a combat round on the board. Kept out of the Svelte component per
- * the project's separation rules: the page renders from this controller's store
- * and forwards user intent (color clicks); all sequencing, dice and damage live
- * here.
+ * Combat: the schoolyard stand-off, three a side.
  *
- * Every character carries combat attributes seeded from its Supabase spawn: ATK
- * (how many d10 it rolls per attack) and DEF (the d10 threshold an attacker must
- * beat to hit it). Each fighter starts on its HP attribute (DEF + 1) as a flat HP
- * pool, carried across the whole game. Each round the player picks a color per
- * (blue / `info`) fighter and the rivals (red / `error`) pre-roll one, then the
- * pairs duel one at a time. The rival line-up never moves: the rival in line-up
- * slot i always fights the round's ith duel, so the player can read off the rival
- * cards who waits on each of the three steps before committing a colour. The
- * player's own fighters fill the duels in the order they were picked.
+ * The game is the playground one — **charge, defend, shoot** — played by two teams
+ * of three at once. Every turn each fighter still standing is given one of those
+ * three orders; both sides' orders are locked in blind and carried out together, so
+ * a turn is a guess about what the other side is about to do, not a reaction to it.
  *
- * Each duel is one encounter on a purple meeting cell: the faster fighter (higher
- * SPD, ties broken by a coin flip) attacks first, then the other answers back if
- * it survives. The thrown colour vs the defender's colour decides how big the
- * handful is: ATK scaled by the strike table's ×0.5 / ×1 / ×2 (rounded, never below
- * one die). Those dice are then rolled, and every one that beats the defender's DEF
- * is a hit worth a flat 1 HP of damage — landing on the DEF exactly is turned
- * aside. A fighter reduced to 0 HP is knocked out — it holds its hurt pose, fades
- * off the board and is removed from the game entirely. Barring a knockout,
- * whoever is left with the most current HP claims the duel cell (a tie in HP keeps
- * the status quo); HP persists across encounters.
+ *   · **Charge** banks one charge (up to {@link MAX_CHARGES}). It is also the only
+ *     way to get one, and it leaves the fighter wide open.
+ *   · **Defend** turns aside every shot aimed at the fighter that turn, but banks
+ *     nothing — spend the whole fight defending and you never fire.
+ *   · **Shoot** spends a charge and fires at a chosen enemy. A shot that isn't
+ *     turned aside takes its target down: **one hit is all it takes**, whoever it
+ *     lands on. Shooting is also not defending, so two fighters who shoot each other
+ *     on the same turn both fall.
  *
- * Rounds repeat: after a round the selections reset and control returns to
- * selection. The game ends when one side is wiped out (all its fighters knocked
- * out), at the end of any round in which one side holds all three purple duel
- * cells (claimed cells stay tinted in their holder's colour until it fights
- * again), or when no fighter can make a move next round (every survivor is a
- * pinned cell-holder) — a stalemate decided by which side occupies more purple
- * cells.
+ * What separates one card from another is nothing but its **colour** (see
+ * `colorTraits` in @3xl/shared): red may fire *on top of* a charge or a defend,
+ * yellow opens the battle with a charge already banked, and blue turns aside the
+ * first shot of any turn it doesn't spend defending. A compound colour carries the
+ * two traits of the primaries it mixes — so the counter to blue's free guard is two
+ * shots at it in the one turn, and the counter to red's second action is not being
+ * where it is aiming.
  *
- * A fighter holding a purple cell is pinned there: it cannot pick or act on its
- * turn and only fights when an enemy attacks it on its cell, auto-defending with
- * a random color (the faster fighter still strikes first). Unchallenged holders
- * keep their cell across rounds.
+ * The rivals open **on the central column**, as far forward as the board allows, and
+ * are pushed back a column every time one of them is taken down — the survivors fall
+ * back to what is from then on their starting ground (see {@link RIVAL_RANKS}). So
+ * the board itself shows how the fight is going, without a single HP bar: the meter
+ * under each fighter counts its charges, not its health.
  *
- * Winning is the game's only source of experience: once the game is over
- * {@link CombatController.report} summarises the player's side for the
- * `award_combat_exp` RPC, which pays out a share of the player's current level —
- * all of it for a flawless win, nothing for a loss — scaled by the compound HP
- * the team has left. Hence HP surviving a fight is worth something in itself, not
- * just as the tiebreaker for a cell.
+ * The game ends when a side is wiped out (both at once is a draw), or at
+ * {@link MAX_TURNS}, where the side with more fighters left wins. Winning is the
+ * game's only source of experience: {@link CombatController.report} then summarises
+ * the player's side for the `award_combat_exp` RPC, which pays out a share of the
+ * player's current level — all of it for a flawless win, nothing for a loss.
  */
 import { writable } from 'svelte/store';
 import type { Hex } from '$utils/mugen/hex';
 import type { MugenBoard } from '$utils/mugen/mugen-board';
-import {
-	findMove,
-	type CharacterMove,
-	type CombatColor
-} from '$types/character-definition.type';
+import { findMove, type CharacterMove, type CombatColor } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
-import { strikeDice, strikeMultiplier, throwableColors } from '$utils/color/compare';
-import { damageRange, resolveAttack, rollDie } from '$utils/dice/roll';
+import { colorTraits, type ColorTraits } from '$utils/color/traits';
+import { pickOne, pickWeighted } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
 export type FighterSide = 'error' | 'info';
 
-/** Animation for a fighter whose definition binds no melee move. */
-const FALLBACK_MELEE: CharacterMove = { name: 'Melee', type: 'melee', source: '' };
+/** The three orders of the stand-off. */
+export type CombatAction = 'charge' | 'defend' | 'shoot';
+
+/** Orders in the fixed display order the pickers list them in. */
+export const COMBAT_ACTIONS: CombatAction[] = ['charge', 'defend', 'shoot'];
+
+/** The most charges a fighter can hold at once — charging past it is wasted. */
+export const MAX_CHARGES = 3;
 
 /**
- * Fixed purple-column cells the duels meet on, in duel order: the first pair
- * clashes on (0,-1), the second on (0,-2), the third on (0,-3). The pair shares
- * the purple cell itself — red standing on its left half, blue on its right —
- * after walking in via the cell's east neighbour.
+ * Turns before the stand-off is called. Two sides that only ever charge and defend
+ * would circle forever, so the fight is decided on fighters left standing once the
+ * clock runs out (an even count is a draw).
  */
-const MELEE_MEETING_CELLS: Hex[] = [
-	{ q: 0, r: -1 },
-	{ q: 0, r: -2 },
-	{ q: 0, r: -3 }
+export const MAX_TURNS = 20;
+
+/**
+ * The ground the rival line holds, a rank per fighter it has lost: they open on the
+ * central column (rank 0) and give up a column every time one of them goes down, so
+ * `RIVAL_RANKS[n]` holds exactly the `3 − n` cells the survivors stand on after `n`
+ * knockouts. Each rank is listed top→bottom on screen, the same order the board
+ * draws that side's cards in.
+ */
+export const RIVAL_RANKS: Hex[][] = [
+	[
+		{ q: 0, r: -3 },
+		{ q: 0, r: -2 },
+		{ q: 0, r: -1 }
+	],
+	[
+		{ q: -1, r: -2 },
+		{ q: -1, r: -1 }
+	],
+	[{ q: -2, r: -1 }]
 ];
 
-/** Map key for a cell, so ownership can be tracked per purple cell. */
-const cellKey = (cell: Hex): string => `${cell.q},${cell.r}`;
+/** Animation played when a fighter fires and its definition binds no ranged move. */
+const FALLBACK_SHOT: CharacterMove = { name: 'Shot', type: 'ranged', source: '' };
 
 /** The data the page hands the controller for one fighter. */
 export interface FighterSeed {
 	id: string;
-	/** The `character_spawns` row this fighter is fielded from. Both sides carry
-	 * one (the two sides can field the same spawn in a mirror match, hence the
-	 * separate instance {@link id}); only the player's are ever reported for
-	 * experience. */
+	/** The `character_spawns` row this fighter is fielded from. Both sides carry one
+	 * (the two sides can field the same spawn in a mirror match, hence the separate
+	 * instance {@link id}); only the player's are ever reported for experience. */
 	spawnId: string;
 	name: string;
 	side: FighterSide;
-	/** The character's combat color — the colour rolled for its Supabase spawn.
-	 * A compound (purple/orange/green) can throw its two components too; a primary
-	 * (red/yellow/blue) throws only itself (see {@link throwableColors}). */
+	/** The character's combat colour — the colour rolled for its Supabase spawn. It
+	 * is the whole of what makes this fighter play differently from any other; see
+	 * {@link ColorTraits}. */
 	color: CombatColor;
 	/** The moves this character's JSON definition declares (used for animation). */
 	moves: CharacterMove[];
-	/** Attack rating — the number of d10 this fighter rolls on each attack (its
-	 * Supabase spawn stat). Every die strictly above the defender's {@link def} is a hit. */
-	atk: number;
-	/** Defence rating — the d10 threshold an attacker's die must *beat* to hit this
-	 * fighter (derived as SPAWN_STAT_MAX − atk); a die landing on it exactly is turned
-	 * aside. Its HP attribute (def + 1) is its HP pool at battle start. */
-	def: number;
-	/** Speed rating — a derived stat alongside atk/def (atk − 1). */
+	/** Speed rating. Nothing in the rules turns on it — it only orders the bullets of
+	 * a single turn, so the fastest shooter's is the one a passive guard eats. */
 	spd: number;
+	/** The spawn's HP attribute. No longer health — one hit takes anybody down — but
+	 * it is the pool {@link CombatController.report} states a survivor came through
+	 * whole, which is how the RPC weighs the fight's experience. */
+	hpPool: number;
 }
 
 export interface Fighter extends FighterSeed {
-	/** Hit points this fighter starts (and tops out) at: its HP attribute,
-	 * {@link def} + 1. */
-	maxHp: number;
-	/** Current hit points, carried across the whole game. At 0 the fighter is
-	 * {@link defeated}. */
-	hp: number;
-	/** True once the fighter has been knocked out (0 HP): it returns home at half
-	 * opacity and takes no further part in any round. */
-	defeated: boolean;
-	/** True once a color has been selected (its area is locked). */
-	disabled: boolean;
-	/** The color thrown this round, or null before selection. */
-	moveColor: CombatColor | null;
-	/** Selection order within its side (0-based), or null before selection. */
-	actionIndex: number | null;
+	/** What this fighter's colour lets it do. */
+	traits: ColorTraits;
+	/** Charges banked, 0..{@link MAX_CHARGES}. Shooting spends one. */
+	charges: number;
+	/** True once a shot has landed on it: it is out of the fight for good. */
+	down: boolean;
+	/** The order it will carry out this turn, or null before one is given. */
+	action: CombatAction | null;
+	/** Who its shot is aimed at, when {@link action} is `shoot`. */
+	targetId: string | null;
+	/** Red's extra: a shot fired on top of a charge or a defend. */
+	bonus: boolean;
+	/** Who that extra shot is aimed at. */
+	bonusTargetId: string | null;
+	/** Set while a turn resolves, once blue's free guard has eaten a shot. */
+	guarded: boolean;
 }
 
-/** What one of a fighter's throwable colours is worth in the duel it is lined up
- * for: the handful that colour buys against that particular opponent. */
-export interface ColorThrow {
+/** A fighter as the page renders it. A rival's orders are withheld until they are
+ * carried out — the whole game is guessing them. */
+export interface FighterView {
+	id: string;
+	spawnId: string;
+	name: string;
+	side: FighterSide;
 	color: CombatColor;
-	/** The strike table's ×0.5 / ×1 / ×2 for this colour against the opponent's. */
-	multiplier: number;
-	/** Dice this colour throws — the fighter's ATK scaled by {@link multiplier}. */
-	dice: number;
-	/** The least HP this throw can take off the opponent (every die turned aside). */
-	minDamage: number;
-	/** The most it can take off (every die beating the opponent's DEF). */
-	maxDamage: number;
+	traits: ColorTraits;
+	charges: number;
+	maxCharges: number;
+	down: boolean;
+	/** The order this fighter is carrying out, or null — for a rival, null also
+	 * means "not yet revealed". */
+	action: CombatAction | null;
+	targetId: string | null;
+	bonus: boolean;
+	bonusTargetId: string | null;
+	/** Whether Shoot is a legal order for it right now (it has a charge to spend). */
+	canShoot: boolean;
+	/** Whether its colour and charges let it add a shot to a charge or a defend. */
+	canBonus: boolean;
+	/** Whether its order is complete — given, and with a live target for every shot. */
+	ordered: boolean;
 }
 
-/**
- * The duel a fighter is lined up for, as the page previews it before any dice are
- * thrown. For a fighter that has yet to commit a colour this is the *next-up* duel —
- * the first cell still free — so whichever colour button is clicked, that is who it
- * meets; for one that has already committed it is the duel it is locked into.
- */
-export interface MatchupPreview {
-	/** Which of the round's three duels this is (0-based). */
-	duelIndex: number;
-	/** The fighter waiting on the other side of it. */
-	opponentId: string;
-	opponentName: string;
-	/** The DEF this fighter's dice have to beat — the opponent's. */
-	opponentDef: number;
-	/**
-	 * What each colour this fighter can throw is worth against that opponent, in the
-	 * display order of {@link throwableColors}. This is the whole point of the colour
-	 * picker: the choice is a choice of how many dice to roll, so the buttons state the
-	 * damage each colour puts on the table.
-	 */
-	throws: ColorThrow[];
-}
-
-/** A fighter as the page renders it: its live combat state plus the derived
- * {@link MatchupPreview} its colour buttons read from. */
-export interface FighterView extends Fighter {
-	/** Who this fighter is lined up to meet, or null when it has no duel this round
-	 * (knocked out, or an unchallenged cell-holder with no live rival opposite). */
-	preview: MatchupPreview | null;
-}
-
-export type CombatPhase = 'selecting' | 'fighting' | 'done';
+export type CombatPhase = 'planning' | 'resolving' | 'done';
 
 export interface CombatState {
 	fighters: FighterView[];
 	phase: CombatPhase;
+	/** 1-based turn number, counted to {@link MAX_TURNS}. */
+	turn: number;
 	/** Short human-readable line describing what's happening. */
 	status: string;
+	/** What the turn being resolved amounted to, one line per event. */
+	log: string[];
+	/** True when every player fighter still standing has a complete order. */
+	ready: boolean;
 	/** Set once the game is over; drives the endgame modal. */
 	outcome: CombatOutcome | null;
 }
 
+/** One shot fired this turn, resolved after every shot has been fired. */
+interface Shot {
+	shooter: Fighter;
+	target: Fighter;
+	/** True for red's extra shot, so the log can name it as such. */
+	extra: boolean;
+}
+
+/** A fighter taken down this turn, and the shot that did it. */
+interface Casualty {
+	fighter: Fighter;
+	by: Fighter;
+}
+
 const pause = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** 'purple' → 'Purple', for status lines. */
-const colorLabel = (color: CombatColor | null): string =>
-	color ? color.charAt(0).toUpperCase() + color.slice(1) : '—';
-
-/** Sort fighters into action order — for the player the order colours were
- * committed in, for the rivals their fixed line-up slot. */
-const byActionOrder = (a: Fighter, b: Fighter): number =>
-	(a.actionIndex ?? 0) - (b.actionIndex ?? 0);
+/** 'charge' → 'Charge', for the pickers' labels and the status lines. */
+export const actionLabel = (action: CombatAction): string =>
+	action.charAt(0).toUpperCase() + action.slice(1);
 
 export class CombatController {
 	private board: MugenBoard | null = null;
 	private fighters: Fighter[];
-	private phase: CombatPhase = 'selecting';
-	private status = 'Pick a color for each of your fighters.';
+	private phase: CombatPhase = 'planning';
+	private turn = 1;
+	private status = '';
+	private log: string[] = [];
 	private outcome: CombatOutcome | null = null;
-	/**
-	 * Which fighter currently holds each purple duel cell (keyed by {@link cellKey}).
-	 * A cell is held from the moment its duel's winner claims it until that fighter
-	 * enters another duel; holding all three at the end of a round wins the game.
-	 */
-	private readonly cellOwners = new Map<string, Fighter>();
+	/** Which fighters are currently wearing an aura, so it is only redrawn when a
+	 * fighter's charges cross between empty and holding something. */
+	private readonly aura = new Set<string>();
 
 	private readonly store = writable<CombatState>({
 		fighters: [],
-		phase: 'selecting',
+		phase: 'planning',
+		turn: 1,
 		status: '',
+		log: [],
+		ready: false,
 		outcome: null
 	});
 	/** Svelte store contract, so the page can use `$controller`. */
@@ -214,36 +217,42 @@ export class CombatController {
 
 	/**
 	 * @param seed every fighter of both sides, in **line-up order** within each side —
-	 * the left→right order that side's cards are drawn in. For the rivals that order is
-	 * binding: it is the fixed slot → duel-cell mapping {@link runSequence} pairs on.
+	 * the top→bottom order that side's characters stand in, which is the left→right
+	 * order its cards are drawn in. For the rivals it is also the order they hold
+	 * {@link RIVAL_RANKS}.
 	 */
 	constructor(seed: FighterSeed[]) {
 		this.fighters = seed.map((entry) => {
-			// The HP pool is the fighter's HP attribute (DEF + 1) itself — no dice: a
-			// sturdier defender is flatly tougher, and the same spawn brings the same
-			// pool to every battle.
-			const maxHp = entry.def + 1;
+			const traits = colorTraits(entry.color);
 			return {
 				...entry,
-				maxHp,
-				hp: maxHp,
-				defeated: false,
-				disabled: false,
-				moveColor: null,
-				actionIndex: null
+				traits,
+				// Yellow's head start: it opens with a charge already banked, so it can
+				// fire on the very first turn while everyone else is still loading.
+				charges: traits.headStart ? 1 : 0,
+				down: false,
+				action: null,
+				targetId: null,
+				bonus: false,
+				bonusTargetId: null,
+				guarded: false
 			};
 		});
-		this.rollRivalDefaults();
+		this.planRivals();
+		this.status = 'Give each of your fighters an order, then commit.';
 		this.emit();
 	}
 
 	/**
 	 * The finished game as an experience claim: the outcome plus every fighter the
-	 * player fielded, with the HP pool it started on and what it has left (0 for the
-	 * knocked out). Only the player's side is reported — the rivals earn nothing —
-	 * and only once the game is actually over, so a fight abandoned mid-round
-	 * yields `null` and pays out nothing. The server re-derives the award from
-	 * this; nothing here decides an amount.
+	 * player fielded. A fighter is not damaged in this game, it is standing or it is
+	 * not — so a survivor is reported as having come through its whole HP pool intact
+	 * and a casualty as having none of it left, which is what makes the RPC's award
+	 * (a share of the level scaled by compound HP) come out as the share of the team
+	 * still on its feet. Only the player's side is reported — the rivals earn nothing
+	 * — and only once the game is actually over, so a fight abandoned mid-turn yields
+	 * `null` and pays out nothing. The server re-derives the award from this; nothing
+	 * here decides an amount.
 	 */
 	report(): CombatReport | null {
 		if (this.phase !== 'done' || !this.outcome) return null;
@@ -251,117 +260,368 @@ export class CombatController {
 			outcome: this.outcome,
 			fighters: this.players().map((fighter) => ({
 				spawnId: fighter.spawnId,
-				hpLeft: fighter.hp,
-				maxHp: fighter.maxHp
+				hpLeft: fighter.down ? 0 : fighter.hpPool,
+				maxHp: fighter.hpPool
 			}))
 		};
 	}
 
-	/** Give the controller the running board engine so it can drive movement. */
+	/** Give the controller the running board engine so it can drive it. */
 	attachBoard(board: MugenBoard): void {
 		this.board = board;
-		// Seed every fighter's board HP bar with its full pool so the numbers show
-		// from the start, before the first hit lands.
+		// Seed every fighter's meter with the charges it opens on, so yellow's head
+		// start is visible before a single order is given.
 		for (const fighter of this.fighters) {
-			board.setHp(fighter.id, fighter.hp, fighter.maxHp);
+			board.setMeter(fighter.id, fighter.charges, MAX_CHARGES);
+			if (fighter.charges > 0) void this.raiseAura(fighter);
 		}
 	}
 
+	// --- Orders ---------------------------------------------------------------
+
+	/** Give a player fighter its order for this turn. Freely changed until commit. */
+	setAction(id: string, action: CombatAction): void {
+		const fighter = this.playerReady(id);
+		if (!fighter) return;
+		if (action === 'shoot' && fighter.charges < 1) return;
+		fighter.action = action;
+		if (action === 'shoot') {
+			// A shot always needs somebody to be aimed at; default to whoever this
+			// fighter was already aiming at, else the first rival standing.
+			fighter.targetId = this.liveTarget(fighter, fighter.targetId);
+			// The extra shot rides on a *non-attacking* order, so taking the shot as the
+			// order itself gives it up — nobody fires twice.
+			fighter.bonus = false;
+			fighter.bonusTargetId = null;
+		}
+		this.emit();
+	}
+
+	/** Aim a player fighter's shot at a rival. */
+	setTarget(id: string, targetId: string): void {
+		const fighter = this.playerReady(id);
+		if (!fighter || !this.isLiveEnemy(fighter, targetId)) return;
+		fighter.targetId = targetId;
+		this.emit();
+	}
+
+	/** Turn red's extra shot on or off for a player fighter that can fire one. */
+	setBonus(id: string, on: boolean): void {
+		const fighter = this.playerReady(id);
+		if (!fighter) return;
+		if (on && !this.canBonus(fighter)) return;
+		fighter.bonus = on;
+		fighter.bonusTargetId = on ? this.liveTarget(fighter, fighter.bonusTargetId) : null;
+		this.emit();
+	}
+
+	/** Aim a player fighter's extra shot at a rival. */
+	setBonusTarget(id: string, targetId: string): void {
+		const fighter = this.playerReady(id);
+		if (!fighter || !fighter.bonus || !this.isLiveEnemy(fighter, targetId)) return;
+		fighter.bonusTargetId = targetId;
+		this.emit();
+	}
+
+	/** Lock both sides' orders in and carry them out together. */
+	commit(): void {
+		if (this.phase !== 'planning' || !this.isReady()) return;
+		this.phase = 'resolving';
+		this.emit();
+		void this.resolve();
+	}
+
+	// --- Resolution -----------------------------------------------------------
+
+	/**
+	 * Carry out the turn both sides committed to. Everything happens at once, so the
+	 * whole turn is worked out from the state the orders were given in: charges are
+	 * spent, every shot is fired, and only then is each one measured against what its
+	 * target chose to do. A fighter felled by one bullet still fires its own.
+	 */
+	private async resolve(): Promise<void> {
+		const acting = this.fighters.filter((fighter) => !fighter.down && fighter.action);
+		for (const fighter of acting) fighter.guarded = false;
+
+		// Every shot of the turn, in the order the bullets land: the fastest shooter's
+		// arrives first, so a blue fighter's free guard eats that one and the shots
+		// behind it go through.
+		const shots: Shot[] = [];
+		for (const fighter of acting) {
+			// A charge is only ever spent on a shot that is actually fired: at somebody
+			// still standing, and only while there is a charge left to pay for it.
+			const fire = (targetId: string | null, extra: boolean): void => {
+				const target = targetId ? this.find(targetId) : undefined;
+				if (!target || target.down || fighter.charges < 1) return;
+				fighter.charges -= 1;
+				shots.push({ shooter: fighter, target, extra });
+			};
+			if (fighter.action === 'shoot') fire(fighter.targetId, false);
+			if (fighter.bonus) fire(fighter.bonusTargetId, true);
+		}
+		shots.sort((a, b) => b.shooter.spd - a.shooter.spd);
+
+		this.log = [];
+		this.setStatus('Orders revealed.');
+		await this.showOrders(acting);
+		await pause(500);
+
+		// Fire everything together — the point of the game is that nobody sees the
+		// other side's bullet leave in time to do anything about it.
+		await Promise.all(
+			shots.map((shot) =>
+				this.board?.shoot(shot.shooter.id, shot.target.id, this.shotMove(shot.shooter))
+			)
+		);
+
+		// Now measure each shot against what its target chose. A target already felled
+		// this turn takes the extra bullet all the same — it just changes nothing.
+		const felled: Casualty[] = [];
+		for (const shot of shots) {
+			const { shooter, target } = shot;
+			const from = shot.extra ? `${shooter.name}'s extra shot` : `${shooter.name} shoots`;
+			if (target.down) {
+				this.log.push(`${from} — ${target.name} was already falling.`);
+				continue;
+			}
+			if (target.action === 'defend') {
+				this.log.push(`${from} at ${target.name}, who blocked it.`);
+				this.board?.showCallout(target.id, 'BLOCK', target.color);
+				continue;
+			}
+			if (target.traits.passiveGuard && !target.guarded) {
+				target.guarded = true;
+				this.log.push(`${from} at ${target.name} — turned aside by its guard.`);
+				this.board?.showCallout(target.id, 'GUARD', target.color);
+				continue;
+			}
+			target.down = true;
+			felled.push({ fighter: target, by: shooter });
+			this.log.push(`${from} — ${target.name} is down.`);
+		}
+
+		if (felled.length > 0) {
+			this.emit();
+			await Promise.all(
+				felled.map(({ fighter, by }) => {
+					// The slash is drawn in the colour of whoever's bullet got through.
+					this.board?.showSlash(fighter.id, by.color);
+					this.board?.showCallout(fighter.id, 'HIT!', by.color);
+					return this.board?.playHurt(fighter.id);
+				})
+			);
+			await Promise.all(
+				felled.map(({ fighter }) => {
+					// The board removes the actor outright, aura and all.
+					this.aura.delete(fighter.id);
+					return this.board?.knockOut(fighter.id);
+				})
+			);
+		}
+
+		// Charging pays out last, and only for those still standing: a fighter shot
+		// while loading never gets to bank it.
+		for (const fighter of acting) {
+			if (fighter.action !== 'charge' || fighter.down) continue;
+			if (fighter.charges >= MAX_CHARGES) {
+				this.log.push(`${fighter.name} is already full up on charges.`);
+				continue;
+			}
+			fighter.charges += 1;
+		}
+		this.syncCharges();
+
+		// Ground given up: the rival line falls back a column for every one of them
+		// that has gone down.
+		if (felled.some(({ fighter }) => fighter.side === 'error')) await this.fallBack();
+
+		this.finishTurn();
+	}
+
+	/** Put each acting fighter's order on the board: the loaders flare, the guards
+	 * brace, and the shooters are left to their own firing pose. */
+	private async showOrders(acting: Fighter[]): Promise<void> {
+		this.board?.clearCallouts();
+		await Promise.all(
+			acting.map((fighter) => {
+				if (fighter.action === 'charge') {
+					this.board?.showCallout(fighter.id, 'CHARGE', fighter.color);
+					return this.raiseAura(fighter);
+				}
+				if (fighter.action === 'defend') {
+					this.board?.showCallout(fighter.id, 'GUARD', fighter.color);
+					const move = findMove(fighter, 'defent');
+					return move ? this.board?.playMove(fighter.id, move) : undefined;
+				}
+				return undefined;
+			})
+		);
+	}
+
+	/**
+	 * Walk the rival survivors back onto the rank their losses have cost them. They
+	 * keep their top→bottom order, so nobody crosses anybody on the way, and the cells
+	 * they land on become their new home ground.
+	 */
+	private async fallBack(): Promise<void> {
+		const standing = this.rivals().filter((fighter) => !fighter.down);
+		const rank = RIVAL_RANKS[RIVAL_RANKS.length - standing.length];
+		if (!rank) return;
+		this.setStatus('The rival line falls back.');
+		// One at a time: a survivor's own start cell can sit on another's route.
+		for (let i = 0; i < standing.length; i++) {
+			await this.board?.regroup(standing[i].id, rank[i]);
+		}
+	}
+
+	/** End-of-turn bookkeeping: settle the game, or hand the next turn back. */
+	private finishTurn(): void {
+		const playersLeft = this.players().filter((fighter) => !fighter.down).length;
+		const rivalsLeft = this.rivals().filter((fighter) => !fighter.down).length;
+		if (playersLeft === 0 && rivalsLeft === 0) {
+			this.end('draw', 'Both teams went down together.');
+			return;
+		}
+		if (playersLeft === 0) {
+			this.end('lose', 'Your whole team has been taken down.');
+			return;
+		}
+		if (rivalsLeft === 0) {
+			this.end('win', 'The rival team has been taken down.');
+			return;
+		}
+		if (this.turn >= MAX_TURNS) {
+			if (playersLeft > rivalsLeft) {
+				this.end(
+					'win',
+					`Time — you finish with more fighters standing (${playersLeft}–${rivalsLeft}).`
+				);
+			} else if (rivalsLeft > playersLeft) {
+				this.end(
+					'lose',
+					`Time — the rivals finish with more standing (${rivalsLeft}–${playersLeft}).`
+				);
+			} else {
+				this.end('draw', `Time — both sides finish with ${playersLeft} standing.`);
+			}
+			return;
+		}
+
+		this.turn += 1;
+		for (const fighter of this.fighters) {
+			fighter.action = null;
+			fighter.targetId = null;
+			fighter.bonus = false;
+			fighter.bonusTargetId = null;
+			fighter.guarded = false;
+		}
+		this.planRivals();
+		this.phase = 'planning';
+		this.setStatus(`Turn ${this.turn} — give your orders.`);
+	}
+
+	/** End the game with an outcome; the page shows it in a blocking modal. */
+	private end(outcome: CombatOutcome, detail: string): void {
+		this.phase = 'done';
+		this.outcome = outcome;
+		this.board?.clearAuras();
+		this.aura.clear();
+		this.setStatus(detail);
+	}
+
+	// --- The rival side -------------------------------------------------------
+
+	/**
+	 * Give every rival its order for the turn, before the player gives theirs — they
+	 * are committing blind to each other, so the rivals' choices must already be made
+	 * (and kept out of {@link view}) while the player is still deciding.
+	 *
+	 * The reasoning is short: a rival with nothing banked has to load (though it will
+	 * sometimes duck behind a guard instead if anything opposite could fire), and one
+	 * with a charge weighs firing against covering. When nobody opposite can shoot at
+	 * all, defending is worthless and it never picks it. Shots go at whoever is
+	 * holding the most charges — the fighter most likely to fire back.
+	 */
+	private planRivals(): void {
+		const threatened = this.players().some((fighter) => !fighter.down && fighter.charges > 0);
+		for (const rival of this.rivals()) {
+			if (rival.down) continue;
+			const target = this.threatOpposite(rival);
+			if (!target) {
+				rival.action = 'charge';
+				continue;
+			}
+			if (rival.charges < 1) {
+				rival.action = threatened
+					? (pickWeighted(['charge', 'defend'], [3, 1]) ?? 'charge')
+					: 'charge';
+			} else if (!threatened) {
+				rival.action = 'shoot';
+			} else {
+				rival.action =
+					pickWeighted<CombatAction>(['shoot', 'defend', 'charge'], [9, 7, 4]) ?? 'shoot';
+			}
+			if (rival.action === 'shoot') {
+				rival.targetId = target.id;
+				rival.bonus = false;
+				rival.bonusTargetId = null;
+			} else {
+				rival.targetId = null;
+				// Red's extra: free damage on a turn it was spending on something else.
+				rival.bonus = this.canBonus(rival);
+				rival.bonusTargetId = rival.bonus ? target.id : null;
+			}
+		}
+	}
+
+	/** The enemy a fighter should be shooting at: whoever opposite holds the most
+	 * charges (ties broken at random), or null when nobody is left. */
+	private threatOpposite(fighter: Fighter): Fighter | null {
+		const enemies = this.enemiesOf(fighter);
+		if (enemies.length === 0) return null;
+		const most = Math.max(...enemies.map((enemy) => enemy.charges));
+		return pickOne(enemies.filter((enemy) => enemy.charges === most)) ?? enemies[0];
+	}
+
+	// --- State ----------------------------------------------------------------
+
 	private emit(): void {
-		const previews = this.previews();
 		this.store.set({
-			// Copy so subscribers always see a fresh reference and re-render.
-			fighters: this.fighters.map((fighter) => ({
-				...fighter,
-				preview: previews.get(fighter.id) ?? null
-			})),
+			fighters: this.fighters.map((fighter) => this.view(fighter)),
 			phase: this.phase,
+			turn: this.turn,
 			status: this.status,
+			log: [...this.log],
+			ready: this.isReady(),
 			outcome: this.outcome
 		});
 	}
 
 	/**
-	 * Who every fighter is currently lined up to meet, recomputed on each emit so the
-	 * page's colour buttons follow the board: committing a colour fills a duel cell,
-	 * which moves the *next* fighter's preview on to the following rival — and a
-	 * knockout or a claimed cell reshapes the pairings for the round after.
-	 *
-	 * Fighters that have already committed (and cell-holders) get the duel they are
-	 * locked into; every player still free to pick gets the same next-up duel, since
-	 * whichever of them commits next is the one that walks into that cell.
+	 * One fighter as the page sees it. A rival's orders are withheld while they are
+	 * still secret — during planning they read as no order at all, and only once the
+	 * turn is being carried out does the page (and the player) learn what they were.
 	 */
-	private previews(): Map<string, MatchupPreview> {
-		const committed = this.players()
-			.filter((f) => !this.heldCell(f) && !f.defeated && f.actionIndex !== null)
-			.sort(byActionOrder);
-		const { duels, next } = this.walkDuels(committed);
-
-		const previews = new Map<string, MatchupPreview>();
-		const record = (fighter: Fighter, duelIndex: number, opponent: Fighter): void => {
-			previews.set(fighter.id, {
-				duelIndex,
-				opponentId: opponent.id,
-				opponentName: opponent.name,
-				opponentDef: opponent.def,
-				throws: throwableColors(fighter.color).map((color) => {
-					const dice = strikeDice(fighter.atk, color, opponent.color);
-					const { min, max } = damageRange(dice, opponent.def);
-					return {
-						color,
-						multiplier: strikeMultiplier(color, opponent.color),
-						dice,
-						minDamage: min,
-						maxDamage: max
-					};
-				})
-			});
+	private view(fighter: Fighter): FighterView {
+		const secret = fighter.side === 'error' && this.phase === 'planning';
+		return {
+			id: fighter.id,
+			spawnId: fighter.spawnId,
+			name: fighter.name,
+			side: fighter.side,
+			color: fighter.color,
+			traits: fighter.traits,
+			charges: fighter.charges,
+			maxCharges: MAX_CHARGES,
+			down: fighter.down,
+			action: secret ? null : fighter.action,
+			targetId: secret ? null : fighter.targetId,
+			bonus: secret ? false : fighter.bonus,
+			bonusTargetId: secret ? null : fighter.bonusTargetId,
+			canShoot: !fighter.down && fighter.charges > 0,
+			canBonus: this.canBonus(fighter),
+			ordered: this.isOrdered(fighter)
 		};
-		for (const [id, duel] of duels) {
-			const fighter = this.fighters.find((f) => f.id === id);
-			if (fighter) record(fighter, duel.duelIndex, duel.opponent);
-		}
-		if (next) {
-			// Every player yet to commit is queued for the same cell — the first one to
-			// pick a colour takes it, so they all preview the same rival.
-			for (const player of this.players()) {
-				if (player.defeated || player.actionIndex !== null || this.heldCell(player)) continue;
-				record(player, next.duelIndex, next.opponent);
-			}
-		}
-		return previews;
-	}
-
-	/**
-	 * Walk the round's three duel cells exactly as {@link runSequence} will, for a given
-	 * queue of player fighters, and report the pairings it produces: `duels` maps each
-	 * participant's id to the duel it lands in, and `next` is the first cell left
-	 * unpaired for want of a player — the cell one more fighter joining the queue would
-	 * take. Pure: it reads the board state but changes nothing.
-	 */
-	private walkDuels(queue: Fighter[]): {
-		duels: Map<string, { duelIndex: number; opponent: Fighter }>;
-		next: { duelIndex: number; opponent: Fighter } | null;
-	} {
-		const pending = [...queue];
-		const rivalSlots = this.rivals();
-		const duels = new Map<string, { duelIndex: number; opponent: Fighter }>();
-		let next: { duelIndex: number; opponent: Fighter } | null = null;
-		for (let i = 0; i < MELEE_MEETING_CELLS.length; i++) {
-			const rival = rivalSlots[i];
-			if (!rival || rival.defeated) continue;
-			const holder = this.cellOwners.get(cellKey(MELEE_MEETING_CELLS[i]));
-			const player = holder?.side === 'info' ? holder : pending[0];
-			if (!player) {
-				// Nobody queued for this cell — this is where the next fighter to commit goes.
-				next ??= { duelIndex: i, opponent: rival };
-				continue;
-			}
-			if (player !== holder) pending.shift();
-			duels.set(player.id, { duelIndex: i, opponent: rival });
-			duels.set(rival.id, { duelIndex: i, opponent: player });
-		}
-		return { duels, next };
 	}
 
 	private setStatus(status: string): void {
@@ -369,405 +629,94 @@ export class CombatController {
 		this.emit();
 	}
 
-	/** End the game with an outcome; the page shows it in a blocking modal. */
-	private end(outcome: CombatOutcome, detail: string): void {
-		this.phase = 'done';
-		this.outcome = outcome;
-		this.setStatus(detail);
+	private find(id: string): Fighter | undefined {
+		return this.fighters.find((fighter) => fighter.id === id);
 	}
 
 	private players(): Fighter[] {
 		return this.fighters.filter((fighter) => fighter.side === 'info');
 	}
 
-	/**
-	 * The rival line-up, in the fixed order it was seeded in — the left→right order the
-	 * board draws the rival cards in. Index i is the rival that fights the round's ith
-	 * duel, on `MELEE_MEETING_CELLS[i]`; nothing ever re-sorts or compacts it.
-	 */
 	private rivals(): Fighter[] {
 		return this.fighters.filter((fighter) => fighter.side === 'error');
 	}
 
-	/** The purple cell this fighter currently holds, or null. */
-	private heldCell(fighter: Fighter): Hex | null {
-		for (const [key, owner] of this.cellOwners) {
-			if (owner.id !== fighter.id) continue;
-			const [q, r] = key.split(',').map(Number);
-			return { q, r };
-		}
-		return null;
+	/** Everybody on the other side who is still standing. */
+	private enemiesOf(fighter: Fighter): Fighter[] {
+		return this.fighters.filter((other) => other.side !== fighter.side && !other.down);
 	}
 
-	/** A random one of the three colors this fighter can throw. */
-	private randomColor(fighter: Fighter): CombatColor {
-		const options = throwableColors(fighter.color);
-		return options[rollDie(options.length) - 1];
+	/** The player fighter this id names, if it may still be given orders. */
+	private playerReady(id: string): Fighter | null {
+		if (this.phase !== 'planning') return null;
+		const fighter = this.find(id);
+		if (!fighter || fighter.side !== 'info' || fighter.down) return null;
+		return fighter;
 	}
 
-	/** The animation played when this fighter throws a color: its own bound
-	 * melee move, or the empty fallback. */
-	private meleeMove(fighter: Fighter): CharacterMove {
-		return findMove(fighter, 'melee') ?? FALLBACK_MELEE;
+	private isLiveEnemy(fighter: Fighter, id: string): boolean {
+		return this.enemiesOf(fighter).some((enemy) => enemy.id === id);
 	}
 
-	/**
-	 * Give each rival a randomly pre-rolled default color for the round, shown on
-	 * its card so the player can see — and override — what it will throw.
-	 * Cell-holders are skipped: they sit their turn out unless attacked.
-	 */
-	private rollRivalDefaults(): void {
-		for (const rival of this.rivals()) {
-			if (this.heldCell(rival) || rival.defeated) continue;
-			rival.moveColor = this.randomColor(rival);
-		}
+	/** Keep `preferred` if it is still a live enemy, else fall to the first one. */
+	private liveTarget(fighter: Fighter, preferred: string | null): string | null {
+		const enemies = this.enemiesOf(fighter);
+		if (preferred && enemies.some((enemy) => enemy.id === preferred)) return preferred;
+		return enemies[0]?.id ?? null;
 	}
 
-	/**
-	 * Select the color a fighter throws this round — its compound color or either
-	 * of that color's two primary components. For a player fighter this locks it
-	 * and appends it to the action order; for a rival it just overwrites the
-	 * rival's pre-rolled default without locking anything. Once all players are
-	 * chosen, the rivals lock in whatever color they hold and combat begins.
-	 */
-	selectColor(id: string, color: CombatColor): void {
-		if (this.phase !== 'selecting') return;
-		const fighter = this.fighters.find((f) => f.id === id);
-		// Cell-holders can't act this turn — they only fight if attacked; knocked-out
-		// fighters can't act at all.
-		if (!fighter || fighter.actionIndex !== null || fighter.defeated || this.heldCell(fighter)) {
-			return;
-		}
-		// Only the fighter's own compound color or its components can be thrown.
-		if (!throwableColors(fighter.color).includes(color)) return;
-
-		if (fighter.side === 'error') {
-			// Overriding a rival's pre-rolled default — no lock, no action order.
-			fighter.moveColor = color;
-			this.emit();
-			return;
-		}
-
-		const alreadyPicked = this.players().filter((f) => f.actionIndex !== null).length;
-		fighter.moveColor = color;
-		fighter.actionIndex = alreadyPicked;
-		fighter.disabled = true;
-
-		const pickers = this.players().filter((f) => !this.heldCell(f) && !f.defeated);
-		if (pickers.every((f) => f.actionIndex !== null)) {
-			// Every player who *can* act committed — each non-holder rival locks in
-			// its held color (its pre-rolled default, unless overridden). A rival's
-			// action index is its fixed line-up slot, not a picking order: it names the
-			// duel that rival always fights, and it stays the same whatever the rest of
-			// the line-up does.
-			this.rivals().forEach((rival, index) => {
-				if (this.heldCell(rival) || rival.defeated) return; // out or holding: sit out
-				rival.moveColor = rival.moveColor ?? this.randomColor(rival);
-				rival.actionIndex = index;
-				rival.disabled = true;
-			});
-			// Combat starts: every fighter that will act flares an aura in the
-			// colour it throws this round — not its own native colour (cell-holders
-			// sit out aura-less unless attacked).
-			for (const combatant of this.fighters) {
-				if (combatant.moveColor) void this.board?.showAura(combatant.id, combatant.moveColor);
-			}
-			this.phase = 'fighting';
-			this.emit();
-			void this.runSequence();
-		} else {
-			this.emit();
-		}
+	/** Whether this fighter could add red's extra shot to its order right now: its
+	 * colour allows it, it has a charge for it, and its order is a non-attacking one. */
+	private canBonus(fighter: Fighter): boolean {
+		if (fighter.down || !fighter.traits.doubleAction) return false;
+		if (fighter.action === 'shoot' || fighter.charges < 1) return false;
+		return this.enemiesOf(fighter).length > 0;
 	}
 
-	/**
-	 * Fight this round's duels, one per purple cell in order.
-	 *
-	 * The rival line-up is fixed: the rival in slot i fights on cell i and nowhere
-	 * else, round after round. It is never re-sorted, and its slot is never backfilled
-	 * by another rival — if it is knocked out, cell i simply sees no fighting for the
-	 * rest of the game. That is the point: the player can look at the three rival cards
-	 * and know exactly which one waits on each of the round's three steps before
-	 * choosing a single colour. (Because a rival only ever duels on its own cell, the
-	 * only cell it can ever hold is that cell, so a rival holder is always the slot's
-	 * own fighter.)
-	 *
-	 * The player's fighters fill the cells in selection order, so the order they are
-	 * picked in is the order they meet that fixed rival line-up. A fighter holding a
-	 * cell is pinned to that cell's duel — it fights only if an enemy arrives there,
-	 * auto-defending with a random color, since it couldn't pick one. A cell whose duel
-	 * can't be paired sees no fighting: an unchallenged holder simply keeps standing on
-	 * it, and the player waiting in the queue is not spent on it.
-	 */
-	private async runSequence(): Promise<void> {
-		const playersQueue = this.players()
-			.filter((f) => !this.heldCell(f) && !f.defeated)
-			.sort(byActionOrder);
-		const rivalSlots = this.rivals();
-		for (let i = 0; i < MELEE_MEETING_CELLS.length; i++) {
-			// The rival is whoever this slot belongs to — no shifting, no substitutes.
-			const rival = rivalSlots[i];
-			if (!rival || rival.defeated) continue;
-			const holder = this.cellOwners.get(cellKey(MELEE_MEETING_CELLS[i]));
-			// Peek at the next player rather than taking them: a player is only spent on
-			// a duel that actually happens.
-			const player = holder?.side === 'info' ? holder : playersQueue[0];
-			if (!player) continue;
-			if (player !== holder) playersQueue.shift();
-			// An attacked holder never picked a color — it defends with a random one,
-			// flaring its aura (in the colour it now throws) only once it's dragged
-			// into the duel.
-			if (holder && !holder.moveColor) {
-				holder.moveColor = this.randomColor(holder);
-				void this.board?.showAura(holder.id, holder.moveColor);
-			}
-			await this.duel(player, rival, i);
-		}
-		this.finishRound();
+	/** Whether a fighter's order is complete: given, with a live target per shot. */
+	private isOrdered(fighter: Fighter): boolean {
+		if (fighter.down) return true;
+		if (!fighter.action) return false;
+		if (fighter.action === 'shoot' && !this.isLiveEnemy(fighter, fighter.targetId ?? ''))
+			return false;
+		if (fighter.bonus && !this.isLiveEnemy(fighter, fighter.bonusTargetId ?? '')) return false;
+		return true;
 	}
 
-	/**
-	 * End-of-round bookkeeping. If one side holds all three purple cells the game
-	 * is over; otherwise selections are cleared and we return to `selecting` so
-	 * the player can run another round.
-	 */
-	private finishRound(): void {
-		// The round's throws are spent — every aura burns out and the readouts clear.
-		this.board?.clearAuras();
-		this.board?.clearStrikeLabels();
-		// Elimination victory: a side with no fighters left standing loses outright.
-		if (this.players().every((f) => f.defeated)) {
-			this.end('lose', 'Your whole team has been knocked out.');
-			return;
-		}
-		if (this.rivals().every((f) => f.defeated)) {
-			this.end('win', 'The rival team has been knocked out.');
-			return;
-		}
-		// Territory victory: holding all three purple duel cells when the round
-		// ends wins outright.
-		const owners = MELEE_MEETING_CELLS.map((cell) => this.cellOwners.get(cellKey(cell))?.side);
-		if (owners.every((side) => side === 'info')) {
-			this.end('win', 'You hold all three purple cells.');
-			return;
-		}
-		if (owners.every((side) => side === 'error')) {
-			this.end('lose', 'The rivals hold all three purple cells.');
-			return;
-		}
+	/** Whether the player's whole side is ready to commit. */
+	private isReady(): boolean {
+		if (this.phase !== 'planning') return false;
+		return this.players().every((fighter) => this.isOrdered(fighter));
+	}
 
-		// Stalemate: now that fighters can be knocked out, a side can be left with
-		// nothing but pinned cell-holders (and the defeated). A holder can't pick a
-		// colour — it only fights if attacked — and since the player drives each
-		// round, if no player fighter can act the round can never start (its move
-		// buttons are all locked), so the fight can never progress. When that
-		// happens, end the game there and decide it by purple-cell occupancy:
-		// whoever holds the most cells wins (an even split is a draw).
-		const canAct = (fighter: Fighter) => !fighter.defeated && this.heldCell(fighter) === null;
-		if (!this.players().some(canAct)) {
-			const infoCells = owners.filter((side) => side === 'info').length;
-			const errorCells = owners.filter((side) => side === 'error').length;
-			if (infoCells > errorCells) {
-				this.end(
-					'win',
-					`Nobody left to move — you hold the most purple cells (${infoCells}–${errorCells}).`
-				);
-			} else if (errorCells > infoCells) {
-				this.end(
-					'lose',
-					`Nobody left to move — the rivals hold the most purple cells (${errorCells}–${infoCells}).`
-				);
-			} else {
-				this.end(
-					'draw',
-					`Nobody left to move — the purple cells are split ${infoCells}–${errorCells}.`
-				);
-			}
-			return;
-		}
+	// --- Board ----------------------------------------------------------------
 
+	/** Push every fighter's charges to its meter, and light (or put out) the aura
+	 * that says at a glance who is holding one. */
+	private syncCharges(): void {
 		for (const fighter of this.fighters) {
-			fighter.moveColor = null;
-			fighter.actionIndex = null;
-			// Cell-holders and knocked-out fighters stay locked: they can't act next
-			// round (holders only fight if attacked; the defeated never fight again).
-			fighter.disabled = fighter.defeated || this.heldCell(fighter) !== null;
-		}
-		// Rivals pre-roll a fresh default for the next round.
-		this.rollRivalDefaults();
-
-		this.phase = 'selecting';
-		this.setStatus('Round over — pick a color to fight another round.');
-	}
-
-	/** One encounter between a player fighter and a rival. `duelIndex` is the
-	 * pair's position in the round's selection order, which picks its meeting cell. */
-	private async duel(player: Fighter, rival: Fighter, duelIndex: number): Promise<void> {
-		this.setStatus(
-			`${player.name} (${colorLabel(player.moveColor)}) vs ${rival.name} (${colorLabel(rival.moveColor)}) — taking position…`
-		);
-		// The faster fighter strikes first this duel: whoever has the higher SPD leads
-		// and the other only answers back (if it survives the opening blow). An equal
-		// SPD is settled by a coin flip, giving each a 50/50 chance to go first.
-		// Remember who held the cell coming in — a tie in leftover HP must not strip a
-		// defended cell (used further down, not for strike order).
-		const priorHolder = [player, rival].find((f) => this.heldCell(f)) ?? null;
-		const playerFirst = player.spd > rival.spd || (player.spd === rival.spd && rollDie(2) === 1);
-		const [first, second] = playerFirst ? [player, rival] : [rival, player];
-		// Clear the previous duel's readouts before this pair throws.
-		this.board?.clearStrikeLabels();
-		// Fighting vacates whatever cell each participant held: its paint reverts to
-		// purple for the duration, and only winning a duel earns a cell back.
-		this.vacateCells(player);
-		this.vacateCells(rival);
-		await this.board?.meleeApproach(player.id, rival.id, MELEE_MEETING_CELLS[duelIndex]);
-		await pause(250);
-
-		await this.strike(first, second);
-		await pause(500);
-		// A fighter knocked out by the first blow can't answer back.
-		if (!second.defeated) {
-			await this.strike(second, first);
-			await pause(500);
-		}
-
-		// Claim the duel cell. A knockout decides it outright — the survivor takes the
-		// cell while the fallen has already walked home dimmed. Otherwise whoever is
-		// left with the most current HP claims it, with a tie (equal HP) keeping the
-		// status quo (a defended cell stays with its prior holder, an unclaimed one
-		// sends both home).
-		const cell = MELEE_MEETING_CELLS[duelIndex];
-		let playerStays: boolean;
-		let rivalStays: boolean;
-		if (player.defeated || rival.defeated) {
-			playerStays = !player.defeated && rival.defeated;
-			rivalStays = !rival.defeated && player.defeated;
-		} else {
-			const tie = player.hp === rival.hp;
-			playerStays = player.hp > rival.hp || (tie && priorHolder === player);
-			rivalStays = rival.hp > player.hp || (tie && priorHolder === rival);
-		}
-		this.setStatus(this.encounterLine(player, rival, priorHolder));
-		// A knocked-out fighter has already faded off the board — only the survivors
-		// settle onto (or back off) the cell here.
-		await Promise.all([
-			player.defeated ? undefined : this.settle(player, playerStays, cell),
-			rival.defeated ? undefined : this.settle(rival, rivalStays, cell)
-		]);
-		this.emit();
-	}
-
-	/**
-	 * Post-duel movement for one fighter: the winner claims the whole duel cell —
-	 * recording ownership and tinting the cell in its side's colour — the loser
-	 * walks home.
-	 */
-	private settle(fighter: Fighter, stays: boolean, cell?: Hex): Promise<void> | undefined {
-		if (stays) {
-			if (!cell) return undefined;
-			this.cellOwners.set(cellKey(cell), fighter);
-			this.board?.paintCell(cell, fighter.side === 'error' ? 'red' : 'blue');
-			return this.board?.claimCell(fighter.id, cell);
-		}
-		return this.board?.returnHome(fighter.id);
-	}
-
-	/** Release every cell a fighter holds, restoring its purple paint. */
-	private vacateCells(fighter: Fighter): void {
-		for (const [key, owner] of this.cellOwners) {
-			if (owner.id !== fighter.id) continue;
-			this.cellOwners.delete(key);
-			const [q, r] = key.split(',').map(Number);
-			this.board?.paintCell({ q, r }, null);
+			if (fighter.down) continue;
+			this.board?.setMeter(fighter.id, fighter.charges, MAX_CHARGES);
+			if (fighter.charges > 0) void this.raiseAura(fighter);
+			else this.dropAura(fighter);
 		}
 	}
 
-	/**
-	 * `attacker` makes one attack against `defender`. The colour pairing sizes the
-	 * handful first: the strike table maps the thrown colour against the defender's
-	 * colour to ×0.5 / ×1 / ×2, and the attacker's ATK scaled by it (rounded, at
-	 * least one) is how many d10 it rolls. Every die that beats the defender's DEF
-	 * counts as a hit — a die landing on the DEF itself is turned aside — and each hit
-	 * costs the defender a flat one HP; reaching 0 knocks it out. Plays the attacker's
-	 * melee animation while the defender flinches.
-	 */
-	private async strike(attacker: Fighter, defender: Fighter): Promise<void> {
-		const thrown = attacker.moveColor ?? attacker.color;
-		const multiplier = strikeMultiplier(thrown, defender.color);
-		const dice = strikeDice(attacker.atk, thrown, defender.color);
-		// Every die that beats the DEF is one HP: the colour has already had its say,
-		// in how many dice there were to roll.
-		const { hits } = resolveAttack(dice, defender.def);
-		const damage = hits;
-
-		// Attacker and defender are always distinct actors, so the move, the flinch
-		// and the slash landing on the defender all play together — the slash is
-		// drawn in the attacker's thrown colour, over whoever takes the damage.
-		await Promise.all([
-			this.board?.playMove(attacker.id, this.meleeMove(attacker)),
-			this.board?.playHurt(defender.id),
-			this.board?.showSlash(defender.id, thrown)
-		]);
-
-		// Damage dents the defender's persistent HP; whoever is left with more HP
-		// when the encounter ends claims the duel cell.
-		defender.hp = Math.max(0, defender.hp - damage);
-		// Ease the defender's board HP bar down to its new health (green→red).
-		this.board?.setHp(defender.id, defender.hp, defender.maxHp);
-		// Float the damage dealt above the attacker, coloured in the thrown colour.
-		this.board?.showStrikeLabel(attacker.id, damage, thrown);
-		// setStatus emits, so the cards' live HP updates the moment a hit lands.
-		this.setStatus(this.strikeLine(attacker, defender, dice, multiplier, damage));
-
-		// At 0 HP the defender is knocked out: home it goes, dimmed and done.
-		if (defender.hp === 0 && !defender.defeated) {
-			await this.knockOut(defender);
-		}
+	/** Light a fighter's aura, unless it is already burning (re-lighting restarts it). */
+	private raiseAura(fighter: Fighter): Promise<void> | undefined {
+		if (this.aura.has(fighter.id)) return undefined;
+		this.aura.add(fighter.id);
+		return this.board?.showAura(fighter.id, fighter.color);
 	}
 
-	/**
-	 * Knock a fighter out of the game: flag it, release any cell it held, and fade
-	 * it off the board (it holds its hurt pose, dissolves, and is removed for good).
-	 * It never fights again.
-	 */
-	private async knockOut(fighter: Fighter): Promise<void> {
-		fighter.defeated = true;
-		fighter.disabled = true;
-		fighter.moveColor = null;
-		this.vacateCells(fighter);
-		this.emit();
-		await this.board?.knockOut(fighter.id);
+	private dropAura(fighter: Fighter): void {
+		if (!this.aura.delete(fighter.id)) return;
+		this.board?.clearAura(fighter.id);
 	}
 
-	/** One status line summarising an attack: the handful the colour bought, and the
-	 * damage its hits dealt. */
-	private strikeLine(
-		attacker: Fighter,
-		defender: Fighter,
-		dice: number,
-		multiplier: number,
-		damage: number
-	): string {
-		// Name the multiplier alongside the dice it produced, so the handful can be read
-		// back off the attacker's ATK rather than taken on trust.
-		const roll = `${attacker.name} rolls ${attacker.atk}×${multiplier} = ${dice}d10 vs ${defender.name}'s DEF ${defender.def}`;
-		if (damage === 0) return `${roll} — no hits.`;
-		const hit = damage === 1 ? '1 hit' : `${damage} hits`;
-		return `${roll} — ${hit} = ${damage} dmg, ${defender.name} down to ${defender.hp} HP.`;
-	}
-
-	/** One status line summarising how the encounter resolved. */
-	private encounterLine(player: Fighter, rival: Fighter, priorHolder: Fighter | null): string {
-		if (player.defeated && !rival.defeated)
-			return `${player.name} is knocked out — ${rival.name} takes the cell.`;
-		if (rival.defeated && !player.defeated)
-			return `${rival.name} is knocked out — ${player.name} takes the cell.`;
-		const score = `${player.hp}–${rival.hp} HP`;
-		if (player.hp === rival.hp) {
-			const held = priorHolder ? `${priorHolder.name} keeps the cell` : 'neither takes the cell';
-			return `A stand-off at ${score} — ${held}.`;
-		}
-		const winner = player.hp > rival.hp ? player : rival;
-		return `${winner.name} is left standing stronger (${score}) and claims the cell.`;
+	/** The animation a fighter fires with: its own ranged move, its final if that is
+	 * all it binds, or the empty fallback (which still flies a plain shot). */
+	private shotMove(fighter: Fighter): CharacterMove {
+		return findMove(fighter, 'ranged') ?? findMove(fighter, 'final') ?? FALLBACK_SHOT;
 	}
 }

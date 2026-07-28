@@ -9,9 +9,15 @@
 		MugenBoard as MugenBoardEngine,
 		PlacedCharacter
 	} from '$utils/mugen/mugen-board';
+	import type { Hex } from '$utils/mugen/hex';
 	import type { Manifest } from '$utils/mugen/mugen-player';
 	import {
+		actionLabel,
 		CombatController,
+		COMBAT_ACTIONS,
+		MAX_CHARGES,
+		RIVAL_RANKS,
+		type CombatAction,
 		type CombatState,
 		type FighterView,
 		type FighterSeed
@@ -24,7 +30,6 @@
 		type CharacterMove,
 		type CombatColor
 	} from '$types/character-definition.type';
-	import { throwableColors } from '$utils/color/compare';
 	import { characters as availableCharacters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
@@ -65,7 +70,8 @@
 		dispatch('close');
 	}
 
-	// Filled button styling per combat color (the player's clickable buttons).
+	// Filled button styling per combat color, for the target chips (a chip is drawn
+	// in the colour of the rival it aims at).
 	const colorFill: Record<CombatColor, string> = {
 		red: 'bg-red-500 hover:bg-red-600 border-red-500 text-white',
 		blue: 'bg-blue-500 hover:bg-blue-600 border-blue-500 text-white',
@@ -156,17 +162,17 @@
 			: [...teamMembers, ...teamMembers]
 		: [];
 
-	// Fixed hexes the two non-centre characters of each side idle on.
-	const extraCells: Record<'error' | 'info', { q: number; r: number }[]> = {
-		error: [
-			{ q: -1, r: 0 },
-			{ q: -1, r: -3 }
-		],
-		info: [
-			{ q: 1, r: -4 },
-			{ q: 1, r: -1 }
-		]
-	};
+	// Where each side stands, listed top→bottom on screen — which is also the
+	// left→right order the board draws that side's cards in, and therefore the order
+	// the fighters are seeded and shown in. The rivals open on the board's central
+	// column (the ground the controller walks them back off, rank by rank, as they
+	// fall); the player's team holds the far column of its own half, facing them.
+	const RIVAL_CELLS: Hex[] = RIVAL_RANKS[0];
+	const PLAYER_CELLS: Hex[] = [
+		{ q: 2, r: -4 },
+		{ q: 2, r: -3 },
+		{ q: 2, r: -2 }
+	];
 
 	// The two sides can field the SAME spawn line-up (a mirror match), so a bare spawn
 	// id is not unique across the board. Every board actor / fighter is identified by a
@@ -202,15 +208,14 @@
 			id: instanceId(side, spawnId),
 			basePath: option.basePath,
 			animation: 'idle',
-			// The spawn's rolled colour fills this fighter's HP bar on the board.
+			// The spawn's rolled colour fills this fighter's charge meter on the board.
 			combatColor: spawn?.color,
 			// The display card drawn outside the grid (rival above, player below): the
-			// idle art loads from basePath, and the combat attributes mirror the board's
-			// derivation from the rolled stat (ATK = stat, DEF its complement, SPD = ATK − 1,
-			// HP attribute = DEF + 1, the pool itself). Rarity, show and
-			// claim place come from the same three Supabase/geo sources the roster and claim
-			// cards read (`showNames`/`names` are passed so the reactive build re-runs — and
-			// the board remounts — once those layers load).
+			// idle art loads from basePath, and the attributes mirror the board's
+			// derivation from the rolled stat. Rarity, show and claim place come from the
+			// same three Supabase/geo sources the roster and claim cards read
+			// (`showNames`/`names` are passed so the reactive build re-runs — and the
+			// board remounts — once those layers load).
 			card: {
 				label: option.label,
 				basePath: option.basePath,
@@ -225,9 +230,9 @@
 		};
 	}
 
-	// Each side's hexes take the colour of that side's leader — the team's first slot,
-	// which stands as the movable centre character (ids[0] on the left, ids[3] on the
-	// right). Falls back to the classic red/blue if the leader has no rolled colour yet.
+	// Each side's hexes take the colour of that side's leader — the team's first slot
+	// (ids[0] on the left, ids[3] on the right). Falls back to the classic red/blue if
+	// the leader has no rolled colour yet.
 	function leaderColorHex(
 		leaderId: string,
 		spawns: Map<string, CharacterSpawn>,
@@ -237,10 +242,12 @@
 		return color ? combatColorHex(color) : fallback;
 	}
 
-	// Left: leader-coloured grid with its movable centre plus two idling extras; right:
-	// likewise. Rebuilt whenever a slot or a spawn changes. `spawns` is passed in
-	// explicitly so Svelte's legacy reactive tracking sees the spawn map as a dependency
-	// of `grids`.
+	// Left: the rival line on the central column; right: the player's team on the far
+	// column of its own half. Each side's first slot leads (it is the grid's own
+	// character, the rest are extras) and stands on the topmost cell, so team order and
+	// the board's left→right card order are one and the same. Rebuilt whenever a slot
+	// or a spawn changes. `spawns` is passed in explicitly so Svelte's legacy reactive
+	// tracking sees the spawn map as a dependency of `grids`.
 	function buildGrids(
 		ids: string[],
 		spawns: Map<string, CharacterSpawn>,
@@ -248,23 +255,20 @@
 		showNames: Map<string, string[]>,
 		names: Map<string, string> | null
 	): [BoardGrid, BoardGrid] {
-		return [
-			{
-				color: leaderColorHex(ids[0], spawns, 0xff0000),
-				character: boardCharacter(ids[0], 'error', spawns, rarities, showNames, names),
-				extras: extraCells.error.map((cell, i) => ({
-					...boardCharacter(ids[1 + i], 'error', spawns, rarities, showNames, names),
-					...cell
-				}))
+		const half = (side: 'error' | 'info', offset: number, cells: Hex[], fallback: number) => ({
+			color: leaderColorHex(ids[offset], spawns, fallback),
+			character: {
+				...boardCharacter(ids[offset], side, spawns, rarities, showNames, names),
+				...cells[0]
 			},
-			{
-				color: leaderColorHex(ids[3], spawns, 0x2563eb),
-				character: boardCharacter(ids[3], 'info', spawns, rarities, showNames, names),
-				extras: extraCells.info.map((cell, i) => ({
-					...boardCharacter(ids[4 + i], 'info', spawns, rarities, showNames, names),
-					...cell
-				}))
-			}
+			extras: cells.slice(1).map((cell, i) => ({
+				...boardCharacter(ids[offset + 1 + i], side, spawns, rarities, showNames, names),
+				...cell
+			}))
+		});
+		return [
+			half('error', 0, RIVAL_CELLS, 0xff0000),
+			half('info', 3, PLAYER_CELLS, 0x2563eb)
 		];
 	}
 
@@ -282,8 +286,8 @@
 		)}:${rarityByCharacter.size}:${showNamesByCharacter.size}:${municipalityNames?.size ?? 0}:${gameKey}`;
 
 	// One badge per character on the board, in board order (red half then blue).
-	// Static display info (name, face, compound color, moves); the live combat
-	// state (HP, selection, defeat) lives in the CombatController store.
+	// Static display info (name, face, colour, moves); the live combat state (charges,
+	// orders, who is down) lives in the CombatController store.
 	interface Badge {
 		id: string;
 		basePath: string;
@@ -292,7 +296,8 @@
 		face: string | null;
 		/** The moves this character's JSON definition declares, in declared order. */
 		moves: CharacterMove[];
-		/** The character's combat color — its Supabase spawn colour. */
+		/** The character's combat color — its Supabase spawn colour, and the whole of
+		 * what it does differently in a fight. */
 		color: CombatColor;
 		/** The character's Supabase spawn gameplay stat (1..10). */
 		stat: number;
@@ -305,35 +310,24 @@
 		gridY: number;
 	}
 
-	// Start cells of the two movable centre characters (they're placed by the engine,
-	// not the grid config — mirror mugen-board's start() here so the cards can line up
-	// with where each character stands on the board).
-	const centerCells: Record<'error' | 'info', { q: number; r: number }> = {
-		error: { q: -2, r: -1 },
-		info: { q: 2, r: -3 }
-	};
-
 	// One side's characters in line-up order: sorted by where they stand top→bottom on
 	// the board, which is exactly the left→right order the canvas draws that side's
-	// cards in. The controller is seeded in this order, and it is what fixes each rival
-	// to a duel step — the nth card always fights the nth duel of the round — so keep
-	// the sort here in step with the board's own card ordering (`collectCards`).
+	// cards in. The controller is seeded in this order, and it is the order the rivals
+	// hold their ranks in as they are pushed back — so keep the sort here in step with
+	// the board's own card ordering (`collectCards`).
 	function rosterFor(
-		characters: (BoardCharacter | PlacedCharacter)[],
+		characters: PlacedCharacter[],
 		side: 'error' | 'info'
 	): Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] {
 		return characters
-			.map((c) => {
-				const cell = 'q' in c ? { q: c.q, r: c.r } : centerCells[side];
-				return {
-					id: c.id as string,
-					basePath: c.basePath,
-					side,
-					// Vertical on-screen position of the cell, so the cards can be laid out
-					// left→right in the order the characters stand top-of-board first.
-					gridY: cellScreenY(cell.q, cell.r)
-				};
-			})
+			.map((c) => ({
+				id: c.id as string,
+				basePath: c.basePath,
+				side,
+				// Vertical on-screen position of the cell, so the cards can be laid out
+				// left→right in the order the characters stand top-of-board first.
+				gridY: cellScreenY(c.q, c.r)
+			}))
 			.sort((a, b) => a.gridY - b.gridY);
 	}
 
@@ -351,6 +345,11 @@
 	// directly so Svelte's legacy reactive tracking sees it as a dependency of
 	// `lineups`.
 	$: lineups = [orderByCell('error', badges), orderByCell('info', badges)];
+
+	// The rivals still standing, in line-up order — what a shot can be aimed at.
+	$: targets = (state?.fighters ?? []).filter(
+		(fighter) => fighter.side === 'error' && !fighter.down
+	);
 
 	function orderByCell(side: 'error' | 'info', list: Badge[]): Badge[] {
 		return list.filter((badge) => badge.side === side).sort((a, b) => a.gridY - b.gridY);
@@ -378,8 +377,14 @@
 			municipalityNames
 		);
 		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] = [
-			...rosterFor([currentGrids[0].character, ...(currentGrids[0].extras ?? [])], 'error'),
-			...rosterFor([currentGrids[1].character, ...(currentGrids[1].extras ?? [])], 'info')
+			...rosterFor(
+				[currentGrids[0].character as PlacedCharacter, ...(currentGrids[0].extras ?? [])],
+				'error'
+			),
+			...rosterFor(
+				[currentGrids[1].character as PlacedCharacter, ...(currentGrids[1].extras ?? [])],
+				'info'
+			)
 		];
 
 		const loaded = await Promise.all(
@@ -420,11 +425,12 @@
 
 		badges = loaded;
 
-		// Hand the fighters to the combat controller and wire its store.
+		// Hand the fighters to the combat controller and wire its store. Nothing but the
+		// colour changes how a fighter plays; the rolled stat only supplies the order a
+		// turn's bullets land in (SPD) and the HP pool a survivor is reported to have
+		// come through whole, which is what the experience award is weighed by.
 		const seeds: FighterSeed[] = badges.map((badge) => {
-			// Combat attributes: ATK, its DEF complement and SPD (ATK − 1), with ATK and DEF
-			// clamped to 1..9. HP (DEF + 1) is rolled at battle start inside the controller.
-			const { atk, def, spd } = combatStatsFromStat(badge.stat);
+			const { spd, hp } = combatStatsFromStat(badge.stat);
 			return {
 				id: badge.id,
 				// The spawn behind the instance id, so a won fight can be reported for
@@ -434,9 +440,8 @@
 				side: badge.side,
 				color: badge.color,
 				moves: badge.moves,
-				atk,
-				def,
-				spd
+				spd,
+				hpPool: hp
 			};
 		});
 		unsubscribe?.();
@@ -464,13 +469,11 @@
 	// named here so Svelte's legacy reactive tracking sees them as dependencies.
 	$: void reportOutcome(state, controller);
 
-	// The player's fighters back in the order the team was built — slots 3–5, i.e.
-	// the roster's team order, lead first. The controller hands them over in the
-	// board's top→bottom drawing order instead (see `rosterFor`, which sorts by cell
-	// so the nth card takes the nth duel), and that order is not the team's: it puts
-	// the lead second. It only matters at the report, because a captured town freezes
-	// the reported line-up verbatim as its garrison — so without this the map's panel
-	// would draw the town's team with its lead out of place ever after.
+	// The player's fighters back in the order the team was built — slots 3–5, i.e. the
+	// roster's team order. The line-up the controller hands over is the board's
+	// top→bottom order, which the placement above keeps in step with the team's; this
+	// pins that down, because a captured town freezes the reported line-up verbatim as
+	// its garrison and the map's panel then draws the town's team from it.
 	function inTeamOrder(fighters: CombatReport['fighters']): CombatReport['fighters'] {
 		const fielded = slots.slice(TEAM_SIZE);
 		if (fielded.length === 0) return fighters;
@@ -529,10 +532,6 @@
 		void setup();
 	}
 
-	function selectColor(id: string, color: CombatColor): void {
-		controller?.selectColor(id, color);
-	}
-
 	// Restart from the endgame modal: remount the board and rebuild the fight. The
 	// last fight's reward is cleared so the next endgame reports its own.
 	function playAgain(): void {
@@ -550,80 +549,139 @@
 	};
 </script>
 
-{#snippet moveButtons(badge: Badge, combat: FighterView | undefined, areaLocked: boolean)}
-	<!-- One button per color the character can throw, stacked vertically and full
-	     width: the character's own color first, then the colors it mixes into. The
-	     active button marks the current choice. Only the player picks colours — the
-	     rival fights on its pre-rolled defaults and has no picker.
-
-	     Each button states the damage its colour puts on the table against the rival
-	     this character is next up against (see the controller's MatchupPreview): the
-	     worst and best the throw can do, from every die turned aside to every one of
-	     them landing. So the three buttons read differently — a dominant colour doubles
-	     the dice, and with them the damage on offer — and they all move on as each pick
-	     fills the next duel cell. -->
-	{@const preview = combat?.preview ?? null}
-	<div class="flex w-full flex-col gap-1">
-		{#if preview}
-			<p class="truncate text-center text-[11px] leading-tight opacity-70">
-				vs <span class="font-semibold">{preview.opponentName}</span>
-			</p>
-			<p class="truncate text-center text-[10px] leading-tight opacity-50">
-				DEF {preview.opponentDef}
-			</p>
-		{/if}
-		<div class="join join-vertical w-full">
-			{#each throwableColors(badge.color) as color (color)}
-				{@const throwFor = preview?.throws.find((option) => option.color === color) ?? null}
-				<button
-					type="button"
-					class={classNames('btn join-item btn-sm btn-block', colorFill[color], {
-						'ring-2 ring-base-content ring-inset': combat?.moveColor === color
-					})}
-					disabled={areaLocked}
-					on:click={() => selectColor(badge.id, color)}
-				>
-					<span class="capitalize">{color}</span>
-					{#if throwFor}
-						<!-- The HP this throw can take off, worst to best. A range with both
-						     ends the same (a defence the dice can't miss, or can't beat) reads
-						     as the single number it is rather than "4–4". -->
-						<span class="ml-auto text-xs font-normal tabular-nums opacity-80">
-							{throwFor.minDamage === throwFor.maxDamage
-								? throwFor.maxDamage
-								: `${throwFor.minDamage}–${throwFor.maxDamage}`} dmg
-						</span>
-					{/if}
-				</button>
-			{/each}
-		</div>
+<!-- A fighter's banked charges, as MAX_CHARGES pips filled left to right. A shot
+     spends one, so this is also how many shots the fighter has in hand. -->
+{#snippet charges(fighter: FighterView | undefined)}
+	<div class="flex items-center justify-center gap-1" aria-label="charges">
+		{#each Array.from({ length: MAX_CHARGES }) as _, i (i)}
+			<span
+				class={classNames('h-2 w-2 rounded-full border', {
+					'border-base-content/40': true,
+					'bg-base-content': (fighter?.charges ?? 0) > i,
+					'bg-transparent': (fighter?.charges ?? 0) <= i
+				})}
+			></span>
+		{/each}
 	</div>
 {/snippet}
 
-{#snippet badgeCard(badge: Badge)}
-	{@const combat = combatById.get(badge.id)}
-	{@const areaLocked = !!combat?.disabled || state?.phase !== 'selecting'}
-	<!-- Only the colour picker lives here now — the fighter's art, name and combat
-	     attributes are drawn on the canvas as its trading card. The column width and
-	     the row's gap mirror the canvas card band (150px cards, 21px apart, centred),
-	     so each picker sits directly under its card. -->
-	<div
-		class={classNames('flex w-[150px] shrink-0 flex-col items-center transition-opacity', {
-			'opacity-60': combat?.disabled
-		})}
-	>
-		{@render moveButtons(badge, combat, areaLocked)}
+<!-- The rivals a shot can be aimed at, one chip each in that rival's own colour.
+     They read left to right in the same order the rival cards are drawn above the
+     board, so a chip names a card by position as well as by name. -->
+{#snippet targetChips(fighterId: string, chosen: string | null, pick: (id: string) => void, locked: boolean)}
+	<div class="flex w-full gap-1">
+		{#each targets as target (target.id)}
+			<button
+				type="button"
+				class={classNames(
+					'btn btn-xs min-w-0 flex-1 px-1 text-[10px] font-semibold',
+					colorFill[target.color],
+					{ 'ring-2 ring-base-content ring-inset': chosen === target.id }
+				)}
+				disabled={locked}
+				on:click={() => pick(target.id)}
+			>
+				<span class="truncate">{target.name}</span>
+			</button>
+		{/each}
+	</div>
+{/snippet}
+
+{#snippet orderPicker(badge: Badge, fighter: FighterView | undefined)}
+	{@const locked = state?.phase !== 'planning' || !!fighter?.down}
+	<div class="flex w-full flex-col gap-1">
+		{@render charges(fighter)}
+		<div class="join join-vertical w-full">
+			{#each COMBAT_ACTIONS as action (action)}
+				{@const unavailable = action === 'shoot' && !fighter?.canShoot}
+				<button
+					type="button"
+					class={classNames('btn join-item btn-sm btn-block', {
+						'btn-primary': fighter?.action === action,
+						'btn-neutral btn-outline': fighter?.action !== action
+					})}
+					disabled={locked || unavailable}
+					on:click={() => controller?.setAction(badge.id, action)}
+				>
+					{actionLabel(action)}
+				</button>
+			{/each}
+		</div>
+		{#if fighter?.action === 'shoot'}
+			{@render targetChips(badge.id, fighter.targetId, (id) => controller?.setTarget(badge.id, id), locked)}
+		{/if}
+		<!-- Red's extra shot: only ever offered to a colour that carries it, on a turn
+		     it is spending on something other than shooting, and only while it has a
+		     charge left to pay for it. -->
+		{#if fighter && (fighter.canBonus || fighter.bonus)}
+			<label class="flex cursor-pointer items-center justify-center gap-1 text-[11px]">
+				<input
+					type="checkbox"
+					class="checkbox checkbox-xs"
+					checked={fighter.bonus}
+					disabled={locked || (!fighter.bonus && !fighter.canBonus)}
+					on:change={(event) => controller?.setBonus(badge.id, event.currentTarget.checked)}
+				/>
+				<span>Extra shot</span>
+			</label>
+			{#if fighter.bonus}
+				{@render targetChips(
+					badge.id,
+					fighter.bonusTargetId,
+					(id) => controller?.setBonusTarget(badge.id, id),
+					locked
+				)}
+			{/if}
+		{/if}
+	</div>
+{/snippet}
+
+<!-- What a rival is doing, once it stops being a secret. Their orders are committed
+     at the same time as the player's, so until the turn plays out this reads as an
+     unknown — guessing it is the game. -->
+{#snippet rivalOrder(fighter: FighterView | undefined)}
+	<div class="flex w-full flex-col gap-1">
+		{@render charges(fighter)}
+		<div
+			class={classNames(
+				'rounded-btn border px-2 py-1 text-center text-xs font-semibold',
+				fighter?.down
+					? 'border-base-300 text-base-content/40 line-through'
+					: 'border-base-300 text-base-content/80'
+			)}
+		>
+			{#if fighter?.down}
+				Down
+			{:else if fighter?.action}
+				{actionLabel(fighter.action)}{#if fighter.bonus}&nbsp;+&nbsp;shot{/if}
+			{:else}
+				?
+			{/if}
+		</div>
 	</div>
 {/snippet}
 
 <!-- A line-up laid out horizontally, above (CPU) or below (player) the board.
      Stays a single row on every screen — on mobile it scrolls sideways rather
-     than wrapping the cards into a stack. -->
-{#snippet row(list: Badge[])}
+     than wrapping the cards into a stack. The column width and the row's gap
+     mirror the canvas card band (150px cards, 21px apart, centred), so each
+     column sits directly under (or over) its card. -->
+{#snippet row(list: Badge[], rival: boolean)}
 	<div class="w-full overflow-x-auto">
 		<div class="mx-auto flex w-max flex-row flex-nowrap items-start gap-[21px] px-2 text-sm">
 			{#each list as badge (badge.id)}
-				{@render badgeCard(badge)}
+				{@const fighter = combatById.get(badge.id)}
+				<div
+					class={classNames('flex w-[150px] shrink-0 flex-col items-center transition-opacity', {
+						'opacity-40': fighter?.down
+					})}
+				>
+					{#if rival}
+						{@render rivalOrder(fighter)}
+					{:else}
+						{@render orderPicker(badge, fighter)}
+					{/if}
+				</div>
 			{/each}
 		</div>
 	</div>
@@ -710,13 +768,42 @@
 			})}
 		>
 			<div class="card-body items-center gap-3">
+				<!-- What the rivals are up to, above the board and over their own cards. -->
+				{@render row(lineups[0], true)}
 				<div class="flex w-full min-w-0 flex-col items-center gap-3">
 					{#key boardKey}
 						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
 					{/key}
 				</div>
-				<!-- Player options, as a row after the game canvas. -->
-				{@render row(lineups[1])}
+				<!-- The player's orders, as a row after the game canvas. -->
+				{@render row(lineups[1], false)}
+				{#if state}
+					<div class="flex w-full flex-col items-center gap-2">
+						<button
+							type="button"
+							class="btn btn-primary btn-wide"
+							disabled={!state.ready}
+							on:click={() => controller?.commit()}
+						>
+							{#if state.phase === 'resolving'}
+								<span class="loading loading-spinner loading-xs"></span>
+								Playing out turn {state.turn}
+							{:else}
+								Commit turn {state.turn}
+							{/if}
+						</button>
+						<p class="text-center text-xs opacity-70">{state.status}</p>
+						<!-- Every fighter acts at once, so what a turn amounted to takes more
+						     than one line to say. -->
+						{#if state.log.length > 0}
+							<ul class="max-h-24 w-full max-w-md overflow-y-auto text-center text-xs opacity-60">
+								{#each state.log as line, i (i)}
+									<li>{line}</li>
+								{/each}
+							</ul>
+						{/if}
+					</div>
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -737,8 +824,9 @@
 			</h3>
 			<p class="py-3 text-sm opacity-70">{state.status}</p>
 			<!-- What the fight paid out. A win earns the whole span of the player's
-			     current level scaled by the compound HP their team kept, so a flawless
-			     win is exactly one level's worth; a loss earns nothing and says so. -->
+			     current level scaled by how much of the team was still standing, so a
+			     win with nobody lost is exactly one level's worth; a loss earns nothing
+			     and says so. -->
 			{#if rewardPending}
 				<p class="text-sm opacity-60">
 					<span class="loading loading-spinner loading-xs align-middle"></span>
@@ -750,10 +838,10 @@
 				{#if reward.awarded > 0}
 					<p class="text-success text-2xl font-bold">+{reward.awarded.toLocaleString()} XP</p>
 					<p class="text-xs opacity-60">
-						{reward.hpLeft}/{reward.hpMax} HP left of level {reward.level}'s
+						{reward.hpLeft}/{reward.hpMax} of the team came through level {reward.level}'s
 						{reward.span.toLocaleString()} XP
 						{#if reward.hpLeft === reward.hpMax}
-							— flawless, a whole level earned.
+							— nobody lost, a whole level earned.
 						{/if}
 					</p>
 				{:else if reward.span === 0}

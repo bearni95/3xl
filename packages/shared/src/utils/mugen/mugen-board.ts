@@ -33,8 +33,8 @@ export interface BoardCharacter {
 	animation?: string;
 	/**
 	 * The character's combat colour — its Supabase spawn colour (`red`, `blue`,
-	 * `yellow`, `purple`, `orange`, `green`). When set, it fills the fighter's HP
-	 * bar. Unlike the grid's `color`, this is per character, not per side.
+	 * `yellow`, `purple`, `orange`, `green`). When set, it fills the fighter's
+	 * charge meter. Unlike the grid's `color`, this is per character, not per side.
 	 */
 	combatColor?: string;
 	/**
@@ -60,12 +60,15 @@ export interface PlacedCharacter extends BoardCharacter {
 	r: number;
 }
 
-/** One 3x3 grid: its border colour and the character standing in the middle. */
+/** One half of the board: its border colour and the characters standing on it. */
 export interface BoardGrid {
 	/** Grid line / fill colour, e.g. 0xff0000 for red. */
 	color: number;
-	/** Character rendered in the centre cell of this half. */
-	character: BoardCharacter;
+	/**
+	 * The half's lead character. Give it `q`/`r` to stand it on a specific cell;
+	 * without them it takes the half's default lead cell ({@link LEAD_CELLS}).
+	 */
+	character: BoardCharacter | PlacedCharacter;
 	/**
 	 * Extra characters standing idle on this half of the board, each pinned to its
 	 * own hex cell. They loop their animation in place until combat walks them.
@@ -202,7 +205,21 @@ const AURA_FRAME_MS = 120;
 const AURA_WIDTH_RATIO = 1.7;
 const AURA_HEIGHT_RATIO = 1.25;
 
-/** Canvas hex for each combat colour, for tinting strike readouts and slashes. */
+/**
+ * Where each half's lead character stands when its grid doesn't say: red
+ * lower-left, blue upper-right. A grid overrides this by giving its `character`
+ * `q`/`r` of its own.
+ */
+const LEAD_CELLS: [Hex, Hex] = [
+	{ q: -2, r: -1 },
+	{ q: 2, r: -3 }
+];
+
+/** The cell a half's lead character stands on: its own `q`/`r`, or `fallback`. */
+const leadCell = (grid: BoardGrid, fallback: Hex): Hex =>
+	'q' in grid.character ? { q: grid.character.q, r: grid.character.r } : fallback;
+
+/** Canvas hex for each combat colour, for tinting callouts and slashes. */
 const COMBAT_COLOR_HEX: Record<string, number> = {
 	red: 0xef4444,
 	blue: 0x3b82f6,
@@ -222,20 +239,20 @@ const SLASH_MS = 420;
  * and is removed from the board (ms). */
 const KNOCKOUT_FADE_MS = 700;
 
-/** HP bar geometry: width as a fraction of the actor's nominal width, its pixel
+/** Meter geometry: width as a fraction of the actor's nominal width, its pixel
  * height, and the gap (px) from the actor's feet down to the top of the bar. */
-const HP_BAR_WIDTH_RATIO = 0.9;
-const HP_BAR_HEIGHT = 18;
-const HP_BAR_GAP = 10;
-/** Font size (px) of the `hp/maxHp` readout centred inside the bar. */
-const HP_BAR_FONT_SIZE = 12;
-/** Border around the HP bar: a larger backing shape in the fill colour, darkened
+const METER_WIDTH_RATIO = 0.9;
+const METER_HEIGHT = 18;
+const METER_GAP = 10;
+/** Font size (px) of the `value/max` readout centred inside the bar. */
+const METER_FONT_SIZE = 12;
+/** Border around the meter: a larger backing shape in the fill colour, darkened
  * by this much black, poking out this many px around the bar on every edge. */
-const HP_BAR_BORDER_WIDTH = 2;
-const HP_BAR_BORDER_DARKEN = 0.3;
-/** How fast the displayed fill eases toward the real HP ratio (fraction closed
- * per second) — drives the width shrink as a fighter takes damage. */
-const HP_BAR_EASE_PER_S = 6;
+const METER_BORDER_WIDTH = 2;
+const METER_BORDER_DARKEN = 0.3;
+/** How fast the displayed fill eases toward the real ratio (fraction closed per
+ * second) — drives the width slide as a fighter's meter moves. */
+const METER_EASE_PER_S = 6;
 
 interface Point {
 	x: number;
@@ -253,7 +270,7 @@ interface OneShot {
 
 /**
  * A knocked-out fighter dissolving off the board: it holds its hurt pose while
- * its sprite (and HP bar) dim from full to nothing, then it's removed.
+ * its sprite (and meter) dim from full to nothing, then it's removed.
  */
 interface KnockOutFade {
 	/** Total fade duration (ms). */
@@ -299,18 +316,19 @@ interface SlashEffect {
 }
 
 /**
- * An HP bar drawn just below an actor's feet, filled in the fighter's own combat
- * (Supabase spawn) colour. The bar tracks a target ratio (the fighter's hp/maxHp)
- * but the *displayed* ratio eases toward it each tick, so the width shrink animates
- * smoothly; the fill colour is fixed to the fighter's spawn colour.
+ * A meter drawn just below an actor's feet, filled in the fighter's own combat
+ * (Supabase spawn) colour — combat uses it for the fighter's banked charges. The
+ * bar tracks a target ratio but the *displayed* ratio eases toward it each tick, so
+ * the width change animates smoothly; the fill colour is fixed to the fighter's
+ * spawn colour.
  */
-interface HpBar {
+interface Meter {
 	graphics: Graphics;
 	/** The `current/max` readout centred inside the bar. */
 	label: Text;
 	/** Displayed fill fraction (0..1), eased toward {@link targetRatio}. */
 	ratio: number;
-	/** The real hp/maxHp fraction the bar is easing toward. */
+	/** The real value/max fraction the bar is easing toward. */
 	targetRatio: number;
 	/** Fixed fill colour: the fighter's combat (spawn) colour. */
 	fillColor: number;
@@ -356,10 +374,10 @@ interface Actor {
 	fade: KnockOutFade | null;
 	/** The looping combat aura shown behind the actor, or null. */
 	aura: Aura | null;
-	/** The HP bar tracking this fighter's health below its feet. */
-	hpBar: HpBar | null;
-	/** Floating combat readout (the strike multiplier ×100) above the actor,
-	 * shown during a duel so the two throws can be compared. Null when clear. */
+	/** The meter tracking this fighter's banked charges below its feet. */
+	meter: Meter | null;
+	/** Floating callout (what its turn amounted to) above the actor, so a turn every
+	 * fighter acts in at once can be read one fighter at a time. Null when clear. */
 	label: Text | null;
 	/** Nominal on-screen size (px) of the character at its fit scale, measured
 	 * from its base animation frames; sizes the aura that envelops it. */
@@ -462,11 +480,14 @@ export class MugenBoard {
 			this.options.centerColor
 		);
 
-		// The centre character of each grid stands left/right of centre: the left one
-		// lower-left (unflipped), the right one (flipped) to the upper-right. Combat can
-		// walk any actor into the central white column.
-		await this.addActor(this.options.grids[0].character, -2, -1, false);
-		await this.addActor(this.options.grids[1].character, 2, -3, true);
+		// The lead character of each half stands where its grid asks, or on the half's
+		// default lead cell: the left one lower-left (unflipped), the right one
+		// (flipped) to the upper-right. Combat can walk any actor into the central
+		// white column.
+		const redLead = leadCell(this.options.grids[0], LEAD_CELLS[0]);
+		const blueLead = leadCell(this.options.grids[1], LEAD_CELLS[1]);
+		await this.addActor(this.options.grids[0].character, redLead.q, redLead.r, false);
+		await this.addActor(this.options.grids[1].character, blueLead.q, blueLead.r, true);
 
 		// Extra characters stand idle on their assigned hexes — left half faces
 		// right (unflipped), right half faces left (flipped) like the centre pair.
@@ -530,8 +551,8 @@ export class MugenBoard {
 	 */
 	private layoutCards(): void {
 		if (!this.app) return;
-		const rival = this.collectCards(this.options.grids[0], { q: -2, r: -1 });
-		const player = this.collectCards(this.options.grids[1], { q: 2, r: -3 });
+		const rival = this.collectCards(this.options.grids[0], leadCell(this.options.grids[0], LEAD_CELLS[0]));
+		const player = this.collectCards(this.options.grids[1], leadCell(this.options.grids[1], LEAD_CELLS[1]));
 		if (rival.length === 0 && player.length === 0) return;
 
 		// Card geometry, sized to the grid so a side's row spans a comfortable fraction
@@ -569,12 +590,12 @@ export class MugenBoard {
 	/**
 	 * The display cards for one side, ordered by where the characters stand top→bottom
 	 * on the board: the character highest up the canvas comes first (leftmost card),
-	 * then the middle one, then the lowest. The centre character stands on `center`;
-	 * each extra on its own hex. Characters without a card are skipped.
+	 * then the middle one, then the lowest. The lead character stands on `lead`; each
+	 * extra on its own hex. Characters without a card are skipped.
 	 */
-	private collectCards(grid: BoardGrid, center: { q: number; r: number }): CardModel[] {
+	private collectCards(grid: BoardGrid, lead: Hex): CardModel[] {
 		const entries: { card: CardModel; q: number; r: number }[] = [];
-		if (grid.character.card) entries.push({ card: grid.character.card, q: center.q, r: center.r });
+		if (grid.character.card) entries.push({ card: grid.character.card, q: lead.q, r: lead.r });
 		for (const extra of grid.extras ?? []) {
 			if (extra.card) entries.push({ card: extra.card, q: extra.q, r: extra.r });
 		}
@@ -758,25 +779,25 @@ export class MugenBoard {
 		sprite.zIndex = mark.y;
 		this.app.stage.addChild(sprite);
 
-		// A full HP bar just below the character's feet, filled in the fighter's own
-		// combat (spawn) colour; combat eases its width down via setHp as the fighter
-		// takes damage. A `current/max` readout sits centred inside it (blank until
+		// A meter just below the character's feet, filled in the fighter's own combat
+		// (spawn) colour; combat eases its width via setMeter as the fighter banks and
+		// spends charges. A `current/max` readout sits centred inside it (blank until
 		// combat seeds the numbers).
-		const hpGraphics = new Graphics();
-		this.app.stage.addChild(hpGraphics);
-		const hpLabel = new Text({
+		const meterGraphics = new Graphics();
+		this.app.stage.addChild(meterGraphics);
+		const meterLabel = new Text({
 			text: '',
 			style: {
 				fill: 0xffffff,
-				fontSize: HP_BAR_FONT_SIZE,
+				fontSize: METER_FONT_SIZE,
 				fontWeight: '700',
 				fontFamily: 'system-ui, sans-serif',
 				stroke: { color: 0x000000, width: 3 },
 				align: 'center'
 			}
 		});
-		hpLabel.anchor.set(0.5);
-		this.app.stage.addChild(hpLabel);
+		meterLabel.anchor.set(0.5);
+		this.app.stage.addChild(meterLabel);
 
 		const actor: Actor = {
 			id,
@@ -798,9 +819,9 @@ export class MugenBoard {
 			oneShot: null,
 			fade: null,
 			aura: null,
-			hpBar: {
-				graphics: hpGraphics,
-				label: hpLabel,
+			meter: {
+				graphics: meterGraphics,
+				label: meterLabel,
 				ratio: 1,
 				targetRatio: 1,
 				fillColor: combatColorHex(character.combatColor ?? '')
@@ -818,7 +839,7 @@ export class MugenBoard {
 			stepDir: 0
 		};
 		this.applyFrame(actor);
-		this.updateHpBar(actor, 0);
+		this.updateMeter(actor, 0);
 		this.actors.push(actor);
 	}
 
@@ -914,7 +935,7 @@ export class MugenBoard {
 			actor.sprite.zIndex = actor.y;
 			this.applyFrame(actor);
 			this.updateAura(actor, deltaMs);
-			this.updateHpBar(actor, deltaMs);
+			this.updateMeter(actor, deltaMs);
 			this.updateLabel(actor);
 		}
 		this.updateProjectiles(deltaMs);
@@ -958,25 +979,25 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Ease the actor's HP bar toward its target ratio and redraw it below the
-	 * actor's feet. The displayed ratio lags the target, so a hit both shrinks the
-	 * fill and slides its colour from green through yellow to red over ~0.2s.
+	 * Ease the actor's meter toward its target ratio and redraw it below the
+	 * actor's feet. The displayed ratio lags the target, so a charge spent slides the
+	 * fill down over ~0.2s rather than snapping to its new width.
 	 */
-	private updateHpBar(actor: Actor, deltaMs: number): void {
-		const bar = actor.hpBar;
+	private updateMeter(actor: Actor, deltaMs: number): void {
+		const bar = actor.meter;
 		if (!bar) return;
 
 		// Exponential ease toward the target ratio (frame-rate independent).
 		if (deltaMs > 0 && bar.ratio !== bar.targetRatio) {
-			const t = 1 - Math.exp((-HP_BAR_EASE_PER_S * deltaMs) / 1000);
+			const t = 1 - Math.exp((-METER_EASE_PER_S * deltaMs) / 1000);
 			bar.ratio += (bar.targetRatio - bar.ratio) * t;
 			if (Math.abs(bar.targetRatio - bar.ratio) < 0.001) bar.ratio = bar.targetRatio;
 		}
 
-		const width = actor.displayWidth * HP_BAR_WIDTH_RATIO;
+		const width = actor.displayWidth * METER_WIDTH_RATIO;
 		const left = actor.x - width / 2;
-		const top = actor.y + HP_BAR_GAP;
-		const radius = HP_BAR_HEIGHT / 2;
+		const top = actor.y + METER_GAP;
+		const radius = METER_HEIGHT / 2;
 		const fillWidth = Math.max(0, Math.min(1, bar.ratio)) * width;
 
 		const g = bar.graphics;
@@ -984,35 +1005,35 @@ export class MugenBoard {
 		// Border: a slightly larger rounded rect behind the bar, filled in the
 		// fighter's colour under a 30% black overlay, so the border reads as a
 		// darkened shade of the fill colour poking out around every edge.
-		const bLeft = left - HP_BAR_BORDER_WIDTH;
-		const bTop = top - HP_BAR_BORDER_WIDTH;
-		const bWidth = width + HP_BAR_BORDER_WIDTH * 2;
-		const bHeight = HP_BAR_HEIGHT + HP_BAR_BORDER_WIDTH * 2;
+		const bLeft = left - METER_BORDER_WIDTH;
+		const bTop = top - METER_BORDER_WIDTH;
+		const bWidth = width + METER_BORDER_WIDTH * 2;
+		const bHeight = METER_HEIGHT + METER_BORDER_WIDTH * 2;
 		const bRadius = bHeight / 2;
 		g.roundRect(bLeft, bTop, bWidth, bHeight, bRadius);
 		g.fill({ color: bar.fillColor });
 		g.roundRect(bLeft, bTop, bWidth, bHeight, bRadius);
-		g.fill({ color: 0x000000, alpha: HP_BAR_BORDER_DARKEN });
+		g.fill({ color: 0x000000, alpha: METER_BORDER_DARKEN });
 		// Track behind the fill: the fighter's own colour washed out by a 30% white
 		// overlay, so the spent portion reads as a paler tint of the same colour.
-		g.roundRect(left, top, width, HP_BAR_HEIGHT, radius);
+		g.roundRect(left, top, width, METER_HEIGHT, radius);
 		g.fill({ color: bar.fillColor });
-		g.roundRect(left, top, width, HP_BAR_HEIGHT, radius);
+		g.roundRect(left, top, width, METER_HEIGHT, radius);
 		g.fill({ color: 0xffffff, alpha: 0.3 });
 		if (fillWidth > 0) {
-			g.roundRect(left, top, Math.max(fillWidth, HP_BAR_HEIGHT), HP_BAR_HEIGHT, radius);
+			g.roundRect(left, top, Math.max(fillWidth, METER_HEIGHT), METER_HEIGHT, radius);
 			g.fill({ color: bar.fillColor });
 		}
 		// Draw with the actor's feet depth so nearer fighters' bars sit in front.
-		g.zIndex = actor.y + HP_BAR_GAP;
+		g.zIndex = actor.y + METER_GAP;
 
 		// The current/max readout, centred in the bar and just above it in depth.
 		bar.label.x = actor.x;
-		bar.label.y = top + HP_BAR_HEIGHT / 2;
-		bar.label.zIndex = actor.y + HP_BAR_GAP + 1;
+		bar.label.y = top + METER_HEIGHT / 2;
+		bar.label.zIndex = actor.y + METER_GAP + 1;
 	}
 
-	/** Keep the actor's combat readout floating just above its head, always on top. */
+	/** Keep the actor's callout floating just above its head, always on top. */
 	private updateLabel(actor: Actor): void {
 		const label = actor.label;
 		if (!label) return;
@@ -1130,7 +1151,7 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Advance a knocked-out actor's fade: dim its sprite (and HP bar) toward zero over
+	 * Advance a knocked-out actor's fade: dim its sprite (and meter) toward zero over
 	 * the fade's lifetime while it holds its hurt pose, then remove it from the board
 	 * and resolve. The hurt frame was pinned when the fade began, so nothing here
 	 * advances playback.
@@ -1141,9 +1162,9 @@ export class MugenBoard {
 		fade.elapsed += deltaMs;
 		const alpha = Math.max(0, 1 - fade.elapsed / fade.total);
 		actor.sprite.alpha = alpha;
-		if (actor.hpBar) {
-			actor.hpBar.graphics.alpha = alpha;
-			actor.hpBar.label.alpha = alpha;
+		if (actor.meter) {
+			actor.meter.graphics.alpha = alpha;
+			actor.meter.label.alpha = alpha;
 		}
 		if (actor.label) actor.label.alpha = alpha;
 		if (fade.elapsed >= fade.total) {
@@ -1156,15 +1177,15 @@ export class MugenBoard {
 	/** Destroy an actor's display objects and drop it from the board for good. */
 	private removeActor(actor: Actor): void {
 		this.clearAura(actor.id);
-		this.clearStrikeLabel(actor.id);
+		this.clearCallout(actor.id);
 		actor.sprite.parent?.removeChild(actor.sprite);
 		actor.sprite.destroy();
-		if (actor.hpBar) {
-			actor.hpBar.graphics.parent?.removeChild(actor.hpBar.graphics);
-			actor.hpBar.graphics.destroy();
-			actor.hpBar.label.parent?.removeChild(actor.hpBar.label);
-			actor.hpBar.label.destroy();
-			actor.hpBar = null;
+		if (actor.meter) {
+			actor.meter.graphics.parent?.removeChild(actor.meter.graphics);
+			actor.meter.graphics.destroy();
+			actor.meter.label.parent?.removeChild(actor.meter.label);
+			actor.meter.label.destroy();
+			actor.meter = null;
 		}
 		this.actors = this.actors.filter((a) => a.id !== actor.id);
 	}
@@ -1370,8 +1391,29 @@ export class MugenBoard {
 	}
 
 	/**
+	 * Walk an actor to `cell` and **adopt it as its new home**, so this is where it
+	 * stands from now on and where {@link returnHome} would bring it back to. Combat
+	 * uses it to fall the rival line back a column each time one of them is taken
+	 * down: the ground they were holding is given up for good, not borrowed.
+	 * Resolves once it has settled; a cell off the actor's own side is refused.
+	 */
+	async regroup(id: string, cell: Hex): Promise<void> {
+		const actor = this.findActor(id);
+		if (!actor || !this.sideAllowed(actor)(cell)) return;
+		// Route around whoever else is standing about; if occupancy boxes the actor
+		// in, fall back to the side-only path so it still gets there.
+		const path =
+			findPath(this.cellOf(actor), cell, this.walkAllowed(actor)) ??
+			findPath(this.cellOf(actor), cell, this.sideAllowed(actor));
+		if (!path) return;
+		await this.walkCells(actor, path.slice(1), this.hexMark(cell.q, cell.r));
+		actor.homeCell = cell.q;
+		actor.homeRow = cell.r;
+	}
+
+	/**
 	 * Knock a fighter out where it stands: freeze it on its hurt flinch, then fade
-	 * it (and its HP bar) out over {@link KNOCKOUT_FADE_MS} and
+	 * it (and its meter) out over {@link KNOCKOUT_FADE_MS} and
 	 * remove it from the board entirely. Resolves once it's gone. Any in-flight
 	 * movement or one-shot is cancelled so the hurt pose owns the sprite as it
 	 * dissolves.
@@ -1552,33 +1594,33 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Set a character's HP bar to `hp` out of `maxHp`. The bar eases toward the new
-	 * fill over the next few ticks — animating both its width and its
-	 * green→yellow→red colour — and shows the `hp/maxHp` numbers inside it.
+	 * Set a character's meter to `value` out of `max` — in combat, the charges it has
+	 * banked out of the most it can hold. The bar eases toward the new fill over the
+	 * next few ticks and shows the `value/max` numbers inside it.
 	 */
-	setHp(id: string, hp: number, maxHp: number): void {
+	setMeter(id: string, value: number, max: number): void {
 		const actor = this.findActor(id);
-		if (!actor?.hpBar) return;
-		const safeMax = maxHp > 0 ? maxHp : 1;
-		actor.hpBar.targetRatio = Math.max(0, Math.min(1, hp / safeMax));
-		actor.hpBar.label.text = `${Math.max(0, Math.round(hp))}/${Math.round(maxHp)}`;
+		if (!actor?.meter) return;
+		const safeMax = max > 0 ? max : 1;
+		actor.meter.targetRatio = Math.max(0, Math.min(1, value / safeMax));
+		actor.meter.label.text = `${Math.max(0, Math.round(value))}/${Math.round(max)}`;
 	}
 
 	/**
-	 * Float a combat readout above a character — the strike multiplier of its
-	 * throw ×100 (50 / 100 / 200) — tinted in the thrown `color`, so the two
-	 * fighters' numbers can be compared during a duel (higher deals more, and
-	 * wins). Replaces any existing label.
+	 * Float a short callout above a character — what its turn amounted to
+	 * (`CHARGE`, `BLOCK`, `HIT!`) — tinted in `color`, so a turn in which every
+	 * fighter acts at once can still be read off the board a fighter at a time.
+	 * Replaces any existing callout on that character.
 	 */
-	showStrikeLabel(id: string, value: number, color: string): void {
+	showCallout(id: string, text: string, color: string): void {
 		const actor = this.findActor(id);
 		if (!actor || !this.app) return;
-		this.clearStrikeLabel(id);
+		this.clearCallout(id);
 		const label = new Text({
-			text: String(value),
+			text,
 			style: {
 				fill: combatColorHex(color),
-				fontSize: 40,
+				fontSize: 28,
 				fontWeight: '900',
 				fontFamily: 'system-ui, sans-serif',
 				stroke: { color: 0x000000, width: 6 },
@@ -1629,8 +1671,8 @@ export class MugenBoard {
 		this.slashes.push({ graphics, elapsed: 0 });
 	}
 
-	/** Remove a character's combat readout, if it has one. */
-	clearStrikeLabel(id: string): void {
+	/** Remove a character's callout, if it has one. */
+	clearCallout(id: string): void {
 		const actor = this.findActor(id);
 		if (!actor?.label) return;
 		actor.label.parent?.removeChild(actor.label);
@@ -1638,9 +1680,9 @@ export class MugenBoard {
 		actor.label = null;
 	}
 
-	/** Clear every combat readout on the board. */
-	clearStrikeLabels(): void {
-		for (const actor of this.actors) this.clearStrikeLabel(actor.id);
+	/** Clear every callout on the board. */
+	clearCallouts(): void {
+		for (const actor of this.actors) this.clearCallout(actor.id);
 	}
 
 	/** Load (and cache) the frame textures of one aura color. Resolves to an

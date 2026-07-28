@@ -1,114 +1,34 @@
 import { describe, it, expect } from 'vitest';
 import {
-	STRIKE_MULTIPLIERS,
 	isPrimaryColor,
 	isTeammateColor,
-	strikeDice,
-	strikeMultiplier,
-	teammateColors,
-	throwableColors
+	relatedColors,
+	teammateColors
 } from '$utils/color/compare';
+import { colorTraits } from '$utils/color/traits';
 import type { CombatColor } from '$types/character-definition.type';
 
 const ALL: CombatColor[] = ['red', 'yellow', 'blue', 'purple', 'orange', 'green'];
 
-describe('color strike table', () => {
-	it('matches the authored attacker→defender matrix', () => {
-		// Rows = attacker, columns = defender, in the order red/yellow/blue/purple/orange/green.
-		const expected: Record<CombatColor, number[]> = {
-			red: [2, 1, 1, 0.5, 0.5, 2],
-			yellow: [1, 2, 1, 2, 0.5, 0.5],
-			blue: [1, 1, 2, 0.5, 2, 0.5],
-			purple: [2, 0.5, 2, 0.5, 1, 1],
-			orange: [2, 2, 0.5, 1, 0.5, 1],
-			green: [0.5, 2, 2, 1, 1, 0.5]
-		};
-		for (const attacker of ALL) {
-			ALL.forEach((defender, col) => {
-				expect(strikeMultiplier(attacker, defender)).toBe(expected[attacker][col]);
-			});
-		}
+describe('colour relation', () => {
+	it('relatedColors yields a compound first, then its two components', () => {
+		expect(relatedColors('purple')).toEqual(['purple', 'red', 'blue']);
+		expect(relatedColors('orange')).toEqual(['orange', 'red', 'yellow']);
+		expect(relatedColors('green')).toEqual(['green', 'blue', 'yellow']);
 	});
 
-	it('every pairing lands: no multiplier is zero, all are 0.5/1/2', () => {
-		for (const attacker of ALL) {
-			for (const defender of ALL) {
-				expect([0.5, 1, 2]).toContain(strikeMultiplier(attacker, defender));
+	it('relatedColors of a primary yields it plus every compound that mixes it', () => {
+		expect(relatedColors('red')).toEqual(['red', 'purple', 'orange']);
+		expect(relatedColors('blue')).toEqual(['blue', 'purple', 'green']);
+		expect(relatedColors('yellow')).toEqual(['yellow', 'orange', 'green']);
+	});
+
+	it('is reciprocal — relation never points only one way', () => {
+		for (const a of ALL) {
+			for (const b of relatedColors(a)) {
+				expect(relatedColors(b)).toContain(a);
 			}
 		}
-	});
-
-	it('same primary strikes double, same compound strikes half', () => {
-		expect(strikeMultiplier('red', 'red')).toBe(2);
-		expect(strikeMultiplier('yellow', 'yellow')).toBe(2);
-		expect(strikeMultiplier('blue', 'blue')).toBe(2);
-		expect(strikeMultiplier('purple', 'purple')).toBe(0.5);
-		expect(strikeMultiplier('orange', 'orange')).toBe(0.5);
-		expect(strikeMultiplier('green', 'green')).toBe(0.5);
-	});
-
-	it('different same-family colours are even (x1) both directions', () => {
-		const primaries: CombatColor[] = ['red', 'yellow', 'blue'];
-		const compounds: CombatColor[] = ['purple', 'orange', 'green'];
-		for (const family of [primaries, compounds]) {
-			for (const a of family) {
-				for (const b of family) {
-					if (a === b) continue;
-					expect(strikeMultiplier(a, b)).toBe(1);
-				}
-			}
-		}
-	});
-
-	it('primary vs compound is reciprocal (2 one way, 0.5 the other)', () => {
-		const primaries: CombatColor[] = ['red', 'yellow', 'blue'];
-		const compounds: CombatColor[] = ['purple', 'orange', 'green'];
-		for (const p of primaries) {
-			for (const c of compounds) {
-				const forward = strikeMultiplier(p, c);
-				const back = strikeMultiplier(c, p);
-				expect(forward * back).toBe(1); // 2 × 0.5
-				expect(forward).not.toBe(back);
-			}
-		}
-	});
-
-	it('the exported table is the single source of truth', () => {
-		for (const attacker of ALL) {
-			for (const defender of ALL) {
-				expect(strikeMultiplier(attacker, defender)).toBe(
-					STRIKE_MULTIPLIERS[attacker][defender]
-				);
-			}
-		}
-	});
-
-	it('strikeDice scales ATK by the colour multiplier', () => {
-		// Dominant doubles the handful, even leaves it alone, weak halves it.
-		expect(strikeDice(4, 'red', 'red')).toBe(8);
-		expect(strikeDice(4, 'red', 'yellow')).toBe(4);
-		expect(strikeDice(4, 'red', 'purple')).toBe(2);
-	});
-
-	it('strikeDice rounds to whole dice and never leaves nothing to roll', () => {
-		// An odd ATK halved lands on a half-die: round up rather than down.
-		expect(strikeDice(3, 'red', 'purple')).toBe(2);
-		expect(strikeDice(5, 'red', 'purple')).toBe(3);
-		// The smallest ATK there is, on its worst colour, still throws one die.
-		expect(strikeDice(1, 'red', 'purple')).toBe(1);
-		expect(strikeDice(0, 'red', 'purple')).toBe(1);
-	});
-
-	it('throwableColors yields the compound first, then its two components', () => {
-		expect(throwableColors('purple')).toEqual(['purple', 'red', 'blue']);
-		expect(throwableColors('orange')).toEqual(['orange', 'red', 'yellow']);
-		expect(throwableColors('green')).toEqual(['green', 'blue', 'yellow']);
-	});
-
-	it('throwableColors of a primary yields it plus every compound that mixes it', () => {
-		expect(throwableColors('red')).toEqual(['red', 'purple', 'orange']);
-		expect(throwableColors('blue')).toEqual(['blue', 'purple', 'green']);
-		expect(throwableColors('yellow')).toEqual(['yellow', 'orange', 'green']);
 	});
 
 	it('isPrimaryColor splits the six colors into their families', () => {
@@ -146,5 +66,65 @@ describe('color strike table', () => {
 		expect(isTeammateColor('orange', 'yellow')).toBe(true);
 		expect(isTeammateColor('orange', 'blue')).toBe(false);
 		expect(isTeammateColor('orange', 'green')).toBe(false);
+	});
+});
+
+describe('colour traits', () => {
+	it('gives each primary exactly the one trait it stands for', () => {
+		expect(colorTraits('red')).toEqual({
+			doubleAction: true,
+			headStart: false,
+			passiveGuard: false
+		});
+		expect(colorTraits('yellow')).toEqual({
+			doubleAction: false,
+			headStart: true,
+			passiveGuard: false
+		});
+		expect(colorTraits('blue')).toEqual({
+			doubleAction: false,
+			headStart: false,
+			passiveGuard: true
+		});
+	});
+
+	it('gives a compound the two traits of the primaries it mixes, and only those', () => {
+		// purple = red + blue: the second action and the free guard, but no head start.
+		expect(colorTraits('purple')).toEqual({
+			doubleAction: true,
+			headStart: false,
+			passiveGuard: true
+		});
+		// orange = red + yellow.
+		expect(colorTraits('orange')).toEqual({
+			doubleAction: true,
+			headStart: true,
+			passiveGuard: false
+		});
+		// green = blue + yellow.
+		expect(colorTraits('green')).toEqual({
+			doubleAction: false,
+			headStart: true,
+			passiveGuard: true
+		});
+	});
+
+	it('never grants all three — every colour gives something up', () => {
+		for (const color of ALL) {
+			const traits = colorTraits(color);
+			const granted = Object.values(traits).filter(Boolean).length;
+			expect(granted).toBe(isPrimaryColor(color) ? 1 : 2);
+		}
+	});
+
+	it('makes a compound the exact union of its two components', () => {
+		const union = (a: CombatColor, b: CombatColor) => ({
+			doubleAction: colorTraits(a).doubleAction || colorTraits(b).doubleAction,
+			headStart: colorTraits(a).headStart || colorTraits(b).headStart,
+			passiveGuard: colorTraits(a).passiveGuard || colorTraits(b).passiveGuard
+		});
+		expect(colorTraits('purple')).toEqual(union('red', 'blue'));
+		expect(colorTraits('orange')).toEqual(union('red', 'yellow'));
+		expect(colorTraits('green')).toEqual(union('blue', 'yellow'));
 	});
 });

@@ -1,5 +1,10 @@
 /**
  * Dice utilities. Pure functions — no side effects beyond consuming randomness.
+ *
+ * Combat itself no longer rolls anything: the stand-off (charge / defend / shoot)
+ * is decided by what both sides chose, not by dice. What is left here is the plain
+ * randomness the game still needs — picking one of a handful of options, chiefly
+ * for the rival side's choices.
  */
 
 /** Roll a single die with `sides` faces, returning an integer in [1, sides]. */
@@ -7,98 +12,31 @@ export function rollDie(sides: number): number {
 	return Math.floor(Math.random() * sides) + 1;
 }
 
-/** Roll `count` dice with `sides` faces each and return the summed total. */
-export function rollDice(count: number, sides: number): number {
-	let total = 0;
-	for (let i = 0; i < count; i++) {
-		total += rollDie(sides);
-	}
-	return total;
-}
-
 /** Roll `count` dice with `sides` faces each, returning the individual results. */
 export function rollN(count: number, sides: number): number[] {
 	return Array.from({ length: Math.max(0, count) }, () => rollDie(sides));
 }
 
-/**
- * Resolve a melee attack: roll `atk` ten-sided dice, and count each die that
- * lands **strictly above** the defender's `def` as a success ("hit") — rolling the
- * defence value itself is turned aside, not a hit. Damage dealt equals the number
- * of hits — one HP lost per success.
- */
-export function resolveAttack(atk: number, def: number): { rolls: number[]; hits: number } {
-	const rolls = rollN(atk, 10);
-	const hits = rolls.filter((die) => die > def).length;
-	return { rolls, hits };
+/** One uniformly random entry of `options`, or undefined when it is empty. */
+export function pickOne<T>(options: readonly T[]): T | undefined {
+	if (options.length === 0) return undefined;
+	return options[rollDie(options.length) - 1];
 }
 
 /**
- * The odds a single d10 counts as a hit against `def` — the faces strictly above
- * `def`, out of ten, since landing on the defence value itself is turned aside.
- * Returned as a probability in [0, 1]; a `def` below 1 can never be missed, one at
- * 10 or above can never be beaten.
+ * Pick one entry of `options` by weight: entry `i` is chosen with probability
+ * `weights[i]` over the total. A missing or non-positive weight reads as zero, and
+ * an all-zero (or empty) set falls back to a uniform pick, so a caller can never be
+ * left with nothing.
  */
-export function dieHitChance(def: number): number {
-	return Math.min(1, Math.max(0, (10 - def) / 10));
-}
-
-/**
- * The odds an attack of `atk` ten-sided dice lands **at least one** hit against
- * `def` — the complement of every die failing to beat it, `1 − (1 − p)^atk`. This is
- * what the arena previews on a fighter's colour buttons, one figure per colour: the
- * thrown colour sets how many dice `atk` is worth (see `strikeDice`), so a dominant
- * colour is genuinely likelier to connect and a weak one genuinely likelier to whiff.
- */
-export function attackHitChance(atk: number, def: number): number {
-	const misses = 1 - dieHitChance(def);
-	return 1 - Math.pow(misses, Math.max(0, atk));
-}
-
-/**
- * The HP of damage a throw of `dice` d10 can do against `def`, from the worst roll
- * to the best. Every die that beats the defence is a flat 1 HP, so the best case is
- * one per die and the worst is none of them — except at the extremes, where the dice
- * have no say: a `def` of 10 or more turns every die aside (0 either way) and one
- * below 1 cannot be missed (every die lands, so the worst roll is the best one).
- * This is what the arena's colour buttons state, since the colour picked is a choice
- * of how many dice — and therefore how much damage — is on the table.
- */
-export function damageRange(dice: number, def: number): { min: number; max: number } {
-	const count = Math.max(0, dice);
-	const chance = dieHitChance(def);
-	if (chance <= 0) return { min: 0, max: 0 };
-	if (chance >= 1) return { min: count, max: count };
-	return { min: 0, max: count };
-}
-
-/**
- * A probability formatted as the percentage to *display*, e.g. `"90%"`, `"99.9%"`.
- *
- * Whole percents everywhere except the two extremes, where rounding would state
- * something false: 5d10 against DEF 1 lands 99.999% of the time, and `Math.round`
- * reports that as a flat `"100%"` — a certainty the dice never offer, since every die
- * can still come up a 1 and be turned aside. Clamping it to `"99%"` instead is no
- * better: it reads as materially worse odds than it is, and collides with a genuine
- * 99.0% (2d10 against DEF 1). So a chance that would round to 100% is *floored* to a
- * tenth, and one that would round to 0% is *raised* to a tenth — enough precision to
- * stay honest and to tell those cases apart. Only an exact 1 or 0 prints 100% or 0%.
- */
-export function formatChancePercent(chance: number): string {
-	if (chance >= 1) return '100%';
-	if (chance <= 0) return '0%';
-	const percent = chance * 100;
-	// Floor/raise to a tenth so a near-certainty never rounds up into certainty (nor a
-	// slim chance down into impossibility).
-	if (percent >= 99.5) return `${Math.floor(percent * 10) / 10}%`;
-	if (percent <= 0.5) return `${Math.ceil(percent * 10) / 10}%`;
-	return `${Math.round(percent)}%`;
-}
-
-/**
- * Roll a character's fight HP: `hp` ten-sided dice summed together. A character
- * with `hp` = 5 rolls 5d10, yielding a total in the inclusive range [5, 50].
- */
-export function rollHp(hp: number): number {
-	return rollDice(hp, 10);
+export function pickWeighted<T>(options: readonly T[], weights: readonly number[]): T | undefined {
+	const safe = options.map((_, i) => Math.max(0, weights[i] ?? 0));
+	const total = safe.reduce((sum, weight) => sum + weight, 0);
+	if (total <= 0) return pickOne(options);
+	let roll = Math.random() * total;
+	for (let i = 0; i < options.length; i++) {
+		roll -= safe[i];
+		if (roll < 0) return options[i];
+	}
+	return options[options.length - 1];
 }

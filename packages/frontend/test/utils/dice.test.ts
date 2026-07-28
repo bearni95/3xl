@@ -1,30 +1,25 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import {
-	rollN,
-	resolveAttack,
-	dieHitChance,
-	attackHitChance,
-	damageRange,
-	formatChancePercent
-} from '$utils/dice/roll';
-
-/** Feed Math.random a fixed sequence so dice results are deterministic. */
-function stubDice(values: number[]): void {
-	let i = 0;
-	// rollDie does Math.floor(random * 10) + 1, so random = (value - 1) / 10 + tiny
-	// yields exactly `value`.
-	vi.spyOn(Math, 'random').mockImplementation(() => {
-		const value = values[i % values.length];
-		i += 1;
-		return (value - 1) / 10 + 0.001;
-	});
-}
+import { pickOne, pickWeighted, rollDie, rollN } from '$utils/dice/roll';
 
 describe('dice', () => {
 	afterEach(() => vi.restoreAllMocks());
 
+	it('rollDie stays inside [1, sides]', () => {
+		for (let i = 0; i < 200; i++) {
+			const roll = rollDie(6);
+			expect(roll).toBeGreaterThanOrEqual(1);
+			expect(roll).toBeLessThanOrEqual(6);
+		}
+	});
+
+	it('rollDie reaches both ends of its range', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0);
+		expect(rollDie(10)).toBe(1);
+		vi.spyOn(Math, 'random').mockReturnValue(0.999999);
+		expect(rollDie(10)).toBe(10);
+	});
+
 	it('rollN returns one result per die within [1, sides]', () => {
-		vi.restoreAllMocks();
 		const rolls = rollN(20, 10);
 		expect(rolls).toHaveLength(20);
 		for (const roll of rolls) {
@@ -37,130 +32,52 @@ describe('dice', () => {
 		expect(rollN(0, 10)).toEqual([]);
 		expect(rollN(-3, 10)).toEqual([]);
 	});
+});
 
-	it('counts a hit only for dice strictly above the defender DEF', () => {
-		// atk = 5 dice → [3, 7, 5, 9, 2]; def = 5 → hits on 7 and 9 only. The 5 lands
-		// on the defence value itself and is turned aside.
-		stubDice([3, 7, 5, 9, 2]);
-		const { rolls, hits } = resolveAttack(5, 5);
-		expect(rolls).toEqual([3, 7, 5, 9, 2]);
-		expect(hits).toBe(2);
+describe('picking', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('pickOne returns a member of the set, and nothing from an empty one', () => {
+		const options = ['a', 'b', 'c'];
+		for (let i = 0; i < 100; i++) expect(options).toContain(pickOne(options));
+		expect(pickOne([])).toBeUndefined();
 	});
 
-	it('a die landing exactly on DEF never hits', () => {
-		stubDice([6, 6, 6]);
-		expect(resolveAttack(3, 6).hits).toBe(0);
-		// One above it does.
-		stubDice([7, 7, 7]);
-		expect(resolveAttack(3, 6).hits).toBe(3);
+	it('pickOne can land on the first and the last entry', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0);
+		expect(pickOne(['a', 'b', 'c'])).toBe('a');
+		vi.spyOn(Math, 'random').mockReturnValue(0.999999);
+		expect(pickOne(['a', 'b', 'c'])).toBe('c');
 	});
 
-	it('DEF below 1 makes every die a hit; DEF at 10 or above makes none', () => {
-		stubDice([1, 2, 3]);
-		expect(resolveAttack(3, 0).hits).toBe(3);
-		// DEF 1 turns a rolled 1 aside — only 2..10 beat it.
-		stubDice([1, 2, 3]);
-		expect(resolveAttack(3, 1).hits).toBe(2);
-		stubDice([9, 10, 8]);
-		expect(resolveAttack(3, 10).hits).toBe(0);
+	it('pickWeighted splits the range in proportion to the weights', () => {
+		const options = ['a', 'b', 'c'];
+		const weights = [1, 3, 6]; // total 10: a takes [0,1), b [1,4), c [4,10)
+		const at = (fraction: number) => {
+			vi.spyOn(Math, 'random').mockReturnValue(fraction);
+			return pickWeighted(options, weights);
+		};
+		expect(at(0)).toBe('a');
+		expect(at(0.05)).toBe('a');
+		expect(at(0.15)).toBe('b');
+		expect(at(0.35)).toBe('b');
+		expect(at(0.45)).toBe('c');
+		expect(at(0.99)).toBe('c');
 	});
 
-	it('dieHitChance counts only the faces above DEF', () => {
-		// DEF 6 → faces 7..10 hit, four of ten.
-		expect(dieHitChance(6)).toBeCloseTo(0.4);
-		// DEF 9 (the highest a card can roll) → only a 10 gets through.
-		expect(dieHitChance(9)).toBeCloseTo(0.1);
-		// DEF 1 → everything but a rolled 1.
-		expect(dieHitChance(1)).toBeCloseTo(0.9);
-	});
-
-	it('dieHitChance clamps a DEF outside the die range', () => {
-		expect(dieHitChance(0)).toBe(1);
-		expect(dieHitChance(-4)).toBe(1);
-		expect(dieHitChance(10)).toBe(0);
-		expect(dieHitChance(25)).toBe(0);
-	});
-
-	it('attackHitChance is the complement of every die failing to beat DEF', () => {
-		// 3d10 vs DEF 5: each die beats it half the time, so 1 − 0.5³ = 87.5%.
-		expect(attackHitChance(3, 5)).toBeCloseTo(0.875);
-		// One die is just the single-die chance.
-		expect(attackHitChance(1, 8)).toBeCloseTo(0.2);
-		// More dice never hurt.
-		expect(attackHitChance(5, 8)).toBeGreaterThan(attackHitChance(4, 8));
-	});
-
-	it('attackHitChance bottoms out at 0 with no dice or an unbeatable DEF', () => {
-		expect(attackHitChance(0, 5)).toBe(0);
-		expect(attackHitChance(-2, 5)).toBe(0);
-		expect(attackHitChance(9, 10)).toBe(0);
-		expect(attackHitChance(9, 0)).toBe(1);
-	});
-
-	it('damageRange spans nothing to one HP per die', () => {
-		// Each die that beats the DEF is a flat 1 HP, so a handful of 6 offers 0–6.
-		expect(damageRange(6, 5)).toEqual({ min: 0, max: 6 });
-		expect(damageRange(1, 9)).toEqual({ min: 0, max: 1 });
-	});
-
-	it('damageRange collapses where the dice have no say', () => {
-		// A DEF no die can beat takes nothing however many are thrown…
-		expect(damageRange(8, 10)).toEqual({ min: 0, max: 0 });
-		// …and one no die can miss takes every die, so the worst roll is the best one.
-		expect(damageRange(8, 0)).toEqual({ min: 8, max: 8 });
-		// No dice, no damage.
-		expect(damageRange(0, 5)).toEqual({ min: 0, max: 0 });
-		expect(damageRange(-3, 5)).toEqual({ min: 0, max: 0 });
-	});
-
-	it('displays the number of dice thrown at DEF 1, not a lumped-together 99%', () => {
-		// The weakest defender there is. One die beating it is a plain 90% — nothing
-		// near-certain about it — and each extra die must read as its own figure.
-		expect(formatChancePercent(attackHitChance(1, 1))).toBe('90%');
-		expect(formatChancePercent(attackHitChance(2, 1))).toBe('99%');
-		expect(formatChancePercent(attackHitChance(3, 1))).toBe('99.9%');
-		expect(formatChancePercent(attackHitChance(5, 1))).toBe('99.9%');
-	});
-
-	it('never rounds a real chance up to a certainty, nor down to an impossibility', () => {
-		expect(formatChancePercent(0.9999999)).toBe('99.9%');
-		expect(formatChancePercent(0.999)).toBe('99.9%');
-		expect(formatChancePercent(0.0001)).toBe('0.1%');
-	});
-
-	it('prints 100% and 0% only for an actual certainty', () => {
-		expect(formatChancePercent(1)).toBe('100%');
-		expect(formatChancePercent(0)).toBe('0%');
-		expect(formatChancePercent(1.5)).toBe('100%');
-		expect(formatChancePercent(-0.2)).toBe('0%');
-	});
-
-	it('shows whole percents everywhere between the extremes', () => {
-		expect(formatChancePercent(0.5)).toBe('50%');
-		expect(formatChancePercent(0.874)).toBe('87%');
-		expect(formatChancePercent(0.4)).toBe('40%');
-		expect(formatChancePercent(0.99)).toBe('99%');
-	});
-
-	it('no DEF a card can roll ever shows a guaranteed hit', () => {
-		// DEF spans 1..9, and a die landing on DEF is turned aside, so even the weakest
-		// defender turns a rolled 1 away — 9 dice against DEF 1 still is not certain.
-		for (let def = 1; def <= 9; def++) {
-			for (let atk = 1; atk <= 9; atk++) {
-				expect(formatChancePercent(attackHitChance(atk, def))).not.toBe('100%');
-			}
+	it('pickWeighted ignores an option weighted zero (or negative)', () => {
+		const options = ['never', 'always'];
+		for (let i = 0; i < 100; i++) {
+			expect(pickWeighted(options, [0, 5])).toBe('always');
+			expect(pickWeighted(options, [-4, 5])).toBe('always');
 		}
 	});
 
-	it('attackHitChance agrees with rolled attacks over many samples', () => {
-		vi.restoreAllMocks();
-		const atk = 2;
-		const def = 7;
-		const samples = 20000;
-		let landed = 0;
-		for (let i = 0; i < samples; i++) {
-			if (resolveAttack(atk, def).hits > 0) landed += 1;
-		}
-		expect(landed / samples).toBeCloseTo(attackHitChance(atk, def), 1);
+	it('pickWeighted falls back to a uniform pick when no weight is positive', () => {
+		// An all-zero set would otherwise leave the caller with nothing at all.
+		const options = ['a', 'b'];
+		for (let i = 0; i < 50; i++) expect(options).toContain(pickWeighted(options, [0, 0]));
+		expect(pickWeighted(options, [])).toBeDefined();
+		expect(pickWeighted([], [])).toBeUndefined();
 	});
 });
