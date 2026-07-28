@@ -53,8 +53,13 @@ export interface MapMarker {
 	 * region fits the viewport, rather than by a raw pin count.
 	 */
 	bounds?: [[number, number], [number, number]];
-	/** Poster/thumbnail shown in the pin; the pin is caption-only when null. */
-	imageUrl: string | null;
+	/**
+	 * Raw SVG markup drawn in the pin's frame — the show's glyph, inlined so it
+	 * paints in the frame's own colour rather than a baked one. The pin is
+	 * caption-only when null (no glyph drawn for that show yet), exactly as the
+	 * panel's tables fall back to the show's name alone.
+	 */
+	iconSvg: string | null;
 	/** Primary caption under the image (the show name). */
 	title: string;
 	/** Secondary text for the hover tooltip (e.g. the region name). */

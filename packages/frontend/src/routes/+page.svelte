@@ -39,6 +39,8 @@
 	import { combatStatsFromStat } from '$utils/spawn/stat';
 	import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
 	import { showPosterUrl } from '$utils/geo/municipality-show';
+	import { showIconName } from '$utils/show/show-icon';
+	import { showIconMarkup } from '$components/core/show-icon-markup';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import type { CardModel } from '$utils/card/card-model.type';
 	import type { CharacterSpawn } from '$types/character-spawn.type';
@@ -1271,10 +1273,16 @@
 		? (claimPacks.find((pack) => pack.id === packTownId) ?? null)
 		: null;
 
-	// One pin per imaged region that has a show, dropped at the centre of the
-	// region's bounding box, captioned with the show and tooltipped with the region
-	// name; clicking a pin opens that region. Pins clear of the selection are
-	// flagged `dimmed` so the map fades them rather than dropping them.
+	// One pin per region that has a show, dropped at the centre of the region's
+	// bounding box, captioned with the show and tooltipped with the region name;
+	// clicking a pin opens that region. Pins clear of the selection are flagged
+	// `dimmed` so the map fades them rather than dropping them.
+	//
+	// The pin carries the show's glyph — the same icon the panel's tables badge a
+	// show with — not its poster: a poster is a tall photographic rectangle that
+	// reads as a picture dropped on the map, while the flat monochrome glyph reads
+	// as a marking of the territory. A show with no glyph drawn yet keeps its pin
+	// and shows by name alone, exactly as it does in those tables.
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
@@ -1282,8 +1290,7 @@
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
-			const poster = node.show?.posterUrl;
-			if (!poster) continue;
+			if (!node.show) continue;
 			const box = geometry.boxes.get(node.key);
 			if (!box) continue;
 			const [[south, west], [north, east]] = box;
@@ -1291,8 +1298,8 @@
 				id: node.key,
 				position: [(south + north) / 2, (west + east) / 2],
 				bounds: box,
-				imageUrl: poster,
-				title: node.show!.name,
+				iconSvg: showIconMarkup(showIconName(node.show.id)),
+				title: node.show.name,
 				subtitle: restoreCatalanArticle(node.name),
 				featureIds: geometry.muniIds.get(node.key) ?? [],
 				dimmed: relevant ? !relevant.has(node.key) : false,

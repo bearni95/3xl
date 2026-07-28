@@ -217,7 +217,7 @@
 		return [(south + north) / 2, (west + east) / 2];
 	}
 
-	// Build a pin's DOM: the region's location name, then a poster thumbnail in a
+	// Build a pin's DOM: the region's location name, then the show's glyph in a
 	// rounded frame, with the full show name captioned beneath (never truncated).
 	// The wrapper is translated so its bottom centre sits on the point (the marker
 	// itself is zero-sized, see rebuildMarkers), giving a pin that stands above its
@@ -234,14 +234,16 @@
 			wrap.appendChild(location);
 		}
 
-		if (marker.imageUrl) {
+		// The glyph is inlined rather than pointed at by an <img> so it inherits the
+		// frame's colour (see show-icon-markup). Decorative: the show is named in the
+		// caption right below, so announcing the glyph too would read it twice. Sized
+		// through a CSS rule, which outranks the svg's own 1em width/height attributes.
+		if (marker.iconSvg) {
 			const frame = document.createElement('div');
-			frame.className = 'overflow-hidden rounded-lg border-2 border-base-100 bg-base-100 shadow-lg';
-			const img = document.createElement('img');
-			img.src = marker.imageUrl;
-			img.alt = marker.title;
-			img.className = 'block h-24 w-16 object-cover';
-			frame.appendChild(img);
+			frame.className =
+				'flex items-center justify-center rounded-lg border-2 border-base-100 bg-base-100 p-1.5 text-base-content shadow-lg [&>svg]:size-10';
+			frame.setAttribute('aria-hidden', 'true');
+			frame.innerHTML = marker.iconSvg;
 			wrap.appendChild(frame);
 		}
 
