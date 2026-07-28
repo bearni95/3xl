@@ -537,6 +537,9 @@
 
 {#snippet orderPicker(badge: Badge, fighter: FighterView | undefined)}
 	{@const locked = state?.phase !== 'planning' || !!fighter?.down}
+	<!-- An extra shot already taken stays clickable so it can be taken back, even on a
+	     turn it could no longer be chosen from scratch. -->
+	{@const bonusLocked = locked || (!fighter?.bonus && !fighter?.canBonus)}
 	<div class="flex w-full flex-col gap-1">
 		{@render charges(fighter)}
 		<!-- The three orders as one row of glyphs. Nothing is written on them, so each
@@ -558,21 +561,26 @@
 				</button>
 			{/each}
 		</div>
-		<!-- Red's extra shot: only ever offered to a colour that carries it, on a turn
-		     it is spending on something other than shooting, and only while it has a
-		     charge left to pay for it. -->
-		{#if fighter && (fighter.canBonus || fighter.bonus)}
-			<label class="flex cursor-pointer items-center justify-center gap-1 text-[11px]">
-				<input
-					type="checkbox"
-					class="checkbox checkbox-xs"
-					checked={fighter.bonus}
-					disabled={locked || (!fighter.bonus && !fighter.canBonus)}
-					on:change={(event) => controller?.setBonus(badge.id, event.currentTarget.checked)}
-				/>
-				<span>Extra shot</span>
-			</label>
-		{/if}
+		<!-- Red's extra shot. Only a colour that carries red can ever take it, and only
+		     on a turn it is spending on something other than shooting, with a charge
+		     left to pay for it — but it is drawn whatever the answer is, greyed out
+		     rather than absent, so a fighter's picker is the same shape every turn and
+		     the row of them never shifts under the cursor. -->
+		<label
+			class={classNames('flex items-center justify-center gap-1 text-[11px]', {
+				'cursor-pointer': !bonusLocked,
+				'opacity-40': bonusLocked
+			})}
+		>
+			<input
+				type="checkbox"
+				class="checkbox checkbox-xs"
+				checked={!!fighter?.bonus}
+				disabled={bonusLocked}
+				on:change={(event) => controller?.setBonus(badge.id, event.currentTarget.checked)}
+			/>
+			<span>Extra shot</span>
+		</label>
 	</div>
 {/snippet}
 
