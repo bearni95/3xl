@@ -254,7 +254,7 @@
 		const caption = document.createElement('span');
 		caption.textContent = marker.title;
 		caption.className =
-			'mt-1 max-w-[10rem] whitespace-normal rounded bg-neutral px-1.5 py-0.5 text-center text-xs font-semibold text-neutral-content shadow';
+			'mt-1 max-w-[10rem] whitespace-normal rounded bg-primary px-1.5 py-0.5 text-center text-xs font-semibold text-primary-content shadow';
 		wrap.appendChild(caption);
 
 		return wrap;
