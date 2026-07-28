@@ -8,6 +8,10 @@
 	export let card: CardModel | null = null;
 	// Several cards — packed into a grid. Takes precedence over `card` when set.
 	export let cards: CardModel[] | null = null;
+	// Fixed cells drawn before the cards in the 'grid' layout — the roster's active
+	// team. A filled entry draws its card, a null one a card-sized empty frame; both
+	// are display-only (a tap on them is not a card tap).
+	export let slots: (CardModel | null)[] = [];
 	// Max cards per row when rendering a fit-layout grid.
 	export let columns: number = 3;
 	// Layout mode: 'fit' scales everything to the host; 'grid' lays cards out at a
@@ -44,9 +48,10 @@
 	// Normalise the two convenience props into the array the scene wants.
 	$: models = cards ?? (card ? [card] : []);
 
-	// Cards and column count often change after mount (a roster loads its spawns
-	// asynchronously), so push updates into the live scene reactively.
-	$: scene?.setCards(models, columns);
+	// Cards, column count and slots often change after mount (a roster loads its
+	// spawns asynchronously), so push updates into the live scene reactively — in one
+	// call, so a change to any of them costs a single rebuild.
+	$: scene?.setCards(models, columns, slots);
 
 	// Push selection changes into the live scene (dims unselected cards) without a
 	// rebuild, so tapping cards on and off never restarts their idle animations.
@@ -54,7 +59,15 @@
 
 	onMount(() => {
 		if (!host) return;
-		scene = new CardScene(host, { cards: models, columns, layout, pannable, flipped, onCardTap });
+		scene = new CardScene(host, {
+			cards: models,
+			slots,
+			columns,
+			layout,
+			pannable,
+			flipped,
+			onCardTap
+		});
 	});
 
 	onDestroy(() => {

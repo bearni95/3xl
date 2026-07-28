@@ -11,7 +11,12 @@
 	import { AuthStatus } from '$types/profile.type';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import type { CombatColor } from '$types/character-definition.type';
-	import { SPAWN_STAT_MAX, SPAWN_STAT_MIN, SpawnColor } from '$types/character-spawn.type';
+	import {
+		SPAWN_STAT_MAX,
+		SPAWN_STAT_MIN,
+		SpawnColor,
+		type CharacterSpawn
+	} from '$types/character-spawn.type';
 	import { combatStatsFromStat } from '$utils/spawn/stat';
 	import { teammateColors } from '$utils/color/compare';
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
@@ -321,14 +326,16 @@
 	// buildPull. The resolved maps are threaded in explicitly so the statement re-runs
 	// as faces, place names, rarities and show names load in (a bare helper call would
 	// hide those deps).
-	$: cardModels = ((
+	// One spawn as a display card. The resolved maps come in as arguments rather than
+	// being read off the component, so every caller has to name them and their
+	// reactive statement tracks them.
+	function toCardModel(
+		spawn: CharacterSpawn,
 		faces: Map<string, string | null>,
-		_names: Map<string, string> | null,
 		rarities: Map<string, number>,
-		_showNames: Map<string, string[]>,
 		copies: Map<string, number>
-	): CardModel[] =>
-		pagedSpawns.map((spawn) => ({
+	): CardModel {
+		return {
 			label: labelFor(spawn.characterId),
 			basePath: basePathFor(spawn.characterId),
 			faceUrl: faces.get(spawn.characterId) ?? null,
@@ -339,7 +346,44 @@
 			spawnedAt: spawn.createdAt,
 			copies: copies.get(spawn.characterId) ?? 1,
 			...combatStatsFromStat(spawn.stat)
-		})))(
+		};
+	}
+
+	$: cardModels = ((
+		faces: Map<string, string | null>,
+		_names: Map<string, string> | null,
+		rarities: Map<string, number>,
+		_showNames: Map<string, string[]>,
+		copies: Map<string, number>
+	): CardModel[] => pagedSpawns.map((spawn) => toCardModel(spawn, faces, rarities, copies)))(
+		characterFaces,
+		municipalityNames,
+		rarityByCharacter,
+		characterShowNames,
+		copiesByCharacter
+	);
+
+	// The active team as the canvas's leading row: one cell per slot, in slot order —
+	// its card where the slot is filled, null (a card-sized empty frame) where it
+	// isn't. Independent of the filters and the pager, since it is the team, not the
+	// roster. Empty with no team selected, which draws no extra row at all.
+	$: teamSlotCards = ((
+		team: typeof activeTeam,
+		spawnList: CharacterSpawn[],
+		faces: Map<string, string | null>,
+		_names: Map<string, string> | null,
+		rarities: Map<string, number>,
+		_showNames: Map<string, string[]>,
+		copies: Map<string, number>
+	): (CardModel | null)[] => {
+		if (!team) return [];
+		return team.memberIds.map((memberId) => {
+			const spawn = memberId ? spawnList.find((entry) => entry.id === memberId) : null;
+			return spawn ? toCardModel(spawn, faces, rarities, copies) : null;
+		});
+	})(
+		activeTeam,
+		$spawns,
 		characterFaces,
 		municipalityNames,
 		rarityByCharacter,
@@ -702,6 +746,7 @@
 					<CardCanvas
 						bind:this={cardCanvas}
 						cards={cardModels}
+						slots={teamSlotCards}
 						columns={$columns}
 						layout="grid"
 						pannable

@@ -23,7 +23,7 @@
  * (`CardCanvas.svelte`) creates and destroys it.
  */
 
-import { Application, Container } from 'pixi.js';
+import { Application, Container, Graphics } from 'pixi.js';
 import { destroyPixiApp } from '$utils/pixi/release-context';
 import { CardSprite, cardBorderWidth } from '$utils/card/CardSprite';
 import type { CardModel } from '$utils/card/card-model.type';
@@ -62,6 +62,13 @@ export function responsiveGridColumns(viewportWidth: number): number {
 export interface CardSceneOptions {
 	/** The card(s) to draw. */
 	cards: CardModel[];
+	/**
+	 * Fixed cells drawn *before* the cards, in `'grid'` layout only — the roster puts
+	 * the active team's slots here. A filled slot draws its card, a null one a
+	 * card-sized empty frame; they are display-only and never tappable. Empty (the
+	 * default) starts the grid straight on the cards.
+	 */
+	slots?: (CardModel | null)[];
 	/** Max cards per row in `'fit'` layout (default 3). Ignored in `'grid'`. */
 	columns?: number;
 	/**
@@ -86,6 +93,9 @@ export class CardScene {
 	readonly app: Application;
 	private host: HTMLElement;
 	private cards: CardModel[];
+	// Fixed cells laid out before the cards — the active team's slots. A null entry is
+	// an empty slot, drawn as a card-sized outline.
+	private slots: (CardModel | null)[];
 	private columns: number;
 	private onCardTap?: (index: number) => void;
 	private layout: CardLayout;
@@ -94,6 +104,12 @@ export class CardScene {
 
 	private cardLayer: Container;
 	private cardSprites: CardSprite[] = [];
+	// The leading slot row's cards, kept apart from `cardSprites` — that array is
+	// indexed by card index for the selection overlay, and slots are not cards — plus
+	// the empty frames standing in for the unfilled ones. Both are tracked so the row
+	// can be redrawn on its own.
+	private slotSprites: CardSprite[] = [];
+	private slotFrames: Graphics[] = [];
 
 	// Recycle-style selection overlay: when active, cards whose index isn't in
 	// `selectedIndices` are dimmed so the selected ones stand out. Kept as scene
@@ -128,7 +144,10 @@ export class CardScene {
 		cellW: 0,
 		cellH: 0,
 		contentW: 0,
-		contentH: 0
+		contentH: 0,
+		// How many leading rows the slots take, so a hit test can tell a slot from a
+		// card and map the rest back to the right card index.
+		slotRows: 0
 	};
 	// Whether the initial view has been framed (so a resize keeps the scroll offset).
 	private framed = false;
@@ -143,6 +162,7 @@ export class CardScene {
 	constructor(host: HTMLElement, options: CardSceneOptions) {
 		this.host = host;
 		this.cards = options.cards;
+		this.slots = options.slots ?? [];
 		this.columns = Math.max(1, options.columns ?? 3);
 		this.onCardTap = options.onCardTap;
 		this.layout = options.layout ?? 'fit';
@@ -154,17 +174,43 @@ export class CardScene {
 	}
 
 	/**
-	 * Replace the drawn cards (and optionally the fit-layout column count) and
-	 * rebuild. Cards often arrive asynchronously after the host mounts (a roster
-	 * loads its spawns), so the hosting component calls this reactively; before init
-	 * completes it only stages the cards for the initial build.
+	 * Replace the drawn cards (and optionally the column count and the leading slot
+	 * row) and rebuild. Cards often arrive asynchronously after the host mounts (a
+	 * roster loads its spawns), so the hosting component calls this reactively; before
+	 * init completes it only stages them for the initial build. All three arrive
+	 * together in one call so a change to any of them costs a single rebuild.
 	 */
-	setCards(cards: CardModel[], columns?: number): void {
+	setCards(cards: CardModel[], columns?: number, slots?: (CardModel | null)[]): void {
+		const cardsChanged = cards !== this.cards;
+		const columnsChanged = columns != null && Math.max(1, columns) !== this.columns;
+		const slotsChanged = slots != null && slots !== this.slots;
 		this.cards = cards;
 		if (columns != null) this.columns = Math.max(1, columns);
+		if (slots != null) this.slots = slots;
 		if (!this.ready || this.isDestroyed) return;
+
+		// Only the slots moved, and they still occupy the same rows: redraw that row on
+		// its own. A full rebuild here would restart the idle animation of every card on
+		// the page each time a pick joins or leaves the team.
+		if (
+			slotsChanged &&
+			!cardsChanged &&
+			!columnsChanged &&
+			this.layout === 'grid' &&
+			this.grid.cardW > 0 &&
+			this.slotRowCount() === this.grid.slotRows
+		) {
+			this.rebuildSlots();
+			return;
+		}
+
 		const { width, height } = this.measure();
 		this.build(width, height);
+	}
+
+	/** How many rows the current slots take at the current column count. */
+	private slotRowCount(): number {
+		return this.slots.length === 0 ? 0 : Math.ceil(this.slots.length / Math.max(1, this.columns));
 	}
 
 	destroy(): void {
@@ -175,6 +221,8 @@ export class CardScene {
 		this.app.canvas?.removeEventListener('webglcontextlost', this.onContextLost);
 		this.app.canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
 		this.cardSprites = [];
+		this.slotSprites = [];
+		this.slotFrames = [];
 		// Never `destroy(true)` — see the helper: it would release Pixi's shared pools
 		// and break every other canvas still on the page.
 		destroyPixiApp(this.app, { children: true, texture: false });
@@ -234,7 +282,13 @@ export class CardScene {
 
 	private build(width: number, height: number): void {
 		for (const sprite of this.cardSprites) sprite.destroy();
+		for (const sprite of this.slotSprites) sprite.destroy();
 		this.cardSprites = [];
+		this.slotSprites = [];
+		this.slotFrames = [];
+		// The empty-slot frames are plain Graphics with nothing tracking them; clear
+		// whatever is left on the layer so rebuilds don't stack them up.
+		for (const child of this.cardLayer.removeChildren()) child.destroy();
 		this.builtW = width;
 		this.builtH = height;
 		if (this.layout === 'grid') this.buildGrid(width, height);
@@ -289,8 +343,18 @@ export class CardScene {
 	 * sprite and the idle animations never restart.
 	 */
 	private buildGrid(width: number, height: number): void {
-		if (this.cards.length === 0) {
-			this.grid = { cols: 1, cardW: 0, cardH: 0, border: 0, cellW: 0, cellH: 0, contentW: 0, contentH: 0 };
+		if (this.cards.length === 0 && this.slots.length === 0) {
+			this.grid = {
+				cols: 1,
+				cardW: 0,
+				cardH: 0,
+				border: 0,
+				cellW: 0,
+				cellH: 0,
+				contentW: 0,
+				contentH: 0,
+				slotRows: 0
+			};
 			return;
 		}
 
@@ -312,20 +376,21 @@ export class CardScene {
 		}
 		const cardH = cardW / CARD_ASPECT;
 		const cellH = cardH + 2 * border;
-		const rows = Math.ceil(this.cards.length / cols);
+		// The slots take the leading rows, the roster picks up on the row after them.
+		// At the usual column counts the slots are a single extra row; a narrow grid
+		// (fewer columns than slots) simply wraps them over more.
+		const slotRows = this.slots.length === 0 ? 0 : Math.ceil(this.slots.length / cols);
+		const rows = slotRows + Math.ceil(this.cards.length / cols);
 		const contentW = NAV_PAD * 2 + cols * cellW + (cols - 1) * NAV_GAP;
 		const contentH = NAV_PAD * 2 + rows * cellH + (rows - 1) * NAV_GAP;
-		this.grid = { cols, cardW, cardH, border, cellW, cellH, contentW, contentH };
+		this.grid = { cols, cardW, cardH, border, cellW, cellH, contentW, contentH, slotRows };
+
+		this.layoutSlots();
 
 		for (let i = 0; i < this.cards.length; i++) {
-			const row = Math.floor(i / cols);
-			const col = i % cols;
 			const sprite = this.makeSprite(i, cardW, cardH);
 			// Inset the content by the border so the outset frame sits inside the cell.
-			sprite.position.set(
-				NAV_PAD + border + col * (cellW + NAV_GAP),
-				NAV_PAD + border + row * (cellH + NAV_GAP)
-			);
+			sprite.position.set(this.cellX(i % cols), this.cellY(slotRows + Math.floor(i / cols)));
 		}
 
 		// Fixed fit-to-width: no zoom, ever. The first build starts scrolled to the
@@ -372,6 +437,48 @@ export class CardScene {
 		return !this.selectionActive || this.selectedIndices.has(index) ? 1 : 0.3;
 	}
 
+	/** Cell origin (the content's top-left, past the outset border inset) by column. */
+	private cellX(col: number): number {
+		return NAV_PAD + this.grid.border + col * (this.grid.cellW + NAV_GAP);
+	}
+
+	/** Cell origin by row. */
+	private cellY(row: number): number {
+		return NAV_PAD + this.grid.border + row * (this.grid.cellH + NAV_GAP);
+	}
+
+	/**
+	 * Draw the leading slot row(s) from the current geometry: a card where the slot is
+	 * filled, a card-sized empty frame where it isn't. Split out from the grid build so
+	 * a slot changing (a pick added to the team) can redraw this row alone.
+	 */
+	private layoutSlots(): void {
+		const { cols, cardW, cardH } = this.grid;
+		if (cardW === 0) return;
+		for (let i = 0; i < this.slots.length; i++) {
+			const slot = this.slots[i];
+			const x = this.cellX(i % cols);
+			const y = this.cellY(Math.floor(i / cols));
+			if (slot) {
+				this.makeSlotSprite(slot, cardW, cardH).position.set(x, y);
+			} else {
+				const frame = this.makeEmptySlot(x, y, cardW, cardH);
+				this.cardLayer.addChild(frame);
+				this.slotFrames.push(frame);
+			}
+		}
+	}
+
+	/** Redraw just the slot row, leaving every card sprite (and its running idle
+	 * animation) alone. Only valid while the row count and geometry hold. */
+	private rebuildSlots(): void {
+		for (const sprite of this.slotSprites) sprite.destroy();
+		for (const frame of this.slotFrames) frame.destroy();
+		this.slotSprites = [];
+		this.slotFrames = [];
+		this.layoutSlots();
+	}
+
 	/** Build one card sprite, add it to the layer, and track it. */
 	private makeSprite(index: number, cardW: number, cardH: number): CardSprite {
 		const sprite = new CardSprite({
@@ -386,6 +493,35 @@ export class CardScene {
 		this.cardLayer.addChild(sprite);
 		this.cardSprites.push(sprite);
 		return sprite;
+	}
+
+	/** Build one filled slot's card. Never dimmed — the selection overlay is the
+	 * roster's, and the slots aren't part of it. */
+	private makeSlotSprite(card: CardModel, cardW: number, cardH: number): CardSprite {
+		const sprite = new CardSprite({
+			card,
+			width: cardW,
+			height: cardH,
+			app: this.app,
+			flipped: this.flipped
+		});
+		this.cardLayer.addChild(sprite);
+		this.slotSprites.push(sprite);
+		return sprite;
+	}
+
+	/**
+	 * An empty slot: a card-sized, card-shaped outline standing in for the pick that
+	 * isn't there yet. Matched to {@link CardSprite}'s corner radius so a filled and an
+	 * empty slot read as the same object in two states.
+	 */
+	private makeEmptySlot(x: number, y: number, cardW: number, cardH: number): Graphics {
+		const radius = Math.max(6, cardW * 0.05);
+		const slot = new Graphics();
+		slot.roundRect(x, y, cardW, cardH, radius);
+		slot.fill({ color: 0x000000, alpha: 0.15 });
+		slot.stroke({ width: Math.max(1, cardBorderWidth(cardW) / 2), color: 0xffffff, alpha: 0.25 });
+		return slot;
 	}
 
 	private gridDims(n: number): { cols: number; rows: number } {
@@ -441,19 +577,22 @@ export class CardScene {
 
 	/** Screen point → the index of the card under it, or null if over a gap/empty. */
 	private cardIndexAt(sx: number, sy: number): number | null {
-		const { cols, cardW, cardH, border, cellW, cellH } = this.grid;
+		const { cols, cardW, cardH, border, cellW, cellH, slotRows } = this.grid;
 		if (cardW === 0) return null;
 		const worldX = sx - this.pan.x;
 		const worldY = sy - this.pan.y;
 		const col = Math.floor((worldX - NAV_PAD) / (cellW + NAV_GAP));
 		const row = Math.floor((worldY - NAV_PAD) / (cellH + NAV_GAP));
 		if (col < 0 || col >= cols || row < 0) return null;
+		// The leading slot rows are display-only: a tap there is not a card tap, and
+		// must not fall through to the card that would otherwise sit at that index.
+		if (row < slotRows) return null;
 		// Card-local coords within the cell (past the border inset); reject points that
 		// land on the border or in the gutter between cards.
 		const localX = worldX - NAV_PAD - col * (cellW + NAV_GAP) - border;
 		const localY = worldY - NAV_PAD - row * (cellH + NAV_GAP) - border;
 		if (localX < 0 || localY < 0 || localX > cardW || localY > cardH) return null;
-		const index = row * cols + col;
+		const index = (row - slotRows) * cols + col;
 		return index >= 0 && index < this.cards.length ? index : null;
 	}
 
