@@ -3,7 +3,7 @@ import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
 
 // One Piece (1) and Dragon Ball Z (2), with Goku also in Dragon Ball (3).
 const CHARACTERS_BY_SHOW = new Map<number, string[]>([
-	[1, ['luffy', 'zoro']],
+	[1, ['luffy', 'sanji']],
 	[2, ['goku', 'vegeta']],
 	[3, ['goku']]
 ]);
@@ -19,17 +19,17 @@ describe('showIdsByCharacter', () => {
 });
 
 describe('teamShowId', () => {
-	it('names the show most of the team belongs to', () => {
-		expect(teamShowId(['goku', 'vegeta', 'luffy'], BY_CHARACTER)).toBe(2);
+	it("is the lead's show, whatever the rest of the team is", () => {
+		expect(teamShowId(['sanji', 'goku', 'vegeta'], BY_CHARACTER)).toBe(1);
+		expect(teamShowId(['vegeta', 'sanji', 'luffy'], BY_CHARACTER)).toBe(2);
 	});
 
-	it('breaks a tie in favour of the earliest member', () => {
-		expect(teamShowId(['luffy', 'vegeta'], BY_CHARACTER)).toBe(1);
-		expect(teamShowId(['vegeta', 'luffy'], BY_CHARACTER)).toBe(2);
+	it('takes the first of a lead that belongs to several shows', () => {
+		expect(teamShowId(['goku', 'luffy'], BY_CHARACTER)).toBe(2);
 	});
 
-	it('returns null for an empty team or one with no assigned show', () => {
+	it('is null when the team is empty or its lead has no show', () => {
 		expect(teamShowId([], BY_CHARACTER)).toBeNull();
-		expect(teamShowId(['unknown'], BY_CHARACTER)).toBeNull();
+		expect(teamShowId(['unknown', 'sanji'], BY_CHARACTER)).toBeNull();
 	});
 });

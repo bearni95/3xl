@@ -1,45 +1,33 @@
 // Tell which TV show a team belongs to.
 //
-// A team is just a list of characters, and every character is assigned to zero or
-// more Supabase shows (`show_characters`, loaded by the spawn service). A team
-// pulled from one booster usually shares a single show, but nothing stops a player
-// fielding characters from several — so the team's show is the one most of its
-// members belong to, with the first-fielded member breaking a tie (a holder's team
-// is stored in the order it was won with, so its lead speaks for it).
+// A team's show is its LEAD's show — the character in the first slot, exactly as
+// the roster defines it (see TeamPanel: the lead is the first filled member, and
+// the shows it belongs to are the team's shows). The rest of the line-up does not
+// get a vote: a team led by a One Piece character is a One Piece team even with two
+// Dragon Ball fighters behind it.
+//
+// A character's shows come from the Supabase `show_characters` assignment, keyed
+// the other way round (show → characters), so `showIdsByCharacter` flips it first.
 
 /**
- * The id of the show most of `characterIds` belong to, or null when none of them
- * is assigned to any show. Ties go to whichever tied show the earliest member in
- * the list belongs to.
+ * The id of the show a team belongs to: the first show its lead (the first member)
+ * is assigned to. Null when the team is empty or its lead belongs to no show —
+ * never guessed from the members behind the lead.
  */
 export function teamShowId(
 	characterIds: readonly string[],
 	showIdsByCharacter: ReadonlyMap<string, number[]>
 ): number | null {
-	const counts = new Map<number, number>();
-	// Insertion order records where each show was first seen, which is what breaks
-	// a tie: the scan below walks the shows in that order.
-	for (const characterId of characterIds) {
-		for (const showId of showIdsByCharacter.get(characterId) ?? []) {
-			counts.set(showId, (counts.get(showId) ?? 0) + 1);
-		}
-	}
-
-	let best: number | null = null;
-	let bestCount = 0;
-	for (const [showId, count] of counts) {
-		if (count > bestCount) {
-			best = showId;
-			bestCount = count;
-		}
-	}
-	return best;
+	const lead = characterIds[0];
+	if (!lead) return null;
+	return showIdsByCharacter.get(lead)?.[0] ?? null;
 }
 
 /**
  * Reverse a show → character-ids assignment into character id → the shows it
  * belongs to, the direction {@link teamShowId} reads it in. Each character's show
- * list keeps the order the shows were walked in, so the tie-break above is stable.
+ * list keeps the order the shows were walked in, so a character in several shows
+ * resolves to the same one every time.
  */
 export function showIdsByCharacter(
 	charactersByShow: ReadonlyMap<number, string[]>
