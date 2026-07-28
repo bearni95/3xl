@@ -130,6 +130,22 @@ function validate(id: string, body: unknown): CharacterDefinition {
 	const face =
 		typeof def.face === 'string' && /^spr_9000_\d+\.png$/.test(def.face) ? def.face : undefined;
 
+	// The square framed on that portrait, in its own pixels. The sprite's size
+	// isn't known here (it lives in the assets manifest), so this only enforces
+	// whole non-negative pixels and a real side; consumers clamp it to the image.
+	const rawCrop = def.faceCrop;
+	const faceCrop =
+		face &&
+		rawCrop &&
+		[rawCrop.x, rawCrop.y, rawCrop.size].every((n) => typeof n === 'number' && Number.isFinite(n)) &&
+		rawCrop.size >= 1
+			? {
+					x: Math.max(0, Math.round(rawCrop.x)),
+					y: Math.max(0, Math.round(rawCrop.y)),
+					size: Math.round(rawCrop.size)
+				}
+			: undefined;
+
 	const result: CharacterDefinition = {
 		id,
 		label: def.label,
@@ -141,6 +157,7 @@ function validate(id: string, body: unknown): CharacterDefinition {
 		color
 	};
 	if (face) result.face = face;
+	if (faceCrop) result.faceCrop = faceCrop;
 	return result;
 }
 

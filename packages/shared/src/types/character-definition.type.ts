@@ -117,6 +117,24 @@ export interface CharacterDefinition {
 	 * manifest's default `face`.
 	 */
 	face?: string;
+	/**
+	 * The square the admin framed on {@link CharacterDefinition.face} in the Faces
+	 * tab — what the avatar picker and the account card show instead of the whole
+	 * portrait. In the face file's own pixels, so it is only meaningful for the
+	 * face it was authored against (picking another face re-frames it). Omitted
+	 * means "no square authored": consumers show the full portrait.
+	 */
+	faceCrop?: FaceCrop;
+}
+
+/** A square region of a face sprite, in that sprite's own pixels. */
+export interface FaceCrop {
+	/** Left edge, in source-image pixels. */
+	x: number;
+	/** Top edge, in source-image pixels. */
+	y: number;
+	/** Side length, in source-image pixels — the region is always square. */
+	size: number;
 }
 
 /** Non-directional movement slots in render/display order. */

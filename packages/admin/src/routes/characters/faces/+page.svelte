@@ -33,7 +33,8 @@
 			</div>
 			<p class="text-sm opacity-70">
 				Every MUGEN-defined face and avatar each character ships in sprite group 9000. Pick which
-				portrait the board shows for a character, then save straight into the git tree.
+				portrait the board shows for a character, drag the square to frame the avatar the game
+				wears, then save straight into the git tree.
 			</p>
 			<a class="link link-primary text-sm" href="/characters">← Back to character frames</a>
 		</header>

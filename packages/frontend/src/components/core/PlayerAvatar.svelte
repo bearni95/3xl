@@ -1,13 +1,15 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { characters } from '@3xl/data';
-	import { characterFaceUrl } from '$utils/mugen/character-face';
+	import CharacterFace from '$components/core/CharacterFace.svelte';
+	import { characterFace, type CharacterFace as Face } from '$utils/mugen/character-face';
 	import { activeTeamColor } from '$services/team.service';
 	import { SpawnColor } from '$types/character-spawn.type';
 
 	// The character the player wears, or null for the initial-letter avatar every
 	// account starts on. Only the character is stored on the profile — the
-	// portrait it shows is whichever face the admin picked for it.
+	// portrait it shows is whichever face the admin picked for it, framed to the
+	// square they cropped on it.
 	export let characterId: string | null = null;
 	// Fallback content: the first letter of the player's name.
 	export let initial: string = '?';
@@ -16,7 +18,7 @@
 	export let textClasses: string = 'text-xl';
 	export let classes: string = '';
 
-	let faceUrl: string | null = null;
+	let face: Face | null = null;
 
 	// The backdrop is the player's colours, not the theme's: whichever colour the
 	// active team is bound to, and nothing at all when there is no team to read one
@@ -37,29 +39,29 @@
 
 	async function loadFace(id: string | null): Promise<void> {
 		if (!id) {
-			faceUrl = null;
+			face = null;
 			return;
 		}
 		const character = characters.find((entry) => entry.id === id);
 		if (!character) {
-			faceUrl = null;
+			face = null;
 			return;
 		}
 		try {
-			const url = await characterFaceUrl(character.id, character.basePath);
+			const resolved = await characterFace(character.id, character.basePath);
 			// A later pick may have landed while this was in flight; only the current
 			// character's portrait may be shown.
-			if (id === characterId) faceUrl = url;
+			if (id === characterId) face = resolved;
 		} catch {
-			if (id === characterId) faceUrl = null;
+			if (id === characterId) face = null;
 		}
 	}
 </script>
 
-<div class={classNames('avatar', { 'avatar-placeholder': !faceUrl }, classes)}>
+<div class={classNames('avatar', { 'avatar-placeholder': !face }, classes)}>
 	<div class={classNames(size, 'rounded-md', backdropClasses)}>
-		{#if faceUrl}
-			<img src={faceUrl} alt="" class="object-contain" />
+		{#if face}
+			<CharacterFace {face} />
 		{:else}
 			<span class={textClasses}>{initial}</span>
 		{/if}

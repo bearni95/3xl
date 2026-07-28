@@ -6,14 +6,16 @@
 	import { authService } from '$services/auth.service';
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { AuthStatus } from '$types/profile.type';
-	import { characterFaceUrl } from '$utils/mugen/character-face';
+	import CharacterFace from '$components/core/CharacterFace.svelte';
+	import { characterFace, type CharacterFace as Face } from '$utils/mugen/character-face';
 
 	const status = authService.status;
 	const profile = authService.profile;
 
-	// character id → its active face portrait, the very one the admin picked for it
-	// on /characters/faces. Loaded once, the first time the modal is opened.
-	let faces = new Map<string, string>();
+	// character id → its active face portrait with the square framed on it, the
+	// very ones the admin picked and cropped on /characters/faces. Loaded once,
+	// the first time the modal is opened.
+	let faces = new Map<string, Face>();
 	let loading = false;
 	let loaded = false;
 	// The character being saved, so only its own tile spins.
@@ -35,14 +37,14 @@
 			const resolved = await Promise.all(
 				characters.map(async (character) => {
 					try {
-						return [character.id, await characterFaceUrl(character.id, character.basePath)] as const;
+						return [character.id, await characterFace(character.id, character.basePath)] as const;
 					} catch {
 						return [character.id, null] as const;
 					}
 				})
 			);
-			const next = new Map<string, string>();
-			for (const [id, url] of resolved) if (url) next.set(id, url);
+			const next = new Map<string, Face>();
+			for (const [id, face] of resolved) if (face) next.set(id, face);
 			faces = next;
 			loaded = true;
 		} finally {
@@ -98,11 +100,9 @@
 							on:click={() => pick(character.id)}
 						>
 							<div class="relative">
-								<img
-									src={faces.get(character.id)}
-									alt={character.label}
-									class="h-20 w-20 rounded-md bg-base-200 object-contain"
-								/>
+								<div class="h-20 w-20 overflow-hidden rounded-md bg-base-200">
+									<CharacterFace face={faces.get(character.id) ?? null} alt={character.label} />
+								</div>
 								{#if saving === character.id}
 									<span
 										class="absolute inset-0 flex items-center justify-center rounded-md bg-base-100/70"
