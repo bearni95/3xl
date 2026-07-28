@@ -6,8 +6,9 @@
  * three orders; both sides' orders are locked in blind and carried out together, so
  * a turn is a guess about what the other side is about to do, not a reaction to it.
  *
- *   · **Charge** banks one charge (up to {@link MAX_CHARGES}). It is also the only
- *     way to get one, and it leaves the fighter wide open.
+ *   · **Charge** banks one charge (up to {@link MAX_CHARGES}, which is one — a
+ *     fighter is loaded or it is empty). It is the only way to get one, and it leaves
+ *     the fighter wide open for the turn it takes.
  *   · **Defend** turns aside every shot aimed at the fighter that turn, but banks
  *     nothing — spend the whole fight defending and you never fire.
  *   · **Shoot** spends a charge and fires **straight across the lane**. Nobody
@@ -28,7 +29,9 @@
  * are pushed further out every time one of them is taken down — the survivors fall
  * back to what is from then on their starting ground (see {@link RIVAL_RANKS}). So
  * the board itself shows how the fight is going, with nothing drawn under anybody's
- * feet: there is no health to track, and an aura says who is holding a charge.
+ * feet: there is no health to track, and a fighter holding a charge simply *burns* —
+ * an aura in its own colour, lit the turn it loads and out the turn it fires, so who
+ * is dangerous can be read off the board at a glance and at any moment.
  *
  * The game ends when a side is wiped out (both at once is a draw), or at
  * {@link MAX_TURNS}, where the side with more fighters left wins. Winning is the
@@ -53,8 +56,13 @@ export type CombatAction = 'charge' | 'defend' | 'shoot';
 /** Orders in the fixed display order the pickers list them in. */
 export const COMBAT_ACTIONS: CombatAction[] = ['charge', 'defend', 'shoot'];
 
-/** The most charges a fighter can hold at once — charging past it is wasted. */
-export const MAX_CHARGES = 3;
+/**
+ * The most charges a fighter can hold at once. At one, a fighter is simply loaded or
+ * empty: there is no hoarding a turn's advantage for later, so every turn spent
+ * loading is a turn spent open, and the shot it buys has to be worth that. Charging
+ * while already loaded is a wasted turn.
+ */
+export const MAX_CHARGES = 1;
 
 /**
  * Turns before the stand-off is called. Two sides that only ever charge and defend
@@ -540,9 +548,10 @@ export class CombatController {
 			if (rival.down) continue;
 			const target = this.opposite(rival);
 			if (!target) {
-				// Nobody in this lane: there is nothing to shoot and nothing to fear, so
-				// it may as well go on loading.
-				rival.action = 'charge';
+				// Nobody in this lane: there is nothing to shoot and nothing to fear, so it
+				// loads if it has room and otherwise just covers, rather than spending every
+				// turn spilling charges it cannot hold.
+				rival.action = rival.charges >= MAX_CHARGES ? 'defend' : 'charge';
 				rival.bonus = false;
 				continue;
 			}
@@ -553,6 +562,9 @@ export class CombatController {
 					: 'charge';
 			} else if (!threatened) {
 				rival.action = 'shoot';
+			} else if (rival.charges >= MAX_CHARGES) {
+				// Loading again would spill over the cap, so a full fighter only fires or covers.
+				rival.action = pickWeighted<CombatAction>(['shoot', 'defend'], [9, 7]) ?? 'shoot';
 			} else {
 				rival.action =
 					pickWeighted<CombatAction>(['shoot', 'defend', 'charge'], [9, 7, 4]) ?? 'shoot';

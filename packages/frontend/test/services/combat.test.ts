@@ -51,6 +51,40 @@ async function playTurn(controller: CombatController): Promise<void> {
 	await vi.runAllTimersAsync();
 }
 
+/** What the controller asked the board to do about auras. */
+interface AuraLog {
+	lit: { id: string; color: string }[];
+	doused: string[];
+}
+
+/**
+ * A board that does nothing but remember what it was told. The controller drives the
+ * canvas through this interface, so it is the only way to check what a fight actually
+ * *shows* — the aura being the whole of what the board says about a fighter's charge
+ * now that nothing is drawn under its feet. Every method the controller calls has to
+ * be here: it invokes them as `this.board?.x(…)`, which throws rather than skips once
+ * `board` is set.
+ */
+function fakeBoard(log: AuraLog) {
+	const done = () => Promise.resolve();
+	return {
+		showAura: (id: string, color: string) => {
+			log.lit.push({ id, color });
+			return done();
+		},
+		clearAura: (id: string) => log.doused.push(id),
+		clearAuras: () => {},
+		clearCallouts: () => {},
+		showCallout: () => {},
+		showSlash: () => {},
+		playMove: done,
+		playHurt: done,
+		shoot: done,
+		knockOut: done,
+		regroup: done
+	} as unknown as Parameters<CombatController['attachBoard']>[0];
+}
+
 describe('the stand-off', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -102,6 +136,26 @@ describe('the stand-off', () => {
 				await playTurn(controller);
 			}
 			expect(fighterOf(get(controller), 'p1').charges).toBe(MAX_CHARGES);
+		});
+
+		it('holds one charge at most — loading again is a turn thrown away', async () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'blue'),
+				seed('p0', 'info', 'blue'),
+				seed('p1', 'info', 'blue') // the empty lane: nothing can reach it
+			]);
+			expect(MAX_CHARGES).toBe(1);
+			controller.setAction('p0', 'defend');
+			controller.setAction('p1', 'charge');
+			await playTurn(controller);
+			expect(fighterOf(get(controller), 'p1').charges).toBe(1);
+			// A second turn spent loading buys nothing, and the fight says as much.
+			controller.setAction('p0', 'defend');
+			controller.setAction('p1', 'charge');
+			await playTurn(controller);
+			const state = get(controller);
+			expect(fighterOf(state, 'p1').charges).toBe(1);
+			expect(state.log.some((line) => line.includes('already full up'))).toBe(true);
 		});
 
 		it('spends a charge on the shot it fires', async () => {
@@ -165,6 +219,54 @@ describe('the stand-off', () => {
 			const state = get(controller);
 			expect(fighterOf(state, 'p0').down).toBe(true);
 			expect(state.outcome).toBe('lose');
+		});
+	});
+
+	describe('the aura a charge burns with', () => {
+		it('lights in the fighter\'s own colour the turn it loads, and stays lit', async () => {
+			const log: AuraLog = { lit: [], doused: [] };
+			const controller = new CombatController([
+				seed('r0', 'error', 'red'),
+				seed('p0', 'info', 'blue'),
+				seed('p1', 'info', 'green') // empty lane, and green opens already loaded
+			]);
+			controller.attachBoard(fakeBoard(log));
+			// Green mixes yellow, so it opens loaded — and alight — before a single order
+			// is given, burning in its own colour rather than the primary it borrowed.
+			expect(log.lit).toContainEqual({ id: 'p1', color: 'green' });
+
+			controller.setAction('p0', 'defend');
+			controller.setAction('p1', 'defend');
+			await playTurn(controller);
+			expect(log.lit.filter((entry) => entry.id === 'p0')).toHaveLength(0);
+
+			controller.setAction('p0', 'charge');
+			controller.setAction('p1', 'defend');
+			await playTurn(controller);
+			expect(log.lit).toContainEqual({ id: 'p0', color: 'blue' });
+
+			// Held across turns without being re-lit, and never put out while it is held.
+			const litOnce = log.lit.filter((entry) => entry.id === 'p0').length;
+			controller.setAction('p0', 'defend');
+			controller.setAction('p1', 'defend');
+			await playTurn(controller);
+			expect(log.lit.filter((entry) => entry.id === 'p0')).toHaveLength(litOnce);
+			expect(log.doused).not.toContain('p0');
+		});
+
+		it('goes out the turn the charge is fired', async () => {
+			const log: AuraLog = { lit: [], doused: [] };
+			const controller = new CombatController([
+				seed('r0', 'error', 'red'),
+				seed('p0', 'info', 'yellow')
+			]);
+			controller.attachBoard(fakeBoard(log));
+			expect(log.lit).toContainEqual({ id: 'p0', color: 'yellow' });
+
+			controller.setAction('p0', 'shoot');
+			await playTurn(controller);
+			expect(fighterOf(get(controller), 'p0').charges).toBe(0);
+			expect(log.doused).toContain('p0');
 		});
 	});
 
