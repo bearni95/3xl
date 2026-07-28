@@ -10,9 +10,9 @@
 	export let profile: Profile;
 	export let signingOut: boolean = false;
 	export let classes: string = '';
-	// Compact drops the account-id / member-since rows and the sign-out button —
-	// used by the always-visible pinned map panel, which is a glance card, not the
-	// account-management dropdown.
+	// Compact drops the whole details list — account id, member since, total exp — and
+	// the sign-out button, ending at the booster row. Used by the always-visible pinned
+	// map panel, which is a glance card, not the account-management dropdown.
 	export let compact: boolean = false;
 	// The player's daily booster allowance, shown as a "N / M left" glance row when
 	// provided (the pinned map panel loads it). Null hides the row entirely.
@@ -111,10 +111,13 @@
 		</div>
 	{/if}
 
-	<div class="divider my-0"></div>
+	<!-- The details list, and the divider that introduces it, are the dropdown's alone:
+		compact ends at the booster row. Its total-exp figure is already in the progress
+		row above, so there is nothing left for compact to list. -->
+	{#if !compact}
+		<div class="divider my-0"></div>
 
-	<dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-		{#if !compact}
+		<dl class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
 			<dt class="text-base-content/60">{$_('profile.accountId')}</dt>
 			<dd class="truncate font-mono">{profile.id}</dd>
 
@@ -126,11 +129,11 @@
 					{$_('profile.daysElapsed', { values: { days: memberDays } })}
 				{/if}
 			</dd>
-		{/if}
 
-		<dt class="text-base-content/60">{$_('profile.exp')}</dt>
-		<dd class="font-mono">{progress.exp.toLocaleString()}</dd>
-	</dl>
+			<dt class="text-base-content/60">{$_('profile.exp')}</dt>
+			<dd class="font-mono">{progress.exp.toLocaleString()}</dd>
+		</dl>
+	{/if}
 
 	{#if !compact}
 		<button
