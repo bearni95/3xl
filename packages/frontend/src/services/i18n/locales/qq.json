@@ -60,8 +60,5 @@
 		"unauthorized": "QQQQQ",
 		"forbidden": "QQQQQ",
 		"serverError": "QQQQQ"
-	},
-	"theme": {
-		"toggle": "QQQQQ"
 	}
 }
