@@ -7,18 +7,21 @@ import { showIconName } from '$utils/show/show-icon';
 const ASSETS_ICONS = join(__dirname, '../../../assets/public/icons');
 
 // Every show the lookup currently has a glyph for.
-const MAPPED_SHOW_IDS = [35610];
+const MAPPED_SHOW_IDS = [35610, 37854, 12971];
 
 describe('showIconName', () => {
 	it('maps a show with an icon to its /assets/icons path', () => {
-		// InuYasha (TMDB 35610) is the first show to get a glyph.
-		expect(showIconName(35610)).toBe('shows/bow-and-arrow');
+		expect(showIconName(35610)).toBe('shows/bow-and-arrow'); // InuYasha
+		expect(showIconName(37854)).toBe('shows/straw-hat'); // One Piece
+		expect(showIconName(12971)).toBe('shows/four-star-dragon-ball'); // Dragon Ball Z
 	});
 
 	it('returns null for a show no icon has been drawn for', () => {
-		// One Piece (37854) is in the saved collection but has no glyph yet, so the
-		// tables fall back to naming it — never to a stand-in icon.
-		expect(showIconName(37854)).toBeNull();
+		// Bleach (30984) is in the saved collection but has no glyph yet, so the tables
+		// fall back to naming it — never to a stand-in icon. Dragon Ball GT (12697) is
+		// the pointed case: it is deliberately unmapped rather than sharing DBZ's ball.
+		expect(showIconName(30984)).toBeNull();
+		expect(showIconName(12697)).toBeNull();
 	});
 
 	it('returns null for a missing show rather than throwing', () => {

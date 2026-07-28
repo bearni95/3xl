@@ -4,3 +4,5 @@ attribution that shipped inside each SVG, harvested by generate-show-icons.js
 before the artwork was cropped (the icons themselves no longer carry it).
 
 - bow-and-arrow.svg — Created by Studio Danro from Noun Project
+- four-star-dragon-ball.svg — Created by Theresa Stoodley from the Noun Project
+- straw-hat.svg — Created by Abu Ibrahim Icon from Noun Project

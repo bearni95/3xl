@@ -24,7 +24,14 @@
  */
 const ICONS_BY_SHOW: Readonly<Record<number, string>> = {
 	// InuYasha — Kagome's sacred bow.
-	35610: 'shows/bow-and-arrow'
+	35610: 'shows/bow-and-arrow',
+	// One Piece — Luffy's straw hat.
+	37854: 'shows/straw-hat',
+	// Dragon Ball Z — the four-star ball. The other three Dragon Ball entries in the
+	// collection (GT, Super, DAIMA) are deliberately left unmapped: they would all
+	// take this same glyph, and four identically-badged rows in the leaderboard tell
+	// the reader less than one badged row does.
+	12971: 'shows/four-star-dragon-ball'
 };
 
 /**

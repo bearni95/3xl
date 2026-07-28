@@ -365,11 +365,13 @@
 	$: showsByCharacter = showIdsByCharacter(showCharacterIds);
 
 	// Municipality id → the show its ruling team belongs to, for every town a player
-	// holds. A team whose characters are in no show, or whose show isn't in the saved
-	// collection, yields no entry — that town simply keeps its seeded show rather than
-	// losing its pin. A ruling show with no poster does replace the seeded one, and its
-	// town then goes unpinned exactly as a town seeded with a poster-less show already
-	// does. Named deps so it re-derives as holders and the saved shows land.
+	// holds — the team's LEAD's show, as the roster defines a team's show, so the town
+	// flies whatever its first card flies. A team whose lead is in no show, or whose
+	// show isn't in the saved collection, yields no entry — that town simply keeps its
+	// seeded show rather than losing its pin. A ruling show with no poster does replace
+	// the seeded one, and its town then goes unpinned exactly as a town seeded with a
+	// poster-less show already does. Named deps so it re-derives as holders and the
+	// saved shows land.
 	function buildRulingShows(
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
 		byCharacter: ReadonlyMap<string, number[]>,
