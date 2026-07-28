@@ -1,4 +1,4 @@
-import type { CharacterSpawn, SpawnColor } from '../../types/character-spawn.type';
+import { SpawnColor, type CharacterSpawn } from '../../types/character-spawn.type';
 import { SPAWN_COLOR_WEIGHTS } from './color';
 
 /**
@@ -6,6 +6,20 @@ import { SPAWN_COLOR_WEIGHTS } from './color';
  * secondaries). Derived from {@link SPAWN_COLOR_WEIGHTS} so the two can't drift.
  */
 export const SPAWN_COLORS: readonly SpawnColor[] = SPAWN_COLOR_WEIGHTS.map(([color]) => color);
+
+/**
+ * The same six colours in rainbow (pride flag) order — red through purple, the
+ * order the picker lays the set out in so a half-collected character reads as a
+ * flag with gaps rather than as an arbitrary row of swatches.
+ */
+export const PRIDE_SPAWN_COLORS: readonly SpawnColor[] = [
+	SpawnColor.Red,
+	SpawnColor.Orange,
+	SpawnColor.Yellow,
+	SpawnColor.Green,
+	SpawnColor.Blue,
+	SpawnColor.Purple
+];
 
 /**
  * How many distinct colours of one character a player must own before they may

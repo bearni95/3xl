@@ -9,7 +9,12 @@
 	import { AuthStatus } from '$types/profile.type';
 	import CharacterFace from '$components/core/CharacterFace.svelte';
 	import { characterFace, type CharacterFace as Face } from '$utils/mugen/character-face';
-	import { avatarCharacterIds } from '$utils/spawn/avatar';
+	import {
+		PRIDE_SPAWN_COLORS,
+		avatarCharacterIds,
+		ownedColorsByCharacter
+	} from '$utils/spawn/avatar';
+	import { SpawnColor } from '$types/character-spawn.type';
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -45,9 +50,20 @@
 			.finally(() => (spawnsLoading = false));
 	}
 
+	// The same swatches the portrait rings and the card scene use.
+	const colorClasses: Record<SpawnColor, string> = {
+		[SpawnColor.Red]: 'bg-red-500',
+		[SpawnColor.Yellow]: 'bg-yellow-400',
+		[SpawnColor.Blue]: 'bg-blue-500',
+		[SpawnColor.Orange]: 'bg-orange-500',
+		[SpawnColor.Green]: 'bg-green-500',
+		[SpawnColor.Purple]: 'bg-purple-500'
+	};
+
 	// A portrait is earned, not just picked: the player must hold that character in
 	// all six spawn colours. The `set_player_avatar` RPC enforces the same rule, so
 	// a locked tile is one the server would refuse.
+	$: ownedColors = ownedColorsByCharacter($spawns);
 	$: unlocked = avatarCharacterIds($spawns);
 
 	// Only characters that actually ship a portrait can be worn as one, the ones
@@ -119,15 +135,14 @@
 								{
 									'border-primary ring-2 ring-primary': selected,
 									'border-transparent': !selected,
-									'hover:border-base-300 hover:bg-base-200': !selected && !locked,
-									'opacity-40': locked
+									'hover:border-base-300 hover:bg-base-200': !selected && !locked
 								}
 							)}
 							title={locked ? $_('profile.avatar.locked') : character.label}
 							disabled={locked || saving !== null}
 							on:click={() => pick(character.id)}
 						>
-							<div class="relative">
+							<div class={classNames('relative', { 'opacity-40': locked })}>
 								<div class="h-20 w-20 overflow-hidden rounded-md bg-base-300">
 									<CharacterFace face={faces.get(character.id) ?? null} alt={character.label} />
 								</div>
@@ -139,7 +154,23 @@
 									</span>
 								{/if}
 							</div>
-							<span class="w-full truncate text-center text-xs">{character.label}</span>
+							{#if locked}
+								{@const owned = ownedColors.get(character.id)}
+								<div class="flex w-20 overflow-hidden rounded-full">
+									{#each PRIDE_SPAWN_COLORS as color (color)}
+										<span
+											class={classNames('h-1.5 flex-1', colorClasses[color], {
+												'opacity-50': !owned?.has(color)
+											})}
+										></span>
+									{/each}
+								</div>
+							{/if}
+							<span
+								class={classNames('w-full truncate text-center text-xs', {
+									'opacity-40': locked
+								})}>{character.label}</span
+							>
 						</button>
 					{/each}
 				</div>

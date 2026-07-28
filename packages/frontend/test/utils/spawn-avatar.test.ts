@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	AVATAR_COLOR_SET_SIZE,
+	PRIDE_SPAWN_COLORS,
 	SPAWN_COLORS,
 	avatarCharacterIds,
 	ownedColorsByCharacter
@@ -29,6 +30,18 @@ describe('avatar colour-set ownership', () => {
 	it('counts all six spawn colours', () => {
 		expect(AVATAR_COLOR_SET_SIZE).toBe(6);
 		expect([...SPAWN_COLORS].sort()).toEqual([...Object.values(SpawnColor)].sort());
+	});
+
+	it('lays the same six colours out in rainbow order for the picker', () => {
+		expect(PRIDE_SPAWN_COLORS).toEqual([
+			SpawnColor.Red,
+			SpawnColor.Orange,
+			SpawnColor.Yellow,
+			SpawnColor.Green,
+			SpawnColor.Blue,
+			SpawnColor.Purple
+		]);
+		expect([...PRIDE_SPAWN_COLORS].sort()).toEqual([...SPAWN_COLORS].sort());
 	});
 
 	it('groups the colours a player holds per character, ignoring duplicates', () => {
