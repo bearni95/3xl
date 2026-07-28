@@ -6,6 +6,9 @@
 
 	// The day's booster packs, one per celebrating place, laid out in the grid.
 	export let packs: OpenerPack[] = [];
+	// How many packs a row holds. Three suits a full-width canvas; a narrow host (the
+	// map's side panel) asks for fewer so each pack still reads. Read once, at mount.
+	export let columns: number = 3;
 	export let classes: string = '';
 
 	const dispatch = createEventDispatcher<{ select: OpenerPack; openComplete: void }>();
@@ -24,11 +27,16 @@
 
 	onMount(() => {
 		if (!host) return;
-		scene = new ClaimPackGridScene(host, packs, {
-			onReady: () => (ready = true),
-			onSelect: (pack) => dispatch('select', pack),
-			onOpenComplete: () => dispatch('openComplete')
-		});
+		scene = new ClaimPackGridScene(
+			host,
+			packs,
+			{
+				onReady: () => (ready = true),
+				onSelect: (pack) => dispatch('select', pack),
+				onOpenComplete: () => dispatch('openComplete')
+			},
+			columns
+		);
 	});
 
 	onDestroy(() => {

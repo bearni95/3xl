@@ -47,6 +47,8 @@ export interface ClaimPackGridSceneCallbacks {
 type SceneState = 'loading' | 'grid' | 'zooming' | 'idle' | 'cutting' | 'revealing' | 'fanned';
 
 const CARD_ASPECT = 2 / 3; // portrait trading card (reveal cards)
+// How many packs a row holds by default — right for the claim page's full-width
+// canvas. A narrower host (the map's side panel) passes its own count instead.
 const GRID_COLS = 3;
 // Grid navigation geometry, matching the roster grid: gap + outer padding, the tap
 // slop that separates a tap from a pan, and a little springy overscroll.
@@ -87,6 +89,9 @@ export class ClaimPackGridScene {
 	private bakedCardW = 0;
 	private maxBakedH = 0;
 	private cols = 1;
+	// The widest a row is allowed to get (the caller's column count); the actual `cols`
+	// is this capped to how many packs there are.
+	private maxCols = GRID_COLS;
 	private rows = 1;
 	private gridScale = 1;
 	private contentW = 0;
@@ -118,10 +123,16 @@ export class ClaimPackGridScene {
 	private builtW = 0;
 	private builtH = 0;
 
-	constructor(host: HTMLElement, packs: OpenerPack[], callbacks: ClaimPackGridSceneCallbacks = {}) {
+	constructor(
+		host: HTMLElement,
+		packs: OpenerPack[],
+		callbacks: ClaimPackGridSceneCallbacks = {},
+		columns: number = GRID_COLS
+	) {
 		this.host = host;
 		this.callbacks = callbacks;
 		this.packs = packs;
+		this.maxCols = Math.max(1, Math.round(columns));
 		this.app = new Application();
 
 		this.rootLayer = new Container();
@@ -194,7 +205,7 @@ export class ClaimPackGridScene {
 		// Bake each pack at the column width, so a full-width pack in the grid is
 		// pixel-crisp (no upscaling). Columns fit the canvas width; the poster's aspect
 		// sets each pack's height.
-		this.cols = Math.min(GRID_COLS, Math.max(1, this.packs.length));
+		this.cols = Math.min(this.maxCols, Math.max(1, this.packs.length));
 		this.bakedCardW = this.columnWidth(width, this.cols);
 		await Promise.all(
 			this.packs.map(async (pack, i) => {

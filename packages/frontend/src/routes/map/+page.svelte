@@ -12,6 +12,7 @@
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
+	import ClaimPackGrid from '$components/core/pack/ClaimPackGrid.svelte';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
@@ -849,6 +850,31 @@
 		panelTab = PanelTab.Pack;
 	}
 
+	// The pack picked on the grid canvas — named in the header, and the reason the
+	// "all packs" control shows. Plus a counter bumped to remount the grid, since a
+	// picked pack has zoomed in and only a fresh scene lays the full grid back out.
+	let gridPack: OpenerPack | null = null;
+	let gridSession = 0;
+
+	// Back to the whole day's grid, from a star-opened town or a picked pack alike.
+	function showPackGrid(): void {
+		packTownId = null;
+		gridPack = null;
+		gridSession += 1;
+	}
+
+	// Picking the Booster tab by its own button always lands on the grid of every pack
+	// the day offers; only a star click narrows the tab to one town's pack.
+	function selectTab(id: PanelTab): void {
+		if (id === PanelTab.Pack) showPackGrid();
+		panelTab = id;
+	}
+
+	// The grid remounts whenever the day's set of packs changes (they load in, or the
+	// player signs in), so a stale grid never lingers. The closures are rebuilt on every
+	// recompute while the ids stay stable, so key on the ids alone.
+	$: packsKey = claimPacks.map((pack) => pack.id).join(',');
+
 	// The single pack the Booster tab shows — the clicked town's, picked out of the full
 	// day's set — plus the town's name for the tab's header. Null when no star has been
 	// clicked, the player is signed out, or the town has no claimable show yet.
@@ -1055,9 +1081,11 @@
 		— Leaderboard: how much of the map each show flies, tallied over every
 		  municipality's current show — seeded, or the ruling team's where a town has been
 		  taken.
-		— Booster: the festa pack of the town whose gold star was clicked last, on the
-		  single-pack opener canvas — the pack arrives already fitted and centred, ready
-		  to be sliced open, with no grid and no click-to-zoom step. -->
+		— Booster: today's festa packs. Picked from the tab strip it lays every one of them
+		  out on the /claim page's grid canvas (two to a row at this width) — pick one to
+		  zoom it up and slice it open. Reached by clicking a town's gold star instead, it
+		  skips straight to that town's pack on the single-pack opener, already fitted and
+		  centred. -->
 	<aside class={winsPanelClasses} aria-label="Territory standings">
 		<div class="flex flex-none items-center justify-between gap-2 border-b border-base-300 px-4 py-3">
 			<div class="join">
@@ -1066,7 +1094,7 @@
 						type="button"
 						class={classNames('btn btn-outline btn-sm join-item', { 'btn-active': panelTab === tab.id })}
 						aria-pressed={panelTab === tab.id}
-						on:click={() => (panelTab = tab.id)}
+						on:click={() => selectTab(tab.id)}
 					>
 						{tab.label}
 					</button>
@@ -1080,33 +1108,61 @@
 		{:else if panelTab === PanelTab.Leaderboard}
 			<ShowStandingsTable rows={showStandings} />
 		{:else}
-			<!-- The clicked town's festa pack. Keyed on the town so clicking another star
-				remounts a fresh, unsliced pack rather than reusing the last one's scene. -->
+			<!-- Two ways in, one tab: a star click narrows it to that town's pack on the
+				single-pack opener, while picking the tab itself shows the whole day's packs
+				on the same grid canvas the /claim page uses — two to a row here, since the
+				panel is a third of that page's width. Either way the pack is sliced open in
+				place; "Tots els sobres" goes back to the grid. -->
 			<div class="flex min-h-0 flex-1 flex-col">
 				<div class="flex flex-none items-baseline gap-2 border-b border-base-300 px-4 py-2">
-					<h2 class="text-xs font-bold uppercase tracking-wide opacity-70">Sobre de festa</h2>
-					{#if packTownName}
+					<h2 class="flex-none text-xs font-bold uppercase tracking-wide opacity-70">
+						{packTownId ? 'Sobre de festa' : "Sobres de festa d'avui"}
+					</h2>
+					{#if packTownId && packTownName}
 						<p class="truncate font-bold">{restoreCatalanArticle(packTownName)}</p>
+					{:else if gridPack}
+						<p class="truncate font-bold">{gridPack.label}</p>
+					{/if}
+					{#if packTownId || gridPack}
+						<button type="button" class="btn btn-ghost btn-xs ml-auto flex-none" on:click={showPackGrid}>
+							Tots els sobres
+						</button>
 					{/if}
 				</div>
 				<div class="min-h-0 flex-1 p-3">
-					{#if packForTown}
-						{#key packForTown.id}
-							<ClaimPackOpener
-								coverUrl={packForTown.coverUrl}
-								locationName={packForTown.locationName}
-								claim={packForTown.claim}
+					{#if packTownId}
+						<!-- Keyed on the town so clicking another star remounts a fresh, unsliced
+							pack rather than reusing the last one's scene. -->
+						{#if packForTown}
+							{#key packForTown.id}
+								<ClaimPackOpener
+									coverUrl={packForTown.coverUrl}
+									locationName={packForTown.locationName}
+									claim={packForTown.claim}
+									classes="rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
+								/>
+							{/key}
+						{:else}
+							<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
+								<p class="max-w-xs text-sm opacity-60">
+									Aquest municipi encara no té cap sobre per obrir. Inicia sessió i torna-ho a provar.
+								</p>
+							</div>
+						{/if}
+					{:else if claimPacks.length}
+						{#key `${packsKey}:${gridSession}`}
+							<ClaimPackGrid
+								packs={claimPacks}
+								columns={2}
 								classes="rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
+								on:select={(event) => (gridPack = event.detail)}
 							/>
 						{/key}
 					{:else}
 						<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
 							<p class="max-w-xs text-sm opacity-60">
-								{#if packTownId}
-									Aquest municipi encara no té cap sobre per obrir. Inicia sessió i torna-ho a provar.
-								{:else}
-									Clica una estrella daurada del mapa per obrir el sobre de festa d'aquell municipi.
-								{/if}
+								Ara mateix no hi ha cap sobre per obrir. Inicia sessió i clica una estrella daurada
+								del mapa.
 							</p>
 						</div>
 					{/if}
