@@ -3,7 +3,6 @@
 	import { onMount } from 'svelte';
 	import { _, locale } from 'svelte-i18n';
 	import { authService } from '$services/auth.service';
-	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { usernamePromptOpen } from '$services/usernamePrompt';
 	import { AuthStatus } from '$types/profile.type';
@@ -23,28 +22,9 @@
 	let sentTo: string | null = null;
 	let errorMessage: string | null = null;
 
-	// The signed-in player's daily booster allowance, shown by the embedded map panel's
-	// ProfileCard. Only loaded when embedded (the navbar dropdown doesn't show it).
-	let boosters: BoostersStatus | null = null;
-
 	onMount(() => authService.init());
 
 	$: profileInitial = ($profile?.displayName || $profile?.email || '?').charAt(0).toUpperCase();
-
-	// Refresh the daily allowance whenever the embedded panel has a signed-in player.
-	// Keyed on `$profile` so a claim spent elsewhere (or a level-up that raises the
-	// cap) re-reads it. All deps named so the statement actually re-runs.
-	$: if (embedded && $status === AuthStatus.SignedIn && $profile) {
-		void loadBoosters();
-	}
-
-	async function loadBoosters(): Promise<void> {
-		try {
-			boosters = await spawnService.boostersStatus();
-		} catch {
-			boosters = null;
-		}
-	}
 
 	async function handleMagicLink(event: CustomEvent<{ email: string }>): Promise<void> {
 		errorMessage = null;
@@ -142,7 +122,6 @@
 							profile={$profile}
 							{signingOut}
 							compact={embedded}
-							boosters={embedded ? boosters : null}
 							on:signout={handleSignOut}
 							on:editusername={openUsernamePrompt}
 						/>

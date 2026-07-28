@@ -23,11 +23,44 @@
 		"about": "QQQQQ",
 		"contact": "QQQQQ"
 	},
+	"profile": {
+		"title": "QQQQQ",
+		"signInPrompt": "QQQQQ",
+		"emailLabel": "QQQQQ",
+		"emailPlaceholder": "QQQQQ",
+		"sendMagicLink": "QQQQQ",
+		"magicLinkHint": "QQQQQ",
+		"checkEmail": "QQQQQ",
+		"useAnotherEmail": "QQQQQ",
+		"accountId": "QQQQQ",
+		"memberSince": "QQQQQ",
+		"daysElapsed": "QQQQQ",
+		"level": "QQQQQ",
+		"levelBadge": "QQQQQ",
+		"exp": "QQQQQ",
+		"expProgress": "QQQQQ",
+		"expMax": "QQQQQ",
+		"signOut": "QQQQQ",
+		"notConfigured": "QQQQQ",
+		"username": {
+			"title": "QQQQQ",
+			"prompt": "QQQQQ",
+			"label": "QQQQQ",
+			"placeholder": "QQQQQ",
+			"save": "QQQQQ",
+			"later": "QQQQQ",
+			"set": "QQQQQ",
+			"edit": "QQQQQ"
+		}
+	},
 	"errors": {
 		"generic": "QQQQQ",
 		"notFound": "QQQQQ",
 		"unauthorized": "QQQQQ",
 		"forbidden": "QQQQQ",
 		"serverError": "QQQQQ"
+	},
+	"theme": {
+		"toggle": "QQQQQ"
 	}
 }

@@ -239,11 +239,19 @@
 		Pack: 'pack'
 	} as const;
 	type PanelTab = (typeof PanelTab)[keyof typeof PanelTab];
-	const panelTabs: { id: PanelTab; label: string }[] = [
+	// The strip's labels. Booster carries the day's allowance in parentheses — what is
+	// left to open over the daily cap, "Booster (2/3)" — which is where that counter
+	// lives now that the account card above no longer has a row for it. Plain "Booster"
+	// until there is an allowance to name: signed out, or the status not yet in.
+	let panelTabs: { id: PanelTab; label: string }[];
+	$: panelTabs = [
 		{ id: PanelTab.Location, label: 'Location' },
 		{ id: PanelTab.Latest, label: 'Latest' },
 		{ id: PanelTab.Leaderboard, label: 'Leaderboard' },
-		{ id: PanelTab.Pack, label: 'Booster' }
+		{
+			id: PanelTab.Pack,
+			label: boosters ? `Booster (${boosters.remaining}/${boosters.level})` : 'Booster'
+		}
 	];
 	// Opens on the location view: it is what the map itself is showing, and it follows
 	// the zoom even before anything has been clicked.
@@ -1004,7 +1012,8 @@
 	// wasn't). The server is what enforces both — every refusal in `claim_booster`
 	// (signed out, town not de festa today, allowance spent, show with no claimable
 	// characters) surfaces here, and the pack reveals no cards. Shown in the Booster
-	// tab, because a pack that opens onto nothing has to say why.
+	// tab, because a pack that opens onto nothing has to say why. The allowance is also
+	// what the Booster tab's own label counts down, so this one read serves both.
 	let claimError = '';
 	let boosters: BoostersStatus | null = null;
 
