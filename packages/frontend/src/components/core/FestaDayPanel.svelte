@@ -13,7 +13,7 @@
 	// The distinct shows assigned (on the map) to the day's municipalities, each
 	// with a tally of how many of the day's municipalities contribute to it, sorted
 	// by that count descending (ties broken by name) — mirrors what those towns
-	// paint on the /map page.
+	// paint on the map page.
 	$: uniqueShows = (() => {
 		const byId = new Map<number, { show: RegionShow; count: number }>();
 		for (const festa of festes) {

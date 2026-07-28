@@ -636,7 +636,7 @@
 							You haven't claimed any characters yet. Head to the map and open one of today's
 							booster packs to spawn your first one.
 						</p>
-						<a class="btn btn-primary btn-sm w-fit" href="/map">Open the map</a>
+						<a class="btn btn-primary btn-sm w-fit" href="/">Open the map</a>
 					</div>
 				</div>
 			{:else}
