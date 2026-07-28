@@ -198,47 +198,27 @@
 
 	// Països Catalans polygons, built by @3xl/data's generate:geo from the
 	// Eurostat LAU set (WGS84) and served from that package's public/ at /data.
-	// Drawn bottom-up: municipality fills, comarca lines, province lines,
-	// territory lines (green comarca lines sit under the yellow province ones,
-	// so shared borders read as province).
+	// Drawn bottom-up: municipality lines, comarca lines, province lines, territory
+	// lines (green comarca lines sit under the yellow province ones, so shared
+	// borders read as province).
 	//
-	// The polygons are plain outlines now — each imaged region's top show is shown
-	// on a pin dropped at the region's centre (see `markers`), not painted across
-	// its shape. The municipality layer stays interactive for its hover highlight
-	// and tooltip; the coarser tiers are decorative outlines. `hiddenLineUrls`
-	// still thins the finer borders down to the tier the map is focused on.
+	// Every tier is stroke-only — no polygon carries a fill, so the satellite
+	// basemap reads through the whole map and the divisions are pure borders over
+	// it. Each imaged region's top show is shown on a pin dropped at the region's
+	// centre (see `markers`), not painted across its shape. Every tier is decorative
+	// now — with no fill to light up there is nothing for a polygon hover to do, so
+	// none of them capture pointer events and the pins and stars own every click.
+	// `hiddenLineUrls` still thins the finer borders down to the tier the map is
+	// focused on.
 	const overlays: MapOverlay[] = [
-		{
-			// A gapless solid base: the dissolved territory outlines carry the same
-			// purple fill as the municipalities, so the hairline seams between adjacent
-			// municipality polygons reveal purple underneath instead of the dark page
-			// background. Non-interactive — the municipis layer on top owns the hover.
-			url: '/data/geo/territoris.json',
-			style: { stroke: false, fillColor: '#ce74ff', fillOpacity: 1 },
-			// This continuous base is what actually carries the faded wash: with a region
-			// open it drops to half opacity across the whole map, and the selected
-			// municipalities repaint over it fully solid (see selectedFillStyle).
-			dimmedStyle: { fillOpacity: 0.5 },
-			interactive: false
-		},
 		{
 			url: '/data/geo/municipis.json',
 			// The municipality borders draw in the same navy as every coarser tier, but
 			// only when this tier is the one imaged (the finest zoom) — the tier logic
-			// below drops the stroke (opacity 0) at coarser views, so the fill stays
-			// seamless there while the borders return once you zoom into the towns.
-			style: { color: '#111a3b', weight: 1, fillColor: '#ce74ff', fillOpacity: 1 },
-			// Hovering the region (via its pin or its polygons) paints the whole area's
-			// fill fully solid, with the municipis stroke suppressed (opacity 0) so the
-			// internal subdivision borders don't show — only the fill fills in. The
-			// region's outer outline still comes from the coarser line overlays.
-			hoverStyle: { fillOpacity: 1, opacity: 0 },
-			// A municipality clear of the open region steps out of the way entirely rather
-			// than fading on its own: stacking a half-opacity fill over the half-opacity
-			// territory base would compound back up to ~75%. Dropping this fill lets the
-			// base show through at exactly the 50% its pin renders at, and seamlessly —
-			// the base is dissolved, so no hairline seams open up in the faded area.
-			dimmedStyle: { fillOpacity: 0 }
+			// below drops the stroke (opacity 0) at coarser views, so only the coarser
+			// divisions show there while the town borders return once you zoom in.
+			style: { color: '#111a3b', weight: 1, fill: false },
+			interactive: false
 		},
 		{
 			url: '/data/geo/comarques.json',
@@ -741,30 +721,9 @@
 			? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
 			: null;
 
-	// The municipality ids under the open (URL-selected) region — every polygon the
-	// map paints with the selected fill, so the whole selected location stays filled.
-	$: selectedIds =
-		selected && municipalities ? municipalityIdsForKey(fillIndex, selected) : new Set<string>();
-
-	// The persistent fill painted across the selected region's municipality polygons.
-	const selectedFillStyle = { fillColor: '#ce74ff', fillOpacity: 1, weight: 1 };
-
-	// The features painted at half strength — every region clear of the open one, so a
-	// region's background fades exactly as its pin does (full inside the selection, 50%
-	// outside it). Two layers are listed, each fading its own way (see the overlays'
-	// dimmedStyle): the territory base, which is where the faded wash is actually drawn,
-	// and every municipality outside the selection, which drops its own fill so the base
-	// shows through at a clean 50%. Empty with nothing open — then the map is all at full
-	// strength, just as no pin is dimmed.
-	$: dimmedIds =
-		selected && municipalities
-			? new Set<string>([
-					...regionNodes.map((node) => node.key),
-					...municipalities.features
-						.map((feature) => String(feature.properties?.id))
-						.filter((id) => !selectedIds.has(id))
-				])
-			: new Set<string>();
+	// Selecting a region no longer repaints its polygons — with every tier stroke-only
+	// there is nothing to fill — so the open selection reads from the map purely
+	// through its framing (focusBounds) and its pins, which still fade outside it.
 </script>
 
 <div class="flex h-[calc(100vh-4rem)]">
@@ -901,9 +860,6 @@
 				stars={festaStars}
 				{hiddenLineUrls}
 				{focusBounds}
-				{selectedIds}
-				selectedStyle={selectedFillStyle}
-				{dimmedIds}
 				bind:currentZoom
 				bind:activeLevel
 				bind:currentCenter
