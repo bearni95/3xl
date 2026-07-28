@@ -9,8 +9,12 @@
 	// character's Supabase sync state (badged by the grid card). This component
 	// only reorganises the flat grid into per-show sections — selection and
 	// sync-status ownership stay with the parent page.
+	//
+	// The default slot renders one character; leaving it unfilled falls back to
+	// the selectable CharacterGridCard, so pages that only need the grouped grid
+	// (the faces page) can drop their own card in without duplicating it.
 	export let characters: CharacterOption[] = [];
-	export let selectedId: string;
+	export let selectedId: string = '';
 	export let syncStatusById: Map<string, CharacterTemplateStatus> = new Map();
 	// Each character's Supabase rarity, seeding the per-card rarity editor.
 	export let rarityById: Map<string, number> = new Map();
@@ -126,14 +130,16 @@
 				</div>
 				<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
 					{#each group.characters as character (character.id)}
-						<CharacterGridCard
-							{character}
-							selected={character.id === selectedId}
-							syncStatus={syncStatusById.get(character.id)}
-							rarity={rarityById.get(character.id)}
-							on:select={(event) => dispatch('select', event.detail)}
-							on:raritysaved
-						/>
+						<slot {character}>
+							<CharacterGridCard
+								{character}
+								selected={character.id === selectedId}
+								syncStatus={syncStatusById.get(character.id)}
+								rarity={rarityById.get(character.id)}
+								on:select={(event) => dispatch('select', event.detail)}
+								on:raritysaved
+							/>
+						</slot>
 					{/each}
 				</div>
 			</section>
@@ -154,14 +160,16 @@
 	{/if}
 	<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
 		{#each characters as character (character.id)}
-			<CharacterGridCard
-				{character}
-				selected={character.id === selectedId}
-				syncStatus={syncStatusById.get(character.id)}
-				rarity={rarityById.get(character.id)}
-				on:select={(event) => dispatch('select', event.detail)}
-				on:raritysaved
-			/>
+			<slot {character}>
+				<CharacterGridCard
+					{character}
+					selected={character.id === selectedId}
+					syncStatus={syncStatusById.get(character.id)}
+					rarity={rarityById.get(character.id)}
+					on:select={(event) => dispatch('select', event.detail)}
+					on:raritysaved
+				/>
+			</slot>
 		{/each}
 	</div>
 {/if}
