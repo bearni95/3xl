@@ -11,7 +11,7 @@
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import PackGrid from '$components/core/pack/PackGrid.svelte';
-	import TeamLineup from '$components/core/TeamLineup.svelte';
+	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
 	import { rosterModalOpen } from '$services/rosterModal';
@@ -291,8 +291,8 @@
 	}
 	$: if (!$openBattle) resumedBattle = null;
 
-	// The panel's four views: the player themselves (the account card and the side they
-	// field), the open region (the drill table, or a leaf town's show and house team),
+	// The panel's four views: the player themselves (their own card and the side they
+	// field, on one grid), the open region (the drill table, or a leaf town's show and house team),
 	// the standing of every show across the whole map, and the booster pack of whichever
 	// festa town's star was clicked last. Every one of them lives here rather than in a
 	// panel of its own, so the map only ever gives up room to one of them — the
@@ -776,9 +776,10 @@
 	// longer loaded at all.)
 
 	// --- The player's own team (the panel's account section) ---------------------
-	// Stood up in the document right under the account card (see TeamLineup): the side
-	// this player would field, so what they are challenging with is read against the
-	// town they are looking at without leaving the map for the roster.
+	// Stood up in the document as the three cards under the player's own row (see
+	// CharacterStatue, and the grid AuthMenu holds them in): the side this player would field, so
+	// what they are challenging with is read against the town they are looking at without
+	// leaving the map for the roster.
 	// The team is the slots on the player's own cards, so it is only renderable once
 	// those have loaded; empty slots are left out, and a team with none shows nothing.
 	const teamSpawns = teamService.fielded;
@@ -888,9 +889,12 @@
 		// the map above it down to nothing rather than covering it.
 		'w-full border-t',
 		panelExpanded ? 'h-screen' : 'h-[30vh]',
-		// md and up: the right-hand column of the row, at the width it has always had —
-		// full height, since it is the row that bounds it now.
-		'md:h-full md:w-[36rem] md:border-t-0 md:border-l'
+		// md and up: the right-hand column of the row — full height, since it is the row
+		// that bounds it now, and a flat 450px wide. A fixed width and not a share of the
+		// viewport: everything in it is laid out in cards to a row (the booster grid two of
+		// them, the Profile tab's statues three), so the column is the width those read well
+		// at and the map takes whatever is left, however wide the window is.
+		'md:h-full md:w-[450px] md:border-t-0 md:border-l'
 	);
 
 	// Fight this town: spend the day's challenge on it, then snapshot whichever team
@@ -1602,8 +1606,10 @@
 		strip rather than inside any tab: the region the map is looking at (clicked, or
 		followed from the zoom) is read against every view, so it stays on screen whichever
 		tab is forward.
-		— Profile: the account card and the team this player fields. The tab the panel
-		  opens on, and the only one that says nothing about the map.
+		— Profile: the player's own full-width row — picture, reading, and the way through to
+		  the full card and the roster — then the three they field as a row of three cards
+		  under it. The tab the panel opens on, and the only one that says nothing about the
+		  map.
 		— Location: the drill table for the open region — its siblings and its children —
 		  or, for a leaf municipality with nothing left to list, that town's show and the
 		  team sitting on it. The search box above it matches every location in the tree.
@@ -1680,24 +1686,31 @@
 			</div>
 
 			{#if panelTab === PanelTab.Profile}
-				<!-- Who is playing: the account card — signed out it is the sign-in panel, so
-					this tab is the way into the game — and under it the side they field. Its own
-					scroller on the desktop panel, exactly like the tables in the tabs beside it;
-					on the mobile panel the whole thing scrolls as one, so the `flex-1` is inert
-					there and the section simply takes the height its contents ask for. -->
+				<!-- Who is playing: signed out it is the sign-in panel, so this tab is the way
+					into the game; signed in it is the player's own full-width row, and
+					under it the side they field, three cards to a row. Its own scroller on the desktop panel,
+					exactly like the tables in the tabs beside it; on the mobile panel the whole
+					thing scrolls as one, so the `flex-1` is inert there and the section simply
+					takes the height its contents ask for. -->
 				<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-					<AuthMenu embedded />
-
-					{#if playerTeamLineup.length > 0}
-						<!-- The team this player fields, standing in the document itself rather than
-							on a canvas: each character's idle animation on a square of its own colour,
-							at the height the cards give it. Under the account card because it is part
-							of who the player is here. A canvas here was a WebGL context — and a whole
-							card's worth of chrome — spent on three sprites the panel only shows. -->
-						<div class="mt-3">
-							<TeamLineup members={playerTeamLineup} />
-						</div>
-					{/if}
+					<!-- The statues fill the three-column grid AuthMenu puts under the player's row (see its
+						slot): each character's idle animation on a square of its own colour, standing
+						in the document rather than on a canvas — a canvas here was a WebGL context,
+						and a whole card's worth of chrome, spent on three sprites the panel only
+						shows. Nothing to render when the account fields no cards, which leaves the
+						player's row standing on its own. -->
+					<AuthMenu embedded>
+						{#each playerTeamLineup as member, index (index)}
+							<CharacterStatue
+								label={member.label}
+								basePath={member.basePath}
+								color={member.color}
+								locationName={member.locationName}
+								spawnedAt={member.spawnedAt ?? null}
+								showId={member.showId}
+							/>
+						{/each}
+					</AuthMenu>
 				</div>
 			{:else if panelTab === PanelTab.Location}
 				<div class="flex-none border-b border-base-300 px-4 py-3">
@@ -1775,7 +1788,7 @@
 				<ShowStandingsTable rows={showStandings} />
 			{:else}
 				<!-- Two ways in, one grid: picking the tab shows every pack in the booster
-					window, two to a row since the panel is a third of the viewport's width,
+					window, two to a row since the panel is 450px wide,
 					while a star click stands that town's pack up in it straight away. Either
 					way the same three taps — pick a pack, tap it again to open it, and the
 					cards it held stand up in its place as statues; "Tots els sobres" goes
@@ -1928,8 +1941,8 @@
 
 <!-- The roster, over the map. Mounted only while it is open — it builds a card canvas
 	of its own, and every mount is a fresh WebGL context the browser hands out a limited
-	number of. Opened from the Roster button on the panel's account card, beside Profile,
-	and from the arena's "no active team" card, both through `rosterModalOpen`. -->
+	number of. Opened from the Roster button on the row above the panel's card grid, beside
+	Profile, and from the arena's "no active team" card, both through `rosterModalOpen`. -->
 {#if $rosterModalOpen}
 	<RosterModal />
 {/if}

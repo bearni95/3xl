@@ -4,18 +4,22 @@
 	import { _, locale } from 'svelte-i18n';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
-	import { usernamePromptOpen } from '$services/usernamePrompt';
+	import { usernameEditRequested } from '$services/usernamePrompt';
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { profileModalOpen } from '$services/profileModal';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { AuthStatus, type OAuthProvider } from '$types/profile.type';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
+	import ProfileTile from '$components/core/ProfileTile.svelte';
 	import SocialSignIn from '$components/core/SocialSignIn.svelte';
 
 	// When embedded, the trigger button is dropped and the card renders in flow,
 	// always visible and full-width — it is a section of the map page's right-hand
-	// panel — instead of the hover/click dropdown that hangs off the navbar.
+	// panel — instead of the hover/click dropdown that hangs off the navbar. Signed in,
+	// that section is the player's own full-width row, and under it a three-column grid
+	// holding whatever the host puts in the default slot (the statues of the side they
+	// field) — the account above, the team it fields below.
 	export let embedded: boolean = false;
 
 	const status = authService.status;
@@ -27,7 +31,12 @@
 
 	onMount(() => authService.init());
 
-	$: profileInitial = ($profile?.displayName || $profile?.email || '?').charAt(0).toUpperCase();
+	// Both stand on the chosen name alone: an account nobody has named yet reads as
+	// a question mark and as "Unnamed player", never as its email address.
+	$: profileInitial = ($profile?.username || '?').charAt(0).toUpperCase();
+	// The navbar chip sits outside the locale guard below, so the placeholder waits
+	// for the catalogue rather than formatting against no locale at all.
+	$: profileName = $profile?.username || ($locale ? $_('profile.username.none') : '');
 
 	async function handleProviderSignIn(
 		event: CustomEvent<{ provider: OAuthProvider }>
@@ -58,8 +67,13 @@
 		}
 	}
 
-	function openUsernamePrompt(): void {
-		usernamePromptOpen.set(true);
+	// Naming the account happens on the profile card itself, so this raises the full
+	// card — mounted at the layout root, like the avatar picker — with its username
+	// field switched on.
+	function openUsernameField(): void {
+		errorMessage = null;
+		usernameEditRequested.set(true);
+		profileModalOpen.set(true);
 	}
 
 	function openProfile(): void {
@@ -103,7 +117,11 @@
 					size="w-6"
 					textClasses="text-xs"
 				/>
-				<span class="max-w-[10rem] truncate">{$profile.displayName}</span>
+				<span
+					class={classNames('max-w-[10rem] truncate', {
+						'text-base-content/60 italic': !$profile.username
+					})}>{profileName}</span
+				>
 			</button>
 		{:else}
 			<button type="button" class="btn btn-primary btn-sm" on:click={togglePanel}>Sign in</button>
@@ -124,10 +142,12 @@
 					]
 		)}
 	>
-		<!-- Same contents either way, but embedded it is not a card of its own: the panel
-			section it sits in already brings the surface, the rounded corners and the
-			border, so a second box drawn inside it only reads as a seam. No background, no
-			radius, no shadow, no width — and the padding is the host section's. -->
+		<!-- Embedded it is not a card of its own: the panel section it sits in already
+			brings the surface, the rounded corners and the border, so a second box drawn
+			inside it only reads as a seam. No background, no radius, no shadow, no width —
+			and the padding is the host section's. The signed-in contents differ as well:
+			the dropdown is the full card, the panel is the account row and the grid under
+			it. -->
 		<div class={embedded ? 'w-full' : 'card w-80 bg-base-100 shadow-xl'}>
 			<div class={classNames('gap-4', embedded ? 'flex flex-col' : 'card-body')}>
 				<!-- Contents format i18n messages; wait for the locale to load. -->
@@ -137,16 +157,34 @@
 							<span>{$_('profile.notConfigured')}</span>
 						</div>
 					{:else if $status === AuthStatus.SignedIn && $profile}
-						<ProfileCard
-							profile={$profile}
-							{signingOut}
-							compact={embedded}
-							on:signout={handleSignOut}
-							on:editusername={openUsernamePrompt}
-							on:openprofile={openProfile}
-							on:openroster={openRoster}
-							on:editavatar={openAvatarPicker}
-						/>
+						{#if embedded}
+							<!-- The account across the whole width, above the cards rather than in among
+								them: the picture, the reading and the two ways out of the panel (the full
+								card, the roster) on one row of three columns. Both buttons raise a modal
+								mounted at the layout root, so the tile only says they were pressed. -->
+							<ProfileTile
+								profile={$profile}
+								on:editavatar={openAvatarPicker}
+								on:openprofile={openProfile}
+								on:openroster={openRoster}
+							/>
+
+							<!-- The side they field, three cards to a row — the whole team on one row,
+								which is what a team of three should read as. With the account's own row
+								out of the grid there is nothing else in it to make room for, so the panel's
+								450px goes to the three statues alone. -->
+							<div class="grid grid-cols-3 items-start gap-2">
+								<slot />
+							</div>
+						{:else}
+							<ProfileCard
+								profile={$profile}
+								{signingOut}
+								on:signout={handleSignOut}
+								on:editusername={openUsernameField}
+								on:editavatar={openAvatarPicker}
+							/>
+						{/if}
 					{:else}
 						<SocialSignIn pending={redirectingTo} on:signin={handleProviderSignIn} />
 					{/if}
