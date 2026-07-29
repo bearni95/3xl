@@ -532,6 +532,14 @@
 		void teamService.toggle(spawn.id);
 	}
 
+	// The same move the cell's own button makes, and the only one it makes: field the
+	// shown copy or take it out again. It is the statue's toggle without the recycle
+	// branch, since the button is not drawn while recycling.
+	function handleTeamButton(spawn: CharacterSpawn): void {
+		if ($teamSaving) return;
+		void teamService.toggle(spawn.id);
+	}
+
 	/** One colour's circle: the colour itself with the count of copies owned in it
 	 * written inside, ringed while it is the one the statue is standing in and while any
 	 * copy of it is selected for recycling. The panel classes are what carry the count's
@@ -753,61 +761,50 @@
 					</div>
 				</div>
 			{:else}
-				<div class="mb-3 flex flex-none flex-wrap items-center justify-between gap-3">
-					<p class="text-xs opacity-60">
-						Tap a colour to stand a character up in it — the number in it is how many of
-						that colour you own.
-						{#if recycleMode}
-							Tap the character to select or deselect that copy for recycling.
-						{:else if teamFilledCount === 0}
-							Tap the character to lead your team — the rest of it fights in its colours.
-						{:else}
-							Tap the character to add or remove that copy from your team ({teamFilledCount}/{TEAM_SIZE}).
-						{/if}
-					</p>
-					<div class="flex flex-wrap items-center gap-3">
-						{#if pageCount > 1}
-							<div class="join">
-								<button
-									class="btn join-item btn-sm"
-									disabled={page === 0}
-									on:click={() => goToPage(page - 1)}
-									aria-label="Previous page"
-								>
-									‹
-								</button>
-								<span class="btn no-animation join-item pointer-events-none btn-sm font-normal">
-									Page {page + 1} / {pageCount}
-								</span>
-								<button
-									class="btn join-item btn-sm"
-									disabled={page >= pageCount - 1}
-									on:click={() => goToPage(page + 1)}
-									aria-label="Next page"
-								>
-									›
-								</button>
-							</div>
-						{/if}
-						<label class="flex items-center gap-2 text-xs">
-							<span class="whitespace-nowrap opacity-60">Columns</span>
-							<input
-								type="range"
-								min={MIN_COLUMNS}
-								max={MAX_COLUMNS}
-								class="range range-primary range-xs w-40"
-								bind:value={$columns}
-								aria-label="Grid columns"
-							/>
-							<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
-						</label>
-						{#if $teamSaving}
-							<span class="flex items-center gap-2 text-xs opacity-60">
-								<span class="loading loading-spinner loading-xs"></span>
-								Saving team…
+				<!-- What the grid is read with: the pager, the column slider, and whether a
+				     line-up is in flight. -->
+				<div class="mb-3 flex flex-none flex-wrap items-center justify-end gap-3">
+					{#if pageCount > 1}
+						<div class="join">
+							<button
+								class="btn join-item btn-sm"
+								disabled={page === 0}
+								on:click={() => goToPage(page - 1)}
+								aria-label="Previous page"
+							>
+								‹
+							</button>
+							<span class="btn no-animation join-item pointer-events-none btn-sm font-normal">
+								Page {page + 1} / {pageCount}
 							</span>
-						{/if}
-					</div>
+							<button
+								class="btn join-item btn-sm"
+								disabled={page >= pageCount - 1}
+								on:click={() => goToPage(page + 1)}
+								aria-label="Next page"
+							>
+								›
+							</button>
+						</div>
+					{/if}
+					<label class="flex items-center gap-2 text-xs">
+						<span class="whitespace-nowrap opacity-60">Columns</span>
+						<input
+							type="range"
+							min={MIN_COLUMNS}
+							max={MAX_COLUMNS}
+							class="range range-primary range-xs w-40"
+							bind:value={$columns}
+							aria-label="Grid columns"
+						/>
+						<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
+					</label>
+					{#if $teamSaving}
+						<span class="flex items-center gap-2 text-xs opacity-60">
+							<span class="loading loading-spinner loading-xs"></span>
+							Saving team…
+						</span>
+					{/if}
 				</div>
 				<!-- The roster, and the team at the head of it: a statue per character — the
 				     same one the map's panel stands the team up with — in a grid the slider
@@ -816,9 +813,10 @@
 				     player owns. The fielded cards are the first cells, in slot order, ringed
 				     in primary; the team has no view of its own any more, since a slot was only
 				     ever one of these cards and standing it up twice cost the grid the room it
-				     wanted. Tapping the statue toggles the shown copy's team membership — which
-				     is also how a card leaves the team — or selects it while recycling; tapping
-				     a circle only changes which copy is shown. Only the current page is mounted
+				     wanted. Each cell carries the button that fields or unfields the copy it is
+				     showing, pinned to its top corner; tapping the statue itself does the same
+				     thing, or selects the copy while recycling, and tapping a circle only
+				     changes which copy is shown. Only the current page is mounted
 				     — the filters narrow the roster, the pager walks what's left ROWS_PER_PAGE
 				     rows at a time — and the box takes whatever the modal's fixed height leaves
 				     it. -->
@@ -833,11 +831,37 @@
 							     entry. Every cell carries it and only a fielded one colours it in, so
 							     joining the team never nudges the grid by two pixels. -->
 							<div
-								class={classNames('flex flex-col gap-2 rounded-box border-2 p-1.5', {
+								class={classNames('relative flex flex-col gap-2 rounded-box border-2 p-1.5', {
 									'border-primary': fielded,
 									'border-transparent': !fielded
 								})}
 							>
+								<!-- The team button, pinned to the top of the cell rather than laid out in
+								     it: it sits over the statue's top-right corner, in the same place in
+								     every cell whatever the art below it does. A minus on a fielded card, a
+								     plus on one that could still be fielded, and disabled once the team is
+								     full — a plus that cannot add is a dead button, and the server would
+								     refuse the card anyway. Not drawn at all while recycling, where a cell
+								     is about what to trade in rather than who to field. -->
+								{#if !recycleMode}
+									<button
+										type="button"
+										class={classNames(
+											'btn btn-circle btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow',
+											fielded ? 'btn-primary' : 'btn-neutral'
+										)}
+										disabled={$teamSaving || (!fielded && teamFilledCount >= TEAM_SIZE)}
+										title={fielded
+											? `Remove ${statue.label} from your team`
+											: `Add ${statue.label} to your team`}
+										aria-label={fielded
+											? `Remove ${statue.label} from your team`
+											: `Add ${statue.label} to your team`}
+										on:click={() => handleTeamButton(copy)}
+									>
+										{fielded ? '−' : '+'}
+									</button>
+								{/if}
 								<button
 									type="button"
 									class={classNames(
