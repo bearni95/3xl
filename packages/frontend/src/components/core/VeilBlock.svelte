@@ -28,13 +28,22 @@
 	// back; the caller stops drawing the piece once the sweep is over.
 	export let fading: boolean = false;
 
-	// How long one square takes to go, and how far apart the bottom row and the top one
-	// start. Half the sweep each, so the whole thing is over in the sum of the two, which
-	// is IdleSprite's VEIL_FADE — it stops drawing this at that point, so a sweep that ran
-	// longer would be cut off mid-blur. `duration-150` below is VEIL_BLUR_MS said in CSS;
-	// keep the three numbers agreeing.
+	// How long one square takes to go, how far apart the bottom row and the top one start,
+	// and how late a column can be on top of that. The three add up to the whole sweep,
+	// which is IdleSprite's VEIL_FADE — it stops drawing this at that point, so a sweep that
+	// ran longer would be cut off mid-blur. The rows get the larger share of the waiting:
+	// the sweep is up the block, and the columns only break the line it goes up in.
+	// `duration-150` below is VEIL_BLUR_MS said in CSS; keep the four numbers agreeing.
 	const VEIL_BLUR_MS = 150;
-	const VEIL_STAGGER_MS = 150;
+	const VEIL_STAGGER_MS = 100;
+	const VEIL_COLUMN_MS = 50;
+
+	// How late each column is, as a share of that. Uneven on purpose and in no order: a
+	// column that waited a step longer than the one beside it would only tilt the wave and
+	// have it arrive as a diagonal line instead of a level one, where these have it arrive
+	// broken up. Seven of them against a column count that is never seven, for the same
+	// reason the greys are eleven — the run does not repeat down the block.
+	const COLUMN_WAITS = [0, 0.62, 0.24, 1, 0.38, 0.86, 0.1];
 
 	// How far a square blurs before it is gone, as a share of its own width — the whole
 	// point is that the squares dissolve rather than switch off, so the radius is measured
@@ -75,15 +84,18 @@
 	$: columns = cell > 0 && boxWidth > 0 ? Math.ceil(boxWidth / cell) : 0;
 	$: rows = cell > 0 && boxHeight > 0 ? Math.ceil(boxHeight / cell) : 0;
 
-	// Every square with its grey and the moment it leaves. The bottom row goes at once and
-	// each row above it waits a little longer, the whole spread fixed at VEIL_STAGGER_MS
-	// however many rows there are: a tall sheet and a short one are uncovered in the same
-	// time, which is what keeps every piece of the veil on the one clock.
+	// Every square with its grey and the moment it leaves. Its row says most of it — the
+	// bottom row goes at once and each row above waits a little longer, the whole spread
+	// fixed at VEIL_STAGGER_MS however many rows there are, so a tall sheet and a short one
+	// are uncovered in the same time and every piece of the veil stays on the one clock —
+	// and its column adds the rest, which is what stops a row going all at once as a band.
 	$: cells = Array.from({ length: columns * rows }, (_, index) => {
 		const rowsFromBottom = rows - 1 - Math.floor(index / columns);
+		const rowWait = rows > 1 ? (rowsFromBottom / (rows - 1)) * VEIL_STAGGER_MS : 0;
+		const columnWait = COLUMN_WAITS[(index % columns) % COLUMN_WAITS.length] * VEIL_COLUMN_MS;
 		return {
 			shade: CELL_SHADES[index % CELL_SHADES.length],
-			delay: rows > 1 ? Math.round((rowsFromBottom / (rows - 1)) * VEIL_STAGGER_MS) : 0
+			delay: Math.round(rowWait + columnWait)
 		};
 	});
 
