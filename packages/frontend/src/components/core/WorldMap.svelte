@@ -63,8 +63,8 @@
 		markerLevels?: MapMarker[][] | null;
 		/**
 		 * Booster boxes stood on individual points (the festa-major towns the booster
-		 * window reaches), drawn above the region pins and always shown regardless of
-		 * zoom tier.
+		 * window reaches), hung under the same points the region pins stand on — a town
+		 * keeps its pin and gets a box — and always shown regardless of zoom tier.
 		 */
 		boxes?: MapBoosterBox[];
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
@@ -131,8 +131,8 @@
 	// so every rebuild unmounts the previous crop first.
 	let pinMounts: Record<string, unknown>[] = [];
 	// The festa-box layer, rebuilt whenever the boxes prop changes. Kept separate from
-	// the region pins so it always shows, with no level-of-detail folding, and sits
-	// above them.
+	// the region pins so it always shows, with no level-of-detail folding, and drawn
+	// under them.
 	let boxLayer: L.LayerGroup | null = null;
 	// The boxes are given a Leaflet pane of their own, and not for the stacking. The
 	// marker pane is a place no <img> can be sized in: leaflet.css resets every image in
@@ -495,10 +495,16 @@
 	// on a town, so it stays the size it is whatever the map is showing, and a box small
 	// enough not to bury the town it stands on is a box read by its cover — the place at
 	// its foot is a few pixels of type at this width, and the tooltip is what says the
-	// name. Stood on its point by its bottom edge, as the region pins stand on theirs.
+	// name.
+	//
+	// It hangs *below* its point rather than standing on it: a region pin is anchored by
+	// its bottom edge and grows upwards out of the point, so everything under the point
+	// is free and a box put there shares the town with its pin instead of covering it.
+	// Both are anchored on the same centre, which is what keeps them one object seen as
+	// two — the pin above the point, the box under it, meeting at the town.
 	function boxElement(box: MapBoosterBox): HTMLElement {
 		const wrap = document.createElement('div');
-		wrap.className = 'w-20 -translate-x-1/2 -translate-y-full';
+		wrap.className = 'w-20 -translate-x-1/2 translate-y-1';
 		if (box.onClick) wrap.className += ' cursor-pointer';
 		boxMounts.push(
 			mount(BoosterBox, {
@@ -553,11 +559,12 @@
 			attributionControl: true
 		});
 
-		// The pane the festa boxes stand in (see BOX_PANE), made before anything is added
-		// to it. Between the region pins (600) and the tooltips (650): a box stands over
-		// the pin of the town it belongs to, and the name a hover asks for still reads
-		// over the box.
-		mapInstance.createPane(BOX_PANE).style.zIndex = '620';
+		// The pane the festa boxes hang in (see BOX_PANE), made before anything is added to
+		// it. Under the region pins (600) rather than over them: the box is hung clear of
+		// its own town's pin, but a box is 80px tall and the map is dense, so where one does
+		// reach a neighbour's pin the pin is the thing that must not be covered — a box
+		// gives up its corner instead.
+		mapInstance.createPane(BOX_PANE).style.zIndex = '590';
 
 		// Esri World Imagery: pure satellite tiles, no labels or roads.
 		// Note the {z}/{y}/{x} order — ArcGIS swaps y and x vs the OSM scheme.

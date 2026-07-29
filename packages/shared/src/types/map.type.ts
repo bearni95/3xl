@@ -140,17 +140,18 @@ export interface MapMarker {
 }
 
 /**
- * A booster box stood on a point — the municipalities whose festa major the booster
+ * A booster box hung at a point — the municipalities whose festa major the booster
  * window reaches, each carrying the pack the Booster tab has waiting for it. Drawn
  * with the very component that tab's grid draws (BoosterBox), off the same four
  * things, so the box on the town and the box in the panel are one object seen in two
  * places. Independent of the poster/region pins and always drawn (no level-of-detail
- * folding), so a town's box shows at every zoom, above the pins.
+ * folding), so a town's box shows at every zoom. Hung under the point its pin stands
+ * on, and under the pin layer: a town keeps its pin and gets a box.
  */
 export interface MapBoosterBox {
 	/** Stable id (the municipality feature id), so the layer can diff on rebuild. */
 	id: string;
-	/** Where the box stands, as [lat, lng] — the municipality's centre. */
+	/** The point the box hangs under, as [lat, lng] — the municipality's centre. */
 	position: [number, number];
 	/** The assigned show's poster, used as the box's cover, or null for a plain frame. */
 	coverUrl?: string | null;
