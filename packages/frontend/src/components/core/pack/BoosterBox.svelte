@@ -3,10 +3,10 @@
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { spawnYearLabel } from '$utils/spawn/year';
 
-	// One unopened booster box, drawn in the document: a lid seen from above, and under
-	// it the face of the box — the show's poster spanning the full width of it, a
-	// coloured band above it saying the place the box belongs to and one below saying
-	// what is inside.
+	// One unopened booster box, drawn in the document: a lid seen from above with the
+	// place the box belongs to printed on it, and under it the face of the box — the
+	// show's poster spanning the full width of it, and a band below it saying what is
+	// inside.
 	//
 	// The face is 3:4, the very box a CharacterStatue is drawn in — a booster and the
 	// cards it opens onto are the same object at two moments, and a grid that changes
@@ -50,10 +50,10 @@
 	const LID_DEPTH = 'h-[calc(100cqw/6)]';
 	const LID = 'origin-bottom [transform:perspective(187.826cqw)_rotateX(75.373deg)]';
 
-	// What the bands say, exactly as the baked pack says it: the place with the year
-	// this copy would be minted in joined to it — "Barcelona '26" — and, below the
-	// poster, what a pack holds. The gazetteer parks the article after a comma to
-	// sort by, so it is put back at the front before the name is said.
+	// What the lid says, exactly as the baked pack says it: the place with the year this
+	// copy would be minted in joined to it — "Barcelona '26". The gazetteer parks the
+	// article after a comma to sort by, so it is put back at the front before the name
+	// is said.
 	$: place = [locationName ? restoreCatalanArticle(locationName) : '', spawnYearLabel(Date.now())]
 		.filter(Boolean)
 		.join(' ');
@@ -74,18 +74,27 @@
 			turns about, so it is the one line the lid and the face share, and the box reads
 			as one object folded at it. -->
 		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square bg-neutral', LID)}>
+			<!-- The place is printed on the lid rather than captioned above the poster, so it
+				lies in the plane and takes the tilt with it: set in the square before the turn
+				and squashed by it like anything else up there. That is what the size is for —
+				the turn leaves a line about a quarter of the height it was set at (cos 75.373°,
+				a little less again at the back of the square), so 12cqw here reads at about the
+				3cqw a band would have been given, and a name that no longer fits the width
+				wraps rather than being cut, the square having depth to spare. Centred in the
+				square, which puts it nearer the front edge than the middle once the
+				perspective has had it: the near half of a lid is the half you can read. -->
+			<div
+				class="absolute inset-0 flex items-center justify-center px-[6cqw] text-center text-[12cqw] font-bold leading-none text-balance text-neutral-content"
+				title={place}
+			>
+				{place}
+			</div>
 			<!-- The top plane catches the light the front does not: without it a lid in the
-				same flat neutral as the band below simply merges into it, and a box with no
-				edge between its top and its face is not a box. -->
+				same flat neutral as the face below simply merges into it, and a box with no
+				edge between its top and its face is not a box. It goes over the printing, the
+				way the light falls across a lid and not under its ink. -->
 			<div class="absolute inset-0 bg-white/10"></div>
 		</div>
-	</div>
-
-	<div
-		class="flex-none truncate bg-neutral px-1 text-center text-[5.4cqw] font-bold leading-snug text-neutral-content"
-		title={place}
-	>
-		{place}
 	</div>
 
 	{#if coverUrl}
