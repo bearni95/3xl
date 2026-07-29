@@ -33,7 +33,11 @@
 	} from '$types/territory.type';
 	import type { TerritoryResult } from '$types/combat.type';
 	import { TEAM_SIZE, teamService } from '$services/team.service';
-	import { buildMunicipalityTeam, ogTeamSpawns } from '$utils/spawn/municipality-team';
+	import {
+		buildMunicipalityTeam,
+		ogTeamSpawns,
+		type TeamMemberRoll
+	} from '$utils/spawn/municipality-team';
 	import { SPAWN_COLOR_CSS } from '$utils/spawn/color';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
 	import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
@@ -1299,23 +1303,55 @@
 		[SpawnColor.Purple]: 'bg-purple-500 text-white'
 	};
 
+	// The side sitting on each town, by municipality id: whoever holds it, else the
+	// team its seed rolls — the very fallback the panel draws for the open town, asked
+	// here of every town at once so a pin can show who is standing on it. The roll is
+	// stable per municipality, so a town nobody has taken always fields the same three.
+	//
+	// A town whose show has no roster loaded yet (the assignment comes from Supabase)
+	// simply has no team, and its pin falls back to the show's glyph rather than
+	// showing an empty frame.
+	function buildTownTeams(
+		seeds: ReadonlyMap<string, number>,
+		shows: ReadonlyMap<string, RegionShow>,
+		pools: ReadonlyMap<number, string[]>,
+		occupied: ReadonlyMap<string, MunicipalityHolder>
+	): Map<string, TeamMemberRoll[]> {
+		const teams = new Map<string, TeamMemberRoll[]>();
+		for (const [id, show] of shows) {
+			const seed = seeds.get(id);
+			if (seed == null) continue;
+			const team = buildMunicipalityTeam(seed, pools.get(show.id) ?? [], TEAM_SIZE);
+			if (team.length > 0) teams.set(id, team);
+		}
+		for (const holder of occupied.values()) {
+			if (holder.team.length > 0) teams.set(holder.locationId, territoryAdapter.toTeamRolls(holder.team));
+		}
+		return teams;
+	}
+
+	$: townTeams = buildTownTeams(municipalitySeeds, showsById, showCharacterIds, holders);
+
 	// One pin per region that has a show, dropped at the centre of the region's
 	// bounding box, captioned with the show and tooltipped with the region name;
 	// clicking a pin opens that region. Pins clear of the selection are flagged
 	// `dimmed` so the map fades them rather than dropping them.
 	//
-	// The pin carries the show's glyph — the same icon the panel's tables badge a
-	// show with — not its poster: a poster is a tall photographic rectangle that
-	// reads as a picture dropped on the map, while the flat monochrome glyph reads
-	// as a marking of the territory. A show with no glyph drawn yet keeps its pin
-	// and shows by name alone, exactly as it does in those tables.
-	//
-	// The frame behind the glyph is filled with the region's colour, so a pin says
-	// both what a region flies and in which colour it flies it.
+	// A town's pin shows the side sitting on it — the three characters themselves,
+	// each on their own colour. Above the towns there is no such side (nobody holds a
+	// comarca), so those pins carry the show's glyph instead: the same icon the panel's
+	// tables badge a show with, not its poster, because a poster is a tall photographic
+	// rectangle that reads as a picture dropped on the map while the flat monochrome
+	// glyph reads as a marking of the territory. A show with no glyph drawn yet keeps
+	// its pin and shows by name alone, exactly as it does in those tables, and the frame
+	// behind the glyph is filled with the region's colour, so such a pin says both what
+	// a region flies and in which colour it flies it.
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
-		relevant: Set<string> | null
+		relevant: Set<string> | null,
+		teams: ReadonlyMap<string, TeamMemberRoll[]>,
+		memberShows: ReadonlyMap<string, number[]>
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
@@ -1323,10 +1359,25 @@
 			const box = geometry.boxes.get(node.key);
 			if (!box) continue;
 			const [[south, west], [north, east]] = box;
+			// Only a municipality's key is a municipality id, so coarser tiers find
+			// nothing here and keep their glyph.
+			const team = teams.get(node.key) ?? [];
 			pins.push({
 				id: node.key,
 				position: [(south + north) / 2, (west + east) / 2],
 				bounds: box,
+				team: team.map((member) => ({
+					label: charactersById.get(member.characterId)?.label ?? member.characterId,
+					basePath: charactersById.get(member.characterId)?.basePath ?? null,
+					color: member.color,
+					// The town they are standing on — every card of a town's team was
+					// claimed elsewhere, but where they *are* is what a pin is about.
+					locationName: restoreCatalanArticle(node.name),
+					// The character's own show, not the town's: a held town fields the
+					// occupier's cards, and marking their floor with the town's show would
+					// be a lie — the same rule the panel's cards follow.
+					showId: memberShows.get(member.characterId)?.[0] ?? null
+				})),
 				iconSvg: iconMarkup(showIconName(node.show.id)),
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
@@ -1348,16 +1399,25 @@
 		depth: number,
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
-		relevant: Set<string> | null
+		relevant: Set<string> | null,
+		teams: ReadonlyMap<string, TeamMemberRoll[]>,
+		memberShows: ReadonlyMap<string, number[]>
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
-			levels.push(buildMarkers(frontierAtDepth(d, nodes), geometry, relevant));
+			levels.push(buildMarkers(frontierAtDepth(d, nodes), geometry, relevant, teams, memberShows));
 		}
 		return levels;
 	}
 
-	$: markerLevels = buildMarkerLevels(maxLevel, regionNodes, regionGeometry, relevantKeys);
+	$: markerLevels = buildMarkerLevels(
+		maxLevel,
+		regionNodes,
+		regionGeometry,
+		relevantKeys,
+		townTeams,
+		showsByCharacter
+	);
 
 	// The bounding box the map fits when a region is selected: the union of every
 	// municipality polygon under the selected key. A fresh array each time (even

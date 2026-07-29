@@ -1,4 +1,5 @@
 import type { PathOptions } from 'leaflet';
+import type { SpawnColor } from './character-spawn.type';
 
 /** A GeoJSON layer drawn on top of the base map, in array order (last = topmost). */
 export interface MapOverlay {
@@ -64,8 +65,28 @@ export interface MapMarker {
 	 * paints in the frame's own colour rather than a baked one. The pin is
 	 * caption-only when null (no glyph drawn for that show yet), exactly as the
 	 * panel's tables fall back to the show's name alone.
+	 *
+	 * Only reached when the pin has no {@link MapMarker.team}: a region that can
+	 * name the side sitting on it shows *them* rather than a glyph for the show
+	 * they happen to belong to.
 	 */
 	iconSvg: string | null;
+	/**
+	 * The team currently holding this region, in the order it is fielded — drawn in
+	 * the pin in place of the show glyph, as the very cards the sidebar's strip draws
+	 * a team with. One member per card, in the shape `TeamLineup` takes.
+	 *
+	 * Only a municipality has one: a comarca or a province is not a thing anybody
+	 * holds, so those pins keep their show's glyph. Absent or empty means the same
+	 * thing.
+	 */
+	team?: {
+		label: string;
+		basePath: string | null;
+		color: SpawnColor;
+		locationName: string | null;
+		showId: number | null;
+	}[];
 	/**
 	 * Classes painted onto the pin's frame — the region's own colour, as a fill
 	 * plus the ink that reads on it. Null leaves the frame on the neutral base

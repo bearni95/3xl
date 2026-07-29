@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { mount, onMount, onDestroy, unmount } from 'svelte';
 	import type L from 'leaflet';
+	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import type { MapCircle, MapLine, MapMarker, MapOverlay, MapStar } from '$types/map.type';
 
 	let {
@@ -121,6 +122,10 @@
 	let overlayGroups: L.GeoJSON[] = [];
 	// The pins layer, rebuilt whenever the markers prop changes.
 	let markerLayer: L.LayerGroup | null = null;
+	// The PinTeam components mounted into the pins on screen. Clearing the layer only
+	// detaches their DOM — each animating sprite would keep its frame timer running —
+	// so every rebuild unmounts the previous crop first.
+	let pinTeams: Record<string, unknown>[] = [];
 	// The star-badge layer (e.g. today's festa-major towns), rebuilt whenever the
 	// stars prop changes. Kept separate from the region pins so it always shows,
 	// with no level-of-detail folding, and sits above them.
@@ -247,14 +252,33 @@
 			wrap.appendChild(location);
 		}
 
-		// A square tile in the region's colour carrying the show's glyph. The glyph is
-		// inlined rather than pointed at by an <img> so it inherits the tile's ink
-		// (see icon-markup) — which is why the fill and the ink arrive together
-		// in `frameClasses`. Sized through a CSS rule, which outranks the svg's own
-		// 1em width/height attributes. Decorative: the show is named in the caption
-		// right below, so announcing the glyph too would read it twice. A pin with
-		// neither a colour nor a glyph is caption-only and skips the tile entirely.
-		if (marker.iconSvg || marker.frameClasses) {
+		// The side sitting on the region, where there is one: the very cards the sidebar
+		// draws a team with — floor, character, name, place and all — three across, in
+		// place of the tile. A town shows who holds it rather than a glyph for the show
+		// they belong to. It is the same component (see TeamLineup), mounted into the
+		// pin's DOM because this is imperative code rather than a template, and tracked
+		// so the next rebuild can unmount it: each sprite runs a frame timer, and a pin
+		// merely detached from the map would go on animating for nothing.
+		if (marker.team?.length) {
+			const frame = document.createElement('div');
+			frame.className = 'w-44 drop-shadow-lg';
+			pinTeams.push(
+				mount(TeamLineup, {
+					target: frame,
+					// A town's team is somebody else's side, so it faces the viewer
+					// unmirrored, as a rival side does on the board.
+					props: { members: marker.team, flipped: false, classes: 'gap-1' }
+				})
+			);
+			wrap.appendChild(frame);
+		} else if (marker.iconSvg || marker.frameClasses) {
+			// A square tile in the region's colour carrying the show's glyph. The glyph is
+			// inlined rather than pointed at by an <img> so it inherits the tile's ink
+			// (see icon-markup) — which is why the fill and the ink arrive together
+			// in `frameClasses`. Sized through a CSS rule, which outranks the svg's own
+			// 1em width/height attributes. Decorative: the show is named in the caption
+			// right below, so announcing the glyph too would read it twice. A pin with
+			// neither a colour nor a glyph is caption-only and skips the tile entirely.
 			const frame = document.createElement('div');
 			frame.className =
 				'flex size-12 items-center justify-center rounded-lg border-2 border-base-100 shadow-lg [&>svg]:size-8 ' +
@@ -374,6 +398,7 @@
 	function rebuildMarkers() {
 		if (!mapInstance || !Leaf) return;
 		if (!markerLayer) markerLayer = Leaf.layerGroup().addTo(mapInstance);
+		unmountPinTeams();
 		markerLayer.clearLayers();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
@@ -407,6 +432,12 @@
 			pin.on('mouseout', () => highlightRegion(marker.featureIds, false));
 			pin.addTo(markerLayer!);
 		}
+	}
+
+	/** Tear down every team mounted into a pin, so no detached sprite keeps animating. */
+	function unmountPinTeams() {
+		for (const team of pinTeams) void unmount(team);
+		pinTeams = [];
 	}
 
 	// A star badge's DOM: the game-icons.net round-star SVG (served from @3xl/assets),
@@ -593,6 +624,7 @@
 
 	onDestroy(() => {
 		resizeObserver?.disconnect();
+		unmountPinTeams();
 		mapInstance?.remove();
 	});
 </script>
