@@ -104,9 +104,10 @@
 						the ground and never as loud as whoever is standing on it. -->
 					<div
 						class={classNames(
-							'absolute inset-0 text-white/60',
+							'absolute inset-0 border text-white/60',
 							GROUND,
-							colorFills[member.color]
+							colorFills[member.color],
+							colorBorders[member.color]
 						)}
 					>
 						{#if showIcon}
