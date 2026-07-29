@@ -148,10 +148,15 @@
 				</div>
 			{/if}
 		{:else}
-			<div class="relative flex min-h-0 flex-1 justify-center">
+			<!-- A container, so the box standing in it can be capped by this width as well as by
+				this height. `max-w-full` cannot do that job: an absolute max on the box resolves
+				against the button, and the button has already grown to whatever width the box asked
+				for, so the pair overflow together — measured at a sidebar's width, a box given the
+				full height came out 392px wide in a 230px panel. -->
+			<div class="@container relative flex min-h-0 min-w-0 flex-1 justify-center">
 				<button
 					type="button"
-					class={classNames('flex min-h-0 justify-center', {
+					class={classNames('flex min-h-0 min-w-0 items-center justify-center', {
 						'cursor-wait': opening,
 						'cursor-pointer': !opening && interactive
 					})}
@@ -159,17 +164,22 @@
 					aria-label="Obre el sobre"
 					on:click={open}
 				>
-					<!-- Stood up, the pack is as tall as the box and as wide as that height
-						earns it — the ratio is the booster box's own, so this only says which of
-						the two the box decides. A box too narrow for that height keeps its width
-						instead and stands shorter than it could. -->
+					<!-- Stood up, the pack fills whichever of the two the box runs out of first: as
+						tall as the space allows, unless the width allows less, in which case it is as
+						tall as this width earns it at the box's own 30:37 (1.23333 of a width). The
+						ratio is the box's, so this only says which measurement decides — and it has to
+						be said as a height, since that is the one the box does not work out for itself.
+						`items-center` on the button matters as much as the cap: a flex item is stretched
+						to its line by default, and a stretched height beats a height read off the
+						aspect, which is what left the box a tall thin slab of the panel's full height
+						rather than a box. -->
 					<BoosterBox
 						coverUrl={selectedPack.coverUrl}
 						logoUrl={selectedPack.logoUrl}
 						showId={selectedPack.showId}
 						locationName={selectedPack.locationName}
 						light={selectedPack.today}
-						classes={classNames('h-full max-w-full', { 'opacity-60': opening })}
+						classes={classNames('h-[min(100%,100cqw*1.23333)]', { 'opacity-60': opening })}
 					/>
 				</button>
 
