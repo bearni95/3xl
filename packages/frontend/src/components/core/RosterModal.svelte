@@ -800,48 +800,49 @@
 						{/if}
 					</div>
 				</div>
-				<!-- The team the player is building, above the roster it is picked from:
-				     what it is led by on the left, then one cell per slot — a statue where
-				     the slot is filled, with the button that empties it, and an empty frame
-				     where it isn't. It stands outside the scroll box, since it is what the
-				     grid below is being read against. -->
-				<div class="mb-3 flex flex-none gap-4 rounded-box bg-base-200 p-3">
-					<dl class="flex w-32 flex-none flex-col justify-center gap-2 text-xs">
-						<div>
-							<dt class="opacity-50">COLOUR</dt>
-							<dd class="flex items-center gap-1.5 capitalize">
-								{#if teamSummary.color}
-									<span
-										class={classNames(
-											'inline-block size-2.5 rounded-full',
-											SPAWN_FILL_CLASSES[teamSummary.color]
-										)}
-									></span>
-								{/if}
-								{teamSummary.color ?? '—'}
-							</dd>
-						</div>
-						<div>
-							<dt class="opacity-50">SHOW</dt>
-							<dd class="truncate" title={teamSummary.showName ?? ''}>
-								{teamSummary.showName ?? '—'}
-							</dd>
-						</div>
-						<div>
-							<dt class="opacity-50">REGION</dt>
-							<dd class="truncate" title={teamSummary.regionName ?? ''}>
-								{teamSummary.regionName ?? '—'}
-							</dd>
-						</div>
-					</dl>
-					<!-- The slots are a fixed narrow width rather than a share of the modal:
-					     a statue is three quarters as wide as it is tall, so letting three of
-					     them span a 7xl box would stand them half the screen high and leave
-					     the roster underneath a slit. The band is a reminder of who is
-					     fielded — the grid is what the screen is for. -->
-					<div class="flex gap-2">
+				<!-- The team stands beside the roster it is picked from rather than over it:
+				     the grid wants width for its columns and height for its rows, and a band
+				     across the top only ever took the second away from it. Down the left
+				     instead, one slot above the next, in a column of its own — a statue is
+				     three quarters as wide as it is tall, so a stack of three is a shape a
+				     tall modal already has room for. -->
+				<div class="flex min-h-0 flex-1 gap-3">
+					<!-- The column is a fixed narrow width and scrolls on its own, so three
+					     filled slots can never push the grid: what the modal's height leaves
+					     the team is the team's problem, not the roster's. -->
+					<div
+						class="flex w-32 flex-none flex-col gap-3 overflow-y-auto rounded-box bg-base-200 p-3 sm:w-36"
+					>
+						<dl class="flex flex-none flex-col gap-2 text-xs">
+							<div>
+								<dt class="opacity-50">COLOUR</dt>
+								<dd class="flex items-center gap-1.5 capitalize">
+									{#if teamSummary.color}
+										<span
+											class={classNames(
+												'inline-block size-2.5 rounded-full',
+												SPAWN_FILL_CLASSES[teamSummary.color]
+											)}
+										></span>
+									{/if}
+									{teamSummary.color ?? '—'}
+								</dd>
+							</div>
+							<div>
+								<dt class="opacity-50">SHOW</dt>
+								<dd class="truncate" title={teamSummary.showName ?? ''}>
+									{teamSummary.showName ?? '—'}
+								</dd>
+							</div>
+							<div>
+								<dt class="opacity-50">REGION</dt>
+								<dd class="truncate" title={teamSummary.regionName ?? ''}>
+									{teamSummary.regionName ?? '—'}
+								</dd>
+							</div>
+						</dl>
 						{#each teamSlotStatues as statue, index (index)}
-							<div class="flex w-24 flex-none flex-col gap-1 sm:w-28">
+							<div class="flex flex-none flex-col gap-1">
 								{#if statue}
 									<CharacterStatue
 										label={statue.label}
@@ -866,97 +867,99 @@
 							</div>
 						{/each}
 					</div>
-				</div>
 
-				<!-- The roster itself: a statue per character — the same one the map's panel
-				     stands the team up with — in a grid the slider sets the width of (1/2/3
-				     by viewport to start), with one circle per colour it has been pulled in
-				     underneath, each carrying how many of that colour the player owns.
-				     Tapping the statue toggles the shown copy's team membership, or selects it
-				     while recycling; tapping a circle only changes which copy is shown. Only
-				     the current page is mounted — the filters
-				     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at a
-				     time — and the box takes whatever the modal's fixed height leaves it. -->
-				<div
-					bind:this={gridScroller}
-					class="relative min-h-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
-				>
-					<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
-						{#each pagedStatues as { group, copy, swatches, places, placeValue, statue } (group.characterId)}
-							<div class="flex flex-col gap-2">
-								<button
-									type="button"
-									class={classNames(
-										'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-										{
-											'opacity-30': recycleMode && !selectedForRecycle.has(copy.id),
-											'ring-2 ring-warning': recycleMode && selectedForRecycle.has(copy.id)
-										}
-									)}
-									on:click={() => handleCardTap(copy)}
-								>
-									<CharacterStatue
-										label={statue.label}
-										basePath={statue.basePath}
-										color={statue.color}
-										locationName={statue.locationName}
-										spawnedAt={statue.spawnedAt}
-										showId={statue.showId}
-									/>
-								</button>
-								<!-- Every colour this character has been pulled in, each circle carrying
-								     how many of that colour the player owns: a click stands them up in
-								     that colour, and a click on the colour already standing walks to the
-								     next copy of it. The circle being shown is the ringed one. Beside them,
-								     the same copies asked for the other way round — by the town they were
-								     claimed in, each saying its colour. -->
-								<div class="flex flex-wrap items-center justify-center gap-1.5">
-									{#each swatches as swatch (swatch.color)}
-										<button
-											type="button"
-											class={swatchCircleClasses(
-												swatch,
-												copy.color,
-												recycleMode,
-												selectedForRecycle
-											)}
-											title="{swatch.copies.length} in {swatch.color}"
-											aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
-											aria-pressed={swatch.color === copy.color}
-											on:click={() => showColorCopy(group.characterId, swatch, copy)}
-										>
-											{swatch.copies.length}
-										</button>
-									{/each}
-
-									<!-- The same copies asked for by town rather than by colour, and a native
-									     select because a menu of our own would be clipped by the scroll box
-									     this grid lives in. Each place says the colour it was pulled in with a
-									     square, the one thing an option can carry that a stylesheet cannot
-									     reach. -->
-									<select
-										class="select select-xs min-w-0 max-w-[9rem] flex-initial"
-										aria-label="{statue.label} — where it was claimed"
-										value={placeValue}
-										on:change={(event) => showCopy(group.characterId, event.currentTarget.value)}
+					<!-- The roster itself: a statue per character — the same one the map's panel
+					     stands the team up with — in a grid the slider sets the width of (1/2/3
+					     by viewport to start), with one circle per colour it has been pulled in
+					     underneath, each carrying how many of that colour the player owns.
+					     Tapping the statue toggles the shown copy's team membership, or selects it
+					     while recycling; tapping a circle only changes which copy is shown. Only
+					     the current page is mounted — the filters
+					     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at a
+					     time — and the box takes whatever the team column leaves it. -->
+					<div
+						bind:this={gridScroller}
+						class="relative min-h-0 min-w-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
+					>
+						<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
+							{#each pagedStatues as { group, copy, swatches, places, placeValue, statue } (group.characterId)}
+								<div class="flex flex-col gap-2">
+									<button
+										type="button"
+										class={classNames(
+											'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+											{
+												'opacity-30': recycleMode && !selectedForRecycle.has(copy.id),
+												'ring-2 ring-warning': recycleMode && selectedForRecycle.has(copy.id)
+											}
+										)}
+										on:click={() => handleCardTap(copy)}
 									>
-										{#each places as place (place.copy.id)}
-											<option value={place.copy.id}>
-												{SPAWN_SQUARE_GLYPHS[place.copy.color]}
-												{place.locationName}
-											</option>
+										<CharacterStatue
+											label={statue.label}
+											basePath={statue.basePath}
+											color={statue.color}
+											locationName={statue.locationName}
+											spawnedAt={statue.spawnedAt}
+											showId={statue.showId}
+										/>
+									</button>
+									<!-- Every colour this character has been pulled in, each circle carrying
+									     how many of that colour the player owns: a click stands them up in
+									     that colour, and a click on the colour already standing walks to the
+									     next copy of it. The circle being shown is the ringed one. Beside them,
+									     the same copies asked for the other way round — by the town they were
+									     claimed in, each saying its colour. -->
+									<div class="flex flex-wrap items-center justify-center gap-1.5">
+										{#each swatches as swatch (swatch.color)}
+											<button
+												type="button"
+												class={swatchCircleClasses(
+													swatch,
+													copy.color,
+													recycleMode,
+													selectedForRecycle
+												)}
+												title="{swatch.copies.length} in {swatch.color}"
+												aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
+												aria-pressed={swatch.color === copy.color}
+												on:click={() => showColorCopy(group.characterId, swatch, copy)}
+											>
+												{swatch.copies.length}
+											</button>
 										{/each}
-									</select>
+
+										<!-- The same copies asked for by town rather than by colour, and a native
+										     select because a menu of our own would be clipped by the scroll box
+										     this grid lives in. Each place says the colour it was pulled in with a
+										     square, the one thing an option can carry that a stylesheet cannot
+										     reach. -->
+										<select
+											class="select select-xs min-w-0 max-w-[9rem] flex-initial"
+											aria-label="{statue.label} — where it was claimed"
+											value={placeValue}
+											on:change={(event) => showCopy(group.characterId, event.currentTarget.value)}
+										>
+											{#each places as place (place.copy.id)}
+												<option value={place.copy.id}>
+													{SPAWN_SQUARE_GLYPHS[place.copy.color]}
+													{place.locationName}
+												</option>
+											{/each}
+										</select>
+									</div>
 								</div>
-							</div>
-						{/each}
-					</div>
-					{#if filteredSpawns.length === 0}
-						<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
-							<p class="text-sm opacity-60">No characters match these filters.</p>
-							<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
+							{/each}
 						</div>
-					{/if}
+						{#if filteredSpawns.length === 0}
+							<div
+								class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center"
+							>
+								<p class="text-sm opacity-60">No characters match these filters.</p>
+								<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
+							</div>
+						{/if}
+					</div>
 				</div>
 			{/if}
 		</div>
