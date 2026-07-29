@@ -4,8 +4,8 @@
 
 	// One piece of a loading veil: a rectangle somewhere in the box, tiled with a grid of
 	// grey squares, that blurs itself into place square by square and, when whatever it
-	// stands in for has arrived, blurs away again — both times from the bottom row up, the
-	// two sweeps being the one sweep, with only what the squares are heading for reversed.
+	// stands in for has arrived, blurs away again — both times from the bottom row up, and
+	// both times with the columns broken up out of order, though not the same order twice.
 	//
 	// It is a shape and nothing else — it neither knows what is loading nor decides when to
 	// go. A surface says where it is and how big, and whoever is doing the loading says
@@ -60,12 +60,54 @@
 	const VEIL_SPREAD_MS = VEIL_STAGGER_MS + VEIL_COLUMN_MS;
 	const VEIL_SWEEP_MS = VEIL_SPREAD_MS + VEIL_BLUR_MS;
 
-	// How late each column is, as a share of that. Uneven on purpose and in no order: a
-	// column that waited a step longer than the one beside it would only tilt the wave and
-	// have it arrive as a diagonal line instead of a level one, where these have it arrive
-	// broken up. Seven of them against a column count that is never seven, for the same
-	// reason the greys are eleven — the run does not repeat down the block.
-	const COLUMN_WAITS = [0, 0.62, 0.24, 1, 0.38, 0.86, 0.1];
+	// How late each column is, as a share of VEIL_COLUMN_MS — dealt twice over, once for
+	// coming in and once for going out, so a column is not the same amount late both times
+	// and the wave breaks differently on the way to the picture than on the way from it.
+	//
+	// Drawn from evenly spaced values and shuffled, rather than taken at random one by one:
+	// the whole of the range gets used that way, where independent draws clump and leave the
+	// scatter looking like two or three columns going together. Reshuffled while any four
+	// columns in a row climb or fall together — a run that long is a diagonal crossing the
+	// grid, which is the single thing the scatter exists to break, and the rest of what a
+	// shuffle turns up is exactly the disorder wanted.
+	//
+	// Dealt once, when the block starts, and kept: a re-measure that changes the column count
+	// must not redeal the waits under a sweep that is already running. Each block deals for
+	// itself, so a row of statues does not break in step.
+	const COLUMN_POOL = 16;
+	const COLUMN_RUN = 4;
+
+	const columnWaitsIn = dealColumnWaits();
+	const columnWaitsOut = dealColumnWaits();
+
+	/** A wait for every column the pool covers, in no order and with no long run in it. */
+	function dealColumnWaits(): number[] {
+		const waits = Array.from({ length: COLUMN_POOL }, (_, index) => index / (COLUMN_POOL - 1));
+		// A shuffle that will not settle is used as it stands: the animation is not worth
+		// spinning on, and the odds of eight in a row all carrying a run are vanishing.
+		for (let attempt = 0; attempt < 8; attempt += 1) {
+			for (let i = waits.length - 1; i > 0; i -= 1) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[waits[i], waits[j]] = [waits[j], waits[i]];
+			}
+			if (!hasRun(waits)) break;
+		}
+		return waits;
+	}
+
+	/** Whether COLUMN_RUN columns anywhere in a row all climb or all fall. */
+	function hasRun(waits: number[]): boolean {
+		for (let start = 0; start + COLUMN_RUN <= waits.length; start += 1) {
+			let climbing = true;
+			let falling = true;
+			for (let i = start + 1; i < start + COLUMN_RUN; i += 1) {
+				if (waits[i] <= waits[i - 1]) climbing = false;
+				if (waits[i] >= waits[i - 1]) falling = false;
+			}
+			if (climbing || falling) return true;
+		}
+		return false;
+	}
 
 	// How far a square blurs before it is gone, as a share of its own width — the whole
 	// point is that the squares dissolve rather than switch off, so the radius is measured
@@ -108,22 +150,23 @@
 	$: columns = cell > 0 && boxWidth > 0 ? Math.ceil(boxWidth / cell) : 0;
 	$: rows = cell > 0 && boxHeight > 0 ? Math.ceil(boxHeight / cell) : 0;
 
-	// Every square with its grey and the moment it leaves. Its row says most of it — the
-	// bottom row goes at once and each row above waits a little longer, the whole spread
+	// Every square with its grey and the two moments it moves at. Its row says most of both —
+	// the bottom row goes at once and each row above waits a little longer, the whole spread
 	// fixed at VEIL_STAGGER_MS however many rows there are, so a tall sheet and a short one
-	// are uncovered in the same time and every piece of the veil stays on the one clock —
-	// and its column adds the rest, which is what stops a row going all at once as a band.
-	// It is the one wait either way: a square comes in when it would go out, so the veil is
-	// drawn on from the bottom up and taken off from the bottom up, and the sweep always
-	// runs the way the character stands. What is reversed between the two is only what a
-	// square is going to — gone or there — never the order they are dealt with in.
+	// are uncovered in the same time and every piece of the veil stays on the one clock — and
+	// its column adds the rest, which is what stops a row moving all at once as a band.
+	//
+	// The row's share is the same coming and going: both sweeps run up the block, the way the
+	// character stands. The column's share is the one dealt twice, so the two sweeps break in
+	// different places while running the same way.
 	$: cells = Array.from({ length: columns * rows }, (_, index) => {
 		const rowsFromBottom = rows - 1 - Math.floor(index / columns);
 		const rowWait = rows > 1 ? (rowsFromBottom / (rows - 1)) * VEIL_STAGGER_MS : 0;
-		const columnWait = COLUMN_WAITS[(index % columns) % COLUMN_WAITS.length] * VEIL_COLUMN_MS;
+		const column = (index % columns) % COLUMN_POOL;
 		return {
 			shade: CELL_SHADES[index % CELL_SHADES.length],
-			wait: Math.round(rowWait + columnWait)
+			waitIn: Math.round(rowWait + columnWaitsIn[column] * VEIL_COLUMN_MS),
+			waitOut: Math.round(rowWait + columnWaitsOut[column] * VEIL_COLUMN_MS)
 		};
 	});
 
@@ -196,8 +239,11 @@
 	bind:clientHeight={boxHeight}
 	aria-hidden="true"
 >
-	{#each cells as { shade, wait }}
-		<div class={cellClasses} style:--veil-delay="{wait}ms">
+	{#each cells as { shade, waitIn, waitOut }}
+		<!-- Whichever wait belongs to the way this square is going. It is coming in until it is
+			told to leave, and there is one transition either way, so the wait is swapped under it
+			at the moment the state it is heading for changes. -->
+		<div class={cellClasses} style:--veil-delay="{fading ? waitOut : waitIn}ms">
 			<div class="h-full w-full {shade}"></div>
 		</div>
 	{/each}
