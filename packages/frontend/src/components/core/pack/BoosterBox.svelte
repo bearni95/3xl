@@ -63,15 +63,22 @@
 	// and both states carry the same five functions in the same order, which is what lets
 	// the browser interpolate them one for one.
 	//
-	// Open is a half turn: the lid ends upside down behind the box, as flat and as
-	// foreshortened as it started, so it takes no more room open than shut and the swing
-	// through the upright is the whole of the animation. (Tailwind emits only the classes
-	// it can see spelled out, so the two are written in full rather than built from the
-	// angle.)
+	// Open is a half turn, and it is a POSITIVE one — the same sense the placing tilt
+	// already turns in, carrying the lid on over backwards. A half turn the other way
+	// arrives at the same place by the opposite road: it sweeps the lid down across the
+	// poster on its way, which is a lid closing over the front of the box rather than
+	// opening off the top of it. The sign is the whole of the difference, and it is
+	// entirely in the middle of the swing — halfway through, this one has the lid
+	// standing up above the box and the other has it lying over the face.
+	//
+	// Half a turn is the whole of it: the lid ends upside down behind the box, as flat
+	// and as foreshortened as it started, so it takes no more room open than shut.
+	// (Tailwind emits only the classes it can see spelled out, so the two are written in
+	// full rather than built from the angle.)
 	const LID_CLOSED =
 		'[transform:perspective(187.826cqw)_rotateX(75.373deg)_translateY(-100%)_rotateX(0deg)_translateY(100%)]';
 	const LID_OPEN =
-		'[transform:perspective(187.826cqw)_rotateX(75.373deg)_translateY(-100%)_rotateX(-180deg)_translateY(100%)]';
+		'[transform:perspective(187.826cqw)_rotateX(75.373deg)_translateY(-100%)_rotateX(180deg)_translateY(100%)]';
 
 	// What the bands say, exactly as the baked pack says it: the place with the year
 	// this copy would be minted in joined to it — "Barcelona '26" — and, below the
@@ -100,12 +107,19 @@
 			The swing is eased at both ends, which is where the lid is flat and takes no room
 			at all. The hurry is the middle of it, the moment the lid stands upright and is
 			drawn two thirds of a box width tall — all the room this animation ever asks for
-			above the box is asked for there, and briefly. -->
+			above the box is asked for there, and briefly.
+
+			The transition is only carried while the box is open, and that is not a
+			flourish: the transform is written in cqw, which has no value until the box has
+			been laid out and its container size is known. A lid that stood permanently
+			ready to animate would take that first resolution — nothing to something — as a
+			change worth animating, and every box in the grid would swing itself into place
+			on arrival. Hung on `opened`, the transition is not there to be triggered by
+			anything but the tap, which is the only change that is a movement. -->
 		<div
 			class={classNames(
 				'absolute inset-x-0 bottom-0 aspect-square origin-bottom bg-neutral',
-				'transition-transform duration-700 ease-in-out',
-				opened ? LID_OPEN : LID_CLOSED
+				opened ? `${LID_OPEN} transition-transform duration-700 ease-in-out` : LID_CLOSED
 			)}
 		>
 			<!-- The top plane catches the light the front does not: without it a lid in the
