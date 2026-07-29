@@ -10,8 +10,7 @@
 	import ShowStandingsTable from '$components/core/ShowStandingsTable.svelte';
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
-	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
-	import ClaimPackGrid from '$components/core/pack/ClaimPackGrid.svelte';
+	import PackGrid from '$components/core/pack/PackGrid.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
@@ -1259,22 +1258,12 @@
 			.catch(() => {});
 	}
 
-	// The pack picked on the grid canvas — named in the header, and the reason the
-	// "all packs" control shows. Plus a counter bumped to remount the grid, since a
-	// picked pack has zoomed in and only a fresh scene lays the full grid back out.
-	let gridPack: OpenerPack | null = null;
-	let gridSession = 0;
-
 	// Back to the whole window's grid, from a star-opened town or a picked pack alike.
-	// The session bump remounts the canvas, which is the only way to rebuild a grid a
-	// pack has already zoomed out of — so it is spent only when a pack really was
-	// picked. Every remount is a fresh WebGL context, and the browser hands out a
-	// limited number of those across the whole page.
+	// The grid is in the document now, so this is only the state it reads: nothing is
+	// rebuilt, and a pack stood back down leaves the grid exactly as it was.
 	function showPackGrid(): void {
 		clearPackFeedback();
-		if (gridPack) gridSession += 1;
 		packTownId = null;
-		gridPack = null;
 	}
 
 	// Picking the Booster tab by its own button always lands on the grid of every pack
@@ -1284,14 +1273,11 @@
 		panelTab = id;
 	}
 
-	// The grid remounts whenever the window's set of packs changes (they load in, or the
-	// player signs in), so a stale grid never lingers. The closures are rebuilt on every
-	// recompute while the ids stay stable, so key on the ids alone.
-	$: packsKey = claimPacks.map((pack) => pack.id).join(',');
-
-	// The single pack the Booster tab shows — the clicked town's, picked out of the
-	// window's full set. Null when no star has been clicked, the player is signed out,
-	// or the town has no claimable show yet.
+	// The pack a star click stands up, picked out of the window's full set. Null when no
+	// star has been clicked, the player is signed out, or the town has no claimable show
+	// yet — the last of which is the only case the panel has anything to say about, since
+	// a town clicked on the map is a town the player expected a pack from. The grid
+	// itself works off the same id, so this is read only to tell that case apart.
 	$: packForTown = packTownId
 		? (claimPacks.find((pack) => pack.id === packTownId) ?? null)
 		: null;
@@ -1777,15 +1763,17 @@
 			{:else if panelTab === PanelTab.Leaderboard}
 				<ShowStandingsTable rows={showStandings} />
 			{:else}
-				<!-- Two ways in, one tab: a star click narrows it to that town's pack on the
-					single-pack opener, while picking the tab itself shows every pack in the
-					booster window on the shared ClaimPackGrid canvas — two to a row here, since the
-					panel is a third of the viewport's width. Either way the pack is sliced open in
-					place; "Tots els sobres" goes back to the grid. -->
-				<!-- The one tab that has to be told a height on the mobile panel: its packs are a
-					WebGL scene that draws into whatever box it is handed, and inside that panel's
-					one scroller there is no leftover space to hand it. 60vh is enough of a stage to
-					pick and slice a pack on, and the panel scrolls to it when collapsed. -->
+				<!-- Two ways in, one grid: picking the tab shows every pack in the booster
+					window, two to a row since the panel is a third of the viewport's width,
+					while a star click stands that town's pack up in it straight away. Either
+					way the same three taps — pick a pack, tap it again to open it, and the
+					cards it held stand up in its place as statues; "Tots els sobres" goes
+					back to the grid. All of it is in the document: a day's covers and the
+					cards they open onto cost the page no WebGL context at all. -->
+				<!-- The one tab that has to be told a height on the mobile panel: a pack stood
+					up fills the box it is handed, and inside that panel's one scroller there is
+					no leftover space to hand it. 60vh is enough of a stage to pick and open a
+					pack on, and the panel scrolls to it when collapsed. -->
 				<div class="flex min-h-0 flex-1 flex-col max-md:min-h-[60vh]">
 					<!-- The stretch of calendar on offer, both ends of it named. Every pack below is
 						openable: a festa major runs over its weekend rather than on one evening, so
@@ -1816,46 +1804,34 @@
 					{/if}
 
 					<div class="relative min-h-0 flex-1 p-3">
-						{#if packTownId}
-							<!-- Keyed on the town so clicking another star remounts a fresh, unsliced
-								pack rather than reusing the last one's scene. -->
-							{#if packForTown}
-								{#key packForTown.id}
-									<ClaimPackOpener
-										coverUrl={packForTown.coverUrl}
-										locationName={packForTown.locationName}
-										claim={packForTown.claim}
-										onOpenComplete={onPackOpened}
-										classes="rounded-md bg-gradient-to-b from-base-300/80 to-base-200"
-									/>
-								{/key}
-							{:else}
-								<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
-									<p class="max-w-xs text-sm opacity-60">
-										Aquest municipi encara no té cap sobre per obrir. Inicia sessió i torna-ho a provar.
-									</p>
-								</div>
-							{/if}
+						{#if packTownId && !packForTown}
+							<!-- A star was clicked on a town the window has no pack for — the one
+								thing the grid itself cannot say, since it only ever knows the packs
+								it was handed. -->
+							<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
+								<p class="max-w-xs text-sm opacity-60">
+									Aquest municipi encara no té cap sobre per obrir. Inicia sessió i torna-ho a provar.
+								</p>
+							</div>
 						{:else if claimPacks.length}
-							<!-- Two packs to a row at this width, and an opened one unfolds its cards
-								into two columns as well — the panel is far too narrow for the claim
-								page's three. -->
-							{#key `${packsKey}:${gridSession}`}
-								<ClaimPackGrid
-									packs={claimPacks}
-									columns={2}
-									revealColumns={2}
-									interactive={!allowanceSpent}
-									classes={classNames('rounded-md bg-gradient-to-b from-base-300/80 to-base-200', {
-										'opacity-50': allowanceSpent
-									})}
-									on:select={(event) => {
-										clearPackFeedback();
-										gridPack = event.detail;
-									}}
-									on:openComplete={(event) => onPackOpened(event.detail)}
-								/>
-							{/key}
+							<!-- Two packs to a row at this width, and an opened one stands its cards
+								in two columns as well — the panel is far too narrow for the claim
+								page's three. The stood-up pack is bound to the same id a star click
+								sets, so the map and the grid are never looking at two different packs. -->
+							<PackGrid
+								packs={claimPacks}
+								columns={2}
+								revealColumns={2}
+								interactive={!allowanceSpent}
+								bind:selected={packTownId}
+								classes={classNames(
+									'h-full rounded-md bg-gradient-to-b from-base-300/80 to-base-200 p-2',
+									{ 'opacity-50': allowanceSpent }
+								)}
+								on:select={clearPackFeedback}
+								on:back={clearPackFeedback}
+								on:openComplete={(event) => onPackOpened(event.detail)}
+							/>
 						{:else}
 							<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
 								<p class="max-w-xs text-sm opacity-60">
