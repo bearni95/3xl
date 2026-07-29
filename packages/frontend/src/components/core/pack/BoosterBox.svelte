@@ -234,20 +234,37 @@
 			and the front: a top and a face in one colour are one shape, and a box with no edge
 			between its top and its face is not a box. Which colour that step is belongs to the
 			stock (see `skin`); the lid only says that it is the far one. It is also what the
-			show's glyph is stamped on, in the ink the front's type is set in — black on a white
-			box, white on a black one — the mark being the one thing on the lid, so it takes the
-			ink at full strength rather than the veiled white the statue paints its floor with,
-			where a character stands in front of it and must not be argued with. -->
-		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square', skin.top, LID, LID_CUT)}>
+			show's glyph is stamped on, and the ink is set here rather than on the glyph: the
+			glyph paints in `currentColor` and ShowIcon puts `text-current` on its own span, so a
+			colour handed to it as a class is a second `color` rule at the same weight, settled
+			by which of the two Tailwind emits last and not by which was asked for — `text-black`
+			is emitted before `text-current` and lost to it, leaving a white box's mark in
+			whatever the page was inheriting. Coloured from the plane it is printed on, there is
+			nothing to settle: `currentColor` is the ink, which is the ink the front's type is set
+			in — black on a white box, white on a black one, at full strength where the statue
+			paints its floor in a veiled white, since a character stands in front of that floor
+			and must not be argued with while nothing stands on a lid. -->
+		<div
+			class={classNames(
+				'absolute inset-x-0 bottom-0 aspect-square',
+				skin.top,
+				skin.ink,
+				LID,
+				LID_CUT
+			)}
+		>
 			{#if showIcon}
 				<!-- Inside the tilted square, so the glyph is laid down with the lid rather than
 					standing up on it, and clipped by the corner cuts along with it: the mark is
 					printed on the top of the box, and a print on a plane seen in perspective is seen
-					in the same perspective. It is stretched to the square's own bounds — the glyph
-					ships sized in `em` to follow its surrounding type, and a lid is not type. -->
+					in the same perspective. Sized off the square rather than left at its own size —
+					the glyph ships in `em` to follow whatever type it sits in, and a lid is not type
+					— at four fifths of it, centred, so it is stamped on the top with a margin round
+					it and does not run into the corners the cut takes off. Four fifths of both sides
+					and not of the width alone: a mark squashed one way is a different mark. -->
 				<ShowIcon
 					name={showIcon}
-					classes={classNames('absolute inset-0 [&>svg]:h-full [&>svg]:w-full', skin.ink)}
+					classes="absolute inset-0 justify-center [&>svg]:h-[80%] [&>svg]:w-[80%]"
 				/>
 			{/if}
 		</div>
