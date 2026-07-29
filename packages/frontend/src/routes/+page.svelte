@@ -12,7 +12,6 @@
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
 	import ClaimPackGrid from '$components/core/pack/ClaimPackGrid.svelte';
-	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
@@ -45,8 +44,6 @@
 	import { showPosterUrl } from '$utils/geo/municipality-show';
 	import { showIconName } from '$utils/show/show-icon';
 	import { iconMarkup } from '$components/core/icon-markup';
-	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
-	import type { CardModel } from '$utils/card/card-model.type';
 	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 	import {
 		buildRegionTree,
@@ -190,15 +187,6 @@
 			showCharacterIds = new Map(claimable.map((show) => [show.id, show.characterIds]));
 		} catch {
 			showCharacterIds = new Map();
-		}
-
-		// Every character's own show names, read the same way the roster and the arena
-		// read them, so a card drawn here names its show exactly as it does there.
-		// Loaded on its own so a failure only costs the show row, not the team preview.
-		try {
-			characterShowNames = await spawnService.loadCharacterShowNames();
-		} catch {
-			characterShowNames = new Map();
 		}
 
 		// Who actually occupies each town, plus this player's own siege progress.
@@ -713,22 +701,6 @@
 	// unconfigured or unreadable — the team preview simply stays hidden then.
 	let showCharacterIds = new Map<number, string[]>();
 
-	// character id → the names of the shows it belongs to, read once from Supabase
-	// (`show_characters` joined to `show_templates`). A card's show is the character's,
-	// not the context it happens to be drawn in, so both canvases in this panel read it
-	// from here — the same source the roster and the combat board use.
-	let characterShowNames = new Map<string, string[]>();
-
-	/** A character's shows as one card label, or null when it belongs to none. */
-	function cardShowName(characterId: string, shows: ReadonlyMap<string, string[]>): string | null {
-		return shows.get(characterId)?.join(', ') || null;
-	}
-
-	// character id → resolved active-face portrait, loaded lazily as team members
-	// appear (mirrors the roster's face loading).
-	let characterFaces = new Map<string, string | null>();
-	const faceRequested = new Set<string>();
-
 	// The open leaf municipality's feature (matched by id), and the GPS seed that
 	// assigns its show — the same seed we reuse to roll its team, so a town's show and
 	// its team are both stable functions of its shape. Null unless a municipality with
@@ -780,30 +752,10 @@
 	// says when it reopens instead — both now read on the pin, off `$openBattle` and
 	// the next Catalan midnight; see buildPinChallenge.)
 
-	// Kick off face loading for whichever team members are on screen.
-	$: void loadFaces(municipalityTeam.map((member) => member.characterId));
-
-	// The team as display CardModels for the shared renderer — the same shape the
-	// claim/roster cards use. `characterFaces` and `characterShowNames` are threaded in
-	// so the statement re-runs as faces and shows resolve. The show row names each
-	// character's own show — a held town fields the occupier's claimed characters, so
-	// labelling them with the town's top show would be a lie.
-	$: municipalityTeamCards = ((
-		faces: Map<string, string | null>,
-		shows: Map<string, string[]>
-	): CardModel[] =>
-		municipalityTeam.map((member) => ({
-			label: charactersById.get(member.characterId)?.label ?? member.characterId,
-			basePath: charactersById.get(member.characterId)?.basePath ?? null,
-			faceUrl: faces.get(member.characterId) ?? null,
-			color: member.color,
-			rarity: null,
-			showName: cardShowName(member.characterId, shows),
-			locationName: municipalityFeature
-				? restoreCatalanArticle(String(municipalityFeature.properties?.name ?? ''))
-				: null,
-			spawnedAt: null
-		})))(characterFaces, characterShowNames);
+	// (The town's team was drawn here as cards on the shared card canvas — portraits,
+	// show row and all. It is statues on the town's own pin now, which take a frames
+	// folder and nothing else, so the faces and show names that fed those cards are no
+	// longer loaded at all.)
 
 	// --- The player's own team (the panel's account section) ---------------------
 	// Stood up in the document right under the account card (see TeamLineup): the side
@@ -998,21 +950,6 @@
 		fightLocationId = battle.locationId;
 		fightTurnover = battle.turnover;
 		fightOpen = true;
-	}
-
-	// Fetch the active-face portrait for any team character not yet requested, then
-	// reassign the map so the cards re-render with their faces.
-	async function loadFaces(ids: string[]): Promise<void> {
-		const missing = ids.filter((id) => !faceRequested.has(id));
-		if (missing.length === 0) return;
-		for (const id of missing) faceRequested.add(id);
-		await Promise.all(
-			missing.map(async (id) => {
-				const basePath = charactersById.get(id)?.basePath ?? null;
-				characterFaces.set(id, basePath ? await resolveCharacterFaceUrl(id, basePath) : null);
-			})
-		);
-		characterFaces = characterFaces;
 	}
 
 	// Per-municipality chain of region tiers, read by buildMarkers/focusBounds to
@@ -1698,8 +1635,8 @@
 				{:else if regionRows.length === 0}
 					<!-- A leaf region (a municipality) has no children to drill into, so instead of
 						an empty table we surface its own top show — the only place the open location's
-						show appears — plus the town's deterministic house team on the shared card
-						canvas (three cards rolled from the town's seed and its show's roster). -->
+						show appears — and say who is holding the place. The side itself is out on the
+						map, standing on the town. -->
 					<div class="flex min-h-0 flex-1 flex-col gap-3 p-4">
 						{#if openShow}
 							<div class="flex flex-none items-center gap-3">
@@ -1723,12 +1660,16 @@
 							<p class="flex-none text-center opacity-60">No show here yet.</p>
 						{/if}
 
-						{#if municipalityTeamCards.length > 0}
+						{#if municipalityTeam.length > 0}
 							<!-- Whoever holds the town. Until a player beats it, that's the town's
 								built-in, seed-rolled "OG" (original) roster — the same for every
 								player, badged so it reads as the house team. Once somebody takes the
 								town it's their frozen winning team instead, and it's their name on
-								the badge. -->
+								the badge.
+
+								The team itself is not drawn here any more: it is standing on the
+								town's own pin (see statuedTown), so the panel names who holds the
+								place and the map shows them holding it. -->
 							<div class="flex flex-none items-center gap-2">
 								{#if openHolder}
 									<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
@@ -1745,23 +1686,6 @@
 								{#if holdsOpenTown}
 									<span class="badge badge-success badge-sm ml-auto">Yours</span>
 								{/if}
-							</div>
-							<!-- Sized like the player's own team strip above it: one row of TEAM_SIZE
-								cards at the canvas's 2:3 portrait aspect is half the width tall, which is
-								what aspect-[2/1] gives it. It takes that and no more — stretching it down
-								the rest of the panel only drew the same row over a taller field of empty
-								board. -->
-							<div class="relative aspect-[2/1] w-full flex-none overflow-hidden rounded-box bg-base-200">
-								<!-- The town's team is a rival team, so its cards use the board's rival
-									variant (unmirrored art), matching the rival's hand cards on the game
-									canvas. -->
-								<CardCanvas
-									cards={municipalityTeamCards}
-									columns={TEAM_SIZE}
-									layout="grid"
-									pannable
-									flipped={false}
-								/>
 							</div>
 						{/if}
 					</div>
