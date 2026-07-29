@@ -114,14 +114,15 @@ export interface MapMarker {
 	 */
 	challenge?: MapChallenge | null;
 	/**
-	 * Classes painted onto the pin's frame — the region's own colour, as a fill
-	 * plus the ink that reads on it. Null leaves the frame on the neutral base
-	 * surface, which is also what a region with no colour yet gets.
+	 * Classes painted onto the glyph's tile at the left end of the pin's plate — the
+	 * region's own colour, as a fill plus the ink that reads on it. Null leaves the
+	 * tile on the neutral base surface, which is also what a region with no colour
+	 * yet gets.
 	 */
 	frameClasses?: string | null;
-	/** Primary caption under the image (the show name). */
+	/** The show the region flies — the plate's second line, under the place's name. */
 	title: string;
-	/** Secondary text for the hover tooltip (e.g. the region name). */
+	/** The region's own name — the plate's top line. */
 	subtitle?: string;
 	/**
 	 * `properties.id`s of the overlay features this pin stands for (the region's

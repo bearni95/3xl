@@ -269,22 +269,18 @@
 		return [(south + north) / 2, (west + east) / 2];
 	}
 
-	// Build a pin's DOM: the region's location name, then the show's glyph in a
-	// rounded frame, with the full show name captioned beneath (never truncated).
-	// The wrapper is translated so its bottom centre sits on the point (the marker
-	// itself is zero-sized, see rebuildMarkers), giving a pin that stands above its
-	// region.
+	// Build a pin's DOM: the side or the show's glyph, and under it the one plate that
+	// says what the pin is — the glyph's tile at its left end, the place's name and its
+	// show's beside it. The wrapper is translated so its bottom centre sits on the point
+	// (the marker itself is zero-sized, see rebuildMarkers), giving a pin that stands
+	// above its region.
 	function markerElement(marker: MapMarker): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className = classNamesFor(marker);
 
-		if (marker.subtitle) {
-			const location = document.createElement('span');
-			location.textContent = marker.subtitle;
-			location.className =
-				'mb-1 rounded bg-base-100 px-1.5 py-0.5 text-center text-xs font-semibold text-base-content shadow';
-			wrap.appendChild(location);
-		}
+		// The show's tile, built below and hung on the plate at the end — a pin with a side
+		// standing on it draws the cards instead and leaves this null.
+		let tile: HTMLElement | null = null;
 
 		// The side sitting on the region, where there is one: the very cards the sidebar
 		// draws a team with — floor, character, name, place and all — three across, in
@@ -310,20 +306,20 @@
 			);
 			wrap.appendChild(frame);
 		} else if (marker.iconSvg || marker.frameClasses) {
-			// A square tile in the region's colour carrying the show's glyph. The glyph is
-			// inlined rather than pointed at by an <img> so it inherits the tile's ink
-			// (see icon-markup) — which is why the fill and the ink arrive together
-			// in `frameClasses`. Sized through a CSS rule, which outranks the svg's own
-			// 1em width/height attributes. Decorative: the show is named in the caption
-			// right below, so announcing the glyph too would read it twice. A pin with
-			// neither a colour nor a glyph is caption-only and skips the tile entirely.
-			const frame = document.createElement('div');
-			frame.className =
-				'flex size-12 items-center justify-center rounded-lg border-2 border-base-100 shadow-lg [&>svg]:size-8 ' +
+			// A square tile in the region's colour carrying the show's glyph, standing at the
+			// left end of the plate below rather than over it. The glyph is inlined rather
+			// than pointed at by an <img> so it inherits the tile's ink (see icon-markup) —
+			// which is why the fill and the ink arrive together in `frameClasses`. Sized
+			// through a CSS rule, which outranks the svg's own 1em width/height attributes.
+			// Decorative: the show is named in the line right beside it, so announcing the
+			// glyph too would read it twice. A pin with neither a colour nor a glyph is
+			// lettering alone and skips the tile entirely.
+			tile = document.createElement('div');
+			tile.className =
+				'flex size-10 flex-none items-center justify-center rounded-lg [&>svg]:size-7 ' +
 				(marker.frameClasses ?? 'bg-base-100 text-base-content');
-			frame.setAttribute('aria-hidden', 'true');
-			if (marker.iconSvg) frame.innerHTML = marker.iconSvg;
-			wrap.appendChild(frame);
+			tile.setAttribute('aria-hidden', 'true');
+			if (marker.iconSvg) tile.innerHTML = marker.iconSvg;
 		}
 
 		// What can be done about the region, right under the side holding it: the siege
@@ -342,11 +338,38 @@
 			wrap.appendChild(bar);
 		}
 
+		// One plate for everything the pin says: the tile at its left end, and to the right
+		// of it the place on top of the show it flies, a line each across the plate's width.
+		// Black, so the lettering is read off the plate and not off whatever terrain the pin
+		// happens to stand on — the three separate chips this replaces each carried their own
+		// card, which put two rounded boxes and a bordered tile on a town where one mark
+		// belongs. The place is the pin's own name and takes the ink; the show is what it
+		// flies and is lettered under it.
+		const plate = document.createElement('div');
+		plate.className =
+			'mt-1 flex max-w-[15rem] items-center gap-2 rounded-lg bg-black p-1.5 text-white shadow-lg';
+
+		if (tile) plate.appendChild(tile);
+
+		// `min-w-0` is what lets a line longer than the plate's own width truncate rather
+		// than push the plate wider: a flex item's floor is its content otherwise.
+		const lines = document.createElement('div');
+		lines.className = 'flex min-w-0 flex-col text-left leading-tight';
+
+		if (marker.subtitle) {
+			const location = document.createElement('span');
+			location.textContent = marker.subtitle;
+			location.className = 'truncate text-xs font-semibold';
+			lines.appendChild(location);
+		}
+
 		const caption = document.createElement('span');
 		caption.textContent = marker.title;
-		caption.className =
-			'mt-1 max-w-[10rem] whitespace-normal rounded bg-primary px-1.5 py-0.5 text-center text-xs font-semibold text-primary-content shadow';
-		wrap.appendChild(caption);
+		caption.className = 'truncate text-xs font-medium text-white/70';
+		lines.appendChild(caption);
+
+		plate.appendChild(lines);
+		wrap.appendChild(plate);
 
 		return wrap;
 	}
