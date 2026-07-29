@@ -2,13 +2,13 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
 	import MugenAnimationPreview from '$components/core/MugenAnimationPreview.svelte';
+	import RarityBadge from '$components/core/RarityBadge.svelte';
 	import type { CharacterOption } from '@3xl/data';
 	import {
 		DEFAULT_RARITY,
 		RARITY_MIN,
 		type CharacterTemplateStatus
 	} from '$types/character-template.type';
-	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 
 	// The character read/write API is served by @3xl/backend (default :2002).
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
@@ -54,20 +54,6 @@
 		draft = rarity;
 	}
 	$: dirty = draft !== baseline;
-
-	// WoW quality name for the value currently in the editor (null when the value
-	// is above the highest WoW tier — then no label shows). Data lives in
-	// @3xl/shared; the per-tier colour is a UI concern, so it's mapped here.
-	$: rarityLabel = wowRarityLabel(typeof draft === 'number' ? draft : DEFAULT_RARITY);
-	const rarityBadgeClass: Record<number, string> = {
-		0: 'badge-neutral',
-		1: 'badge-success',
-		2: 'badge-info',
-		3: 'badge-secondary',
-		4: 'badge-warning',
-		5: 'badge-warning',
-		6: 'badge-info'
-	};
 
 	$: cardClasses = classNames(
 		'card relative items-center gap-2 border-2 bg-base-100 p-3 shadow-md transition',
@@ -132,16 +118,9 @@
 			bind:value={draft}
 			disabled={saving || rarity === undefined}
 		/>
-		{#if rarityLabel}
-			<span
-				class={classNames(
-					'badge badge-sm',
-					rarityBadgeClass[typeof draft === 'number' ? draft : DEFAULT_RARITY] ?? 'badge-ghost'
-				)}
-			>
-				{rarityLabel}
-			</span>
-		{/if}
+		<!-- Names the value in the editor, not the persisted one, so the tier reads
+		     as the edit is made. -->
+		<RarityBadge rarity={draft} />
 		<button
 			class="btn btn-secondary btn-xs ml-auto"
 			type="button"
