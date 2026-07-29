@@ -798,16 +798,22 @@
 					{/if}
 				</div>
 				<!-- The filters stand beside the cards they narrow rather than in a row over
-				     them: a row of four controls and a tally spent the full width of the modal
-				     to say what a column says in the space one card takes, and the height it
-				     took was height the grid wanted for its rows. -->
+				     them: a row of them spent the full width of the modal to say what a column
+				     says in the space one card takes, and the height it took was height the grid
+				     wanted for its rows. -->
 				<div class="flex min-h-0 flex-1 gap-3">
-					<!-- Every control ANDs with the others; the tally under them is the
-					     filtered-vs-total count, and Clear puts them all back. The column scrolls
-					     on its own so a short modal never costs the grid its width. -->
+					<!-- Every control ANDs with the others. Clear stands at the head of the column
+					     rather than at the foot of it: it is what undoes everything below it, and a
+					     column of shows or tiers long enough to scroll had pushed it out of sight
+					     at the very moment there was most to undo. The column scrolls on its own so
+					     a short modal never costs the grid its width. -->
 					<div
 						class="flex w-48 flex-none flex-col gap-3 overflow-y-auto rounded-box bg-base-200 p-3"
 					>
+						<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
+							Clear
+						</button>
+
 						<label class="flex flex-col gap-1 text-xs">
 							<span class="opacity-60">Name</span>
 							<input
@@ -904,16 +910,6 @@
 							{/each}
 						</div>
 
-						<span class="badge badge-lg badge-primary w-full" title="Cards shown / total claimed">
-							{filteredSpawns.length} / {$spawns.length}
-						</span>
-						<button
-							class="btn btn-ghost btn-sm w-full"
-							disabled={!filtersActive}
-							on:click={resetFilters}
-						>
-							Clear
-						</button>
 						<button
 							class="btn btn-sm w-full"
 							class:btn-outline={!recycleMode}
