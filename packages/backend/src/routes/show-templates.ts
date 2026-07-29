@@ -54,7 +54,7 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // each town on the map, and how far each challenger has got towards taking it)
 // round it off — world-readable but written only by award_combat_exp, which
 // settles territory in the same transaction as the experience award. Alongside
-// them, `municipality_challenges` plus the `start_challenge` RPC hold the other
+// them, `municipality_challenges` plus the `start_battle` RPC hold the other
 // daily rule: a player may challenge each town once per day, resetting at midnight
 // Europe/Madrid like the booster allowance — claimed when the arena opens, settled
 // by award_combat_exp, which refuses a second settled report against the same town
@@ -585,11 +585,11 @@ export function ensureTables(): Promise<void> {
 					-- here IS the limit, and its mere existence for today's date closes the
 					-- town off until midnight Europe/Madrid, whatever the fight's outcome was
 					-- or whether it was ever finished. The day is spent when the arena opens
-					-- (start_challenge below), not when the fight is reported: a fight
+					-- (start_battle below), not when the fight is reported: a fight
 					-- abandoned halfway still used it up, which is exactly what stops a
 					-- player restarting a fight that was going badly. The one exception is a
 					-- slot voided by somebody else taking the town mid-fight — see voided_at.
-					-- No client write path; start_challenge and award_combat_exp are the only
+					-- No client write path; start_battle and award_combat_exp are the only
 					-- writers, and a player reads only their own rows.
 					create table if not exists municipality_challenges (
 							user_id uuid not null references auth.users (id) on delete cascade,
@@ -603,7 +603,7 @@ export function ensureTables(): Promise<void> {
 							settled_at timestamptz,
 							-- When this slot was handed back because the town changed hands while
 							-- the fight was still open: paid for, never really fought. A voided
-							-- slot stops blocking and start_challenge revives it in place. Kept
+							-- slot stops blocking and start_battle revives it in place. Kept
 							-- rather than deleted so the late report of that fight settles this
 							-- row instead of claiming a fresh day.
 							voided_at timestamptz,
@@ -614,23 +614,61 @@ export function ensureTables(): Promise<void> {
 					drop policy if exists municipality_challenges_select_own on municipality_challenges;
 					create policy municipality_challenges_select_own on municipality_challenges
 							for select using (auth.uid() = user_id);
-					-- Spend today's challenge on a town, called when the arena opens. Claims
-					-- the day's slot atomically and raises when it is already taken, so two
-					-- tabs can't both open a fight for the same town on the same day. Refuses
-					-- a town the caller already holds, matching award_combat_exp. A slot
-					-- voided by somebody taking the town mid-fight is revived instead of
-					-- refused — reset to a fresh unsettled challenge, the one extra fight that
-					-- capture bought — and blocks again thereafter. The OUT names deliberately
-					-- avoid the table's columns (plpgsql would otherwise have to disambiguate
-					-- them against the insert).
-					create or replace function start_challenge(p_location_id text)
+					-- The open battle: the one fight a player may have running at a time. A
+					-- fight is not the browser's — picking one on the map opens a row here,
+					-- each closed turn writes the board back to it, and reporting the result
+					-- deletes it. The primary key is the player, so the rule IS the table:
+					-- one open battle, ever. Closing the arena, reloading or moving to
+					-- another device neither loses the fight nor gets out of it, which is
+					-- what stops a player walking away from one that is going badly (the
+					-- daily challenge only ever stopped them refighting the same town).
+					-- The row is also the server's record of WHAT is being fought — town,
+					-- turnover, rival line-up — all fixed at open and read from here by
+					-- award_combat_exp rather than believed from the report. Only the board
+					-- column is the browser's, and nothing is derived from it.
+					create table if not exists battles (
+							user_id uuid primary key references auth.users (id) on delete cascade,
+							location_id text not null,
+							challenge_date date not null
+								default (now() at time zone 'Europe/Madrid')::date,
+							-- The generation of the team being fought, so a fight that outlived a
+							-- capture is recognisable as stale.
+							turnover integer not null default 0,
+							-- The rival line-up in lane order, [{character_id, color}], frozen so a
+							-- resumed fight faces the same three whatever the town has done since.
+							rivals jsonb not null default '[]'::jsonb,
+							-- The board as the last closed turn left it, null before the first.
+							board jsonb,
+							started_at timestamptz not null default now(),
+							updated_at timestamptz not null default now()
+						);
+					alter table battles enable row level security;
+					-- Read your own and nothing else. Deliberately no write policy at all: a
+					-- client that could delete this row could walk out of a losing fight.
+					drop policy if exists battles_select_own on battles;
+					create policy battles_select_own on battles
+							for select using (auth.uid() = user_id);
+					-- Open a battle over a town, called when the arena opens. Replaces
+					-- start_challenge: it spends the town's challenge for the Catalan day
+					-- (reviving a slot voided by somebody taking the town mid-fight) AND opens
+					-- the battle in the same transaction, so the day is never spent on a fight
+					-- that failed to start, and never spent without a battle answering for it.
+					-- Refuses a town the caller holds, and refuses outright when they already
+					-- have a battle open — that one has to be finished first. The OUT names
+					-- deliberately avoid the table's columns.
+					create or replace function start_battle(
+							p_location_id text,
+							p_turnover int default 0,
+							p_rivals jsonb default '[]'::jsonb
+						)
 					returns table (town_id text, challenge_day date, opened_at timestamptz)
-					language plpgsql security definer set search_path = public as $start_challenge$
+					language plpgsql security definer set search_path = public as $start_battle$
 					declare
 							v_uid uuid := auth.uid();
 							v_today date := (now() at time zone 'Europe/Madrid')::date;
 							v_holder uuid;
 							v_started timestamptz;
+							v_open text;
 					begin
 							if v_uid is null then
 								raise exception 'You must be signed in to challenge a town.';
@@ -640,6 +678,13 @@ export function ensureTables(): Promise<void> {
 							end if;
 							-- Serialise this player's mutations, matching claim_booster.
 							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+							-- One battle at a time. The map offers the way back into the open one,
+							-- never a second, so a call that gets here has lost track of its own
+							-- fight or is trying to leave it behind.
+							select b.location_id into v_open from battles b where b.user_id = v_uid;
+							if v_open is not null then
+								raise exception 'You already have a battle in progress. Finish it before starting another.';
+							end if;
 							select h.user_id into v_holder from municipality_holders h
 								where h.location_id = p_location_id;
 							if v_holder is not null and v_holder = v_uid then
@@ -654,17 +699,46 @@ export function ensureTables(): Promise<void> {
 							if v_started is null then
 								raise exception 'You have already challenged this town today. New challenges at midnight.';
 							end if;
+							insert into battles
+								(user_id, location_id, challenge_date, turnover, rivals, board)
+								values (v_uid, p_location_id, v_today,
+									greatest(0, coalesce(p_turnover, 0)),
+									coalesce(p_rivals, '[]'::jsonb), null);
 							town_id := p_location_id;
 							challenge_day := v_today;
 							opened_at := v_started;
 							return next;
 					end;
-					$start_challenge$;
-					grant execute on function start_challenge(text) to authenticated;
-					-- The pre-territory two-argument signature is dropped rather than replaced:
-					-- leaving it in place would give PostgREST two overloads to choose between
-					-- and make every rpc('award_combat_exp') call ambiguous.
+					$start_battle$;
+					grant execute on function start_battle(text, int, jsonb) to authenticated;
+					-- The pre-battle RPC is dropped rather than left standing: a client that
+					-- could still claim a day's challenge without opening a battle would have a
+					-- way to spend the day with nothing holding it to the fight.
+					drop function if exists start_challenge(text);
+					-- Write the board back, called as each turn closes — the only mutable part
+					-- of a battle and the only thing the browser authors. A save that finds no
+					-- open battle does nothing: it raced the report that ended the fight, which
+					-- is late rather than wrong.
+					create or replace function save_battle(p_board jsonb)
+					returns void
+					language plpgsql security definer set search_path = public as $save_battle$
+					declare
+							v_uid uuid := auth.uid();
+					begin
+							if v_uid is null then
+								raise exception 'You must be signed in to play a battle.';
+							end if;
+							update battles set board = p_board, updated_at = now()
+								where user_id = v_uid;
+					end;
+					$save_battle$;
+					grant execute on function save_battle(jsonb) to authenticated;
+					-- Both earlier signatures are dropped rather than replaced: leaving either
+					-- in place would give PostgREST overloads to choose between and make every
+					-- rpc('award_combat_exp') call ambiguous — and the four-argument one is
+					-- exactly the version that let the client name its own town and turnover.
 					drop function if exists award_combat_exp(text, jsonb);
+					drop function if exists award_combat_exp(text, jsonb, text, int);
 					-- Award experience for one finished fight:
 					--   * a loss or a draw earns nothing;
 					--   * a win earns a share of the player's CURRENT level's full span (see
@@ -681,9 +755,14 @@ export function ensureTables(): Promise<void> {
 					-- deliberately avoid the column names used in the body. security definer: it
 					-- writes player_profiles and combat_results, neither client-writable.
 					--
-					-- It also settles TERRITORY in the same transaction, when the fight was
-					-- picked over a town (p_location_id, plus the turnover the browser saw that
-					-- town on):
+					-- A report is only ever accepted against an OPEN BATTLE, and the battle
+					-- row is what says which town was fought and which generation of its team
+					-- — neither is taken from the report, so a browser cannot pick a richer
+					-- town to have won nor pass off a fight against a superseded occupant as
+					-- one against the team sitting there now. Reporting also ends the battle:
+					-- the row is deleted here, and only then may another be started.
+					--
+					-- It settles TERRITORY in the same transaction, over that town:
 					--   * a win banks one siege win against that town's sitting team;
 					--   * once the player has banked turnover + 1 of them the town changes
 					--     hands: they become its holder, the team they won with is frozen as
@@ -696,9 +775,7 @@ export function ensureTables(): Promise<void> {
 					-- the occupancy change are all decided here.
 					create or replace function award_combat_exp(
 							p_outcome text,
-							p_fighters jsonb,
-							p_location_id text default null,
-							p_holder_turnover int default 0
+							p_fighters jsonb
 						)
 					returns table (
 							awarded_exp bigint,
@@ -707,6 +784,9 @@ export function ensureTables(): Promise<void> {
 							span_exp bigint,
 							team_survivors int,
 							team_fielded int,
+							-- The town is returned rather than echoed from the report, which no
+							-- longer names one.
+							town_id text,
 							town_captured boolean,
 							town_wins int,
 							town_required int,
@@ -735,6 +815,10 @@ export function ensureTables(): Promise<void> {
 							v_captured boolean := false;
 							v_team jsonb;
 							v_name text;
+							-- The battle being reported: the town and the generation as the server
+							-- recorded them when the fight was opened.
+							v_location text;
+							v_fought int;
 					begin
 							if v_uid is null then
 								raise exception 'You must be signed in to earn experience.';
@@ -747,6 +831,14 @@ export function ensureTables(): Promise<void> {
 							end if;
 							-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
 							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+							-- The fight has to be one the server opened. Everything about WHAT was
+							-- fought comes from here, not from the report; a report with no battle
+							-- behind it is not a fight that happened but a claim about one.
+							select b.location_id, b.turnover into v_location, v_fought
+								from battles b where b.user_id = v_uid;
+							if v_location is null then
+								raise exception 'You have no battle in progress to report.';
+							end if;
 							-- The reported team, bounded against what the caller actually owns. A fighter
 							-- is standing or it is down, so the survivors are simply counted over the
 							-- fighters that turned out to be the caller's own.
@@ -800,13 +892,13 @@ export function ensureTables(): Promise<void> {
 							else
 								v_total := v_exp;
 							end if;
-							-- Territory, when this fight was picked over a town on the map.
-							if p_location_id is not null and p_location_id <> '' then
+							-- Territory. Every battle is over a town, so this always runs.
+							begin
 								-- Serialise per town, so two challengers finishing at the same moment
 								-- can't both read the same turnover and both take it.
-								perform pg_advisory_xact_lock(hashtextextended('municipality:' || p_location_id, 0));
+								perform pg_advisory_xact_lock(hashtextextended('municipality:' || v_location, 0));
 								select h.user_id, h.turnover into v_holder, v_turnover
-									from municipality_holders h where h.location_id = p_location_id;
+									from municipality_holders h where h.location_id = v_location;
 								-- A town whose sitting team is the caller's own cannot be fought for:
 								-- there is nothing to take off yourself. The map never offers the
 								-- challenge, so a report that names one did not come from the game —
@@ -816,18 +908,18 @@ export function ensureTables(): Promise<void> {
 									raise exception 'You already hold this town — you cannot challenge your own team.';
 								end if;
 								-- One challenge per town per Catalan day. The slot is normally already
-								-- open (start_challenge claimed it when the arena opened) and settling
+								-- open (start_battle claimed it when the battle opened) and settling
 								-- it here closes it; a report against a slot already settled is a
 								-- second fight against the same town today, so it is rejected outright,
-								-- rolling back the experience with it. A report with no slot at all (a
-								-- client that never called start_challenge) claims and settles one in
-								-- the same statement, so skipping that call buys nothing. A slot
-								-- voided below (the town changed hands mid-fight) settles here like
-								-- any other — the fight happened and is paid for — but keeps its
-								-- voided_at, which is what carries the refund past this report.
+								-- rolling back the experience with it. There is no longer a way to
+								-- arrive with no slot at all: the battle being reported could not have
+								-- been opened without one. A slot voided below (the town changed hands
+								-- mid-fight) settles here like any other — the fight happened and is
+								-- paid for — but keeps its voided_at, which carries the refund past
+								-- this report.
 								insert into municipality_challenges
 									(user_id, location_id, challenge_date, settled_at)
-									values (v_uid, p_location_id, v_today, now())
+									values (v_uid, v_location, v_today, now())
 									on conflict (user_id, location_id, challenge_date) do update
 										set settled_at = now()
 										where municipality_challenges.settled_at is null
@@ -838,15 +930,16 @@ export function ensureTables(): Promise<void> {
 								-- No row at all means the town is still on its seeded OG team: turnover 0.
 								v_turnover := coalesce(v_turnover, 0);
 								v_required := greatest(1, v_turnover + 1);
-								-- The browser fought whatever team it had loaded; if the town has
-								-- flipped since, that was not the sitting team and the win buys nothing.
-								v_stale := coalesce(p_holder_turnover, 0) <> v_turnover;
+								-- The generation the battle was opened against against the one sitting
+								-- there now: if the town flipped since, what was beaten was not the
+								-- sitting team and the win buys nothing. Both numbers are the server's.
+								v_stale := coalesce(v_fought, 0) <> v_turnover;
 								if p_outcome = 'win' and not v_stale then
 									-- Bank the win. A stored siege from an older generation is not added
 									-- to — it restarts at this win, since it was earned against a team
 									-- that no longer sits there.
 									insert into municipality_sieges (location_id, user_id, wins, turnover)
-										values (p_location_id, v_uid, 1, v_turnover)
+										values (v_location, v_uid, 1, v_turnover)
 										on conflict (location_id, user_id) do update
 											set wins = case
 													when municipality_sieges.turnover = excluded.turnover
@@ -888,7 +981,7 @@ export function ensureTables(): Promise<void> {
 											from auth.users u where u.id = v_uid;
 										insert into municipality_holders
 											(location_id, user_id, holder_name, team, turnover, taken_at)
-											values (p_location_id, v_uid, v_name, coalesce(v_team, '[]'::jsonb),
+											values (v_location, v_uid, v_name, coalesce(v_team, '[]'::jsonb),
 												v_turnover + 1, now())
 											on conflict (location_id) do update
 												set user_id = excluded.user_id,
@@ -897,7 +990,7 @@ export function ensureTables(): Promise<void> {
 													turnover = excluded.turnover,
 													taken_at = excluded.taken_at;
 										-- A new generation voids every siege on the town, the winner's included.
-										delete from municipality_sieges where location_id = p_location_id;
+										delete from municipality_sieges where location_id = v_location;
 										-- And every fight still open against the old one: those challengers
 										-- are beating a team that no longer sits here and their report will
 										-- be refused as stale, so the day they spent on this town is handed
@@ -909,7 +1002,7 @@ export function ensureTables(): Promise<void> {
 										-- was sitting here at the time.
 										update municipality_challenges
 											set voided_at = now()
-											where location_id = p_location_id
+											where location_id = v_location
 												and challenge_date = v_today
 												and settled_at is null
 												and voided_at is null
@@ -922,17 +1015,22 @@ export function ensureTables(): Promise<void> {
 									-- Nothing banked (a loss, a draw or a stale fight): report the
 									-- progress they already had against this generation.
 									select s.wins into v_wins from municipality_sieges s
-										where s.location_id = p_location_id
+										where s.location_id = v_location
 											and s.user_id = v_uid
 											and s.turnover = v_turnover;
 									v_wins := coalesce(v_wins, 0);
 								end if;
+								town_id := v_location;
 								town_captured := v_captured;
 								town_wins := v_wins;
 								town_required := v_required;
 								town_turnover := v_turnover;
 								town_stale := v_stale;
-							end if;
+							end;
+							-- The fight is over: close the battle, freeing the player to start
+							-- another. Every rejection above raises, which rolls this back with the
+							-- experience — a refused report leaves them in the battle they were in.
+							delete from battles where user_id = v_uid;
 							awarded_exp := v_award;
 							total_exp := coalesce(v_total, v_exp);
 							at_level := v_level;
@@ -942,7 +1040,7 @@ export function ensureTables(): Promise<void> {
 							return next;
 					end;
 					$award_combat_exp$;
-					grant execute on function award_combat_exp(text, jsonb, text, int) to authenticated`
+					grant execute on function award_combat_exp(text, jsonb) to authenticated`
 			)
 			.then(() => undefined)
 			.catch((error: unknown) => {

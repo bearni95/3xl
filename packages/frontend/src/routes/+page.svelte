@@ -8,7 +8,6 @@
 	import AuthMenu from '$components/core/AuthMenu.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
-	import TerritoryTable from '$components/core/TerritoryTable.svelte';
 	import ShowStandingsTable from '$components/core/ShowStandingsTable.svelte';
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
@@ -24,14 +23,14 @@
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { authService } from '$services/auth.service';
 	import { territoryService } from '$services/territory.service';
+	import { battleService } from '$services/battle.service';
 	import { territoryAdapter } from '$adapters/classes/territory.adapter';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import type {
 		MunicipalityChallenge,
 		MunicipalityHolder,
-		MunicipalitySiege,
-		TerritoryWinRow
+		MunicipalitySiege
 	} from '$types/territory.type';
 	import type { TerritoryResult } from '$types/combat.type';
 	import { TEAM_SIZE, teamService } from '$services/team.service';
@@ -199,6 +198,11 @@
 		// seeded OG team, which is exactly what an unconfigured or failing Supabase
 		// leaves every town on.
 		await reloadTerritory();
+
+		// And the fight this player is already in, if any — which opens the arena on
+		// top of the map they have just landed on. A battle is not this tab's, so it is
+		// waiting here however they left it and wherever they left it.
+		await reloadBattle();
 	});
 
 	// --- Territory: the towns players have taken off their seeded teams ----------
@@ -219,6 +223,19 @@
 
 	// The signed-in player, so a town they already hold isn't offered as a target.
 	const profile = authService.profile;
+
+	// The fight this player is already in, if any. A battle outlives the arena, the
+	// page and the device it was started on, so it is loaded like any other ledger and
+	// the map offers the way back into it instead of a new fight.
+	const openBattle = battleService.open;
+
+	async function reloadBattle(): Promise<void> {
+		try {
+			await battleService.load();
+		} catch {
+			battleService.clear();
+		}
+	}
 
 	async function reloadTerritory(): Promise<void> {
 		try {
@@ -260,24 +277,25 @@
 		void reloadChallenges();
 	}
 
-	// --- The latest towns won (the side panel) -----------------------------------
-	// `municipality_holders` only gets a row when a town actually changes hands, so
-	// the holder set the map already loads *is* the log of the towns players have
-	// most recently won — newest capture first, capped so the panel stays a leaderboard
-	// rather than a dump of every town ever taken.
+	// Bring the player back to their open battle the moment the map knows about one —
+	// on load, and again after signing in. Closing the arena is not leaving the fight,
+	// so this deliberately fires once per battle: it puts them back in front of it, and
+	// the Challenge button is what walks back in after that.
+	let resumedBattle: string | null = null;
+	$: if ($openBattle && $openBattle.startedAt !== resumedBattle) {
+		resumedBattle = $openBattle.startedAt;
+		resumeBattle();
+	}
+	$: if (!$openBattle) resumedBattle = null;
 
-	// How many of the most recent captures the panel lists.
-	const RECENT_WINS_LIMIT = 20;
-
-	// The panel's four views: the open region (the drill table, or a leaf town's show
-	// and house team), the latest captures, the standing of every show across the whole
-	// map, and the booster pack of whichever festa town's star was clicked last. Every
-	// one of them lives here rather than in a panel of its own, so the map only ever
-	// gives up room to one of them — the breadcrumbs above the strip stay put across all
-	// four, since they name what the map is looking at whichever view is forward.
+	// The panel's three views: the open region (the drill table, or a leaf town's show
+	// and house team), the standing of every show across the whole map, and the booster
+	// pack of whichever festa town's star was clicked last. Every one of them lives here
+	// rather than in a panel of its own, so the map only ever gives up room to one of
+	// them — the breadcrumbs above the strip stay put across all three, since they name
+	// what the map is looking at whichever view is forward.
 	const PanelTab = {
 		Location: 'location',
-		Latest: 'latest',
 		Leaderboard: 'leaderboard',
 		Pack: 'pack'
 	} as const;
@@ -289,7 +307,6 @@
 	let panelTabs: { id: PanelTab; label: string }[];
 	$: panelTabs = [
 		{ id: PanelTab.Location, label: 'Location' },
-		{ id: PanelTab.Latest, label: 'Latest' },
 		{ id: PanelTab.Leaderboard, label: 'Leaderboard' },
 		{
 			id: PanelTab.Pack,
@@ -306,64 +323,12 @@
 	// show's tally to another's the moment the holders reload.
 	$: showStandings = buildShowStandings(showsById);
 
-	// Municipality feature id → its raw name, so a holder row (which stores only the
-	// feature id) can be named without walking the region tree.
-	$: municipalityNamesById = new Map(
-		(municipalities?.features ?? []).map((feature) => [
-			String(feature.properties?.id),
-			String(feature.properties?.name ?? '')
-		])
-	);
-
-	// The most recently captured towns, each named, labelled with the show its sitting
-	// team belongs to, and carrying the siege it would take to dethrone that team: the
-	// wins required (from the town's own turnover count) and the wins the reader has
-	// banked so far (their own `municipality_sieges` row — RLS means it is nobody
-	// else's, and zero when signed out). Both figures come out of Supabase; neither is
-	// invented here. Every input is named as an argument so the rows rebuild as the
-	// holders and sieges reload, the polygons land and the ruling shows resolve.
-	function buildRecentWins(
-		occupied: ReadonlyMap<string, MunicipalityHolder>,
-		banked: ReadonlyMap<string, MunicipalitySiege>,
-		names: ReadonlyMap<string, string>,
-		ruling: ReadonlyMap<string, RegionShow>
-	): TerritoryWinRow[] {
-		return [...occupied.values()]
-			.sort((a, b) => b.takenAt.localeCompare(a.takenAt))
-			.slice(0, RECENT_WINS_LIMIT)
-			.map((holder) => {
-				const name = names.get(holder.locationId);
-				const progress = territoryService.progressFor(holder.locationId, occupied, banked);
-				const show = ruling.get(holder.locationId) ?? null;
-				return {
-					locationId: holder.locationId,
-					// A holder whose polygon isn't loaded still has to be listed, so it falls
-					// back to its feature id rather than being dropped.
-					name: name ? restoreCatalanArticle(name) : holder.locationId,
-					holderName: holder.holderName,
-					showName: show?.name ?? null,
-					// Carried so the table can badge the row with the show's icon.
-					showId: show?.id ?? null,
-					wins: progress.wins,
-					required: progress.required,
-					takenAt: holder.takenAt
-				};
-			});
-	}
-
-	$: recentWins = buildRecentWins(holders, sieges, municipalityNamesById, rulingShowById);
-
-	// Clicking a row opens that town exactly as picking it out of the region table
-	// does: the URL region param drives the map framing and the Location tab, which
-	// `open` brings forward — so the row hands the panel straight over to the town.
-	function openWin(row: TerritoryWinRow) {
-		open(row.locationId);
-	}
-
 	// Sieges and today's spent challenges are both RLS-scoped to the reader, so the
 	// sets loaded before sign-in are nobody's. Reload whenever the signed-in account
 	// changes (including signing out, which empties them). `$profile` is named
 	// directly so the statement tracks it.
+	// The open battle is the same: it belongs to an account, not to a page, so signing
+	// in is what reveals the fight already waiting — and signing out puts it away.
 	let siegesForUser: string | null = null;
 	$: if (ready && ($profile ? String($profile.id) : null) !== siegesForUser) {
 		siegesForUser = $profile ? String($profile.id) : null;
@@ -372,6 +337,8 @@
 			.then((loaded) => (sieges = loaded))
 			.catch(() => (sieges = new Map()));
 		void reloadChallenges();
+		if (siegesForUser) void reloadBattle();
+		else battleService.clear();
 	}
 
 	// The colour every division line is drawn in — Tailwind's red-500, read as the
@@ -697,14 +664,20 @@
 	$: holdsOpenTown = !!openHolder && !!$profile && openHolder.userId === String($profile.id);
 
 	// Nor one they have already been to today: a town is good for one challenge per
-	// Catalan day. The server is what enforces it (`start_challenge`); this only
+	// Catalan day. The server is what enforces it (`start_battle`); this only
 	// closes the button so the fight isn't opened onto a refusal. A challenge the
 	// server has handed back — the town was taken by somebody else while the fight
 	// was open — is not in the loaded set at all, so the town reads as unfought.
 	$: challengedOpenTown = !!openRegion && challenges.has(openRegion);
 
+	// A player already in a fight is not offered another one, on this town or any
+	// other: the button becomes the way back into the one they are in. The rule is the
+	// server's (`start_battle` refuses a second battle); this is only what the button
+	// says about it.
+	$: inBattle = !!$openBattle;
+
 	// And when it opens up again: the next Catalan midnight, which is the boundary
-	// `start_challenge` measures the day against. Recomputed as the panel moves to
+	// `start_battle` measures the day against. Recomputed as the panel moves to
 	// another town so a countdown left running past midnight gets the new deadline.
 	$: challengeUnlocksAt = challengedOpenTown ? nextCatalanMidnight().getTime() : 0;
 
@@ -810,7 +783,7 @@
 	let fightOpen = false;
 
 	// True while the day's challenge is being claimed off the server, so a double
-	// click can't fire two `start_challenge` calls (the second of which the server
+	// click can't fire two `start_battle` calls (the second of which the server
 	// would refuse anyway).
 	let challengeStarting = false;
 
@@ -824,7 +797,7 @@
 	// panel shrinks the map rather than covering it.
 	let panelExpanded = false;
 
-	// The single panel holding all four views, a sibling of the map rather than a layer
+	// The single panel holding all three views, a sibling of the map rather than a layer
 	// over it: it takes its own 36rem of the row (its own 30vh of the column on mobile)
 	// and the map gets the rest. Nothing of the map is ever hidden behind it, which is
 	// why it needs no z-index of its own, no shadow lifting it off anything, and no
@@ -871,31 +844,60 @@
 	// reported — so nothing is claimed and the arena opens exactly as it used to,
 	// onto its own "no active team" gate.
 	async function challenge(): Promise<void> {
+		// A player in a fight is offered the way back into it, never a second one.
+		if ($openBattle) {
+			resumeBattle();
+			return;
+		}
 		if (municipalityTeam.length === 0 || holdsOpenTown || challengedOpenTown) return;
 		if (challengeStarting) return;
 		const townId = openRegion;
 		if (!townId) return;
 
+		const rivals = municipalityTeam;
+		// The generation being fought, so a win landing after somebody else took the
+		// town is recognised as having beaten a team that no longer holds it. It is
+		// recorded server-side with the battle, not carried to the report.
+		const turnover = siegeProgress.turnover;
+
 		if ($profile) {
 			challengeStarting = true;
 			try {
-				await territoryService.startChallenge(townId);
+				// Opens the battle and spends the day's challenge in one transaction, and
+				// freezes the team being fought — so the fight survives the town changing
+				// hands, and cannot be walked away from for a fresh one.
+				const challengeSlot = await battleService.start(townId, turnover, rivals);
+				if (challengeSlot) territoryService.noteChallenge(challengeSlot);
 			} catch {
+				// Refused: already fought today, already in a battle, or the town is the
+				// player's own. Re-read both ledgers so the button tells the truth.
 				await reloadChallenges();
+				await reloadBattle();
 				return;
 			} finally {
 				challengeStarting = false;
 			}
-			// The panel may have moved on while the RPC was in flight; the spent challenge
-			// belongs to the town that was clicked, so only that town's fight may open.
+			// The panel may have moved on while the RPC was in flight; the battle belongs
+			// to the town that was clicked, so only that town's fight may open.
 			if (openRegion !== townId) return;
 		}
 
-		fightSpawns = ogTeamSpawns(municipalityTeam, openRegion ?? '');
-		fightLocationId = openRegion;
-		// The generation being fought, so a win landing after somebody else took the
-		// town is recognised as having beaten a team that no longer holds it.
-		fightTurnover = siegeProgress.turnover;
+		fightSpawns = ogTeamSpawns(rivals, townId);
+		fightLocationId = townId;
+		fightTurnover = turnover;
+		fightOpen = true;
+	}
+
+	// Put the player back into the fight they are already in. The rival line-up was
+	// frozen when the battle opened, so it is fielded from there rather than rolled off
+	// the town again — the fight goes on being against the three that were sitting
+	// there, whoever holds the town now.
+	function resumeBattle(): void {
+		const battle = $openBattle;
+		if (!battle) return;
+		fightSpawns = ogTeamSpawns(battle.rivals, battle.locationId);
+		fightLocationId = battle.locationId;
+		fightTurnover = battle.turnover;
 		fightOpen = true;
 	}
 
@@ -1414,7 +1416,7 @@
 	reading order and second on screen: the right-hand column of the row on a wide
 	viewport, the strip under the map on a narrow one. -->
 <div class="flex h-screen flex-col-reverse md:flex-row-reverse">
-	<!-- The one panel beside the map, on four tabs — the right-hand column on a wide
+	<!-- The one panel beside the map, on three tabs — the right-hand column on a wide
 		viewport, docked under the map below `md` (30vh showing, its handle row toggling it
 		up to the full screen). Same markup either way. The profile card sits
 		at the very top, above the breadcrumbs, and the breadcrumbs above the tab strip
@@ -1424,11 +1426,6 @@
 		— Location: the drill table for the open region — its siblings and its children —
 		  or, for a leaf municipality with nothing left to list, that town's show and the
 		  team sitting on it. The search box above it matches every location in the tree.
-		— Latest: the towns players have most recently won off their sitting team, each
-		  with the show its current leading team comes from. Read straight out of
-		  `municipality_holders` (a row is only written when a town changes hands), so it
-		  stays empty until the first town falls and refreshes after every settled fight.
-		  Clicking a row drills the map into that town, exactly like a region row.
 		— Leaderboard: how much of the map each show flies, tallied over every
 		  municipality's current show — seeded, or the ruling team's where a town has been
 		  taken.
@@ -1597,12 +1594,26 @@
 											{siegeProgress.wins}/{siegeProgress.required}
 										</span>
 									</span>
-									<!-- One challenge per town per day: once today's has been spent the
-										button gives way to the time left until Catalan midnight, which is
-										when the town can be fought again. The server enforces the limit
-										either way (`start_challenge`); when the countdown runs out the
-										day's challenges are re-read and the button comes back. -->
-									{#if challengedOpenTown}
+									<!-- A fight already in progress takes the button over, whichever town
+										the panel is on: there is only ever one battle, and this is the way
+										back into it rather than the way into another.
+
+										Otherwise: one challenge per town per day, and once today's has
+										been spent the button gives way to the time left until Catalan
+										midnight, which is when the town can be fought again. The server
+										enforces both limits either way (`start_battle`); when the countdown
+										runs out the day's challenges are re-read and the button comes
+										back. -->
+									{#if inBattle}
+										<button
+											type="button"
+											class="btn btn-primary btn-xs flex-none"
+											title="You have a battle in progress — go back to it"
+											on:click={resumeBattle}
+										>
+											Resume battle
+										</button>
+									{:else if challengedOpenTown}
 										<Countdown
 											until={challengeUnlocksAt}
 											title="Already challenged today — the next one unlocks at midnight"
@@ -1644,8 +1655,6 @@
 				{:else}
 					<RegionTable rows={regionRows} onSelect={select} />
 				{/if}
-			{:else if panelTab === PanelTab.Latest}
-				<TerritoryTable rows={recentWins} onSelect={openWin} />
 			{:else if panelTab === PanelTab.Leaderboard}
 				<ShowStandingsTable rows={showStandings} />
 			{:else}
@@ -1839,9 +1848,11 @@
 	fixed panel (not a DaisyUI modal) at z-[1200] — above the modal layer (999), and so
 	above everything on the page, the map and its side panel included — over a 30%-white
 	wash so what it covers still reads through behind it.
-	CombatArena fields the player's active roster team against the town's sitting team
-	(its holder's, or the seeded OG one) and handles all its own gating; the town id and
-	the turnover it was on ride along so a win is reported against the right generation.
+	CombatArena fields the team the battle is being fought with against the line-up it
+	was opened against, and handles all its own gating. Only the town rides along, to
+	key and label the fight: which town a battle is over and which generation of its
+	team it is against are the server's record, kept on the battle itself, so the fight
+	that is reported is the fight that was opened.
 	Keyed so each new challenge remounts a clean fight. -->
 {#if fightOpen}
 	<div class="fixed inset-0 z-[1200] flex items-center justify-center overflow-auto bg-white/30 p-4">
@@ -1852,7 +1863,6 @@
 			<CombatArena
 				ogTeam={fightSpawns}
 				ogLocationId={fightLocationId}
-				ogTurnover={fightTurnover}
 				closable
 				on:territory={(event) => onTerritory(event.detail)}
 				on:close={onFightClosed}

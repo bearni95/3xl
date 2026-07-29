@@ -38,25 +38,21 @@ export interface CombatFighterReport {
 	down: boolean;
 }
 
-/** A finished fight, as reported by the browser to `award_combat_exp`. */
+/**
+ * A finished fight, as reported by the browser to `award_combat_exp`.
+ *
+ * What is *not* here is the point: the fight names neither the town it was over
+ * nor the generation of the team it beat. Both were fixed server-side when the
+ * battle was opened and are read back off the player's `battles` row (see
+ * `battle.type`), so the browser cannot pick a richer town to have won, nor claim
+ * to have fought the team currently sitting there when it fought the one before.
+ * All that is left to say is how the fight went, which is the one thing only the
+ * browser knows.
+ */
 export interface CombatReport {
 	outcome: CombatOutcome;
 	/** The player's side only — the rivals earn nothing and are not reported. */
 	fighters: CombatFighterReport[];
-	/**
-	 * The municipality this fight was picked over (a geojson feature id), or null
-	 * for a fight with no territory at stake. A win here banks a siege win against
-	 * that town's sitting team.
-	 */
-	locationId?: string | null;
-	/**
-	 * The town's turnover count as the browser saw it when the fight started — 0
-	 * for a town still on its seeded OG team. The RPC credits the win only if the
-	 * town is still on that same generation: if somebody else took it while this
-	 * fight was playing out, the team that was beaten is no longer the sitting one,
-	 * so the win buys no ground (see {@link TerritoryResult.stale}).
-	 */
-	holderTurnover?: number;
 }
 
 /**

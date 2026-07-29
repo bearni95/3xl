@@ -49,6 +49,7 @@ import { isBoardCell, type Hex } from '$utils/mugen/hex';
 import type { MugenBoard } from '$utils/mugen/mugen-board';
 import { findMove, type CharacterMove, type CombatColor } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
+import type { BattleBoardSnapshot, BattleFighterSnapshot } from '$types/battle.type';
 import { colorTraits, type ColorTraits } from '$utils/color/traits';
 import { pickWeighted } from '$utils/dice/roll';
 
@@ -252,8 +253,11 @@ export class CombatController {
 	 * the top→bottom order that side's characters stand in, which is the order each
 	 * side's opening ground ({@link PLAYER_CELLS}, {@link RIVAL_CELLS}) is handed out
 	 * in, and so the order the lanes are numbered in.
+	 * @param resume a board saved by {@link snapshot} — the fight is picked up on the
+	 * turn it was left on instead of started. A snapshot that does not describe this
+	 * line-up is ignored and the fight simply starts (see {@link restore}).
 	 */
-	constructor(seed: FighterSeed[]) {
+	constructor(seed: FighterSeed[], resume: BattleBoardSnapshot | null = null) {
 		const slots = { error: 0, info: 0 };
 		this.fighters = seed.map((entry) => {
 			const traits = colorTraits(entry.color);
@@ -274,9 +278,80 @@ export class CombatController {
 				guardSpent: false
 			};
 		});
-		this.planRivals();
-		this.status = 'Give each of your fighters an order, then commit.';
+		if (!this.restore(resume)) {
+			this.planRivals();
+			this.status = 'Give each of your fighters an order, then commit.';
+		}
 		this.emit();
+	}
+
+	/**
+	 * The fight as it stands between turns, small enough to be written back to the
+	 * player's open battle every time a turn closes (see `battle.type`).
+	 *
+	 * Only what the fight cannot be rebuilt without is in here. Who is fighting comes
+	 * back from the line-up the arena fields, and everything derived — the score, whose
+	 * lane is settled, who may still shoot, the auras — falls out of these flags again
+	 * on the way in. The rivals' orders are included because they are decided *before*
+	 * the player gives theirs: a resumed fight that re-rolled them would be a fresh
+	 * blind guess, which is not the same turn.
+	 */
+	snapshot(): BattleBoardSnapshot {
+		const lines: Record<FighterSide, Fighter[]> = { info: this.players(), error: this.rivals() };
+		return {
+			turn: this.turn,
+			fighters: this.fighters.map((fighter) => ({
+				side: fighter.side,
+				slot: lines[fighter.side].indexOf(fighter),
+				spawnId: fighter.spawnId,
+				charges: fighter.charges,
+				down: fighter.down,
+				guardSpent: fighter.guardSpent,
+				action: fighter.action,
+				bonus: fighter.bonus,
+				// A line longer than the board's ground leaves its extras standing nowhere.
+				cell: fighter.cell ? { q: fighter.cell.q, r: fighter.cell.r } : null
+			}))
+		};
+	}
+
+	/**
+	 * Put a saved board back onto this line-up, or refuse it whole.
+	 *
+	 * A snapshot is only applied when it describes *this* fight: the same number of
+	 * fighters, each standing in the lane it was saved in, each fielded from the spawn
+	 * it was saved with. Anything else — a team changed since, a board from another
+	 * battle, a row half-written — is refused rather than patched in, and the caller
+	 * starts the fight instead. A half-restored fight would be a different game
+	 * wearing this one's turn number.
+	 */
+	private restore(snapshot: BattleBoardSnapshot | null): boolean {
+		if (!snapshot || snapshot.turn < 1) return false;
+		if (snapshot.fighters.length !== this.fighters.length) return false;
+
+		const lines: Record<FighterSide, Fighter[]> = { info: this.players(), error: this.rivals() };
+		const pairs: [Fighter, BattleFighterSnapshot][] = [];
+		for (const entry of snapshot.fighters) {
+			const fighter = lines[entry.side]?.[entry.slot];
+			if (!fighter || fighter.spawnId !== entry.spawnId) return false;
+			pairs.push([fighter, entry]);
+		}
+
+		for (const [fighter, entry] of pairs) {
+			fighter.charges = Math.max(0, Math.min(entry.charges, MAX_CHARGES));
+			fighter.down = entry.down;
+			fighter.guardSpent = entry.guardSpent;
+			fighter.action = entry.action;
+			fighter.bonus = entry.bonus;
+			// Ground won earlier in the fight, as long as it is ground: a cell the board
+			// would refuse leaves the fighter on the one its slot opened on.
+			if (entry.cell && isBoardCell(entry.cell.q, entry.cell.r)) fighter.cell = entry.cell;
+		}
+
+		this.turn = snapshot.turn;
+		this.phase = 'planning';
+		this.status = `Turn ${this.turn} — give your orders.`;
+		return true;
 	}
 
 	/**

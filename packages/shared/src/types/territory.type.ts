@@ -20,13 +20,14 @@
  *
  * Both tables are written **only** by the `award_combat_exp` security-definer RPC,
  * which does the territory bookkeeping in the same transaction as the experience
- * award. The browser reports which town it fought and which generation it fought;
- * it never states a win count, a required count or an occupant.
+ * award. The browser does not even name the town: which town was fought, and which
+ * generation of its team, are read off the player's open battle (see
+ * `battle.type`), and the win count, the bar and the occupant are all the RPC's.
  *
  * A siege is therefore paced rather than ground out: a player may challenge each
  * town **once per Catalan day**, midnight Europe/Madrid to midnight, exactly as
  * the booster allowance resets. The spent day is a {@link MunicipalityChallenge}
- * row, written by the `start_challenge` RPC when the fight opens and settled by
+ * row, written by the `start_battle` RPC when the fight opens and settled by
  * `award_combat_exp` when it is reported — so taking a town that has changed
  * hands twice takes at least three days.
  */
@@ -95,7 +96,7 @@ export interface MunicipalitySiege {
  * not limit anything and are left on the server — the set loaded here is only the
  * slots that still close their town off.
  *
- * Written server-side only — `start_challenge` opens (or revives) it,
+ * Written server-side only — `start_battle` opens (or revives) it,
  * `award_combat_exp` settles it and voids everyone else's when a fight takes the
  * town. RLS scopes it to its owner, so the set a client loads is always the
  * signed-in player's own.
@@ -158,37 +159,6 @@ export function siegeProgress(
 		required: requiredWins(turnover),
 		turnover
 	};
-}
-
-/**
- * One line of the map's "latest towns won" table: a town that has changed hands,
- * named alongside the show its sitting team belongs to. Assembled on the client
- * from the holder rows, the municipality polygons (for the name) and the
- * character → show assignment (for the show).
- */
-export interface TerritoryWinRow {
-	/** The town, as its geojson feature id — also the row key. */
-	locationId: string;
-	/** The town's display name, ready to render. */
-	name: string;
-	/** The occupier's display name. */
-	holderName: string;
-	/** The show the sitting team belongs to, or null when it belongs to none. */
-	showName: string | null;
-	/**
-	 * That show's TMDB id, carried alongside the name purely so the table can look
-	 * up the show's icon. Null exactly when `showName` is.
-	 */
-	showId: number | null;
-	/**
-	 * Wins the reader has banked against this town's sitting team, from their own
-	 * `municipality_sieges` row (RLS-scoped, so 0 when signed out).
-	 */
-	wins: number;
-	/** Wins it takes to dethrone that team — {@link requiredWins} of its turnover. */
-	required: number;
-	/** ISO timestamp the town was taken, newest first in the table. */
-	takenAt: string;
 }
 
 /** Raw `municipality_holders` row as the Supabase client returns it. */

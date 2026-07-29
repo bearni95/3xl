@@ -24,6 +24,8 @@
 		type FighterSeed
 	} from '$services/combat.controller';
 	import type { CombatReport, CombatReward, TerritoryResult } from '$types/combat.type';
+	import type { BattleBoardSnapshot } from '$types/battle.type';
+	import { battleService } from '$services/battle.service';
 	import {
 		COMPOUND_COLORS,
 		DEFAULT_COLOR,
@@ -44,18 +46,35 @@
 	// `ogTeamSpawns`). When a full team (TEAM_SIZE) is supplied the red (CPU) side
 	// fields it; otherwise the CPU mirrors the player's own team (the classic match).
 	export let ogTeam: CharacterSpawn[] = [];
-	// The challenged town's geojson feature id, when there is territory at stake.
-	// Reported with the fight so a win banks a siege win against the town's sitting
-	// team; null for a fight that decides nothing on the map.
+	// The challenged town's geojson feature id. Which town a fight is over is the
+	// server's record, not this prop — it is held on the player's open battle and read
+	// back from there when the result is reported — so this is only ever used to key
+	// and label the fight on screen.
 	export let ogLocationId: string | null = null;
-	// The town's turnover as the map saw it when the fight opened — 0 for a town
-	// still on its seeded OG team. Reported so the server can tell a win against the
-	// sitting team from one against a team that has since been replaced.
-	export let ogTurnover = 0;
 	// When true the arena renders a close control to walk out of a fight in progress
 	// (used when hosted in a modal, e.g. the map page). `close` is dispatched either
 	// way — a decided fight closes itself.
 	export let closable = false;
+
+	// Nothing about the fight in progress is a prop: the open battle is read off the
+	// service, so the board this arena picks up is always the last one written back —
+	// not the one that happened to be loaded when it mounted. A line-up rebuilt
+	// mid-fight therefore resumes where the fight actually is, rather than rewinding to
+	// wherever the page last looked.
+	const openBattle = battleService.open;
+
+	// The board the open battle was left on, if any. Handed to the controller, which
+	// refuses a snapshot that does not describe this line-up (see
+	// CombatController.restore).
+	$: battleBoard = ($openBattle?.board ?? null) as BattleBoardSnapshot | null;
+
+	// The spawn ids that battle is being fought with, in fielded order — a fight is
+	// fixed at what was put on the board, so a resumed one fields these rather than
+	// whatever the roster's active team is now. Empty until a turn has been saved.
+	$: battleTeam = (battleBoard?.fighters ?? [])
+		.filter((fighter) => fighter.side === 'info')
+		.sort((a, b) => a.slot - b.slot)
+		.map((fighter) => fighter.spawnId);
 
 	// `territory` fires once the server has settled what a finished fight did to the
 	// town, so the host (the map) can reload the occupancy it is drawing.
@@ -83,9 +102,15 @@
 	// this player's Supabase spawns, so playing requires being signed in.
 	$: currentUserId = $authStatus === AuthStatus.SignedIn && $profile ? String($profile.id) : null;
 
-	// The active team, and whether it's ready to play (all TEAM_SIZE slots filled).
+	// The team that fights. A resumed battle fields the one it was started with —
+	// the fight is fixed at what was put on the board, so changing the roster's active
+	// team mid-battle cannot swap a fallen fighter for a fresh one — and any other
+	// fight fields the active team.
 	$: activeTeam = $teamStore.teams.find((team: Team) => team.id === $teamStore.activeTeamId) ?? null;
-	$: teamMembers = (activeTeam?.memberIds ?? []).filter((id): id is string => Boolean(id));
+	$: teamMembers =
+		battleTeam.length === TEAM_SIZE
+			? battleTeam
+			: (activeTeam?.memberIds ?? []).filter((id): id is string => Boolean(id));
 	$: teamReady = teamMembers.length === TEAM_SIZE;
 	$: playable = !!currentUserId && teamReady;
 
@@ -394,9 +419,38 @@
 			moves: badge.moves
 		}));
 		unsubscribe?.();
-		controller = new CombatController(seeds);
+		// Read at the moment the controller is built, not captured earlier: whatever the
+		// last closed turn wrote back is what this fight resumes from.
+		controller = new CombatController(seeds, battleBoard);
+		savedTurn = 0;
 		unsubscribe = controller.subscribe((next) => (state = next));
 		if (board) controller.attachBoard(board);
+	}
+
+	// The turn whose board has already been written back, so each is saved once.
+	let savedTurn = 0;
+
+	// Write the board back as each turn closes — and once as the fight opens, so a
+	// battle left before a single order is given still comes back to this board rather
+	// than to a freshly rolled one. `state` and `controller` are both named so Svelte's
+	// legacy reactive tracking sees them as dependencies.
+	$: void saveBoard(state, controller);
+
+	async function saveBoard(
+		current: CombatState | null,
+		ctrl: CombatController | null
+	): Promise<void> {
+		// Only between turns: mid-resolution the board is half-played, and a decided
+		// fight is about to be reported, which deletes the battle outright.
+		if (!current || !ctrl || current.phase !== 'planning' || current.outcome) return;
+		if (current.turn === savedTurn) return;
+		savedTurn = current.turn;
+		try {
+			await battleService.save(ctrl.snapshot());
+		} catch {
+			// A turn that failed to save costs the player that one turn of resumption if
+			// they walk away right now. It is not worth interrupting the fight for.
+		}
 	}
 
 	// The controller whose result has already been reported, so the award fires
@@ -435,20 +489,23 @@
 		const report = ctrl.report();
 		if (report) {
 			try {
-				// The amount — and whether the town changed hands — are the server's to
-				// decide; this only states what happened and which town it happened over.
+				// The amount, which town this was, and whether it changed hands are all the
+				// server's to decide — read off the open battle it has been holding since
+				// the fight started. This only states how the fight went.
 				const reward: CombatReward | null = await authService.reportCombat({
 					...report,
-					fighters: inTeamOrder(report.fighters),
-					locationId: ogLocationId,
-					holderTurnover: ogTurnover
+					fighters: inTeamOrder(report.fighters)
 				});
+				// Reporting is what ends the battle server-side, so let go of it here too —
+				// the map must stop offering the way back into a fight that is over.
+				battleService.clear();
 				// Let the host redraw the town: a capture rewrites its team and its
 				// turnover, and even a banked win moves the progress it shows.
 				if (reward?.territory) dispatch('territory', reward.territory);
 			} catch {
-				// Nothing is drawn from the award any more, so a failed one costs nothing
-				// but itself.
+				// The battle is left alone on a failed report: the server still has it open,
+				// and the player is still in it. Nothing is drawn from the award any more,
+				// so a failure costs nothing but itself.
 			}
 		}
 		close();

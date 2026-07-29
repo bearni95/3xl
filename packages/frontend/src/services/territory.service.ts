@@ -17,11 +17,11 @@ import {
  * Who occupies each municipality, read back out of Supabase.
  *
  * Talks to Postgres directly from the browser with the anon key, the same
- * pure-SPA pattern as {@link spawnService}. The occupancy tables are **read-only**
- * here: a town changes hands only inside the `award_combat_exp` RPC, as part of
- * settling a won fight. The one write is {@link startChallenge}, and even that
- * only asks the server to spend the day's challenge on a town — the RPC decides
- * whether there is one left to spend.
+ * pure-SPA pattern as {@link spawnService}. Everything here is **read-only**: a
+ * town changes hands only inside the `award_combat_exp` RPC, as part of settling a
+ * won fight, and the day's challenge is spent by `start_battle` as part of opening
+ * one (see `battle.service`). This service reads those ledgers back and mirrors
+ * what those RPCs report; it decides nothing.
  *
  * `municipality_holders` is world-readable, so the map can name every town's
  * occupant whether or not anyone is signed in; a town with no row is still on its
@@ -101,7 +101,7 @@ class TerritoryService {
 
 	/**
 	 * Load the challenges the signed-in player has already spent **today** (Catalan
-	 * time — the same day boundary `start_challenge` enforces). RLS returns only
+	 * time — the same day boundary `start_battle` enforces). RLS returns only
 	 * their rows, so the date is the only filter needed; yesterday's rows are left
 	 * on the server, since nothing on screen is about them. Empty when signed out.
 	 *
@@ -109,7 +109,7 @@ class TerritoryService {
 	 * cannot be challenged again today" for everyone reading it. A slot is voided
 	 * when the town changes hands while the fight is still open: that challenge was
 	 * paid for but never really fought, so the server hands the day back and
-	 * `start_challenge` will revive the row (see municipality_challenges.sql).
+	 * `start_battle` will revive the row (see municipality_challenges.sql).
 	 */
 	async loadChallenges(): Promise<Map<string, MunicipalityChallenge>> {
 		if (!isSupabaseConfigured()) return new Map();
@@ -131,40 +131,18 @@ class TerritoryService {
 	}
 
 	/**
-	 * Spend today's challenge on `locationId`, before the fight is opened.
+	 * Record a challenge slot the server has just spent, so the map closes that
+	 * town's button without a reload.
 	 *
-	 * The limit is the server's to apply, not the button's: the `start_challenge`
-	 * security-definer RPC claims the day's slot for this town atomically and throws
-	 * when it is already taken (or when the caller holds the town, or is signed
-	 * out), so two tabs cannot both open a fight for the same town on the same day.
-	 * The claimed slot is merged into the store on success, so the map disables the
-	 * town's Challenge button without a reload.
-	 *
-	 * Returns `null` when Supabase is unconfigured — auth-less local dev has no
-	 * ledger to spend from and fights freely.
+	 * Spending it is not this service's to do any more: the day is claimed inside
+	 * `start_battle` (see {@link battleService}), in the same transaction that opens
+	 * the fight it pays for, so there is no way to spend a day without ending up in
+	 * a battle. This only mirrors the slot that came back.
 	 */
-	async startChallenge(locationId: string): Promise<MunicipalityChallenge | null> {
-		if (!locationId) throw new Error('A town is required to start a challenge.');
-		if (!isSupabaseConfigured()) return null;
-
-		const supabase = getSupabaseClient();
-		const { data, error } = await supabase.rpc('start_challenge', {
-			p_location_id: locationId
-		});
-		if (error) throw error;
-
-		const row = Array.isArray(data) ? data[0] : data;
-		// The RPC's OUT names deliberately differ from the table's columns (plpgsql
-		// would otherwise have to disambiguate them), so the row is mapped by hand
-		// rather than through the row adapter.
-		const challenge: MunicipalityChallenge = {
-			locationId,
-			date: String(row?.challenge_day ?? catalanDayIso()),
-			startedAt: String(row?.opened_at ?? new Date().toISOString()),
-			settledAt: null
-		};
-		this.challengesStore.update((current) => new Map(current).set(locationId, challenge));
-		return challenge;
+	noteChallenge(challenge: MunicipalityChallenge): void {
+		this.challengesStore.update((current) =>
+			new Map(current).set(challenge.locationId, challenge)
+		);
 	}
 
 	/** Reload all three, after a fight that may have moved a town. */

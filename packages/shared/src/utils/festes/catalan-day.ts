@@ -9,7 +9,7 @@ export const CATALAN_TIME_ZONE = 'Europe/Madrid';
 
 /**
  * `at` as a `YYYY-MM-DD` date string in Catalan time (now by default) — the same
- * day the `claim_booster` / `start_challenge` RPCs would place it in. `en-CA`
+ * day the `claim_booster` / `start_battle` RPCs would place it in. `en-CA`
  * formats a Gregorian date as `YYYY-MM-DD`.
  */
 export function catalanDayIso(at: Date = new Date()): string {

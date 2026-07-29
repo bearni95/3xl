@@ -135,31 +135,35 @@ $$;
 -- writes player_profiles and combat_results, neither of which the anon key may
 -- write.
 --
--- `p_location_id` names the town the fight was picked over on the map (null for a
--- fight with nothing at stake) and `p_holder_turnover` is the town's turnover as
--- the browser saw it when the fight started. A win then banks one siege win
--- against that town's sitting team, and taking the town — turnover + 1 wins —
--- rewrites municipality_holders with the winner and the team they won with, wipes
--- every siege on it, and raises the bar for the next challenger. A fight against a
--- generation that has since been superseded banks nothing and comes back flagged
--- `town_stale`. A town the caller already holds cannot be fought for at all — the
--- report is rejected outright, experience included. So is a town the caller has
--- already had a fight settled against today. See municipality_holders.sql and
--- municipality_challenges.sql.
+-- **A report is only ever accepted against an open battle.** The caller's `battles`
+-- row (battles.sql) is what says which town was fought and which generation of its
+-- team — neither is taken from the report any more, so a browser cannot pick a
+-- richer town to have won, nor pass off a fight against last week's occupant as a
+-- fight against the one sitting there now. Reporting is also what ends the battle:
+-- the row is deleted here, and only then may the player start another.
+--
+-- From that town: a win banks one siege win against its sitting team, and taking it
+-- — turnover + 1 wins — rewrites municipality_holders with the winner and the team
+-- they won with, wipes every siege on it, and raises the bar for the next
+-- challenger. A fight against a generation that has since been superseded banks
+-- nothing and comes back flagged `town_stale`. A town the caller already holds
+-- cannot be fought for at all — the report is rejected outright, experience
+-- included. So is a town the caller has already had a fight settled against today.
+-- See municipality_holders.sql and municipality_challenges.sql.
 --
 -- (The OUT parameter names deliberately avoid the column names used in the body —
 -- plpgsql would otherwise have to disambiguate them against the query.)
 
--- The pre-territory two-argument signature is dropped rather than replaced:
--- leaving it in place would give PostgREST two overloads to choose between and
--- make every rpc('award_combat_exp') call ambiguous.
+-- Both earlier signatures are dropped rather than replaced. Leaving either in place
+-- would give PostgREST overloads to choose between and make every
+-- rpc('award_combat_exp') call ambiguous — and the four-argument one is precisely
+-- the version that let the client name its own town and turnover.
 drop function if exists public.award_combat_exp(text, jsonb);
+drop function if exists public.award_combat_exp(text, jsonb, text, int);
 
 create or replace function public.award_combat_exp(
 	p_outcome text,
-	p_fighters jsonb,
-	p_location_id text default null,
-	p_holder_turnover int default 0
+	p_fighters jsonb
 )
 returns table (
 	awarded_exp bigint,
@@ -168,7 +172,10 @@ returns table (
 	span_exp bigint,
 	team_survivors int,
 	team_fielded int,
-	-- Territory, all null when the report named no town.
+	-- Territory, read off the battle that was being fought. The town is returned
+	-- rather than echoed back from the report, because the report no longer names
+	-- one: this is the browser learning which town it just fought over.
+	town_id text,
 	town_captured boolean,
 	town_wins int,
 	town_required int,
@@ -197,6 +204,10 @@ declare
 	v_captured boolean := false;
 	v_team jsonb;
 	v_name text;
+	-- The battle being reported: the town and the generation, as the server recorded
+	-- them when the fight was opened.
+	v_location text;
+	v_fought int;
 begin
 	if v_uid is null then
 		raise exception 'You must be signed in to earn experience.';
@@ -210,6 +221,16 @@ begin
 
 	-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
 	perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+
+	-- The fight being reported has to be one the server opened. Everything about
+	-- *what* was fought comes from here rather than from the report, and a report
+	-- with no battle behind it is not a fight that happened — it is a claim about
+	-- one, which is the whole thing this row exists to make impossible.
+	select b.location_id, b.turnover into v_location, v_fought
+		from public.battles b where b.user_id = v_uid;
+	if v_location is null then
+		raise exception 'You have no battle in progress to report.';
+	end if;
 
 	-- The reported team, bounded against what the caller actually owns. A fighter is
 	-- standing or it is down, so the survivors are simply counted over the fighters
@@ -272,14 +293,15 @@ begin
 		v_total := v_exp;
 	end if;
 
-	-- Territory, when this fight was picked over a town on the map.
-	if p_location_id is not null and p_location_id <> '' then
+	-- Territory. Every battle is picked over a town, so this always runs; the town is
+	-- the one the battle was opened on.
+	begin
 		-- Serialise per town, so two challengers finishing at the same moment can't
 		-- both read the same turnover and both take it.
-		perform pg_advisory_xact_lock(hashtextextended('municipality:' || p_location_id, 0));
+		perform pg_advisory_xact_lock(hashtextextended('municipality:' || v_location, 0));
 
 		select h.user_id, h.turnover into v_holder, v_turnover
-			from public.municipality_holders h where h.location_id = p_location_id;
+			from public.municipality_holders h where h.location_id = v_location;
 		-- A town whose sitting team is the caller's own cannot be fought for: there
 		-- is nothing to take off yourself. The map never offers the challenge, so a
 		-- report that names one did not come from the game — reject it outright,
@@ -290,23 +312,23 @@ begin
 		end if;
 
 		-- One challenge per town per Catalan day (see municipality_challenges.sql).
-		-- The slot is normally already open — start_challenge claimed it when the
-		-- arena opened — and settling it here closes it. A report against a slot that
-		-- is already settled is a second fight against the same town today: reject it
-		-- outright, rolling back the experience with it, exactly as a fight against
-		-- one's own town is. A report with no slot at all (a client that never called
-		-- start_challenge) claims and settles one in the same statement, so skipping
-		-- that call buys nothing.
+		-- The slot was opened by start_battle along with the battle itself, and
+		-- settling it here closes it. A report against a slot that is already settled
+		-- is a second fight against the same town today: reject it outright, rolling
+		-- back the experience with it, exactly as a fight against one's own town is.
+		-- (The insert's do-nothing branch is what catches that; there is no longer a
+		-- way to arrive here with no slot at all, since the battle this report is
+		-- being made against could not have been opened without one.)
 		--
 		-- A slot voided below (the town changed hands while this fight was open)
 		-- settles here like any other — the fight did happen and is paid for — but
 		-- keeps its voided_at, which is what carries the refund past this report:
-		-- start_challenge still revives it, so this fight cost its challenger no day.
+		-- start_battle still revives it, so this fight cost its challenger no day.
 		-- Settling it is also what bounds the refund, since the revived slot is a
 		-- normal one and a stale report cannot be replayed against a settled slot.
 		insert into public.municipality_challenges
 			(user_id, location_id, challenge_date, settled_at)
-			values (v_uid, p_location_id, v_today, now())
+			values (v_uid, v_location, v_today, now())
 			on conflict (user_id, location_id, challenge_date) do update
 				set settled_at = now()
 				where municipality_challenges.settled_at is null
@@ -318,16 +340,17 @@ begin
 		-- No row at all means the town is still on its seeded OG team: turnover 0.
 		v_turnover := coalesce(v_turnover, 0);
 		v_required := greatest(1, v_turnover + 1);
-		-- The browser fought whatever team it had loaded; if the town has flipped
-		-- since, that was not the sitting team and the win buys no ground.
-		v_stale := coalesce(p_holder_turnover, 0) <> v_turnover;
+		-- The generation the battle was opened against, against the one sitting there
+		-- now: if the town has flipped since, what was beaten was not the sitting team
+		-- and the win buys no ground. Both numbers are the server's own.
+		v_stale := coalesce(v_fought, 0) <> v_turnover;
 
 		if p_outcome = 'win' and not v_stale then
 			-- Bank the win. A stored siege from an older generation is not added to —
 			-- it restarts at this win, since it was earned against a team that no
 			-- longer sits there.
 			insert into public.municipality_sieges (location_id, user_id, wins, turnover)
-				values (p_location_id, v_uid, 1, v_turnover)
+				values (v_location, v_uid, 1, v_turnover)
 				on conflict (location_id, user_id) do update
 					set wins = case
 							when municipality_sieges.turnover = excluded.turnover
@@ -372,7 +395,7 @@ begin
 
 				insert into public.municipality_holders
 					(location_id, user_id, holder_name, team, turnover, taken_at)
-					values (p_location_id, v_uid, v_name, coalesce(v_team, '[]'::jsonb),
+					values (v_location, v_uid, v_name, coalesce(v_team, '[]'::jsonb),
 						v_turnover + 1, now())
 					on conflict (location_id) do update
 						set user_id = excluded.user_id,
@@ -382,7 +405,7 @@ begin
 							taken_at = excluded.taken_at;
 
 				-- A new generation voids every siege on the town, the winner's included.
-				delete from public.municipality_sieges where location_id = p_location_id;
+				delete from public.municipality_sieges where location_id = v_location;
 
 				-- It voids every fight still open against the old generation too. Those
 				-- challengers started against a team that no longer sits here and their
@@ -392,14 +415,14 @@ begin
 				-- late report still settles this row (paying its experience and banking
 				-- no ground, exactly as any stale report does), and because the row stays
 				-- voided it goes on not blocking, so they may come back at the new
-				-- occupant today. start_challenge revives it in place.
+				-- occupant today. start_battle revives it in place.
 				--
 				-- Only slots that were still open are given back — a challenger who
 				-- already fought and reported here today spent their day on a real fight
 				-- against the team that was sitting here at the time.
 				update public.municipality_challenges
 					set voided_at = now()
-					where location_id = p_location_id
+					where location_id = v_location
 						and challenge_date = v_today
 						and settled_at is null
 						and voided_at is null
@@ -412,18 +435,25 @@ begin
 			-- Nothing banked (a loss, a draw or a stale fight): report the progress
 			-- they already had against this generation.
 			select s.wins into v_wins from public.municipality_sieges s
-				where s.location_id = p_location_id
+				where s.location_id = v_location
 					and s.user_id = v_uid
 					and s.turnover = v_turnover;
 			v_wins := coalesce(v_wins, 0);
 		end if;
 
+		town_id := v_location;
 		town_captured := v_captured;
 		town_wins := v_wins;
 		town_required := v_required;
 		town_turnover := v_turnover;
 		town_stale := v_stale;
-	end if;
+	end;
+
+	-- The fight is over: the battle is closed and the player is free to start
+	-- another. Every path that got here has already been paid for — the ones that
+	-- reject a report raise, which rolls this back along with the experience, so a
+	-- refused report leaves the player still in the battle they were in.
+	delete from public.battles where user_id = v_uid;
 
 	awarded_exp := v_award;
 	total_exp := coalesce(v_total, v_exp);
@@ -435,4 +465,4 @@ begin
 end;
 $$;
 
-grant execute on function public.award_combat_exp(text, jsonb, text, int) to authenticated;
+grant execute on function public.award_combat_exp(text, jsonb) to authenticated;

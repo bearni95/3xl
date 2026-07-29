@@ -126,20 +126,23 @@ class AuthService {
 	 * Report a finished fight and collect whatever experience it earned — the only
 	 * way a player gains experience.
 	 *
-	 * The browser states *what happened* (the outcome and how much HP the player's
-	 * team was left with), never how much that is worth: the `award_combat_exp`
-	 * RPC checks every fighter belongs to the caller, clamps their HP into the
-	 * range their spawns could have rolled, and computes the award from the
-	 * player's stored experience — a win pays out the player's current level's
-	 * whole span scaled by surviving HP, a loss or draw pays nothing. The
-	 * authoritative new total (and the level it implies) is mirrored into the
-	 * profile store. Returns `null` when signed out / unconfigured.
+	 * The browser states *what happened* (the outcome, and which of its fighters were
+	 * left standing), never how much that is worth: the `award_combat_exp` RPC checks
+	 * every fighter belongs to the caller, counts the survivors itself, and computes
+	 * the award from the player's stored experience — a win pays out the player's
+	 * current level's whole span scaled by the share of the team still up, a loss or
+	 * draw pays nothing. The authoritative new total (and the level it implies) is
+	 * mirrored into the profile store. Returns `null` when signed out / unconfigured.
 	 *
-	 * A fight picked over a town on the map also names it (`locationId`) and the
-	 * turnover the browser saw it on, and the same RPC settles the territory in the
-	 * same transaction: a win banks a siege win, enough of them flip the town. What
-	 * that did comes back on {@link CombatReward.territory} — again decided
-	 * server-side, never asserted here.
+	 * Which town the fight was over, and which generation of its team was beaten, are
+	 * *not* sent: they are read off the player's open battle, which the server opened
+	 * and has held since (see `battle.service`). The same RPC settles the territory in
+	 * the same transaction — a win banks a siege win, enough of them flip the town —
+	 * and closes the battle, freeing the player to start another. What it all did comes
+	 * back on {@link CombatReward.territory}, again decided server-side.
+	 *
+	 * Throws when there is no open battle to report against: the fight on screen was
+	 * never one the server knew about.
 	 */
 	async reportCombat(report: CombatReport): Promise<CombatReward | null> {
 		if (!isSupabaseConfigured() || report.fighters.length === 0) return null;
@@ -149,9 +152,7 @@ class AuthService {
 			p_fighters: report.fighters.map((fighter) => ({
 				spawn_id: fighter.spawnId,
 				down: fighter.down
-			})),
-			p_location_id: report.locationId ?? null,
-			p_holder_turnover: Math.max(0, Math.trunc(report.holderTurnover ?? 0))
+			}))
 		});
 		if (error) throw error;
 
@@ -164,11 +165,12 @@ class AuthService {
 			span: Number(row.span_exp ?? 0),
 			survivors: Number(row.team_survivors ?? 0),
 			fielded: Number(row.team_fielded ?? 0),
-			// The territory columns come back null for a report that named no town.
+			// Which town this was, and what the fight did to it, both as the server has
+			// them — the report itself no longer names a town.
 			territory:
-				report.locationId && row.town_required != null
+				row.town_id && row.town_required != null
 					? {
-							locationId: report.locationId,
+							locationId: String(row.town_id),
 							captured: Boolean(row.town_captured),
 							wins: Number(row.town_wins ?? 0),
 							required: Number(row.town_required ?? 1),
