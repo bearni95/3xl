@@ -1,22 +1,19 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import { onMount } from 'svelte';
 	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
-	import { showLogos, loadShowLogos } from '$services/shows.service';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { spawnYearLabel } from '$utils/spawn/year';
 	import { showIconName } from '$utils/show/show-icon';
 	import { colorPassives, ORDER_ICONS, type PassiveOrder } from '$utils/color/traits';
 	import type { CombatColor } from '$types/character-definition.type';
-	import { SPAWN_FILL_CLASSES, SPAWN_PANEL_CLASSES } from '$components/core/spawn-colors';
+	import { SPAWN_FILL_CLASSES } from '$components/core/spawn-colors';
 	import type { SpawnColor } from '$types/character-spawn.type';
 
 	// One character, as this game draws one: a statue of them — standing on a tilted
-	// floor in their own colour with their show's mark painted on it and its lettering
-	// flat across the front of it, and, where there is room for it, a panel underneath
-	// saying their name, the place they were claimed and the orders their colour grants
-	// them for free.
+	// floor in their own colour with their show's mark painted on it, and, where there is
+	// room for it, a panel underneath saying their name, the place they were claimed and
+	// the orders their colour grants them for free.
 	//
 	// It stands on its own: hand it a character from the seed or from Supabase — the
 	// frames folder, a colour, and the two captions — and it assembles the whole
@@ -40,9 +37,8 @@
 	// room for a mark, not a date. Null leaves the place standing on its own.
 	export let spawnedAt: string | number | Date | null = null;
 	// The TMDB id of the character's show — the one the admin `/characters` screen
-	// assigns it. Its glyph is painted on the floor and its lettering stands flat across
-	// the front of it. Null (or a show with no glyph drawn and no logo enabled yet)
-	// leaves the floor bare rather than badging it with a stand-in.
+	// assigns it. Its glyph is painted across the floor. Null, or a show with no glyph
+	// drawn for it yet, leaves the floor bare rather than badging it with a stand-in.
 	export let showId: number | null = null;
 	// Mirror the character. True is the player's own side; false the unmirrored art a
 	// rival side uses, so the two face each other.
@@ -118,13 +114,6 @@
 
 	$: showIcon = showIconName(showId);
 
-	// The show's own lettering, standing along the front of the floor. It is asked for by
-	// id alone, exactly as the glyph is: the collection is loaded once for every statue
-	// standing (see shows.service), so nothing has to be handed down to the pins, the
-	// strip or the roster grid for a card to say what it is from.
-	onMount(() => void loadShowLogos());
-	$: showLogo = showId == null ? null : ($showLogos.get(showId) ?? null);
-
 	// The gazetteer files the towns come from park the article after a comma to sort by
 	// — "Vall de Boí, la" — so the statue puts it back at the front before saying it.
 	// A caller that has already restored it hands over a name with no trailing article
@@ -170,26 +159,6 @@
 				{/if}
 			</div>
 
-			{#if showLogo}
-				<!-- The show's own lettering, across seven tenths of the floor's front edge and
-					centred on it — the tile's bottom line, which is the axis it turns about and so
-					the square's own bottom too: the same place the tile would give it, held in from
-					both ends, and outside the tile and unturned. It is read rather than looked at, and a rotated
-					wordmark is neither read nor looked at; the ground turns with the perspective
-					because it is ground, while a name has to stay a name. It reads over the
-					character rather than behind them — a name with a pair of legs standing in the
-					middle of it is not a name any more — so it takes a layer of its own above the
-					sprite instead of relying on the order the two are written in. Its height is
-					the wordmark's own at that width: a logo is a picture of a name, and cropping
-					or squashing it says the name wrong. -->
-				<img
-					src={showLogo.url}
-					alt={showLogo.name}
-					title={showLogo.name}
-					class="absolute inset-x-0 bottom-0 z-10 mx-auto w-[70%]"
-				/>
-			{/if}
-
 			<IdleSprite {basePath} {label} {flipped} baseline={BASELINE} />
 		</div>
 	</div>
@@ -197,21 +166,25 @@
 	<!-- Who that is, then where and when they were claimed, then what their colour grants
 		them — on a panel in the same colour the floor is painted, so the card reads as one
 		object in one colour rather than a picture with a caption. What they are from is not
-		said here: the picture above says it, in the show's own lettering. Either line too long
-		for the card is cut with
-		an ellipsis rather than wrapped: a row of these must keep one height between them,
-		whatever they are called and wherever they were pulled. -->
-	<!-- The three rows sit on four fifths of the floor's front edge, centred under it. That
-		edge is the axis the tile turns about, so it is the square's own bottom line and the
-		full width of the card; holding the panel just inside it keeps the picture the widest
+		said in words on either half: the mark painted across the floor is the whole of it.
+		Either line too long for the card is cut with an ellipsis rather than wrapped: a row
+		of these must keep one height between them, whatever they are called and wherever
+		they were pulled.
+
+		The rows sit on four fifths of the floor's front edge, centred under it. That edge is
+		the axis the tile turns about, so it is the square's own bottom line and the full
+		width of the card; holding the panel just inside it keeps the picture the widest
 		thing on the card and the reading narrower than the thing it is about. It is the same
-		four fifths the tile's cut corners leave flat along that edge (see GROUND_CUT), so the
-		panel's sides continue the tile's — change one of the two and the other has to
-		follow. -->
-	<!-- No border of its own: the faces hang off its sides and a border is a line between
-		them and it, an inch of the panel's colour where the two are meant to meet. The colour
-		is one solid, so its parts are only ever divided by which way they face. -->
-	<div class={classNames('relative w-4/5 min-w-0 self-center', SPAWN_PANEL_CLASSES[color])}>
+		four fifths the tile's cut corners leave flat along that edge (see GROUND_CUT), so
+		the panel's sides continue the tile's — change one of the two and the other has to
+		follow. Nothing outlines it: a border would be a line where the two bevel faces meet
+		its sides, holding them a pixel off the block they are faces of. -->
+	<div
+		class={classNames(
+			'relative w-4/5 min-w-0 self-center text-black',
+			SPAWN_FILL_CLASSES[color]
+		)}
+	>
 		<!-- The bevel's two faces, hung off the panel's sides so they are as tall as it is
 			whatever the rows come to (see BEVEL_FACE). They are the same colour the floor and
 			the panel are, under one flat black band: a face turned away from the light is darker
@@ -231,19 +204,23 @@
 			<div class="absolute inset-0 bg-black/40"></div>
 		</div>
 
-		<!-- Each row carries its own black band over the colour, darkening as the panel
-			goes down: lightest under the name, heaviest under the glyphs. The ink follows
-			the band — the panel's own (black on yellow, white on the rest) reads over the
-			light one, while the heavy ones are dark enough on every swatch to want white
-			whatever the panel says. -->
-		<div class="truncate bg-black/20 px-1 py-0.5 text-center text-sm font-semibold" title={label}>
+		<!-- Each row carries its own white band over the colour, three tenths, a fifth and a
+			tenth of white as the panel goes down: the veil is heaviest under the name and thins
+			away below it, so the row that is read first stands off the colour furthest and the
+			colour comes back as the rows go on. It only ever lightens — the colour is meant to
+			stay the colour. Every row is written in black, on every swatch: the ink is no longer
+			chosen per colour the way it has to be when the panel itself is the ground (see
+			SPAWN_PANEL_CLASSES, which this no longer takes). -->
+		<div class="truncate bg-white/30 px-1 py-0.5 text-center text-sm font-semibold" title={label}>
 			{label}
 		</div>
 		{#if place || year}
 			<!-- The place and the year it was minted share the row: the town gives way first,
 				cut with an ellipsis, while the year keeps its two characters whatever the card's
 				width — a mark of which season a copy is from is no use half-shown. -->
-			<div class="flex items-baseline justify-center gap-1 bg-black/50 px-1 py-0.5 text-xs text-white/70">
+			<div
+				class="flex items-baseline justify-center gap-1 bg-white/20 px-1 py-0.5 text-xs text-black/70"
+			>
 				{#if place}
 					<span class="truncate" title={place}>{place}</span>
 				{/if}
@@ -257,14 +234,16 @@
 				front edge of the floor, laid over the picture: a row of its own is what they
 				always wanted, since they are read rather than looked at, and the panel is
 				where this card puts everything that is read. Being a row, the band is now the
-				row's rather than each glyph carrying its own disc — they ship as white
-				artwork for the canvases to tint, so the black is what they need to read at
-				all, and one band across the row is the same black the captions above take.
-				Sized like the type beside them rather than as a share of the picture: the
-				panel is fixed-size type on every surface the statue is drawn on. -->
-			<div class="flex items-center justify-center gap-2 bg-black/60 px-1 py-0.5">
+				row's rather than each glyph carrying its own disc, and it is the same white the
+				captions above take, at its thinnest here. The glyphs are inverted onto it: they
+				ship as white artwork for the canvases to tint, and white is the band's own colour
+				here rather than the ink's — inverting turns each one black, which is what the type
+				above them is, so the whole panel reads in one ink. Sized like that type rather
+				than as a share of the picture: the panel is fixed-size type on every surface the
+				statue is drawn on. -->
+			<div class="flex items-center justify-center gap-2 bg-white/10 px-1 py-0.5">
 				{#each passives as passive (passive.order)}
-					<img src={passive.icon} alt={passive.label} title={passive.label} class="size-4" />
+					<img src={passive.icon} alt={passive.label} title={passive.label} class="size-4 invert" />
 				{/each}
 			</div>
 		{/if}
