@@ -5,8 +5,7 @@
 
 	// One unopened booster box, drawn in the document: a lid seen from above with the
 	// place the box belongs to printed on it, and under it the face of the box — the
-	// show's poster spanning the full width of it, and a band below it saying what is
-	// inside.
+	// show's poster, filling it edge to edge.
 	//
 	// The face is 3:4, the very box a CharacterStatue is drawn in — a booster and the
 	// cards it opens onto are the same object at two moments, and a grid that changes
@@ -14,10 +13,10 @@
 	// that, so the whole component is 2:3 (see LID_DEPTH). Both ratios are the
 	// component's own, not the host's: hand it a width and it takes the height that goes
 	// with it, hand it a height and it gives the width back, so the same component is a
-	// grid cell or the whole panel purely by the box it is put in. Everything written on
-	// it is sized off that width (the box declares itself the container), which is what
-	// keeps the bands the same share of the picture at both sizes rather than a caption
-	// that grows out of them.
+	// grid cell or the whole panel purely by the box it is put in. What is written on it is
+	// sized off that width (the box declares itself the container), which is what keeps the
+	// lid's printing the same share of the lid at both sizes rather than a caption that
+	// grows out of it.
 	//
 	// (Both outer edges used to be serrated into teeth, after the texture PackSprite
 	// bakes. A booster is picked out of a grid by the poster on it; the teeth only ate
@@ -26,7 +25,7 @@
 
 	// Show poster used as the cover, or null for a plain frame.
 	export let coverUrl: string | null = null;
-	// Full name of the place the box belongs to, said in the top band.
+	// Full name of the place the box belongs to, printed on the lid.
 	export let locationName: string | null = null;
 	export let classes: string = '';
 
@@ -98,17 +97,12 @@
 	</div>
 
 	{#if coverUrl}
-		<!-- The poster whole, never cropped: it is contained in whatever the two bands
-			leave of the 3:4 box, so a 2:3 poster stands centred with the neutral showing
-			at its sides rather than being cut to fill the width. -->
-		<img src={coverUrl} alt="" class="min-h-0 w-full flex-1 bg-neutral object-contain" />
+		<!-- The poster is the front, edge to edge: nothing shares the face with it now, so
+			it fills the whole 3:4 rather than standing contained with the neutral showing
+			around it. A 2:3 poster covering a 3:4 box loses a tenth off its height, top and
+			bottom, which is the cost of a front that is all picture. -->
+		<img src={coverUrl} alt="" class="min-h-0 w-full flex-1 bg-neutral object-cover" />
 	{:else}
 		<div class="min-h-0 w-full flex-1 bg-neutral"></div>
 	{/if}
-
-	<div
-		class="flex-none bg-neutral px-1 text-center text-[5.4cqw] font-bold leading-snug text-neutral-content"
-	>
-		x5 Cartes Localitzades
-	</div>
 </div>
