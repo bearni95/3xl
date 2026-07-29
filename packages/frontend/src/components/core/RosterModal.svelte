@@ -681,9 +681,14 @@
 							</dd>
 						</div>
 					</dl>
-					<div class="flex min-w-0 flex-1 gap-2">
+					<!-- The slots are a fixed narrow width rather than a share of the modal:
+					     a statue is three quarters as wide as it is tall, so letting three of
+					     them span a 7xl box would stand them half the screen high and leave
+					     the roster underneath a slit. The band is a reminder of who is
+					     fielded — the grid is what the screen is for. -->
+					<div class="flex gap-2">
 						{#each teamSlotStatues as statue, index (index)}
-							<div class="flex min-w-0 flex-1 flex-col gap-1">
+							<div class="flex w-24 flex-none flex-col gap-1 sm:w-28">
 								{#if statue}
 									<CharacterStatue
 										label={statue.label}
