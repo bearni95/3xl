@@ -86,17 +86,16 @@
 				)
 			: null;
 
-	// A placed box, positioned from its four measured numbers. They come through as
-	// custom properties: a placement is measured geometry, not styling, and no class
-	// can carry a number only known at runtime.
-	const BOX =
-		'absolute bottom-[var(--sprite-bottom)] left-[var(--sprite-left)] h-[var(--sprite-height)] w-[var(--sprite-width)]';
-
-	// Pixel art: keep the upscaled frames crisp rather than smoothed, matching the
-	// nearest-neighbour sampling the canvases draw them with.
-	$: frameClasses = classNames(BOX, 'pointer-events-none max-w-none [image-rendering:pixelated]', {
-		'-scale-x-100': flipped
-	});
+	// Each frame is positioned from its four measured numbers, which come through as
+	// custom properties: a placement is measured geometry, not styling, and no class can
+	// carry a number only known at runtime. Pixel art, so the upscaled frames are kept
+	// crisp rather than smoothed, matching the nearest-neighbour sampling the canvases
+	// draw them with.
+	$: frameClasses = classNames(
+		'pointer-events-none absolute bottom-[var(--sprite-bottom)] left-[var(--sprite-left)]',
+		'h-[var(--sprite-height)] w-[var(--sprite-width)] max-w-none [image-rendering:pixelated]',
+		{ '-scale-x-100': flipped }
+	);
 </script>
 
 <div
@@ -107,24 +106,6 @@
 	aria-label={label}
 >
 	{#if placement}
-		<!-- The white rectangle is the sheet's, not any one frame's: it is the box the
-			whole cycle sweeps out, so it stands still while the character moves inside
-			it. An outline rather than a border — drawn outside the box, taking none of
-			it, so the sheet is exactly the size it was placed at. -->
-		<div
-			class={classNames(
-				BOX,
-				// Offset inward so a sheet that reaches the surface's edge — which is the
-				// normal case, since it is placed to the full height — keeps its line on
-				// the colour rather than a hair outside it.
-				'pointer-events-none outline -outline-offset-1 outline-white'
-			)}
-			style:--sprite-left="{placement.sheet.left}px"
-			style:--sprite-bottom="{placement.sheet.bottom}px"
-			style:--sprite-width="{placement.sheet.width}px"
-			style:--sprite-height="{placement.sheet.height}px"
-		></div>
-
 		<!-- Every frame is in the document at once and all but the current one is
 			hidden, so the browser has them all decoded before the clip first reaches
 			them and no frame of the loop ever arrives late. -->

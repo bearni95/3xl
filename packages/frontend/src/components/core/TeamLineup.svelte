@@ -47,6 +47,16 @@
 		[SpawnColor.Green]: 'bg-green-500 text-white',
 		[SpawnColor.Purple]: 'bg-purple-500 text-white'
 	};
+	// And once more as a border, so the panel is framed in the colour it is filled with
+	// — the rows' black bands cover the fill, and the frame is what is left of it.
+	const colorBorders: Record<SpawnColor, string> = {
+		[SpawnColor.Red]: 'border-red-500',
+		[SpawnColor.Yellow]: 'border-yellow-400',
+		[SpawnColor.Blue]: 'border-blue-500',
+		[SpawnColor.Orange]: 'border-orange-500',
+		[SpawnColor.Green]: 'border-green-500',
+		[SpawnColor.Purple]: 'border-purple-500'
+	};
 	// The ground: the square itself, laid down flat and seen in perspective, rather than
 	// a trapezoid drawn to look like one. It is a real tilt, so whatever is put on the
 	// tile — the show's glyph — is laid down with it instead of standing up on top of a
@@ -125,7 +135,7 @@
 				must keep one height between them, whatever they are called and wherever
 				they were pulled. The place is the quieter of the two — it says which copy of
 				a character this is, not which character. -->
-			<div class={classNames(colorPanels[member.color])}>
+			<div class={classNames('border', colorPanels[member.color], colorBorders[member.color])}>
 				<!-- Each row carries its own black band over the colour: a light one under the
 					name, a heavier one under the place. The ink follows the band — the panel's
 					own (black on yellow, white on the rest) reads over the light one, while the
