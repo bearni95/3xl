@@ -542,16 +542,20 @@
 	// printed on it in the ink that stock is read in. Hung on the same point, by the same
 	// centre, so folding up a tier leaves the mark where the box was.
 	//
-	// It is the box reduced to the two things that survive being small: what it is printed
+	// It is the box reduced to the two things that are read at a glance: what it is printed
 	// on and what show is inside it. A box above this tier stands for a whole comarca's
 	// worth of towns at once — its cover, its wordmark and the place across its foot are
-	// 80px of reading matter overlapping its neighbours', which is less than a mark that
-	// can be told apart at a glance.
+	// reading matter overlapping its neighbours', which is less than one mark that can be
+	// told apart at that distance. So the mark is what gets the room the box's picture and
+	// its two lines of type had: the glyph is 48px, the disc 76px round it, five eighths of
+	// the diameter, which leaves it clear of the edge on every diagonal. Nearly the box's
+	// own 80px, and deliberately — this is not a smaller thing than the box, it is the same
+	// thing with one mark on it instead of four.
 	//
 	// And it is a disc, laid flat with no tilt: the box's lid is a square seen in
 	// perspective because it is the top of a solid, and there is no solid here to be the
-	// top of — a tilted mark this small would only read as a smudged one. A circle has no
-	// direction to be turned in, which is what makes it the shape that survives the loss.
+	// top of. A circle has no direction to be turned in, which is what makes it the shape
+	// that survives losing the box's body.
 	//
 	// The glyph is inlined rather than pointed at with an <img> so it paints in the disc's
 	// own ink (see icon-markup), and looked up from the same `showId` the box's lid stamps
@@ -562,7 +566,7 @@
 	function discElement(box: MapBoosterBox): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className =
-			'flex size-8 -translate-x-1/2 translate-y-1 items-center justify-center rounded-full shadow-md [&>svg]:size-5 ' +
+			'flex size-19 -translate-x-1/2 translate-y-1 items-center justify-center rounded-full shadow-md [&>svg]:size-12 ' +
 			(box.light ? 'bg-white text-black' : 'bg-black text-white');
 		if (box.onClick) wrap.className += ' cursor-pointer';
 		wrap.setAttribute('aria-hidden', 'true');
