@@ -850,6 +850,8 @@
 			label: charactersById.get(spawn.characterId)?.label ?? spawn.characterId,
 			basePath: charactersById.get(spawn.characterId)?.basePath ?? null,
 			color: spawn.color,
+			// The box it was pulled from, which is the ink its statue is drawn in.
+			box: spawn.box,
 			locationName: claimPlaceFor(spawn.locationId, names),
 			// When the card was minted, said as an apostrophe year beside the place.
 			spawnedAt: spawn.createdAt,
@@ -1253,11 +1255,19 @@
 		return result;
 	})();
 
-	// Show a town's pack: remember which town, and bring the Booster tab forward so the
-	// pack is on screen straight away (the tab renders the opener, so this is what
-	// mounts its canvas).
+	// Show a town's pack: open the town on the map, remember which town, and bring the
+	// Booster tab forward so the pack is on screen straight away (the tab renders the
+	// opener, so this is what mounts its canvas).
+	//
+	// A box is clicked where the town is, so the click is a click on the town as much as
+	// on its pack: `open` points the URL at the municipality exactly as a pin, a crumb or
+	// a table row does, which frames the map onto its polygons — the reader lands zoomed
+	// on the place the pack belongs to, with the pack already stood up. It brings the
+	// Location tab forward with it, which is why the Booster tab is asked for after and
+	// not before: the town is what the map shows, the pack is what the panel shows.
 	function openPack(id: string): void {
 		clearPackFeedback();
+		open(id);
 		packTownId = id;
 		panelTab = PanelTab.Pack;
 	}
