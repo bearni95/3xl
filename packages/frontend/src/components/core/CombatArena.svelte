@@ -13,10 +13,8 @@
 	import type { Hex } from '$utils/mugen/hex';
 	import type { Manifest } from '$utils/mugen/mugen-player';
 	import {
-		actionLabel,
 		CombatController,
 		COMBAT_ACTIONS,
-		MAX_CHARGES,
 		RIVAL_RANKS,
 		type CombatAction,
 		type CombatState,
@@ -271,18 +269,9 @@
 	let state: CombatState | null = null;
 	let unsubscribe: (() => void) | null = null;
 
-	// Live combat state keyed by fighter id, for quick lookup while rendering.
+	// Live combat state keyed by fighter id, so a tap on a board button can be read
+	// against the fighter it belongs to.
 	$: combatById = new Map((state?.fighters ?? []).map((fighter) => [fighter.id, fighter]));
-
-	// Each side's badges, laid out left-to-right by where the characters stand
-	// top→bottom on the board (highest-on-canvas first). `badges` is referenced
-	// directly so Svelte's legacy reactive tracking sees it as a dependency of
-	// `lineups`.
-	$: lineups = [orderByCell('error', badges), orderByCell('info', badges)];
-
-	function orderByCell(side: 'error' | 'info', list: Badge[]): Badge[] {
-		return list.filter((badge) => badge.side === side).sort((a, b) => a.gridY - b.gridY);
-	}
 
 	function onBoardReady(engine: MugenBoardEngine): void {
 		board = engine;
@@ -493,67 +482,6 @@
 
 </script>
 
-<!-- A fighter's banked charges, as MAX_CHARGES pips filled left to right. A shot
-     spends one, so this is also how many shots the fighter has in hand. -->
-{#snippet charges(fighter: FighterView | undefined)}
-	<div class="flex items-center justify-center gap-1" aria-label="charges">
-		{#each Array.from({ length: MAX_CHARGES }) as _, i (i)}
-			<span
-				class={classNames('h-2 w-2 rounded-full border', {
-					'border-base-content/40': true,
-					'bg-base-content': (fighter?.charges ?? 0) > i,
-					'bg-transparent': (fighter?.charges ?? 0) <= i
-				})}
-			></span>
-		{/each}
-	</div>
-{/snippet}
-
-<!-- What a rival is doing, once it stops being a secret. Their orders are committed
-     at the same time as the player's, so until the turn plays out this reads as an
-     unknown — guessing it is the game. -->
-{#snippet rivalOrder(fighter: FighterView | undefined)}
-	<div class="flex w-full flex-col gap-1">
-		{@render charges(fighter)}
-		<div
-			class={classNames(
-				'rounded-btn border px-2 py-1 text-center text-xs font-semibold',
-				fighter?.down
-					? 'border-base-300 text-base-content/40 line-through'
-					: 'border-base-300 text-base-content/80'
-			)}
-		>
-			{#if fighter?.down}
-				Down
-			{:else if fighter?.action}
-				{actionLabel(fighter.action)}{#if fighter.bonus}&nbsp;+&nbsp;shot{/if}
-			{:else}
-				?
-			{/if}
-		</div>
-	</div>
-{/snippet}
-
-<!-- The rival line, in the order they hold the board top→bottom. Stays a single row
-     on every screen — on mobile it scrolls sideways rather than stacking. -->
-{#snippet rivalRow(list: Badge[])}
-	<div class="w-full overflow-x-auto">
-		<div class="mx-auto flex w-max flex-row flex-nowrap items-start gap-3 px-2 text-sm">
-			{#each list as badge (badge.id)}
-				{@const fighter = combatById.get(badge.id)}
-				<div
-					class={classNames('flex w-[130px] shrink-0 flex-col items-center transition-opacity', {
-						'opacity-40': fighter?.down
-					})}
-				>
-					<p class="w-full truncate text-center text-xs font-semibold">{badge.name}</p>
-					{@render rivalOrder(fighter)}
-				</div>
-			{/each}
-		</div>
-	</div>
-{/snippet}
-
 <div class="flex w-full flex-col items-center gap-4">
 	{#if (challengeReady && ogName) || closable}
 		<div class="flex w-full items-center gap-2">
@@ -635,8 +563,9 @@
 			})}
 		>
 			<div class="card-body items-center gap-3">
-				<!-- What the rivals are up to, above the board they stand on. -->
-				{@render rivalRow(lineups[0])}
+				<!-- Nothing stands between the fight and the board: what a rival is holding
+				     and what it has just done are read off the board itself — its aura, its
+				     callout, whether it is still standing — not off a readout beside it. -->
 				<div class="flex w-full min-w-0 flex-col items-center gap-3">
 					{#key boardKey}
 						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
