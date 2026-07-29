@@ -2,7 +2,7 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
-	import PackTile from './PackTile.svelte';
+	import BoosterBox from './BoosterBox.svelte';
 	import type { OpenerPack } from './scene/opener-view.type';
 	import type { ClaimPull } from './scene/pull.type';
 
@@ -152,10 +152,10 @@
 					on:click={open}
 				>
 					<!-- Stood up, the pack is as tall as the box and as wide as that height
-						earns it — the 3:4 is the tile's own, so this only says which of the two
-						the box decides. A box too narrow for that height keeps its width
+						earns it — the ratio is the booster box's own, so this only says which of
+						the two the box decides. A box too narrow for that height keeps its width
 						instead, and the poster letterboxes inside the bands. -->
-					<PackTile
+					<BoosterBox
 						coverUrl={selectedPack.coverUrl}
 						locationName={selectedPack.locationName}
 						classes={classNames('h-full max-w-full', { 'opacity-60': opening })}
@@ -188,7 +188,7 @@
 					title={pack.label}
 					on:click={() => pick(pack)}
 				>
-					<PackTile coverUrl={pack.coverUrl} locationName={pack.locationName} />
+					<BoosterBox coverUrl={pack.coverUrl} locationName={pack.locationName} />
 				</button>
 			{/each}
 		</div>
