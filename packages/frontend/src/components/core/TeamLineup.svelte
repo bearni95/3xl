@@ -21,9 +21,6 @@
 		 * name standing on its own. */
 		locationName: string | null;
 		showId: number | null;
-		/** The show's logo, as the admin's /shows screen enabled it, or null for a show
-		 * whose author picked none — that card simply goes unheaded. */
-		logoUrl: string | null;
 	}[] = [];
 	// Mirror the characters — true (the default) is the player's own side.
 	export let flipped: boolean = true;
@@ -50,15 +47,6 @@
 		[SpawnColor.Green]: 'bg-green-500 text-white',
 		[SpawnColor.Purple]: 'bg-purple-500 text-white'
 	};
-	const colorBorders: Record<SpawnColor, string> = {
-		[SpawnColor.Red]: 'border-red-500',
-		[SpawnColor.Yellow]: 'border-yellow-400',
-		[SpawnColor.Blue]: 'border-blue-500',
-		[SpawnColor.Orange]: 'border-orange-500',
-		[SpawnColor.Green]: 'border-green-500',
-		[SpawnColor.Purple]: 'border-purple-500'
-	};
-
 	// The ground: the square itself, laid down flat and seen in perspective, rather than
 	// a trapezoid drawn to look like one. It is a real tilt, so whatever is put on the
 	// tile — the show's glyph — is laid down with it instead of standing up on top of a
@@ -88,22 +76,9 @@
 			the row keeps its shape as the panel narrows. -->
 		<div class="flex min-w-0 flex-1 flex-col">
 			<!-- The box the character is seen through: a third again as tall as it is wide,
-				which is the room a standing character needs, and square-cornered. It keeps
-				its own edge in the character's colour now that the colour no longer fills
-				it. -->
-			<div class={classNames('relative aspect-[3/4] w-full border', colorBorders[member.color])}>
-				{#if member.logoUrl}
-					<!-- The show's own logo, the one the admin's /shows screen enabled, hung on
-						the box's top edge across its full width. Drawn before the character so a
-						tall one passes in front of it rather than being cut off by it: the logo
-						says what show this is, the character is what the card is of. -->
-					<img
-						src={member.logoUrl}
-						alt=""
-						class="pointer-events-none absolute inset-x-0 top-0 w-full object-contain"
-					/>
-				{/if}
-
+				which is the room a standing character needs. It draws nothing of its own —
+				the floor and the panel below carry the colour. -->
+			<div class="relative aspect-[3/4] w-full">
 				<!-- The square at the foot of it is what the character is drawn against, and
 					it stays 1:1 whatever the box around it is: the size a character comes out
 					at is a share of this square, so a taller box would otherwise make every
