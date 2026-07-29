@@ -15,11 +15,7 @@
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
-	import {
-		SPAWN_FILL_CLASSES,
-		SPAWN_PANEL_CLASSES,
-		SPAWN_SQUARE_GLYPHS
-	} from '$components/core/spawn-colors';
+	import { SPAWN_PANEL_CLASSES, SPAWN_SQUARE_GLYPHS } from '$components/core/spawn-colors';
 	import localStorageWritableStore from '$utils/localStorageWritableStore';
 
 	// The roster is a modal now, so it is only ever mounted while it is open — the
@@ -165,7 +161,6 @@
 	// slot). There is nothing to create and nothing to choose between: the slots are
 	// simply there, and tapping a card fills or empties one.
 	const teamSlots = teamService.slots;
-	const teamSpawns = teamService.spawns;
 	const teamSaving = teamService.saving;
 	const teamError = teamService.error;
 	const teamColorFilter = teamService.allowedColors;
@@ -229,9 +224,6 @@
 		return charactersById.get(id)?.basePath ?? null;
 	}
 
-	function showNamesFor(characterId: string): string[] {
-		return (characterShows.get(characterId) ?? []).map((show) => show.name);
-	}
 	// The show whose glyph a statue stands on: the character's first, exactly as
 	// `teamShowId` reads a team's, so a character carries the same badge here as on
 	// the map. A character in no show leaves the floor bare.
@@ -326,7 +318,51 @@
 		return [...groups].map(([characterId, copies]) => ({ characterId, copies }));
 	}
 
-	$: characterGroups = groupByCharacter(filteredSpawns);
+	// The slot each fielded card holds, by spawn id. Both questions the team asks of the
+	// grid — which cells come first and which of them wears the border — are answered
+	// from this, and ids are all either needs.
+	$: teamSlotById = new Map<string, number>(
+		$teamSlots.flatMap((id, slot) => (id ? [[id, slot] as [string, number]] : []))
+	);
+
+	/** The copy of this character holding the earliest team slot, or null if the player
+	 * has fielded none of them. Earliest rather than first-claimed, so a character fielded
+	 * twice sorts and stands as the higher of its two slots. */
+	function fieldedCopy(
+		copies: CharacterSpawn[],
+		slots: Map<string, number>
+	): CharacterSpawn | null {
+		let held: CharacterSpawn | null = null;
+		let heldSlot = TEAM_SIZE;
+		for (const copy of copies) {
+			const slot = slots.get(copy.id);
+			if (slot !== undefined && slot < heldSlot) {
+				held = copy;
+				heldSlot = slot;
+			}
+		}
+		return held;
+	}
+
+	// The team is the head of the grid rather than a view of its own: a character with a
+	// fielded copy sorts to the front, in slot order, so the lead is the first cell and the
+	// line-up reads left to right before the roster it was picked from. Everything else
+	// keeps the order its first copy was claimed in — Array.sort is stable, so a rank every
+	// unfielded character shares leaves them all where they were. Sorting happens before
+	// the pager, which is what keeps the team on the first page: it must never be a page
+	// turn away from the cards being read against it.
+	$: characterGroups = ((slots: Map<string, number>) => {
+		const groups = groupByCharacter(filteredSpawns);
+		const ranks = new Map(
+			groups.map((group) => {
+				const held = fieldedCopy(group.copies, slots);
+				return [group.characterId, held ? (slots.get(held.id) ?? TEAM_SIZE) : TEAM_SIZE];
+			})
+		);
+		return groups.sort(
+			(a, b) => (ranks.get(a.characterId) ?? TEAM_SIZE) - (ranks.get(b.characterId) ?? TEAM_SIZE)
+		);
+	})(teamSlotById);
 
 	/** One colour of one character, and every copy the player owns in it — a circle in
 	 * the row under the statue, with that count beside it. */
@@ -438,18 +474,25 @@
 	// The current page's characters, each with the copy it is showing and the statue of
 	// that copy — a copy carries its own colour and its own claim place, so switching
 	// circles restands the character in that colour, in the town that one was pulled in.
-	// A shown copy that has since been filtered out or recycled away falls back to the
-	// group's first, so the cell is never left pointing at a card that isn't there. The
-	// place names and the show assignment are threaded in so the grid re-derives as they
-	// load (a bare helper call would hide those deps).
+	// Absent a circle the player picked, a character standing at the head of the grid
+	// stands as the copy that put it there, so the bordered cell is the fielded card and
+	// not some other one of the same fighter; everything else falls back to its first copy,
+	// which is also where a shown copy filtered out or recycled away lands, so the cell is
+	// never left pointing at a card that isn't there. The place names, the show assignment
+	// and the slots are threaded in so the grid re-derives as they load or the team changes
+	// (a bare helper call would hide those deps).
 	$: pagedStatues = ((
 		names: Map<string, string> | null,
 		shows: Map<string, { id: number; name: string }[]>,
-		shown: Map<string, string>
+		shown: Map<string, string>,
+		slots: Map<string, number>
 	) =>
 		pagedGroups.map((group) => {
 			const shownId = shown.get(group.characterId);
-			const copy = group.copies.find((spawn) => spawn.id === shownId) ?? group.copies[0];
+			const copy =
+				group.copies.find((spawn) => spawn.id === shownId) ??
+				fieldedCopy(group.copies, slots) ??
+				group.copies[0];
 			const places = groupPlaces(group.copies, names);
 			// Which entry the place selector sits on. Two copies from one town in one
 			// colour are a single entry, so a shown copy that was the second of them has
@@ -466,23 +509,13 @@
 				swatches: groupColors(group.copies),
 				places,
 				placeValue: place.copy.id,
-				statue: toStatue(copy, names, shows)
+				statue: toStatue(copy, names, shows),
+				// Whether the copy on show is the one holding a slot — the cell's border, so
+				// the mark follows the card rather than the character: switch a fielded
+				// character to a copy that isn't on the team and the border goes with it.
+				fielded: slots.has(copy.id)
 			};
-		}))(municipalityNames, characterShows, shownCopyByCharacter);
-
-	// The team as the band above the grid: one cell per slot, in slot order — its
-	// statue where the slot is filled, null (an empty frame) where it isn't. Independent
-	// of the filters and the pager, since it is the team, not the roster, and always
-	// drawn: there is one team and it is always the one being built.
-	$: teamSlotStatues = ((
-		slots: (CharacterSpawn | null)[],
-		names: Map<string, string> | null,
-		shows: Map<string, { id: number; name: string }[]>
-	) => slots.map((spawn) => (spawn ? toStatue(spawn, names, shows) : null)))(
-		$teamSpawns,
-		municipalityNames,
-		characterShows
-	);
+		}))(municipalityNames, characterShows, shownCopyByCharacter, teamSlotById);
 
 	// Tapping a statue puts the copy it is showing on the team or takes it off (into the
 	// first free slot, or out of the one it holds). It is the statue that acts and the
@@ -525,30 +558,6 @@
 				'ring-base-content': isShown && !isSelected
 			}
 		);
-	}
-
-	// The team's summary, at the head of the band: the colour it is led by, that lead's
-	// show(s) and where it was claimed. A team with no picks yet reads as em-dashes
-	// rather than as nothing, since the band is always there.
-	$: teamSummary = ((
-		lead: CharacterSpawn | null,
-		_names: Map<string, string> | null,
-		_shows: Map<string, { id: number; name: string }[]>
-	): { color: SpawnColor | null; showName: string | null; regionName: string | null } => {
-		if (!lead) return { color: null, showName: null, regionName: null };
-		return {
-			color: lead.color,
-			showName: showNamesFor(lead.characterId).join(', ') || 'No show',
-			regionName: locationNameFor(lead.locationId)
-		};
-	})($teamSpawns[0] ?? null, municipalityNames, characterShows);
-
-	// The Remove button under a filled slot — the same path as a tap on a fielded card:
-	// empty that slot. Emptying the lead's empties the team, since every other slot was
-	// only allowed there by the lead's colour.
-	function handleSlotRemove(index: number): void {
-		if ($teamSaving) return;
-		void teamService.clear(index);
 	}
 
 	// How many slots are filled, for the line above the grid.
@@ -800,50 +809,46 @@
 						{/if}
 					</div>
 				</div>
-				<!-- The team stands beside the roster it is picked from rather than over it:
-				     the grid wants width for its columns and height for its rows, and a band
-				     across the top only ever took the second away from it. Down the left
-				     instead, one slot above the next, in a column of its own — a statue is
-				     three quarters as wide as it is tall, so a stack of three is a shape a
-				     tall modal already has room for. -->
-				<div class="flex min-h-0 flex-1 gap-3">
-					<!-- The column is a fixed narrow width and scrolls on its own, so three
-					     filled slots can never push the grid: what the modal's height leaves
-					     the team is the team's problem, not the roster's. -->
-					<div
-						class="flex w-32 flex-none flex-col gap-3 overflow-y-auto rounded-box bg-base-200 p-3 sm:w-36"
-					>
-						<dl class="flex flex-none flex-col gap-2 text-xs">
-							<div>
-								<dt class="opacity-50">COLOUR</dt>
-								<dd class="flex items-center gap-1.5 capitalize">
-									{#if teamSummary.color}
-										<span
-											class={classNames(
-												'inline-block size-2.5 rounded-full',
-												SPAWN_FILL_CLASSES[teamSummary.color]
-											)}
-										></span>
-									{/if}
-									{teamSummary.color ?? '—'}
-								</dd>
-							</div>
-							<div>
-								<dt class="opacity-50">SHOW</dt>
-								<dd class="truncate" title={teamSummary.showName ?? ''}>
-									{teamSummary.showName ?? '—'}
-								</dd>
-							</div>
-							<div>
-								<dt class="opacity-50">REGION</dt>
-								<dd class="truncate" title={teamSummary.regionName ?? ''}>
-									{teamSummary.regionName ?? '—'}
-								</dd>
-							</div>
-						</dl>
-						{#each teamSlotStatues as statue, index (index)}
-							<div class="flex flex-none flex-col gap-1">
-								{#if statue}
+				<!-- The roster, and the team at the head of it: a statue per character — the
+				     same one the map's panel stands the team up with — in a grid the slider
+				     sets the width of (1/2/3 by viewport to start), with one circle per colour
+				     it has been pulled in underneath, each carrying how many of that colour the
+				     player owns. The fielded cards are the first cells, in slot order, ringed
+				     in primary; the team has no view of its own any more, since a slot was only
+				     ever one of these cards and standing it up twice cost the grid the room it
+				     wanted. Tapping the statue toggles the shown copy's team membership — which
+				     is also how a card leaves the team — or selects it while recycling; tapping
+				     a circle only changes which copy is shown. Only the current page is mounted
+				     — the filters narrow the roster, the pager walks what's left ROWS_PER_PAGE
+				     rows at a time — and the box takes whatever the modal's fixed height leaves
+				     it. -->
+				<div
+					bind:this={gridScroller}
+					class="relative min-h-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
+				>
+					<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
+						{#each pagedStatues as { group, copy, swatches, places, placeValue, statue, fielded } (group.characterId)}
+							<!-- The border is on the cell, not on the statue: it takes in the circles
+							     and the place select too, so what it marks is this character's whole
+							     entry. Every cell carries it and only a fielded one colours it in, so
+							     joining the team never nudges the grid by two pixels. -->
+							<div
+								class={classNames('flex flex-col gap-2 rounded-box border-2 p-1.5', {
+									'border-primary': fielded,
+									'border-transparent': !fielded
+								})}
+							>
+								<button
+									type="button"
+									class={classNames(
+										'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+										{
+											'opacity-30': recycleMode && !selectedForRecycle.has(copy.id),
+											'ring-2 ring-warning': recycleMode && selectedForRecycle.has(copy.id)
+										}
+									)}
+									on:click={() => handleCardTap(copy)}
+								>
 									<CharacterStatue
 										label={statue.label}
 										basePath={statue.basePath}
@@ -852,114 +857,60 @@
 										spawnedAt={statue.spawnedAt}
 										showId={statue.showId}
 									/>
-									<button
-										class="btn btn-ghost btn-xs"
-										disabled={$teamSaving}
-										on:click={() => handleSlotRemove(index)}
+								</button>
+								<!-- Every colour this character has been pulled in, each circle carrying
+								     how many of that colour the player owns: a click stands them up in
+								     that colour, and a click on the colour already standing walks to the
+								     next copy of it. The circle being shown is the ringed one. Beside them,
+								     the same copies asked for the other way round — by the town they were
+								     claimed in, each saying its colour. -->
+								<div class="flex flex-wrap items-center justify-center gap-1.5">
+									{#each swatches as swatch (swatch.color)}
+										<button
+											type="button"
+											class={swatchCircleClasses(
+												swatch,
+												copy.color,
+												recycleMode,
+												selectedForRecycle
+											)}
+											title="{swatch.copies.length} in {swatch.color}"
+											aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
+											aria-pressed={swatch.color === copy.color}
+											on:click={() => showColorCopy(group.characterId, swatch, copy)}
+										>
+											{swatch.copies.length}
+										</button>
+									{/each}
+
+									<!-- The same copies asked for by town rather than by colour, and a native
+									     select because a menu of our own would be clipped by the scroll box
+									     this grid lives in. Each place says the colour it was pulled in with a
+									     square, the one thing an option can carry that a stylesheet cannot
+									     reach. -->
+									<select
+										class="select select-xs min-w-0 max-w-[9rem] flex-initial"
+										aria-label="{statue.label} — where it was claimed"
+										value={placeValue}
+										on:change={(event) => showCopy(group.characterId, event.currentTarget.value)}
 									>
-										Remove
-									</button>
-								{:else}
-									<div
-										class="aspect-[3/4] w-full rounded-box border-2 border-dashed border-base-content/20"
-									></div>
-								{/if}
+										{#each places as place (place.copy.id)}
+											<option value={place.copy.id}>
+												{SPAWN_SQUARE_GLYPHS[place.copy.color]}
+												{place.locationName}
+											</option>
+										{/each}
+									</select>
+								</div>
 							</div>
 						{/each}
 					</div>
-
-					<!-- The roster itself: a statue per character — the same one the map's panel
-					     stands the team up with — in a grid the slider sets the width of (1/2/3
-					     by viewport to start), with one circle per colour it has been pulled in
-					     underneath, each carrying how many of that colour the player owns.
-					     Tapping the statue toggles the shown copy's team membership, or selects it
-					     while recycling; tapping a circle only changes which copy is shown. Only
-					     the current page is mounted — the filters
-					     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at a
-					     time — and the box takes whatever the team column leaves it. -->
-					<div
-						bind:this={gridScroller}
-						class="relative min-h-0 min-w-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
-					>
-						<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
-							{#each pagedStatues as { group, copy, swatches, places, placeValue, statue } (group.characterId)}
-								<div class="flex flex-col gap-2">
-									<button
-										type="button"
-										class={classNames(
-											'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-											{
-												'opacity-30': recycleMode && !selectedForRecycle.has(copy.id),
-												'ring-2 ring-warning': recycleMode && selectedForRecycle.has(copy.id)
-											}
-										)}
-										on:click={() => handleCardTap(copy)}
-									>
-										<CharacterStatue
-											label={statue.label}
-											basePath={statue.basePath}
-											color={statue.color}
-											locationName={statue.locationName}
-											spawnedAt={statue.spawnedAt}
-											showId={statue.showId}
-										/>
-									</button>
-									<!-- Every colour this character has been pulled in, each circle carrying
-									     how many of that colour the player owns: a click stands them up in
-									     that colour, and a click on the colour already standing walks to the
-									     next copy of it. The circle being shown is the ringed one. Beside them,
-									     the same copies asked for the other way round — by the town they were
-									     claimed in, each saying its colour. -->
-									<div class="flex flex-wrap items-center justify-center gap-1.5">
-										{#each swatches as swatch (swatch.color)}
-											<button
-												type="button"
-												class={swatchCircleClasses(
-													swatch,
-													copy.color,
-													recycleMode,
-													selectedForRecycle
-												)}
-												title="{swatch.copies.length} in {swatch.color}"
-												aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
-												aria-pressed={swatch.color === copy.color}
-												on:click={() => showColorCopy(group.characterId, swatch, copy)}
-											>
-												{swatch.copies.length}
-											</button>
-										{/each}
-
-										<!-- The same copies asked for by town rather than by colour, and a native
-										     select because a menu of our own would be clipped by the scroll box
-										     this grid lives in. Each place says the colour it was pulled in with a
-										     square, the one thing an option can carry that a stylesheet cannot
-										     reach. -->
-										<select
-											class="select select-xs min-w-0 max-w-[9rem] flex-initial"
-											aria-label="{statue.label} — where it was claimed"
-											value={placeValue}
-											on:change={(event) => showCopy(group.characterId, event.currentTarget.value)}
-										>
-											{#each places as place (place.copy.id)}
-												<option value={place.copy.id}>
-													{SPAWN_SQUARE_GLYPHS[place.copy.color]}
-													{place.locationName}
-												</option>
-											{/each}
-										</select>
-									</div>
-								</div>
-							{/each}
+					{#if filteredSpawns.length === 0}
+						<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+							<p class="text-sm opacity-60">No characters match these filters.</p>
+							<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
 						</div>
-						{#if filteredSpawns.length === 0}
-							<div
-								class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center"
-							>
-								<p class="text-sm opacity-60">No characters match these filters.</p>
-								<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
-							</div>
-						{/if}
-					</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
