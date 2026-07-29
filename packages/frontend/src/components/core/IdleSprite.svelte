@@ -6,6 +6,8 @@
 		placeIdleClip,
 		type IdleClipFrame
 	} from '$utils/mugen/idle-clip';
+	import { loadRenderScale } from '$utils/mugen/character-render-scale';
+	import { DEFAULT_RENDER_SCALE } from '$types/character-definition.type';
 
 	// One character's looping idle animation, drawn in the document: an <img> per
 	// frame, stacked in the box and swapped on the clip's own timings, filling whatever
@@ -37,6 +39,11 @@
 	let frames: IdleClipFrame[] | null = null;
 	let frameIndex = 0;
 	let timer: ReturnType<typeof setTimeout> | null = null;
+	// How much bigger than its own pixels this character's sheet is drawn, from its
+	// definition (see loadRenderScale). Loaded with the clip and for the same reason —
+	// both are facts about the character's art, and the caller hands over the frames
+	// folder that identifies it, not the character.
+	let renderScale = DEFAULT_RENDER_SCALE;
 
 	// The character whose clip is loaded (or loading). A change swaps the clip; a
 	// repeat of the same path is not a reload, since the clips are cached anyway.
@@ -50,9 +57,11 @@
 		stop();
 		frames = null;
 		frameIndex = 0;
-		const clip = await loadIdleClip(path);
+		renderScale = DEFAULT_RENDER_SCALE;
+		const [clip, scale] = await Promise.all([loadIdleClip(path), loadRenderScale(path)]);
 		// A different character may have come forward while this one was loading.
 		if (path !== loadedPath) return;
+		renderScale = scale;
 		frames = clip;
 		schedule();
 	}
@@ -82,7 +91,7 @@
 			? placeIdleClip(
 					frames,
 					{ width: boxWidth, height: boxHeight },
-					{ flipped, baseline: boxHeight * baseline }
+					{ flipped, baseline: boxHeight * baseline, renderScale }
 				)
 			: null;
 

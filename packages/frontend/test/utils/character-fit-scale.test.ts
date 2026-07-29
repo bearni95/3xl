@@ -52,4 +52,40 @@ describe('characterFitScale', () => {
 		];
 		expect(characterFitScale(cycle, BOARD_BOX)).toBeCloseTo(BOARD_BOX.height / 190, 10);
 	});
+
+	it('draws a character up by its own render scale', () => {
+		// Inuyasha's sheet is drawn at about two thirds of the roster's scale, so his
+		// definition asks for 1.4 and he comes out 1.4× the size his pixels alone would
+		// give — which is what puts him beside Goku instead of beside Chopper.
+		const inuyasha = frame(68, 98);
+		const plain = characterFitScale(inuyasha, CARD_BOX);
+		expect(characterFitScale(inuyasha, CARD_BOX, 1.4)).toBeCloseTo(plain * 1.4, 10);
+	});
+
+	it('puts a scaled-up character at the size of a natively bigger one', () => {
+		// The whole point of the field: 98 px drawn at 1.4 must read as ~137 px does at 1.
+		const scaled = characterFitScale(frame(68, 98), CARD_BOX, 1.4) * 98;
+		const native = characterFitScale(frame(80, 137), CARD_BOX) * 137;
+		expect(scaled).toBeCloseTo(native, 0);
+	});
+
+	it('still holds a scaled-up character inside its box', () => {
+		// The scale lowers what the character is measured against, never the box: Sango
+		// (~109 px) asking for 1.4 wants an effective reference of ~107, so she is over
+		// it and the height cap brings her back to the box exactly as Perfect Cell is.
+		const sango = frame(59, 109);
+		const scale = characterFitScale(sango, BOARD_BOX, 1.4);
+		expect(109 * scale).toBeLessThanOrEqual(BOARD_BOX.height + 1e-9);
+		expect(scale).toBeGreaterThan(characterFitScale(sango, BOARD_BOX));
+	});
+
+	it('ignores a missing or out-of-range scale rather than shrinking a character', () => {
+		// A definition with no scale, and any value a hand-edit or a bad fetch could
+		// produce, must draw the character exactly as it always was.
+		const goku = frame(96, 135);
+		const plain = characterFitScale(goku, CARD_BOX);
+		for (const bad of [undefined, 0, -1, NaN, Infinity, 40, 0.01]) {
+			expect(characterFitScale(goku, CARD_BOX, bad as number)).toBeCloseTo(plain, 10);
+		}
+	});
 });

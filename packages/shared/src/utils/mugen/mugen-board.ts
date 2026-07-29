@@ -2,6 +2,7 @@ import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 
 import { destroyPixiApp } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
 import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/character-fit';
+import { characterIdFromFramesPath, readRenderScale } from './character-render-scale';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
 	boardCells,
@@ -716,9 +717,9 @@ export class MugenBoard {
 		// The actor id is the instance identity (unique per placement — the two
 		// sides can field the same character, so it must not be the asset id). The
 		// character's definition/assets are keyed by the id embedded in basePath
-		// (`/assets/<charId>/frames`), which stays shared across those instances.
-		const segments = character.basePath.split('/').filter(Boolean);
-		const characterId = segments[segments.length - 2] ?? segments[segments.length - 1] ?? '';
+		// (`/assets/<charId>/frames`), which stays shared across those instances —
+		// read out by the helper every surface that has only a frames folder uses.
+		const characterId = characterIdFromFramesPath(character.basePath) ?? '';
 		const id = character.id ?? characterId ?? character.basePath;
 
 		// Every actor can be walked cell to cell by combat, so all of them load the
@@ -762,11 +763,15 @@ export class MugenBoard {
 		// this actor happens to stand on — so the two lines are scaled alike however
 		// deep each stands, and a fighter keeps its size as it walks. Both surfaces then
 		// agree on every character's size relative to the others.
+		// The character's own render scale rides along: the definition is already loaded
+		// above for its bindings, and it is the same correction the cards and the statues
+		// read, so a set drawn small stands as tall here as it does on a card.
 		const box = this.referenceCellWidth();
-		const fitScale = characterFitScale(baseFrames, {
-			width: box,
-			height: box * CHAR_HEIGHT_RATIO
-		});
+		const fitScale = characterFitScale(
+			baseFrames,
+			{ width: box, height: box * CHAR_HEIGHT_RATIO },
+			readRenderScale(definition)
+		);
 
 		const sprite = new Sprite();
 		// A negative x-scale mirrors the sprite around its anchor (in place).

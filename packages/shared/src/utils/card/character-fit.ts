@@ -8,6 +8,12 @@
  * owing nothing to PixiJS or to a card.
  */
 
+import {
+	DEFAULT_RENDER_SCALE,
+	RENDER_SCALE_MAX,
+	RENDER_SCALE_MIN
+} from '../../types/character-definition.type';
+
 /**
  * Native source-pixel height treated as a "full-height" character. Every surface
  * scales its idle by the same ratio (art-box height ÷ this value) so on-screen size
@@ -44,17 +50,32 @@ export interface FitFrame {
  *     brought back to the box's height instead of standing out of it.
  *   · **width** — each frame is placed by its body axis, which can sit off-centre, so
  *     the widest axis-to-edge reach of the cycle must fit in half the box.
+ *
+ * `renderScale` is the one thing a character may say about this for itself, read from
+ * its own definition JSON (see `CharacterDefinition.renderScale`): the whole scheme
+ * assumes every sheet is drawn at the same pixels-per-person, and MUGEN authors do
+ * not agree on one, so a set drawn small says so and is drawn up by that much. It
+ * lowers the height the character is *measured against* rather than raising the box,
+ * which is why the two caps still hold: a scaled-up character that would now stand
+ * taller than its box stops at the box, exactly as an over-tall one always has.
  */
 export function characterFitScale(
 	frames: FitFrame[],
-	box: { width: number; height: number }
+	box: { width: number; height: number },
+	renderScale: number = DEFAULT_RENDER_SCALE
 ): number {
 	const maxHeight = Math.max(...frames.map((frame) => frame.height));
 	const maxHalfExtent = Math.max(
 		...frames.map((frame) => Math.max(frame.anchorX, 1 - frame.anchorX) * frame.width)
 	);
+	// A missing, zero or nonsense scale must never shrink a character to nothing or
+	// flip the ratio: anything outside the authored range reads as "no correction".
+	const scale =
+		Number.isFinite(renderScale) && renderScale >= RENDER_SCALE_MIN && renderScale <= RENDER_SCALE_MAX
+			? renderScale
+			: DEFAULT_RENDER_SCALE;
 	return Math.min(
-		box.height / REFERENCE_SOURCE_HEIGHT,
+		box.height / (REFERENCE_SOURCE_HEIGHT / scale),
 		box.height / maxHeight,
 		box.width / 2 / maxHalfExtent
 	);

@@ -125,6 +125,26 @@ export interface CharacterDefinition {
 	 * means "no square authored": consumers show the full portrait.
 	 */
 	faceCrop?: FaceCrop;
+	/**
+	 * How much bigger than its own sprite pixels this character is drawn, on every
+	 * surface that stands it up (see `characterFitScale`). Omitted means 1 — the
+	 * character is drawn at exactly the size its art is.
+	 *
+	 * On-screen size is a character's sprite height against one shared reference
+	 * height, so the roster keeps its real height differences — Chopper stays a head
+	 * shorter than Trunks. That only holds while every sheet is drawn at the same
+	 * pixels-per-person, and MUGEN authors do not agree on one: a set can be drawn
+	 * two thirds the size another set is, and its cast then stands two thirds as
+	 * tall in this game for no reason anyone in the fiction would recognise. This is
+	 * the correction, and it belongs to the character because it is a fact about that
+	 * character's art: it says "this sheet is drawn small, draw it up by this much"
+	 * once, here, rather than every surface guessing.
+	 *
+	 * It scales what the character is measured against, not the box it is measured
+	 * into, so the caps that keep art inside its box still hold — a scaled-up
+	 * character stops at the edge instead of spilling past it.
+	 */
+	renderScale?: number;
 }
 
 /** A square region of a face sprite, in that sprite's own pixels. */
@@ -170,3 +190,15 @@ export const STAT_MAX = 10;
 
 /** Value used when a definition predates stats or carries an invalid one. */
 export const DEFAULT_STAT = 5;
+
+/** Drawn at exactly the size its art is — what a definition with no
+ * {@link CharacterDefinition.renderScale} means, and what every character had
+ * before the field existed. */
+export const DEFAULT_RENDER_SCALE = 1;
+
+/** Bounds a stored render scale is held to. Wide enough for the real cases (a
+ * sheet drawn at two thirds of the roster's scale needs ~1.4) and narrow enough
+ * that a typo — a scale of 40 rather than 4 — cannot make a character fill the
+ * screen. */
+export const RENDER_SCALE_MIN = 0.25;
+export const RENDER_SCALE_MAX = 4;

@@ -112,6 +112,13 @@ export interface IdleClipPlacing {
 	 * to work in.
 	 */
 	baseline?: number;
+	/**
+	 * The character's authored render scale (default 1) — how much bigger than its own
+	 * pixels its sheet is drawn, from its definition JSON (see `loadRenderScale`). The
+	 * cards and the board pass the same number, so a character that is drawn up here is
+	 * drawn up by the same amount everywhere.
+	 */
+	renderScale?: number;
 }
 
 /**
@@ -161,7 +168,10 @@ export function placeIdleClip(
 	// cycle's real sweep, which is what this surface centres (the card's own width term
 	// measures the axis's half-reach instead, and can only ever be the stricter of the
 	// two — either way nothing spills).
-	const scale = Math.min(characterFitScale(frames, room), room.width / sheetWidth);
+	const scale = Math.min(
+		characterFitScale(frames, room, placing.renderScale),
+		room.width / sheetWidth
+	);
 	const sheet: PlacedBox = {
 		left: (surface.width - sheetWidth * scale) / 2,
 		// Feet on the baseline, not floating above it: a row of these is a line-up, and

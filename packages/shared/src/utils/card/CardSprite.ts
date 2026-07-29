@@ -18,7 +18,11 @@ import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pi
 import { spawnYearLabel } from '../spawn/year';
 import { traitIcons } from '../color/traits';
 import { SpawnColor } from '../../types/character-spawn.type';
-import type { CombatColor } from '../../types/character-definition.type';
+import {
+	DEFAULT_RENDER_SCALE,
+	type CombatColor
+} from '../../types/character-definition.type';
+import { loadRenderScale } from '../mugen/character-render-scale';
 import type { CardModel } from './card-model.type';
 import { textureCache, type IdleFrame } from './texture-cache';
 import { characterFitScale, IDLE_SCALE_BOOST } from './character-fit';
@@ -106,6 +110,10 @@ export class CardSprite extends Container {
 
 	// Idle-animation playback state (null until the frames load).
 	private idleFrames: IdleFrame[] | null = null;
+	// The character's authored render scale, loaded with its frames (see
+	// loadRenderScale). 1 until then, which is what a character with no correction
+	// authored keeps.
+	private renderScale = DEFAULT_RENDER_SCALE;
 	private idleFitScale = 1;
 	private idleFeetY = 0;
 	private idleCenterX = 0;
@@ -235,8 +243,15 @@ export class CardSprite extends Container {
 	 * the character ships no idle clip (or its manifest can't be loaded).
 	 */
 	private async loadArt(): Promise<void> {
-		const frames = await textureCache.idleFrames(this.card.basePath);
+		// The clip and how big this character's sheet is drawn come together: both are
+		// read off the character's own data, and the size is no use a frame later than
+		// the frames it sizes.
+		const [frames, renderScale] = await Promise.all([
+			textureCache.idleFrames(this.card.basePath),
+			loadRenderScale(this.card.basePath)
+		]);
 		if (this.destroyed) return;
+		this.renderScale = renderScale;
 		if (frames && frames.length > 0) {
 			this.applyIdle(frames);
 			return;
@@ -276,7 +291,8 @@ export class CardSprite extends Container {
 		// Draw the idle (and its shadow, which shares this scale) 30% larger than the
 		// fitted size. Applied after the fit so every character grows by the same factor.
 		this.idleFitScale =
-			characterFitScale(frames, { width: boxW, height: boxH }) * IDLE_SCALE_BOOST;
+			characterFitScale(frames, { width: boxW, height: boxH }, this.renderScale) *
+			IDLE_SCALE_BOOST;
 
 		// Horizontally centre the character's *visible* extent in the art box. The body
 		// axis can sit off-centre in the frame (and the flip mirrors each frame about it),

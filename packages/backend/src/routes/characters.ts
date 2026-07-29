@@ -13,6 +13,8 @@ import {
 	DEFAULT_STAT,
 	COMPOUND_COLORS,
 	DEFAULT_COLOR,
+	RENDER_SCALE_MIN,
+	RENDER_SCALE_MAX,
 	type CharacterDefinition
 } from '@3xl/shared/types/character-definition.type';
 import { asyncHandler, httpError } from '../http-error';
@@ -146,6 +148,22 @@ function validate(id: string, body: unknown): CharacterDefinition {
 				}
 			: undefined;
 
+	// How much bigger than its own pixels this character's sheet is drawn — a
+	// correction for sets whose art is drawn at another scale than the roster's (see
+	// the type). Authored in the JSON rather than in this editor, so the job here is
+	// to carry it through a save untouched: everything this function does not name is
+	// dropped, and a definition that lost its scale on an unrelated edit would put
+	// that character back to standing a head short of its own castmates. Held to the
+	// authored range so a hand-typed 40 can't reach the renderers.
+	const rawScale = def.renderScale;
+	const renderScale =
+		typeof rawScale === 'number' &&
+		Number.isFinite(rawScale) &&
+		rawScale >= RENDER_SCALE_MIN &&
+		rawScale <= RENDER_SCALE_MAX
+			? rawScale
+			: undefined;
+
 	const result: CharacterDefinition = {
 		id,
 		label: def.label,
@@ -158,6 +176,7 @@ function validate(id: string, body: unknown): CharacterDefinition {
 	};
 	if (face) result.face = face;
 	if (faceCrop) result.faceCrop = faceCrop;
+	if (renderScale !== undefined) result.renderScale = renderScale;
 	return result;
 }
 
