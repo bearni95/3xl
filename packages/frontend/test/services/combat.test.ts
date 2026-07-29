@@ -559,6 +559,64 @@ describe('the stand-off', () => {
 		});
 	});
 
+	describe('the score', () => {
+		it('opens at nothing apiece', () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'red'),
+				seed('r1', 'error', 'red'),
+				seed('p0', 'info', 'blue'),
+				seed('p1', 'info', 'blue')
+			]);
+			expect(get(controller).wins).toEqual({ info: 0, error: 0 });
+		});
+
+		it('counts an encounter to whoever is left standing in it', async () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'red'),
+				seed('r1', 'error', 'yellow'), // opens loaded, and fires on turn one
+				seed('p0', 'info', 'yellow'), // likewise: it takes its own lane at once
+				seed('p1', 'info', 'red')
+			]);
+			controller.setAction('p0', 'shoot');
+			controller.setAction('p1', 'charge');
+			await playTurn(controller);
+			const state = get(controller);
+			expect(fighterOf(state, 'r0').down).toBe(true);
+			expect(fighterOf(state, 'p1').down).toBe(true);
+			// One each: P0 took its lane, R1 took the other.
+			expect(state.wins).toEqual({ info: 1, error: 1 });
+		});
+
+		it('gives an encounter to neither side when both of them fall', async () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'yellow'),
+				seed('p0', 'info', 'yellow')
+			]);
+			controller.setAction('p0', 'shoot');
+			await playTurn(controller);
+			expect(get(controller).wins).toEqual({ info: 0, error: 0 });
+		});
+
+		it('calls the fight as soon as every encounter is settled, on the score', async () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'red'),
+				seed('r1', 'error', 'yellow'), // takes its lane on turn one
+				seed('p0', 'info', 'yellow'), // takes its own on turn one
+				seed('p1', 'info', 'red')
+			]);
+			controller.setAction('p0', 'shoot');
+			controller.setAction('p1', 'charge');
+			await playTurn(controller);
+			const state = get(controller);
+			// Both lanes are decided on the first volley, and both sides still have a
+			// fighter standing — the fight is over all the same, and it is a draw.
+			expect(state.wins).toEqual({ info: 1, error: 1 });
+			expect(state.turn).toBe(1);
+			expect(state.outcome).toBe('draw');
+			expect(state.phase).toBe('done');
+		});
+	});
+
 	describe('the report', () => {
 		it('says nothing at all until the game is decided', () => {
 			const controller = new CombatController([

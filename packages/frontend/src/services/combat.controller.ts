@@ -36,8 +36,10 @@
  * an aura in its own colour, lit the turn it loads and out the turn it fires, so who
  * is dangerous can be read off the board at a glance and at any moment.
  *
- * The game ends when a side is wiped out (both at once is a draw), or at
- * {@link MAX_TURNS}, where the side with more fighters left wins. Winning is the
+ * The fight is never to sudden death. It is three encounters, and each one is won by
+ * the fighter left standing when the other falls (both falling together is nobody's),
+ * so the score — {@link CombatState.wins} — is what decides it. It is called the moment
+ * every encounter is settled, and at {@link MAX_TURNS} at the latest. Winning is the
  * game's only source of experience: {@link CombatController.report} then summarises
  * the player's side for the `award_combat_exp` RPC, which pays out a share of the
  * player's current level — all of it for a flawless win, nothing for a loss.
@@ -184,6 +186,12 @@ export interface CombatState {
 	log: string[];
 	/** True when every player fighter still standing has a complete order. */
 	ready: boolean;
+	/**
+	 * Encounters won, per side. The fight is not to sudden death: it is three duels,
+	 * and each one is won by whichever fighter is left standing when the other falls —
+	 * so this is the score, and the side ahead on it is the side that wins the fight.
+	 */
+	wins: Record<FighterSide, number>;
 	/** Set once the game is over; drives the endgame modal. */
 	outcome: CombatOutcome | null;
 }
@@ -233,6 +241,7 @@ export class CombatController {
 		status: '',
 		log: [],
 		ready: false,
+		wins: { info: 0, error: 0 },
 		outcome: null
 	});
 	/** Svelte store contract, so the page can use `$controller`. */
@@ -522,6 +531,22 @@ export class CombatController {
 			this.end('win', 'The rival team has been taken down.');
 			return;
 		}
+		// Every encounter settled: whoever is left standing has nobody in front of them
+		// any more, so there is nothing left to play and the score is the result. It is
+		// the same answer the count of fighters would give — a lane is only ever won by
+		// felling the fighter across from it — reached without sitting out the clock.
+		if (this.settled()) {
+			const won = this.lanesWon('info');
+			const lost = this.lanesWon('error');
+			if (won > lost) {
+				this.end('win', `Every encounter is settled — you take it ${won}–${lost}.`);
+			} else if (lost > won) {
+				this.end('lose', `Every encounter is settled — the rivals take it ${lost}–${won}.`);
+			} else {
+				this.end('draw', `Every encounter is settled — honours even at ${won}–${lost}.`);
+			}
+			return;
+		}
 		if (this.turn >= MAX_TURNS) {
 			if (playersLeft > rivalsLeft) {
 				this.end(
@@ -617,6 +642,7 @@ export class CombatController {
 			status: this.status,
 			log: [...this.log],
 			ready: this.isReady(),
+			wins: { info: this.lanesWon('info'), error: this.lanesWon('error') },
 			outcome: this.outcome
 		});
 	}
@@ -696,6 +722,29 @@ export class CombatController {
 		if (fighter.down) return null;
 		const facing = this.counterpart(fighter);
 		return facing && !facing.down ? facing : null;
+	}
+
+	/**
+	 * How many encounters a side has won: one for each fighter of the other line that
+	 * has fallen with the fighter it was facing still standing. This is the score the
+	 * fight is decided on — it is not a race to wipe the other side out, but three
+	 * duels, each of which is somebody's.
+	 *
+	 * Two who shoot each other down in the same volley win nothing between them: that
+	 * encounter is nobody's, and it stays that way, since neither is coming back.
+	 */
+	private lanesWon(side: FighterSide): number {
+		return this.fighters.filter((fighter) => {
+			if (fighter.side === side || !fighter.down) return false;
+			const winner = this.counterpart(fighter);
+			return !!winner && !winner.down;
+		}).length;
+	}
+
+	/** Whether every encounter has been settled — nobody standing has anybody left in
+	 * front of them, so no shot can ever be fired again and the score is final. */
+	private settled(): boolean {
+		return this.fighters.every((fighter) => fighter.down || !this.opposite(fighter));
 	}
 
 	/** The player fighter this id names, if it may still be given orders. */

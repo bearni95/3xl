@@ -478,18 +478,30 @@
 </script>
 
 <div class="flex w-full flex-col items-center gap-4">
-	{#if closable}
-		<!-- The way out of a fight in progress, and the whole of what sits above the
-		     board: which town is being fought over is the map's to say, not the arena's. -->
+	{#if state || closable}
+		<!-- The score in the top-left corner and the way out of the fight in the
+		     top-right, and nothing else above the board. -->
 		<div class="flex w-full items-center gap-2">
-			<button
-				type="button"
-				class="btn btn-circle btn-ghost btn-sm ml-auto"
-				on:click={close}
-				aria-label="Close"
-			>
-				✕
-			</button>
+			{#if state}
+				<!-- Encounters won, yours first: the fight is three duels and this is what
+				     each side has taken of them. Each count is drawn in its own side's
+				     colour, the same one that side's fighters hold the board in. -->
+				<p class="font-mono text-lg font-bold tabular-nums" aria-label="Encounters won">
+					<span class="text-info">{state.wins.info}</span>
+					<span class="opacity-40">–</span>
+					<span class="text-error">{state.wins.error}</span>
+				</p>
+			{/if}
+			{#if closable}
+				<button
+					type="button"
+					class="btn btn-circle btn-ghost btn-sm ml-auto"
+					on:click={close}
+					aria-label="Close"
+				>
+					✕
+				</button>
+			{/if}
 		</div>
 	{/if}
 
