@@ -261,7 +261,10 @@
 		// merely detached from the map would go on animating for nothing.
 		if (marker.team?.length) {
 			const frame = document.createElement('div');
-			frame.className = 'w-44 drop-shadow-lg';
+			// A fixed 300px for the three of them together: the row shares that width out,
+			// so a pin's statues come out the same size on every town rather than tracking
+			// anything about the map or the region under it.
+			frame.className = 'w-[300px] drop-shadow-lg';
 			pinTeams.push(
 				mount(TeamLineup, {
 					target: frame,
