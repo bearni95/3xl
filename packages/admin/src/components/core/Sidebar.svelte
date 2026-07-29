@@ -6,7 +6,7 @@
 	import NavMenu from '$components/core/NavMenu.svelte';
 	import type { RouteNode } from '$types/navigation.type';
 
-	export let brand: string = '3XL';
+	export let brand: string = '6XL';
 	export let classes: string = '';
 
 	// The tree is derived from the route files, so every page and sub-page shows
