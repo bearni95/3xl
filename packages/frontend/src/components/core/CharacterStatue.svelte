@@ -17,9 +17,9 @@
 	import type { SpawnColor } from '$types/character-spawn.type';
 
 	// One character, as this game draws one: a statue of them — standing on a tilted
-	// floor in their own colour with their show's mark painted on it, and, where there
-	// is room for it, a panel underneath saying their name, their show's own lettering,
-	// the place they were claimed and the orders their colour grants them for free.
+	// floor in their own colour with their show's mark and its lettering painted on it,
+	// and, where there is room for it, a panel underneath saying their name, the place
+	// they were claimed and the orders their colour grants them for free.
 	//
 	// It stands on its own: hand it a character from the seed or from Supabase — the
 	// frames folder, a colour, and the two captions — and it assembles the whole
@@ -43,9 +43,9 @@
 	// room for a mark, not a date. Null leaves the place standing on its own.
 	export let spawnedAt: string | number | Date | null = null;
 	// The TMDB id of the character's show — the one the admin `/characters` screen
-	// assigns it. Its glyph goes on the floor and its logo on the panel. Null (or a
-	// show with no glyph drawn and no logo enabled yet) leaves both bare rather than
-	// badging them with a stand-in.
+	// assigns it. Its glyph and its lettering are both painted on the floor. Null (or a
+	// show with no glyph drawn and no logo enabled yet) leaves the floor bare rather
+	// than badging it with a stand-in.
 	export let showId: number | null = null;
 	// Mirror the character. True is the player's own side; false the unmirrored art a
 	// rival side uses, so the two face each other.
@@ -90,10 +90,10 @@
 
 	$: showIcon = showIconName(showId);
 
-	// The show's own lettering, said on the panel between the name and the place. It
-	// is asked for by id alone, exactly as the glyph is: the collection is loaded once
-	// for every statue standing (see shows.service), so nothing has to be handed down
-	// to the pins, the strip or the roster grid for a card to say what it is from.
+	// The show's own lettering, painted along the front of the floor. It is asked for by
+	// id alone, exactly as the glyph is: the collection is loaded once for every statue
+	// standing (see shows.service), so nothing has to be handed down to the pins, the
+	// strip or the roster grid for a card to say what it is from.
 	onMount(() => void loadShowLogos());
 	$: showLogo = showId == null ? null : ($showLogos.get(showId) ?? null);
 
@@ -138,16 +138,34 @@
 						it takes it from here rather than carrying one of its own. -->
 					<ShowIcon name={showIcon} classes="absolute inset-0 [&>svg]:h-full [&>svg]:w-full" />
 				{/if}
+				{#if showLogo}
+					<!-- The show's own lettering, painted on the floor rather than said on the
+						panel: across the whole width of the tile's front edge, and inside the tile,
+						so the tilt is the tile's own — the same thing that lays the glyph down
+						instead of standing it up on a shape that looks like a floor. The front edge
+						is where a full-width mark survives that tilt: it is the one line the
+						perspective leaves at its true width, and it foreshortens upwards from
+						there, so the lettering is read at the bottom and falls away into the
+						square. Its height is the wordmark's own at that width — a logo is a
+						picture of a name, and cropping or squashing it says the name wrong. -->
+					<img
+						src={showLogo.url}
+						alt={showLogo.name}
+						title={showLogo.name}
+						class="absolute inset-x-0 bottom-0 w-full"
+					/>
+				{/if}
 			</div>
 
 			<IdleSprite {basePath} {label} {flipped} baseline={BASELINE} />
 		</div>
 	</div>
 
-	<!-- Who that is, then what they are from, then where and when they were claimed, then
-		what their colour grants them — on a panel in the same colour the floor is painted,
-		so the card reads as one object in one colour rather than a picture with a caption.
-		Either line too long for the card is cut with
+	<!-- Who that is, then where and when they were claimed, then what their colour grants
+		them — on a panel in the same colour the floor is painted, so the card reads as one
+		object in one colour rather than a picture with a caption. What they are from is not
+		said here: the floor above says it, in the show's own lettering. Either line too long
+		for the card is cut with
 		an ellipsis rather than wrapped: a row of these must keep one height between them,
 		whatever they are called and wherever they were pulled. -->
 	<div class={classNames('border', SPAWN_PANEL_CLASSES[color], SPAWN_BORDER_CLASSES[color])}>
@@ -159,24 +177,6 @@
 		<div class="truncate bg-black/20 px-1 py-0.5 text-center text-sm font-semibold" title={label}>
 			{label}
 		</div>
-		{#if showLogo}
-			<!-- What the character is from, said the way the show says itself: its own
-				lettering, not its name set in ours. It goes between the two captions because
-				that is the order the card reads in — who this is, what they are from, where
-				this copy was claimed — and on a black band of its own like them, dark enough
-				for the artwork to read whatever the panel's colour is. The band keeps one
-				height whatever the logo's proportions are, so a wide wordmark and a square
-				one never make two cards in a row different heights: the image is fitted
-				inside it, never cropped and never stretched. -->
-			<div class="flex h-5 items-center justify-center bg-black/40 px-1 py-0.5">
-				<img
-					src={showLogo.url}
-					alt={showLogo.name}
-					title={showLogo.name}
-					class="max-h-full max-w-full object-contain"
-				/>
-			</div>
-		{/if}
 		{#if place || year}
 			<!-- The place and the year it was minted share the row: the town gives way first,
 				cut with an ellipsis, while the year keeps its two characters whatever the card's
