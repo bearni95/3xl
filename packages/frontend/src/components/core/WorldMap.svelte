@@ -317,7 +317,10 @@
 			tile = document.createElement('div');
 			tile.className =
 				'flex size-10 flex-none items-center justify-center rounded-lg [&>svg]:size-7 ' +
-				(marker.frameClasses ?? 'bg-base-100 text-base-content');
+				(marker.frameClasses ?? 'bg-base-100 text-base-content') +
+				// A pin clear of the selection recedes by its colour, not by its lettering:
+				// the fade is on the tile alone (see classNamesFor).
+				(marker.dimmed ? ' opacity-50' : '');
 			tile.setAttribute('aria-hidden', 'true');
 			if (marker.iconSvg) tile.innerHTML = marker.iconSvg;
 		}
@@ -374,12 +377,15 @@
 		return wrap;
 	}
 
-	// The pin wrapper's classes: a bottom-centred column, made clickable when the
-	// marker carries an onClick and faded when it sits outside the selected area.
+	// The pin wrapper's classes: a bottom-centred column, made clickable when the marker
+	// carries an onClick. The fade for a pin outside the selected area is NOT here: an
+	// opacity on the wrapper groups everything under it, and no child can win its way back
+	// to full — which took the plate's lettering down with the tile and left white type at
+	// half strength over the terrain it is meant to be read against. It goes on the tile
+	// instead (see markerElement), so a pin recedes without becoming unreadable.
 	function classNamesFor(marker: MapMarker): string {
 		let classes = 'flex -translate-x-1/2 -translate-y-full flex-col items-center';
 		if (marker.onClick) classes += ' cursor-pointer';
-		if (marker.dimmed) classes += ' opacity-50';
 		return classes;
 	}
 

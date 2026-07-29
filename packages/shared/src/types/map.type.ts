@@ -131,9 +131,10 @@ export interface MapMarker {
 	 */
 	featureIds?: string[];
 	/**
-	 * Whether the pin sits outside the currently selected area. Dimmed pins render
-	 * at reduced opacity so the selected region's pins stand out, without hiding
-	 * the rest of the map's breakdown.
+	 * Whether the pin sits outside the currently selected area. A dimmed pin fades its
+	 * coloured tile so the selected region's pins stand out, without hiding the rest of
+	 * the map's breakdown; its plate keeps full opacity either way, so every pin on
+	 * screen is still legible.
 	 */
 	dimmed?: boolean;
 	/** Called when the pin is clicked. */
