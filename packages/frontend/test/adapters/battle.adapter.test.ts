@@ -9,9 +9,8 @@ const fighter = (over: Record<string, unknown> = {}) => ({
 	spawnId: 'spawn-1',
 	charges: 1,
 	down: false,
-	guardSpent: false,
+	spent: ['defend'],
 	action: 'charge',
-	bonus: false,
 	cell: { q: 2, r: -2 },
 	...over
 });
@@ -38,11 +37,25 @@ describe('battleAdapter', () => {
 			spawnId: 'spawn-1',
 			charges: 1,
 			down: false,
-			guardSpent: false,
+			spent: ['defend'],
 			action: 'charge',
-			bonus: false,
 			cell: { q: 2, r: -2 }
 		});
+	});
+
+	it('keeps only the orders it recognises among the gifts already spent', () => {
+		const board = { turn: 2, fighters: [fighter({ spent: ['defend', 'sulk', 7] })] };
+		expect(battleAdapter.fromRow(row({ board })).board?.fighters[0].spent).toEqual(['defend']);
+	});
+
+	it("reads an older board's spent guard as the free defend it became", () => {
+		// Boards written before a colour's gift was one of the three orders stored blue's
+		// guard on its own. A battle left open across the change must not come back with
+		// the guard it had already used still in hand.
+		const legacy = { turn: 2, fighters: [fighter({ spent: undefined, guardSpent: true })] };
+		expect(battleAdapter.fromRow(row({ board: legacy })).board?.fighters[0].spent).toEqual([
+			'defend'
+		]);
 	});
 
 	it('sends the rival line-up back in the shape Postgres holds it', () => {

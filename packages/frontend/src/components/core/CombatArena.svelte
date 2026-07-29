@@ -115,9 +115,10 @@
 		dispatch('close');
 	}
 
-	// The glyph each order is given — the same three the cards wear in their corners
-	// for the colour that bends the order (see `traitIcons`), so the board and the
-	// cards speak of a charge, a guard and a shot with one picture each.
+	// The glyph each order is given — the same three the cards wear in their corners,
+	// and the same three a fighter wears at its own corner for the orders its colour
+	// grants it free (see `traitIcons`), so a charge, a guard and a shot are one
+	// picture each wherever the game speaks of them.
 	const ACTION_ICONS: Record<CombatAction, string> = ORDER_ICONS;
 
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
@@ -317,10 +318,6 @@
 	let state: CombatState | null = null;
 	let unsubscribe: (() => void) | null = null;
 
-	// Live combat state keyed by fighter id, so a tap on a board button can be read
-	// against the fighter it belongs to.
-	$: combatById = new Map((state?.fighters ?? []).map((fighter) => [fighter.id, fighter]));
-
 	function onBoardReady(engine: MugenBoardEngine): void {
 		board = engine;
 		engine.onOrder(giveOrder);
@@ -331,20 +328,11 @@
 	 * A button under a fighter was tapped. The board only reports which one; what an
 	 * order means is the controller's, as it is for every other input.
 	 *
-	 * The sword means *fire*, and whether that is the whole turn or an extra on top of
-	 * it is already decided by what else the fighter has been given: on a turn it is
-	 * spending charging or covering, a colour carrying red's second action fires
-	 * without giving that up, so the sword adds the shot instead of replacing the
-	 * order. Every other case — and every colour without red in it — reads as plain
-	 * Shoot.
+	 * There are only three orders and each button is one of them. What a fighter's
+	 * colour adds on top is never tapped for — it is passive, it comes off the back of
+	 * whatever order *was* given, and the corner glyphs are where it is read.
 	 */
 	function giveOrder(fighterId: string, orderId: string): void {
-		const fighter = combatById.get(fighterId);
-		const onTop = fighter && (fighter.bonus || fighter.canBonus);
-		if (orderId === 'shoot' && onTop) {
-			controller?.setBonus(fighterId, !fighter.bonus);
-			return;
-		}
 		controller?.setAction(fighterId, orderId as CombatAction);
 	}
 
@@ -352,18 +340,15 @@
 	 * The three orders drawn under one of the player's fighters. Every one of them is
 	 * always drawn — an order out of reach is greyed rather than dropped, so a
 	 * fighter's row never changes shape under the cursor — and all of them lock while a
-	 * turn is playing out. The sword lights for a shot however it was bought, as the
-	 * fighter's whole turn or as red's extra on top of another order.
+	 * turn is playing out.
 	 */
 	function orderButtons(fighter: FighterView, phase: CombatState['phase']): BoardOrder[] {
 		const locked = phase !== 'planning';
 		return COMBAT_ACTIONS.map((action) => ({
 			id: action,
 			icon: ACTION_ICONS[action],
-			selected: action === 'shoot' ? fighter.action === 'shoot' || fighter.bonus : fighter.action === action,
-			// A shot already added on top stays tappable so it can be taken back, even on
-			// a turn it could no longer be bought from scratch.
-			disabled: locked || (action === 'shoot' && !fighter.canShoot && !fighter.bonus)
+			selected: fighter.action === action,
+			disabled: locked || (action === 'shoot' && !fighter.canShoot)
 		}));
 	}
 

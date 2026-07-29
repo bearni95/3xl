@@ -27,16 +27,11 @@ function seeds(colors: CombatColor[]): FighterSeed[] {
 }
 
 /**
- * A tap on one of the buttons under a fighter, played exactly as `CombatArena`
- * plays it: the sword adds red's extra only when the turn is already spent on
- * something else, and reads as plain Shoot otherwise.
+ * A tap on one of the buttons under a fighter, played exactly as `CombatArena` plays
+ * it: there are three buttons and each is one of the three orders. What a colour adds
+ * on top is passive — never tapped for — so a tap is only ever the order itself.
  */
 function tap(controller: CombatController, fighter: FighterView, order: CombatAction): void {
-	const onTop = fighter.bonus || fighter.canBonus;
-	if (order === 'shoot' && onTop) {
-		controller.setBonus(fighter.id, !fighter.bonus);
-		return;
-	}
 	controller.setAction(fighter.id, order);
 }
 
@@ -63,46 +58,48 @@ function recordingBoard(): { calls: string[]; board: MugenBoard } {
 	return { calls, board: board as MugenBoard };
 }
 
+/** Play one turn out, however the fighters were ordered. */
+async function playTurn(controller: CombatController): Promise<void> {
+	controller.commit();
+	while (get(controller).phase === 'resolving') {
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	}
+}
+
 describe('CombatController — giving orders', () => {
-	it('takes the sword as a plain Shoot from a fighter with no order yet', () => {
-		// Orange carries red's extra *and* yellow's head start, so it stands loaded on
-		// turn one with nothing else booked. The sword under it used to buy the extra
-		// rather than the order itself, which lit the button while leaving the fighter
-		// unordered — the side then never became commitable.
+	it('refuses the sword to a fighter with nothing banked, whatever its colour', () => {
+		// Nobody opens armed: a colour's free charge is a gift like any other and has to
+		// be given on a turn spent elsewhere, so turn one has no shot in it for anybody.
 		const controller = new CombatController(
 			seeds(['blue', 'blue', 'blue', 'orange', 'orange', 'orange'])
 		);
 		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'shoot');
 		for (const fighter of playerFighters(controller)) {
-			expect(fighter.action).toBe('shoot');
-			expect(fighter.bonus).toBe(false);
-			expect(fighter.ordered).toBe(true);
+			expect(fighter.action).toBeNull();
+			expect(fighter.ordered).toBe(false);
 		}
-		expect(get(controller).ready).toBe(true);
+		expect(get(controller).ready).toBe(false);
 	});
 
-	it('adds the extra shot on top of an order already given, and takes it back', () => {
-		// Orange is red and yellow both: it carries the extra shot *and* opens with a
-		// charge banked, so it can fire on the very first turn.
+	it('takes the sword as the order itself, never as something on top of one', async () => {
+		// Orange carries red's free shot, which used to be bought by tapping the sword on
+		// top of another order. It is passive now: the sword is Shoot and nothing else.
 		const controller = new CombatController(
 			seeds(['blue', 'blue', 'blue', 'orange', 'blue', 'blue'])
 		);
 		const red = () => playerFighters(controller).find((fighter) => fighter.color === 'orange')!;
-		// The sword is the order itself here — nothing else is booked.
-		tap(controller, red(), 'shoot');
-		expect(red().action).toBe('shoot');
-		expect(red().bonus).toBe(false);
+		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'charge');
+		await playTurn(controller);
 
-		// Cover instead, then add the extra shot on top of the cover.
+		// Cover, then tap the sword: the sword replaces the cover rather than riding it.
 		tap(controller, red(), 'defend');
 		expect(red().action).toBe('defend');
 		tap(controller, red(), 'shoot');
-		expect(red().action).toBe('defend');
-		expect(red().bonus).toBe(true);
-		// Tapping it again takes the extra back, leaving the cover standing.
+		expect(red().action).toBe('shoot');
+		// And tapping it again leaves it exactly where it was — there is nothing to undo.
 		tap(controller, red(), 'shoot');
-		expect(red().action).toBe('defend');
-		expect(red().bonus).toBe(false);
+		expect(red().action).toBe('shoot');
+		expect(red().ordered).toBe(true);
 	});
 });
 

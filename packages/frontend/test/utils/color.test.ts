@@ -5,7 +5,7 @@ import {
 	relatedColors,
 	teammateColors
 } from '$utils/color/compare';
-import { colorTraits, traitIcons, ORDER_ICONS } from '$utils/color/traits';
+import { colorPassives, traitIcons, ORDER_ICONS } from '$utils/color/traits';
 import type { CombatColor } from '$types/character-definition.type';
 
 const ALL: CombatColor[] = ['red', 'yellow', 'blue', 'purple', 'orange', 'green'];
@@ -69,74 +69,52 @@ describe('colour relation', () => {
 	});
 });
 
-describe('colour traits', () => {
-	it('gives each primary exactly the one trait it stands for', () => {
-		expect(colorTraits('red')).toEqual({
-			doubleAction: true,
-			headStart: false,
-			passiveGuard: false
-		});
-		expect(colorTraits('yellow')).toEqual({
-			doubleAction: false,
-			headStart: true,
-			passiveGuard: false
-		});
-		expect(colorTraits('blue')).toEqual({
-			doubleAction: false,
-			headStart: false,
-			passiveGuard: true
-		});
+describe('the free orders a colour grants', () => {
+	it('gives each primary exactly the one order it stands for', () => {
+		expect(colorPassives('red')).toEqual(['shoot']);
+		expect(colorPassives('yellow')).toEqual(['charge']);
+		expect(colorPassives('blue')).toEqual(['defend']);
 	});
 
-	it('gives a compound the two traits of the primaries it mixes, and only those', () => {
-		// purple = red + blue: the second action and the free guard, but no head start.
-		expect(colorTraits('purple')).toEqual({
-			doubleAction: true,
-			headStart: false,
-			passiveGuard: true
-		});
+	it('gives a compound both of the primaries it mixes, and only those', () => {
+		// purple = red + blue: the free shot and the free guard, but no free charge.
+		expect(colorPassives('purple')).toEqual(['shoot', 'defend']);
 		// orange = red + yellow.
-		expect(colorTraits('orange')).toEqual({
-			doubleAction: true,
-			headStart: true,
-			passiveGuard: false
-		});
+		expect(colorPassives('orange')).toEqual(['shoot', 'charge']);
 		// green = blue + yellow.
-		expect(colorTraits('green')).toEqual({
-			doubleAction: false,
-			headStart: true,
-			passiveGuard: true
-		});
+		expect(colorPassives('green')).toEqual(['defend', 'charge']);
 	});
 
 	it('never grants all three — every colour gives something up', () => {
 		for (const color of ALL) {
-			const traits = colorTraits(color);
-			const granted = Object.values(traits).filter(Boolean).length;
-			expect(granted).toBe(isPrimaryColor(color) ? 1 : 2);
+			const passives = colorPassives(color);
+			expect(passives).toHaveLength(isPrimaryColor(color) ? 1 : 2);
+			// And never the same gift twice: two of one order would be one gift.
+			expect(new Set(passives).size).toBe(passives.length);
 		}
 	});
 
 	it('makes a compound the exact union of its two components', () => {
-		const union = (a: CombatColor, b: CombatColor) => ({
-			doubleAction: colorTraits(a).doubleAction || colorTraits(b).doubleAction,
-			headStart: colorTraits(a).headStart || colorTraits(b).headStart,
-			passiveGuard: colorTraits(a).passiveGuard || colorTraits(b).passiveGuard
-		});
-		expect(colorTraits('purple')).toEqual(union('red', 'blue'));
-		expect(colorTraits('orange')).toEqual(union('red', 'yellow'));
-		expect(colorTraits('green')).toEqual(union('blue', 'yellow'));
+		const union = (a: CombatColor, b: CombatColor) =>
+			[...colorPassives(a), ...colorPassives(b)];
+		expect(colorPassives('purple')).toEqual(union('red', 'blue'));
+		expect(colorPassives('orange')).toEqual(union('red', 'yellow'));
+		expect(colorPassives('green')).toEqual(union('blue', 'yellow'));
 	});
 });
 
 describe('trait icons', () => {
-	it('gives each primary the glyph of the order its trait bends', () => {
+	it('gives each primary the glyph of the order it is granted', () => {
 		expect(traitIcons('red')).toEqual([ORDER_ICONS.shoot]);
 		expect(traitIcons('yellow')).toEqual([ORDER_ICONS.charge]);
 		expect(traitIcons('blue')).toEqual([ORDER_ICONS.defend]);
 	});
 
 	it('gives a compound both of its components, in component order', () => {
+		// The very same list as colorPassives, told as pictures.
+		expect(traitIcons('green')).toEqual(
+			colorPassives('green').map((order) => ORDER_ICONS[order])
+		);
 		expect(traitIcons('purple')).toEqual([ORDER_ICONS.shoot, ORDER_ICONS.defend]);
 		expect(traitIcons('orange')).toEqual([ORDER_ICONS.shoot, ORDER_ICONS.charge]);
 		expect(traitIcons('green')).toEqual([ORDER_ICONS.defend, ORDER_ICONS.charge]);

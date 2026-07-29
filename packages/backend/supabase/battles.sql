@@ -50,8 +50,9 @@ create table if not exists public.battles (
 	-- whatever has happened to the town since.
 	rivals jsonb not null default '[]'::jsonb,
 	-- The board as the last closed turn left it, or null while no turn has closed.
-	-- {turn, fighters: [{side, slot, spawnId, charges, down, guardSpent, action,
-	-- bonus, cell}]}. Read only by the arena.
+	-- {turn, fighters: [{side, slot, spawnId, charges, down, spent, action, cell}]},
+	-- where `spent` lists the free orders that fighter's colour has already handed it.
+	-- Read only by the arena.
 	board jsonb,
 	started_at timestamptz not null default now(),
 	updated_at timestamptz not null default now()

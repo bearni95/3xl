@@ -53,7 +53,7 @@ const readable = (state: CombatState) =>
 		id: fighter.id,
 		charges: fighter.charges,
 		down: fighter.down,
-		guarded: fighter.guarded,
+		spent: [...fighter.spent],
 		opponentId: fighter.opponentId,
 		canShoot: fighter.canShoot
 	}));
@@ -65,8 +65,11 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 
 		const before = get(controller);
 		const snapshot = controller.snapshot();
-		// Only worth asserting on a fight that actually moved.
+		// Only worth asserting on a fight that actually moved — and one in which some
+		// colour's gift has been had, since that is the part of a fighter's state that
+		// cannot be worked out again from anything else on the board.
 		expect(snapshot.turn).toBeGreaterThan(1);
+		expect(before.fighters.some((fighter) => fighter.spent.length > 0)).toBe(true);
 
 		const resumed = new CombatController(seeds(COLORS), snapshot);
 		const after = get(resumed);
@@ -74,8 +77,8 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 		expect(after.turn).toBe(before.turn);
 		expect(after.phase).toBe('planning');
 		expect(after.outcome).toBeNull();
-		// Charges, the fallen, spent guards, who is left facing whom, and who may fire:
-		// all of it comes back, and all of it is derived again from the restored flags.
+		// Charges, the fallen, the gifts already had, who is left facing whom, and who
+		// may fire: all of it comes back, and all of it is derived again from the flags.
 		expect(readable(after)).toEqual(readable(before));
 		expect(after.wins).toEqual(before.wins);
 	}, 120000);

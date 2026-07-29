@@ -20,11 +20,13 @@
  *     each other across a lane both fall.
  *
  * What separates one card from another is nothing but its **colour** (see
- * `colorTraits` in @3xl/shared): red may fire *on top of* a charge or a defend,
- * yellow opens the battle with a charge already banked, and blue turns one shot aside
- * for free — once in the battle, on a turn it wasn't defending anyway. A compound
- * colour carries the two traits of the primaries it mixes, so every colour gives
- * something up.
+ * `colorPassives` in @3xl/shared), and what a colour hands over is one of those very
+ * three orders, taken for free: red a shot, yellow a charge, blue a defend. It is
+ * worth **one use in the whole battle**, it only comes on a turn the fighter was
+ * given something *else* to do — a passive happens beside your order, so it can never
+ * be your order — and it is only used up on a turn it actually did something. A
+ * compound colour carries both of the primaries it mixes and spends both at once on
+ * any turn both are allowed, so it is one very good turn rather than a better card.
  *
  * The rivals open **on the central white column**, as far forward as the board allows,
  * one cell facing each of the player's fighters — so the ground itself is what is being
@@ -50,14 +52,15 @@ import type { MugenBoard } from '$utils/mugen/mugen-board';
 import { findMove, type CharacterMove, type CombatColor } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
 import type { BattleBoardSnapshot, BattleFighterSnapshot } from '$types/battle.type';
-import { colorTraits, traitIcons, type ColorTraits } from '$utils/color/traits';
+import { colorPassives, ORDER_ICONS, type PassiveOrder } from '$utils/color/traits';
 import { pickWeighted } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
 export type FighterSide = 'error' | 'info';
 
-/** The three orders of the stand-off. */
-export type CombatAction = 'charge' | 'defend' | 'shoot';
+/** The three orders of the stand-off. The same three a colour hands over for free
+ * ({@link PassiveOrder}) — a passive is not a fourth kind of thing. */
+export type CombatAction = PassiveOrder;
 
 /** Orders in the fixed display order the pickers list them in. */
 export const COMBAT_ACTIONS: CombatAction[] = ['charge', 'defend', 'shoot'];
@@ -117,29 +120,29 @@ export interface FighterSeed {
 	side: FighterSide;
 	/** The character's combat colour — the colour rolled for its Supabase spawn. It
 	 * is the whole of what makes this fighter play differently from any other; see
-	 * {@link ColorTraits}. */
+	 * {@link colorPassives}. */
 	color: CombatColor;
 	/** The moves this character's JSON definition declares (used for animation). */
 	moves: CharacterMove[];
 }
 
 export interface Fighter extends FighterSeed {
-	/** What this fighter's colour lets it do. */
-	traits: ColorTraits;
+	/** The orders this fighter's colour hands it for free, one per primary it mixes. */
+	passives: PassiveOrder[];
+	/** Those of them it has already had. Each is worth one use in the whole battle, so
+	 * a gift in here is gone for good. */
+	spent: PassiveOrder[];
 	/** The board cell it is standing on. Its line-up slot's opening ground until the
 	 * lane it fights in is decided, and then whatever ground that left it holding
 	 * (see {@link CombatController.settleGround}). */
 	cell: Hex;
-	/** Charges banked, 0..{@link MAX_CHARGES}. Shooting spends one. */
+	/** Charges banked, 0..{@link MAX_CHARGES}. Shooting spends one — the free shot
+	 * included: it is the *turn* a colour hands over, never the ammunition. */
 	charges: number;
 	/** True once a shot has landed on it: it is out of the fight for good. */
 	down: boolean;
 	/** The order it will carry out this turn, or null before one is given. */
 	action: CombatAction | null;
-	/** Red's extra: a shot fired on top of a charge or a defend. */
-	bonus: boolean;
-	/** Set once blue's free guard has been spent — it is worth one shot a battle. */
-	guardSpent: boolean;
 }
 
 /** A fighter as the page renders it. A rival's orders are withheld until they are
@@ -150,17 +153,16 @@ export interface FighterView {
 	name: string;
 	side: FighterSide;
 	color: CombatColor;
-	traits: ColorTraits;
+	/** The free orders its colour granted it, and those of them already had — what the
+	 * board wears at the fighter's corner, and which of them still stand for something. */
+	passives: PassiveOrder[];
+	spent: PassiveOrder[];
 	charges: number;
 	maxCharges: number;
 	down: boolean;
 	/** The order this fighter is carrying out, or null — for a rival, null also
 	 * means "not yet revealed". */
 	action: CombatAction | null;
-	bonus: boolean;
-	/** Whether blue's free guard is still in hand (false once spent, or on a colour
-	 * that never had one). */
-	guarded: boolean;
 	/** The fighter directly opposite — the only one it can shoot, and the only one
 	 * that can shoot it. Null when its lane has been emptied. */
 	opponentId: string | null;
@@ -168,8 +170,6 @@ export interface FighterView {
 	/** Whether Shoot is a legal order for it right now: a charge to spend, and
 	 * somebody opposite to spend it on. */
 	canShoot: boolean;
-	/** Whether its colour and charges let it add a shot to a charge or a defend. */
-	canBonus: boolean;
 	/** Whether its order is complete — given, and firing only when it can. */
 	ordered: boolean;
 }
@@ -260,22 +260,21 @@ export class CombatController {
 	constructor(seed: FighterSeed[], resume: BattleBoardSnapshot | null = null) {
 		const slots = { error: 0, info: 0 };
 		this.fighters = seed.map((entry) => {
-			const traits = colorTraits(entry.color);
 			const slot = slots[entry.side]++;
 			return {
 				...entry,
-				traits,
+				passives: colorPassives(entry.color),
+				spent: [],
 				// Where it stands. A line longer than the board's own ground has no cell
 				// for its extra fighters — they still fight their lane, they are just not
 				// standing anywhere the board can move them to or from.
 				cell: (entry.side === 'info' ? PLAYER_CELLS : RIVAL_CELLS)[slot],
-				// Yellow's head start: it opens with a charge already banked, so it can
-				// fire on the very first turn while everyone else is still loading.
-				charges: traits.headStart ? 1 : 0,
+				// Everybody opens empty. Yellow's free charge is a charge like any other:
+				// it has to be given on a turn spent doing something else, so the fighter
+				// that wants it early buys it by covering on turn one.
+				charges: 0,
 				down: false,
-				action: null,
-				bonus: false,
-				guardSpent: false
+				action: null
 			};
 		});
 		if (!this.restore(resume)) {
@@ -306,9 +305,8 @@ export class CombatController {
 				spawnId: fighter.spawnId,
 				charges: fighter.charges,
 				down: fighter.down,
-				guardSpent: fighter.guardSpent,
+				spent: [...fighter.spent],
 				action: fighter.action,
-				bonus: fighter.bonus,
 				// A line longer than the board's ground leaves its extras standing nowhere.
 				cell: fighter.cell ? { q: fighter.cell.q, r: fighter.cell.r } : null
 			}))
@@ -340,9 +338,11 @@ export class CombatController {
 		for (const [fighter, entry] of pairs) {
 			fighter.charges = Math.max(0, Math.min(entry.charges, MAX_CHARGES));
 			fighter.down = entry.down;
-			fighter.guardSpent = entry.guardSpent;
+			// Only gifts this colour actually has can have been spent: a board naming
+			// one it never carried says nothing about it either way.
+			const spent = entry.spent ?? [];
+			fighter.spent = fighter.passives.filter((order) => spent.includes(order));
 			fighter.action = entry.action;
-			fighter.bonus = entry.bonus;
 			// Ground won earlier in the fight, as long as it is ground: a cell the board
 			// would refuse leaves the fighter on the one its slot opened on.
 			if (entry.cell && isBoardCell(entry.cell.q, entry.cell.r)) fighter.cell = entry.cell;
@@ -378,14 +378,12 @@ export class CombatController {
 	attachBoard(board: MugenBoard): void {
 		this.board = board;
 		for (const fighter of this.fighters) {
-			// What its colour gives it for nothing, in its own colour at its top-left
-			// corner — the same three glyphs its orders are drawn with, since a trait
-			// is exactly one of those orders had for free. Every fighter carries it,
-			// rivals included: what a rival will do is the guess, but what it *is* was
-			// never a secret, and the badge is how the board says so.
-			board.setTraits(fighter.id, traitIcons(fighter.color), fighter.color);
-			// Light the aura of anyone already holding a charge, so yellow's head start
-			// shows on the board before a single order is given.
+			// What its colour gives it for nothing, and how much of that it still has.
+			// Every fighter wears it, rivals included: what a rival will *do* is the
+			// guess, but what it is was never a secret.
+			this.showTraits(fighter);
+			// Light the aura of anyone holding a charge, so a fight picked up where it
+			// was left shows who is dangerous before a single order is given.
 			if (fighter.charges > 0) void this.raiseAura(fighter);
 		}
 	}
@@ -398,18 +396,6 @@ export class CombatController {
 		if (!fighter) return;
 		if (action === 'shoot' && !this.canShoot(fighter)) return;
 		fighter.action = action;
-		// The extra shot rides on a *non-attacking* order, so taking the shot as the
-		// order itself gives it up — nobody fires twice.
-		if (action === 'shoot') fighter.bonus = false;
-		this.emit();
-	}
-
-	/** Turn red's extra shot on or off for a player fighter that can fire one. */
-	setBonus(id: string, on: boolean): void {
-		const fighter = this.playerReady(id);
-		if (!fighter) return;
-		if (on && !this.canBonus(fighter)) return;
-		fighter.bonus = on;
 		this.emit();
 	}
 
@@ -446,14 +432,21 @@ export class CombatController {
 		for (const fighter of acting) {
 			// A charge is only ever spent on a shot that is actually fired: at the fighter
 			// opposite, and only while there is a charge left to pay for it.
-			const fire = (extra: boolean): void => {
+			const fire = (extra: boolean): boolean => {
 				const target = this.opposite(fighter);
-				if (!target || fighter.charges < 1) return;
+				if (!target || fighter.charges < 1) return false;
 				fighter.charges -= 1;
 				shots.push({ shooter: fighter, target, extra });
+				return true;
 			};
-			if (fighter.action === 'shoot') fire(false);
-			if (fighter.bonus) fire(true);
+			if (fighter.action === 'shoot') {
+				fire(false);
+			} else if (this.passiveReady(fighter, 'shoot')) {
+				// Red's free shot, fired beside whatever the turn was actually spent on.
+				// It is only the *turn* that comes free — the charge is paid as ever — so
+				// a fighter with nothing banked keeps the gift for a turn it can fire.
+				if (fire(true)) this.spend(fighter, 'shoot');
+			}
 		}
 		// The bullets land in the order the fighters stand in — top→bottom down each
 		// side's line, red before blue. Nothing about a fighter makes its shot arrive
@@ -480,14 +473,21 @@ export class CombatController {
 		}
 
 		// Charging pays out last, and only for those still standing: a fighter shot
-		// while loading never gets to bank it.
+		// while loading never gets to bank it. Yellow's free charge pays out here too,
+		// and being last is what lets a fighter fire and re-load in the one turn.
 		for (const fighter of acting) {
-			if (fighter.action !== 'charge' || fighter.down) continue;
-			if (fighter.charges >= MAX_CHARGES) {
-				this.log.push(`${fighter.name} is already full up on charges.`);
-				continue;
+			if (fighter.down) continue;
+			const full = fighter.charges >= MAX_CHARGES;
+			if (fighter.action === 'charge') {
+				if (full) this.log.push(`${fighter.name} is already full up on charges.`);
+				else fighter.charges += 1;
+			} else if (this.passiveReady(fighter, 'charge') && !full) {
+				// A fighter already full up has nowhere to put it, so the gift is not taken
+				// and waits for a turn it can be.
+				fighter.charges += 1;
+				this.spend(fighter, 'charge');
+				this.log.push(`${fighter.name} banks a free charge.`);
 			}
-			fighter.charges += 1;
 		}
 		this.syncCharges();
 
@@ -506,7 +506,7 @@ export class CombatController {
 	 */
 	private async playShot(shot: Shot, felled: Casualty[]): Promise<void> {
 		const { shooter, target, extra } = shot;
-		const from = extra ? `${shooter.name}'s extra shot` : `${shooter.name} shoots`;
+		const from = extra ? `${shooter.name}'s free shot` : `${shooter.name} shoots`;
 		this.setStatus(`${shooter.name} fires at ${target.name}.`);
 		await this.board?.shoot(shooter.id, target.id, this.shotMove(shooter));
 
@@ -518,9 +518,12 @@ export class CombatController {
 			// Brace again on the bullet, so the block is seen and not just labelled.
 			const guard = findMove(target, 'defend');
 			if (guard) void this.board?.playMove(target.id, guard);
-		} else if (target.traits.passiveGuard && !target.guardSpent) {
-			target.guardSpent = true;
-			this.log.push(`${from} at ${target.name} — turned aside by its guard.`);
+		} else if (this.passiveReady(target, 'defend')) {
+			// Blue's free guard. It is only had on a turn the fighter wasn't covering
+			// anyway (the branch above), and only spent on a shot it actually turns
+			// aside — a quiet turn costs it nothing.
+			this.spend(target, 'defend');
+			this.log.push(`${from} at ${target.name} — turned aside by its free guard.`);
 			this.board?.showCallout(target.id, 'GUARD', target.color);
 		} else {
 			target.down = true;
@@ -650,10 +653,7 @@ export class CombatController {
 		// The orders are being asked for again, so it comes off the board with them: the
 		// words never outlive the turn whose pickers are locked.
 		this.board?.clearCallouts();
-		for (const fighter of this.fighters) {
-			fighter.action = null;
-			fighter.bonus = false;
-		}
+		for (const fighter of this.fighters) fighter.action = null;
 		this.planRivals();
 		this.phase = 'planning';
 		this.setStatus(`Turn ${this.turn} — give your orders.`);
@@ -681,6 +681,10 @@ export class CombatController {
 	 * and then, but only while the one opposite could fire), and with a charge in hand
 	 * it weighs firing against covering. Against somebody who cannot shoot back this
 	 * turn, covering is worthless and it never picks it.
+	 *
+	 * Nothing here decides what its colour hands it: a free order is not chosen by
+	 * anybody, so a rival's gifts arrive off the back of the order it picked, exactly
+	 * as the player's do.
 	 */
 	private planRivals(): void {
 		for (const rival of this.rivals()) {
@@ -691,7 +695,6 @@ export class CombatController {
 				// loads if it has room and otherwise just covers, rather than spending every
 				// turn spilling charges it cannot hold.
 				rival.action = rival.charges >= MAX_CHARGES ? 'defend' : 'charge';
-				rival.bonus = false;
 				continue;
 			}
 			const threatened = target.charges > 0;
@@ -708,8 +711,6 @@ export class CombatController {
 				rival.action =
 					pickWeighted<CombatAction>(['shoot', 'defend', 'charge'], [9, 7, 4]) ?? 'shoot';
 			}
-			// Red's extra: free damage on a turn it was spending on something else.
-			rival.bonus = rival.action === 'shoot' ? false : this.canBonus(rival);
 		}
 	}
 
@@ -742,17 +743,17 @@ export class CombatController {
 			name: fighter.name,
 			side: fighter.side,
 			color: fighter.color,
-			traits: fighter.traits,
+			// What a colour grants, and what of it is gone, are never secret: they are
+			// worn at the fighter's corner all fight long, rivals included.
+			passives: [...fighter.passives],
+			spent: [...fighter.spent],
 			charges: fighter.charges,
 			maxCharges: MAX_CHARGES,
 			down: fighter.down,
 			action: secret ? null : fighter.action,
-			bonus: secret ? false : fighter.bonus,
-			guarded: fighter.traits.passiveGuard && !fighter.guardSpent,
 			opponentId: opponent?.id ?? null,
 			opponentName: opponent?.name ?? null,
 			canShoot: this.canShoot(fighter),
-			canBonus: this.canBonus(fighter),
 			ordered: this.isOrdered(fighter)
 		};
 	}
@@ -843,16 +844,30 @@ export class CombatController {
 	}
 
 	/**
-	 * Whether this fighter could add red's extra shot to its order right now: its
-	 * colour allows it, it can fire, and it *has* an order for the shot to ride on —
-	 * a non-attacking one. The extra is a second action, never a first: a fighter that
-	 * has been given nothing yet is simply shooting, so the sword under it has to read
-	 * as the order itself rather than as an extra on top of nothing.
+	 * Whether `order` is one this fighter is owed for free on the turn being played:
+	 * its colour grants it, it has not been had yet, and — the whole of what makes it
+	 * *passive* — the fighter is not spending its own turn on that very order. A gift
+	 * arrives beside what you chose, so it can never be what you chose.
+	 *
+	 * This says nothing about whether it will amount to anything; that is each gift's
+	 * own business, and only a gift that amounts to something is {@link spend}ed.
 	 */
-	private canBonus(fighter: Fighter): boolean {
-		if (!fighter.traits.doubleAction) return false;
-		if (!fighter.action || fighter.action === 'shoot') return false;
-		return this.canShoot(fighter);
+	private passiveReady(fighter: Fighter, order: PassiveOrder): boolean {
+		if (fighter.down) return false;
+		if (!fighter.passives.includes(order)) return false;
+		if (fighter.spent.includes(order)) return false;
+		return fighter.action !== order;
+	}
+
+	/**
+	 * Mark a gift as had — it is worth one use in the whole battle — and let the board
+	 * fade the glyph that stood for it, so a corner never offers what the fighter no
+	 * longer holds.
+	 */
+	private spend(fighter: Fighter, order: PassiveOrder): void {
+		if (fighter.spent.includes(order)) return;
+		fighter.spent.push(order);
+		this.showTraits(fighter);
 	}
 
 	/** Whether a fighter's order is complete: given, and only firing where it can. */
@@ -860,7 +875,6 @@ export class CombatController {
 		if (fighter.down) return true;
 		if (!fighter.action) return false;
 		if (fighter.action === 'shoot' && !this.canShoot(fighter)) return false;
-		if (fighter.bonus && this.opposite(fighter) === null) return false;
 		return true;
 	}
 
@@ -871,6 +885,19 @@ export class CombatController {
 	}
 
 	// --- Board ----------------------------------------------------------------
+
+	/** Put a fighter's gifts at its corner: the glyph of each order its colour hands
+	 * over, faded once it has been had. */
+	private showTraits(fighter: Fighter): void {
+		this.board?.setTraits(
+			fighter.id,
+			fighter.passives.map((order) => ({
+				icon: ORDER_ICONS[order],
+				spent: fighter.spent.includes(order)
+			})),
+			fighter.color
+		);
+	}
 
 	/** Light (or put out) the aura that says at a glance who is holding a charge. The
 	 * count itself is read off the pips beside each fighter's picker, not the board. */

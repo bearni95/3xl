@@ -57,12 +57,15 @@ export interface BattleFighterSnapshot {
 	charges: number;
 	/** Whether it has been taken down. */
 	down: boolean;
-	/** Whether blue's one free guard has been used up. */
-	guardSpent: boolean;
+	/**
+	 * Which of the free orders its colour granted it have been used up. Each is worth
+	 * one use in the whole battle, so this is the difference between a card that still
+	 * has its gift and one that has already had it — and it cannot be worked out again
+	 * from anything else on the board, which is why it is stored.
+	 */
+	spent: BattleOrder[];
 	/** The order it is carrying into the turn about to be played, or null. */
 	action: BattleOrder | null;
-	/** Whether red's extra shot rides on that order. */
-	bonus: boolean;
 	/** The board cell it is standing on — ground won and given up is part of the
 	 * fight's state, so a resumed board puts everyone back where they stood. */
 	cell: { q: number; r: number } | null;

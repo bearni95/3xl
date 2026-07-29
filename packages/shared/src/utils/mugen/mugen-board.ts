@@ -244,6 +244,9 @@ const ORDER_RESERVE_RATIO = 0.5;
 const TRAIT_ICON_RATIO = 0.26;
 /** Gap between a compound's two glyphs, as a fraction of one glyph's size. */
 const TRAIT_SPACING_RATIO = 0.2;
+/** How far a spent trait's glyph fades. It is not taken off the fighter — what a
+ * card *is* does not change — it simply stops reading as something still in hand. */
+const TRAIT_SPENT_ALPHA = 0.25;
 
 /** Lifetime of a strike slash overlay (ms). */
 const SLASH_MS = 420;
@@ -330,6 +333,19 @@ export interface BoardOrder {
 	disabled: boolean;
 }
 
+/**
+ * One thing a fighter's colour hands it for free, drawn as a glyph at its top-left
+ * corner. As with an order, the board is told what to draw and nothing about what it
+ * means: a picture, and whether it has been used up.
+ */
+export interface BoardTrait {
+	/** URL of the glyph (an SVG under /assets). The artwork must be white: it is
+	 * tinted, and tinting only ever darkens. */
+	icon: string;
+	/** Drawn faded — the fighter still has this colour, but no longer this gift. */
+	spent: boolean;
+}
+
 /** One drawn order button, kept so its look can be updated without rebuilding it. */
 interface OrderButton {
 	id: string;
@@ -344,6 +360,15 @@ interface OrderButton {
 interface OrderStrip {
 	container: Container;
 	buttons: OrderButton[];
+}
+
+/** The glyphs of what one fighter's colour grants it, kept so a gift being spent
+ * only repaints them rather than fetching their artwork all over again. */
+interface TraitBadge {
+	container: Container;
+	glyphs: Sprite[];
+	/** The icon URLs drawn, in order — what a fresh list is compared against. */
+	icons: string[];
 }
 
 
@@ -399,11 +424,11 @@ interface Actor {
 	orders: OrderStrip | null;
 	/**
 	 * The glyphs of what this fighter's colour grants it for free, drawn at its
-	 * top-left corner, or null when nothing has been said about it. Set once — a
-	 * colour is fixed for the whole fight — and thereafter only carried along as the
-	 * fighter walks, so the badge keeps nothing but the container it hangs from.
+	 * top-left corner, or null when nothing has been said about it. The glyphs
+	 * themselves are fixed for the fight — a colour cannot change — so it is only ever
+	 * rebuilt when the set does, and otherwise repainted as its gifts are spent.
 	 */
-	traits: Container | null;
+	traits: TraitBadge | null;
 	/** Nominal on-screen size (px) of the character at its fit scale, measured
 	 * from its base animation frames; sizes the aura that envelops it. */
 	displayWidth: number;
@@ -1056,7 +1081,7 @@ export class MugenBoard {
 		if (actor.label) actor.label.alpha = alpha;
 		// The badge is the fighter's, so it goes down with it rather than hanging in
 		// the air over the space where it stood.
-		if (actor.traits) actor.traits.alpha = alpha;
+		if (actor.traits) actor.traits.container.alpha = alpha;
 		if (fade.elapsed >= fade.total) {
 			actor.fade = null;
 			this.removeActor(actor);
@@ -1721,30 +1746,54 @@ export class MugenBoard {
 
 	/**
 	 * Say what a fighter's colour gives it for nothing, drawn as glyphs at its
-	 * top-left corner — the free shot, the charge it opened with, the guard it never
-	 * has to spend a turn on. The orders under its feet are what it may be *told* to
-	 * do; this is what it does without being told, so it is drawn plain and off the
-	 * strip: no button face, just the artwork, tinted in the fighter's own colour so a
-	 * glance at the corner says both what the fighter has and what colour it is.
+	 * top-left corner — the free shot, the free charge, the free guard. The orders
+	 * under its feet are what it may be *told* to do; this is what it does without
+	 * being told, so it is drawn plain and off the strip: no button face, just the
+	 * artwork, tinted in the fighter's own colour so a glance at the corner says both
+	 * what the fighter has and what colour it is.
 	 *
-	 * The board is handed the glyph URLs and the colour, exactly as it is handed a
-	 * strip of orders: it draws what it is given and knows nothing of what a trait
-	 * means. Set once per fighter — a colour cannot change mid-fight — and replaced
-	 * whole if it is set again. An empty list takes the badge off.
+	 * The board is handed the glyphs and whether each has been used up, exactly as it
+	 * is handed a strip of orders: it draws what it is given and knows nothing of what
+	 * a trait means. Called again as gifts are spent, so — as with the strip — the
+	 * badge is rebuilt only when the *set* changes and is otherwise just repainted: a
+	 * badge torn down and rebuilt would flicker its glyphs while their textures
+	 * reloaded, for nothing but a change of alpha. An empty list takes it off.
 	 */
-	setTraits(actorId: string, icons: string[], color: string): void {
+	setTraits(actorId: string, traits: BoardTrait[], color: string): void {
 		const actor = this.findActor(actorId);
 		if (!actor || !this.app) return;
-		this.clearTraits(actor);
-		if (icons.length === 0) return;
+		if (traits.length === 0) {
+			this.clearTraits(actor);
+			return;
+		}
 
+		const icons = traits.map((trait) => trait.icon);
+		const sameSet =
+			actor.traits?.icons.length === icons.length &&
+			actor.traits.icons.every((icon, i) => icon === icons[i]);
+		if (!sameSet) {
+			this.clearTraits(actor);
+			actor.traits = this.buildTraits(actor, icons, color);
+		}
+
+		const badge = actor.traits;
+		if (!badge) return;
+		traits.forEach((trait, i) => {
+			const glyph = badge.glyphs[i];
+			if (glyph) glyph.alpha = trait.spent ? TRAIT_SPENT_ALPHA : 1;
+		});
+		this.updateTraits(actor);
+	}
+
+	/** Build a fighter's badge: one glyph per gift, artwork loaded as it arrives. */
+	private buildTraits(actor: Actor, icons: string[], color: string): TraitBadge {
 		const container = new Container();
-		this.app.stage.addChild(container);
+		this.app!.stage.addChild(container);
 		const tint = combatColorHex(color);
 		const size = actor.displayWidth * TRAIT_ICON_RATIO;
 		const step = size * (1 + TRAIT_SPACING_RATIO);
 
-		icons.forEach((url, index) => {
+		const glyphs = icons.map((url, index) => {
 			const glyph = new Sprite(Texture.EMPTY);
 			// Anchored at its own top-left and laid out rightward from the corner, so a
 			// compound's second glyph reads left to right and neither hangs off the
@@ -1756,15 +1805,15 @@ export class MugenBoard {
 			container.addChild(glyph);
 
 			void this.loadIcon(url).then((texture) => {
-				// The badge may have been replaced (or the board torn down) while loading.
+				// The badge may have been rebuilt (or the board torn down) while loading.
 				if (!texture || glyph.destroyed) return;
 				glyph.texture = texture;
 				glyph.scale.set(size / Math.max(texture.width, texture.height));
 			});
+			return glyph;
 		});
 
-		actor.traits = container;
-		this.updateTraits(actor);
+		return { container, glyphs, icons };
 	}
 
 	/**
@@ -1776,11 +1825,11 @@ export class MugenBoard {
 	private updateTraits(actor: Actor): void {
 		const badge = actor.traits;
 		if (!badge) return;
-		badge.x = actor.x - actor.displayWidth / 2;
-		badge.y = actor.y - actor.displayHeight;
+		badge.container.x = actor.x - actor.displayWidth / 2;
+		badge.container.y = actor.y - actor.displayHeight;
 		// Above the board and its own fighter, below the callouts and the slashes: what
 		// a fighter is must never cover what has just happened to it.
-		badge.zIndex = actor.y + 4000;
+		badge.container.zIndex = actor.y + 4000;
 	}
 
 	/** Take a fighter's badge off the board. */
@@ -1788,8 +1837,8 @@ export class MugenBoard {
 		const badge = actor.traits;
 		if (!badge) return;
 		actor.traits = null;
-		badge.parent?.removeChild(badge);
-		badge.destroy({ children: true });
+		badge.container.parent?.removeChild(badge.container);
+		badge.container.destroy({ children: true });
 	}
 
 	/** Load (and cache) one button glyph. Resolves to null if it cannot be had, so a

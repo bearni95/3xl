@@ -115,15 +115,24 @@ export class BattleAdapter extends AdapterClass {
 					}
 				: null;
 
+		// Which gifts have been had. Boards written before a colour's gift was one of
+		// the three orders stored blue's guard on its own; it is read as the free defend
+		// it became, so a battle left open across the change comes back with the fighter
+		// still owing what it had already used.
+		const spent = Array.isArray(record.spent)
+			? (record.spent.filter((order) => ORDERS.includes(order as BattleOrder)) as BattleOrder[])
+			: record.guardSpent === true
+				? (['defend'] as BattleOrder[])
+				: [];
+
 		return {
 			side: side as BattleSide,
 			slot,
 			spawnId,
 			charges: Math.max(0, Math.trunc(Number(record.charges ?? 0)) || 0),
 			down: record.down === true,
-			guardSpent: record.guardSpent === true,
+			spent,
 			action,
-			bonus: record.bonus === true,
 			cell: parsedCell
 		};
 	}
