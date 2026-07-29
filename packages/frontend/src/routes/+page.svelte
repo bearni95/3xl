@@ -37,7 +37,7 @@
 	import { SPAWN_COLOR_CSS } from '$utils/spawn/color';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
 	import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
-	import { showPosterUrl } from '$utils/geo/municipality-show';
+	import { showLogoUrl, showPosterUrl } from '$utils/geo/municipality-show';
 	import { showIconName } from '$utils/show/show-icon';
 	import { iconMarkup } from '$components/core/icon-markup';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
@@ -163,6 +163,15 @@
 					entry.show.id,
 					{ id: entry.show.id, name: entry.show.name, posterUrl: showPosterUrl(entry) }
 				])
+			);
+			// And its logo, where the author enabled one — the mark the team strip heads
+			// each of its characters with. Kept apart from the show record above, which is
+			// the map's and carries only what a pin needs.
+			showLogoById = new Map(
+				(savedShowsResult.value.shows ?? []).flatMap((entry) => {
+					const logo = showLogoUrl(entry);
+					return logo ? [[entry.show.id, logo] as const] : [];
+				})
 			);
 		}
 		ready = true;
@@ -480,6 +489,11 @@
 	// same source the baked assignment posters come from, so an overridden town's pin
 	// draws exactly like a seeded one. Empty until the fetch lands.
 	let savedShowById = new Map<number, RegionShow>();
+
+	// Show id → the logo the author enabled for it in the admin, for the shows that
+	// have one. Only the team strip reads it, and a show without one simply goes
+	// unheaded there.
+	let showLogoById = new Map<number, string>();
 
 	// character id → the shows it belongs to, reversed from the show → characters
 	// assignment the claim flow already loads.
@@ -814,17 +828,21 @@
 	//
 	// The player's team as the strip draws it — not a card: who they are, the art that
 	// stands them up, the colour they bend and the show they come from, whose glyph goes
-	// on the floor they stand on. The show is the character's own first show, as
-	// `teamShowId` reads it for a town's pin, so a character carries the same badge here
-	// as the map gives the show. Threaded through the assignment so it re-derives as
-	// that lands.
-	$: playerTeamLineup = ((shows: Map<string, number[]>) =>
-		$teamSpawns.map((spawn) => ({
-			label: charactersById.get(spawn.characterId)?.label ?? spawn.characterId,
-			basePath: charactersById.get(spawn.characterId)?.basePath ?? null,
-			color: spawn.color,
-			showId: shows.get(spawn.characterId)?.[0] ?? null
-		})))(showsByCharacter);
+	// on the floor they stand on and whose logo heads them. The show is the character's
+	// own first show, as `teamShowId` reads it for a town's pin, so a character carries
+	// the same badge here as the map gives the show. Both maps are threaded in so the
+	// statement re-derives as the assignment and the saved shows land.
+	$: playerTeamLineup = ((shows: Map<string, number[]>, logos: Map<number, string>) =>
+		$teamSpawns.map((spawn) => {
+			const showId = shows.get(spawn.characterId)?.[0] ?? null;
+			return {
+				label: charactersById.get(spawn.characterId)?.label ?? spawn.characterId,
+				basePath: charactersById.get(spawn.characterId)?.basePath ?? null,
+				color: spawn.color,
+				showId,
+				logoUrl: showId == null ? null : (logos.get(showId) ?? null)
+			};
+		}))(showsByCharacter, showLogoById);
 
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
 	// plus everything the fight has to be reported against — the town's id and the

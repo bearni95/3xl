@@ -18,6 +18,9 @@
 		basePath: string | null;
 		color: SpawnColor;
 		showId: number | null;
+		/** The show's logo, as the admin's /shows screen enabled it, or null for a show
+		 * whose author picked none — that card simply goes unheaded. */
+		logoUrl: string | null;
 	}[] = [];
 	// Mirror the characters — true (the default) is the player's own side.
 	export let flipped: boolean = true;
@@ -76,6 +79,18 @@
 				its own edge in the character's colour now that the colour no longer fills
 				it. -->
 			<div class={classNames('relative aspect-[3/4] w-full border', colorBorders[member.color])}>
+				{#if member.logoUrl}
+					<!-- The show's own logo, the one the admin's /shows screen enabled, hung on
+						the box's top edge across its full width. Drawn before the character so a
+						tall one passes in front of it rather than being cut off by it: the logo
+						says what show this is, the character is what the card is of. -->
+					<img
+						src={member.logoUrl}
+						alt=""
+						class="pointer-events-none absolute inset-x-0 top-0 w-full object-contain"
+					/>
+				{/if}
+
 				<!-- The square at the foot of it is what the character is drawn against, and
 					it stays 1:1 whatever the box around it is: the size a character comes out
 					at is a share of this square, so a taller box would otherwise make every

@@ -122,6 +122,19 @@ export function showPosterUrl(entry: ShowEntry): string | null {
 }
 
 /**
+ * A saved show's logo URL: the first logo the author enabled in the admin `/shows`
+ * screen, or null when they enabled none. Unlike the poster there is no fallback to
+ * TMDB's default — a show has a logo because someone chose one for it, and the
+ * surfaces that draw a logo would rather draw none than one nobody picked.
+ */
+export function showLogoUrl(entry: ShowEntry): string | null {
+	const filePath = entry.enabledImages?.logo?.[0];
+	if (!filePath) return null;
+	const image = entry.images.logos.find((candidate) => candidate.filePath === filePath);
+	return image?.thumbnailUrl ?? null;
+}
+
+/**
  * A saved show's poster URL for a given `seed` key. When the author enabled more
  * than one poster in the admin `/shows` screen, one is chosen from the enabled set
  * by hashing the seed — so the same show renders a *different* but stable poster
