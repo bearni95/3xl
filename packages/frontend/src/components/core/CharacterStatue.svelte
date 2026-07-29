@@ -10,13 +10,17 @@
 	} from '$components/core/spawn-colors';
 	import type { SpawnColor } from '$types/character-spawn.type';
 
-	// One character, as this game draws one: standing on a tilted floor in their own
-	// colour, with their show's mark painted on it and, where there is room for it,
-	// their name and the place they were claimed on a panel underneath.
+	// One character, as this game draws one: a statue of them — standing on a tilted
+	// floor in their own colour, with their show's mark painted on it and, where there
+	// is room for it, their name and the place they were claimed on a panel underneath.
+	//
+	// It stands on its own: hand it a character from the seed or from Supabase — the
+	// frames folder, a colour, and the two captions — and it assembles the whole
+	// picture itself, taking nothing from the surface it is put on but its width.
 	//
 	// This is the only place that picture is built. The sidebar's strip rows three of
 	// them; a map pin carries three uncaptioned at pin size — the difference between
-	// those surfaces is the width they hand this card and whether they ask for the
+	// those surfaces is the width they hand this statue and whether they ask for the
 	// caption, never a second drawing of the same thing.
 
 	export let label: string = '';
