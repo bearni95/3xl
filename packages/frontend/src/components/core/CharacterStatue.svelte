@@ -68,14 +68,18 @@
 	const GROUND_DEPTH = 1 / 3;
 	const GROUND = 'origin-bottom [transform:perspective(74.536cqw)_rotateX(48.19deg)]';
 
-	// Its four corners are cut off — an octagon rather than a square, the eighth of each
-	// side nearest a corner taken away. The cut is made in the tile's own square before the
-	// tilt, a transform mapping whatever shape is left, so the four diagonals are laid down
-	// with the floor and read as bevelled edges of it rather than as notches in a picture.
-	// It is the fill that is cut and not an outline: the tile's border is its own colour
-	// (see spawn-colors), so nothing is drawn along the edges for the cut to leave dangling.
+	// Its four corners are cut off — an octagon rather than a square, a tenth of each side
+	// nearest a corner taken away. A tenth because the panel below is four fifths of the
+	// card centred under it: taking a tenth off each end leaves the flat run along the
+	// floor's front edge exactly the panel's own width, so the tile ends where the reading
+	// begins and the two line up down both sides. The cut is made in the tile's own square
+	// before the tilt, a transform mapping whatever shape is left, so the four diagonals are
+	// laid down with the floor and read as bevelled edges of it rather than as notches in a
+	// picture. It is the fill that is cut and not an outline: the tile's border is its own
+	// colour (see spawn-colors), so nothing is drawn along the edges for the cut to leave
+	// dangling.
 	const GROUND_CUT =
-		'[clip-path:polygon(12.5%_0,87.5%_0,100%_12.5%,100%_87.5%,87.5%_100%,12.5%_100%,0_87.5%,0_12.5%)]';
+		'[clip-path:polygon(10%_0,90%_0,100%_10%,100%_90%,90%_100%,10%_100%,0_90%,0_10%)]';
 
 	// The character stands halfway up that plane — on the middle of the floor, with as
 	// much of it behind them as in front.
@@ -185,7 +189,10 @@
 	<!-- The three rows sit on four fifths of the floor's front edge, centred under it. That
 		edge is the axis the tile turns about, so it is the square's own bottom line and the
 		full width of the card; holding the panel just inside it keeps the picture the widest
-		thing on the card and the reading narrower than the thing it is about. -->
+		thing on the card and the reading narrower than the thing it is about. It is the same
+		four fifths the tile's cut corners leave flat along that edge (see GROUND_CUT), so the
+		panel's sides continue the tile's — change one of the two and the other has to
+		follow. -->
 	<div
 		class={classNames(
 			'w-4/5 min-w-0 self-center border',
