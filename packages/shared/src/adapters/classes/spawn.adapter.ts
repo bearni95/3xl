@@ -1,6 +1,6 @@
 import { AdapterClass } from './adapter.class';
 import { SpawnColor, type CharacterSpawn, type CharacterSpawnRow } from '../../types/character-spawn.type';
-import { isSpawnColor } from '../../utils/spawn/color';
+import { boxForSpawnColor, isSpawnBox, isSpawnColor } from '../../utils/spawn/color';
 
 /**
  * Transforms `character_spawns` rows between Supabase's snake_case shape and the
@@ -14,14 +14,19 @@ export class SpawnAdapter extends AdapterClass {
 
 	/** Transform a raw `character_spawns` row into the internal model. */
 	fromRow(row: CharacterSpawnRow): CharacterSpawn {
+		// Legacy rows predate colours; fall back to a stable primary.
+		const color = isSpawnColor(row.color) ? row.color : SpawnColor.Red;
 		return {
 			id: row.id,
 			userId: row.user_id,
 			characterId: row.character_id,
 			showId: row.show_id === null ? null : Number(row.show_id),
 			locationId: row.location_id ?? '',
-			// Legacy rows predate colours; fall back to a stable primary.
-			color: isSpawnColor(row.color) ? row.color : SpawnColor.Red,
+			color,
+			// Rows claimed before the box was recorded are read back off their colour,
+			// which is the same rule the DB backfilled them by: the two triples do not
+			// overlap, so a card's colour always names the stock it must have come on.
+			box: isSpawnBox(row.box) ? row.box : boxForSpawnColor(color),
 			teamSlot: this.teamSlot(row.team_slot),
 			createdAt: row.created_at
 		};

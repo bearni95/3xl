@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { spawnAdapter } from '$adapters/classes/spawn.adapter';
-import { SpawnColor, type CharacterSpawnRow } from '$types/character-spawn.type';
+import { SpawnBox, SpawnColor, type CharacterSpawnRow } from '$types/character-spawn.type';
 
 function row(overrides: Partial<CharacterSpawnRow> = {}): CharacterSpawnRow {
 	return {
@@ -10,6 +10,7 @@ function row(overrides: Partial<CharacterSpawnRow> = {}): CharacterSpawnRow {
 		show_id: '813',
 		location_id: 'ES_08028',
 		color: 'blue',
+		box: 'black',
 		created_at: '2026-07-28T00:00:00.000Z',
 		...overrides
 	};
@@ -25,6 +26,17 @@ describe('spawnAdapter.fromRow', () => {
 
 	it('falls back to a stable primary for a legacy row with no colour', () => {
 		expect(spawnAdapter.fromRow(row({ color: null })).color).toBe(SpawnColor.Red);
+	});
+
+	it('keeps the box the card was stamped with', () => {
+		expect(spawnAdapter.fromRow(row()).box).toBe(SpawnBox.Black);
+		expect(spawnAdapter.fromRow(row({ color: 'green', box: 'white' })).box).toBe(SpawnBox.White);
+	});
+
+	it('reads a legacy row without a box off its colour', () => {
+		// The two triples do not overlap, so the colour names the stock on its own.
+		expect(spawnAdapter.fromRow(row({ box: null })).box).toBe(SpawnBox.Black);
+		expect(spawnAdapter.fromRow(row({ color: 'purple', box: undefined })).box).toBe(SpawnBox.White);
 	});
 
 	it('reads the team slot, including the lead slot 0', () => {

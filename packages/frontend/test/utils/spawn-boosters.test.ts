@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { groupSpawnsIntoBoosters } from '$utils/spawn/boosters';
-import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
+import { SpawnBox, SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 
 // Minimal spawn factory — only the fields the grouping keys on matter here.
 function spawn(overrides: Partial<CharacterSpawn> & { id: string }): CharacterSpawn {
@@ -10,6 +10,7 @@ function spawn(overrides: Partial<CharacterSpawn> & { id: string }): CharacterSp
 		showId: 1,
 		locationId: 'ES_08028',
 		color: SpawnColor.Red,
+		box: SpawnBox.Black,
 		teamSlot: null,
 		createdAt: '2026-07-27T10:00:00.000Z',
 		...overrides

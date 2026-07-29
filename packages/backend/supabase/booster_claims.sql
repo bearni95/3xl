@@ -98,9 +98,22 @@ $$;
 
 -- Open a booster pack for the caller, enforced entirely server-side (see header).
 -- Rolls 5 cards from the show's assigned, template-backed roster — weighted by
--- rarity (each higher tier 2x rarer) plus a weighted colour (primaries 3/12,
--- secondaries 1/12), matching the @3xl/shared spawn utils — and returns the
--- inserted spawns. A per-user advisory lock serialises
+-- rarity (each higher tier 2x rarer), each card taking one of the three colours
+-- its box holds — and returns the inserted spawns.
+--
+-- Which box that is, this decides for itself, from the same `festivities` rows the
+-- window check above reads: a town celebrating TODAY deals white boxes, which hold
+-- the secondaries (purple/green/orange); a town whose festa is past or still to
+-- come inside the window deals black ones, which hold the primaries
+-- (red/blue/yellow). It is the same white/black the Booster tab prints its tiles
+-- on and the map draws its circles in, so what a player is shown is what they get
+-- — but the browser is not asked, it is read here, and stamped on every card as
+-- `character_spawns.box`. Inside a box the three are equally likely: the rare
+-- thing is the white box, there being far fewer towns de festa on any one day than
+-- there are across the eight-day window. Keep the triples in step with
+-- BOX_SPAWN_COLORS in @3xl/shared utils/spawn/color.ts.
+--
+-- A per-user advisory lock serialises
 -- concurrent opens so the daily limit can't be raced. security definer: it
 -- inserts despite character_spawns having no client insert policy.
 create or replace function public.claim_booster(p_show_id bigint, p_location_id text)
@@ -126,6 +139,8 @@ declare
 	v_roll numeric;
 	v_pick text;
 	v_color text;
+	v_box text;
+	v_colors text[];
 	v_row public.character_spawns%rowtype;
 	i int;
 	j int;
@@ -147,6 +162,19 @@ begin
 			and f.date between v_today - v_days_behind and v_today + v_days_ahead
 	) then
 		raise exception 'This town is not celebrating a festa major these days.';
+	end if;
+
+	-- Which stock this town's box is printed on, and so which three colours it can
+	-- deal: white if its festa is today, black if it is past or still coming.
+	if exists (
+		select 1 from public.festivities f
+		where f.location_id = p_location_id and f.date = v_today
+	) then
+		v_box := 'white';
+		v_colors := array['purple', 'green', 'orange'];
+	else
+		v_box := 'black';
+		v_colors := array['red', 'blue', 'yellow'];
 	end if;
 
 	-- Daily cap = player level (>=1, capped at 20) plus any admin-granted extra
@@ -202,19 +230,11 @@ begin
 			end if;
 		end loop;
 
-		-- Weighted colour: primaries 3/12, secondaries 1/12.
-		v_roll := random() * 12;
-		v_color := case
-			when v_roll < 3 then 'red'
-			when v_roll < 6 then 'yellow'
-			when v_roll < 9 then 'blue'
-			when v_roll < 10 then 'orange'
-			when v_roll < 11 then 'green'
-			else 'purple'
-		end;
+		-- Colour: one of the box's three, each equally likely.
+		v_color := v_colors[1 + floor(random() * array_length(v_colors, 1))];
 
-		insert into public.character_spawns (user_id, character_id, show_id, location_id, color)
-			values (v_uid, v_pick, p_show_id, p_location_id, v_color)
+		insert into public.character_spawns (user_id, character_id, show_id, location_id, color, box)
+			values (v_uid, v_pick, p_show_id, p_location_id, v_color, v_box)
 			returning * into v_row;
 		return next v_row;
 	end loop;

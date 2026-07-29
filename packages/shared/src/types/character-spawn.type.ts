@@ -1,7 +1,8 @@
 /**
- * The colour rolled for a spawn. The three primaries (red/yellow/blue) are common;
- * the three secondaries (orange/green/purple) are each three times as rare — see
- * `randomSpawnColor` in `@3xl/shared/utils/spawn/color`.
+ * The colour rolled for a spawn. Which three a card can be is decided by the box
+ * it came out of, not by the roll: a white box holds the secondaries
+ * (purple/green/orange) and a black one the primaries (red/blue/yellow) — see
+ * {@link SpawnBox} and `BOX_SPAWN_COLORS` in `@3xl/shared/utils/spawn/color`.
  */
 export enum SpawnColor {
 	Red = 'red',
@@ -10,6 +11,23 @@ export enum SpawnColor {
 	Orange = 'orange',
 	Green = 'green',
 	Purple = 'purple'
+}
+
+/**
+ * The stock a booster box was printed on, which is the whole of what decides the
+ * colours inside it. A town celebrating its festa major *today* hands out white
+ * boxes; a town whose day is past or still to come within the booster window hands
+ * out black ones — the same two colours the map's circles and the Booster tab's
+ * tiles are drawn in, so a white tile is a white box.
+ *
+ * The server decides it, not the browser: `claim_booster` reads the town's
+ * festivity dates itself and stamps the box on every card it rolls.
+ */
+export enum SpawnBox {
+	/** Printed on white card — a town de festa today. Gives purple/green/orange. */
+	White = 'white',
+	/** Printed on black card — a festa past or still coming. Gives red/blue/yellow. */
+	Black = 'black'
 }
 
 /**
@@ -36,9 +54,16 @@ export interface CharacterSpawn {
 	 * a spawn cannot be claimed without a location.
 	 */
 	locationId: string;
-	/** The colour rolled for this spawn (weighted — see {@link SpawnColor}). It is
-	 * the whole of what one claimed card brings to a fight that another doesn't. */
+	/** The colour rolled for this spawn, out of the three its box holds (see
+	 * {@link SpawnColor}). It is the whole of what one claimed card brings to a
+	 * fight that another doesn't. */
 	color: SpawnColor;
+	/**
+	 * The booster box this card came out of — white for a town de festa on the day,
+	 * black for one whose festa is past or still coming. Stamped by the server at
+	 * roll time, and the reason the card is one of the three colours it is.
+	 */
+	box: SpawnBox;
 	/**
 	 * The lane this card fields in on the player's team, or `null` when it is not
 	 * on it. Slot 0 is the lead — the card whose colour every other slot has to
@@ -82,6 +107,8 @@ export interface CharacterSpawnRow {
 	show_id: string | number | null;
 	location_id: string | null;
 	color: string | null;
+	/** Box stock ('white' | 'black'), or null/absent on rows that predate it. */
+	box?: string | null;
 	/** Team lane (0..2), or null/absent when the card is not on the team. */
 	team_slot?: number | string | null;
 	created_at: string;

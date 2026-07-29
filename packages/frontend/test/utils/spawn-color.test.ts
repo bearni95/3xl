@@ -1,6 +1,14 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { SpawnColor } from '$types/character-spawn.type';
-import { randomSpawnColor, isSpawnColor, SPAWN_COLOR_WEIGHTS } from '$utils/spawn/color';
+import { SpawnBox, SpawnColor } from '$types/character-spawn.type';
+import {
+	randomSpawnColor,
+	randomSpawnColorForBox,
+	boxForSpawnColor,
+	isSpawnColor,
+	isSpawnBox,
+	BOX_SPAWN_COLORS,
+	SPAWN_COLOR_WEIGHTS
+} from '$utils/spawn/color';
 
 /** Stub Math.random to a fixed value so the weighted pick is deterministic. */
 function stubRandom(value: number): void {
@@ -54,6 +62,40 @@ describe('spawn colour', () => {
 		expect(counts.get(SpawnColor.Red)).toBe(300);
 		expect(counts.get(SpawnColor.Orange)).toBe(100);
 		expect(counts.get(SpawnColor.Red)! / counts.get(SpawnColor.Orange)!).toBe(3);
+	});
+
+	it('splits the six colours between the two boxes, neither sharing one', () => {
+		expect([...BOX_SPAWN_COLORS[SpawnBox.White]].sort()).toEqual(['green', 'orange', 'purple']);
+		expect([...BOX_SPAWN_COLORS[SpawnBox.Black]].sort()).toEqual(['blue', 'red', 'yellow']);
+		const all = [...BOX_SPAWN_COLORS[SpawnBox.White], ...BOX_SPAWN_COLORS[SpawnBox.Black]];
+		expect(new Set(all).size).toBe(Object.values(SpawnColor).length);
+	});
+
+	it('rolls only its own box\'s three, each equally likely', () => {
+		for (const box of [SpawnBox.White, SpawnBox.Black]) {
+			const pool = BOX_SPAWN_COLORS[box];
+			pool.forEach((color, index) => {
+				// Land the roll squarely inside each third of [0, 1).
+				stubRandom((index + 0.5) / pool.length);
+				expect(randomSpawnColorForBox(box)).toBe(color);
+			});
+		}
+	});
+
+	it('names the box a colour can only have come out of', () => {
+		expect(boxForSpawnColor(SpawnColor.Purple)).toBe(SpawnBox.White);
+		expect(boxForSpawnColor(SpawnColor.Green)).toBe(SpawnBox.White);
+		expect(boxForSpawnColor(SpawnColor.Orange)).toBe(SpawnBox.White);
+		expect(boxForSpawnColor(SpawnColor.Red)).toBe(SpawnBox.Black);
+		expect(boxForSpawnColor(SpawnColor.Blue)).toBe(SpawnBox.Black);
+		expect(boxForSpawnColor(SpawnColor.Yellow)).toBe(SpawnBox.Black);
+	});
+
+	it('isSpawnBox recognises only the two stocks', () => {
+		expect(isSpawnBox('white')).toBe(true);
+		expect(isSpawnBox('black')).toBe(true);
+		expect(isSpawnBox('grey')).toBe(false);
+		expect(isSpawnBox(null)).toBe(false);
 	});
 
 	it('isSpawnColor recognises only known values', () => {

@@ -1,4 +1,4 @@
-import { SpawnColor } from '../../types/character-spawn.type';
+import { SpawnBox, SpawnColor } from '../../types/character-spawn.type';
 
 /**
  * The weighted spawn-colour pool. The three primaries (red/yellow/blue) each
@@ -46,7 +46,44 @@ export const SPAWN_COLOR_CSS: Record<SpawnColor, string> = {
 	[SpawnColor.Purple]: 'var(--color-purple-500, oklch(62.7% 0.265 303.9))'
 };
 
-/** Pick a spawn colour at random, respecting {@link SPAWN_COLOR_WEIGHTS}. */
+/**
+ * The three colours each booster box holds. A white box — a town de festa on the
+ * day — deals only the secondaries; a black one — a festa past or still coming —
+ * only the primaries. The split is what makes the two stocks worth telling apart:
+ * a colour is not rarer than another inside a box, the *box* is the rare thing,
+ * and there are far fewer towns celebrating today than there are in the window.
+ *
+ * The `claim_booster` RPC holds the same two triples (see
+ * packages/backend/supabase/booster_claims.sql) and is what actually rolls a
+ * claimed card; keep the two in step.
+ */
+export const BOX_SPAWN_COLORS: Record<SpawnBox, readonly SpawnColor[]> = {
+	[SpawnBox.White]: [SpawnColor.Purple, SpawnColor.Green, SpawnColor.Orange],
+	[SpawnBox.Black]: [SpawnColor.Red, SpawnColor.Blue, SpawnColor.Yellow]
+};
+
+/** Which box deals `color` — the inverse of {@link BOX_SPAWN_COLORS}. */
+export function boxForSpawnColor(color: SpawnColor): SpawnBox {
+	return BOX_SPAWN_COLORS[SpawnBox.White].includes(color) ? SpawnBox.White : SpawnBox.Black;
+}
+
+/** Pick one of `box`'s three colours at random, each equally likely. */
+export function randomSpawnColorForBox(box: SpawnBox): SpawnColor {
+	const pool = BOX_SPAWN_COLORS[box];
+	return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/** Whether `value` is one of the known {@link SpawnBox} values. */
+export function isSpawnBox(value: unknown): value is SpawnBox {
+	return typeof value === 'string' && (Object.values(SpawnBox) as string[]).includes(value);
+}
+
+/**
+ * Pick a spawn colour at random, respecting {@link SPAWN_COLOR_WEIGHTS}. This is
+ * the open pool — used where a colour is invented rather than claimed (avatars, a
+ * town's garrison). A player's own cards never come from here: those are rolled by
+ * `claim_booster` out of their box's three (see {@link randomSpawnColorForBox}).
+ */
 export function randomSpawnColor(): SpawnColor {
 	const total = SPAWN_COLOR_WEIGHTS.reduce((sum, [, weight]) => sum + weight, 0);
 	let roll = Math.random() * total;

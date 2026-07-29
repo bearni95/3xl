@@ -96,10 +96,17 @@ export function ensureTables(): Promise<void> {
 						show_id bigint references show_templates (id) on delete set null,
 						location_id text,
 						color text,
+						box text,
 						created_at timestamptz not null default now()
 					);
 				alter table character_spawns add column if not exists location_id text;
 				alter table character_spawns add column if not exists color text;
+				-- The stock the booster box was printed on: 'white' for a town de festa
+				-- on the day, 'black' for one whose festa is past or still coming inside
+				-- the window. Stamped by claim_booster, which reads it off festivities
+				-- rather than taking the browser's word for it, and it is what says which
+				-- three colours the card could have been.
+				alter table character_spawns add column if not exists box text;
 				-- Backfill colours on rows that predate the column, weighting the three
 				-- primaries 3x the three secondaries (matches randomSpawnColor).
 				update character_spawns cs set color = pick.color
@@ -115,6 +122,16 @@ export function ensureTables(): Promise<void> {
 					from (select id, random() as r from character_spawns where color is null) seeded
 				) pick
 				where cs.id = pick.id;
+				-- Stamp the box on cards claimed before it was recorded. Their colour is
+				-- the only evidence of which stock they came on, and it is enough: the two
+				-- triples do not overlap, so a secondary can only have come out of a white
+				-- box and a primary out of a black one. Anything unrecognised is left null.
+				update character_spawns
+					set box = case when color in ('purple', 'green', 'orange') then 'white' else 'black' end
+					where box is null and color in ('red', 'yellow', 'blue', 'orange', 'green', 'purple');
+				alter table character_spawns drop constraint if exists character_spawns_box_values;
+				alter table character_spawns add constraint character_spawns_box_values
+					check (box is null or box in ('white', 'black'));
 				-- A claimed card once carried a rolled 1..9 gameplay stat as well. Nothing
 				-- reads it any more — a fighter's colour is the whole of what it brings to
 				-- a fight — so drop the column and the range check that guarded it.
@@ -391,8 +408,21 @@ export function ensureTables(): Promise<void> {
 					--   * the player may open at most (their level, capped at 20) packs per
 					--     day, the day resetting at midnight Europe/Madrid.
 					-- It then rolls 5 cards from the show's assigned, template-backed roster
-					-- (weighted by rarity and colour exactly as the frontend used to)
-					-- and returns the inserted spawns. A per-user advisory lock serialises
+					-- (weighted by rarity), each taking one of the three colours its box
+					-- holds, and returns the inserted spawns.
+					--
+					-- Which box that is, it decides itself from the same festivities rows the
+					-- window check reads: a town celebrating TODAY deals white boxes, holding
+					-- the secondaries (purple/green/orange); a town whose festa is past or
+					-- still to come inside the window deals black ones, holding the primaries
+					-- (red/blue/yellow). The same white/black the Booster tab prints its tiles
+					-- on and the map draws its circles in — but read here, not taken from the
+					-- browser, and stamped on every card as character_spawns.box. Inside a box
+					-- the three are equally likely: the rare thing is the white box, there
+					-- being far fewer towns de festa on a given day than across the window.
+					-- Keep the triples in step with BOX_SPAWN_COLORS in
+					-- @3xl/shared utils/spawn/color.ts.
+					-- A per-user advisory lock serialises
 					-- concurrent opens so the limit can't be raced. security definer: it
 					-- inserts despite character_spawns now having no client insert policy.
 					create or replace function claim_booster(p_show_id bigint, p_location_id text)
@@ -418,6 +448,8 @@ export function ensureTables(): Promise<void> {
 							v_roll numeric;
 							v_pick text;
 							v_color text;
+							v_box text;
+							v_colors text[];
 							v_row character_spawns%rowtype;
 							i int;
 							j int;
@@ -437,6 +469,19 @@ export function ensureTables(): Promise<void> {
 											and f.date between v_today - v_days_behind and v_today + v_days_ahead
 							) then
 									raise exception 'This town is not celebrating a festa major these days.';
+							end if;
+							-- Which stock this town's box is printed on, and so which three
+							-- colours it can deal: white if its festa is today, black if it is
+							-- past or still coming.
+							if exists (
+									select 1 from festivities f
+									where f.location_id = p_location_id and f.date = v_today
+							) then
+									v_box := 'white';
+									v_colors := array['purple', 'green', 'orange'];
+							else
+									v_box := 'black';
+									v_colors := array['red', 'blue', 'yellow'];
 							end if;
 							-- Daily cap = player level (>=1, capped at 20) plus any admin-granted
 							-- extra claims for today, reset at Catalan midnight.
@@ -486,18 +531,10 @@ export function ensureTables(): Promise<void> {
 													exit;
 											end if;
 									end loop;
-									-- Weighted colour: primaries 3/12, secondaries 1/12 (randomSpawnColor).
-									v_roll := random() * 12;
-									v_color := case
-											when v_roll < 3 then 'red'
-											when v_roll < 6 then 'yellow'
-											when v_roll < 9 then 'blue'
-											when v_roll < 10 then 'orange'
-											when v_roll < 11 then 'green'
-											else 'purple'
-									end;
-									insert into character_spawns (user_id, character_id, show_id, location_id, color)
-											values (v_uid, v_pick, p_show_id, p_location_id, v_color)
+									-- Colour: one of the box's three, each equally likely.
+									v_color := v_colors[1 + floor(random() * array_length(v_colors, 1))];
+									insert into character_spawns (user_id, character_id, show_id, location_id, color, box)
+											values (v_uid, v_pick, p_show_id, p_location_id, v_color, v_box)
 											returning * into v_row;
 									return next v_row;
 							end loop;

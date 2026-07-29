@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { writable } from 'svelte/store';
 import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
+import { boxForSpawnColor } from '$utils/spawn/color';
 
 /**
  * The team's two moves, and what taking the lead off does to the cards behind it.
@@ -35,6 +36,7 @@ function card(id: string, color: SpawnColor, teamSlot: number | null): Character
 		showId: null,
 		locationId: 'ES_08028',
 		color,
+		box: boxForSpawnColor(color),
 		teamSlot,
 		createdAt: '2026-01-01T00:00:00.000Z'
 	} as CharacterSpawn;

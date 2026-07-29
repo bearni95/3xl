@@ -19,14 +19,21 @@ create table if not exists public.character_spawns (
 	-- Municipality the spawn was claimed in, as a geojson feature id (e.g. ES_08028)
 	-- resolved from the player's browser location. The frontend requires it on claim.
 	location_id text,
-	-- Weighted spawn colour (red/yellow/blue common; orange/green/purple 3x rarer).
+	-- Spawn colour, one of the three its box holds (see `box` below).
 	color text,
+	-- The stock the booster box was printed on: 'white' for a town de festa on the
+	-- day, 'black' for one whose festa is past or still coming inside the booster
+	-- window. Stamped by claim_booster, which decides it from `festivities` rather
+	-- than taking the browser's word for it, and it is what says which three
+	-- colours the card could have been.
+	box text,
 	created_at timestamptz not null default now()
 );
 
 -- Backfill the columns on tables provisioned before they existed.
 alter table public.character_spawns add column if not exists location_id text;
 alter table public.character_spawns add column if not exists color text;
+alter table public.character_spawns add column if not exists box text;
 
 -- A claimed card once carried a rolled 1..9 gameplay stat as well. Nothing reads it
 -- any more — a fighter's colour is the whole of what it brings to a fight — so the
@@ -64,6 +71,19 @@ from (
 	from (select id, random() as r from public.character_spawns where color is null) seeded
 ) pick
 where cs.id = pick.id;
+
+-- Stamp the box on cards claimed before it was recorded. Their colour is the only
+-- evidence there is of which stock they came on, and it is enough: the two triples
+-- do not overlap, so a secondary can only ever have come out of a white box and a
+-- primary out of a black one. Anything unrecognised is left null rather than
+-- guessed at.
+update public.character_spawns
+	set box = case when color in ('purple', 'green', 'orange') then 'white' else 'black' end
+	where box is null and color in ('red', 'yellow', 'blue', 'orange', 'green', 'purple');
+
+alter table public.character_spawns drop constraint if exists character_spawns_box_values;
+alter table public.character_spawns add constraint character_spawns_box_values
+	check (box is null or box in ('white', 'black'));
 
 -- Row-level security: a player may read and delete their own spawns. `auth.uid()`
 -- resolves from the caller's JWT (the browser anon client sends the signed-in
