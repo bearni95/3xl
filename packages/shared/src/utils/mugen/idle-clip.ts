@@ -10,10 +10,11 @@
  * A clip is placed as one thing, never frame by frame: the cycle's frames differ in
  * size and in where their body axis sits, so anything derived per frame — a size, a
  * box, a border drawn around it — would jump about as the animation ran. The sheet is
- * the rectangle the whole cycle sweeps out, it is what fills the surface, and the
+ * the rectangle the whole cycle sweeps out, it is what the surface sizes, and the
  * frames animate inside it.
  */
 
+import { characterFitScale } from '../card/character-fit';
 import type { Manifest } from './mugen-player';
 
 /** One frame of an idle clip: where its image is, its native size, its body axis
@@ -97,12 +98,17 @@ export function loadIdleClip(basePath: string | null): Promise<IdleClipFrame[] |
 /**
  * Place a clip inside a surface: the sheet first, then the frames within it.
  *
- * The sheet is the rectangle the whole cycle sweeps out, and it is drawn as large as
- * the surface will hold it — full height, unless a very wide character would then
- * spill sideways, in which case the width is what binds. Nothing is ever drawn past
- * the surface, so nothing is ever cut off, and because the sheet is the cycle's box
- * and not any one frame's, it is the same rectangle from the first frame to the last:
- * anything drawn on it (a border, say) sits still while the character moves.
+ * The sheet is the rectangle the whole cycle sweeps out, standing on the surface's
+ * bottom edge, and how tall it comes out is {@link characterFitScale}'s to say — the
+ * same question the cards and the board ask, so Chopper is the head shorter than
+ * Trunks here that he is everywhere else instead of the two being stretched to the
+ * same height. A character at the reference height fills the surface; a shorter one
+ * takes the share of it that its own sprite is, and the width is capped besides, so
+ * nothing is ever drawn past the surface and nothing is ever cut off.
+ *
+ * Because the sheet is the cycle's box and not any one frame's, it is the same
+ * rectangle from the first frame to the last: anything drawn on it (a border, say)
+ * sits still while the character moves.
  *
  * Frames are pinned inside it by their body axis, not by their image: the axis sits
  * off-centre and moves from frame to frame, so placing each frame on its own terms
@@ -133,11 +139,16 @@ export function placeIdleClip(
 	const sheetWidth = extentLeft + extentRight;
 	const sheetHeight = Math.max(...frames.map((frame) => frame.height));
 
-	// Full height, unless the width is the tighter of the two.
-	const scale = Math.min(surface.height / sheetHeight, surface.width / sheetWidth);
+	// The height normalisation is the cards', to the source pixel; the extra cap is the
+	// cycle's real sweep, which is what this surface centres (the card's own width term
+	// measures the axis's half-reach instead, and can only ever be the stricter of the
+	// two — either way nothing spills).
+	const scale = Math.min(characterFitScale(frames, surface), surface.width / sheetWidth);
 	const sheet: PlacedBox = {
 		left: (surface.width - sheetWidth * scale) / 2,
-		bottom: (surface.height - sheetHeight * scale) / 2,
+		// Feet on the surface's floor, not floating in the middle of it: a row of these
+		// is a line-up, and heights only compare from a shared baseline.
+		bottom: 0,
 		width: sheetWidth * scale,
 		height: sheetHeight * scale
 	};

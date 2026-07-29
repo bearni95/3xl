@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { placeIdleClip, type IdleClipFrame } from '$utils/mugen/idle-clip';
+import { REFERENCE_SOURCE_HEIGHT } from '$utils/card/character-fit';
 
 const clip = (...frames: Omit<IdleClipFrame, 'url' | 'duration'>[]): IdleClipFrame[] =>
 	frames.map((frame, index) => ({ ...frame, url: `f${index}.png`, duration: 100 }));
@@ -8,27 +9,31 @@ const clip = (...frames: Omit<IdleClipFrame, 'url' | 'duration'>[]): IdleClipFra
 const SQUARE = { width: 120, height: 120 };
 
 describe('placeIdleClip', () => {
-	it('fills the surface height with the sheet', () => {
-		const placement = placeIdleClip(clip({ width: 70, height: 81, anchorX: 0.5 }), SQUARE)!;
+	it('fills the surface with a character of the reference height', () => {
+		const tall = clip({ width: 80, height: REFERENCE_SOURCE_HEIGHT, anchorX: 0.5 });
+		const placement = placeIdleClip(tall, SQUARE)!;
 		expect(placement.sheet.height).toBeCloseTo(SQUARE.height, 10);
 		expect(placement.sheet.bottom).toBeCloseTo(0, 10);
-		// The tallest frame is the sheet, so it fills the height too.
-		expect(placement.frames[0].height).toBeCloseTo(SQUARE.height, 10);
 	});
 
-	it('holds a very wide character to the width instead, uncut', () => {
-		// Wider than it is tall: filling the height would push it out of the surface
-		// sideways, so the width binds and the sheet is centred vertically.
-		const placement = placeIdleClip(clip({ width: 400, height: 100, anchorX: 0.5 }), SQUARE)!;
-		expect(placement.sheet.width).toBeCloseTo(SQUARE.width, 10);
-		expect(placement.sheet.height).toBeLessThan(SQUARE.height);
-		expect(placement.sheet.bottom).toBeCloseTo((SQUARE.height - placement.sheet.height) / 2, 10);
+	it('draws a short character shorter than a tall one', () => {
+		// Chopper against Trunks: normalised to their own sprite heights, not stretched
+		// to the same box, so the head of difference between them survives.
+		const chopper = placeIdleClip(clip({ width: 60, height: 81, anchorX: 0.5 }), SQUARE)!;
+		const trunks = placeIdleClip(clip({ width: 80, height: 136, anchorX: 0.5 }), SQUARE)!;
+		expect(chopper.sheet.height / trunks.sheet.height).toBeCloseTo(81 / 136, 10);
+		expect(chopper.sheet.height).toBeLessThan(SQUARE.height);
+	});
+
+	it('brings a character taller than the reference back into the surface', () => {
+		const cell = placeIdleClip(clip({ width: 109, height: 185, anchorX: 0.5 }), SQUARE)!;
+		expect(cell.sheet.height).toBeCloseTo(SQUARE.height, 10);
 	});
 
 	it('never places a frame outside the surface', () => {
 		const frames = clip(
-			{ width: 60, height: 100, anchorX: 0.25 },
-			{ width: 40, height: 90, anchorX: 0.5 }
+			{ width: 400, height: 100, anchorX: 0.25 },
+			{ width: 380, height: 90, anchorX: 0.5 }
 		);
 		const placement = placeIdleClip(frames, SQUARE)!;
 		for (const frame of placement.frames) {
@@ -42,7 +47,7 @@ describe('placeIdleClip', () => {
 	it('gives the whole cycle one sheet and one baseline', () => {
 		// Frames of different widths, heights and body axes: the sheet is the box they
 		// sweep out between them, so a border drawn on it never moves, and they all
-		// stand on its bottom edge.
+		// stand on the same floor.
 		const frames = clip(
 			{ width: 60, height: 100, anchorX: 0.25 },
 			{ width: 40, height: 80, anchorX: 0.5 }
@@ -53,7 +58,7 @@ describe('placeIdleClip', () => {
 		expect(left).toBeCloseTo(placement.sheet.left, 10);
 		expect(right).toBeCloseTo(placement.sheet.left + placement.sheet.width, 10);
 		for (const frame of placement.frames) {
-			expect(frame.bottom).toBeCloseTo(placement.sheet.bottom, 10);
+			expect(frame.bottom).toBeCloseTo(0, 10);
 		}
 	});
 
