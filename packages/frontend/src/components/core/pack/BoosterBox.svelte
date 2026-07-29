@@ -63,22 +63,25 @@
 	// and both states carry the same five functions in the same order, which is what lets
 	// the browser interpolate them one for one.
 	//
-	// Open is a half turn, and it is a POSITIVE one — the same sense the placing tilt
-	// already turns in, carrying the lid on over backwards. A half turn the other way
-	// arrives at the same place by the opposite road: it sweeps the lid down across the
-	// poster on its way, which is a lid closing over the front of the box rather than
-	// opening off the top of it. The sign is the whole of the difference, and it is
-	// entirely in the middle of the swing — halfway through, this one has the lid
-	// standing up above the box and the other has it lying over the face.
+	// Open is a quarter turn, and it is a POSITIVE one — the same sense the placing tilt
+	// already turns in, carrying the lid up and back off the front. Turned the other way
+	// it would sweep down across the poster instead, which is a lid closing over the
+	// front of the box rather than opening off the top of it.
 	//
-	// Half a turn is the whole of it: the lid ends upside down behind the box, as flat
-	// and as foreshortened as it started, so it takes no more room open than shut.
+	// A quarter is where a lid opens to: it comes to rest standing up behind the box,
+	// held open, which is the one position that says at a glance that the box is open and
+	// stays saying it. Carrying on to a half turn would lay it flat on its back and shut
+	// again, and a lid that ends as flat as it started has said nothing by the time
+	// anyone looks. The standing lid is the tallest the swing ever gets — about two
+	// thirds of a box width above it — and that is now room the open box keeps rather
+	// than passes through.
+	//
 	// (Tailwind emits only the classes it can see spelled out, so the two are written in
 	// full rather than built from the angle.)
 	const LID_CLOSED =
 		'[transform:perspective(187.826cqw)_rotateX(75.373deg)_translateY(-100%)_rotateX(0deg)_translateY(100%)]';
 	const LID_OPEN =
-		'[transform:perspective(187.826cqw)_rotateX(75.373deg)_translateY(-100%)_rotateX(180deg)_translateY(100%)]';
+		'[transform:perspective(187.826cqw)_rotateX(75.373deg)_translateY(-100%)_rotateX(90deg)_translateY(100%)]';
 
 	// What the bands say, exactly as the baked pack says it: the place with the year
 	// this copy would be minted in joined to it — "Barcelona '26" — and, below the
@@ -104,10 +107,9 @@
 			placing tilt turns about, so it is the one line the lid and the face share, the
 			line the box reads as folded at, and the line that comes apart when it opens.
 
-			The swing is eased at both ends, which is where the lid is flat and takes no room
-			at all. The hurry is the middle of it, the moment the lid stands upright and is
-			drawn two thirds of a box width tall — all the room this animation ever asks for
-			above the box is asked for there, and briefly.
+			The swing is eased at both ends: it leaves the shut lid without a jolt and settles
+			the open one rather than stopping it dead, which is how a hinge with any weight
+			behind it moves.
 
 			The transition is only carried while the box is open, and that is not a
 			flourish: the transform is written in cqw, which has no value until the box has
