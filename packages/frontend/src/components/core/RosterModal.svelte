@@ -58,6 +58,14 @@
 		6: 'grid-cols-6'
 	};
 
+	// The filter panel is the grid's first cell and takes two columns of it — except at
+	// one column, where a two-column span would open an implicit second column and take
+	// the grid's width with it. Spelled out for the same reason the column classes are.
+	const FILTER_SPAN_CLASSES: Record<number, string> = {
+		1: 'col-span-1',
+		2: 'col-span-2'
+	};
+
 	// Persisted as a player preference: reloads from localStorage on refresh, else
 	// falls back to the responsive default. The store auto-writes on every change.
 	const columns = localStorageWritableStore<number>(
@@ -101,7 +109,7 @@
 			'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
 			SPAWN_FILL_CLASSES[color],
 			{
-				'ring-2 ring-base-content ring-offset-1 ring-offset-base-200': active === color,
+				'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': active === color,
 				'opacity-70 hover:opacity-100': active !== color
 			}
 		);
@@ -121,7 +129,7 @@
 			'flex h-8 items-center justify-center overflow-hidden rounded-md bg-black/40 px-1 transition',
 			'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
 			{
-				'ring-2 ring-base-content ring-offset-1 ring-offset-base-200': active === showId,
+				'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': active === showId,
 				'opacity-70 hover:opacity-100': active !== showId
 			}
 		);
@@ -842,264 +850,265 @@
 						</span>
 					{/if}
 				</div>
-				<!-- The filters stand beside the cards they narrow rather than in a row over
-				     them: a row of them spent the full width of the modal to say what a column
-				     says in the space one card takes, and the height it took was height the grid
-				     wanted for its rows. -->
-				<div class="flex min-h-0 flex-1 gap-3">
-					<!-- Every control ANDs with the others. Clear stands at the head of the column
-					     rather than at the foot of it: it is what undoes everything below it, and a
-					     column of shows or tiers long enough to scroll had pushed it out of sight
-					     at the very moment there was most to undo. The column scrolls on its own so
-					     a short modal never costs the grid its width. -->
-					<div
-						class="flex w-48 flex-none flex-col gap-3 overflow-y-auto rounded-box bg-base-200 p-3"
-					>
-						<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
-							Clear
-						</button>
+				<!-- The roster, and the team at the head of it: a statue per character — the
+				     same one the map's panel stands the team up with — in a grid the slider
+				     sets the width of (1/2/3 by viewport to start), with one circle per colour
+				     it has been pulled in underneath, each carrying how many of that colour the
+				     player owns. The fielded cards are the first cells, in slot order, ringed
+				     in primary; the team has no view of its own any more, since a slot was only
+				     ever one of these cards and standing it up twice cost the grid the room it
+				     wanted. Each cell carries the button that fields or unfields the copy it is
+				     showing, pinned to its top corner; tapping the statue itself does the same
+				     thing, or selects the copy while recycling, and tapping a circle only
+				     changes which copy is shown. Only the current page is mounted
+				     — the filters narrow the roster, the pager walks what's left ROWS_PER_PAGE
+				     rows at a time — and the box takes the full width of the modal, the filters
+				     being a cell of the grid rather than a column beside it. -->
+				<div
+					bind:this={gridScroller}
+					class="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
+				>
+					<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
+						<!-- The filters are the grid's first cell, two columns wide, and scroll away
+						     with the cards they narrow rather than standing beside them. Every control
+						     ANDs with the others. Clear stands at the head of the cell: it is what
+						     undoes everything below it, and a list of shows or tiers long enough to run
+						     on had pushed it out of sight at the very moment there was most to undo. -->
+						<div
+							class={classNames(
+								'flex flex-col gap-3 rounded-box bg-base-100 p-3',
+								FILTER_SPAN_CLASSES[Math.min($columns, 2)] ?? 'col-span-2'
+							)}
+						>
+							<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
+								Clear
+							</button>
 
-						<label class="flex flex-col gap-1 text-xs">
-							<span class="opacity-60">Name</span>
-							<input
-								type="search"
-								class="input input-sm input-bordered w-full"
-								placeholder="Search by name"
-								bind:value={filterName}
-							/>
-						</label>
+							<label class="flex flex-col gap-1 text-xs">
+								<span class="opacity-60">Name</span>
+								<input
+									type="search"
+									class="input input-sm input-bordered w-full"
+									placeholder="Search by name"
+									bind:value={filterName}
+								/>
+							</label>
 
-						<!-- The colours are the swatches themselves rather than a list of their
-						     names: there are exactly six, so they are one row of six, and a square
-						     saying red is quicker to read than the word and needs no translating.
-						     Not a <label>, since there is no one control here to label — a group of
-						     six buttons, each pressed or not. -->
-						<div class="flex flex-col gap-1 text-xs">
-							<span class="opacity-60">Colour</span>
-							<div class="grid grid-cols-6 gap-1" role="group" aria-label="Filter by colour">
-								{#each COLOR_OPTIONS as color (color)}
-									<button
-										type="button"
-										class={colorSquareClasses(color, filterColor)}
-										title={color}
-										aria-label="Filter by {color}"
-										aria-pressed={filterColor === color}
-										on:click={() => toggleColorFilter(color)}
-									></button>
-								{/each}
-							</div>
-						</div>
-
-						<!-- The shows say themselves the way the statues do: their own lettering,
-						     not their names set in ours. One to a row, the full width of the column:
-						     a wordmark is wide, and two side by side left each of them a smudge. A
-						     show whose logo is not enabled yet falls back to its name, so it is
-						     still there to filter by — and the whole group only stands while the
-						     roster holds cards from more than nothing. -->
-						{#if showFilterOptions.length > 0}
+							<!-- The colours are the swatches themselves rather than a list of their
+							     names: there are exactly six, so they are one row of six, and a square
+							     saying red is quicker to read than the word and needs no translating.
+							     Not a <label>, since there is no one control here to label — a group of
+							     six buttons, each pressed or not. -->
 							<div class="flex flex-col gap-1 text-xs">
-								<span class="opacity-60">Show</span>
-								<div class="flex flex-col gap-1" role="group" aria-label="Filter by show">
-									{#each showFilterOptions as show (show.id)}
+								<span class="opacity-60">Colour</span>
+								<div class="grid grid-cols-6 gap-1" role="group" aria-label="Filter by colour">
+									{#each COLOR_OPTIONS as color (color)}
 										<button
 											type="button"
-											class={showChipClasses(show.id, filterShow)}
-											title={show.name}
-											aria-label="Filter by {show.name}"
-											aria-pressed={filterShow === show.id}
-											on:click={() => toggleShowFilter(show.id)}
-										>
-											{#if $showLogos.get(show.id)}
-												<img
-													src={$showLogos.get(show.id)?.url}
-													alt={show.name}
-													class="max-h-full max-w-full object-contain"
-												/>
-											{:else}
-												<span class="truncate text-[0.625rem] text-white/80">{show.name}</span>
-											{/if}
-										</button>
+											class={colorSquareClasses(color, filterColor)}
+											title={color}
+											aria-label="Filter by {color}"
+											aria-pressed={filterColor === color}
+											on:click={() => toggleColorFilter(color)}
+										></button>
 									{/each}
 								</div>
 							</div>
-						{/if}
 
-						<!-- The tiers as radios, one to a line, since that is what the filter is: one
-						     tier at a time, and All at the top of the list is the one it opens on. A
-						     column of them says how many tiers the roster holds at a glance, which a
-						     closed dropdown never did. Not a <label> around the group any more — each
-						     radio has its own, and one label cannot stand for several controls. -->
-						<div class="flex flex-col gap-1 text-xs" role="radiogroup" aria-label="Rarity">
-							<span class="opacity-60">Rarity</span>
-							<label class="flex cursor-pointer items-center gap-2">
-								<input
-									type="radio"
-									name="roster-rarity"
-									class="radio radio-primary radio-xs"
-									bind:group={filterRarity}
-									value={ANY}
-								/>
-								<span>All</span>
-							</label>
-							{#each rarityFilterOptions as rarity (rarity)}
+							<!-- The shows say themselves the way the statues do: their own lettering,
+							     not their names set in ours. One to a row, the full width of the cell:
+							     a wordmark is wide, and two side by side left each of them a smudge. A
+							     show whose logo is not enabled yet falls back to its name, so it is
+							     still there to filter by — and the whole group only stands while the
+							     roster holds cards from more than nothing. -->
+							{#if showFilterOptions.length > 0}
+								<div class="flex flex-col gap-1 text-xs">
+									<span class="opacity-60">Show</span>
+									<div class="flex flex-col gap-1" role="group" aria-label="Filter by show">
+										{#each showFilterOptions as show (show.id)}
+											<button
+												type="button"
+												class={showChipClasses(show.id, filterShow)}
+												title={show.name}
+												aria-label="Filter by {show.name}"
+												aria-pressed={filterShow === show.id}
+												on:click={() => toggleShowFilter(show.id)}
+											>
+												{#if $showLogos.get(show.id)}
+													<img
+														src={$showLogos.get(show.id)?.url}
+														alt={show.name}
+														class="max-h-full max-w-full object-contain"
+													/>
+												{:else}
+													<span class="truncate text-[0.625rem] text-white/80">{show.name}</span>
+												{/if}
+											</button>
+										{/each}
+									</div>
+								</div>
+							{/if}
+
+							<!-- The tiers as radios, one to a line, since that is what the filter is: one
+							     tier at a time, and All at the top of the list is the one it opens on. A
+							     column of them says how many tiers the roster holds at a glance, which a
+							     closed dropdown never did. Not a <label> around the group any more — each
+							     radio has its own, and one label cannot stand for several controls. -->
+							<div class="flex flex-col gap-1 text-xs" role="radiogroup" aria-label="Rarity">
+								<span class="opacity-60">Rarity</span>
 								<label class="flex cursor-pointer items-center gap-2">
 									<input
 										type="radio"
 										name="roster-rarity"
 										class="radio radio-primary radio-xs"
 										bind:group={filterRarity}
-										value={rarity}
+										value={ANY}
 									/>
-									<span>{wowRarityLabel(rarity) ?? `Tier ${rarity}`}</span>
+									<span>All</span>
 								</label>
-							{/each}
+								{#each rarityFilterOptions as rarity (rarity)}
+									<label class="flex cursor-pointer items-center gap-2">
+										<input
+											type="radio"
+											name="roster-rarity"
+											class="radio radio-primary radio-xs"
+											bind:group={filterRarity}
+											value={rarity}
+										/>
+										<span>{wowRarityLabel(rarity) ?? `Tier ${rarity}`}</span>
+									</label>
+								{/each}
+							</div>
+
+							<button
+								class="btn btn-sm w-full"
+								class:btn-outline={!recycleMode}
+								class:btn-warning={recycleMode}
+								on:click={() => (recycleMode ? cancelRecycle() : enterRecycleMode())}
+							>
+								{recycleMode ? 'Cancel' : 'Recycle'}
+							</button>
 						</div>
 
-						<button
-							class="btn btn-sm w-full"
-							class:btn-outline={!recycleMode}
-							class:btn-warning={recycleMode}
-							on:click={() => (recycleMode ? cancelRecycle() : enterRecycleMode())}
-						>
-							{recycleMode ? 'Cancel' : 'Recycle'}
-						</button>
-					</div>
-
-					<!-- The roster, and the team at the head of it: a statue per character — the
-					     same one the map's panel stands the team up with — in a grid the slider
-					     sets the width of (1/2/3 by viewport to start), with one circle per colour
-					     it has been pulled in underneath, each carrying how many of that colour the
-					     player owns. The fielded cards are the first cells, in slot order, ringed
-					     in primary; the team has no view of its own any more, since a slot was only
-					     ever one of these cards and standing it up twice cost the grid the room it
-					     wanted. Each cell carries the button that fields or unfields the copy it is
-					     showing, pinned to its top corner; tapping the statue itself does the same
-					     thing, or selects the copy while recycling, and tapping a circle only
-					     changes which copy is shown. Only the current page is mounted
-					     — the filters narrow the roster, the pager walks what's left ROWS_PER_PAGE
-					     rows at a time — and the box takes whatever the filter column leaves it. -->
-					<div
-						bind:this={gridScroller}
-						class="relative min-h-0 min-w-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
-					>
-						<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
-							{#each pagedStatues as { group, copy, swatches, places, placeValue, statue, fielded } (group.id)}
-								<!-- The border is on the cell, not on the statue: it takes in the circles
-								     and the place select too, so what it marks is this character's whole
-								     entry. Every cell carries it and only a fielded one colours it in, so
-								     joining the team never nudges the grid by two pixels. -->
-								<div
-									class={classNames('relative flex flex-col gap-2 rounded-box border-2 p-1.5', {
-										'border-primary': fielded,
-										'border-transparent': !fielded
-									})}
-								>
-									<!-- The team button, pinned to the top of the cell rather than laid out in
-									     it: it sits over the statue's top-right corner, in the same place in
-									     every cell whatever the art below it does. A minus on a fielded card, a
-									     plus on one that could still be fielded, and disabled once the team is
-									     full — a plus that cannot add is a dead button, and the server would
-									     refuse the card anyway. Not drawn at all while recycling, where a cell
-									     is about what to trade in rather than who to field. -->
-									{#if !recycleMode}
-										<button
-											type="button"
-											class={classNames(
-												'btn btn-circle btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow',
-												fielded ? 'btn-primary' : 'btn-neutral'
-											)}
-											disabled={$teamSaving || (!fielded && teamFilledCount >= TEAM_SIZE)}
-											title={fielded
-												? `Remove ${statue.label} from your team`
-												: `Add ${statue.label} to your team`}
-											aria-label={fielded
-												? `Remove ${statue.label} from your team`
-												: `Add ${statue.label} to your team`}
-											on:click={() => handleTeamButton(copy)}
-										>
-											{fielded ? '−' : '+'}
-										</button>
-									{/if}
+						{#each pagedStatues as { group, copy, swatches, places, placeValue, statue, fielded } (group.id)}
+							<!-- The border is on the cell, not on the statue: it takes in the circles
+							     and the place select too, so what it marks is this character's whole
+							     entry. Every cell carries it and only a fielded one colours it in, so
+							     joining the team never nudges the grid by two pixels. -->
+							<div
+								class={classNames('relative flex flex-col gap-2 rounded-box border-2 p-1.5', {
+									'border-primary': fielded,
+									'border-transparent': !fielded
+								})}
+							>
+								<!-- The team button, pinned to the top of the cell rather than laid out in
+								     it: it sits over the statue's top-right corner, in the same place in
+								     every cell whatever the art below it does. A minus on a fielded card, a
+								     plus on one that could still be fielded, and disabled once the team is
+								     full — a plus that cannot add is a dead button, and the server would
+								     refuse the card anyway. Not drawn at all while recycling, where a cell
+								     is about what to trade in rather than who to field. -->
+								{#if !recycleMode}
 									<button
 										type="button"
 										class={classNames(
-											'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-											{
-												'opacity-30': recycleMode && !selectedForRecycle.has(copy.id),
-												'ring-2 ring-warning': recycleMode && selectedForRecycle.has(copy.id)
-											}
+											'btn btn-circle btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow',
+											fielded ? 'btn-primary' : 'btn-neutral'
 										)}
-										on:click={() => handleCardTap(copy)}
+										disabled={$teamSaving || (!fielded && teamFilledCount >= TEAM_SIZE)}
+										title={fielded
+											? `Remove ${statue.label} from your team`
+											: `Add ${statue.label} to your team`}
+										aria-label={fielded
+											? `Remove ${statue.label} from your team`
+											: `Add ${statue.label} to your team`}
+										on:click={() => handleTeamButton(copy)}
 									>
-										<CharacterStatue
-											label={statue.label}
-											basePath={statue.basePath}
-											color={statue.color}
-											locationName={statue.locationName}
-											spawnedAt={statue.spawnedAt}
-											showId={statue.showId}
-										/>
+										{fielded ? '−' : '+'}
 									</button>
-									<!-- Every colour this character has been pulled in, each circle carrying
-									     how many of that colour the player owns: a click stands them up in
-									     that colour, and a click on the colour already standing walks to the
-									     next copy of it. The circle being shown is the ringed one. Beside them,
-									     the same copies asked for the other way round — by the town they were
-									     claimed in, each saying its colour.
-									     Both are ways of choosing between a character's copies, so ungrouped
-									     there is nothing for them to choose: the cell is one card, the circle
-									     would read 1 in the colour the statue is already standing in and the
-									     select would hold the one town its panel already names. -->
-									{#if $groupCopies}
-										<div class="flex flex-wrap items-center justify-center gap-1.5">
-											{#each swatches as swatch (swatch.color)}
-												<button
-													type="button"
-													class={swatchCircleClasses(
-														swatch,
-														copy.color,
-														recycleMode,
-														selectedForRecycle
-													)}
-													title="{swatch.copies.length} in {swatch.color}"
-													aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
-													aria-pressed={swatch.color === copy.color}
-													on:click={() => showColorCopy(group.id, swatch, copy)}
-												>
-													{swatch.copies.length}
-												</button>
-											{/each}
-
-											<!-- The same copies asked for by town rather than by colour, and a native
-											     select because a menu of our own would be clipped by the scroll box
-											     this grid lives in. Each place says the colour it was pulled in with a
-											     square, the one thing an option can carry that a stylesheet cannot
-											     reach. -->
-											<select
-												class="select select-xs min-w-0 max-w-[9rem] flex-initial"
-												aria-label="{statue.label} — where it was claimed"
-												value={placeValue}
-												on:change={(event) => showCopy(group.id, event.currentTarget.value)}
+								{/if}
+								<button
+									type="button"
+									class={classNames(
+										'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+										{
+											'opacity-30': recycleMode && !selectedForRecycle.has(copy.id),
+											'ring-2 ring-warning': recycleMode && selectedForRecycle.has(copy.id)
+										}
+									)}
+									on:click={() => handleCardTap(copy)}
+								>
+									<CharacterStatue
+										label={statue.label}
+										basePath={statue.basePath}
+										color={statue.color}
+										locationName={statue.locationName}
+										spawnedAt={statue.spawnedAt}
+										showId={statue.showId}
+									/>
+								</button>
+								<!-- Every colour this character has been pulled in, each circle carrying
+								     how many of that colour the player owns: a click stands them up in
+								     that colour, and a click on the colour already standing walks to the
+								     next copy of it. The circle being shown is the ringed one. Beside them,
+								     the same copies asked for the other way round — by the town they were
+								     claimed in, each saying its colour.
+								     Both are ways of choosing between a character's copies, so ungrouped
+								     there is nothing for them to choose: the cell is one card, the circle
+								     would read 1 in the colour the statue is already standing in and the
+								     select would hold the one town its panel already names. -->
+								{#if $groupCopies}
+									<div class="flex flex-wrap items-center justify-center gap-1.5">
+										{#each swatches as swatch (swatch.color)}
+											<button
+												type="button"
+												class={swatchCircleClasses(
+													swatch,
+													copy.color,
+													recycleMode,
+													selectedForRecycle
+												)}
+												title="{swatch.copies.length} in {swatch.color}"
+												aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
+												aria-pressed={swatch.color === copy.color}
+												on:click={() => showColorCopy(group.id, swatch, copy)}
 											>
-												{#each places as place (place.copy.id)}
-													<option value={place.copy.id}>
-														{SPAWN_SQUARE_GLYPHS[place.copy.color]}
-														{place.locationName}
-													</option>
-												{/each}
-											</select>
-										</div>
-									{/if}
-								</div>
-							{/each}
-						</div>
-						{#if filteredSpawns.length === 0}
-							<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
-								<p class="text-sm opacity-60">No characters match these filters.</p>
-								<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
+												{swatch.copies.length}
+											</button>
+										{/each}
+
+										<!-- The same copies asked for by town rather than by colour, and a native
+										     select because a menu of our own would be clipped by the scroll box
+										     this grid lives in. Each place says the colour it was pulled in with a
+										     square, the one thing an option can carry that a stylesheet cannot
+										     reach. -->
+										<select
+											class="select select-xs min-w-0 max-w-[9rem] flex-initial"
+											aria-label="{statue.label} — where it was claimed"
+											value={placeValue}
+											on:change={(event) => showCopy(group.id, event.currentTarget.value)}
+										>
+											{#each places as place (place.copy.id)}
+												<option value={place.copy.id}>
+													{SPAWN_SQUARE_GLYPHS[place.copy.color]}
+													{place.locationName}
+												</option>
+											{/each}
+										</select>
+									</div>
+								{/if}
 							</div>
-						{/if}
+						{/each}
 					</div>
+					<!-- Said under the grid rather than laid over it: the filters are cells of that
+					     grid now, and an overlay filling the box would cover the very controls the
+					     player has to reach to get their cards back. -->
+					{#if filteredSpawns.length === 0}
+						<div class="flex flex-col items-center justify-center gap-3 py-12 text-center">
+							<p class="text-sm opacity-60">No characters match these filters.</p>
+							<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
