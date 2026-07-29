@@ -63,10 +63,9 @@
 	const GROUND_DEPTH = 1 / 3;
 	const GROUND = 'origin-bottom [transform:perspective(74.536cqw)_rotateX(48.19deg)]';
 
-	// The character stands a third of the way up that plane — on the ground rather than
-	// at the near edge of it, but near enough the front that most of the floor is behind
-	// them rather than in front.
-	const BASELINE = GROUND_DEPTH / 3;
+	// The character stands halfway up that plane — on the middle of the floor, with as
+	// much of it behind them as in front.
+	const BASELINE = GROUND_DEPTH / 2;
 </script>
 
 <div class={classNames('flex w-full gap-2', classes)}>
