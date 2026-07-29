@@ -147,16 +147,17 @@
 					own bottom too: the same place and the same width the tile would give it, but
 					outside the tile and unturned. It is read rather than looked at, and a rotated
 					wordmark is neither read nor looked at; the ground turns with the perspective
-					because it is ground, while a name has to stay a name. Behind the character
-					for the same reason it is not tilted with the floor: it belongs to the picture
-					of the show, not to the statue standing in front of it. Its height is the
-					wordmark's own at that width — a logo is a picture of a name, and cropping or
-					squashing it says the name wrong. -->
+					because it is ground, while a name has to stay a name. It reads over the
+					character rather than behind them — a name with a pair of legs standing in the
+					middle of it is not a name any more — so it takes a layer of its own above the
+					sprite instead of relying on the order the two are written in. Its height is
+					the wordmark's own at that width: a logo is a picture of a name, and cropping
+					or squashing it says the name wrong. -->
 				<img
 					src={showLogo.url}
 					alt={showLogo.name}
 					title={showLogo.name}
-					class="absolute inset-x-0 bottom-0 w-full"
+					class="absolute inset-x-0 bottom-0 z-10 w-full"
 				/>
 			{/if}
 
