@@ -15,7 +15,6 @@
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
-	import Countdown from '$components/core/Countdown.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
@@ -32,6 +31,8 @@
 		MunicipalitySiege
 	} from '$types/territory.type';
 	import type { TerritoryResult } from '$types/combat.type';
+	import type { OpenBattle } from '$types/battle.type';
+	import type { Profile } from '$types/profile.type';
 	import { TEAM_SIZE, teamService } from '$services/team.service';
 	import {
 		buildMunicipalityTeam,
@@ -67,7 +68,7 @@
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { nextCatalanMidnight } from '$utils/festes/catalan-day';
 	import { boosterWindow } from '$utils/festes/booster-window';
-	import type { MapMarker, MapOverlay, MapStar } from '$types/map.type';
+	import type { MapChallenge, MapMarker, MapOverlay, MapStar } from '$types/map.type';
 	import type {
 		MunicipalityShow,
 		MunicipalityShowsCollection,
@@ -775,16 +776,9 @@
 	// was open — is not in the loaded set at all, so the town reads as unfought.
 	$: challengedOpenTown = !!openRegion && challenges.has(openRegion);
 
-	// A player already in a fight is not offered another one, on this town or any
-	// other: the button becomes the way back into the one they are in. The rule is the
-	// server's (`start_battle` refuses a second battle); this is only what the button
-	// says about it.
-	$: inBattle = !!$openBattle;
-
-	// And when it opens up again: the next Catalan midnight, which is the boundary
-	// `start_battle` measures the day against. Recomputed as the panel moves to
-	// another town so a countdown left running past midnight gets the new deadline.
-	$: challengeUnlocksAt = challengedOpenTown ? nextCatalanMidnight().getTime() : 0;
+	// (A player already in a fight is not offered another one, and a town fought today
+	// says when it reopens instead — both now read on the pin, off `$openBattle` and
+	// the next Catalan midnight; see buildPinChallenge.)
 
 	// Kick off face loading for whichever team members are on screen.
 	$: void loadFaces(municipalityTeam.map((member) => member.characterId));
@@ -1372,6 +1366,92 @@
 	// statues is the shape that goes bare under them.
 	$: statuedTown = selected && townTeams.has(selected) ? selected : null;
 
+	// What that pin says under the statues: how far this player has got towards taking
+	// the town, and the one control that acts on it — the siege counter and the
+	// challenge button, which used to sit in the sidebar's Location tab. They belong on
+	// the pin: what is being fought is standing right there, and reading the odds off
+	// one side of the screen while looking at the town on the other made two things of
+	// one.
+	//
+	// Rebuilt off `statuedTown` rather than `openRegion`, for the same reason the
+	// statues are: the zoom focus is measured from the pins, so anything the pins are
+	// drawn from must not be measured back off it. The two name the same town whenever
+	// either does.
+	//
+	// Null hides the bar entirely: no town selected, or one this player already holds —
+	// there is nothing to take from yourself, which is exactly when the sidebar says
+	// "Yours" instead.
+	function buildPinChallenge(
+		town: string | null,
+		occupied: ReadonlyMap<string, MunicipalityHolder>,
+		banked: ReadonlyMap<string, MunicipalitySiege>,
+		spent: ReadonlyMap<string, MunicipalityChallenge>,
+		player: Profile | null,
+		battle: OpenBattle | null,
+		starting: boolean,
+		canField: boolean
+	): MapChallenge | null {
+		if (!town) return null;
+		const holder = occupied.get(town) ?? null;
+		if (holder && player && holder.userId === String(player.id)) return null;
+
+		const progress = territoryService.progressFor(town, occupied, banked);
+		const siege = { wins: progress.wins, required: progress.required };
+
+		// A fight already in progress takes the control over, whichever town is picked:
+		// there is only ever one battle, and this is the way back into it rather than
+		// the way into another.
+		if (battle) {
+			return {
+				siege,
+				button: {
+					label: 'Resume battle',
+					title: 'You have a battle in progress — go back to it',
+					disabled: false,
+					onClick: resumeBattle
+				},
+				unlocksAt: null
+			};
+		}
+
+		// One challenge per town per day. Once today's is spent the control gives way to
+		// the time left until Catalan midnight, which is when the town can be fought
+		// again — and when it runs out the day's challenges are re-read, which brings the
+		// button back. The server enforces the limit either way (`start_battle`).
+		if (spent.has(town)) {
+			return {
+				siege,
+				button: null,
+				unlocksAt: nextCatalanMidnight().getTime(),
+				onUnlock: () => void reloadChallenges()
+			};
+		}
+
+		return {
+			siege,
+			button: {
+				label: 'Challenge',
+				title: canField
+					? 'Fight this town for its team'
+					: `Your active team needs ${TEAM_SIZE} cards you have claimed`,
+				disabled: starting || !canField,
+				onClick: () => void challenge()
+			},
+			unlocksAt: null
+		};
+	}
+
+	$: pinChallenge = buildPinChallenge(
+		statuedTown,
+		holders,
+		sieges,
+		challenges,
+		$profile,
+		$openBattle,
+		challengeStarting,
+		canFieldTeam
+	);
+
 	// One pin per region that has a show, dropped at the centre of the region's
 	// bounding box, captioned with the show and tooltipped with the region name;
 	// clicking a pin opens that region. Pins clear of the selection are flagged
@@ -1392,6 +1472,7 @@
 		relevant: Set<string> | null,
 		teams: ReadonlyMap<string, TeamMemberRoll[]>,
 		statuedTown: string | null,
+		challengeBar: MapChallenge | null,
 		memberShows: ReadonlyMap<string, number[]>
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
@@ -1422,6 +1503,9 @@
 					showId: memberShows.get(member.characterId)?.[0] ?? null
 				})),
 				iconSvg: iconMarkup(showIconName(node.show.id)),
+				// The siege line and the challenge control go with the statues, on that
+				// same one pin: what is being fought is standing right there.
+				challenge: node.key === statuedTown ? challengeBar : null,
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
 				subtitle: restoreCatalanArticle(node.name),
@@ -1445,12 +1529,21 @@
 		relevant: Set<string> | null,
 		teams: ReadonlyMap<string, TeamMemberRoll[]>,
 		statuedTown: string | null,
+		challengeBar: MapChallenge | null,
 		memberShows: ReadonlyMap<string, number[]>
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
 			levels.push(
-				buildMarkers(frontierAtDepth(d, nodes), geometry, relevant, teams, statuedTown, memberShows)
+				buildMarkers(
+					frontierAtDepth(d, nodes),
+					geometry,
+					relevant,
+					teams,
+					statuedTown,
+					challengeBar,
+					memberShows
+				)
 			);
 		}
 		return levels;
@@ -1463,6 +1556,7 @@
 		relevantKeys,
 		townTeams,
 		statuedTown,
+		pinChallenge,
 		showsByCharacter
 	);
 
@@ -1645,61 +1739,11 @@
 									<span class="badge badge-primary badge-sm font-bold">OG</span>
 									<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
 								{/if}
+								<!-- The siege counter and the challenge button used to sit here; they
+									are on the town's own pin now (see buildPinChallenge), standing under
+									the very team they are about. What is left is who holds it. -->
 								{#if holdsOpenTown}
 									<span class="badge badge-success badge-sm ml-auto">Yours</span>
-								{:else}
-									<!-- The same siege counter the two tables carry, for the one town the
-										panel is down to: wins banked over wins needed. It reads exactly as
-										the column a drill row shows for this municipality, so opening a
-										town never restates the figure in different terms. -->
-									<span
-										class="ml-auto flex flex-none items-center gap-1.5 text-xs tabular-nums"
-										title="Your wins banked / wins needed to take the town"
-									>
-										<span class="font-bold uppercase tracking-wide opacity-60">Siege</span>
-										<span class={siegeProgress.wins > 0 ? 'font-semibold' : 'opacity-70'}>
-											{siegeProgress.wins}/{siegeProgress.required}
-										</span>
-									</span>
-									<!-- A fight already in progress takes the button over, whichever town
-										the panel is on: there is only ever one battle, and this is the way
-										back into it rather than the way into another.
-
-										Otherwise: one challenge per town per day, and once today's has
-										been spent the button gives way to the time left until Catalan
-										midnight, which is when the town can be fought again. The server
-										enforces both limits either way (`start_battle`); when the countdown
-										runs out the day's challenges are re-read and the button comes
-										back. -->
-									{#if inBattle}
-										<button
-											type="button"
-											class="btn btn-primary btn-xs flex-none"
-											title="You have a battle in progress — go back to it"
-											on:click={resumeBattle}
-										>
-											Resume battle
-										</button>
-									{:else if challengedOpenTown}
-										<Countdown
-											until={challengeUnlocksAt}
-											title="Already challenged today — the next one unlocks at midnight"
-											classes="badge badge-ghost badge-sm flex-none font-semibold"
-											on:elapsed={() => void reloadChallenges()}
-										/>
-									{:else}
-										<button
-											type="button"
-											class="btn btn-primary btn-xs flex-none"
-											disabled={challengeStarting || !canFieldTeam}
-											title={canFieldTeam
-												? 'Fight this town for its team'
-												: `Your active team needs ${TEAM_SIZE} cards you have claimed`}
-											on:click={challenge}
-										>
-											Challenge
-										</button>
-									{/if}
 								{/if}
 							</div>
 							<!-- Sized like the player's own team strip above it: one row of TEAM_SIZE

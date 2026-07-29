@@ -45,6 +45,26 @@ export interface MapLine {
 }
 
 /**
+ * What a pin says about taking the region it stands on: how far the reader has got
+ * towards it, and the one control that acts on it. Drawn under the team, so the
+ * side sitting on a town and the way to fight it read as one thing in one place.
+ *
+ * Plain data and a callback — which of the button and the countdown is drawn is
+ * decided by whoever hands this over, since the rules (one fight per town per day,
+ * one battle at a time, a full team to field) are theirs and not the map's.
+ */
+export interface MapChallenge {
+	/** Wins banked against the wins needed to take the region. */
+	siege: { wins: number; required: number };
+	/** The control to act with, or null when the countdown stands in its place. */
+	button: { label: string; title: string; disabled: boolean; onClick: () => void } | null;
+	/** Epoch ms the region can be acted on again at; null unless it is closed. */
+	unlocksAt: number | null;
+	/** Called the moment that countdown runs out, so the control can come back. */
+	onUnlock?: () => void;
+}
+
+/**
  * A pin dropped at a point, showing an image and caption in a small card — used
  * to mark each imaged region's top show on the map instead of painting it across
  * the region's polygons.
@@ -87,6 +107,12 @@ export interface MapMarker {
 		locationName: string | null;
 		showId: number | null;
 	}[];
+	/**
+	 * The siege standing and the challenge control, drawn right under the team.
+	 * Absent leaves the pin a picture with nothing to act on — which is every pin
+	 * but the one the reader has picked.
+	 */
+	challenge?: MapChallenge | null;
 	/**
 	 * Classes painted onto the pin's frame — the region's own colour, as a fill
 	 * plus the ink that reads on it. Null leaves the frame on the neutral base

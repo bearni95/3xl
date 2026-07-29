@@ -2,6 +2,7 @@
 	import { mount, onMount, onDestroy, unmount } from 'svelte';
 	import type L from 'leaflet';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
+	import PinChallenge from '$components/core/PinChallenge.svelte';
 	import type { MapCircle, MapLine, MapMarker, MapOverlay, MapStar } from '$types/map.type';
 
 	let {
@@ -122,10 +123,11 @@
 	let overlayGroups: L.GeoJSON[] = [];
 	// The pins layer, rebuilt whenever the markers prop changes.
 	let markerLayer: L.LayerGroup | null = null;
-	// The PinTeam components mounted into the pins on screen. Clearing the layer only
-	// detaches their DOM — each animating sprite would keep its frame timer running —
+	// The components mounted into the pins on screen — the teams standing on them and
+	// the challenge bars under those. Clearing the layer only detaches their DOM, and
+	// each of them runs a timer of its own (a sprite's frames, a countdown's seconds),
 	// so every rebuild unmounts the previous crop first.
-	let pinTeams: Record<string, unknown>[] = [];
+	let pinMounts: Record<string, unknown>[] = [];
 	// The star-badge layer (e.g. today's festa-major towns), rebuilt whenever the
 	// stars prop changes. Kept separate from the region pins so it always shows,
 	// with no level-of-detail folding, and sits above them.
@@ -266,7 +268,7 @@
 			// statues come out the same size whichever town is selected, rather than
 			// tracking anything about the map or the region under them.
 			frame.className = 'w-[500px] drop-shadow-lg';
-			pinTeams.push(
+			pinMounts.push(
 				mount(TeamLineup, {
 					target: frame,
 					// A town's team is somebody else's side, so it faces the viewer
@@ -290,6 +292,22 @@
 			frame.setAttribute('aria-hidden', 'true');
 			if (marker.iconSvg) frame.innerHTML = marker.iconSvg;
 			wrap.appendChild(frame);
+		}
+
+		// What can be done about the region, right under the side holding it: the siege
+		// standing and the one control that acts on it. Mounted and tracked exactly as
+		// the team is — it runs a clock of its own when it is counting down.
+		if (marker.challenge) {
+			const bar = document.createElement('div');
+			bar.className = 'mt-1';
+			// The controls are the pin's, not the map's: without this a click on the
+			// button would go on up to the marker (re-opening the region, re-framing the
+			// view under the reader) and a drag begun on it would pan the map. Leaflet's
+			// own way of saying "this DOM is a widget, not terrain".
+			Leaf!.DomEvent.disableClickPropagation(bar);
+			Leaf!.DomEvent.disableScrollPropagation(bar);
+			pinMounts.push(mount(PinChallenge, { target: bar, props: { ...marker.challenge } }));
+			wrap.appendChild(bar);
 		}
 
 		const caption = document.createElement('span');
@@ -402,7 +420,7 @@
 	function rebuildMarkers() {
 		if (!mapInstance || !Leaf) return;
 		if (!markerLayer) markerLayer = Leaf.layerGroup().addTo(mapInstance);
-		unmountPinTeams();
+		unmountPinMounts();
 		markerLayer.clearLayers();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
@@ -438,10 +456,10 @@
 		}
 	}
 
-	/** Tear down every team mounted into a pin, so no detached sprite keeps animating. */
-	function unmountPinTeams() {
-		for (const team of pinTeams) void unmount(team);
-		pinTeams = [];
+	/** Tear down everything mounted into a pin, so no detached timer keeps running. */
+	function unmountPinMounts() {
+		for (const mounted of pinMounts) void unmount(mounted);
+		pinMounts = [];
 	}
 
 	// A star badge's DOM: the game-icons.net round-star SVG (served from @3xl/assets),
@@ -628,7 +646,7 @@
 
 	onDestroy(() => {
 		resizeObserver?.disconnect();
-		unmountPinTeams();
+		unmountPinMounts();
 		mapInstance?.remove();
 	});
 </script>
