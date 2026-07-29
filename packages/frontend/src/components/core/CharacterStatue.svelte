@@ -2,6 +2,7 @@
 	import classNames from 'classnames';
 	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
+	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { showIconName } from '$utils/show/show-icon';
 	import {
 		SPAWN_BORDER_CLASSES,
@@ -26,8 +27,8 @@
 	export let label: string = '';
 	export let basePath: string | null = null;
 	export let color: SpawnColor;
-	// Where the card was claimed, already in its display form. Null leaves the name
-	// standing on its own.
+	// Where the card was claimed — the town's name as the layer holds it, article and
+	// all. Null leaves the name standing on its own.
 	export let locationName: string | null = null;
 	// The TMDB id of the character's show — its glyph goes on the floor. Null (or a
 	// show with no glyph drawn yet) leaves the floor bare rather than badging it with
@@ -58,6 +59,12 @@
 	const BASELINE = GROUND_DEPTH / 2;
 
 	$: showIcon = showIconName(showId);
+
+	// The gazetteer files the towns come from park the article after a comma to sort by
+	// — "Vall de Boí, la" — so the statue puts it back at the front before saying it.
+	// A caller that has already restored it hands over a name with no trailing article
+	// to move, and gets it back untouched.
+	$: place = locationName ? restoreCatalanArticle(locationName) : null;
 </script>
 
 <div class={classNames('flex min-w-0 flex-col', classes)}>
@@ -110,12 +117,9 @@
 		<div class="truncate bg-black/20 px-1 py-0.5 text-center text-sm font-semibold" title={label}>
 			{label}
 		</div>
-		{#if locationName}
-			<div
-				class="truncate bg-black/50 px-1 py-0.5 text-center text-xs text-white/70"
-				title={locationName}
-			>
-				{locationName}
+		{#if place}
+			<div class="truncate bg-black/50 px-1 py-0.5 text-center text-xs text-white/70" title={place}>
+				{place}
 			</div>
 		{/if}
 	</div>

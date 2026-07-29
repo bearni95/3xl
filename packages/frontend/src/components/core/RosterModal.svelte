@@ -13,6 +13,7 @@
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
+	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import { SPAWN_FILL_CLASSES } from '$components/core/spawn-colors';
 	import localStorageWritableStore from '$utils/localStorageWritableStore';
@@ -235,8 +236,11 @@
 	}
 	function locationNameFor(id: string): string {
 		if (id && id !== ULTRAMAR_ID) {
+			// The layer parks the article after a comma to sort by; it goes back to the
+			// front wherever the modal says a town — the team's region, a circle's tooltip
+			// and (again, harmlessly) the statue's own panel.
 			const name = municipalityNames?.get(id);
-			if (name) return name;
+			if (name) return restoreCatalanArticle(name);
 		}
 		// The Ultramar sentinel and any missing/unresolved location read as Ultramar.
 		return ULTRAMAR.municipality;
