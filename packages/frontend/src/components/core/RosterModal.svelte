@@ -300,16 +300,45 @@
 	// meant something under the old filters.
 	$: filterName, filterColor, filterShow, filterRarity, (page = 0);
 
+	// --- One cell per character, not per card ---------------------------------------
+	// A character claimed six times is one character, so the grid stands them up once
+	// and puts their copies underneath as a row of colour circles. The grouping happens
+	// before the pager, so a page is ten rows of *characters* — a player with a hundred
+	// reds of the same fighter no longer walks ten pages of the same statue.
+	function groupByCharacter(
+		spawns: CharacterSpawn[]
+	): { characterId: string; copies: CharacterSpawn[] }[] {
+		const groups = new Map<string, CharacterSpawn[]>();
+		for (const spawn of spawns) {
+			const copies = groups.get(spawn.characterId);
+			if (copies) copies.push(spawn);
+			else groups.set(spawn.characterId, [spawn]);
+		}
+		// Insertion order, so the characters keep the order their first copy was in.
+		return [...groups].map(([characterId, copies]) => ({ characterId, copies }));
+	}
+
+	$: characterGroups = groupByCharacter(filteredSpawns);
+
+	// character id → the id of the copy the grid is showing for it. Only holds the ones
+	// the player has clicked a circle for; every other character shows its first copy.
+	// Keyed by character rather than by page, so a colour picked stays picked as the
+	// filters and the pages move.
+	let shownCopyByCharacter = new Map<string, string>();
+	function showCopy(characterId: string, spawnId: string): void {
+		shownCopyByCharacter = new Map(shownCopyByCharacter).set(characterId, spawnId);
+	}
+
 	// A page is ROWS_PER_PAGE rows at the current column count, so the slider resizes
 	// the page as well as the cards.
 	$: pageSize = Math.max(1, $columns) * ROWS_PER_PAGE;
-	$: pageCount = Math.max(1, Math.ceil(filteredSpawns.length / pageSize));
+	$: pageCount = Math.max(1, Math.ceil(characterGroups.length / pageSize));
 	// Clamp whenever the page count shrinks (a wider column count, or cards recycled
 	// away) so the view never sits past the last page.
 	$: if (page > pageCount - 1) page = pageCount - 1;
 	$: pageStart = page * pageSize;
-	// The one page of spawns the grid actually stands up — not the full filtered list.
-	$: pagedSpawns = filteredSpawns.slice(pageStart, pageStart + pageSize);
+	// The one page of characters the grid actually stands up — not the full list.
+	$: pagedGroups = characterGroups.slice(pageStart, pageStart + pageSize);
 
 	function goToPage(next: number): void {
 		page = Math.min(Math.max(0, next), pageCount - 1);
@@ -337,16 +366,23 @@
 		};
 	}
 
-	// The current page as statues. The place names and the show assignment are threaded
-	// in so the grid re-derives as they load (a bare helper call would hide those deps).
+	// The current page's characters, each with the copy it is showing and the statue of
+	// that copy — a copy carries its own colour and its own claim place, so switching
+	// circles restands the character in that colour, in the town that one was pulled in.
+	// A shown copy that has since been filtered out or recycled away falls back to the
+	// group's first, so the cell is never left pointing at a card that isn't there. The
+	// place names and the show assignment are threaded in so the grid re-derives as they
+	// load (a bare helper call would hide those deps).
 	$: pagedStatues = ((
 		names: Map<string, string> | null,
-		shows: Map<string, { id: number; name: string }[]>
+		shows: Map<string, { id: number; name: string }[]>,
+		shown: Map<string, string>
 	) =>
-		pagedSpawns.map((spawn) => ({ spawn, statue: toStatue(spawn, names, shows) })))(
-		municipalityNames,
-		characterShows
-	);
+		pagedGroups.map((group) => {
+			const shownId = shown.get(group.characterId);
+			const copy = group.copies.find((spawn) => spawn.id === shownId) ?? group.copies[0];
+			return { group, copy, statue: toStatue(copy, names, shows) };
+		}))(municipalityNames, characterShows, shownCopyByCharacter);
 
 	// The team as the band above the grid: one cell per slot, in slot order — its
 	// statue where the slot is filled, null (an empty frame) where it isn't. Independent
@@ -362,10 +398,12 @@
 		characterShows
 	);
 
-	// Tapping a statue in the grid puts that spawn on the team or takes it off (into
-	// the first free slot, or out of the one it holds). A tap while a line-up is in
-	// flight is dropped rather than queued: the team is the server's, and two saves
-	// racing would be two answers to the same question.
+	// Tapping a statue puts the copy it is showing on the team or takes it off (into the
+	// first free slot, or out of the one it holds). It is the statue that acts and the
+	// circles that only choose which copy it stands as — a click meant to look at the
+	// blue one must never field it. A tap while a line-up is in flight is dropped rather
+	// than queued: the team is the server's, and two saves racing would be two answers
+	// to the same question.
 	function handleCardTap(spawn: CharacterSpawn): void {
 		if (recycleMode) {
 			toggleRecycleSelection(spawn.id);
@@ -373,6 +411,29 @@
 		}
 		if ($teamSaving) return;
 		void teamService.toggle(spawn.id);
+	}
+
+	/** One copy's circle: its colour, ringed while it is the copy being shown and while
+	 * it is selected for recycling. Only ever one ring colour is emitted — two would be
+	 * two rules of the same weight, and the winner would be whichever Tailwind happened
+	 * to write last rather than the one meant. */
+	function copyCircleClasses(
+		copy: CharacterSpawn,
+		shownId: string,
+		inRecycleMode: boolean,
+		selected: Set<string>
+	): string {
+		const isShown = copy.id === shownId;
+		const isSelected = inRecycleMode && selected.has(copy.id);
+		return classNames(
+			'size-4 flex-none rounded-full border border-black/30 transition',
+			SPAWN_FILL_CLASSES[copy.color],
+			{
+				'ring-2 ring-offset-1 ring-offset-base-200': isShown || isSelected,
+				'ring-warning': isSelected,
+				'ring-base-content': isShown && !isSelected
+			}
+		);
 	}
 
 	// The team's summary, at the head of the band: the colour it is led by, that lead's
@@ -594,13 +655,13 @@
 			{:else}
 				<div class="mb-3 flex flex-none flex-wrap items-center justify-between gap-3">
 					<p class="text-xs opacity-60">
-						Scroll to move through your cards.
+						Tap a colour under a character to stand them up in that copy.
 						{#if recycleMode}
-							Tap a card to select or deselect it for recycling.
+							Tap the character to select or deselect that copy for recycling.
 						{:else if teamFilledCount === 0}
-							Tap a card to lead your team — the rest of it fights in its colours.
+							Tap the character to lead your team — the rest of it fights in its colours.
 						{:else}
-							Tap a card to add or remove it from your team ({teamFilledCount}/{TEAM_SIZE}).
+							Tap the character to add or remove that copy from your team ({teamFilledCount}/{TEAM_SIZE}).
 						{/if}
 					</p>
 					<div class="flex flex-wrap items-center gap-3">
@@ -714,38 +775,62 @@
 					</div>
 				</div>
 
-				<!-- The roster itself: a statue per claimed card, the same one the map's
-				     panel stands the team up with, in a grid the slider sets the width of
-				     (1/2/3 by viewport to start). Tapping one toggles its team membership,
-				     or selects it while recycling. Only the current page is mounted — the
-				     filters narrow the roster, the pager walks what's left ROWS_PER_PAGE
-				     rows at a time — and the box takes whatever the modal's fixed height
-				     leaves it. -->
+				<!-- The roster itself: a statue per character — the same one the map's panel
+				     stands the team up with — in a grid the slider sets the width of (1/2/3
+				     by viewport to start), with that character's copies under it as a row of
+				     colour circles. Tapping the statue toggles the shown copy's team
+				     membership, or selects it while recycling; tapping a circle only changes
+				     which copy is shown. Only the current page is mounted — the filters
+				     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at a
+				     time — and the box takes whatever the modal's fixed height leaves it. -->
 				<div
 					bind:this={gridScroller}
 					class="relative min-h-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
 				>
 					<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
-						{#each pagedStatues as { spawn, statue } (spawn.id)}
-							<button
-								type="button"
-								class={classNames(
-									'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-									{
-										'opacity-30': recycleMode && !selectedForRecycle.has(spawn.id),
-										'ring-2 ring-warning': recycleMode && selectedForRecycle.has(spawn.id)
-									}
-								)}
-								on:click={() => handleCardTap(spawn)}
-							>
-								<CharacterStatue
-									label={statue.label}
-									basePath={statue.basePath}
-									color={statue.color}
-									locationName={statue.locationName}
-									showId={statue.showId}
-								/>
-							</button>
+						{#each pagedStatues as { group, copy, statue } (group.characterId)}
+							<div class="flex flex-col gap-2">
+								<button
+									type="button"
+									class={classNames(
+										'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+										{
+											'opacity-30': recycleMode && !selectedForRecycle.has(copy.id),
+											'ring-2 ring-warning': recycleMode && selectedForRecycle.has(copy.id)
+										}
+									)}
+									on:click={() => handleCardTap(copy)}
+								>
+									<CharacterStatue
+										label={statue.label}
+										basePath={statue.basePath}
+										color={statue.color}
+										locationName={statue.locationName}
+										showId={statue.showId}
+									/>
+								</button>
+								<!-- Every copy of this character the player holds, in the colour it was
+								     rolled in: a click stands the character up in that one. Two copies of
+								     the same colour are two circles, since they are two cards — the one
+								     being shown is the ringed one. -->
+								<div class="flex flex-wrap justify-center gap-1.5">
+									{#each group.copies as option (option.id)}
+										<button
+											type="button"
+											class={copyCircleClasses(
+												option,
+												copy.id,
+												recycleMode,
+												selectedForRecycle
+											)}
+											title={locationNameFor(option.locationId)}
+											aria-label="{statue.label} — {option.color}"
+											aria-pressed={option.id === copy.id}
+											on:click={() => showCopy(group.characterId, option.id)}
+										></button>
+									{/each}
+								</div>
+							</div>
 						{/each}
 					</div>
 					{#if filteredSpawns.length === 0}
