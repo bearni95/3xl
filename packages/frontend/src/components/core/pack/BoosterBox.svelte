@@ -6,10 +6,9 @@
 	// One unopened booster box, drawn in the document: a lid seen from above with its four
 	// corners cut off, and under it the face of the box — four fifths of the width, the
 	// width the cut leaves the lid's front edge, with the two bevel faces those cuts opened
-	// running down its sides. The show's poster is printed across all three of those, one
-	// picture wrapping the front and both chamfers and shearing with them (see WRAP), with
-	// the show's wordmark laid over the head of the front and the place the box belongs to
-	// over its foot.
+	// running down its sides. On the face, the show's poster inset a twentieth of the width
+	// on all sides, the show's wordmark laid over the head of it and the place the box
+	// belongs to over the foot.
 	//
 	// The face is 3:4, the very box a CharacterStatue is drawn in — a booster and the
 	// cards it opens onto are the same object at two moments, and a grid that changes
@@ -112,68 +111,47 @@
 	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(47.83deg)]';
 	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-47.83deg)]';
 
-	// The cover is one print wrapped round the front and the two bevel faces, not three
-	// pictures side by side. It cannot be one element — the faces are sheared and the front is
-	// not — so it is the same image three times, laid out in one span and slid sideways under
-	// each surface, which clips it to its own width: the left face shows the first 4.703cqw of
-	// the span, the front the 80cqw after it, the right face the last 4.703cqw. Every copy is
-	// given the same box, the span's width by the surface's own height, and every surface is
-	// the same height, so `object-cover` crops all three identically and the pieces line up
-	// edge to edge without a seam to hide.
+	// The two stocks a box is printed on, and the four tones of each: the stock itself and
+	// three steps off it, a twentieth, an eighth and a fifth of the way to the other end
+	// (#0f0f0f / #1f1f1f / #333333 over black, #f0f0f0 / #e0e0e0 / #cccccc under white).
+	// They are written as the colours they are rather than as veils laid over the stock,
+	// because a veil can only tint a surface a single flat amount: the front and the two
+	// grounds over the picture are gradients, and a gradient needs its ends to be colours.
 	//
-	// The deformation on the sides is not applied to the print at all: a face's skew is on the
-	// face, and a child is transformed with its parent, so the slice under a face shears with
-	// the face by the same 47.83° its top edge does. The shear is measured from the inner edge
-	// — the very line the face meets the front along — so the print is continuous exactly
-	// there and leans away above and below it, which is what a wrap round a chamfer does.
-	const WRAP = 'absolute top-0 h-full w-[89.406cqw] object-cover';
-	const WRAP_AT_LEFT_FACE = 'left-0';
-	const WRAP_AT_FRONT = '-left-[4.703cqw]';
-	const WRAP_AT_RIGHT_FACE = '-left-[84.703cqw]';
-
-	// The two stocks a box is printed on, and four tones of each: the stock itself and three
-	// steps off it, a twentieth, an eighth and a fifth of the way to the other end. The three
-	// steps are veils rather than colours, because with the print wrapped over the front and
-	// both faces a tone has to be something laid *on* the picture — the faces' tones are the
-	// shading that keeps the bevel readable now that all three surfaces carry the same
-	// artwork. Over the bare stock a veil comes to the same colour it always was (black under
-	// an eighth of white is #1f1f1f), so a box with no cover is unchanged.
+	// Every surface takes its step off the same scale, in the order a light above and to the
+	// left would leave them — the top furthest from the stock, then the left face, then the
+	// right, and the front graded from the left face's step at its head down to the pure
+	// stock at its foot. Nothing on the box is one flat black or one flat white any more; the
+	// front is where that shows, since the picture covers all of it but the frame and the
+	// frame is what the eye reads the material off.
 	//
-	// Every surface takes its step in the order a light above and to the left would leave
-	// them: the top furthest from the stock, then the left face, then the right. The front
-	// takes no veil — a wash over a poster is a wash over the one thing that tells the boxes
-	// apart — so its own step off the stock is the ground beneath the print instead, graded
-	// from the left face's tone at its head to the pure stock at its foot, and seen when a
-	// show has no poster to wrap.
-	//
-	// The two grounds over the print keep colours rather than veils, being what the mark and
-	// the place are read on, and are drawn from the same scale: the head in the front's own
-	// head tone, the foot in the stock the front comes down to. Both are written as ending in
-	// their own colour at zero alpha, which is a note to a reader rather than to the browser:
-	// a gradient interpolates premultiplied, so a stop at zero alpha contributes no colour at
-	// all and the fall is through the tone it started in whatever is named at the far end.
-	// (Tailwind compiles the alpha-zero end of an arbitrary colour to a transparent black; it
-	// renders the same, as it must.)
+	// The two grounds over the picture are drawn from the same scale, each starting in the
+	// tone the front actually is where it sits — the head in the front's own head tone, the
+	// foot in the stock the front reaches at its foot. That is what lets the poster's top and
+	// bottom edges dissolve into the frame instead of ending on a line against it. Both are
+	// written as ending in their own colour at zero alpha, which is a note to a reader rather
+	// than to the browser: a gradient interpolates premultiplied, so a stop at zero alpha
+	// contributes no colour at all and the fall is through the tone it started in whatever is
+	// named at the far end. (Tailwind compiles the alpha-zero end of an arbitrary colour to a
+	// transparent black; it renders the same, as it must.)
 	//
 	// The scale turns over with the stock and the order survives the turn: on black card each
 	// step is lighter than the last, on white card darker, and either way the top is the
 	// furthest from the front and the right face the nearest.
 	$: skin = light
 		? {
-				stock: 'bg-white',
-				top: 'bg-black/20',
-				left: 'bg-black/12',
-				right: 'bg-black/6',
+				top: 'bg-[#cccccc]',
+				left: 'bg-[#e0e0e0]',
+				right: 'bg-[#f0f0f0]',
 				front: 'from-[#e0e0e0] to-white',
 				head: 'from-[#e0e0e0] to-[#e0e0e0]/0',
 				foot: 'from-white to-white/0',
 				ink: 'text-black'
 			}
 		: {
-				stock: 'bg-black',
-				top: 'bg-white/20',
-				left: 'bg-white/12',
-				right: 'bg-white/6',
+				top: 'bg-[#333333]',
+				left: 'bg-[#1f1f1f]',
+				right: 'bg-[#0f0f0f]',
 				front: 'from-[#1f1f1f] to-black',
 				head: 'from-[#1f1f1f] to-[#1f1f1f]/0',
 				foot: 'from-black to-black/0',
@@ -216,121 +194,117 @@
 			as one object folded at it. -->
 		<!-- The top takes the step furthest off the stock, which is what puts an edge between it
 			and the front: a top and a face in one colour are one shape, and a box with no edge
-			between its top and its face is not a box. It is the one surface the print does not
-			wrap onto — a lid is the face a box is not read from — so its step is a veil over the
-			bare stock and nothing shows through it. -->
-		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square', skin.stock, LID, LID_CUT)}>
-			<div class={classNames('absolute inset-0', skin.top)}></div>
-		</div>
+			between its top and its face is not a box. Which colour that step is belongs to the
+			stock (see `skin`); the lid only says that it is the far one. -->
+		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square', skin.top, LID, LID_CUT)}></div>
 	</div>
 
-	<!-- The block the print wraps: the front with a bevel face down each side, all three
-		carrying one slice each of the same cover (see WRAP). The picture is no longer inset
-		from the front — a twentieth of card showing round it was a frame, and a frame is a
-		border the print would have to jump to reach the faces, so the print now runs to the
-		front's own edges and straight on over the joint. What said "printed board" before is
-		said by the wrap itself: artwork that turns the corner is artwork on a box.
+	<!-- The face: the box's own card stock, with the picture inset a twentieth of the width
+		on all four sides. The margin is the front's and not the poster's, which is why it is
+		padding here rather than an inset on the image — the card showing through it is what
+		says the box is a printed board with a picture on it instead of a picture with a box
+		behind it. It is graded down the scale rather than flat, from the step the left face
+		takes at its head to the pure stock at its foot (see `skin`): a front in one flat
+		colour was the one surface on a four-toned box that said nothing about which way it
+		faced, and the frame is where that grade is read, the picture covering everything
+		inside it. The two grounds over the picture start in the tone the front has where they
+		sit, so they run off the poster's edges into the frame rather than stopping against a
+		colour that is not the one they came from. A percentage padding is a share of the width
+		on every side, top and bottom included, so the frame is an even width all round rather
+		than following the 3:4 out into a taller band above and below. This keeps the flex
+		sizing the poster had, which is what still hands the box its 3:4.
 
 		Nothing here is outlined. A rule round the front would be a line where the two bevel
-		faces meet its sides, holding them a pixel off the block they are faces of, and a line
-		across a continuous print is a line across a continuous print. What separates the
-		surfaces is their tones — over the print now, not instead of it. -->
+		faces meet its sides, holding them a pixel off the block they are faces of, and on a
+		surface that is all one colour a line around it is a line drawn across a solid. What
+		separates the four surfaces is the four tones, which is what separates them on a real
+		box too. -->
 	<div class="relative min-h-0 w-4/5 min-w-0 flex-1 self-center">
 		<!-- The bevel's two faces, hung off the front's sides so they are as tall as it is
 			whatever height the box is drawn at (see BEVEL_FACE). They are hung off this block
-			rather than off the front itself, which keeps their inner edge on the front's own edge:
-			an absolute inset is measured off the padding box, and a face placed inside the front
-			would meet the block it is a face of somewhere within it, breaking the print's joint.
-			Each clips its own slice of the wrap and shears it with itself, then takes its step off
-			the stock over the top of it — the left further than the right, so the two sides of one
-			cut are two faces turned different ways rather than one flat band round a picture, and
-			so the bevel still reads now that all three surfaces carry the same artwork. Nothing is
-			written on them, so they are hidden from a screen reader, which is being read the place
-			and the mark. -->
-		<div
-			class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, skin.stock, 'overflow-hidden')}
-			aria-hidden="true"
-		>
-			{#if coverUrl}
-				<img src={coverUrl} alt="" class={classNames(WRAP, WRAP_AT_LEFT_FACE)} />
-			{/if}
-			<div class={classNames('absolute inset-0', skin.left)}></div>
-		</div>
-		<div
-			class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, skin.stock, 'overflow-hidden')}
-			aria-hidden="true"
-		>
-			{#if coverUrl}
-				<img src={coverUrl} alt="" class={classNames(WRAP, WRAP_AT_RIGHT_FACE)} />
-			{/if}
-			<div class={classNames('absolute inset-0', skin.right)}></div>
-		</div>
+			rather than off the front itself, which keeps their inner edge on the front's own edge
+			whatever padding the front carries — an absolute inset is measured off the padding box,
+			and a face placed in there would meet the block it is a face of somewhere inside it.
+			Each takes its own step off the stock, the left further than the right, so the two sides
+			of the same cut are not one flat band round the picture but two faces turned different
+			ways (see `skin`). Nothing is written on them, so they are hidden from a screen reader,
+			which is being read the place and the mark. -->
+		<div class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, skin.left)} aria-hidden="true"></div>
+		<div class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, skin.right)} aria-hidden="true"></div>
 
-		<!-- The front: the middle 80cqw of the wrap, and the two things written over it. Its own
-			step off the stock is the ground under the print rather than a veil over it — a wash
-			laid on a poster is a wash on the one thing that tells the boxes apart — so the grade
-			is what a show with no poster to wrap shows, and what the two grounds are drawn from.
-			The mark and the place are placed against this box directly now that there is no
-			padding between it and the print: the padding box and the picture are the same box. -->
-		<div class={classNames('relative h-full w-full overflow-hidden bg-gradient-to-b', skin.front)}>
-			{#if coverUrl}
-				<img src={coverUrl} alt="" class={classNames(WRAP, WRAP_AT_FRONT)} />
-			{/if}
+		<div class={classNames('h-full w-full bg-gradient-to-b p-[5%]', skin.front)}>
+			<!-- The picture and the two things written over it, in one box: the mark and the place
+				belong to the poster's edges, not the box's, so they are placed against this rather
+				than against the front — an absolute inset is measured off the padding box, and
+				anchoring them out there would run the fades over the frame instead of ending them
+				where the picture ends. -->
+			<div class="relative h-full w-full">
+				{#if coverUrl}
+					<!-- The poster fills the picture whole: it is inset from the front now but not
+						contained within it, so it covers what the frame leaves rather than standing
+						centred in it with the card showing at its sides. A 2:3 poster covering a box
+						this shape loses about a tenth off its height, top and bottom, which is the cost
+						of a picture that is all picture. -->
+					<img
+						src={coverUrl}
+						alt=""
+						class={classNames('h-full w-full bg-gradient-to-b object-cover', skin.front)}
+					/>
+				{:else}
+					<div class={classNames('h-full w-full bg-gradient-to-b', skin.front)}></div>
+				{/if}
 
-			{#if logoUrl}
-				<!-- The show's wordmark across the head of the print: the name of the thing comes
-					first, and a booster box is picked up as a box of that show before it is read as
-					this town's copy of it. It is over the picture and not in a band of its own, so it
-					cannot be given a solid backing without cutting the print off at a line; the
-					gradient is how it gets its own ground instead — the front's own head tone where
-					the mark is and gone by the bottom of it, so the print runs up into it rather than
-					ending at it. The fade wants more room than the mark does, hence the bottom
-					padding: the mark sits in the solid end of it and the rest is the fall to nothing.
-					The mark is 90% of the front and takes whatever height its own proportions give it,
-					being lettering: it is read at the width it was drawn to be read at, and it keeps a
-					twentieth of the front clear of either side.
+				{#if logoUrl}
+					<!-- The show's wordmark across the head of the picture: the name of the thing comes
+						first, and a booster box is picked up as a box of that show before it is read as
+						this town's copy of it. It is over the picture and not in a band of its own, so
+						it cannot be given a solid backing without cutting the poster off at a line; the
+						gradient is how it gets its own ground instead — the front's own head tone where
+						the mark is and gone by the bottom of it, so the picture runs into the frame above
+						it rather than ending at it, the two being the same colour on that line. The fade
+						wants more room than the mark does, hence the bottom padding: the
+						mark sits in the solid end of it and the rest is the fall to nothing. The mark is
+						90% of the picture and takes whatever height its own proportions give it, being
+						lettering: it is read at the width it was drawn to be read at. The 90% is
+						measured off the picture and not off a padded box, so the fade runs the full
+						width of it while the mark keeps a twentieth clear of either side.
 
-					It is on the front alone, and so is the ground under it — the print wraps but these
-					two bands do not, because the height of each is set by what is written in it (the
-					mark's own proportions, and whether the place takes one line or two) and a face
-					cannot be given a band of a height it has no way of knowing. What that leaves is a
-					sliver of unfaded print on each chamfer beside the two bands, a twentieth of the
-					box wide. Wrapping them would mean bands of a fixed height, which would mean
-					capping the mark rather than reading it at its own width.
+						The mark itself is not turned over with the stock. It is artwork and not ink —
+						the wordmarks the authoring side enables are coloured lettering with a light
+						outline, which reads on either card, and inverting them to suit the white one
+						would put every show in false colours to save the one that is drawn in plain
+						white. -->
+					<div
+						class={classNames(
+							'absolute inset-x-0 top-0 flex justify-center bg-gradient-to-b pt-[2cqw] pb-[9cqw]',
+							skin.head
+						)}
+					>
+						<img src={logoUrl} alt="" class="w-[90%] object-contain" />
+					</div>
+				{/if}
 
-					The mark itself is not turned over with the stock. It is artwork and not ink — the
-					wordmarks the authoring side enables are coloured lettering with a light outline,
-					which reads on either card, and inverting them to suit the white one would put
-					every show in false colours to save the one that is drawn in plain white. -->
+				<!-- The place at the foot, on the same fade turned over: the pure stock at the bottom
+					edge, which is what the front has come down to by then, and gone by the top of it,
+					so the two grounds bracket the poster from its own two edges rather than one of
+					them cutting across it — each in its own end of the front's grade, neither in a
+					colour the front is not. Which copy of the box this is is
+					the thing said last — the show is what a player is looking for and the town is what
+					tells two of the same show apart, so it sits under the picture the way a caption
+					does, and the mark keeps the head. The type is whichever of the two the card is
+					not, since the card is what it is being read on. The cqw sizes are shares of the
+					whole box rather than of the front, so neither the type nor either fade changed
+					size when the front drew in to four fifths. -->
 				<div
 					class={classNames(
-						'absolute inset-x-0 top-0 flex justify-center bg-gradient-to-b pt-[2cqw] pb-[9cqw]',
-						skin.head
+						'absolute inset-x-0 bottom-0 bg-gradient-to-t px-[3cqw] pt-[9cqw] pb-[2cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance',
+						skin.foot,
+						skin.ink
 					)}
+					title={place}
 				>
-					<img src={logoUrl} alt="" class="w-[90%] object-contain" />
+					{place}
 				</div>
-			{/if}
-
-			<!-- The place at the foot, on the same fade turned over: the pure stock at the bottom
-				edge, which is what the front has come down to by then, and gone by the top of it, so
-				the two grounds bracket the print from the front's own two edges rather than one of
-				them cutting across it — each in its own end of the front's grade, neither in a colour
-				the front is not. Which copy of the box this is is the thing said last — the show is
-				what a player is looking for and the town is what tells two of the same show apart, so
-				it sits under the picture the way a caption does, and the mark keeps the head. The type
-				is whichever of the two the card is not, since the card is what it is being read on.
-				The cqw sizes are shares of the whole box rather than of the front, so nothing here
-				changed size when the front drew in to four fifths. -->
-			<div
-				class={classNames(
-					'absolute inset-x-0 bottom-0 bg-gradient-to-t px-[3cqw] pt-[9cqw] pb-[2cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance',
-					skin.foot,
-					skin.ink
-				)}
-				title={place}
-			>
-				{place}
 			</div>
 		</div>
 	</div>
