@@ -262,10 +262,10 @@
 		// a pin merely detached from the map would go on animating for nothing.
 		if (marker.team?.length) {
 			const frame = document.createElement('div');
-			// A fixed 200px for the lead standing on the town. Fixed, so a statue is the
+			// A fixed 150px for the lead standing on the town. Fixed, so a statue is the
 			// same size on every town rather than tracking anything about the map or the
 			// region under it.
-			frame.className = 'w-[200px] drop-shadow-lg';
+			frame.className = 'w-[150px] drop-shadow-lg';
 			pinTeams.push(
 				mount(TeamLineup, {
 					target: frame,
