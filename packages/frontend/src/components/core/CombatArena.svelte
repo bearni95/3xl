@@ -546,7 +546,10 @@
 			if (reward?.territory) dispatch('territory', reward.territory);
 		} catch (error) {
 			// The battle is left alone: the server still has it open and the player is
-			// still in it, which is exactly what the message has to be read against.
+			// still in it, which is exactly what the message has to be read against. The
+			// box below carries the sentence; the console carries the whole refusal —
+			// Postgres' code, detail and hint — which is what a bug report is made of.
+			console.error('Combat report refused', error);
 			reportFailure = refusal(error);
 			return;
 		} finally {
