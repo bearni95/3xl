@@ -316,10 +316,23 @@
 			(a, b) => a - b
 		))(rarityByCharacter);
 
+	// The slot each fielded card holds, by spawn id. Every question the team asks of the
+	// grid — which cards no filter may hide, which cells come first, which of them wears
+	// the border — is answered from this, and ids are all any of them needs.
+	$: teamSlotById = new Map<string, number>(
+		$teamSlots.flatMap((id, slot) => (id ? [[id, slot] as [string, number]] : []))
+	);
+
 	// The roster narrowed by the header filters. All predicates AND together; an
 	// unset (ANY) filter is a pass. The filter maps are threaded in as deps so the
 	// list re-runs as they load or a control changes. This — not `$spawns` — is what
 	// the grid renders.
+	//
+	// A fielded card is exempt from every one of them. The team is what the roster is
+	// being read against, so it stays on screen while the player searches for the fourth
+	// name to put beside it: a colour filter that hid the line-up would take away the
+	// thing the search is for. It keeps its place in the list rather than being appended,
+	// since the sort that puts the team at the head of the grid runs later anyway.
 	$: filteredSpawns = ((
 		name: string,
 		color: SpawnColor | typeof ANY,
@@ -327,10 +340,12 @@
 		rarity: number | typeof ANY,
 		shows: Map<string, { id: number; name: string }[]>,
 		rarities: Map<string, number>,
-		teamColors: Set<string> | null
+		teamColors: Set<string> | null,
+		slots: Map<string, number>
 	) => {
 		const needle = name.trim().toLowerCase();
 		return $spawns.filter((spawn) => {
+			if (slots.has(spawn.id)) return true;
 			if (needle && !labelFor(spawn.characterId).toLowerCase().includes(needle)) return false;
 			if (color !== ANY && spawn.color !== color) return false;
 			if (show !== ANY && !(shows.get(spawn.characterId) ?? []).some((entry) => entry.id === show))
@@ -346,7 +361,8 @@
 		filterRarity,
 		characterShows,
 		rarityByCharacter,
-		pickableColors
+		pickableColors,
+		teamSlotById
 	);
 
 	// The filters and the pager work on the same list: filtering narrows it, the pager
@@ -372,13 +388,6 @@
 		// Insertion order, so the characters keep the order their first copy was in.
 		return [...groups].map(([characterId, copies]) => ({ characterId, copies }));
 	}
-
-	// The slot each fielded card holds, by spawn id. Both questions the team asks of the
-	// grid — which cells come first and which of them wears the border — are answered
-	// from this, and ids are all either needs.
-	$: teamSlotById = new Map<string, number>(
-		$teamSlots.flatMap((id, slot) => (id ? [[id, slot] as [string, number]] : []))
-	);
 
 	/** The copy of this character holding the earliest team slot, or null if the player
 	 * has fielded none of them. Earliest rather than first-claimed, so a character fielded
