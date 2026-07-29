@@ -41,9 +41,14 @@
 	// whenever a different pack comes forward, so a pack never opens onto the last
 	// one's cards.
 	let pulls: ClaimPull[] | null = null;
-	// True while the roll is in flight — the pack is already tapped, and a second tap
-	// must not fire a second claim.
+	// True from the tap that opens the pack until its cards stand up — the pack is
+	// already tapped, and a second tap must not fire a second claim. It is what holds
+	// the lid open, so it outlives the roll itself by however long the swing has left.
 	let opening = false;
+	// True only once the lid has landed and the server has still not answered. The wait
+	// is the box standing open; a spinner is for the wait that outlasts it, so a roll
+	// answered inside the swing never flashes one.
+	let waiting = false;
 
 	// Which pack the state above belongs to. `selected` is the host's to change too,
 	// so the reset is driven off a change in it rather than off the picking.
@@ -52,6 +57,7 @@
 		shown = selected;
 		pulls = null;
 		opening = false;
+		waiting = false;
 	}
 
 	$: selectedPack = selected ? (packs.find((pack) => pack.id === selected) ?? null) : null;
@@ -77,6 +83,11 @@
 		dispatch('back');
 	}
 
+	// How long BoosterBox's lid takes to swing off the front. The cards are held back
+	// until it has, so a roll the server answers in a hundred milliseconds still opens
+	// the box rather than replacing it — an opening that is never seen is not one.
+	const LID_MS = 700;
+
 	// Slice the standing pack open: roll its booster and stand up whatever it gives.
 	// A refusal resolves to no cards at all — the host is the one that says why (it
 	// holds the claim panel the refusal is reported on), so this only reports how many
@@ -85,16 +96,32 @@
 		const pack = selectedPack;
 		if (!pack || opening || pulls) return;
 		const id = pack.id;
+		const tapped = Date.now();
 		opening = true;
+		// Only a roll still out when the lid has landed is a wait worth saying anything
+		// about.
+		const spinner = setTimeout(() => {
+			if (shown === id) waiting = true;
+		}, LID_MS);
 		try {
 			const cards = await pack.claim();
+			clearTimeout(spinner);
+			waiting = false;
+			// The lid is swinging while the server rolls; whichever finishes first waits
+			// for the other. A slow roll simply holds on an open box.
+			const swinging = LID_MS - (Date.now() - tapped);
+			if (swinging > 0) await new Promise((resolve) => setTimeout(resolve, swinging));
 			// Another pack came forward while the roll was in flight — its cards are
 			// not this one's to show.
 			if (shown !== id) return;
 			pulls = cards;
 			dispatch('openComplete', cards.length);
 		} finally {
-			if (shown === id) opening = false;
+			clearTimeout(spinner);
+			if (shown === id) {
+				opening = false;
+				waiting = false;
+			}
 		}
 	}
 </script>
@@ -154,17 +181,23 @@
 					<!-- Stood up, the pack is as tall as the box and as wide as that height
 						earns it — the ratio is the booster box's own, so this only says which of
 						the two the box decides. A box too narrow for that height keeps its width
-						instead, and the poster letterboxes inside the bands. -->
+						instead, and the poster letterboxes inside the bands.
+
+						Tapped, it opens: the lid swings off the front and stays off, and that is
+						what the wait for the roll is drawn as. It used to dim to 60% instead — a
+						box that fades is a box being taken away, not one being opened. -->
 					<BoosterBox
 						coverUrl={selectedPack.coverUrl}
 						locationName={selectedPack.locationName}
-						classes={classNames('h-full max-w-full', { 'opacity-60': opening })}
+						opened={opening}
+						classes="h-full max-w-full"
 					/>
 				</button>
 
-				{#if opening}
-					<!-- The roll is with the server. The pack is already tapped and dimmed, so
-						this only says the wait is a wait. -->
+				{#if waiting}
+					<!-- The roll is still with the server after the lid has landed. The box
+						standing open is what says the tap took; this only says the wait is a
+						wait. -->
 					<div class="absolute inset-0 flex items-center justify-center" aria-busy="true">
 						<span class="loading loading-spinner loading-lg text-primary"></span>
 					</div>
