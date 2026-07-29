@@ -81,6 +81,25 @@
 	const GROUND_CUT =
 		'[clip-path:polygon(10%_0,90%_0,100%_10%,100%_90%,90%_100%,10%_100%,0_90%,0_10%)]';
 
+	// What a cut corner leaves is a face, and these are the two front ones: the panel is the
+	// front of the same block the floor is the top of, so each side of it carries the slanted
+	// face the corner cut opened. They fill the two notches the cut takes out of the tile's
+	// bottom corners and carry on down the panel's sides, which is what turns a clipped
+	// square and a caption under it into one bevelled solid.
+	//
+	// Their geometry is read off the cut, not chosen. The cut's inner end is the tenth mark
+	// along the bottom edge (x = 0.1 of the card); its outer end is on the tile's side a tenth
+	// of the way back, which the perspective has drawn in to (1 − 1/1.1)/2 = 0.04545 of the
+	// card and lifted 0.1·(2/3)/1.1 = 0.0606 above the front edge. So a face is 0.05455 of the
+	// card wide, and the edge across its top rises 0.0606 over that width — 48.01°, which a
+	// skew about the inner edge applies to the whole strip at once, top and bottom together,
+	// leaving nothing vertical to measure: the strip is simply as tall as the panel it stands
+	// beside. The width is in cqw against the card (the root declares itself a container), the
+	// panel's own width being no use to a figure taken from the square.
+	const BEVEL_FACE = 'absolute inset-y-0 w-[5.4545cqw]';
+	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(48.01deg)]';
+	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-48.01deg)]';
+
 	// The character stands halfway up that plane — on the middle of the floor, with as
 	// much of it behind them as in front.
 	const BASELINE = GROUND_DEPTH / 2;
@@ -121,7 +140,9 @@
 	$: year = spawnYearLabel(spawnedAt);
 </script>
 
-<div class={classNames('flex min-w-0 flex-col', classes)}>
+<!-- The card declares itself a container so the bevel's faces can be sized off its width:
+	they are a share of the square above them, not of the panel they stand beside. -->
+<div class={classNames('@container flex min-w-0 flex-col', classes)}>
 	<!-- The box the character is seen through: a third again as tall as it is wide,
 		which is the room a standing character needs. It draws nothing of its own — the
 		floor and the panel below carry the colour. -->
@@ -195,11 +216,30 @@
 		follow. -->
 	<div
 		class={classNames(
-			'w-4/5 min-w-0 self-center border',
+			'relative w-4/5 min-w-0 self-center border',
 			SPAWN_PANEL_CLASSES[color],
 			SPAWN_BORDER_CLASSES[color]
 		)}
 	>
+		<!-- The bevel's two faces, hung off the panel's sides so they are as tall as it is
+			whatever the rows come to (see BEVEL_FACE). They are the same colour the floor and
+			the panel are, under one flat black band: a face turned away from the light is darker
+			than the top it was cut from, and one band across the whole height is what says it is
+			one face rather than the three the rows read as. Nothing is written on them, so they
+			are hidden from a screen reader, which is being read the rows themselves. -->
+		<div
+			class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, SPAWN_FILL_CLASSES[color])}
+			aria-hidden="true"
+		>
+			<div class="absolute inset-0 bg-black/40"></div>
+		</div>
+		<div
+			class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, SPAWN_FILL_CLASSES[color])}
+			aria-hidden="true"
+		>
+			<div class="absolute inset-0 bg-black/40"></div>
+		</div>
+
 		<!-- Each row carries its own black band over the colour, darkening as the panel
 			goes down: lightest under the name, heaviest under the glyphs. The ink follows
 			the band — the panel's own (black on yellow, white on the rest) reads over the
