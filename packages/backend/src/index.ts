@@ -8,6 +8,7 @@ import { showsRouter } from './routes/shows';
 import { showTemplatesRouter, ensureTables } from './routes/show-templates';
 import { festivitiesRouter } from './routes/festivities';
 import { usersRouter } from './routes/users';
+import { statsRouter } from './routes/stats';
 import { tmdbRouter } from './routes/tmdb';
 import type { HttpError } from './http-error';
 
@@ -46,6 +47,7 @@ app.use('/api/shows', showsRouter);
 app.use('/api/show-templates', showTemplatesRouter);
 app.use('/api/festivities', festivitiesRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/stats', statsRouter);
 app.use('/api/tmdb', tmdbRouter);
 
 // Central error handler: renders thrown HttpErrors as `{ message }` so the

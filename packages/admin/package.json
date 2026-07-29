@@ -20,6 +20,7 @@
 		"@3xl/data": "workspace:*",
 		"@3xl/shared": "workspace:*",
 		"@sveltejs/adapter-static": "^3.0.9",
+		"chart.js": "^4.5.1",
 		"classnames": "^2.5.1",
 		"pixi.js": "^8.19.0",
 		"svelte-i18n": "^4.0.1"
