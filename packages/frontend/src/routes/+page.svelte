@@ -1403,6 +1403,29 @@
 	// its pin and shows by name alone, exactly as it does in those tables, and the frame
 	// behind the glyph is filled with the region's colour, so such a pin says both what
 	// a region flies and in which colour it flies it.
+	/**
+	 * Where a statue on a pin says it is from: the card's OWN claim town, never the
+	 * one it happens to be standing on. A holder's team is three cards claimed
+	 * wherever their player pulled them, and a card belongs to its place — a town it
+	 * was marched to and won does not rewrite that.
+	 *
+	 * A seeded roll carries no claim (it was never pulled anywhere — it IS the town's
+	 * house team), and neither does a holder row frozen before the RPC copied the
+	 * claim across; both say the town they stand on. So does a real claim whose name
+	 * hasn't loaded yet, which keeps a statue from flashing "Ultramar" at a town it
+	 * knows perfectly well while the layer arrives.
+	 */
+	function memberPlace(
+		member: TeamMemberRoll,
+		standingIn: string,
+		names: Map<string, string> | null
+	): string {
+		if (!member.locationId) return standingIn;
+		if (member.locationId === ULTRAMAR_ID) return ULTRAMAR.municipality;
+		const name = names?.get(member.locationId);
+		return name ? restoreCatalanArticle(name) : standingIn;
+	}
+
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
@@ -1410,6 +1433,7 @@
 		teams: ReadonlyMap<string, TeamMemberRoll[]>,
 		statuedTown: string | null,
 		challengeBar: MapChallenge | null,
+		placeNames: Map<string, string> | null,
 		memberShows: ReadonlyMap<string, number[]>
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
@@ -1431,9 +1455,9 @@
 					label: charactersById.get(member.characterId)?.label ?? member.characterId,
 					basePath: charactersById.get(member.characterId)?.basePath ?? null,
 					color: member.color,
-					// The town they are standing on — every card of a town's team was
-					// claimed elsewhere, but where they *are* is what a pin is about.
-					locationName: restoreCatalanArticle(node.name),
+					// Where the card itself is from, not where it is standing (see
+					// memberPlace): a claimed card carries its own town about with it.
+					locationName: memberPlace(member, restoreCatalanArticle(node.name), placeNames),
 					// The character's own show, not the town's: a held town fields the
 					// occupier's cards, and marking their floor with the town's show would
 					// be a lie — the same rule the panel's cards follow.
@@ -1467,6 +1491,7 @@
 		teams: ReadonlyMap<string, TeamMemberRoll[]>,
 		statuedTown: string | null,
 		challengeBar: MapChallenge | null,
+		placeNames: Map<string, string> | null,
 		memberShows: ReadonlyMap<string, number[]>
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
@@ -1479,6 +1504,7 @@
 					teams,
 					statuedTown,
 					challengeBar,
+					placeNames,
 					memberShows
 				)
 			);
@@ -1494,6 +1520,7 @@
 		townTeams,
 		statuedTown,
 		pinChallenge,
+		municipalityNames,
 		showsByCharacter
 	);
 

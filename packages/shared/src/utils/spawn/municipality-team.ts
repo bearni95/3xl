@@ -22,6 +22,13 @@ export interface TeamMemberRoll {
 	characterId: string;
 	/** The member's rolled colour (weighted like {@link randomSpawnColor}). */
 	color: SpawnColor;
+	/**
+	 * Where this member was claimed, when it is a real card somebody holds (a
+	 * holder's frozen team). A seeded roll has no such place — it was never claimed
+	 * anywhere, it is simply the town's own house team — so it leaves this out and
+	 * whoever draws it says the town instead.
+	 */
+	locationId?: string | null;
 }
 
 /**

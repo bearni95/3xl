@@ -385,10 +385,17 @@ begin
 			if v_wins >= v_required then
 				-- The town falls. Freeze the team that won it, in fielded order, copying
 				-- each spawn's attributes rather than referencing the (RLS-scoped) row.
+				--
+				-- `location_id` is the town each card was CLAIMED in, not the one it has
+				-- just taken: a card belongs to the place it was pulled at and goes on
+				-- saying so wherever it is fielded. Null for a card claimed off the map,
+				-- and missing altogether on rows frozen before this was carried across —
+				-- readers fall back to the town they are standing on.
 				select jsonb_agg(
 						jsonb_build_object(
 							'character_id', cs.character_id,
-							'color', cs.color
+							'color', cs.color,
+							'location_id', cs.location_id
 						) order by f.ord
 					)
 					into v_team

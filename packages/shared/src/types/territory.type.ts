@@ -48,6 +48,16 @@ export interface HolderTeamMember {
 	characterId: string;
 	/** The colour the winning spawn had rolled. */
 	color: SpawnColor;
+	/**
+	 * Where the winning spawn was *claimed* — its own town, not the one it went on
+	 * to take. A card belongs to the place it was pulled at, and it keeps saying so
+	 * wherever it is later fielded.
+	 *
+	 * Null for a card claimed off the map (Ultramar) and for holder rows frozen
+	 * before the RPC copied this across, which is why every reader must have
+	 * somewhere to fall back to.
+	 */
+	locationId: string | null;
 }
 
 /** A municipality currently occupied by a player, as everyone sees it. */

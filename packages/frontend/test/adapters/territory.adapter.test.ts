@@ -14,8 +14,8 @@ const row = (overrides: Partial<MunicipalityHolderRow> = {}): MunicipalityHolder
 	user_id: 'user-1',
 	holder_name: 'Bernat',
 	team: [
-		{ character_id: 'luffy', color: 'purple' },
-		{ character_id: 'zoro', color: 'red' }
+		{ character_id: 'luffy', color: 'purple', location_id: 'ES_08019' },
+		{ character_id: 'zoro', color: 'red', location_id: 'ES_17079' }
 	],
 	turnover: 2,
 	taken_at: '2026-07-27T10:00:00.000Z',
@@ -30,8 +30,8 @@ describe('territoryAdapter.fromHolderRow', () => {
 			userId: 'user-1',
 			holderName: 'Bernat',
 			team: [
-				{ characterId: 'luffy', color: SpawnColor.Purple },
-				{ characterId: 'zoro', color: SpawnColor.Red }
+				{ characterId: 'luffy', color: SpawnColor.Purple, locationId: 'ES_08019' },
+				{ characterId: 'zoro', color: SpawnColor.Red, locationId: 'ES_17079' }
 			],
 			turnover: 2,
 			takenAt: '2026-07-27T10:00:00.000Z'
@@ -64,6 +64,21 @@ describe('territoryAdapter.fromHolderRow', () => {
 			row({ team: [{ character_id: 'luffy', color: 'chartreuse' }] })
 		);
 		expect(holder.team[0].color).toBe(SpawnColor.Red);
+	});
+
+	it('reads a member with no claim town as having none', () => {
+		// Rows frozen before the RPC copied the claim across, and cards claimed off
+		// the map, arrive alike: whoever draws them falls back to the town they stand on.
+		const holder = territoryAdapter.fromHolderRow(
+			row({
+				team: [
+					{ character_id: 'luffy', color: 'red' },
+					{ character_id: 'zoro', color: 'red', location_id: 42 }
+				]
+			})
+		);
+		expect(holder.team[0].locationId).toBeNull();
+		expect(holder.team[1].locationId).toBeNull();
 	});
 
 	it('treats a non-array team as no team at all', () => {
@@ -100,9 +115,15 @@ describe('territoryAdapter.toTeamRolls', () => {
 	it('projects a holder team into the shape the map already renders seeded teams in', () => {
 		const holder = territoryAdapter.fromHolderRow(row());
 		expect(territoryAdapter.toTeamRolls(holder.team)).toEqual([
-			{ characterId: 'luffy', color: SpawnColor.Purple },
-			{ characterId: 'zoro', color: SpawnColor.Red }
+			{ characterId: 'luffy', color: SpawnColor.Purple, locationId: 'ES_08019' },
+			{ characterId: 'zoro', color: SpawnColor.Red, locationId: 'ES_17079' }
 		]);
+	});
+
+	it('carries each card away with its own claim town, not the one it took', () => {
+		// The whole point: this team holds ES_08028, and neither member is from there.
+		const rolls = territoryAdapter.toTeamRolls(territoryAdapter.fromHolderRow(row()).team);
+		expect(rolls.map((roll) => roll.locationId)).toEqual(['ES_08019', 'ES_17079']);
 	});
 });
 

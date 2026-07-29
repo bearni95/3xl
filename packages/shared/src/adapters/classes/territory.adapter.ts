@@ -73,7 +73,10 @@ export class TerritoryAdapter extends AdapterClass {
 			if (!characterId) continue;
 			members.push({
 				characterId,
-				color: isSpawnColor(record.color) ? record.color : SpawnColor.Red
+				color: isSpawnColor(record.color) ? record.color : SpawnColor.Red,
+				// Absent on rows frozen before the RPC carried it, and on a card claimed
+				// off the map — both read as "no town of its own".
+				locationId: typeof record.location_id === 'string' ? record.location_id : null
 			});
 		}
 		return members;
@@ -87,7 +90,10 @@ export class TerritoryAdapter extends AdapterClass {
 	toTeamRolls(team: readonly HolderTeamMember[]): TeamMemberRoll[] {
 		return team.map((member) => ({
 			characterId: member.characterId,
-			color: member.color
+			color: member.color,
+			// Each card's own claim town travels with it, so a team fielded away from
+			// home still says where each of its members is from.
+			locationId: member.locationId
 		}));
 	}
 }
