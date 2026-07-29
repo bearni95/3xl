@@ -253,18 +253,20 @@
 		}
 
 		// The side sitting on the region, where there is one: the very cards the sidebar
-		// draws a team with — floor, character, name, place and all — three across, in
-		// place of the tile. A town shows who holds it rather than a glyph for the show
-		// they belong to. It is the same component (see TeamLineup), mounted into the
-		// pin's DOM because this is imperative code rather than a template, and tracked
-		// so the next rebuild can unmount it: each sprite runs a frame timer, and a pin
-		// merely detached from the map would go on animating for nothing.
+		// draws a team with — floor, character, name, place and all — in place of the
+		// tile. A town shows who holds it rather than a glyph for the show they belong
+		// to, and it is the caller that decides how many of that side a pin is worth
+		// (today, the lead alone). It is the same component (see TeamLineup), mounted
+		// into the pin's DOM because this is imperative code rather than a template, and
+		// tracked so the next rebuild can unmount it: each sprite runs a frame timer, and
+		// a pin merely detached from the map would go on animating for nothing.
 		if (marker.team?.length) {
 			const frame = document.createElement('div');
-			// A fixed 500px for the three of them together: the row shares that width out,
-			// so a pin's statues come out the same size on every town rather than tracking
-			// anything about the map or the region under it.
-			frame.className = 'w-[500px] drop-shadow-lg';
+			// A fixed 166px — the width each of three had when a pin carried the whole
+			// side, so dropping to the lead alone makes the pin smaller rather than the
+			// statue bigger. Fixed, so a statue is the same size on every town rather than
+			// tracking anything about the map or the region under it.
+			frame.className = 'w-[166px] drop-shadow-lg';
 			pinTeams.push(
 				mount(TeamLineup, {
 					target: frame,

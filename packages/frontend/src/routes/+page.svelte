@@ -1381,7 +1381,14 @@
 			const [[south, west], [north, east]] = box;
 			// Only a municipality's key is a municipality id, so coarser tiers find
 			// nothing here and keep their glyph.
-			const team = teams.get(node.key) ?? [];
+			//
+			// The pin shows the LEAD alone, not the whole side: a pin is a mark on a map,
+			// and three of them per town is a row of cards dropped on the terrain — the
+			// full side is what the panel is for, once a town is opened. The lead is the
+			// one that speaks for the team anyway (it is whose show the town flies and
+			// whose colour it wears), so one statue says who holds the town at a size the
+			// sprite is legible at.
+			const team = (teams.get(node.key) ?? []).slice(0, 1);
 			pins.push({
 				id: node.key,
 				position: [(south + north) / 2, (west + east) / 2],
