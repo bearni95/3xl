@@ -816,6 +816,8 @@
 			basePath: charactersById.get(spawn.characterId)?.basePath ?? null,
 			color: spawn.color,
 			locationName: claimPlaceFor(spawn.locationId, names),
+			// When the card was minted, said as an apostrophe year beside the place.
+			spawnedAt: spawn.createdAt,
 			showId: shows.get(spawn.characterId)?.[0] ?? null
 		})))(showsByCharacter, municipalityNames);
 

@@ -3,7 +3,10 @@
 	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
+	import { spawnYearLabel } from '$utils/spawn/year';
 	import { showIconName } from '$utils/show/show-icon';
+	import { colorPassives, ORDER_ICONS, type PassiveOrder } from '$utils/color/traits';
+	import type { CombatColor } from '$types/character-definition.type';
 	import {
 		SPAWN_BORDER_CLASSES,
 		SPAWN_FILL_CLASSES,
@@ -12,12 +15,15 @@
 	import type { SpawnColor } from '$types/character-spawn.type';
 
 	// One character, as this game draws one: a statue of them — standing on a tilted
-	// floor in their own colour, with their show's mark painted on it and, where there
-	// is room for it, their name and the place they were claimed on a panel underneath.
+	// floor in their own colour, with their show's mark painted on it, the orders that
+	// colour grants them for free along the front of it, and, where there is room for
+	// it, their name and the place they were claimed on a panel underneath.
 	//
 	// It stands on its own: hand it a character from the seed or from Supabase — the
 	// frames folder, a colour, and the two captions — and it assembles the whole
-	// picture itself, taking nothing from the surface it is put on but its width.
+	// picture itself, taking nothing from the surface it is put on but its width. The
+	// colour is the whole of a fighter, so what it grants is read off it here rather
+	// than passed in: no caller has to know the game's rules to draw one.
 	//
 	// This is the only place that picture is built. The sidebar's strip rows three of
 	// them; a map pin carries three uncaptioned at pin size — the difference between
@@ -30,6 +36,10 @@
 	// Where the card was claimed — the town's name as the layer holds it, article and
 	// all. Null leaves the name standing on its own.
 	export let locationName: string | null = null;
+	// When this copy was minted, in whatever form the row carries it. It is said as a
+	// two-digit apostrophe year beside the place — 2026 reads '26 — since the panel has
+	// room for a mark, not a date. Null leaves the place standing on its own.
+	export let spawnedAt: string | number | Date | null = null;
 	// The TMDB id of the character's show — its glyph goes on the floor. Null (or a
 	// show with no glyph drawn yet) leaves the floor bare rather than badging it with
 	// a stand-in.
@@ -58,6 +68,23 @@
 	// much of it behind them as in front.
 	const BASELINE = GROUND_DEPTH / 2;
 
+	const ORDER_LABELS: Record<PassiveOrder, string> = {
+		shoot: 'Attack',
+		defend: 'Defend',
+		charge: 'Charge'
+	};
+
+	// What this character's colour hands them for free in a fight, drawn with the very
+	// glyphs the arena gives those orders — a primary brings one, a compound the two its
+	// components mix (see `colorPassives`). It is the colour that decides, so the row
+	// says what this fighter carries in rather than listing the three orders everybody
+	// has. The colour is a spawn's, whose six names are the combat colours' own.
+	$: passives = colorPassives(color as CombatColor).map((order) => ({
+		order,
+		label: ORDER_LABELS[order],
+		icon: ORDER_ICONS[order]
+	}));
+
 	$: showIcon = showIconName(showId);
 
 	// The gazetteer files the towns come from park the article after a comma to sort by
@@ -65,6 +92,9 @@
 	// A caller that has already restored it hands over a name with no trailing article
 	// to move, and gets it back untouched.
 	$: place = locationName ? restoreCatalanArticle(locationName) : null;
+
+	// The year the copy was minted, as the cards and the booster pack already say it.
+	$: year = spawnYearLabel(spawnedAt);
 </script>
 
 <div class={classNames('flex min-w-0 flex-col', classes)}>
@@ -101,13 +131,33 @@
 			</div>
 
 			<IdleSprite {basePath} {label} {flipped} baseline={BASELINE} />
+
+			<!-- What the colour grants, along the bottom of the square — the tile's front
+				edge, and so the front of the floor the character is standing on — flat, in
+				front of both: the ground turns with the perspective because it is ground,
+				while these are read rather than looked at, and a rotated row of them would be
+				neither. Sized in cqw off that square, so they are the same share of the
+				picture on a pin as on a roster card. They ship as white artwork for the
+				canvases to tint, which is white on white over a yellow floor, so each one
+				carries its own black disc — the glyph's, not the row's: the floor is what is
+				between them, and a band across the whole width would put a stripe over it. -->
+			<div class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-[4cqw] py-[1.5cqw]">
+				{#each passives as passive (passive.order)}
+					<img
+						src={passive.icon}
+						alt={passive.label}
+						title={passive.label}
+						class="size-[14cqw] rounded-full bg-black/40 p-[1cqw]"
+					/>
+				{/each}
+			</div>
 		</div>
 	</div>
 
-	<!-- Who that is, and under it where they were claimed — on a panel in the same
-		colour the floor is painted, so the card reads as one object in one colour rather
-		than a picture with a caption. Either line too long for the card is cut with an
-		ellipsis rather than wrapped: a row of these must keep one height between them,
+	<!-- Who that is, and under it where and when they were claimed — on a panel in the
+		same colour the floor is painted, so the card reads as one object in one colour
+		rather than a picture with a caption. Either line too long for the card is cut with
+		an ellipsis rather than wrapped: a row of these must keep one height between them,
 		whatever they are called and wherever they were pulled. -->
 	<div class={classNames('border', SPAWN_PANEL_CLASSES[color], SPAWN_BORDER_CLASSES[color])}>
 		<!-- Each row carries its own black band over the colour: a light one under the
@@ -117,9 +167,17 @@
 		<div class="truncate bg-black/20 px-1 py-0.5 text-center text-sm font-semibold" title={label}>
 			{label}
 		</div>
-		{#if place}
-			<div class="truncate bg-black/50 px-1 py-0.5 text-center text-xs text-white/70" title={place}>
-				{place}
+		{#if place || year}
+			<!-- The place and the year it was minted share the row: the town gives way first,
+				cut with an ellipsis, while the year keeps its two characters whatever the card's
+				width — a mark of which season a copy is from is no use half-shown. -->
+			<div class="flex items-baseline justify-center gap-1 bg-black/50 px-1 py-0.5 text-xs text-white/70">
+				{#if place}
+					<span class="truncate" title={place}>{place}</span>
+				{/if}
+				{#if year}
+					<span class="flex-none tabular-nums">{year}</span>
+				{/if}
 			</div>
 		{/if}
 	</div>

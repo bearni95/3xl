@@ -8,11 +8,15 @@
 	// this is only the row, sharing its width between them.
 
 	// One entry per team member, in the order they are fielded (the leader first).
+	// `spawnedAt` is what a real card was minted at, and it is optional for the same
+	// reason its claim place is: a town's seeded house team was never minted, so it
+	// leaves the year out and the statue says the place alone.
 	export let members: {
 		label: string;
 		basePath: string | null;
 		color: SpawnColor;
 		locationName: string | null;
+		spawnedAt?: string | number | Date | null;
 		showId: number | null;
 	}[] = [];
 	// Mirror the characters — true (the default) is the player's own side.
@@ -27,6 +31,7 @@
 			basePath={member.basePath}
 			color={member.color}
 			locationName={member.locationName}
+			spawnedAt={member.spawnedAt ?? null}
 			showId={member.showId}
 			{flipped}
 			classes="flex-1"
