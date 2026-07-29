@@ -160,7 +160,18 @@
 				{/if}
 			</div>
 
-			<IdleSprite {basePath} {label} {flipped} baseline={BASELINE} />
+			<!-- The loading veil's squares are painted the character's own colour, the same fill
+				the floor under them and the panel below take, with the grid's shading laid over
+				it. So what stands there while the art is on its way is the card's colour in
+				another form rather than a grey stand-in, and the only thing that changes when the
+				character arrives is that the colour stops being square. -->
+			<IdleSprite
+				{basePath}
+				{label}
+				{flipped}
+				baseline={BASELINE}
+				veilFill={SPAWN_FILL_CLASSES[color]}
+			/>
 		</div>
 	</div>
 

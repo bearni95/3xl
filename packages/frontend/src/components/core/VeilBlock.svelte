@@ -26,6 +26,10 @@
 	// will count anything. The caller picks it as a share of the surface, so the grid comes
 	// out the same size on a card as on a pin.
 	export let cell: number;
+	// What the squares are painted, as a background class. Whatever it is, it is the ground
+	// the shading is laid over, so a colour comes back through the greys rather than being
+	// replaced by them. White is the default for a surface with no colour to give.
+	export let fill: string = 'bg-white';
 	// Go. Once this turns true the squares blur away from the bottom up and do not come
 	// back; the caller stops drawing the piece once the sweep is over.
 	export let fading: boolean = false;
@@ -63,9 +67,11 @@
 	// against the thing being blurred and not in flat pixels.
 	const VEIL_BLUR_SHARE = 0.5;
 
-	// The greys, as veils of black over the white each square carries rather than a palette
-	// of their own: it is the same way the card's other faces are shaded (the bevel's black
-	// band, the panel's white ones).
+	// The shading, as veils of black over whatever a square is painted rather than as greys of
+	// its own: it is the same way the card's other faces are shaded (the bevel's black band,
+	// the panel's white ones), and it is what lets the squares take the character's colour
+	// without this having to know a thing about which six it might be — black over a colour
+	// darkens it and leaves it that colour, where a grey would paint it out.
 	//
 	// Cycled in order, not drawn at random: the same cell is the same grey on every card and
 	// on every re-measure, so nothing shimmers while the veil sits there. Eleven of them
@@ -143,7 +149,7 @@
 
 	// The rectangle: a clipped grid of squares of the given size, its rows held to the
 	// bottom edge so the one that overruns does it off the top. It has no colour of its own
-	// — the squares carry the white, since a single background behind them all could only
+	// — the squares carry the fill, since a single background behind them all could only
 	// go at once and the point is that it goes a row at a time.
 	//
 	// The lengths come through as custom properties: they are measured or derived geometry,
@@ -151,9 +157,9 @@
 	const GRID =
 		'bottom-[var(--veil-bottom)] left-[var(--veil-left)] h-[var(--veil-height)] w-[var(--veil-width)] grid grid-cols-[repeat(var(--veil-columns),var(--veil-cell))] auto-rows-[var(--veil-cell)] content-end';
 
-	// A square: white with its grey laid over it, and a hairline of that white left showing
+	// A square: the fill with its shading laid over it, and a hairline of the fill left showing
 	// all round as grout, which is what makes the tiling read as a grid of squares rather
-	// than as one mottled block. Padding rather than a gap in the grid, so the white is the
+	// than as one mottled block. Padding rather than a gap in the grid, so the colour is the
 	// square's own and blurs away with it — a gap would show the picture through the seams.
 	//
 	// It blurs as it goes rather than simply fading, and thins as it blurs: blur alone never
@@ -164,7 +170,8 @@
 	// returned to, which is what makes the entrance and the exit the same animation run
 	// towards opposite ends rather than two written to match.
 	$: cellClasses = classNames(
-		'bg-white p-px transition-[filter,opacity] duration-150 delay-[var(--veil-delay)]',
+		'p-px transition-[filter,opacity] duration-150 delay-[var(--veil-delay)]',
+		fill,
 		!entered || fading ? 'opacity-0 blur-[var(--veil-blur)]' : 'opacity-100 blur-[0px]'
 	);
 </script>

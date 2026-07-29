@@ -44,6 +44,12 @@
 	// bottom edge. 0 (the default) is the bottom itself; a surface that draws a ground
 	// plane raises it to the point on that plane the character stands at.
 	export let baseline: number = 0;
+	// What the loading veil's squares are painted, as a background class — the character's
+	// own colour where the surface has one. Passed straight through: a sprite has no palette
+	// and no business deriving one, but it is the thing that knows there is a veil at all,
+	// and a caller cannot hand a colour to something it never mounts. Defaults to VeilBlock's
+	// own white.
+	export let veilFill: string | undefined = undefined;
 	export let classes: string = '';
 
 	// The box the clip is placed in, measured rather than assumed: the caller sizes it
@@ -275,6 +281,7 @@
 				width="{veilBox.width}px"
 				height="{veilBox.height}px"
 				cell={boxWidth * VEIL_CELL}
+				fill={veilFill}
 				fading={veil === 'fading'}
 				on:shown={onVeilShown}
 			/>
