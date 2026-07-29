@@ -4,8 +4,8 @@
 
 	// One piece of a loading veil: a rectangle somewhere in the box, tiled with a grid of
 	// grey squares, that blurs itself into place square by square and, when whatever it
-	// stands in for has arrived, blurs away again — in from the top down, out from the
-	// bottom up, the two sweeps being the one sweep run either way.
+	// stands in for has arrived, blurs away again — both times from the bottom row up, the
+	// two sweeps being the one sweep, with only what the squares are heading for reversed.
 	//
 	// It is a shape and nothing else — it neither knows what is loading nor decides when to
 	// go. A surface says where it is and how big, and whoever is doing the loading says
@@ -102,19 +102,17 @@
 	// fixed at VEIL_STAGGER_MS however many rows there are, so a tall sheet and a short one
 	// are uncovered in the same time and every piece of the veil stays on the one clock —
 	// and its column adds the rest, which is what stops a row going all at once as a band.
-	// Coming in it waits for what is left of the spread after that, which is the sweep run
-	// backwards: the square that leaves first arrives last, so the veil is drawn on from the
-	// top down and taken off from the bottom up, and neither end of its life is the other
-	// end played again in the same direction.
+	// It is the one wait either way: a square comes in when it would go out, so the veil is
+	// drawn on from the bottom up and taken off from the bottom up, and the sweep always
+	// runs the way the character stands. What is reversed between the two is only what a
+	// square is going to — gone or there — never the order they are dealt with in.
 	$: cells = Array.from({ length: columns * rows }, (_, index) => {
 		const rowsFromBottom = rows - 1 - Math.floor(index / columns);
 		const rowWait = rows > 1 ? (rowsFromBottom / (rows - 1)) * VEIL_STAGGER_MS : 0;
 		const columnWait = COLUMN_WAITS[(index % columns) % COLUMN_WAITS.length] * VEIL_COLUMN_MS;
-		const waitOut = Math.round(rowWait + columnWait);
 		return {
 			shade: CELL_SHADES[index % CELL_SHADES.length],
-			waitOut,
-			waitIn: VEIL_SPREAD_MS - waitOut
+			wait: Math.round(rowWait + columnWait)
 		};
 	});
 
@@ -162,9 +160,9 @@
 	// clears a tiled surface, since it only spreads a square's ink over its neighbours' room
 	// and the middle of the block stays as solid as it started, whatever the radius.
 	//
-	// Blurred and gone is where it starts as well as where it ends — one state, reached from
-	// either side, which is what makes the entrance the exit backwards rather than a second
-	// animation written to look like it.
+	// Blurred and gone is where it starts as well as where it ends — one state, left and then
+	// returned to, which is what makes the entrance and the exit the same animation run
+	// towards opposite ends rather than two written to match.
 	$: cellClasses = classNames(
 		'bg-white p-px transition-[filter,opacity] duration-150 delay-[var(--veil-delay)]',
 		!entered || fading ? 'opacity-0 blur-[var(--veil-blur)]' : 'opacity-100 blur-[0px]'
@@ -186,11 +184,8 @@
 	bind:clientHeight={boxHeight}
 	aria-hidden="true"
 >
-	{#each cells as { shade, waitIn, waitOut }}
-		<!-- Which of a square's two waits is on it is whichever way it is going: it is coming
-			in until it is told to leave, and there is one transition either way, so the wait is
-			swapped under it at the moment the state it is transitioning to changes. -->
-		<div class={cellClasses} style:--veil-delay="{fading ? waitOut : waitIn}ms">
+	{#each cells as { shade, wait }}
+		<div class={cellClasses} style:--veil-delay="{wait}ms">
 			<div class="h-full w-full {shade}"></div>
 		</div>
 	{/each}
