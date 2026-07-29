@@ -11,9 +11,9 @@
 // the lead (any colour), and every other member must carry a colour the lead's
 // colour allows (see teammateColors).
 
-import { SpawnColor, type CharacterSpawn } from '../../types/character-spawn.type';
+import { SpawnBox, SpawnColor, type CharacterSpawn } from '../../types/character-spawn.type';
 import type { CombatColor } from '../../types/character-definition.type';
-import { SPAWN_COLOR_WEIGHTS, boxForSpawnColor } from './color';
+import { SPAWN_COLOR_WEIGHTS } from './color';
 import { teammateColors } from '../color/compare';
 
 /** One rolled team member: the character plus its deterministic colour. */
@@ -124,9 +124,11 @@ export function ogTeamSpawns(team: readonly TeamMemberRoll[], locationId: string
 		showId: null,
 		locationId,
 		color: member.color,
-		// No box was ever opened for these — they are rolled from the town, not
-		// claimed — so the stock is read off the colour, the one thing that names it.
-		box: boxForSpawnColor(member.color),
+		// No box was ever opened for these — they are rolled from the town, not claimed
+		// — so they are printed on the commoner stock, whatever colour they came out.
+		// Not read off the colour: the box is where a card was claimed, and these were
+		// not claimed at all.
+		box: SpawnBox.Black,
 		// A town's garrison is nobody's team: it is fielded by the board directly, so
 		// it holds no team slot.
 		teamSlot: null,

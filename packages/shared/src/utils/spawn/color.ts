@@ -47,11 +47,20 @@ export const SPAWN_COLOR_CSS: Record<SpawnColor, string> = {
 };
 
 /**
- * The three colours each booster box holds. A white box — a town de festa on the
- * day — deals only the secondaries; a black one — a festa past or still coming —
- * only the primaries. The split is what makes the two stocks worth telling apart:
- * a colour is not rarer than another inside a box, the *box* is the rare thing,
- * and there are far fewer towns celebrating today than there are in the window.
+ * The three colours each booster box deals today. A white box — a town de festa on
+ * the day — deals only the secondaries; a black one — a festa past or still coming
+ * — only the primaries. The split is what makes the two stocks worth telling apart:
+ * a colour is not rarer than another inside a box, the *box* is the rare thing, and
+ * there are far fewer towns celebrating today than there are in the window.
+ *
+ * **This map is one-way, and deliberately has no inverse.** It says what a box
+ * deals; it does NOT say which box a card came from, and nothing may read it
+ * backwards. A card's box is a fact about where it was claimed, recorded on the row
+ * by `claim_booster` — the two triples happening not to overlap right now is a
+ * property of today's deal, not a rule, and a black box that deals a purple is a
+ * thing this game means to allow. A purple card is then still black-stock, still
+ * drawn in black ink, and anything that had guessed its box from `purple` would
+ * have drawn it in white.
  *
  * The `claim_booster` RPC holds the same two triples (see
  * packages/backend/supabase/booster_claims.sql) and is what actually rolls a
@@ -61,11 +70,6 @@ export const BOX_SPAWN_COLORS: Record<SpawnBox, readonly SpawnColor[]> = {
 	[SpawnBox.White]: [SpawnColor.Purple, SpawnColor.Green, SpawnColor.Orange],
 	[SpawnBox.Black]: [SpawnColor.Red, SpawnColor.Blue, SpawnColor.Yellow]
 };
-
-/** Which box deals `color` — the inverse of {@link BOX_SPAWN_COLORS}. */
-export function boxForSpawnColor(color: SpawnColor): SpawnBox {
-	return BOX_SPAWN_COLORS[SpawnBox.White].includes(color) ? SpawnBox.White : SpawnBox.Black;
-}
 
 /** Pick one of `box`'s three colours at random, each equally likely. */
 export function randomSpawnColorForBox(box: SpawnBox): SpawnColor {

@@ -8,7 +8,7 @@
 	import { colorPassives, ORDER_ICONS, type PassiveOrder } from '$utils/color/traits';
 	import type { CombatColor } from '$types/character-definition.type';
 	import { SPAWN_FILL_CLASSES } from '$components/core/spawn-colors';
-	import type { SpawnColor } from '$types/character-spawn.type';
+	import { SpawnBox, type SpawnColor } from '$types/character-spawn.type';
 
 	// One character, as this game draws one: a statue of them — standing on a tilted
 	// floor in their own colour with their show's mark painted on it, and, where there is
@@ -30,6 +30,12 @@
 	export let label: string = '';
 	export let basePath: string | null = null;
 	export let color: SpawnColor;
+	// The booster box this card came out of. It is not another colour on the card — it
+	// is the ink: the show's mark on the floor and everything written on the panel are
+	// drawn in it, and the bands the rows sit on in the other one. A card that says
+	// nothing about where it came from — a town's garrison, a seeded side — is printed
+	// black, which is what the commoner box is.
+	export let box: SpawnBox = SpawnBox.Black;
 	// Where the card was claimed — the town's name as the layer holds it, article and
 	// all. Null leaves the name standing on its own.
 	export let locationName: string | null = null;
@@ -96,6 +102,52 @@
 	// much of it behind them as in front.
 	const BASELINE = GROUND_DEPTH / 2;
 
+	// The two stocks, as everything drawn in the box's own colour and everything drawn
+	// against it. The ink is the box: black card is read in black, white card in white.
+	// The bands under the rows are the other one at the very opacities they always
+	// carried — three tenths, a fifth, a tenth — so a white card veils its colour with
+	// black exactly as heavily as a black card veils it with white, and the panel keeps
+	// the shape it had. The order glyphs ship as white artwork, so black ink is the one
+	// that has to invert them.
+	//
+	// Written out as whole classes because Tailwind only emits what it can see spelled
+	// out: neither half of one of these can be built from `box` at runtime.
+	const STOCK: Record<
+		SpawnBox,
+		{
+			glyph: string;
+			ink: string;
+			inkMuted: string;
+			rowName: string;
+			rowPlace: string;
+			rowOrders: string;
+			invertOrders: boolean;
+		}
+	> = {
+		[SpawnBox.Black]: {
+			glyph: 'text-black/60',
+			ink: 'text-black',
+			inkMuted: 'text-black/70',
+			rowName: 'bg-white/30',
+			rowPlace: 'bg-white/20',
+			rowOrders: 'bg-white/10',
+			invertOrders: true
+		},
+		[SpawnBox.White]: {
+			glyph: 'text-white/60',
+			ink: 'text-white',
+			inkMuted: 'text-white/70',
+			rowName: 'bg-black/30',
+			rowPlace: 'bg-black/20',
+			rowOrders: 'bg-black/10',
+			invertOrders: false
+		}
+	};
+
+	// Black for anything that arrives without a box, and for anything that arrives with
+	// a word this card has no stock for — a statue is drawn either way.
+	$: stock = STOCK[box] ?? STOCK[SpawnBox.Black];
+
 	const ORDER_LABELS: Record<PassiveOrder, string> = {
 		shoot: 'Attack',
 		defend: 'Defend',
@@ -143,11 +195,12 @@
 			<!-- The floor tile: the square laid flat. The show's glyph is painted across the
 				whole of it — the same mark the map pins that show with — so it is tilted by
 				the tile rather than sitting up on it, and the character stands in front of
-				it. White at less than full strength so it reads as painted on the ground and
-				never as loud as whoever is standing on it. -->
+				it. In the box's own ink, at less than full strength so it reads as painted on
+				the ground and never as loud as whoever is standing on it. -->
 			<div
 				class={classNames(
-					'absolute inset-0 text-white/60',
+					'absolute inset-0',
+					stock.glyph,
 					GROUND,
 					GROUND_CUT,
 					SPAWN_FILL_CLASSES[color]
@@ -193,7 +246,8 @@
 		its sides, holding them a pixel off the block they are faces of. -->
 	<div
 		class={classNames(
-			'relative w-4/5 min-w-0 self-center text-black',
+			'relative w-4/5 min-w-0 self-center',
+			stock.ink,
 			SPAWN_FILL_CLASSES[color]
 		)}
 	>
@@ -216,14 +270,22 @@
 			<div class="absolute inset-0 bg-black/40"></div>
 		</div>
 
-		<!-- Each row carries its own white band over the colour, three tenths, a fifth and a
-			tenth of white as the panel goes down: the veil is heaviest under the name and thins
-			away below it, so the row that is read first stands off the colour furthest and the
-			colour comes back as the rows go on. It only ever lightens — the colour is meant to
-			stay the colour. Every row is written in black, on every swatch: the ink is no longer
-			chosen per colour the way it has to be when the panel itself is the ground (see
-			SPAWN_PANEL_CLASSES, which this no longer takes). -->
-		<div class="truncate bg-white/30 px-1 py-0.5 text-center text-sm font-semibold" title={label}>
+		<!-- Each row carries its own band over the colour, three tenths, a fifth and a tenth
+			as the panel goes down: the veil is heaviest under the name and thins away below it,
+			so the row that is read first stands off the colour furthest and the colour comes
+			back as the rows go on. The band is whichever of the two the ink is not, so a card
+			is always its own two colours and never a third: black card writes in black on white
+			bands, white card in white on black ones. The colour underneath is meant to stay the
+			colour either way — that is what the opacities are for. The ink is the box's, not
+			the swatch's: it is no longer chosen per colour the way it has to be when the panel
+			itself is the ground (see SPAWN_PANEL_CLASSES, which this no longer takes). -->
+		<div
+			class={classNames(
+				'truncate px-1 py-0.5 text-center text-sm font-semibold',
+				stock.rowName
+			)}
+			title={label}
+		>
 			{label}
 		</div>
 		{#if place || year}
@@ -231,7 +293,11 @@
 				cut with an ellipsis, while the year keeps its two characters whatever the card's
 				width — a mark of which season a copy is from is no use half-shown. -->
 			<div
-				class="flex items-baseline justify-center gap-1 bg-white/20 px-1 py-0.5 text-xs text-black/70"
+				class={classNames(
+					'flex items-baseline justify-center gap-1 px-1 py-0.5 text-xs',
+					stock.rowPlace,
+					stock.inkMuted
+				)}
 			>
 				{#if place}
 					<span class="truncate" title={place}>{place}</span>
@@ -246,16 +312,22 @@
 				front edge of the floor, laid over the picture: a row of its own is what they
 				always wanted, since they are read rather than looked at, and the panel is
 				where this card puts everything that is read. Being a row, the band is now the
-				row's rather than each glyph carrying its own disc, and it is the same white the
-				captions above take, at its thinnest here. The glyphs are inverted onto it: they
-				ship as white artwork for the canvases to tint, and white is the band's own colour
-				here rather than the ink's — inverting turns each one black, which is what the type
-				above them is, so the whole panel reads in one ink. Sized like that type rather
-				than as a share of the picture: the panel is fixed-size type on every surface the
-				statue is drawn on. -->
-			<div class="flex items-center justify-center gap-2 bg-white/10 px-1 py-0.5">
+				row's rather than each glyph carrying its own disc, and it is the same band the
+				captions above take, at its thinnest here. They ship as white artwork for the
+				canvases to tint, so a black-card statue inverts them and a white-card one does
+				not: either way each glyph comes out the ink the type above it is, and the whole
+				panel reads in one. Sized like that type rather than as a share of the picture:
+				the panel is fixed-size type on every surface the statue is drawn on. -->
+			<div
+				class={classNames('flex items-center justify-center gap-2 px-1 py-0.5', stock.rowOrders)}
+			>
 				{#each passives as passive (passive.order)}
-					<img src={passive.icon} alt={passive.label} title={passive.label} class="size-4 invert" />
+					<img
+						src={passive.icon}
+						alt={passive.label}
+						title={passive.label}
+						class={classNames('size-4', { invert: stock.invertOrders })}
+					/>
 				{/each}
 			</div>
 		{/if}

@@ -33,10 +33,13 @@ describe('spawnAdapter.fromRow', () => {
 		expect(spawnAdapter.fromRow(row({ color: 'green', box: 'white' })).box).toBe(SpawnBox.White);
 	});
 
-	it('reads a legacy row without a box off its colour', () => {
-		// The two triples do not overlap, so the colour names the stock on its own.
+	it('prints a row with no box on black card, whatever colour it is', () => {
+		// Never guessed from the colour. A box is where a card was claimed, and the
+		// colours a box deals can change — a black box dealing a purple is a thing this
+		// game means to allow, and that card wants black ink like every other black one.
 		expect(spawnAdapter.fromRow(row({ box: null })).box).toBe(SpawnBox.Black);
-		expect(spawnAdapter.fromRow(row({ color: 'purple', box: undefined })).box).toBe(SpawnBox.White);
+		expect(spawnAdapter.fromRow(row({ color: 'purple', box: undefined })).box).toBe(SpawnBox.Black);
+		expect(spawnAdapter.fromRow(row({ color: 'green', box: 'nonsense' })).box).toBe(SpawnBox.Black);
 	});
 
 	it('reads the team slot, including the lead slot 0', () => {

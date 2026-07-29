@@ -3,12 +3,12 @@ import { SpawnBox, SpawnColor } from '$types/character-spawn.type';
 import {
 	randomSpawnColor,
 	randomSpawnColorForBox,
-	boxForSpawnColor,
 	isSpawnColor,
 	isSpawnBox,
 	BOX_SPAWN_COLORS,
 	SPAWN_COLOR_WEIGHTS
 } from '$utils/spawn/color';
+import * as colorModule from '$utils/spawn/color';
 
 /** Stub Math.random to a fixed value so the weighted pick is deterministic. */
 function stubRandom(value: number): void {
@@ -82,13 +82,13 @@ describe('spawn colour', () => {
 		}
 	});
 
-	it('names the box a colour can only have come out of', () => {
-		expect(boxForSpawnColor(SpawnColor.Purple)).toBe(SpawnBox.White);
-		expect(boxForSpawnColor(SpawnColor.Green)).toBe(SpawnBox.White);
-		expect(boxForSpawnColor(SpawnColor.Orange)).toBe(SpawnBox.White);
-		expect(boxForSpawnColor(SpawnColor.Red)).toBe(SpawnBox.Black);
-		expect(boxForSpawnColor(SpawnColor.Blue)).toBe(SpawnBox.Black);
-		expect(boxForSpawnColor(SpawnColor.Yellow)).toBe(SpawnBox.Black);
+	it('offers no way to read a box back off a colour', () => {
+		// The one thing this module must not grow. Which box a card came out of is a
+		// fact about where it was claimed, recorded on the row; the colours a box deals
+		// are free to change, and a black box dealing a purple is meant to be allowed.
+		// An inverse of BOX_SPAWN_COLORS would print that card in white ink.
+		const module: Record<string, unknown> = colorModule;
+		expect(Object.keys(module).some((name) => /^box(For|From)/.test(name))).toBe(false);
 	});
 
 	it('isSpawnBox recognises only the two stocks', () => {

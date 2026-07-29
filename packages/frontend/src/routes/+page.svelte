@@ -1765,6 +1765,7 @@
 								label={member.label}
 								basePath={member.basePath}
 								color={member.color}
+								box={member.box}
 								locationName={member.locationName}
 								spawnedAt={member.spawnedAt ?? null}
 								showId={member.showId}

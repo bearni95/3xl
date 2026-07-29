@@ -122,13 +122,21 @@ export function ensureTables(): Promise<void> {
 					from (select id, random() as r from character_spawns where color is null) seeded
 				) pick
 				where cs.id = pick.id;
-				-- Stamp the box on cards claimed before it was recorded. Their colour is
-				-- the only evidence of which stock they came on, and it is enough: the two
-				-- triples do not overlap, so a secondary can only have come out of a white
-				-- box and a primary out of a black one. Anything unrecognised is left null.
-				update character_spawns
-					set box = case when color in ('purple', 'green', 'orange') then 'white' else 'black' end
-					where box is null and color in ('red', 'yellow', 'blue', 'orange', 'green', 'purple');
+				-- Stamp the box on cards claimed before it was recorded, from the claim
+				-- itself: the town the card was pulled in and the Catalan day it was pulled
+				-- on, against that town's festivity dates — the very question claim_booster
+				-- asks now. NOT from the colour: the colours a box deals can change, and a
+				-- black box dealing a purple is meant to be allowed, so reading the stock
+				-- back off 'purple' would print that card in white ink. Where the claim
+				-- cannot answer — a festa whose date has since been pruned out of the
+				-- rolling festivities window — the card is black, the commoner stock.
+				update character_spawns cs
+					set box = case when exists (
+							select 1 from festivities f
+							where f.location_id = cs.location_id
+								and f.date = (cs.created_at at time zone 'Europe/Madrid')::date
+						) then 'white' else 'black' end
+					where cs.box is null;
 				alter table character_spawns drop constraint if exists character_spawns_box_values;
 				alter table character_spawns add constraint character_spawns_box_values
 					check (box is null or box in ('white', 'black'));

@@ -6,8 +6,7 @@ import {
 	avatarCharacterIds,
 	ownedColorsByCharacter
 } from '$utils/spawn/avatar';
-import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
-import { boxForSpawnColor } from '$utils/spawn/color';
+import { SpawnBox, SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 
 function spawn(characterId: string, color: SpawnColor, id = crypto.randomUUID()): CharacterSpawn {
 	return {
@@ -17,7 +16,7 @@ function spawn(characterId: string, color: SpawnColor, id = crypto.randomUUID())
 		showId: null,
 		locationId: 'ES_08028',
 		color,
-		box: boxForSpawnColor(color),
+		box: SpawnBox.Black,
 		teamSlot: null,
 		createdAt: '2026-07-28T00:00:00.000Z'
 	};

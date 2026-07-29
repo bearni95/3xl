@@ -132,6 +132,7 @@
 							label={pull.label}
 							basePath={pull.basePath}
 							color={pull.color}
+							box={pull.spawn.box}
 							locationName={pull.locationName}
 							spawnedAt={pull.spawnedAt}
 							showId={pull.spawn.showId}

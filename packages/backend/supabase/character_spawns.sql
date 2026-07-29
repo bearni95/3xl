@@ -72,14 +72,23 @@ from (
 ) pick
 where cs.id = pick.id;
 
--- Stamp the box on cards claimed before it was recorded. Their colour is the only
--- evidence there is of which stock they came on, and it is enough: the two triples
--- do not overlap, so a secondary can only ever have come out of a white box and a
--- primary out of a black one. Anything unrecognised is left null rather than
--- guessed at.
-update public.character_spawns
-	set box = case when color in ('purple', 'green', 'orange') then 'white' else 'black' end
-	where box is null and color in ('red', 'yellow', 'blue', 'orange', 'green', 'purple');
+-- Stamp the box on cards claimed before it was recorded, from the claim itself: the
+-- town the card was pulled in and the Catalan day it was pulled on, against that
+-- town's festivity dates — which is the very question claim_booster asks now.
+--
+-- NOT from the colour. The colours a box deals are a rule that can change, and this
+-- game means to let a black box deal a purple; a card's box is where it was claimed,
+-- and reading it back off `purple` would print such a card in white ink. Where the
+-- claim cannot answer — a festa whose date has since been pruned out of
+-- `festivities`, which only holds a rolling window — the card is black, the commoner
+-- stock, rather than a guess dressed up as a record.
+update public.character_spawns cs
+	set box = case when exists (
+			select 1 from public.festivities f
+			where f.location_id = cs.location_id
+				and f.date = (cs.created_at at time zone 'Europe/Madrid')::date
+		) then 'white' else 'black' end
+	where cs.box is null;
 
 alter table public.character_spawns drop constraint if exists character_spawns_box_values;
 alter table public.character_spawns add constraint character_spawns_box_values
