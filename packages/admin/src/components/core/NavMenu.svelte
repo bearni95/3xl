@@ -13,37 +13,29 @@
 	function isActive(node: RouteNode): boolean {
 		return current === node.path;
 	}
-
-	/** A section is unfolded while the current page lives anywhere inside it. */
-	function isOpen(node: RouteNode, path: string): boolean {
-		return path === node.path || path.startsWith(`${node.path}/`);
-	}
 </script>
 
 <!-- Renders the <li> rows only: the caller owns the <ul>, so a section's subtree
-     nests as a plain child list inside its own <details>. -->
+     nests as a plain child list under its title. Nothing folds — every tier of
+     the tree is always on screen. -->
 {#each nodes as node (node.path)}
 	<li>
 		{#if node.children.length}
-			<details open={isOpen(node, current)}>
-				<summary class={classNames({ 'menu-active': isActive(node) })}>
-					{node.label}
-				</summary>
-				<ul>
-					{#if node.hasPage}
-						<li>
-							<a
-								href={node.path}
-								class={classNames({ 'menu-active': isActive(node) })}
-								on:click={() => dispatch('navigate')}
-							>
-								Overview
-							</a>
-						</li>
-					{/if}
-					<svelte:self nodes={node.children} on:navigate />
-				</ul>
-			</details>
+			<h2 class="menu-title">{node.label}</h2>
+			<ul>
+				{#if node.hasPage}
+					<li>
+						<a
+							href={node.path}
+							class={classNames({ 'menu-active': isActive(node) })}
+							on:click={() => dispatch('navigate')}
+						>
+							Overview
+						</a>
+					</li>
+				{/if}
+				<svelte:self nodes={node.children} on:navigate />
+			</ul>
 		{:else}
 			<a
 				href={node.path}
