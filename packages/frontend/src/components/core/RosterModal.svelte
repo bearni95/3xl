@@ -63,6 +63,12 @@
 		2: 'col-span-2'
 	};
 
+	// The narrowest grid whose first row can hold the filters and the whole line-up: two
+	// columns for the filter card and one per slot. Below it the party row is not drawn at
+	// all — a row that could not finish the line-up would push part of it onto a second
+	// row and stop being one — and the cards follow the filters as they did before.
+	const PARTY_ROW_MIN_COLUMNS = 2 + TEAM_SIZE;
+
 	// Persisted as a player preference: reloads from localStorage on refresh, else opens
 	// on DEFAULT_COLUMNS. The store auto-writes on every change.
 	const columns = localStorageWritableStore<number>('roster:columns', DEFAULT_COLUMNS);
@@ -213,6 +219,9 @@
 	// slot). There is nothing to create and nothing to choose between: the slots are
 	// simply there, and tapping a card fills or empties one.
 	const teamSlots = teamService.slots;
+	// The same line-up as the cards themselves, a null per empty slot — what the first
+	// row of the grid stands up, one cell per slot whether or not it is filled.
+	const teamCards = teamService.spawns;
 	const teamSaving = teamService.saving;
 	const teamError = teamService.error;
 	const teamColorFilter = teamService.allowedColors;
@@ -588,6 +597,26 @@
 			};
 		}))(municipalityNames, characterShows, shownCopyByCell, teamSlotById);
 
+	// Whether the first row is the line-up's. It is the column count that decides, and
+	// nothing else: the row is the filter card plus one cell per slot, so a grid too narrow
+	// to hold all of that at once does not open one.
+	$: partyRow = $columns >= PARTY_ROW_MIN_COLUMNS;
+
+	// The line-up as that row: one cell per slot in slot order, carrying the card standing
+	// in it and the statue of that card, or nothing at all where the slot is empty. The
+	// place names and the show assignment are threaded in for the same reason the grid's
+	// are — the statues re-derive as those load rather than standing on stale captions.
+	$: partyCells = ((
+		names: Map<string, string> | null,
+		shows: Map<string, { id: number; name: string }[]>,
+		cards: (CharacterSpawn | null)[]
+	) =>
+		cards.map((spawn, slot) => ({
+			slot,
+			spawn,
+			statue: spawn ? toStatue(spawn, names, shows) : null
+		})))(municipalityNames, characterShows, $teamCards);
+
 	// Tapping a statue puts the copy it is showing on the team or takes it off (into the
 	// first free slot, or out of the one it holds). It is the statue that acts and the
 	// circles that only choose which copy it stands as — a click meant to look at the
@@ -832,10 +861,13 @@
 				     same one the map's panel stands the team up with — in a grid the slider
 				     sets the width of (seven to start), with one circle per colour
 				     it has been pulled in underneath, each carrying how many of that colour the
-				     player owns. The fielded cards are the first cells, in slot order, ringed
-				     in primary; the team has no view of its own any more, since a slot was only
-				     ever one of these cards and standing it up twice cost the grid the room it
-				     wanted. Each cell carries the button that fields or unfields the copy it is
+				     player owns. The first row is the filters and the line-up and nothing else,
+				     wherever the grid is wide enough for both (see PARTY_ROW_MIN_COLUMNS), with a
+				     cell for every slot whether or not it is filled; the cards start on the row
+				     under it. Narrower than that there is no party row and the cards follow the
+				     filter card straight away. The fielded ones are still the first of them, in
+				     slot order and ringed in primary, so a line-up is both the row at the top and
+				     the cards it was picked out of. Each cell carries the button that fields or unfields the copy it is
 				     showing, pinned to its top corner; tapping the statue itself does the same
 				     thing, or selects the copy while recycling, and tapping a circle only
 				     changes which copy is shown. Only the current page is mounted
@@ -945,15 +977,62 @@
 							</button>
 						</div>
 
-						{#each pagedStatues as { group, copy, swatches, places, placeValue, statue, fielded } (group.id)}
+						<!-- The line-up finishes the first row: one cell per slot beside the filters,
+						     the card standing in it or the empty slot itself. A slot is a place on the
+						     team whether or not it is filled, so the empty ones are drawn too — three
+						     cells that say how big a team is and how much of one the player has. Every
+						     cell is bordered in primary like a fielded card in the grid below, since
+						     that is what each of these is, and carries the same minus button, which is
+						     the one thing the row does: take a card back off the team. -->
+						{#if partyRow}
+							{#each partyCells as { slot, spawn, statue } (slot)}
+								{#if spawn && statue}
+									<div class="relative flex flex-col gap-2 rounded-box border-2 border-primary p-1.5">
+										{#if !recycleMode}
+											<button
+												type="button"
+												class="btn btn-circle btn-primary btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow"
+												disabled={$teamSaving}
+												title="Remove {statue.label} from your team"
+												aria-label="Remove {statue.label} from your team"
+												on:click={() => handleTeamButton(spawn)}
+											>
+												−
+											</button>
+										{/if}
+										<CharacterStatue
+											label={statue.label}
+											basePath={statue.basePath}
+											color={statue.color}
+											locationName={statue.locationName}
+											spawnedAt={statue.spawnedAt}
+											showId={statue.showId}
+										/>
+									</div>
+								{:else}
+									<div
+										class="flex items-center justify-center rounded-box border-2 border-dashed border-base-content/20 p-1.5 text-center text-xs opacity-50"
+									>
+										Empty slot
+									</div>
+								{/if}
+							{/each}
+						{/if}
+
+						{#each pagedStatues as { group, copy, swatches, places, placeValue, statue, fielded }, index (group.id)}
 							<!-- The border is on the cell, not on the statue: it takes in the circles
 							     and the place select too, so what it marks is this character's whole
 							     entry. Every cell carries it and only a fielded one colours it in, so
-							     joining the team never nudges the grid by two pixels. -->
+							     joining the team never nudges the grid by two pixels.
+							     The first card starts a row of its own while the party row stands, which
+							     is what keeps that row to the filters and the line-up: at seven columns
+							     the two cells the line-up leaves over would otherwise be filled by the
+							     first two cards of the roster. -->
 							<div
 								class={classNames('relative flex flex-col gap-2 rounded-box border-2 p-1.5', {
 									'border-primary': fielded,
-									'border-transparent': !fielded
+									'border-transparent': !fielded,
+									'col-start-1': partyRow && index === 0
 								})}
 							>
 								<!-- The team button, pinned to the top of the cell rather than laid out in
