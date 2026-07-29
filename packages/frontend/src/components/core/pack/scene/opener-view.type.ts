@@ -29,6 +29,12 @@ export interface OpenerPack {
 	/** Pack label — the show name shown under the grid pack / in the header. */
 	label: string;
 	/**
+	 * TMDB id of the show inside, which is what a glyph for it is looked up by
+	 * (`showIconName`) — the same mark the map pins that show with and the statue paints
+	 * across its floor. The box paints it on its lid.
+	 */
+	showId: number;
+	/**
 	 * Rolls this pack's booster against Supabase and returns the cards to reveal.
 	 * The grid scene calls it when the player slices the selected pack open — so the
 	 * spawn is persisted at open time. Rejections/empties reveal no cards.

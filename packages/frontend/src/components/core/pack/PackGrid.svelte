@@ -166,6 +166,7 @@
 					<BoosterBox
 						coverUrl={selectedPack.coverUrl}
 						logoUrl={selectedPack.logoUrl}
+						showId={selectedPack.showId}
 						locationName={selectedPack.locationName}
 						light={selectedPack.today}
 						classes={classNames('h-full max-w-full', { 'opacity-60': opening })}
@@ -210,6 +211,7 @@
 								<BoosterBox
 									coverUrl={pack.coverUrl}
 									logoUrl={pack.logoUrl}
+									showId={pack.showId}
 									locationName={pack.locationName}
 									light={pack.today}
 								/>

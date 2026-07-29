@@ -251,6 +251,7 @@
 				logoUrl: resolveLogoUrl(claimable),
 				locationName: festa.name,
 				label: claimable.name,
+				showId: claimable.id,
 				today: celebratingToday.has(festa.id),
 				claim: makeClaim(claimable, claimRegion)
 			});

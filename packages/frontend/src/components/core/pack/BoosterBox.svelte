@@ -1,6 +1,8 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import ShowIcon from '$components/core/ShowIcon.svelte';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
+	import { showIconName } from '$utils/show/show-icon';
 	import { spawnYearLabel } from '$utils/spawn/year';
 
 	// One unopened booster box, drawn in the document: a lid seen from above with its four
@@ -35,6 +37,10 @@
 	export let logoUrl: string | null = null;
 	// Full name of the place the box belongs to, said at the foot of the front.
 	export let locationName: string | null = null;
+	// TMDB id of the show inside, which the lid's glyph is looked up by. A show with no
+	// glyph drawn for it yet leaves the lid bare rather than taking a stand-in mark, the
+	// same rule every other surface that badges a show goes by.
+	export let showId: number | null = null;
 	// Printed on white card instead of black. The stock changes and the ink with it, all four
 	// of the box's tones turning over together: the same box, the same geometry, the other
 	// material. The caller says which — the box has no idea why one run of them would be
@@ -185,6 +191,11 @@
 				ink: 'text-white'
 			};
 
+	// The glyph the lid is stamped with: the show's own, the very mark the map pins that show
+	// with and the statue paints across the floor its characters stand on. Null for a show
+	// with none drawn yet, which leaves the lid bare.
+	$: showIcon = showIconName(showId);
+
 	// What the foot says, exactly as the baked pack says it: the place with the year this
 	// copy would be minted in joined to it — "Barcelona '26". The gazetteer parks the
 	// article after a comma to sort by, so it is put back at the front before the name
@@ -222,8 +233,24 @@
 		<!-- The top takes the step furthest off the stock, which is what puts an edge between it
 			and the front: a top and a face in one colour are one shape, and a box with no edge
 			between its top and its face is not a box. Which colour that step is belongs to the
-			stock (see `skin`); the lid only says that it is the far one. -->
-		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square', skin.top, LID, LID_CUT)}></div>
+			stock (see `skin`); the lid only says that it is the far one. It is also what the
+			show's glyph is stamped on, in the ink the front's type is set in — black on a white
+			box, white on a black one — the mark being the one thing on the lid, so it takes the
+			ink at full strength rather than the veiled white the statue paints its floor with,
+			where a character stands in front of it and must not be argued with. -->
+		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square', skin.top, LID, LID_CUT)}>
+			{#if showIcon}
+				<!-- Inside the tilted square, so the glyph is laid down with the lid rather than
+					standing up on it, and clipped by the corner cuts along with it: the mark is
+					printed on the top of the box, and a print on a plane seen in perspective is seen
+					in the same perspective. It is stretched to the square's own bounds — the glyph
+					ships sized in `em` to follow its surrounding type, and a lid is not type. -->
+				<ShowIcon
+					name={showIcon}
+					classes={classNames('absolute inset-0 [&>svg]:h-full [&>svg]:w-full', skin.ink)}
+				/>
+			{/if}
+		</div>
 	</div>
 
 	<!-- The face: the picture and nothing else, edge to edge. There is no margin around it —

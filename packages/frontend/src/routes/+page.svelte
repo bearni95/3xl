@@ -1247,6 +1247,7 @@
 				position: center,
 				coverUrl: entry ? showPosterUrlForSeed(entry, `${festa.name}|${year}`) : null,
 				logoUrl: entry ? showLogoUrl(entry) : null,
+				showId: show?.id ?? null,
 				locationName: festa.name,
 				light: today.has(festa.id),
 				onClick: () => openPack(festa.id)

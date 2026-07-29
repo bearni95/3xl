@@ -510,6 +510,7 @@
 				props: {
 					coverUrl: box.coverUrl ?? null,
 					logoUrl: box.logoUrl ?? null,
+					showId: box.showId ?? null,
 					locationName: box.locationName ?? null,
 					light: box.light ?? false
 				}

@@ -157,6 +157,11 @@ export interface MapBoosterBox {
 	coverUrl?: string | null;
 	/** The show's wordmark across the head of the cover, or null when it has none. */
 	logoUrl?: string | null;
+	/**
+	 * TMDB id of the assigned show, which the glyph stamped on the box's lid is looked up
+	 * by — the same mark this map already pins the show with.
+	 */
+	showId?: number | null;
 	/** The town the box belongs to, said across the foot of the cover. */
 	locationName?: string | null;
 	/**
