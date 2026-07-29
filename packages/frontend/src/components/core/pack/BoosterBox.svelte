@@ -4,8 +4,9 @@
 	import { spawnYearLabel } from '$utils/spawn/year';
 
 	// One unopened booster box, drawn in the document: a plain lid seen from above, and
-	// under it the face of the box — the show's poster filling it edge to edge, with the
-	// place the box belongs to laid over the top of it.
+	// under it the face of the box — the show's poster inset a twentieth of the width on
+	// all sides, with the place the box belongs to laid over the top of it and the show's
+	// wordmark over the foot.
 	//
 	// The face is 3:4, the very box a CharacterStatue is drawn in — a booster and the
 	// cards it opens onto are the same object at two moments, and a grid that changes
@@ -85,51 +86,64 @@
 		</div>
 	</div>
 
-	<!-- The face: the poster fills it and the title is laid over it, so this is the
-		positioning context for both rather than the poster being a flex item of its own.
-		It keeps the flex sizing the poster had, which is what still hands the box its 3:4. -->
-	<div class="relative min-h-0 w-full flex-1">
-		{#if coverUrl}
-			<!-- The poster is the front, edge to edge: nothing shares the face with it now, so
-				it fills the whole 3:4 rather than standing contained with the neutral showing
-				around it. A 2:3 poster covering a 3:4 box loses a tenth off its height, top and
-				bottom, which is the cost of a front that is all picture. -->
-			<img src={coverUrl} alt="" class="h-full w-full bg-neutral object-cover" />
-		{:else}
-			<div class="h-full w-full bg-neutral"></div>
-		{/if}
+	<!-- The face: the box's own card stock, with the picture inset a twentieth of the width
+		on all four sides. The margin is the front's and not the poster's, which is why it is
+		padding here rather than an inset on the image — the neutral showing through it is
+		the same neutral the lid is, so the box reads as a printed board with a picture on it
+		instead of a picture with a box behind it. A percentage padding is a share of the
+		width on every side, top and bottom included, so the frame is an even width all round
+		rather than following the 3:4 out into a taller band above and below. This keeps the
+		flex sizing the poster had, which is what still hands the box its 3:4. -->
+	<div class="min-h-0 w-full flex-1 bg-neutral p-[5%]">
+		<!-- The picture and the two things written over it, in one box: the title and the mark
+			belong to the poster's edges, not the box's, so they are placed against this rather
+			than against the front — an absolute inset is measured off the padding box, and
+			anchoring them out there would run the fades over the frame instead of ending them
+			where the picture ends. -->
+		<div class="relative h-full w-full">
+			{#if coverUrl}
+				<!-- The poster fills the picture whole: it is inset from the front now but not
+					contained within it, so it covers what the frame leaves rather than standing
+					centred in it with the neutral showing at its sides. A 2:3 poster covering a box
+					this shape loses about a tenth off its height, top and bottom, which is the cost
+					of a picture that is all picture. -->
+				<img src={coverUrl} alt="" class="h-full w-full bg-neutral object-cover" />
+			{:else}
+				<div class="h-full w-full bg-neutral"></div>
+			{/if}
 
-		<!-- The title over the poster, pinned to the top of the front. It is over the picture
-			and not in a band of its own, so it cannot be given a solid backing without
-			cutting the poster off at a line; the gradient is how it gets its own ground
-			instead — black where the letters are and gone by the bottom of it, so the poster
-			darkens into the title rather than ending at it. The fade wants more room than the
-			words do, hence the bottom padding: the text sits in the solid end of it and the
-			rest is the fall to nothing. White type, because it is black it is being read on
-			now and no longer the lid's neutral. -->
-		<div
-			class="absolute inset-x-0 top-0 bg-gradient-to-b from-black to-transparent px-[3cqw] pt-[2cqw] pb-[9cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance text-white"
-			title={place}
-		>
-			{place}
-		</div>
-
-		{#if logoUrl}
-			<!-- The show's wordmark at the foot, on the same fade turned over: black at the
-				bottom edge and gone by the top of it, so the two grounds bracket the poster from
-				its own two edges rather than one of them cutting across it. The place is what
-				this copy of the box is, said at the top where a title goes, and the show is what
-				is inside it, said at the bottom — the reading order a box has, not two captions
-				competing for the same end. The mark is 90% of the width and takes whatever
-				height its own proportions give it, being lettering: it is read at the width it
-				was drawn to be read at, and the fade above it is the room it needs. The 90% is
-				measured off the front and not off a padded box, so the fade runs the full width
-				while the mark keeps a twentieth clear of either edge. -->
+			<!-- The title over the poster, pinned to the top of the picture. It is over the
+				picture and not in a band of its own, so it cannot be given a solid backing
+				without cutting the poster off at a line; the gradient is how it gets its own
+				ground instead — black where the letters are and gone by the bottom of it, so the
+				poster darkens into the title rather than ending at it. The fade wants more room
+				than the words do, hence the bottom padding: the text sits in the solid end of it
+				and the rest is the fall to nothing. White type, because it is black it is being
+				read on now and no longer the lid's neutral. -->
 			<div
-				class="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black to-transparent pt-[9cqw] pb-[2cqw]"
+				class="absolute inset-x-0 top-0 bg-gradient-to-b from-black to-transparent px-[3cqw] pt-[2cqw] pb-[9cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance text-white"
+				title={place}
 			>
-				<img src={logoUrl} alt="" class="w-[90%] object-contain" />
+				{place}
 			</div>
-		{/if}
+
+			{#if logoUrl}
+				<!-- The show's wordmark at the foot, on the same fade turned over: black at the
+					bottom edge and gone by the top of it, so the two grounds bracket the poster
+					from its own two edges rather than one of them cutting across it. The place is
+					what this copy of the box is, said at the top where a title goes, and the show
+					is what is inside it, said at the bottom — the reading order a box has, not two
+					captions competing for the same end. The mark is 90% of the picture and takes
+					whatever height its own proportions give it, being lettering: it is read at the
+					width it was drawn to be read at, and the fade above it is the room it needs.
+					The 90% is measured off the picture and not off a padded box, so the fade runs
+					the full width of it while the mark keeps a twentieth clear of either side. -->
+				<div
+					class="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black to-transparent pt-[9cqw] pb-[2cqw]"
+				>
+					<img src={logoUrl} alt="" class="w-[90%] object-contain" />
+				</div>
+			{/if}
+		</div>
 	</div>
 </div>
