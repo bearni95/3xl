@@ -1,7 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
-	import { browser } from '$app/environment';
+	import { fly } from 'svelte/transition';
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
@@ -34,17 +34,14 @@
 		if (event.key === 'Escape') close();
 	}
 
-	// Bounds for the grid-column slider. It defaults to the responsive value the
-	// grid picks for the viewport (1/2/3), which the player can then override.
+	// Bounds for the grid-column slider, and the count the grid opens on: seven, for
+	// every viewport, now that the roster is the whole view rather than a box inside it
+	// — the width is there to be spent, and the filter card takes two of the seven. The
+	// slider is still what narrows it, and a player who has already moved it keeps their
+	// own number.
 	const MIN_COLUMNS = 1;
-	const MAX_COLUMNS = 6;
-
-	/** The column count a viewport of this width opens on, before the slider. */
-	function responsiveGridColumns(viewportWidth: number): number {
-		if (viewportWidth >= 1280) return 3;
-		if (viewportWidth >= 640) return 2;
-		return 1;
-	}
+	const MAX_COLUMNS = 7;
+	const DEFAULT_COLUMNS = 7;
 
 	// The slider's count as a grid, one literal class per setting: Tailwind only
 	// emits a class it can see spelled out, so `grid-cols-${n}` would emit nothing.
@@ -54,7 +51,8 @@
 		3: 'grid-cols-3',
 		4: 'grid-cols-4',
 		5: 'grid-cols-5',
-		6: 'grid-cols-6'
+		6: 'grid-cols-6',
+		7: 'grid-cols-7'
 	};
 
 	// The filter panel is the grid's first cell and takes two columns of it — except at
@@ -65,12 +63,9 @@
 		2: 'col-span-2'
 	};
 
-	// Persisted as a player preference: reloads from localStorage on refresh, else
-	// falls back to the responsive default. The store auto-writes on every change.
-	const columns = localStorageWritableStore<number>(
-		'roster:columns',
-		browser ? responsiveGridColumns(window.innerWidth) : 3
-	);
+	// Persisted as a player preference: reloads from localStorage on refresh, else opens
+	// on DEFAULT_COLUMNS. The store auto-writes on every change.
+	const columns = localStorageWritableStore<number>('roster:columns', DEFAULT_COLUMNS);
 
 	// Whether a character's copies are gathered into one cell — a statue with a circle
 	// per colour under it — or every card owned gets a cell of its own. Grouped is the
@@ -659,13 +654,25 @@
 
 <svelte:window on:keydown={onKeydown} />
 
-<!-- The roster, raised over the map. z-[1300] puts it above both the map's pinned
-	panel (z-[900]) and the combat arena (z-[1200]) — the arena is one of the
-	places that sends the player here, so it has to open on top of it. The box is a
-	fixed-height flex column: the toolbar and the recycle bar take what they need and
-	the card canvas gets the rest, which is what its WebGL scene is sized from. -->
-<div class="modal modal-open z-[1300]" role="dialog" aria-modal="true">
-	<div class="modal-box flex h-[90vh] w-11/12 max-w-7xl flex-col gap-4 overflow-hidden">
+<!-- The roster is the whole view rather than a box over the map: it takes the viewport
+	and slides up from the bottom edge to do it, and slides back down on the way out.
+	Nothing behind it is dimmed and there is no backdrop to click, because there is
+	nothing of the map left showing to click at — Escape and the ✕ are how it closes.
+	The slide is a Svelte transition rather than a stylesheet's, since the component is
+	only ever mounted while it is open (a CSS transition has nothing to animate from on a
+	fresh mount) and the parent's {#if} is what lets the way out play at all.
+	z-[1300] still puts it above both the map's pinned panel (z-[900]) and the combat
+	arena (z-[1200]) — the arena is one of the places that sends the player here, so it
+	has to open on top of it. The page is a full-height flex column: the toolbar and the
+	recycle bar take what they need and the grid gets the rest, which is what its scroll
+	box is sized from. -->
+<div
+	class="fixed inset-0 z-[1300]"
+	role="dialog"
+	aria-modal="true"
+	transition:fly={{ y: '100%', duration: 250, opacity: 1 }}
+>
+	<div class="flex h-full w-full flex-col gap-4 overflow-hidden bg-base-100 p-6">
 		<div class="flex flex-none items-center gap-3">
 			<h2 class="text-lg font-bold">Roster</h2>
 			<button
@@ -823,7 +830,7 @@
 				</div>
 				<!-- The roster, and the team at the head of it: a statue per character — the
 				     same one the map's panel stands the team up with — in a grid the slider
-				     sets the width of (1/2/3 by viewport to start), with one circle per colour
+				     sets the width of (seven to start), with one circle per colour
 				     it has been pulled in underneath, each carrying how many of that colour the
 				     player owns. The fielded cards are the first cells, in slot order, ringed
 				     in primary; the team has no view of its own any more, since a slot was only
@@ -839,7 +846,7 @@
 					bind:this={gridScroller}
 					class="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
 				>
-					<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
+					<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-7')}>
 						<!-- The filters are the grid's first cell, two columns wide, and scroll away
 						     with the cards they narrow rather than standing beside them. Every control
 						     ANDs with the others. Clear stands at the head of the cell: it is what
@@ -1062,5 +1069,4 @@
 			{/if}
 		</div>
 	</div>
-	<button type="button" class="modal-backdrop" aria-label="Close roster" on:click={close}></button>
 </div>
