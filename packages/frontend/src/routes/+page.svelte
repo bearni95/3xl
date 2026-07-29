@@ -35,6 +35,7 @@
 	import type { TerritoryResult } from '$types/combat.type';
 	import { TEAM_SIZE, teamService } from '$services/team.service';
 	import { buildMunicipalityTeam, ogTeamSpawns } from '$utils/spawn/municipality-team';
+	import { SPAWN_COLOR_CSS } from '$utils/spawn/color';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
 	import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
 	import { showPosterUrl } from '$utils/geo/municipality-show';
@@ -341,54 +342,131 @@
 		else battleService.clear();
 	}
 
-	// The colour every division line is drawn in — Tailwind's red-500, read as the
-	// CSS variable the theme emits so the borders track the palette instead of
-	// pinning a hex. Leaflet writes this straight onto the SVG `stroke` attribute,
-	// where `var()` resolves like any other CSS value. The literal fallback matters:
-	// the variable is only emitted while some utility in the app still uses red-500,
-	// and an unresolvable var() computes to `none` — silently erasing every border.
-	const lineColor = 'var(--color-red-500, oklch(63.7% 0.237 25.331))';
+	// The colour every division line is drawn in, at every tier. White, and
+	// deliberately not the red the whole map used to be drawn in nor the colour of
+	// the region it encloses: red is one of the six colours a region can fly now, so
+	// a coloured border would read as a claim of its own. Colour is the wash's to
+	// say; the lines only say where one region stops and the next begins, and white
+	// tells that over any of the six and over the satellite alike.
+	const lineColor = '#fff';
+
+	// Coarse → fine rank of each division tier. Shared by the overlays below (which
+	// tier carries the wash) and the border logic further down (which tiers keep
+	// their lines), so both read the hierarchy off one list.
+	const tierRank: Record<RegionType, number> = {
+		Territory: 0,
+		Province: 1,
+		Comarca: 2,
+		Municipality: 3
+	};
+
+	// Every region's colour, keyed the way its own polygons name themselves so a
+	// feature can be looked up straight from the layer it arrives in: a municipality
+	// by its feature id, and every grouping by its NAME — the geo layers carry codes
+	// of their own (`AT08`, `IT_alguer`) that the tree's slugged ids don't match,
+	// while comarca, province and territory names are each unique across the map.
+	type RegionColors = Record<RegionType, Map<string, SpawnColor>>;
+
+	function buildRegionColors(nodes: RegionNode[]): RegionColors {
+		const colors: RegionColors = {
+			Territory: new Map(),
+			Province: new Map(),
+			Comarca: new Map(),
+			Municipality: new Map()
+		};
+		const walk = (node: RegionNode) => {
+			if (node.color) {
+				colors[node.type].set(node.type === 'Municipality' ? node.key : node.name, node.color);
+			}
+			for (const child of node.children) walk(child);
+		};
+		for (const node of nodes) walk(node);
+		return colors;
+	}
+
+	$: regionColors = buildRegionColors(regionNodes);
+
+	// The colour a polygon of `tier` flies, or null when its region has none (its
+	// show's roster hasn't landed, or the town has no show at all) — such a shape
+	// keeps its white outline and simply goes unwashed, leaving the satellite bare
+	// there. A province polygon also answers from its territory: the tree drops the
+	// province tier where a territory holds a single one (Illes Balears, Catalunya
+	// Nord, Andorra, l'Alguer), and there the province polygon IS the territory.
+	function featureColor(
+		tier: RegionType,
+		feature: GeoJSON.Feature | undefined,
+		colors: RegionColors
+	): SpawnColor | null {
+		const props = feature?.properties;
+		if (!props) return null;
+		const key = tier === 'Municipality' ? String(props.id ?? '') : String(props.name ?? '');
+		const own = colors[tier].get(key);
+		if (own) return own;
+		if (tier === 'Province' && props.territory) {
+			return colors.Territory.get(String(props.territory)) ?? null;
+		}
+		return null;
+	}
+
+	// One tier's paint: a solid white line of this tier's weight, plus — on the tier
+	// the map is imaging — a wash of the region's own colour at 90% across the shape.
+	// Only that one tier washes: the layers stack coarsest-on-top, so a territory
+	// filling too would bury every division under it, and the imaged tier is exactly
+	// the one whose pins are on screen, so the polygons say in colour what the pins
+	// over them already say.
+	function tierStyle(tier: RegionType, weight: number, colors: RegionColors, imaged: number) {
+		return (feature?: GeoJSON.Feature) => {
+			const color = featureColor(tier, feature, colors);
+			const washes = color != null && tierRank[tier] === imaged;
+			return {
+				color: lineColor,
+				weight,
+				opacity: 1,
+				fill: washes,
+				fillColor: washes ? SPAWN_COLOR_CSS[color!] : lineColor,
+				fillOpacity: 0.9
+			};
+		};
+	}
 
 	// Països Catalans polygons, built by @3xl/data's generate:geo from the
 	// Eurostat LAU set (WGS84) and served from that package's public/ at /data.
-	// Drawn bottom-up: municipality lines, comarca lines, province lines, territory
-	// lines. Every tier is the same red now, so a shared border reads by its weight
-	// alone — the coarser the division, the thicker the line over it.
+	// Drawn bottom-up: municipalities, comarques, províncies, territoris — so the
+	// coarser a division, the higher its line sits over the finer ones inside it,
+	// and the thicker that line is drawn.
 	//
-	// Every tier is stroke-only — no polygon carries a fill, so the satellite
-	// basemap reads through the whole map and the divisions are pure borders over
-	// it. Each imaged region's top show is shown on a pin dropped at the region's
-	// centre (see `markers`), not painted across its shape. Every tier is decorative
-	// now — with no fill to light up there is nothing for a polygon hover to do, so
-	// none of them capture pointer events and the pins and stars own every click.
-	// `hiddenLineUrls` still thins the finer borders down to the tier the map is
-	// focused on.
-	const overlays: MapOverlay[] = [
+	// Every tier draws its borders in white, and the tier the map is imaging also
+	// washes each of its shapes in the colour that region's pin flies — so a region
+	// is coloured on the map exactly as it is on its pin. Every other tier is
+	// line-only, so the satellite basemap keeps reading through them, and
+	// `hiddenLineUrls` still drops the lines of the tiers finer than the imaged one.
+	// All decorative: the wash is not something to click or hover, so no layer
+	// captures pointer events and the pins and stars own every click.
+	//
+	// Rebuilt (a fresh array) whenever a region changes colour or the map images
+	// another tier — that is what repaints the layers, which are fetched only once.
+	$: overlays = [
 		{
 			url: '/data/geo/municipis.json',
-			// The municipality borders draw in the same red as every coarser tier, but
-			// only when this tier is the one imaged (the finest zoom) — the tier logic
-			// below drops the stroke (opacity 0) at coarser views, so only the coarser
-			// divisions show there while the town borders return once you zoom in.
-			style: { color: lineColor, weight: 1, fill: false },
+			style: tierStyle('Municipality', 1, regionColors, hiddenRank),
 			interactive: false
 		},
 		{
 			url: '/data/geo/comarques.json',
-			style: { color: lineColor, weight: 1.5, fill: false },
+			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank),
 			interactive: false
 		},
 		{
 			url: '/data/geo/provincies.json',
-			style: { color: lineColor, weight: 2, fill: false },
+			style: tierStyle('Province', 2, regionColors, hiddenRank),
 			interactive: false
 		},
 		{
 			url: '/data/geo/territoris.json',
-			style: { color: lineColor, weight: 3, fill: false },
+			style: tierStyle('Territory', 3, regionColors, hiddenRank),
 			interactive: false
 		}
-	];
+	] satisfies MapOverlay[];
 
 	// --- Which show a town flies -------------------------------------------------
 	// A town starts on the show the build baked onto it, but once a player takes it
@@ -920,18 +998,8 @@
 	// find the municipalities under a region and frame or pin it.
 	$: fillIndex = buildFillIndex(regionTree);
 
-	// Coarse → fine rank of each division tier, used to compare a line overlay's
-	// tier against the tier the map is currently imaging.
-	const tierRank: Record<RegionType, number> = {
-		Territory: 0,
-		Province: 1,
-		Comarca: 2,
-		Municipality: 3
-	};
-
 	// The line overlays that subdivide a region, each with its own tier rank. The
-	// territory outline (rank 0) is never hidden, so it isn't listed. municipis
-	// carries the fill too, so hiding it drops only its stroke, not its fill.
+	// territory outline (rank 0) is never hidden, so it isn't listed.
 	const lineTiers: [string, number][] = [
 		['/data/geo/provincies.json', tierRank.Province],
 		['/data/geo/comarques.json', tierRank.Comarca],
@@ -957,14 +1025,17 @@
 		return tierRank[node?.children[0]?.type ?? 'Municipality'];
 	}
 
-	// Hide the stroke of every line overlay finer than the tier currently imaged, so
-	// only the tier on screen (and everything coarser) keeps its borders — the finer
-	// divisions inside would just clutter the pinned regions. Keyed off the ZOOM focus
-	// (`effectiveSelected`), never the frozen click, so the borders stay in lockstep
-	// with the pins: both advance a tier together as the map zooms in, and coarsen
-	// together as it zooms out — a clicked region no longer pins its border tier while
-	// the zoom marches on past it.
+	// The rank of the tier on screen — the one whose polygons carry the colour wash
+	// (see the overlays) and the finest one to keep its borders. Keyed off the ZOOM
+	// focus (`effectiveSelected`), never the frozen click, so the paint stays in
+	// lockstep with the pins: both advance a tier together as the map zooms in, and
+	// coarsen together as it zooms out — a clicked region no longer pins its border
+	// tier while the zoom marches on past it.
 	$: hiddenRank = imagedRank(effectiveSelected, regionNodes);
+
+	// Hide the stroke of every line overlay finer than that tier, so only the tier on
+	// screen (and everything coarser) keeps its borders — the finer divisions inside
+	// would just clutter the pinned regions.
 	$: hiddenLineUrls = new Set(
 		lineTiers.filter(([, rank]) => rank > hiddenRank).map(([url]) => url)
 	);
@@ -1406,9 +1477,10 @@
 			? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
 			: null;
 
-	// Selecting a region no longer repaints its polygons — with every tier stroke-only
-	// there is nothing to fill — so the open selection reads from the map purely
-	// through its framing (focusBounds) and its pins, which still fade outside it.
+	// Selecting a region doesn't repaint its polygons — a shape's colour says which
+	// region it belongs to, not which one is open — so the open selection reads from
+	// the map purely through its framing (focusBounds) and its pins, which still fade
+	// outside it.
 </script>
 
 <!-- The map and its panel split the viewport between them — the panel is never over the

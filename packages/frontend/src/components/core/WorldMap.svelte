@@ -31,7 +31,14 @@
 		zoom?: number;
 		minZoom?: number;
 		maxZoom?: number;
-		/** GeoJSON overlays drawn in array order (last = topmost). */
+		/**
+		 * GeoJSON overlays drawn in array order (last = topmost). The data is fetched
+		 * once at mount, but the array itself is read live: handing over a new array
+		 * repaints every layer from its (possibly per-feature) `style`, so a caller
+		 * can recolour the map as its state moves. Only the styles are re-read — the
+		 * urls and their order must stay put, or a layer would be painted with
+		 * another's style.
+		 */
 		overlays?: MapOverlay[];
 		/** Standalone circular regions drawn above the overlays. */
 		circles?: MapCircle[];
@@ -138,7 +145,9 @@
 	// paint and by resetStyle, so reading the live props keeps both effects
 	// through hover resets.
 	function styleFor(overlay: MapOverlay, feature?: GeoJSON.Feature): L.PathOptions {
-		let style = overlay.style;
+		// A layer may hand over one style for the whole tier or a function asked per
+		// feature — the latter is how a region is painted in its own colour.
+		let style = typeof overlay.style === 'function' ? overlay.style(feature) : overlay.style;
 		if (highlightId != null && highlightStyle && feature?.properties?.id === highlightId) {
 			style = { ...style, ...highlightStyle };
 		}
@@ -164,6 +173,10 @@
 	$effect(() => {
 		// Repaint when the highlight or the hidden-stroke set changes: resetStyle
 		// re-runs each group's style option, which now reflects the new state.
+		// `overlays` is in there too: a caller that recolours its layers hands over a
+		// fresh array, and each group reads its overlay back out of it by index (see
+		// onMount), so the new styles land without refetching a single polygon.
+		void overlays;
 		void highlightId;
 		void highlightStyle;
 		void selectedIds;
@@ -505,7 +518,11 @@
 			const byId = new Map<string, L.Path>();
 			const layerGroup = Leaf!.geoJSON(datasets[index], {
 				interactive: overlay.interactive ?? true,
-				style: (feature) => styleFor(overlay, feature),
+				// Read the overlay back out of the live prop by its position rather than
+				// closing over the one mounted with, so a repaint picks up the styles the
+				// caller is handing over now (the mounted one is the fallback for a
+				// caller that later passes a shorter array).
+				style: (feature) => styleFor(overlays[index] ?? overlay, feature),
 				onEachFeature: (feature, layer) => {
 					if (overlay.interactive === false) return;
 

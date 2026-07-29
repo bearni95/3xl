@@ -4,8 +4,14 @@ import type { PathOptions } from 'leaflet';
 export interface MapOverlay {
 	/** URL of the GeoJSON file, fetched client-side after the map mounts. */
 	url: string;
-	/** Leaflet path options applied to every feature. */
-	style: PathOptions;
+	/**
+	 * Leaflet path options for this layer's shapes: one object applied to every
+	 * feature, or a function asked for each feature's own — which is what lets a
+	 * layer paint every region in its own colour rather than one colour for the
+	 * whole tier. The function is called again on every repaint, so it may read
+	 * live state (the colour a region flies right now).
+	 */
+	style: PathOptions | ((feature?: GeoJSON.Feature) => PathOptions);
 	/** Style merged onto a feature while hovered; reset on mouseout. */
 	hoverStyle?: PathOptions;
 	/**

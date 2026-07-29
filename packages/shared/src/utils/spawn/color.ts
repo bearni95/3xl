@@ -29,6 +29,23 @@ export const SPAWN_COLOR_HEX: Record<SpawnColor, number> = {
 	[SpawnColor.Purple]: 0xa855f7
 };
 
+/**
+ * Each spawn colour as a CSS colour value — the very variable Tailwind emits for
+ * the swatch behind `bg-red-500` & co, so a colour painted outside the class
+ * system (a Leaflet stroke or fill, say) tracks the theme's palette instead of
+ * pinning its own copy of it. The literal fallback matters: the variable is only
+ * emitted while some utility in the app still spells that swatch, and an
+ * unresolvable `var()` computes to `none` — silently erasing whatever it paints.
+ */
+export const SPAWN_COLOR_CSS: Record<SpawnColor, string> = {
+	[SpawnColor.Red]: 'var(--color-red-500, oklch(63.7% 0.237 25.331))',
+	[SpawnColor.Yellow]: 'var(--color-yellow-400, oklch(85.2% 0.199 91.936))',
+	[SpawnColor.Blue]: 'var(--color-blue-500, oklch(62.3% 0.214 259.815))',
+	[SpawnColor.Orange]: 'var(--color-orange-500, oklch(70.5% 0.213 47.604))',
+	[SpawnColor.Green]: 'var(--color-green-500, oklch(72.3% 0.219 149.579))',
+	[SpawnColor.Purple]: 'var(--color-purple-500, oklch(62.7% 0.265 303.9))'
+};
+
 /** Pick a spawn colour at random, respecting {@link SPAWN_COLOR_WEIGHTS}. */
 export function randomSpawnColor(): SpawnColor {
 	const total = SPAWN_COLOR_WEIGHTS.reduce((sum, [, weight]) => sum + weight, 0);
