@@ -15,7 +15,11 @@
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
-	import { SPAWN_FILL_CLASSES } from '$components/core/spawn-colors';
+	import {
+		SPAWN_FILL_CLASSES,
+		SPAWN_PANEL_CLASSES,
+		SPAWN_SQUARE_GLYPHS
+	} from '$components/core/spawn-colors';
 	import localStorageWritableStore from '$utils/localStorageWritableStore';
 
 	// The roster is a modal now, so it is only ever mounted while it is open — the
@@ -324,6 +328,27 @@
 
 	$: characterGroups = groupByCharacter(filteredSpawns);
 
+	/** One colour of one character, and every copy the player owns in it — a circle in
+	 * the row under the statue, with that count beside it. */
+	interface ColorSwatch {
+		color: SpawnColor;
+		copies: CharacterSpawn[];
+	}
+
+	// A character's copies gathered by colour: one circle per colour rather than per
+	// card, since four reds are one red four times over and the number beside the
+	// circle is what says so. Insertion order, so the colours keep the order their
+	// first copy was pulled in.
+	function groupColors(copies: CharacterSpawn[]): ColorSwatch[] {
+		const byColor = new Map<SpawnColor, CharacterSpawn[]>();
+		for (const copy of copies) {
+			const owned = byColor.get(copy.color);
+			if (owned) owned.push(copy);
+			else byColor.set(copy.color, [copy]);
+		}
+		return [...byColor].map(([color, owned]) => ({ color, copies: owned }));
+	}
+
 	// character id → the id of the copy the grid is showing for it. Only holds the ones
 	// the player has clicked a circle for; every other character shows its first copy.
 	// Keyed by character rather than by page, so a colour picked stays picked as the
@@ -331,6 +356,45 @@
 	let shownCopyByCharacter = new Map<string, string>();
 	function showCopy(characterId: string, spawnId: string): void {
 		shownCopyByCharacter = new Map(shownCopyByCharacter).set(characterId, spawnId);
+	}
+
+	/** One place a character has been claimed in, in one colour — an entry in the cell's
+	 * place selector, which is the other way into the same copies the circles hold: the
+	 * circles ask which colour, this asks which town. */
+	interface PlaceOption {
+		copy: CharacterSpawn;
+		locationName: string;
+	}
+
+	// A character's copies as the places they were pulled in, one entry per town and
+	// colour: two reds from the same town say the same thing, so they are one entry, and
+	// it stands the first of them up. Insertion order again, so the list follows the
+	// order the copies were claimed in. `names` is taken as an argument so the caller's
+	// reactive statement has to name the layer these places are read from.
+	function groupPlaces(
+		copies: CharacterSpawn[],
+		_names: Map<string, string> | null
+	): PlaceOption[] {
+		const byPlace = new Map<string, PlaceOption>();
+		for (const copy of copies) {
+			const key = `${copy.locationId}|${copy.color}`;
+			if (byPlace.has(key)) continue;
+			byPlace.set(key, { copy, locationName: locationNameFor(copy.locationId) });
+		}
+		return [...byPlace.values()];
+	}
+
+	// Clicking a colour stands the character up in it. Clicking the colour already shown
+	// walks to the next copy of that colour instead, so all four of those reds stay
+	// reachable one at a time — they are four cards, and it is the shown one the statue
+	// fields or recycles.
+	function showColorCopy(characterId: string, swatch: ColorSwatch, shown: CharacterSpawn): void {
+		if (shown.color !== swatch.color) {
+			showCopy(characterId, swatch.copies[0].id);
+			return;
+		}
+		const at = swatch.copies.findIndex((copy) => copy.id === shown.id);
+		showCopy(characterId, swatch.copies[(at + 1) % swatch.copies.length].id);
 	}
 
 	// A page is ROWS_PER_PAGE rows at the current column count, so the slider resizes
@@ -366,6 +430,7 @@
 			basePath: basePathFor(spawn.characterId),
 			color: spawn.color,
 			locationName: locationNameFor(spawn.locationId),
+			spawnedAt: spawn.createdAt,
 			showId: showIdFor(spawn.characterId)
 		};
 	}
@@ -385,7 +450,24 @@
 		pagedGroups.map((group) => {
 			const shownId = shown.get(group.characterId);
 			const copy = group.copies.find((spawn) => spawn.id === shownId) ?? group.copies[0];
-			return { group, copy, statue: toStatue(copy, names, shows) };
+			const places = groupPlaces(group.copies, names);
+			// Which entry the place selector sits on. Two copies from one town in one
+			// colour are a single entry, so a shown copy that was the second of them has
+			// none of its own — the entry that stands for its town and colour is the one
+			// the selector must read, or it would show blank for a card that is right there.
+			const place =
+				places.find(
+					(entry) =>
+						entry.copy.locationId === copy.locationId && entry.copy.color === copy.color
+				) ?? places[0];
+			return {
+				group,
+				copy,
+				swatches: groupColors(group.copies),
+				places,
+				placeValue: place.copy.id,
+				statue: toStatue(copy, names, shows)
+			};
 		}))(municipalityNames, characterShows, shownCopyByCharacter);
 
 	// The team as the band above the grid: one cell per slot, in slot order — its
@@ -417,21 +499,26 @@
 		void teamService.toggle(spawn.id);
 	}
 
-	/** One copy's circle: its colour, ringed while it is the copy being shown and while
-	 * it is selected for recycling. Only ever one ring colour is emitted — two would be
-	 * two rules of the same weight, and the winner would be whichever Tailwind happened
-	 * to write last rather than the one meant. */
-	function copyCircleClasses(
-		copy: CharacterSpawn,
-		shownId: string,
+	/** One colour's circle: the colour itself with the count of copies owned in it
+	 * written inside, ringed while it is the one the statue is standing in and while any
+	 * copy of it is selected for recycling. The panel classes are what carry the count's
+	 * ink — black on yellow, white on the rest — since the number sits on the swatch
+	 * itself. Only ever one ring colour is emitted: two would be two rules of the same
+	 * weight, and the winner would be whichever Tailwind happened to write last rather
+	 * than the one meant. */
+	function swatchCircleClasses(
+		swatch: ColorSwatch,
+		shownColor: SpawnColor,
 		inRecycleMode: boolean,
 		selected: Set<string>
 	): string {
-		const isShown = copy.id === shownId;
-		const isSelected = inRecycleMode && selected.has(copy.id);
+		const isShown = swatch.color === shownColor;
+		const isSelected = inRecycleMode && swatch.copies.some((copy) => selected.has(copy.id));
 		return classNames(
-			'size-4 flex-none rounded-full border border-black/30 transition',
-			SPAWN_FILL_CLASSES[copy.color],
+			'flex size-5 flex-none items-center justify-center rounded-full border border-black/30',
+			'text-[0.625rem] font-semibold leading-none tabular-nums transition',
+			'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+			SPAWN_PANEL_CLASSES[swatch.color],
 			{
 				'ring-2 ring-offset-1 ring-offset-base-200': isShown || isSelected,
 				'ring-warning': isSelected,
@@ -659,7 +746,8 @@
 			{:else}
 				<div class="mb-3 flex flex-none flex-wrap items-center justify-between gap-3">
 					<p class="text-xs opacity-60">
-						Tap a colour under a character to stand them up in that copy.
+						Tap a colour to stand a character up in it — the number in it is how many of
+						that colour you own.
 						{#if recycleMode}
 							Tap the character to select or deselect that copy for recycling.
 						{:else if teamFilledCount === 0}
@@ -760,6 +848,7 @@
 										basePath={statue.basePath}
 										color={statue.color}
 										locationName={statue.locationName}
+										spawnedAt={statue.spawnedAt}
 										showId={statue.showId}
 									/>
 									<button
@@ -781,10 +870,11 @@
 
 				<!-- The roster itself: a statue per character — the same one the map's panel
 				     stands the team up with — in a grid the slider sets the width of (1/2/3
-				     by viewport to start), with that character's copies under it as a row of
-				     colour circles. Tapping the statue toggles the shown copy's team
-				     membership, or selects it while recycling; tapping a circle only changes
-				     which copy is shown. Only the current page is mounted — the filters
+				     by viewport to start), with one circle per colour it has been pulled in
+				     underneath, each carrying how many of that colour the player owns.
+				     Tapping the statue toggles the shown copy's team membership, or selects it
+				     while recycling; tapping a circle only changes which copy is shown. Only
+				     the current page is mounted — the filters
 				     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at a
 				     time — and the box takes whatever the modal's fixed height leaves it. -->
 				<div
@@ -792,7 +882,7 @@
 					class="relative min-h-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
 				>
 					<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
-						{#each pagedStatues as { group, copy, statue } (group.characterId)}
+						{#each pagedStatues as { group, copy, swatches, places, placeValue, statue } (group.characterId)}
 							<div class="flex flex-col gap-2">
 								<button
 									type="button"
@@ -810,29 +900,53 @@
 										basePath={statue.basePath}
 										color={statue.color}
 										locationName={statue.locationName}
+										spawnedAt={statue.spawnedAt}
 										showId={statue.showId}
 									/>
 								</button>
-								<!-- Every copy of this character the player holds, in the colour it was
-								     rolled in: a click stands the character up in that one. Two copies of
-								     the same colour are two circles, since they are two cards — the one
-								     being shown is the ringed one. -->
-								<div class="flex flex-wrap justify-center gap-1.5">
-									{#each group.copies as option (option.id)}
+								<!-- Every colour this character has been pulled in, each circle carrying
+								     how many of that colour the player owns: a click stands them up in
+								     that colour, and a click on the colour already standing walks to the
+								     next copy of it. The circle being shown is the ringed one. Beside them,
+								     the same copies asked for the other way round — by the town they were
+								     claimed in, each saying its colour. -->
+								<div class="flex flex-wrap items-center justify-center gap-1.5">
+									{#each swatches as swatch (swatch.color)}
 										<button
 											type="button"
-											class={copyCircleClasses(
-												option,
-												copy.id,
+											class={swatchCircleClasses(
+												swatch,
+												copy.color,
 												recycleMode,
 												selectedForRecycle
 											)}
-											title={locationNameFor(option.locationId)}
-											aria-label="{statue.label} — {option.color}"
-											aria-pressed={option.id === copy.id}
-											on:click={() => showCopy(group.characterId, option.id)}
-										></button>
+											title="{swatch.copies.length} in {swatch.color}"
+											aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
+											aria-pressed={swatch.color === copy.color}
+											on:click={() => showColorCopy(group.characterId, swatch, copy)}
+										>
+											{swatch.copies.length}
+										</button>
 									{/each}
+
+									<!-- The same copies asked for by town rather than by colour, and a native
+									     select because a menu of our own would be clipped by the scroll box
+									     this grid lives in. Each place says the colour it was pulled in with a
+									     square, the one thing an option can carry that a stylesheet cannot
+									     reach. -->
+									<select
+										class="select select-xs min-w-0 max-w-[9rem] flex-initial"
+										aria-label="{statue.label} — where it was claimed"
+										value={placeValue}
+										on:change={(event) => showCopy(group.characterId, event.currentTarget.value)}
+									>
+										{#each places as place (place.copy.id)}
+											<option value={place.copy.id}>
+												{SPAWN_SQUARE_GLYPHS[place.copy.color]}
+												{place.locationName}
+											</option>
+										{/each}
+									</select>
 								</div>
 							</div>
 						{/each}

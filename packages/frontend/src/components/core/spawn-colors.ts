@@ -42,3 +42,19 @@ export const SPAWN_BORDER_CLASSES: Record<SpawnColor, string> = {
 	[SpawnColor.Green]: 'border-green-500',
 	[SpawnColor.Purple]: 'border-purple-500'
 };
+
+/**
+ * The colour as a character, for the one place a class cannot reach: the inside of a
+ * native `<option>`, which the browser draws itself and no stylesheet gets at. The six
+ * squares happen to be exactly the six colours, and they carry their own names for a
+ * screen reader ("large red square"), so an option can say its colour without a swatch
+ * element to paint.
+ */
+export const SPAWN_SQUARE_GLYPHS: Record<SpawnColor, string> = {
+	[SpawnColor.Red]: '🟥',
+	[SpawnColor.Yellow]: '🟨',
+	[SpawnColor.Blue]: '🟦',
+	[SpawnColor.Orange]: '🟧',
+	[SpawnColor.Green]: '🟩',
+	[SpawnColor.Purple]: '🟪'
+};
