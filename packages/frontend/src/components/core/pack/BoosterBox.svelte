@@ -111,43 +111,50 @@
 	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(47.83deg)]';
 	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-47.83deg)]';
 
-	// Where a surface's tone is laid on: a veil over the stock, filling whichever face it is
-	// put in. Only the position is named here — how strong it is belongs to the surface, and
-	// the surfaces no longer share one value.
-	const TONE = 'absolute inset-0';
-
-	// The two stocks a box is printed on, black or white, and four tones of that stock across
-	// its four surfaces. The front is the stock itself, pure, because it is the printed face
-	// and a poster does not want a grey behind it; the three faces the cut opened take a veil
-	// each, in the strengths a light above and to the left would leave them — the top most of
-	// it, the left face next, the right face least. Four tones rather than two is what makes
-	// a bevel read as a bevel: with one veil shared between all three, the top and both sides
-	// were a single tone and the whole cut edge was one flat band round a picture.
+	// The two stocks a box is printed on, and the four tones of each: the stock itself and
+	// three steps off it, a twentieth, an eighth and a fifth of the way to the other end
+	// (#0f0f0f / #1f1f1f / #333333 over black, #f0f0f0 / #e0e0e0 / #cccccc under white).
+	// They are written as the colours they are rather than as veils laid over the stock,
+	// because a veil can only tint a surface a single flat amount: the front and the two
+	// grounds over the picture are gradients, and a gradient needs its ends to be colours.
 	//
-	// Which way the veils go is the one thing that is not a straight swap between the stocks:
-	// on black card a face is lifted off the front with white, and on white card there is no
-	// lifting anything off paper that is already the lightest thing on it, so the same
-	// strengths go the other way and the faces are shaded down instead. The order survives it
-	// — the top is still the furthest from the front, and the right face still the nearest.
+	// Every surface takes its step off the same scale, in the order a light above and to the
+	// left would leave them — the top furthest from the stock, then the left face, then the
+	// right, and the front graded from the left face's step at its head down to the pure
+	// stock at its foot. Nothing on the box is one flat black or one flat white any more; the
+	// front is where that shows, since the picture covers all of it but the frame and the
+	// frame is what the eye reads the material off.
 	//
-	// The fades end in the stock at zero alpha rather than in `transparent`, so what they
-	// pass through on the way is the card's own colour and never a grey that belongs to
-	// neither.
+	// The two grounds over the picture are drawn from the same scale, each starting in the
+	// tone the front actually is where it sits — the head in the front's own head tone, the
+	// foot in the stock the front reaches at its foot. That is what lets the poster's top and
+	// bottom edges dissolve into the frame instead of ending on a line against it. Both are
+	// written as ending in their own colour at zero alpha, which is a note to a reader rather
+	// than to the browser: a gradient interpolates premultiplied, so a stop at zero alpha
+	// contributes no colour at all and the fall is through the tone it started in whatever is
+	// named at the far end. (Tailwind compiles the alpha-zero end of an arbitrary colour to a
+	// transparent black; it renders the same, as it must.)
+	//
+	// The scale turns over with the stock and the order survives the turn: on black card each
+	// step is lighter than the last, on white card darker, and either way the top is the
+	// furthest from the front and the right face the nearest.
 	$: skin = light
 		? {
-				fill: 'bg-white',
-				top: 'bg-black/20',
-				left: 'bg-black/12',
-				right: 'bg-black/6',
-				fade: 'from-white to-white/0',
+				top: 'bg-[#cccccc]',
+				left: 'bg-[#e0e0e0]',
+				right: 'bg-[#f0f0f0]',
+				front: 'from-[#e0e0e0] to-white',
+				head: 'from-[#e0e0e0] to-[#e0e0e0]/0',
+				foot: 'from-white to-white/0',
 				ink: 'text-black'
 			}
 		: {
-				fill: 'bg-black',
-				top: 'bg-white/20',
-				left: 'bg-white/12',
-				right: 'bg-white/6',
-				fade: 'from-black to-black/0',
+				top: 'bg-[#333333]',
+				left: 'bg-[#1f1f1f]',
+				right: 'bg-[#0f0f0f]',
+				front: 'from-[#1f1f1f] to-black',
+				head: 'from-[#1f1f1f] to-[#1f1f1f]/0',
+				foot: 'from-black to-black/0',
 				ink: 'text-white'
 			};
 
@@ -185,28 +192,27 @@
 		<!-- Pinned by its bottom edge to the top of the face — that edge is the axis it
 			turns about, so it is the one line the lid and the face share, and the box reads
 			as one object folded at it. -->
-		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square', skin.fill, LID, LID_CUT)}>
-			<!-- The top is the most veiled of the four surfaces, which is what puts an edge between
-				it and the front: a top and a face in one flat colour are one shape, and a box with
-				no edge between its top and its face is not a box. How strong the veil is and which
-				way it goes are the stock's business (see `skin`); the lid only says where it lies. -->
-			<div class={classNames(TONE, skin.top)}></div>
-		</div>
+		<!-- The top takes the step furthest off the stock, which is what puts an edge between it
+			and the front: a top and a face in one colour are one shape, and a box with no edge
+			between its top and its face is not a box. Which colour that step is belongs to the
+			stock (see `skin`); the lid only says that it is the far one. -->
+		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square', skin.top, LID, LID_CUT)}></div>
 	</div>
 
 	<!-- The face: the box's own card stock, with the picture inset a twentieth of the width
 		on all four sides. The margin is the front's and not the poster's, which is why it is
 		padding here rather than an inset on the image — the card showing through it is what
 		says the box is a printed board with a picture on it instead of a picture with a box
-		behind it. The stock's own colour and not the theme's neutral: the two fades over the
-		picture end in that same colour, so the frame is the one thing that lets them run off
-		the edges of the poster into it rather than stopping against a border of another hue —
-		which holds on white card exactly as it did on black. It is the pure stock, the one
-		surface of the four with no veil over it: the front is what the poster is printed on
-		and a poster wants nothing greyed behind it. A percentage padding is a share of the
-		width on every side, top and bottom included, so the frame is an even width all round
-		rather than following the 3:4 out into a taller band above and below. This keeps the
-		flex sizing the poster had, which is what still hands the box its 3:4.
+		behind it. It is graded down the scale rather than flat, from the step the left face
+		takes at its head to the pure stock at its foot (see `skin`): a front in one flat
+		colour was the one surface on a four-toned box that said nothing about which way it
+		faced, and the frame is where that grade is read, the picture covering everything
+		inside it. The two grounds over the picture start in the tone the front has where they
+		sit, so they run off the poster's edges into the frame rather than stopping against a
+		colour that is not the one they came from. A percentage padding is a share of the width
+		on every side, top and bottom included, so the frame is an even width all round rather
+		than following the 3:4 out into a taller band above and below. This keeps the flex
+		sizing the poster had, which is what still hands the box its 3:4.
 
 		Nothing here is outlined. A rule round the front would be a line where the two bevel
 		faces meet its sides, holding them a pixel off the block they are faces of, and on a
@@ -219,18 +225,14 @@
 			rather than off the front itself, which keeps their inner edge on the front's own edge
 			whatever padding the front carries — an absolute inset is measured off the padding box,
 			and a face placed in there would meet the block it is a face of somewhere inside it.
-			Each takes its own tone, the left more veiled than the right, so the two sides of the
-			same cut are not one flat band round the picture but two faces turned different ways
-			(see `skin`). Nothing is written on them, so they are hidden from a screen reader,
+			Each takes its own step off the stock, the left further than the right, so the two sides
+			of the same cut are not one flat band round the picture but two faces turned different
+			ways (see `skin`). Nothing is written on them, so they are hidden from a screen reader,
 			which is being read the place and the mark. -->
-		<div class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, skin.fill)} aria-hidden="true">
-			<div class={classNames(TONE, skin.left)}></div>
-		</div>
-		<div class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, skin.fill)} aria-hidden="true">
-			<div class={classNames(TONE, skin.right)}></div>
-		</div>
+		<div class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, skin.left)} aria-hidden="true"></div>
+		<div class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, skin.right)} aria-hidden="true"></div>
 
-		<div class={classNames('h-full w-full p-[5%]', skin.fill)}>
+		<div class={classNames('h-full w-full bg-gradient-to-b p-[5%]', skin.front)}>
 			<!-- The picture and the two things written over it, in one box: the mark and the place
 				belong to the poster's edges, not the box's, so they are placed against this rather
 				than against the front — an absolute inset is measured off the padding box, and
@@ -246,10 +248,10 @@
 					<img
 						src={coverUrl}
 						alt=""
-						class={classNames('h-full w-full object-cover', skin.fill)}
+						class={classNames('h-full w-full bg-gradient-to-b object-cover', skin.front)}
 					/>
 				{:else}
-					<div class={classNames('h-full w-full', skin.fill)}></div>
+					<div class={classNames('h-full w-full bg-gradient-to-b', skin.front)}></div>
 				{/if}
 
 				{#if logoUrl}
@@ -257,9 +259,10 @@
 						first, and a booster box is picked up as a box of that show before it is read as
 						this town's copy of it. It is over the picture and not in a band of its own, so
 						it cannot be given a solid backing without cutting the poster off at a line; the
-						gradient is how it gets its own ground instead — the card's colour where the mark
-						is and gone by the bottom of it, so the poster runs into it rather than ending at
-						it. The fade wants more room than the mark does, hence the bottom padding: the
+						gradient is how it gets its own ground instead — the front's own head tone where
+						the mark is and gone by the bottom of it, so the picture runs into the frame above
+						it rather than ending at it, the two being the same colour on that line. The fade
+						wants more room than the mark does, hence the bottom padding: the
 						mark sits in the solid end of it and the rest is the fall to nothing. The mark is
 						90% of the picture and takes whatever height its own proportions give it, being
 						lettering: it is read at the width it was drawn to be read at. The 90% is
@@ -274,16 +277,18 @@
 					<div
 						class={classNames(
 							'absolute inset-x-0 top-0 flex justify-center bg-gradient-to-b pt-[2cqw] pb-[9cqw]',
-							skin.fade
+							skin.head
 						)}
 					>
 						<img src={logoUrl} alt="" class="w-[90%] object-contain" />
 					</div>
 				{/if}
 
-				<!-- The place at the foot, on the same fade turned over: solid card at the bottom edge
-					and gone by the top of it, so the two grounds bracket the poster from its own two
-					edges rather than one of them cutting across it. Which copy of the box this is is
+				<!-- The place at the foot, on the same fade turned over: the pure stock at the bottom
+					edge, which is what the front has come down to by then, and gone by the top of it,
+					so the two grounds bracket the poster from its own two edges rather than one of
+					them cutting across it — each in its own end of the front's grade, neither in a
+					colour the front is not. Which copy of the box this is is
 					the thing said last — the show is what a player is looking for and the town is what
 					tells two of the same show apart, so it sits under the picture the way a caption
 					does, and the mark keeps the head. The type is whichever of the two the card is
@@ -293,7 +298,7 @@
 				<div
 					class={classNames(
 						'absolute inset-x-0 bottom-0 bg-gradient-to-t px-[3cqw] pt-[9cqw] pb-[2cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance',
-						skin.fade,
+						skin.foot,
 						skin.ink
 					)}
 					title={place}
