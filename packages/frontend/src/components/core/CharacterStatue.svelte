@@ -180,12 +180,13 @@
 					above that edge as the side cuts reach, and as tall as the character's sheet is
 					about to be. Not a second veil — the sprite hands over its own clock and its
 					sheet's height, so this piece holds and fades with that one. -->
-				<svelte:fragment slot="veil" let:fading let:sheetHeight>
+				<svelte:fragment slot="veil" let:fading let:sheetHeight let:cell>
 					<VeilBlock
 						left={VEIL_BLOCK_LEFT}
 						bottom={VEIL_BLOCK_BOTTOM}
 						width={VEIL_BLOCK_WIDTH}
 						height="{sheetHeight}px"
+						{cell}
 						{fading}
 					/>
 				</svelte:fragment>

@@ -1,12 +1,13 @@
 <script lang="ts">
 	import classNames from 'classnames';
 
-	// One piece of a loading veil: a white rectangle somewhere in the box, tiled with a
-	// grid of grey squares, that fades out when whatever it stands in for has arrived.
+	// One piece of a loading veil: a rectangle somewhere in the box, tiled with a grid of
+	// grey squares, that goes away square by square when whatever it stands in for has
+	// arrived — the bottom row first, then up.
 	//
 	// It is a shape and nothing else — it neither knows what is loading nor decides when to
 	// go. A surface says where it is and how big, and whoever is doing the loading says
-	// when to fade (see IdleSprite, which holds the clock and hands the same `fading` to
+	// when to leave (see IdleSprite, which holds the clock and hands the same `fading` to
 	// every piece it puts up). That is what lets several of these read as one veil in
 	// pieces rather than as separate placeholders kept in step by luck.
 
@@ -18,30 +19,31 @@
 	export let bottom: string;
 	export let width: string;
 	export let height: string;
-	// Go. Once this turns true the rectangle fades over VEIL_FADE and does not come back;
-	// the caller stops drawing it after that.
+	// How big a square is, in pixels. This one is a number, not a length: the grid counts
+	// its own rows and columns off it to know which row a square is in, and no CSS unit
+	// will count anything. The caller picks it as a share of the surface, so the grid comes
+	// out the same size on a card as on a pin.
+	export let cell: number;
+	// Go. Once this turns true the squares blur away from the bottom up and do not come
+	// back; the caller stops drawing the piece once the sweep is over.
 	export let fading: boolean = false;
 
-	// The squares: a fixed size in cqw, so every piece of the veil is tiled with the same
-	// grid whatever shape it is, and so the grid is a share of the surface rather than a
-	// pixel size that would look coarse on a card and fine on a pin. The columns fill the
-	// rectangle's width and the rows are as tall as a column is wide, which is what keeps a
-	// cell square without either measurement being known here. A single hairline gap lets
-	// the white underneath through as grout, which is what makes the tiling read as a grid
-	// of squares rather than as one mottled block.
-	const GRID =
-		'grid grid-cols-[repeat(auto-fill,var(--veil-cell))] auto-rows-[var(--veil-cell)] gap-px';
+	// How long one square takes to go, and how far apart the bottom row and the top one
+	// start. Half the sweep each, so the whole thing is over in the sum of the two, which
+	// is IdleSprite's VEIL_FADE — it stops drawing this at that point, so a sweep that ran
+	// longer would be cut off mid-blur. `duration-150` below is VEIL_BLUR_MS said in CSS;
+	// keep the three numbers agreeing.
+	const VEIL_BLUR_MS = 150;
+	const VEIL_STAGGER_MS = 150;
 
-	// Enough cells to fill the largest rectangle any surface asks for — the tallest sheet a
-	// character can have, standing on the floor's baseline, comes to ten columns of nine —
-	// and the rest are simply clipped. Cheaper to over-draw a few empty divs than to have
-	// the count depend on a width in cqw that only the browser ever works out.
-	const CELL_COUNT = 120;
+	// How far a square blurs before it is gone, as a share of its own width — the whole
+	// point is that the squares dissolve rather than switch off, so the radius is measured
+	// against the thing being blurred and not in flat pixels.
+	const VEIL_BLUR_SHARE = 0.5;
 
-	// The greys, as veils of black over the white rather than a palette of their own: it is
-	// the same way the card's other faces are shaded (the bevel's black band, the panel's
-	// white ones), and being alpha they dim with the rectangle as it fades instead of
-	// staying solid until it goes.
+	// The greys, as veils of black over the white each square carries rather than a palette
+	// of their own: it is the same way the card's other faces are shaded (the bevel's black
+	// band, the panel's white ones).
 	//
 	// Cycled in order, not drawn at random: the same cell is the same grey on every card and
 	// on every re-measure, so nothing shimmers while the veil sits there. Eleven of them
@@ -61,34 +63,72 @@
 		'bg-black/10'
 	];
 
-	const cells = Array.from(
-		{ length: CELL_COUNT },
-		(_, index) => CELL_SHADES[index % CELL_SHADES.length]
-	);
+	// The rectangle's own size, measured rather than worked out: it is given in whatever
+	// unit the caller thinks in, and the grid needs pixels to count squares in.
+	let boxWidth = 0;
+	let boxHeight = 0;
 
-	// The four lengths come through as custom properties: they are measured or derived
-	// geometry, and no class can carry a number only known at runtime. `duration-300` is
-	// IdleSprite's VEIL_FADE said in CSS — keep the two the same.
-	$: classes = classNames(
-		'pointer-events-none absolute overflow-hidden bg-white transition-opacity duration-300',
-		'bottom-[var(--veil-bottom)] left-[var(--veil-left)] h-[var(--veil-height)] w-[var(--veil-width)]',
-		'[--veil-cell:10cqw]',
-		GRID,
-		fading ? 'opacity-0' : 'opacity-100'
+	// Enough squares to cover the rectangle and no more, the last row and column running
+	// over the edge rather than stopping short of it — a veil with a bare strip down one
+	// side is a veil the picture shows through. What runs over is clipped, and the row that
+	// is only partly there is the top one, furthest from where the eye starts.
+	$: columns = cell > 0 && boxWidth > 0 ? Math.ceil(boxWidth / cell) : 0;
+	$: rows = cell > 0 && boxHeight > 0 ? Math.ceil(boxHeight / cell) : 0;
+
+	// Every square with its grey and the moment it leaves. The bottom row goes at once and
+	// each row above it waits a little longer, the whole spread fixed at VEIL_STAGGER_MS
+	// however many rows there are: a tall sheet and a short one are uncovered in the same
+	// time, which is what keeps every piece of the veil on the one clock.
+	$: cells = Array.from({ length: columns * rows }, (_, index) => {
+		const rowsFromBottom = rows - 1 - Math.floor(index / columns);
+		return {
+			shade: CELL_SHADES[index % CELL_SHADES.length],
+			delay: rows > 1 ? Math.round((rowsFromBottom / (rows - 1)) * VEIL_STAGGER_MS) : 0
+		};
+	});
+
+	// The rectangle: a clipped grid of squares of the given size, its rows held to the
+	// bottom edge so the one that overruns does it off the top. It has no colour of its own
+	// — the squares carry the white, since a single background behind them all could only
+	// go at once and the point is that it goes a row at a time.
+	//
+	// The lengths come through as custom properties: they are measured or derived geometry,
+	// and no class can carry a number only known at runtime.
+	const GRID =
+		'bottom-[var(--veil-bottom)] left-[var(--veil-left)] h-[var(--veil-height)] w-[var(--veil-width)] grid grid-cols-[repeat(var(--veil-columns),var(--veil-cell))] auto-rows-[var(--veil-cell)] content-end';
+
+	// A square: white with its grey laid over it, and a hairline of that white left showing
+	// all round as grout, which is what makes the tiling read as a grid of squares rather
+	// than as one mottled block. Padding rather than a gap in the grid, so the white is the
+	// square's own and blurs away with it — a gap would show the picture through the seams.
+	//
+	// It blurs as it goes rather than simply fading, and thins as it blurs: blur alone never
+	// clears a tiled surface, since it only spreads a square's ink over its neighbours' room
+	// and the middle of the block stays as solid as it started, whatever the radius.
+	$: cellClasses = classNames(
+		'bg-white p-px transition-[filter,opacity] duration-150 delay-[var(--veil-delay)]',
+		fading ? 'opacity-0 blur-[var(--veil-blur)]' : 'opacity-100 blur-[0px]'
 	);
 </script>
 
 <!-- Nothing is written on it and it is not the picture it stands in for, so it is hidden
 	from a screen reader, which is being read the surface's own label. -->
 <div
-	class={classes}
+	class={classNames('pointer-events-none absolute overflow-hidden', GRID)}
 	style:--veil-left={left}
 	style:--veil-bottom={bottom}
 	style:--veil-width={width}
 	style:--veil-height={height}
+	style:--veil-cell="{cell}px"
+	style:--veil-columns={columns}
+	style:--veil-blur="{cell * VEIL_BLUR_SHARE}px"
+	bind:clientWidth={boxWidth}
+	bind:clientHeight={boxHeight}
 	aria-hidden="true"
 >
-	{#each cells as shade}
-		<div class={shade}></div>
+	{#each cells as { shade, delay }}
+		<div class={cellClasses} style:--veil-delay="{delay}ms">
+			<div class="h-full w-full {shade}"></div>
+		</div>
 	{/each}
 </div>

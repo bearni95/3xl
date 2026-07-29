@@ -46,19 +46,25 @@
 	// folder that identifies it, not the character.
 	let renderScale = DEFAULT_RENDER_SCALE;
 
-	// The veil: a white rectangle the size the sheet is about to be, held over the
-	// picture until the picture is actually there (see the markup). It is up from the
-	// moment the geometry is known, comes down once every frame has loaded, and the
-	// three states are one thing rather than two flags because the order matters — up,
-	// then fading, then not drawn at all.
+	// The veil: a rectangle the size the sheet is about to be, tiled with grey squares and
+	// held over the picture until the picture is actually there (see the markup). It is up
+	// from the moment the geometry is known, goes once every frame has loaded, and the three
+	// states are one thing rather than two flags because the order matters — up, then
+	// leaving, then not drawn at all.
 	//
 	// It holds a moment after the frames are ready before it starts to go, so the
 	// uncovering is a deliberate reveal of a finished picture rather than a race with
 	// the last frame's first paint.
 	const VEIL_HOLD = 300;
-	// As long again to fade. Written twice — the class below carries the same number,
-	// CSS taking no variable for a duration — so change the two together.
+	// How long it takes to leave, from the first square blurring to the last. VeilBlock
+	// spends it on the sweep up the rows and this stops drawing the veil at the end of it,
+	// so a change here is a change there (its blur and its stagger add up to this).
 	const VEIL_FADE = 300;
+	// How big the veil's squares are, as a share of this box's width. The box is what a
+	// character is drawn against, so the grid is a share of the picture and comes out the
+	// same on a card as on a pin — and the veil is handed it in pixels, having to count
+	// rows and columns off it.
+	const VEIL_CELL = 0.1;
 
 	let veil: 'up' | 'fading' | 'down' = 'up';
 	let veilTimer: ReturnType<typeof setTimeout> | null = null;
@@ -79,7 +85,8 @@
 		void load(basePath);
 	}
 
-	/** Hold the veil over the finished picture, then fade it out and stop drawing it. */
+	/** Hold the veil over the finished picture, then send it away and stop drawing it once
+	 * the sweep up its rows is over. */
 	function uncover(): void {
 		if (veil !== 'up' || veilTimer) return;
 		veilTimer = setTimeout(() => {
@@ -201,16 +208,23 @@
 				bottom="{placement.sheet.bottom}px"
 				width="{placement.sheet.width}px"
 				height="{placement.sheet.height}px"
+				cell={boxWidth * VEIL_CELL}
 				fading={veil === 'fading'}
 			/>
 
 			<!-- Whatever else the surface wants veiled along with the picture: it is handed the
-				clock's own state and the sheet's height, and puts up its own VeilBlock with them,
-				so its piece goes up, holds and fades with this one without knowing anything about
-				when the art arrived — one veil in several pieces, not a second one to keep in
-				step. The geometry stays with whoever owns it: a rectangle measured off the floor
-				tile is the surface's to place, the tile being no part of a sprite. -->
-			<slot name="veil" fading={veil === 'fading'} sheetHeight={placement.sheet.height} />
+				clock's own state, the sheet's height and the size of a square, and puts up its own
+				VeilBlock with them, so its piece is tiled the same and leaves with this one
+				without knowing anything about when the art arrived — one veil in several pieces,
+				not a second one to keep in step. The geometry stays with whoever owns it: a
+				rectangle measured off the floor tile is the surface's to place, the tile being no
+				part of a sprite. -->
+			<slot
+				name="veil"
+				fading={veil === 'fading'}
+				sheetHeight={placement.sheet.height}
+				cell={boxWidth * VEIL_CELL}
+			/>
 		{/if}
 	{/if}
 </div>
