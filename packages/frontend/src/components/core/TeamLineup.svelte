@@ -86,7 +86,7 @@
 			share the row's width between them, so the column is what carries the width
 			and the square inside it is as tall as that width — whatever the panel's, so
 			the row keeps its shape as the panel narrows. -->
-		<div class="flex min-w-0 flex-1 flex-col gap-1">
+		<div class="flex min-w-0 flex-1 flex-col">
 			<!-- The box the character is seen through: a third again as tall as it is wide,
 				which is the room a standing character needs, and square-cornered. It keeps
 				its own edge in the character's colour now that the colour no longer fills
@@ -150,12 +150,21 @@
 				must keep one height between them, whatever they are called and wherever
 				they were pulled. The place is the quieter of the two — it says which copy of
 				a character this is, not which character. -->
-			<div class={classNames('px-1 py-0.5', colorPanels[member.color])}>
-				<div class="truncate text-center text-xs font-semibold" title={member.label}>
+			<div class={classNames(colorPanels[member.color])}>
+				<!-- The name carries its own dark band over the colour, so it reads the same
+					on every one of the six swatches — which is also why its ink is white here
+					whatever the panel's own is. -->
+				<div
+					class="truncate bg-black/50 px-1 py-0.5 text-center text-xs font-semibold text-white"
+					title={member.label}
+				>
 					{member.label}
 				</div>
 				{#if member.locationName}
-					<div class="truncate text-center text-xs opacity-70" title={member.locationName}>
+					<div
+						class="truncate px-1 py-0.5 text-center text-xs opacity-70"
+						title={member.locationName}
+					>
 						{member.locationName}
 					</div>
 				{/if}
