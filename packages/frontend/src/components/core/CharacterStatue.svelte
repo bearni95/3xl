@@ -1,7 +1,9 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import { onMount } from 'svelte';
 	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
+	import { showLogos, loadShowLogos } from '$services/shows.service';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { spawnYearLabel } from '$utils/spawn/year';
 	import { showIconName } from '$utils/show/show-icon';
@@ -17,7 +19,8 @@
 	// One character, as this game draws one: a statue of them — standing on a tilted
 	// floor in their own colour, with their show's mark painted on it, the orders that
 	// colour grants them for free along the front of it, and, where there is room for
-	// it, their name and the place they were claimed on a panel underneath.
+	// it, their name, their show's own lettering and the place they were claimed, on a
+	// panel underneath.
 	//
 	// It stands on its own: hand it a character from the seed or from Supabase — the
 	// frames folder, a colour, and the two captions — and it assembles the whole
@@ -40,9 +43,10 @@
 	// two-digit apostrophe year beside the place — 2026 reads '26 — since the panel has
 	// room for a mark, not a date. Null leaves the place standing on its own.
 	export let spawnedAt: string | number | Date | null = null;
-	// The TMDB id of the character's show — its glyph goes on the floor. Null (or a
-	// show with no glyph drawn yet) leaves the floor bare rather than badging it with
-	// a stand-in.
+	// The TMDB id of the character's show — the one the admin `/characters` screen
+	// assigns it. Its glyph goes on the floor and its logo on the panel. Null (or a
+	// show with no glyph drawn and no logo enabled yet) leaves both bare rather than
+	// badging them with a stand-in.
 	export let showId: number | null = null;
 	// Mirror the character. True is the player's own side; false the unmirrored art a
 	// rival side uses, so the two face each other.
@@ -86,6 +90,13 @@
 	}));
 
 	$: showIcon = showIconName(showId);
+
+	// The show's own lettering, said on the panel between the name and the place. It
+	// is asked for by id alone, exactly as the glyph is: the collection is loaded once
+	// for every statue standing (see shows.service), so nothing has to be handed down
+	// to the pins, the strip or the roster grid for a card to say what it is from.
+	onMount(() => void loadShowLogos());
+	$: showLogo = showId == null ? null : ($showLogos.get(showId) ?? null);
 
 	// The gazetteer files the towns come from park the article after a comma to sort by
 	// — "Vall de Boí, la" — so the statue puts it back at the front before saying it.
@@ -154,9 +165,9 @@
 		</div>
 	</div>
 
-	<!-- Who that is, and under it where and when they were claimed — on a panel in the
-		same colour the floor is painted, so the card reads as one object in one colour
-		rather than a picture with a caption. Either line too long for the card is cut with
+	<!-- Who that is, then what they are from, then where and when they were claimed —
+		on a panel in the same colour the floor is painted, so the card reads as one object
+		in one colour rather than a picture with a caption. Either line too long for the card is cut with
 		an ellipsis rather than wrapped: a row of these must keep one height between them,
 		whatever they are called and wherever they were pulled. -->
 	<div class={classNames('border', SPAWN_PANEL_CLASSES[color], SPAWN_BORDER_CLASSES[color])}>
@@ -167,6 +178,24 @@
 		<div class="truncate bg-black/20 px-1 py-0.5 text-center text-sm font-semibold" title={label}>
 			{label}
 		</div>
+		{#if showLogo}
+			<!-- What the character is from, said the way the show says itself: its own
+				lettering, not its name set in ours. It goes between the two captions because
+				that is the order the card reads in — who this is, what they are from, where
+				this copy was claimed — and on a black band of its own like them, dark enough
+				for the artwork to read whatever the panel's colour is. The band keeps one
+				height whatever the logo's proportions are, so a wide wordmark and a square
+				one never make two cards in a row different heights: the image is fitted
+				inside it, never cropped and never stretched. -->
+			<div class="flex h-5 items-center justify-center bg-black/40 px-1 py-0.5">
+				<img
+					src={showLogo.url}
+					alt={showLogo.name}
+					title={showLogo.name}
+					class="max-h-full max-w-full object-contain"
+				/>
+			</div>
+		{/if}
 		{#if place || year}
 			<!-- The place and the year it was minted share the row: the town gives way first,
 				cut with an ellipsis, while the year keeps its two characters whatever the card's
