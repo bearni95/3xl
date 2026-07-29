@@ -18,6 +18,12 @@ export interface OpenerPack {
 	 * by a stand-in mark. Resolved from the same saved collection the cover is.
 	 */
 	logoUrl: string | null;
+	/**
+	 * True when this town is celebrating today. The booster window runs three days back
+	 * through four ahead, so most packs on offer belong to a festa that is not on — this
+	 * marks the ones that are, and the grid stands them apart from the rest.
+	 */
+	today: boolean;
 	/** Full name of the place the pack belongs to, drawn across its top. */
 	locationName: string | null;
 	/** Pack label — the show name shown under the grid pack / in the header. */

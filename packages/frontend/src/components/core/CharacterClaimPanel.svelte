@@ -29,6 +29,13 @@
 	// renders one booster per pair that has a show this player can claim.
 	let festaPairs: FestaShowPair[] = [];
 
+	// Which of those towns are celebrating *today*, by feature id. Read as its own day
+	// rather than taken off the window: the window keeps a town's earliest claimable day, so
+	// a festa that began yesterday and is still on would be filed under yesterday and a
+	// town celebrating right now would be missed. This is the same day-of read the map's
+	// gold stars are drawn from, so a star and a white box mean the same thing.
+	let todayIds = new Set<string>();
+
 	const status = authService.status;
 	const profile = authService.profile;
 
@@ -79,12 +86,14 @@
 	});
 
 	// Load the window's celebrating municipalities (from Supabase, via the festes
-	// service) and the map's municipality→show assignment (a baked dataset), then pair
-	// each town with its assigned show. Both are fetched once; failures leave the grid
-	// empty.
+	// service), today's alone, and the map's municipality→show assignment (a baked
+	// dataset), then pair each town with its assigned show. All three are fetched once;
+	// failures leave the grid empty, and a failed today-read leaves every box on the dark
+	// stock rather than blanking the grid — the packs are all still claimable.
 	async function loadWindowFestes() {
-		const [festesResult, showsResult] = await Promise.allSettled([
+		const [festesResult, todayResult, showsResult] = await Promise.allSettled([
 			festesService.loadFestesForWindow(),
+			festesService.loadTodayFestes(),
 			fetch('/data/municipality-shows.json').then(
 				(response) => response.json() as Promise<MunicipalityShowsCollection>
 			)
@@ -93,6 +102,9 @@
 		let locations: FestaLocationRow[] = [];
 		let showByMunicipality = new Map<string, RegionShow>();
 		if (festesResult.status === 'fulfilled') locations = festesResult.value;
+		if (todayResult.status === 'fulfilled') {
+			todayIds = new Set(todayResult.value.map((festa) => festa.id));
+		}
 		if (showsResult.status === 'fulfilled') {
 			showByMunicipality = new Map(
 				showsResult.value.assignments.map((assignment) => [assignment.id, assignment.show])
@@ -217,6 +229,7 @@
 		festaPairs: FestaShowPair[],
 		showPool: ClaimableShow[],
 		_posters: Map<number, ShowEntry>,
+		celebratingToday: ReadonlySet<string>,
 		userId: string | null
 	): OpenerPack[] {
 		if (!userId) return [];
@@ -238,6 +251,7 @@
 				logoUrl: resolveLogoUrl(claimable),
 				locationName: festa.name,
 				label: claimable.name,
+				today: celebratingToday.has(festa.id),
 				claim: makeClaim(claimable, claimRegion)
 			});
 		}
@@ -265,9 +279,10 @@
 	}
 
 	// The window's grid packs, recomputed whenever the window's festes, the claimable
-	// show pool, the enabled posters, or the signed-in user change. (All four are named
-	// here so the reactive statement actually re-runs when any of them updates.)
-	$: packs = computePacks(festaPairs, shows, showEntryById, currentUserId);
+	// show pool, the enabled posters, which towns are celebrating today, or the signed-in
+	// user change. (All five are named here so the reactive statement actually re-runs when
+	// any of them updates.)
+	$: packs = computePacks(festaPairs, shows, showEntryById, todayIds, currentUserId);
 
 	function labelFor(id: string): string {
 		return charactersById.get(id)?.label ?? id;

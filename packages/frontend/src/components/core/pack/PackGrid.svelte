@@ -8,7 +8,8 @@
 
 	// The booster window's packs, in the document rather than on a canvas, on three
 	// states that are the same three taps they have always been:
-	//   — a grid of every pack on offer, each drawn at cell width;
+	//   — every pack on offer at cell width, in two grids: the towns of festa today,
+	//     printed on white card, then the rest of the window on black;
 	//   — one pack stood up on its own, filling the height it is given, when it is
 	//     picked;
 	//   — the cards it held, as statues, when the stood-up pack is tapped again — the
@@ -55,6 +56,12 @@
 	}
 
 	$: selectedPack = selected ? (packs.find((pack) => pack.id === selected) ?? null) : null;
+
+	// The grid state shows the packs in two, the towns of festa today first. Each keeps the
+	// order the panel handed them in, which is the calendar's — the split only lifts today
+	// out of the middle of that list, it does not re-sort either half.
+	$: todayPacks = packs.filter((pack) => pack.today);
+	$: windowPacks = packs.filter((pack) => !pack.today);
 
 	// Tailwind only emits the column classes it can see spelled out, so the counts a
 	// host may ask for are written in full here.
@@ -159,6 +166,7 @@
 						coverUrl={selectedPack.coverUrl}
 						logoUrl={selectedPack.logoUrl}
 						locationName={selectedPack.locationName}
+						light={selectedPack.today}
 						classes={classNames('h-full max-w-full', { 'opacity-60': opening })}
 					/>
 				</button>
@@ -173,28 +181,41 @@
 			</div>
 		{/if}
 	{:else}
-		<!-- Every pack at the same size, packed to the top: a row given a share of the
-			spare height would draw its packs taller than the row below it. -->
-		<div
-			class={classNames(
-				'grid min-h-0 flex-1 content-start gap-3 overflow-y-auto',
-				columnClass(columns)
-			)}
-		>
-			{#each packs as pack (pack.id)}
-				<button
-					type="button"
-					class="flex min-w-0 flex-col"
-					disabled={!interactive}
-					title={pack.label}
-					on:click={() => pick(pack)}
-				>
-					<BoosterBox
-						coverUrl={pack.coverUrl}
-						logoUrl={pack.logoUrl}
-						locationName={pack.locationName}
-					/>
-				</button>
+		<!-- Two grids, the towns of festa today above the rest of the window. The window runs
+			three days back through four ahead, so most of what is on offer belongs to a festa
+			that is over or has not started — the ones happening now were spread through that
+			list in date order, which is a reason to look for them rather than a way of being
+			shown them. They come out of the list rather than being repeated at the head of it:
+			one booster is one box, and the same town offered twice is two tiles that open the
+			same pack.
+
+			The split is drawn by the boxes themselves — today's are printed on white card and
+			the rest on black — so neither grid needs a heading to say which it is. One scroller
+			holds both, so the panel scrolls as one list; each grid packs to its own top, a row
+			given a share of the spare height being a row that draws its packs taller than the
+			one below it. -->
+		<div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+			{#each [todayPacks, windowPacks] as group, index (index)}
+				{#if group.length > 0}
+					<div class={classNames('grid flex-none content-start gap-3', columnClass(columns))}>
+						{#each group as pack (pack.id)}
+							<button
+								type="button"
+								class="flex min-w-0 flex-col"
+								disabled={!interactive}
+								title={pack.label}
+								on:click={() => pick(pack)}
+							>
+								<BoosterBox
+									coverUrl={pack.coverUrl}
+									logoUrl={pack.logoUrl}
+									locationName={pack.locationName}
+									light={pack.today}
+								/>
+							</button>
+						{/each}
+					</div>
+				{/if}
 			{/each}
 		</div>
 	{/if}
