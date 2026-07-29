@@ -11,7 +11,7 @@
 	// The face is 3:4, the very box a CharacterStatue is drawn in — a booster and the
 	// cards it opens onto are the same object at two moments, and a grid that changes
 	// shape under the tap that opens one is a grid that jumps. The lid is added on top of
-	// that, so the whole component is 3:5 (see LID_DEPTH). Both ratios are the
+	// that, so the whole component is 2:3 (see LID_DEPTH). Both ratios are the
 	// component's own, not the host's: hand it a width and it takes the height that goes
 	// with it, hand it a height and it gives the width back, so the same component is a
 	// grid cell or the whole panel purely by the box it is put in. Everything written on
@@ -31,18 +31,24 @@
 	export let classes: string = '';
 
 	// The lid: the square top of the box, laid flat and seen in perspective rather than a
-	// trapezoid drawn to look like one — the very tilt CharacterStatue stands its
-	// characters on, turned about the square's front edge, which here is the top edge of
-	// the face. Same two numbers, and for the same reason: at a distance d = S·sin θ with
-	// cos θ = 2/3 the back edge comes out half the front's and the depth a third of the
-	// square, which is the shallow, foreshortened top a box on a shelf shows. The
-	// distance is in cqw so it tracks the box's own width (the component declares itself
-	// the container), CSS perspective taking no percentage.
+	// trapezoid drawn to look like one — the tilt CharacterStatue stands its characters
+	// on, turned about the square's front edge, which here is the top edge of the face.
+	// The two numbers are its own, though, because a lid is not a floor: this one is
+	// asked for a back edge 66% of the front's and half the depth the statue's ground
+	// draws, which is the shallower top a box on a shelf shows, seen from nearer eye
+	// level than a fighter's feet are.
 	//
-	// Being a third of the width deep is what makes the whole component 3:5: a 3:4 face
-	// is 4/3 of a width tall, and the lid puts another 1/3 of a width above it.
-	const LID_DEPTH = 'h-[calc(100cqw/3)]';
-	const LID = 'origin-bottom [transform:perspective(74.536cqw)_rotateX(48.19deg)]';
+	// Turning a square of side S about its front edge by θ, seen from a distance d, puts
+	// its back edge at r = d/(d + S·sin θ) of the front's width and draws it S·cos θ·r
+	// deep. Wanting r = 0.66 and a depth of S/6 gives cos θ = 1/(6·0.66) — that is
+	// θ = 75.373° — and d = S·sin θ·0.66/0.34 = 1.8783·S. The distance is in cqw so it
+	// tracks the box's own width (the component declares itself the container), CSS
+	// perspective taking no percentage.
+	//
+	// Being a sixth of the width deep is what makes the whole component 2:3: a 3:4 face
+	// is 4/3 of a width tall, and the lid puts another 1/6 of a width above it.
+	const LID_DEPTH = 'h-[calc(100cqw/6)]';
+	const LID = 'origin-bottom [transform:perspective(187.826cqw)_rotateX(75.373deg)]';
 
 	// What the bands say, exactly as the baked pack says it: the place with the year
 	// this copy would be minted in joined to it — "Barcelona '26" — and, below the
@@ -53,12 +59,12 @@
 		.join(' ');
 </script>
 
-<!-- The lid over the face: 3:5 all told, the face's own 3:4 with the lid's third of a
+<!-- The lid over the face: 2:3 all told, the face's own 3:4 with the lid's sixth of a
 	width above it. In a grid cell it is a column flex item and so takes the cell's
 	width, the ratio giving it its height; stood up in a box that bounds the height
 	instead, the host says `h-full` and the ratio gives the width back. -->
-<div class={classNames('@container flex aspect-[3/5] min-h-0 flex-col shadow-md', classes)}>
-	<!-- The lid stands in a strip exactly as deep as the tilted square draws (a third of
+<div class={classNames('@container flex aspect-[2/3] min-h-0 flex-col shadow-md', classes)}>
+	<!-- The lid stands in a strip exactly as deep as the tilted square draws (a sixth of
 		the width), so the face below it starts where the lid's front edge is and comes out
 		at its 3:4 without being told. The square itself is a full width tall before it is
 		turned and hangs out of that strip upwards, which is why nothing here clips: it
