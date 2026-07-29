@@ -3,21 +3,24 @@
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { spawnYearLabel } from '$utils/spawn/year';
 
-	// One unopened booster box, drawn in the document: a plain lid seen from above, and
-	// under it the face of the box — the show's poster inset a twentieth of the width on
-	// all sides, with the show's wordmark laid over the head of it and the place the box
+	// One unopened booster box, drawn in the document: a lid seen from above with its four
+	// corners cut off, and under it the face of the box — four fifths of the width, the
+	// width the cut leaves the lid's front edge, with the two bevel faces those cuts opened
+	// running down its sides. On the face, the show's poster inset a twentieth of the width
+	// on all sides, the show's wordmark laid over the head of it and the place the box
 	// belongs to over the foot.
 	//
 	// The face is 3:4, the very box a CharacterStatue is drawn in — a booster and the
 	// cards it opens onto are the same object at two moments, and a grid that changes
 	// shape under the tap that opens one is a grid that jumps. The lid is added on top of
-	// that, so the whole component is 2:3 (see LID_DEPTH). Both ratios are the
-	// component's own, not the host's: hand it a width and it takes the height that goes
-	// with it, hand it a height and it gives the width back, so the same component is a
-	// grid cell or the whole panel purely by the box it is put in. What is written over the
-	// picture and the grounds under it are sized off that width (the box declares itself the
-	// container), which is what keeps both the same share of the picture at either size
-	// rather than a caption that grows out of it.
+	// that and the face drawn in to four fifths under it, so the whole component is 30:37
+	// (see LID_DEPTH). Both ratios are the component's own, not the host's: hand it a
+	// width and it takes the height that goes with it, hand it a height and it gives the
+	// width back, so the same component is a grid cell or the whole panel purely by the box
+	// it is put in. What is written over the picture, the grounds under it and the bevel's
+	// faces are all sized off that width (the box declares itself the container), which is
+	// what keeps every one of them the same share of the box at either size rather than a
+	// caption that grows out of it.
 	//
 	// (Both outer edges used to be serrated into teeth, after the texture PackSprite
 	// bakes. A booster is picked out of a grid by the poster on it; the teeth only ate
@@ -49,10 +52,55 @@
 	// tracks the box's own width (the component declares itself the container), CSS
 	// perspective taking no percentage.
 	//
-	// Being a sixth of the width deep is what makes the whole component 2:3: a 3:4 face
-	// is 4/3 of a width tall, and the lid puts another 1/6 of a width above it.
+	// The lid is a sixth of the width deep, which with a front four fifths as wide as the
+	// lid and 3:4 of its own makes the whole component 30:37 — 16/15 of a width for the
+	// front and another 1/6 above it for the lid.
 	const LID_DEPTH = 'h-[calc(100cqw/6)]';
 	const LID = 'origin-bottom [transform:perspective(187.826cqw)_rotateX(75.373deg)]';
+
+	// The lid's four corners are cut off — an octagon rather than a square, a tenth of each
+	// side nearest a corner taken away, the treatment CharacterStatue gives the floor its
+	// characters stand on (see GROUND_CUT there). A tenth because the front below is four
+	// fifths of the width centred under it: taking a tenth off each end leaves the flat run
+	// along the lid's front edge exactly the front's own width, so the top ends where the
+	// picture begins and the two line up down both sides. The cut is made in the square
+	// before the tilt, a transform mapping whatever shape is left, so the four diagonals are
+	// laid down with the lid and read as bevelled edges of it rather than as notches cut out
+	// of a picture. It takes the 3px rule with it along those diagonals, which costs nothing:
+	// the rule is the same black the fill is.
+	const LID_CUT =
+		'[clip-path:polygon(10%_0,90%_0,100%_10%,100%_90%,90%_100%,10%_100%,0_90%,0_10%)]';
+
+	// What a cut corner leaves is a face, and these are the two front ones: the front of the
+	// box is the front of the same block the lid is the top of, so each of its sides carries
+	// the slanted face the corner cut opened. They fill the two notches the cut takes out of
+	// the lid's bottom corners and carry on down the front's sides, which is what turns a
+	// clipped square standing over a picture into one bevelled solid.
+	//
+	// Their geometry is read off the cut, not chosen, and it is the lid's own perspective
+	// that sets it rather than the statue's — the same figure at a different tilt. The cut's
+	// inner end is the tenth mark along the front edge (x = 0.1 of the width); its outer end
+	// is on the lid's side a tenth of the way back, where the perspective has drawn the side
+	// in to (1 − r₁)/2 = 0.02449 of the width and lifted it 0.1·cos θ·r₁ = 0.02402 above the
+	// front edge, r₁ = d/(d + 0.1·sin θ) = 0.95102 being the scale a tenth back. So a face is
+	// 0.07551 of the width wide and the edge across its top rises 0.02402 over that width —
+	// 17.64°, which a skew about the inner edge applies to the whole strip at once, top and
+	// bottom together, leaving nothing vertical to measure: the strip is simply as tall as the
+	// front it stands beside. A shallower tilt than the statue's cuts a shallower bevel, which
+	// is the same thing said twice: a lid seen from nearer eye level shows less of its own top.
+	//
+	// The width is in cqw against the whole box (the root declares itself a container), the
+	// front's own width being no use to a figure taken from the lid's square.
+	const BEVEL_FACE = 'absolute inset-y-0 w-[7.551cqw] bg-black';
+	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(17.64deg)]';
+	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-17.64deg)]';
+
+	// The light the cut surfaces catch, and the front does not: the top and the two side
+	// faces are the faces the cut opened, all three of them the same black under the same
+	// veil, and the printed front is the one plane that is not. One name for it rather than
+	// the same literal written three times — the sides are the colour of the top by being
+	// given the colour of the top, so the two cannot drift apart.
+	const LIT = 'absolute inset-0 bg-white/10';
 
 	// What the foot says, exactly as the baked pack says it: the place with the year this
 	// copy would be minted in joined to it — "Barcelona '26". The gazetteer parks the
@@ -63,16 +111,27 @@
 		.join(' ');
 </script>
 
-<!-- The lid over the face: 2:3 all told, the face's own 3:4 with the lid's sixth of a
-	width above it. In a grid cell it is a column flex item and so takes the cell's
-	width, the ratio giving it its height; stood up in a box that bounds the height
-	instead, the host says `h-full` and the ratio gives the width back. -->
-<div class={classNames('@container flex aspect-[2/3] min-h-0 flex-col shadow-md', classes)}>
+<!-- The lid over the face: 30:37 all told, the face's own 3:4 at four fifths of the width
+	with the lid's sixth of a width above it. In a grid cell it is a column flex item and so
+	takes the cell's width, the ratio giving it its height; stood up in a box that bounds the
+	height instead, the host says `h-full` and the ratio gives the width back.
+
+	The shadow is a drop shadow and no longer a box shadow: a box shadow is cast by this
+	element's rectangle, and the box stopped filling its rectangle the moment the lid lost its
+	corners and the front drew in to four fifths — it would have hung a straight-sided shadow
+	out past the bevel down both sides and squared off the corners the cut opens. A drop
+	shadow is cast by what is actually drawn, so the octagon and the two wings cast their own
+	edges. -->
+<div
+	class={classNames('@container flex aspect-[30/37] min-h-0 flex-col drop-shadow-md', classes)}
+>
 	<!-- The lid stands in a strip exactly as deep as the tilted square draws (a sixth of
 		the width), so the face below it starts where the lid's front edge is and comes out
 		at its 3:4 without being told. The square itself is a full width tall before it is
 		turned and hangs out of that strip upwards, which is why nothing here clips: it
-		lands inside the strip only once the transform has folded it down. -->
+		lands inside the strip only once the transform has folded it down. The corner cuts
+		take nothing off that depth — they eat into the back corners, and the deepest line
+		of the lid is the middle of its back edge, which the cut leaves alone. -->
 	<div class={classNames('relative w-full flex-none', LID_DEPTH)}>
 		<!-- Pinned by its bottom edge to the top of the face — that edge is the axis it
 			turns about, so it is the one line the lid and the face share, and the box reads
@@ -80,7 +139,8 @@
 		<div
 			class={classNames(
 				'absolute inset-x-0 bottom-0 aspect-square border-[3px] border-black bg-black',
-				LID
+				LID,
+				LID_CUT
 			)}
 		>
 			<!-- The top plane catches the light the front does not, which is what puts an edge
@@ -90,7 +150,7 @@
 				top the way the picture's frame reads against the picture. The lid's own black is
 				what the light is mixed into: a lid in the theme's purple was the one thing on the
 				box that was not the box's colour. -->
-			<div class="absolute inset-0 bg-white/10"></div>
+			<div class={LIT}></div>
 		</div>
 	</div>
 
@@ -111,56 +171,76 @@
 		tile in a grid and the same box stood up the height of a panel are cut out of the
 		same card. It is inside the element's own size (border-box), so nothing about the
 		ratios or the 5% frame moves to make room for it. -->
-	<div class="min-h-0 w-full flex-1 border-[3px] border-black bg-black p-[5%]">
-		<!-- The picture and the two things written over it, in one box: the mark and the place
-			belong to the poster's edges, not the box's, so they are placed against this rather
-			than against the front — an absolute inset is measured off the padding box, and
-			anchoring them out there would run the fades over the frame instead of ending them
-			where the picture ends. -->
-		<div class="relative h-full w-full">
-			{#if coverUrl}
-				<!-- The poster fills the picture whole: it is inset from the front now but not
-					contained within it, so it covers what the frame leaves rather than standing
-					centred in it with the neutral showing at its sides. A 2:3 poster covering a box
-					this shape loses about a tenth off its height, top and bottom, which is the cost
-					of a picture that is all picture. -->
-				<img src={coverUrl} alt="" class="h-full w-full bg-black object-cover" />
-			{:else}
-				<div class="h-full w-full bg-black"></div>
-			{/if}
+	<div class="relative min-h-0 w-4/5 min-w-0 flex-1 self-center">
+		<!-- The bevel's two faces, hung off the front's sides so they are as tall as it is
+			whatever height the box is drawn at (see BEVEL_FACE). They are hung off this block
+			rather than off the front itself so their inner edge lands on the front's outer edge:
+			an absolute inset is measured off the padding box, which the 3px rule sits outside
+			of, and a face placed in there would meet the block it is a face of three pixels in.
+			They take the tilted top's colour, being the other faces the same cut opened — the
+			same black under the same veil (see LIT), so the three cut surfaces are one material
+			and the printed front is the only plane on the box that is not lit. Nothing is written
+			on them, so they are hidden from a screen reader, which is being read the place and
+			the mark. -->
+		<div class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT)} aria-hidden="true">
+			<div class={LIT}></div>
+		</div>
+		<div class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT)} aria-hidden="true">
+			<div class={LIT}></div>
+		</div>
 
-			{#if logoUrl}
-				<!-- The show's wordmark across the head of the picture: the name of the thing comes
-					first, and a booster box is picked up as a box of that show before it is read as
-					this town's copy of it. It is over the picture and not in a band of its own, so
-					it cannot be given a solid backing without cutting the poster off at a line; the
-					gradient is how it gets its own ground instead — black where the mark is and
-					gone by the bottom of it, so the poster darkens into it rather than ending at it.
-					The fade wants more room than the mark does, hence the bottom padding: the mark
-					sits in the solid end of it and the rest is the fall to nothing. The mark is 90%
-					of the picture and takes whatever height its own proportions give it, being
-					lettering: it is read at the width it was drawn to be read at. The 90% is
-					measured off the picture and not off a padded box, so the fade runs the full
-					width of it while the mark keeps a twentieth clear of either side. -->
+		<div class="h-full w-full border-[3px] border-black bg-black p-[5%]">
+			<!-- The picture and the two things written over it, in one box: the mark and the place
+				belong to the poster's edges, not the box's, so they are placed against this rather
+				than against the front — an absolute inset is measured off the padding box, and
+				anchoring them out there would run the fades over the frame instead of ending them
+				where the picture ends. -->
+			<div class="relative h-full w-full">
+				{#if coverUrl}
+					<!-- The poster fills the picture whole: it is inset from the front now but not
+						contained within it, so it covers what the frame leaves rather than standing
+						centred in it with the black showing at its sides. A 2:3 poster covering a box
+						this shape loses about a tenth off its height, top and bottom, which is the cost
+						of a picture that is all picture. -->
+					<img src={coverUrl} alt="" class="h-full w-full bg-black object-cover" />
+				{:else}
+					<div class="h-full w-full bg-black"></div>
+				{/if}
+
+				{#if logoUrl}
+					<!-- The show's wordmark across the head of the picture: the name of the thing comes
+						first, and a booster box is picked up as a box of that show before it is read as
+						this town's copy of it. It is over the picture and not in a band of its own, so
+						it cannot be given a solid backing without cutting the poster off at a line; the
+						gradient is how it gets its own ground instead — black where the mark is and
+						gone by the bottom of it, so the poster darkens into it rather than ending at it.
+						The fade wants more room than the mark does, hence the bottom padding: the mark
+						sits in the solid end of it and the rest is the fall to nothing. The mark is 90%
+						of the picture and takes whatever height its own proportions give it, being
+						lettering: it is read at the width it was drawn to be read at. The 90% is
+						measured off the picture and not off a padded box, so the fade runs the full
+						width of it while the mark keeps a twentieth clear of either side. -->
+					<div
+						class="absolute inset-x-0 top-0 flex justify-center bg-gradient-to-b from-black to-transparent pt-[2cqw] pb-[9cqw]"
+					>
+						<img src={logoUrl} alt="" class="w-[90%] object-contain" />
+					</div>
+				{/if}
+
+				<!-- The place at the foot, on the same fade turned over: black at the bottom edge and
+					gone by the top of it, so the two grounds bracket the poster from its own two edges
+					rather than one of them cutting across it. Which copy of the box this is is the
+					thing said last — the show is what a player is looking for and the town is what
+					tells two of the same show apart, so it sits under the picture the way a caption
+					does, and the mark keeps the head. White type, because it is black it is being read
+					on. The cqw sizes are shares of the whole box rather than of the front, so neither
+					the type nor either fade changed size when the front drew in to four fifths. -->
 				<div
-					class="absolute inset-x-0 top-0 flex justify-center bg-gradient-to-b from-black to-transparent pt-[2cqw] pb-[9cqw]"
+					class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black to-transparent px-[3cqw] pt-[9cqw] pb-[2cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance text-white"
+					title={place}
 				>
-					<img src={logoUrl} alt="" class="w-[90%] object-contain" />
+					{place}
 				</div>
-			{/if}
-
-			<!-- The place at the foot, on the same fade turned over: black at the bottom edge and
-				gone by the top of it, so the two grounds bracket the poster from its own two edges
-				rather than one of them cutting across it. Which copy of the box this is is the
-				thing said last — the show is what a player is looking for and the town is what
-				tells two of the same show apart, so it sits under the picture the way a caption
-				does, and the mark keeps the head. White type, because it is black it is being read
-				on. -->
-			<div
-				class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black to-transparent px-[3cqw] pt-[9cqw] pb-[2cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance text-white"
-				title={place}
-			>
-				{place}
 			</div>
 		</div>
 	</div>

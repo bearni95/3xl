@@ -154,7 +154,7 @@
 					<!-- Stood up, the pack is as tall as the box and as wide as that height
 						earns it — the ratio is the booster box's own, so this only says which of
 						the two the box decides. A box too narrow for that height keeps its width
-						instead, and the poster letterboxes inside the bands. -->
+						instead and stands shorter than it could. -->
 					<BoosterBox
 						coverUrl={selectedPack.coverUrl}
 						logoUrl={selectedPack.logoUrl}
