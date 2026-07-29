@@ -9,11 +9,10 @@
 // inline.
 //
 // Icons drawn into a *canvas* do not come through here at all, and must not: the
-// map's star badge goes into a Leaflet marker and the combat orders' glyphs into a
-// Pixi texture, and neither is a place a stylesheet reaches. Those carry a baked
-// white fill instead, so the canvas can tint them — which is also why the glob below
-// takes only the show set. An inlined `fill="#fff"` glyph would come out white on
-// white wherever it landed in the document.
+// combat orders' glyphs go into a Pixi texture, which is not a place a stylesheet
+// reaches. Those carry a baked white fill instead, so the canvas can tint them —
+// which is also why the glob below takes only the show set. An inlined `fill="#fff"`
+// glyph would come out white on white wherever it landed in the document.
 //
 // Pulled in with a glob rather than a hand-written import list so that adding an
 // icon is only ever dropping the SVG into the right folder. Eager, so there is no

@@ -3,7 +3,7 @@
 	import type L from 'leaflet';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import PinChallenge from '$components/core/PinChallenge.svelte';
-	import type { MapCircle, MapLine, MapMarker, MapOverlay, MapStar } from '$types/map.type';
+	import type { MapCircle, MapDot, MapLine, MapMarker, MapOverlay } from '$types/map.type';
 
 	let {
 		center = [20, 0] as [number, number],
@@ -15,7 +15,7 @@
 		lines = [],
 		markers = [],
 		markerLevels = null,
-		stars = [],
+		dots = [],
 		highlightId = null,
 		highlightStyle = null,
 		selectedIds = new Set<string>(),
@@ -61,10 +61,11 @@
 		 */
 		markerLevels?: MapMarker[][] | null;
 		/**
-		 * Star badges dropped on individual points (e.g. today's festa-major towns),
-		 * drawn above the region pins and always shown regardless of zoom tier.
+		 * Dots dropped on individual points (e.g. the festa-major towns the booster
+		 * window reaches), drawn above the region pins and always shown regardless of
+		 * zoom tier.
 		 */
-		stars?: MapStar[];
+		dots?: MapDot[];
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
 		highlightId?: string | null;
 		/** Style merged over the highlighted feature's base style. */
@@ -128,10 +129,10 @@
 	// each of them runs a timer of its own (a sprite's frames, a countdown's seconds),
 	// so every rebuild unmounts the previous crop first.
 	let pinMounts: Record<string, unknown>[] = [];
-	// The star-badge layer (e.g. today's festa-major towns), rebuilt whenever the
-	// stars prop changes. Kept separate from the region pins so it always shows,
-	// with no level-of-detail folding, and sits above them.
-	let starLayer: L.LayerGroup | null = null;
+	// The festa-dot layer, rebuilt whenever the dots prop changes. Kept separate from
+	// the region pins so it always shows, with no level-of-detail folding, and sits
+	// above them.
+	let dotLayer: L.LayerGroup | null = null;
 	// Watches the map container so Leaflet re-projects when the container resizes
 	// (e.g. a side panel opening reserves horizontal space). Torn down on destroy.
 	let resizeObserver: ResizeObserver | null = null;
@@ -203,11 +204,11 @@
 	});
 
 	$effect(() => {
-		// Rebuild the star badges whenever the parent swaps the stars (e.g. a new
-		// day's festa-major towns arrive). Gated on `ready` so a set passed before
-		// mount still applies once the layer exists.
-		void stars;
-		if (ready) rebuildStars();
+		// Rebuild the festa dots whenever the parent swaps them (e.g. a new day's
+		// festa-major towns arrive). Gated on `ready` so a set passed before mount
+		// still applies once the layer exists.
+		void dots;
+		if (ready) rebuildDots();
 	});
 
 	$effect(() => {
@@ -462,37 +463,37 @@
 		pinMounts = [];
 	}
 
-	// A star badge's DOM: the game-icons.net round-star SVG (served from @3xl/assets),
-	// centred on its point with a drop shadow so it stays legible over any region
-	// fill beneath it.
-	function starElement(star: MapStar): HTMLElement {
-		const img = document.createElement('img');
-		img.src = '/assets/icons/delapouite/round-star.svg';
-		img.alt = star.label ?? '';
-		img.className =
-			'block h-6 w-6 -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]';
-		if (star.onClick) img.className += ' cursor-pointer';
-		return img;
+	// A festa dot's DOM: a filled circle centred on its point, white or black — the
+	// two stocks the booster boxes are printed on. Each carries a rule in the other
+	// colour, since neither white nor black alone survives every satellite tile
+	// underneath it, and the drop shadow lifts the whole dot off whatever it lands on.
+	function dotElement(dot: MapDot): HTMLElement {
+		const span = document.createElement('span');
+		span.className =
+			'block h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]';
+		span.className += dot.light ? ' border-black bg-white' : ' border-white bg-black';
+		if (dot.onClick) span.className += ' cursor-pointer';
+		return span;
 	}
 
-	// (Re)build the star badges for the current view: clear the layer, keep only the
-	// stars inside the (padded) viewport, and drop a zero-sized divIcon at each. Runs
-	// on every stars change and whenever the map pans or zooms, so the culling tracks
+	// (Re)build the festa dots for the current view: clear the layer, keep only the
+	// dots inside the (padded) viewport, and drop a zero-sized divIcon at each. Runs
+	// on every dots change and whenever the map pans or zooms, so the culling tracks
 	// what's on screen. Unlike the region pins there's no level-of-detail — every
-	// festa-major town keeps its star at every zoom.
-	function rebuildStars() {
+	// festa-major town keeps its dot at every zoom.
+	function rebuildDots() {
 		if (!mapInstance || !Leaf) return;
-		if (!starLayer) starLayer = Leaf.layerGroup().addTo(mapInstance);
-		starLayer.clearLayers();
+		if (!dotLayer) dotLayer = Leaf.layerGroup().addTo(mapInstance);
+		dotLayer.clearLayers();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
-		for (const star of stars) {
-			if (!bounds.contains(star.position)) continue;
-			const icon = Leaf.divIcon({ html: starElement(star), className: '', iconSize: [0, 0] });
-			const badge = Leaf.marker(star.position, { icon, riseOnHover: true });
-			if (star.label) badge.bindTooltip(star.label, { direction: 'top' });
-			if (star.onClick) badge.on('click', () => star.onClick!());
-			badge.addTo(starLayer!);
+		for (const dot of dots) {
+			if (!bounds.contains(dot.position)) continue;
+			const icon = Leaf.divIcon({ html: dotElement(dot), className: '', iconSize: [0, 0] });
+			const badge = Leaf.marker(dot.position, { icon, riseOnHover: true });
+			if (dot.label) badge.bindTooltip(dot.label, { direction: 'top' });
+			if (dot.onClick) badge.on('click', () => dot.onClick!());
+			badge.addTo(dotLayer!);
 		}
 	}
 
@@ -537,19 +538,19 @@
 		mapInstance.on('moveend zoomend', () => {
 			syncView();
 			rebuildMarkers();
-			rebuildStars();
+			rebuildDots();
 		});
 
 		// Keep Leaflet's cached viewport in sync with its container: when the parent
 		// shrinks the map to reserve room for an open side panel, invalidateSize
-		// re-projects the map (so markers/stars slide out from under the panel and
+		// re-projects the map (so markers/dots slide out from under the panel and
 		// stay clickable) and we re-cull to the new box. Without this, Leaflet keeps
 		// the stale size and the reserved gutter still overlaps live pins.
 		resizeObserver = new ResizeObserver(() => {
 			mapInstance?.invalidateSize({ animate: false });
 			syncView();
 			rebuildMarkers();
-			rebuildStars();
+			rebuildDots();
 		});
 		resizeObserver.observe(mapContainer);
 

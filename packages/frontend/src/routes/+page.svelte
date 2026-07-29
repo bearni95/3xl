@@ -72,7 +72,7 @@
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { nextCatalanMidnight } from '$utils/festes/catalan-day';
 	import { boosterWindow } from '$utils/festes/booster-window';
-	import type { MapChallenge, MapMarker, MapOverlay, MapStar } from '$types/map.type';
+	import type { MapChallenge, MapDot, MapMarker, MapOverlay } from '$types/map.type';
 	import type {
 		MunicipalityShow,
 		MunicipalityShowsCollection,
@@ -89,19 +89,22 @@
 	let assignmentsById = new Map<string, MunicipalityShow>();
 	// Held until the fetches settle so the map renders against the loaded data.
 	let ready = false;
-	// The municipalities celebrating a festa major today, read from Supabase — the
-	// `festivities` fetch. This is what the map's gold stars mark: the day itself, not
-	// the whole booster window the packs are drawn from, so a star still says "this town
-	// is de festa now". Each town's `id` matches a municipality feature id, so it
+	// The municipalities the map dots mark, read from Supabase — the `festivities`
+	// fetch, in the two reads the dots are drawn in: every town the booster window
+	// reaches (three days back through four ahead), and today's alone. A town in both
+	// is de festa now and gets the white dot; a town only in the window has a day that
+	// is past or still coming and gets the black one, exactly as its booster box is
+	// printed in the panel. Each town's `id` matches a municipality feature id, so it
 	// resolves to a polygon on the map.
-	let todayFestes: FestaLocationRow[] = [];
+	let windowFestes: FestaLocationRow[] = [];
+	let todayFesteIds = new Set<string>();
 	// Every booster pack in the window (three days back through four ahead), computed by
 	// a hidden CharacterClaimPanel, which turns those festes + the player's shows into
-	// openable packs. Kept here so clicking a star opens that town's pack at once,
+	// openable packs. Kept here so clicking a dot opens that town's pack at once,
 	// with no extra loading. Empty when signed out or before the show pool loads.
 	let claimPacks: OpenerPack[] = [];
 	// The municipality whose festa pack the side panel's Booster tab shows, or
-	// null when no star has been clicked yet.
+	// null when no dot has been clicked yet.
 	let packTownId: string | null = null;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
 	let currentZoom = 8;
@@ -176,13 +179,19 @@
 		}
 		ready = true;
 
-		// Today's festa-major towns, loaded after the map is ready so a slow (or
-		// unconfigured) Supabase never blocks the map: the stars simply pop in once
-		// they arrive, and stay empty if the fetch fails.
-		try {
-			todayFestes = await festesService.loadTodayFestes();
-		} catch {
-			todayFestes = [];
+		// The festa-major towns the dots mark, loaded after the map is ready so a slow
+		// (or unconfigured) Supabase never blocks the map: the dots simply pop in once
+		// they arrive. The window read is what puts a dot on the map at all and the
+		// today read only says which colour, so each is settled on its own — a failed
+		// today read leaves every dot black rather than taking the whole layer down
+		// with it, the same way the booster grid falls back to its dark card.
+		const [windowResult, todayResult] = await Promise.allSettled([
+			festesService.loadFestesForWindow(),
+			festesService.loadTodayFestes()
+		]);
+		if (windowResult.status === 'fulfilled') windowFestes = windowResult.value;
+		if (todayResult.status === 'fulfilled') {
+			todayFesteIds = new Set(todayResult.value.map((festa) => festa.id));
 		}
 
 		// The show → renderable-character assignment, read once from Supabase so a
@@ -294,7 +303,7 @@
 	// The panel's four views: the player themselves (their own card and the side they
 	// field, on one grid), the open region (the drill table, or a leaf town's show and house team),
 	// the standing of every show across the whole map, and the booster pack of whichever
-	// festa town's star was clicked last. Every one of them lives here rather than in a
+	// festa town's dot was clicked last. Every one of them lives here rather than in a
 	// panel of its own, so the map only ever gives up room to one of them — the
 	// breadcrumbs above the strip stay put across all four, since they name what the map
 	// is looking at whichever view is forward.
@@ -474,7 +483,7 @@
 	// Every other tier is line-only, so the satellite basemap keeps reading through
 	// them, and `hiddenLineUrls` still drops the lines of the tiers finer than the
 	// imaged one. All decorative: the wash is not something to click or hover, so no
-	// layer captures pointer events and the pins and stars own every click.
+	// layer captures pointer events and the pins and dots own every click.
 	//
 	// Rebuilt (a fresh array) whenever a region changes colour, another town is
 	// selected or the map images another tier — that is what repaints the layers,
@@ -1181,23 +1190,28 @@
 
 	$: regionGeometry = buildRegionGeometry(municipalities, fillIndex);
 
-	// A gold star dropped on every municipality celebrating a festa major today, on
-	// the same point of the town its pin stands on (its own key in the region
-	// geometry), so the star marks the town where the town is drawn. Clicking a star
-	// loads that town's festa booster pack into the side panel and flips the panel to
-	// its Booster tab, so the pack replaces the tables. A festa town whose polygon
-	// isn't on the map has no such point and is skipped. Named deps (`todayFestes`,
-	// `regionGeometry`) so the stars repaint when either lands.
-	$: festaStars = (() => {
+	// A dot dropped on every municipality the booster window's festes reach, on the
+	// same point of the town its pin stands on (its own key in the region geometry), so
+	// the dot marks the town where the town is drawn. White for a town de festa today
+	// and black for the rest of the window, which is how the Booster tab prints their
+	// boxes — the map and the grid say the same thing about a town in the same two
+	// colours. Clicking a dot loads that town's festa booster pack into the side panel
+	// and flips the panel to its Booster tab, so the pack replaces the tables. A festa
+	// town whose polygon isn't on the map has no such point and is skipped. Named deps
+	// (`windowFestes`, `todayFesteIds`, `regionGeometry`) so the dots repaint when any
+	// of them lands.
+	$: festaDots = (() => {
 		const centers = regionGeometry.centers;
-		const result: MapStar[] = [];
-		for (const festa of todayFestes) {
+		const today = todayFesteIds;
+		const result: MapDot[] = [];
+		for (const festa of windowFestes) {
 			const center = centers.get(festa.id);
 			if (!center) continue;
 			result.push({
 				id: festa.id,
 				position: center,
 				label: festa.name,
+				light: today.has(festa.id),
 				onClick: () => openPack(festa.id)
 			});
 		}
@@ -1273,7 +1287,7 @@
 			.catch(() => {});
 	}
 
-	// Back to the whole window's grid, from a star-opened town or a picked pack alike.
+	// Back to the whole window's grid, from a dot-opened town or a picked pack alike.
 	// The grid is in the document now, so this is only the state it reads: nothing is
 	// rebuilt, and a pack stood back down leaves the grid exactly as it was.
 	function showPackGrid(): void {
@@ -1282,14 +1296,14 @@
 	}
 
 	// Picking the Booster tab by its own button always lands on the grid of every pack
-	// the window offers; only a star click narrows the tab to one town's pack.
+	// the window offers; only a dot click narrows the tab to one town's pack.
 	function selectTab(id: PanelTab): void {
 		if (id === PanelTab.Pack) showPackGrid();
 		panelTab = id;
 	}
 
-	// The pack a star click stands up, picked out of the window's full set. Null when no
-	// star has been clicked, the player is signed out, or the town has no claimable show
+	// The pack a dot click stands up, picked out of the window's full set. Null when no
+	// dot has been clicked, the player is signed out, or the town has no claimable show
 	// yet — the last of which is the only case the panel has anything to say about, since
 	// a town clicked on the map is a town the player expected a pack from. The grid
 	// itself works off the same id, so this is read only to tell that case apart.
@@ -1619,7 +1633,7 @@
 		— Booster: the window's festa packs — every town de festa from three days back
 		  through four days ahead, all of them openable. Picked from the tab strip it lays
 		  every one of them out in the document (two to a row at this width) — pick one to
-		  stand it up and slice it open. Reached by clicking a town's gold star instead, it
+		  stand it up and slice it open. Reached by clicking a town's map dot instead, it
 		  skips straight to that town's pack, already stood up. -->
 	<aside class={panelClasses} aria-label="Map panel">
 		<!-- The panel's handle row, mobile only: the whole row is the toggle between the
@@ -1789,7 +1803,7 @@
 			{:else}
 				<!-- Two ways in, one grid: picking the tab shows every pack in the booster
 					window, two to a row since the panel is 450px wide,
-					while a star click stands that town's pack up in it straight away. Either
+					while a dot click stands that town's pack up in it straight away. Either
 					way the same three taps — pick a pack, tap it again to open it, and the
 					cards it held stand up in its place as statues; "Tots els sobres" goes
 					back to the grid. All of it is in the document: a day's covers and the
@@ -1829,7 +1843,7 @@
 
 					<div class="relative min-h-0 flex-1 p-3">
 						{#if packTownId && !packForTown}
-							<!-- A star was clicked on a town the window has no pack for — the one
+							<!-- A dot was clicked on a town the window has no pack for — the one
 								thing the grid itself cannot say, since it only ever knows the packs
 								it was handed. -->
 							<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
@@ -1840,7 +1854,7 @@
 						{:else if claimPacks.length}
 							<!-- Two packs to a row at this width, and an opened one stands its cards
 								in two columns as well — the panel is far too narrow for the claim
-								page's three. The stood-up pack is bound to the same id a star click
+								page's three. The stood-up pack is bound to the same id a dot click
 								sets, so the map and the grid are never looking at two different packs. -->
 							<PackGrid
 								packs={claimPacks}
@@ -1883,7 +1897,7 @@
 				minZoom={7}
 				{overlays}
 				{markerLevels}
-				stars={festaStars}
+				dots={festaDots}
 				{hiddenLineUrls}
 				{focusBounds}
 				bind:currentZoom
@@ -1901,7 +1915,7 @@
 </div>
 
 <!-- Hidden, but mounted: the claim panel, kept alive only
-	to compute the window's booster packs (bind:packs) so a star click can open the town's
+	to compute the window's booster packs (bind:packs) so a dot click can open the town's
 	pack instantly. Its own UI is never shown here — but the two things it says that the
 	panel cannot do without are bound out of it: the daily allowance, and the reason a
 	roll was refused. Without those a spent allowance (or any other `claim_booster`

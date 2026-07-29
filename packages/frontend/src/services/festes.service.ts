@@ -50,7 +50,8 @@ class FestesService {
 	 * Catalan time, as {@link catalanTodayIso} produces), name-sorted. Any day can be
 	 * read; which of them can actually be claimed against is the `claim_booster` RPC's
 	 * call, and it takes the whole booster window ({@link loadFestesForWindow}), not
-	 * one day. The map's gold stars use this for today alone.
+	 * one day. The map's dots use this for today alone — it is what tells a white dot
+	 * from a black one, the window read being what puts a dot on the map at all.
 	 */
 	async loadFestesForDate(date: string): Promise<FestaLocationRow[]> {
 		if (!isSupabaseConfigured()) return [];

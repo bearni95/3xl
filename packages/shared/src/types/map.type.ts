@@ -140,19 +140,25 @@ export interface MapMarker {
 }
 
 /**
- * A star badge dropped on a point — used to flag the municipalities celebrating
- * a festa major today, independent of the poster/region pins. Always drawn (no
- * level-of-detail folding), so a town's star shows at every zoom, and rendered
+ * A dot dropped on a point — used to flag the municipalities whose festa major
+ * the booster window reaches, independent of the poster/region pins. Always drawn
+ * (no level-of-detail folding), so a town's dot shows at every zoom, and rendered
  * above the region pins so it reads as a highlight over the map.
  */
-export interface MapStar {
+export interface MapDot {
 	/** Stable id (the municipality feature id), so the layer can diff on rebuild. */
 	id: string;
-	/** Where the star sits, as [lat, lng] — the municipality's centre. */
+	/** Where the dot sits, as [lat, lng] — the municipality's centre. */
 	position: [number, number];
 	/** Text shown as the hover tooltip (e.g. the municipality name). */
 	label?: string;
-	/** Called when the star is clicked (e.g. open the town's festa booster pack). */
+	/**
+	 * Drawn white instead of black — the two colours the booster boxes are printed
+	 * on, said again on the map: a town de festa today is white, a town the window
+	 * reaches but whose day is past or still coming is black.
+	 */
+	light?: boolean;
+	/** Called when the dot is clicked (e.g. open the town's festa booster pack). */
 	onClick?: () => void;
 }
 

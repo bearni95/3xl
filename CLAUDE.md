@@ -71,9 +71,9 @@ interchangeable:
   lets `fill="currentColor"` resolve against the surrounding text — colour *and* size
   follow whatever the glyph sits in.
 - **Into a canvas** — the game-icons.net artwork under `public/icons/<artist>/`:
-  the combat orders' glyphs go into a Pixi texture and the map's star badge into a
-  Leaflet marker. Neither is a place a stylesheet reaches, so these are fetched by
-  URL and carry a baked **white** fill, which the canvas then tints (tinting only
+  the combat orders' glyphs go into a Pixi texture, which is not a place a stylesheet
+  reaches, so these are fetched by URL and carry a baked **white** fill, which the
+  canvas then tints (tinting only
   ever darkens, so white artwork is what makes any colour reachable). A
   game-icons.net SVG ships as white artwork on an opaque black square: strip the
   background path and keep the white before committing it.
