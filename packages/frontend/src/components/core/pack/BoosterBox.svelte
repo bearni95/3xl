@@ -35,9 +35,9 @@
 	export let logoUrl: string | null = null;
 	// Full name of the place the box belongs to, said at the foot of the front.
 	export let locationName: string | null = null;
-	// Printed on white card instead of black. Every part of the box that is black becomes
-	// white and the ink that is white becomes black: the same box, the same geometry, the
-	// other stock. The caller says which — the box has no idea why one run of them would be
+	// Printed on white card instead of black. The stock changes and the ink with it, all four
+	// of the box's tones turning over together: the same box, the same geometry, the other
+	// material. The caller says which — the box has no idea why one run of them would be
 	// printed differently.
 	export let light: boolean = false;
 	export let classes: string = '';
@@ -63,18 +63,29 @@
 	const LID_DEPTH = 'h-[calc(100cqw/6)]';
 	const LID = 'origin-bottom [transform:perspective(187.826cqw)_rotateX(75.373deg)]';
 
-	// The lid's four corners are cut off — an octagon rather than a square, a tenth of each
-	// side nearest a corner taken away, the treatment CharacterStatue gives the floor its
-	// characters stand on (see GROUND_CUT there). A tenth because the front below is four
+	// The lid's four corners are cut off — an octagon rather than a square, the treatment
+	// CharacterStatue gives the floor its characters stand on (see GROUND_CUT there): a tenth
+	// off each end of the front and back edges, and 23% off each end of the two sides. A
+	// tenth along the front because the front below is four
 	// fifths of the width centred under it: taking a tenth off each end leaves the flat run
 	// along the lid's front edge exactly the front's own width, so the top ends where the
 	// picture begins and the two line up down both sides. The cut is made in the square
 	// before the tilt, a transform mapping whatever shape is left, so the four diagonals are
 	// laid down with the lid and read as bevelled edges of it rather than as notches cut out
-	// of a picture. It takes the 3px rule with it along those diagonals, which costs nothing:
-	// the rule is the same colour the fill is, on either stock.
+	// of a picture. There is nothing but fill to cut, no surface here being outlined.
+	//
+	// The two ends of a cut are not the same fraction. A tenth along the front edge is fixed
+	// — that is what leaves the front its four fifths — but the depth back along the side is
+	// free, and it is what the diagonal's angle is made of: cut a tenth back and the outer
+	// end of the cut lands 0.024 of a width above the front edge, which is a diagonal so
+	// shallow it reads as a rounded corner rather than a bevelled one. It is cut 23% back
+	// instead, which lifts that end to 0.052 — a bit over twice as high — and stands the
+	// diagonal at 47.83°, within a fifth of a degree of the 48.01° CharacterStatue's own
+	// bevel is cut at. So the two objects in this panel bevel at one angle despite standing
+	// at different tilts, which is the thing that was actually wanted of the statue's
+	// treatment: the same edge, not the same fraction.
 	const LID_CUT =
-		'[clip-path:polygon(10%_0,90%_0,100%_10%,100%_90%,90%_100%,10%_100%,0_90%,0_10%)]';
+		'[clip-path:polygon(10%_0,90%_0,100%_23%,100%_77%,90%_100%,10%_100%,0_77%,0_23%)]';
 
 	// What a cut corner leaves is a face, and these are the two front ones: the front of the
 	// box is the front of the same block the lid is the top of, so each of its sides carries
@@ -83,53 +94,59 @@
 	// clipped square standing over a picture into one bevelled solid.
 	//
 	// Their geometry is read off the cut, not chosen, and it is the lid's own perspective
-	// that sets it rather than the statue's — the same figure at a different tilt. The cut's
-	// inner end is the tenth mark along the front edge (x = 0.1 of the width); its outer end
-	// is on the lid's side a tenth of the way back, where the perspective has drawn the side
-	// in to (1 − r₁)/2 = 0.02449 of the width and lifted it 0.1·cos θ·r₁ = 0.02402 above the
-	// front edge, r₁ = d/(d + 0.1·sin θ) = 0.95102 being the scale a tenth back. So a face is
-	// 0.07551 of the width wide and the edge across its top rises 0.02402 over that width —
-	// 17.64°, which a skew about the inner edge applies to the whole strip at once, top and
-	// bottom together, leaving nothing vertical to measure: the strip is simply as tall as the
-	// front it stands beside. A shallower tilt than the statue's cuts a shallower bevel, which
-	// is the same thing said twice: a lid seen from nearer eye level shows less of its own top.
+	// that sets it rather than the statue's. The cut's inner end is the tenth mark along the
+	// front edge (x = 0.1 of the width); its outer end is on the lid's side 23% of the way
+	// back, where the perspective has drawn the side in to (1 − r)/2 = 0.05301 of the width
+	// and lifted it 0.23·cos θ·r = 0.05193 above the front edge, r = d/(d + 0.23·sin θ) =
+	// 0.89398 being the scale that far back. So a face is 0.04703 of the width wide and the
+	// edge across its top rises 0.05193 over that width — 47.83°, which a skew about the
+	// inner edge applies to the whole strip at once, top and bottom together, leaving nothing
+	// vertical to measure: the strip is simply as tall as the front it stands beside. Change
+	// the 23% in LID_CUT and both numbers here have to be worked out again, or the face stops
+	// meeting the corner it fills.
 	//
 	// The width is in cqw against the whole box (the root declares itself a container), the
 	// front's own width being no use to a figure taken from the lid's square.
-	const BEVEL_FACE = 'absolute inset-y-0 w-[7.551cqw]';
-	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(17.64deg)]';
-	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-17.64deg)]';
+	const BEVEL_FACE = 'absolute inset-y-0 w-[4.703cqw]';
+	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(47.83deg)]';
+	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-47.83deg)]';
 
-	// The plane the cut surfaces are shaded on, and the front is not: the top and the two
-	// side faces are the faces the cut opened, all three of them the same stock under the
-	// same veil, and the printed front is the one plane that is not veiled. One name for
-	// where it goes rather than the same three literals — the sides are the colour of the
-	// top by being given the colour of the top, so the two cannot drift apart.
-	const LIT = 'absolute inset-0';
+	// Where a surface's tone is laid on: a veil over the stock, filling whichever face it is
+	// put in. Only the position is named here — how strong it is belongs to the surface, and
+	// the surfaces no longer share one value.
+	const TONE = 'absolute inset-0';
 
-	// The two stocks a box is printed on, black or white, and what each does to every part
-	// of it that has a colour. Which way round the veil goes is the one thing that is not a
-	// straight swap: on black card the cut faces are lifted off the front by white, and on
-	// white card there is no lifting a face off paper that is already the lightest thing on
-	// it, so the same 10% goes the other way and the cut surfaces are shaded instead. Both
-	// are the same statement — the top and the sides are one tone and the front is another,
-	// which is what puts an edge between them.
+	// The two stocks a box is printed on, black or white, and four tones of that stock across
+	// its four surfaces. The front is the stock itself, pure, because it is the printed face
+	// and a poster does not want a grey behind it; the three faces the cut opened take a veil
+	// each, in the strengths a light above and to the left would leave them — the top most of
+	// it, the left face next, the right face least. Four tones rather than two is what makes
+	// a bevel read as a bevel: with one veil shared between all three, the top and both sides
+	// were a single tone and the whole cut edge was one flat band round a picture.
+	//
+	// Which way the veils go is the one thing that is not a straight swap between the stocks:
+	// on black card a face is lifted off the front with white, and on white card there is no
+	// lifting anything off paper that is already the lightest thing on it, so the same
+	// strengths go the other way and the faces are shaded down instead. The order survives it
+	// — the top is still the furthest from the front, and the right face still the nearest.
 	//
 	// The fades end in the stock at zero alpha rather than in `transparent`, so what they
 	// pass through on the way is the card's own colour and never a grey that belongs to
 	// neither.
 	$: skin = light
 		? {
-				card: 'border-white bg-white',
 				fill: 'bg-white',
-				veil: 'bg-black/10',
+				top: 'bg-black/20',
+				left: 'bg-black/12',
+				right: 'bg-black/6',
 				fade: 'from-white to-white/0',
 				ink: 'text-black'
 			}
 		: {
-				card: 'border-black bg-black',
 				fill: 'bg-black',
-				veil: 'bg-white/10',
+				top: 'bg-white/20',
+				left: 'bg-white/12',
+				right: 'bg-white/6',
 				fade: 'from-black to-black/0',
 				ink: 'text-white'
 			};
@@ -168,21 +185,12 @@
 		<!-- Pinned by its bottom edge to the top of the face — that edge is the axis it
 			turns about, so it is the one line the lid and the face share, and the box reads
 			as one object folded at it. -->
-		<div
-			class={classNames(
-				'absolute inset-x-0 bottom-0 aspect-square border-[3px]',
-				skin.card,
-				LID,
-				LID_CUT
-			)}
-		>
-			<!-- The top plane is veiled where the front is not, which is what puts an edge between
-				them: a top and a face in one flat colour are one shape, and a box with no edge
-				between its top and its face is not a box. It is the plane that is veiled and not
-				the whole lid — the border stays outside it, so the rule reads against the veiled
-				top the way the picture's frame reads against the picture. Which way the veil goes
-				is the stock's business (see `skin`); the lid only says where it lies. -->
-			<div class={classNames(LIT, skin.veil)}></div>
+		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square', skin.fill, LID, LID_CUT)}>
+			<!-- The top is the most veiled of the four surfaces, which is what puts an edge between
+				it and the front: a top and a face in one flat colour are one shape, and a box with
+				no edge between its top and its face is not a box. How strong the veil is and which
+				way it goes are the stock's business (see `skin`); the lid only says where it lies. -->
+			<div class={classNames(TONE, skin.top)}></div>
 		</div>
 	</div>
 
@@ -193,36 +201,36 @@
 		behind it. The stock's own colour and not the theme's neutral: the two fades over the
 		picture end in that same colour, so the frame is the one thing that lets them run off
 		the edges of the poster into it rather than stopping against a border of another hue —
-		which holds on white card exactly as it did on black. A percentage
-		padding is a share of the width on every side, top and bottom included, so the frame
-		is an even width all round rather than following the 3:4 out into a taller band above
-		and below. This keeps the flex sizing the poster had, which is what still hands the
-		box its 3:4.
+		which holds on white card exactly as it did on black. It is the pure stock, the one
+		surface of the four with no veil over it: the front is what the poster is printed on
+		and a poster wants nothing greyed behind it. A percentage padding is a share of the
+		width on every side, top and bottom included, so the frame is an even width all round
+		rather than following the 3:4 out into a taller band above and below. This keeps the
+		flex sizing the poster had, which is what still hands the box its 3:4.
 
-		The 3px rule round it is the box's cut edge, the same one the lid carries: a fixed
-		width and not a share of the container, because an edge is an edge at any size — a
-		tile in a grid and the same box stood up the height of a panel are cut out of the
-		same card. It is inside the element's own size (border-box), so nothing about the
-		ratios or the 5% frame moves to make room for it. -->
+		Nothing here is outlined. A rule round the front would be a line where the two bevel
+		faces meet its sides, holding them a pixel off the block they are faces of, and on a
+		surface that is all one colour a line around it is a line drawn across a solid. What
+		separates the four surfaces is the four tones, which is what separates them on a real
+		box too. -->
 	<div class="relative min-h-0 w-4/5 min-w-0 flex-1 self-center">
 		<!-- The bevel's two faces, hung off the front's sides so they are as tall as it is
 			whatever height the box is drawn at (see BEVEL_FACE). They are hung off this block
-			rather than off the front itself so their inner edge lands on the front's outer edge:
-			an absolute inset is measured off the padding box, which the 3px rule sits outside
-			of, and a face placed in there would meet the block it is a face of three pixels in.
-			They take the tilted top's colour, being the other faces the same cut opened — the
-			same stock under the same veil (see LIT), so the three cut surfaces are one material
-			and the printed front is the only plane on the box that is unveiled. Nothing is written
-			on them, so they are hidden from a screen reader, which is being read the place and
-			the mark. -->
+			rather than off the front itself, which keeps their inner edge on the front's own edge
+			whatever padding the front carries — an absolute inset is measured off the padding box,
+			and a face placed in there would meet the block it is a face of somewhere inside it.
+			Each takes its own tone, the left more veiled than the right, so the two sides of the
+			same cut are not one flat band round the picture but two faces turned different ways
+			(see `skin`). Nothing is written on them, so they are hidden from a screen reader,
+			which is being read the place and the mark. -->
 		<div class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, skin.fill)} aria-hidden="true">
-			<div class={classNames(LIT, skin.veil)}></div>
+			<div class={classNames(TONE, skin.left)}></div>
 		</div>
 		<div class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, skin.fill)} aria-hidden="true">
-			<div class={classNames(LIT, skin.veil)}></div>
+			<div class={classNames(TONE, skin.right)}></div>
 		</div>
 
-		<div class={classNames('h-full w-full border-[3px] p-[5%]', skin.card)}>
+		<div class={classNames('h-full w-full p-[5%]', skin.fill)}>
 			<!-- The picture and the two things written over it, in one box: the mark and the place
 				belong to the poster's edges, not the box's, so they are placed against this rather
 				than against the front — an absolute inset is measured off the padding box, and
