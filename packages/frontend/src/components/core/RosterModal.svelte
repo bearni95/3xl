@@ -65,6 +65,13 @@
 		browser ? responsiveGridColumns(window.innerWidth) : 3
 	);
 
+	// Whether a character's copies are gathered into one cell — a statue with a circle
+	// per colour under it — or every card owned gets a cell of its own. Grouped is the
+	// default and what the grid has been; ungrouped is the roster read as what it
+	// literally is, one entry per card. A player preference like the column count, so it
+	// survives a reload rather than being re-picked every time the roster is opened.
+	const groupCopies = localStorageWritableStore<boolean>('roster:group-copies', true);
+
 	// --- Card filters (the header toolbar) ---
 	// Sentinel every "no filter" dropdown uses, so an unset filter is distinct from
 	// any real value (a colour, a show name, a rarity tier).
@@ -369,16 +376,26 @@
 	// walks it a page at a time. So any filter change re-pages from the start — the
 	// narrowed roster always opens on its first page rather than on a page number that
 	// meant something under the old filters.
-	$: filterName, filterColor, filterShow, filterRarity, (page = 0);
+	// Turning grouping on or off changes what a cell is, so the pager starts over with it
+	// for the same reason a filter change does.
+	$: filterName, filterColor, filterShow, filterRarity, $groupCopies, (page = 0);
 
-	// --- One cell per character, not per card ---------------------------------------
+	// --- What a cell is --------------------------------------------------------------
+	/** One cell of the grid: the character it stands up and the cards behind it. Grouped,
+	 * that is every copy the player owns of them; ungrouped, exactly one. The id is what
+	 * keys the cell, and it is not the character's — two cells of the same fighter are two
+	 * cards, and an `{#each}` key that could not tell them apart would draw one of them. */
+	interface CharacterCell {
+		id: string;
+		characterId: string;
+		copies: CharacterSpawn[];
+	}
+
 	// A character claimed six times is one character, so the grid stands them up once
 	// and puts their copies underneath as a row of colour circles. The grouping happens
 	// before the pager, so a page is ten rows of *characters* — a player with a hundred
 	// reds of the same fighter no longer walks ten pages of the same statue.
-	function groupByCharacter(
-		spawns: CharacterSpawn[]
-	): { characterId: string; copies: CharacterSpawn[] }[] {
+	function groupByCharacter(spawns: CharacterSpawn[]): CharacterCell[] {
 		const groups = new Map<string, CharacterSpawn[]>();
 		for (const spawn of spawns) {
 			const copies = groups.get(spawn.characterId);
@@ -386,7 +403,22 @@
 			else groups.set(spawn.characterId, [spawn]);
 		}
 		// Insertion order, so the characters keep the order their first copy was in.
-		return [...groups].map(([characterId, copies]) => ({ characterId, copies }));
+		return [...groups].map(([characterId, copies]) => ({
+			id: characterId,
+			characterId,
+			copies
+		}));
+	}
+
+	/** The other reading: one cell per card owned, so six reds of the same fighter are six
+	 * statues of him. A cell of one copy needs nothing else — the circle under it says
+	 * that one colour, and the statue itself says the rest. */
+	function oneCellPerCopy(spawns: CharacterSpawn[]): CharacterCell[] {
+		return spawns.map((spawn) => ({
+			id: spawn.id,
+			characterId: spawn.characterId,
+			copies: [spawn]
+		}));
 	}
 
 	/** The copy of this character holding the earliest team slot, or null if the player
@@ -415,18 +447,18 @@
 	// unfielded character shares leaves them all where they were. Sorting happens before
 	// the pager, which is what keeps the team on the first page: it must never be a page
 	// turn away from the cards being read against it.
-	$: characterGroups = ((slots: Map<string, number>) => {
-		const groups = groupByCharacter(filteredSpawns);
+	// The ranks are keyed by cell rather than by character: ungrouped, two cells can be the
+	// same fighter and only one of them holds the slot.
+	$: characterGroups = ((slots: Map<string, number>, grouped: boolean) => {
+		const groups = grouped ? groupByCharacter(filteredSpawns) : oneCellPerCopy(filteredSpawns);
 		const ranks = new Map(
 			groups.map((group) => {
 				const held = fieldedCopy(group.copies, slots);
-				return [group.characterId, held ? (slots.get(held.id) ?? TEAM_SIZE) : TEAM_SIZE];
+				return [group.id, held ? (slots.get(held.id) ?? TEAM_SIZE) : TEAM_SIZE];
 			})
 		);
-		return groups.sort(
-			(a, b) => (ranks.get(a.characterId) ?? TEAM_SIZE) - (ranks.get(b.characterId) ?? TEAM_SIZE)
-		);
-	})(teamSlotById);
+		return groups.sort((a, b) => (ranks.get(a.id) ?? TEAM_SIZE) - (ranks.get(b.id) ?? TEAM_SIZE));
+	})(teamSlotById, $groupCopies);
 
 	/** One colour of one character, and every copy the player owns in it — a circle in
 	 * the row under the statue, with that count beside it. */
@@ -449,13 +481,14 @@
 		return [...byColor].map(([color, owned]) => ({ color, copies: owned }));
 	}
 
-	// character id → the id of the copy the grid is showing for it. Only holds the ones
-	// the player has clicked a circle for; every other character shows its first copy.
-	// Keyed by character rather than by page, so a colour picked stays picked as the
-	// filters and the pages move.
-	let shownCopyByCharacter = new Map<string, string>();
-	function showCopy(characterId: string, spawnId: string): void {
-		shownCopyByCharacter = new Map(shownCopyByCharacter).set(characterId, spawnId);
+	// cell id → the id of the copy the grid is showing in it. Only holds the ones the
+	// player has clicked a circle for; every other cell shows its first copy. Keyed by
+	// cell rather than by page, so a colour picked stays picked as the filters and the
+	// pages move — and grouped, a cell's id is the character's, so it stays picked across
+	// those too.
+	let shownCopyByCell = new Map<string, string>();
+	function showCopy(cellId: string, spawnId: string): void {
+		shownCopyByCell = new Map(shownCopyByCell).set(cellId, spawnId);
 	}
 
 	/** One place a character has been claimed in, in one colour — an entry in the cell's
@@ -488,13 +521,13 @@
 	// walks to the next copy of that colour instead, so all four of those reds stay
 	// reachable one at a time — they are four cards, and it is the shown one the statue
 	// fields or recycles.
-	function showColorCopy(characterId: string, swatch: ColorSwatch, shown: CharacterSpawn): void {
+	function showColorCopy(cellId: string, swatch: ColorSwatch, shown: CharacterSpawn): void {
 		if (shown.color !== swatch.color) {
-			showCopy(characterId, swatch.copies[0].id);
+			showCopy(cellId, swatch.copies[0].id);
 			return;
 		}
 		const at = swatch.copies.findIndex((copy) => copy.id === shown.id);
-		showCopy(characterId, swatch.copies[(at + 1) % swatch.copies.length].id);
+		showCopy(cellId, swatch.copies[(at + 1) % swatch.copies.length].id);
 	}
 
 	// A page is ROWS_PER_PAGE rows at the current column count, so the slider resizes
@@ -552,7 +585,7 @@
 		slots: Map<string, number>
 	) =>
 		pagedGroups.map((group) => {
-			const shownId = shown.get(group.characterId);
+			const shownId = shown.get(group.id);
 			const copy =
 				group.copies.find((spawn) => spawn.id === shownId) ??
 				fieldedCopy(group.copies, slots) ??
@@ -579,7 +612,7 @@
 				// character to a copy that isn't on the team and the border goes with it.
 				fielded: slots.has(copy.id)
 			};
-		}))(municipalityNames, characterShows, shownCopyByCharacter, teamSlotById);
+		}))(municipalityNames, characterShows, shownCopyByCell, teamSlotById);
 
 	// Tapping a statue puts the copy it is showing on the team or takes it off (into the
 	// first free slot, or out of the one it holds). It is the statue that acts and the
@@ -752,8 +785,8 @@
 					</div>
 				</div>
 			{:else}
-				<!-- What the grid is read with: the pager, the column slider, and whether a
-				     line-up is in flight. -->
+				<!-- What the grid is read with: the pager, the column slider, the grouping
+				     toggle, and whether a line-up is in flight. -->
 				<div class="mb-3 flex flex-none flex-wrap items-center justify-end gap-3">
 					{#if pageCount > 1}
 						<div class="join">
@@ -789,6 +822,18 @@
 							aria-label="Grid columns"
 						/>
 						<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
+					</label>
+					<!-- On, a character is one cell however many of them the player holds; off,
+					     every card owned is a cell of its own. Beside the slider because the two
+					     answer the same question — how much of the roster is on screen at once. -->
+					<label class="flex items-center gap-2 text-xs">
+						<span class="whitespace-nowrap opacity-60">Group copies</span>
+						<input
+							type="checkbox"
+							class="toggle toggle-primary toggle-sm"
+							bind:checked={$groupCopies}
+							aria-label="Group a character's copies into one cell"
+						/>
 					</label>
 					{#if $teamSaving}
 						<span class="flex items-center gap-2 text-xs opacity-60">
@@ -938,7 +983,7 @@
 						class="relative min-h-0 min-w-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
 					>
 						<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
-							{#each pagedStatues as { group, copy, swatches, places, placeValue, statue, fielded } (group.characterId)}
+							{#each pagedStatues as { group, copy, swatches, places, placeValue, statue, fielded } (group.id)}
 								<!-- The border is on the cell, not on the statue: it takes in the circles
 								     and the place select too, so what it marks is this character's whole
 								     entry. Every cell carries it and only a fielded one colours it in, so
@@ -1014,7 +1059,7 @@
 												title="{swatch.copies.length} in {swatch.color}"
 												aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
 												aria-pressed={swatch.color === copy.color}
-												on:click={() => showColorCopy(group.characterId, swatch, copy)}
+												on:click={() => showColorCopy(group.id, swatch, copy)}
 											>
 												{swatch.copies.length}
 											</button>
@@ -1029,7 +1074,7 @@
 											class="select select-xs min-w-0 max-w-[9rem] flex-initial"
 											aria-label="{statue.label} — where it was claimed"
 											value={placeValue}
-											on:change={(event) => showCopy(group.characterId, event.currentTarget.value)}
+											on:change={(event) => showCopy(group.id, event.currentTarget.value)}
 										>
 											{#each places as place (place.copy.id)}
 												<option value={place.copy.id}>
