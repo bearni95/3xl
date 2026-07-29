@@ -49,6 +49,12 @@ create table if not exists public.battles (
 	-- sitting on the town at the time, frozen so a resumed fight faces the same three
 	-- whatever has happened to the town since.
 	rivals jsonb not null default '[]'::jsonb,
+	-- The player's own line-up in fielded order, as [spawn_id, …]. Every one of them
+	-- was checked against `character_spawns` before this row existed (see
+	-- start_battle), which is what makes a battle a fight that CAN be reported: a team
+	-- of cards the player does not own is refused at the door rather than at the end,
+	-- after the fight has been played and the day spent on it.
+	team jsonb not null default '[]'::jsonb,
 	-- The board as the last closed turn left it, or null while no turn has closed.
 	-- {turn, fighters: [{side, slot, spawnId, charges, down, spent, action, cell}]},
 	-- where `spent` lists the free orders that fighter's colour has already handed it.
@@ -57,6 +63,10 @@ create table if not exists public.battles (
 	started_at timestamptz not null default now(),
 	updated_at timestamptz not null default now()
 );
+
+-- Battles opened before the team was checked carry none, and are left as they are:
+-- the column simply arrives empty on them.
+alter table public.battles add column if not exists team jsonb not null default '[]'::jsonb;
 
 alter table public.battles enable row level security;
 
@@ -81,11 +91,29 @@ create policy battles_select_own on public.battles
 -- It is the browser's roll of the town's sitting team — the same one it is about to
 -- draw — and it is frozen here so the fight survives the town changing hands.
 --
+-- `p_team` is the player's own line-up, in fielded order, as a plain array of
+-- `character_spawns` ids — and it is **proved here, before the battle exists**. A
+-- team is three of the caller's own claimed cards, each named once; anything else is
+-- refused and no battle is opened, no day is spent. This is the same rule
+-- `award_combat_exp` applies to a winning report, moved to the only place it does the
+-- player any good: a fight that could never have been reported is now a fight that
+-- was never started, rather than one discovered to be worthless after it was won.
+-- (A stale team in a browser's local storage — cards claimed by another account, or
+-- since recycled — is exactly what this catches; the client cannot be the one to
+-- decide it, because the client is what is out of date.)
+--
 -- (The OUT parameter names deliberately avoid the column names used in the body.)
+--
+-- The three-argument version is dropped rather than replaced: left standing it would
+-- both make every call ambiguous for PostgREST and go on being the way to open a
+-- battle with no team at all.
+drop function if exists public.start_battle(text, int, jsonb);
+
 create or replace function public.start_battle(
 	p_location_id text,
 	p_turnover int default 0,
-	p_rivals jsonb default '[]'::jsonb
+	p_rivals jsonb default '[]'::jsonb,
+	p_team jsonb default '[]'::jsonb
 )
 returns table (town_id text, challenge_day date, opened_at timestamptz)
 language plpgsql security definer set search_path = public as $$
@@ -95,12 +123,50 @@ declare
 	v_holder uuid;
 	v_started timestamptz;
 	v_open text;
+	v_fielded int;
+	v_distinct int;
+	v_owned int;
 begin
 	if v_uid is null then
 		raise exception 'You must be signed in to challenge a town.';
 	end if;
 	if p_location_id is null or p_location_id = '' then
 		raise exception 'A town is required to start a challenge.';
+	end if;
+	if p_team is null or jsonb_typeof(p_team) <> 'array' then
+		raise exception 'A challenge is fought by a team; none was fielded.';
+	end if;
+
+	-- The team, proved against what the caller actually owns before anything is
+	-- written. Ids are read as text and only cast where they look like one, so a
+	-- line-up of junk is answered with the rule it broke rather than with a cast
+	-- error about the shape of a uuid.
+	with fielded as (
+		select
+			entry.value as raw,
+			case
+				when entry.value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+					then entry.value::uuid
+			end as spawn_id
+		from jsonb_array_elements_text(p_team) as entry(value)
+	)
+	select
+		(select count(*) from fielded),
+		(select count(distinct raw) from fielded),
+		(select count(*) from fielded f
+			join public.character_spawns cs on cs.id = f.spawn_id and cs.user_id = v_uid)
+	into v_fielded, v_distinct, v_owned;
+
+	-- Three a side, the same size award_combat_exp caps a report at (COMBAT_TEAM_SIZE
+	-- in @3xl/shared types/combat.type).
+	if v_fielded <> 3 then
+		raise exception 'A team fields 3 fighters; % were.', v_fielded;
+	end if;
+	if v_distinct <> v_fielded then
+		raise exception 'A fighter cannot be fielded twice.';
+	end if;
+	if v_owned <> v_fielded then
+		raise exception 'Every fighter must be one of your own claimed characters.';
 	end if;
 
 	-- Serialise this player's mutations, matching claim_booster / award_combat_exp.
@@ -133,9 +199,9 @@ begin
 	end if;
 
 	insert into public.battles
-		(user_id, location_id, challenge_date, turnover, rivals, board)
+		(user_id, location_id, challenge_date, turnover, rivals, team, board)
 		values (v_uid, p_location_id, v_today, greatest(0, coalesce(p_turnover, 0)),
-			coalesce(p_rivals, '[]'::jsonb), null);
+			coalesce(p_rivals, '[]'::jsonb), p_team, null);
 
 	town_id := p_location_id;
 	challenge_day := v_today;
@@ -144,7 +210,7 @@ begin
 end;
 $$;
 
-grant execute on function public.start_battle(text, int, jsonb) to authenticated;
+grant execute on function public.start_battle(text, int, jsonb, jsonb) to authenticated;
 
 -- The pre-battle RPC, dropped rather than left standing: a client that could still
 -- claim a day's challenge without opening a battle would have a way to spend the

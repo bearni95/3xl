@@ -43,7 +43,7 @@ class BattleService {
 		const supabase = getSupabaseClient();
 		const { data, error } = await supabase
 			.from('battles')
-			.select('location_id, turnover, rivals, board, started_at')
+			.select('location_id, turnover, rivals, team, board, started_at')
 			.maybeSingle();
 		if (error) throw error;
 
@@ -54,13 +54,18 @@ class BattleService {
 
 	/**
 	 * Open a battle over `locationId` against `rivals`, the team the map is showing on
-	 * that town, on the generation `turnover` it is showing them as.
+	 * that town, on the generation `turnover` it is showing them as, fought with
+	 * `team` — the player's own line-up, in fielded order, as spawn ids.
 	 *
 	 * The rival line-up is frozen server-side here, which is what lets a fight outlive
 	 * the town changing hands: whoever takes it, this battle goes on being against the
-	 * three that were sitting there when it started. The day's challenge is spent in
-	 * the same transaction, so a refusal (already fought today, a battle already open,
-	 * the caller holds the town) costs nothing.
+	 * three that were sitting there when it started. The player's own line-up is
+	 * **proved** there in the same breath — three of their own claimed spawns, each
+	 * named once — so a team this browser only thinks it has (claimed by another
+	 * account, or recycled since) is refused before any fight exists to be lost. The
+	 * day's challenge is spent in the same transaction, so a refusal (a bad team,
+	 * already fought today, a battle already open, the caller holds the town) costs
+	 * nothing.
 	 *
 	 * Returns the challenge slot that was spent, so the map can close that town's
 	 * button without a reload — or null when Supabase is unconfigured.
@@ -68,7 +73,8 @@ class BattleService {
 	async start(
 		locationId: string,
 		turnover: number,
-		rivals: readonly TeamMemberRoll[]
+		rivals: readonly TeamMemberRoll[],
+		team: readonly string[]
 	): Promise<MunicipalityChallenge | null> {
 		if (!locationId) throw new Error('A town is required to start a challenge.');
 		if (!isSupabaseConfigured()) return null;
@@ -77,7 +83,8 @@ class BattleService {
 		const { data, error } = await supabase.rpc('start_battle', {
 			p_location_id: locationId,
 			p_turnover: Math.max(0, Math.trunc(turnover) || 0),
-			p_rivals: battleAdapter.rivalsToJson(rivals)
+			p_rivals: battleAdapter.rivalsToJson(rivals),
+			p_team: [...team]
 		});
 		if (error) throw error;
 
@@ -86,6 +93,7 @@ class BattleService {
 			locationId,
 			turnover: Math.max(0, Math.trunc(turnover) || 0),
 			rivals: [...rivals],
+			team: [...team],
 			board: null,
 			startedAt: String(row?.opened_at ?? new Date().toISOString())
 		});

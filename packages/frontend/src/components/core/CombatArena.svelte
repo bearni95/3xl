@@ -78,9 +78,13 @@
 	// turn. What a battle is being fought with is settled when the battle arrives.
 	let battleTeam: string[] = [];
 	let battleTeamFor: string | null = null;
-	$: syncBattleTeam($openBattle?.startedAt ?? null, $openBattle?.board ?? null);
+	$: syncBattleTeam($openBattle?.startedAt ?? null, $openBattle?.team ?? null, $openBattle?.board ?? null);
 
-	function syncBattleTeam(startedAt: string | null, board: BattleBoardSnapshot | null): void {
+	function syncBattleTeam(
+		startedAt: string | null,
+		team: string[] | null,
+		board: BattleBoardSnapshot | null
+	): void {
 		if (!startedAt) {
 			battleTeam = [];
 			battleTeamFor = null;
@@ -88,7 +92,10 @@
 		}
 		if (startedAt === battleTeamFor) return;
 		battleTeamFor = startedAt;
-		battleTeam = fieldedTeam(board);
+		// The line-up the server holds for this battle — proved to be the player's own
+		// when it was opened, and therefore the one whose report it will accept. Only a
+		// battle opened before it was recorded falls back to reading the board it wrote.
+		battleTeam = team?.length === TEAM_SIZE ? [...team] : fieldedTeam(board);
 	}
 
 	/**
@@ -144,8 +151,19 @@
 		battleTeam.length === TEAM_SIZE
 			? battleTeam
 			: (activeTeam?.memberIds ?? []).filter((id): id is string => Boolean(id));
-	$: teamReady = teamMembers.length === TEAM_SIZE;
+	// Every slot has to be one of this player's own claimed spawns. A team lives in this
+	// browser's local storage, so it goes on naming cards claimed by another account, or
+	// recycled since — and a fight fielding those is one the server would refuse the
+	// report of, after it had been played out. `start_battle` proves the same thing in
+	// the database and will not open a battle without it; this is what keeps the arena
+	// from walking into that.
+	$: ownSpawnIds = new Set(($spawns as CharacterSpawn[]).map((spawn) => spawn.id));
+	$: teamReady =
+		spawnsLoaded && teamMembers.length === TEAM_SIZE && teamMembers.every((id) => ownSpawnIds.has(id));
 	$: playable = !!currentUserId && teamReady;
+	// The player's spawns are still on their way: the team cannot be judged yet, so the
+	// arena waits rather than announcing there is not one.
+	$: spawnsPending = $authStatus === AuthStatus.SignedIn && !spawnsLoaded;
 
 	// A full OG team means the red side fields it instead of mirroring the player's.
 	$: challengeReady = ogTeam.length === TEAM_SIZE;
@@ -625,7 +643,7 @@
 		<div class="alert alert-warning max-w-md text-sm">
 			<span>Sign-in is unavailable — Supabase is not configured, so no team can be played.</span>
 		</div>
-	{:else if $authStatus === AuthStatus.Loading}
+	{:else if $authStatus === AuthStatus.Loading || spawnsPending}
 		<div class="flex justify-center py-12">
 			<span class="loading loading-spinner loading-md"></span>
 		</div>
@@ -651,7 +669,8 @@
 					{#if !activeTeam}
 						Create a team and set it as active on your roster to play.
 					{:else}
-						Your active team needs all {TEAM_SIZE} slots filled to play — finish it on your roster.
+						Your active team needs all {TEAM_SIZE} slots filled with cards you have claimed — finish
+						it on your roster.
 					{/if}
 				</p>
 				<!-- The roster is a modal over the map, not a page, so this raises it right

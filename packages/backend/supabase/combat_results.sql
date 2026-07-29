@@ -38,9 +38,18 @@
 -- town's sitting team, and enough of them flip the town to the winner. See
 -- municipality_holders.sql for the tables and the rules.
 --
+-- Every one of those bounds is on the WIN. A loss or a draw earns nothing, banks
+-- nothing and takes nothing, so there is nothing in it to lie for: it is always
+-- accepted, and all it does is close the battle. That is what makes conceding a fight
+-- possible at all, and what stops a battle that can never be won — a team that has
+-- since been recycled, a town taken in the meantime — from becoming a fight its owner
+-- can never get out of. Opening one is where a team is proved instead (`start_battle`
+-- in battles.sql), which is the only place the answer is any use to the player.
+--
 -- Territory is also where the once-a-day challenge limit is enforced: settling a
--- fight spends that town's challenge for the Catalan day, and a second report
--- against a town already settled today is rejected outright — experience and all.
+-- fight spends that town's challenge for the Catalan day, and a second *win*
+-- reported against a town already settled today is rejected outright — experience
+-- and all.
 -- Taking a town is likewise what hands that day back to everyone still fighting
 -- for the generation it ended, whose fights it just made unwinnable. See
 -- municipality_challenges.sql.
@@ -252,17 +261,26 @@ begin
 		(select count(*) from owned where not down)
 	into v_reported, v_distinct, v_owned, v_standing;
 
-	if v_reported = 0 then
-		raise exception 'A combat report must list the fighters that took part.';
-	end if;
-	if v_reported > 3 then
-		raise exception 'A team fields at most 3 fighters; % were reported.', v_reported;
-	end if;
-	if v_distinct <> v_reported then
-		raise exception 'A fighter cannot be reported twice.';
-	end if;
-	if v_owned <> v_reported then
-		raise exception 'Every fighter must be one of your own claimed characters.';
+	-- The report is bounded where it can buy something, and only there. A win pays
+	-- experience and banks ground, so it has to name a real team: at most three
+	-- fighters, each of them the caller's own, each named once. A loss or a draw buys
+	-- nothing whatever — no experience, no siege, no town — and its only effect is to
+	-- close the battle, so it is always taken. Refusing one would not protect anything;
+	-- it would strand a player in a fight they have already given up, which is exactly
+	-- what happens to a battle opened before start_battle proved the team.
+	if p_outcome = 'win' then
+		if v_reported = 0 then
+			raise exception 'A combat report must list the fighters that took part.';
+		end if;
+		if v_reported > 3 then
+			raise exception 'A team fields at most 3 fighters; % were reported.', v_reported;
+		end if;
+		if v_distinct <> v_reported then
+			raise exception 'A fighter cannot be reported twice.';
+		end if;
+		if v_owned <> v_reported then
+			raise exception 'Every fighter must be one of your own claimed characters.';
+		end if;
 	end if;
 
 	-- The level at stake is the one the player is on *now*, before the award.
@@ -302,12 +320,12 @@ begin
 
 		select h.user_id, h.turnover into v_holder, v_turnover
 			from public.municipality_holders h where h.location_id = v_location;
-		-- A town whose sitting team is the caller's own cannot be fought for: there
-		-- is nothing to take off yourself. The map never offers the challenge, so a
-		-- report that names one did not come from the game — reject it outright,
-		-- rolling back the experience with it, rather than paying out for a fight
-		-- that should not have happened.
-		if v_holder is not null and v_holder = v_uid then
+		-- A town whose sitting team is the caller's own cannot be WON: there is nothing
+		-- to take off yourself. The map never offers the challenge, so a win reported
+		-- against one did not come from the game — reject it outright, rolling back the
+		-- experience with it, rather than paying out for a fight that should not have
+		-- happened. A loss against it is simply a fight that ends, as every loss is.
+		if v_holder is not null and v_holder = v_uid and p_outcome = 'win' then
 			raise exception 'You already hold this town — you cannot challenge your own team.';
 		end if;
 
@@ -333,7 +351,10 @@ begin
 				set settled_at = now()
 				where municipality_challenges.settled_at is null
 			returning municipality_challenges.settled_at into v_challenge;
-		if v_challenge is null then
+		-- Again, only a win is refused for it: a second *win* against the same town
+		-- today would be a second payout, while a second loss is worth what the first
+		-- one was, which is nothing.
+		if v_challenge is null and p_outcome = 'win' then
 			raise exception 'You have already challenged this town today. New challenges at midnight.';
 		end if;
 

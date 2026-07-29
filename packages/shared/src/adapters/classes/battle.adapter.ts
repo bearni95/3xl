@@ -37,9 +37,21 @@ export class BattleAdapter extends AdapterClass {
 			locationId: row.location_id,
 			turnover: Math.max(0, Math.trunc(Number(row.turnover ?? 0)) || 0),
 			rivals: this.rivalsFromJson(row.rivals),
+			team: this.teamFromJson(row.team),
 			board: this.boardFromJson(row.board),
 			startedAt: row.started_at
 		};
+	}
+
+	/**
+	 * Parse the stored line-up: the spawn ids the battle was opened with, in fielded
+	 * order. Anything that is not a non-empty string is dropped — a battle opened
+	 * before the team was stored simply has none, and the arena falls back to the
+	 * board (and then to the roster) exactly as it did.
+	 */
+	teamFromJson(value: unknown): string[] {
+		if (!Array.isArray(value)) return [];
+		return value.filter((entry): entry is string => typeof entry === 'string' && entry !== '');
 	}
 
 	/**

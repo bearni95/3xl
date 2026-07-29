@@ -19,6 +19,7 @@ const row = (over: Partial<OpenBattleRow> = {}): OpenBattleRow => ({
 	location_id: 'ES_08028',
 	turnover: 2,
 	rivals: [{ character_id: 'goku', color: 'blue' }],
+	team: ['spawn-1', 'spawn-2', 'spawn-3'],
 	board: { turn: 5, fighters: [fighter()] },
 	started_at: '2026-07-29T10:00:00Z',
 	...over
@@ -30,6 +31,8 @@ describe('battleAdapter', () => {
 		expect(battle.locationId).toBe('ES_08028');
 		expect(battle.turnover).toBe(2);
 		expect(battle.rivals).toEqual([{ characterId: 'goku', color: SpawnColor.Blue }]);
+		// The line-up the battle was opened with, as start_battle proved and stored it.
+		expect(battle.team).toEqual(['spawn-1', 'spawn-2', 'spawn-3']);
 		expect(battle.board?.turn).toBe(5);
 		expect(battle.board?.fighters[0]).toEqual({
 			side: 'info',
@@ -99,5 +102,13 @@ describe('battleAdapter', () => {
 		expect(battle.board).toBeNull();
 		expect(battle.turnover).toBe(0);
 		expect(battle.rivals).toHaveLength(1);
+	});
+
+	it('reads no team at all off a battle opened before one was recorded', () => {
+		// Nothing is invented for it: the arena falls back to the board, and then to the
+		// roster, exactly as it did before the line-up was stored.
+		for (const team of [null, undefined, 'spawn-1', [1, '', null]]) {
+			expect(battleAdapter.fromRow(row({ team })).team).toEqual([]);
+		}
 	});
 });

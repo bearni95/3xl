@@ -92,6 +92,13 @@ export interface OpenBattle {
 	turnover: number;
 	/** The rival line-up, in lane order: what was sitting on the town at the time. */
 	rivals: TeamMemberRoll[];
+	/**
+	 * The player's own line-up, in fielded order, as `character_spawns` ids. Proved to
+	 * be the player's own before the battle was opened (`start_battle`), so it is the
+	 * team this fight is fought with — a roster changed since does not change it, and
+	 * a report against it is one the server can accept.
+	 */
+	team: string[];
 	/** The board as the last closed turn left it, or null if no turn has closed yet
 	 * (the battle was opened and left before a single turn was played). */
 	board: BattleBoardSnapshot | null;
@@ -104,6 +111,7 @@ export interface OpenBattleRow {
 	location_id: string;
 	turnover: number | string | null;
 	rivals: unknown;
+	team: unknown;
 	board: unknown;
 	started_at: string;
 }
