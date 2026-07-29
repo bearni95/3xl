@@ -420,10 +420,28 @@
 	// filling too would bury every division under it, and the imaged tier is exactly
 	// the one whose pins are on screen, so the polygons say in colour what the pins
 	// over them already say.
-	function tierStyle(tier: RegionType, weight: number, colors: RegionColors, imaged: number) {
+	//
+	// Except where the pin says it better: a town standing its team up says its colour
+	// three times over, once per statue's floor and panel, and a 90% wash of a fourth
+	// colour under them is the ground competing with what is standing on it. Such a
+	// shape keeps its white outline and goes bare, letting the satellite read through
+	// to the statues' feet. A town whose pin fell back to the show's glyph makes no
+	// such statement, so it washes as before — which is also what keeps the coarser
+	// tiers (no team ever sits on a comarca) painting exactly as they did.
+	function tierStyle(
+		tier: RegionType,
+		weight: number,
+		colors: RegionColors,
+		imaged: number,
+		teams: ReadonlyMap<string, TeamMemberRoll[]>
+	) {
 		return (feature?: GeoJSON.Feature) => {
 			const color = featureColor(tier, feature, colors);
-			const washes = color != null && tierRank[tier] === imaged;
+			// Keyed exactly as `featureColor` keys a municipality, and as the pins are
+			// built — a town's polygon id IS its region node's key.
+			const statued =
+				tier === 'Municipality' && teams.has(String(feature?.properties?.id ?? ''));
+			const washes = color != null && tierRank[tier] === imaged && !statued;
 			return {
 				color: lineColor,
 				weight,
@@ -442,34 +460,36 @@
 	// and the thicker that line is drawn.
 	//
 	// Every tier draws its borders in white, and the tier the map is imaging also
-	// washes each of its shapes in the colour that region's pin flies — so a region
-	// is coloured on the map exactly as it is on its pin. Every other tier is
-	// line-only, so the satellite basemap keeps reading through them, and
-	// `hiddenLineUrls` still drops the lines of the tiers finer than the imaged one.
-	// All decorative: the wash is not something to click or hover, so no layer
-	// captures pointer events and the pins and stars own every click.
+	// washes each of its shapes in the colour that region's pin flies — except where
+	// that pin stands a team up, which says the colour for itself (see tierStyle). So
+	// a region is coloured on the map exactly as it is on its pin, and never twice.
+	// Every other tier is line-only, so the satellite basemap keeps reading through
+	// them, and `hiddenLineUrls` still drops the lines of the tiers finer than the
+	// imaged one. All decorative: the wash is not something to click or hover, so no
+	// layer captures pointer events and the pins and stars own every click.
 	//
-	// Rebuilt (a fresh array) whenever a region changes colour or the map images
-	// another tier — that is what repaints the layers, which are fetched only once.
+	// Rebuilt (a fresh array) whenever a region changes colour, a town's team changes
+	// or the map images another tier — that is what repaints the layers, which are
+	// fetched only once.
 	$: overlays = [
 		{
 			url: '/data/geo/municipis.json',
-			style: tierStyle('Municipality', 1, regionColors, hiddenRank),
+			style: tierStyle('Municipality', 1, regionColors, hiddenRank, townTeams),
 			interactive: false
 		},
 		{
 			url: '/data/geo/comarques.json',
-			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank),
+			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank, townTeams),
 			interactive: false
 		},
 		{
 			url: '/data/geo/provincies.json',
-			style: tierStyle('Province', 2, regionColors, hiddenRank),
+			style: tierStyle('Province', 2, regionColors, hiddenRank, townTeams),
 			interactive: false
 		},
 		{
 			url: '/data/geo/territoris.json',
-			style: tierStyle('Territory', 3, regionColors, hiddenRank),
+			style: tierStyle('Territory', 3, regionColors, hiddenRank, townTeams),
 			interactive: false
 		}
 	] satisfies MapOverlay[];
