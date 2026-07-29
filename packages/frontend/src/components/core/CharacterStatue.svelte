@@ -21,10 +21,10 @@
 	// colour is the whole of a fighter, so what it grants is read off it here rather
 	// than passed in: no caller has to know the game's rules to draw one.
 	//
-	// This is the only place that picture is built. The sidebar's strip rows three of
-	// them; a map pin carries three uncaptioned at pin size — the difference between
-	// those surfaces is the width they hand this statue and whether they ask for the
-	// caption, never a second drawing of the same thing.
+	// This is the only place that picture is built. The sidebar grids them two to a row
+	// after the player's own tile; a map pin carries three uncaptioned at pin size — the
+	// difference between those surfaces is the width they hand this statue and whether
+	// they ask for the caption, never a second drawing of the same thing.
 
 	export let label: string = '';
 	export let basePath: string | null = null;
@@ -90,6 +90,19 @@
 	const BEVEL_FACE = 'absolute inset-y-0 w-[5.4545cqw]';
 	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(48.01deg)]';
 	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-48.01deg)]';
+
+	// The tile as the loading veil measures it (see the markup): the flat run the cut leaves
+	// along the front edge, and how far above that edge the side cuts reach. The front edge
+	// is the axis the tile turns about, so its cut run is untouched by the perspective — the
+	// tenth mark to the ninth, four fifths of the card, the panel's own width. The side cut
+	// is a tenth of the side, which the tilt draws down to 0.1·(2/3)/1.1 = 0.0606 of the card
+	// above that edge (the figure the bevel faces are built on above). Lengths rather than
+	// classes because they go into the veil's own custom properties: it is one shape drawn by
+	// one rule wherever it is put, and a surface hands it nothing but numbers. The cqw is the
+	// inner square's, the veil living inside it, which is the same width as the card.
+	const VEIL_BLOCK_LEFT = '10cqw';
+	const VEIL_BLOCK_WIDTH = '80cqw';
+	const VEIL_BLOCK_BOTTOM = '6.0606cqw';
 
 	// The character stands halfway up that plane — on the middle of the floor, with as
 	// much of it behind them as in front.
@@ -159,7 +172,25 @@
 				{/if}
 			</div>
 
-			<IdleSprite {basePath} {label} {flipped} baseline={BASELINE} />
+			<IdleSprite {basePath} {label} {flipped} baseline={BASELINE}>
+				<!-- One more piece of the sprite's loading veil, upright beside the rectangle over
+					the picture: as wide as the cut leaves the tile's front edge, standing as far
+					above that edge as the side cuts reach, and as tall as the character's sheet is
+					about to be. Not a second veil — the sprite hands over its own classes and its
+					sheet's height, so this goes up, holds and fades on the one clock. Nothing is
+					written on it and it is not the picture, so it is hidden from a screen reader. -->
+				<div
+					slot="veil"
+					let:veilClasses
+					let:sheetHeight
+					class={veilClasses}
+					style:--sprite-left={VEIL_BLOCK_LEFT}
+					style:--sprite-bottom={VEIL_BLOCK_BOTTOM}
+					style:--sprite-width={VEIL_BLOCK_WIDTH}
+					style:--sprite-height="{sheetHeight}px"
+					aria-hidden="true"
+				></div>
+			</IdleSprite>
 		</div>
 	</div>
 

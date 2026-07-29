@@ -212,6 +212,14 @@
 				style:--sprite-height="{placement.sheet.height}px"
 				aria-hidden="true"
 			></div>
+
+			<!-- Whatever else the surface wants veiled along with the picture. It is handed the
+				veil's own classes and the sheet's height and sets the four properties they read
+				for itself, so it goes up, holds and fades on this clock without knowing anything
+				about when the art arrived — one veil in several pieces, not a second one to keep
+				in step. The geometry stays with whoever owns it: a rectangle measured off the
+				floor tile is the surface's to place, the tile being no part of a sprite. -->
+			<slot name="veil" {veilClasses} sheetHeight={placement.sheet.height} />
 		{/if}
 	{/if}
 </div>
