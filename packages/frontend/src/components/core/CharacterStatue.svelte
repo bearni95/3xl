@@ -9,11 +9,7 @@
 	import { showIconName } from '$utils/show/show-icon';
 	import { colorPassives, ORDER_ICONS, type PassiveOrder } from '$utils/color/traits';
 	import type { CombatColor } from '$types/character-definition.type';
-	import {
-		SPAWN_BORDER_CLASSES,
-		SPAWN_FILL_CLASSES,
-		SPAWN_PANEL_CLASSES
-	} from '$components/core/spawn-colors';
+	import { SPAWN_FILL_CLASSES, SPAWN_PANEL_CLASSES } from '$components/core/spawn-colors';
 	import type { SpawnColor } from '$types/character-spawn.type';
 
 	// One character, as this game draws one: a statue of them — standing on a tilted
@@ -75,9 +71,8 @@
 	// begins and the two line up down both sides. The cut is made in the tile's own square
 	// before the tilt, a transform mapping whatever shape is left, so the four diagonals are
 	// laid down with the floor and read as bevelled edges of it rather than as notches in a
-	// picture. It is the fill that is cut and not an outline: the tile's border is its own
-	// colour (see spawn-colors), so nothing is drawn along the edges for the cut to leave
-	// dangling.
+	// picture. There is nothing but fill to cut: neither the tile nor the panel is outlined,
+	// a line around either being a line across a solid that is all one colour.
 	const GROUND_CUT =
 		'[clip-path:polygon(10%_0,90%_0,100%_10%,100%_90%,90%_100%,10%_100%,0_90%,0_10%)]';
 
@@ -162,11 +157,10 @@
 				never as loud as whoever is standing on it. -->
 			<div
 				class={classNames(
-					'absolute inset-0 border text-white/60',
+					'absolute inset-0 text-white/60',
 					GROUND,
 					GROUND_CUT,
-					SPAWN_FILL_CLASSES[color],
-					SPAWN_BORDER_CLASSES[color]
+					SPAWN_FILL_CLASSES[color]
 				)}
 			>
 				{#if showIcon}
@@ -214,13 +208,10 @@
 		four fifths the tile's cut corners leave flat along that edge (see GROUND_CUT), so the
 		panel's sides continue the tile's — change one of the two and the other has to
 		follow. -->
-	<div
-		class={classNames(
-			'relative w-4/5 min-w-0 self-center border',
-			SPAWN_PANEL_CLASSES[color],
-			SPAWN_BORDER_CLASSES[color]
-		)}
-	>
+	<!-- No border of its own: the faces hang off its sides and a border is a line between
+		them and it, an inch of the panel's colour where the two are meant to meet. The colour
+		is one solid, so its parts are only ever divided by which way they face. -->
+	<div class={classNames('relative w-4/5 min-w-0 self-center', SPAWN_PANEL_CLASSES[color])}>
 		<!-- The bevel's two faces, hung off the panel's sides so they are as tall as it is
 			whatever the rows come to (see BEVEL_FACE). They are the same colour the floor and
 			the panel are, under one flat black band: a face turned away from the light is darker
