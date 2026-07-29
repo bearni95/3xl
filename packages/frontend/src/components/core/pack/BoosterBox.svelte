@@ -5,8 +5,8 @@
 
 	// One unopened booster box, drawn in the document: a plain lid seen from above, and
 	// under it the face of the box — the show's poster inset a twentieth of the width on
-	// all sides, with the place the box belongs to laid over the top of it and the show's
-	// wordmark over the foot.
+	// all sides, with the show's wordmark laid over the head of it and the place the box
+	// belongs to over the foot.
 	//
 	// The face is 3:4, the very box a CharacterStatue is drawn in — a booster and the
 	// cards it opens onto are the same object at two moments, and a grid that changes
@@ -14,10 +14,10 @@
 	// that, so the whole component is 2:3 (see LID_DEPTH). Both ratios are the
 	// component's own, not the host's: hand it a width and it takes the height that goes
 	// with it, hand it a height and it gives the width back, so the same component is a
-	// grid cell or the whole panel purely by the box it is put in. The title and the ground
-	// under it are sized off that width (the box declares itself the container), which is
-	// what keeps both the same share of the picture at either size rather than a caption
-	// that grows out of it.
+	// grid cell or the whole panel purely by the box it is put in. What is written over the
+	// picture and the grounds under it are sized off that width (the box declares itself the
+	// container), which is what keeps both the same share of the picture at either size
+	// rather than a caption that grows out of it.
 	//
 	// (Both outer edges used to be serrated into teeth, after the texture PackSprite
 	// bakes. A booster is picked out of a grid by the poster on it; the teeth only ate
@@ -26,12 +26,11 @@
 
 	// Show poster used as the cover, or null for a plain frame.
 	export let coverUrl: string | null = null;
-	// The show's wordmark, said at the foot of the front. Null leaves the foot alone
-	// entirely: which logos a show may be said with is an authoring decision (the admin
-	// `/shows` screen), and a show with none enabled goes unsaid rather than taking a
-	// stand-in.
+	// The show's wordmark, heading the front. Null leaves the head alone entirely: which
+	// logos a show may be said with is an authoring decision (the admin `/shows` screen),
+	// and a show with none enabled goes unsaid rather than taking a stand-in.
 	export let logoUrl: string | null = null;
-	// Full name of the place the box belongs to, titling the front.
+	// Full name of the place the box belongs to, said at the foot of the front.
 	export let locationName: string | null = null;
 	export let classes: string = '';
 
@@ -55,7 +54,7 @@
 	const LID_DEPTH = 'h-[calc(100cqw/6)]';
 	const LID = 'origin-bottom [transform:perspective(187.826cqw)_rotateX(75.373deg)]';
 
-	// What the title says, exactly as the baked pack says it: the place with the year this
+	// What the foot says, exactly as the baked pack says it: the place with the year this
 	// copy would be minted in joined to it — "Barcelona '26". The gazetteer parks the
 	// article after a comma to sort by, so it is put back at the front before the name
 	// is said.
@@ -98,7 +97,7 @@
 		and below. This keeps the flex sizing the poster had, which is what still hands the
 		box its 3:4. -->
 	<div class="min-h-0 w-full flex-1 bg-black p-[5%]">
-		<!-- The picture and the two things written over it, in one box: the title and the mark
+		<!-- The picture and the two things written over it, in one box: the mark and the place
 			belong to the poster's edges, not the box's, so they are placed against this rather
 			than against the front — an absolute inset is measured off the padding box, and
 			anchoring them out there would run the fades over the frame instead of ending them
@@ -115,38 +114,39 @@
 				<div class="h-full w-full bg-black"></div>
 			{/if}
 
-			<!-- The title over the poster, pinned to the top of the picture. It is over the
-				picture and not in a band of its own, so it cannot be given a solid backing
-				without cutting the poster off at a line; the gradient is how it gets its own
-				ground instead — black where the letters are and gone by the bottom of it, so the
-				poster darkens into the title rather than ending at it. The fade wants more room
-				than the words do, hence the bottom padding: the text sits in the solid end of it
-				and the rest is the fall to nothing. White type, because it is black it is being
-				read on now and no longer the lid's neutral. -->
-			<div
-				class="absolute inset-x-0 top-0 bg-gradient-to-b from-black to-transparent px-[3cqw] pt-[2cqw] pb-[9cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance text-white"
-				title={place}
-			>
-				{place}
-			</div>
-
 			{#if logoUrl}
-				<!-- The show's wordmark at the foot, on the same fade turned over: black at the
-					bottom edge and gone by the top of it, so the two grounds bracket the poster
-					from its own two edges rather than one of them cutting across it. The place is
-					what this copy of the box is, said at the top where a title goes, and the show
-					is what is inside it, said at the bottom — the reading order a box has, not two
-					captions competing for the same end. The mark is 90% of the picture and takes
-					whatever height its own proportions give it, being lettering: it is read at the
-					width it was drawn to be read at, and the fade above it is the room it needs.
-					The 90% is measured off the picture and not off a padded box, so the fade runs
-					the full width of it while the mark keeps a twentieth clear of either side. -->
+				<!-- The show's wordmark across the head of the picture: the name of the thing comes
+					first, and a booster box is picked up as a box of that show before it is read as
+					this town's copy of it. It is over the picture and not in a band of its own, so
+					it cannot be given a solid backing without cutting the poster off at a line; the
+					gradient is how it gets its own ground instead — black where the mark is and
+					gone by the bottom of it, so the poster darkens into it rather than ending at it.
+					The fade wants more room than the mark does, hence the bottom padding: the mark
+					sits in the solid end of it and the rest is the fall to nothing. The mark is 90%
+					of the picture and takes whatever height its own proportions give it, being
+					lettering: it is read at the width it was drawn to be read at. The 90% is
+					measured off the picture and not off a padded box, so the fade runs the full
+					width of it while the mark keeps a twentieth clear of either side. -->
 				<div
-					class="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black to-transparent pt-[9cqw] pb-[2cqw]"
+					class="absolute inset-x-0 top-0 flex justify-center bg-gradient-to-b from-black to-transparent pt-[2cqw] pb-[9cqw]"
 				>
 					<img src={logoUrl} alt="" class="w-[90%] object-contain" />
 				</div>
 			{/if}
+
+			<!-- The place at the foot, on the same fade turned over: black at the bottom edge and
+				gone by the top of it, so the two grounds bracket the poster from its own two edges
+				rather than one of them cutting across it. Which copy of the box this is is the
+				thing said last — the show is what a player is looking for and the town is what
+				tells two of the same show apart, so it sits under the picture the way a caption
+				does, and the mark keeps the head. White type, because it is black it is being read
+				on. -->
+			<div
+				class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black to-transparent px-[3cqw] pt-[9cqw] pb-[2cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance text-white"
+				title={place}
+			>
+				{place}
+			</div>
 		</div>
 	</div>
 </div>
