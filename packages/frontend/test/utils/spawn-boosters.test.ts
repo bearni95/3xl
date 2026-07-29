@@ -10,6 +10,7 @@ function spawn(overrides: Partial<CharacterSpawn> & { id: string }): CharacterSp
 		showId: 1,
 		locationId: 'ES_08028',
 		color: SpawnColor.Red,
+		teamSlot: null,
 		createdAt: '2026-07-27T10:00:00.000Z',
 		...overrides
 	};

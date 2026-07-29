@@ -34,6 +34,22 @@ alter table public.character_spawns add column if not exists color text;
 alter table public.character_spawns drop constraint if exists character_spawns_stat_range;
 alter table public.character_spawns drop column if exists stat;
 
+-- The player's team, kept on the cards themselves: a card is on the team when it
+-- holds a slot, and the slot is the lane it fields in (0 is the lead). A team was
+-- a browser's own list of ids before this, so it was as many teams as the player
+-- had browsers and none of them anything the server could read. Now it is the
+-- cards, so it travels with the account.
+--
+-- One team per player is the unique index, not a rule written anywhere: a slot is
+-- held by at most one of a player's cards and there are only three slots, so there
+-- is only ever one line-up to field.
+alter table public.character_spawns add column if not exists team_slot smallint;
+alter table public.character_spawns drop constraint if exists character_spawns_team_slot_range;
+alter table public.character_spawns add constraint character_spawns_team_slot_range
+	check (team_slot is null or (team_slot >= 0 and team_slot < 3));
+create unique index if not exists character_spawns_team_slot_idx
+	on public.character_spawns (user_id, team_slot) where team_slot is not null;
+
 -- Assign a weighted colour to any pre-existing rows that lack one.
 update public.character_spawns cs set color = pick.color
 from (
@@ -70,3 +86,113 @@ drop policy if exists character_spawns_insert_own on public.character_spawns;
 drop policy if exists character_spawns_delete_own on public.character_spawns;
 create policy character_spawns_delete_own on public.character_spawns
 	for delete using (auth.uid() = user_id);
+
+-- There is no update policy either, which is what makes `team_slot` the server's
+-- column: the team is set only through the RPC below.
+
+-- The colours that may stand beside a lead of `p_color`: its own, plus — for a
+-- primary — the compounds that mix it, or — for a compound — the two primaries
+-- that make it. The same relation as `teammateColors` in
+-- @3xl/shared utils/color/compare.ts; keep the two in step.
+create or replace function public.teammate_colors(p_color text)
+returns text[] language sql immutable set search_path = public as $$
+	select case p_color
+		when 'red' then array['red', 'purple', 'orange']
+		when 'blue' then array['blue', 'purple', 'green']
+		when 'yellow' then array['yellow', 'orange', 'green']
+		when 'purple' then array['purple', 'red', 'blue']
+		when 'orange' then array['orange', 'red', 'yellow']
+		when 'green' then array['green', 'blue', 'yellow']
+		else array[p_color]
+	end;
+$$;
+
+-- Set the caller's team: `p_team` is the three slots in fielded order, as spawn
+-- ids with null for an empty one. It replaces whatever they had — there is one
+-- team, so saving a line-up is saving THE line-up.
+--
+-- security definer because `character_spawns` takes no client update at all; this
+-- writes exactly one column, on rows the caller owns, and is the only path to it.
+-- What it proves is what `start_battle` would otherwise discover far too late: the
+-- cards are the caller's, each named once, and every one of them shares a colour
+-- with the lead (see `teammate_colors`) — so a team that could never fight is
+-- refused where it is built rather than at the door of a fight.
+create or replace function public.set_team(p_team jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+declare
+	v_uid uuid := auth.uid();
+	v_size constant int := 3;
+	v_ids uuid[];
+	v_named int;
+	v_given int;
+	v_distinct int;
+	v_owned int;
+	v_lead_color text;
+	v_mismatched int;
+begin
+	if v_uid is null then
+		raise exception 'You must be signed in to field a team.';
+	end if;
+	if p_team is null or jsonb_typeof(p_team) <> 'array'
+		or jsonb_array_length(p_team) <> v_size then
+		raise exception 'A team is a line-up of % slots.', v_size;
+	end if;
+
+	-- The slots, in order. An id is cast only where it looks like a uuid, so junk
+	-- in a slot is answered with the rule it broke rather than with a cast error
+	-- about the shape of a uuid.
+	select array_agg(
+				case when e.value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+					then e.value::uuid end
+				order by e.ord),
+			count(*) filter (where e.value is not null)
+		into v_ids, v_named
+		from jsonb_array_elements_text(p_team) with ordinality as e(value, ord);
+	select count(*), count(distinct x) into v_given, v_distinct
+		from unnest(v_ids) as x where x is not null;
+	if v_given <> v_named then
+		raise exception 'A team slot holds one of your cards, or nothing.';
+	end if;
+	if v_distinct <> v_given then
+		raise exception 'A fighter cannot be fielded twice.';
+	end if;
+
+	-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
+	perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+
+	select count(*) into v_owned from public.character_spawns
+		where user_id = v_uid and id = any(v_ids);
+	if v_owned <> v_given then
+		raise exception 'Every fighter must be one of your own claimed cards.';
+	end if;
+
+	-- The lead is the first slot, and it is the lead that says what the rest of the
+	-- team may be, so a team with no lead is a team with nobody behind it.
+	select cs.color into v_lead_color from public.character_spawns cs
+		where cs.user_id = v_uid and cs.id = v_ids[1];
+	if v_lead_color is null and v_given > 0 then
+		raise exception 'A team is led by its first card; fill that slot first.';
+	end if;
+	if v_lead_color is not null then
+		select count(*) into v_mismatched from public.character_spawns cs
+			where cs.user_id = v_uid and cs.id = any(v_ids[2:])
+				and not (cs.color = any(public.teammate_colors(v_lead_color)));
+		if v_mismatched > 0 then
+			raise exception 'Every fighter must share a colour with the team lead.';
+		end if;
+	end if;
+
+	-- Cleared first, so the line-up being saved never collides with the one it
+	-- replaces over a slot they both use.
+	update public.character_spawns set team_slot = null
+		where user_id = v_uid and team_slot is not null;
+	update public.character_spawns cs set team_slot = s.slot
+		from (
+			select (i - 1)::smallint as slot, v_ids[i] as spawn_id
+			from generate_subscripts(v_ids, 1) as i
+		) s
+		where cs.user_id = v_uid and cs.id = s.spawn_id;
+end;
+$$;
+
+grant execute on function public.set_team(jsonb) to authenticated;

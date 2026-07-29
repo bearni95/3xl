@@ -22,8 +22,20 @@ export class SpawnAdapter extends AdapterClass {
 			locationId: row.location_id ?? '',
 			// Legacy rows predate colours; fall back to a stable primary.
 			color: isSpawnColor(row.color) ? row.color : SpawnColor.Red,
+			teamSlot: this.teamSlot(row.team_slot),
 			createdAt: row.created_at
 		};
+	}
+
+	/**
+	 * A row's team lane as a number, or null when the card holds no slot. Absent
+	 * (a row read before the column existed) and unparseable both read as "not on
+	 * the team", so a card is only ever fielded because Postgres says it is.
+	 */
+	private teamSlot(value: CharacterSpawnRow['team_slot']): number | null {
+		if (value === null || value === undefined) return null;
+		const slot = Number(value);
+		return Number.isInteger(slot) ? slot : null;
 	}
 }
 

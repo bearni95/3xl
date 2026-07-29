@@ -39,6 +39,14 @@ export interface CharacterSpawn {
 	/** The colour rolled for this spawn (weighted — see {@link SpawnColor}). It is
 	 * the whole of what one claimed card brings to a fight that another doesn't. */
 	color: SpawnColor;
+	/**
+	 * The lane this card fields in on the player's team, or `null` when it is not
+	 * on it. Slot 0 is the lead — the card whose colour every other slot has to
+	 * share. A player holds each slot with at most one card, which is the whole of
+	 * the one-team-per-player rule: the team is not a list kept anywhere, it is
+	 * simply the cards that hold a slot.
+	 */
+	teamSlot: number | null;
 	/** ISO timestamp the spawn was created. */
 	createdAt: string;
 }
@@ -74,6 +82,8 @@ export interface CharacterSpawnRow {
 	show_id: string | number | null;
 	location_id: string | null;
 	color: string | null;
+	/** Team lane (0..2), or null/absent when the card is not on the team. */
+	team_slot?: number | string | null;
 	created_at: string;
 }
 

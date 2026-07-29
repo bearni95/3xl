@@ -38,7 +38,7 @@
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { spawnService } from '$services/spawn.service';
-	import { teamService, TEAM_SIZE, type Team } from '$services/team.service';
+	import { teamService, TEAM_SIZE } from '$services/team.service';
 	import { AuthStatus } from '$types/profile.type';
 	import type { CharacterSpawn } from '$types/character-spawn.type';
 
@@ -130,33 +130,31 @@
 
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
 
-	// The blue side is the player's active team; the red side (the CPU) either mirrors
-	// it or, in a challenge, fields the supplied OG team. Both draw from the roster's
-	// active team — there is no in-board picker.
+	// The blue side is the player's team; the red side (the CPU) either mirrors it or,
+	// in a challenge, fields the supplied OG team. Both draw from the player's one
+	// team — there is no in-board picker.
 	const authStatus = authService.status;
 	const profile = authService.profile;
-	const teamStore = teamService.store;
+	const teamMemberIds = teamService.slots;
 	const spawns = spawnService.spawns;
 
 	// The signed-in player, or null. Colours (and the team's characters) come from
 	// this player's Supabase spawns, so playing requires being signed in.
 	$: currentUserId = $authStatus === AuthStatus.SignedIn && $profile ? String($profile.id) : null;
 
-	// The team that fights. A resumed battle fields the one it was started with —
-	// the fight is fixed at what was put on the board, so changing the roster's active
-	// team mid-battle cannot swap a fallen fighter for a fresh one — and any other
-	// fight fields the active team.
-	$: activeTeam = $teamStore.teams.find((team: Team) => team.id === $teamStore.activeTeamId) ?? null;
+	// The team that fights. A resumed battle fields the one it was started with — the
+	// fight is fixed at what was put on the board, so re-picking the team mid-battle
+	// cannot swap a fallen fighter for a fresh one — and any other fight fields the
+	// team the player currently holds.
 	$: teamMembers =
 		battleTeam.length === TEAM_SIZE
 			? battleTeam
-			: (activeTeam?.memberIds ?? []).filter((id): id is string => Boolean(id));
-	// Every slot has to be one of this player's own claimed spawns. A team lives in this
-	// browser's local storage, so it goes on naming cards claimed by another account, or
-	// recycled since — and a fight fielding those is one the server would refuse the
-	// report of, after it had been played out. `start_battle` proves the same thing in
-	// the database and will not open a battle without it; this is what keeps the arena
-	// from walking into that.
+			: $teamMemberIds.filter((id): id is string => Boolean(id));
+	// Every slot has to be one of this player's own claimed spawns. The team is read
+	// off those cards, so this can only fail while they are still arriving — or on a
+	// battle resumed with a line-up that has been recycled since. A fight fielding
+	// those is one the server would refuse the report of, after it had been played
+	// out.
 	$: ownSpawnIds = new Set(($spawns as CharacterSpawn[]).map((spawn) => spawn.id));
 	$: teamReady =
 		spawnsLoaded && teamMembers.length === TEAM_SIZE && teamMembers.every((id) => ownSpawnIds.has(id));
@@ -661,17 +659,13 @@
 			</div>
 		</div>
 	{:else if !teamReady}
-		<!-- Signed in, but there's no active team ready to field. -->
+		<!-- Signed in, but there's no team ready to field. -->
 		<div class="card max-w-md bg-base-100 shadow-xl">
 			<div class="card-body gap-4">
-				<h2 class="card-title">No active team</h2>
+				<h2 class="card-title">No team to field</h2>
 				<p class="text-sm opacity-70">
-					{#if !activeTeam}
-						Create a team and set it as active on your roster to play.
-					{:else}
-						Your active team needs all {TEAM_SIZE} slots filled with cards you have claimed — finish
-						it on your roster.
-					{/if}
+					Your team needs all {TEAM_SIZE} slots filled with cards you have claimed — finish it on
+					your roster.
 				</p>
 				<!-- The roster is a modal over the map, not a page, so this raises it right
 					over the arena rather than navigating out of the fight. -->

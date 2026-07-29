@@ -117,6 +117,9 @@ export function ogTeamSpawns(team: readonly TeamMemberRoll[], locationId: string
 		showId: null,
 		locationId,
 		color: member.color,
+		// A town's garrison is nobody's team: it is fielded by the board directly, so
+		// it holds no team slot.
+		teamSlot: null,
 		createdAt: ''
 	}));
 }

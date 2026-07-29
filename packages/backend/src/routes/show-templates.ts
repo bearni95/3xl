@@ -39,7 +39,9 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // instances behind the frontend's claim panel) is provisioned here too, since it
 // references both `character_templates` and `show_templates`; unlike the other
 // tables it's RLS-protected (each player only sees/creates their own spawns), as
-// the frontend writes it directly with the anon key. `player_profiles` (the
+// the frontend writes it directly with the anon key. That table also carries the
+// player's one team, as a `team_slot` on the three cards holding it, written only
+// by the `set_team` RPC. `player_profiles` (the
 // per-player experience total behind the profile card's level) is provisioned
 // here too, along with `combat_results` and the `award_combat_exp` RPC — the
 // single path that mutates it, since experience is earned by winning fights and
@@ -118,6 +120,21 @@ export function ensureTables(): Promise<void> {
 				-- a fight — so drop the column and the range check that guarded it.
 				alter table character_spawns drop constraint if exists character_spawns_stat_range;
 				alter table character_spawns drop column if exists stat;
+				-- The player's team, kept on the cards themselves: a card is on the team
+				-- when it holds a slot, and the slot is the lane it fields in (0 is the
+				-- lead). A team was a browser's own list of ids before this, so it was as
+				-- many teams as the player had browsers and none of them anything the
+				-- server could read. Now it is the cards, so it travels with the account.
+				--
+				-- One team per player is the unique index, not a rule written anywhere: a
+				-- slot is held by at most one of a player's cards and there are only three
+				-- slots, so there is only ever one line-up to field.
+				alter table character_spawns add column if not exists team_slot smallint;
+				alter table character_spawns drop constraint if exists character_spawns_team_slot_range;
+				alter table character_spawns add constraint character_spawns_team_slot_range
+					check (team_slot is null or (team_slot >= 0 and team_slot < 3));
+				create unique index if not exists character_spawns_team_slot_idx
+					on character_spawns (user_id, team_slot) where team_slot is not null;
 				alter table character_spawns enable row level security;
 				drop policy if exists character_spawns_select_own on character_spawns;
 				create policy character_spawns_select_own on character_spawns
@@ -128,6 +145,105 @@ export function ensureTables(): Promise<void> {
 				drop policy if exists character_spawns_delete_own on character_spawns;
 				create policy character_spawns_delete_own on character_spawns
 						for delete using (auth.uid() = user_id);
+				-- The colours that may stand beside a lead of p_color: its own, plus — for a
+				-- primary — the compounds that mix it, or — for a compound — the two
+				-- primaries that make it. The same relation as teammateColors in
+				-- @3xl/shared utils/color/compare.ts; keep the two in step.
+				create or replace function teammate_colors(p_color text)
+				returns text[] language sql immutable set search_path = public as $teammate_colors$
+					select case p_color
+						when 'red' then array['red', 'purple', 'orange']
+						when 'blue' then array['blue', 'purple', 'green']
+						when 'yellow' then array['yellow', 'orange', 'green']
+						when 'purple' then array['purple', 'red', 'blue']
+						when 'orange' then array['orange', 'red', 'yellow']
+						when 'green' then array['green', 'blue', 'yellow']
+						else array[p_color]
+					end;
+				$teammate_colors$;
+				-- Set the caller's team: p_team is the three slots in fielded order, as spawn
+				-- ids with null for an empty one. It replaces whatever they had — there is one
+				-- team, so saving a line-up is saving THE line-up.
+				--
+				-- security definer because character_spawns takes no client update at all;
+				-- this writes exactly one column, on rows the caller owns, and it is the only
+				-- path to it. What it proves is what start_battle would otherwise discover far
+				-- too late: the cards are the caller's, each named once, and every one of them
+				-- shares a colour with the lead (see teammate_colors) — so a team that could
+				-- never fight is refused where it is built rather than at the door of a fight.
+				create or replace function set_team(p_team jsonb)
+				returns void language plpgsql security definer set search_path = public as $set_team$
+				declare
+						v_uid uuid := auth.uid();
+						v_size constant int := 3;
+						v_ids uuid[];
+						v_named int;
+						v_given int;
+						v_distinct int;
+						v_owned int;
+						v_lead_color text;
+						v_mismatched int;
+				begin
+						if v_uid is null then
+								raise exception 'You must be signed in to field a team.';
+						end if;
+						if p_team is null or jsonb_typeof(p_team) <> 'array'
+							or jsonb_array_length(p_team) <> v_size then
+								raise exception 'A team is a line-up of % slots.', v_size;
+						end if;
+						-- The slots, in order. An id is cast only where it looks like a uuid, so
+						-- junk in a slot is answered with the rule it broke rather than with a
+						-- cast error about the shape of a uuid.
+						select array_agg(
+									case when e.value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+										then e.value::uuid end
+									order by e.ord),
+								count(*) filter (where e.value is not null)
+							into v_ids, v_named
+							from jsonb_array_elements_text(p_team) with ordinality as e(value, ord);
+						select count(*), count(distinct x) into v_given, v_distinct
+							from unnest(v_ids) as x where x is not null;
+						if v_given <> v_named then
+								raise exception 'A team slot holds one of your cards, or nothing.';
+						end if;
+						if v_distinct <> v_given then
+								raise exception 'A fighter cannot be fielded twice.';
+						end if;
+						-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
+						perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+						select count(*) into v_owned from character_spawns
+							where user_id = v_uid and id = any(v_ids);
+						if v_owned <> v_given then
+								raise exception 'Every fighter must be one of your own claimed cards.';
+						end if;
+						-- The lead is the first slot, and it is the lead that says what the rest of
+						-- the team may be, so a team with no lead is a team with nobody behind it.
+						select cs.color into v_lead_color from character_spawns cs
+							where cs.user_id = v_uid and cs.id = v_ids[1];
+						if v_lead_color is null and v_given > 0 then
+								raise exception 'A team is led by its first card; fill that slot first.';
+						end if;
+						if v_lead_color is not null then
+								select count(*) into v_mismatched from character_spawns cs
+									where cs.user_id = v_uid and cs.id = any(v_ids[2:])
+										and not (cs.color = any(teammate_colors(v_lead_color)));
+								if v_mismatched > 0 then
+										raise exception 'Every fighter must share a colour with the team lead.';
+								end if;
+						end if;
+						-- Cleared first, so the line-up being saved never collides with the one it
+						-- replaces over a slot they both use.
+						update character_spawns set team_slot = null
+							where user_id = v_uid and team_slot is not null;
+						update character_spawns cs set team_slot = s.slot
+							from (
+								select (i - 1)::smallint as slot, v_ids[i] as spawn_id
+								from generate_subscripts(v_ids, 1) as i
+							) s
+							where cs.user_id = v_uid and cs.id = s.spawn_id;
+				end;
+				$set_team$;
+				grant execute on function set_team(jsonb) to authenticated;
 				-- Per-player progression: an accumulated experience total the frontend
 				-- reads to derive a level (D&D 5e table). RLS lets a player read only
 				-- their own row; it is never written directly — the award_combat_exp RPC
@@ -670,112 +786,97 @@ export function ensureTables(): Promise<void> {
 					-- have a battle open — that one has to be finished first. The OUT names
 					-- deliberately avoid the table's columns.
 					--
-					-- p_team is the player's own line-up, in fielded order, as an array of
-					-- character_spawns ids, and it is PROVED here before the battle exists:
-					-- three of the caller's own claimed cards, each named once, or no battle
-					-- is opened and no day is spent. It is the same rule award_combat_exp
-					-- applies to a winning report, moved to the only place it does the player
-					-- any good — a fight that could never have been reported is now a fight
-					-- that was never started. A team stale in some browser's local storage
-					-- (claimed by another account, or since recycled) is exactly what it
-					-- catches, and the client cannot be the one to decide it, being the thing
-					-- that is out of date.
+					-- The line-up is no longer the caller's to name: it is read here off the
+					-- team slots on the caller's own cards (see set_team), so a fight is opened
+					-- with the team the ACCOUNT holds rather than with whatever list a browser
+					-- arrived carrying — one that could name cards claimed by another account
+					-- or recycled since. Three slots have to be filled or no battle is opened
+					-- and no day is spent, which is the same rule award_combat_exp applies to a
+					-- winning report, kept in the only place it does the player any good: a
+					-- fight that could never have been reported is a fight that was never
+					-- started. The line-up is returned as well as stored, so the arena fields
+					-- exactly what the server wrote down.
 					--
-					-- The three-argument version is dropped rather than replaced: left standing
-					-- it would make every call ambiguous for PostgREST and go on being the way
-					-- to open a battle with no team at all.
+					-- Both older signatures are dropped rather than replaced: left standing
+					-- they would make every call ambiguous for PostgREST and go on being a way
+					-- to open a battle with a line-up of the client's own choosing.
 					drop function if exists start_battle(text, int, jsonb);
+					drop function if exists start_battle(text, int, jsonb, jsonb);
 					create or replace function start_battle(
-							p_location_id text,
-							p_turnover int default 0,
-							p_rivals jsonb default '[]'::jsonb,
-							p_team jsonb default '[]'::jsonb
-						)
-					returns table (town_id text, challenge_day date, opened_at timestamptz)
+						p_location_id text,
+						p_turnover int default 0,
+						p_rivals jsonb default '[]'::jsonb
+					)
+					returns table (
+						town_id text,
+						challenge_day date,
+						opened_at timestamptz,
+						fielded_team jsonb
+					)
 					language plpgsql security definer set search_path = public as $start_battle$
 					declare
-							v_uid uuid := auth.uid();
-							v_today date := (now() at time zone 'Europe/Madrid')::date;
-							v_holder uuid;
-							v_started timestamptz;
-							v_open text;
-							v_fielded int;
-							v_distinct int;
-							v_owned int;
+						v_uid uuid := auth.uid();
+						v_today date := (now() at time zone 'Europe/Madrid')::date;
+						v_holder uuid;
+						v_started timestamptz;
+						v_open text;
+						v_team jsonb;
+						v_fielded int;
 					begin
-							if v_uid is null then
-								raise exception 'You must be signed in to challenge a town.';
-							end if;
-							if p_location_id is null or p_location_id = '' then
-								raise exception 'A town is required to start a challenge.';
-							end if;
-							if p_team is null or jsonb_typeof(p_team) <> 'array' then
-								raise exception 'A challenge is fought by a team; none was fielded.';
-							end if;
-							-- The team, proved against what the caller owns before anything is
-							-- written. Ids are read as text and cast only where they look like a
-							-- uuid, so a line-up of junk is answered with the rule it broke rather
-							-- than with a cast error.
-							with fielded as (
-								select
-									entry.value as raw,
-									case
-										when entry.value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-											then entry.value::uuid
-									end as spawn_id
-								from jsonb_array_elements_text(p_team) as entry(value)
-							)
-							select
-								(select count(*) from fielded),
-								(select count(distinct raw) from fielded),
-								(select count(*) from fielded f
-									join character_spawns cs on cs.id = f.spawn_id and cs.user_id = v_uid)
-							into v_fielded, v_distinct, v_owned;
-							-- Three a side, the size award_combat_exp caps a report at.
-							if v_fielded <> 3 then
-								raise exception 'A team fields 3 fighters; % were.', v_fielded;
-							end if;
-							if v_distinct <> v_fielded then
-								raise exception 'A fighter cannot be fielded twice.';
-							end if;
-							if v_owned <> v_fielded then
-								raise exception 'Every fighter must be one of your own claimed characters.';
-							end if;
-							-- Serialise this player's mutations, matching claim_booster.
-							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
-							-- One battle at a time. The map offers the way back into the open one,
-							-- never a second, so a call that gets here has lost track of its own
-							-- fight or is trying to leave it behind.
-							select b.location_id into v_open from battles b where b.user_id = v_uid;
-							if v_open is not null then
-								raise exception 'You already have a battle in progress. Finish it before starting another.';
-							end if;
-							select h.user_id into v_holder from municipality_holders h
-								where h.location_id = p_location_id;
-							if v_holder is not null and v_holder = v_uid then
-								raise exception 'You already hold this town — you cannot challenge your own team.';
-							end if;
-							insert into municipality_challenges (user_id, location_id, challenge_date)
-								values (v_uid, p_location_id, v_today)
-								on conflict (user_id, location_id, challenge_date) do update
-									set started_at = now(), settled_at = null, voided_at = null
-									where municipality_challenges.voided_at is not null
-								returning municipality_challenges.started_at into v_started;
-							if v_started is null then
-								raise exception 'You have already challenged this town today. New challenges at midnight.';
-							end if;
-							insert into battles
-								(user_id, location_id, challenge_date, turnover, rivals, team, board)
-								values (v_uid, p_location_id, v_today,
-									greatest(0, coalesce(p_turnover, 0)),
-									coalesce(p_rivals, '[]'::jsonb), p_team, null);
-							town_id := p_location_id;
-							challenge_day := v_today;
-							opened_at := v_started;
-							return next;
+						if v_uid is null then
+							raise exception 'You must be signed in to challenge a town.';
+						end if;
+						if p_location_id is null or p_location_id = '' then
+							raise exception 'A town is required to start a challenge.';
+						end if;
+						-- Serialise this player's mutations, matching claim_booster. It holds the
+						-- team still as well: no slot can be re-dealt between being read here and
+						-- the battle being written with it.
+						perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
+						-- The caller's team, in slot order — the lead first, as the board fields it.
+						select coalesce(jsonb_agg(cs.id::text order by cs.team_slot), '[]'::jsonb),
+								count(*)
+							into v_team, v_fielded
+							from character_spawns cs
+							where cs.user_id = v_uid and cs.team_slot is not null;
+						-- Three a side, the size award_combat_exp caps a report at.
+						if v_fielded <> 3 then
+							raise exception 'A team fields 3 fighters; yours has %. Finish it on your roster.', v_fielded;
+						end if;
+						-- One battle at a time. The map offers the way back into the open one,
+						-- never a second, so a call that gets here has lost track of its own
+						-- fight or is trying to leave it behind.
+						select b.location_id into v_open from battles b where b.user_id = v_uid;
+						if v_open is not null then
+							raise exception 'You already have a battle in progress. Finish it before starting another.';
+						end if;
+						select h.user_id into v_holder from municipality_holders h
+							where h.location_id = p_location_id;
+						if v_holder is not null and v_holder = v_uid then
+							raise exception 'You already hold this town — you cannot challenge your own team.';
+						end if;
+						insert into municipality_challenges (user_id, location_id, challenge_date)
+							values (v_uid, p_location_id, v_today)
+							on conflict (user_id, location_id, challenge_date) do update
+								set started_at = now(), settled_at = null, voided_at = null
+								where municipality_challenges.voided_at is not null
+							returning municipality_challenges.started_at into v_started;
+						if v_started is null then
+							raise exception 'You have already challenged this town today. New challenges at midnight.';
+						end if;
+						insert into battles
+							(user_id, location_id, challenge_date, turnover, rivals, team, board)
+							values (v_uid, p_location_id, v_today,
+								greatest(0, coalesce(p_turnover, 0)),
+								coalesce(p_rivals, '[]'::jsonb), v_team, null);
+						town_id := p_location_id;
+						challenge_day := v_today;
+						opened_at := v_started;
+						fielded_team := v_team;
+						return next;
 					end;
 					$start_battle$;
-					grant execute on function start_battle(text, int, jsonb, jsonb) to authenticated;
+					grant execute on function start_battle(text, int, jsonb) to authenticated;
 					-- The pre-battle RPC is dropped rather than left standing: a client that
 					-- could still claim a day's challenge without opening a battle would have a
 					-- way to spend the day with nothing holding it to the fight.

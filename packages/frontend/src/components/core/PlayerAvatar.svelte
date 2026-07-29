@@ -3,7 +3,7 @@
 	import { characters } from '@3xl/data';
 	import CharacterFace from '$components/core/CharacterFace.svelte';
 	import { characterFace, type CharacterFace as Face } from '$utils/mugen/character-face';
-	import { activeTeamColor } from '$services/team.service';
+	import { teamColor } from '$services/team.service';
 	import { SpawnColor } from '$types/character-spawn.type';
 
 	// The character the player wears, or null for the initial-letter avatar every
@@ -20,8 +20,8 @@
 
 	let face: Face | null = null;
 
-	// The backdrop is the player's colours, not the theme's: whichever colour the
-	// active team is bound to, and nothing at all when there is no team to read one
+	// The backdrop is the player's colours, not the theme's: whichever colour their
+	// team is bound to, and nothing at all when there is no team to read one
 	// from. Same swatches as the portrait rings and the card scene. The border is
 	// that very colour too — a portrait fills the box edge to edge, so the frame is
 	// what's left of the backdrop once it's in.
@@ -34,8 +34,8 @@
 		[SpawnColor.Purple]: 'bg-purple-500 border-purple-500 text-white'
 	};
 
-	$: backdropClasses = $activeTeamColor
-		? colorClasses[$activeTeamColor]
+	$: backdropClasses = $teamColor
+		? colorClasses[$teamColor]
 		: 'border-transparent text-base-content';
 
 	// `characterId` is named directly so the statement re-runs on every change.

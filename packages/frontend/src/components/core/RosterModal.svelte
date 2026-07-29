@@ -6,15 +6,12 @@
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { spawnService, RECYCLE_GROUP_SIZE } from '$services/spawn.service';
-	import { teamService } from '$services/team.service';
+	import { teamService, TEAM_SIZE } from '$services/team.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import { AuthStatus } from '$types/profile.type';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
-	import type { CombatColor } from '$types/character-definition.type';
 	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
-	import { teamDisplayName } from '$utils/spawn/team-name';
-	import { teammateColors } from '$utils/color/compare';
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import { responsiveGridColumns, type SlotSummary } from '$components/core/card/CardScene';
@@ -142,7 +139,14 @@
 	const status = authService.status;
 	const profile = authService.profile;
 	const spawns = spawnService.spawns;
-	const team = teamService.store;
+	// The player's one team, read off their own cards (each fielded card holds a
+	// slot). There is nothing to create and nothing to choose between: the slots are
+	// simply there, and tapping a card fills or empties one.
+	const teamSlots = teamService.slots;
+	const teamSpawns = teamService.spawns;
+	const teamSaving = teamService.saving;
+	const teamError = teamService.error;
+	const teamColorFilter = teamService.allowedColors;
 
 	// Spawns store only a character id + geojson ids; labels, sprites and place
 	// names are resolved here from the local registry and municipality layer.
@@ -278,7 +282,7 @@
 		filterRarity,
 		characterShowNames,
 		rarityByCharacter,
-		teamColorFilter
+		pickableColors
 	);
 
 	// The filters and the pager work on the same list: filtering narrows it, the pager
@@ -355,27 +359,20 @@
 		copiesByCharacter
 	);
 
-	// The active team as the canvas's leading row: one cell per slot, in slot order —
-	// its card where the slot is filled, null (a card-sized empty frame) where it
-	// isn't. Independent of the filters and the pager, since it is the team, not the
-	// roster. Empty with no team selected, which draws no extra row at all.
+	// The team as the canvas's leading row: one cell per slot, in slot order — its
+	// card where the slot is filled, null (a card-sized empty frame) where it isn't.
+	// Independent of the filters and the pager, since it is the team, not the roster,
+	// and always drawn: there is one team and it is always the one being built.
 	$: teamSlotCards = ((
-		team: typeof activeTeam,
-		spawnList: CharacterSpawn[],
+		slots: (CharacterSpawn | null)[],
 		faces: Map<string, string | null>,
 		_names: Map<string, string> | null,
 		rarities: Map<string, number>,
 		_showNames: Map<string, string[]>,
 		copies: Map<string, number>
-	): (CardModel | null)[] => {
-		if (!team) return [];
-		return team.memberIds.map((memberId) => {
-			const spawn = memberId ? spawnList.find((entry) => entry.id === memberId) : null;
-			return spawn ? toCardModel(spawn, faces, rarities, copies) : null;
-		});
-	})(
-		activeTeam,
-		$spawns,
+	): (CardModel | null)[] =>
+		slots.map((spawn) => (spawn ? toCardModel(spawn, faces, rarities, copies) : null)))(
+		$teamSpawns,
 		characterFaces,
 		municipalityNames,
 		rarityByCharacter,
@@ -383,10 +380,12 @@
 		copiesByCharacter
 	);
 
-	// Tapping a card on the canvas toggles that spawn on the active team (add to the
-	// first free slot, or remove it) — the canvas replaces the old per-card buttons.
-	// The tapped index maps 1:1 to the spawns *on the current page*, which is what the
-	// cards were built from.
+	// Tapping a card on the canvas puts that spawn on the team or takes it off (into
+	// the first free slot, or out of the one it holds) — the canvas replaces the old
+	// per-card buttons. The tapped index maps 1:1 to the spawns *on the current page*,
+	// which is what the cards were built from. A tap while a line-up is in flight is
+	// dropped rather than queued: the team is the server's, and two saves racing would
+	// be two answers to the same question.
 	function handleCardTap(index: number): void {
 		const spawn = pagedSpawns[index];
 		if (!spawn) return;
@@ -394,22 +393,18 @@
 			toggleRecycleSelection(spawn.id);
 			return;
 		}
-		toggleTeamMember(spawn.id);
+		if ($teamSaving) return;
+		void teamService.toggle(spawn.id);
 	}
 
 	// The team's summary for the head of the canvas's team row: the colour it is led
-	// by, that lead's show(s) and where it was claimed — the same three facts, read the
-	// same way, as the side panel's summary (the lead is the first filled slot). Null
-	// with no team selected; a team with no picks yet reads as em-dashes.
+	// by, that lead's show(s) and where it was claimed. A team with no picks yet reads
+	// as em-dashes rather than as nothing, since the row is always there.
 	$: teamSummary = ((
-		team: typeof activeTeam,
-		spawnList: CharacterSpawn[],
+		lead: CharacterSpawn | null,
 		_names: Map<string, string> | null,
 		_showNames: Map<string, string[]>
-	): SlotSummary | null => {
-		if (!team) return null;
-		const leadId = team.memberIds.find((id): id is string => Boolean(id)) ?? null;
-		const lead = leadId ? (spawnList.find((entry) => entry.id === leadId) ?? null) : null;
+	): SlotSummary => {
 		if (!lead) return { color: null, colorHex: null, showName: null, regionName: null };
 		return {
 			color: lead.color,
@@ -417,14 +412,14 @@
 			showName: showNamesFor(lead.characterId).join(', ') || 'No show',
 			regionName: locationNameFor(lead.locationId)
 		};
-	})(activeTeam, $spawns, municipalityNames, characterShowNames);
+	})($teamSpawns[0] ?? null, municipalityNames, characterShowNames);
 
-	// The Remove button under a slot in the canvas's team row — the same path as the
-	// panel's ✕: empty that slot, then re-apply the colour rule the lead sets.
+	// The Remove button under a slot in the canvas's team row — the same path as a tap
+	// on a fielded card: empty that slot. Emptying the lead's empties the team, since
+	// every other slot was only allowed there by the lead's colour.
 	function handleSlotRemove(index: number): void {
-		if (!activeTeam) return;
-		teamService.clearMember(activeTeam.id, index);
-		enforceTeamColors(activeTeam.id);
+		if ($teamSaving) return;
+		void teamService.clear(index);
 	}
 
 	// The indices (into the cards on the current page) of the spawns selected for
@@ -438,111 +433,17 @@
 		}, [])
 	);
 
-	function onTeamCreate(): void {
-		teamService.createTeam();
-	}
-	function onTeamSelect(event: Event): void {
-		teamService.setActive((event.currentTarget as HTMLSelectElement).value);
-	}
+	// How many slots are filled, for the line above the canvas.
+	$: teamFilledCount = $teamSlots.filter(Boolean).length;
 
-	// Every team as an option for the toolbar's picker. An unnamed team is labelled
-	// after its lead — the first filled slot — as its show plus its rolled colour, so
-	// the list reads as what each team is rather than as a row of blanks. The spawn
-	// list and the show map are threaded in so the labels re-resolve as they load and
-	// as picks change the lead.
-	$: teamChoices = ((
-		teams: typeof $team.teams,
-		spawnList: CharacterSpawn[],
-		_showNames: Map<string, string[]>
-	) =>
-		teams.map((entry) => {
-			const leadId = entry.memberIds.find((id): id is string => Boolean(id)) ?? null;
-			const lead = leadId ? (spawnList.find((spawn) => spawn.id === leadId) ?? null) : null;
-			return {
-				id: entry.id,
-				name: teamDisplayName(
-					entry.name,
-					lead
-						? { showName: showNamesFor(lead.characterId)[0] ?? null, color: lead.color }
-						: null
-				)
-			};
-		}))($team.teams, $spawns, characterShowNames);
-
-	// spawn id → its rolled spawn colour, for the team colour rule.
-	$: colorForSpawn = new Map($spawns.map((spawn) => [spawn.id, spawn.color]));
-
-	// The currently-selected team and the spawn ids already on it, driving the tap
-	// toggle and the colour rule below.
-	$: activeTeam = $team.teams.find((entry) => entry.id === $team.activeTeamId) ?? null;
-	$: activeMemberIds = new Set(
-		(activeTeam?.memberIds ?? []).filter((id): id is string => Boolean(id))
-	);
-
-	// The colours the selected team can carry — its lead's own colour plus the ones
-	// that share a colour with it (see teammateColors) — folded into the header
-	// filters, so picking a team narrows the grid to the cards it could actually take.
-	// It is the lead that sets the rule, so this is null (nothing narrowed) with no
-	// team selected and with a team whose lead slot is still empty, where any card is
-	// a legal first pick. Also null in recycle mode: there a tap recycles rather than
+	// The colours the team can still take — its lead's own plus the ones that share a
+	// colour with it — folded into the header filters, so the grid shows the cards the
+	// team could actually take. It is the lead that sets the rule, so nothing is
+	// narrowed while the lead slot is empty, where any card is a legal first pick.
+	// Nothing is narrowed in recycle mode either: there a tap recycles rather than
 	// recruits, and hiding most of the roster would make recycling impossible.
-	$: teamColorFilter = ((team: typeof activeTeam, colors: Map<string, SpawnColor>, recycling: boolean) => {
-		const leadId = team?.memberIds[0] ?? null;
-		const leadColor = leadId ? (colors.get(leadId) ?? null) : null;
-		if (!leadColor || recycling) return null;
-		return new Set<string>(teammateColors(leadColor as unknown as CombatColor));
-	})(activeTeam, colorForSpawn, recycleMode);
+	$: pickableColors = recycleMode ? null : $teamColorFilter;
 
-	// Whether a spawn (not already on the active team) may be added right now: there
-	// must be a free slot, and — for a non-lead slot — its colour must be one the
-	// lead's colour allows (see teammateColors).
-	function canAddToActiveTeam(spawnId: string): boolean {
-		if (!activeTeam || activeMemberIds.has(spawnId)) return false;
-		const emptyIndex = activeTeam.memberIds.indexOf(null);
-		if (emptyIndex < 0) return false;
-		if (emptyIndex === 0) return true;
-		const leadId = activeTeam.memberIds[0];
-		const leadColor = leadId ? (colorForSpawn.get(leadId) ?? null) : null;
-		const allowed = leadColor
-			? new Set<string>(teammateColors(leadColor as unknown as CombatColor))
-			: null;
-		const color = colorForSpawn.get(spawnId) ?? null;
-		return Boolean(allowed && color && allowed.has(color));
-	}
-
-	// Toggle a spawn on the active team: remove it if present, otherwise add it to
-	// the first free slot (respecting the colour rule via canAddToActiveTeam).
-	function toggleTeamMember(spawnId: string): void {
-		if (!activeTeam) return;
-		const existingIndex = activeTeam.memberIds.indexOf(spawnId);
-		if (existingIndex >= 0) {
-			teamService.clearMember(activeTeam.id, existingIndex);
-			enforceTeamColors(activeTeam.id);
-			return;
-		}
-		if (!canAddToActiveTeam(spawnId)) return;
-		const emptyIndex = activeTeam.memberIds.indexOf(null);
-		teamService.setMember(activeTeam.id, emptyIndex, spawnId);
-	}
-
-	// Clear every non-lead slot whose colour isn't allowed by the lead's colour
-	// (see teammateColors). A team with no lead allows no teammate colour at all.
-	function enforceTeamColors(teamId: string): void {
-		const team = teamService.get().teams.find((entry) => entry.id === teamId);
-		if (!team) return;
-		const leadId = team.memberIds[0];
-		const leadColor = leadId ? (colorForSpawn.get(leadId) ?? null) : null;
-		const allowed = leadColor
-			? new Set<string>(teammateColors(leadColor as unknown as CombatColor))
-			: null;
-		team.memberIds.forEach((id, index) => {
-			if (index === 0 || !id) return;
-			const color = colorForSpawn.get(id) ?? null;
-			if (!allowed || !color || !allowed.has(color)) {
-				teamService.clearMember(teamId, index);
-			}
-		});
-	}
 </script>
 
 <svelte:window on:keydown={onKeydown} />
@@ -673,6 +574,12 @@
 			{#if recycleNotice}
 				<div class="alert alert-info flex-none py-2 text-sm"><span>{recycleNotice}</span></div>
 			{/if}
+
+			{#if $teamError}
+				<!-- The team is the server's, so a refused line-up is said in the server's own
+				     words — the card sprang back to where it was, and this is why. -->
+				<div class="alert alert-error flex-none py-2 text-sm"><span>{$teamError}</span></div>
+			{/if}
 		{/if}
 
 		<div class="flex min-h-0 flex-1 flex-col">
@@ -724,10 +631,10 @@
 						Scroll to move through your cards.
 						{#if recycleMode}
 							Tap a card to select or deselect it for recycling.
-						{:else if activeTeam}
-							Tap a card to add or remove it from the active team.
+						{:else if teamFilledCount === 0}
+							Tap a card to lead your team — the rest of it fights in its colours.
 						{:else}
-							Select a team to start adding characters by tapping their card.
+							Tap a card to add or remove it from your team ({teamFilledCount}/{TEAM_SIZE}).
 						{/if}
 					</p>
 					<div class="flex flex-wrap items-center gap-3">
@@ -766,22 +673,12 @@
 							/>
 							<span class="w-4 text-right tabular-nums opacity-70">{$columns}</span>
 						</label>
-						{#if teamChoices.length > 0}
-							<label class="flex items-center gap-2 text-xs">
-								<span class="whitespace-nowrap opacity-60">Team</span>
-								<select
-									class="select select-sm select-bordered w-48"
-									value={$team.activeTeamId ?? ''}
-									on:change={onTeamSelect}
-									aria-label="Active team"
-								>
-									{#each teamChoices as choice (choice.id)}
-										<option value={choice.id}>{choice.name}</option>
-									{/each}
-								</select>
-							</label>
+						{#if $teamSaving}
+							<span class="flex items-center gap-2 text-xs opacity-60">
+								<span class="loading loading-spinner loading-xs"></span>
+								Saving team…
+							</span>
 						{/if}
-						<button class="btn btn-primary btn-sm" on:click={onTeamCreate}>+ New team</button>
 					</div>
 				</div>
 				<!-- The roster is drawn on the shared card canvas — the same renderer the

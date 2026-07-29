@@ -1,148 +1,186 @@
-import { derived, type Readable } from 'svelte/store';
-import { ObjectServiceClass } from '$services/classes/object-service.class';
+import { derived, writable, type Readable } from 'svelte/store';
 import { spawnService } from '$services/spawn.service';
-import type { ID } from '$types/core.type';
-import type { SpawnColor } from '$types/character-spawn.type';
+import type { SpawnColor, CharacterSpawn } from '$types/character-spawn.type';
+import type { CombatColor } from '$types/character-definition.type';
+import { teammateColors } from '$utils/color/compare';
 import { COMBAT_TEAM_SIZE } from '$types/combat.type';
 
 /**
  * A team always has exactly this many spawn slots — the side a fight fields, so
- * it is the shared combat constant the `award_combat_exp` RPC also caps reports at.
+ * it is the shared combat constant `start_battle` and `award_combat_exp` are
+ * written against.
  */
 export const TEAM_SIZE = COMBAT_TEAM_SIZE;
 
-/**
- * A named team of {@link TEAM_SIZE} distinct spawns (empty slots allowed). Slots
- * hold **spawn ids**, not character ids — each claimed spawn is a unique entry, so
- * the same character claimed twice can occupy two different slots.
- */
-export interface Team {
-	id: string;
-	/** Optional team name. */
-	name: string;
-	/** One spawn id (or null) per slot; always length {@link TEAM_SIZE}. */
-	memberIds: (string | null)[];
-}
-
-/** The whole persisted collection plus which team is currently active. */
-export interface TeamsState {
-	id: ID;
-	teams: Team[];
-	activeTeamId: string | null;
-}
-
-function emptyMembers(): (string | null)[] {
+/** An all-empty line-up — what a player with no team fields. */
+function emptySlots(): (string | null)[] {
 	return Array.from({ length: TEAM_SIZE }, () => null);
 }
 
-function makeTeam(): Team {
-	return { id: crypto.randomUUID(), name: '', memberIds: emptyMembers() };
-}
+/**
+ * The player's team — one per player, and the server's, not this browser's.
+ *
+ * There is no collection here and no "active" one to choose: a card is on the
+ * team when it holds one of the {@link TEAM_SIZE} slots (`character_spawns.team_slot`),
+ * so the team is simply read back out of the player's own cards and travels with
+ * the account rather than with the device. Every change goes through the
+ * `set_team` RPC via {@link spawnService.setTeam}, which is what decides whether a
+ * line-up is legal at all — so this class holds no rule of its own, only the two
+ * moves the roster makes (put a card in, take a card out) and the colour reading
+ * the UI needs to show what may still be picked.
+ */
+class TeamService {
+	/** The last write's refusal, in the server's own words, or null. */
+	private errorStore = writable<string | null>(null);
+	/** True while a line-up is in flight, so the roster can hold the taps. */
+	private savingStore = writable(false);
 
-function initialState(): TeamsState {
-	return { id: 'teams', teams: [], activeTeamId: null };
+	/**
+	 * The team as spawn ids in fielded order, the lead first — always
+	 * {@link TEAM_SIZE} long, with null for an empty slot. Read straight off the
+	 * player's loaded cards, so a team set on another device arrives with them.
+	 */
+	readonly slots: Readable<(string | null)[]> = derived(spawnService.spawns, (spawns) => {
+		const slots = emptySlots();
+		for (const spawn of spawns) {
+			const slot = spawn.teamSlot;
+			if (slot !== null && slot >= 0 && slot < TEAM_SIZE) slots[slot] = spawn.id;
+		}
+		return slots;
+	});
+
+	/** The same line-up as the cards themselves, null where a slot is empty. */
+	readonly spawns: Readable<(CharacterSpawn | null)[]> = derived(
+		[this.slots, spawnService.spawns],
+		([slots, spawns]) =>
+			slots.map((id) => (id ? (spawns.find((spawn) => spawn.id === id) ?? null) : null))
+	);
+
+	/** The cards actually fielded, in slot order — the empty slots left out. */
+	readonly fielded: Readable<CharacterSpawn[]> = derived(this.spawns, (spawns) =>
+		spawns.filter((spawn): spawn is CharacterSpawn => !!spawn)
+	);
+
+	/**
+	 * The team's colour: the rolled colour of its lead — the first slot — which is
+	 * the colour the rest of the team is bound to (see {@link teammateColors}).
+	 * Null when the lead slot is empty or before the player's cards have loaded, so
+	 * anything painted with it falls back to nothing rather than to a wrong colour.
+	 */
+	readonly color: Readable<SpawnColor | null> = derived(
+		this.spawns,
+		(spawns) => spawns[0]?.color ?? null
+	);
+
+	/**
+	 * The colours the team can still take: the lead's own plus the ones that share a
+	 * colour with it. Null while the lead slot is empty, where any card is a legal
+	 * first pick and nothing is narrowed.
+	 */
+	readonly allowedColors: Readable<Set<string> | null> = derived(this.color, (color) =>
+		color ? new Set<string>(teammateColors(color as unknown as CombatColor)) : null
+	);
+
+	/** Whether the team is full — the only line-up a battle can be opened with. */
+	readonly complete: Readable<boolean> = derived(
+		this.fielded,
+		(fielded) => fielded.length === TEAM_SIZE
+	);
+
+	/** True while a line-up is being saved. */
+	get saving(): Readable<boolean> {
+		return this.savingStore;
+	}
+
+	/** The last refusal from the server, or null. Cleared by the next save. */
+	get error(): Readable<string | null> {
+		return this.errorStore;
+	}
+
+	/**
+	 * Put a card on the team or take it off: the roster's one gesture. An id
+	 * already fielded leaves its slot (and, if it was the lead, takes the rest of
+	 * the team with it — they were only there for its colour); anything else goes
+	 * into the first empty slot. A card the team cannot take, or a full team, is
+	 * simply not a move.
+	 */
+	async toggle(spawnId: string): Promise<void> {
+		const slots = this.currentSlots();
+		const index = slots.indexOf(spawnId);
+		if (index >= 0) return this.clear(index);
+		if (!this.canAdd(spawnId)) return;
+		const empty = slots.indexOf(null);
+		await this.save(slots.map((id, i) => (i === empty ? spawnId : id)));
+	}
+
+	/**
+	 * Empty one slot. Emptying the lead's empties the whole team: every other slot
+	 * was only allowed there by the lead's colour, and the server refuses a team
+	 * standing behind nobody.
+	 */
+	async clear(index: number): Promise<void> {
+		if (index === 0) return this.save(emptySlots());
+		await this.save(this.currentSlots().map((id, i) => (i === index ? null : id)));
+	}
+
+	/**
+	 * Whether `spawnId` could be added right now: it must not already be fielded,
+	 * there must be a free slot, and — for anything but the lead slot — its colour
+	 * must be one the lead's allows. The same rule `set_team` enforces, asked here
+	 * so the roster can show what a tap would do instead of finding out.
+	 */
+	canAdd(spawnId: string): boolean {
+		const slots = this.currentSlots();
+		if (slots.includes(spawnId)) return false;
+		const empty = slots.indexOf(null);
+		if (empty < 0) return false;
+		if (empty === 0) return true;
+		const allowed = this.read(this.allowedColors);
+		const color = this.read(spawnService.spawns).find((spawn) => spawn.id === spawnId)?.color;
+		return Boolean(allowed && color && allowed.has(color));
+	}
+
+	/** Send a line-up, holding the taps and keeping whatever the server said. */
+	private async save(slots: (string | null)[]): Promise<void> {
+		this.savingStore.set(true);
+		this.errorStore.set(null);
+		try {
+			await spawnService.setTeam(slots);
+		} catch (error) {
+			this.errorStore.set(teamErrorMessage(error));
+		} finally {
+			this.savingStore.set(false);
+		}
+	}
+
+	private currentSlots(): (string | null)[] {
+		return this.read(this.slots);
+	}
+
+	/** One synchronous read of a store — these are all derived, so this is cheap. */
+	private read<T>(store: Readable<T>): T {
+		let value!: T;
+		store.subscribe((current) => (value = current))();
+		return value;
+	}
 }
 
 /**
- * Manages the player's teams, persisted to localStorage via {@link ObjectServiceClass}.
- * The player can keep any number of teams (each with an optional name and up to
- * {@link TEAM_SIZE} distinct spawns) and mark exactly one as active. Assigning a
- * spawn already present in the same team moves it, clearing its old slot.
+ * A refused team in the server's own words. Supabase/PostgREST errors are plain
+ * objects carrying a `message`, not Error instances, so a bare String(err) reads
+ * as "[object Object]".
  */
-class TeamService extends ObjectServiceClass<TeamsState> {
-	constructor() {
-		super('teams', initialState());
-		this.normalize();
+function teamErrorMessage(error: unknown): string {
+	if (error instanceof Error) return error.message;
+	if (error && typeof error === 'object') {
+		const record = error as Record<string, unknown>;
+		const detail = record.message ?? record.hint ?? record.details;
+		if (typeof detail === 'string' && detail) return detail;
 	}
-
-	/** Repair older / malformed persisted shapes (slot count, dangling active id). */
-	private normalize(): void {
-		const state = this.get();
-		const teams = (Array.isArray(state.teams) ? state.teams : []).map((team) => ({
-			id: team.id,
-			name: team.name ?? '',
-			memberIds: Array.from({ length: TEAM_SIZE }, (_, i) => team.memberIds?.[i] ?? null)
-		}));
-		const activeTeamId = teams.some((team) => team.id === state.activeTeamId)
-			? state.activeTeamId
-			: (teams[0]?.id ?? null);
-		this.set({ ...state, teams, activeTeamId });
-	}
-
-	/** Create a new empty team, make it active if none is, and return its id. */
-	createTeam(): string {
-		const team = makeTeam();
-		this.store.update((state) => ({
-			...state,
-			teams: [...state.teams, team],
-			activeTeamId: state.activeTeamId ?? team.id
-		}));
-		return team.id;
-	}
-
-	/** Delete a team; if it was active, fall back to the first remaining team. */
-	removeTeam(teamId: string): void {
-		this.store.update((state) => {
-			const teams = state.teams.filter((team) => team.id !== teamId);
-			const activeTeamId =
-				state.activeTeamId === teamId ? (teams[0]?.id ?? null) : state.activeTeamId;
-			return { ...state, teams, activeTeamId };
-		});
-	}
-
-	/** Set a team's optional name. */
-	renameTeam(teamId: string, name: string): void {
-		this.updateTeam(teamId, (team) => ({ ...team, name }));
-	}
-
-	/** Mark a team as the active one. */
-	setActive(teamId: string): void {
-		this.store.update((state) => ({ ...state, activeTeamId: teamId }));
-	}
-
-	/** Assign a spawn to a slot, clearing it from any other slot in the same team. */
-	setMember(teamId: string, index: number, spawnId: string | null): void {
-		this.updateTeam(teamId, (team) => ({
-			...team,
-			memberIds: team.memberIds.map((id, i) => {
-				if (i === index) return spawnId;
-				if (spawnId && id === spawnId) return null;
-				return id;
-			})
-		}));
-	}
-
-	/** Empty a single slot. */
-	clearMember(teamId: string, index: number): void {
-		this.updateTeam(teamId, (team) => ({
-			...team,
-			memberIds: team.memberIds.map((id, i) => (i === index ? null : id))
-		}));
-	}
-
-	private updateTeam(teamId: string, mutate: (team: Team) => Team): void {
-		this.store.update((state) => ({
-			...state,
-			teams: state.teams.map((team) => (team.id === teamId ? mutate(team) : team))
-		}));
-	}
+	return 'Could not save your team. Please try again.';
 }
 
 export const teamService = new TeamService();
 
-/**
- * The active team's colour: the rolled colour of its lead — the first filled slot
- * — which is the colour the rest of the team is bound to (see `teammateColors`).
- * Null when no team is active, when the active one is still empty, or before the
- * player's spawns have loaded, so anything painted with it can fall back to
- * nothing rather than to a wrong colour.
- */
-export const activeTeamColor: Readable<SpawnColor | null> = derived(
-	[teamService.store, spawnService.spawns],
-	([state, spawns]) => {
-		const team = state.teams.find((entry) => entry.id === state.activeTeamId) ?? null;
-		const leadId = team?.memberIds.find((id): id is string => Boolean(id)) ?? null;
-		if (!leadId) return null;
-		return spawns.find((spawn) => spawn.id === leadId)?.color ?? null;
-	}
-);
+/** The team's colour, for anything painted in it (see {@link TeamService.color}). */
+export const teamColor: Readable<SpawnColor | null> = teamService.color;

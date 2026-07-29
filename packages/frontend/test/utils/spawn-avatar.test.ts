@@ -16,6 +16,7 @@ function spawn(characterId: string, color: SpawnColor, id = crypto.randomUUID())
 		showId: null,
 		locationId: 'ES_08028',
 		color,
+		teamSlot: null,
 		createdAt: '2026-07-28T00:00:00.000Z'
 	};
 }

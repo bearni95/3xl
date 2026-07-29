@@ -159,12 +159,18 @@ class SpawnService {
 		return new Map((data ?? []).map((show) => [Number(show.id), show.name as string]));
 	}
 
-	/** Load the signed-in player's spawns into the store, newest first. */
+	/**
+	 * Load the signed-in player's spawns into the store, newest first.
+	 *
+	 * `team_slot` comes with them: the player's team is not a list kept anywhere,
+	 * it is the three of these cards that hold a slot, so loading the roster loads
+	 * the team with it (see {@link setTeam} and `teamService`).
+	 */
 	async loadSpawns(userId: string): Promise<CharacterSpawn[]> {
 		const supabase = getSupabaseClient();
 		const { data, error } = await supabase
 			.from('character_spawns')
-			.select('id, user_id, character_id, show_id, location_id, color, created_at')
+			.select('id, user_id, character_id, show_id, location_id, color, team_slot, created_at')
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false });
 		if (error) throw error;
@@ -229,6 +235,51 @@ class SpawnService {
 		const removed = new Set(spawnIds);
 		this.spawnsStore.update((current) => current.filter((spawn) => !removed.has(spawn.id)));
 		return { recycled, granted };
+	}
+
+	/**
+	 * Field a team: `slots` is the line-up in fielded order (the lead first), as
+	 * spawn ids with `null` for an empty slot, and it replaces whatever the player
+	 * had — one team per player is the shape of the table, so saving a line-up is
+	 * saving THE line-up.
+	 *
+	 * The `set_team` security-definer RPC is the only path to the `team_slot`
+	 * column (the table takes no client update at all) and it is what decides
+	 * whether the line-up is legal: the caller's own cards, each named once, every
+	 * one of them sharing a colour with the lead. The store is moved first so the
+	 * roster answers the tap immediately, and put back exactly as it was if the
+	 * server refuses — a refused team never sits on screen as though it took.
+	 */
+	async setTeam(slots: (string | null)[]): Promise<void> {
+		const supabase = getSupabaseClient();
+		const previous = this.snapshot();
+		this.applyTeamSlots(slots);
+		const { error } = await supabase.rpc('set_team', { p_team: slots });
+		if (error) {
+			this.spawnsStore.set(previous);
+			throw error;
+		}
+	}
+
+	/** The spawn list as it stands, for restoring it after a refused write. */
+	private snapshot(): CharacterSpawn[] {
+		let current: CharacterSpawn[] = [];
+		this.spawnsStore.subscribe((spawns) => (current = spawns))();
+		return current;
+	}
+
+	/** Re-slot every spawn in the store to match `slots` (everything else clears). */
+	private applyTeamSlots(slots: (string | null)[]): void {
+		const slotById = new Map<string, number>();
+		slots.forEach((id, index) => {
+			if (id) slotById.set(id, index);
+		});
+		this.spawnsStore.update((current) =>
+			current.map((spawn) => {
+				const slot = slotById.get(spawn.id) ?? null;
+				return spawn.teamSlot === slot ? spawn : { ...spawn, teamSlot: slot };
+			})
+		);
 	}
 
 	/**

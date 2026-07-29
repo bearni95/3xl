@@ -13,6 +13,7 @@
 	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
 	import ClaimPackGrid from '$components/core/pack/ClaimPackGrid.svelte';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
+	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import Countdown from '$components/core/Countdown.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
@@ -785,14 +786,13 @@
 			spawnedAt: null
 		})))(characterFaces, characterShowNames);
 
-	// --- The player's own active team (the panel's account section) --------------
-	// Drawn on the very same CardCanvas as a town's team, right under the account card:
-	// the side this player would field, so what they are challenging with is read
-	// against the town they are looking at without leaving the map for the roster.
-	// Slots hold spawn ids, so the team is only renderable once the player's spawns are
-	// in; empty slots are simply left out, and a team with none drawn shows nothing.
-	const teamStore = teamService.store;
-	const playerSpawns = spawnService.spawns;
+	// --- The player's own team (the panel's account section) ---------------------
+	// Stood up in the document right under the account card (see TeamLineup): the side
+	// this player would field, so what they are challenging with is read against the
+	// town they are looking at without leaving the map for the roster.
+	// The team is the slots on the player's own cards, so it is only renderable once
+	// those have loaded; empty slots are left out, and a team with none shows nothing.
+	const teamSpawns = teamService.fielded;
 
 	// The signed-in player's id, or null — what their spawns are loaded for.
 	$: currentUserId = $profile ? String($profile.id) : null;
@@ -805,16 +805,11 @@
 		void spawnService.loadSpawns(currentUserId).catch(() => {});
 	}
 
-	// Whichever roster team is marked active (teams live in localStorage), and the
-	// spawns its filled slots name, in slot order — the leader first, as on the board.
-	$: activeTeam = $teamStore.teams.find((team) => team.id === $teamStore.activeTeamId) ?? null;
-	$: playerSpawnById = new Map($playerSpawns.map((spawn) => [spawn.id, spawn]));
-	$: activeTeamSpawns = (activeTeam?.memberIds ?? [])
-		.map((id) => (id ? (playerSpawnById.get(id) ?? null) : null))
-		.filter((spawn): spawn is CharacterSpawn => !!spawn);
-
-	// Their portraits, through the same lazy loader the town's team uses.
-	$: void loadFaces(activeTeamSpawns.map((spawn) => spawn.characterId));
+	// The cards the player fields come in slot order — the leader first, as on the
+	// board. They ARE the team: a card holds a team slot or it doesn't, so this is the
+	// same line-up on every device the account is signed in on.
+	// Their portraits load through the same lazy loader the town's team uses.
+	$: void loadFaces($teamSpawns.map((spawn) => spawn.characterId));
 
 	// geojson feature id → municipality name, so each card can name where it was
 	// claimed. Null until the layer the map is drawn from has loaded.
@@ -829,18 +824,18 @@
 		return ULTRAMAR.municipality;
 	}
 
-	// The active team as display CardModels. Same shape as the town's, from the
-	// player's own spawns instead of a seeded roll: the rolled colour is theirs, the
+	// The player's team as display CardModels. Same shape as the town's, from their
+	// own cards instead of a seeded roll: the rolled colour is theirs, the
 	// claim place is where they pulled it, and the show row names the
 	// character's own show as it does on the roster and the combat board. No rarity —
 	// this panel doesn't read that Supabase layer. Every resolved map is threaded in so
 	// the statement re-runs as faces, shows and place names arrive.
-	$: activeTeamCards = ((
+	$: playerTeamCards = ((
 		faces: Map<string, string | null>,
 		shows: Map<string, string[]>,
 		names: Map<string, string> | null
 	): CardModel[] =>
-		activeTeamSpawns.map((spawn) => ({
+		$teamSpawns.map((spawn) => ({
 			label: charactersById.get(spawn.characterId)?.label ?? spawn.characterId,
 			basePath: charactersById.get(spawn.characterId)?.basePath ?? null,
 			faceUrl: faces.get(spawn.characterId) ?? null,
@@ -854,7 +849,7 @@
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
 	// plus everything the fight has to be reported against — the town's id and the
 	// turnover generation it was on — all frozen at click time. Null when the modal is
-	// closed. The player's own active team is the other side, fielded by CombatArena —
+	// closed. The player's own team is the other side, fielded by CombatArena —
 	// combat happens right here over the map, never navigating away.
 	let fightSpawns: CharacterSpawn[] = [];
 	let fightLocationId: string | null = null;
@@ -866,18 +861,12 @@
 	// would refuse anyway).
 	let challengeStarting = false;
 
-	// The side this player would field, as spawn ids in slot order. Read off
-	// `activeTeamSpawns`, which is the active team's slots **resolved against the
-	// player's own spawns** — so a slot naming a card claimed by another account or
-	// recycled since simply isn't in here.
-	$: fieldedTeam = activeTeamSpawns.map((spawn) => spawn.id);
-
-	// Whether there is a team to fight with at all. `start_battle` proves the same
-	// thing in the database and refuses to open a battle without it, so offering the
-	// button would only be offering a fight the server will not have. Signed out there
-	// is no team to read and no battle to open: the arena's own sign-in gate is still
-	// the way in, so the button stays live.
-	$: canFieldTeam = !currentUserId || fieldedTeam.length === TEAM_SIZE;
+	// Whether there is a team to fight with at all. `start_battle` fields the team off
+	// the player's own cards and refuses to open a battle unless all TEAM_SIZE slots
+	// are held, so offering the button would only be offering a fight the server will
+	// not have. Signed out there is no team to read and no battle to open: the arena's
+	// own sign-in gate is still the way in, so the button stays live.
+	$: canFieldTeam = !currentUserId || $teamSpawns.length === TEAM_SIZE;
 
 	// --- The panel's mobile shape ------------------------------------------------
 	// Narrow viewports have no room for a 36rem column beside the map, so below `md` the
@@ -960,7 +949,7 @@
 				// so the fight survives the town changing hands, cannot be walked away from
 				// for a fresh one, and is never opened with a line-up the report would
 				// later be refused for.
-				const challengeSlot = await battleService.start(townId, turnover, rivals, fieldedTeam);
+				const challengeSlot = await battleService.start(townId, turnover, rivals);
 				if (challengeSlot) territoryService.noteChallenge(challengeSlot);
 			} catch (error) {
 				// Refused: a team that is not the caller's, already fought today, already
@@ -1444,18 +1433,15 @@
 			<div class="flex-none border-b border-base-300 px-4 py-3">
 				<AuthMenu embedded />
 
-				{#if activeTeamCards.length > 0}
-					<!-- The team this player fields, on the same card canvas a town's team is drawn
-						on — so the side challenging and the side holding read alike. Under the
-						account card because it is part of who the player is here, not part of any
-						tab. The grid layout sizes the row to fill the width exactly: each card is
-						as wide as its cell, at 1:1, never scaled down to fit a box. Its height is
-						therefore the width's — one row of TEAM_SIZE cards at the canvas's 2:3
-						portrait aspect comes to half the width, which is what aspect-[2/1] gives
-						it, so the whole row is on screen with nothing to pan or clip. The player's
-						own cards keep the canvas's default mirrored art, unlike a rival town's. -->
-					<div class="mt-3 aspect-[2/1] w-full overflow-hidden rounded-box bg-base-200">
-						<CardCanvas cards={activeTeamCards} columns={TEAM_SIZE} layout="grid" />
+				{#if playerTeamCards.length > 0}
+					<!-- The team this player fields, standing in the document itself rather than
+						on a canvas: each character's idle animation on its own colour, fitted to
+						the very box a card fits it into, so it reads at the size it does on its
+						card. Under the account card because it is part of who the player is here,
+						not part of any tab. A canvas here was a WebGL context — and a whole card's
+						worth of chrome — spent on three sprites the panel only ever shows. -->
+					<div class="mt-3">
+						<TeamLineup members={playerTeamCards} />
 					</div>
 				{/if}
 			</div>

@@ -54,18 +54,16 @@ class BattleService {
 
 	/**
 	 * Open a battle over `locationId` against `rivals`, the team the map is showing on
-	 * that town, on the generation `turnover` it is showing them as, fought with
-	 * `team` — the player's own line-up, in fielded order, as spawn ids.
+	 * that town, on the generation `turnover` it is showing them as.
 	 *
 	 * The rival line-up is frozen server-side here, which is what lets a fight outlive
 	 * the town changing hands: whoever takes it, this battle goes on being against the
-	 * three that were sitting there when it started. The player's own line-up is
-	 * **proved** there in the same breath — three of their own claimed spawns, each
-	 * named once — so a team this browser only thinks it has (claimed by another
-	 * account, or recycled since) is refused before any fight exists to be lost. The
-	 * day's challenge is spent in the same transaction, so a refusal (a bad team,
-	 * already fought today, a battle already open, the caller holds the town) costs
-	 * nothing.
+	 * three that were sitting there when it started. The player's own line-up is not
+	 * passed at all — `start_battle` reads it off the team slots on their own cards
+	 * and hands it back, so the fight is fought with the team the account holds rather
+	 * than with anything this browser believes about it. The day's challenge is spent
+	 * in the same transaction, so a refusal (an unfinished team, already fought today,
+	 * a battle already open, the caller holds the town) costs nothing.
 	 *
 	 * Returns the challenge slot that was spent, so the map can close that town's
 	 * button without a reload — or null when Supabase is unconfigured.
@@ -73,8 +71,7 @@ class BattleService {
 	async start(
 		locationId: string,
 		turnover: number,
-		rivals: readonly TeamMemberRoll[],
-		team: readonly string[]
+		rivals: readonly TeamMemberRoll[]
 	): Promise<MunicipalityChallenge | null> {
 		if (!locationId) throw new Error('A town is required to start a challenge.');
 		if (!isSupabaseConfigured()) return null;
@@ -83,8 +80,7 @@ class BattleService {
 		const { data, error } = await supabase.rpc('start_battle', {
 			p_location_id: locationId,
 			p_turnover: Math.max(0, Math.trunc(turnover) || 0),
-			p_rivals: battleAdapter.rivalsToJson(rivals),
-			p_team: [...team]
+			p_rivals: battleAdapter.rivalsToJson(rivals)
 		});
 		if (error) throw error;
 
@@ -93,7 +89,9 @@ class BattleService {
 			locationId,
 			turnover: Math.max(0, Math.trunc(turnover) || 0),
 			rivals: [...rivals],
-			team: [...team],
+			// The line-up the server fielded, which is the one the report will be judged
+			// against — taken from its answer rather than restated from here.
+			team: Array.isArray(row?.fielded_team) ? row.fielded_team.map(String) : [],
 			board: null,
 			startedAt: String(row?.opened_at ?? new Date().toISOString())
 		});
