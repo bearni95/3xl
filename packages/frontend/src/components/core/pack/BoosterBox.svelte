@@ -3,9 +3,9 @@
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { spawnYearLabel } from '$utils/spawn/year';
 
-	// One unopened booster box, drawn in the document: a lid seen from above with the
-	// place the box belongs to printed on it, and under it the face of the box — the
-	// show's poster, filling it edge to edge.
+	// One unopened booster box, drawn in the document: a plain lid seen from above, and
+	// under it the face of the box — the show's poster filling it edge to edge, with the
+	// place the box belongs to laid over the top of it.
 	//
 	// The face is 3:4, the very box a CharacterStatue is drawn in — a booster and the
 	// cards it opens onto are the same object at two moments, and a grid that changes
@@ -13,10 +13,10 @@
 	// that, so the whole component is 2:3 (see LID_DEPTH). Both ratios are the
 	// component's own, not the host's: hand it a width and it takes the height that goes
 	// with it, hand it a height and it gives the width back, so the same component is a
-	// grid cell or the whole panel purely by the box it is put in. What is written on it is
-	// sized off that width (the box declares itself the container), which is what keeps the
-	// lid's printing the same share of the lid at both sizes rather than a caption that
-	// grows out of it.
+	// grid cell or the whole panel purely by the box it is put in. The title and the ground
+	// under it are sized off that width (the box declares itself the container), which is
+	// what keeps both the same share of the picture at either size rather than a caption
+	// that grows out of it.
 	//
 	// (Both outer edges used to be serrated into teeth, after the texture PackSprite
 	// bakes. A booster is picked out of a grid by the poster on it; the teeth only ate
@@ -25,7 +25,7 @@
 
 	// Show poster used as the cover, or null for a plain frame.
 	export let coverUrl: string | null = null;
-	// Full name of the place the box belongs to, printed on the lid.
+	// Full name of the place the box belongs to, titling the front.
 	export let locationName: string | null = null;
 	export let classes: string = '';
 
@@ -49,7 +49,7 @@
 	const LID_DEPTH = 'h-[calc(100cqw/6)]';
 	const LID = 'origin-bottom [transform:perspective(187.826cqw)_rotateX(75.373deg)]';
 
-	// What the lid says, exactly as the baked pack says it: the place with the year this
+	// What the title says, exactly as the baked pack says it: the place with the year this
 	// copy would be minted in joined to it — "Barcelona '26". The gazetteer parks the
 	// article after a comma to sort by, so it is put back at the front before the name
 	// is said.
@@ -73,36 +73,40 @@
 			turns about, so it is the one line the lid and the face share, and the box reads
 			as one object folded at it. -->
 		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square bg-neutral', LID)}>
-			<!-- The place is printed on the lid rather than captioned above the poster, so it
-				lies in the plane and takes the tilt with it: set in the square before the turn
-				and squashed by it like anything else up there. That is what the size is for —
-				the turn leaves a line about a quarter of the height it was set at (cos 75.373°,
-				a little less again at the back of the square), so 12cqw here reads at about the
-				3cqw a band would have been given, and a name that no longer fits the width
-				wraps rather than being cut, the square having depth to spare. Centred in the
-				square, which puts it nearer the front edge than the middle once the
-				perspective has had it: the near half of a lid is the half you can read. -->
-			<div
-				class="absolute inset-0 flex items-center justify-center px-[6cqw] text-center text-[12cqw] font-bold leading-none text-balance text-neutral-content"
-				title={place}
-			>
-				{place}
-			</div>
 			<!-- The top plane catches the light the front does not: without it a lid in the
 				same flat neutral as the face below simply merges into it, and a box with no
-				edge between its top and its face is not a box. It goes over the printing, the
-				way the light falls across a lid and not under its ink. -->
+				edge between its top and its face is not a box. -->
 			<div class="absolute inset-0 bg-white/10"></div>
 		</div>
 	</div>
 
-	{#if coverUrl}
-		<!-- The poster is the front, edge to edge: nothing shares the face with it now, so
-			it fills the whole 3:4 rather than standing contained with the neutral showing
-			around it. A 2:3 poster covering a 3:4 box loses a tenth off its height, top and
-			bottom, which is the cost of a front that is all picture. -->
-		<img src={coverUrl} alt="" class="min-h-0 w-full flex-1 bg-neutral object-cover" />
-	{:else}
-		<div class="min-h-0 w-full flex-1 bg-neutral"></div>
-	{/if}
+	<!-- The face: the poster fills it and the title is laid over it, so this is the
+		positioning context for both rather than the poster being a flex item of its own.
+		It keeps the flex sizing the poster had, which is what still hands the box its 3:4. -->
+	<div class="relative min-h-0 w-full flex-1">
+		{#if coverUrl}
+			<!-- The poster is the front, edge to edge: nothing shares the face with it now, so
+				it fills the whole 3:4 rather than standing contained with the neutral showing
+				around it. A 2:3 poster covering a 3:4 box loses a tenth off its height, top and
+				bottom, which is the cost of a front that is all picture. -->
+			<img src={coverUrl} alt="" class="h-full w-full bg-neutral object-cover" />
+		{:else}
+			<div class="h-full w-full bg-neutral"></div>
+		{/if}
+
+		<!-- The title over the poster, pinned to the top of the front. It is over the picture
+			and not in a band of its own, so it cannot be given a solid backing without
+			cutting the poster off at a line; the gradient is how it gets its own ground
+			instead — black where the letters are and gone by the bottom of it, so the poster
+			darkens into the title rather than ending at it. The fade wants more room than the
+			words do, hence the bottom padding: the text sits in the solid end of it and the
+			rest is the fall to nothing. White type, because it is black it is being read on
+			now and no longer the lid's neutral. -->
+		<div
+			class="absolute inset-x-0 top-0 bg-gradient-to-b from-black to-transparent px-[3cqw] pt-[2cqw] pb-[9cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance text-white"
+			title={place}
+		>
+			{place}
+		</div>
+	</div>
 </div>
