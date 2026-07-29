@@ -66,9 +66,9 @@
 		/**
 		 * Booster boxes stood on individual points (the festa-major towns the booster
 		 * window reaches), hung under the same points the region pins stand on — a town
-		 * keeps its pin and gets a box. Every one of them is marked at every zoom, but
-		 * only the finest pin tier (the one where a town is its own pin) gets the box
-		 * itself; above that each is a disc of the box's own stock (see discElement).
+		 * keeps its pin and gets a box. How one is marked follows the pin tier on screen
+		 * (see markKindForLevel): the box itself at the finest tier, a disc of the box's
+		 * own stock at the tiers between, and nothing at the coarsest.
 		 */
 		boxes?: MapBoosterBox[];
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
@@ -134,9 +134,9 @@
 	// each of them runs a timer of its own (a sprite's frames, a countdown's seconds),
 	// so every rebuild unmounts the previous crop first.
 	let pinMounts: Record<string, unknown>[] = [];
-	// The festa-box layer, rebuilt whenever the boxes prop changes. Kept separate from
-	// the region pins — every town in it is marked at every tier, only in two different
-	// ways (see rebuildBoxes) — and drawn under them.
+	// The festa-box layer, rebuilt whenever the boxes prop changes. Kept separate from the
+	// region pins — it follows their tier but marks its towns its own way, and at the
+	// coarsest tier not at all (see markKindForLevel) — and drawn under them.
 	let boxLayer: L.LayerGroup | null = null;
 	// The boxes are given a Leaflet pane of their own, and not for the stacking. The
 	// marker pane is a place no <img> can be sized in: leaflet.css resets every image in
@@ -152,17 +152,18 @@
 	// pins' mounts are: clearing the layer only detaches their DOM, and a box left
 	// mounted holds its poster and its logo for a town no longer on screen.
 	let boxMounts: Record<string, unknown>[] = [];
-	// Whether the pin tier on screen is the finest one — the tier where every town is its
-	// own pin, which is the tier a booster box is drawn at (see rebuildBoxes). Set by
-	// rebuildMarkers, which is what decides the tier, and read by rebuildBoxes, which
-	// runs right after it wherever the view changes (the moveend handler, the resize
-	// observer, and the two $effects in that order).
+	// Which pin tier is on screen and how many there are — the box layer marks a town by
+	// where the pins have got to (see markKindForLevel), so it needs both the tier and the
+	// two ends of the stack. Set by rebuildMarkers, which is what decides the tier, and
+	// read by rebuildBoxes, which runs right after it wherever the view changes (the
+	// moveend handler, the resize observer, and the two $effects in that order).
 	//
-	// A plain variable and not $state on purpose: the box layer is rebuilt in the same
-	// breath as the pins, so it wants the value and not a subscription to it — an effect
+	// Plain variables and not $state on purpose: the box layer is rebuilt in the same
+	// breath as the pins, so it wants the values and not a subscription to them — an effect
 	// woken by the tier changing would rebuild a second time and remount every box's
 	// pictures for nothing.
-	let finestLevelShown = false;
+	let pinLevelIndex = 0;
+	let pinLevelCount = 0;
 	// Watches the map container so Leaflet re-projects when the container resizes
 	// (e.g. a side panel opening reserves horizontal space). Torn down on destroy.
 	let resizeObserver: ResizeObserver | null = null;
@@ -459,9 +460,9 @@
 		const index = levels.length ? levelIndexForView(levels, mapInstance.getCenter()) : 0;
 		// Publish the chosen tier so the parent can mirror it (polygons, sidebar).
 		activeLevel = index;
-		// Tell the box layer whether the towns are being drawn one by one. A stack with
-		// nothing to fold (no levels, or a single rendering) is always at its finest.
-		finestLevelShown = index >= levels.length - 1;
+		// Tell the box layer where the pins have got to, so it can mark its towns to match.
+		pinLevelIndex = index;
+		pinLevelCount = levels.length;
 		const chosen = levels[index] ?? [];
 
 		// Remap every municipality of the chosen tier to its region's featureIds (from
@@ -577,26 +578,45 @@
 		return wrap;
 	}
 
-	// (Re)build the festa boxes for the current view: unmount the last crop, clear the
-	// layer, keep only the boxes inside the (padded) viewport, and drop a zero-sized
-	// divIcon at each. Runs on every boxes change and whenever the map pans or zooms, so
-	// the culling tracks what's on screen.
+	// How a town is marked at the pin tier on screen — the box layer says the same thing the
+	// pins do, at the size that tier has room for:
 	//
-	// Unlike the region pins nothing here folds away — every town the booster window
-	// reaches is marked at every zoom — but which mark it gets follows the pins' own
-	// tier: the box itself only where the towns are pinned one by one, and above that the
-	// disc, which is the same town said in the space a smaller mark has (see
-	// discElement).
+	// - the finest tier, where every town is its own pin, gets the box itself;
+	// - the tiers between get the disc, the same town in the space a smaller mark has;
+	// - the coarsest tier — the whole of the Països Catalans in one view, half a dozen
+	//   territory pins for thousands of towns — gets nothing at all. There is no reading a
+	//   town off a mark at that zoom: the festa towns of a whole territory land in one
+	//   handful of pixels, so the discs merge into a blot over the country that says only
+	//   that somewhere in there are festes, which the map already says with its pins. The
+	//   window's towns are for finding once the reader has picked a corner to look in.
+	//
+	// A stack with nothing to fold (no levels at all, or a single rendering) is at its
+	// finest tier by definition, and so keeps its boxes — the finest test is made first for
+	// exactly that reason, since level 0 is then both ends of the stack at once.
+	function markKindForLevel(): 'box' | 'disc' | null {
+		if (pinLevelIndex >= pinLevelCount - 1) return 'box';
+		if (pinLevelIndex === 0) return null;
+		return 'disc';
+	}
+
+	// (Re)build the festa boxes for the current view: unmount the last crop, clear the
+	// layer, and — unless the tier on screen marks no towns at all — keep only the boxes
+	// inside the (padded) viewport and drop a zero-sized divIcon at each, carrying whichever
+	// mark that tier calls for. Runs on every boxes change and whenever the map pans or
+	// zooms, so both the culling and the mark track what's on screen.
 	function rebuildBoxes() {
 		if (!mapInstance || !Leaf) return;
 		if (!boxLayer) boxLayer = Leaf.layerGroup().addTo(mapInstance);
 		unmountBoxMounts();
 		boxLayer.clearLayers();
 
+		const kind = markKindForLevel();
+		if (!kind) return;
+
 		const bounds = mapInstance.getBounds().pad(0.25);
 		for (const box of boxes) {
 			if (!bounds.contains(box.position)) continue;
-			const html = finestLevelShown ? boxElement(box) : discElement(box);
+			const html = kind === 'box' ? boxElement(box) : discElement(box);
 			const icon = Leaf.divIcon({ html, className: '', iconSize: [0, 0] });
 			const badge = Leaf.marker(box.position, { icon, riseOnHover: true, pane: BOX_PANE });
 			// No tooltip: the box already carries the town's name across its foot, and a
