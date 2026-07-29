@@ -79,8 +79,8 @@
 			turns about, so it is the one line the lid and the face share, and the box reads
 			as one object folded at it. -->
 		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square bg-neutral', LID)}>
-			<!-- The top plane catches the light the front does not: without it a lid in the
-				same flat neutral as the face below simply merges into it, and a box with no
+			<!-- The top plane catches the light the front does not, which is what puts an edge
+				between them: a top and a face in one flat colour are one shape, and a box with no
 				edge between its top and its face is not a box. -->
 			<div class="absolute inset-0 bg-white/10"></div>
 		</div>
@@ -88,13 +88,16 @@
 
 	<!-- The face: the box's own card stock, with the picture inset a twentieth of the width
 		on all four sides. The margin is the front's and not the poster's, which is why it is
-		padding here rather than an inset on the image — the neutral showing through it is
-		the same neutral the lid is, so the box reads as a printed board with a picture on it
-		instead of a picture with a box behind it. A percentage padding is a share of the
-		width on every side, top and bottom included, so the frame is an even width all round
-		rather than following the 3:4 out into a taller band above and below. This keeps the
-		flex sizing the poster had, which is what still hands the box its 3:4. -->
-	<div class="min-h-0 w-full flex-1 bg-neutral p-[5%]">
+		padding here rather than an inset on the image — the card showing through it is what
+		says the box is a printed board with a picture on it instead of a picture with a box
+		behind it. Black, and not the theme's neutral: the two fades over the picture are
+		black, so a black frame is the one colour that lets them run off the edges of the
+		poster into it rather than stopping against a border of another hue. A percentage
+		padding is a share of the width on every side, top and bottom included, so the frame
+		is an even width all round rather than following the 3:4 out into a taller band above
+		and below. This keeps the flex sizing the poster had, which is what still hands the
+		box its 3:4. -->
+	<div class="min-h-0 w-full flex-1 bg-black p-[5%]">
 		<!-- The picture and the two things written over it, in one box: the title and the mark
 			belong to the poster's edges, not the box's, so they are placed against this rather
 			than against the front — an absolute inset is measured off the padding box, and
@@ -107,9 +110,9 @@
 					centred in it with the neutral showing at its sides. A 2:3 poster covering a box
 					this shape loses about a tenth off its height, top and bottom, which is the cost
 					of a picture that is all picture. -->
-				<img src={coverUrl} alt="" class="h-full w-full bg-neutral object-cover" />
+				<img src={coverUrl} alt="" class="h-full w-full bg-black object-cover" />
 			{:else}
-				<div class="h-full w-full bg-neutral"></div>
+				<div class="h-full w-full bg-black"></div>
 			{/if}
 
 			<!-- The title over the poster, pinned to the top of the picture. It is over the
