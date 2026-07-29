@@ -46,11 +46,11 @@
 	// folder that identifies it, not the character.
 	let renderScale = DEFAULT_RENDER_SCALE;
 
-	// The veil: a rectangle the size the sheet is about to be, tiled with grey squares and
-	// held over the picture until the picture is actually there (see the markup). It is up
-	// from the moment the geometry is known, goes once every frame has loaded, and the three
-	// states are one thing rather than two flags because the order matters — up, then
-	// leaving, then not drawn at all.
+	// The veil: a rectangle the size the sheet is about to be, tiled with grey squares that
+	// blur themselves into place, held over the picture until the picture is actually there
+	// (see the markup). It is drawn from the moment the geometry is known, goes once every
+	// frame has loaded, and the three states are one thing rather than two flags because the
+	// order matters — up, then leaving, then not drawn at all.
 	//
 	// It holds a moment after the frames are ready before it starts to go, so the
 	// uncovering is a deliberate reveal of a finished picture rather than a race with
@@ -68,6 +68,11 @@
 
 	let veil: 'up' | 'fading' | 'down' = 'up';
 	let veilTimer: ReturnType<typeof setTimeout> | null = null;
+	// Whether the veil has finished blurring itself in, which it says for itself (see
+	// VeilBlock). The hold does not begin before then: art already in the browser's cache
+	// is ready within a frame or two of the veil going up, and a veil turned round halfway
+	// in reads as a flicker rather than as a reveal.
+	let veilShown = false;
 
 	// How many of the clip's frames the browser has finished with. Every frame is in
 	// the document at once, so the picture is up only when all of them are: the loop
@@ -85,10 +90,17 @@
 		void load(basePath);
 	}
 
+	/** The veil is all there. If the picture was ready before it was, the hold starts now. */
+	function onVeilShown(): void {
+		veilShown = true;
+		if (ready) uncover();
+	}
+
 	/** Hold the veil over the finished picture, then send it away and stop drawing it once
-	 * the sweep up its rows is over. */
+	 * the sweep up its rows is over. Not before it is all the way in — whichever of the two
+	 * happens last, the picture being ready or the veil arriving, is what starts the hold. */
 	function uncover(): void {
-		if (veil !== 'up' || veilTimer) return;
+		if (veil !== 'up' || !veilShown || veilTimer) return;
 		veilTimer = setTimeout(() => {
 			veil = 'fading';
 			veilTimer = setTimeout(() => {
@@ -98,11 +110,13 @@
 		}, VEIL_HOLD);
 	}
 
-	/** Put it back up, for a character whose picture is not there yet. */
+	/** Put it back up, for a character whose picture is not there yet. The new veil blurs
+	 * itself in from nothing exactly as the first one did, so it is not shown yet either. */
 	function cover(): void {
 		if (veilTimer) clearTimeout(veilTimer);
 		veilTimer = null;
 		veil = 'up';
+		veilShown = false;
 		loadedFrames = 0;
 	}
 
@@ -210,6 +224,7 @@
 				height="{placement.sheet.height}px"
 				cell={boxWidth * VEIL_CELL}
 				fading={veil === 'fading'}
+				on:shown={onVeilShown}
 			/>
 
 			<!-- Whatever else the surface wants veiled along with the picture: it is handed the

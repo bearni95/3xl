@@ -1,9 +1,11 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import { createEventDispatcher, onDestroy } from 'svelte';
 
 	// One piece of a loading veil: a rectangle somewhere in the box, tiled with a grid of
-	// grey squares, that goes away square by square when whatever it stands in for has
-	// arrived — the bottom row first, then up.
+	// grey squares, that blurs itself into place square by square and, when whatever it
+	// stands in for has arrived, blurs away again — in from the top down, out from the
+	// bottom up, the two sweeps being the one sweep run either way.
 	//
 	// It is a shape and nothing else — it neither knows what is loading nor decides when to
 	// go. A surface says where it is and how big, and whoever is doing the loading says
@@ -28,6 +30,12 @@
 	// back; the caller stops drawing the piece once the sweep is over.
 	export let fading: boolean = false;
 
+	// Says when every square is in and the veil is at full strength. What put it up waits
+	// for this before it counts towards taking it down — a veil caught halfway in and sent
+	// straight back out reads as a flicker rather than as a reveal, which is exactly what a
+	// character whose art is already in the browser's cache would get.
+	const dispatch = createEventDispatcher<{ shown: void }>();
+
 	// How long one square takes to go, how far apart the bottom row and the top one start,
 	// and how late a column can be on top of that. The three add up to the whole sweep,
 	// which is IdleSprite's VEIL_FADE — it stops drawing this at that point, so a sweep that
@@ -37,6 +45,11 @@
 	const VEIL_BLUR_MS = 150;
 	const VEIL_STAGGER_MS = 100;
 	const VEIL_COLUMN_MS = 50;
+
+	// The waiting a square can be asked to do, and the whole of a sweep: the last square to
+	// start, plus its own blur. Both sweeps are that long, being the same one either way.
+	const VEIL_SPREAD_MS = VEIL_STAGGER_MS + VEIL_COLUMN_MS;
+	const VEIL_SWEEP_MS = VEIL_SPREAD_MS + VEIL_BLUR_MS;
 
 	// How late each column is, as a share of that. Uneven on purpose and in no order: a
 	// column that waited a step longer than the one beside it would only tilt the wave and
@@ -89,14 +102,45 @@
 	// fixed at VEIL_STAGGER_MS however many rows there are, so a tall sheet and a short one
 	// are uncovered in the same time and every piece of the veil stays on the one clock —
 	// and its column adds the rest, which is what stops a row going all at once as a band.
+	// Coming in it waits for what is left of the spread after that, which is the sweep run
+	// backwards: the square that leaves first arrives last, so the veil is drawn on from the
+	// top down and taken off from the bottom up, and neither end of its life is the other
+	// end played again in the same direction.
 	$: cells = Array.from({ length: columns * rows }, (_, index) => {
 		const rowsFromBottom = rows - 1 - Math.floor(index / columns);
 		const rowWait = rows > 1 ? (rowsFromBottom / (rows - 1)) * VEIL_STAGGER_MS : 0;
 		const columnWait = COLUMN_WAITS[(index % columns) % COLUMN_WAITS.length] * VEIL_COLUMN_MS;
+		const waitOut = Math.round(rowWait + columnWait);
 		return {
 			shade: CELL_SHADES[index % CELL_SHADES.length],
-			delay: Math.round(rowWait + columnWait)
+			waitOut,
+			waitIn: VEIL_SPREAD_MS - waitOut
 		};
+	});
+
+	// The squares are drawn hidden and blur themselves in, once there are squares to draw.
+	let entered = false;
+	let entering = false;
+	let shownTimer: ReturnType<typeof setTimeout> | null = null;
+
+	$: if (cells.length > 0) enter();
+
+	function enter(): void {
+		if (entering) return;
+		entering = true;
+		// Two frames, not one: the squares have to have been drawn hidden, and had that
+		// drawing settled, before the state that unhides them lands — otherwise the browser
+		// has no earlier value to work from and they simply appear.
+		requestAnimationFrame(() =>
+			requestAnimationFrame(() => {
+				entered = true;
+				shownTimer = setTimeout(() => dispatch('shown'), VEIL_SWEEP_MS);
+			})
+		);
+	}
+
+	onDestroy(() => {
+		if (shownTimer) clearTimeout(shownTimer);
 	});
 
 	// The rectangle: a clipped grid of squares of the given size, its rows held to the
@@ -117,9 +161,13 @@
 	// It blurs as it goes rather than simply fading, and thins as it blurs: blur alone never
 	// clears a tiled surface, since it only spreads a square's ink over its neighbours' room
 	// and the middle of the block stays as solid as it started, whatever the radius.
+	//
+	// Blurred and gone is where it starts as well as where it ends — one state, reached from
+	// either side, which is what makes the entrance the exit backwards rather than a second
+	// animation written to look like it.
 	$: cellClasses = classNames(
 		'bg-white p-px transition-[filter,opacity] duration-150 delay-[var(--veil-delay)]',
-		fading ? 'opacity-0 blur-[var(--veil-blur)]' : 'opacity-100 blur-[0px]'
+		!entered || fading ? 'opacity-0 blur-[var(--veil-blur)]' : 'opacity-100 blur-[0px]'
 	);
 </script>
 
@@ -138,8 +186,11 @@
 	bind:clientHeight={boxHeight}
 	aria-hidden="true"
 >
-	{#each cells as { shade, delay }}
-		<div class={cellClasses} style:--veil-delay="{delay}ms">
+	{#each cells as { shade, waitIn, waitOut }}
+		<!-- Which of a square's two waits is on it is whichever way it is going: it is coming
+			in until it is told to leave, and there is one transition either way, so the wait is
+			swapped under it at the moment the state it is transitioning to changes. -->
+		<div class={cellClasses} style:--veil-delay="{fading ? waitOut : waitIn}ms">
 			<div class="h-full w-full {shade}"></div>
 		</div>
 	{/each}
