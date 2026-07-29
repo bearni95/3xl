@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '$utils/card/CardSprite';
+import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '$utils/card/character-fit';
 
 /** A one-frame idle cycle of the given native size, its body axis centred. */
 const frame = (width: number, height: number, anchorX = 0.5) => [{ width, height, anchorX }];

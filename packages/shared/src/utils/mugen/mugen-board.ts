@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { destroyPixiApp } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
-import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/CardSprite';
+import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/character-fit';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
 	boardCells,
