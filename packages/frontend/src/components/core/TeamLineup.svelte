@@ -11,7 +11,6 @@
 	export let members: {
 		label: string;
 		basePath: string | null;
-		faceUrl: string | null;
 		color: SpawnColor;
 	}[] = [];
 	// Mirror the characters — true (the default) is the player's own side.
@@ -41,12 +40,7 @@
 				short one does not — and nothing is inset or clipped, so no part of a frame
 				is ever cut. -->
 			<div class={classNames('aspect-square w-full rounded-box', colorFills[member.color])}>
-				<IdleSprite
-					basePath={member.basePath}
-					faceUrl={member.faceUrl}
-					label={member.label}
-					{flipped}
-				/>
+				<IdleSprite basePath={member.basePath} label={member.label} {flipped} />
 			</div>
 
 			<!-- Who that is. A name too long for the column is cut with an ellipsis rather

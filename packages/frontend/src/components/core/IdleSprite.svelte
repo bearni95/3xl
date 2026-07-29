@@ -14,10 +14,11 @@
 	// the picture is worth.
 
 	// The character's frames folder (e.g. `/assets/<id>/frames`); null draws nothing.
+	// There is no portrait to fall back on: this is the animation or it is nothing. A
+	// still face standing in for a clip that merely failed to load (a dev reload
+	// cancelling the fetch, say) reads as a different character rather than as a
+	// missing one, and leaves the strip looking half-broken instead of empty.
 	export let basePath: string | null = null;
-	// Static portrait, shown when the character ships no idle clip — the same fallback
-	// the card makes. Null leaves the box empty.
-	export let faceUrl: string | null = null;
 	// What the picture is of, for anyone not looking at it.
 	export let label: string = '';
 	// Mirror the character horizontally — the normal look for the player's own cards.
@@ -130,13 +131,5 @@
 				style:--sprite-height="{frame.height}px"
 			/>
 		{/each}
-	{:else if faceUrl}
-		<img
-			src={faceUrl}
-			alt=""
-			class={classNames('absolute inset-0 m-auto max-h-full max-w-full object-contain', {
-				'-scale-x-100': flipped
-			})}
-		/>
 	{/if}
 </div>
