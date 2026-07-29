@@ -44,6 +44,12 @@
 	// bottom edge. 0 (the default) is the bottom itself; a surface that draws a ground
 	// plane raises it to the point on that plane the character stands at.
 	export let baseline: number = 0;
+	// How wide the loading veil is, as a share of the box's width, centred in it. The veil
+	// stands where the character will and rises as high as one can be drawn here, so its
+	// height and its foot are read off `baseline` — but how wide a character's ground is at
+	// the point they stand on it is the surface's own affair, a flat box and a floor seen in
+	// perspective giving quite different answers, and it is the surface that says.
+	export let veilWidth: number = 1;
 	export let classes: string = '';
 
 	// The box the clip is placed in, measured rather than assumed: the caller sizes it
@@ -193,6 +199,20 @@
 				)
 			: null;
 
+	// Where the veil stands: on the baseline, as tall as the room above it — the whole of
+	// what a character can be drawn in here, since the fit is measured from that same room
+	// (see placeIdleClip) — and `veilWidth` of the box across, centred. It is deliberately
+	// not the sheet's own box: the sheet is as big as this character happens to be, and a
+	// veil the shape of the thing behind it announces the character before it is there,
+	// coming out short for a small one and full height for a tall one when nothing is known
+	// yet either way. This is the room the picture will appear in, not the picture.
+	$: veilBox = {
+		left: (boxWidth * (1 - veilWidth)) / 2,
+		bottom: boxHeight * baseline,
+		width: boxWidth * veilWidth,
+		height: boxHeight * (1 - baseline)
+	};
+
 	// The picture is up: the geometry is settled and every frame the sheet holds has
 	// loaded. Only then does the veil begin to come down — a placement on its own says
 	// where the character will be, not that it is there yet.
@@ -238,34 +258,20 @@
 		{/each}
 
 		{#if veil !== 'down'}
-			<!-- The veil, last in the box so it covers the frames: a rectangle exactly the sheet
-				the clip is about to sweep out, standing where the character will stand. It goes
-				up as soon as that box is known — which is before any frame's art has arrived —
-				so the card shows the character's own footprint while it loads instead of the
-				floor showing through, and every frame that pops in as it decodes does so behind
-				it. What it looks like is VeilBlock's; this only measures it. -->
+			<!-- The veil, last in the box so it covers the frames: the room the character is about
+				to stand in, standing on the same baseline they will. It goes up as soon as the
+				box is measured — which is before any frame's art has arrived — so the card shows
+				where the character is coming while it loads instead of the floor showing through,
+				and every frame that pops in as it decodes does so behind it. What it looks like is
+				VeilBlock's; this only measures it. -->
 			<VeilBlock
-				left="{placement.sheet.left}px"
-				bottom="{placement.sheet.bottom}px"
-				width="{placement.sheet.width}px"
-				height="{placement.sheet.height}px"
+				left="{veilBox.left}px"
+				bottom="{veilBox.bottom}px"
+				width="{veilBox.width}px"
+				height="{veilBox.height}px"
 				cell={boxWidth * VEIL_CELL}
 				fading={veil === 'fading'}
 				on:shown={onVeilShown}
-			/>
-
-			<!-- Whatever else the surface wants veiled along with the picture: it is handed the
-				clock's own state, the sheet's height and the size of a square, and puts up its own
-				VeilBlock with them, so its piece is tiled the same and leaves with this one
-				without knowing anything about when the art arrived — one veil in several pieces,
-				not a second one to keep in step. The geometry stays with whoever owns it: a
-				rectangle measured off the floor tile is the surface's to place, the tile being no
-				part of a sprite. -->
-			<slot
-				name="veil"
-				fading={veil === 'fading'}
-				sheetHeight={placement.sheet.height}
-				cell={boxWidth * VEIL_CELL}
 			/>
 		{/if}
 	{/if}

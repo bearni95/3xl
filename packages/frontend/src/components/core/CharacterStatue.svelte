@@ -2,7 +2,6 @@
 	import classNames from 'classnames';
 	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
-	import VeilBlock from '$components/core/VeilBlock.svelte';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { spawnYearLabel } from '$utils/spawn/year';
 	import { showIconName } from '$utils/show/show-icon';
@@ -93,18 +92,17 @@
 	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(48.01deg)]';
 	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-48.01deg)]';
 
-	// The tile as the loading veil measures it (see the markup): the flat run the cut leaves
-	// along the front edge, and how far above that edge the side cuts reach. The front edge
-	// is the axis the tile turns about, so its cut run is untouched by the perspective — the
-	// tenth mark to the ninth, four fifths of the card, the panel's own width. The side cut
-	// is a tenth of the side, which the tilt draws down to 0.1·(2/3)/1.1 = 0.0606 of the card
-	// above that edge (the figure the bevel faces are built on above). Lengths rather than
-	// classes because they go into the veil's own custom properties: it is one shape drawn by
-	// one rule wherever it is put, and a surface hands it nothing but numbers. The cqw is the
-	// inner square's, the veil living inside it, which is the same width as the card.
-	const VEIL_BLOCK_LEFT = '10cqw';
-	const VEIL_BLOCK_WIDTH = '80cqw';
-	const VEIL_BLOCK_BOTTOM = '6.0606cqw';
+	// How wide the loading veil stands while a character's art is on its way: two fifths of
+	// the floor they stand on, measured where they stand on it rather than at the front edge.
+	// The tile is a square in perspective, so how wide it is depends on how far back you
+	// take it: at depth y it is drawn S·d/(d + y·sinθ) across, which with d = S·sinθ is
+	// simply S/(1 + y/S). The character stands at BASELINE, a drawn height of S/6 above the
+	// front edge, and y·cosθ/(1 + y/S) = S/6 puts that at y = S/3 — a third of the way back,
+	// where the tile is three quarters of the card wide. Two fifths of that is 0.3.
+	//
+	// A share rather than a length: the veil's own height and foot come from the baseline it
+	// is handed, and this is the one part of its shape the floor has to answer for.
+	const VEIL_WIDTH = 0.3;
 
 	// The character stands halfway up that plane — on the middle of the floor, with as
 	// much of it behind them as in front.
@@ -174,23 +172,13 @@
 				{/if}
 			</div>
 
-			<IdleSprite {basePath} {label} {flipped} baseline={BASELINE}>
-				<!-- One more piece of the sprite's loading veil, upright beside the rectangle over
-					the picture: as wide as the cut leaves the tile's front edge, standing as far
-					above that edge as the side cuts reach, and as tall as the character's sheet is
-					about to be. Not a second veil — the sprite hands over its own clock and its
-					sheet's height, so this piece holds and fades with that one. -->
-				<svelte:fragment slot="veil" let:fading let:sheetHeight let:cell>
-					<VeilBlock
-						left={VEIL_BLOCK_LEFT}
-						bottom={VEIL_BLOCK_BOTTOM}
-						width={VEIL_BLOCK_WIDTH}
-						height="{sheetHeight}px"
-						{cell}
-						{fading}
-					/>
-				</svelte:fragment>
-			</IdleSprite>
+			<IdleSprite
+				{basePath}
+				{label}
+				{flipped}
+				baseline={BASELINE}
+				veilWidth={VEIL_WIDTH}
+			/>
 		</div>
 	</div>
 
