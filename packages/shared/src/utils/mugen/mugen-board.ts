@@ -239,6 +239,12 @@ const ORDER_DISABLED_ALPHA = 0.35;
  */
 const ORDER_RESERVE_RATIO = 0.5;
 
+// --- Trait badges (drawn on the board, at the top-left corner of a fighter) ---
+/** A trait glyph's size, as a fraction of the fighter's nominal width. */
+const TRAIT_ICON_RATIO = 0.26;
+/** Gap between a compound's two glyphs, as a fraction of one glyph's size. */
+const TRAIT_SPACING_RATIO = 0.2;
+
 /** Lifetime of a strike slash overlay (ms). */
 const SLASH_MS = 420;
 
@@ -340,6 +346,7 @@ interface OrderStrip {
 	buttons: OrderButton[];
 }
 
+
 /** A character standing (and, during combat, running) on the board. */
 interface Actor {
 	/** Stable id (character id or basePath's first segment), used to command it. */
@@ -390,6 +397,13 @@ interface Actor {
 	/** The row of order buttons drawn under this fighter, or null when it commands
 	 * nothing (every rival, and the player's side once the fight is over). */
 	orders: OrderStrip | null;
+	/**
+	 * The glyphs of what this fighter's colour grants it for free, drawn at its
+	 * top-left corner, or null when nothing has been said about it. Set once — a
+	 * colour is fixed for the whole fight — and thereafter only carried along as the
+	 * fighter walks, so the badge keeps nothing but the container it hangs from.
+	 */
+	traits: Container | null;
 	/** Nominal on-screen size (px) of the character at its fit scale, measured
 	 * from its base animation frames; sizes the aura that envelops it. */
 	displayWidth: number;
@@ -756,6 +770,7 @@ export class MugenBoard {
 			aura: null,
 			label: null,
 			orders: null,
+			traits: null,
 			// Nominal size: the base cycle's widest and tallest frame at fit scale —
 			// stable across poses, unlike the live sprite whose size tracks the current
 			// frame's texture. Taken over the whole cycle (as the fit is), so an aura or
@@ -866,6 +881,7 @@ export class MugenBoard {
 			this.applyFrame(actor);
 			this.updateAura(actor, deltaMs);
 			this.updateOrders(actor);
+			this.updateTraits(actor);
 			this.updateLabel(actor);
 		}
 		this.updateProjectiles(deltaMs);
@@ -1038,6 +1054,9 @@ export class MugenBoard {
 		const alpha = Math.max(0, 1 - fade.elapsed / fade.total);
 		actor.sprite.alpha = alpha;
 		if (actor.label) actor.label.alpha = alpha;
+		// The badge is the fighter's, so it goes down with it rather than hanging in
+		// the air over the space where it stood.
+		if (actor.traits) actor.traits.alpha = alpha;
 		if (fade.elapsed >= fade.total) {
 			actor.fade = null;
 			this.removeActor(actor);
@@ -1050,6 +1069,7 @@ export class MugenBoard {
 		this.clearAura(actor.id);
 		this.clearCallout(actor.id);
 		this.clearOrders(actor);
+		this.clearTraits(actor);
 		actor.sprite.parent?.removeChild(actor.sprite);
 		actor.sprite.destroy();
 		this.actors = this.actors.filter((a) => a.id !== actor.id);
@@ -1695,6 +1715,81 @@ export class MugenBoard {
 		actor.orders = null;
 		strip.container.parent?.removeChild(strip.container);
 		strip.container.destroy({ children: true });
+	}
+
+	// --- Trait badges ---------------------------------------------------------
+
+	/**
+	 * Say what a fighter's colour gives it for nothing, drawn as glyphs at its
+	 * top-left corner — the free shot, the charge it opened with, the guard it never
+	 * has to spend a turn on. The orders under its feet are what it may be *told* to
+	 * do; this is what it does without being told, so it is drawn plain and off the
+	 * strip: no button face, just the artwork, tinted in the fighter's own colour so a
+	 * glance at the corner says both what the fighter has and what colour it is.
+	 *
+	 * The board is handed the glyph URLs and the colour, exactly as it is handed a
+	 * strip of orders: it draws what it is given and knows nothing of what a trait
+	 * means. Set once per fighter — a colour cannot change mid-fight — and replaced
+	 * whole if it is set again. An empty list takes the badge off.
+	 */
+	setTraits(actorId: string, icons: string[], color: string): void {
+		const actor = this.findActor(actorId);
+		if (!actor || !this.app) return;
+		this.clearTraits(actor);
+		if (icons.length === 0) return;
+
+		const container = new Container();
+		this.app.stage.addChild(container);
+		const tint = combatColorHex(color);
+		const size = actor.displayWidth * TRAIT_ICON_RATIO;
+		const step = size * (1 + TRAIT_SPACING_RATIO);
+
+		icons.forEach((url, index) => {
+			const glyph = new Sprite(Texture.EMPTY);
+			// Anchored at its own top-left and laid out rightward from the corner, so a
+			// compound's second glyph reads left to right and neither hangs off the
+			// fighter into the cell beside it.
+			glyph.anchor.set(0, 0);
+			glyph.x = index * step;
+			// Tint only ever darkens, so the artwork is white and the tint is the colour.
+			glyph.tint = tint;
+			container.addChild(glyph);
+
+			void this.loadIcon(url).then((texture) => {
+				// The badge may have been replaced (or the board torn down) while loading.
+				if (!texture || glyph.destroyed) return;
+				glyph.texture = texture;
+				glyph.scale.set(size / Math.max(texture.width, texture.height));
+			});
+		});
+
+		actor.traits = container;
+		this.updateTraits(actor);
+	}
+
+	/**
+	 * Keep a fighter's badge pinned to its top-left corner as it walks: the corner of
+	 * the box its nominal size describes, which is the character's own full reach
+	 * rather than whatever the frame currently showing happens to measure — so the
+	 * badge holds still while the fighter breathes.
+	 */
+	private updateTraits(actor: Actor): void {
+		const badge = actor.traits;
+		if (!badge) return;
+		badge.x = actor.x - actor.displayWidth / 2;
+		badge.y = actor.y - actor.displayHeight;
+		// Above the board and its own fighter, below the callouts and the slashes: what
+		// a fighter is must never cover what has just happened to it.
+		badge.zIndex = actor.y + 4000;
+	}
+
+	/** Take a fighter's badge off the board. */
+	private clearTraits(actor: Actor): void {
+		const badge = actor.traits;
+		if (!badge) return;
+		actor.traits = null;
+		badge.parent?.removeChild(badge);
+		badge.destroy({ children: true });
 	}
 
 	/** Load (and cache) one button glyph. Resolves to null if it cannot be had, so a

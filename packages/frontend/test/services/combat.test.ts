@@ -9,6 +9,7 @@ import {
 	type FighterSeed
 } from '$services/combat.controller';
 import { cellSide, findPath, isBoardCell, type Hex } from '$utils/mugen/hex';
+import { ORDER_ICONS } from '$utils/color/traits';
 import type { CombatColor } from '$types/character-definition.type';
 
 /**
@@ -56,9 +57,12 @@ interface AuraLog {
 	lit: { id: string; color: string }[];
 	doused: string[];
 	moved: { id: string; cell: Hex }[];
+	/** The glyphs of what each fighter's colour grants it, and the colour they were
+	 * drawn in — the badge pinned to its top-left corner. */
+	badged: { id: string; icons: string[]; color: string }[];
 }
 
-const boardLog = (): AuraLog => ({ lit: [], doused: [], moved: [] });
+const boardLog = (): AuraLog => ({ lit: [], doused: [], moved: [], badged: [] });
 
 /**
  * A board that does nothing but remember what it was told. The controller drives the
@@ -76,6 +80,9 @@ function fakeBoard(log: AuraLog) {
 			return done();
 		},
 		clearAura: (id: string) => log.doused.push(id),
+		setTraits: (id: string, icons: string[], color: string) => {
+			log.badged.push({ id, icons, color });
+		},
 		clearAuras: () => {},
 		clearCallouts: () => {},
 		showCallout: () => {},
@@ -225,6 +232,37 @@ describe('the stand-off', () => {
 			const state = get(controller);
 			expect(fighterOf(state, 'p0').down).toBe(true);
 			expect(state.outcome).toBe('lose');
+		});
+	});
+
+	describe('the badge a colour wears', () => {
+		it('gives every fighter its colour\'s glyphs, in its own colour', () => {
+			const log = boardLog();
+			const controller = new CombatController([
+				seed('r0', 'error', 'yellow'),
+				seed('p0', 'info', 'blue'),
+				seed('p1', 'info', 'purple')
+			]);
+			controller.attachBoard(fakeBoard(log));
+
+			// One glyph per primary — the very icon that order's button is drawn with —
+			// and a compound carries both of its components', in component order.
+			expect(log.badged).toContainEqual({
+				id: 'p0',
+				icons: [ORDER_ICONS.defend],
+				color: 'blue'
+			});
+			expect(log.badged).toContainEqual({
+				id: 'p1',
+				icons: [ORDER_ICONS.shoot, ORDER_ICONS.defend],
+				color: 'purple'
+			});
+			// The rivals wear theirs too: their orders are the secret, their colour is not.
+			expect(log.badged).toContainEqual({
+				id: 'r0',
+				icons: [ORDER_ICONS.charge],
+				color: 'yellow'
+			});
 		});
 	});
 

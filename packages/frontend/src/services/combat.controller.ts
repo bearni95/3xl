@@ -50,7 +50,7 @@ import type { MugenBoard } from '$utils/mugen/mugen-board';
 import { findMove, type CharacterMove, type CombatColor } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
 import type { BattleBoardSnapshot, BattleFighterSnapshot } from '$types/battle.type';
-import { colorTraits, type ColorTraits } from '$utils/color/traits';
+import { colorTraits, traitIcons, type ColorTraits } from '$utils/color/traits';
 import { pickWeighted } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
@@ -377,9 +377,15 @@ export class CombatController {
 	/** Give the controller the running board engine so it can drive it. */
 	attachBoard(board: MugenBoard): void {
 		this.board = board;
-		// Light the aura of anyone already holding a charge, so yellow's head start
-		// shows on the board before a single order is given.
 		for (const fighter of this.fighters) {
+			// What its colour gives it for nothing, in its own colour at its top-left
+			// corner — the same three glyphs its orders are drawn with, since a trait
+			// is exactly one of those orders had for free. Every fighter carries it,
+			// rivals included: what a rival will do is the guess, but what it *is* was
+			// never a secret, and the badge is how the board says so.
+			board.setTraits(fighter.id, traitIcons(fighter.color), fighter.color);
+			// Light the aura of anyone already holding a charge, so yellow's head start
+			// shows on the board before a single order is given.
 			if (fighter.charges > 0) void this.raiseAura(fighter);
 		}
 	}
