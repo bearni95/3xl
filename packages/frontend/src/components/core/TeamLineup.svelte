@@ -17,7 +17,8 @@
 	export let flipped: boolean = true;
 	export let classes: string = '';
 
-	// The same swatches the cards paint their portrait field with.
+	// The same swatches the cards paint their portrait field with — here the colour is
+	// the ground the character stands on, and the square's own edge.
 	const colorFills: Record<SpawnColor, string> = {
 		[SpawnColor.Red]: 'bg-red-500',
 		[SpawnColor.Yellow]: 'bg-yellow-400',
@@ -26,6 +27,20 @@
 		[SpawnColor.Green]: 'bg-green-500',
 		[SpawnColor.Purple]: 'bg-purple-500'
 	};
+	const colorBorders: Record<SpawnColor, string> = {
+		[SpawnColor.Red]: 'border-red-500',
+		[SpawnColor.Yellow]: 'border-yellow-400',
+		[SpawnColor.Blue]: 'border-blue-500',
+		[SpawnColor.Orange]: 'border-orange-500',
+		[SpawnColor.Green]: 'border-green-500',
+		[SpawnColor.Purple]: 'border-purple-500'
+	};
+
+	// The ground: the bottom third of the square, drawn as a plane seen at an angle
+	// rather than a flat fill. Its front edge is the square's full width and its back
+	// edge half of that, so the two sides run in as diagonals and the shape reads as a
+	// floor receding away from the viewer, with the character standing at its front.
+	const GROUND = '[clip-path:polygon(0_100%,100%_100%,75%_66.667%,25%_66.667%)]';
 </script>
 
 <div class={classNames('flex w-full gap-2', classes)}>
@@ -35,11 +50,13 @@
 			and the square inside it is as tall as that width — whatever the panel's, so
 			the row keeps its shape as the panel narrows. -->
 		<div class="flex min-w-0 flex-1 flex-col gap-1">
-			<!-- A square of the character's colour, enforced. The character stands on its
-				floor at the height its own sprite earns it — a tall one fills the square, a
-				short one does not — and nothing is inset or clipped, so no part of a frame
-				is ever cut. -->
-			<div class={classNames('aspect-square w-full rounded-box', colorFills[member.color])}>
+			<!-- The square, enforced, and square-cornered: it is the frame the character is
+				seen through, so it keeps its own edge in the character's colour now that the
+				colour no longer fills it. The character stands at the height its own sprite
+				earns it — a tall one fills the square, a short one does not — and nothing is
+				inset or clipped, so no part of a frame is ever cut. -->
+			<div class={classNames('relative aspect-square w-full border', colorBorders[member.color])}>
+				<div class={classNames('absolute inset-0', GROUND, colorFills[member.color])}></div>
 				<IdleSprite basePath={member.basePath} label={member.label} {flipped} />
 			</div>
 
