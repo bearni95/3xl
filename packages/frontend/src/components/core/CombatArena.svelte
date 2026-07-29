@@ -16,7 +16,7 @@
 		CombatController,
 		COMBAT_ACTIONS,
 		PLAYER_CELLS,
-		RIVAL_RANKS,
+		RIVAL_CELLS,
 		type CombatAction,
 		type CombatState,
 		type FighterView,
@@ -122,16 +122,15 @@
 			: [...teamMembers, ...teamMembers]
 		: [];
 
-	// Where each side stands. Both sides' ground belongs to the controller — it is what
-	// decides who faces whom — so the cells are taken from there rather than restated
-	// here: the rivals open on the board's central column (the ground the controller
-	// walks them back off, rank by rank, as they fall), the player's team on the far
-	// column of its own half, facing them.
+	// Where each side opens. Both sides' ground belongs to the controller — it is what
+	// decides who faces whom, and it is what walks the winner of a lane on or off the
+	// white cell it was fought over — so the cells are taken from there rather than
+	// restated here: the rivals on the board's central white column, the player's team
+	// on the far column of its own half, facing them.
 	//
 	// The controller lists each line top→bottom on screen; the player's team fills its
 	// column the other way about, its first slot standing nearest the viewer, so the
 	// cells are handed out bottom→top here.
-	const RIVAL_CELLS: Hex[] = RIVAL_RANKS[0];
 	const PLAYER_LINEUP_CELLS: Hex[] = [...PLAYER_CELLS].reverse();
 
 	// The two sides can field the SAME spawn line-up (a mirror match), so a bare spawn

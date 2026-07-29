@@ -12,11 +12,12 @@
  *   · **Defend** turns aside every shot aimed at the fighter that turn, but banks
  *     nothing — spend the whole fight defending and you never fire.
  *   · **Shoot** spends a charge and fires **straight across the lane**. Nobody
- *     shoots sideways: a fighter can only ever hit the one holding the same place in
- *     the enemy line that it holds in its own, so a turn asks whether to fire, never
- *     at whom. A shot that isn't turned aside takes its target down: **one hit is all
- *     it takes**, whoever it lands on. Shooting is also not defending, so two fighters
- *     who shoot each other across a lane both fall.
+ *     shoots sideways: the fight is three private duels, each between the two fighters
+ *     drawn level with each other, so a turn asks whether to fire, never at whom — and
+ *     a lane whose other half has fallen simply has nobody left to shoot at. A shot
+ *     that isn't turned aside takes its target down: **one hit is all it takes**,
+ *     whoever it lands on. Shooting is also not defending, so two fighters who shoot
+ *     each other across a lane both fall.
  *
  * What separates one card from another is nothing but its **colour** (see
  * `colorTraits` in @3xl/shared): red may fire *on top of* a charge or a defend,
@@ -25,10 +26,12 @@
  * colour carries the two traits of the primaries it mixes, so every colour gives
  * something up.
  *
- * The rivals open **on the central column**, as far forward as the board allows, and
- * are pushed further out every time one of them is taken down — the survivors fall
- * back to what is from then on their starting ground (see {@link RIVAL_RANKS}). So
- * the board itself shows how the fight is going, with nothing drawn under anybody's
+ * The rivals open **on the central white column**, as far forward as the board allows,
+ * one cell facing each of the player's fighters — so the ground itself is what is being
+ * fought over, lane by lane. A lane is settled on the board the turn it is decided: the
+ * winner either takes that white cell (the player's fighter walks up onto it) or
+ * withdraws off it into its own half (the rival). So the board itself shows how the
+ * fight is going, with nothing drawn under anybody's
  * feet: there is no health to track, and a fighter holding a charge simply *burns* —
  * an aura in its own colour, lit the turn it loads and out the turn it fires, so who
  * is dangerous can be read off the board at a glance and at any moment.
@@ -40,7 +43,7 @@
  * player's current level — all of it for a flawless win, nothing for a loss.
  */
 import { writable } from 'svelte/store';
-import type { Hex } from '$utils/mugen/hex';
+import { isBoardCell, type Hex } from '$utils/mugen/hex';
 import type { MugenBoard } from '$utils/mugen/mugen-board';
 import { findMove, type CharacterMove, type CombatColor } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
@@ -72,12 +75,10 @@ export const MAX_CHARGES = 1;
 export const MAX_TURNS = 20;
 
 /**
- * The ground the player's line holds, listed top→bottom on screen — the far column of
- * its own half, facing the rivals. Unlike the rivals it never gives ground: a slot's
- * cell is its own for the whole fight, and a fighter taken down simply leaves its row
- * empty. Each of these rows is drawn one step nearer than the rival row it faces,
- * which is what turns the pairing in {@link CombatController.opposite} into a fact
- * about the board.
+ * The ground the player's line opens on, listed top→bottom on screen — the far column
+ * of its own half, facing the rivals a row apart. A fighter holds its own cell until
+ * the lane in front of it is won, and the only ground it ever takes is that lane's
+ * white cell (see {@link CombatController.settleGround}).
  */
 export const PLAYER_CELLS: Hex[] = [
 	{ q: 2, r: -2 },
@@ -86,43 +87,18 @@ export const PLAYER_CELLS: Hex[] = [
 ];
 
 /**
- * The ground the rival line holds, a rank per fighter it has lost: they open on the
- * central column (rank 0) and are pushed further from it every time one of them goes
- * down, so `RIVAL_RANKS[n]` holds exactly the `3 − n` cells the survivors stand on
- * after `n` knockouts. The red half is one column deep, so the last two ranks are
- * both on it — the retreat carries on along the column, each rank sitting further
- * out to the left than the one before.
- *
- * Each rank is listed top→bottom on screen (which on a given column is `r`
- * descending), the same order the board draws that side's cards in and the order the
- * survivors are walked back in, so nobody crosses anybody on the way.
+ * The ground the rival line opens on, listed top→bottom on screen: the shared white
+ * column itself — as far forward as the board allows, one cell facing each of the
+ * player's. Holding it is what the fight is about, and a rival only ever leaves it
+ * one way (see {@link CombatController.settleGround}): the turn it wins its lane, it
+ * withdraws a column into its own half, and the turn it loses one the player's
+ * fighter walks up and takes the cell off it.
  */
-export const RIVAL_RANKS: Hex[][] = [
-	[
-		{ q: 0, r: -1 },
-		{ q: 0, r: -2 },
-		{ q: 0, r: -3 }
-	],
-	[
-		{ q: -1, r: -1 },
-		{ q: -1, r: -2 }
-	],
-	[{ q: -1, r: -3 }]
+export const RIVAL_CELLS: Hex[] = [
+	{ q: 0, r: -1 },
+	{ q: 0, r: -2 },
+	{ q: 0, r: -3 }
 ];
-
-/**
- * Which lanes the surviving rivals hold once `n` of them have gone down — read off
- * the ground itself, not decided here: a rival standing on row `r` is drawn level
- * with the player standing on row `r − 1`, so that player's slot *is* its lane.
- *
- * It comes out `[[0, 1, 2], [0, 1], [2]]`, and the last rank is the point of the
- * whole exercise: the rivals' final stand is on their deepest cell, level with the
- * player's third slot — so the last rival standing faces that fighter and no other,
- * however many of the player's line have fallen in front of it.
- */
-const RIVAL_LANES: number[][] = RIVAL_RANKS.map((rank) =>
-	rank.map((cell) => PLAYER_CELLS.findIndex((player) => player.r === cell.r - 1))
-);
 
 /** Animation played when a fighter fires and its definition binds no ranged move. */
 const FALLBACK_SHOT: CharacterMove = { name: 'Shot', type: 'ranged', source: '' };
@@ -147,6 +123,10 @@ export interface FighterSeed {
 export interface Fighter extends FighterSeed {
 	/** What this fighter's colour lets it do. */
 	traits: ColorTraits;
+	/** The board cell it is standing on. Its line-up slot's opening ground until the
+	 * lane it fights in is decided, and then whatever ground that left it holding
+	 * (see {@link CombatController.settleGround}). */
+	cell: Hex;
 	/** Charges banked, 0..{@link MAX_CHARGES}. Shooting spends one. */
 	charges: number;
 	/** True once a shot has landed on it: it is out of the fight for good. */
@@ -260,16 +240,22 @@ export class CombatController {
 
 	/**
 	 * @param seed every fighter of both sides, in **line-up order** within each side —
-	 * the top→bottom order that side's characters stand in, which is the left→right
-	 * order its cards are drawn in. For the rivals it is also the order they hold
-	 * {@link RIVAL_RANKS}.
+	 * the top→bottom order that side's characters stand in, which is the order each
+	 * side's opening ground ({@link PLAYER_CELLS}, {@link RIVAL_CELLS}) is handed out
+	 * in, and so the order the lanes are numbered in.
 	 */
 	constructor(seed: FighterSeed[]) {
+		const slots = { error: 0, info: 0 };
 		this.fighters = seed.map((entry) => {
 			const traits = colorTraits(entry.color);
+			const slot = slots[entry.side]++;
 			return {
 				...entry,
 				traits,
+				// Where it stands. A line longer than the board's own ground has no cell
+				// for its extra fighters — they still fight their lane, they are just not
+				// standing anywhere the board can move them to or from.
+				cell: (entry.side === 'info' ? PLAYER_CELLS : RIVAL_CELLS)[slot],
 				// Yellow's head start: it opens with a charge already banked, so it can
 				// fire on the very first turn while everyone else is still loading.
 				charges: traits.headStart ? 1 : 0,
@@ -415,9 +401,9 @@ export class CombatController {
 		}
 		this.syncCharges();
 
-		// Ground given up: the rival line falls back for every one of them that has gone
-		// down.
-		if (felled.some(({ fighter }) => fighter.side === 'error')) await this.fallBack();
+		// Ground won and given up: every lane the volley decided is walked out on the
+		// board before the next turn is asked for.
+		await this.settleGround(felled);
 
 		this.finishTurn();
 	}
@@ -484,18 +470,39 @@ export class CombatController {
 	}
 
 	/**
-	 * Walk the rival survivors back onto the rank their losses have cost them. They
-	 * keep their top→bottom order, so nobody crosses anybody on the way, and the cells
-	 * they land on become their new home ground.
+	 * Walk out what the volley settled. A lane is a duel over the white cell between
+	 * the two who stand in it, and the one left standing when the other falls has just
+	 * won that ground — so it is moved, once, and holds where it lands for the rest of
+	 * the fight:
+	 *
+	 *   · **The player's fighter won** — it walks up onto the white cell the rival was
+	 *     holding and takes it. Ground gained is ground shown.
+	 *   · **The rival won** — there is nothing left in front of it, so it withdraws off
+	 *     the white column into its own half, a column back the way it came.
+	 *
+	 * Both sides falling together settles nothing: neither is standing to take the
+	 * ground, and the cell is simply left empty. The walks are taken one at a time —
+	 * one lane's route can run through another's cell — and a fighter with no cell to
+	 * move to (an over-long line, or a board that refuses the ground) just stays put.
 	 */
-	private async fallBack(): Promise<void> {
-		const standing = this.rivals().filter((fighter) => !fighter.down);
-		const rank = RIVAL_RANKS[RIVAL_RANKS.length - standing.length];
-		if (!rank) return;
-		this.setStatus('The rival line falls back.');
-		// One at a time: a survivor's own start cell can sit on another's route.
-		for (let i = 0; i < standing.length; i++) {
-			await this.board?.regroup(standing[i].id, rank[i]);
+	private async settleGround(felled: Casualty[]): Promise<void> {
+		for (const { fighter } of felled) {
+			const winner = this.counterpart(fighter);
+			if (!winner || winner.down) continue;
+			const ground =
+				fighter.side === 'error'
+					? // The white cell the fallen rival was holding, now the player's.
+						fighter.cell
+					: // A column back the way it came: its own half is out from the centre.
+						winner.cell && { q: winner.cell.q - 1, r: winner.cell.r };
+			if (!ground || !isBoardCell(ground.q, ground.r)) continue;
+			winner.cell = ground;
+			this.setStatus(
+				fighter.side === 'error'
+					? `${winner.name} takes the ground.`
+					: `${winner.name} falls back.`
+			);
+			await this.board?.regroup(winner.id, ground);
 		}
 	}
 
@@ -660,56 +667,35 @@ export class CombatController {
 		return this.fighters.filter((fighter) => fighter.side === 'error');
 	}
 
-	/** One side's fighters still standing, in line-up order — which is the order they
-	 * hold the board, top→bottom, and so the order the lanes are counted in. */
-	private standing(side: FighterSide): Fighter[] {
-		return this.fighters.filter((fighter) => fighter.side === side && !fighter.down);
-	}
-
 	/**
-	 * The lane a fighter is standing in, or null once it is down and off the board.
-	 * A lane is a place on the board, not a number in a list:
-	 *
-	 *   · The player's line never moves, so a fighter holds the lane its slot in the
-	 *     line-up put it in for the whole fight. One of them falling leaves that lane
-	 *     empty; it does not shuffle the others along.
-	 *   · The rivals give ground as they lose, falling back a rank at a time, so a
-	 *     rival holds whichever lane the cell it has been walked onto is level with
-	 *     ({@link RIVAL_LANES}). Their closing up is the only thing that ever re-pairs
-	 *     the two lines.
-	 *
-	 * A line-up the board has no ground for — the 3-a-side game is the only one it is
-	 * ever played with, but the rules stand on their own — simply counts from the top.
+	 * The fighter sharing this one's lane — its opposite number in the other line,
+	 * whether or not either of them is still standing. The lane is the slot each holds
+	 * in its own line-up, and it is fixed for the whole fight: the two of them were
+	 * placed level with each other on the board and neither can leave that pairing, so
+	 * a lane is the same two fighters from the first turn to the one that settles it.
+	 * Null for a fighter the other line is too short to face.
 	 */
-	private laneOf(fighter: Fighter): number | null {
-		if (fighter.down) return null;
-		if (fighter.side === 'info') return this.players().indexOf(fighter);
-		const standing = this.standing('error');
-		const index = standing.indexOf(fighter);
-		const onBoardGround =
-			this.rivals().length === RIVAL_RANKS[0].length &&
-			this.players().length === PLAYER_CELLS.length;
-		if (!onBoardGround) return index;
-		return RIVAL_LANES[RIVAL_RANKS.length - standing.length]?.[index] ?? null;
+	private counterpart(fighter: Fighter): Fighter | null {
+		const line = fighter.side === 'error' ? this.rivals() : this.players();
+		const facing = fighter.side === 'error' ? this.players() : this.rivals();
+		return facing[line.indexOf(fighter)] ?? null;
 	}
 
 	/**
-	 * The fighter directly opposite: the one standing in the enemy line that this one
-	 * is drawn level with on the board. Nobody shoots across the board — a fighter's
+	 * The fighter directly opposite: the one this fighter is drawn level with on the
+	 * board, if both are still standing. Nobody shoots across the board — a fighter's
 	 * lane is the whole of who it can hit and who can hit it, so the choice a turn
 	 * offers is only ever *whether* to fire, never at whom.
 	 *
-	 * A fighter whose counterpart has gone down is left facing an empty lane until
-	 * somebody stands in it again: it can neither shoot nor be shot, and nobody further
-	 * up or down the line may reach across for it. That is what keeps a side that is a
-	 * fighter down from simply being outgunned three to one — and it is why losing one
-	 * of your own never hands the rival that was facing it a new target.
+	 * A fighter whose lane has been settled has nobody left to shoot for the rest of
+	 * the fight: nothing re-pairs the lines, so no fighter further up or down may reach
+	 * across for it, and none is handed a new target by a death somewhere else. That is
+	 * what keeps a side that is a fighter down from simply being outgunned three to one.
 	 */
 	private opposite(fighter: Fighter): Fighter | null {
-		const lane = this.laneOf(fighter);
-		if (lane === null) return null;
-		const facing = fighter.side === 'error' ? 'info' : 'error';
-		return this.standing(facing).find((other) => this.laneOf(other) === lane) ?? null;
+		if (fighter.down) return null;
+		const facing = this.counterpart(fighter);
+		return facing && !facing.down ? facing : null;
 	}
 
 	/** The player fighter this id names, if it may still be given orders. */

@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { get } from 'svelte/store';
 import {
 	CombatController,
-	PLAYER_CELLS,
-	RIVAL_RANKS,
 	type CombatAction,
 	type CombatState,
 	type FighterSeed,
@@ -110,40 +108,24 @@ describe('CombatController — giving orders', () => {
 
 describe('CombatController — the fight as it thins', () => {
 	/**
-	 * Who each fighter faces, worked out from the board alone: the player's line never
-	 * moves, so a slot holds its own row all fight; the rivals close up onto the rank
-	 * their losses have cost them. The two lines are drawn a row apart, so the rival on
-	 * row `r` faces the player on row `r − 1` — and nobody else, however many have
-	 * fallen. Derived here independently of the controller, which must agree with it.
+	 * Who each fighter faces, worked out from the line-ups alone: the fight is three
+	 * private duels, one per slot, and a slot is a fighter's for the whole fight. So
+	 * the two in a lane face each other while both stand, and once either falls that
+	 * lane is over — nobody is handed a new opposite by a death anywhere on the board.
+	 * Derived here independently of the controller, which must agree with it.
 	 */
-	function facingByBoard(state: CombatState): Map<string, string | null> {
-		const rows = new Map<string, number>();
-		const players = state.fighters.filter((fighter) => fighter.side === 'info');
-		players.forEach((fighter, slot) => {
-			if (!fighter.down) rows.set(fighter.id, PLAYER_CELLS[slot].r);
-		});
-		const rivals = state.fighters.filter((fighter) => fighter.side === 'error' && !fighter.down);
-		const rank = RIVAL_RANKS[RIVAL_RANKS.length - rivals.length] ?? [];
-		rivals.forEach((fighter, i) => {
-			if (rank[i]) rows.set(fighter.id, rank[i].r);
-		});
-
-		const standingOf = (side: 'error' | 'info', row: number): string | null =>
-			state.fighters.find(
-				(fighter) => fighter.side === side && !fighter.down && rows.get(fighter.id) === row
-			)?.id ?? null;
-
+	function facingByLane(state: CombatState): Map<string, string | null> {
+		const lines = {
+			error: state.fighters.filter((fighter) => fighter.side === 'error'),
+			info: state.fighters.filter((fighter) => fighter.side === 'info')
+		};
 		const facing = new Map<string, string | null>();
-		for (const fighter of state.fighters) {
-			const row = fighter.down ? undefined : rows.get(fighter.id);
-			if (row === undefined) {
-				facing.set(fighter.id, null);
-				continue;
-			}
-			facing.set(
-				fighter.id,
-				fighter.side === 'error' ? standingOf('info', row - 1) : standingOf('error', row + 1)
-			);
+		for (const side of ['error', 'info'] as const) {
+			const across = side === 'error' ? lines.info : lines.error;
+			lines[side].forEach((fighter, lane) => {
+				const other = across[lane];
+				facing.set(fighter.id, fighter.down || !other || other.down ? null : other.id);
+			});
 		}
 		return facing;
 	}
@@ -153,41 +135,32 @@ describe('CombatController — the fight as it thins', () => {
 	async function playOut(colors: CombatColor[], pick: (fighter: FighterView) => CombatAction) {
 		const controller = new CombatController(seeds(colors));
 		let sawLoss = false;
-		// What each standing player faced last turn, to catch a re-pairing that no
-		// movement on the board could account for.
+		// What each standing player faced last turn, to catch any re-pairing at all.
 		let facedBefore = new Map<string, string | null>();
-		let rivalsBefore = 3;
 		for (let turn = 0; turn < 30; turn++) {
 			const state = get(controller);
 			if (state.outcome) break;
 			sawLoss ||= state.fighters.some((fighter) => fighter.side === 'info' && fighter.down);
 
-			const byBoard = facingByBoard(state);
+			const byLane = facingByLane(state);
 			for (const fighter of state.fighters) {
 				expect(`${fighter.id} faces ${fighter.opponentId}`).toBe(
-					`${fighter.id} faces ${byBoard.get(fighter.id) ?? null}`
+					`${fighter.id} faces ${byLane.get(fighter.id) ?? null}`
 				);
 			}
-			// Losing one of the player's own fighters moves nobody, so it must leave every
-			// other pairing exactly as it was: the rivals only re-pair by falling back.
-			const rivalsNow = state.fighters.filter(
-				(fighter) => fighter.side === 'error' && !fighter.down
-			).length;
-			if (rivalsNow === rivalsBefore) {
-				for (const fighter of state.fighters) {
-					if (fighter.side !== 'info' || fighter.down) continue;
-					if (!facedBefore.has(fighter.id)) continue;
-					expect(`${fighter.id} faces ${fighter.opponentId}`).toBe(
-						`${fighter.id} faces ${facedBefore.get(fighter.id)}`
-					);
-				}
+			// A fighter's opposite never changes hands: it is the one it always had, or
+			// none at all once that one has fallen. It is never somebody else.
+			for (const fighter of state.fighters) {
+				if (fighter.side !== 'info' || fighter.down) continue;
+				const before = facedBefore.get(fighter.id);
+				if (!before) continue;
+				expect([before, null]).toContain(fighter.opponentId);
 			}
 			facedBefore = new Map(
 				state.fighters
 					.filter((fighter) => fighter.side === 'info' && !fighter.down)
 					.map((fighter) => [fighter.id, fighter.opponentId])
 			);
-			rivalsBefore = rivalsNow;
 
 			for (const fighter of playerFighters(controller)) tap(controller, fighter, pick(fighter));
 			expect(get(controller).ready).toBe(true);

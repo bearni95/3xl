@@ -6,6 +6,7 @@ import type { CharacterDefinition, CharacterMove } from '../../types/character-d
 import {
 	boardCells,
 	cellSide,
+	type CellSide,
 	findClosestApproach,
 	findMeleeMeeting,
 	findPath,
@@ -344,6 +345,10 @@ interface Actor {
 	/** Stable id (character id or basePath's first segment), used to command it. */
 	id: string;
 	sprite: Sprite;
+	/** Which half the actor belongs to — the grid it was placed from, not the cell it
+	 * is standing on: a fighter that has taken the white column still belongs to its
+	 * own side, and must never be read as having changed halves. */
+	side: CellSide;
 	/** Axial cell the actor started on, so it can walk back after combat. */
 	homeCell: number;
 	homeRow: number;
@@ -730,6 +735,8 @@ export class MugenBoard {
 		const actor: Actor = {
 			id,
 			sprite,
+			// The grid it was placed from: `flip` is what tells the two halves apart.
+			side: flip ? 'blue' : 'red',
 			homeCell: q,
 			homeRow: r,
 			animations,
@@ -1119,8 +1126,8 @@ export class MugenBoard {
 		const a = this.findActor(aId);
 		const b = this.findActor(bId);
 		if (!a || !b) return;
-		// Infer which fighter is on the red half (starts left) vs blue (right).
-		const red = a.homeCell <= b.homeCell ? a : b;
+		// Which fighter belongs to the red half (drawn left) vs the blue (right).
+		const red = a.side === 'red' ? a : b;
 		const blue = red === a ? b : a;
 		// Route both fighters around any other character standing in the way (the two
 		// duelists themselves are excluded so they don't block each other); if that
@@ -1150,16 +1157,14 @@ export class MugenBoard {
 	}
 
 	/**
-	 * The cells an actor may occupy: nobody crosses the central white column, so a
-	 * red-side fighter stays on red or the shared white line (q ≤ 0) and a blue-side
-	 * fighter stays strictly on blue (q ≥ 1) — blue never even enters the white
-	 * cells. Every combat move is confined to this predicate.
+	 * The cells an actor may occupy: its own half, plus the central white column, which
+	 * is neither side's — it is the ground between the two lines, and the only ground
+	 * either of them can take off the other. Nobody ever crosses it into the far half.
+	 * Every combat move is confined to this predicate.
 	 */
 	private sideAllowed(actor: Actor): (c: Hex) => boolean {
-		if (cellSide(actor.homeCell) === 'blue') {
-			return (c) => isBoardCell(c.q, c.r) && cellSide(c.q) === 'blue';
-		}
-		return (c) => isBoardCell(c.q, c.r) && cellSide(c.q) !== 'blue';
+		const far: CellSide = actor.side === 'blue' ? 'red' : 'blue';
+		return (c) => isBoardCell(c.q, c.r) && cellSide(c.q) !== far;
 	}
 
 	/**
@@ -1630,7 +1635,7 @@ export class MugenBoard {
 		const radius = height * ORDER_RADIUS_RATIO;
 		// The chosen order takes its own side's colour, so a fighter's orders read as
 		// belonging to it rather than to some palette of the interface's own.
-		const chosen = cellSide(actor.homeCell) === 'blue' ? this.options.grids[1].color : this.options.grids[0].color;
+		const chosen = actor.side === 'blue' ? this.options.grids[1].color : this.options.grids[0].color;
 		const fill = button.disabled ? ORDER_DISABLED_FILL : button.selected ? chosen : ORDER_IDLE_FILL;
 
 		button.face.clear();
