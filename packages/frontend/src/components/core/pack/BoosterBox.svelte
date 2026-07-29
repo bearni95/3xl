@@ -1,3 +1,70 @@
+<script context="module" lang="ts">
+	import { SpawnBox } from '$types/character-spawn.type';
+
+	// The two stocks a box is printed on, and the four tones of each: the stock itself and
+	// three steps off it, a twentieth, an eighth and a fifth of the way to the other end
+	// (#0f0f0f / #1f1f1f / #333333 over black, #f0f0f0 / #e0e0e0 / #cccccc under white).
+	// They are written as the colours they are rather than as veils laid over the stock,
+	// because a veil can only tint a surface a single flat amount: the front and the two
+	// grounds over the picture are gradients, and a gradient needs its ends to be colours.
+	//
+	// Every surface takes its step off the same scale, in the order a light above and to the
+	// left would leave them — the top furthest from the stock, then the left face, then the
+	// right, and the front graded from the left face's step at its head down to the pure
+	// stock at its foot. Nothing on the box is one flat black or one flat white any more; the
+	// front is where that shows, since the picture covers all of it but the frame and the
+	// frame is what the eye reads the material off.
+	//
+	// The two grounds over the picture are drawn from the same scale, each starting in the
+	// tone the front actually is where it sits — the head in the front's own head tone, the
+	// foot in the stock the front reaches at its foot. That is what lets the poster's top and
+	// bottom edges dissolve into the frame instead of ending on a line against it. Both are
+	// written as ending in their own colour at zero alpha, which is a note to a reader rather
+	// than to the browser: a gradient interpolates premultiplied, so a stop at zero alpha
+	// contributes no colour at all and the fall is through the tone it started in whatever is
+	// named at the far end. (Tailwind compiles the alpha-zero end of an arbitrary colour to a
+	// transparent black; it renders the same, as it must.)
+	//
+	// The scale turns over with the stock and the order survives the turn: on black card each
+	// step is lighter than the last, on white card darker, and either way the top is the
+	// furthest from the front and the right face the nearest.
+	//
+	// Exported because a box is not the only thing printed on its own card: opening one turns
+	// it into a grid of squares of the same stock (see PackGrid), which has to be painted off
+	// this scale rather than off a second copy of these six hexes.
+	export const PACK_STOCK: Record<
+		SpawnBox,
+		{
+			top: string;
+			left: string;
+			right: string;
+			front: string;
+			head: string;
+			foot: string;
+			ink: string;
+		}
+	> = {
+		[SpawnBox.White]: {
+			top: 'bg-[#cccccc]',
+			left: 'bg-[#e0e0e0]',
+			right: 'bg-[#f0f0f0]',
+			front: 'from-[#e0e0e0] to-white',
+			head: 'from-[#e0e0e0] to-[#e0e0e0]/0',
+			foot: 'from-white to-white/0',
+			ink: 'text-black'
+		},
+		[SpawnBox.Black]: {
+			top: 'bg-[#333333]',
+			left: 'bg-[#1f1f1f]',
+			right: 'bg-[#0f0f0f]',
+			front: 'from-[#1f1f1f] to-black',
+			head: 'from-[#1f1f1f] to-[#1f1f1f]/0',
+			foot: 'from-black to-black/0',
+			ink: 'text-white'
+		}
+	};
+</script>
+
 <script lang="ts">
 	import classNames from 'classnames';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
@@ -8,9 +75,8 @@
 	// One unopened booster box, drawn in the document: a lid seen from above with its four
 	// corners cut off, and under it the face of the box — four fifths of the width, the
 	// width the cut leaves the lid's front edge, with the two bevel faces those cuts opened
-	// running down its sides. On the face, the show's poster inset a twentieth of the width
-	// on all sides, the show's wordmark laid over the head of it and the place the box
-	// belongs to over the foot.
+	// running down its sides. On the face, the show's poster edge to edge, the place the box
+	// belongs to laid over the head of it and the show's wordmark over the foot.
 	//
 	// The face is 3:4, the very box a CharacterStatue is drawn in — a booster and the
 	// cards it opens onto are the same object at two moments, and a grid that changes
@@ -31,7 +97,7 @@
 
 	// Show poster used as the cover, or null for a plain frame.
 	export let coverUrl: string | null = null;
-	// The show's wordmark, heading the front. Null leaves the head alone entirely: which
+	// The show's wordmark, footing the front. Null leaves the foot alone entirely: which
 	// logos a show may be said with is an authoring decision (the admin `/shows` screen),
 	// and a show with none enabled goes unsaid rather than taking a stand-in.
 	export let logoUrl: string | null = null;
@@ -144,59 +210,43 @@
 	const FACE_COVER_LEFT = '[transform:translateX(4.703cqw)_scaleX(-0.17636)]';
 	const FACE_COVER_RIGHT = '[transform:translateX(14.109cqw)_scaleX(-0.17636)]';
 
-	// The two stocks a box is printed on, and the four tones of each: the stock itself and
-	// three steps off it, a twentieth, an eighth and a fifth of the way to the other end
-	// (#0f0f0f / #1f1f1f / #333333 over black, #f0f0f0 / #e0e0e0 / #cccccc under white).
-	// They are written as the colours they are rather than as veils laid over the stock,
-	// because a veil can only tint a surface a single flat amount: the front and the two
-	// grounds over the picture are gradients, and a gradient needs its ends to be colours.
+	// The two grounds again on each bevel face: the print does not stop at the fold, so the
+	// fade the poster's head and foot dissolve into carries round onto the faces the same way
+	// the picture under it does. Without them a face was bright poster at top and bottom where
+	// the front beside it had gone to card, which put a lit strip either side of both fades and
+	// read as a frame round the picture rather than as the edge of it.
 	//
-	// Every surface takes its step off the same scale, in the order a light above and to the
-	// left would leave them — the top furthest from the stock, then the left face, then the
-	// right, and the front graded from the left face's step at its head down to the pure
-	// stock at its foot. Nothing on the box is one flat black or one flat white any more; the
-	// front is where that shows, since the picture covers all of it but the frame and the
-	// frame is what the eye reads the material off.
+	// Unlike the cover, a ground needs neither the flip nor the squash: a `to-b` gradient is one
+	// colour all the way across its width, so turning it over or narrowing it changes nothing
+	// that can be seen. What the face needs from the front is only its *width as a layout* —
+	// each band is as tall as its padding plus what is written in it, and a wordmark or a place
+	// name laid out in a strip 4.703cqw wide would wrap to a different height than the same
+	// thing laid out across 80cqw. So the grounds are rendered here into a box of the front's
+	// own width and height, with what is printed on them hidden (see the `grounds` snippet),
+	// and the face's overflow crops that box to the strip: the bands land on exactly the rows
+	// they land on over the front, and the fold is a fold rather than a joint between two
+	// prints.
 	//
-	// The two grounds over the picture are drawn from the same scale, each starting in the
-	// tone the front actually is where it sits — the head in the front's own head tone, the
-	// foot in the stock the front reaches at its foot. That is what lets the poster's top and
-	// bottom edges dissolve into the frame instead of ending on a line against it. Both are
-	// written as ending in their own colour at zero alpha, which is a note to a reader rather
-	// than to the browser: a gradient interpolates premultiplied, so a stop at zero alpha
-	// contributes no colour at all and the fall is through the tone it started in whatever is
-	// named at the far end. (Tailwind compiles the alpha-zero end of an arbitrary colour to a
-	// transparent black; it renders the same, as it must.)
-	//
-	// The scale turns over with the stock and the order survives the turn: on black card each
-	// step is lighter than the last, on white card darker, and either way the top is the
-	// furthest from the front and the right face the nearest.
-	$: skin = light
-		? {
-				top: 'bg-[#cccccc]',
-				left: 'bg-[#e0e0e0]',
-				right: 'bg-[#f0f0f0]',
-				front: 'from-[#e0e0e0] to-white',
-				head: 'from-[#e0e0e0] to-[#e0e0e0]/0',
-				foot: 'from-white to-white/0',
-				ink: 'text-black'
-			}
-		: {
-				top: 'bg-[#333333]',
-				left: 'bg-[#1f1f1f]',
-				right: 'bg-[#0f0f0f]',
-				front: 'from-[#1f1f1f] to-black',
-				head: 'from-[#1f1f1f] to-[#1f1f1f]/0',
-				foot: 'from-black to-black/0',
-				ink: 'text-white'
-			};
+	// Which leaves the tilt, and it comes for free: a child is transformed with its parent, so
+	// the bands shear by the face's own 47.83°, in the direction that face is skewed — falling
+	// away to the left on the left face and to the right on the right one, each band parallel
+	// to the bevel's top edge. The skew turns about the inner edge, the one the face shares
+	// with the front, so along that edge the band is at the front's own height and nothing has
+	// to be lined up by hand.
+	const FACE_GROUNDS = 'absolute top-0 left-0 h-full w-[80cqw]';
+
+	// Which of the two stocks this box is printed on, and so the four tones every surface of
+	// it takes its step off (see PACK_STOCK above, where the scale itself is written and why).
+	// The caller says it as a boolean — a run of boxes is printed light or it is not — and the
+	// two stocks are the game's own two boxes, so the flag is read as the box it means.
+	$: skin = PACK_STOCK[light ? SpawnBox.White : SpawnBox.Black];
 
 	// The glyph the lid is stamped with: the show's own, the very mark the map pins that show
 	// with and the statue paints across the floor its characters stand on. Null for a show
 	// with none drawn yet, which leaves the lid bare.
 	$: showIcon = showIconName(showId);
 
-	// What the foot says, exactly as the baked pack says it: the place with the year this
+	// What the head says, exactly as the baked pack says it: the place with the year this
 	// copy would be minted in joined to it — "Barcelona '26". The gazetteer parks the
 	// article after a comma to sort by, so it is put back at the front before the name
 	// is said.
@@ -293,8 +343,9 @@
 			Each takes its own step off the stock, the left further than the right, so the two sides
 			of the same cut are not one flat band round the picture but two faces turned different
 			ways (see `skin`), and each carries a flipped third of the cover over that (see
-			FACE_COVER). Nothing is written on them, so they are hidden from a screen reader, which
-			is being read the place and the mark. -->
+			FACE_COVER) with the poster's own two fades over that again, tilted with the face (see
+			FACE_GROUNDS). Nothing is written on them, so they are hidden from a screen reader,
+			which is being read the place and the mark. -->
 		<div
 			class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, skin.left, 'overflow-hidden')}
 			aria-hidden="true"
@@ -302,6 +353,7 @@
 			{#if coverUrl}
 				<img src={coverUrl} alt="" class={classNames(FACE_COVER, FACE_COVER_LEFT)} />
 			{/if}
+			<div class={FACE_GROUNDS}>{@render grounds(false)}</div>
 		</div>
 		<div
 			class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, skin.right, 'overflow-hidden')}
@@ -310,6 +362,7 @@
 			{#if coverUrl}
 				<img src={coverUrl} alt="" class={classNames(FACE_COVER, FACE_COVER_RIGHT)} />
 			{/if}
+			<div class={FACE_GROUNDS}>{@render grounds(false)}</div>
 		</div>
 
 		<div class={classNames('h-full w-full bg-gradient-to-b', skin.front)}>
@@ -333,58 +386,87 @@
 					<div class={classNames('h-full w-full bg-gradient-to-b', skin.front)}></div>
 				{/if}
 
-				{#if logoUrl}
-					<!-- The show's wordmark across the head of the picture: the name of the thing comes
-						first, and a booster box is picked up as a box of that show before it is read as
-						this town's copy of it. It is over the picture and not in a band of its own, so
-						it cannot be given a solid backing without cutting the poster off at a line; the
-						gradient is how it gets its own ground instead — the front's own head tone where
-						the mark is and gone by the bottom of it, so the picture runs into the frame above
-						it rather than ending at it, the two being the same colour on that line. The fade
-						wants more room than the mark does, hence the bottom padding: the
-						mark sits in the solid end of it and the rest is the fall to nothing. The mark is
-						90% of the picture and takes whatever height its own proportions give it, being
-						lettering: it is read at the width it was drawn to be read at. The 90% is
-						measured off the picture and not off a padded box, so the fade runs the full
-						width of it while the mark keeps a twentieth clear of either side.
-
-						The mark itself is not turned over with the stock. It is artwork and not ink —
-						the wordmarks the authoring side enables are coloured lettering with a light
-						outline, which reads on either card, and inverting them to suit the white one
-						would put every show in false colours to save the one that is drawn in plain
-						white. -->
-					<div
-						class={classNames(
-							'absolute inset-x-0 top-0 flex justify-center bg-gradient-to-b pt-[2cqw] pb-[9cqw]',
-							skin.head
-						)}
-					>
-						<img src={logoUrl} alt="" class="w-[90%] object-contain" />
-					</div>
-				{/if}
-
-				<!-- The place at the foot, on the same fade turned over: the pure stock at the bottom
-					edge, which is what the front has come down to by then, and gone by the top of it,
-					so the two grounds bracket the poster from its own two edges rather than one of
-					them cutting across it — each in its own end of the front's grade, neither in a
-					colour the front is not. Which copy of the box this is is
-					the thing said last — the show is what a player is looking for and the town is what
-					tells two of the same show apart, so it sits under the picture the way a caption
-					does, and the mark keeps the head. The type is whichever of the two the card is
-					not, since the card is what it is being read on. The cqw sizes are shares of the
-					whole box rather than of the front, so neither the type nor either fade changed
-					size when the front drew in to four fifths. -->
-				<div
-					class={classNames(
-						'absolute inset-x-0 bottom-0 bg-gradient-to-t px-[3cqw] pt-[9cqw] pb-[2cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance',
-						skin.foot,
-						skin.ink
-					)}
-					title={place}
-				>
-					{place}
-				</div>
+				{@render grounds(true)}
 			</div>
 		</div>
 	</div>
 </div>
+
+<!-- The two grounds over the picture, drawn wherever the print goes: over the front, where they
+	are also what is written on it, and over each bevel face, where they are the same two fades
+	with nothing written in them (`printed` false hides the mark and the place, not their
+	grounds — a face carries the print's fades, not its type, which at a twentieth of the front's
+	width would be a smear of ink). One snippet and not three copies of it because the whole point
+	is that the bands land on the same rows on all three surfaces: they are as tall as their
+	padding plus their content, so a second hand-kept copy is a band that quietly stops matching
+	the first the next time either is touched. -->
+{#snippet grounds(printed: boolean)}
+	<!-- The place across the head of the picture: which copy of the box this is, said first.
+		Two boxes of the same show are told apart by nothing but the town on them, and a reader
+		looking down a panel of boxes is looking down the line the towns are on — so the town
+		takes the head, where a caption is found without hunting for it, and the show's mark
+		goes under the picture like a signature. (It was the other way round: the mark headed
+		the front and the town sat at its foot.)
+
+		It is over the picture and not in a band of its own, so it cannot be given a solid
+		backing without cutting the poster off at a line; the gradient is how it gets its own
+		ground instead — the front's own head tone where the type is and gone by the bottom of
+		it, so the picture runs into the frame above it rather than ending at it, the two being
+		the same colour on that line. The fade wants more room than the type does, hence the
+		bottom padding: the type sits in the solid end of it and the rest is the fall to
+		nothing. The type is whichever of the two the card is not, since the card is what it is
+		being read on. The cqw sizes are shares of the whole box rather than of the front, so
+		neither the type nor either fade changed size when the front drew in to four fifths.
+
+		The type is hidden on a face rather than dropped, and it is the type that is hidden and
+		not the block holding it: hiding the block would take the gradient with it, visibility
+		being inherited by what is painted as well as by what is written, and dropping the type
+		would leave a band of another height — it is what this band's height is made of. The
+		tooltip and the reading of it go with the printed one only: a face is inside an
+		aria-hidden strip anyway, and a title on a copy nobody can point at says nothing. -->
+	<div
+		class={classNames(
+			'absolute inset-x-0 top-0 bg-gradient-to-b px-[3cqw] pt-[2cqw] pb-[9cqw] text-center text-[5.4cqw] font-bold leading-snug text-balance',
+			skin.head,
+			skin.ink
+		)}
+		title={printed ? place : undefined}
+	>
+		<span class={classNames({ invisible: !printed })}>{place}</span>
+	</div>
+
+	{#if logoUrl}
+		<!-- The show's wordmark at the foot, on the same fade turned over: the pure stock at the
+			bottom edge, which is what the front has come down to by then, and gone by the top of
+			it, so the two grounds bracket the poster from its own two edges rather than one of
+			them cutting across it — each in its own end of the front's grade, neither in a colour
+			the front is not. What show is inside is already said twice over on this box, by the
+			glyph on the lid and by the poster covering the front, so the mark is the thing that
+			can afford to be read last; the town cannot, being said nowhere else.
+
+			The mark is 90% of the picture and takes whatever height its own proportions give it,
+			being lettering: it is read at the width it was drawn to be read at. The 90% is
+			measured off the picture and not off a padded box, so the fade runs the full width of
+			it while the mark keeps a twentieth clear of either side.
+
+			The mark itself is not turned over with the stock. It is artwork and not ink — the
+			wordmarks the authoring side enables are coloured lettering with a light outline,
+			which reads on either card, and inverting them to suit the white one would put every
+			show in false colours to save the one that is drawn in plain white.
+
+			On a face it is hidden for the reason the type is, and for the same good of the band's
+			height. -->
+		<div
+			class={classNames(
+				'absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t pt-[9cqw] pb-[2cqw]',
+				skin.foot
+			)}
+		>
+			<img
+				src={logoUrl}
+				alt=""
+				class={classNames('w-[90%] object-contain', { invisible: !printed })}
+			/>
+		</div>
+	{/if}
+{/snippet}
