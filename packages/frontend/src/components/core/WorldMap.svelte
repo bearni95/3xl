@@ -547,10 +547,12 @@
 	// worth of towns at once — its cover, its wordmark and the place across its foot are
 	// reading matter overlapping its neighbours', which is less than one mark that can be
 	// told apart at that distance. So the mark is what gets the room the box's picture and
-	// its two lines of type had: the glyph is 48px, the disc 76px round it, five eighths of
-	// the diameter, which leaves it clear of the edge on every diagonal. Nearly the box's
-	// own 80px, and deliberately — this is not a smaller thing than the box, it is the same
-	// thing with one mark on it instead of four.
+	// its two lines of type had: the glyph is 36px and the disc 56px round it, nine
+	// fourteenths of the diameter, which still leaves a square mark's corners inside the
+	// circle (a side of 36 spans 51 across its diagonal). Two thirds of the box's own 80px:
+	// the disc is not a badge stuck on the map, it is the same object with one mark on it
+	// instead of four, drawn small enough that neighbouring towns in one comarca are still
+	// separate marks.
 	//
 	// And it is a disc, laid flat with no tilt: the box's lid is a square seen in
 	// perspective because it is the top of a solid, and there is no solid here to be the
@@ -566,7 +568,7 @@
 	function discElement(box: MapBoosterBox): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className =
-			'flex size-19 -translate-x-1/2 translate-y-1 items-center justify-center rounded-full shadow-md [&>svg]:size-12 ' +
+			'flex size-14 -translate-x-1/2 translate-y-1 items-center justify-center rounded-full shadow-md [&>svg]:size-9 ' +
 			(box.light ? 'bg-white text-black' : 'bg-black text-white');
 		if (box.onClick) wrap.className += ' cursor-pointer';
 		wrap.setAttribute('aria-hidden', 'true');
