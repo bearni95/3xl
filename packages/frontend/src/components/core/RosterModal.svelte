@@ -15,7 +15,11 @@
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
-	import { SPAWN_PANEL_CLASSES, SPAWN_SQUARE_GLYPHS } from '$components/core/spawn-colors';
+	import {
+		SPAWN_FILL_CLASSES,
+		SPAWN_PANEL_CLASSES,
+		SPAWN_SQUARE_GLYPHS
+	} from '$components/core/spawn-colors';
 	import localStorageWritableStore from '$utils/localStorageWritableStore';
 
 	// The roster is a modal now, so it is only ever mounted while it is open — the
@@ -69,8 +73,30 @@
 	let filterShow: string | typeof ANY = ANY;
 	let filterRarity: number | typeof ANY = ANY;
 
-	// Every spawn colour, for the colour dropdown (labels are the enum values).
+	// Every spawn colour, for the colour filter's swatches (labels are the enum values).
 	const COLOR_OPTIONS = Object.values(SpawnColor);
+
+	// A colour is picked by pressing its swatch and unpicked by pressing it again —
+	// which is the only way back to "all colours" now that there is no option saying so.
+	function toggleColorFilter(color: SpawnColor): void {
+		filterColor = filterColor === color ? ANY : color;
+	}
+
+	/** One colour's swatch in the filter: the colour itself as a rounded square, ringed
+	 * while it is the one being filtered on. Nothing ringed means no colour filter, so
+	 * the six unringed squares are what "all colours" looks like. */
+	function colorSquareClasses(color: SpawnColor, active: SpawnColor | typeof ANY): string {
+		return classNames(
+			'aspect-square w-full rounded-md border border-black/30 transition',
+			'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+			SPAWN_FILL_CLASSES[color],
+			{
+				'ring-2 ring-base-content ring-offset-1 ring-offset-base-200': active === color,
+				'opacity-70 hover:opacity-100': active !== color
+			}
+		);
+	}
+
 	function resetFilters(): void {
 		filterName = '';
 		filterColor = ANY;
@@ -754,18 +780,26 @@
 							/>
 						</label>
 
-						<label class="flex flex-col gap-1 text-xs">
+						<!-- The colours are the swatches themselves rather than a list of their
+						     names: there are exactly six, so they are one row of six, and a square
+						     saying red is quicker to read than the word and needs no translating.
+						     Not a <label>, since there is no one control here to label — a group of
+						     six buttons, each pressed or not. -->
+						<div class="flex flex-col gap-1 text-xs">
 							<span class="opacity-60">Colour</span>
-							<select
-								class="select select-sm select-bordered w-full capitalize"
-								bind:value={filterColor}
-							>
-								<option value={ANY}>All colours</option>
+							<div class="grid grid-cols-6 gap-1" role="group" aria-label="Filter by colour">
 								{#each COLOR_OPTIONS as color (color)}
-									<option value={color}>{color}</option>
+									<button
+										type="button"
+										class={colorSquareClasses(color, filterColor)}
+										title={color}
+										aria-label="Filter by {color}"
+										aria-pressed={filterColor === color}
+										on:click={() => toggleColorFilter(color)}
+									></button>
 								{/each}
-							</select>
-						</label>
+							</div>
+						</div>
 
 						<label class="flex flex-col gap-1 text-xs">
 							<span class="opacity-60">Show</span>
