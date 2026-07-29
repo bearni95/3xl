@@ -1900,14 +1900,17 @@
 								</p>
 							</div>
 						{:else if claimPacks.length}
-							<!-- Two packs to a row at this width, and an opened one stands its cards
-								in two columns as well — the panel is far too narrow for the claim
-								page's three. The stood-up pack is bound to the same id a map box click
-								sets, so the map and the grid are never looking at two different packs. -->
+							<!-- Two packs to a row at this width, and an opened one stands its cards in
+								three columns: a card is read at whatever width its column leaves it, and
+								five of them two to a row is three rows deep, which puts part of a pull
+								under the fold. Three fits five in two rows, so the whole of what a pack
+								gave is one look. The stood-up pack is bound to the same id a map box
+								click sets, so the map and the grid are never looking at two different
+								packs. -->
 							<PackGrid
 								packs={claimPacks}
 								columns={2}
-								revealColumns={2}
+								revealColumns={3}
 								interactive={!allowanceSpent}
 								bind:selected={packTownId}
 								classes={classNames(
