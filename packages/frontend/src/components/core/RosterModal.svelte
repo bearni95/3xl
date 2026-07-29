@@ -117,7 +117,8 @@
 	// card.
 	const ROWS_PER_PAGE = 10;
 	let page = 0; // zero-based
-	// The grid's scroll box, so turning a page can put it back at the top.
+	// The cards' own grid, which is the thing that scrolls — so turning a page can put it
+	// back at the top. The filters and the line-up beside it do not move with it.
 	let gridScroller: HTMLDivElement | undefined;
 
 	// Whether any filter is narrowing the roster (drives the Clear button).
@@ -823,294 +824,297 @@
 				     itself does the same thing, or selects the copy while recycling, and tapping a
 				     circle only changes which copy is shown. Only the current page is mounted —
 				     the filters narrow the roster, the pager walks what's left ROWS_PER_PAGE rows
-				     at a time — and the two grids share the one scroll box, so the filters and the
-				     line-up scroll away with the cards rather than standing over them. -->
-				<div
-					bind:this={gridScroller}
-					class="min-h-0 min-w-0 flex-1 overflow-y-auto"
-				>
-					<!-- Two grids, not one: three columns of the filters and the line-up on the left,
-					     four of the roster on the right, standing in a seven-column frame at the gap
-					     both of them use, so a cell of either is one column of that frame wide and the
-					     two read across as a single rhythm. items-start is what keeps the left grid the
-					     height of its own content — stretched to the roster's height, its rows would
-					     stretch with it and the filter card would be as tall as ten rows of cards.
-					     The panel is the right grid's own rather than the scroll box's: the box held
-					     one that ran under both, which said the filters and the cards were one surface
-					     when they are two things now. So the cards sit on base-200 and everything on
-					     the left stands on the page itself — the filter card being its own panel
-					     already, in the lighter stock, and the line-up wanting nothing behind it. -->
-					<div class="grid grid-cols-7 items-start gap-3">
-						<!-- The filters and the line-up, three across: the filter card over two of those
-						     columns and one cell per team slot under it. Every control ANDs with the
-						     others. Clear stands at the head of the card: it is what undoes everything
-						     below it, and a list of shows long enough to run on had pushed it out of sight
-						     at the very moment there was most to undo. -->
-						<div class="col-span-3 grid grid-cols-3 gap-3">
-							<div class="col-span-2 flex flex-col gap-3 rounded-box bg-base-100 p-3">
-								<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
-									Clear
-								</button>
+				     at a time — and that page scrolls in its own grid, the filters and the line-up
+				     keeping their place beside it rather than travelling with it. -->
+				<!-- Two grids, not one: three columns of the filters and the line-up on the left,
+				     four of the roster on the right, standing in a seven-column frame at the gap both
+				     of them use, so a cell of either is one column of that frame wide and the two
+				     read across as a single rhythm.
+				     The frame itself does not scroll and takes exactly the height the toolbar leaves
+				     it: it is the cards that scroll, inside their own grid, so the filters and the
+				     line-up stay where they are however far down the roster the player reads. That is
+				     what each grid being a scroll box of its own buys — and it is also what lets them
+				     be clamped at all, an element that scrolls having no minimum height of its own to
+				     push the frame open with. content-start on both keeps their rows at their own
+				     heights rather than stretched down the frame.
+				     The panel is the right grid's own rather than the frame's: one that ran under
+				     both said the filters and the cards were a single surface at the very moment they
+				     stopped being a single grid. So the cards sit on base-200 and everything on the
+				     left stands on the page itself — the filter card being its own panel already, in
+				     the lighter stock, and the line-up wanting nothing behind it. -->
+				<div class="grid min-h-0 min-w-0 flex-1 grid-cols-7 gap-3">
+					<!-- The filters and the line-up, three across: the filter card over two of those
+					     columns and one cell per team slot under it. Every control ANDs with the
+					     others. Clear stands at the head of the card: it is what undoes everything
+					     below it, and a list of shows long enough to run on had pushed it out of sight
+					     at the very moment there was most to undo. -->
+					<div class="col-span-3 grid min-h-0 grid-cols-3 content-start gap-3 overflow-y-auto">
+						<div class="col-span-2 flex flex-col gap-3 rounded-box bg-base-100 p-3">
+							<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
+								Clear
+							</button>
 
-								<label class="flex flex-col gap-1 text-xs">
-									<span class="opacity-60">Name</span>
-									<input
-										type="search"
-										class="input input-sm input-bordered w-full"
-										placeholder="Search by name"
-										bind:value={filterName}
-									/>
-								</label>
+							<label class="flex flex-col gap-1 text-xs">
+								<span class="opacity-60">Name</span>
+								<input
+									type="search"
+									class="input input-sm input-bordered w-full"
+									placeholder="Search by name"
+									bind:value={filterName}
+								/>
+							</label>
 
-								<!-- The colours and the shows side by side, a column of the card each: the
-								     colours are a block six squares can be laid out inside rather than a row
-								     needing the full width, and the shows are a list that runs as long as the
-								     roster's shows do — so what one saves in width the other spends in height,
-								     and they cost the card the taller of the two rather than the sum. -->
-								<div class="grid grid-cols-2 items-start gap-3">
-									<!-- The colours are the swatches themselves rather than a list of their
-									     names: there are exactly six, so they are two rows of three, and a
-									     square saying red is quicker to read than the word and needs no
-									     translating. Not a <label>, since there is no one control here to
-									     label — a group of six buttons, each pressed or not. -->
+							<!-- The colours and the shows side by side, a column of the card each: the
+							     colours are a block six squares can be laid out inside rather than a row
+							     needing the full width, and the shows are a list that runs as long as the
+							     roster's shows do — so what one saves in width the other spends in height,
+							     and they cost the card the taller of the two rather than the sum. -->
+							<div class="grid grid-cols-2 items-start gap-3">
+								<!-- The colours are the swatches themselves rather than a list of their
+								     names: there are exactly six, so they are two rows of three, and a
+								     square saying red is quicker to read than the word and needs no
+								     translating. Not a <label>, since there is no one control here to
+								     label — a group of six buttons, each pressed or not. -->
+								<div class="flex flex-col gap-1 text-xs">
+									<span class="opacity-60">Colour</span>
+									<div class="grid grid-cols-3 gap-1" role="group" aria-label="Filter by colour">
+										{#each COLOR_OPTIONS as color (color)}
+											<button
+												type="button"
+												class={colorSquareClasses(color, filterColor)}
+												title={color}
+												aria-label="Filter by {color}"
+												aria-pressed={filterColor === color}
+												on:click={() => toggleColorFilter(color)}
+											></button>
+										{/each}
+									</div>
+								</div>
+
+								<!-- The shows say themselves the way the statues do: their own lettering,
+								     not their names set in ours. One to a row, the full width of the column:
+								     a wordmark is wide, and two side by side left each of them a smudge. A
+								     show whose logo is not enabled yet falls back to its name, so it is
+								     still there to filter by — and the whole group only stands while the
+								     roster holds cards from more than nothing, which leaves the colours the
+								     first of the pair's two columns and nothing in the second. -->
+								{#if showFilterOptions.length > 0}
 									<div class="flex flex-col gap-1 text-xs">
-										<span class="opacity-60">Colour</span>
-										<div class="grid grid-cols-3 gap-1" role="group" aria-label="Filter by colour">
-											{#each COLOR_OPTIONS as color (color)}
+										<span class="opacity-60">Show</span>
+										<div class="flex flex-col gap-1" role="group" aria-label="Filter by show">
+											{#each showFilterOptions as show (show.id)}
 												<button
 													type="button"
-													class={colorSquareClasses(color, filterColor)}
-													title={color}
-													aria-label="Filter by {color}"
-													aria-pressed={filterColor === color}
-													on:click={() => toggleColorFilter(color)}
-												></button>
+													class={showChipClasses(show.id, filterShow)}
+													title={show.name}
+													aria-label="Filter by {show.name}"
+													aria-pressed={filterShow === show.id}
+													on:click={() => toggleShowFilter(show.id)}
+												>
+													{#if $showLogos.get(show.id)}
+														<img
+															src={$showLogos.get(show.id)?.url}
+															alt={show.name}
+															class="max-h-full max-w-full object-contain"
+														/>
+													{:else}
+														<span class="truncate text-[0.625rem] text-white/80">{show.name}</span>
+													{/if}
+												</button>
 											{/each}
 										</div>
 									</div>
-
-									<!-- The shows say themselves the way the statues do: their own lettering,
-									     not their names set in ours. One to a row, the full width of the column:
-									     a wordmark is wide, and two side by side left each of them a smudge. A
-									     show whose logo is not enabled yet falls back to its name, so it is
-									     still there to filter by — and the whole group only stands while the
-									     roster holds cards from more than nothing, which leaves the colours the
-									     first of the pair's two columns and nothing in the second. -->
-									{#if showFilterOptions.length > 0}
-										<div class="flex flex-col gap-1 text-xs">
-											<span class="opacity-60">Show</span>
-											<div class="flex flex-col gap-1" role="group" aria-label="Filter by show">
-												{#each showFilterOptions as show (show.id)}
-													<button
-														type="button"
-														class={showChipClasses(show.id, filterShow)}
-														title={show.name}
-														aria-label="Filter by {show.name}"
-														aria-pressed={filterShow === show.id}
-														on:click={() => toggleShowFilter(show.id)}
-													>
-														{#if $showLogos.get(show.id)}
-															<img
-																src={$showLogos.get(show.id)?.url}
-																alt={show.name}
-																class="max-h-full max-w-full object-contain"
-															/>
-														{:else}
-															<span class="truncate text-[0.625rem] text-white/80">{show.name}</span>
-														{/if}
-													</button>
-												{/each}
-											</div>
-										</div>
-									{/if}
-								</div>
-
-								<button
-									class="btn btn-sm w-full"
-									class:btn-outline={!recycleMode}
-									class:btn-warning={recycleMode}
-									on:click={() => (recycleMode ? cancelRecycle() : enterRecycleMode())}
-								>
-									{recycleMode ? 'Cancel' : 'Recycle'}
-								</button>
+								{/if}
 							</div>
 
-							<!-- The line-up under the filter card, one cell per slot: the card standing in
-							     it or the empty slot itself. A slot is a place on the team whether or not
-							     there is a card in it, so the empty ones are drawn too — three cells that
-							     say how big a team is and how much of one the player has, which a row of
-							     only the cards fielded could never say. Every filled cell is bordered in
-							     primary and carries a minus button, and taking a card back off the team is
-							     the one thing this grid does. -->
-							{#each partyCells as { slot, spawn, statue } (slot)}
-								{#if spawn && statue}
-									<div class="relative flex flex-col gap-2 rounded-box border-2 border-primary p-1.5">
-										{#if !recycleMode}
-											<button
-												type="button"
-												class="btn btn-circle btn-primary btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow"
-												disabled={$teamSaving}
-												title="Remove {statue.label} from your team"
-												aria-label="Remove {statue.label} from your team"
-												on:click={() => handleTeamButton(spawn)}
-											>
-												−
-											</button>
-										{/if}
-										<CharacterStatue
-											label={statue.label}
-											basePath={statue.basePath}
-											color={statue.color}
-											locationName={statue.locationName}
-											spawnedAt={statue.spawnedAt}
-											showId={statue.showId}
-										/>
-									</div>
-								{:else}
-									<div
-										class="flex items-center justify-center rounded-box border-2 border-dashed border-base-content/20 p-1.5 text-center text-xs opacity-50"
-									>
-										Empty slot
-									</div>
-								{/if}
-							{/each}
-
+							<button
+								class="btn btn-sm w-full"
+								class:btn-outline={!recycleMode}
+								class:btn-warning={recycleMode}
+								on:click={() => (recycleMode ? cancelRecycle() : enterRecycleMode())}
+							>
+								{recycleMode ? 'Cancel' : 'Recycle'}
+							</button>
 						</div>
 
-						<!-- The roster itself, four cards across, to the right of the two things it is read
-						     with. Its own grid: the cards are one kind of cell and the filters and the
-						     line-up another, and a single grid could not have given the one four columns and
-						     the other three. The empty-roster line is a cell of it too, spanning the four,
-						     rather than something laid over the box — an overlay would cover the very
-						     controls a player has to reach to undo the filter that emptied it. -->
-						<div class="col-span-4 grid grid-cols-4 gap-3 rounded-box bg-base-200 p-3">
-							{#each pagedStatues as { group, copy, swatches, places, placeValue, statue, fielded } (group.id)}
-								<!-- The border is on the cell, not on the statue: it takes in the circles
-								     and the place select too, so what it marks is this character's whole
-								     entry. Every cell carries it and only a fielded one colours it in, so
-								     joining the team never nudges the grid by two pixels. Nothing in this grid
-								     is fielded while the line-up stands in a grid of its own, so the coloured
-								     border is what a card fielded from a one-grid roster would wear: it costs
-								     nothing to leave standing, and it is the one thing that would have to be
-								     found again if the two ever became one. -->
-								<div
-									class={classNames('relative flex flex-col gap-2 rounded-box border-2 p-1.5', {
-										'border-primary': fielded,
-										'border-transparent': !fielded
-									})}
-								>
-									<!-- The team button, pinned to the top of the cell rather than laid out in
-									     it: it sits over the statue's top-right corner, in the same place in
-									     every cell whatever the art below it does. A minus on a fielded card, a
-									     plus on one that could still be fielded, and disabled once the team is
-									     full — a plus that cannot add is a dead button, and the server would
-									     refuse the card anyway. Not drawn at all while recycling, where a cell
-									     is about what to trade in rather than who to field. -->
+						<!-- The line-up under the filter card, one cell per slot: the card standing in
+						     it or the empty slot itself. A slot is a place on the team whether or not
+						     there is a card in it, so the empty ones are drawn too — three cells that
+						     say how big a team is and how much of one the player has, which a row of
+						     only the cards fielded could never say. Every filled cell is bordered in
+						     primary and carries a minus button, and taking a card back off the team is
+						     the one thing this grid does. -->
+						{#each partyCells as { slot, spawn, statue } (slot)}
+							{#if spawn && statue}
+								<div class="relative flex flex-col gap-2 rounded-box border-2 border-primary p-1.5">
 									{#if !recycleMode}
 										<button
 											type="button"
-											class={classNames(
-												'btn btn-circle btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow',
-												fielded ? 'btn-primary' : 'btn-neutral'
-											)}
-											disabled={$teamSaving || (!fielded && teamFilledCount >= TEAM_SIZE)}
-											title={fielded
-												? `Remove ${statue.label} from your team`
-												: `Add ${statue.label} to your team`}
-											aria-label={fielded
-												? `Remove ${statue.label} from your team`
-												: `Add ${statue.label} to your team`}
-											on:click={() => handleTeamButton(copy)}
+											class="btn btn-circle btn-primary btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow"
+											disabled={$teamSaving}
+											title="Remove {statue.label} from your team"
+											aria-label="Remove {statue.label} from your team"
+											on:click={() => handleTeamButton(spawn)}
 										>
-											{fielded ? '−' : '+'}
+											−
 										</button>
 									{/if}
+									<CharacterStatue
+										label={statue.label}
+										basePath={statue.basePath}
+										color={statue.color}
+										locationName={statue.locationName}
+										spawnedAt={statue.spawnedAt}
+										showId={statue.showId}
+									/>
+								</div>
+							{:else}
+								<div
+									class="flex items-center justify-center rounded-box border-2 border-dashed border-base-content/20 p-1.5 text-center text-xs opacity-50"
+								>
+									Empty slot
+								</div>
+							{/if}
+						{/each}
+
+					</div>
+
+					<!-- The roster itself, four cards across, to the right of the two things it is read
+					     with. Its own grid: the cards are one kind of cell and the filters and the
+					     line-up another, and a single grid could not have given the one four columns and
+					     the other three. The empty-roster line is a cell of it too, spanning the four,
+					     rather than something laid over the box — an overlay would cover the very
+					     controls a player has to reach to undo the filter that emptied it. -->
+					<div
+						bind:this={gridScroller}
+						class="col-span-4 grid min-h-0 grid-cols-4 content-start gap-3 overflow-y-auto rounded-box bg-base-200 p-3"
+					>
+						{#each pagedStatues as { group, copy, swatches, places, placeValue, statue, fielded } (group.id)}
+							<!-- The border is on the cell, not on the statue: it takes in the circles
+							     and the place select too, so what it marks is this character's whole
+							     entry. Every cell carries it and only a fielded one colours it in, so
+							     joining the team never nudges the grid by two pixels. Nothing in this grid
+							     is fielded while the line-up stands in a grid of its own, so the coloured
+							     border is what a card fielded from a one-grid roster would wear: it costs
+							     nothing to leave standing, and it is the one thing that would have to be
+							     found again if the two ever became one. -->
+							<div
+								class={classNames('relative flex flex-col gap-2 rounded-box border-2 p-1.5', {
+									'border-primary': fielded,
+									'border-transparent': !fielded
+								})}
+							>
+								<!-- The team button, pinned to the top of the cell rather than laid out in
+								     it: it sits over the statue's top-right corner, in the same place in
+								     every cell whatever the art below it does. A minus on a fielded card, a
+								     plus on one that could still be fielded, and disabled once the team is
+								     full — a plus that cannot add is a dead button, and the server would
+								     refuse the card anyway. Not drawn at all while recycling, where a cell
+								     is about what to trade in rather than who to field. -->
+								{#if !recycleMode}
 									<button
 										type="button"
 										class={classNames(
-											'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-											{
-												'opacity-30': recycleMode && !selectedForRecycle.has(copy.id),
-												'ring-2 ring-warning': recycleMode && selectedForRecycle.has(copy.id)
-											}
+											'btn btn-circle btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow',
+											fielded ? 'btn-primary' : 'btn-neutral'
 										)}
-										on:click={() => handleCardTap(copy)}
+										disabled={$teamSaving || (!fielded && teamFilledCount >= TEAM_SIZE)}
+										title={fielded
+											? `Remove ${statue.label} from your team`
+											: `Add ${statue.label} to your team`}
+										aria-label={fielded
+											? `Remove ${statue.label} from your team`
+											: `Add ${statue.label} to your team`}
+										on:click={() => handleTeamButton(copy)}
 									>
-										<CharacterStatue
-											label={statue.label}
-											basePath={statue.basePath}
-											color={statue.color}
-											box={statue.box}
-											locationName={statue.locationName}
-											spawnedAt={statue.spawnedAt}
-											showId={statue.showId}
-										/>
+										{fielded ? '−' : '+'}
 									</button>
-									<!-- Every colour this character has been pulled in, each circle carrying
-									     how many of that colour the player owns: a click stands them up in
-									     that colour, and a click on the colour already standing walks to the
-									     next copy of it. The circle being shown is the ringed one. Beside them,
-									     the same copies asked for the other way round — by the town they were
-									     claimed in, each saying its colour.
-									     Both are ways of choosing between a character's copies, so ungrouped
-									     there is nothing for them to choose: the cell is one card, the circle
-									     would read 1 in the colour the statue is already standing in and the
-									     select would hold the one town its panel already names. -->
-									{#if $groupCopies}
-										<div class="flex flex-wrap items-center justify-center gap-1.5">
-											{#each swatches as swatch (swatch.color)}
-												<button
-													type="button"
-													class={swatchCircleClasses(
-														swatch,
-														copy.color,
-														recycleMode,
-														selectedForRecycle
-													)}
-													title="{swatch.copies.length} in {swatch.color}"
-													aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
-													aria-pressed={swatch.color === copy.color}
-													on:click={() => showColorCopy(group.id, swatch, copy)}
-												>
-													{swatch.copies.length}
-												</button>
-											{/each}
-
-											<!-- The same copies asked for by town rather than by colour, and a native
-											     select because a menu of our own would be clipped by the scroll box
-											     this grid lives in. Each place says the colour it was pulled in with a
-											     square, the one thing an option can carry that a stylesheet cannot
-											     reach. -->
-											<select
-												class="select select-xs min-w-0 max-w-[9rem] flex-initial"
-												aria-label="{statue.label} — where it was claimed"
-												value={placeValue}
-												on:change={(event) => showCopy(group.id, event.currentTarget.value)}
+								{/if}
+								<button
+									type="button"
+									class={classNames(
+										'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+										{
+											'opacity-30': recycleMode && !selectedForRecycle.has(copy.id),
+											'ring-2 ring-warning': recycleMode && selectedForRecycle.has(copy.id)
+										}
+									)}
+									on:click={() => handleCardTap(copy)}
+								>
+									<CharacterStatue
+										label={statue.label}
+										basePath={statue.basePath}
+										color={statue.color}
+										box={statue.box}
+										locationName={statue.locationName}
+										spawnedAt={statue.spawnedAt}
+										showId={statue.showId}
+									/>
+								</button>
+								<!-- Every colour this character has been pulled in, each circle carrying
+								     how many of that colour the player owns: a click stands them up in
+								     that colour, and a click on the colour already standing walks to the
+								     next copy of it. The circle being shown is the ringed one. Beside them,
+								     the same copies asked for the other way round — by the town they were
+								     claimed in, each saying its colour.
+								     Both are ways of choosing between a character's copies, so ungrouped
+								     there is nothing for them to choose: the cell is one card, the circle
+								     would read 1 in the colour the statue is already standing in and the
+								     select would hold the one town its panel already names. -->
+								{#if $groupCopies}
+									<div class="flex flex-wrap items-center justify-center gap-1.5">
+										{#each swatches as swatch (swatch.color)}
+											<button
+												type="button"
+												class={swatchCircleClasses(
+													swatch,
+													copy.color,
+													recycleMode,
+													selectedForRecycle
+												)}
+												title="{swatch.copies.length} in {swatch.color}"
+												aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
+												aria-pressed={swatch.color === copy.color}
+												on:click={() => showColorCopy(group.id, swatch, copy)}
 											>
-												{#each places as place (place.copy.id)}
-													<option value={place.copy.id}>
-														{SPAWN_SQUARE_GLYPHS[place.copy.color]}
-														{place.locationName}
-													</option>
-												{/each}
-											</select>
-										</div>
-									{/if}
-								</div>
-							{/each}
-						<!-- Said under the grid rather than laid over it: the filters are cells of that
-						     grid now, and an overlay filling the box would cover the very controls the
-						     player has to reach to get their cards back. Only where there are cards it
-						     could be talking about: a player whose whole roster is on the team has an
-						     empty grid with nothing hiding anything, the party row above holding every
-						     card they own, and blaming the filters for that would be a lie. -->
-						{#if filteredSpawns.length === 0 && $spawns.length > teamFilledCount}
-							<div class="col-span-4 flex flex-col items-center justify-center gap-3 py-12 text-center">
-								<p class="text-sm opacity-60">No characters match these filters.</p>
-								<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
+												{swatch.copies.length}
+											</button>
+										{/each}
+
+										<!-- The same copies asked for by town rather than by colour, and a native
+										     select because a menu of our own would be clipped by the scroll box
+										     this grid lives in. Each place says the colour it was pulled in with a
+										     square, the one thing an option can carry that a stylesheet cannot
+										     reach. -->
+										<select
+											class="select select-xs min-w-0 max-w-[9rem] flex-initial"
+											aria-label="{statue.label} — where it was claimed"
+											value={placeValue}
+											on:change={(event) => showCopy(group.id, event.currentTarget.value)}
+										>
+											{#each places as place (place.copy.id)}
+												<option value={place.copy.id}>
+													{SPAWN_SQUARE_GLYPHS[place.copy.color]}
+													{place.locationName}
+												</option>
+											{/each}
+										</select>
+									</div>
+								{/if}
 							</div>
-						{/if}
+						{/each}
+					<!-- Said under the grid rather than laid over it: the filters are cells of that
+					     grid now, and an overlay filling the box would cover the very controls the
+					     player has to reach to get their cards back. Only where there are cards it
+					     could be talking about: a player whose whole roster is on the team has an
+					     empty grid with nothing hiding anything, the party row above holding every
+					     card they own, and blaming the filters for that would be a lie. -->
+					{#if filteredSpawns.length === 0 && $spawns.length > teamFilledCount}
+						<div class="col-span-4 flex flex-col items-center justify-center gap-3 py-12 text-center">
+							<p class="text-sm opacity-60">No characters match these filters.</p>
+							<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
 						</div>
+					{/if}
 					</div>
 				</div>
 			{/if}
