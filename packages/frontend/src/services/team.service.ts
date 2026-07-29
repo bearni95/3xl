@@ -2,7 +2,7 @@ import { derived, writable, type Readable } from 'svelte/store';
 import { spawnService } from '$services/spawn.service';
 import type { SpawnColor, CharacterSpawn } from '$types/character-spawn.type';
 import type { CombatColor } from '$types/character-definition.type';
-import { teammateColors } from '$utils/color/compare';
+import { isTeammateColor, teammateColors } from '$utils/color/compare';
 import { COMBAT_TEAM_SIZE } from '$types/combat.type';
 
 /**
@@ -99,10 +99,9 @@ class TeamService {
 
 	/**
 	 * Put a card on the team or take it off: the roster's one gesture. An id
-	 * already fielded leaves its slot (and, if it was the lead, takes the rest of
-	 * the team with it — they were only there for its colour); anything else goes
-	 * into the first empty slot. A card the team cannot take, or a full team, is
-	 * simply not a move.
+	 * already fielded leaves its slot (and, if it was the lead, the cards behind it
+	 * move up — see {@link clear}); anything else goes into the first empty slot. A
+	 * card the team cannot take, or a full team, is simply not a move.
 	 */
 	async toggle(spawnId: string): Promise<void> {
 		const slots = this.currentSlots();
@@ -114,13 +113,52 @@ class TeamService {
 	}
 
 	/**
-	 * Empty one slot. Emptying the lead's empties the whole team: every other slot
-	 * was only allowed there by the lead's colour, and the server refuses a team
-	 * standing behind nobody.
+	 * Empty one slot. Taking the lead off promotes the card behind it — the second
+	 * becomes the lead and the third moves up behind it — rather than emptying the
+	 * team: the two cards behind were picked by the player, and dropping the front
+	 * one should cost them that card, not the whole line-up. The slots close up
+	 * because the server refuses a team standing behind nobody, so a hole in the lead
+	 * slot is not a line-up at all.
+	 *
+	 * What limits how much survives is the colour rule, which is *not* transitive.
+	 * Every member shares a colour with the lead, but a red lead admits both orange
+	 * and purple, and once orange leads, purple is no longer a teammate. So the
+	 * promoted lead keeps whoever can still stand behind it and the rest is dropped —
+	 * the most of the team that can be kept, since `set_team` would refuse the whole
+	 * line-up otherwise and the player would be left with none of it.
+	 *
+	 * Any other slot just empties, leaving its hole for the next card added to fill.
 	 */
 	async clear(index: number): Promise<void> {
-		if (index === 0) return this.save(emptySlots());
-		await this.save(this.currentSlots().map((id, i) => (i === index ? null : id)));
+		if (index !== 0) {
+			return this.save(this.currentSlots().map((id, i) => (i === index ? null : id)));
+		}
+		const [lead, ...behind] = this.currentSlots()
+			.slice(1)
+			.filter((id): id is string => id !== null);
+		if (!lead) return this.save(emptySlots());
+		const leadColor = this.colorOf(lead);
+		// No colour to read means no way to tell who may follow, so the promoted card
+		// stands alone rather than dragging in a team the server might refuse.
+		const kept = leadColor
+			? [lead, ...behind.filter((id) => this.isTeammateOf(leadColor, id))]
+			: [lead];
+		await this.save(emptySlots().map((_, slot) => kept[slot] ?? null));
+	}
+
+	/** One fielded card's rolled colour, or null if it is not among the loaded cards. */
+	private colorOf(spawnId: string): SpawnColor | null {
+		return this.read(spawnService.spawns).find((spawn) => spawn.id === spawnId)?.color ?? null;
+	}
+
+	/** Whether `spawnId` may stand behind a lead of `leadColor` — the rule `set_team`
+	 * enforces, asked here so a promotion only keeps the cards it would accept. */
+	private isTeammateOf(leadColor: SpawnColor, spawnId: string): boolean {
+		const color = this.colorOf(spawnId);
+		return (
+			color !== null &&
+			isTeammateColor(leadColor as unknown as CombatColor, color as unknown as CombatColor)
+		);
 	}
 
 	/**
