@@ -808,43 +808,23 @@
 	// The cards the player fields come in slot order — the leader first, as on the
 	// board. They ARE the team: a card holds a team slot or it doesn't, so this is the
 	// same line-up on every device the account is signed in on.
-	// Their portraits load through the same lazy loader the town's team uses.
-	$: void loadFaces($teamSpawns.map((spawn) => spawn.characterId));
-
-	// geojson feature id → municipality name, so each card can name where it was
-	// claimed. Null until the layer the map is drawn from has loaded.
-	$: municipalityNames = municipalities ? locationAdapter.municipalityNames(municipalities) : null;
-
-	/** A spawn's claim place; the Ultramar sentinel and any unresolved id read as Ultramar. */
-	function claimPlaceFor(id: string | null | undefined, names: Map<string, string> | null): string {
-		if (id && id !== ULTRAMAR_ID) {
-			const name = names?.get(id);
-			if (name) return restoreCatalanArticle(name);
-		}
-		return ULTRAMAR.municipality;
-	}
-
-	// The player's team as display CardModels. Same shape as the town's, from their
-	// own cards instead of a seeded roll: the rolled colour is theirs, the
-	// claim place is where they pulled it, and the show row names the
-	// character's own show as it does on the roster and the combat board. No rarity —
-	// this panel doesn't read that Supabase layer. Every resolved map is threaded in so
-	// the statement re-runs as faces, shows and place names arrive.
-	$: playerTeamCards = ((
-		faces: Map<string, string | null>,
-		shows: Map<string, string[]>,
-		names: Map<string, string> | null
-	): CardModel[] =>
+	//
+	// The strip draws them from their frames folder alone: no portrait to load, and no
+	// claim place or show name to resolve, since it names neither.
+	//
+	// The player's team as the strip draws it — not a card: who they are, the art that
+	// stands them up, the colour they bend and the show they come from, whose glyph goes
+	// on the floor they stand on. The show is the character's own first show, as
+	// `teamShowId` reads it for a town's pin, so a character carries the same badge here
+	// as the map gives the show. Threaded through the assignment so it re-derives as
+	// that lands.
+	$: playerTeamLineup = ((shows: Map<string, number[]>) =>
 		$teamSpawns.map((spawn) => ({
 			label: charactersById.get(spawn.characterId)?.label ?? spawn.characterId,
 			basePath: charactersById.get(spawn.characterId)?.basePath ?? null,
-			faceUrl: faces.get(spawn.characterId) ?? null,
 			color: spawn.color,
-			rarity: null,
-			showName: cardShowName(spawn.characterId, shows),
-			locationName: claimPlaceFor(spawn.locationId, names),
-			spawnedAt: spawn.createdAt
-		})))(characterFaces, characterShowNames, municipalityNames);
+			showId: shows.get(spawn.characterId)?.[0] ?? null
+		})))(showsByCharacter);
 
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
 	// plus everything the fight has to be reported against — the town's id and the
@@ -1433,7 +1413,7 @@
 			<div class="flex-none border-b border-base-300 px-4 py-3">
 				<AuthMenu embedded />
 
-				{#if playerTeamCards.length > 0}
+				{#if playerTeamLineup.length > 0}
 					<!-- The team this player fields, standing in the document itself rather than
 						on a canvas: each character's idle animation on a square of its own colour,
 						at the height the cards give it. Under the account card because it is part
@@ -1441,7 +1421,7 @@
 						context — and a whole card's worth of chrome — spent on three sprites the
 						panel only shows. -->
 					<div class="mt-3">
-						<TeamLineup members={playerTeamCards} />
+						<TeamLineup members={playerTeamLineup} />
 					</div>
 				{/if}
 			</div>
