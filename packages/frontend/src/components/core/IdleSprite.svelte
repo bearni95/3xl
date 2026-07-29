@@ -1,3 +1,17 @@
+<script context="module" lang="ts">
+	// Every frame the browser has drawn at least once this session, by url — shared by all
+	// the sprites on the page and never emptied.
+	//
+	// A veil is for waiting, and art that has been drawn before is back on screen within
+	// the frame, so a sprite that finds all of its own art in here has nothing to wait for
+	// and goes up bare. That is what keeps the map quiet: a pin is built from scratch on
+	// every zoom and pan (see WorldMap's rebuildMarkers, which unmounts the lot and mounts
+	// them again), and a fresh mount cannot tell on its own that it is the same three
+	// characters back again — without this, every zoom swept the squares over a picture
+	// that was already in hand.
+	const drawnFrames = new Set<string>();
+</script>
+
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onDestroy } from 'svelte';
@@ -54,7 +68,8 @@
 	//
 	// It holds a moment after the frames are ready before it starts to go, so the
 	// uncovering is a deliberate reveal of a finished picture rather than a race with
-	// the last frame's first paint.
+	// the last frame's first paint. It is skipped outright for art that has been drawn
+	// before (see `drawnFrames` above), there being nothing then to cover.
 	const VEIL_HOLD = 300;
 	// How long it takes to leave, from the first square blurring to the last. VeilBlock
 	// spends it on the sweep up the rows and this stops drawing the veil at the end of it,
@@ -88,6 +103,14 @@
 	$: if (basePath !== loadedPath) {
 		loadedPath = basePath;
 		void load(basePath);
+	}
+
+	/** A frame has arrived: it counts towards the picture being up, and it is remembered for
+	 * the next surface that draws this character, which will not need a veil at all. A frame
+	 * that errored counts but is not remembered — it never drew. */
+	function frameDrawn(url: string): void {
+		drawnFrames.add(url);
+		loadedFrames += 1;
 	}
 
 	/** The veil is all there. If the picture was ready before it was, the hold starts now. */
@@ -131,6 +154,10 @@
 		if (path !== loadedPath) return;
 		renderScale = scale;
 		frames = clip;
+		// Nothing to cover if this character has been drawn before: the veil never goes up at
+		// all, rather than going up and being swept off again over a picture that was there
+		// the whole time.
+		if (clip?.every((frame) => drawnFrames.has(frame.url))) veil = 'down';
 		schedule();
 	}
 
@@ -205,7 +232,7 @@
 				style:--sprite-bottom="{frame.bottom}px"
 				style:--sprite-width="{frame.width}px"
 				style:--sprite-height="{frame.height}px"
-				on:load={() => (loadedFrames += 1)}
+				on:load={() => frameDrawn(frame.url)}
 				on:error={() => (loadedFrames += 1)}
 			/>
 		{/each}
