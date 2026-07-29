@@ -202,6 +202,51 @@ describe('CombatController — the fight as it thins', () => {
 	});
 });
 
+describe('CombatController — giving the fight up', () => {
+	it('ends it as a loss, reported with the team as it stood', () => {
+		const controller = new CombatController(
+			seeds(['blue', 'blue', 'blue', 'blue', 'blue', 'blue'])
+		);
+		controller.concede();
+
+		const state = get(controller);
+		expect(state.phase).toBe('done');
+		expect(state.outcome).toBe('lose');
+		// Nobody is knocked down for it: what is claimed is the loss, and the fighters
+		// are reported standing because that is how they were left.
+		expect(state.fighters.filter((fighter) => fighter.down)).toHaveLength(0);
+		const report = controller.report();
+		expect(report?.outcome).toBe('lose');
+		expect(report?.fighters).toEqual([
+			{ spawnId: '0', down: false },
+			{ spawnId: '1', down: false },
+			{ spawnId: '2', down: false }
+		]);
+	});
+
+	it('is only taken between turns, and only once', async () => {
+		const controller = new CombatController(
+			seeds(['blue', 'blue', 'blue', 'blue', 'blue', 'blue'])
+		);
+		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'charge');
+		controller.commit();
+		// Mid-volley: the turn is still being carried out and will settle the fight
+		// itself, so it is not given up over the top of it.
+		expect(get(controller).phase).toBe('resolving');
+		controller.concede();
+		expect(get(controller).outcome).toBeNull();
+
+		while (get(controller).phase === 'resolving') {
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		}
+		controller.concede();
+		expect(get(controller).outcome).toBe('lose');
+		// A fight already over stays as it was called.
+		controller.concede();
+		expect(get(controller).outcome).toBe('lose');
+	});
+});
+
 describe('CombatController — what the board is left showing', () => {
 	it('takes the turn’s callouts down as the next turn is handed over', async () => {
 		const { calls, board } = recordingBoard();

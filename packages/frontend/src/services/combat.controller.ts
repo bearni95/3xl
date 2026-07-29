@@ -41,7 +41,8 @@
  * The fight is never to sudden death. It is three encounters, and each one is won by
  * the fighter left standing when the other falls (both falling together is nobody's),
  * so the score — {@link CombatState.wins} — is what decides it. It is called the moment
- * every encounter is settled, and at {@link MAX_TURNS} at the latest. Winning is the
+ * every encounter is settled, at {@link MAX_TURNS} at the latest, and whenever the
+ * player gives it up ({@link CombatController.concede}). Winning is the
  * game's only source of experience: {@link CombatController.report} then summarises
  * the player's side for the `award_combat_exp` RPC, which pays out a share of the
  * player's current level — all of it for a flawless win, nothing for a loss.
@@ -397,6 +398,24 @@ export class CombatController {
 		if (action === 'shoot' && !this.canShoot(fighter)) return;
 		fighter.action = action;
 		this.emit();
+	}
+
+	/**
+	 * Give the fight up: it is over, and it is a loss.
+	 *
+	 * A fight cannot be walked out of — the battle is the server's and it is only ended
+	 * by a result being reported (see `battle.service`) — so conceding is how a player
+	 * gets out of one they do not want to play: it ends here exactly as being wiped out
+	 * would, and is reported as the loss it is, which earns nothing and banks no ground.
+	 * Nobody is knocked down for it: the fighters are left standing as they stood, since
+	 * that is what actually happened, and a loss pays the same either way.
+	 *
+	 * Only between turns. Mid-volley the turn is still being carried out and would
+	 * settle the fight itself the moment it finished, over the top of this.
+	 */
+	concede(): void {
+		if (this.phase !== 'planning') return;
+		this.end('lose', 'You gave the fight up.');
 	}
 
 	/** Lock both sides' orders in and carry them out together. */

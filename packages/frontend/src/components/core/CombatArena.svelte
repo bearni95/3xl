@@ -702,7 +702,7 @@
 						{/if}
 					</button>
 				{:else if state}
-					<!-- The one control the fight has, and nothing under it: what just
+					<!-- The two controls the fight has, and nothing under them: what just
 					     happened was played out on the board, so it is not also recounted
 					     here in words. -->
 					<button
@@ -717,6 +717,18 @@
 						{:else}
 							Commit turn {state.turn}
 						{/if}
+					</button>
+					<!-- The way out of a fight, and the only one there is: a battle is ended by
+					     a result, never by walking off, so giving it up reports the loss it is
+					     and closes the arena exactly as being wiped out would. Between turns
+					     only — a turn already being carried out settles itself. -->
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm text-error"
+						disabled={state.phase !== 'planning'}
+						on:click={() => controller?.concede()}
+					>
+						Admit defeat
 					</button>
 				{/if}
 			</div>
