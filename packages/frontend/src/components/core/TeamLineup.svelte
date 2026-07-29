@@ -17,6 +17,9 @@
 		label: string;
 		basePath: string | null;
 		color: SpawnColor;
+		/** Where the card was claimed, already in its display form. Null to leave the
+		 * name standing on its own. */
+		locationName: string | null;
 		showId: number | null;
 		/** The show's logo, as the admin's /shows screen enabled it, or null for a show
 		 * whose author picked none — that card simply goes unheaded. */
@@ -130,12 +133,19 @@
 				</div>
 			</div>
 
-			<!-- Who that is. A name too long for the column is cut with an ellipsis rather
-				than wrapped: the three columns are a row and must keep one height between
-				them, whatever they are called. -->
+			<!-- Who that is, and under it where they were claimed. Either line too long for
+				the column is cut with an ellipsis rather than wrapped: the three columns are
+				a row and must keep one height between them, whatever they are called and
+				wherever they were pulled. The place is the quieter of the two — it says
+				which copy of a character this is, not which character. -->
 			<div class="truncate text-center text-xs font-semibold" title={member.label}>
 				{member.label}
 			</div>
+			{#if member.locationName}
+				<div class="truncate text-center text-xs opacity-60" title={member.locationName}>
+					{member.locationName}
+				</div>
+			{/if}
 		</div>
 	{/each}
 </div>

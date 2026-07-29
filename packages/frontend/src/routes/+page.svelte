@@ -824,25 +824,44 @@
 	// same line-up on every device the account is signed in on.
 	//
 	// The strip draws them from their frames folder alone: no portrait to load, and no
-	// claim place or show name to resolve, since it names neither.
-	//
+	// show name to resolve, since it shows the show's logo rather than naming it.
+
+	// geojson feature id → municipality name, so each card can name where it was
+	// claimed. Null until the layer the map is drawn from has loaded.
+	$: municipalityNames = municipalities ? locationAdapter.municipalityNames(municipalities) : null;
+
+	/** A spawn's claim place; the Ultramar sentinel and any unresolved id read as Ultramar. */
+	function claimPlaceFor(id: string | null | undefined, names: Map<string, string> | null): string {
+		if (id && id !== ULTRAMAR_ID) {
+			const name = names?.get(id);
+			if (name) return restoreCatalanArticle(name);
+		}
+		return ULTRAMAR.municipality;
+	}
+
 	// The player's team as the strip draws it — not a card: who they are, the art that
-	// stands them up, the colour they bend and the show they come from, whose glyph goes
-	// on the floor they stand on and whose logo heads them. The show is the character's
-	// own first show, as `teamShowId` reads it for a town's pin, so a character carries
-	// the same badge here as the map gives the show. Both maps are threaded in so the
-	// statement re-derives as the assignment and the saved shows land.
-	$: playerTeamLineup = ((shows: Map<string, number[]>, logos: Map<number, string>) =>
+	// stands them up, the colour they bend, where they were claimed and the show they
+	// come from, whose glyph goes on the floor they stand on and whose logo heads them.
+	// The show is the character's own first show, as `teamShowId` reads it for a town's
+	// pin, so a character carries the same badge here as the map gives the show. Every
+	// map is threaded in so the statement re-derives as the assignment, the saved shows
+	// and the place names land.
+	$: playerTeamLineup = ((
+		shows: Map<string, number[]>,
+		logos: Map<number, string>,
+		names: Map<string, string> | null
+	) =>
 		$teamSpawns.map((spawn) => {
 			const showId = shows.get(spawn.characterId)?.[0] ?? null;
 			return {
 				label: charactersById.get(spawn.characterId)?.label ?? spawn.characterId,
 				basePath: charactersById.get(spawn.characterId)?.basePath ?? null,
 				color: spawn.color,
+				locationName: claimPlaceFor(spawn.locationId, names),
 				showId,
 				logoUrl: showId == null ? null : (logos.get(showId) ?? null)
 			};
-		}))(showsByCharacter, showLogoById);
+		}))(showsByCharacter, showLogoById, municipalityNames);
 
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
 	// plus everything the fight has to be reported against — the town's id and the
