@@ -151,20 +151,20 @@
 				they were pulled. The place is the quieter of the two — it says which copy of
 				a character this is, not which character. -->
 			<div class={classNames(colorPanels[member.color])}>
-				<!-- The name carries its own dark band over the colour, so it reads the same
-					on every one of the six swatches — which is also why its ink is white here
-					whatever the panel's own is. -->
+				<!-- Each row carries its own black band over the colour: a light one under the
+					name, a heavier one under the place. The ink follows the band — the panel's
+					own (black on yellow, white on the rest) reads over the light one, while the
+					heavy one is dark enough on every swatch to want white whatever the panel
+					says. -->
 				<div
-					class="truncate bg-black/50 px-1 py-0.5 text-center text-xs font-semibold text-white"
+					class="truncate bg-black/20 px-1 py-0.5 text-center text-xs font-semibold"
 					title={member.label}
 				>
 					{member.label}
 				</div>
 				{#if member.locationName}
-					<!-- And the place a fainter band of the same, so the two rows read as one
-						stack over the colour without the place ever competing with the name. -->
 					<div
-						class="truncate bg-black/20 px-1 py-0.5 text-center text-xs opacity-70"
+						class="truncate bg-black/50 px-1 py-0.5 text-center text-xs text-white/70"
 						title={member.locationName}
 					>
 						{member.locationName}
