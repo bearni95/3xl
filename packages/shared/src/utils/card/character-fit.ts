@@ -37,6 +37,27 @@ export interface FitFrame {
 }
 
 /**
+ * How a surface places a character across its box, which is the whole of what the
+ * width cap has to measure:
+ *
+ *   · `axis` — the body axis is pinned to a point and the character hangs off it, as
+ *     on the hex board, where a fighter stands on its cell's mark. What must fit in
+ *     half the box is then the furthest the cycle reaches from that axis, however
+ *     little of the character is out there.
+ *   · `sweep` — the rectangle the whole cycle sweeps out is centred in the box, which
+ *     is what the cards and the statues do (both offset the axis by half the difference
+ *     of its two reaches precisely to centre the art rather than the axis). What must
+ *     fit is then that rectangle, and the reach to one side of the axis is no bound at
+ *     all: a character whose art hangs far off its axis is drawn at its own size instead
+ *     of being shrunk until its longest limb fitted a half-box it is not centred in.
+ *
+ * Frieza is the whole of the difference in the roster today: his idle sweeps a tail
+ * most of a body-width to one side, so the axis rule held him a head shorter than his
+ * own sprite is, on surfaces that were centring his silhouette anyway.
+ */
+export type FitReach = 'axis' | 'sweep';
+
+/**
  * The source→screen ratio a character's art is drawn at inside a box of the given
  * size. This is the whole of how a character's on-screen size is decided.
  *
@@ -48,8 +69,10 @@ export interface FitFrame {
  *
  *   · **height** — a character taller than the reference (Perfect Cell, ~185) is
  *     brought back to the box's height instead of standing out of it.
- *   · **width** — each frame is placed by its body axis, which can sit off-centre, so
- *     the widest axis-to-edge reach of the cycle must fit in half the box.
+ *   · **width** — what has to fit across the box is whichever of the two the surface's
+ *     own placing makes it (see {@link FitReach}): twice the cycle's widest reach from
+ *     its body axis where the axis is pinned, or the sweep the cycle occupies where the
+ *     art itself is centred.
  *
  * `renderScale` is the one thing a character may say about this for itself, read from
  * its own definition JSON (see `CharacterDefinition.renderScale`): the whole scheme
@@ -62,12 +85,21 @@ export interface FitFrame {
 export function characterFitScale(
 	frames: FitFrame[],
 	box: { width: number; height: number },
-	renderScale: number = DEFAULT_RENDER_SCALE
+	renderScale: number = DEFAULT_RENDER_SCALE,
+	reach: FitReach = 'axis'
 ): number {
 	const maxHeight = Math.max(...frames.map((frame) => frame.height));
-	const maxHalfExtent = Math.max(
-		...frames.map((frame) => Math.max(frame.anchorX, 1 - frame.anchorX) * frame.width)
-	);
+	// How far the cycle reaches either side of its axis, at its native size. Neither
+	// figure belongs to any one frame: the axis sits in a different place from frame to
+	// frame, and what a cycle needs is the furthest any of them goes each way.
+	const reachOne = Math.max(...frames.map((frame) => frame.anchorX * frame.width));
+	const reachOther = Math.max(...frames.map((frame) => (1 - frame.anchorX) * frame.width));
+	// The source width that has to fit across the box. Which side is which depends on
+	// whether the art is mirrored, and neither figure here cares: a pinned axis wants the
+	// larger of the two doubled, and a centred sweep wants their sum — a mirror swaps the
+	// pair and changes neither answer.
+	const sourceWidth =
+		reach === 'axis' ? 2 * Math.max(reachOne, reachOther) : reachOne + reachOther;
 	// A missing, zero or nonsense scale must never shrink a character to nothing or
 	// flip the ratio: anything outside the authored range reads as "no correction".
 	const scale =
@@ -77,6 +109,6 @@ export function characterFitScale(
 	return Math.min(
 		box.height / (REFERENCE_SOURCE_HEIGHT / scale),
 		box.height / maxHeight,
-		box.width / 2 / maxHalfExtent
+		box.width / sourceWidth
 	);
 }

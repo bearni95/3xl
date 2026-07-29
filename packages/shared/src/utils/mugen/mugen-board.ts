@@ -766,6 +766,10 @@ export class MugenBoard {
 		// The character's own render scale rides along: the definition is already loaded
 		// above for its bindings, and it is the same correction the cards and the statues
 		// read, so a set drawn small stands as tall here as it does on a card.
+		// The width cap keeps its default axis rule here, unlike the cards and the statues:
+		// an actor is pinned by its body axis to the mark on its cell (see below), so what
+		// must fit in half a cell is the furthest the cycle reaches from that axis — the
+		// sweep would let a long-limbed character hang over the cell beside it.
 		const box = this.referenceCellWidth();
 		const fitScale = characterFitScale(
 			baseFrames,

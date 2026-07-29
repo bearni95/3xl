@@ -6,6 +6,7 @@ import {
 	characterIdFromFramesPath,
 	readRenderScale
 } from '$utils/mugen/character-render-scale';
+import { characterFitScale, type FitFrame } from '$utils/card/character-fit';
 import {
 	DEFAULT_RENDER_SCALE,
 	RENDER_SCALE_MAX,
@@ -23,11 +24,38 @@ const definitionOf = (id: string) =>
 		readFileSync(join(DEFINITIONS, id, 'definition.json'), 'utf8')
 	) as CharacterDefinition;
 
+/** A character's real idle cycle, as the fit reads one. */
+function idleFrames(id: string): FitFrame[] {
+	const manifest = JSON.parse(readFileSync(join(ASSETS, id, 'frames', 'manifest.json'), 'utf8'));
+	return manifest.animations.idle.frames.map(
+		(frame: { width: number; height: number; anchorX: number }) => ({
+			width: frame.width,
+			height: frame.height,
+			anchorX: frame.anchorX / frame.width
+		})
+	);
+}
+
 /** The tallest frame of a character's idle cycle, in its own source pixels — the
  * number the fit measures a character by. */
 function idleHeight(id: string): number {
-	const manifest = JSON.parse(readFileSync(join(ASSETS, id, 'frames', 'manifest.json'), 'utf8'));
-	return Math.max(...manifest.animations.idle.frames.map((frame: { height: number }) => frame.height));
+	return Math.max(...idleFrames(id).map((frame) => frame.height));
+}
+
+/** The side of the square a statue draws its character against, in CSS pixels. Any
+ * number does: every character is measured against the same one, and the whole scheme
+ * is a share of it. */
+const STATUE_SQUARE = 300;
+
+/** How tall a character is actually drawn on a statue, in that surface's pixels: the
+ * statue's picture is a square with the character standing halfway up a floor a third
+ * of it deep, so the room above their feet is five sixths of the square (see
+ * CharacterStatue's GROUND_DEPTH and BASELINE), and the sheet is centred in it. */
+function statueHeight(id: string): number {
+	const frames = idleFrames(id);
+	const room = { width: STATUE_SQUARE, height: (STATUE_SQUARE * 5) / 6 };
+	const scale = characterFitScale(frames, room, readRenderScale(definitionOf(id)), 'sweep');
+	return Math.max(...frames.map((frame) => frame.height)) * scale;
 }
 
 // The InuYasha cast, whose sheets are all drawn at roughly two thirds of the scale
@@ -46,6 +74,13 @@ const INUYASHA_CAST = [
 	'sango',
 	'seshomaru'
 ];
+
+// Everyone who carries a correction at all. The InuYasha cast has one because their
+// whole sheet is drawn small; Frieza has one for himself — his sprite is 118 px against
+// Trunks' 136, so his pixels alone put him a head under a character he is meant to stand
+// level with. Anything outside this list is drawn exactly as its pixels are, which the
+// last check in this file holds.
+const CORRECTED = [...INUYASHA_CAST, 'frieza'];
 
 describe('characterIdFromFramesPath', () => {
 	it('reads the character id out of a served frames folder', () => {
@@ -119,11 +154,30 @@ describe('authored render scales', () => {
 	});
 
 	it('leaves every other character drawn exactly as its art is', () => {
-		// The correction is per sheet, not a knob anyone reaches for: the sets that share
-		// the reference scale carry no scale at all.
+		// The correction is not a knob anyone reaches for: a character whose art is drawn at
+		// the roster's own scale carries no scale at all.
 		for (const character of characters) {
-			if (INUYASHA_CAST.includes(character.id)) continue;
+			if (CORRECTED.includes(character.id)) continue;
 			expect(definitionOf(character.id).renderScale, character.id).toBeUndefined();
 		}
+	});
+
+	it('stands Frieza at Trunks height on a statue', () => {
+		// What his scale is for, measured where it was asked for. Level to within a fifth of a
+		// percent: standing him exactly level wants 136/118, and the definition carries the
+		// round 1.15 instead — half a pixel on a 300 px statue, and a figure a person can read.
+		expect(statueHeight('frieza') / statueHeight('eb-trunks')).toBeCloseTo(1, 2);
+	});
+
+	it('draws Frieza at his full height rather than fitting his tail to half the box', () => {
+		// The scale only reaches him because the statue caps his width on the sweep his cycle
+		// actually occupies. Under the board's axis rule his tail reaches most of a body-width
+		// off his axis, which would hold him below Trunks however high the scale went — so this
+		// is the pair of decisions, not either one alone.
+		const frames = idleFrames('frieza');
+		const room = { width: STATUE_SQUARE, height: (STATUE_SQUARE * 5) / 6 };
+		const height = Math.max(...frames.map((frame) => frame.height));
+		const axisBound = characterFitScale(frames, room, RENDER_SCALE_MAX, 'axis') * height;
+		expect(axisBound).toBeLessThan(statueHeight('eb-trunks'));
 	});
 });

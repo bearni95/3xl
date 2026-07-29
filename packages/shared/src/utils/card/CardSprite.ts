@@ -290,8 +290,11 @@ export class CardSprite extends Container {
 		const maxHeight = Math.max(...frames.map((f) => f.height));
 		// Draw the idle (and its shadow, which shares this scale) 30% larger than the
 		// fitted size. Applied after the fit so every character grows by the same factor.
+		// 'sweep': the card centres the character's visible extent, not its axis (see just
+		// below), so the extent is what its width cap measures — the same placing the statues
+		// ask with, which is what keeps a card and a statue agreeing on a character's size.
 		this.idleFitScale =
-			characterFitScale(frames, { width: boxW, height: boxH }, this.renderScale) *
+			characterFitScale(frames, { width: boxW, height: boxH }, this.renderScale, 'sweep') *
 			IDLE_SCALE_BOOST;
 
 		// Horizontally centre the character's *visible* extent in the art box. The body

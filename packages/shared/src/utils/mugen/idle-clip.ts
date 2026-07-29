@@ -164,14 +164,11 @@ export function placeIdleClip(
 	const sheetWidth = extentLeft + extentRight;
 	const sheetHeight = Math.max(...frames.map((frame) => frame.height));
 
-	// The height normalisation is the cards', to the source pixel; the extra cap is the
-	// cycle's real sweep, which is what this surface centres (the card's own width term
-	// measures the axis's half-reach instead, and can only ever be the stricter of the
-	// two — either way nothing spills).
-	const scale = Math.min(
-		characterFitScale(frames, room, placing.renderScale),
-		room.width / sheetWidth
-	);
+	// The whole of the sizing is the cards' (see characterFitScale), asked with the cards'
+	// own placing: what this surface centres is the sheet — the cycle's real sweep — so the
+	// sweep is what the width cap measures here, and a character is not shrunk for reaching
+	// a long way off an axis that is not the thing being centred.
+	const scale = characterFitScale(frames, room, placing.renderScale, 'sweep');
 	const sheet: PlacedBox = {
 		left: (surface.width - sheetWidth * scale) / 2,
 		// Feet on the baseline, not floating above it: a row of these is a line-up, and
