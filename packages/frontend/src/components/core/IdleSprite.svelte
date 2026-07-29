@@ -44,12 +44,6 @@
 	// bottom edge. 0 (the default) is the bottom itself; a surface that draws a ground
 	// plane raises it to the point on that plane the character stands at.
 	export let baseline: number = 0;
-	// How wide the loading veil is, as a share of the box's width, centred in it. The veil
-	// stands where the character will and rises as high as one can be drawn here, so its
-	// height and its foot are read off `baseline` — but how wide a character's ground is at
-	// the point they stand on it is the surface's own affair, a flat box and a floor seen in
-	// perspective giving quite different answers, and it is the surface that says.
-	export let veilWidth: number = 1;
 	export let classes: string = '';
 
 	// The box the clip is placed in, measured rather than assumed: the caller sizes it
@@ -199,17 +193,17 @@
 				)
 			: null;
 
-	// Where the veil stands: on the baseline, as tall as the room above it — the whole of
-	// what a character can be drawn in here, since the fit is measured from that same room
-	// (see placeIdleClip) — and `veilWidth` of the box across, centred. It is deliberately
-	// not the sheet's own box: the sheet is as big as this character happens to be, and a
-	// veil the shape of the thing behind it announces the character before it is there,
-	// coming out short for a small one and full height for a tall one when nothing is known
-	// yet either way. This is the room the picture will appear in, not the picture.
+	// Where the veil stands: over the sheet's own width, on the baseline, and as tall as the
+	// room above it — the whole of what a character can be drawn in here, the fit being
+	// measured from that same room (see placeIdleClip). So it is as wide as the picture is
+	// going to be and as tall as any picture could be: the width is the one thing already
+	// known about a character before its art arrives, since the sheet is the cycle's box and
+	// comes off the manifest, while the height it will actually stand to is not worth
+	// announcing ahead of it.
 	$: veilBox = {
-		left: (boxWidth * (1 - veilWidth)) / 2,
+		left: placement?.sheet.left ?? 0,
 		bottom: boxHeight * baseline,
-		width: boxWidth * veilWidth,
+		width: placement?.sheet.width ?? 0,
 		height: boxHeight * (1 - baseline)
 	};
 
@@ -218,6 +212,15 @@
 	// where the character will be, not that it is there yet.
 	$: ready = placement !== null && loadedFrames >= placement.frames.length;
 	$: if (ready) uncover();
+
+	// Whether the character may be drawn at all. Not while the veil is still coming in: its
+	// squares are half transparent on the way, so a frame that arrived during the entrance
+	// showed through the thing being drawn to cover it. Either the veil is all the way in or
+	// there is no veil — art drawn before goes straight up (see `drawnFrames`).
+	//
+	// The frames are in the document either way and load throughout, so nothing waits on
+	// this: it is what may be seen that is held back, not what may be fetched.
+	$: sprited = veil === 'down' || veilShown;
 
 	// Each frame is positioned from its four measured numbers, which come through as
 	// custom properties: a placement is measured geometry, not styling, and no class can
@@ -242,12 +245,14 @@
 	{#if placement}
 		<!-- Every frame is in the document at once and all but the current one is
 			hidden, so the browser has them all decoded before the clip first reaches
-			them and no frame of the loop ever arrives late. -->
+			them and no frame of the loop ever arrives late. Until the veil is all the
+			way in, the current one is hidden too: they are here to be fetched, not yet
+			to be looked at. -->
 		{#each placement.frames as frame, index}
 			<img
 				src={frame.url}
 				alt=""
-				class={classNames(frameClasses, { hidden: index !== frameIndex })}
+				class={classNames(frameClasses, { hidden: !sprited || index !== frameIndex })}
 				style:--sprite-left="{frame.left}px"
 				style:--sprite-bottom="{frame.bottom}px"
 				style:--sprite-width="{frame.width}px"
