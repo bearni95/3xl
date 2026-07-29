@@ -4,6 +4,8 @@
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import PinChallenge from '$components/core/PinChallenge.svelte';
 	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
+	import { iconMarkup } from '$components/core/icon-markup';
+	import { showIconName } from '$utils/show/show-icon';
 	import type { MapBoosterBox, MapCircle, MapLine, MapMarker, MapOverlay } from '$types/map.type';
 
 	let {
@@ -64,7 +66,9 @@
 		/**
 		 * Booster boxes stood on individual points (the festa-major towns the booster
 		 * window reaches), hung under the same points the region pins stand on — a town
-		 * keeps its pin and gets a box — and always shown regardless of zoom tier.
+		 * keeps its pin and gets a box. Every one of them is marked at every zoom, but
+		 * only the finest pin tier (the one where a town is its own pin) gets the box
+		 * itself; above that each is a disc of the box's own stock (see discElement).
 		 */
 		boxes?: MapBoosterBox[];
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
@@ -131,8 +135,8 @@
 	// so every rebuild unmounts the previous crop first.
 	let pinMounts: Record<string, unknown>[] = [];
 	// The festa-box layer, rebuilt whenever the boxes prop changes. Kept separate from
-	// the region pins so it always shows, with no level-of-detail folding, and drawn
-	// under them.
+	// the region pins — every town in it is marked at every tier, only in two different
+	// ways (see rebuildBoxes) — and drawn under them.
 	let boxLayer: L.LayerGroup | null = null;
 	// The boxes are given a Leaflet pane of their own, and not for the stacking. The
 	// marker pane is a place no <img> can be sized in: leaflet.css resets every image in
@@ -148,6 +152,17 @@
 	// pins' mounts are: clearing the layer only detaches their DOM, and a box left
 	// mounted holds its poster and its logo for a town no longer on screen.
 	let boxMounts: Record<string, unknown>[] = [];
+	// Whether the pin tier on screen is the finest one — the tier where every town is its
+	// own pin, which is the tier a booster box is drawn at (see rebuildBoxes). Set by
+	// rebuildMarkers, which is what decides the tier, and read by rebuildBoxes, which
+	// runs right after it wherever the view changes (the moveend handler, the resize
+	// observer, and the two $effects in that order).
+	//
+	// A plain variable and not $state on purpose: the box layer is rebuilt in the same
+	// breath as the pins, so it wants the value and not a subscription to it — an effect
+	// woken by the tier changing would rebuild a second time and remount every box's
+	// pictures for nothing.
+	let finestLevelShown = false;
 	// Watches the map container so Leaflet re-projects when the container resizes
 	// (e.g. a side panel opening reserves horizontal space). Torn down on destroy.
 	let resizeObserver: ResizeObserver | null = null;
@@ -444,6 +459,9 @@
 		const index = levels.length ? levelIndexForView(levels, mapInstance.getCenter()) : 0;
 		// Publish the chosen tier so the parent can mirror it (polygons, sidebar).
 		activeLevel = index;
+		// Tell the box layer whether the towns are being drawn one by one. A stack with
+		// nothing to fold (no levels, or a single rendering) is always at its finest.
+		finestLevelShown = index >= levels.length - 1;
 		const chosen = levels[index] ?? [];
 
 		// Remap every municipality of the chosen tier to its region's featureIds (from
@@ -519,11 +537,50 @@
 		return wrap;
 	}
 
+	// The same town above the town tier: a disc of the box's own stock — white card for a
+	// town de festa today, black for the rest of the window — with the show's glyph
+	// printed on it in the ink that stock is read in. Hung on the same point, by the same
+	// centre, so folding up a tier leaves the mark where the box was.
+	//
+	// It is the box reduced to the two things that survive being small: what it is printed
+	// on and what show is inside it. A box above this tier stands for a whole comarca's
+	// worth of towns at once — its cover, its wordmark and the place across its foot are
+	// 80px of reading matter overlapping its neighbours', which is less than a mark that
+	// can be told apart at a glance.
+	//
+	// And it is a disc, laid flat with no tilt: the box's lid is a square seen in
+	// perspective because it is the top of a solid, and there is no solid here to be the
+	// top of — a tilted mark this small would only read as a smudged one. A circle has no
+	// direction to be turned in, which is what makes it the shape that survives the loss.
+	//
+	// The glyph is inlined rather than pointed at with an <img> so it paints in the disc's
+	// own ink (see icon-markup), and looked up from the same `showId` the box's lid stamps
+	// itself with. A show with no glyph drawn for it leaves the disc bare rather than
+	// taking a stand-in mark — the lid's rule, and every other surface that badges a show.
+	// Decorative either way: the mark is what is being looked at, and nothing here is
+	// named in text for it to read twice.
+	function discElement(box: MapBoosterBox): HTMLElement {
+		const wrap = document.createElement('div');
+		wrap.className =
+			'flex size-8 -translate-x-1/2 translate-y-1 items-center justify-center rounded-full shadow-md [&>svg]:size-5 ' +
+			(box.light ? 'bg-white text-black' : 'bg-black text-white');
+		if (box.onClick) wrap.className += ' cursor-pointer';
+		wrap.setAttribute('aria-hidden', 'true');
+		const markup = iconMarkup(showIconName(box.showId));
+		if (markup) wrap.innerHTML = markup;
+		return wrap;
+	}
+
 	// (Re)build the festa boxes for the current view: unmount the last crop, clear the
 	// layer, keep only the boxes inside the (padded) viewport, and drop a zero-sized
 	// divIcon at each. Runs on every boxes change and whenever the map pans or zooms, so
-	// the culling tracks what's on screen. Unlike the region pins there's no
-	// level-of-detail — every festa-major town keeps its box at every zoom.
+	// the culling tracks what's on screen.
+	//
+	// Unlike the region pins nothing here folds away — every town the booster window
+	// reaches is marked at every zoom — but which mark it gets follows the pins' own
+	// tier: the box itself only where the towns are pinned one by one, and above that the
+	// disc, which is the same town said in the space a smaller mark has (see
+	// discElement).
 	function rebuildBoxes() {
 		if (!mapInstance || !Leaf) return;
 		if (!boxLayer) boxLayer = Leaf.layerGroup().addTo(mapInstance);
@@ -533,7 +590,8 @@
 		const bounds = mapInstance.getBounds().pad(0.25);
 		for (const box of boxes) {
 			if (!bounds.contains(box.position)) continue;
-			const icon = Leaf.divIcon({ html: boxElement(box), className: '', iconSize: [0, 0] });
+			const html = finestLevelShown ? boxElement(box) : discElement(box);
+			const icon = Leaf.divIcon({ html, className: '', iconSize: [0, 0] });
 			const badge = Leaf.marker(box.position, { icon, riseOnHover: true, pane: BOX_PANE });
 			// No tooltip: the box already carries the town's name across its foot, and a
 			// hover label over a map this dense is a second thing to read where there was
