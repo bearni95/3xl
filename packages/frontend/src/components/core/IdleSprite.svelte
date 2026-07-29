@@ -23,6 +23,10 @@
 	export let label: string = '';
 	// Mirror the character horizontally — the normal look for the player's own cards.
 	export let flipped: boolean = true;
+	// Where the character's feet stand, as a fraction of the box's height up from its
+	// bottom edge. 0 (the default) is the bottom itself; a surface that draws a ground
+	// plane raises it to the point on that plane the character stands at.
+	export let baseline: number = 0;
 	export let classes: string = '';
 
 	// The box the clip is placed in, measured rather than assumed: the caller sizes it
@@ -75,7 +79,11 @@
 	// which is all a resize costs — nothing reloads and the animation keeps its place.
 	$: placement =
 		frames && boxWidth > 0 && boxHeight > 0
-			? placeIdleClip(frames, { width: boxWidth, height: boxHeight }, flipped)
+			? placeIdleClip(
+					frames,
+					{ width: boxWidth, height: boxHeight },
+					{ flipped, baseline: boxHeight * baseline }
+				)
 			: null;
 
 	// A placed box, positioned from its four measured numbers. They come through as

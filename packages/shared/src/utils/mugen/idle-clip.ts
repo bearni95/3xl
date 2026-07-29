@@ -95,16 +95,35 @@ export function loadIdleClip(basePath: string | null): Promise<IdleClipFrame[] |
 	return promise;
 }
 
+/** How a clip is to be placed. */
+export interface IdleClipPlacing {
+	/**
+	 * Mirror the character (the normal look for the player's own cards; default true).
+	 * The mirroring itself is the caller's to apply — CSS about each image's own centre
+	 * is the same mirroring Pixi does about the axis, given these boxes — but it changes
+	 * which side of the axis reaches furthest, so it is accounted for here.
+	 */
+	flipped?: boolean;
+	/**
+	 * Where the character's feet stand, as a height up from the surface's bottom edge
+	 * (default 0, the bottom itself). A surface that draws a ground plane rather than a
+	 * flat floor raises it to the point on that plane the character is standing at —
+	 * and since the character stands on it, it is also the top of the room the fit has
+	 * to work in.
+	 */
+	baseline?: number;
+}
+
 /**
  * Place a clip inside a surface: the sheet first, then the frames within it.
  *
- * The sheet is the rectangle the whole cycle sweeps out, standing on the surface's
- * bottom edge, and how tall it comes out is {@link characterFitScale}'s to say — the
- * same question the cards and the board ask, so Chopper is the head shorter than
- * Trunks here that he is everywhere else instead of the two being stretched to the
- * same height. A character at the reference height fills the surface; a shorter one
- * takes the share of it that its own sprite is, and the width is capped besides, so
- * nothing is ever drawn past the surface and nothing is ever cut off.
+ * The sheet is the rectangle the whole cycle sweeps out, standing on the baseline, and
+ * how tall it comes out is {@link characterFitScale}'s to say — the same question the
+ * cards and the board ask, so Chopper is the head shorter than Trunks here that he is
+ * everywhere else instead of the two being stretched to the same height. A character
+ * at the reference height fills the room above the baseline; a shorter one takes the
+ * share of it that its own sprite is, and the width is capped besides, so nothing is
+ * ever drawn past the surface and nothing is ever cut off.
  *
  * Because the sheet is the cycle's box and not any one frame's, it is the same
  * rectangle from the first frame to the last: anything drawn on it (a border, say)
@@ -115,18 +134,17 @@ export function loadIdleClip(basePath: string | null): Promise<IdleClipFrame[] |
  * would make the character shuffle sideways as it breathes. Instead the axis goes
  * wherever it must for the cycle's furthest reach either way to touch the sheet's
  * edges, and each frame follows from its own axis, feet on the sheet's bottom edge.
- *
- * `flipped` mirrors the character (the normal look for the player's own cards). The
- * mirroring itself is the caller's to apply — CSS about each image's own centre is
- * the same mirroring Pixi does about the axis, given these boxes — but it changes
- * which side of the axis reaches furthest, so it is accounted for here.
  */
 export function placeIdleClip(
 	frames: IdleClipFrame[],
 	surface: { width: number; height: number },
-	flipped: boolean = true
+	placing: IdleClipPlacing = {}
 ): IdleClipPlacement | null {
-	if (frames.length === 0 || surface.width <= 0 || surface.height <= 0) return null;
+	const flipped = placing.flipped ?? true;
+	const baseline = placing.baseline ?? 0;
+	// The room the character has is what stands above the baseline it stands on.
+	const room = { width: surface.width, height: surface.height - baseline };
+	if (frames.length === 0 || room.width <= 0 || room.height <= 0) return null;
 
 	// The cycle at its native size: how far it reaches either side of the axis, and
 	// how tall its tallest frame stands.
@@ -143,12 +161,12 @@ export function placeIdleClip(
 	// cycle's real sweep, which is what this surface centres (the card's own width term
 	// measures the axis's half-reach instead, and can only ever be the stricter of the
 	// two — either way nothing spills).
-	const scale = Math.min(characterFitScale(frames, surface), surface.width / sheetWidth);
+	const scale = Math.min(characterFitScale(frames, room), room.width / sheetWidth);
 	const sheet: PlacedBox = {
 		left: (surface.width - sheetWidth * scale) / 2,
-		// Feet on the surface's floor, not floating in the middle of it: a row of these
-		// is a line-up, and heights only compare from a shared baseline.
-		bottom: 0,
+		// Feet on the baseline, not floating above it: a row of these is a line-up, and
+		// heights only compare from a shared floor.
+		bottom: baseline,
 		width: sheetWidth * scale,
 		height: sheetHeight * scale
 	};

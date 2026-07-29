@@ -30,6 +30,20 @@ describe('placeIdleClip', () => {
 		expect(cell.sheet.height).toBeCloseTo(SQUARE.height, 10);
 	});
 
+	it('stands the character on the baseline, in the room left above it', () => {
+		// A surface whose floor is a ground plane rather than its bottom edge: the feet
+		// go on that line, and what is left above it is all the character has to fill.
+		const tall = clip({ width: 80, height: REFERENCE_SOURCE_HEIGHT, anchorX: 0.5 });
+		const baseline = SQUARE.height / 4;
+		const placement = placeIdleClip(tall, SQUARE, { baseline })!;
+		expect(placement.sheet.bottom).toBeCloseTo(baseline, 10);
+		expect(placement.sheet.height).toBeCloseTo(SQUARE.height - baseline, 10);
+		for (const frame of placement.frames) {
+			expect(frame.bottom).toBeCloseTo(baseline, 10);
+			expect(frame.bottom + frame.height).toBeLessThanOrEqual(SQUARE.height + 1e-9);
+		}
+	});
+
 	it('never places a frame outside the surface', () => {
 		const frames = clip(
 			{ width: 400, height: 100, anchorX: 0.25 },
@@ -52,7 +66,7 @@ describe('placeIdleClip', () => {
 			{ width: 60, height: 100, anchorX: 0.25 },
 			{ width: 40, height: 80, anchorX: 0.5 }
 		);
-		const placement = placeIdleClip(frames, SQUARE, false)!;
+		const placement = placeIdleClip(frames, SQUARE, { flipped: false })!;
 		const left = Math.min(...placement.frames.map((frame) => frame.left));
 		const right = Math.max(...placement.frames.map((frame) => frame.left + frame.width));
 		expect(left).toBeCloseTo(placement.sheet.left, 10);
@@ -67,7 +81,7 @@ describe('placeIdleClip', () => {
 			{ width: 60, height: 100, anchorX: 0.25 },
 			{ width: 40, height: 100, anchorX: 0.5 }
 		);
-		const placement = placeIdleClip(frames, SQUARE, false)!;
+		const placement = placeIdleClip(frames, SQUARE, { flipped: false })!;
 		const scale = placement.sheet.height / 100;
 		const axis = placement.frames.map(
 			(frame, index) => frame.left + frames[index].anchorX * frames[index].width * scale
@@ -79,8 +93,8 @@ describe('placeIdleClip', () => {
 		// An off-centre axis reaches further one way than the other, and the flip swaps
 		// which way — but the sheet it sweeps out is the same size either way.
 		const frames = clip({ width: 60, height: 100, anchorX: 0.25 });
-		const facing = placeIdleClip(frames, SQUARE, false)!;
-		const flipped = placeIdleClip(frames, SQUARE, true)!;
+		const facing = placeIdleClip(frames, SQUARE, { flipped: false })!;
+		const flipped = placeIdleClip(frames, SQUARE, { flipped: true })!;
 		expect(flipped.sheet.width).toBeCloseTo(facing.sheet.width, 10);
 		expect(flipped.frames[0].left).toBeCloseTo(facing.frames[0].left, 10);
 	});

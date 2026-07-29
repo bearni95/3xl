@@ -36,11 +36,17 @@
 		[SpawnColor.Purple]: 'border-purple-500'
 	};
 
-	// The ground: the bottom third of the square, drawn as a plane seen at an angle
-	// rather than a flat fill. Its front edge is the square's full width and its back
-	// edge half of that, so the two sides run in as diagonals and the shape reads as a
-	// floor receding away from the viewer, with the character standing at its front.
+	// The ground: a plane seen at an angle rather than a flat fill, across the bottom
+	// third of the square. Its front edge is the square's full width and its back edge
+	// half of that, so the two sides run in as diagonals and the shape reads as a floor
+	// going away from the viewer.
+	const GROUND_DEPTH = 1 / 3;
 	const GROUND = '[clip-path:polygon(0_100%,100%_100%,75%_66.667%,25%_66.667%)]';
+
+	// The character stands two thirds of the way up that plane — on the ground rather
+	// than at the near edge of it, with the front of the floor lying between the viewer
+	// and their feet.
+	const BASELINE = GROUND_DEPTH * (2 / 3);
 </script>
 
 <div class={classNames('flex w-full gap-2', classes)}>
@@ -50,14 +56,26 @@
 			and the square inside it is as tall as that width — whatever the panel's, so
 			the row keeps its shape as the panel narrows. -->
 		<div class="flex min-w-0 flex-1 flex-col gap-1">
-			<!-- The square, enforced, and square-cornered: it is the frame the character is
-				seen through, so it keeps its own edge in the character's colour now that the
-				colour no longer fills it. The character stands at the height its own sprite
-				earns it — a tall one fills the square, a short one does not — and nothing is
-				inset or clipped, so no part of a frame is ever cut. -->
-			<div class={classNames('relative aspect-square w-full border', colorBorders[member.color])}>
-				<div class={classNames('absolute inset-0', GROUND, colorFills[member.color])}></div>
-				<IdleSprite basePath={member.basePath} label={member.label} {flipped} />
+			<!-- The box the character is seen through: twice as tall as it is wide, which is
+				the room a standing character needs, and square-cornered. It keeps its own
+				edge in the character's colour now that the colour no longer fills it. -->
+			<div class={classNames('relative aspect-[1/2] w-full border', colorBorders[member.color])}>
+				<!-- The square at the foot of it is what the character is drawn against, and
+					it stays 1:1 whatever the box around it is: the size a character comes out
+					at is a share of this square, so a taller box would otherwise make every
+					character taller with it. The ground is drawn across its bottom third and
+					the rest of the box is head room above. The character stands at the height
+					its own sprite earns it — a tall one fills the square, a short one does not
+					— and nothing is inset or clipped, so no part of a frame is ever cut. -->
+				<div class="absolute inset-x-0 bottom-0 aspect-square">
+					<div class={classNames('absolute inset-0', GROUND, colorFills[member.color])}></div>
+					<IdleSprite
+						basePath={member.basePath}
+						label={member.label}
+						{flipped}
+						baseline={BASELINE}
+					/>
+				</div>
 			</div>
 
 			<!-- Who that is. A name too long for the column is cut with an ellipsis rather
