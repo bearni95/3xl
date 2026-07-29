@@ -16,8 +16,10 @@
 	let loading = true;
 	let error: string | null = null;
 
-	// The one headline figure the dashboard leads with: fights in the window.
-	$: total = days.reduce((sum, day) => sum + day.combats, 0);
+	// The one headline figure the dashboard leads with: fights seen through, over
+	// the fights that were opened at all.
+	$: started = days.reduce((sum, day) => sum + day.started, 0);
+	$: completed = days.reduce((sum, day) => sum + day.completed, 0);
 
 	async function load(window: number): Promise<void> {
 		loading = true;
@@ -65,9 +67,10 @@
 		<div class="card bg-base-100 shadow-xl">
 			<div class="card-body gap-4">
 				<div class="flex flex-col gap-1">
-					<h2 class="card-title">Combats fought per day</h2>
+					<h2 class="card-title">Combats per day</h2>
 					<p class="text-sm opacity-70">
-						Finished fights, counted on the Catalan day they were reported on.
+						Fights opened in the arena against fights reported back, each counted on the Catalan
+						day it happened. The gap between the lines is fights walked out of.
 					</p>
 				</div>
 
@@ -77,8 +80,12 @@
 					</div>
 				{:else}
 					<div class="flex flex-col gap-1">
-						<span class="text-5xl font-semibold leading-none">{total.toLocaleString('en-GB')}</span>
-						<span class="text-sm opacity-70">combats in the last {range} days</span>
+						<span class="text-5xl font-semibold leading-none"
+							>{completed.toLocaleString('en-GB')}</span
+						>
+						<span class="text-sm opacity-70">
+							of {started.toLocaleString('en-GB')} started fights completed in the last {range} days
+						</span>
 					</div>
 					<CombatsPerDayChart {days} {loading} />
 				{/if}

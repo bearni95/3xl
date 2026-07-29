@@ -2,6 +2,7 @@
 	import {
 		Chart,
 		Filler,
+		Legend,
 		LineController,
 		LineElement,
 		LinearScale,
@@ -19,6 +20,7 @@
 		LinearScale,
 		CategoryScale,
 		Filler,
+		Legend,
 		Tooltip
 	);
 </script>
@@ -40,6 +42,7 @@
 	// wearing the theme's own classes rather than hardcoded here. That keeps the
 	// chart correct under any DaisyUI theme, light or dark.
 	let seriesProbe: HTMLSpanElement;
+	let altSeriesProbe: HTMLSpanElement;
 	let inkProbe: HTMLSpanElement;
 	let surfaceProbe: HTMLSpanElement;
 	let gridProbe: HTMLSpanElement;
@@ -80,8 +83,41 @@
 		}
 	};
 
+	/** One line per series, in the fixed order the legend and tooltip keep. */
+	function buildDatasets(startedColor: string, completedColor: string, surface: string) {
+		return [
+			{ label: 'Started', color: startedColor, values: days.map((day) => day.started) },
+			{ label: 'Completed', color: completedColor, values: days.map((day) => day.completed) }
+		].map(({ label, color, values }, index) => ({
+			label,
+			data: values,
+			borderColor: color,
+			// Only the outer line carries a wash — completed is always inside
+			// started, and two overlapping fills would just muddy the gap that is
+			// the whole point of the pair.
+			backgroundColor: withAlpha(color, 0.1),
+			fill: index === 0,
+			borderWidth: 2,
+			borderJoinStyle: 'round' as const,
+			borderCapStyle: 'round' as const,
+			// The dot only appears where the reader is pointing, ringed in the
+			// surface colour so it stays legible where the two lines cross.
+			pointRadius: 0,
+			pointHoverRadius: 5,
+			pointHoverBackgroundColor: color,
+			pointHoverBorderColor: surface,
+			pointHoverBorderWidth: 2,
+			pointHitRadius: 24
+		}));
+	}
+
 	function buildConfig(): ChartConfiguration<'line', number[], string> {
-		const series = getComputedStyle(seriesProbe).color;
+		// Started and completed are two identities, not two magnitudes, so they
+		// take two hues of the theme in a fixed order. The pair is checked against
+		// the data-viz colour rules (lightness band, chroma, CVD separation and
+		// contrast) on both the light and dark DaisyUI surfaces.
+		const started = getComputedStyle(seriesProbe).color;
+		const completed = getComputedStyle(altSeriesProbe).color;
 		const ink = getComputedStyle(inkProbe).color;
 		const surface = getComputedStyle(surfaceProbe).backgroundColor;
 		const grid = getComputedStyle(gridProbe).backgroundColor;
@@ -90,27 +126,7 @@
 			type: 'line',
 			data: {
 				labels: days.map((day) => format(day.date, dayLabel)),
-				datasets: [
-					{
-						label: 'Combats',
-						data: days.map((day) => day.combats),
-						borderColor: series,
-						// A wash under the line, never a saturated block.
-						backgroundColor: withAlpha(series, 0.1),
-						fill: true,
-						borderWidth: 2,
-						borderJoinStyle: 'round',
-						borderCapStyle: 'round',
-						// The dot only appears where the reader is pointing, ringed in
-						// the surface colour so it stays legible over the line.
-						pointRadius: 0,
-						pointHoverRadius: 5,
-						pointHoverBackgroundColor: series,
-						pointHoverBorderColor: surface,
-						pointHoverBorderWidth: 2,
-						pointHitRadius: 24
-					}
-				]
+				datasets: buildDatasets(started, completed, surface)
 			},
 			options: {
 				responsive: true,
@@ -118,16 +134,32 @@
 				// The pointer picks a day, not a pixel.
 				interaction: { mode: 'index', intersect: false },
 				plugins: {
-					// One series: the card's title already says what is plotted.
+					// Two series, so identity never rests on colour alone.
+					legend: {
+						position: 'top',
+						align: 'end',
+						labels: {
+							color: ink,
+							// A short stroke keys each series, mirroring the mark. The key's
+							// length is the smaller of the two box sides, so both are set.
+							usePointStyle: true,
+							pointStyle: 'line',
+							boxWidth: 18,
+							boxHeight: 18
+						}
+					},
 					tooltip: {
-						displayColors: false,
+						// A short stroke of the series colour keys each row — at tooltip
+						// density a filled box is ink doing a label's job.
+						usePointStyle: true,
 						backgroundColor: withAlpha(ink, 0.9),
 						titleColor: surface,
 						bodyColor: surface,
 						padding: 10,
 						callbacks: {
 							title: (items) => format(days[items[0].dataIndex]?.date ?? '', fullDayLabel),
-							label: (item) => `${item.parsed.y} combats`
+							label: (item) => `${item.parsed.y} ${item.dataset.label?.toLowerCase() ?? ''}`,
+							labelPointStyle: () => ({ pointStyle: 'line' as const, rotation: 0 })
 						}
 					}
 				},
@@ -171,7 +203,8 @@
 	// re-runs on a new series.
 	$: if (chart && days) {
 		chart.data.labels = days.map((day) => format(day.date, dayLabel));
-		chart.data.datasets[0].data = days.map((day) => day.combats);
+		chart.data.datasets[0].data = days.map((day) => day.started);
+		chart.data.datasets[1].data = days.map((day) => day.completed);
 		chart.update();
 	}
 </script>
@@ -179,10 +212,11 @@
 <!-- The theme probes. They render nothing; they exist so getComputedStyle can
      resolve the current theme's colours from the classes themselves. -->
 <span bind:this={seriesProbe} class="hidden text-primary"></span>
+<span bind:this={altSeriesProbe} class="hidden text-secondary"></span>
 <span bind:this={inkProbe} class="hidden text-base-content"></span>
 <span bind:this={surfaceProbe} class="hidden bg-base-100"></span>
 <span bind:this={gridProbe} class="hidden bg-base-300"></span>
 
 <div class={classNames('relative h-72 w-full transition-opacity', { 'opacity-50': loading }, classes)}>
-	<canvas bind:this={canvas} aria-label="Combats fought per day"></canvas>
+	<canvas bind:this={canvas} aria-label="Combats started and completed per day"></canvas>
 </div>

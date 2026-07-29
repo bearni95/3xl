@@ -4,12 +4,14 @@
  * paints what it is given.
  */
 
-/** One day of the combats-fought series. */
+/** One day of the combats series, split by how far each fight got. */
 export interface CombatsPerDay {
 	/** The Catalan calendar day (Europe/Madrid), as `YYYY-MM-DD`. */
 	date: string;
-	/** Fights reported that day. Days with no fighting are present, as 0. */
-	combats: number;
+	/** Fights opened that day — every arena that was entered. */
+	started: number;
+	/** Fights reported that day. Never more than were started, over a window. */
+	completed: number;
 }
 
 /** Payload of `GET /api/stats/combats-per-day`. */
