@@ -492,40 +492,83 @@
 		);
 	}
 
-	// A decided fight is over: report it, then leave. There is nothing left to play
-	// on the board, so the arena closes itself rather than putting a dialog over it.
-	// The close waits on the report so the host still gets the `territory` event —
-	// that is what redraws the town — and a report that fails closes just the same:
-	// the server is the ledger, and it simply banked nothing.
+	// A decided fight is over: report it, then leave. There is nothing left to play on
+	// the board, so the arena closes itself rather than putting a dialog over it. The
+	// close waits on the report so the host still gets the `territory` event — that is
+	// what redraws the town.
 	async function reportOutcome(
 		current: CombatState | null,
 		ctrl: CombatController | null
 	): Promise<void> {
 		if (!current?.outcome || !ctrl || reportedFor === ctrl) return;
 		reportedFor = ctrl;
+		await sendReport(ctrl);
+	}
+
+	// Why the server refused the last report, or null while none has been refused. The
+	// arena stays open on it and says so.
+	let reportFailure: string | null = null;
+	// True while a report is in flight, so the fight cannot be reported twice over.
+	let reporting = false;
+
+	/**
+	 * Hand the finished fight to the server, and leave once it has been taken.
+	 *
+	 * A refusal is not a shrug. Reporting is what *ends* the battle — the row is deleted
+	 * inside the same RPC that pays the award — so a report the server turns down leaves
+	 * the player in this fight, and closing on it would put them straight back into the
+	 * very same board, to win it again and be refused again, with nothing on screen ever
+	 * saying why. So the arena holds, shows what the server said, and offers the report
+	 * again: the fight is only walked away from once it has actually been settled, or
+	 * once the player closes it themselves.
+	 */
+	async function sendReport(ctrl: CombatController): Promise<void> {
 		const report = ctrl.report();
-		if (report) {
-			try {
-				// The amount, which town this was, and whether it changed hands are all the
-				// server's to decide — read off the open battle it has been holding since
-				// the fight started. This only states how the fight went.
-				const reward: CombatReward | null = await authService.reportCombat({
-					...report,
-					fighters: inTeamOrder(report.fighters)
-				});
-				// Reporting is what ends the battle server-side, so let go of it here too —
-				// the map must stop offering the way back into a fight that is over.
-				battleService.clear();
-				// Let the host redraw the town: a capture rewrites its team and its
-				// turnover, and even a banked win moves the progress it shows.
-				if (reward?.territory) dispatch('territory', reward.territory);
-			} catch {
-				// The battle is left alone on a failed report: the server still has it open,
-				// and the player is still in it. Nothing is drawn from the award any more,
-				// so a failure costs nothing but itself.
-			}
+		if (!report) {
+			close();
+			return;
+		}
+		reporting = true;
+		reportFailure = null;
+		try {
+			// The amount, which town this was, and whether it changed hands are all the
+			// server's to decide — read off the open battle it has been holding since
+			// the fight started. This only states how the fight went.
+			const reward: CombatReward | null = await authService.reportCombat({
+				...report,
+				fighters: inTeamOrder(report.fighters)
+			});
+			// Reporting is what ends the battle server-side, so let go of it here too —
+			// the map must stop offering the way back into a fight that is over.
+			battleService.clear();
+			// Let the host redraw the town: a capture rewrites its team and its
+			// turnover, and even a banked win moves the progress it shows.
+			if (reward?.territory) dispatch('territory', reward.territory);
+		} catch (error) {
+			// The battle is left alone: the server still has it open and the player is
+			// still in it, which is exactly what the message has to be read against.
+			reportFailure = refusal(error);
+			return;
+		} finally {
+			reporting = false;
 		}
 		close();
+	}
+
+	/** Hand the same finished fight over again, after a refusal. */
+	function retryReport(): void {
+		if (!controller || reporting) return;
+		void sendReport(controller);
+	}
+
+	// What the server said, as it said it. Supabase hands back a plain object rather
+	// than an Error, so both shapes are read before falling back to a line of our own.
+	function refusal(error: unknown): string {
+		const message =
+			error instanceof Error
+				? error.message
+				: String((error as { message?: unknown } | null)?.message ?? '');
+		return message.trim() || 'The server would not take the result of this fight.';
 	}
 
 	onMount(() => authService.init());
@@ -637,7 +680,28 @@
 						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
 					{/key}
 				</div>
-				{#if state}
+				{#if reportFailure}
+					<!-- The fight is played out and the server would not take it. The board
+					     stands as it finished, with the refusal in the server's own words —
+					     the battle is still open, so this is the fight the player is in, not
+					     a fight they have lost track of. -->
+					<div class="alert alert-error max-w-md text-sm" role="alert">
+						<span>{reportFailure}</span>
+					</div>
+					<button
+						type="button"
+						class="btn btn-primary btn-wide"
+						disabled={reporting}
+						on:click={retryReport}
+					>
+						{#if reporting}
+							<span class="loading loading-spinner loading-xs"></span>
+							Reporting the fight
+						{:else}
+							Report the fight again
+						{/if}
+					</button>
+				{:else if state}
 					<!-- The one control the fight has, and nothing under it: what just
 					     happened was played out on the board, so it is not also recounted
 					     here in words. -->
