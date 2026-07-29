@@ -244,6 +244,10 @@ const ORDER_RESERVE_RATIO = 0.5;
 const TRAIT_ICON_RATIO = 0.26;
 /** Gap between a compound's two glyphs, as a fraction of one glyph's size. */
 const TRAIT_SPACING_RATIO = 0.2;
+/** Radius of the white disc a glyph sits on, as a fraction of the glyph's size. Over
+ * a half, so the corners of a glyph drawn to the edges of its box (a sword lies
+ * across its own) still land on white rather than off it. */
+const TRAIT_DISC_RATIO = 0.62;
 /** How far a spent trait's glyph fades. It is not taken off the fighter — what a
  * card *is* does not change — it simply stops reading as something still in hand. */
 const TRAIT_SPENT_ALPHA = 0.25;
@@ -362,11 +366,13 @@ interface OrderStrip {
 	buttons: OrderButton[];
 }
 
-/** The glyphs of what one fighter's colour grants it, kept so a gift being spent
- * only repaints them rather than fetching their artwork all over again. */
+/** The marks of what one fighter's colour grants it — a white disc with a glyph on
+ * it apiece — kept so a gift being spent only repaints them rather than fetching
+ * their artwork all over again. */
 interface TraitBadge {
 	container: Container;
-	glyphs: Sprite[];
+	/** One per gift: the disc and the glyph it carries, faded together. */
+	marks: Container[];
 	/** The icon URLs drawn, in order — what a fresh list is compared against. */
 	icons: string[];
 }
@@ -1748,9 +1754,10 @@ export class MugenBoard {
 	 * Say what a fighter's colour gives it for nothing, drawn as glyphs at its
 	 * top-left corner — the free shot, the free charge, the free guard. The orders
 	 * under its feet are what it may be *told* to do; this is what it does without
-	 * being told, so it is drawn plain and off the strip: no button face, just the
-	 * artwork, tinted in the fighter's own colour so a glance at the corner says both
-	 * what the fighter has and what colour it is.
+	 * being told, so it is drawn off the strip and shaped nothing like it: a round
+	 * white coin apiece rather than a button, carrying the glyph in the fighter's own
+	 * colour, so a glance at the corner says both what the fighter has and what colour
+	 * it is.
 	 *
 	 * The board is handed the glyphs and whether each has been used up, exactly as it
 	 * is handed a strip of orders: it draws what it is given and knows nothing of what
@@ -1779,13 +1786,24 @@ export class MugenBoard {
 		const badge = actor.traits;
 		if (!badge) return;
 		traits.forEach((trait, i) => {
-			const glyph = badge.glyphs[i];
-			if (glyph) glyph.alpha = trait.spent ? TRAIT_SPENT_ALPHA : 1;
+			// The disc fades with the glyph it carries: the two are one mark, and a white
+			// coin left burning under a spent glyph would be the louder half of it.
+			const mark = badge.marks[i];
+			if (mark) mark.alpha = trait.spent ? TRAIT_SPENT_ALPHA : 1;
 		});
 		this.updateTraits(actor);
 	}
 
-	/** Build a fighter's badge: one glyph per gift, artwork loaded as it arrives. */
+	/**
+	 * Build a fighter's badge: one mark per gift, each a white disc with the glyph
+	 * centred on it, artwork loaded as it arrives.
+	 *
+	 * The disc is what makes the mark readable at all. A glyph tinted the fighter's
+	 * own colour is drawn straight over whatever the sprite behind it happens to be —
+	 * a yellow one over a pale character is nothing but a smudge — so it is given a
+	 * white coin to sit on, and the colour then reads against white wherever the
+	 * fighter walks.
+	 */
 	private buildTraits(actor: Actor, icons: string[], color: string): TraitBadge {
 		const container = new Container();
 		this.app!.stage.addChild(container);
@@ -1793,16 +1811,25 @@ export class MugenBoard {
 		const size = actor.displayWidth * TRAIT_ICON_RATIO;
 		const step = size * (1 + TRAIT_SPACING_RATIO);
 
-		const glyphs = icons.map((url, index) => {
+		const marks = icons.map((url, index) => {
+			// Laid out rightward from the corner, so a compound's second mark reads left
+			// to right and neither hangs off the fighter into the cell beside it.
+			const mark = new Container();
+			mark.x = index * step;
+
+			const disc = new Graphics();
+			disc.circle(size / 2, size / 2, size * TRAIT_DISC_RATIO);
+			disc.fill({ color: 0xffffff });
+
 			const glyph = new Sprite(Texture.EMPTY);
-			// Anchored at its own top-left and laid out rightward from the corner, so a
-			// compound's second glyph reads left to right and neither hangs off the
-			// fighter into the cell beside it.
-			glyph.anchor.set(0, 0);
-			glyph.x = index * step;
+			// Centred on the disc, so a glyph wider than it is tall still sits in the
+			// middle of its coin rather than hanging off the top of it.
+			glyph.anchor.set(0.5);
+			glyph.position.set(size / 2, size / 2);
 			// Tint only ever darkens, so the artwork is white and the tint is the colour.
 			glyph.tint = tint;
-			container.addChild(glyph);
+			mark.addChild(disc, glyph);
+			container.addChild(mark);
 
 			void this.loadIcon(url).then((texture) => {
 				// The badge may have been rebuilt (or the board torn down) while loading.
@@ -1810,10 +1837,10 @@ export class MugenBoard {
 				glyph.texture = texture;
 				glyph.scale.set(size / Math.max(texture.width, texture.height));
 			});
-			return glyph;
+			return mark;
 		});
 
-		return { container, glyphs, icons };
+		return { container, marks, icons };
 	}
 
 	/**
