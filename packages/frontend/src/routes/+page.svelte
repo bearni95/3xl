@@ -61,6 +61,14 @@
 	} from '$utils/geo/region-tree';
 	import { buildRegionSieges } from '$utils/geo/region-siege';
 	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
+	import {
+		centroidsByFeatureId,
+		combineCentroids,
+		interiorPoint,
+		type Centroid,
+		type LatLng,
+		type RegionShape
+	} from '$utils/geo/center';
 	import { buildShowStandings } from '$utils/geo/show-standings';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { nextCatalanMidnight } from '$utils/festes/catalan-day';
@@ -1074,28 +1082,56 @@
 	// can span every level down to the municipalities.
 	$: maxLevel = treeDepth(regionNodes) - 1;
 
-	// A region key's union bounding box + the municipality ids beneath it.
-	type RegionGeometry = { boxes: Map<string, LatLngBounds>; muniIds: Map<string, string[]> };
+	// A region key's union bounding box, the point its pin stands on, and the
+	// municipality ids beneath it.
+	type RegionGeometry = {
+		boxes: Map<string, LatLngBounds>;
+		centers: Map<string, LatLng>;
+		muniIds: Map<string, string[]>;
+	};
 
-	// One pass over the polygons for each municipality's own box, then aggregated up
-	// every municipality's fill chain so each region key carries the union box and
-	// its municipality ids. Precomputed so buildMarkers is O(regions), not
-	// O(regions × polygons) — the municipality level alone is thousands of pins.
+	// One pass over the polygons for each municipality's own box and centroid, then
+	// aggregated up every municipality's fill chain so each region key carries the
+	// union box, its municipality ids, and a centre taken from the shapes themselves
+	// (see interiorPoint) rather than from the box — a box centre sits off the region
+	// for anything that isn't a rectangle, which is most of them. Precomputed so
+	// buildMarkers is O(regions), not O(regions × polygons) — the municipality level
+	// alone is thousands of pins.
 	function buildRegionGeometry(
 		polygons: GeoJSON.FeatureCollection | null,
 		index: Map<string, FillLevel[]>
 	): RegionGeometry {
 		const boxes = new Map<string, LatLngBounds>();
+		const centers = new Map<string, LatLng>();
 		const muniIds = new Map<string, string[]>();
-		if (!polygons) return { boxes, muniIds };
+		if (!polygons) return { boxes, centers, muniIds };
 
 		const munBoxes = boundsByFeatureId(polygons);
+		const munCentroids = centroidsByFeatureId(polygons);
+		// Each municipality's shape beside its box, so the centre of a region can be
+		// checked against the land it is meant to stand on without re-scanning the layer.
+		const munShapes = new Map<string, RegionShape>();
+		for (const feature of polygons.features) {
+			const id = String(feature.properties?.id ?? '');
+			const box = munBoxes.get(id);
+			if (id && box && feature.geometry) munShapes.set(id, { geometry: feature.geometry, box });
+		}
+
+		// A grouping's centroid is the area-weighted mean of its municipalities' — the
+		// centroid of the dissolved shape, accumulated as the chains are walked.
+		const weights = new Map<string, Centroid[]>();
 		for (const [id, levels] of index) {
 			const box = munBoxes.get(id);
+			const centroid = munCentroids.get(id);
 			for (const level of levels) {
 				let ids = muniIds.get(level.key);
 				if (!ids) muniIds.set(level.key, (ids = []));
 				ids.push(id);
+				if (centroid) {
+					let parts = weights.get(level.key);
+					if (!parts) weights.set(level.key, (parts = []));
+					parts.push(centroid);
+				}
 				if (!box) continue;
 				const current = boxes.get(level.key);
 				if (!current) {
@@ -1108,27 +1144,43 @@
 				}
 			}
 		}
-		return { boxes, muniIds };
+
+		for (const [key, ids] of muniIds) {
+			const shapes: RegionShape[] = [];
+			for (const id of ids) {
+				const shape = munShapes.get(id);
+				if (shape) shapes.push(shape);
+			}
+			const centroid = combineCentroids(weights.get(key) ?? []);
+			const point = interiorPoint(shapes, centroid);
+			// A region whose polygons never loaded has no shape to stand on and keeps the
+			// box centre it has always had.
+			const box = boxes.get(key);
+			if (point) centers.set(key, point);
+			else if (box) centers.set(key, [(box[0][0] + box[1][0]) / 2, (box[0][1] + box[1][1]) / 2]);
+		}
+
+		return { boxes, centers, muniIds };
 	}
 
 	$: regionGeometry = buildRegionGeometry(municipalities, fillIndex);
 
-	// A gold star dropped on every municipality celebrating a festa major today,
-	// at the centre of the town's bounding box (its own key in the region geometry).
-	// Clicking a star loads that town's festa booster pack into the side panel and
-	// flips the panel to its Booster tab, so the pack replaces the tables. A festa town
-	// whose polygon isn't on the map (no box) is skipped. Named deps (`todayFestes`,
+	// A gold star dropped on every municipality celebrating a festa major today, on
+	// the same point of the town its pin stands on (its own key in the region
+	// geometry), so the star marks the town where the town is drawn. Clicking a star
+	// loads that town's festa booster pack into the side panel and flips the panel to
+	// its Booster tab, so the pack replaces the tables. A festa town whose polygon
+	// isn't on the map has no such point and is skipped. Named deps (`todayFestes`,
 	// `regionGeometry`) so the stars repaint when either lands.
 	$: festaStars = (() => {
-		const boxes = regionGeometry.boxes;
+		const centers = regionGeometry.centers;
 		const result: MapStar[] = [];
 		for (const festa of todayFestes) {
-			const box = boxes.get(festa.id);
-			if (!box) continue;
-			const [[south, west], [north, east]] = box;
+			const center = centers.get(festa.id);
+			if (!center) continue;
 			result.push({
 				id: festa.id,
-				position: [(south + north) / 2, (west + east) / 2],
+				position: center,
 				label: festa.name,
 				onClick: () => openPack(festa.id)
 			});
@@ -1440,8 +1492,8 @@
 		for (const node of nodes) {
 			if (!node.show) continue;
 			const box = geometry.boxes.get(node.key);
-			if (!box) continue;
-			const [[south, west], [north, east]] = box;
+			const center = geometry.centers.get(node.key);
+			if (!box || !center) continue;
 			// The whole side, but on the selected town alone (see statuedTown) — every
 			// other pin, and every tier above the towns, falls through to the show's
 			// glyph below. Only a municipality's key is a municipality id, so the coarser
@@ -1449,7 +1501,8 @@
 			const team = node.key === statuedTown ? (teams.get(node.key) ?? []) : [];
 			pins.push({
 				id: node.key,
-				position: [(south + north) / 2, (west + east) / 2],
+				// On the region's own shape, not in the middle of the box around it.
+				position: center,
 				bounds: box,
 				team: team.map((member) => ({
 					label: charactersById.get(member.characterId)?.label ?? member.characterId,
