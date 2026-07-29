@@ -134,6 +134,16 @@
 	// the region pins so it always shows, with no level-of-detail folding, and sits
 	// above them.
 	let boxLayer: L.LayerGroup | null = null;
+	// The boxes are given a Leaflet pane of their own, and not for the stacking. The
+	// marker pane is a place no <img> can be sized in: leaflet.css resets every image in
+	// it to `width: auto` with `max-width` and `max-height` at none and !important
+	// (`.leaflet-container .leaflet-marker-pane img`, a rule for map tiles), which two
+	// class names cannot outrank — so a booster box came out correct in every part of
+	// itself that is a div, while its cover and its wordmark drew at whatever pixel size
+	// the file happens to be and hung off the box in every direction. Everything Leaflet
+	// does with a marker it does in any pane, and that selector names one: in a pane of
+	// its own the component's own widths are simply left standing.
+	const BOX_PANE = 'festaBoxPane';
 	// The BoosterBox components standing in that layer, tracked for the same reason the
 	// pins' mounts are: clearing the layer only detaches their DOM, and a box left
 	// mounted holds its poster and its logo for a town no longer on screen.
@@ -519,7 +529,7 @@
 		for (const box of boxes) {
 			if (!bounds.contains(box.position)) continue;
 			const icon = Leaf.divIcon({ html: boxElement(box), className: '', iconSize: [0, 0] });
-			const badge = Leaf.marker(box.position, { icon, riseOnHover: true });
+			const badge = Leaf.marker(box.position, { icon, riseOnHover: true, pane: BOX_PANE });
 			if (box.label) badge.bindTooltip(box.label, { direction: 'top' });
 			if (box.onClick) badge.on('click', () => box.onClick!());
 			badge.addTo(boxLayer!);
@@ -542,6 +552,12 @@
 			// stays on for as long as the satellite basemap is there.
 			attributionControl: true
 		});
+
+		// The pane the festa boxes stand in (see BOX_PANE), made before anything is added
+		// to it. Between the region pins (600) and the tooltips (650): a box stands over
+		// the pin of the town it belongs to, and the name a hover asks for still reads
+		// over the box.
+		mapInstance.createPane(BOX_PANE).style.zIndex = '620';
 
 		// Esri World Imagery: pure satellite tiles, no labels or roads.
 		// Note the {z}/{y}/{x} order — ArcGIS swaps y and x vs the OSM scheme.
