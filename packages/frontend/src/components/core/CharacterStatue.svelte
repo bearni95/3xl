@@ -107,7 +107,7 @@
 			name, a heavier one under the place. The ink follows the band — the panel's own
 			(black on yellow, white on the rest) reads over the light one, while the heavy
 			one is dark enough on every swatch to want white whatever the panel says. -->
-		<div class="truncate bg-black/20 px-1 py-0.5 text-center text-xs font-semibold" title={label}>
+		<div class="truncate bg-black/20 px-1 py-0.5 text-center text-sm font-semibold" title={label}>
 			{label}
 		</div>
 		{#if locationName}
