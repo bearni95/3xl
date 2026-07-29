@@ -962,10 +962,12 @@
 				// later be refused for.
 				const challengeSlot = await battleService.start(townId, turnover, rivals, fieldedTeam);
 				if (challengeSlot) territoryService.noteChallenge(challengeSlot);
-			} catch {
+			} catch (error) {
 				// Refused: a team that is not the caller's, already fought today, already
 				// in a battle, or the town is the player's own. Re-read both ledgers so the
-				// button tells the truth.
+				// button tells the truth — and say which it was, since a challenge that
+				// simply does nothing is the one thing the button must never look like.
+				console.error('Challenge refused', error);
 				await reloadChallenges();
 				await reloadBattle();
 				return;
