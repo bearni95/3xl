@@ -50,9 +50,6 @@ const TRAIT_ICON_RATIO = 0.16;
 /** How far a trait glyph is inset from the card's bottom corner, as a fraction of
  * the card's width. */
 const TRAIT_ICON_MARGIN_RATIO = 0.04;
-/** How much bigger the black copy behind a trait glyph is drawn — enough of a halo
- * that white artwork reads over any colour field it lands on. */
-const TRAIT_ICON_HALO = 1.15;
 
 /**
  * Native source-pixel height treated as a "full-height" character. Every card scales
@@ -528,10 +525,9 @@ export class CardSprite extends Container {
 	 * compound carries both of its components, the first bottom-left and the second
 	 * bottom-right, so the pair reads left to right across the card's foot.
 	 *
-	 * The artwork is white (it is canvas art — see the icon note in CLAUDE.md), so each
-	 * glyph is backed by a slightly larger black copy of itself: the halo is what makes
-	 * it read over a yellow colour field as clearly as over a purple one. Textures load
-	 * asynchronously; until they arrive the sprites are simply empty.
+	 * The artwork is white (it is canvas art — see the icon note in CLAUDE.md) and is
+	 * drawn plain, exactly as the board draws it. Textures load asynchronously; until
+	 * they arrive the sprites are simply empty.
 	 */
 	private makeTraitIcons(): Container {
 		const group = new Container();
@@ -543,24 +539,16 @@ export class CardSprite extends Container {
 			const x =
 				index === 0 ? margin + size / 2 : this.cardWidth - margin - size / 2;
 
-			const halo = new Sprite(Texture.EMPTY);
-			halo.tint = 0x000000;
-			halo.alpha = SHADOW_ALPHA;
-			halo.anchor.set(0.5);
-			halo.position.set(x, y);
 			const glyph = new Sprite(Texture.EMPTY);
 			glyph.anchor.set(0.5);
 			glyph.position.set(x, y);
-			group.addChild(halo, glyph);
+			group.addChild(glyph);
 
 			void textureCache.icon(url).then((texture) => {
 				// The card may have been torn down while the glyph was loading.
 				if (!texture || glyph.destroyed) return;
-				const scale = size / Math.max(texture.width, texture.height);
 				glyph.texture = texture;
-				glyph.scale.set(scale);
-				halo.texture = texture;
-				halo.scale.set(scale * TRAIT_ICON_HALO);
+				glyph.scale.set(size / Math.max(texture.width, texture.height));
 			});
 		});
 
