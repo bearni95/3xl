@@ -2,6 +2,7 @@
 	import classNames from 'classnames';
 	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
+	import VeilBlock from '$components/core/VeilBlock.svelte';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { spawnYearLabel } from '$utils/spawn/year';
 	import { showIconName } from '$utils/show/show-icon';
@@ -21,10 +22,11 @@
 	// colour is the whole of a fighter, so what it grants is read off it here rather
 	// than passed in: no caller has to know the game's rules to draw one.
 	//
-	// This is the only place that picture is built. The sidebar grids them two to a row
-	// after the player's own tile; a map pin carries three uncaptioned at pin size — the
-	// difference between those surfaces is the width they hand this statue and whether
-	// they ask for the caption, never a second drawing of the same thing.
+	// This is the only place that picture is built. The sidebar grids the fielded three
+	// onto one row of three, under the player's own row; a map pin carries three
+	// uncaptioned at pin size — the difference between those surfaces is the width they
+	// hand this statue and whether they ask for the caption, never a second drawing of the
+	// same thing.
 
 	export let label: string = '';
 	export let basePath: string | null = null;
@@ -176,20 +178,17 @@
 				<!-- One more piece of the sprite's loading veil, upright beside the rectangle over
 					the picture: as wide as the cut leaves the tile's front edge, standing as far
 					above that edge as the side cuts reach, and as tall as the character's sheet is
-					about to be. Not a second veil — the sprite hands over its own classes and its
-					sheet's height, so this goes up, holds and fades on the one clock. Nothing is
-					written on it and it is not the picture, so it is hidden from a screen reader. -->
-				<div
-					slot="veil"
-					let:veilClasses
-					let:sheetHeight
-					class={veilClasses}
-					style:--sprite-left={VEIL_BLOCK_LEFT}
-					style:--sprite-bottom={VEIL_BLOCK_BOTTOM}
-					style:--sprite-width={VEIL_BLOCK_WIDTH}
-					style:--sprite-height="{sheetHeight}px"
-					aria-hidden="true"
-				></div>
+					about to be. Not a second veil — the sprite hands over its own clock and its
+					sheet's height, so this piece holds and fades with that one. -->
+				<svelte:fragment slot="veil" let:fading let:sheetHeight>
+					<VeilBlock
+						left={VEIL_BLOCK_LEFT}
+						bottom={VEIL_BLOCK_BOTTOM}
+						width={VEIL_BLOCK_WIDTH}
+						height="{sheetHeight}px"
+						{fading}
+					/>
+				</svelte:fragment>
 			</IdleSprite>
 		</div>
 	</div>

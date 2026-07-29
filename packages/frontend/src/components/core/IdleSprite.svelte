@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onDestroy } from 'svelte';
+	import VeilBlock from '$components/core/VeilBlock.svelte';
 	import {
 		loadIdleClip,
 		placeIdleClip,
@@ -161,14 +162,6 @@
 		{ '-scale-x-100': flipped }
 	);
 
-	// The veil is placed off the same four properties as a frame, being the same kind of
-	// measured box, and is never mirrored: a plain rectangle has no side to it. `duration-300`
-	// is VEIL_FADE said in CSS — keep the two the same.
-	$: veilClasses = classNames(
-		'pointer-events-none absolute bottom-[var(--sprite-bottom)] left-[var(--sprite-left)]',
-		'h-[var(--sprite-height)] w-[var(--sprite-width)] bg-white transition-opacity duration-300',
-		veil === 'fading' ? 'opacity-0' : 'opacity-100'
-	);
 </script>
 
 <div
@@ -197,29 +190,27 @@
 		{/each}
 
 		{#if veil !== 'down'}
-			<!-- The veil, last in the box so it covers the frames: a white rectangle exactly
-				the sheet the clip is about to sweep out, standing where the character will
-				stand. It goes up as soon as that box is known — which is before any frame's
-				art has arrived — so the card shows the character's own footprint while it
-				loads instead of the floor showing through, and every frame that pops in as it
-				decodes does so behind it. Nothing is written on it and it is not the picture,
-				so it is hidden from a screen reader, which is being read the box's own label. -->
-			<div
-				class={veilClasses}
-				style:--sprite-left="{placement.sheet.left}px"
-				style:--sprite-bottom="{placement.sheet.bottom}px"
-				style:--sprite-width="{placement.sheet.width}px"
-				style:--sprite-height="{placement.sheet.height}px"
-				aria-hidden="true"
-			></div>
+			<!-- The veil, last in the box so it covers the frames: a rectangle exactly the sheet
+				the clip is about to sweep out, standing where the character will stand. It goes
+				up as soon as that box is known — which is before any frame's art has arrived —
+				so the card shows the character's own footprint while it loads instead of the
+				floor showing through, and every frame that pops in as it decodes does so behind
+				it. What it looks like is VeilBlock's; this only measures it. -->
+			<VeilBlock
+				left="{placement.sheet.left}px"
+				bottom="{placement.sheet.bottom}px"
+				width="{placement.sheet.width}px"
+				height="{placement.sheet.height}px"
+				fading={veil === 'fading'}
+			/>
 
-			<!-- Whatever else the surface wants veiled along with the picture. It is handed the
-				veil's own classes and the sheet's height and sets the four properties they read
-				for itself, so it goes up, holds and fades on this clock without knowing anything
-				about when the art arrived — one veil in several pieces, not a second one to keep
-				in step. The geometry stays with whoever owns it: a rectangle measured off the
-				floor tile is the surface's to place, the tile being no part of a sprite. -->
-			<slot name="veil" {veilClasses} sheetHeight={placement.sheet.height} />
+			<!-- Whatever else the surface wants veiled along with the picture: it is handed the
+				clock's own state and the sheet's height, and puts up its own VeilBlock with them,
+				so its piece goes up, holds and fades with this one without knowing anything about
+				when the art arrived — one veil in several pieces, not a second one to keep in
+				step. The geometry stays with whoever owns it: a rectangle measured off the floor
+				tile is the surface's to place, the tile being no part of a sprite. -->
+			<slot name="veil" fading={veil === 'fading'} sheetHeight={placement.sheet.height} />
 		{/if}
 	{/if}
 </div>
