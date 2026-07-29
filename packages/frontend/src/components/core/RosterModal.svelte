@@ -827,14 +827,19 @@
 				     line-up scroll away with the cards rather than standing over them. -->
 				<div
 					bind:this={gridScroller}
-					class="min-h-0 min-w-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
+					class="min-h-0 min-w-0 flex-1 overflow-y-auto"
 				>
 					<!-- Two grids, not one: three columns of the filters and the line-up on the left,
 					     four of the roster on the right, standing in a seven-column frame at the gap
 					     both of them use, so a cell of either is one column of that frame wide and the
 					     two read across as a single rhythm. items-start is what keeps the left grid the
 					     height of its own content — stretched to the roster's height, its rows would
-					     stretch with it and the filter card would be as tall as ten rows of cards. -->
+					     stretch with it and the filter card would be as tall as ten rows of cards.
+					     The panel is the right grid's own rather than the scroll box's: the box held
+					     one that ran under both, which said the filters and the cards were one surface
+					     when they are two things now. So the cards sit on base-200 and everything on
+					     the left stands on the page itself — the filter card being its own panel
+					     already, in the lighter stock, and the line-up wanting nothing behind it. -->
 					<div class="grid grid-cols-7 items-start gap-3">
 						<!-- The filters and the line-up, three across: the filter card over two of those
 						     columns and one cell per team slot under it. Every control ANDs with the
@@ -978,7 +983,7 @@
 						     the other three. The empty-roster line is a cell of it too, spanning the four,
 						     rather than something laid over the box — an overlay would cover the very
 						     controls a player has to reach to undo the filter that emptied it. -->
-						<div class="col-span-4 grid grid-cols-4 gap-3">
+						<div class="col-span-4 grid grid-cols-4 gap-3 rounded-box bg-base-200 p-3">
 							{#each pagedStatues as { group, copy, swatches, places, placeValue, statue, fielded } (group.id)}
 								<!-- The border is on the cell, not on the statue: it takes in the circles
 								     and the place select too, so what it marks is this character's whole
