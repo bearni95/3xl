@@ -17,9 +17,10 @@
 	import type { SpawnColor } from '$types/character-spawn.type';
 
 	// One character, as this game draws one: a statue of them — standing on a tilted
-	// floor in their own colour with their show's mark and its lettering painted on it,
-	// and, where there is room for it, a panel underneath saying their name, the place
-	// they were claimed and the orders their colour grants them for free.
+	// floor in their own colour with their show's mark painted on it and its lettering
+	// flat across the front of it, and, where there is room for it, a panel underneath
+	// saying their name, the place they were claimed and the orders their colour grants
+	// them for free.
 	//
 	// It stands on its own: hand it a character from the seed or from Supabase — the
 	// frames folder, a colour, and the two captions — and it assembles the whole
@@ -43,9 +44,9 @@
 	// room for a mark, not a date. Null leaves the place standing on its own.
 	export let spawnedAt: string | number | Date | null = null;
 	// The TMDB id of the character's show — the one the admin `/characters` screen
-	// assigns it. Its glyph and its lettering are both painted on the floor. Null (or a
-	// show with no glyph drawn and no logo enabled yet) leaves the floor bare rather
-	// than badging it with a stand-in.
+	// assigns it. Its glyph is painted on the floor and its lettering stands flat across
+	// the front of it. Null (or a show with no glyph drawn and no logo enabled yet)
+	// leaves the floor bare rather than badging it with a stand-in.
 	export let showId: number | null = null;
 	// Mirror the character. True is the player's own side; false the unmirrored art a
 	// rival side uses, so the two face each other.
@@ -90,7 +91,7 @@
 
 	$: showIcon = showIconName(showId);
 
-	// The show's own lettering, painted along the front of the floor. It is asked for by
+	// The show's own lettering, standing along the front of the floor. It is asked for by
 	// id alone, exactly as the glyph is: the collection is loaded once for every statue
 	// standing (see shows.service), so nothing has to be handed down to the pins, the
 	// strip or the roster grid for a card to say what it is from.
@@ -138,24 +139,26 @@
 						it takes it from here rather than carrying one of its own. -->
 					<ShowIcon name={showIcon} classes="absolute inset-0 [&>svg]:h-full [&>svg]:w-full" />
 				{/if}
-				{#if showLogo}
-					<!-- The show's own lettering, painted on the floor rather than said on the
-						panel: across the whole width of the tile's front edge, and inside the tile,
-						so the tilt is the tile's own — the same thing that lays the glyph down
-						instead of standing it up on a shape that looks like a floor. The front edge
-						is where a full-width mark survives that tilt: it is the one line the
-						perspective leaves at its true width, and it foreshortens upwards from
-						there, so the lettering is read at the bottom and falls away into the
-						square. Its height is the wordmark's own at that width — a logo is a
-						picture of a name, and cropping or squashing it says the name wrong. -->
-					<img
-						src={showLogo.url}
-						alt={showLogo.name}
-						title={showLogo.name}
-						class="absolute inset-x-0 bottom-0 w-full"
-					/>
-				{/if}
 			</div>
+
+			{#if showLogo}
+				<!-- The show's own lettering, across the whole width of the floor's front edge —
+					the tile's bottom line, which is the axis it turns about and so the square's
+					own bottom too: the same place and the same width the tile would give it, but
+					outside the tile and unturned. It is read rather than looked at, and a rotated
+					wordmark is neither read nor looked at; the ground turns with the perspective
+					because it is ground, while a name has to stay a name. Behind the character
+					for the same reason it is not tilted with the floor: it belongs to the picture
+					of the show, not to the statue standing in front of it. Its height is the
+					wordmark's own at that width — a logo is a picture of a name, and cropping or
+					squashing it says the name wrong. -->
+				<img
+					src={showLogo.url}
+					alt={showLogo.name}
+					title={showLogo.name}
+					class="absolute inset-x-0 bottom-0 w-full"
+				/>
+			{/if}
 
 			<IdleSprite {basePath} {label} {flipped} baseline={BASELINE} />
 		</div>
@@ -164,7 +167,7 @@
 	<!-- Who that is, then where and when they were claimed, then what their colour grants
 		them — on a panel in the same colour the floor is painted, so the card reads as one
 		object in one colour rather than a picture with a caption. What they are from is not
-		said here: the floor above says it, in the show's own lettering. Either line too long
+		said here: the picture above says it, in the show's own lettering. Either line too long
 		for the card is cut with
 		an ellipsis rather than wrapped: a row of these must keep one height between them,
 		whatever they are called and wherever they were pulled. -->
