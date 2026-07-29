@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { get } from 'svelte/store';
 import {
 	CombatController,
+	PLAYER_CELLS,
+	RIVAL_RANKS,
 	type CombatAction,
+	type CombatState,
 	type FighterSeed,
 	type FighterView
 } from '$services/combat.controller';
@@ -106,15 +109,86 @@ describe('CombatController — giving orders', () => {
 });
 
 describe('CombatController — the fight as it thins', () => {
-	/** Play a whole fight through the buttons, asserting the side is commitable on
-	 * every turn — including the turns after one of the player's fighters has fallen. */
+	/**
+	 * Who each fighter faces, worked out from the board alone: the player's line never
+	 * moves, so a slot holds its own row all fight; the rivals close up onto the rank
+	 * their losses have cost them. The two lines are drawn a row apart, so the rival on
+	 * row `r` faces the player on row `r − 1` — and nobody else, however many have
+	 * fallen. Derived here independently of the controller, which must agree with it.
+	 */
+	function facingByBoard(state: CombatState): Map<string, string | null> {
+		const rows = new Map<string, number>();
+		const players = state.fighters.filter((fighter) => fighter.side === 'info');
+		players.forEach((fighter, slot) => {
+			if (!fighter.down) rows.set(fighter.id, PLAYER_CELLS[slot].r);
+		});
+		const rivals = state.fighters.filter((fighter) => fighter.side === 'error' && !fighter.down);
+		const rank = RIVAL_RANKS[RIVAL_RANKS.length - rivals.length] ?? [];
+		rivals.forEach((fighter, i) => {
+			if (rank[i]) rows.set(fighter.id, rank[i].r);
+		});
+
+		const standingOf = (side: 'error' | 'info', row: number): string | null =>
+			state.fighters.find(
+				(fighter) => fighter.side === side && !fighter.down && rows.get(fighter.id) === row
+			)?.id ?? null;
+
+		const facing = new Map<string, string | null>();
+		for (const fighter of state.fighters) {
+			const row = fighter.down ? undefined : rows.get(fighter.id);
+			if (row === undefined) {
+				facing.set(fighter.id, null);
+				continue;
+			}
+			facing.set(
+				fighter.id,
+				fighter.side === 'error' ? standingOf('info', row - 1) : standingOf('error', row + 1)
+			);
+		}
+		return facing;
+	}
+
+	/** Play a whole fight through the buttons, asserting on every turn that the side is
+	 * commitable and that nobody is aimed at anyone but the fighter across from it. */
 	async function playOut(colors: CombatColor[], pick: (fighter: FighterView) => CombatAction) {
 		const controller = new CombatController(seeds(colors));
 		let sawLoss = false;
+		// What each standing player faced last turn, to catch a re-pairing that no
+		// movement on the board could account for.
+		let facedBefore = new Map<string, string | null>();
+		let rivalsBefore = 3;
 		for (let turn = 0; turn < 30; turn++) {
 			const state = get(controller);
 			if (state.outcome) break;
 			sawLoss ||= state.fighters.some((fighter) => fighter.side === 'info' && fighter.down);
+
+			const byBoard = facingByBoard(state);
+			for (const fighter of state.fighters) {
+				expect(`${fighter.id} faces ${fighter.opponentId}`).toBe(
+					`${fighter.id} faces ${byBoard.get(fighter.id) ?? null}`
+				);
+			}
+			// Losing one of the player's own fighters moves nobody, so it must leave every
+			// other pairing exactly as it was: the rivals only re-pair by falling back.
+			const rivalsNow = state.fighters.filter(
+				(fighter) => fighter.side === 'error' && !fighter.down
+			).length;
+			if (rivalsNow === rivalsBefore) {
+				for (const fighter of state.fighters) {
+					if (fighter.side !== 'info' || fighter.down) continue;
+					if (!facedBefore.has(fighter.id)) continue;
+					expect(`${fighter.id} faces ${fighter.opponentId}`).toBe(
+						`${fighter.id} faces ${facedBefore.get(fighter.id)}`
+					);
+				}
+			}
+			facedBefore = new Map(
+				state.fighters
+					.filter((fighter) => fighter.side === 'info' && !fighter.down)
+					.map((fighter) => [fighter.id, fighter.opponentId])
+			);
+			rivalsBefore = rivalsNow;
+
 			for (const fighter of playerFighters(controller)) tap(controller, fighter, pick(fighter));
 			expect(get(controller).ready).toBe(true);
 			controller.commit();
@@ -125,12 +199,13 @@ describe('CombatController — the fight as it thins', () => {
 		return sawLoss;
 	}
 
-	it('stays commitable turn after turn once fighters start falling', async () => {
+	it('stays commitable, and keeps everyone in their lane, as fighters fall', async () => {
 		let sawLoss = false;
 		for (const colors of [
 			['red', 'yellow', 'blue', 'red', 'yellow', 'blue'],
 			['orange', 'purple', 'green', 'orange', 'purple', 'green'],
-			['red', 'red', 'red', 'red', 'red', 'red']
+			['red', 'red', 'red', 'red', 'red', 'red'],
+			['blue', 'blue', 'blue', 'blue', 'blue', 'blue']
 		] as CombatColor[][]) {
 			// Fire whenever there is a shot in hand, load otherwise — the fastest way to
 			// thin both sides out.
@@ -139,6 +214,22 @@ describe('CombatController — the fight as it thins', () => {
 		// The point of the run: it went past a fighter of the player's going down.
 		expect(sawLoss).toBe(true);
 	}, 120000);
+
+	it('opens with each line facing the one across from it', () => {
+		const controller = new CombatController(
+			seeds(['blue', 'blue', 'blue', 'blue', 'blue', 'blue'])
+		);
+		const state = get(controller);
+		// Top→bottom on screen, a fighter faces its opposite number in the other line.
+		for (let slot = 0; slot < 3; slot++) {
+			expect(state.fighters.find((f) => f.id === `info:${slot}`)?.opponentId).toBe(
+				`error:${slot}`
+			);
+			expect(state.fighters.find((f) => f.id === `error:${slot}`)?.opponentId).toBe(
+				`info:${slot}`
+			);
+		}
+	});
 });
 
 describe('CombatController — what the board is left showing', () => {

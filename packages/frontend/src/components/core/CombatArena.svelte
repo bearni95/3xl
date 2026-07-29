@@ -15,6 +15,7 @@
 	import {
 		CombatController,
 		COMBAT_ACTIONS,
+		PLAYER_CELLS,
 		RIVAL_RANKS,
 		type CombatAction,
 		type CombatState,
@@ -121,17 +122,17 @@
 			: [...teamMembers, ...teamMembers]
 		: [];
 
-	// Where each side stands, listed top→bottom on screen — which is also the
-	// left→right order the board draws that side's cards in, and therefore the order
-	// the fighters are seeded and shown in. The rivals open on the board's central
-	// column (the ground the controller walks them back off, rank by rank, as they
-	// fall); the player's team holds the far column of its own half, facing them.
+	// Where each side stands. Both sides' ground belongs to the controller — it is what
+	// decides who faces whom — so the cells are taken from there rather than restated
+	// here: the rivals open on the board's central column (the ground the controller
+	// walks them back off, rank by rank, as they fall), the player's team on the far
+	// column of its own half, facing them.
+	//
+	// The controller lists each line top→bottom on screen; the player's team fills its
+	// column the other way about, its first slot standing nearest the viewer, so the
+	// cells are handed out bottom→top here.
 	const RIVAL_CELLS: Hex[] = RIVAL_RANKS[0];
-	const PLAYER_CELLS: Hex[] = [
-		{ q: 2, r: -4 },
-		{ q: 2, r: -3 },
-		{ q: 2, r: -2 }
-	];
+	const PLAYER_LINEUP_CELLS: Hex[] = [...PLAYER_CELLS].reverse();
 
 	// The two sides can field the SAME spawn line-up (a mirror match), so a bare spawn
 	// id is not unique across the board. Every board actor / fighter is identified by a
@@ -201,7 +202,7 @@
 		});
 		return [
 			half('error', 0, RIVAL_CELLS, 0xff0000),
-			half('info', 3, PLAYER_CELLS, 0x2563eb)
+			half('info', 3, PLAYER_LINEUP_CELLS, 0x2563eb)
 		];
 	}
 
