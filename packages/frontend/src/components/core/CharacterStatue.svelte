@@ -17,10 +17,9 @@
 	import type { SpawnColor } from '$types/character-spawn.type';
 
 	// One character, as this game draws one: a statue of them — standing on a tilted
-	// floor in their own colour, with their show's mark painted on it, the orders that
-	// colour grants them for free along the front of it, and, where there is room for
-	// it, their name, their show's own lettering and the place they were claimed, on a
-	// panel underneath.
+	// floor in their own colour with their show's mark painted on it, and, where there
+	// is room for it, a panel underneath saying their name, their show's own lettering,
+	// the place they were claimed and the orders their colour grants them for free.
 	//
 	// It stands on its own: hand it a character from the seed or from Supabase — the
 	// frames folder, a colour, and the two captions — and it assembles the whole
@@ -142,39 +141,21 @@
 			</div>
 
 			<IdleSprite {basePath} {label} {flipped} baseline={BASELINE} />
-
-			<!-- What the colour grants, along the bottom of the square — the tile's front
-				edge, and so the front of the floor the character is standing on — flat, in
-				front of both: the ground turns with the perspective because it is ground,
-				while these are read rather than looked at, and a rotated row of them would be
-				neither. Sized in cqw off that square, so they are the same share of the
-				picture on a pin as on a roster card. They ship as white artwork for the
-				canvases to tint, which is white on white over a yellow floor, so each one
-				carries its own black disc — the glyph's, not the row's: the floor is what is
-				between them, and a band across the whole width would put a stripe over it. -->
-			<div class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-[4cqw] py-[1.5cqw]">
-				{#each passives as passive (passive.order)}
-					<img
-						src={passive.icon}
-						alt={passive.label}
-						title={passive.label}
-						class="size-[14cqw] rounded-full bg-black/40 p-[1cqw]"
-					/>
-				{/each}
-			</div>
 		</div>
 	</div>
 
-	<!-- Who that is, then what they are from, then where and when they were claimed —
-		on a panel in the same colour the floor is painted, so the card reads as one object
-		in one colour rather than a picture with a caption. Either line too long for the card is cut with
+	<!-- Who that is, then what they are from, then where and when they were claimed, then
+		what their colour grants them — on a panel in the same colour the floor is painted,
+		so the card reads as one object in one colour rather than a picture with a caption.
+		Either line too long for the card is cut with
 		an ellipsis rather than wrapped: a row of these must keep one height between them,
 		whatever they are called and wherever they were pulled. -->
 	<div class={classNames('border', SPAWN_PANEL_CLASSES[color], SPAWN_BORDER_CLASSES[color])}>
-		<!-- Each row carries its own black band over the colour: a light one under the
-			name, a heavier one under the place. The ink follows the band — the panel's own
-			(black on yellow, white on the rest) reads over the light one, while the heavy
-			one is dark enough on every swatch to want white whatever the panel says. -->
+		<!-- Each row carries its own black band over the colour, darkening as the panel
+			goes down: lightest under the name, heaviest under the glyphs. The ink follows
+			the band — the panel's own (black on yellow, white on the rest) reads over the
+			light one, while the heavy ones are dark enough on every swatch to want white
+			whatever the panel says. -->
 		<div class="truncate bg-black/20 px-1 py-0.5 text-center text-sm font-semibold" title={label}>
 			{label}
 		</div>
@@ -207,6 +188,22 @@
 				{#if year}
 					<span class="flex-none tabular-nums">{year}</span>
 				{/if}
+			</div>
+		{/if}
+		{#if passives.length > 0}
+			<!-- What the colour grants, on the last row of the panel. These stood along the
+				front edge of the floor, laid over the picture: a row of its own is what they
+				always wanted, since they are read rather than looked at, and the panel is
+				where this card puts everything that is read. Being a row, the band is now the
+				row's rather than each glyph carrying its own disc — they ship as white
+				artwork for the canvases to tint, so the black is what they need to read at
+				all, and one band across the row is the same black the captions above take.
+				Sized like the type beside them rather than as a share of the picture: the
+				panel is fixed-size type on every surface the statue is drawn on. -->
+			<div class="flex items-center justify-center gap-2 bg-black/60 px-1 py-0.5">
+				{#each passives as passive (passive.order)}
+					<img src={passive.icon} alt={passive.label} title={passive.label} class="size-4" />
+				{/each}
 			</div>
 		{/if}
 	</div>
