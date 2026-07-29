@@ -47,7 +47,7 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // `booster_claims` (the per-pack rate-limit ledger) plus the `claim_booster`
 // security-definer RPC — the only path that inserts spawns now — enforce the
 // daily booster limit (= player level, capped at 20, resetting at midnight
-// Europe/Madrid) and the "only towns celebrating a festa major today" rule
+// Europe/Madrid) and the "only towns de festa inside the booster window" rule
 // server-side; the client insert policy on `character_spawns` is dropped so the
 // rules cannot be bypassed. It reads `festivities` (provisioned lazily by
 // ./festivities). `municipality_holders` / `municipality_sieges` (who occupies
@@ -266,8 +266,12 @@ export function ensureTables(): Promise<void> {
 						end;
 					$level_for_exp$;
 					-- Open a booster pack for the caller, enforced entirely server-side:
-					--   * the town (p_location_id) must be celebrating a festa major *today*
-					--     in Europe/Madrid (a festivities row for today's Catalan date);
+					--   * the town (p_location_id) must be celebrating a festa major inside
+					--     the booster window — a festivities row for a Catalan date from 3
+					--     days back through 4 days ahead of today (a festa major runs over
+					--     its weekend, not one evening); keep in step with
+					--     @3xl/shared utils/festes/booster-window.ts and with the festivity
+					--     sync's lower bound in ./festivities.ts;
 					--   * the player may open at most (their level, capped at 20) packs per
 					--     day, the day resetting at midnight Europe/Madrid.
 					-- It then rolls 5 cards from the show's assigned, template-backed roster
@@ -282,6 +286,9 @@ export function ensureTables(): Promise<void> {
 							v_uid uuid := auth.uid();
 							v_today date := (now() at time zone 'Europe/Madrid')::date;
 							v_day_start timestamptz := date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
+							-- The booster window around today (see the comment above).
+							v_days_behind constant int := 3;
+							v_days_ahead constant int := 4;
 							v_size constant int := 5;
 							v_exp bigint;
 							v_level int;
@@ -307,12 +314,13 @@ export function ensureTables(): Promise<void> {
 							end if;
 							-- Serialise this player's opens so the daily limit can't be raced.
 							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
-							-- The town must be celebrating a festa major today.
+							-- The town must be celebrating a festa major inside the booster window.
 							if not exists (
 									select 1 from festivities f
-									where f.location_id = p_location_id and f.date = v_today
+									where f.location_id = p_location_id
+											and f.date between v_today - v_days_behind and v_today + v_days_ahead
 							) then
-									raise exception 'This town is not celebrating a festa major today.';
+									raise exception 'This town is not celebrating a festa major these days.';
 							end if;
 							-- Daily cap = player level (>=1, capped at 20) plus any admin-granted
 							-- extra claims for today, reset at Catalan midnight.
@@ -637,11 +645,16 @@ export function ensureTables(): Promise<void> {
 							-- The rival line-up in lane order, [{character_id, color}], frozen so a
 							-- resumed fight faces the same three whatever the town has done since.
 							rivals jsonb not null default '[]'::jsonb,
+							-- The player's own line-up in fielded order, [spawn_id, …], every one
+							-- of them checked against character_spawns before this row existed.
+							team jsonb not null default '[]'::jsonb,
 							-- The board as the last closed turn left it, null before the first.
 							board jsonb,
 							started_at timestamptz not null default now(),
 							updated_at timestamptz not null default now()
 						);
+					-- Battles opened before the team was proved simply carry none.
+					alter table battles add column if not exists team jsonb not null default '[]'::jsonb;
 					alter table battles enable row level security;
 					-- Read your own and nothing else. Deliberately no write policy at all: a
 					-- client that could delete this row could walk out of a losing fight.
@@ -656,10 +669,27 @@ export function ensureTables(): Promise<void> {
 					-- Refuses a town the caller holds, and refuses outright when they already
 					-- have a battle open — that one has to be finished first. The OUT names
 					-- deliberately avoid the table's columns.
+					--
+					-- p_team is the player's own line-up, in fielded order, as an array of
+					-- character_spawns ids, and it is PROVED here before the battle exists:
+					-- three of the caller's own claimed cards, each named once, or no battle
+					-- is opened and no day is spent. It is the same rule award_combat_exp
+					-- applies to a winning report, moved to the only place it does the player
+					-- any good — a fight that could never have been reported is now a fight
+					-- that was never started. A team stale in some browser's local storage
+					-- (claimed by another account, or since recycled) is exactly what it
+					-- catches, and the client cannot be the one to decide it, being the thing
+					-- that is out of date.
+					--
+					-- The three-argument version is dropped rather than replaced: left standing
+					-- it would make every call ambiguous for PostgREST and go on being the way
+					-- to open a battle with no team at all.
+					drop function if exists start_battle(text, int, jsonb);
 					create or replace function start_battle(
 							p_location_id text,
 							p_turnover int default 0,
-							p_rivals jsonb default '[]'::jsonb
+							p_rivals jsonb default '[]'::jsonb,
+							p_team jsonb default '[]'::jsonb
 						)
 					returns table (town_id text, challenge_day date, opened_at timestamptz)
 					language plpgsql security definer set search_path = public as $start_battle$
@@ -669,12 +699,47 @@ export function ensureTables(): Promise<void> {
 							v_holder uuid;
 							v_started timestamptz;
 							v_open text;
+							v_fielded int;
+							v_distinct int;
+							v_owned int;
 					begin
 							if v_uid is null then
 								raise exception 'You must be signed in to challenge a town.';
 							end if;
 							if p_location_id is null or p_location_id = '' then
 								raise exception 'A town is required to start a challenge.';
+							end if;
+							if p_team is null or jsonb_typeof(p_team) <> 'array' then
+								raise exception 'A challenge is fought by a team; none was fielded.';
+							end if;
+							-- The team, proved against what the caller owns before anything is
+							-- written. Ids are read as text and cast only where they look like a
+							-- uuid, so a line-up of junk is answered with the rule it broke rather
+							-- than with a cast error.
+							with fielded as (
+								select
+									entry.value as raw,
+									case
+										when entry.value ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+											then entry.value::uuid
+									end as spawn_id
+								from jsonb_array_elements_text(p_team) as entry(value)
+							)
+							select
+								(select count(*) from fielded),
+								(select count(distinct raw) from fielded),
+								(select count(*) from fielded f
+									join character_spawns cs on cs.id = f.spawn_id and cs.user_id = v_uid)
+							into v_fielded, v_distinct, v_owned;
+							-- Three a side, the size award_combat_exp caps a report at.
+							if v_fielded <> 3 then
+								raise exception 'A team fields 3 fighters; % were.', v_fielded;
+							end if;
+							if v_distinct <> v_fielded then
+								raise exception 'A fighter cannot be fielded twice.';
+							end if;
+							if v_owned <> v_fielded then
+								raise exception 'Every fighter must be one of your own claimed characters.';
 							end if;
 							-- Serialise this player's mutations, matching claim_booster.
 							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
@@ -700,17 +765,17 @@ export function ensureTables(): Promise<void> {
 								raise exception 'You have already challenged this town today. New challenges at midnight.';
 							end if;
 							insert into battles
-								(user_id, location_id, challenge_date, turnover, rivals, board)
+								(user_id, location_id, challenge_date, turnover, rivals, team, board)
 								values (v_uid, p_location_id, v_today,
 									greatest(0, coalesce(p_turnover, 0)),
-									coalesce(p_rivals, '[]'::jsonb), null);
+									coalesce(p_rivals, '[]'::jsonb), p_team, null);
 							town_id := p_location_id;
 							challenge_day := v_today;
 							opened_at := v_started;
 							return next;
 					end;
 					$start_battle$;
-					grant execute on function start_battle(text, int, jsonb) to authenticated;
+					grant execute on function start_battle(text, int, jsonb, jsonb) to authenticated;
 					-- The pre-battle RPC is dropped rather than left standing: a client that
 					-- could still claim a day's challenge without opening a battle would have a
 					-- way to spend the day with nothing holding it to the fight.
@@ -858,17 +923,25 @@ export function ensureTables(): Promise<void> {
 								(select count(*) from owned),
 								(select count(*) from owned where not down)
 							into v_reported, v_distinct, v_owned, v_standing;
-							if v_reported = 0 then
-								raise exception 'A combat report must list the fighters that took part.';
-							end if;
-							if v_reported > 3 then
-								raise exception 'A team fields at most 3 fighters; % were reported.', v_reported;
-							end if;
-							if v_distinct <> v_reported then
-								raise exception 'A fighter cannot be reported twice.';
-							end if;
-							if v_owned <> v_reported then
-								raise exception 'Every fighter must be one of your own claimed characters.';
+							-- The report is bounded where it can buy something, and only there. A
+							-- win pays experience and banks ground, so it has to name a real team.
+							-- A loss or a draw buys nothing at all — no experience, no siege, no
+							-- town — and its only effect is closing the battle, so it is always
+							-- taken. Refusing one protects nothing and strands the player in a
+							-- fight they have already given up.
+							if p_outcome = 'win' then
+								if v_reported = 0 then
+									raise exception 'A combat report must list the fighters that took part.';
+								end if;
+								if v_reported > 3 then
+									raise exception 'A team fields at most 3 fighters; % were reported.', v_reported;
+								end if;
+								if v_distinct <> v_reported then
+									raise exception 'A fighter cannot be reported twice.';
+								end if;
+								if v_owned <> v_reported then
+									raise exception 'Every fighter must be one of your own claimed characters.';
+								end if;
 							end if;
 							-- The level at stake is the one the player is on now, before the award.
 							select coalesce(exp, 0) into v_exp from player_profiles where user_id = v_uid;
@@ -904,7 +977,9 @@ export function ensureTables(): Promise<void> {
 								-- challenge, so a report that names one did not come from the game —
 								-- reject it outright, rolling back the experience with it, rather than
 								-- paying out for a fight that should not have happened.
-								if v_holder is not null and v_holder = v_uid then
+								-- Only a WIN is refused for it: there is nothing to take off
+								-- yourself. A loss against your own town is a fight that ends.
+								if v_holder is not null and v_holder = v_uid and p_outcome = 'win' then
 									raise exception 'You already hold this town — you cannot challenge your own team.';
 								end if;
 								-- One challenge per town per Catalan day. The slot is normally already
@@ -924,7 +999,10 @@ export function ensureTables(): Promise<void> {
 										set settled_at = now()
 										where municipality_challenges.settled_at is null
 									returning municipality_challenges.settled_at into v_challenge;
-								if v_challenge is null then
+								-- Again the win only: a second win against the same town today
+								-- would be a second payout, a second loss is worth what the
+								-- first was, which is nothing.
+								if v_challenge is null and p_outcome = 'win' then
 									raise exception 'You have already challenged this town today. New challenges at midnight.';
 								end if;
 								-- No row at all means the town is still on its seeded OG team: turnover 0.

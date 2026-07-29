@@ -1,7 +1,6 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
-	import { slide } from 'svelte/transition';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { characters } from '@3xl/data';
@@ -13,7 +12,6 @@
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import ClaimPackOpener from '$components/core/pack/ClaimPackOpener.svelte';
 	import ClaimPackGrid from '$components/core/pack/ClaimPackGrid.svelte';
-	import PackDateCalendar from '$components/core/pack/PackDateCalendar.svelte';
 	import CardCanvas from '$components/core/card/CardCanvas.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import Countdown from '$components/core/Countdown.svelte';
@@ -63,6 +61,7 @@
 	import { buildShowStandings } from '$utils/geo/show-standings';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { nextCatalanMidnight } from '$utils/festes/catalan-day';
+	import { boosterWindow } from '$utils/festes/booster-window';
 	import type { MapMarker, MapOverlay, MapStar } from '$types/map.type';
 	import type {
 		MunicipalityShow,
@@ -81,12 +80,14 @@
 	// Held until the fetches settle so the map renders against the loaded data.
 	let ready = false;
 	// The municipalities celebrating a festa major today, read from Supabase — the
-	// `festivities` fetch, so the map's stars and the
-	// day's booster packs agree on which towns are "de festa". Each town's `id`
-	// matches a municipality feature id, so it resolves to a polygon on the map.
+	// `festivities` fetch. This is what the map's gold stars mark: the day itself, not
+	// the whole booster window the packs are drawn from, so a star still says "this town
+	// is de festa now". Each town's `id` matches a municipality feature id, so it
+	// resolves to a polygon on the map.
 	let todayFestes: FestaLocationRow[] = [];
-	// All of today's booster packs, computed by a hidden CharacterClaimPanel, which
-	// turns today's festes + the player's shows into openable packs. Kept here so clicking a star opens that town's pack at once,
+	// Every booster pack in the window (three days back through four ahead), computed by
+	// a hidden CharacterClaimPanel, which turns those festes + the player's shows into
+	// openable packs. Kept here so clicking a star opens that town's pack at once,
 	// with no extra loading. Empty when signed out or before the show pool loads.
 	let claimPacks: OpenerPack[] = [];
 	// The municipality whose festa pack the side panel's Booster tab shows, or
@@ -865,6 +866,19 @@
 	// would refuse anyway).
 	let challengeStarting = false;
 
+	// The side this player would field, as spawn ids in slot order. Read off
+	// `activeTeamSpawns`, which is the active team's slots **resolved against the
+	// player's own spawns** — so a slot naming a card claimed by another account or
+	// recycled since simply isn't in here.
+	$: fieldedTeam = activeTeamSpawns.map((spawn) => spawn.id);
+
+	// Whether there is a team to fight with at all. `start_battle` proves the same
+	// thing in the database and refuses to open a battle without it, so offering the
+	// button would only be offering a fight the server will not have. Signed out there
+	// is no team to read and no battle to open: the arena's own sign-in gate is still
+	// the way in, so the button stays live.
+	$: canFieldTeam = !currentUserId || fieldedTeam.length === TEAM_SIZE;
+
 	// --- The panel's mobile shape ------------------------------------------------
 	// Narrow viewports have no room for a 36rem column beside the map, so below `md` the
 	// same panel docks under it instead: 30vh of it showing, with the handle row at its
@@ -928,7 +942,7 @@
 			return;
 		}
 		if (municipalityTeam.length === 0 || holdsOpenTown || challengedOpenTown) return;
-		if (challengeStarting) return;
+		if (challengeStarting || !canFieldTeam) return;
 		const townId = openRegion;
 		if (!townId) return;
 
@@ -941,14 +955,17 @@
 		if ($profile) {
 			challengeStarting = true;
 			try {
-				// Opens the battle and spends the day's challenge in one transaction, and
-				// freezes the team being fought — so the fight survives the town changing
-				// hands, and cannot be walked away from for a fresh one.
-				const challengeSlot = await battleService.start(townId, turnover, rivals);
+				// Opens the battle and spends the day's challenge in one transaction,
+				// freezing the team being fought and proving the one doing the fighting —
+				// so the fight survives the town changing hands, cannot be walked away from
+				// for a fresh one, and is never opened with a line-up the report would
+				// later be refused for.
+				const challengeSlot = await battleService.start(townId, turnover, rivals, fieldedTeam);
 				if (challengeSlot) territoryService.noteChallenge(challengeSlot);
 			} catch {
-				// Refused: already fought today, already in a battle, or the town is the
-				// player's own. Re-read both ledgers so the button tells the truth.
+				// Refused: a team that is not the caller's, already fought today, already
+				// in a battle, or the town is the player's own. Re-read both ledgers so the
+				// button tells the truth.
 				await reloadChallenges();
 				await reloadBattle();
 				return;
@@ -1180,150 +1197,39 @@
 
 	// Show a town's pack: remember which town, and bring the Booster tab forward so the
 	// pack is on screen straight away (the tab renders the opener, so this is what
-	// mounts its canvas). The stars only ever mark today's festes, so this also walks
-	// the browsed day back to today.
+	// mounts its canvas).
 	function openPack(id: string): void {
 		clearPackFeedback();
-		packDate = todayIso;
-		calendarMonth = todayIso.slice(0, 7);
 		packTownId = id;
 		panelTab = PanelTab.Pack;
 	}
 
-	// --- Which day's packs the Booster tab shows ---------------------------------
-	// The tab opens on today and its arrows walk the festivity calendar a day at a
-	// time. Only today's packs can be opened — `claim_booster` mints a booster solely
-	// for a town that is de festa today, and the server is the one enforcing it — so
-	// every other day is a read-only preview of the packs that day holds.
+	// --- Which packs the Booster tab shows ----------------------------------------
+	// Every festa major in the booster window — three days back through four days
+	// ahead of today, today included. A festa major is not a single evening, and the
+	// window is what `claim_booster` accepts too, so every pack the tab lays out is a
+	// pack that can actually be opened; nothing here is a preview. The claim panel
+	// mounted at the foot of the page assembles them (`claimPacks`).
 
-	// Today in Catalan time, the same day boundary the server claims against.
+	// Today in Catalan time, the same day boundary the server measures the window from.
 	const todayIso = catalanTodayIso();
-	let packDate = todayIso;
-	$: isPackToday = packDate === todayIso;
+	const packWindow = boosterWindow(todayIso);
 
-	// Step the browsed day, and drop back to that day's grid. The date is rebuilt from
-	// its own parts in UTC rather than parsed and offset, so the arithmetic stays on
-	// calendar days and no DST change can shift it.
-	function stepPackDate(days: number): void {
-		const [year, month, day] = packDate.split('-').map(Number);
-		packDate = new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
-		calendarMonth = packDate.slice(0, 7);
-		showPackGrid();
-	}
-
-	// --- The calendar behind the date ---------------------------------------------
-	// The date in the header toggles open a month calendar that prints, on every day,
-	// how many municipalities are de festa then; picking a day browses to it.
-
-	let calendarOpen = false;
-	let calendarMonth = packDate.slice(0, 7);
-
-	function toggleCalendar(): void {
-		calendarOpen = !calendarOpen;
-		if (calendarOpen) calendarMonth = packDate.slice(0, 7);
-	}
-
-	function pickPackDate(iso: string): void {
-		packDate = iso;
-		calendarMonth = iso.slice(0, 7);
-		calendarOpen = false;
-		showPackGrid();
-	}
-
-	// Per-month festa counts, kept once fetched so paging back and forth through the
-	// calendar doesn't re-query Supabase, plus the month currently in flight.
-	let countsByMonth = new Map<string, Map<string, number>>();
-	let loadingCountsMonth: string | null = null;
-
-	async function loadCountsFor(month: string): Promise<void> {
-		if (countsByMonth.has(month)) return;
-		loadingCountsMonth = month;
-		const [year, monthNumber] = month.split('-').map(Number);
-		// Day 0 of the next month is the last day of this one.
-		const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
-		let counts = new Map<string, number>();
-		try {
-			counts = await festesService.loadFestaCountsForRange(
-				`${month}-01`,
-				`${month}-${String(lastDay).padStart(2, '0')}`
-			);
-		} catch {
-			// A failed month simply reads as having no festes.
-			counts = new Map();
-		}
-		countsByMonth.set(month, counts);
-		countsByMonth = countsByMonth;
-		if (loadingCountsMonth === month) loadingCountsMonth = null;
-	}
-
-	// Only fetched while the calendar is on screen — a panel nobody opened costs nothing.
-	$: if (calendarOpen) void loadCountsFor(calendarMonth);
-	$: calendarCounts = countsByMonth.get(calendarMonth) ?? new Map<string, number>();
-
-	// Festes for every day browsed so far, so stepping back and forth doesn't re-query
-	// Supabase. Today's are already loaded into `todayFestes` (the map's stars read the
-	// same set), so only other days land here.
-	let festesByDate = new Map<string, FestaLocationRow[]>();
-	// The day currently being fetched, so the panel can show a spinner for it.
-	let loadingDate: string | null = null;
-
-	async function loadFestesFor(iso: string): Promise<void> {
-		if (iso === todayIso || festesByDate.has(iso)) return;
-		loadingDate = iso;
-		let rows: FestaLocationRow[] = [];
-		try {
-			rows = await festesService.loadFestesForDate(iso);
-		} catch {
-			// A failed day simply reads as having no festes.
-			rows = [];
-		}
-		festesByDate.set(iso, rows);
-		festesByDate = festesByDate;
-		if (loadingDate === iso) loadingDate = null;
-	}
-
-	$: void loadFestesFor(packDate);
-
-	// The browsed day's celebrating towns, and the packs the grid lays out for them:
-	// today's are the real, openable ones the claim panel computed (each carrying its
-	// own roll), while another day's are built here from the map's baked town→show
-	// assignment — cover art and a name, with a roll that can never fire because the
-	// grid is mounted read-only for those days.
-	$: dayFestes = isPackToday ? todayFestes : (festesByDate.get(packDate) ?? []);
-
-	function buildPreviewPacks(
-		festes: FestaLocationRow[],
-		assignments: ReadonlyMap<string, MunicipalityShow>
-	): OpenerPack[] {
-		return festes.map((festa) => {
-			const show = assignments.get(festa.id)?.show ?? null;
-			return {
-				id: festa.id,
-				coverUrl: show?.posterUrl ?? null,
-				locationName: festa.name,
-				label: show?.name ?? festa.name,
-				claim: async () => []
-			};
-		});
-	}
-
-	$: dayPacks = isPackToday ? claimPacks : buildPreviewPacks(dayFestes, assignmentsById);
-
-	// The browsed day, written out in Catalan. Formatted at midday UTC so the calendar
-	// day can't slip either way, and rendered with a CSS-capitalised first letter —
-	// Catalan weekday names come out lowercase.
+	// The window written out in Catalan, both ends of it. Formatted at midday UTC so
+	// neither date can slip onto its neighbour, and with a CSS-capitalised first letter
+	// — Catalan month names come out lowercase.
 	const packDateFormat = new Intl.DateTimeFormat('ca-ES', {
-		weekday: 'long',
 		day: 'numeric',
 		month: 'long',
 		timeZone: 'UTC'
 	});
-	$: packDateLabel = packDateFormat.format(new Date(`${packDate}T12:00:00Z`));
+	const formatPackDate = (iso: string): string => packDateFormat.format(new Date(`${iso}T12:00:00Z`));
+	const packWindowLabel = `Festes majors del ${formatPackDate(packWindow.from)} al ${formatPackDate(packWindow.to)}`;
 
 	// What the hidden claim panel reports back about opening a pack: the player's
 	// remaining daily allowance, and why the last roll was refused (empty when it
 	// wasn't). The server is what enforces both — every refusal in `claim_booster`
-	// (signed out, town not de festa today, allowance spent, show with no claimable
+	// (signed out, town de festa outside the window, allowance spent, show with no claimable
 	// characters) surfaces here, and the pack reveals no cards. Shown in the Booster
 	// tab, because a pack that opens onto nothing has to say why. The allowance is also
 	// what the Booster tab's own label counts down, so this one read serves both.
@@ -1364,7 +1270,7 @@
 	let gridPack: OpenerPack | null = null;
 	let gridSession = 0;
 
-	// Back to the whole day's grid, from a star-opened town or a picked pack alike.
+	// Back to the whole window's grid, from a star-opened town or a picked pack alike.
 	// The session bump remounts the canvas, which is the only way to rebuild a grid a
 	// pack has already zoomed out of — so it is spent only when a pack really was
 	// picked. Every remount is a fresh WebGL context, and the browser hands out a
@@ -1377,20 +1283,20 @@
 	}
 
 	// Picking the Booster tab by its own button always lands on the grid of every pack
-	// the day offers; only a star click narrows the tab to one town's pack.
+	// the window offers; only a star click narrows the tab to one town's pack.
 	function selectTab(id: PanelTab): void {
 		if (id === PanelTab.Pack) showPackGrid();
 		panelTab = id;
 	}
 
-	// The grid remounts whenever the browsed day's set of packs changes (a new day, they
-	// load in, or the player signs in), so a stale grid never lingers. The closures are
-	// rebuilt on every recompute while the ids stay stable, so key on the ids alone.
-	$: packsKey = dayPacks.map((pack) => pack.id).join(',');
+	// The grid remounts whenever the window's set of packs changes (they load in, or the
+	// player signs in), so a stale grid never lingers. The closures are rebuilt on every
+	// recompute while the ids stay stable, so key on the ids alone.
+	$: packsKey = claimPacks.map((pack) => pack.id).join(',');
 
-	// The single pack the Booster tab shows — the clicked town's, picked out of the full
-	// day's set. Null when no star has been clicked, the player is signed out, or the
-	// town has no claimable show yet.
+	// The single pack the Booster tab shows — the clicked town's, picked out of the
+	// window's full set. Null when no star has been clicked, the player is signed out,
+	// or the town has no claimable show yet.
 	$: packForTown = packTownId
 		? (claimPacks.find((pack) => pack.id === packTownId) ?? null)
 		: null;
@@ -1501,10 +1407,10 @@
 		— Leaderboard: how much of the map each show flies, tallied over every
 		  municipality's current show — seeded, or the ruling team's where a town has been
 		  taken.
-		— Booster: a day's festa packs. Picked from the tab strip it lays every one of the
-		  day's packs out on ClaimPackGrid's canvas (two to a row at this width) —
-		  pick one to zoom it up and slice it open. Its header's arrows walk the calendar,
-		  though only today's packs can actually be opened. Reached by clicking a town's
+		— Booster: the window's festa packs — every town de festa from three days back
+		  through four days ahead, all of them openable. Picked from the tab strip it lays
+		  every one of them out on ClaimPackGrid's canvas (two to a row at this width) —
+		  pick one to zoom it up and slice it open. Reached by clicking a town's
 		  gold star instead, it skips straight to that town's pack on the single-pack
 		  opener, already fitted and centred. -->
 	<aside class={panelClasses} aria-label="Map panel">
@@ -1696,8 +1602,10 @@
 										<button
 											type="button"
 											class="btn btn-primary btn-xs flex-none"
-											disabled={challengeStarting}
-											title="Fight this town for its team"
+											disabled={challengeStarting || !canFieldTeam}
+											title={canFieldTeam
+												? 'Fight this town for its team'
+												: `Your active team needs ${TEAM_SIZE} cards you have claimed`}
 											on:click={challenge}
 										>
 											Challenge
@@ -1731,8 +1639,8 @@
 				<ShowStandingsTable rows={showStandings} />
 			{:else}
 				<!-- Two ways in, one tab: a star click narrows it to that town's pack on the
-					single-pack opener, while picking the tab itself shows the whole day's packs
-					on the shared ClaimPackGrid canvas — two to a row here, since the
+					single-pack opener, while picking the tab itself shows every pack in the
+					booster window on the shared ClaimPackGrid canvas — two to a row here, since the
 					panel is a third of the viewport's width. Either way the pack is sliced open in
 					place; "Tots els sobres" goes back to the grid. -->
 				<!-- The one tab that has to be told a height on the mobile panel: its packs are a
@@ -1740,76 +1648,35 @@
 					one scroller there is no leftover space to hand it. 60vh is enough of a stage to
 					pick and slice a pack on, and the panel scrolls to it when collapsed. -->
 				<div class="flex min-h-0 flex-1 flex-col max-md:min-h-[60vh]">
-					<!-- The day being browsed: an arrow at each end of the row and the date in the
-						middle, where it doubles as the toggle for the month calendar. Only today's
-						packs open; any other day's grid is mounted read-only and drawn in black and
-						white, so it reads as a look-ahead (or look-back) at what that day holds. -->
-					<div class="flex flex-none items-center gap-2 border-b border-base-300 px-4 py-2">
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs flex-none"
-							on:click={() => stepPackDate(-1)}
-							aria-label="Dia anterior"
-						>
-							‹
-						</button>
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs min-w-0 flex-1"
-							on:click={toggleCalendar}
-							aria-expanded={calendarOpen}
-						>
-							<span class="truncate text-sm font-bold first-letter:uppercase">{packDateLabel}</span>
-						</button>
-						<button
-							type="button"
-							class="btn btn-ghost btn-xs flex-none"
-							on:click={() => stepPackDate(1)}
-							aria-label="Dia següent"
-						>
-							›
-						</button>
+					<!-- The stretch of calendar on offer, both ends of it named. Every pack below is
+						openable: a festa major runs over its weekend rather than on one evening, so
+						the window reaches three days back and four ahead, and `claim_booster` takes
+						the same range. -->
+					<div class="flex flex-none items-center justify-center border-b border-base-300 px-4 py-2">
+						<span class="truncate text-sm font-bold first-letter:uppercase">{packWindowLabel}</span>
 					</div>
 
 					<!-- Why the last roll revealed nothing. `claim_booster` refuses for reasons the
-						player can act on (the allowance is spent, the town isn't de festa today), and
-						the panel that normally reports them is mounted hidden here — so a pack sliced
-						open onto an empty canvas would say nothing at all without this. -->
-					{#if isPackToday && claimError}
+						player can act on (the allowance is spent, the town's festa is out of the
+						window), and the panel that normally reports them is mounted hidden here — so a
+						pack sliced open onto an empty canvas would say nothing at all without this. -->
+					{#if claimError}
 						<div class="alert alert-error mx-3 mt-3 flex-none py-2 text-xs" role="alert">
 							<span>{claimError}</span>
 						</div>
-					{:else if isPackToday && lastRevealed === 0}
+					{:else if lastRevealed === 0}
 						<!-- The pack opened and the roll came back with nothing, without an error to
 							go with it. Rare, but it must not read as a blank canvas. -->
 						<div class="alert alert-warning mx-3 mt-3 flex-none py-2 text-xs" role="alert">
 							<span>El sobre s'ha obert però no n'ha sortit cap carta.</span>
 						</div>
-					{:else if isPackToday && allowanceSpent}
+					{:else if allowanceSpent}
 						<div class="alert alert-warning mx-3 mt-3 flex-none py-2 text-xs">
 							<span>Ja has obert tots els sobres d'avui. Se'n desbloquegen més a mitjanit.</span>
 						</div>
 					{/if}
 
 					<div class="relative min-h-0 flex-1 p-3">
-						<!-- The calendar lives over the pack canvas rather than above it, sliding down
-							from the date row and back up again — so opening it never re-sizes the
-							canvas underneath (a resized WebGL grid would have to re-lay itself out). -->
-						{#if calendarOpen}
-							<div class="absolute inset-x-3 top-3 z-10" transition:slide={{ duration: 200 }}>
-								<PackDateCalendar
-									month={calendarMonth}
-									value={packDate}
-									today={todayIso}
-									counts={calendarCounts}
-									loading={loadingCountsMonth === calendarMonth}
-									classes="shadow-xl"
-									on:month={(event) => (calendarMonth = event.detail)}
-									on:select={(event) => pickPackDate(event.detail)}
-								/>
-							</div>
-						{/if}
-
 						{#if packTownId}
 							<!-- Keyed on the town so clicking another star remounts a fresh, unsliced
 								pack rather than reusing the last one's scene. -->
@@ -1830,23 +1697,17 @@
 									</p>
 								</div>
 							{/if}
-						{:else if loadingDate === packDate}
-							<div class="flex h-full items-center justify-center rounded-md bg-base-200">
-								<span class="loading loading-spinner loading-lg text-primary"></span>
-							</div>
-						{:else if dayPacks.length}
+						{:else if claimPacks.length}
 							<!-- Two packs to a row at this width, and an opened one unfolds its cards
 								into two columns as well — the panel is far too narrow for the claim
-								page's three. Keyed on the day too, so stepping the date rebuilds the
-								grid from that day's packs. -->
-							{#key `${packDate}:${packsKey}:${gridSession}`}
+								page's three. -->
+							{#key `${packsKey}:${gridSession}`}
 								<ClaimPackGrid
-									packs={dayPacks}
+									packs={claimPacks}
 									columns={2}
 									revealColumns={2}
-									interactive={isPackToday && !allowanceSpent}
+									interactive={!allowanceSpent}
 									classes={classNames('rounded-md bg-gradient-to-b from-base-300/80 to-base-200', {
-										'grayscale': !isPackToday,
 										'opacity-50': allowanceSpent
 									})}
 									on:select={(event) => {
@@ -1859,12 +1720,8 @@
 						{:else}
 							<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
 								<p class="max-w-xs text-sm opacity-60">
-									{#if isPackToday}
-										Ara mateix no hi ha cap sobre per obrir. Inicia sessió i clica una estrella daurada
-										del mapa.
-									{:else}
-										Cap municipi no celebra la festa major aquest dia.
-									{/if}
+									Ara mateix no hi ha cap sobre per obrir. Inicia sessió i clica una estrella daurada
+									del mapa.
 								</p>
 							</div>
 						{/if}
@@ -1905,7 +1762,7 @@
 </div>
 
 <!-- Hidden, but mounted: the claim panel, kept alive only
-	to compute today's booster packs (bind:packs) so a star click can open the town's
+	to compute the window's booster packs (bind:packs) so a star click can open the town's
 	pack instantly. Its own UI is never shown here — but the two things it says that the
 	panel cannot do without are bound out of it: the daily allowance, and the reason a
 	roll was refused. Without those a spent allowance (or any other `claim_booster`

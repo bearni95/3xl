@@ -15,17 +15,18 @@
 	import type { RegionShow } from '$utils/geo/region-tree';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
-	import type { FestaLocationRow, TodayFestaPair } from '$types/festivity.type';
+	import type { FestaLocationRow, FestaShowPair } from '$types/festivity.type';
 
-	// The day's booster packs, assembled from today's festes and surfaced to the parent
-	// (`bind:packs`) so it can render the pack-grid canvas below this content. Each
-	// carries its own poster cover and the roll it fires when sliced open.
+	// The window's booster packs, assembled from the festes in range and surfaced to the
+	// parent (`bind:packs`) so it can render the pack-grid canvas below this content.
+	// Each carries its own poster cover and the roll it fires when sliced open.
 	export let packs: OpenerPack[] = [];
 
-	// Today's (festa, show) pairs — the towns celebrating their festa major today, each
-	// paired with the series the map assigns it. Loaded on mount; the pack grid renders
-	// one booster per pair that has a show this player can claim.
-	let todayPairs: TodayFestaPair[] = [];
+	// The window's (festa, show) pairs — every town celebrating its festa major from
+	// three days back through four days ahead (the same range `claim_booster` accepts),
+	// each paired with the series the map assigns it. Loaded on mount; the pack grid
+	// renders one booster per pair that has a show this player can claim.
+	let festaPairs: FestaShowPair[] = [];
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -73,15 +74,16 @@
 	onMount(() => {
 		authService.init();
 		void loadPosters();
-		void loadTodayFestes();
+		void loadWindowFestes();
 	});
 
-	// Load today's celebrating municipalities (from Supabase, via the festes service)
-	// and the map's municipality→show assignment (a baked dataset), then pair each town
-	// with its assigned show. Both are fetched once; failures leave the grid empty.
-	async function loadTodayFestes() {
+	// Load the window's celebrating municipalities (from Supabase, via the festes
+	// service) and the map's municipality→show assignment (a baked dataset), then pair
+	// each town with its assigned show. Both are fetched once; failures leave the grid
+	// empty.
+	async function loadWindowFestes() {
 		const [festesResult, showsResult] = await Promise.allSettled([
-			festesService.loadTodayFestes(),
+			festesService.loadFestesForWindow(),
 			fetch('/data/municipality-shows.json').then(
 				(response) => response.json() as Promise<MunicipalityShowsCollection>
 			)
@@ -95,7 +97,7 @@
 				showsResult.value.assignments.map((assignment) => [assignment.id, assignment.show])
 			);
 		}
-		todayPairs = locations.map((festa) => ({ festa, show: showByMunicipality.get(festa.id) }));
+		festaPairs = locations.map((festa) => ({ festa, show: showByMunicipality.get(festa.id) }));
 	}
 
 	// Load the saved-show collection (public JSON) and index each entry by show id
@@ -165,8 +167,8 @@
 	// Build the roll one grid pack fires when the player slices it open — a closure
 	// bound to its show + place. The Supabase roll persists the spawn at open time
 	// (not when the pack is picked) and returns the cards to reveal ([] on failure,
-	// which reveals nothing). Every limit (daily allowance, festa-major-today) is
-	// enforced server-side by the claim_booster RPC. Opening a pack earns no
+	// which reveals nothing). Every limit (daily allowance, festa major inside the
+	// booster window) is enforced server-side by the claim_booster RPC. Opening a pack earns no
 	// experience — that comes from winning fights only (see award_combat_exp).
 	function makeClaim(show: ClaimableShow, claimRegion: GeoRegion): () => Promise<ClaimPull[]> {
 		return async () => {
@@ -196,13 +198,13 @@
 		};
 	}
 
-	// Assemble the day's grid packs from today's festes: one booster per celebrating
-	// town whose assigned show this player can claim. Each pack carries its poster
-	// cover and a roll bound to that show + place. Empty when signed out or before the
-	// show pool loads. Kept as a pure function of its inputs so the reactive block
-	// below re-runs when any of them change.
+	// Assemble the window's grid packs from the festes in range: one booster per
+	// celebrating town whose assigned show this player can claim. Each pack carries its
+	// poster cover and a roll bound to that show + place. Empty when signed out or
+	// before the show pool loads. Kept as a pure function of its inputs so the reactive
+	// block below re-runs when any of them change.
 	function computePacks(
-		festaPairs: TodayFestaPair[],
+		festaPairs: FestaShowPair[],
 		showPool: ClaimableShow[],
 		_posters: Map<number, ShowEntry>,
 		userId: string | null
@@ -251,10 +253,10 @@
 		};
 	}
 
-	// The day's grid packs, recomputed whenever today's festes, the claimable show
-	// pool, the enabled posters, or the signed-in user change. (All four are named
+	// The window's grid packs, recomputed whenever the window's festes, the claimable
+	// show pool, the enabled posters, or the signed-in user change. (All four are named
 	// here so the reactive statement actually re-runs when any of them updates.)
-	$: packs = computePacks(todayPairs, shows, showEntryById, currentUserId);
+	$: packs = computePacks(festaPairs, shows, showEntryById, currentUserId);
 
 	function labelFor(id: string): string {
 		return charactersById.get(id)?.label ?? id;
@@ -280,8 +282,9 @@
 			<button class="btn btn-primary btn-sm" on:click={() => signInPanelOpen.set(true)}>Sign in</button>
 		{:else}
 			<p class="text-sm opacity-70">
-				Pick a town celebrating its festa major today, below, to open its booster — the
-				spawn is saved to your account, tagged with that place.
+				Pick a town celebrating its festa major this week, below — from three days back
+				through four days ahead — to open its booster. The spawn is saved to your account,
+				tagged with that place.
 			</p>
 
 			{#if boosters}

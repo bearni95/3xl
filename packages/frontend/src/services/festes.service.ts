@@ -1,6 +1,7 @@
 import { getSupabaseClient, isSupabaseConfigured } from '$services/supabase.client';
 import type { FestaLocationRow } from '$types/festivity.type';
 import { catalanDayIso } from '$utils/festes/catalan-day';
+import { boosterWindow } from '$utils/festes/booster-window';
 
 /**
  * Reads the festivity calendar back out of Supabase — the same `festa_locations`
@@ -15,10 +16,12 @@ import { catalanDayIso } from '$utils/festes/catalan-day';
 
 /** The nested row shape `festivities → festa_locations` selects resolve to. */
 interface TodayFestivityRow {
-	festa_locations:
-		| { id: string; name: string; comarca: string | null; prov: string | null; territory: string | null }
-		| { id: string; name: string; comarca: string | null; prov: string | null; territory: string | null }[]
-		| null;
+	festa_locations: FestaLocationRow | FestaLocationRow[] | null;
+}
+
+/** The same join, carrying the festivity's own date — the window read needs it. */
+interface WindowFestivityRow extends TodayFestivityRow {
+	date: string;
 }
 
 /**
@@ -45,9 +48,9 @@ class FestesService {
 	/**
 	 * The municipalities celebrating a local holiday on `date` (a `YYYY-MM-DD` in
 	 * Catalan time, as {@link catalanTodayIso} produces), name-sorted. Any day can be
-	 * read — the map's booster panel browses the calendar back and forth — but only
-	 * today's towns can actually be claimed against; the `claim_booster` RPC enforces
-	 * that server-side regardless of what is on screen.
+	 * read; which of them can actually be claimed against is the `claim_booster` RPC's
+	 * call, and it takes the whole booster window ({@link loadFestesForWindow}), not
+	 * one day. The map's gold stars use this for today alone.
 	 */
 	async loadFestesForDate(date: string): Promise<FestaLocationRow[]> {
 		if (!isSupabaseConfigured()) return [];
@@ -73,36 +76,57 @@ class FestesService {
 	}
 
 	/**
-	 * How many municipalities are de festa on each date between `from` and `to`
-	 * (inclusive, `YYYY-MM-DD`) — what the booster panel's calendar prints on each
-	 * day. `festivities` holds one row per (location, date), so the tally is just
-	 * the row count per date.
+	 * The municipalities celebrating a local holiday anywhere in the booster window —
+	 * three days back through four days ahead of today (see {@link boosterWindow}),
+	 * which is exactly the set of towns `claim_booster` will mint a pack for. A town
+	 * whose celebration spans several of those days appears once, on the first of
+	 * them, so each town offers one pack however long its festa runs.
 	 *
-	 * Read in pages: PostgREST caps a response at 1000 rows and a peak festa-major
-	 * month runs well past that, which would silently under-count the busiest days.
+	 * Ordered by date and then by name: the window reads as the calendar does, oldest
+	 * day first.
+	 *
+	 * Read in pages: PostgREST caps a response at 1000 rows, and eight days of a peak
+	 * festa-major week run well past that — a truncated read would silently drop
+	 * towns off the end of the window. Paged under a *total* order ((location, date)
+	 * is unique), so no row can straddle two pages and arrive twice or not at all.
 	 */
-	async loadFestaCountsForRange(from: string, to: string): Promise<Map<string, number>> {
-		const counts = new Map<string, number>();
-		if (!isSupabaseConfigured()) return counts;
+	async loadFestesForWindow(): Promise<FestaLocationRow[]> {
+		if (!isSupabaseConfigured()) return [];
 
+		const { from, to } = boosterWindow();
 		const supabase = getSupabaseClient();
 		const pageSize = 1000;
+		const rows: WindowFestivityRow[] = [];
 		for (let offset = 0; ; offset += pageSize) {
 			const { data, error } = await supabase
 				.from('festivities')
-				.select('date')
+				.select('date, festa_locations!inner(id, name, comarca, prov, territory)')
 				.gte('date', from)
 				.lte('date', to)
 				.order('date')
+				.order('location_id')
 				.range(offset, offset + pageSize - 1);
 			if (error) throw error;
 
-			const rows = (data ?? []) as { date: string }[];
-			for (const row of rows) counts.set(row.date, (counts.get(row.date) ?? 0) + 1);
-			if (rows.length < pageSize) break;
+			const page = (data ?? []) as WindowFestivityRow[];
+			rows.push(...page);
+			if (page.length < pageSize) break;
 		}
 
-		return counts;
+		// Keep each town's earliest day in the window, then sort by that day and name.
+		const byId = new Map<string, { date: string; location: FestaLocationRow }>();
+		for (const row of rows) {
+			const location = Array.isArray(row.festa_locations)
+				? row.festa_locations[0]
+				: row.festa_locations;
+			if (!location) continue;
+			const seen = byId.get(location.id);
+			if (!seen || row.date < seen.date) byId.set(location.id, { date: row.date, location });
+		}
+
+		return [...byId.values()]
+			.sort((a, b) => a.date.localeCompare(b.date) || a.location.name.localeCompare(b.location.name, 'ca'))
+			.map((entry) => entry.location);
 	}
 }
 

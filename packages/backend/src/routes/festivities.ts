@@ -7,6 +7,7 @@ import type {
 	FestivitySyncResult,
 	FestivityWindow
 } from '@3xl/shared/types/festivity.type';
+import { BOOSTER_DAYS_BEHIND, shiftIsoDate } from '@3xl/shared/utils/festes/booster-window';
 import { asyncHandler, httpError } from '../http-error';
 import { getPool } from '../db';
 
@@ -16,8 +17,9 @@ import { getPool } from '../db';
  * The local baked calendar (@3xl/data's `public/festes-locals.json`, the same
  * file the frontend and admin `/seasons` pages paint) is the source of truth.
  * `GET /` reports the current remote state; `POST /sync` mirrors — for the
- * window from *today* through the calendar year's end — every municipality's
- * local-holiday dates into two normalized, FK-related tables:
+ * window from the oldest still-claimable day (three days back, the booster
+ * window's own lower bound) through the calendar year's end — every
+ * municipality's local-holiday dates into two normalized, FK-related tables:
  *
  *   - `festa_locations` — one row per municipality (id + name/comarca/prov/
  *     territory), the location entity.
@@ -90,9 +92,19 @@ function todayIso(): string {
 	return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
-/** The sync window: from today through 31 December of the collection's year. */
+/**
+ * The sync window: from the oldest still-claimable day through 31 December of the
+ * collection's year. It starts BOOSTER_DAYS_BEHIND days *before* today rather than
+ * at today, because a booster can still be opened on a town whose festa was up to
+ * that many days ago — a sync that pruned those rows would take the packs away
+ * while `claim_booster` was still willing to mint them.
+ */
 function windowFor(collection: FestesCollection): FestivityWindow {
-	return { from: todayIso(), to: `${collection.year}-12-31`, year: collection.year };
+	return {
+		from: shiftIsoDate(todayIso(), -BOOSTER_DAYS_BEHIND),
+		to: `${collection.year}-12-31`,
+		year: collection.year
+	};
 }
 
 /**
@@ -163,7 +175,7 @@ festivitiesRouter.get(
 	})
 );
 
-// Mirror the today→year-end window into Supabase: upsert the in-window
+// Mirror the claimable→year-end window into Supabase: upsert the in-window
 // locations, insert their festivities, then delete every festivity (and then
 // every childless location) outside the window. Idempotent.
 festivitiesRouter.post(

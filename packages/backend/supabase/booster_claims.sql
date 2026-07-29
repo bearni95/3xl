@@ -2,9 +2,15 @@
 --
 -- Opening a booster pack is gated by two rules that must hold regardless of what
 -- the browser does:
---   1. The town must be celebrating a festa major *today* — it must have a row in
---      `festivities` (see festivities.sql) for today's date in Europe/Madrid
---      (Catalan) time.
+--   1. The town must be celebrating a festa major inside the booster window — it
+--      must have a row in `festivities` (see festivities.sql) for a date from 3 days
+--      before through 4 days after today in Europe/Madrid (Catalan) time. A festa
+--      major runs over its weekend rather than on one evening, so the window is the
+--      whole stretch around it; keep it in step with BOOSTER_DAYS_BEHIND /
+--      BOOSTER_DAYS_AHEAD in @3xl/shared utils/festes/booster-window.ts, and with the
+--      festivity sync's own lower bound (../src/routes/festivities.ts), which must
+--      reach at least as far back or the days behind get pruned before anyone can
+--      claim them.
 --   2. A player may open at most (their level, capped at 20, PLUS any admin-granted
 --      extra claims for today) packs per day, the day resetting at midnight
 --      Europe/Madrid. Level is derived from the player's accumulated experience via
@@ -104,6 +110,9 @@ declare
 	v_uid uuid := auth.uid();
 	v_today date := (now() at time zone 'Europe/Madrid')::date;
 	v_day_start timestamptz := date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
+	-- The booster window around today (see header).
+	v_days_behind constant int := 3;
+	v_days_ahead constant int := 4;
 	v_size constant int := 5;
 	v_exp bigint;
 	v_level int;
@@ -131,12 +140,13 @@ begin
 	-- Serialise this player's opens so the daily limit can't be raced.
 	perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
 
-	-- The town must be celebrating a festa major today.
+	-- The town must be celebrating a festa major somewhere in the booster window.
 	if not exists (
 		select 1 from public.festivities f
-		where f.location_id = p_location_id and f.date = v_today
+		where f.location_id = p_location_id
+			and f.date between v_today - v_days_behind and v_today + v_days_ahead
 	) then
-		raise exception 'This town is not celebrating a festa major today.';
+		raise exception 'This town is not celebrating a festa major these days.';
 	end if;
 
 	-- Daily cap = player level (>=1, capped at 20) plus any admin-granted extra

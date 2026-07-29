@@ -5,7 +5,8 @@
  *
  * The local baked calendar (@3xl/data's `public/festes-locals.json`, the same
  * file the frontend `/seasons` page paints) is the source of truth. The sync
- * mirrors, for the window running from *today* through the calendar year's end,
+ * mirrors, for the window running from three days before today (the booster
+ * window's lower bound) through the calendar year's end,
  * every local-holiday date of every municipality into Supabase, split across:
  *
  *   - `festa_locations` — one row per municipality (its stable feature id plus
@@ -30,12 +31,12 @@ export interface FestaLocationRow {
 }
 
 /**
- * One celebrating municipality today, paired with the series the map assigns it —
+ * One celebrating municipality, paired with the series the map assigns it —
  * `show` is undefined when the town has no seeded show (so it offers no booster).
  * Composed by the claim screen from the festes fetch and the municipality→show
  * assignment, and shared so the festes list and the pack grid agree on the shape.
  */
-export interface TodayFestaPair {
+export interface FestaShowPair {
 	festa: FestaLocationRow;
 	show: import('../utils/geo/region-tree').RegionShow | undefined;
 }
@@ -48,9 +49,13 @@ export interface FestivityRow {
 	date: string;
 }
 
-/** The date window a sync targets: from today through the calendar year's end. */
+/**
+ * The date window a sync targets: from the oldest still-claimable day (three days
+ * back — the booster window's lower bound, so a pack whose festa has just passed is
+ * not pruned out from under it) through the calendar year's end.
+ */
 export interface FestivityWindow {
-	/** Inclusive lower bound — today, as `YYYY-MM-DD`. */
+	/** Inclusive lower bound — three days before today, as `YYYY-MM-DD`. */
 	from: string;
 	/** Inclusive upper bound — 31 December of the calendar year, as `YYYY-MM-DD`. */
 	to: string;
@@ -76,7 +81,7 @@ export interface FestivityRemoteState {
  * to change reports all-zero deltas.
  */
 export interface FestivitySyncResult {
-	/** The today→year-end window this sync mirrored. */
+	/** The window this sync mirrored, from the oldest claimable day to year-end. */
 	window: FestivityWindow;
 	/** Remote state after the sync completed. */
 	remote: FestivityRemoteState;

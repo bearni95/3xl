@@ -9,6 +9,7 @@
 		type FestaMonthGrid
 	} from '$utils/festes/festa-calendar';
 	import type { FestesCollection, MunicipalityFesta } from '$types/festa.type';
+	import { BOOSTER_DAYS_BEHIND, shiftIsoDate } from '$utils/festes/booster-window';
 
 	// The baked festes-locals collection (Generalitat open data) — the same file
 	// the frontend /seasons page paints, served here at /data by the admin's
@@ -19,12 +20,15 @@
 	// The day the panel is detailing — a `YYYY-MM-DD` key, or null for none.
 	let selected: string | null = null;
 
-	// The sync window that the "Sync → Supabase" button mirrors: from today
-	// through the calendar year's end. Computed client-side purely to highlight
-	// which selected day would be pushed; the backend recomputes it authoritatively.
+	// The sync window that the "Sync → Supabase" button mirrors: from three days
+	// before today — the booster window still lets those days' packs be opened, so
+	// the sync must not prune them — through the calendar year's end. Computed
+	// client-side purely to highlight which selected day would be pushed; the
+	// backend recomputes it authoritatively.
 	const pad = (n: number): string => String(n).padStart(2, '0');
 	const now = new Date();
 	const todayIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+	const windowStartIso = shiftIsoDate(todayIso, -BOOSTER_DAYS_BEHIND);
 
 	onMount(async () => {
 		try {
@@ -49,7 +53,7 @@
 	// day sits inside the sync window.
 	$: dayFestes = (selected && index.get(selected)) || ([] as MunicipalityFesta[]);
 	$: totalDays = collection?.festes.reduce((sum, festa) => sum + festa.dates.length, 0) ?? 0;
-	$: selectedInWindow = !!selected && selected >= todayIso && selected <= endOfYear;
+	$: selectedInWindow = !!selected && selected >= windowStartIso && selected <= endOfYear;
 
 	$: covered = collection?.municipalitiesCovered ?? 0;
 	$: totalGeo = collection?.municipalitiesTotal ?? 0;
