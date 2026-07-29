@@ -79,8 +79,10 @@
 	const VEIL_HOLD = 300;
 	// How long it takes to leave, from the first square blurring to the last. VeilBlock
 	// spends it on the sweep up the rows and this stops drawing the veil at the end of it,
-	// so a change here is a change there (its blur and its stagger add up to this).
-	const VEIL_FADE = 300;
+	// so a change here is a change there (its blur and its stagger add up to this). A second:
+	// the sweep is the picture arriving and is meant to be watched, where the hold above is
+	// only the beat between the art being ready and the sweep starting.
+	const VEIL_FADE = 1000;
 	// How big the veil's squares are, as a share of this box's width. The box is what a
 	// character is drawn against, so the grid is a share of the picture and comes out the
 	// same on a card as on a pin — and the veil is handed it in pixels, having to count

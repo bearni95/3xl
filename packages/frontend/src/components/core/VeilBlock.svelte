@@ -45,10 +45,15 @@
 	// which is IdleSprite's VEIL_FADE — it stops drawing this at that point, so a sweep that
 	// ran longer would be cut off mid-blur. The rows get the larger share of the waiting:
 	// the sweep is up the block, and the columns only break the line it goes up in.
-	// `duration-150` below is VEIL_BLUR_MS said in CSS; keep the four numbers agreeing.
-	const VEIL_BLUR_MS = 150;
-	const VEIL_STAGGER_MS = 100;
-	const VEIL_COLUMN_MS = 50;
+	// `duration-500` below is VEIL_BLUR_MS said in CSS; keep the four numbers agreeing.
+	//
+	// A second for a sweep, half of it the blur of any one square. The proportions are what
+	// they were at a third of the length — the rows still take a little over twice what the
+	// columns do — but a square now takes long enough to blur that it can be watched doing
+	// it, and the wave up the rows is a wave rather than a flinch.
+	const VEIL_BLUR_MS = 500;
+	const VEIL_STAGGER_MS = 350;
+	const VEIL_COLUMN_MS = 150;
 
 	// The waiting a square can be asked to do, and the whole of a sweep: the last square to
 	// start, plus its own blur. Both sweeps are that long, being the same one either way.
@@ -170,7 +175,7 @@
 	// returned to, which is what makes the entrance and the exit the same animation run
 	// towards opposite ends rather than two written to match.
 	$: cellClasses = classNames(
-		'p-px transition-[filter,opacity] duration-150 delay-[var(--veil-delay)]',
+		'p-px transition-[filter,opacity] duration-500 delay-[var(--veil-delay)]',
 		fill,
 		!entered || fading ? 'opacity-0 blur-[var(--veil-blur)]' : 'opacity-100 blur-[0px]'
 	);
