@@ -31,19 +31,30 @@
 
 <div class={classNames('flex w-full gap-2', classes)}>
 	{#each members as member, index (index)}
-		<!-- A square of the character's colour, enforced: the three share the row's width
-			between them and each is as tall as it is wide, whatever the panel's width, so
-			the row keeps its shape as the panel narrows. The character stands on the
-			square's floor at the height its own sprite earns it — a tall one fills the
-			square, a short one does not — and nothing is inset or clipped, so no part of
-			a frame is ever cut. -->
-		<div class={classNames('aspect-square flex-1 rounded-box', colorFills[member.color])}>
-			<IdleSprite
-				basePath={member.basePath}
-				faceUrl={member.faceUrl}
-				label={member.label}
-				{flipped}
-			/>
+		<!-- Each member is a column: the square, then their name under it. The three
+			share the row's width between them, so the column is what carries the width
+			and the square inside it is as tall as that width — whatever the panel's, so
+			the row keeps its shape as the panel narrows. -->
+		<div class="flex min-w-0 flex-1 flex-col gap-1">
+			<!-- A square of the character's colour, enforced. The character stands on its
+				floor at the height its own sprite earns it — a tall one fills the square, a
+				short one does not — and nothing is inset or clipped, so no part of a frame
+				is ever cut. -->
+			<div class={classNames('aspect-square w-full rounded-box', colorFills[member.color])}>
+				<IdleSprite
+					basePath={member.basePath}
+					faceUrl={member.faceUrl}
+					label={member.label}
+					{flipped}
+				/>
+			</div>
+
+			<!-- Who that is. A name too long for the column is cut with an ellipsis rather
+				than wrapped: the three columns are a row and must keep one height between
+				them, whatever they are called. -->
+			<div class="truncate text-center text-xs font-semibold" title={member.label}>
+				{member.label}
+			</div>
 		</div>
 	{/each}
 </div>
