@@ -13,7 +13,6 @@
 	import { AuthStatus } from '$types/profile.type';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
-	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import {
@@ -82,14 +81,13 @@
 
 	// --- Card filters (the header toolbar) ---
 	// Sentinel every "no filter" dropdown uses, so an unset filter is distinct from
-	// any real value (a colour, a show name, a rarity tier).
+	// any real value (a colour, a show name).
 	const ANY = '' as const;
 	let filterName = ''; // free-text match against the character label
 	let filterColor: SpawnColor | typeof ANY = ANY;
 	// By TMDB id rather than by name, since what the filter shows is the show's own
 	// logo and that is fetched by id (see shows.service).
 	let filterShow: number | typeof ANY = ANY;
-	let filterRarity: number | typeof ANY = ANY;
 
 	// Every spawn colour, for the colour filter's swatches (labels are the enum values).
 	const COLOR_OPTIONS = Object.values(SpawnColor);
@@ -139,7 +137,6 @@
 		filterName = '';
 		filterColor = ANY;
 		filterShow = ANY;
-		filterRarity = ANY;
 	}
 
 	// --- Pagination ---
@@ -153,11 +150,7 @@
 	let gridScroller: HTMLDivElement | undefined;
 
 	// Whether any filter is narrowing the roster (drives the Clear button).
-	$: filtersActive =
-		filterName.trim() !== '' ||
-		filterColor !== ANY ||
-		filterShow !== ANY ||
-		filterRarity !== ANY;
+	$: filtersActive = filterName.trim() !== '' || filterColor !== ANY || filterShow !== ANY;
 
 	// --- Recycle mode (trade cards back for extra daily claims) ---
 	// While active, tapping a card selects it for recycling instead of toggling its
@@ -237,9 +230,6 @@
 	// the show filter lists, the id what puts that show's glyph on a statue's floor.
 	let characterShows = new Map<string, { id: number; name: string }[]>();
 	let municipalityNames: Map<string, string> | null = null;
-	// character id → rarity tier from Supabase `character_templates`, so the rarity
-	// filter has its tiers (the same source the claim cards read).
-	let rarityByCharacter = new Map<string, number>();
 
 	let loading = false;
 	let error = '';
@@ -262,13 +252,11 @@
 		loading = true;
 		error = '';
 		try {
-			const [, showsByCharacter, rarities] = await Promise.all([
+			const [, showsByCharacter] = await Promise.all([
 				spawnService.loadSpawns(userId),
-				spawnService.loadCharacterShows(),
-				spawnService.loadRarities()
+				spawnService.loadCharacterShows()
 			]);
 			characterShows = showsByCharacter;
-			rarityByCharacter = rarities;
 
 			// Place names are optional — a missing layer just falls back to the id.
 			try {
@@ -324,13 +312,6 @@
 			.sort((a, b) => a.name.localeCompare(b.name));
 	})(characterShows);
 
-	// The distinct rarity tiers present across the roster, ascending — the options
-	// for the rarity dropdown.
-	$: rarityFilterOptions = ((rarities: Map<string, number>) =>
-		[...new Set($spawns.map((spawn) => rarities.get(spawn.characterId)).filter((r): r is number => r != null))].sort(
-			(a, b) => a - b
-		))(rarityByCharacter);
-
 	// The slot each fielded card holds, by spawn id. Every question the team asks of the
 	// grid — which cards no filter may hide, which cells come first, which of them wears
 	// the border — is answered from this, and ids are all any of them needs.
@@ -352,9 +333,7 @@
 		name: string,
 		color: SpawnColor | typeof ANY,
 		show: number | typeof ANY,
-		rarity: number | typeof ANY,
 		shows: Map<string, { id: number; name: string }[]>,
-		rarities: Map<string, number>,
 		teamColors: Set<string> | null,
 		slots: Map<string, number>
 	) => {
@@ -365,20 +344,10 @@
 			if (color !== ANY && spawn.color !== color) return false;
 			if (show !== ANY && !(shows.get(spawn.characterId) ?? []).some((entry) => entry.id === show))
 				return false;
-			if (rarity !== ANY && (rarities.get(spawn.characterId) ?? null) !== rarity) return false;
 			if (teamColors && !teamColors.has(spawn.color)) return false;
 			return true;
 		});
-	})(
-		filterName,
-		filterColor,
-		filterShow,
-		filterRarity,
-		characterShows,
-		rarityByCharacter,
-		pickableColors,
-		teamSlotById
-	);
+	})(filterName, filterColor, filterShow, characterShows, pickableColors, teamSlotById);
 
 	// The filters and the pager work on the same list: filtering narrows it, the pager
 	// walks it a page at a time. So any filter change re-pages from the start — the
@@ -386,7 +355,7 @@
 	// meant something under the old filters.
 	// Turning grouping on or off changes what a cell is, so the pager starts over with it
 	// for the same reason a filter change does.
-	$: filterName, filterColor, filterShow, filterRarity, $groupCopies, (page = 0);
+	$: filterName, filterColor, filterShow, $groupCopies, (page = 0);
 
 	// --- What a cell is --------------------------------------------------------------
 	/** One cell of the grid: the character it stands up and the cards behind it. Grouped,
@@ -957,37 +926,6 @@
 										</div>
 									</div>
 								{/if}
-							</div>
-
-							<!-- The tiers as radios, one to a line, since that is what the filter is: one
-							     tier at a time, and All at the top of the list is the one it opens on. A
-							     column of them says how many tiers the roster holds at a glance, which a
-							     closed dropdown never did. Not a <label> around the group any more — each
-							     radio has its own, and one label cannot stand for several controls. -->
-							<div class="flex flex-col gap-1 text-xs" role="radiogroup" aria-label="Rarity">
-								<span class="opacity-60">Rarity</span>
-								<label class="flex cursor-pointer items-center gap-2">
-									<input
-										type="radio"
-										name="roster-rarity"
-										class="radio radio-primary radio-xs"
-										bind:group={filterRarity}
-										value={ANY}
-									/>
-									<span>All</span>
-								</label>
-								{#each rarityFilterOptions as rarity (rarity)}
-									<label class="flex cursor-pointer items-center gap-2">
-										<input
-											type="radio"
-											name="roster-rarity"
-											class="radio radio-primary radio-xs"
-											bind:group={filterRarity}
-											value={rarity}
-										/>
-										<span>{wowRarityLabel(rarity) ?? `Tier ${rarity}`}</span>
-									</label>
-								{/each}
 							</div>
 
 							<button
