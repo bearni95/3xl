@@ -41,7 +41,9 @@
 -- Territory is also where the once-a-day challenge limit is enforced: settling a
 -- fight spends that town's challenge for the Catalan day, and a second report
 -- against a town already settled today is rejected outright — experience and all.
--- See municipality_challenges.sql.
+-- Taking a town is likewise what hands that day back to everyone still fighting
+-- for the generation it ended, whose fights it just made unwinnable. See
+-- municipality_challenges.sql.
 --
 -- @3xl/backend provisions all of this automatically alongside the other tables
 -- (see ../src/routes/show-templates.ts), so you normally do NOT need to run this
@@ -295,6 +297,13 @@ begin
 		-- one's own town is. A report with no slot at all (a client that never called
 		-- start_challenge) claims and settles one in the same statement, so skipping
 		-- that call buys nothing.
+		--
+		-- A slot voided below (the town changed hands while this fight was open)
+		-- settles here like any other — the fight did happen and is paid for — but
+		-- keeps its voided_at, which is what carries the refund past this report:
+		-- start_challenge still revives it, so this fight cost its challenger no day.
+		-- Settling it is also what bounds the refund, since the revived slot is a
+		-- normal one and a stale report cannot be replayed against a settled slot.
 		insert into public.municipality_challenges
 			(user_id, location_id, challenge_date, settled_at)
 			values (v_uid, p_location_id, v_today, now())
@@ -374,6 +383,27 @@ begin
 
 				-- A new generation voids every siege on the town, the winner's included.
 				delete from public.municipality_sieges where location_id = p_location_id;
+
+				-- It voids every fight still open against the old generation too. Those
+				-- challengers started against a team that no longer sits here and their
+				-- report, whenever it lands, will be refused as stale — so the day they
+				-- spent on this town is handed back rather than burnt on a fight this
+				-- capture took away from them. The slot is marked, not deleted: their
+				-- late report still settles this row (paying its experience and banking
+				-- no ground, exactly as any stale report does), and because the row stays
+				-- voided it goes on not blocking, so they may come back at the new
+				-- occupant today. start_challenge revives it in place.
+				--
+				-- Only slots that were still open are given back — a challenger who
+				-- already fought and reported here today spent their day on a real fight
+				-- against the team that was sitting here at the time.
+				update public.municipality_challenges
+					set voided_at = now()
+					where location_id = p_location_id
+						and challenge_date = v_today
+						and settled_at is null
+						and voided_at is null
+						and user_id <> v_uid;
 				v_captured := true;
 				v_turnover := v_turnover + 1;
 				v_wins := v_required;

@@ -13,13 +13,25 @@
 -- close the arena on a fight that was going badly and start it again, which is
 -- precisely what the limit exists to stop.
 --
+-- The one thing that gives a spent day back is the town changing hands underneath
+-- an open fight. A challenger who started against one team and had it taken by
+-- somebody else mid-fight never got the fight they paid for — the team they are
+-- beating no longer sits there, and their win is going to be refused as stale
+-- (see combat_results.sql). Capturing a town therefore VOIDS every challenge
+-- still open against the generation it just ended, and a voided slot no longer
+-- blocks: `start_challenge` revives it, so those players may come straight back
+-- at the new occupant the same day. Voiding rather than deleting is what makes
+-- the refund survive their late report — a deleted row would simply be recreated,
+-- settled, by the report that arrives when their fight finally ends.
+--
 -- Because the frontend talks to Supabase directly with the anon key, the rule
 -- lives in the database, not the client: `municipality_challenges` has no client
 -- write policy at all, and the only two writers are
 --   * `start_challenge` here, which claims the day's slot before the arena opens;
 --   * `award_combat_exp` (combat_results.sql), which settles that slot when the
 --     fight is reported — and rejects the report outright, experience included,
---     if the town's slot for today was already settled by an earlier fight.
+--     if the town's slot for today was already settled by an earlier fight. It is
+--     also what voids the open slots of everyone else when a fight takes the town.
 -- A client that skips start_challenge therefore gains nothing: its first report
 -- claims and settles the slot in one go, and its second is refused.
 --
@@ -30,10 +42,10 @@
 -- Idempotent: safe to re-run.
 
 -- One row per (player, town, Catalan day): the day's challenge, spent. The
--- primary key IS the limit — a row existing for today means the town has been
--- fought today, whatever the outcome was, or whether there was one at all. A
--- player reads only their own rows, which is all the map needs to grey out the
--- towns they have already been to today.
+-- primary key IS the limit — a row existing for today, and not voided, means the
+-- town has been fought today, whatever the outcome was, or whether there was one
+-- at all. A player reads only their own rows, which is all the map needs to grey
+-- out the towns they have already been to today.
 create table if not exists public.municipality_challenges (
 	user_id uuid not null references auth.users (id) on delete cascade,
 	-- The town, as its geojson feature id (e.g. ES_08028).
@@ -45,8 +57,17 @@ create table if not exists public.municipality_challenges (
 	-- never finished). The day is spent either way; this only tells
 	-- award_combat_exp whether a report against this slot is the first one.
 	settled_at timestamptz,
+	-- When this slot was handed back because the town changed hands while the fight
+	-- was still open, or null for the normal case. A voided slot has been paid for
+	-- but never fought — it no longer blocks, and start_challenge revives it in
+	-- place. It is kept (rather than deleted) so the late report of the fight it
+	-- belonged to settles this row instead of claiming a fresh one.
+	voided_at timestamptz,
 	primary key (user_id, location_id, challenge_date)
 );
+
+-- Slots predating the refund were never voided, so the column simply arrives null.
+alter table public.municipality_challenges add column if not exists voided_at timestamptz;
 
 alter table public.municipality_challenges enable row level security;
 
@@ -59,6 +80,12 @@ create policy municipality_challenges_select_own on public.municipality_challeng
 -- both start a fight for the same town on the same day. Refuses a town the caller
 -- already holds, matching award_combat_exp: there is nothing to take off yourself.
 -- security definer: the table has no client write policy.
+--
+-- A slot voided by somebody taking the town mid-fight is revived rather than
+-- refused: the row is reset to a fresh, unsettled, unvoided challenge, which is
+-- the one extra fight that capture bought the challenger. The revived slot blocks
+-- again exactly as a first one does, so each capture is worth one attempt, not an
+-- open door.
 --
 -- The OUT parameter names deliberately avoid the table's column names — plpgsql
 -- would otherwise have to disambiguate them against the insert.
@@ -89,7 +116,9 @@ begin
 
 	insert into public.municipality_challenges (user_id, location_id, challenge_date)
 		values (v_uid, p_location_id, v_today)
-		on conflict (user_id, location_id, challenge_date) do nothing
+		on conflict (user_id, location_id, challenge_date) do update
+			set started_at = now(), settled_at = null, voided_at = null
+			where municipality_challenges.voided_at is not null
 		returning municipality_challenges.started_at into v_started;
 	if v_started is null then
 		raise exception 'You have already challenged this town today. New challenges at midnight.';

@@ -89,9 +89,16 @@ export interface MunicipalitySiege {
  * challenged today and cannot be challenged again until midnight Europe/Madrid,
  * whether that fight was won, lost, or walked away from.
  *
- * Written server-side only — `start_challenge` opens it, `award_combat_exp`
- * settles it. RLS scopes it to its owner, so the set a client loads is always
- * the signed-in player's own.
+ * The exception is a slot the server has *voided*, which is a day handed back:
+ * the town changed hands while the fight was still open, so the fight was against
+ * a team that no longer sits there and cost its challenger nothing. Those rows do
+ * not limit anything and are left on the server — the set loaded here is only the
+ * slots that still close their town off.
+ *
+ * Written server-side only — `start_challenge` opens (or revives) it,
+ * `award_combat_exp` settles it and voids everyone else's when a fight takes the
+ * town. RLS scopes it to its owner, so the set a client loads is always the
+ * signed-in player's own.
  */
 export interface MunicipalityChallenge {
 	/** The town, as its geojson feature id. */

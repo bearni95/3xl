@@ -250,6 +250,16 @@
 		void reloadTerritory();
 	}
 
+	// The arena is gone. Re-read the day's challenges, because the fight that just
+	// closed may no longer have cost anything: a town taken by somebody else while
+	// this fight was open hands the day back (the slot is voided server-side), and
+	// that applies to a fight walked away from as much as to a reported one — which
+	// is a fight `on:territory` never hears about.
+	function onFightClosed(): void {
+		fightOpen = false;
+		void reloadChallenges();
+	}
+
 	// --- The latest towns won (the side panel) -----------------------------------
 	// `municipality_holders` only gets a row when a town actually changes hands, so
 	// the holder set the map already loads *is* the log of the towns players have
@@ -688,7 +698,9 @@
 
 	// Nor one they have already been to today: a town is good for one challenge per
 	// Catalan day. The server is what enforces it (`start_challenge`); this only
-	// closes the button so the fight isn't opened onto a refusal.
+	// closes the button so the fight isn't opened onto a refusal. A challenge the
+	// server has handed back — the town was taken by somebody else while the fight
+	// was open — is not in the loaded set at all, so the town reads as unfought.
 	$: challengedOpenTown = !!openRegion && challenges.has(openRegion);
 
 	// And when it opens up again: the next Catalan midnight, which is the boundary
@@ -1843,7 +1855,7 @@
 				ogTurnover={fightTurnover}
 				closable
 				on:territory={(event) => onTerritory(event.detail)}
-				on:close={() => (fightOpen = false)}
+				on:close={onFightClosed}
 			/>
 		{/key}
 	</div>

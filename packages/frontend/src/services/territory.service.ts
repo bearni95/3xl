@@ -104,6 +104,12 @@ class TerritoryService {
 	 * time — the same day boundary `start_challenge` enforces). RLS returns only
 	 * their rows, so the date is the only filter needed; yesterday's rows are left
 	 * on the server, since nothing on screen is about them. Empty when signed out.
+	 *
+	 * Voided slots are left behind too, so the set keeps meaning "the towns that
+	 * cannot be challenged again today" for everyone reading it. A slot is voided
+	 * when the town changes hands while the fight is still open: that challenge was
+	 * paid for but never really fought, so the server hands the day back and
+	 * `start_challenge` will revive the row (see municipality_challenges.sql).
 	 */
 	async loadChallenges(): Promise<Map<string, MunicipalityChallenge>> {
 		if (!isSupabaseConfigured()) return new Map();
@@ -111,7 +117,8 @@ class TerritoryService {
 		const { data, error } = await supabase
 			.from('municipality_challenges')
 			.select('location_id, challenge_date, started_at, settled_at')
-			.eq('challenge_date', catalanDayIso());
+			.eq('challenge_date', catalanDayIso())
+			.is('voided_at', null);
 		if (error) throw error;
 
 		const challenges = new Map<string, MunicipalityChallenge>();

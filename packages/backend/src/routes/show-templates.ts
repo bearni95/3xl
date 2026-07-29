@@ -58,7 +58,8 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // daily rule: a player may challenge each town once per day, resetting at midnight
 // Europe/Madrid like the booster allowance — claimed when the arena opens, settled
 // by award_combat_exp, which refuses a second settled report against the same town
-// on the same day. All DDL is idempotent.
+// on the same day and hands the day back to everyone whose fight was still open
+// when the town changed hands. All DDL is idempotent.
 let ensured: Promise<void> | null = null;
 /**
  * Provision the whole authoring/gameplay schema (tables, RLS, RPCs) idempotently,
@@ -586,9 +587,10 @@ export function ensureTables(): Promise<void> {
 					-- or whether it was ever finished. The day is spent when the arena opens
 					-- (start_challenge below), not when the fight is reported: a fight
 					-- abandoned halfway still used it up, which is exactly what stops a
-					-- player restarting a fight that was going badly. No client write path;
-					-- start_challenge and award_combat_exp are the only writers, and a player
-					-- reads only their own rows.
+					-- player restarting a fight that was going badly. The one exception is a
+					-- slot voided by somebody else taking the town mid-fight — see voided_at.
+					-- No client write path; start_challenge and award_combat_exp are the only
+					-- writers, and a player reads only their own rows.
 					create table if not exists municipality_challenges (
 							user_id uuid not null references auth.users (id) on delete cascade,
 							location_id text not null,
@@ -599,8 +601,15 @@ export function ensureTables(): Promise<void> {
 							-- is spent either way; this only tells award_combat_exp whether a
 							-- report against this slot is the first one.
 							settled_at timestamptz,
+							-- When this slot was handed back because the town changed hands while
+							-- the fight was still open: paid for, never really fought. A voided
+							-- slot stops blocking and start_challenge revives it in place. Kept
+							-- rather than deleted so the late report of that fight settles this
+							-- row instead of claiming a fresh day.
+							voided_at timestamptz,
 							primary key (user_id, location_id, challenge_date)
 						);
+					alter table municipality_challenges add column if not exists voided_at timestamptz;
 					alter table municipality_challenges enable row level security;
 					drop policy if exists municipality_challenges_select_own on municipality_challenges;
 					create policy municipality_challenges_select_own on municipality_challenges
@@ -608,9 +617,12 @@ export function ensureTables(): Promise<void> {
 					-- Spend today's challenge on a town, called when the arena opens. Claims
 					-- the day's slot atomically and raises when it is already taken, so two
 					-- tabs can't both open a fight for the same town on the same day. Refuses
-					-- a town the caller already holds, matching award_combat_exp. The OUT
-					-- names deliberately avoid the table's columns (plpgsql would otherwise
-					-- have to disambiguate them against the insert).
+					-- a town the caller already holds, matching award_combat_exp. A slot
+					-- voided by somebody taking the town mid-fight is revived instead of
+					-- refused — reset to a fresh unsettled challenge, the one extra fight that
+					-- capture bought — and blocks again thereafter. The OUT names deliberately
+					-- avoid the table's columns (plpgsql would otherwise have to disambiguate
+					-- them against the insert).
 					create or replace function start_challenge(p_location_id text)
 					returns table (town_id text, challenge_day date, opened_at timestamptz)
 					language plpgsql security definer set search_path = public as $start_challenge$
@@ -635,7 +647,9 @@ export function ensureTables(): Promise<void> {
 							end if;
 							insert into municipality_challenges (user_id, location_id, challenge_date)
 								values (v_uid, p_location_id, v_today)
-								on conflict (user_id, location_id, challenge_date) do nothing
+								on conflict (user_id, location_id, challenge_date) do update
+									set started_at = now(), settled_at = null, voided_at = null
+									where municipality_challenges.voided_at is not null
 								returning municipality_challenges.started_at into v_started;
 							if v_started is null then
 								raise exception 'You have already challenged this town today. New challenges at midnight.';
@@ -807,7 +821,10 @@ export function ensureTables(): Promise<void> {
 								-- second fight against the same town today, so it is rejected outright,
 								-- rolling back the experience with it. A report with no slot at all (a
 								-- client that never called start_challenge) claims and settles one in
-								-- the same statement, so skipping that call buys nothing.
+								-- the same statement, so skipping that call buys nothing. A slot
+								-- voided below (the town changed hands mid-fight) settles here like
+								-- any other — the fight happened and is paid for — but keeps its
+								-- voided_at, which is what carries the refund past this report.
 								insert into municipality_challenges
 									(user_id, location_id, challenge_date, settled_at)
 									values (v_uid, p_location_id, v_today, now())
@@ -881,6 +898,22 @@ export function ensureTables(): Promise<void> {
 													taken_at = excluded.taken_at;
 										-- A new generation voids every siege on the town, the winner's included.
 										delete from municipality_sieges where location_id = p_location_id;
+										-- And every fight still open against the old one: those challengers
+										-- are beating a team that no longer sits here and their report will
+										-- be refused as stale, so the day they spent on this town is handed
+										-- back rather than burnt on a fight this capture took away. Marked,
+										-- not deleted — their late report settles this row (paid for, no
+										-- ground banked) and the voided flag it keeps is what lets them come
+										-- straight back at the new occupant today. Slots already settled are
+										-- left alone: those were spent on a real fight against the team that
+										-- was sitting here at the time.
+										update municipality_challenges
+											set voided_at = now()
+											where location_id = p_location_id
+												and challenge_date = v_today
+												and settled_at is null
+												and voided_at is null
+												and user_id <> v_uid;
 										v_captured := true;
 										v_turnover := v_turnover + 1;
 										v_wins := v_required;
