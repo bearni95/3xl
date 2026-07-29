@@ -77,10 +77,19 @@
 		<!-- Pinned by its bottom edge to the top of the face — that edge is the axis it
 			turns about, so it is the one line the lid and the face share, and the box reads
 			as one object folded at it. -->
-		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square bg-neutral', LID)}>
+		<div
+			class={classNames(
+				'absolute inset-x-0 bottom-0 aspect-square border-[3px] border-black bg-black',
+				LID
+			)}
+		>
 			<!-- The top plane catches the light the front does not, which is what puts an edge
 				between them: a top and a face in one flat colour are one shape, and a box with no
-				edge between its top and its face is not a box. -->
+				edge between its top and its face is not a box. It is the plane that is lit and not
+				the whole lid — the border stays outside it, so the black rule reads against the lit
+				top the way the picture's frame reads against the picture. The lid's own black is
+				what the light is mixed into: a lid in the theme's purple was the one thing on the
+				box that was not the box's colour. -->
 			<div class="absolute inset-0 bg-white/10"></div>
 		</div>
 	</div>
@@ -95,8 +104,14 @@
 		padding is a share of the width on every side, top and bottom included, so the frame
 		is an even width all round rather than following the 3:4 out into a taller band above
 		and below. This keeps the flex sizing the poster had, which is what still hands the
-		box its 3:4. -->
-	<div class="min-h-0 w-full flex-1 bg-black p-[5%]">
+		box its 3:4.
+
+		The 3px rule round it is the box's cut edge, the same one the lid carries: a fixed
+		width and not a share of the container, because an edge is an edge at any size — a
+		tile in a grid and the same box stood up the height of a panel are cut out of the
+		same card. It is inside the element's own size (border-box), so nothing about the
+		ratios or the 5% frame moves to make room for it. -->
+	<div class="min-h-0 w-full flex-1 border-[3px] border-black bg-black p-[5%]">
 		<!-- The picture and the two things written over it, in one box: the mark and the place
 			belong to the poster's edges, not the box's, so they are placed against this rather
 			than against the front — an absolute inset is measured off the padding box, and
