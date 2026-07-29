@@ -291,13 +291,21 @@
 	}
 	$: if (!$openBattle) resumedBattle = null;
 
-	// The panel's three views: the open region (the drill table, or a leaf town's show
-	// and house team), the standing of every show across the whole map, and the booster
-	// pack of whichever festa town's star was clicked last. Every one of them lives here
-	// rather than in a panel of its own, so the map only ever gives up room to one of
-	// them — the breadcrumbs above the strip stay put across all three, since they name
-	// what the map is looking at whichever view is forward.
+	// The panel's four views: the player themselves (the account card and the side they
+	// field), the open region (the drill table, or a leaf town's show and house team),
+	// the standing of every show across the whole map, and the booster pack of whichever
+	// festa town's star was clicked last. Every one of them lives here rather than in a
+	// panel of its own, so the map only ever gives up room to one of them — the
+	// breadcrumbs above the strip stay put across all four, since they name what the map
+	// is looking at whichever view is forward.
+	//
+	// Who you are is a view like any other now, rather than a header sitting over all of
+	// them: an account card and a three-sprite line-up took a fixed slice off the top of
+	// the panel at every moment, including the ones spent reading a table that had
+	// nothing to do with either, and on the collapsed mobile panel that slice was most of
+	// the 30vh there is.
 	const PanelTab = {
+		Profile: 'profile',
 		Location: 'location',
 		Leaderboard: 'leaderboard',
 		Pack: 'pack'
@@ -305,10 +313,11 @@
 	type PanelTab = (typeof PanelTab)[keyof typeof PanelTab];
 	// The strip's labels. Booster carries the day's allowance in parentheses — what is
 	// left to open over the daily cap, "Booster (2/3)" — which is where that counter
-	// lives now that the account card above no longer has a row for it. Plain "Booster"
+	// lives now that the account card no longer has a row for it. Plain "Booster"
 	// until there is an allowance to name: signed out, or the status not yet in.
 	let panelTabs: { id: PanelTab; label: string }[];
 	$: panelTabs = [
+		{ id: PanelTab.Profile, label: 'Profile' },
 		{ id: PanelTab.Location, label: 'Location' },
 		{ id: PanelTab.Leaderboard, label: 'Leaderboard' },
 		{
@@ -316,9 +325,11 @@
 			label: boosters ? `Booster (${boosters.remaining}/${boosters.level})` : 'Booster'
 		}
 	];
-	// Opens on the location view: it is what the map itself is showing, and it follows
-	// the zoom even before anything has been clicked.
-	let panelTab: PanelTab = PanelTab.Location;
+	// Opens on the profile view: the panel's first word is who is playing — signing in is
+	// the one thing nothing else on the map works without, and a signed-in player's own
+	// team is what every town on it is read against. The Location tab is a click away and
+	// comes forward by itself the moment a region is opened from anywhere.
+	let panelTab: PanelTab = PanelTab.Profile;
 
 	// How many municipalities each show flies, and its share of them all. Tallied
 	// over `showsById`, which is already the seeded assignment with every held
@@ -863,11 +874,11 @@
 	// only line it draws is the one separating it from the map — a left border in the
 	// desktop row, a top border in the mobile column.
 	//
-	// One height for every tab: the account card and the full-width team strip above the
-	// tab strip take a fixed slice of the panel before a tab draws anything, so whatever
-	// the header does not use goes to the tab, which is the only part that scrolls. The
-	// column is as tall as the row, since a panel hugging its content would leave the
-	// rest of its own column as bare background beside the map.
+	// One height for every tab: the breadcrumbs and the tab strip take a fixed slice of
+	// the panel before a tab draws anything, so whatever that header does not use goes to
+	// the tab, which is the only part that scrolls. The column is as tall as the row,
+	// since a panel hugging its content would leave the rest of its own column as bare
+	// background beside the map.
 	$: panelClasses = classNames(
 		'flex flex-none flex-col overflow-hidden bg-base-100',
 		'border-base-300',
@@ -1585,13 +1596,14 @@
 	reading order and second on screen: the right-hand column of the row on a wide
 	viewport, the strip under the map on a narrow one. -->
 <div class="flex h-screen flex-col-reverse md:flex-row-reverse">
-	<!-- The one panel beside the map, on three tabs — the right-hand column on a wide
+	<!-- The one panel beside the map, on four tabs — the right-hand column on a wide
 		viewport, docked under the map below `md` (30vh showing, its handle row toggling it
-		up to the full screen). Same markup either way. The profile card sits
-		at the very top, above the breadcrumbs, and the breadcrumbs above the tab strip
-		rather than inside any tab: who you are and how many packs you have left is read
-		against every view, as is the region the map is looking at (clicked, or followed
-		from the zoom), so both stay on screen whichever tab is forward.
+		up to the full screen). Same markup either way. The breadcrumbs sit above the tab
+		strip rather than inside any tab: the region the map is looking at (clicked, or
+		followed from the zoom) is read against every view, so it stays on screen whichever
+		tab is forward.
+		— Profile: the account card and the team this player fields. The tab the panel
+		  opens on, and the only one that says nothing about the map.
 		— Location: the drill table for the open region — its siblings and its children —
 		  or, for a leaf municipality with nothing left to list, that town's show and the
 		  team sitting on it. The search box above it matches every location in the tree.
@@ -1622,30 +1634,10 @@
 		<!-- On the mobile panel this is the one scroller: the sections below keep their
 			natural heights inside it (it is a plain block there, so their `flex-1` is
 			inert) and the whole panel scrolls as one, which is the only thing that works
-			when the header alone is taller than the collapsed 30vh. On the desktop panel it
+			when the header and a tab together outrun the collapsed 30vh. On the desktop panel it
 			is `display: contents` — it draws no box at all, so its children go back to being
 			the aside's own flex children and each tab keeps its own scroller. -->
 		<div class="min-h-0 flex-1 overflow-y-auto md:contents">
-			<!-- Its own section, on its own border: the account card belongs to the player,
-				not to any of the tabs, and never changes as they are switched. Nothing but the
-				border separates it — it draws no surface of its own — so the padding is the
-				section's, and it is the breadcrumbs' below. -->
-			<div class="flex-none border-b border-base-300 px-4 py-3">
-				<AuthMenu embedded />
-
-				{#if playerTeamLineup.length > 0}
-					<!-- The team this player fields, standing in the document itself rather than
-						on a canvas: each character's idle animation on a square of its own colour,
-						at the height the cards give it. Under the account card because it is part
-						of who the player is here, not part of any tab. A canvas here was a WebGL
-						context — and a whole card's worth of chrome — spent on three sprites the
-						panel only shows. -->
-					<div class="mt-3">
-						<TeamLineup members={playerTeamLineup} />
-					</div>
-				{/if}
-			</div>
-
 			<div class="flex flex-none flex-col gap-3 border-b border-base-300 px-4 py-3">
 				<div class="breadcrumbs max-w-full py-0 text-sm">
 					<ul>
@@ -1688,7 +1680,27 @@
 				</div>
 			</div>
 
-			{#if panelTab === PanelTab.Location}
+			{#if panelTab === PanelTab.Profile}
+				<!-- Who is playing: the account card — signed out it is the sign-in panel, so
+					this tab is the way into the game — and under it the side they field. Its own
+					scroller on the desktop panel, exactly like the tables in the tabs beside it;
+					on the mobile panel the whole thing scrolls as one, so the `flex-1` is inert
+					there and the section simply takes the height its contents ask for. -->
+				<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+					<AuthMenu embedded />
+
+					{#if playerTeamLineup.length > 0}
+						<!-- The team this player fields, standing in the document itself rather than
+							on a canvas: each character's idle animation on a square of its own colour,
+							at the height the cards give it. Under the account card because it is part
+							of who the player is here. A canvas here was a WebGL context — and a whole
+							card's worth of chrome — spent on three sprites the panel only shows. -->
+						<div class="mt-3">
+							<TeamLineup members={playerTeamLineup} />
+						</div>
+					{/if}
+				</div>
+			{:else if panelTab === PanelTab.Location}
 				<div class="flex-none border-b border-base-300 px-4 py-3">
 					<input
 						type="search"
