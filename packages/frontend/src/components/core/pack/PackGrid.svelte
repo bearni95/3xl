@@ -152,14 +152,13 @@
 					on:click={open}
 				>
 					<!-- Stood up, the pack is as tall as the box and as wide as that height
-						earns it: 11:20 is the silhouette a 2:3 poster makes once the two bands
-						and their teeth are added to it, which is the shape every show's poster
-						comes in. A box too narrow for that height keeps its width instead, and
-						the poster letterboxes inside the bands. -->
+						earns it — the 3:4 is the tile's own, so this only says which of the two
+						the box decides. A box too narrow for that height keeps its width
+						instead, and the poster letterboxes inside the bands. -->
 					<PackTile
 						coverUrl={selectedPack.coverUrl}
 						locationName={selectedPack.locationName}
-						classes={classNames('h-full max-w-full aspect-[11/20]', { 'opacity-60': opening })}
+						classes={classNames('h-full max-w-full', { 'opacity-60': opening })}
 					/>
 				</button>
 

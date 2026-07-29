@@ -5,33 +5,27 @@
 
 	// One unopened booster pack, drawn in the document: the show's poster spanning the
 	// full width of it, a coloured band above it saying the place the pack belongs to
-	// and one below saying what is inside, and both outer edges serrated into teeth —
-	// the same object PackSprite bakes into a texture, assembled out of elements
-	// instead so a grid of them costs no WebGL context at all.
+	// and one below saying what is inside.
 	//
-	// It draws at whatever width it is given and keeps the poster's own proportions,
-	// so it is the box around it that decides whether a pack is a grid cell or the
-	// whole panel. Everything written on it is sized off that width (the pack declares
-	// itself the container), which is what keeps the bands the same share of the
-	// picture at both sizes rather than a caption that grows out of them.
+	// It is 3:4, the very box a CharacterStatue is drawn in — a pack and the cards it
+	// opens onto are the same object at two moments, and a grid that changes shape when
+	// a pack is sliced open is a grid that jumps. The ratio is the component's own, not
+	// the host's: hand it a width and it takes the height that goes with it, so the same
+	// component is a grid cell or the whole panel purely by the box it is put in.
+	// Everything written on it is sized off that width (the pack declares itself the
+	// container), which is what keeps the bands the same share of the picture at both
+	// sizes rather than a caption that grows out of them.
+	//
+	// (Both outer edges used to be serrated into teeth, after the texture PackSprite
+	// bakes. A pack is picked out of a grid by the poster on it; the teeth only ate into
+	// that poster twice and gave the tile a silhouette no other object on this panel
+	// has.)
 
 	// Show poster used as the cover, or null for a plain frame.
 	export let coverUrl: string | null = null;
 	// Full name of the place the pack belongs to, said in the top band.
 	export let locationName: string | null = null;
 	export let classes: string = '';
-
-	// The teeth: one row of equilateral triangles, each with a base a tenth of the
-	// pack's width, tiled edge to edge — a cone gradient per tooth, the notches
-	// between them left transparent so the silhouette itself is serrated rather than
-	// a rectangle with triangles painted over it. The strip's height is that base
-	// times sin 60°, in cqw so the teeth stay equilateral at any width. The fill is
-	// `currentColor`, so a band and its teeth take one colour from the same class.
-	const TEETH_HEIGHT = 'h-[8.66cqw]';
-	const TEETH_UP =
-		'[background:conic-gradient(from_-45deg_at_bottom,#0000,currentColor_1deg_89deg,#0000_90deg)_0_0/10%_100%]';
-	const TEETH_DOWN =
-		'[background:conic-gradient(from_135deg_at_top,#0000,currentColor_1deg_89deg,#0000_90deg)_0_0/10%_100%]';
 
 	// What the bands say, exactly as the baked pack says it: the place with the year
 	// this copy would be minted in joined to it — "Barcelona '26" — and, below the
@@ -42,12 +36,10 @@
 		.join(' ');
 </script>
 
-<!-- The drop shadow is a filter rather than a box shadow: it follows the drawn
-	silhouette, teeth and all, where a box shadow would draw the rectangle the pack
-	is not. -->
-<div class={classNames('@container flex min-h-0 flex-col drop-shadow-md', classes)}>
-	<div class={classNames('w-full flex-none text-neutral', TEETH_HEIGHT, TEETH_UP)}></div>
-
+<!-- 3:4, as the statue is. In a grid cell it is a column flex item and so takes the
+	cell's width, the ratio giving it its height; stood up in a box that bounds the
+	height instead, the host says `h-full` and the ratio gives the width back. -->
+<div class={classNames('@container flex aspect-[3/4] min-h-0 flex-col shadow-md', classes)}>
 	<div
 		class="flex-none truncate bg-neutral px-1 text-center text-[5.4cqw] font-bold leading-snug text-neutral-content"
 		title={place}
@@ -56,8 +48,9 @@
 	</div>
 
 	{#if coverUrl}
-		<!-- The poster whole, never cropped: it takes the pack's full width in a grid
-			cell, and gives height back when the pack is stood up in a box that bounds it. -->
+		<!-- The poster whole, never cropped: it is contained in whatever the two bands
+			leave of the 3:4 box, so a 2:3 poster stands centred with the neutral showing
+			at its sides rather than being cut to fill the width. -->
 		<img src={coverUrl} alt="" class="min-h-0 w-full flex-1 bg-neutral object-contain" />
 	{:else}
 		<div class="min-h-0 w-full flex-1 bg-neutral"></div>
@@ -68,6 +61,4 @@
 	>
 		x5 Cartes Localitzades
 	</div>
-
-	<div class={classNames('w-full flex-none text-neutral', TEETH_HEIGHT, TEETH_DOWN)}></div>
 </div>

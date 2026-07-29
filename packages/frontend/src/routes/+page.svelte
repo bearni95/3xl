@@ -1612,10 +1612,9 @@
 		  taken.
 		— Booster: the window's festa packs — every town de festa from three days back
 		  through four days ahead, all of them openable. Picked from the tab strip it lays
-		  every one of them out on ClaimPackGrid's canvas (two to a row at this width) —
-		  pick one to zoom it up and slice it open. Reached by clicking a town's
-		  gold star instead, it skips straight to that town's pack on the single-pack
-		  opener, already fitted and centred. -->
+		  every one of them out in the document (two to a row at this width) — pick one to
+		  stand it up and slice it open. Reached by clicking a town's gold star instead, it
+		  skips straight to that town's pack, already stood up. -->
 	<aside class={panelClasses} aria-label="Map panel">
 		<!-- The panel's handle row, mobile only: the whole row is the toggle between the
 			30vh peek and the full screen, drawn as the grab bar the gesture would use. The
