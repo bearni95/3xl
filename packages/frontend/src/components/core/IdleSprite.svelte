@@ -1,15 +1,17 @@
 <script context="module" lang="ts">
-	// Every frame the browser has drawn at least once this session, by url — shared by all
-	// the sprites on the page and never emptied.
+	// Characters whose veil has been all the way through, by frames folder — shared by every
+	// sprite on the page and never emptied. A reveal is something a player watches once, so a
+	// character found in here goes up bare: coming back to it, on the next zoom or the next
+	// time a panel is opened, is not the picture arriving.
 	//
-	// A veil is for waiting, and art that has been drawn before is back on screen within
-	// the frame, so a sprite that finds all of its own art in here has nothing to wait for
-	// and goes up bare. That is what keeps the map quiet: a pin is built from scratch on
-	// every zoom and pan (see WorldMap's rebuildMarkers, which unmounts the lot and mounts
-	// them again), and a fresh mount cannot tell on its own that it is the same three
-	// characters back again — without this, every zoom swept the squares over a picture
-	// that was already in hand.
-	const drawnFrames = new Set<string>();
+	// What counts is a sweep that finished, not art that loaded. The two come apart on the
+	// map, which is where this is felt: selecting a town builds its pin, animates the view to
+	// frame it, and rebuilds the pin from scratch when the view settles — and again when the
+	// opening panel resizes the map (see WorldMap's rebuildMarkers, which unmounts the lot and
+	// mounts them again). So the run a player actually watches is the second or the third, and
+	// the first is thrown away after a few hundred ms. Recording the loading would have those
+	// discarded runs spend a reveal nobody saw, which is exactly what they did.
+	const revealedPaths = new Set<string>();
 </script>
 
 <script lang="ts">
@@ -74,8 +76,8 @@
 	//
 	// It holds a moment after the frames are ready before it starts to go, so the
 	// uncovering is a deliberate reveal of a finished picture rather than a race with
-	// the last frame's first paint. It is skipped outright for art that has been drawn
-	// before (see `drawnFrames` above), there being nothing then to cover.
+	// the last frame's first paint. It is skipped outright for a character already revealed
+	// this session (see `revealedPaths` above), a reveal being watched once.
 	const VEIL_HOLD = 300;
 	// How long it takes to leave, from the first square blurring to the last. VeilBlock
 	// spends it on the sweep up the rows and this stops drawing the veil at the end of it,
@@ -113,14 +115,6 @@
 		void load(basePath);
 	}
 
-	/** A frame has arrived: it counts towards the picture being up, and it is remembered for
-	 * the next surface that draws this character, which will not need a veil at all. A frame
-	 * that errored counts but is not remembered — it never drew. */
-	function frameDrawn(url: string): void {
-		drawnFrames.add(url);
-		loadedFrames += 1;
-	}
-
 	/** The veil is all there. If the picture was ready before it was, the hold starts now. */
 	function onVeilShown(): void {
 		veilShown = true;
@@ -137,6 +131,10 @@
 			veilTimer = setTimeout(() => {
 				veil = 'down';
 				veilTimer = null;
+				// Watched to the end: this character is not veiled again this session. Recorded
+				// here and nowhere earlier — a run cut short by the surface being rebuilt has
+				// revealed nothing, and must leave the next one something to show.
+				if (loadedPath) revealedPaths.add(loadedPath);
 			}, VEIL_FADE);
 		}, VEIL_HOLD);
 	}
@@ -157,15 +155,14 @@
 		frames = null;
 		frameIndex = 0;
 		renderScale = DEFAULT_RENDER_SCALE;
+		// A character already revealed is not covered at all: no veil goes up, and the picture
+		// is there as soon as its geometry is.
+		if (path && revealedPaths.has(path)) veil = 'down';
 		const [clip, scale] = await Promise.all([loadIdleClip(path), loadRenderScale(path)]);
 		// A different character may have come forward while this one was loading.
 		if (path !== loadedPath) return;
 		renderScale = scale;
 		frames = clip;
-		// Nothing to cover if this character has been drawn before: the veil never goes up at
-		// all, rather than going up and being swept off again over a picture that was there
-		// the whole time.
-		if (clip?.every((frame) => drawnFrames.has(frame.url))) veil = 'down';
 		schedule();
 	}
 
@@ -224,7 +221,7 @@
 	// Whether the character may be drawn at all. Not while the veil is still coming in: its
 	// squares are half transparent on the way, so a frame that arrived during the entrance
 	// showed through the thing being drawn to cover it. Either the veil is all the way in or
-	// there is no veil — art drawn before goes straight up (see `drawnFrames`).
+	// there is no veil — a character revealed before goes straight up (see `revealedPaths`).
 	//
 	// The frames are in the document either way and load throughout, so nothing waits on
 	// this: it is what may be seen that is held back, not what may be fetched.
@@ -265,7 +262,7 @@
 				style:--sprite-bottom="{frame.bottom}px"
 				style:--sprite-width="{frame.width}px"
 				style:--sprite-height="{frame.height}px"
-				on:load={() => frameDrawn(frame.url)}
+				on:load={() => (loadedFrames += 1)}
 				on:error={() => (loadedFrames += 1)}
 			/>
 		{/each}
