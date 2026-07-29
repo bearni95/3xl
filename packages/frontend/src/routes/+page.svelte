@@ -89,7 +89,7 @@
 	// turns today's festes + the player's shows into openable packs. Kept here so clicking a star opens that town's pack at once,
 	// with no extra loading. Empty when signed out or before the show pool loads.
 	let claimPacks: OpenerPack[] = [];
-	// The municipality whose festa pack the top-right panel's Booster tab shows, or
+	// The municipality whose festa pack the side panel's Booster tab shows, or
 	// null when no star has been clicked yet.
 	let packTownId: string | null = null;
 	// Live map zoom, kept in sync by WorldMap and shown in the top-left panel.
@@ -250,7 +250,7 @@
 		void reloadTerritory();
 	}
 
-	// --- The latest towns won (top-right panel) ---------------------------------
+	// --- The latest towns won (the side panel) -----------------------------------
 	// `municipality_holders` only gets a row when a town actually changes hands, so
 	// the holder set the map already loads *is* the log of the towns players have
 	// most recently won — newest capture first, capped so the panel stays a leaderboard
@@ -262,8 +262,8 @@
 	// The panel's four views: the open region (the drill table, or a leaf town's show
 	// and house team), the latest captures, the standing of every show across the whole
 	// map, and the booster pack of whichever festa town's star was clicked last. Every
-	// one of them lives here rather than in a panel of its own, so only one thing is
-	// ever pinned over the map — the breadcrumbs above the strip stay put across all
+	// one of them lives here rather than in a panel of its own, so the map only ever
+	// gives up room to one of them — the breadcrumbs above the strip stay put across all
 	// four, since they name what the map is looking at whichever view is forward.
 	const PanelTab = {
 		Location: 'location',
@@ -803,60 +803,43 @@
 	let challengeStarting = false;
 
 	// --- The panel's mobile shape ------------------------------------------------
-	// Narrow viewports have no room for a 36rem column floating over the map, so below
-	// `md` the same panel becomes a sheet stuck to the bottom edge: 30vh of it showing,
-	// with the handle row at its top toggling it up to the full screen and back. Both
-	// states are plain heights on the one element, so the CSS height transition slides
-	// its top edge up and down — no second panel, no remount, nothing in the tabs
-	// (breadcrumbs, search, a half-sliced pack) resets on the way.
+	// Narrow viewports have no room for a 36rem column beside the map, so below `md` the
+	// same panel docks under it instead: 30vh of it showing, with the handle row at its
+	// top toggling it up to the full screen and back. Both states are plain heights on
+	// the one element, so the CSS height transition slides its top edge up and down — no
+	// second panel, no remount, nothing in the tabs (breadcrumbs, search, a half-sliced
+	// pack) resets on the way. The map takes whatever height is left, so growing the
+	// panel shrinks the map rather than covering it.
 	let panelExpanded = false;
 
-	// The single panel pinned over the map's right edge, holding all four views. It
-	// slides off while a fight is on, so the arena has the map to itself — translated
-	// (not unmounted) to keep the breadcrumb/search state alive and animate back in on
-	// close. It leaves the way it came in: off the right edge on the desktop panel
-	// (`right-4` means it must travel its own width plus that gap to clear the
-	// viewport), straight down off the bottom edge on the mobile sheet.
+	// The single panel holding all four views, a sibling of the map rather than a layer
+	// over it: it takes its own 36rem of the row (its own 30vh of the column on mobile)
+	// and the map gets the rest. Nothing of the map is ever hidden behind it, which is
+	// why it needs no z-index of its own, no shadow lifting it off anything, and no
+	// see-through surface — with no map underneath there is nothing left to read
+	// through, so the base surface is opaque at both mobile heights.
 	//
-	// One height for every tab on the desktop panel: the account card and the
-	// full-width team strip above the tab strip take a fixed slice of the panel before a
-	// tab draws anything, so the short panel the two tables used to get left them with
-	// almost no rows. Whatever the header does not use goes to the tab, which is the only
-	// part that scrolls.
+	// It is flush against the viewport edges it docks to, so it carries no radius: the
+	// only line it draws is the one separating it from the map — a left border in the
+	// desktop row, a top border in the mobile column.
 	//
-	// z-[900] is the whole of its layering: above every Leaflet layer (the map's own
-	// panes and controls top out at 800) and below every modal. DaisyUI puts `.modal`
-	// at 999, so the profile card, the avatar picker, the username prompt and anything
-	// added later come up over the panel without each having to name a z-index — the
-	// panel is furniture, and a dialog is never behind its furniture. The two things
-	// that must clear it outright — the combat arena (1200) and the roster (1300) —
-	// carry their own z above the modal layer.
+	// One height for every tab: the account card and the full-width team strip above the
+	// tab strip take a fixed slice of the panel before a tab draws anything, so whatever
+	// the header does not use goes to the tab, which is the only part that scrolls. The
+	// column is as tall as the row, since a panel hugging its content would leave the
+	// rest of its own column as bare background beside the map.
 	$: panelClasses = classNames(
-		'fixed z-[900] flex flex-col overflow-hidden',
-		'border border-base-300 shadow-lg',
-		'transition-[transform,height,background-color] duration-300 ease-in-out',
-		// Mobile: the bottom sheet. It spans the full width and sits flush on the bottom
-		// edge, so only its top corners are rounded and its bottom border would be off
-		// screen anyway. The peek stays see-through so the map still reads under it, but
-		// pulled up to the full screen there is no map left to read — so the surface goes
-		// opaque, and fades back to the reduced alpha as it collapses. The two mobile
-		// alphas are written as one branch each (rather than an override on a shared base)
-		// so only ever one of them is on the element and neither can lose to source order.
-		'inset-x-0 bottom-0 rounded-t-[var(--radius-box)] border-b-0',
-		panelExpanded ? 'h-screen max-md:bg-base-100' : 'h-[30vh] max-md:bg-base-100/70',
-		// md and up: the floating right-hand column, exactly as before — every mobile
-		// anchor is unset so the sheet's geometry doesn't leak into it, and it keeps the
-		// reduced alpha whatever the sheet's toggle was last left on.
-		'md:inset-x-auto md:bottom-auto md:right-4 md:top-4 md:w-[36rem] md:rounded-box md:border-b',
-		'md:bg-base-100/70',
-		// The panel is only as tall as what it holds, and stops there — a short town or a
-		// three-row table no longer drags an empty box down the whole viewport. The cap is
-		// what it used to take outright: past it the forward tab's own scroller takes over.
-		// The Booster tab is the exception. Its packs are a WebGL scene with no content
-		// height of its own — it draws into whatever box it is handed — so there is nothing
-		// there to hug, and it keeps the full height it has always had.
-		panelTab === PanelTab.Pack ? 'md:h-[calc(100vh-2rem)]' : 'md:h-auto md:max-h-[calc(100vh-2rem)]',
-		{ 'translate-y-full md:translate-y-0 md:translate-x-[calc(100%+1.5rem)]': fightOpen }
+		'flex flex-none flex-col overflow-hidden bg-base-100',
+		'border-base-300',
+		'transition-[height] duration-300 ease-in-out',
+		// Mobile: the full-width strip under the map, on the bottom edge. Its height is
+		// the toggle — the handle row swaps the peek for the whole screen, which squeezes
+		// the map above it down to nothing rather than covering it.
+		'w-full border-t',
+		panelExpanded ? 'h-screen' : 'h-[30vh]',
+		// md and up: the right-hand column of the row, at the width it has always had —
+		// full height, since it is the row that bounds it now.
+		'md:h-full md:w-[36rem] md:border-t-0 md:border-l'
 	);
 
 	// Fight this town: spend the day's challenge on it, then snapshot whichever team
@@ -1089,7 +1072,7 @@
 
 	// A gold star dropped on every municipality celebrating a festa major today,
 	// at the centre of the town's bounding box (its own key in the region geometry).
-	// Clicking a star loads that town's festa booster pack into the top-right panel and
+	// Clicking a star loads that town's festa booster pack into the side panel and
 	// flips the panel to its Booster tab, so the pack replaces the tables. A festa town
 	// whose polygon isn't on the map (no box) is skipped. Named deps (`todayFestes`,
 	// `regionGeometry`) so the stars repaint when either lands.
@@ -1414,10 +1397,14 @@
 	// through its framing (focusBounds) and its pins, which still fade outside it.
 </script>
 
-<div class="flex h-screen">
-	<!-- The one panel pinned over the map, on four tabs — top-right on a wide viewport, a
-		bottom sheet below `md` (30vh showing, its handle row toggling it up to the full
-		screen). Same markup either way. The profile card sits
+<!-- The map and its panel split the viewport between them — the panel is never over the
+	map. Both orders are the reverse of the markup's, which puts the panel first for
+	reading order and second on screen: the right-hand column of the row on a wide
+	viewport, the strip under the map on a narrow one. -->
+<div class="flex h-screen flex-col-reverse md:flex-row-reverse">
+	<!-- The one panel beside the map, on four tabs — the right-hand column on a wide
+		viewport, docked under the map below `md` (30vh showing, its handle row toggling it
+		up to the full screen). Same markup either way. The profile card sits
 		at the very top, above the breadcrumbs, and the breadcrumbs above the tab strip
 		rather than inside any tab: who you are and how many packs you have left is read
 		against every view, as is the region the map is looking at (clicked, or followed
@@ -1440,7 +1427,7 @@
 		  gold star instead, it skips straight to that town's pack on the single-pack
 		  opener, already fitted and centred. -->
 	<aside class={panelClasses} aria-label="Map panel">
-		<!-- The sheet's handle row, mobile only: the whole row is the toggle between the
+		<!-- The panel's handle row, mobile only: the whole row is the toggle between the
 			30vh peek and the full screen, drawn as the grab bar the gesture would use. The
 			panel animates the change itself (its height is transitioned), so this only has
 			to flip the flag. -->
@@ -1454,7 +1441,7 @@
 			<span class="h-1.5 w-10 rounded-full bg-base-content/30"></span>
 		</button>
 
-		<!-- On the mobile sheet this is the one scroller: the sections below keep their
+		<!-- On the mobile panel this is the one scroller: the sections below keep their
 			natural heights inside it (it is a plain block there, so their `flex-1` is
 			inert) and the whole panel scrolls as one, which is the only thing that works
 			when the header alone is taller than the collapsed 30vh. On the desktop panel it
@@ -1655,10 +1642,10 @@
 					on the shared ClaimPackGrid canvas — two to a row here, since the
 					panel is a third of the viewport's width. Either way the pack is sliced open in
 					place; "Tots els sobres" goes back to the grid. -->
-				<!-- The one tab that has to be told a height on the mobile sheet: its packs are a
-					WebGL scene that draws into whatever box it is handed, and inside the sheet's
-					scroller there is no leftover space to hand it. 60vh is enough of a stage to
-					pick and slice a pack on, and the sheet scrolls to it when collapsed. -->
+				<!-- The one tab that has to be told a height on the mobile panel: its packs are a
+					WebGL scene that draws into whatever box it is handed, and inside that panel's
+					one scroller there is no leftover space to hand it. 60vh is enough of a stage to
+					pick and slice a pack on, and the panel scrolls to it when collapsed. -->
 				<div class="flex min-h-0 flex-1 flex-col max-md:min-h-[60vh]">
 					<!-- The day being browsed: an arrow at each end of the row and the date in the
 						middle, where it doubles as the toggle for the month calendar. Only today's
@@ -1794,12 +1781,12 @@
 		</div>
 	</aside>
 
-	<!-- The map keeps the full width at all times. The tabbed panel floats over its right
-		edge (a fixed z-[900] aside, like the pinned auth menu) rather than reserving space
-		here, so drilling into a region or opening a pack never re-frames or re-projects the
-		map — the view stays exactly where it was and clicking another star or another tab
-		just switches the panel's contents. -->
-	<div class="relative flex min-w-0 flex-1 flex-col">
+	<!-- The map takes whatever the panel leaves — the rest of the row on a wide viewport,
+		the rest of the column on a narrow one. Switching tabs or drilling into a region
+		doesn't change that share, so the view still stays exactly where it was; only
+		toggling the mobile panel between its two heights re-frames the map, which is the
+		point of the toggle. -->
+	<div class="relative flex min-h-0 min-w-0 flex-1 flex-col">
 		{#if ready}
 			<WorldMap
 				center={[41.8, 1.7]}
@@ -1837,9 +1824,9 @@
 <!-- Challenge → the board's combat arena, hosted as a full-viewport floating panel over
 	the map so a fight for a town plays out without ever navigating away. This is the
 	only place combat is mounted — there is no standalone combat route any more. A plain
-	fixed panel (not a DaisyUI modal) at z-[1200] — above the map's panel (z-[900]) and
-	above the modal layer (999) — over a 30%-white wash so the map still reads through
-	behind it.
+	fixed panel (not a DaisyUI modal) at z-[1200] — above the modal layer (999), and so
+	above everything on the page, the map and its side panel included — over a 30%-white
+	wash so what it covers still reads through behind it.
 	CombatArena fields the player's active roster team against the town's sitting team
 	(its holder's, or the seeded OG one) and handles all its own gating; the town id and
 	the turnover it was on ride along so a win is reported against the right generation.
