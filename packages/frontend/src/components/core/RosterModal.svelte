@@ -8,6 +8,7 @@
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { spawnService, RECYCLE_GROUP_SIZE } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE } from '$services/team.service';
+	import { showLogos, loadShowLogos } from '$services/shows.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { AuthStatus } from '$types/profile.type';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
@@ -70,7 +71,9 @@
 	const ANY = '' as const;
 	let filterName = ''; // free-text match against the character label
 	let filterColor: SpawnColor | typeof ANY = ANY;
-	let filterShow: string | typeof ANY = ANY;
+	// By TMDB id rather than by name, since what the filter shows is the show's own
+	// logo and that is fetched by id (see shows.service).
+	let filterShow: number | typeof ANY = ANY;
 	let filterRarity: number | typeof ANY = ANY;
 
 	// Every spawn colour, for the colour filter's swatches (labels are the enum values).
@@ -93,6 +96,26 @@
 			{
 				'ring-2 ring-base-content ring-offset-1 ring-offset-base-200': active === color,
 				'opacity-70 hover:opacity-100': active !== color
+			}
+		);
+	}
+
+	// Same gesture as a colour swatch: press a show to filter to it, press it again to
+	// let go. That is where the "All shows" option went.
+	function toggleShowFilter(showId: number): void {
+		filterShow = filterShow === showId ? ANY : showId;
+	}
+
+	/** One show's chip in the filter, ringed while it is the one being filtered on. The
+	 * band under it is the statue's — a show's lettering is drawn to sit on something
+	 * dark, and the panel it sits on there is what makes it readable here too. */
+	function showChipClasses(showId: number, active: number | typeof ANY): string {
+		return classNames(
+			'flex h-8 items-center justify-center overflow-hidden rounded-md bg-black/40 px-1 transition',
+			'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+			{
+				'ring-2 ring-base-content ring-offset-1 ring-offset-base-200': active === showId,
+				'opacity-70 hover:opacity-100': active !== showId
 			}
 		);
 	}
@@ -209,6 +232,10 @@
 	let loadedForUser: string | null = null;
 
 	onMount(() => authService.init());
+	// The show logos the filter's chips are drawn from. Every statue in the grid asks for
+	// the same collection, and the service shares the one fetch between them — asked for
+	// here as well so the filter has its artwork whether or not a statue is standing.
+	onMount(() => void loadShowLogos());
 
 	$: currentUserId = $status === AuthStatus.SignedIn && $profile ? String($profile.id) : null;
 	$: if (currentUserId && currentUserId !== loadedForUser) {
@@ -269,13 +296,18 @@
 	}
 
 	// The distinct show names present across the roster, sorted — the options for the
-	// show dropdown. Rebuilds as spawns and their show mapping load in.
-	$: showFilterOptions = ((shows: Map<string, { id: number; name: string }[]>) =>
-		[
-			...new Set(
-				$spawns.flatMap((spawn) => (shows.get(spawn.characterId) ?? []).map((show) => show.name))
-			)
-		].sort((a, b) => a.localeCompare(b)))(characterShows);
+	// show filter, by id and name — the id is what the chip draws a logo from and what
+	// the predicate matches, the name what sorts them and what a show with no logo
+	// enabled falls back to saying. Rebuilds as spawns and their show mapping load in.
+	$: showFilterOptions = ((shows: Map<string, { id: number; name: string }[]>) => {
+		const byId = new Map<number, string>();
+		for (const spawn of $spawns) {
+			for (const show of shows.get(spawn.characterId) ?? []) byId.set(show.id, show.name);
+		}
+		return [...byId]
+			.map(([id, name]) => ({ id, name }))
+			.sort((a, b) => a.name.localeCompare(b.name));
+	})(characterShows);
 
 	// The distinct rarity tiers present across the roster, ascending — the options
 	// for the rarity dropdown.
@@ -291,7 +323,7 @@
 	$: filteredSpawns = ((
 		name: string,
 		color: SpawnColor | typeof ANY,
-		show: string | typeof ANY,
+		show: number | typeof ANY,
 		rarity: number | typeof ANY,
 		shows: Map<string, { id: number; name: string }[]>,
 		rarities: Map<string, number>,
@@ -301,10 +333,7 @@
 		return $spawns.filter((spawn) => {
 			if (needle && !labelFor(spawn.characterId).toLowerCase().includes(needle)) return false;
 			if (color !== ANY && spawn.color !== color) return false;
-			if (
-				show !== ANY &&
-				!(shows.get(spawn.characterId) ?? []).some((entry) => entry.name === show)
-			)
+			if (show !== ANY && !(shows.get(spawn.characterId) ?? []).some((entry) => entry.id === show))
 				return false;
 			if (rarity !== ANY && (rarities.get(spawn.characterId) ?? null) !== rarity) return false;
 			if (teamColors && !teamColors.has(spawn.color)) return false;
@@ -801,19 +830,39 @@
 							</div>
 						</div>
 
-						<label class="flex flex-col gap-1 text-xs">
-							<span class="opacity-60">Show</span>
-							<select
-								class="select select-sm select-bordered w-full"
-								bind:value={filterShow}
-								disabled={showFilterOptions.length === 0}
-							>
-								<option value={ANY}>All shows</option>
-								{#each showFilterOptions as show (show)}
-									<option value={show}>{show}</option>
-								{/each}
-							</select>
-						</label>
+						<!-- The shows say themselves the way the statues do: their own lettering,
+						     not their names set in ours. Two to a row, since a wordmark is wide and
+						     a logo shrunk to a sixth of this column would be a smudge. A show whose
+						     logo is not enabled yet falls back to its name, so it is still there to
+						     filter by — and the whole group only stands while the roster holds cards
+						     from more than nothing. -->
+						{#if showFilterOptions.length > 0}
+							<div class="flex flex-col gap-1 text-xs">
+								<span class="opacity-60">Show</span>
+								<div class="grid grid-cols-2 gap-1" role="group" aria-label="Filter by show">
+									{#each showFilterOptions as show (show.id)}
+										<button
+											type="button"
+											class={showChipClasses(show.id, filterShow)}
+											title={show.name}
+											aria-label="Filter by {show.name}"
+											aria-pressed={filterShow === show.id}
+											on:click={() => toggleShowFilter(show.id)}
+										>
+											{#if $showLogos.get(show.id)}
+												<img
+													src={$showLogos.get(show.id)?.url}
+													alt={show.name}
+													class="max-h-full max-w-full object-contain"
+												/>
+											{:else}
+												<span class="truncate text-[0.625rem] text-white/80">{show.name}</span>
+											{/if}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/if}
 
 						<label class="flex flex-col gap-1 text-xs">
 							<span class="opacity-60">Rarity</span>
