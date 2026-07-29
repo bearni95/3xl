@@ -157,6 +157,7 @@
 						instead, and the poster letterboxes inside the bands. -->
 					<BoosterBox
 						coverUrl={selectedPack.coverUrl}
+						logoUrl={selectedPack.logoUrl}
 						locationName={selectedPack.locationName}
 						classes={classNames('h-full max-w-full', { 'opacity-60': opening })}
 					/>
@@ -188,7 +189,11 @@
 					title={pack.label}
 					on:click={() => pick(pack)}
 				>
-					<BoosterBox coverUrl={pack.coverUrl} locationName={pack.locationName} />
+					<BoosterBox
+						coverUrl={pack.coverUrl}
+						logoUrl={pack.logoUrl}
+						locationName={pack.locationName}
+					/>
 				</button>
 			{/each}
 		</div>

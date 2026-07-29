@@ -11,6 +11,7 @@
 	import type { GeoRegion } from '$types/location.type';
 	import type { MunicipalityShowsCollection, ShowEntry, ShowsCollection } from '$types/show.type';
 	import { showPosterUrlForSeed } from '$utils/geo/municipality-show';
+	import { showLogoUrl } from '$utils/show/show-logo';
 	import { festesService } from '$services/festes.service';
 	import type { RegionShow } from '$utils/geo/region-tree';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
@@ -164,6 +165,15 @@
 		return entry ? showPosterUrlForSeed(entry, seed) : null;
 	}
 
+	// The show's wordmark for the foot of the pack, out of the same collection the cover
+	// comes from. Not seeded like the poster is: a place gets its own cover because there
+	// are many posters and one of them may as well be this town's, whereas a show has one
+	// name and says it the same way everywhere.
+	function resolveLogoUrl(show: ClaimableShow): string | null {
+		const entry = showEntryById.get(show.id);
+		return entry ? showLogoUrl(entry) : null;
+	}
+
 	// Build the roll one grid pack fires when the player slices it open — a closure
 	// bound to its show + place. The Supabase roll persists the spawn at open time
 	// (not when the pack is picked) and returns the cards to reveal ([] on failure,
@@ -225,6 +235,7 @@
 			out.push({
 				id: festa.id,
 				coverUrl: resolvePosterUrl(claimable, claimRegion),
+				logoUrl: resolveLogoUrl(claimable),
 				locationName: festa.name,
 				label: claimable.name,
 				claim: makeClaim(claimable, claimRegion)

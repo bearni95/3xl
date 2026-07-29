@@ -12,6 +12,12 @@ export interface OpenerPack {
 	id: string;
 	/** Show poster URL used as the pack cover, or null for a plain frame. */
 	coverUrl: string | null;
+	/**
+	 * The show's wordmark, said across the foot of the pack, or null when the author
+	 * has enabled none — the pack then says the show by its poster alone rather than
+	 * by a stand-in mark. Resolved from the same saved collection the cover is.
+	 */
+	logoUrl: string | null;
 	/** Full name of the place the pack belongs to, drawn across its top. */
 	locationName: string | null;
 	/** Pack label — the show name shown under the grid pack / in the header. */

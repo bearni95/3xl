@@ -25,6 +25,11 @@
 
 	// Show poster used as the cover, or null for a plain frame.
 	export let coverUrl: string | null = null;
+	// The show's wordmark, said at the foot of the front. Null leaves the foot alone
+	// entirely: which logos a show may be said with is an authoring decision (the admin
+	// `/shows` screen), and a show with none enabled goes unsaid rather than taking a
+	// stand-in.
+	export let logoUrl: string | null = null;
 	// Full name of the place the box belongs to, titling the front.
 	export let locationName: string | null = null;
 	export let classes: string = '';
@@ -108,5 +113,23 @@
 		>
 			{place}
 		</div>
+
+		{#if logoUrl}
+			<!-- The show's wordmark at the foot, on the same fade turned over: black at the
+				bottom edge and gone by the top of it, so the two grounds bracket the poster from
+				its own two edges rather than one of them cutting across it. The place is what
+				this copy of the box is, said at the top where a title goes, and the show is what
+				is inside it, said at the bottom — the reading order a box has, not two captions
+				competing for the same end. The mark is 90% of the width and takes whatever
+				height its own proportions give it, being lettering: it is read at the width it
+				was drawn to be read at, and the fade above it is the room it needs. The 90% is
+				measured off the front and not off a padded box, so the fade runs the full width
+				while the mark keeps a twentieth clear of either edge. -->
+			<div
+				class="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black to-transparent pt-[9cqw] pb-[2cqw]"
+			>
+				<img src={logoUrl} alt="" class="w-[90%] object-contain" />
+			</div>
+		{/if}
 	</div>
 </div>
