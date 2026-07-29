@@ -493,9 +493,7 @@
 	//
 	// The width is fixed at 80px and the box's own 30:37 gives the height: it is a mark
 	// on a town, so it stays the size it is whatever the map is showing, and a box small
-	// enough not to bury the town it stands on is a box read by its cover — the place at
-	// its foot is a few pixels of type at this width, and the tooltip is what says the
-	// name.
+	// enough not to bury the town it stands on is a box read by its cover.
 	//
 	// It hangs *below* its point rather than standing on it: a region pin is anchored by
 	// its bottom edge and grows upwards out of the point, so everything under the point
@@ -536,7 +534,9 @@
 			if (!bounds.contains(box.position)) continue;
 			const icon = Leaf.divIcon({ html: boxElement(box), className: '', iconSize: [0, 0] });
 			const badge = Leaf.marker(box.position, { icon, riseOnHover: true, pane: BOX_PANE });
-			if (box.label) badge.bindTooltip(box.label, { direction: 'top' });
+			// No tooltip: the box already carries the town's name across its foot, and a
+			// hover label over a map this dense is a second thing to read where there was
+			// one to look at.
 			if (box.onClick) badge.on('click', () => box.onClick!());
 			badge.addTo(boxLayer!);
 		}

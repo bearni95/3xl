@@ -159,8 +159,6 @@ export interface MapBoosterBox {
 	logoUrl?: string | null;
 	/** The town the box belongs to, said across the foot of the cover. */
 	locationName?: string | null;
-	/** Text shown as the hover tooltip (e.g. the municipality name). */
-	label?: string;
 	/**
 	 * Printed on white card instead of black — the stock the Booster tab prints this
 	 * town's box on: white for a town de festa today, black for a town the window
