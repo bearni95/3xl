@@ -39,6 +39,17 @@
 		[SpawnColor.Green]: 'bg-green-500',
 		[SpawnColor.Purple]: 'bg-purple-500'
 	};
+	// The same swatch again, each with the ink that reads on it — yellow is the one
+	// light enough to want black. Written out in full because Tailwind only emits
+	// classes it can see spelled in the source.
+	const colorPanels: Record<SpawnColor, string> = {
+		[SpawnColor.Red]: 'bg-red-500 text-white',
+		[SpawnColor.Yellow]: 'bg-yellow-400 text-black',
+		[SpawnColor.Blue]: 'bg-blue-500 text-white',
+		[SpawnColor.Orange]: 'bg-orange-500 text-white',
+		[SpawnColor.Green]: 'bg-green-500 text-white',
+		[SpawnColor.Purple]: 'bg-purple-500 text-white'
+	};
 	const colorBorders: Record<SpawnColor, string> = {
 		[SpawnColor.Red]: 'border-red-500',
 		[SpawnColor.Yellow]: 'border-yellow-400',
@@ -132,19 +143,23 @@
 				</div>
 			</div>
 
-			<!-- Who that is, and under it where they were claimed. Either line too long for
-				the column is cut with an ellipsis rather than wrapped: the three columns are
-				a row and must keep one height between them, whatever they are called and
-				wherever they were pulled. The place is the quieter of the two — it says
-				which copy of a character this is, not which character. -->
-			<div class="truncate text-center text-xs font-semibold" title={member.label}>
-				{member.label}
-			</div>
-			{#if member.locationName}
-				<div class="truncate text-center text-xs opacity-60" title={member.locationName}>
-					{member.locationName}
+			<!-- Who that is, and under it where they were claimed — on a panel in the same
+				colour the floor is painted, so the card reads as one object in one colour
+				rather than a picture with a caption. Either line too long for the column is
+				cut with an ellipsis rather than wrapped: the three columns are a row and
+				must keep one height between them, whatever they are called and wherever
+				they were pulled. The place is the quieter of the two — it says which copy of
+				a character this is, not which character. -->
+			<div class={classNames('px-1 py-0.5', colorPanels[member.color])}>
+				<div class="truncate text-center text-xs font-semibold" title={member.label}>
+					{member.label}
 				</div>
-			{/if}
+				{#if member.locationName}
+					<div class="truncate text-center text-xs opacity-70" title={member.locationName}>
+						{member.locationName}
+					</div>
+				{/if}
+			</div>
 		</div>
 	{/each}
 </div>
