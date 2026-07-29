@@ -111,6 +111,33 @@
 	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(47.83deg)]';
 	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-47.83deg)]';
 
+	// The cover again on each bevel face: the same picture, turned over left to right, a third
+	// of its width, and the third that shows is the one against the front — not the middle.
+	//
+	// It is given the front's own box to cover, 80cqw by the same height, so `object-cover`
+	// crops it to exactly what the front is showing whatever proportions the poster has (the
+	// saved ones run from 0.64 to 0.76, so a fixed height would have matched one show and
+	// missed the rest). The strip is then made out of that by transform, not by a smaller box:
+	// a third of the front's width, 26.667cqw, squashed into the face's 4.703 is a scale of
+	// 0.17636, and it is negative because the picture is turned over. Squashing sideways
+	// leaves every row where it was, so the column at the joint is the front's own edge column
+	// row for row, and the face reads as that edge folded back rather than as a second picture
+	// stood beside it.
+	//
+	// A scale about an edge does not put the picture where it is wanted on its own, so each
+	// face carries the shift that lands it: measuring from the picture's left edge, which is
+	// where both are anchored, the left face wants the cover's left edge at its right-hand
+	// side — one face width in, 4.703cqw — and the right face wants the cover's right edge at
+	// its left-hand side, which the turn puts three face widths in, 14.109cqw. `max-w-none`
+	// because a picture wider than what holds it is the whole point here, and the preflight
+	// caps every image at the width of its container.
+	//
+	// The face's skew is on the face, and a child is transformed with its parent, so the strip
+	// shears with the bevel by the same 47.83° its top edge does.
+	const FACE_COVER = 'absolute top-0 left-0 h-full w-[80cqw] max-w-none origin-left object-cover';
+	const FACE_COVER_LEFT = '[transform:translateX(4.703cqw)_scaleX(-0.17636)]';
+	const FACE_COVER_RIGHT = '[transform:translateX(14.109cqw)_scaleX(-0.17636)]';
+
 	// The two stocks a box is printed on, and the four tones of each: the stock itself and
 	// three steps off it, a twentieth, an eighth and a fifth of the way to the other end
 	// (#0f0f0f / #1f1f1f / #333333 over black, #f0f0f0 / #e0e0e0 / #cccccc under white).
@@ -199,20 +226,14 @@
 		<div class={classNames('absolute inset-x-0 bottom-0 aspect-square', skin.top, LID, LID_CUT)}></div>
 	</div>
 
-	<!-- The face: the box's own card stock, with the picture inset a twentieth of the width
-		on all four sides. The margin is the front's and not the poster's, which is why it is
-		padding here rather than an inset on the image — the card showing through it is what
-		says the box is a printed board with a picture on it instead of a picture with a box
-		behind it. It is graded down the scale rather than flat, from the step the left face
-		takes at its head to the pure stock at its foot (see `skin`): a front in one flat
-		colour was the one surface on a four-toned box that said nothing about which way it
-		faced, and the frame is where that grade is read, the picture covering everything
-		inside it. The two grounds over the picture start in the tone the front has where they
-		sit, so they run off the poster's edges into the frame rather than stopping against a
-		colour that is not the one they came from. A percentage padding is a share of the width
-		on every side, top and bottom included, so the frame is an even width all round rather
-		than following the 3:4 out into a taller band above and below. This keeps the flex
-		sizing the poster had, which is what still hands the box its 3:4.
+	<!-- The face: the picture and nothing else, edge to edge. There is no margin around it —
+		the cover is the front, so it runs to all four edges and takes whatever cropping that
+		costs it rather than standing inside a border of card. The front's own step off the
+		stock is graded down the scale beneath it, from the step the left face takes at its
+		head to the pure stock at its foot (see `skin`), which is what a show with no poster
+		shows and what the two grounds over the picture are drawn from — each starting in the
+		tone the front has where it sits, so neither ends on a colour the front is not. The
+		flex sizing is the same, which is what still hands the box its 3:4.
 
 		Nothing here is outlined. A rule round the front would be a line where the two bevel
 		faces meet its sides, holding them a pixel off the block they are faces of, and on a
@@ -227,24 +248,38 @@
 			and a face placed in there would meet the block it is a face of somewhere inside it.
 			Each takes its own step off the stock, the left further than the right, so the two sides
 			of the same cut are not one flat band round the picture but two faces turned different
-			ways (see `skin`). Nothing is written on them, so they are hidden from a screen reader,
-			which is being read the place and the mark. -->
-		<div class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, skin.left)} aria-hidden="true"></div>
-		<div class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, skin.right)} aria-hidden="true"></div>
+			ways (see `skin`), and each carries a flipped third of the cover over that (see
+			FACE_COVER). Nothing is written on them, so they are hidden from a screen reader, which
+			is being read the place and the mark. -->
+		<div
+			class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, skin.left, 'overflow-hidden')}
+			aria-hidden="true"
+		>
+			{#if coverUrl}
+				<img src={coverUrl} alt="" class={classNames(FACE_COVER, FACE_COVER_LEFT)} />
+			{/if}
+		</div>
+		<div
+			class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, skin.right, 'overflow-hidden')}
+			aria-hidden="true"
+		>
+			{#if coverUrl}
+				<img src={coverUrl} alt="" class={classNames(FACE_COVER, FACE_COVER_RIGHT)} />
+			{/if}
+		</div>
 
-		<div class={classNames('h-full w-full bg-gradient-to-b p-[5%]', skin.front)}>
-			<!-- The picture and the two things written over it, in one box: the mark and the place
-				belong to the poster's edges, not the box's, so they are placed against this rather
-				than against the front — an absolute inset is measured off the padding box, and
-				anchoring them out there would run the fades over the frame instead of ending them
-				where the picture ends. -->
+		<div class={classNames('h-full w-full bg-gradient-to-b', skin.front)}>
+			<!-- The picture and the two things written over it, in one box. Nothing pads it: the
+				cover is the front, edge to edge on all four sides, and what that costs is a crop
+				off two of them — a poster is not the box's shape and something has to give, so it
+				covers rather than fits. With no padding this box and the front are the same box,
+				which is also what the two bevel faces measure their strip of the picture against. -->
 			<div class="relative h-full w-full">
 				{#if coverUrl}
-					<!-- The poster fills the picture whole: it is inset from the front now but not
-						contained within it, so it covers what the frame leaves rather than standing
-						centred in it with the card showing at its sides. A 2:3 poster covering a box
-						this shape loses about a tenth off its height, top and bottom, which is the cost
-						of a picture that is all picture. -->
+					<!-- The poster covers the front rather than fitting inside it: the widest posters
+						saved are about 0.76 against the front's 0.75, so most of them are narrower than
+						it is and lose off the height instead — a 2:3 one about a tenth, top and bottom.
+						Whichever way it goes the front is all picture, which is what covering means. -->
 					<img
 						src={coverUrl}
 						alt=""
