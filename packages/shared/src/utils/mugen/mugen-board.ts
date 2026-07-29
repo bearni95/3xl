@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { destroyPixiApp } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
-import { REFERENCE_SOURCE_HEIGHT } from '../card/CardSprite';
+import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/CardSprite';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
 	boardCells,
@@ -164,8 +164,10 @@ export function cellScreenY(q: number, r: number, farRatio: number = DEFAULTS.fa
 }
 
 /** On-screen height of a reference-height ({@link REFERENCE_SOURCE_HEIGHT}) character
- * as a multiple of its (perspective-foreshortened) cell width. Every other character
- * scales by the same source→screen ratio, so shorter/taller sprites read shorter/taller. */
+ * as a multiple of the board's reference cell width — the height of the box every
+ * character is fitted into. Every other character scales by the same source→screen
+ * ratio, so shorter/taller sprites read shorter/taller; anything taller than the
+ * reference is brought back to this height rather than standing out of its cell. */
 const CHAR_HEIGHT_RATIO = 1.3;
 
 /** Horizontal speed (canvas px/s) a character runs between cells during combat. */
@@ -604,6 +606,22 @@ export class MugenBoard {
 	}
 
 	/**
+	 * The width of the board's reference cell — the centre hex, measured edge to edge
+	 * along the line characters stand on. Every character is drawn against this one
+	 * cell rather than the cell it stands on, so how big a fighter is drawn says
+	 * something about the fighter and nothing about where on the board it happens to
+	 * be: the two lines match, and walking a fighter forward never resizes it.
+	 */
+	private referenceCellWidth(): number {
+		const centre = this.hexCoord(0, 0);
+		const half = (SQRT3 / 2) * HEX_SCALE_X; // pointy-top hex half-width (flat edge), in grid columns
+		const footY = centre.y + HEX_FOOT_Y;
+		return Math.abs(
+			this.project(centre.x + half, footY).x - this.project(centre.x - half, footY).x
+		);
+	}
+
+	/**
 	 * Draw the board. Cells left of the vertical centre line take `leftColor`,
 	 * cells to the right `rightColor`, and the central column (q = 0) — the shared
 	 * row both creatures can enter — is painted `centerColor`. Iterates the exact
@@ -683,34 +701,22 @@ export class MugenBoard {
 		const baseFrames = animations[startName];
 		if (!baseFrames || baseFrames.length === 0) return;
 
-		// The character stands centred on its hex's lower-corner line, feet on it. The
-		// edge-to-edge points along that line are projected to size and place the sprite
-		// (the line itself is not drawn).
-		const centre = this.hexCoord(q, r);
-		const half = (SQRT3 / 2) * HEX_SCALE_X; // pointy-top hex half-width (flat edge), in grid columns
-		const footY = centre.y + HEX_FOOT_Y;
-		const leftLine = this.project(centre.x - half, footY);
-		const rightLine = this.project(centre.x + half, footY);
-		const mark = this.project(centre.x, footY);
+		// The character stands centred on its hex's lower-corner line, feet on it (the
+		// line itself is not drawn).
+		const mark = this.hexMark(q, r);
 
-		// Width at that line encodes the perspective foreshortening there. Every actor
-		// scales its sprite by the SAME source→screen ratio ({@link REFERENCE_SOURCE_HEIGHT}):
-		// a reference-height character stands CHAR_HEIGHT_RATIO of the cell width tall, and
-		// every other character scales by that same ratio — so on-screen size tracks each
-		// character's true sprite height relative to the others (Krillin renders shorter
-		// than Goku) instead of every sprite being stretched to the same cell height. The
-		// shared scale is the same one the character cards use, so both surfaces agree on
-		// relative sizes. It's then capped by the cell's width so a wide character can't
-		// overflow into its neighbours: since each frame is positioned by its body axis
-		// (anchorX), which can sit off-centre, the widest frame's axis-to-edge extent must
-		// stay within half the cell.
-		const cellWidth = Math.abs(rightLine.x - leftLine.x);
-		const sharedScale = (cellWidth * CHAR_HEIGHT_RATIO) / REFERENCE_SOURCE_HEIGHT;
-		const maxHalfExtent = Math.max(
-			...baseFrames.map((frame) => Math.max(frame.anchorX, 1 - frame.anchorX) * frame.width)
-		);
-		const widthScale = cellWidth / 2 / maxHalfExtent;
-		const fitScale = Math.min(sharedScale, widthScale);
+		// How big the character is drawn is the cards' question, asked of the cards' own
+		// answer ({@link characterFitScale}): one shared source→screen ratio for every
+		// character, capped so neither a tall one nor a wide one spills out of its box.
+		// The box is the *reference* cell — one cell for the whole board, not the cell
+		// this actor happens to stand on — so the two lines are scaled alike however
+		// deep each stands, and a fighter keeps its size as it walks. Both surfaces then
+		// agree on every character's size relative to the others.
+		const box = this.referenceCellWidth();
+		const fitScale = characterFitScale(baseFrames, {
+			width: box,
+			height: box * CHAR_HEIGHT_RATIO
+		});
 
 		const sprite = new Sprite();
 		// A negative x-scale mirrors the sprite around its anchor (in place).
@@ -743,10 +749,12 @@ export class MugenBoard {
 			aura: null,
 			label: null,
 			orders: null,
-			// Nominal size from the base frames at fit scale — stable across poses,
-			// unlike the live sprite whose size tracks the current frame's texture.
+			// Nominal size: the base cycle's widest and tallest frame at fit scale —
+			// stable across poses, unlike the live sprite whose size tracks the current
+			// frame's texture. Taken over the whole cycle (as the fit is), so an aura or
+			// a label sits by the character's full reach rather than by frame one's.
 			displayWidth: Math.max(...baseFrames.map((frame) => frame.width)) * fitScale,
-			displayHeight: baseFrames[0].height * fitScale,
+			displayHeight: Math.max(...baseFrames.map((frame) => frame.height)) * fitScale,
 			x: mark.x,
 			y: mark.y,
 			targetX: mark.x,

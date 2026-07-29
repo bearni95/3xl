@@ -56,6 +56,44 @@ export const REFERENCE_SOURCE_HEIGHT = 150;
  * reads a little bigger than the strict fit — a deliberate 30% zoom. */
 const IDLE_SCALE_BOOST = 1.3;
 
+/** One frame as the fit needs to read it: its native size and its body axis (0..1
+ * across the frame), which is the pivot every frame of a cycle is placed by. */
+export interface FitFrame {
+	width: number;
+	height: number;
+	anchorX: number;
+}
+
+/**
+ * The source→screen ratio a character's art is drawn at inside a box of the given
+ * size. This is the whole of how a character's on-screen size is decided, and every
+ * surface that stands a character up — the cards, the hex board — asks this same
+ * question of this same function, so a character is the same size relative to the
+ * others wherever it is drawn.
+ *
+ * The ratio is {@link REFERENCE_SOURCE_HEIGHT} → the box's height, shared by every
+ * character: a short character (Krillin, ~81 source px) renders visibly smaller than
+ * a tall one (Trunks, ~136), rather than each being stretched to fill its box, which
+ * is what made stocky characters balloon. The shared ratio is then capped so nobody
+ * spills out of the box:
+ *
+ *   · **height** — a character taller than the reference (Perfect Cell, ~185) is
+ *     brought back to the box's height instead of standing out of it.
+ *   · **width** — each frame is placed by its body axis, which can sit off-centre, so
+ *     the widest axis-to-edge reach of the cycle must fit in half the box.
+ */
+export function characterFitScale(frames: FitFrame[], box: { width: number; height: number }): number {
+	const maxHeight = Math.max(...frames.map((frame) => frame.height));
+	const maxHalfExtent = Math.max(
+		...frames.map((frame) => Math.max(frame.anchorX, 1 - frame.anchorX) * frame.width)
+	);
+	return Math.min(
+		box.height / REFERENCE_SOURCE_HEIGHT,
+		box.height / maxHeight,
+		box.width / 2 / maxHalfExtent
+	);
+}
+
 /**
  * The width of the MTG-style frame drawn around a card of the given content width.
  * The frame is *outset* — it extends this far beyond each edge — so a layout placing
@@ -252,15 +290,12 @@ export class CardSprite extends Container {
 
 	/**
 	 * Fit the idle animation inside the art area and start looping it on the app
-	 * ticker. The key point is that every card scales its sprite by the *same* ratio
-	 * ({@link REFERENCE_SOURCE_HEIGHT}), so a character's on-screen size reflects its
-	 * true sprite size relative to the others — a short character (Krillin, ~78px)
-	 * renders visibly smaller than a tall one (Trunks, ~136px) rather than each sprite
-	 * being stretched to fill its box, which is what made stocky characters balloon.
-	 * The shared scale is then capped so a character taller or wider than the box can
-	 * never overflow it. Frames are anchored at their body axis on a common baseline
-	 * (so the character breathes in place without drifting), and that baseline is
-	 * placed to centre the animation vertically within the art area.
+	 * ticker. How big the character comes out is {@link characterFitScale}'s to say —
+	 * the same question the hex board asks of the same function, so a character is the
+	 * same size relative to the others on both surfaces. Frames are anchored at their
+	 * body axis on a common baseline (so the character breathes in place without
+	 * drifting), and that baseline is placed to centre the animation vertically within
+	 * the art area.
 	 */
 	private applyIdle(frames: IdleFrame[]): void {
 		this.idleFrames = frames;
@@ -273,20 +308,10 @@ export class CardSprite extends Container {
 		const boxH = this.cardWidth * 0.75 - pad * 2;
 
 		const maxHeight = Math.max(...frames.map((f) => f.height));
-		// Widest axis-to-edge extent across frames (each frame is placed by its body
-		// anchor, which can sit off-centre), so the whole cycle stays within the box.
-		const maxHalfExtent = Math.max(
-			...frames.map((f) => Math.max(f.anchorX, 1 - f.anchorX) * f.width)
-		);
-		// One shared ratio for every card keeps proportions honest between characters;
-		// the height/width caps only bite for a sprite that would otherwise spill out
-		// of the art box.
-		const sharedScale = boxH / REFERENCE_SOURCE_HEIGHT;
-		const heightCap = boxH / maxHeight;
-		const widthCap = boxW / 2 / maxHalfExtent;
 		// Draw the idle (and its shadow, which shares this scale) 30% larger than the
 		// fitted size. Applied after the fit so every character grows by the same factor.
-		this.idleFitScale = Math.min(sharedScale, heightCap, widthCap) * IDLE_SCALE_BOOST;
+		this.idleFitScale =
+			characterFitScale(frames, { width: boxW, height: boxH }) * IDLE_SCALE_BOOST;
 
 		// Horizontally centre the character's *visible* extent in the art box. The body
 		// axis can sit off-centre in the frame (and the flip mirrors each frame about it),
