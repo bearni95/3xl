@@ -23,7 +23,8 @@ import { getPool } from '../db';
  *
  * Character assignments live only in Supabase — there is no local file for them.
  * `GET /assignments` returns the whole show→characters map; `PUT /:showId/characters`
- * replaces the assignment list for one show.
+ * replaces the assignment list for one show, and `PUT /assignments/:characterId`
+ * sets the single show one character belongs to.
  *
  * Mirrors ./character-templates: talks to Supabase's Postgres directly via ../db
  * (the DB password) so it can provision the tables itself — no manual SQL step.
@@ -1381,6 +1382,73 @@ showTemplatesRouter.get(
 	asyncHandler(async (_req, res) => {
 		const assignments = await fetchAssignments();
 		res.json({ assignments });
+	})
+);
+
+// Set which show one character belongs to. Body: { showId: number | null } —
+// null clears it, leaving the character unassigned.
+//
+// The sibling PUT below replaces a whole show's cast, which is what the /shows
+// screen edits; this is the same join read from the character's side, which is
+// what a per-character row edits. Doing it as one call rather than two cast
+// rewrites keeps the move atomic (a character is never in both shows or neither)
+// and never touches the rest of either cast.
+//
+// A character belongs to a single show here, so its existing rows are dropped
+// whichever show they name. Both referenced rows are upserted first, from the
+// local sources of truth, so an assignment works before an explicit sync has
+// pushed either up.
+showTemplatesRouter.put(
+	'/assignments/:characterId',
+	asyncHandler(async (req, res) => {
+		const characterId = String(req.params.characterId);
+		const character = characters.find((c) => c.id === characterId);
+		if (!character) httpError(404, `No local character "${characterId}"`);
+
+		const raw = (req.body as { showId?: unknown }).showId;
+		if (raw !== null && !Number.isInteger(raw)) {
+			httpError(400, 'Body must be { showId: number | null }');
+		}
+		const showId = raw === null ? null : Number(raw);
+
+		// The show must exist in the local collection so we can upsert its name.
+		let template: ShowTemplate | undefined;
+		if (showId !== null) {
+			template = (await localTemplates()).find((t) => t.id === showId);
+			if (!template) httpError(404, `Show ${showId} is not in the saved collection`);
+		}
+
+		await ensureTables();
+		const client = await getPool().connect();
+		try {
+			await client.query('begin');
+			await client.query(
+				`insert into character_templates (id, name) values ($1, $2)
+				 on conflict (id) do update set name = excluded.name, updated_at = now()`,
+				[characterId, character!.label]
+			);
+			await client.query('delete from show_characters where character_id = $1', [characterId]);
+			if (template) {
+				await client.query(
+					`insert into show_templates (id, name) values ($1, $2)
+					 on conflict (id) do update set name = excluded.name, updated_at = now()`,
+					[template.id, template.name]
+				);
+				await client.query(
+					'insert into show_characters (show_id, character_id) values ($1::bigint, $2)',
+					[template.id, characterId]
+				);
+			}
+			await client.query('commit');
+		} catch (error) {
+			await client.query('rollback').catch(() => undefined);
+			const message = error instanceof Error ? error.message : String(error);
+			httpError(400, `Could not save assignment: ${message}`);
+		} finally {
+			client.release();
+		}
+
+		res.json({ assignments: await fetchAssignments() });
 	})
 );
 

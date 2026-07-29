@@ -11,8 +11,10 @@
 				<span class="badge badge-neutral">{characters.length} characters</span>
 			</div>
 			<p class="text-sm opacity-70">
-				Every character in one table — the sprite and name the grid shows, the show it belongs to,
-				and its rarity tier. Read-only: editing stays on the character screens.
+				Every character in one table — the sprite the grid shows, its name, the show it belongs to
+				and its rarity tier. Each field saves itself as it is changed: a name lands in the
+				character's definition JSON, the generated registry and Supabase; a show and a rarity live
+				only in Supabase.
 			</p>
 			<a class="link link-primary text-sm" href="/characters">← Back to character frames</a>
 		</header>

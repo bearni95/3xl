@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import MugenAnimationPreview from '$components/core/MugenAnimationPreview.svelte';
-	import RarityBadge from '$components/core/RarityBadge.svelte';
+	import CharacterDashboardRow from '$components/core/CharacterDashboardRow.svelte';
 	import type { CharacterOption } from '@3xl/data';
 	import { DEFAULT_RARITY, type CharacterTemplate } from '$types/character-template.type';
 	import type { ShowCharacterAssignments, ShowTemplate } from '$types/show-template.type';
 
 	// Everything this table adds to the registry — which show claims a character
 	// and its rarity tier — lives only in Supabase, read through @3xl/backend
-	// (default :2002): the same endpoints the /characters grid reads.
+	// (default :2002): the same endpoints the /characters grid reads. Each row
+	// owns its own writes.
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
 
 	// The full character list to lay out, one row each.
@@ -50,6 +50,8 @@
 	// belongs to a single show, so the first show that claims it wins.
 	$: showIdByCharacter = buildShowIdByCharacter(assignments);
 	$: showNameById = new Map(showTemplates.map((t) => [t.id, t.name]));
+	// Shows a character can be moved to, by name — the order the select reads in.
+	$: showOptions = [...showTemplates].sort((a, b) => a.name.localeCompare(b.name));
 
 	function buildShowIdByCharacter(map: ShowCharacterAssignments): Map<string, number> {
 		const result = new Map<string, number>();
@@ -65,6 +67,7 @@
 	/** One table row: a character with the show and rarity it reads as. */
 	interface Row {
 		character: CharacterOption;
+		showId: number | null;
 		showName: string;
 		rarity: number;
 	}
@@ -72,6 +75,10 @@
 	// Ordered exactly as the /characters grid orders its sections and cards — by
 	// show name, characters with no show last, and by rarity (highest first)
 	// inside each show — so the same table reads as that grid unrolled.
+	//
+	// Built from what the load returned and left alone after that: a row that has
+	// just been given another show or another tier keeps its place until the page
+	// is reloaded, rather than jumping out from under the field being edited.
 	$: rows = buildRows(characters, showIdByCharacter, showNameById, rarityById);
 
 	function buildRows(
@@ -82,10 +89,11 @@
 	): Row[] {
 		return all
 			.map((character) => {
-				const showId = showByCharacter.get(character.id);
+				const showId = showByCharacter.get(character.id) ?? null;
 				return {
 					character,
-					showName: showId === undefined ? '' : (names.get(showId) ?? `Show ${showId}`),
+					showId,
+					showName: showId === null ? '' : (names.get(showId) ?? `Show ${showId}`),
 					rarity: rarities.get(character.id) ?? DEFAULT_RARITY
 				};
 			})
@@ -125,33 +133,12 @@
 		</thead>
 		<tbody>
 			{#each rows as row (row.character.id)}
-				<tr>
-					<td>
-						<!-- Every character's idle animation is keyed `idle` in its manifest. -->
-						<MugenAnimationPreview
-							basePath={row.character.basePath}
-							animation="idle"
-							size="h-16 w-16"
-						/>
-					</td>
-					<td>
-						<div class="font-medium">{row.character.label}</div>
-						<div class="font-mono text-xs opacity-60">{row.character.id}</div>
-					</td>
-					<td>
-						{#if row.showName}
-							{row.showName}
-						{:else}
-							<span class="opacity-50">Unassigned</span>
-						{/if}
-					</td>
-					<td>
-						<div class="flex items-center gap-2">
-							<span class="font-mono text-sm">{row.rarity}</span>
-							<RarityBadge rarity={row.rarity} />
-						</div>
-					</td>
-				</tr>
+				<CharacterDashboardRow
+					character={row.character}
+					showId={row.showId}
+					rarity={row.rarity}
+					shows={showOptions}
+				/>
 			{/each}
 		</tbody>
 	</table>

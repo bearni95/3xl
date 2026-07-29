@@ -12,6 +12,7 @@
 	},
 	"dependencies": {
 		"@3xl/data": "workspace:*",
+		"@3xl/mugen": "workspace:*",
 		"@3xl/shared": "workspace:*",
 		"cors": "^2.8.5",
 		"dotenv": "^16.4.7",

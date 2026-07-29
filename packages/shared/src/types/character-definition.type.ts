@@ -157,6 +157,13 @@ export interface FaceCrop {
 	size: number;
 }
 
+/**
+ * Longest display name a character may be given. Names are read in a card's
+ * width and in table rows, so a name past this length says nothing more — it
+ * only truncates somewhere.
+ */
+export const LABEL_MAX_LENGTH = 60;
+
 /** Non-directional movement slots in render/display order. */
 export const MOVEMENT_ANIMATIONS: MovementAnimationName[] = ['idle', 'hurt'];
 

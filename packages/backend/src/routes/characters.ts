@@ -13,11 +13,15 @@ import {
 	DEFAULT_STAT,
 	COMPOUND_COLORS,
 	DEFAULT_COLOR,
+	LABEL_MAX_LENGTH,
 	RENDER_SCALE_MIN,
 	RENDER_SCALE_MAX,
 	type CharacterDefinition
 } from '@3xl/shared/types/character-definition.type';
+// The registry is derived from these definitions, so a rename has to rewrite it.
+import { regenerateRegistry } from '@3xl/mugen/registry';
 import { asyncHandler, httpError } from '../http-error';
+import { upsertTemplateName } from './character-templates';
 
 /**
  * Read/write API for character definitions stored as JSON in the @3xl/data
@@ -25,6 +29,10 @@ import { asyncHandler, httpError } from '../http-error';
  * app at `/data/characters/<id>/definition.json`). The admin `/characters`
  * editor calls this to persist animation bindings and move params straight
  * into the git tree.
+ *
+ * `PUT /:id/label` is the one write that reaches past the JSON: a display name is
+ * mirrored in the generated registry and in Supabase, so renaming updates all
+ * three (see the route).
  *
  * Was `src/routes/api/characters/[id]/+server.ts` in the frontend; extracted
  * here so the admin app can stay a pure static SPA.
@@ -205,5 +213,50 @@ charactersRouter.post(
 		// readable when these files land in git.
 		await writeFile(definitionPath(id), JSON.stringify(definition, null, '\t') + '\n', 'utf-8');
 		res.json(definition);
+	})
+);
+
+// Rename one character. Body: { label: string }.
+//
+// A display name is the one field of a definition that is also mirrored
+// elsewhere, so a rename is three writes and is only done when all three land:
+// the definition JSON it is authored in, @3xl/data's generated registry (derived
+// from every definition — and what the apps and the Supabase sync both read the
+// name from, so leaving it stale would put the old name back on the next sync),
+// and the character's `character_templates` row.
+charactersRouter.put(
+	'/:id/label',
+	asyncHandler(async (req, res) => {
+		const id = String(req.params.id);
+		const path = definitionPath(id);
+
+		const raw = (req.body as { label?: unknown }).label;
+		if (typeof raw !== 'string') httpError(400, 'Body must be { label: string }');
+		const label = (raw as string).trim();
+		if (!label) httpError(400, 'Label cannot be empty');
+		if (label.length > LABEL_MAX_LENGTH) {
+			httpError(400, `Label cannot be longer than ${LABEL_MAX_LENGTH} characters`);
+		}
+
+		let current: unknown;
+		try {
+			current = JSON.parse(await readFile(path, 'utf-8'));
+		} catch {
+			httpError(404, `No definition for "${id}"`);
+		}
+
+		// Run the whole definition back through validate() so a rename writes the
+		// same canonical shape a full save does.
+		const definition = validate(id, { ...(current as CharacterDefinition), label });
+		await writeFile(path, JSON.stringify(definition, null, '\t') + '\n', 'utf-8');
+		await upsertTemplateName(id, label);
+		res.json(definition);
+
+		// Last, and deliberately after the response: the registry is a module this
+		// server itself imports (via @3xl/data), so rewriting it makes `tsx watch`
+		// restart the process — which is how the restarted server picks the new name
+		// up, but would also kill this request if anything still had to happen. By
+		// here nothing does.
+		regenerateRegistry();
 	})
 );

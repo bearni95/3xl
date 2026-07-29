@@ -82,6 +82,9 @@ importers:
       '@3xl/data':
         specifier: workspace:*
         version: link:../data
+      '@3xl/mugen':
+        specifier: workspace:*
+        version: link:../mugen
       '@3xl/shared':
         specifier: workspace:*
         version: link:../shared

@@ -71,6 +71,21 @@ async function fetchRemote(): Promise<CharacterTemplate[]> {
 	return rows;
 }
 
+/**
+ * Upsert one character's display name into Supabase. Exported for ./characters,
+ * which owns the definition JSON the name is authored in but not this table: a
+ * rename has to land on both sides in the same request, or the next local→remote
+ * sync would push the stale name back over the new one.
+ */
+export async function upsertTemplateName(id: string, name: string): Promise<void> {
+	await ensureTable();
+	await getPool().query(
+		`insert into character_templates (id, name) values ($1, $2)
+		 on conflict (id) do update set name = excluded.name, updated_at = now()`,
+		[id, name]
+	);
+}
+
 /** Coerce an untrusted rarity value to a stored non-negative integer tier. */
 function normalizeRarity(raw: unknown): number {
 	const value = typeof raw === 'number' && Number.isFinite(raw) ? Math.round(raw) : DEFAULT_RARITY;
