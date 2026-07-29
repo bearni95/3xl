@@ -68,13 +68,45 @@
 	// CombatController.restore).
 	$: battleBoard = ($openBattle?.board ?? null) as BattleBoardSnapshot | null;
 
-	// The spawn ids that battle is being fought with, in fielded order — a fight is
+	// The spawn ids that battle is being fought with, in **fielded order** — a fight is
 	// fixed at what was put on the board, so a resumed one fields these rather than
-	// whatever the roster's active team is now. Empty until a turn has been saved.
-	$: battleTeam = (battleBoard?.fighters ?? [])
-		.filter((fighter) => fighter.side === 'info')
-		.sort((a, b) => a.slot - b.slot)
-		.map((fighter) => fighter.spawnId);
+	// whatever the roster's active team is now.
+	//
+	// Read once per battle, and deliberately not derived from the live board: the board
+	// is written back every turn, and a line-up that followed it would be rebuilt by
+	// the very save it caused — the board tearing itself down and back up, turn after
+	// turn. What a battle is being fought with is settled when the battle arrives.
+	let battleTeam: string[] = [];
+	let battleTeamFor: string | null = null;
+	$: syncBattleTeam($openBattle?.startedAt ?? null, $openBattle?.board ?? null);
+
+	function syncBattleTeam(startedAt: string | null, board: BattleBoardSnapshot | null): void {
+		if (!startedAt) {
+			battleTeam = [];
+			battleTeamFor = null;
+			return;
+		}
+		if (startedAt === battleTeamFor) return;
+		battleTeamFor = startedAt;
+		battleTeam = fieldedTeam(board);
+	}
+
+	/**
+	 * The player's line-up out of a saved board, back in team order.
+	 *
+	 * A fighter's slot is its **lane**, and the lanes run top→bottom down the board —
+	 * but the team fills its column the other way about, its first member standing
+	 * nearest the viewer (`PLAYER_LINEUP_CELLS` is `PLAYER_CELLS` reversed). So the
+	 * lane order is the team order backwards, and handing it back the way it is stored
+	 * would field the team reversed, quietly putting every fighter in somebody else's
+	 * duel.
+	 */
+	function fieldedTeam(board: BattleBoardSnapshot | null): string[] {
+		return (board?.fighters ?? [])
+			.filter((fighter) => fighter.side === 'info')
+			.sort((a, b) => b.slot - a.slot)
+			.map((fighter) => fighter.spawnId);
+	}
 
 	// `territory` fires once the server has settled what a finished fight did to the
 	// town, so the host (the map) can reload the occupancy it is drawing.

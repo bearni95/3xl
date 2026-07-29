@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { get } from 'svelte/store';
 import {
 	CombatController,
+	PLAYER_CELLS,
+	RIVAL_CELLS,
 	type CombatState,
 	type FighterSeed,
 	type FighterView
 } from '$services/combat.controller';
+import { cellScreenY } from '$utils/mugen/mugen-board';
 import type { CombatColor } from '$types/character-definition.type';
 import type { BattleBoardSnapshot } from '$types/battle.type';
 
@@ -129,5 +132,47 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 		const short: BattleBoardSnapshot = { turn: 6, fighters: snapshot.fighters.slice(0, 4) };
 
 		expect(get(new CombatController(seeds(COLORS), short)).turn).toBe(1);
+	});
+
+	/**
+	 * The player's line-up out of a board, back in team order — the same mapping
+	 * `CombatArena.fieldedTeam` performs, and the one that has to be the exact inverse
+	 * of how the arena places a team on the board.
+	 */
+	const fieldedTeam = (snapshot: BattleBoardSnapshot): string[] =>
+		snapshot.fighters
+			.filter((fighter) => fighter.side === 'info')
+			.sort((a, b) => b.slot - a.slot)
+			.map((fighter) => fighter.spawnId);
+
+	it('gives the fielded team back in the order it was fielded, not in lane order', () => {
+		// The arena's own placement, replicated: the team fills its column with its
+		// first member nearest the viewer (PLAYER_CELLS reversed), and each side is then
+		// seeded in the order it stands top→bottom on screen.
+		const team = ['team-a', 'team-b', 'team-c'];
+		const lineupCells = [...PLAYER_CELLS].reverse();
+		const place = (ids: string[], cells: typeof PLAYER_CELLS, side: 'error' | 'info') =>
+			ids
+				.map((spawnId, index) => ({ spawnId, side, gridY: cellScreenY(cells[index].q, cells[index].r) }))
+				.sort((a, b) => a.gridY - b.gridY);
+		const seeded = [
+			...place(['og-0', 'og-1', 'og-2'], RIVAL_CELLS, 'error'),
+			...place(team, lineupCells, 'info')
+		].map(
+			(entry, index): FighterSeed => ({
+				id: `${entry.side}:${entry.spawnId}`,
+				spawnId: entry.spawnId,
+				name: `f${index}`,
+				side: entry.side,
+				color: 'red',
+				moves: []
+			})
+		);
+
+		// A team read back off its own board must be the team that was put on it. Read
+		// in lane order it comes back reversed, which silently moves every fighter into
+		// somebody else's duel — and, because the line-up drives the board's identity,
+		// makes the board rebuild itself on every save.
+		expect(fieldedTeam(new CombatController(seeded).snapshot())).toEqual(team);
 	});
 });
