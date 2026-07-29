@@ -253,19 +253,19 @@
 		}
 
 		// The side sitting on the region, where there is one: the very cards the sidebar
-		// draws a team with — floor, character, name, place and all — in place of the
-		// tile. A town shows who holds it rather than a glyph for the show they belong
-		// to, and it is the caller that decides how many of that side a pin is worth
-		// (today, the lead alone). It is the same component (see TeamLineup), mounted
-		// into the pin's DOM because this is imperative code rather than a template, and
-		// tracked so the next rebuild can unmount it: each sprite runs a frame timer, and
-		// a pin merely detached from the map would go on animating for nothing.
+		// draws a team with — floor, character, name, place and all — three across, in
+		// place of the tile. Which pins get one is the caller's to say (today, the
+		// selected town alone); every other pin falls through to its glyph below. It is
+		// the same component (see TeamLineup), mounted into the pin's DOM because this
+		// is imperative code rather than a template, and tracked so the next rebuild can
+		// unmount it: each sprite runs a frame timer, and a pin merely detached from the
+		// map would go on animating for nothing.
 		if (marker.team?.length) {
 			const frame = document.createElement('div');
-			// A fixed 125px for the lead standing on the town. Fixed, so a statue is the
-			// same size on every town rather than tracking anything about the map or the
-			// region under it.
-			frame.className = 'w-[125px] drop-shadow-lg';
+			// A fixed 500px for the side together, shared out by the row. Fixed, so the
+			// statues come out the same size whichever town is selected, rather than
+			// tracking anything about the map or the region under them.
+			frame.className = 'w-[500px] drop-shadow-lg';
 			pinTeams.push(
 				mount(TeamLineup, {
 					target: frame,

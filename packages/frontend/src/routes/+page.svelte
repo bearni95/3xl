@@ -421,26 +421,27 @@
 	// the one whose pins are on screen, so the polygons say in colour what the pins
 	// over them already say.
 	//
-	// Except where the pin says it better: a town standing its team up says its colour
-	// three times over, once per statue's floor and panel, and a 90% wash of a fourth
-	// colour under them is the ground competing with what is standing on it. Such a
+	// Except under the one town standing its team up (`statuedTown`): three statues say
+	// that colour three times over, once per floor and panel, and a 90% wash of a
+	// fourth under them is the ground competing with what is standing on it. That one
 	// shape keeps its white outline and goes bare, letting the satellite read through
-	// to the statues' feet. A town whose pin fell back to the show's glyph makes no
-	// such statement, so it washes as before — which is also what keeps the coarser
-	// tiers (no team ever sits on a comarca) painting exactly as they did.
+	// to their feet. Every other town makes no such statement and washes as before —
+	// which is also what keeps the coarser tiers painting exactly as they did.
 	function tierStyle(
 		tier: RegionType,
 		weight: number,
 		colors: RegionColors,
 		imaged: number,
-		teams: ReadonlyMap<string, TeamMemberRoll[]>
+		statuedTown: string | null
 	) {
 		return (feature?: GeoJSON.Feature) => {
 			const color = featureColor(tier, feature, colors);
 			// Keyed exactly as `featureColor` keys a municipality, and as the pins are
 			// built — a town's polygon id IS its region node's key.
 			const statued =
-				tier === 'Municipality' && teams.has(String(feature?.properties?.id ?? ''));
+				tier === 'Municipality' &&
+				statuedTown != null &&
+				String(feature?.properties?.id ?? '') === statuedTown;
 			const washes = color != null && tierRank[tier] === imaged && !statued;
 			return {
 				color: lineColor,
@@ -460,36 +461,36 @@
 	// and the thicker that line is drawn.
 	//
 	// Every tier draws its borders in white, and the tier the map is imaging also
-	// washes each of its shapes in the colour that region's pin flies — except where
-	// that pin stands a team up, which says the colour for itself (see tierStyle). So
-	// a region is coloured on the map exactly as it is on its pin, and never twice.
+	// washes each of its shapes in the colour that region's pin flies — except under
+	// the selected town, whose statues say the colour for themselves (see tierStyle).
+	// So a region is coloured on the map exactly as it is on its pin, and never twice.
 	// Every other tier is line-only, so the satellite basemap keeps reading through
 	// them, and `hiddenLineUrls` still drops the lines of the tiers finer than the
 	// imaged one. All decorative: the wash is not something to click or hover, so no
 	// layer captures pointer events and the pins and stars own every click.
 	//
-	// Rebuilt (a fresh array) whenever a region changes colour, a town's team changes
-	// or the map images another tier — that is what repaints the layers, which are
-	// fetched only once.
+	// Rebuilt (a fresh array) whenever a region changes colour, another town is
+	// selected or the map images another tier — that is what repaints the layers,
+	// which are fetched only once.
 	$: overlays = [
 		{
 			url: '/data/geo/municipis.json',
-			style: tierStyle('Municipality', 1, regionColors, hiddenRank, townTeams),
+			style: tierStyle('Municipality', 1, regionColors, hiddenRank, statuedTown),
 			interactive: false
 		},
 		{
 			url: '/data/geo/comarques.json',
-			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank, townTeams),
+			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank, statuedTown),
 			interactive: false
 		},
 		{
 			url: '/data/geo/provincies.json',
-			style: tierStyle('Province', 2, regionColors, hiddenRank, townTeams),
+			style: tierStyle('Province', 2, regionColors, hiddenRank, statuedTown),
 			interactive: false
 		},
 		{
 			url: '/data/geo/territoris.json',
-			style: tierStyle('Territory', 3, regionColors, hiddenRank, townTeams),
+			style: tierStyle('Territory', 3, regionColors, hiddenRank, statuedTown),
 			interactive: false
 		}
 	] satisfies MapOverlay[];
@@ -1352,14 +1353,33 @@
 
 	$: townTeams = buildTownTeams(municipalitySeeds, showsById, showCharacterIds, holders);
 
+	// The one town that stands its side up on its pin: the selected municipality, and
+	// only while it has a side to stand. Every other pin keeps the show's glyph.
+	//
+	// A team on the map is three cards' worth of picture, and every town wearing one at
+	// once is a terrain of cards with no map left under it. On the town being looked at
+	// it is the point — who is holding this, standing where they are holding it — so
+	// the map says it exactly there and nowhere else.
+	//
+	// Read off the clicked selection rather than `openRegion`, and not only because a
+	// zoom focus is not a choice of town: `openRegion` falls back to the focus, the
+	// focus is measured from the pins, and pins that moved with it would be deciding
+	// what they are drawn from. The two agree on a municipality in any case — the focus
+	// opens the tier ABOVE its pins, so only a click ever names one. A key naming a
+	// coarser region simply isn't in `townTeams` and lands the same as no selection.
+	//
+	// The polygon wash reads the same value (see tierStyle): the shape that gets the
+	// statues is the shape that goes bare under them.
+	$: statuedTown = selected && townTeams.has(selected) ? selected : null;
+
 	// One pin per region that has a show, dropped at the centre of the region's
 	// bounding box, captioned with the show and tooltipped with the region name;
 	// clicking a pin opens that region. Pins clear of the selection are flagged
 	// `dimmed` so the map fades them rather than dropping them.
 	//
-	// A town's pin shows the side sitting on it — the three characters themselves,
-	// each on their own colour. Above the towns there is no such side (nobody holds a
-	// comarca), so those pins carry the show's glyph instead: the same icon the panel's
+	// The SELECTED town's pin shows the side sitting on it — the three characters
+	// themselves, each on their own colour. Every other pin carries the show's glyph:
+	// the same icon the panel's
 	// tables badge a show with, not its poster, because a poster is a tall photographic
 	// rectangle that reads as a picture dropped on the map while the flat monochrome
 	// glyph reads as a marking of the territory. A show with no glyph drawn yet keeps
@@ -1371,6 +1391,7 @@
 		geometry: RegionGeometry,
 		relevant: Set<string> | null,
 		teams: ReadonlyMap<string, TeamMemberRoll[]>,
+		statuedTown: string | null,
 		memberShows: ReadonlyMap<string, number[]>
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
@@ -1379,16 +1400,11 @@
 			const box = geometry.boxes.get(node.key);
 			if (!box) continue;
 			const [[south, west], [north, east]] = box;
-			// Only a municipality's key is a municipality id, so coarser tiers find
-			// nothing here and keep their glyph.
-			//
-			// The pin shows the LEAD alone, not the whole side: a pin is a mark on a map,
-			// and three of them per town is a row of cards dropped on the terrain — the
-			// full side is what the panel is for, once a town is opened. The lead is the
-			// one that speaks for the team anyway (it is whose show the town flies and
-			// whose colour it wears), so one statue says who holds the town at a size the
-			// sprite is legible at.
-			const team = (teams.get(node.key) ?? []).slice(0, 1);
+			// The whole side, but on the selected town alone (see statuedTown) — every
+			// other pin, and every tier above the towns, falls through to the show's
+			// glyph below. Only a municipality's key is a municipality id, so the coarser
+			// tiers find nothing here in any case.
+			const team = node.key === statuedTown ? (teams.get(node.key) ?? []) : [];
 			pins.push({
 				id: node.key,
 				position: [(south + north) / 2, (west + east) / 2],
@@ -1428,11 +1444,14 @@
 		geometry: RegionGeometry,
 		relevant: Set<string> | null,
 		teams: ReadonlyMap<string, TeamMemberRoll[]>,
+		statuedTown: string | null,
 		memberShows: ReadonlyMap<string, number[]>
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
-			levels.push(buildMarkers(frontierAtDepth(d, nodes), geometry, relevant, teams, memberShows));
+			levels.push(
+				buildMarkers(frontierAtDepth(d, nodes), geometry, relevant, teams, statuedTown, memberShows)
+			);
 		}
 		return levels;
 	}
@@ -1443,6 +1462,7 @@
 		regionGeometry,
 		relevantKeys,
 		townTeams,
+		statuedTown,
 		showsByCharacter
 	);
 
