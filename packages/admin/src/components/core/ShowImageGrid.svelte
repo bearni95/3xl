@@ -36,7 +36,9 @@
 		11: 'grid-cols-11',
 		12: 'grid-cols-12'
 	};
-	$: gridClass = classNames('grid gap-2', columnClasses[columns] ?? 'grid-cols-8');
+	// items-start so a tall thumbnail does not stretch its neighbours: each tile is
+	// as tall as its own image at the column's width.
+	$: gridClass = classNames('grid items-start gap-2', columnClasses[columns] ?? 'grid-cols-8');
 
 	// The grid renders the groups top-to-bottom; navigation in the preview modal
 	// follows that same visual order, so hand it this flattened list.
@@ -74,17 +76,22 @@
 								<button
 									type="button"
 									class={classNames(
-										'bg-base-200 hover:ring-primary flex h-24 w-full cursor-pointer items-center justify-center overflow-hidden rounded transition hover:ring-2',
+										'bg-base-200 hover:ring-primary block w-full cursor-pointer overflow-hidden rounded transition hover:ring-2',
 										{ 'ring-primary ring-2': isEnabled }
 									)}
 									on:click={() => dispatch('preview', { images: orderedImages, image })}
 									title={`${image.kind} · ${image.width}×${image.height}${image.language ? ` · ${image.language}` : ''}`}
 								>
+									<!-- width/height are the real pixel dimensions, so a lazily loaded
+									     thumbnail reserves its own aspect ratio at the column's width
+									     instead of collapsing the tile until it arrives. -->
 									<img
-										class={classNames('h-full w-full object-contain transition', {
+										class={classNames('block h-auto w-full transition', {
 											'opacity-40': selectable && !isEnabled
 										})}
 										src={image.thumbnailUrl}
+										width={image.width}
+										height={image.height}
 										alt={`${image.kind} for ${showName}`}
 										loading="lazy"
 									/>
