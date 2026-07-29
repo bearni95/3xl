@@ -570,6 +570,8 @@
 			label: labelFor(spawn.characterId),
 			basePath: basePathFor(spawn.characterId),
 			color: spawn.color,
+			// The stock the card was printed on, which is the ink the statue is drawn in.
+			box: spawn.box,
 			locationName: locationNameFor(spawn.locationId),
 			spawnedAt: spawn.createdAt,
 			showId: showIdFor(spawn.characterId)
@@ -894,60 +896,68 @@
 								/>
 							</label>
 
-							<!-- The colours are the swatches themselves rather than a list of their
-							     names: there are exactly six, so they are one row of six, and a square
-							     saying red is quicker to read than the word and needs no translating.
-							     Not a <label>, since there is no one control here to label — a group of
-							     six buttons, each pressed or not. -->
-							<div class="flex flex-col gap-1 text-xs">
-								<span class="opacity-60">Colour</span>
-								<div class="grid grid-cols-6 gap-1" role="group" aria-label="Filter by colour">
-									{#each COLOR_OPTIONS as color (color)}
-										<button
-											type="button"
-											class={colorSquareClasses(color, filterColor)}
-											title={color}
-											aria-label="Filter by {color}"
-											aria-pressed={filterColor === color}
-											on:click={() => toggleColorFilter(color)}
-										></button>
-									{/each}
-								</div>
-							</div>
-
-							<!-- The shows say themselves the way the statues do: their own lettering,
-							     not their names set in ours. One to a row, the full width of the cell:
-							     a wordmark is wide, and two side by side left each of them a smudge. A
-							     show whose logo is not enabled yet falls back to its name, so it is
-							     still there to filter by — and the whole group only stands while the
-							     roster holds cards from more than nothing. -->
-							{#if showFilterOptions.length > 0}
+							<!-- The colours and the shows side by side, a column of the card each: the
+							     colours are a block six squares can be laid out inside rather than a row
+							     needing the full width, and the shows are a list that runs as long as the
+							     roster's shows do — so what one saves in width the other spends in height,
+							     and they cost the card the taller of the two rather than the sum. -->
+							<div class="grid grid-cols-2 items-start gap-3">
+								<!-- The colours are the swatches themselves rather than a list of their
+								     names: there are exactly six, so they are two rows of three, and a
+								     square saying red is quicker to read than the word and needs no
+								     translating. Not a <label>, since there is no one control here to
+								     label — a group of six buttons, each pressed or not. -->
 								<div class="flex flex-col gap-1 text-xs">
-									<span class="opacity-60">Show</span>
-									<div class="flex flex-col gap-1" role="group" aria-label="Filter by show">
-										{#each showFilterOptions as show (show.id)}
+									<span class="opacity-60">Colour</span>
+									<div class="grid grid-cols-3 gap-1" role="group" aria-label="Filter by colour">
+										{#each COLOR_OPTIONS as color (color)}
 											<button
 												type="button"
-												class={showChipClasses(show.id, filterShow)}
-												title={show.name}
-												aria-label="Filter by {show.name}"
-												aria-pressed={filterShow === show.id}
-												on:click={() => toggleShowFilter(show.id)}
-											>
-												{#if $showLogos.get(show.id)}
-													<img
-														src={$showLogos.get(show.id)?.url}
-														alt={show.name}
-														class="max-h-full max-w-full object-contain"
-													/>
-												{:else}
-													<span class="truncate text-[0.625rem] text-white/80">{show.name}</span>
-												{/if}
-											</button>
+												class={colorSquareClasses(color, filterColor)}
+												title={color}
+												aria-label="Filter by {color}"
+												aria-pressed={filterColor === color}
+												on:click={() => toggleColorFilter(color)}
+											></button>
 										{/each}
 									</div>
 								</div>
-							{/if}
+
+								<!-- The shows say themselves the way the statues do: their own lettering,
+								     not their names set in ours. One to a row, the full width of the column:
+								     a wordmark is wide, and two side by side left each of them a smudge. A
+								     show whose logo is not enabled yet falls back to its name, so it is
+								     still there to filter by — and the whole group only stands while the
+								     roster holds cards from more than nothing, which leaves the colours the
+								     first of the pair's two columns and nothing in the second. -->
+								{#if showFilterOptions.length > 0}
+									<div class="flex flex-col gap-1 text-xs">
+										<span class="opacity-60">Show</span>
+										<div class="flex flex-col gap-1" role="group" aria-label="Filter by show">
+											{#each showFilterOptions as show (show.id)}
+												<button
+													type="button"
+													class={showChipClasses(show.id, filterShow)}
+													title={show.name}
+													aria-label="Filter by {show.name}"
+													aria-pressed={filterShow === show.id}
+													on:click={() => toggleShowFilter(show.id)}
+												>
+													{#if $showLogos.get(show.id)}
+														<img
+															src={$showLogos.get(show.id)?.url}
+															alt={show.name}
+															class="max-h-full max-w-full object-contain"
+														/>
+													{:else}
+														<span class="truncate text-[0.625rem] text-white/80">{show.name}</span>
+													{/if}
+												</button>
+											{/each}
+										</div>
+									</div>
+								{/if}
+							</div>
 
 							<!-- The tiers as radios, one to a line, since that is what the filter is: one
 							     tier at a time, and All at the top of the list is the one it opens on. A
@@ -1042,6 +1052,7 @@
 										label={statue.label}
 										basePath={statue.basePath}
 										color={statue.color}
+										box={statue.box}
 										locationName={statue.locationName}
 										spawnedAt={statue.spawnedAt}
 										showId={statue.showId}
