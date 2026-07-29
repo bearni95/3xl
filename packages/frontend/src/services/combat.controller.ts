@@ -665,10 +665,16 @@ export class CombatController {
 		return !fighter.down && fighter.charges > 0 && this.opposite(fighter) !== null;
 	}
 
-	/** Whether this fighter could add red's extra shot to its order right now: its
-	 * colour allows it, it can fire, and its order is a non-attacking one. */
+	/**
+	 * Whether this fighter could add red's extra shot to its order right now: its
+	 * colour allows it, it can fire, and it *has* an order for the shot to ride on —
+	 * a non-attacking one. The extra is a second action, never a first: a fighter that
+	 * has been given nothing yet is simply shooting, so the sword under it has to read
+	 * as the order itself rather than as an extra on top of nothing.
+	 */
 	private canBonus(fighter: Fighter): boolean {
-		if (!fighter.traits.doubleAction || fighter.action === 'shoot') return false;
+		if (!fighter.traits.doubleAction) return false;
+		if (!fighter.action || fighter.action === 'shoot') return false;
 		return this.canShoot(fighter);
 	}
 
