@@ -788,16 +788,13 @@
 		})))(characterFaces, characterShowNames, municipalityNames);
 
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
-	// plus everything the fight has to be reported against — the town's id, the
-	// turnover generation it was on and who held it — all frozen at click time. Null
-	// when the modal is closed. The player's own active team is the other side,
-	// fielded by CombatArena — combat happens right here over the map, never
-	// navigating away.
+	// plus everything the fight has to be reported against — the town's id and the
+	// turnover generation it was on — all frozen at click time. Null when the modal is
+	// closed. The player's own active team is the other side, fielded by CombatArena —
+	// combat happens right here over the map, never navigating away.
 	let fightSpawns: CharacterSpawn[] = [];
-	let fightName: string | null = null;
 	let fightLocationId: string | null = null;
 	let fightTurnover = 0;
-	let fightHolderName: string | null = null;
 	let fightOpen = false;
 
 	// True while the day's challenge is being claimed off the server, so a double
@@ -900,12 +897,10 @@
 		}
 
 		fightSpawns = ogTeamSpawns(municipalityTeam, openRegion ?? '');
-		fightName = municipalityFeature ? String(municipalityFeature.properties?.name ?? '') : null;
 		fightLocationId = openRegion;
 		// The generation being fought, so a win landing after somebody else took the
 		// town is recognised as having beaten a team that no longer holds it.
 		fightTurnover = siegeProgress.turnover;
-		fightHolderName = openHolder?.holderName ?? null;
 		fightOpen = true;
 	}
 
@@ -1857,10 +1852,8 @@
 		{#key `${fightLocationId}:${fightTurnover}:${fightSpawns.map((spawn) => spawn.characterId).join(',')}`}
 			<CombatArena
 				ogTeam={fightSpawns}
-				ogName={fightName}
 				ogLocationId={fightLocationId}
 				ogTurnover={fightTurnover}
-				ogHolderName={fightHolderName}
 				closable
 				on:territory={(event) => onTerritory(event.detail)}
 				on:close={() => (fightOpen = false)}

@@ -42,8 +42,6 @@
 	// `ogTeamSpawns`). When a full team (TEAM_SIZE) is supplied the red (CPU) side
 	// fields it; otherwise the CPU mirrors the player's own team (the classic match).
 	export let ogTeam: CharacterSpawn[] = [];
-	// The challenged town's name, shown in the header. Null outside a challenge.
-	export let ogName: string | null = null;
 	// The challenged town's geojson feature id, when there is territory at stake.
 	// Reported with the fight so a win banks a siege win against the town's sitting
 	// team; null for a fight that decides nothing on the map.
@@ -52,9 +50,6 @@
 	// still on its seeded OG team. Reported so the server can tell a win against the
 	// sitting team from one against a team that has since been replaced.
 	export let ogTurnover = 0;
-	// Who occupies the town right now, shown in the header. Null while it is still on
-	// its seeded OG team.
-	export let ogHolderName: string | null = null;
 	// When true the arena renders a close control to walk out of a fight in progress
 	// (used when hosted in a modal, e.g. the map page). `close` is dispatched either
 	// way — a decided fight closes itself.
@@ -483,29 +478,18 @@
 </script>
 
 <div class="flex w-full flex-col items-center gap-4">
-	{#if (challengeReady && ogName) || closable}
+	{#if closable}
+		<!-- The way out of a fight in progress, and the whole of what sits above the
+		     board: which town is being fought over is the map's to say, not the arena's. -->
 		<div class="flex w-full items-center gap-2">
-			{#if challengeReady && ogName}
-				<!-- A town still on its seeded team is badged OG; one a player has taken
-				     names its occupant instead, since that is whose team is being fought. -->
-				<span class="badge badge-primary badge-sm font-bold">{ogHolderName ? 'HOLD' : 'OG'}</span>
-				<span class="text-sm opacity-70">
-					Challenging <span class="font-semibold">{ogName}</span>
-					{#if ogHolderName}
-						— held by <span class="font-semibold">{ogHolderName}</span>
-					{/if}
-				</span>
-			{/if}
-			{#if closable}
-				<button
-					type="button"
-					class="btn btn-circle btn-ghost btn-sm ml-auto"
-					on:click={close}
-					aria-label="Close"
-				>
-					✕
-				</button>
-			{/if}
+			<button
+				type="button"
+				class="btn btn-circle btn-ghost btn-sm ml-auto"
+				on:click={close}
+				aria-label="Close"
+			>
+				✕
+			</button>
 		</div>
 	{/if}
 
@@ -572,31 +556,22 @@
 					{/key}
 				</div>
 				{#if state}
-					<div class="flex w-full flex-col items-center gap-2">
-						<button
-							type="button"
-							class="btn btn-primary btn-wide"
-							disabled={!state.ready}
-							on:click={() => controller?.commit()}
-						>
-							{#if state.phase === 'resolving'}
-								<span class="loading loading-spinner loading-xs"></span>
-								Playing out turn {state.turn}
-							{:else}
-								Commit turn {state.turn}
-							{/if}
-						</button>
-						<p class="text-center text-xs opacity-70">{state.status}</p>
-						<!-- Every fighter acts at once, so what a turn amounted to takes more
-						     than one line to say. -->
-						{#if state.log.length > 0}
-							<ul class="max-h-24 w-full max-w-md overflow-y-auto text-center text-xs opacity-60">
-								{#each state.log as line, i (i)}
-									<li>{line}</li>
-								{/each}
-							</ul>
+					<!-- The one control the fight has, and nothing under it: what just
+					     happened was played out on the board, so it is not also recounted
+					     here in words. -->
+					<button
+						type="button"
+						class="btn btn-primary btn-wide"
+						disabled={!state.ready}
+						on:click={() => controller?.commit()}
+					>
+						{#if state.phase === 'resolving'}
+							<span class="loading loading-spinner loading-xs"></span>
+							Playing out turn {state.turn}
+						{:else}
+							Commit turn {state.turn}
 						{/if}
-					</div>
+					</button>
 				{/if}
 			</div>
 		</div>
