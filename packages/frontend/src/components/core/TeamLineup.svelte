@@ -43,10 +43,10 @@
 	const GROUND_DEPTH = 1 / 3;
 	const GROUND = '[clip-path:polygon(0_100%,100%_100%,75%_66.667%,25%_66.667%)]';
 
-	// The character stands two thirds of the way up that plane — on the ground rather
-	// than at the near edge of it, with the front of the floor lying between the viewer
-	// and their feet.
-	const BASELINE = GROUND_DEPTH * (2 / 3);
+	// The character stands a third of the way up that plane — on the ground rather than
+	// at the near edge of it, but near enough the front that most of the floor is behind
+	// them rather than in front.
+	const BASELINE = GROUND_DEPTH / 3;
 </script>
 
 <div class={classNames('flex w-full gap-2', classes)}>
