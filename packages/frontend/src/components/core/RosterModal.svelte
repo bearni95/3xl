@@ -840,15 +840,15 @@
 						</div>
 
 						<!-- The shows say themselves the way the statues do: their own lettering,
-						     not their names set in ours. Two to a row, since a wordmark is wide and
-						     a logo shrunk to a sixth of this column would be a smudge. A show whose
-						     logo is not enabled yet falls back to its name, so it is still there to
-						     filter by — and the whole group only stands while the roster holds cards
-						     from more than nothing. -->
+						     not their names set in ours. One to a row, the full width of the column:
+						     a wordmark is wide, and two side by side left each of them a smudge. A
+						     show whose logo is not enabled yet falls back to its name, so it is
+						     still there to filter by — and the whole group only stands while the
+						     roster holds cards from more than nothing. -->
 						{#if showFilterOptions.length > 0}
 							<div class="flex flex-col gap-1 text-xs">
 								<span class="opacity-60">Show</span>
-								<div class="grid grid-cols-2 gap-1" role="group" aria-label="Filter by show">
+								<div class="flex flex-col gap-1" role="group" aria-label="Filter by show">
 									{#each showFilterOptions as show (show.id)}
 										<button
 											type="button"
@@ -873,19 +873,36 @@
 							</div>
 						{/if}
 
-						<label class="flex flex-col gap-1 text-xs">
+						<!-- The tiers as radios, one to a line, since that is what the filter is: one
+						     tier at a time, and All at the top of the list is the one it opens on. A
+						     column of them says how many tiers the roster holds at a glance, which a
+						     closed dropdown never did. Not a <label> around the group any more — each
+						     radio has its own, and one label cannot stand for several controls. -->
+						<div class="flex flex-col gap-1 text-xs" role="radiogroup" aria-label="Rarity">
 							<span class="opacity-60">Rarity</span>
-							<select
-								class="select select-sm select-bordered w-full"
-								bind:value={filterRarity}
-								disabled={rarityFilterOptions.length === 0}
-							>
-								<option value={ANY}>All rarities</option>
-								{#each rarityFilterOptions as rarity (rarity)}
-									<option value={rarity}>{wowRarityLabel(rarity) ?? `Tier ${rarity}`}</option>
-								{/each}
-							</select>
-						</label>
+							<label class="flex cursor-pointer items-center gap-2">
+								<input
+									type="radio"
+									name="roster-rarity"
+									class="radio radio-primary radio-xs"
+									bind:group={filterRarity}
+									value={ANY}
+								/>
+								<span>All</span>
+							</label>
+							{#each rarityFilterOptions as rarity (rarity)}
+								<label class="flex cursor-pointer items-center gap-2">
+									<input
+										type="radio"
+										name="roster-rarity"
+										class="radio radio-primary radio-xs"
+										bind:group={filterRarity}
+										value={rarity}
+									/>
+									<span>{wowRarityLabel(rarity) ?? `Tier ${rarity}`}</span>
+								</label>
+							{/each}
+						</div>
 
 						<span class="badge badge-lg badge-primary w-full" title="Cards shown / total claimed">
 							{filteredSpawns.length} / {$spawns.length}
