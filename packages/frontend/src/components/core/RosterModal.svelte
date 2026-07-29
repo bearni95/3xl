@@ -1045,45 +1045,51 @@
 									     that colour, and a click on the colour already standing walks to the
 									     next copy of it. The circle being shown is the ringed one. Beside them,
 									     the same copies asked for the other way round — by the town they were
-									     claimed in, each saying its colour. -->
-									<div class="flex flex-wrap items-center justify-center gap-1.5">
-										{#each swatches as swatch (swatch.color)}
-											<button
-												type="button"
-												class={swatchCircleClasses(
-													swatch,
-													copy.color,
-													recycleMode,
-													selectedForRecycle
-												)}
-												title="{swatch.copies.length} in {swatch.color}"
-												aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
-												aria-pressed={swatch.color === copy.color}
-												on:click={() => showColorCopy(group.id, swatch, copy)}
-											>
-												{swatch.copies.length}
-											</button>
-										{/each}
-
-										<!-- The same copies asked for by town rather than by colour, and a native
-										     select because a menu of our own would be clipped by the scroll box
-										     this grid lives in. Each place says the colour it was pulled in with a
-										     square, the one thing an option can carry that a stylesheet cannot
-										     reach. -->
-										<select
-											class="select select-xs min-w-0 max-w-[9rem] flex-initial"
-											aria-label="{statue.label} — where it was claimed"
-											value={placeValue}
-											on:change={(event) => showCopy(group.id, event.currentTarget.value)}
-										>
-											{#each places as place (place.copy.id)}
-												<option value={place.copy.id}>
-													{SPAWN_SQUARE_GLYPHS[place.copy.color]}
-													{place.locationName}
-												</option>
+									     claimed in, each saying its colour.
+									     Both are ways of choosing between a character's copies, so ungrouped
+									     there is nothing for them to choose: the cell is one card, the circle
+									     would read 1 in the colour the statue is already standing in and the
+									     select would hold the one town its panel already names. -->
+									{#if $groupCopies}
+										<div class="flex flex-wrap items-center justify-center gap-1.5">
+											{#each swatches as swatch (swatch.color)}
+												<button
+													type="button"
+													class={swatchCircleClasses(
+														swatch,
+														copy.color,
+														recycleMode,
+														selectedForRecycle
+													)}
+													title="{swatch.copies.length} in {swatch.color}"
+													aria-label="{statue.label} — {swatch.copies.length} in {swatch.color}"
+													aria-pressed={swatch.color === copy.color}
+													on:click={() => showColorCopy(group.id, swatch, copy)}
+												>
+													{swatch.copies.length}
+												</button>
 											{/each}
-										</select>
-									</div>
+
+											<!-- The same copies asked for by town rather than by colour, and a native
+											     select because a menu of our own would be clipped by the scroll box
+											     this grid lives in. Each place says the colour it was pulled in with a
+											     square, the one thing an option can carry that a stylesheet cannot
+											     reach. -->
+											<select
+												class="select select-xs min-w-0 max-w-[9rem] flex-initial"
+												aria-label="{statue.label} — where it was claimed"
+												value={placeValue}
+												on:change={(event) => showCopy(group.id, event.currentTarget.value)}
+											>
+												{#each places as place (place.copy.id)}
+													<option value={place.copy.id}>
+														{SPAWN_SQUARE_GLYPHS[place.copy.color]}
+														{place.locationName}
+													</option>
+												{/each}
+											</select>
+										</div>
+									{/if}
 								</div>
 							{/each}
 						</div>
