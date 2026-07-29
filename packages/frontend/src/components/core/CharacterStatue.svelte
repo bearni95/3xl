@@ -68,6 +68,15 @@
 	const GROUND_DEPTH = 1 / 3;
 	const GROUND = 'origin-bottom [transform:perspective(74.536cqw)_rotateX(48.19deg)]';
 
+	// Its four corners are cut off — an octagon rather than a square, the eighth of each
+	// side nearest a corner taken away. The cut is made in the tile's own square before the
+	// tilt, a transform mapping whatever shape is left, so the four diagonals are laid down
+	// with the floor and read as bevelled edges of it rather than as notches in a picture.
+	// It is the fill that is cut and not an outline: the tile's border is its own colour
+	// (see spawn-colors), so nothing is drawn along the edges for the cut to leave dangling.
+	const GROUND_CUT =
+		'[clip-path:polygon(12.5%_0,87.5%_0,100%_12.5%,100%_87.5%,87.5%_100%,12.5%_100%,0_87.5%,0_12.5%)]';
+
 	// The character stands halfway up that plane — on the middle of the floor, with as
 	// much of it behind them as in front.
 	const BASELINE = GROUND_DEPTH / 2;
@@ -130,6 +139,7 @@
 				class={classNames(
 					'absolute inset-0 border text-white/60',
 					GROUND,
+					GROUND_CUT,
 					SPAWN_FILL_CLASSES[color],
 					SPAWN_BORDER_CLASSES[color]
 				)}
@@ -172,13 +182,13 @@
 		for the card is cut with
 		an ellipsis rather than wrapped: a row of these must keep one height between them,
 		whatever they are called and wherever they were pulled. -->
-	<!-- The three rows sit on nine tenths of the floor's front edge, centred under it. That
+	<!-- The three rows sit on four fifths of the floor's front edge, centred under it. That
 		edge is the axis the tile turns about, so it is the square's own bottom line and the
 		full width of the card; holding the panel just inside it keeps the picture the widest
 		thing on the card and the reading narrower than the thing it is about. -->
 	<div
 		class={classNames(
-			'w-[90%] min-w-0 self-center border',
+			'w-4/5 min-w-0 self-center border',
 			SPAWN_PANEL_CLASSES[color],
 			SPAWN_BORDER_CLASSES[color]
 		)}
