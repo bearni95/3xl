@@ -152,10 +152,10 @@
 			</div>
 
 			{#if showLogo}
-				<!-- The show's own lettering, across the whole width of the floor's front edge —
-					the tile's bottom line, which is the axis it turns about and so the square's
-					own bottom too: the same place and the same width the tile would give it, but
-					outside the tile and unturned. It is read rather than looked at, and a rotated
+				<!-- The show's own lettering, across seven tenths of the floor's front edge and
+					centred on it — the tile's bottom line, which is the axis it turns about and so
+					the square's own bottom too: the same place the tile would give it, held in from
+					both ends, and outside the tile and unturned. It is read rather than looked at, and a rotated
 					wordmark is neither read nor looked at; the ground turns with the perspective
 					because it is ground, while a name has to stay a name. It reads over the
 					character rather than behind them — a name with a pair of legs standing in the
@@ -167,7 +167,7 @@
 					src={showLogo.url}
 					alt={showLogo.name}
 					title={showLogo.name}
-					class="absolute inset-x-0 bottom-0 z-10 w-full"
+					class="absolute inset-x-0 bottom-0 z-10 mx-auto w-[70%]"
 				/>
 			{/if}
 
