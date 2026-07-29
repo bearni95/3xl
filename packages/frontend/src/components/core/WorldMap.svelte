@@ -3,7 +3,8 @@
 	import type L from 'leaflet';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import PinChallenge from '$components/core/PinChallenge.svelte';
-	import type { MapCircle, MapDot, MapLine, MapMarker, MapOverlay } from '$types/map.type';
+	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
+	import type { MapBoosterBox, MapCircle, MapLine, MapMarker, MapOverlay } from '$types/map.type';
 
 	let {
 		center = [20, 0] as [number, number],
@@ -15,7 +16,7 @@
 		lines = [],
 		markers = [],
 		markerLevels = null,
-		dots = [],
+		boxes = [],
 		highlightId = null,
 		highlightStyle = null,
 		selectedIds = new Set<string>(),
@@ -61,11 +62,11 @@
 		 */
 		markerLevels?: MapMarker[][] | null;
 		/**
-		 * Dots dropped on individual points (e.g. the festa-major towns the booster
+		 * Booster boxes stood on individual points (the festa-major towns the booster
 		 * window reaches), drawn above the region pins and always shown regardless of
 		 * zoom tier.
 		 */
-		dots?: MapDot[];
+		boxes?: MapBoosterBox[];
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
 		highlightId?: string | null;
 		/** Style merged over the highlighted feature's base style. */
@@ -129,10 +130,14 @@
 	// each of them runs a timer of its own (a sprite's frames, a countdown's seconds),
 	// so every rebuild unmounts the previous crop first.
 	let pinMounts: Record<string, unknown>[] = [];
-	// The festa-dot layer, rebuilt whenever the dots prop changes. Kept separate from
+	// The festa-box layer, rebuilt whenever the boxes prop changes. Kept separate from
 	// the region pins so it always shows, with no level-of-detail folding, and sits
 	// above them.
-	let dotLayer: L.LayerGroup | null = null;
+	let boxLayer: L.LayerGroup | null = null;
+	// The BoosterBox components standing in that layer, tracked for the same reason the
+	// pins' mounts are: clearing the layer only detaches their DOM, and a box left
+	// mounted holds its poster and its logo for a town no longer on screen.
+	let boxMounts: Record<string, unknown>[] = [];
 	// Watches the map container so Leaflet re-projects when the container resizes
 	// (e.g. a side panel opening reserves horizontal space). Torn down on destroy.
 	let resizeObserver: ResizeObserver | null = null;
@@ -204,11 +209,11 @@
 	});
 
 	$effect(() => {
-		// Rebuild the festa dots whenever the parent swaps them (e.g. a new day's
+		// Rebuild the festa boxes whenever the parent swaps them (e.g. a new day's
 		// festa-major towns arrive). Gated on `ready` so a set passed before mount
 		// still applies once the layer exists.
-		void dots;
-		if (ready) rebuildDots();
+		void boxes;
+		if (ready) rebuildBoxes();
 	});
 
 	$effect(() => {
@@ -463,37 +468,61 @@
 		pinMounts = [];
 	}
 
-	// A festa dot's DOM: a filled circle centred on its point, white or black — the
-	// two stocks the booster boxes are printed on. Each carries a rule in the other
-	// colour, since neither white nor black alone survives every satellite tile
-	// underneath it, and the drop shadow lifts the whole dot off whatever it lands on.
-	function dotElement(dot: MapDot): HTMLElement {
-		const span = document.createElement('span');
-		span.className =
-			'block h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]';
-		span.className += dot.light ? ' border-black bg-white' : ' border-white bg-black';
-		if (dot.onClick) span.className += ' cursor-pointer';
-		return span;
+	/** The same, for the boxes: a box no longer on screen must not keep its images. */
+	function unmountBoxMounts() {
+		for (const mounted of boxMounts) void unmount(mounted);
+		boxMounts = [];
 	}
 
-	// (Re)build the festa dots for the current view: clear the layer, keep only the
-	// dots inside the (padded) viewport, and drop a zero-sized divIcon at each. Runs
-	// on every dots change and whenever the map pans or zooms, so the culling tracks
-	// what's on screen. Unlike the region pins there's no level-of-detail — every
-	// festa-major town keeps its dot at every zoom.
-	function rebuildDots() {
+	// A festa box's DOM: the very component the Booster tab's grid draws its packs
+	// with, mounted into the marker rather than re-drawn here — a town's box on the map
+	// and its box in the panel are the same object, so they are the same component
+	// printed on the same stock off the same cover, mark and place. Mounted (this is
+	// imperative code, not a template) and tracked, so the next rebuild can take down
+	// the ones that panned off screen.
+	//
+	// The width is fixed at 80px and the box's own 30:37 gives the height: it is a mark
+	// on a town, so it stays the size it is whatever the map is showing, and a box small
+	// enough not to bury the town it stands on is a box read by its cover — the place at
+	// its foot is a few pixels of type at this width, and the tooltip is what says the
+	// name. Stood on its point by its bottom edge, as the region pins stand on theirs.
+	function boxElement(box: MapBoosterBox): HTMLElement {
+		const wrap = document.createElement('div');
+		wrap.className = 'w-20 -translate-x-1/2 -translate-y-full';
+		if (box.onClick) wrap.className += ' cursor-pointer';
+		boxMounts.push(
+			mount(BoosterBox, {
+				target: wrap,
+				props: {
+					coverUrl: box.coverUrl ?? null,
+					logoUrl: box.logoUrl ?? null,
+					locationName: box.locationName ?? null,
+					light: box.light ?? false
+				}
+			})
+		);
+		return wrap;
+	}
+
+	// (Re)build the festa boxes for the current view: unmount the last crop, clear the
+	// layer, keep only the boxes inside the (padded) viewport, and drop a zero-sized
+	// divIcon at each. Runs on every boxes change and whenever the map pans or zooms, so
+	// the culling tracks what's on screen. Unlike the region pins there's no
+	// level-of-detail — every festa-major town keeps its box at every zoom.
+	function rebuildBoxes() {
 		if (!mapInstance || !Leaf) return;
-		if (!dotLayer) dotLayer = Leaf.layerGroup().addTo(mapInstance);
-		dotLayer.clearLayers();
+		if (!boxLayer) boxLayer = Leaf.layerGroup().addTo(mapInstance);
+		unmountBoxMounts();
+		boxLayer.clearLayers();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
-		for (const dot of dots) {
-			if (!bounds.contains(dot.position)) continue;
-			const icon = Leaf.divIcon({ html: dotElement(dot), className: '', iconSize: [0, 0] });
-			const badge = Leaf.marker(dot.position, { icon, riseOnHover: true });
-			if (dot.label) badge.bindTooltip(dot.label, { direction: 'top' });
-			if (dot.onClick) badge.on('click', () => dot.onClick!());
-			badge.addTo(dotLayer!);
+		for (const box of boxes) {
+			if (!bounds.contains(box.position)) continue;
+			const icon = Leaf.divIcon({ html: boxElement(box), className: '', iconSize: [0, 0] });
+			const badge = Leaf.marker(box.position, { icon, riseOnHover: true });
+			if (box.label) badge.bindTooltip(box.label, { direction: 'top' });
+			if (box.onClick) badge.on('click', () => box.onClick!());
+			badge.addTo(boxLayer!);
 		}
 	}
 
@@ -538,19 +567,19 @@
 		mapInstance.on('moveend zoomend', () => {
 			syncView();
 			rebuildMarkers();
-			rebuildDots();
+			rebuildBoxes();
 		});
 
 		// Keep Leaflet's cached viewport in sync with its container: when the parent
 		// shrinks the map to reserve room for an open side panel, invalidateSize
-		// re-projects the map (so markers/dots slide out from under the panel and
+		// re-projects the map (so markers/boxes slide out from under the panel and
 		// stay clickable) and we re-cull to the new box. Without this, Leaflet keeps
 		// the stale size and the reserved gutter still overlaps live pins.
 		resizeObserver = new ResizeObserver(() => {
 			mapInstance?.invalidateSize({ animate: false });
 			syncView();
 			rebuildMarkers();
-			rebuildDots();
+			rebuildBoxes();
 		});
 		resizeObserver.observe(mapContainer);
 
@@ -648,6 +677,7 @@
 	onDestroy(() => {
 		resizeObserver?.disconnect();
 		unmountPinMounts();
+		unmountBoxMounts();
 		mapInstance?.remove();
 	});
 </script>

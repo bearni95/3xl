@@ -33,7 +33,7 @@
 	// rather than taken off the window: the window keeps a town's earliest claimable day, so
 	// a festa that began yesterday and is still on would be filed under yesterday and a
 	// town celebrating right now would be missed. This is the same day-of read the map's
-	// gold stars are drawn from, so a star and a white box mean the same thing.
+	// boxes on the map are printed from, so a town's box is on the same card in both.
 	let todayIds = new Set<string>();
 
 	const status = authService.status;

@@ -27,7 +27,7 @@
 	// would only slice open onto nothing.
 	export let interactive: boolean = true;
 	// The pack standing on its own, by id, or null for the grid. Bindable, because a
-	// host may stand one up itself (the map's gold stars pick a town's pack) and must
+	// host may stand one up itself (clicking a town's box on the map picks its pack) and must
 	// follow along when the player picks another here.
 	export let selected: string | null = null;
 	export let classes: string = '';

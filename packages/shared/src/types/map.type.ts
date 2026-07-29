@@ -140,25 +140,33 @@ export interface MapMarker {
 }
 
 /**
- * A dot dropped on a point — used to flag the municipalities whose festa major
- * the booster window reaches, independent of the poster/region pins. Always drawn
- * (no level-of-detail folding), so a town's dot shows at every zoom, and rendered
- * above the region pins so it reads as a highlight over the map.
+ * A booster box stood on a point — the municipalities whose festa major the booster
+ * window reaches, each carrying the pack the Booster tab has waiting for it. Drawn
+ * with the very component that tab's grid draws (BoosterBox), off the same four
+ * things, so the box on the town and the box in the panel are one object seen in two
+ * places. Independent of the poster/region pins and always drawn (no level-of-detail
+ * folding), so a town's box shows at every zoom, above the pins.
  */
-export interface MapDot {
+export interface MapBoosterBox {
 	/** Stable id (the municipality feature id), so the layer can diff on rebuild. */
 	id: string;
-	/** Where the dot sits, as [lat, lng] — the municipality's centre. */
+	/** Where the box stands, as [lat, lng] — the municipality's centre. */
 	position: [number, number];
+	/** The assigned show's poster, used as the box's cover, or null for a plain frame. */
+	coverUrl?: string | null;
+	/** The show's wordmark across the head of the cover, or null when it has none. */
+	logoUrl?: string | null;
+	/** The town the box belongs to, said across the foot of the cover. */
+	locationName?: string | null;
 	/** Text shown as the hover tooltip (e.g. the municipality name). */
 	label?: string;
 	/**
-	 * Drawn white instead of black — the two colours the booster boxes are printed
-	 * on, said again on the map: a town de festa today is white, a town the window
-	 * reaches but whose day is past or still coming is black.
+	 * Printed on white card instead of black — the stock the Booster tab prints this
+	 * town's box on: white for a town de festa today, black for a town the window
+	 * reaches but whose day is past or still coming.
 	 */
 	light?: boolean;
-	/** Called when the dot is clicked (e.g. open the town's festa booster pack). */
+	/** Called when the box is clicked (e.g. open the town's festa booster pack). */
 	onClick?: () => void;
 }
 
