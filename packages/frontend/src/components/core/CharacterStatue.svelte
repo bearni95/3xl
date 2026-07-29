@@ -172,7 +172,17 @@
 		for the card is cut with
 		an ellipsis rather than wrapped: a row of these must keep one height between them,
 		whatever they are called and wherever they were pulled. -->
-	<div class={classNames('border', SPAWN_PANEL_CLASSES[color], SPAWN_BORDER_CLASSES[color])}>
+	<!-- The three rows sit on nine tenths of the floor's front edge, centred under it. That
+		edge is the axis the tile turns about, so it is the square's own bottom line and the
+		full width of the card; holding the panel just inside it keeps the picture the widest
+		thing on the card and the reading narrower than the thing it is about. -->
+	<div
+		class={classNames(
+			'w-[90%] min-w-0 self-center border',
+			SPAWN_PANEL_CLASSES[color],
+			SPAWN_BORDER_CLASSES[color]
+		)}
+	>
 		<!-- Each row carries its own black band over the colour, darkening as the panel
 			goes down: lightest under the name, heaviest under the glyphs. The ink follows
 			the band — the panel's own (black on yellow, white on the rest) reads over the
