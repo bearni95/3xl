@@ -437,9 +437,12 @@ export class CombatController {
 	 * started and left to run — the turn is not held up while an aura's textures are
 	 * fetched, nor while a pose plays out, since the reveal is one thing to read and
 	 * the shooting is what unfolds after it.
+	 *
+	 * Nothing is cleared here: the callouts of the turn just played are taken down when
+	 * the next turn is handed over (see {@link finishTurn}), so they stand for as long
+	 * as the turn they belong to is still being resolved.
 	 */
 	private showOrders(acting: Fighter[]): void {
-		this.board?.clearCallouts();
 		for (const fighter of acting) {
 			if (fighter.action === 'charge') {
 				this.board?.showCallout(fighter.id, 'CHARGE', fighter.color);
@@ -502,6 +505,10 @@ export class CombatController {
 		}
 
 		this.turn += 1;
+		// What the last turn said — CHARGE, GUARD, BLOCK, HIT! — belonged to that turn.
+		// The orders are being asked for again, so it comes off the board with them: the
+		// words never outlive the turn whose pickers are locked.
+		this.board?.clearCallouts();
 		for (const fighter of this.fighters) {
 			fighter.action = null;
 			fighter.bonus = false;

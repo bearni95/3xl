@@ -7,6 +7,7 @@ import {
 	type FighterView
 } from '$services/combat.controller';
 import type { CombatColor } from '$types/character-definition.type';
+import type { MugenBoard } from '$utils/mugen/mugen-board';
 
 /** Three a side, in line-up order: the first three colours are the rivals', the
  * last three the player's. */
@@ -40,6 +41,26 @@ function tap(controller: CombatController, fighter: FighterView, order: CombatAc
 
 const playerFighters = (controller: CombatController): FighterView[] =>
 	get(controller).fighters.filter((fighter) => fighter.side === 'info' && !fighter.down);
+
+/**
+ * A board that draws nothing and records what it was asked to do. Every call
+ * answers with a settled promise, so the controller's beats play out at once.
+ */
+function recordingBoard(): { calls: string[]; board: MugenBoard } {
+	const calls: string[] = [];
+	const board = new Proxy(
+		{},
+		{
+			get:
+				(_target, property) =>
+				(...args: unknown[]) => {
+					calls.push(String(property) + (typeof args[1] === 'string' ? `:${args[1]}` : ''));
+					return Promise.resolve();
+				}
+		}
+	);
+	return { calls, board: board as MugenBoard };
+}
 
 describe('CombatController — giving orders', () => {
 	it('takes the sword as a plain Shoot from a fighter with no order yet', () => {
@@ -118,4 +139,29 @@ describe('CombatController — the fight as it thins', () => {
 		// The point of the run: it went past a fighter of the player's going down.
 		expect(sawLoss).toBe(true);
 	}, 120000);
+});
+
+describe('CombatController — what the board is left showing', () => {
+	it('takes the turn’s callouts down as the next turn is handed over', async () => {
+		const { calls, board } = recordingBoard();
+		const controller = new CombatController(
+			seeds(['blue', 'blue', 'blue', 'blue', 'blue', 'blue'])
+		);
+		controller.attachBoard(board);
+
+		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'charge');
+		controller.commit();
+		while (get(controller).phase === 'resolving') {
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		}
+
+		// The words went up while the turn played out...
+		expect(calls.some((call) => call.startsWith('showCallout'))).toBe(true);
+		// ...and came down before the pickers were handed back, so nothing said about
+		// the turn just played is still on the board while the next one is being given.
+		expect(get(controller).phase).toBe('planning');
+		expect(calls.lastIndexOf('clearCallouts')).toBeGreaterThan(
+			calls.findLastIndex((call) => call.startsWith('showCallout'))
+		);
+	});
 });
