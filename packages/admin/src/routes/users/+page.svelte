@@ -2,7 +2,7 @@
 	import UsersManager from '$components/core/UsersManager.svelte';
 </script>
 
-<div class="min-h-[calc(100vh-4rem)] bg-base-200 p-6">
+<div class="flex-1 bg-base-200 p-6">
 	<div class="mx-auto max-w-6xl">
 		<div class="mb-4">
 			<h1 class="text-2xl font-bold">Players</h1>

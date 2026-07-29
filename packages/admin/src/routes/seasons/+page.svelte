@@ -63,7 +63,7 @@
 	}
 </script>
 
-<div class="flex h-[calc(100vh-4rem)]">
+<div class="flex min-h-0 flex-1">
 	<div class="flex min-w-0 flex-1 flex-col">
 		<div class="border-b border-base-300 bg-base-100 px-6 py-4">
 			<div class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">

@@ -24,7 +24,7 @@
 	});
 </script>
 
-<div class="min-h-screen bg-base-200 p-6 md:p-10">
+<div class="flex-1 bg-base-200 p-6 md:p-10">
 	<div class="mx-auto flex max-w-6xl flex-col gap-6">
 		<header class="flex flex-col gap-2">
 			<div class="flex items-center gap-3">
