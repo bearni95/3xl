@@ -3,9 +3,9 @@
 	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import { SpawnColor } from '$types/character-spawn.type';
 
-	// The team as a row of characters standing on their own colour — the same three
-	// facts a card leads with (who, what colour, how big) with none of the chrome, so a
-	// team can be shown where a row of cards would be too much to read.
+	// The team as a row of characters standing on their own colour — who is fielded and
+	// what colour they bend, with none of a card's chrome, so a team can be shown where
+	// a row of cards would be too much to read.
 
 	// One entry per team member, in the order they are fielded (the leader first).
 	export let members: {
@@ -31,16 +31,12 @@
 
 <div class={classNames('flex w-full gap-2', classes)}>
 	{#each members as member, index (index)}
-		<!-- A card's portrait field, and nothing else of the card: 4:3 with the art
-			inset by 8% of its width, which is exactly the box a card fits its character
-			into — so a character stands here at the size it stands at on its card, and
-			short ones stay shorter than tall ones. -->
-		<div
-			class={classNames(
-				'aspect-[4/3] flex-1 overflow-hidden rounded-box p-[8%]',
-				colorFills[member.color]
-			)}
-		>
+		<!-- A square of the character's colour, enforced: the three share the row's width
+			between them and each is as tall as it is wide, whatever the panel's width, so
+			the row keeps its shape as the panel narrows. The character fills it — the
+			sheet is placed to the square's full height — and nothing is inset or clipped,
+			so no part of a frame is ever cut. -->
+		<div class={classNames('aspect-square flex-1 rounded-box', colorFills[member.color])}>
 			<IdleSprite
 				basePath={member.basePath}
 				faceUrl={member.faceUrl}

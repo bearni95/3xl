@@ -8,10 +8,10 @@
 	} from '$utils/mugen/idle-clip';
 
 	// One character's looping idle animation, drawn in the document: an <img> per
-	// frame, stacked in the box and swapped on the clip's own timings. It stands the
-	// character up at exactly the size a card would (see `placeIdleClip`), but costs no
-	// WebGL context — which is what makes it the right thing for the small surfaces
-	// where a whole canvas would be more than the picture is worth.
+	// frame, stacked in the box and swapped on the clip's own timings, filling whatever
+	// it is given (see `placeIdleClip`). It costs no WebGL context — which is what makes
+	// it the right thing for the small surfaces where a whole canvas would be more than
+	// the picture is worth.
 
 	// The character's frames folder (e.g. `/assets/<id>/frames`); null draws nothing.
 	export let basePath: string | null = null;
@@ -70,35 +70,52 @@
 
 	onDestroy(stop);
 
-	// Every frame's box in the measured space. Recomputed as the box resizes, which is
-	// all a resize costs — nothing reloads and the animation keeps its place.
+	// The sheet and its frames in the measured space. Recomputed as the box resizes,
+	// which is all a resize costs — nothing reloads and the animation keeps its place.
 	$: placement =
 		frames && boxWidth > 0 && boxHeight > 0
 			? placeIdleClip(frames, { width: boxWidth, height: boxHeight }, flipped)
 			: null;
 
+	// A placed box, positioned from its four measured numbers. They come through as
+	// custom properties: a placement is measured geometry, not styling, and no class
+	// can carry a number only known at runtime.
+	const BOX =
+		'absolute bottom-[var(--sprite-bottom)] left-[var(--sprite-left)] h-[var(--sprite-height)] w-[var(--sprite-width)]';
+
 	// Pixel art: keep the upscaled frames crisp rather than smoothed, matching the
-	// nearest-neighbour sampling the canvases draw them with. The frame boxes come
-	// through as custom properties — a placement is measured geometry, not styling,
-	// and there is no class that can carry a number only known at runtime.
-	// The white rectangle is an outline, not a border: it is drawn outside the box
-	// without taking any of it, so the frame is still exactly the size the fit gave it.
-	$: frameClasses = classNames(
-		'pointer-events-none absolute bottom-[var(--sprite-bottom)] left-[var(--sprite-left)]',
-		'h-[var(--sprite-height)] w-[var(--sprite-width)] max-w-none [image-rendering:pixelated]',
-		'outline outline-white',
-		{ '-scale-x-100': flipped }
-	);
+	// nearest-neighbour sampling the canvases draw them with.
+	$: frameClasses = classNames(BOX, 'pointer-events-none max-w-none [image-rendering:pixelated]', {
+		'-scale-x-100': flipped
+	});
 </script>
 
 <div
-	class={classNames('relative h-full w-full overflow-hidden', classes)}
+	class={classNames('relative h-full w-full', classes)}
 	bind:clientWidth={boxWidth}
 	bind:clientHeight={boxHeight}
 	role="img"
 	aria-label={label}
 >
 	{#if placement}
+		<!-- The white rectangle is the sheet's, not any one frame's: it is the box the
+			whole cycle sweeps out, so it stands still while the character moves inside
+			it. An outline rather than a border — drawn outside the box, taking none of
+			it, so the sheet is exactly the size it was placed at. -->
+		<div
+			class={classNames(
+				BOX,
+				// Offset inward so a sheet that reaches the surface's edge — which is the
+				// normal case, since it is placed to the full height — keeps its line on
+				// the colour rather than a hair outside it.
+				'pointer-events-none outline -outline-offset-1 outline-white'
+			)}
+			style:--sprite-left="{placement.sheet.left}px"
+			style:--sprite-bottom="{placement.sheet.bottom}px"
+			style:--sprite-width="{placement.sheet.width}px"
+			style:--sprite-height="{placement.sheet.height}px"
+		></div>
+
 		<!-- Every frame is in the document at once and all but the current one is
 			hidden, so the browser has them all decoded before the clip first reaches
 			them and no frame of the loop ever arrives late. -->
@@ -108,7 +125,7 @@
 				alt=""
 				class={classNames(frameClasses, { hidden: index !== frameIndex })}
 				style:--sprite-left="{frame.left}px"
-				style:--sprite-bottom="{placement.bottom}px"
+				style:--sprite-bottom="{frame.bottom}px"
 				style:--sprite-width="{frame.width}px"
 				style:--sprite-height="{frame.height}px"
 			/>

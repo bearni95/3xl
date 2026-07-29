@@ -1435,11 +1435,10 @@
 
 				{#if playerTeamCards.length > 0}
 					<!-- The team this player fields, standing in the document itself rather than
-						on a canvas: each character's idle animation on its own colour, fitted to
-						the very box a card fits it into, so it reads at the size it does on its
-						card. Under the account card because it is part of who the player is here,
-						not part of any tab. A canvas here was a WebGL context — and a whole card's
-						worth of chrome — spent on three sprites the panel only ever shows. -->
+						on a canvas: each character's idle animation filling a square of its own
+						colour. Under the account card because it is part of who the player is
+						here, not part of any tab. A canvas here was a WebGL context — and a whole
+						card's worth of chrome — spent on three sprites the panel only shows. -->
 					<div class="mt-3">
 						<TeamLineup members={playerTeamCards} />
 					</div>

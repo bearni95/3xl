@@ -1,12 +1,11 @@
 /**
  * How big a character is drawn
  *
- * The one answer every surface that stands a MUGEN character up asks for — the
- * cards, the hex board, the sidebar's team strip — so a character is the same size
- * relative to the others wherever it appears. Kept apart from {@link CardSprite}
- * (which is where it used to live) because the answer is pure arithmetic over frame
- * sizes: a surface drawn in the document rather than on a canvas needs it just as
- * much, and must not have to pull PixiJS in to ask.
+ * The one answer the surfaces that stand a MUGEN character up *among others* ask for
+ * — the cards and the hex board — so a character is the same size relative to the
+ * rest of the roster on either of them. Kept apart from {@link CardSprite} (which is
+ * where it used to live) because the answer is pure arithmetic over frame sizes,
+ * owing nothing to PixiJS or to a card.
  */
 
 /**
