@@ -161,8 +161,10 @@
 					{member.label}
 				</div>
 				{#if member.locationName}
+					<!-- And the place a fainter band of the same, so the two rows read as one
+						stack over the colour without the place ever competing with the name. -->
 					<div
-						class="truncate px-1 py-0.5 text-center text-xs opacity-70"
+						class="truncate bg-black/20 px-1 py-0.5 text-center text-xs opacity-70"
 						title={member.locationName}
 					>
 						{member.locationName}
