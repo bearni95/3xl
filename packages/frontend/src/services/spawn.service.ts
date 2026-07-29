@@ -115,13 +115,14 @@ class SpawnService {
 	}
 
 	/**
-	 * Map each character id to the display names of the Supabase shows it belongs
-	 * to (via `show_characters` → `show_templates`), so the roster can label a
-	 * spawn with the show(s) its character is actually related to rather than the
-	 * show it happened to be rolled from. Character ids may map to several shows;
-	 * names are de-duplicated and sorted.
+	 * Map each character id to the Supabase shows it belongs to (via `show_characters`
+	 * → `show_templates`), so the roster can say which show(s) its character is
+	 * actually related to rather than the show it happened to be rolled from. Both
+	 * halves of a show come back: the name the roster's filter lists it under, and the
+	 * id whose glyph a statue stands on. Character ids may map to several shows; the
+	 * shows are de-duplicated and sorted by name.
 	 */
-	async loadCharacterShowNames(): Promise<Map<string, string[]>> {
+	async loadCharacterShows(): Promise<Map<string, { id: number; name: string }[]>> {
 		const supabase = getSupabaseClient();
 		const [showsRes, assignmentsRes] = await Promise.all([
 			supabase.from('show_templates').select('id, name'),
@@ -130,19 +131,22 @@ class SpawnService {
 		if (showsRes.error) throw showsRes.error;
 		if (assignmentsRes.error) throw assignmentsRes.error;
 
-		const nameById = new Map<number, string>(
-			(showsRes.data ?? []).map((show) => [Number(show.id), show.name as string])
+		const showById = new Map<number, { id: number; name: string }>(
+			(showsRes.data ?? []).map((show) => [
+				Number(show.id),
+				{ id: Number(show.id), name: show.name as string }
+			])
 		);
 
-		const byCharacter = new Map<string, string[]>();
+		const byCharacter = new Map<string, { id: number; name: string }[]>();
 		for (const row of assignmentsRes.data ?? []) {
-			const name = nameById.get(Number(row.show_id));
-			if (!name) continue;
-			const names = byCharacter.get(row.character_id) ?? [];
-			if (!names.includes(name)) names.push(name);
-			byCharacter.set(row.character_id, names);
+			const show = showById.get(Number(row.show_id));
+			if (!show) continue;
+			const shows = byCharacter.get(row.character_id) ?? [];
+			if (!shows.some((entry) => entry.id === show.id)) shows.push(show);
+			byCharacter.set(row.character_id, shows);
 		}
-		for (const names of byCharacter.values()) names.sort((a, b) => a.localeCompare(b));
+		for (const shows of byCharacter.values()) shows.sort((a, b) => a.name.localeCompare(b.name));
 		return byCharacter;
 	}
 

@@ -92,19 +92,6 @@ export interface SlotSummary {
 	regionName: string | null;
 }
 
-/**
- * Column count mirroring the old `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3`
- * roster grid. Tailwind's responsive prefixes key off the *viewport* width (not
- * the element's), so callers pass `window.innerWidth`. Exposed so a host can seed
- * a column slider with the same breakpoints the DOM grid used before overriding
- * them.
- */
-export function responsiveGridColumns(viewportWidth: number): number {
-	if (viewportWidth >= 1280) return 3;
-	if (viewportWidth >= 640) return 2;
-	return 1;
-}
-
 export interface CardSceneOptions {
 	/** The card(s) to draw. */
 	cards: CardModel[];
@@ -399,9 +386,9 @@ export class CardScene {
 			return;
 		}
 
-		// Columns are driven explicitly by the host (a slider, seeded with
-		// `responsiveGridColumns`); cards are sized so the whole row spans the canvas
-		// width, dynamically adapting as the slider changes the count.
+		// Columns are driven explicitly by the host (a slider); cards are sized so the
+		// whole row spans the canvas width, dynamically adapting as the slider changes
+		// the count.
 		const cols = Math.max(1, this.columns);
 		const availW = Math.max(1, width - NAV_PAD * 2);
 		// Each card's full footprint (its content plus the outset border on both sides)

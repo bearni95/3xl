@@ -1,4 +1,5 @@
 <script lang="ts">
+	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { characters } from '@3xl/data';
@@ -8,15 +9,12 @@
 	import { spawnService, RECYCLE_GROUP_SIZE } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE } from '$services/team.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
-	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
 	import { AuthStatus } from '$types/profile.type';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
 	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 	import { wowRarityLabel } from '$utils/rarity/wow-rarity';
-	import CardCanvas from '$components/core/card/CardCanvas.svelte';
-	import { responsiveGridColumns, type SlotSummary } from '$components/core/card/CardScene';
-	import { SPAWN_COLOR_HEX } from '$utils/spawn/color';
-	import type { CardModel } from '$utils/card/card-model.type';
+	import CharacterStatue from '$components/core/CharacterStatue.svelte';
+	import { SPAWN_FILL_CLASSES } from '$components/core/spawn-colors';
 	import localStorageWritableStore from '$utils/localStorageWritableStore';
 
 	// The roster is a modal now, so it is only ever mounted while it is open — the
@@ -32,9 +30,28 @@
 	}
 
 	// Bounds for the grid-column slider. It defaults to the responsive value the
-	// old DOM grid used (1/2/3 by viewport), which the player can then override.
+	// grid picks for the viewport (1/2/3), which the player can then override.
 	const MIN_COLUMNS = 1;
 	const MAX_COLUMNS = 6;
+
+	/** The column count a viewport of this width opens on, before the slider. */
+	function responsiveGridColumns(viewportWidth: number): number {
+		if (viewportWidth >= 1280) return 3;
+		if (viewportWidth >= 640) return 2;
+		return 1;
+	}
+
+	// The slider's count as a grid, one literal class per setting: Tailwind only
+	// emits a class it can see spelled out, so `grid-cols-${n}` would emit nothing.
+	const COLUMN_CLASSES: Record<number, string> = {
+		1: 'grid-cols-1',
+		2: 'grid-cols-2',
+		3: 'grid-cols-3',
+		4: 'grid-cols-4',
+		5: 'grid-cols-5',
+		6: 'grid-cols-6'
+	};
+
 	// Persisted as a player preference: reloads from localStorage on refresh, else
 	// falls back to the responsive default. The store auto-writes on every change.
 	const columns = localStorageWritableStore<number>(
@@ -61,14 +78,14 @@
 	}
 
 	// --- Pagination ---
-	// The canvas only ever builds one page of cards: at most ROWS_PER_PAGE rows at the
-	// column count the slider is set to, so a large roster never instantiates a sprite
-	// (and its sheet animation) per claimed card. Widening the columns therefore also
+	// The grid only ever mounts one page of statues: at most ROWS_PER_PAGE rows at the
+	// column count the slider is set to, so a large roster never stands up a sprite
+	// (and its looping frames) per claimed card. Widening the columns therefore also
 	// widens the page — the row budget is what's fixed.
 	const ROWS_PER_PAGE = 10;
 	let page = 0; // zero-based
-	// The card canvas, so turning a page can scroll it back to the top.
-	let cardCanvas: CardCanvas | undefined;
+	// The grid's scroll box, so turning a page can put it back at the top.
+	let gridScroller: HTMLDivElement | undefined;
 
 	// Whether any filter is narrowing the roster (drives the Clear button).
 	$: filtersActive =
@@ -152,18 +169,13 @@
 	// names are resolved here from the local registry and municipality layer.
 	const charactersById = new Map(characters.map((character) => [character.id, character]));
 
-	// character id → names of the Supabase shows it belongs to.
-	let characterShowNames = new Map<string, string[]>();
+	// character id → the Supabase shows it belongs to, by id and name: the name is what
+	// the show filter lists, the id what puts that show's glyph on a statue's floor.
+	let characterShows = new Map<string, { id: number; name: string }[]>();
 	let municipalityNames: Map<string, string> | null = null;
-	// character id → rarity tier from Supabase `character_templates`, so each card
-	// can show its rarity badge (the same source the claim cards read).
+	// character id → rarity tier from Supabase `character_templates`, so the rarity
+	// filter has its tiers (the same source the claim cards read).
 	let rarityByCharacter = new Map<string, number>();
-
-	// character id → resolved active-face portrait URL (definition.face → manifest
-	// default). Loaded lazily per distinct character as spawns arrive; the grid shows
-	// these static portraits while the sidebar keeps the animated sprites.
-	let characterFaces = new Map<string, string | null>();
-	const faceRequested = new Set<string>();
 
 	let loading = false;
 	let error = '';
@@ -182,12 +194,12 @@
 		loading = true;
 		error = '';
 		try {
-			const [, showNamesByCharacter, rarities] = await Promise.all([
+			const [, showsByCharacter, rarities] = await Promise.all([
 				spawnService.loadSpawns(userId),
-				spawnService.loadCharacterShowNames(),
+				spawnService.loadCharacterShows(),
 				spawnService.loadRarities()
 			]);
-			characterShowNames = showNamesByCharacter;
+			characterShows = showsByCharacter;
 			rarityByCharacter = rarities;
 
 			// Place names are optional — a missing layer just falls back to the id.
@@ -212,23 +224,14 @@
 		return charactersById.get(id)?.basePath ?? null;
 	}
 
-	// Fetch the active-face portrait for any distinct character not yet requested.
-	async function loadFaces(ids: string[]): Promise<void> {
-		const missing = ids.filter((id) => !faceRequested.has(id));
-		if (missing.length === 0) return;
-		for (const id of missing) faceRequested.add(id);
-		await Promise.all(
-			missing.map(async (id) => {
-				const basePath = basePathFor(id);
-				characterFaces.set(id, basePath ? await resolveCharacterFaceUrl(id, basePath) : null);
-			})
-		);
-		characterFaces = characterFaces; // reassign so the grid re-renders
-	}
-
-	$: loadFaces([...new Set($spawns.map((spawn) => spawn.characterId))]);
 	function showNamesFor(characterId: string): string[] {
-		return characterShowNames.get(characterId) ?? [];
+		return (characterShows.get(characterId) ?? []).map((show) => show.name);
+	}
+	// The show whose glyph a statue stands on: the character's first, exactly as
+	// `teamShowId` reads a team's, so a character carries the same badge here as on
+	// the map. A character in no show leaves the floor bare.
+	function showIdFor(characterId: string): number | null {
+		return characterShows.get(characterId)?.[0]?.id ?? null;
 	}
 	function locationNameFor(id: string): string {
 		if (id && id !== ULTRAMAR_ID) {
@@ -241,10 +244,12 @@
 
 	// The distinct show names present across the roster, sorted — the options for the
 	// show dropdown. Rebuilds as spawns and their show mapping load in.
-	$: showFilterOptions = ((names: Map<string, string[]>) =>
-		[...new Set($spawns.flatMap((spawn) => names.get(spawn.characterId) ?? []))].sort((a, b) =>
-			a.localeCompare(b)
-		))(characterShowNames);
+	$: showFilterOptions = ((shows: Map<string, { id: number; name: string }[]>) =>
+		[
+			...new Set(
+				$spawns.flatMap((spawn) => (shows.get(spawn.characterId) ?? []).map((show) => show.name))
+			)
+		].sort((a, b) => a.localeCompare(b)))(characterShows);
 
 	// The distinct rarity tiers present across the roster, ascending — the options
 	// for the rarity dropdown.
@@ -256,13 +261,13 @@
 	// The roster narrowed by the header filters. All predicates AND together; an
 	// unset (ANY) filter is a pass. The filter maps are threaded in as deps so the
 	// list re-runs as they load or a control changes. This — not `$spawns` — is what
-	// the canvas renders and what a tap indexes into.
+	// the grid renders.
 	$: filteredSpawns = ((
 		name: string,
 		color: SpawnColor | typeof ANY,
 		show: string | typeof ANY,
 		rarity: number | typeof ANY,
-		names: Map<string, string[]>,
+		shows: Map<string, { id: number; name: string }[]>,
 		rarities: Map<string, number>,
 		teamColors: Set<string> | null
 	) => {
@@ -270,7 +275,11 @@
 		return $spawns.filter((spawn) => {
 			if (needle && !labelFor(spawn.characterId).toLowerCase().includes(needle)) return false;
 			if (color !== ANY && spawn.color !== color) return false;
-			if (show !== ANY && !(names.get(spawn.characterId) ?? []).includes(show)) return false;
+			if (
+				show !== ANY &&
+				!(shows.get(spawn.characterId) ?? []).some((entry) => entry.name === show)
+			)
+				return false;
 			if (rarity !== ANY && (rarities.get(spawn.characterId) ?? null) !== rarity) return false;
 			if (teamColors && !teamColors.has(spawn.color)) return false;
 			return true;
@@ -280,7 +289,7 @@
 		filterColor,
 		filterShow,
 		filterRarity,
-		characterShowNames,
+		characterShows,
 		rarityByCharacter,
 		pickableColors
 	);
@@ -299,96 +308,65 @@
 	// away) so the view never sits past the last page.
 	$: if (page > pageCount - 1) page = pageCount - 1;
 	$: pageStart = page * pageSize;
-	// The one page of spawns the canvas actually draws — everything below indexes into
-	// this, not the full filtered list.
+	// The one page of spawns the grid actually stands up — not the full filtered list.
 	$: pagedSpawns = filteredSpawns.slice(pageStart, pageStart + pageSize);
 
 	function goToPage(next: number): void {
 		page = Math.min(Math.max(0, next), pageCount - 1);
 	}
 
-	// A new page opens at its top; rebuilds otherwise keep the scroll offset.
-	$: page, cardCanvas?.scrollToTop();
+	// A new page opens at its top; anything else keeps the scroll offset.
+	$: page, gridScroller?.scrollTo({ top: 0 });
 
-	// character id → how many copies of it the player owns, so a duplicated character
-	// carries an ×N badge. Counted over the whole roster, not the filtered or paged
-	// view: it says what you own, so it doesn't move as you filter or turn a page.
-	$: copiesByCharacter = $spawns.reduce(
-		(counts, spawn) => counts.set(spawn.characterId, (counts.get(spawn.characterId) ?? 0) + 1),
-		new Map<string, number>()
-	);
-
-	// The current page's spawns as display CardModels for the shared card renderer — the
-	// same shape the claim pack opener draws (label + sprite from the local registry,
-	// face fallback, rolled colour, rarity, show, claim place and year). The resolved
-	// maps are threaded in explicitly so the statement re-runs as faces, place names,
-	// rarities and show names load in (a bare helper call would hide those deps).
-	// One spawn as a display card. The resolved maps come in as arguments rather than
-	// being read off the component, so every caller has to name them and their
-	// reactive statement tracks them.
-	function toCardModel(
+	/** One spawn as the statue that stands for it: who they are, the art that stands
+	 * them up, the colour they bend, where they were claimed and whose glyph is
+	 * painted on the floor. The resolved maps come in as arguments rather than being
+	 * read off the component, so every caller has to name them and their reactive
+	 * statement tracks them. */
+	function toStatue(
 		spawn: CharacterSpawn,
-		faces: Map<string, string | null>,
-		rarities: Map<string, number>,
-		copies: Map<string, number>
-	): CardModel {
+		_names: Map<string, string> | null,
+		_shows: Map<string, { id: number; name: string }[]>
+	) {
 		return {
 			label: labelFor(spawn.characterId),
 			basePath: basePathFor(spawn.characterId),
-			faceUrl: faces.get(spawn.characterId) ?? null,
 			color: spawn.color,
-			rarity: rarities.get(spawn.characterId) ?? null,
-			showName: showNamesFor(spawn.characterId).join(', ') || null,
 			locationName: locationNameFor(spawn.locationId),
-			spawnedAt: spawn.createdAt,
-			copies: copies.get(spawn.characterId) ?? 1
+			showId: showIdFor(spawn.characterId)
 		};
 	}
 
-	$: cardModels = ((
-		faces: Map<string, string | null>,
-		_names: Map<string, string> | null,
-		rarities: Map<string, number>,
-		_showNames: Map<string, string[]>,
-		copies: Map<string, number>
-	): CardModel[] => pagedSpawns.map((spawn) => toCardModel(spawn, faces, rarities, copies)))(
-		characterFaces,
+	// The current page as statues. The place names and the show assignment are threaded
+	// in so the grid re-derives as they load (a bare helper call would hide those deps).
+	$: pagedStatues = ((
+		names: Map<string, string> | null,
+		shows: Map<string, { id: number; name: string }[]>
+	) =>
+		pagedSpawns.map((spawn) => ({ spawn, statue: toStatue(spawn, names, shows) })))(
 		municipalityNames,
-		rarityByCharacter,
-		characterShowNames,
-		copiesByCharacter
+		characterShows
 	);
 
-	// The team as the canvas's leading row: one cell per slot, in slot order — its
-	// card where the slot is filled, null (a card-sized empty frame) where it isn't.
-	// Independent of the filters and the pager, since it is the team, not the roster,
-	// and always drawn: there is one team and it is always the one being built.
-	$: teamSlotCards = ((
+	// The team as the band above the grid: one cell per slot, in slot order — its
+	// statue where the slot is filled, null (an empty frame) where it isn't. Independent
+	// of the filters and the pager, since it is the team, not the roster, and always
+	// drawn: there is one team and it is always the one being built.
+	$: teamSlotStatues = ((
 		slots: (CharacterSpawn | null)[],
-		faces: Map<string, string | null>,
-		_names: Map<string, string> | null,
-		rarities: Map<string, number>,
-		_showNames: Map<string, string[]>,
-		copies: Map<string, number>
-	): (CardModel | null)[] =>
-		slots.map((spawn) => (spawn ? toCardModel(spawn, faces, rarities, copies) : null)))(
+		names: Map<string, string> | null,
+		shows: Map<string, { id: number; name: string }[]>
+	) => slots.map((spawn) => (spawn ? toStatue(spawn, names, shows) : null)))(
 		$teamSpawns,
-		characterFaces,
 		municipalityNames,
-		rarityByCharacter,
-		characterShowNames,
-		copiesByCharacter
+		characterShows
 	);
 
-	// Tapping a card on the canvas puts that spawn on the team or takes it off (into
-	// the first free slot, or out of the one it holds) — the canvas replaces the old
-	// per-card buttons. The tapped index maps 1:1 to the spawns *on the current page*,
-	// which is what the cards were built from. A tap while a line-up is in flight is
-	// dropped rather than queued: the team is the server's, and two saves racing would
-	// be two answers to the same question.
-	function handleCardTap(index: number): void {
-		const spawn = pagedSpawns[index];
-		if (!spawn) return;
+	// Tapping a statue in the grid puts that spawn on the team or takes it off (into
+	// the first free slot, or out of the one it holds). A tap while a line-up is in
+	// flight is dropped rather than queued: the team is the server's, and two saves
+	// racing would be two answers to the same question.
+	function handleCardTap(spawn: CharacterSpawn): void {
 		if (recycleMode) {
 			toggleRecycleSelection(spawn.id);
 			return;
@@ -397,43 +375,31 @@
 		void teamService.toggle(spawn.id);
 	}
 
-	// The team's summary for the head of the canvas's team row: the colour it is led
-	// by, that lead's show(s) and where it was claimed. A team with no picks yet reads
-	// as em-dashes rather than as nothing, since the row is always there.
+	// The team's summary, at the head of the band: the colour it is led by, that lead's
+	// show(s) and where it was claimed. A team with no picks yet reads as em-dashes
+	// rather than as nothing, since the band is always there.
 	$: teamSummary = ((
 		lead: CharacterSpawn | null,
 		_names: Map<string, string> | null,
-		_showNames: Map<string, string[]>
-	): SlotSummary => {
-		if (!lead) return { color: null, colorHex: null, showName: null, regionName: null };
+		_shows: Map<string, { id: number; name: string }[]>
+	): { color: SpawnColor | null; showName: string | null; regionName: string | null } => {
+		if (!lead) return { color: null, showName: null, regionName: null };
 		return {
 			color: lead.color,
-			colorHex: SPAWN_COLOR_HEX[lead.color] ?? null,
 			showName: showNamesFor(lead.characterId).join(', ') || 'No show',
 			regionName: locationNameFor(lead.locationId)
 		};
-	})($teamSpawns[0] ?? null, municipalityNames, characterShowNames);
+	})($teamSpawns[0] ?? null, municipalityNames, characterShows);
 
-	// The Remove button under a slot in the canvas's team row — the same path as a tap
-	// on a fielded card: empty that slot. Emptying the lead's empties the team, since
-	// every other slot was only allowed there by the lead's colour.
+	// The Remove button under a filled slot — the same path as a tap on a fielded card:
+	// empty that slot. Emptying the lead's empties the team, since every other slot was
+	// only allowed there by the lead's colour.
 	function handleSlotRemove(index: number): void {
 		if ($teamSaving) return;
 		void teamService.clear(index);
 	}
 
-	// The indices (into the cards on the current page) of the spawns selected for
-	// recycling, so the canvas can dim the rest. Recomputed as the selection, the
-	// filters or the page change — a card selected while filtered out or on another
-	// page stays counted but simply isn't shown until it comes back into view.
-	$: recycleSelectedIndices = new Set(
-		pagedSpawns.reduce<number[]>((indices, spawn, index) => {
-			if (selectedForRecycle.has(spawn.id)) indices.push(index);
-			return indices;
-		}, [])
-	);
-
-	// How many slots are filled, for the line above the canvas.
+	// How many slots are filled, for the line above the grid.
 	$: teamFilledCount = $teamSlots.filter(Boolean).length;
 
 	// The colours the team can still take — its lead's own plus the ones that share a
@@ -681,27 +647,102 @@
 						{/if}
 					</div>
 				</div>
-				<!-- The roster is drawn on the shared card canvas — the same renderer the
-				     claim pack opener uses — instead of a DOM grid. The columns always
-				     fill the canvas width (default 1/2/3 by viewport, then the slider),
-				     and the rows scroll vertically; tapping a card toggles its team
-				     membership. Only the current page's cards are built — the filters
-				     narrow the roster, the pager walks what's left ROWS_PER_PAGE rows at
-				     a time. It takes whatever the modal's fixed height leaves it. -->
-				<div class="relative min-h-0 flex-1 overflow-hidden rounded-box bg-base-200">
-					<CardCanvas
-						bind:this={cardCanvas}
-						cards={cardModels}
-						slots={teamSlotCards}
-						summary={teamSummary}
-						onSlotRemove={handleSlotRemove}
-						columns={$columns}
-						layout="grid"
-						pannable
-						onCardTap={handleCardTap}
-						selectionMode={recycleMode}
-						selectedIndices={recycleSelectedIndices}
-					/>
+				<!-- The team the player is building, above the roster it is picked from:
+				     what it is led by on the left, then one cell per slot — a statue where
+				     the slot is filled, with the button that empties it, and an empty frame
+				     where it isn't. It stands outside the scroll box, since it is what the
+				     grid below is being read against. -->
+				<div class="mb-3 flex flex-none gap-4 rounded-box bg-base-200 p-3">
+					<dl class="flex w-32 flex-none flex-col justify-center gap-2 text-xs">
+						<div>
+							<dt class="opacity-50">COLOUR</dt>
+							<dd class="flex items-center gap-1.5 capitalize">
+								{#if teamSummary.color}
+									<span
+										class={classNames(
+											'inline-block size-2.5 rounded-full',
+											SPAWN_FILL_CLASSES[teamSummary.color]
+										)}
+									></span>
+								{/if}
+								{teamSummary.color ?? '—'}
+							</dd>
+						</div>
+						<div>
+							<dt class="opacity-50">SHOW</dt>
+							<dd class="truncate" title={teamSummary.showName ?? ''}>
+								{teamSummary.showName ?? '—'}
+							</dd>
+						</div>
+						<div>
+							<dt class="opacity-50">REGION</dt>
+							<dd class="truncate" title={teamSummary.regionName ?? ''}>
+								{teamSummary.regionName ?? '—'}
+							</dd>
+						</div>
+					</dl>
+					<div class="flex min-w-0 flex-1 gap-2">
+						{#each teamSlotStatues as statue, index (index)}
+							<div class="flex min-w-0 flex-1 flex-col gap-1">
+								{#if statue}
+									<CharacterStatue
+										label={statue.label}
+										basePath={statue.basePath}
+										color={statue.color}
+										locationName={statue.locationName}
+										showId={statue.showId}
+									/>
+									<button
+										class="btn btn-ghost btn-xs"
+										disabled={$teamSaving}
+										on:click={() => handleSlotRemove(index)}
+									>
+										Remove
+									</button>
+								{:else}
+									<div
+										class="aspect-[3/4] w-full rounded-box border-2 border-dashed border-base-content/20"
+									></div>
+								{/if}
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				<!-- The roster itself: a statue per claimed card, the same one the map's
+				     panel stands the team up with, in a grid the slider sets the width of
+				     (1/2/3 by viewport to start). Tapping one toggles its team membership,
+				     or selects it while recycling. Only the current page is mounted — the
+				     filters narrow the roster, the pager walks what's left ROWS_PER_PAGE
+				     rows at a time — and the box takes whatever the modal's fixed height
+				     leaves it. -->
+				<div
+					bind:this={gridScroller}
+					class="relative min-h-0 flex-1 overflow-y-auto rounded-box bg-base-200 p-3"
+				>
+					<div class={classNames('grid gap-3', COLUMN_CLASSES[$columns] ?? 'grid-cols-3')}>
+						{#each pagedStatues as { spawn, statue } (spawn.id)}
+							<button
+								type="button"
+								class={classNames(
+									'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+									{
+										'opacity-30': recycleMode && !selectedForRecycle.has(spawn.id),
+										'ring-2 ring-warning': recycleMode && selectedForRecycle.has(spawn.id)
+									}
+								)}
+								on:click={() => handleCardTap(spawn)}
+							>
+								<CharacterStatue
+									label={statue.label}
+									basePath={statue.basePath}
+									color={statue.color}
+									locationName={statue.locationName}
+									showId={statue.showId}
+								/>
+							</button>
+						{/each}
+					</div>
 					{#if filteredSpawns.length === 0}
 						<div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
 							<p class="text-sm opacity-60">No characters match these filters.</p>
