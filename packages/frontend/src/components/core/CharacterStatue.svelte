@@ -92,18 +92,6 @@
 	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(48.01deg)]';
 	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-48.01deg)]';
 
-	// How wide the loading veil stands while a character's art is on its way: two fifths of
-	// the floor they stand on, measured where they stand on it rather than at the front edge.
-	// The tile is a square in perspective, so how wide it is depends on how far back you
-	// take it: at depth y it is drawn S·d/(d + y·sinθ) across, which with d = S·sinθ is
-	// simply S/(1 + y/S). The character stands at BASELINE, a drawn height of S/6 above the
-	// front edge, and y·cosθ/(1 + y/S) = S/6 puts that at y = S/3 — a third of the way back,
-	// where the tile is three quarters of the card wide. Two fifths of that is 0.3.
-	//
-	// A share rather than a length: the veil's own height and foot come from the baseline it
-	// is handed, and this is the one part of its shape the floor has to answer for.
-	const VEIL_WIDTH = 0.3;
-
 	// The character stands halfway up that plane — on the middle of the floor, with as
 	// much of it behind them as in front.
 	const BASELINE = GROUND_DEPTH / 2;
@@ -172,13 +160,7 @@
 				{/if}
 			</div>
 
-			<IdleSprite
-				{basePath}
-				{label}
-				{flipped}
-				baseline={BASELINE}
-				veilWidth={VEIL_WIDTH}
-			/>
+			<IdleSprite {basePath} {label} {flipped} baseline={BASELINE} />
 		</div>
 	</div>
 
