@@ -10,6 +10,7 @@
  *    `/assets/*`)
  *  - character idle animations (the revealed card art — the looping `idle` clip
  *    decoded from the character's manifest, keyed by frames folder)
+ *  - interface glyphs (a card's colour-trait icons — same-origin `/assets/icons/*`)
  *
  * Loads resolve to `null` on error rather than throwing, so the sprites can fall
  * back to their placeholders without special-casing every call site.
@@ -78,6 +79,12 @@ export const textureCache = {
 
 	/** Texture for a character face portrait (reveal card art), or null. */
 	face(url: string | null): Promise<Texture | null> {
+		if (!url) return Promise.resolve(null);
+		return load(url);
+	},
+
+	/** Texture for an interface glyph (a card's colour-trait icons), or null. */
+	icon(url: string | null): Promise<Texture | null> {
 		if (!url) return Promise.resolve(null);
 		return load(url);
 	},

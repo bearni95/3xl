@@ -5,7 +5,7 @@ import {
 	relatedColors,
 	teammateColors
 } from '$utils/color/compare';
-import { colorTraits } from '$utils/color/traits';
+import { colorTraits, traitIcons, ORDER_ICONS } from '$utils/color/traits';
 import type { CombatColor } from '$types/character-definition.type';
 
 const ALL: CombatColor[] = ['red', 'yellow', 'blue', 'purple', 'orange', 'green'];
@@ -126,5 +126,27 @@ describe('colour traits', () => {
 		expect(colorTraits('purple')).toEqual(union('red', 'blue'));
 		expect(colorTraits('orange')).toEqual(union('red', 'yellow'));
 		expect(colorTraits('green')).toEqual(union('blue', 'yellow'));
+	});
+});
+
+describe('trait icons', () => {
+	it('gives each primary the glyph of the order its trait bends', () => {
+		expect(traitIcons('red')).toEqual([ORDER_ICONS.shoot]);
+		expect(traitIcons('yellow')).toEqual([ORDER_ICONS.charge]);
+		expect(traitIcons('blue')).toEqual([ORDER_ICONS.defend]);
+	});
+
+	it('gives a compound both of its components, in component order', () => {
+		expect(traitIcons('purple')).toEqual([ORDER_ICONS.shoot, ORDER_ICONS.defend]);
+		expect(traitIcons('orange')).toEqual([ORDER_ICONS.shoot, ORDER_ICONS.charge]);
+		expect(traitIcons('green')).toEqual([ORDER_ICONS.defend, ORDER_ICONS.charge]);
+	});
+
+	it('draws one glyph for a primary and two for a compound, never the same twice', () => {
+		for (const color of ALL) {
+			const icons = traitIcons(color);
+			expect(icons).toHaveLength(isPrimaryColor(color) ? 1 : 2);
+			expect(new Set(icons).size).toBe(icons.length);
+		}
 	});
 });

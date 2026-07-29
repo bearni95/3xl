@@ -7,14 +7,18 @@
  * at the top carries the rarity badge (left) and the character name (centred), and
  * the character's looping idle animation plays in the colour field filling the rest
  * of the card, with the show name overlaid transparently across the top of that
- * field and a free-text location label overlaid across its bottom. The idle frames
+ * field and a free-text location label overlaid across its bottom. The bottom corners
+ * carry the orders the card's colour bends — one glyph for a primary, two for a
+ * compound. The idle frames
  * (and the fallback face) are lazy-loaded via the shared cache; the host scene
  * drives all positioning and tweens.
  */
 
 import { type Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { spawnYearLabel } from '../spawn/year';
+import { traitIcons } from '../color/traits';
 import { SpawnColor } from '../../types/character-spawn.type';
+import type { CombatColor } from '../../types/character-definition.type';
 import type { CardModel } from './card-model.type';
 import { textureCache, type IdleFrame } from './texture-cache';
 
@@ -40,6 +44,15 @@ const SHADOW_OFFSET_X_RATIO = -0.05;
 const SHADOW_OFFSET_Y_RATIO = 0.045;
 /** Opacity of the black silhouette drop-shadow. */
 const SHADOW_ALPHA = 0.45;
+
+/** Side of a colour-trait glyph, as a fraction of the card's width. */
+const TRAIT_ICON_RATIO = 0.16;
+/** How far a trait glyph is inset from the card's bottom corner, as a fraction of
+ * the card's width. */
+const TRAIT_ICON_MARGIN_RATIO = 0.04;
+/** How much bigger the black copy behind a trait glyph is drawn — enough of a halo
+ * that white artwork reads over any colour field it lands on. */
+const TRAIT_ICON_HALO = 1.15;
 
 /**
  * Native source-pixel height treated as a "full-height" character. Every card scales
@@ -210,6 +223,7 @@ export class CardSprite extends Container {
 		this.addChild(this.makeHeader(headerH));
 		this.addChild(this.makeShowRow(artY, showRowH));
 		this.addChild(this.makeMeta(this.cardHeight - metaH, metaH));
+		this.addChild(this.makeTraitIcons());
 		this.addChild(this.makeCopiesBadge());
 
 		// Thick MTG-style frame around the whole card, in the rarity's quality colour
@@ -503,6 +517,52 @@ export class CardSprite extends Container {
 			loc.position.set(this.cardWidth / 2, centerY);
 			group.addChild(loc);
 		}
+
+		return group;
+	}
+
+	/**
+	 * The card's colour, told as the orders it bends: the sword for red's extra shot,
+	 * the gathering energy for yellow's banked charge, the shield for blue's free guard
+	 * (see `traitIcons`). A primary card carries one, in the bottom-left corner; a
+	 * compound carries both of its components, the first bottom-left and the second
+	 * bottom-right, so the pair reads left to right across the card's foot.
+	 *
+	 * The artwork is white (it is canvas art — see the icon note in CLAUDE.md), so each
+	 * glyph is backed by a slightly larger black copy of itself: the halo is what makes
+	 * it read over a yellow colour field as clearly as over a purple one. Textures load
+	 * asynchronously; until they arrive the sprites are simply empty.
+	 */
+	private makeTraitIcons(): Container {
+		const group = new Container();
+		const size = this.cardWidth * TRAIT_ICON_RATIO;
+		const margin = this.cardWidth * TRAIT_ICON_MARGIN_RATIO;
+		const y = this.cardHeight - margin - size / 2;
+
+		traitIcons(this.card.color as CombatColor).forEach((url, index) => {
+			const x =
+				index === 0 ? margin + size / 2 : this.cardWidth - margin - size / 2;
+
+			const halo = new Sprite(Texture.EMPTY);
+			halo.tint = 0x000000;
+			halo.alpha = SHADOW_ALPHA;
+			halo.anchor.set(0.5);
+			halo.position.set(x, y);
+			const glyph = new Sprite(Texture.EMPTY);
+			glyph.anchor.set(0.5);
+			glyph.position.set(x, y);
+			group.addChild(halo, glyph);
+
+			void textureCache.icon(url).then((texture) => {
+				// The card may have been torn down while the glyph was loading.
+				if (!texture || glyph.destroyed) return;
+				const scale = size / Math.max(texture.width, texture.height);
+				glyph.texture = texture;
+				glyph.scale.set(scale);
+				halo.texture = texture;
+				halo.scale.set(scale * TRAIT_ICON_HALO);
+			});
+		});
 
 		return group;
 	}

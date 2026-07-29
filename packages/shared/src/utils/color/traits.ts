@@ -53,6 +53,39 @@ const PRIMARY_TRAIT: Record<PrimaryColor, keyof ColorTraits> = {
 };
 
 /**
+ * The glyph each of the three orders is drawn with, from the game-icons.net set in
+ * @3xl/assets: gathering energy to charge, a shield to defend, a sword to shoot. The
+ * board puts these under a fighter and the cards carry them in their corners, so they
+ * are named once, here, beside the colours that bend them.
+ *
+ * They go into a canvas (a Pixi texture), so they are named by URL rather than by the
+ * `<folder>/<slug>` an inlined icon goes by — see the icon note in CLAUDE.md.
+ */
+export const ORDER_ICONS = {
+	charge: '/assets/icons/lorc/rolling-energy.svg',
+	defend: '/assets/icons/lorc/bordered-shield.svg',
+	shoot: '/assets/icons/lorc/broadsword.svg'
+} as const;
+
+/** The order each primary's trait bends: red fires an extra shot, yellow opens with a
+ * charge banked, blue guards without spending a turn on it. */
+const PRIMARY_ORDER: Record<PrimaryColor, keyof typeof ORDER_ICONS> = {
+	red: 'shoot',
+	yellow: 'charge',
+	blue: 'defend'
+};
+
+/**
+ * The glyphs standing for what a fighter of `color` fights with: one for a primary,
+ * two — in component order — for a compound. Exactly {@link colorTraits}, told as
+ * pictures.
+ */
+export function traitIcons(color: CombatColor): string[] {
+	const primaries: PrimaryColor[] = isPrimaryColor(color) ? [color] : COMPOUND_COMPONENTS[color];
+	return primaries.map((primary) => ORDER_ICONS[PRIMARY_ORDER[primary]]);
+}
+
+/**
  * The traits a fighter of `color` fights with: the one its primary grants, or —
  * for a compound — the two its components grant between them.
  */

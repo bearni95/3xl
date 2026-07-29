@@ -3,6 +3,7 @@
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
 	import { cellScreenY, combatColorHex } from '$utils/mugen/mugen-board';
+	import { ORDER_ICONS } from '$utils/color/traits';
 	import type {
 		BoardCharacter,
 		BoardGrid,
@@ -63,15 +64,10 @@
 		dispatch('close');
 	}
 
-	// The glyph each order is given, from the game-icons.net set in @3xl/assets:
-	// energy gathering to charge, a shield to defend, a sword to shoot. These are
-	// loaded by the board as Pixi textures, so they are named by URL rather than by
-	// the `<folder>/<slug>` an inlined icon goes by.
-	const ACTION_ICONS: Record<CombatAction, string> = {
-		charge: '/assets/icons/lorc/rolling-energy.svg',
-		shoot: '/assets/icons/lorc/broadsword.svg',
-		defend: '/assets/icons/lorc/bordered-shield.svg'
-	};
+	// The glyph each order is given — the same three the cards wear in their corners
+	// for the colour that bends the order (see `traitIcons`), so the board and the
+	// cards speak of a charge, a guard and a shot with one picture each.
+	const ACTION_ICONS: Record<CombatAction, string> = ORDER_ICONS;
 
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
 
