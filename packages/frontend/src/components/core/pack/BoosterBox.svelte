@@ -29,10 +29,10 @@
 	// step is lighter than the last, on white card darker, and either way the top is the
 	// furthest from the front and the right face the nearest.
 	//
-	// Exported because a box is not the only thing printed on its own card: opening one turns
-	// it into a grid of squares of the same stock (see PackGrid), which has to be painted off
-	// this scale rather than off a second copy of these six hexes.
-	export const PACK_STOCK: Record<
+	// In module scope because it is a fact about the two stocks and not about any one box: every
+	// box drawn on the page reads the same record, and the squares the lid breaks into when it is
+	// opened are painted the top's own tone off it rather than off a second copy of these hexes.
+	const PACK_STOCK: Record<
 		SpawnBox,
 		{
 			top: string;
@@ -67,7 +67,9 @@
 
 <script lang="ts">
 	import classNames from 'classnames';
+	import { createEventDispatcher, onDestroy } from 'svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
+	import VeilBlock from '$components/core/VeilBlock.svelte';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { showIconName } from '$utils/show/show-icon';
 	import { spawnYearLabel } from '$utils/spawn/year';
@@ -112,6 +114,12 @@
 	// material. The caller says which — the box has no idea why one run of them would be
 	// printed differently.
 	export let light: boolean = false;
+	// Take the lid off. The top breaks into a grid of squares of its own tone and dissolves,
+	// front row first, and `opened` is dispatched once it is gone — which is the whole of what a
+	// box does when it is opened: what comes out of it is the caller's to stand up, and it is
+	// what has to wait for that event before putting the cards where the box was (see PackGrid).
+	// Turned off again the lid is simply back on, for a roll that never answered.
+	export let opening: boolean = false;
 	export let classes: string = '';
 
 	// The lid: the square top of the box, laid flat and seen in perspective rather than a
@@ -246,6 +254,79 @@
 	// with none drawn yet, which leaves the lid bare.
 	$: showIcon = showIconName(showId);
 
+	// Taking the lid off, which is the one thing this box does rather than merely shows. It
+	// breaks into a grid of squares and the grid dissolves — the very squares a character's art
+	// arrives behind (VeilBlock's, on IdleSprite's clock), laid inside the tilted square so they
+	// are tilted and clipped with the top they are breaking up. Three states, in the order they
+	// happen: the top whole, the top crazed into squares, the squares gone.
+	//
+	// `printed` is what turns the second into the third: the lid's own tone and the mark stamped
+	// on it go the moment the grid is all the way in — invisibly, the squares being opaque and
+	// the lid's own colour — so that what the sweep uncovers is the inside of the box and not
+	// the top it has just broken up. Without it the squares would dissolve back onto a lid that
+	// was still there.
+	let lid: 'on' | 'crazing' | 'dissolving' | 'off' = 'on';
+	let printed = true;
+	let lidTimer: ReturnType<typeof setTimeout> | null = null;
+	// The lid's own width, measured: the grid counts its rows and columns off a square given in
+	// pixels, and this is the one number the box knows in shares of itself alone. It is the plane's
+	// own width and not the drawn one — `clientWidth` is read off the layout box, before the
+	// transform folds it down.
+	let lidWidth = 0;
+
+	// How long the crazed top holds before it goes, and how long it takes to go. The second is
+	// VeilBlock's whole sweep — the grid stops being drawn at the end of it, so a sweep that ran
+	// longer would be cut off mid-blur; its blur and its stagger are what add up to this
+	// (IdleSprite holds the same two numbers for the same reason).
+	const LID_HOLD = 300;
+	const LID_FADE = 1000;
+	// How big a square is, as a share of the lid's own square — the tenth a statue's veil takes
+	// of the card it covers, so a box comes apart into the same grid its cards arrive behind. The
+	// rows come out flat and flatter as they recede, a lid being a plane only a sixth of a width
+	// deep, which is what a grid laid down on it rather than drawn over it looks like.
+	const LID_CELL = 0.1;
+
+	const dispatch = createEventDispatcher<{ opened: void }>();
+
+	// The lid comes off when it is asked for and goes back on when the asking stops, which is
+	// what a roll that never answered leaves behind: a box still sealed.
+	$: if (opening) breakLid();
+	else resetLid();
+
+	/** Craze the top: the grid goes up over it, and nothing else happens until the grid says it
+	 * is all the way in. */
+	function breakLid(): void {
+		if (lid !== 'on') return;
+		lid = 'crazing';
+	}
+
+	/** The grid is all there, so the top under it is no longer needed — and once it has held a
+	 * beat, neither is the grid. */
+	function lidCrazed(): void {
+		if (lid !== 'crazing' || lidTimer) return;
+		printed = false;
+		lidTimer = setTimeout(() => {
+			lid = 'dissolving';
+			lidTimer = setTimeout(() => {
+				lid = 'off';
+				lidTimer = null;
+				dispatch('opened');
+			}, LID_FADE);
+		}, LID_HOLD);
+	}
+
+	/** Lid on, no grid, no clock. */
+	function resetLid(): void {
+		if (lidTimer) clearTimeout(lidTimer);
+		lidTimer = null;
+		lid = 'on';
+		printed = true;
+	}
+
+	onDestroy(() => {
+		if (lidTimer) clearTimeout(lidTimer);
+	});
+
 	// What the head says, exactly as the baked pack says it: the place with the year this
 	// copy would be minted in joined to it — "Barcelona '26". The gazetteer parks the
 	// article after a comma to sort by, so it is put back at the front before the name
@@ -293,17 +374,21 @@
 			nothing to settle: `currentColor` is the ink, which is the ink the front's type is set
 			in — black on a white box, white on a black one, at full strength where the statue
 			paints its floor in a veiled white, since a character stands in front of that floor
-			and must not be argued with while nothing stands on a lid. -->
+			and must not be argued with while nothing stands on a lid.
+
+			The tone and the mark are both dropped the moment the grid below is all the way in: from
+			there on the squares are the top, and it is they that go (see `printed`). -->
 		<div
 			class={classNames(
 				'absolute inset-x-0 bottom-0 aspect-square',
-				skin.top,
+				printed ? skin.top : null,
 				skin.ink,
 				LID,
 				LID_CUT
 			)}
+			bind:clientWidth={lidWidth}
 		>
-			{#if showIcon}
+			{#if showIcon && printed}
 				<!-- Inside the tilted square, so the glyph is laid down with the lid rather than
 					standing up on it, and clipped by the corner cuts along with it: the mark is
 					printed on the top of the box, and a print on a plane seen in perspective is seen
@@ -315,6 +400,28 @@
 				<ShowIcon
 					name={showIcon}
 					classes="absolute inset-0 justify-center [&>svg]:h-[80%] [&>svg]:w-[80%]"
+				/>
+			{/if}
+
+			{#if (lid === 'crazing' || lid === 'dissolving') && lidWidth > 0}
+				<!-- The top coming apart, inside the tilted square: the squares are laid down with the
+					lid and clipped by its corner cuts exactly as the mark stamped on it is, so what
+					breaks up is the plane and not a rectangle drawn over it — the rows flatten as they
+					recede, which is a grid on a surface a sixth of a width deep seen from where this
+					box is seen. They are painted the lid's own tone, so the top crazes into squares
+					rather than being covered by something else, and the sweep runs from the front edge
+					backwards: VeilBlock goes up from its bottom row, and on a lid the bottom row is the
+					edge nearest the eye. What it looks like is its own; this says where it is, what it
+					is printed on, and when to leave. -->
+				<VeilBlock
+					left="0px"
+					bottom="0px"
+					width="{lidWidth}px"
+					height="{lidWidth}px"
+					cell={lidWidth * LID_CELL}
+					fill={skin.top}
+					fading={lid === 'dissolving'}
+					on:shown={lidCrazed}
 				/>
 			{/if}
 		</div>
