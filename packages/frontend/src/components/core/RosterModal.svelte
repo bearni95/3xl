@@ -323,27 +323,35 @@
 		$teamSlots.flatMap((id, slot) => (id ? [[id, slot] as [string, number]] : []))
 	);
 
+	// Whether the first row is the line-up's. It is the column count that decides, and
+	// nothing else: the row is the filter card plus one cell per slot, so a grid too narrow
+	// to hold all of that at once does not open one.
+	$: partyRow = $columns >= PARTY_ROW_MIN_COLUMNS;
+
 	// The roster narrowed by the header filters. All predicates AND together; an
 	// unset (ANY) filter is a pass. The filter maps are threaded in as deps so the
 	// list re-runs as they load or a control changes. This — not `$spawns` — is what
 	// the grid renders.
 	//
-	// A fielded card is exempt from every one of them. The team is what the roster is
-	// being read against, so it stays on screen while the player searches for the fourth
-	// name to put beside it: a colour filter that hid the line-up would take away the
-	// thing the search is for. It keeps its place in the list rather than being appended,
-	// since the sort that puts the team at the head of the grid runs later anyway.
+	// A fielded card is not in the list at all while the party row stands: that row is
+	// where the line-up is, and a card cannot be in two cells of one grid without being
+	// read as two cards. Where there is no party row — a grid too narrow for one — it goes
+	// back to being exempt from every filter instead, since then the grid is the only place
+	// the team is, and a colour filter that hid the line-up would take away the very thing
+	// the player is searching against. It keeps its place in the list rather than being
+	// appended, since the sort that puts the team at the head of the grid runs later anyway.
 	$: filteredSpawns = ((
 		name: string,
 		color: SpawnColor | typeof ANY,
 		show: number | typeof ANY,
 		shows: Map<string, { id: number; name: string }[]>,
 		teamColors: Set<string> | null,
-		slots: Map<string, number>
+		slots: Map<string, number>,
+		party: boolean
 	) => {
 		const needle = name.trim().toLowerCase();
 		return $spawns.filter((spawn) => {
-			if (slots.has(spawn.id)) return true;
+			if (slots.has(spawn.id)) return !party;
 			if (needle && !labelFor(spawn.characterId).toLowerCase().includes(needle)) return false;
 			if (color !== ANY && spawn.color !== color) return false;
 			if (show !== ANY && !(shows.get(spawn.characterId) ?? []).some((entry) => entry.id === show))
@@ -351,7 +359,15 @@
 			if (teamColors && !teamColors.has(spawn.color)) return false;
 			return true;
 		});
-	})(filterName, filterColor, filterShow, characterShows, pickableColors, teamSlotById);
+	})(
+		filterName,
+		filterColor,
+		filterShow,
+		characterShows,
+		pickableColors,
+		teamSlotById,
+		partyRow
+	);
 
 	// The filters and the pager work on the same list: filtering narrows it, the pager
 	// walks it a page at a time. So any filter change re-pages from the start — the
@@ -421,13 +437,15 @@
 		return held;
 	}
 
-	// The team is the head of the grid rather than a view of its own: a character with a
-	// fielded copy sorts to the front, in slot order, so the lead is the first cell and the
-	// line-up reads left to right before the roster it was picked from. Everything else
-	// keeps the order its first copy was claimed in — Array.sort is stable, so a rank every
-	// unfielded character shares leaves them all where they were. Sorting happens before
-	// the pager, which is what keeps the team on the first page: it must never be a page
-	// turn away from the cards being read against it.
+	// A character with a fielded copy sorts to the front, in slot order, so where the team
+	// is in the grid at all it is the head of it: the lead is the first cell and the line-up
+	// reads left to right before the roster it was picked from. That is the narrow grid's
+	// case — with a party row there are no fielded cards left in the list for this to move,
+	// and the sort is a no-op it costs nothing to leave standing. Everything else keeps the
+	// order its first copy was claimed in — Array.sort is stable, so a rank every unfielded
+	// character shares leaves them all where they were. Sorting happens before the pager,
+	// which is what keeps the team on the first page: it must never be a page turn away
+	// from the cards being read against it.
 	// The ranks are keyed by cell rather than by character: ungrouped, two cells can be the
 	// same fighter and only one of them holds the slot.
 	$: characterGroups = ((slots: Map<string, number>, grouped: boolean) => {
@@ -596,11 +614,6 @@
 				fielded: slots.has(copy.id)
 			};
 		}))(municipalityNames, characterShows, shownCopyByCell, teamSlotById);
-
-	// Whether the first row is the line-up's. It is the column count that decides, and
-	// nothing else: the row is the filter card plus one cell per slot, so a grid too narrow
-	// to hold all of that at once does not open one.
-	$: partyRow = $columns >= PARTY_ROW_MIN_COLUMNS;
 
 	// The line-up as that row: one cell per slot in slot order, carrying the card standing
 	// in it and the statue of that card, or nothing at all where the slot is empty. The
@@ -865,9 +878,11 @@
 				     wherever the grid is wide enough for both (see PARTY_ROW_MIN_COLUMNS), with a
 				     cell for every slot whether or not it is filled; the cards start on the row
 				     under it. Narrower than that there is no party row and the cards follow the
-				     filter card straight away. The fielded ones are still the first of them, in
-				     slot order and ringed in primary, so a line-up is both the row at the top and
-				     the cards it was picked out of. Each cell carries the button that fields or unfields the copy it is
+				     filter card straight away, and the fielded ones are the first of them, in slot
+				     order and ringed in primary. A card is in one place or the other and never
+				     both: while the party row stands, the cards holding a slot are that row and are
+				     left out of the grid, or the same three statues would stand twice over and be
+				     read as six cards. Each cell carries the button that fields or unfields the copy it is
 				     showing, pinned to its top corner; tapping the statue itself does the same
 				     thing, or selects the copy while recycling, and tapping a circle only
 				     changes which copy is shown. Only the current page is mounted
@@ -1137,8 +1152,11 @@
 					</div>
 					<!-- Said under the grid rather than laid over it: the filters are cells of that
 					     grid now, and an overlay filling the box would cover the very controls the
-					     player has to reach to get their cards back. -->
-					{#if filteredSpawns.length === 0}
+					     player has to reach to get their cards back. Only where there are cards it
+					     could be talking about: a player whose whole roster is on the team has an
+					     empty grid with nothing hiding anything, the party row above holding every
+					     card they own, and blaming the filters for that would be a lie. -->
+					{#if filteredSpawns.length === 0 && $spawns.length > teamFilledCount}
 						<div class="flex flex-col items-center justify-center gap-3 py-12 text-center">
 							<p class="text-sm opacity-60">No characters match these filters.</p>
 							<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
