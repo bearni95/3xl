@@ -56,10 +56,11 @@
 			and the square inside it is as tall as that width — whatever the panel's, so
 			the row keeps its shape as the panel narrows. -->
 		<div class="flex min-w-0 flex-1 flex-col gap-1">
-			<!-- The box the character is seen through: twice as tall as it is wide, which is
-				the room a standing character needs, and square-cornered. It keeps its own
-				edge in the character's colour now that the colour no longer fills it. -->
-			<div class={classNames('relative aspect-[1/2] w-full border', colorBorders[member.color])}>
+			<!-- The box the character is seen through: half again as tall as it is wide,
+				which is the room a standing character needs, and square-cornered. It keeps
+				its own edge in the character's colour now that the colour no longer fills
+				it. -->
+			<div class={classNames('relative aspect-[2/3] w-full border', colorBorders[member.color])}>
 				<!-- The square at the foot of it is what the character is drawn against, and
 					it stays 1:1 whatever the box around it is: the size a character comes out
 					at is a share of this square, so a taller box would otherwise make every
