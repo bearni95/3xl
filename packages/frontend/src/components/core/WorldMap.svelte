@@ -719,9 +719,16 @@
 	// six of a continuous spin go nowhere. Hence the long spinning for a short movement.
 	//
 	// A pinch has neither problem because it is not a series of requests to zoom: it holds a
-	// zoom of its own, moves the map to it every frame with no animation to be swallowed by,
-	// and redraws once when the fingers lift. That is what this is, with the wheel's notches
-	// where the fingers' distance was.
+	// zoom of its own, moves the map towards it every frame with no animation to be swallowed
+	// by, and redraws once when the fingers lift. That is what this is, with the wheel's
+	// notches where the fingers' distance was.
+	//
+	// Towards, not to. A pinch can be moved straight onto the gesture's zoom because the
+	// fingers are already moving smoothly and every frame is a small step; a notch is a jump,
+	// and a map put on the far side of one instantly is the clunk this had at first. So the
+	// notch moves a zoom the map is *heading for* and each frame takes a share of what is left
+	// of the distance — a glide the length of a wheel animation, except that a notch landing
+	// mid-glide extends the same glide rather than queueing a second one behind it.
 
 	// What one detent of a wheel reports, in each of the three units a browser may report it
 	// in. The pixel figure is what Chrome, Safari and Edge send per notch; Firefox reports
@@ -736,17 +743,27 @@
 	// hundreds of pixels: the gesture stays fast (the events keep coming) without one of them
 	// crossing the whole scale.
 	const MAX_ZOOM_PER_WHEEL = 2;
-	// How long after the last wheel event the gesture is over and the map redraws at the zoom
-	// it came to rest at. Long enough to bridge the gaps inside one spin, short enough that
-	// the tiles sharpen while the hand is still on the mouse.
-	const WHEEL_SETTLE_MS = 140;
+	// The glide: how long the remaining distance takes to halve. Measured in time and not in
+	// frames, so the movement lasts as long on a 120Hz screen as on a 60Hz one. At this figure
+	// a notch is most of the way there in about a sixth of a second — near enough Leaflet's
+	// own zoom animation, which is the movement a wheel used to make and the one a reader of
+	// this map already knows.
+	const WHEEL_HALF_LIFE = 55;
+	// Close enough to be there. A hair under a hundredth of a zoom level: past this the glide
+	// stops rather than crawling the last thousandths, and stopping is what redraws the map.
+	const WHEEL_ARRIVED = 0.005;
+	// How often, while the glide is still running, the tiles are re-cut for the level the map
+	// has reached. A gesture scales the tiles it has rather than fetching new ones (which is
+	// what keeps it smooth), so a long spin would otherwise be a long blur ending in a snap.
+	const WHEEL_TILES_MS = 300;
 
-	// Leaflet's pinch handler drives its gesture through these three, so a wheel gesture is
-	// written against the same ones. `_move` puts the map at a centre and a zoom with no
-	// animation and tells the layers it is a pinch, which is what has the tiles scale in
-	// place rather than fetch a fresh set per frame; `_resetView` is the redraw at the end
-	// that does fetch them. `_animatingZoom` is Leaflet's own flag, read only to end an
-	// animation the reader has just overtaken (see below).
+	// Leaflet's pinch handler drives its gesture through these, so a wheel gesture is written
+	// against the same ones. `_move` puts the map at a centre and a zoom with no animation;
+	// told it is a pinch, the tiles scale in place instead of a fresh set being fetched for a
+	// frame that is about to be replaced. `_resetView` is the redraw at the end that does
+	// fetch them, and is what fires the moveend the pins and boxes are re-culled on.
+	// `_animatingZoom` is Leaflet's own flag, read only where an animation and this gesture
+	// would otherwise be moving the same map (see below).
 	type GestureMap = L.Map & {
 		_move(center: L.LatLng, zoom: number, data?: { pinch?: boolean; round?: boolean }): void;
 		_resetView(center: L.LatLng, zoom: number): void;
@@ -754,17 +771,19 @@
 		_animatingZoom?: boolean;
 	};
 
-	// The zoom the gesture is heading for, held apart from the map's own so that events
-	// arriving faster than the screen redraws all count: the map is moved once per frame, and
-	// what accumulates between two frames accumulates here rather than being read off a zoom
-	// that has not caught up yet. Null between gestures.
+	// The zoom the gesture is heading for, held apart from the map's own for two reasons: the
+	// map is behind it by design, gliding towards it, and events arriving faster than the
+	// screen redraws all count, since what accumulates between two frames accumulates here
+	// rather than on a zoom that has not caught up yet. Null between gestures.
 	let wheelZoom: number | null = null;
 	// The point on the canvas the zoom is anchored to — the place under the pointer stays
 	// under the pointer, so a reader zooms into what they are looking at rather than into the
 	// middle of the map.
 	let wheelAnchor: L.Point | null = null;
 	let wheelFrame = 0;
-	let wheelSettle: ReturnType<typeof setTimeout> | null = null;
+	// When the last frame was drawn, and when the tiles were last re-cut.
+	let wheelLast = 0;
+	let wheelTiles = 0;
 
 	function onWheelZoom(event: WheelEvent) {
 		if (!mapInstance) return;
@@ -797,51 +816,61 @@
 			Math.min(map.getMaxZoom(), (wheelZoom ?? map.getZoom()) + step)
 		);
 
-		// One move per frame, however many events landed in it.
-		if (!wheelFrame) wheelFrame = requestAnimationFrame(moveWheelZoom);
-		if (wheelSettle) clearTimeout(wheelSettle);
-		wheelSettle = setTimeout(settleWheelZoom, WHEEL_SETTLE_MS);
+		if (!wheelFrame) {
+			wheelLast = performance.now();
+			wheelTiles = wheelLast;
+			wheelFrame = requestAnimationFrame(stepWheelZoom);
+		}
 	}
 
-	// Put the map at the gesture's zoom, keeping the anchored point where it is. The centre
-	// that does that is the one `setZoomAround` computes: the offset from the middle of the
-	// canvas to the anchor, grown by how much the scale is about to change, taken off the
-	// middle again.
-	function moveWheelZoom() {
+	// One frame of the glide: take a share of what is left of the way to the gesture's zoom,
+	// and put the map there keeping the anchored point where it is. That centre is the one
+	// `setZoomAround` computes — the offset from the middle of the canvas to the anchor, grown
+	// by how much the scale is about to change, taken off the middle again — and it is
+	// recomputed per frame, so the anchor holds across a glide of any length.
+	function stepWheelZoom(now: number) {
 		wheelFrame = 0;
 		if (!mapInstance || wheelZoom === null || !wheelAnchor) return;
 
 		const map = mapInstance as GestureMap;
-		const scale = map.getZoomScale(wheelZoom, map.getZoom());
+		// The map has been sent somewhere else mid-glide — a region framed by a click. That
+		// movement is the newer of the two and knows where it is going; this one drops.
+		if (map._animatingZoom) {
+			wheelZoom = null;
+			wheelAnchor = null;
+			return;
+		}
+
+		const from = map.getZoom();
+		const gap = wheelZoom - from;
+		const arrived = Math.abs(gap) < WHEEL_ARRIVED;
+		const share = 1 - Math.pow(2, -(now - wheelLast) / WHEEL_HALF_LIFE);
+		wheelLast = now;
+
+		const next = arrived ? wheelZoom : from + gap * share;
+		const scale = map.getZoomScale(next, from);
 		const half = map.getSize().divideBy(2);
 		const offset = wheelAnchor.subtract(half).multiplyBy(1 - 1 / scale);
-		map._move(map.containerPointToLatLng(half.add(offset)), wheelZoom, {
-			pinch: true,
-			round: false
-		});
-	}
+		const centre = map.containerPointToLatLng(half.add(offset));
 
-	// The gesture is over: redraw at where it stopped. This is the one full re-render of the
-	// whole thing — tiles at the level the map has actually reached instead of the scaled
-	// ones the frames were drawn with — and it fires the moveend the pins and boxes are
-	// re-culled on.
-	function settleWheelZoom() {
-		wheelSettle = null;
-		if (wheelFrame) {
-			cancelAnimationFrame(wheelFrame);
-			moveWheelZoom();
+		if (arrived) {
+			// The end of the gesture, and the one full redraw of it: the tiles, the polygons and
+			// the pins all at the zoom the map came to rest at.
+			wheelZoom = null;
+			wheelAnchor = null;
+			map._resetView(centre, next);
+			return;
 		}
-		if (!mapInstance || wheelZoom === null) return;
 
-		const map = mapInstance as GestureMap;
-		wheelZoom = null;
-		wheelAnchor = null;
-		// Unless the map has been sent somewhere else in the meantime — a region framed by a
-		// click inside the settle window. That animation ends with a redraw of its own at a
-		// zoom this one knows nothing about, and two redraws is one of them drawing the wrong
-		// place.
-		if (map._animatingZoom) return;
-		map._resetView(map.getCenter(), map.getZoom());
+		// Every so often through a long glide, let the tiles be re-cut for the level reached
+		// (a frame that is not called a pinch is one the tile layer reloads for) — the pins and
+		// the polygons are left alone until the map stops, since those are rebuilt rather than
+		// transformed and a rebuild per frame is the jerk this is avoiding.
+		const recut = now - wheelTiles >= WHEEL_TILES_MS;
+		if (recut) wheelTiles = now;
+
+		map._move(centre, next, { pinch: !recut, round: false });
+		wheelFrame = requestAnimationFrame(stepWheelZoom);
 	}
 
 	onMount(async () => {
@@ -1020,7 +1049,6 @@
 	onDestroy(() => {
 		mapContainer?.removeEventListener('wheel', onWheelZoom);
 		if (wheelFrame) cancelAnimationFrame(wheelFrame);
-		if (wheelSettle) clearTimeout(wheelSettle);
 		resizeObserver?.disconnect();
 		unmountPinMounts();
 		unmountBoxMounts();
