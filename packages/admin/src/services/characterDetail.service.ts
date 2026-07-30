@@ -76,6 +76,40 @@ export async function loadCharacterDetail(character: CharacterOption): Promise<v
 }
 
 /**
+ * Remove one frame from one of the character's animations, straight out of the
+ * decoded manifest in the git tree (frames are described there, not in the
+ * definition — see the backend route). Returns whether the write landed, so a
+ * caller can redraw only on success.
+ *
+ * Reported through the same `saving` / `saveError` fields a definition save uses:
+ * from the author's side this is one more edit to the character on screen, and the
+ * header spinner and error alert are already wired to them.
+ */
+export async function deleteCharacterFrame(
+	id: string,
+	animation: string,
+	index: number
+): Promise<boolean> {
+	characterDetail.update((state) => ({ ...state, saving: true, saveError: '' }));
+	try {
+		const res = await fetch(
+			`${API_BASE}/api/characters/${id}/frames/${encodeURIComponent(animation)}/${index}`,
+			{ method: 'DELETE' }
+		);
+		if (!res.ok) {
+			const body = (await res.json().catch(() => ({}))) as { message?: string };
+			throw new Error(body.message ?? 'Delete failed');
+		}
+		characterDetail.update((state) => ({ ...state, saving: false }));
+		return true;
+	} catch (error) {
+		const saveError = error instanceof Error ? error.message : String(error);
+		characterDetail.update((state) => ({ ...state, saving: false, saveError }));
+		return false;
+	}
+}
+
+/**
  * Persist an edited definition straight into the git tree, and adopt what the
  * API echoes back as the new baseline.
  */

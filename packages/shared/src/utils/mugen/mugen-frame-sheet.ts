@@ -12,6 +12,29 @@ export interface MugenFrameSheetMount {
 	spacer: HTMLElement;
 	/** Overlay element the Pixi canvas is appended to. */
 	host: HTMLElement;
+	/**
+	 * Optional layer, above the canvas, holding DOM controls placed at the `cells`
+	 * coordinates below. Panned by the same camera as the stage, so its children
+	 * are positioned in the sheet's own (unscrolled) pixels and scroll with it.
+	 */
+	overlay?: HTMLElement;
+}
+
+/**
+ * One static filmstrip cell — where the frame at `index` of `animation` is drawn,
+ * in the sheet's own coordinates. What a DOM control per frame is positioned by;
+ * the live panel of each row has no cell (it is the whole animation, not a frame).
+ */
+export interface FrameCell {
+	animation: string;
+	index: number;
+	file: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	/** How many frames the animation holds, so a UI can guard the last one. */
+	frameCount: number;
 }
 
 export interface MugenFrameSheetOptions {
@@ -90,6 +113,9 @@ interface RowLayout {
  * match the surrounding scroll container.
  *
  * All rendering/playback state lives here so the Svelte component stays UI-only.
+ * A canvas is no place for a button, so where each frame ends up drawn is published
+ * as `cells`: the component lays its own DOM controls over them in an `overlay`
+ * this camera pans alongside the stage.
  */
 export class MugenFrameSheet {
 	private readonly basePath: string;
@@ -102,6 +128,7 @@ export class MugenFrameSheet {
 	private mount: MugenFrameSheetMount | null = null;
 	private playing: PlayingAnimation[] = [];
 	private textures = new Map<string, Texture>();
+	private frameCells: FrameCell[] = [];
 
 	constructor(options: MugenFrameSheetOptions) {
 		this.basePath = options.basePath;
@@ -143,7 +170,16 @@ export class MugenFrameSheet {
 		mount.scrollEl.addEventListener('scroll', this.onScroll, { passive: true });
 		this.resizeObserver.observe(mount.scrollEl);
 		app.ticker.add(this.tick);
+		// Adopt whatever offset the container already carries: a sheet rendered into
+		// a scrolled viewport (a re-render after an edit) starts with its camera on
+		// the row the user was looking at rather than at the top.
+		this.onScroll();
 		return manifest;
+	}
+
+	/** Every static filmstrip cell drawn, in the sheet's own coordinates. */
+	get cells(): FrameCell[] {
+		return this.frameCells;
 	}
 
 	/** Tear everything down. Safe to call more than once. */
@@ -159,6 +195,7 @@ export class MugenFrameSheet {
 		}
 		this.playing = [];
 		this.textures.clear();
+		this.frameCells = [];
 	}
 
 	private async loadManifest(): Promise<Manifest> {
@@ -268,6 +305,16 @@ export class MugenFrameSheet {
 			const sprite = this.addCell(cellX, contentTop, row, false, `#${i} · ${frames[i].duration}ms`);
 			sprite.texture = frames[i].texture;
 			sprite.anchor.set(frames[i].anchorX, frames[i].anchorY);
+			this.frameCells.push({
+				animation: row.name,
+				index: i,
+				file: row.frameNames[i],
+				x: cellX,
+				y: contentTop,
+				width: row.boxW,
+				height: row.boxH,
+				frameCount: frames.length
+			});
 		}
 	}
 
@@ -322,11 +369,17 @@ export class MugenFrameSheet {
 		anim.sprite.anchor.set(frame.anchorX, frame.anchorY);
 	}
 
-	/** Pan the Pixi stage to match the scroll container (the camera). */
+	/**
+	 * Pan the Pixi stage to match the scroll container (the camera), and the DOM
+	 * overlay with it so its controls stay on the cells they belong to.
+	 */
 	private onScroll = (): void => {
 		if (!this.app || !this.mount) return;
-		this.app.stage.x = -Math.round(this.mount.scrollEl.scrollLeft);
-		this.app.stage.y = -Math.round(this.mount.scrollEl.scrollTop);
+		const x = -Math.round(this.mount.scrollEl.scrollLeft);
+		const y = -Math.round(this.mount.scrollEl.scrollTop);
+		this.app.stage.x = x;
+		this.app.stage.y = y;
+		if (this.mount.overlay) this.mount.overlay.style.transform = `translate(${x}px, ${y}px)`;
 	};
 
 	private resizeObserver = new ResizeObserver(() => {

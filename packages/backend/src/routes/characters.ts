@@ -34,6 +34,10 @@ import { upsertTemplateName } from './character-templates';
  * mirrored in the generated registry and in Supabase, so renaming updates all
  * three (see the route).
  *
+ * `DELETE /:id/frames/:animation/:index` writes another file entirely — the decoded
+ * manifest in @3xl/assets, which is where a character's frames are described (a
+ * definition only names animations). See the route.
+ *
  * Was `src/routes/api/characters/[id]/+server.ts` in the frontend; extracted
  * here so the admin app can stay a pure static SPA.
  */
@@ -45,6 +49,10 @@ const DEFINITIONS_DIR = fileURLToPath(
 	new URL('../../../data/public/characters', import.meta.url)
 );
 
+// Decoded frames + manifest live in the @3xl/assets package (served at /assets).
+// Mirrors @3xl/mugen's generate-sprites output dir.
+const ASSETS_DIR = fileURLToPath(new URL('../../../assets/public', import.meta.url));
+
 // Ids map 1:1 to per-character folders; constrain them so a crafted id can't
 // escape the directory (no dots, slashes or separators).
 const ID_PATTERN = /^[a-z0-9-]+$/;
@@ -52,6 +60,23 @@ const ID_PATTERN = /^[a-z0-9-]+$/;
 function definitionPath(id: string): string {
 	if (!ID_PATTERN.test(id)) httpError(400, `Invalid character id: ${id}`);
 	return resolve(DEFINITIONS_DIR, id, 'definition.json');
+}
+
+/**
+ * Just enough of the decoded manifest to take a frame out of it — everything else
+ * it holds (name, author, portraits) is carried from the parse to the write
+ * untouched. The full shape is declared in @3xl/shared beside the renderers that
+ * read it, but that module is browser code (PixiJS, DOM lib), so this server keeps
+ * its own view of the fields it touches, as @3xl/shared's own non-renderer readers
+ * do (see `utils/card/texture-cache`).
+ */
+interface FrameManifest {
+	animations?: Record<string, { frames: unknown[] } | undefined>;
+}
+
+function manifestPath(id: string): string {
+	if (!ID_PATTERN.test(id)) httpError(400, `Invalid character id: ${id}`);
+	return resolve(ASSETS_DIR, id, 'frames', 'manifest.json');
 }
 
 /** Narrow unknown parsed JSON to a CharacterDefinition, throwing 400 on gaps. */
@@ -258,5 +283,61 @@ charactersRouter.put(
 		// up, but would also kill this request if anything still had to happen. By
 		// here nothing does.
 		regenerateRegistry();
+	})
+);
+
+// Drop one frame from one animation. `:index` is that frame's position in the
+// animation, as the frames view numbers its filmstrip cells.
+//
+// Frames are not part of a definition — they are described in the decoded manifest
+// the MUGEN import writes into @3xl/assets, so this is the file that gets rewritten
+// (which is also what the game reads, so a frame removed here is gone from every
+// renderer). Two things it deliberately does not do:
+//
+//   - Delete the frame's PNG. MUGEN animations reuse sprites freely, so the file
+//     may still be another animation's frame; a stale PNG costs nothing, a missing
+//     one breaks a loop.
+//   - Empty an animation. Definitions bind slots by animation name, so a frameless
+//     entry would leave a bound slot with nothing to draw — the last frame of an
+//     animation is refused rather than removed.
+//
+// The manifest is generated: `pnpm generate:sprites <id>` re-decodes it from the raw
+// archive and so puts back everything removed here.
+charactersRouter.delete(
+	'/:id/frames/:animation/:index',
+	asyncHandler(async (req, res) => {
+		const id = String(req.params.id);
+		const animationName = String(req.params.animation);
+		const path = manifestPath(id);
+
+		let raw: unknown;
+		try {
+			raw = JSON.parse(await readFile(path, 'utf-8'));
+		} catch {
+			httpError(404, `No manifest for "${id}"`);
+		}
+		const manifest = raw as FrameManifest;
+
+		// Only ever read as an object key, never as a path — existence is the check.
+		const animation = manifest.animations?.[animationName];
+		if (!animation || !Array.isArray(animation.frames)) {
+			httpError(404, `No animation "${animationName}" in "${id}"`);
+		}
+
+		const frames = animation.frames;
+		const index = Number(req.params.index);
+		if (!Number.isInteger(index) || index < 0 || index >= frames.length) {
+			httpError(400, `No frame ${req.params.index} in "${animationName}"`);
+		}
+		if (frames.length < 2) {
+			httpError(400, `"${animationName}" has one frame left; an animation cannot be emptied`);
+		}
+
+		const [removed] = frames.splice(index, 1);
+		// 2-space JSON, no trailing newline: the shape generate-sprites writes, so an
+		// edit here and a re-decode produce the same diff-able file.
+		await writeFile(path, JSON.stringify(manifest, null, 2), 'utf-8');
+
+		res.json({ animation: animationName, removed, frames: frames.length });
 	})
 );
