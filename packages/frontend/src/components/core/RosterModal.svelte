@@ -16,7 +16,6 @@
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import FullScreenModal from '$components/core/FullScreenModal.svelte';
 	import { SPAWN_FILL_CLASSES, SPAWN_SQUARE_GLYPHS } from '$components/core/spawn-colors';
-	import localStorageWritableStore from '$utils/localStorageWritableStore';
 
 	// The roster is a modal now, so it is only ever mounted while it is open — the
 	// host raises it with `rosterModalOpen`, and everything below (the spawn load,
@@ -43,12 +42,12 @@
 	// where the grid shows three: what it bounds is how many sprites one page may stand up.
 	const CARD_COLUMNS = 4;
 
-	// Whether a character's copies are gathered into one cell — one statue, with a select
-	// naming which copy it stands as — or every card owned gets a cell of its own. Grouped is the
-	// default and what the grid has been; ungrouped is the roster read as what it
-	// literally is, one entry per card. A player preference like the column count, so it
-	// survives a reload rather than being re-picked every time the roster is opened.
-	const groupCopies = localStorageWritableStore<boolean>('roster:group-copies', true);
+	// A character's copies are always gathered into one cell — one statue, with a select
+	// naming which of them it stands as. That was a player preference, and it is the layout
+	// now for the same reason the column count is: the other reading, one cell per card
+	// owned, said a fighter held six times was six fighters, which is what the select in the
+	// cell is there to say instead. (`roster:group-copies` is left behind in localStorage
+	// unread; nothing writes it and nothing looks for it.)
 
 	// --- Card filters (the header toolbar) ---
 	// Sentinel every "no filter" dropdown uses, so an unset filter is distinct from
@@ -352,17 +351,13 @@
 	// walks it a page at a time. So any filter change re-pages from the start — the
 	// narrowed roster always opens on its first page rather than on a page number that
 	// meant something under the old filters.
-	// Turning grouping on or off changes what a cell is, so the pager starts over with it
-	// for the same reason a filter change does.
-	$: filterName, filterColor, filterShow, $groupCopies, (page = 0);
+	$: filterName, filterColor, filterShow, (page = 0);
 
 	// --- What a cell is --------------------------------------------------------------
-	/** One cell of the grid: the character it stands up and the cards behind it. Grouped,
-	 * that is every copy the player owns of them; ungrouped, exactly one. The id is what
-	 * keys the cell, and it is not the character's — two cells of the same fighter are two
-	 * cards, and an `{#each}` key that could not tell them apart would draw one of them. */
+	/** One cell of the grid: the character it stands up and every copy the player owns of
+	 * them that got through the filters. The character's own id keys the cell, since a
+	 * character has exactly one cell — that is what grouping means. */
 	interface CharacterCell {
-		id: string;
 		characterId: string;
 		copies: CharacterSpawn[];
 	}
@@ -379,22 +374,7 @@
 			else groups.set(spawn.characterId, [spawn]);
 		}
 		// Insertion order, so the characters keep the order their first copy was in.
-		return [...groups].map(([characterId, copies]) => ({
-			id: characterId,
-			characterId,
-			copies
-		}));
-	}
-
-	/** The other reading: one cell per card owned, so six reds of the same fighter are six
-	 * statues of him. A cell of one copy needs nothing to choose with — the statue itself
-	 * says the colour, the town and the rest. */
-	function oneCellPerCopy(spawns: CharacterSpawn[]): CharacterCell[] {
-		return spawns.map((spawn) => ({
-			id: spawn.id,
-			characterId: spawn.characterId,
-			copies: [spawn]
-		}));
+		return [...groups].map(([characterId, copies]) => ({ characterId, copies }));
 	}
 
 	/** The copy of this character holding the earliest team slot, or null if the player
@@ -425,26 +405,27 @@
 	// character shares leaves them all where they were. Sorting happens before the pager,
 	// which is what keeps the team on the first page: it must never be a page turn away
 	// from the cards being read against it.
-	// The ranks are keyed by cell rather than by character: ungrouped, two cells can be the
-	// same fighter and only one of them holds the slot.
-	$: characterGroups = ((slots: Map<string, number>, grouped: boolean) => {
-		const groups = grouped ? groupByCharacter(filteredSpawns) : oneCellPerCopy(filteredSpawns);
+	$: characterGroups = ((slots: Map<string, number>) => {
+		const groups = groupByCharacter(filteredSpawns);
 		const ranks = new Map(
 			groups.map((group) => {
 				const held = fieldedCopy(group.copies, slots);
-				return [group.id, held ? (slots.get(held.id) ?? TEAM_SIZE) : TEAM_SIZE];
+				return [group.characterId, held ? (slots.get(held.id) ?? TEAM_SIZE) : TEAM_SIZE];
 			})
 		);
-		return groups.sort((a, b) => (ranks.get(a.id) ?? TEAM_SIZE) - (ranks.get(b.id) ?? TEAM_SIZE));
-	})(teamSlotById, $groupCopies);
+		return groups.sort(
+			(a, b) =>
+				(ranks.get(a.characterId) ?? TEAM_SIZE) - (ranks.get(b.characterId) ?? TEAM_SIZE)
+		);
+	})(teamSlotById);
 
-	// cell id → the id of the copy the grid is showing in it. Only holds the ones the player
-	// has picked a town for; every other cell shows its first copy. Keyed by cell rather than
-	// by page, so a copy picked stays picked as the filters and the pages move — and grouped,
-	// a cell's id is the character's, so it stays picked across those too.
+	// character id → the id of the copy the grid is showing in that character's cell. Only
+	// holds the ones the player has picked a town for; every other cell shows its first copy.
+	// Keyed by character rather than by page, so a copy picked stays picked as the filters and
+	// the pages move.
 	let shownCopyByCell = new Map<string, string>();
-	function showCopy(cellId: string, spawnId: string): void {
-		shownCopyByCell = new Map(shownCopyByCell).set(cellId, spawnId);
+	function showCopy(characterId: string, spawnId: string): void {
+		shownCopyByCell = new Map(shownCopyByCell).set(characterId, spawnId);
 	}
 
 	/** One place a character has been claimed in, in one colour — an entry in the cell's
@@ -547,7 +528,7 @@
 		selectable: Set<string>
 	) =>
 		pagedGroups.map((group) => {
-			const shownId = shown.get(group.id);
+			const shownId = shown.get(group.characterId);
 			const copy =
 				group.copies.find((spawn) => spawn.id === shownId) ??
 				fieldedCopy(group.copies, slots) ??
@@ -728,8 +709,10 @@
 				</div>
 			</div>
 		{:else}
-			<!-- What the grid is read with: the pager, the column slider, the grouping
-			     toggle, and whether a line-up is in flight. -->
+			<!-- What the grid is read with: the pager, and whether a line-up is in flight.
+			     Nothing here says how the grid is laid out any more — the columns are fixed
+			     and a character is one cell, so both of those are the layout rather than
+			     something a player is asked about. -->
 			<div class="mb-3 flex flex-none flex-wrap items-center justify-end gap-3">
 				{#if pageCount > 1}
 					<div class="join">
@@ -754,18 +737,6 @@
 						</button>
 					</div>
 				{/if}
-				<!-- On, a character is one cell however many of them the player holds; off,
-				     every card owned is a cell of its own — the one thing left that says how
-				     much of the roster is on screen at once, now that the widths are fixed. -->
-				<label class="flex items-center gap-2 text-xs">
-					<span class="whitespace-nowrap opacity-60">Group copies</span>
-					<input
-						type="checkbox"
-						class="toggle toggle-primary toggle-sm"
-						bind:checked={$groupCopies}
-						aria-label="Group a character's copies into one cell"
-					/>
-				</label>
 				{#if $teamSaving}
 					<span class="flex items-center gap-2 text-xs opacity-60">
 						<span class="loading loading-spinner loading-xs"></span>
@@ -967,7 +938,7 @@
 					bind:this={gridScroller}
 					class="grid min-h-0 grid-cols-3 content-start gap-3 overflow-y-auto lg:col-span-4 lg:grid-cols-4"
 				>
-					{#each pagedStatues as { group, copy, places, placeValue, statue, fielded } (group.id)}
+					{#each pagedStatues as { group, copy, places, placeValue, statue, fielded } (group.characterId)}
 						<!-- The border is on the cell, not on the statue: it takes in the strip over
 						     it too, so what it marks is this character's whole entry. Every cell
 						     carries it and only a fielded one colours it in, so joining the team
@@ -992,36 +963,35 @@
 							     The copies are asked for by the town they were claimed in — a native
 							     select, since a menu of our own would be clipped by the scroll box this
 							     grid lives in, and each option says its colour with a square, the one
-							     thing an option can carry that a stylesheet cannot reach. Ungrouped there
-							     is nothing to choose between: the cell is one card and the select would
-							     hold the single town the statue's own panel already names.
+							     thing an option can carry that a stylesheet cannot reach. A character the
+							     player holds one of gets the select too, naming its one town: the strip
+							     is the same in every cell, and a control that came and went with how many
+							     copies were owned would move the team button under it.
 							     The button is a minus on a fielded card, a plus on one that could still
 							     be fielded, and disabled once the team is full — a plus that cannot add is
 							     a dead button, and the server would refuse the card anyway. Not drawn at
 							     all while recycling, where a cell is about what to trade in rather than
 							     who to field. -->
 							<div class="absolute inset-x-1 top-1 z-10 flex items-center gap-1">
-								{#if $groupCopies}
-									<select
-										class="select select-xs min-w-0 max-w-[8rem] flex-initial shadow"
-										aria-label="{statue.label} — where it was claimed"
-										value={placeValue}
-										on:change={(event) => showCopy(group.id, event.currentTarget.value)}
-									>
-										{#each places as place (place.copy.id)}
-											<!-- A town the cell cannot go to is still listed, disabled: the card is
-											     one the player holds, and it is out of reach either because a filter
-											     put it aside or because it is on the team and standing in the grid
-											     to the left. Dropping it had made the selector a different list
-											     under every filter, saying a character was claimed in fewer places
-											     than they were. -->
-											<option value={place.copy.id} disabled={!place.selectable}>
-												{SPAWN_SQUARE_GLYPHS[place.copy.color]}
-												{place.locationName}
-											</option>
-										{/each}
-									</select>
-								{/if}
+								<select
+									class="select select-xs min-w-0 max-w-[8rem] flex-initial shadow"
+									aria-label="{statue.label} — where it was claimed"
+									value={placeValue}
+									on:change={(event) => showCopy(group.characterId, event.currentTarget.value)}
+								>
+									{#each places as place (place.copy.id)}
+										<!-- A town the cell cannot go to is still listed, disabled: the card is
+										     one the player holds, and it is out of reach either because a filter
+										     put it aside or because it is on the team and standing in the grid
+										     to the left. Dropping it had made the selector a different list
+										     under every filter, saying a character was claimed in fewer places
+										     than they were. -->
+										<option value={place.copy.id} disabled={!place.selectable}>
+											{SPAWN_SQUARE_GLYPHS[place.copy.color]}
+											{place.locationName}
+										</option>
+									{/each}
+								</select>
 								{#if !recycleMode}
 									<button
 										type="button"
