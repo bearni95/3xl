@@ -117,6 +117,10 @@ function fakeBoard(log: AuraLog) {
 		showCallout: () => {},
 		showSlash: () => {},
 		playMove: done,
+		// The guard a covering fighter is stood in for the turn, and the release of every
+		// one of them as the next turn is handed over.
+		holdMove: () => {},
+		clearHolds: () => {},
 		playHurt: done,
 		closeIn: done,
 		meleeApproach: done,

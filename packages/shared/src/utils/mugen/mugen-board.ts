@@ -392,6 +392,14 @@ interface Actor {
 	onArrive: (() => void) | null;
 	/** While set, a one-shot animation owns playback (movement/idle suspended). */
 	oneShot: OneShot | null;
+	/**
+	 * A raw manifest animation name the actor **stands in** instead of idling — the
+	 * guard a fighter told to cover holds for the whole turn. Unlike a {@link oneShot}
+	 * it owns nothing: a walk still walks and a pose still plays over it, and it is what
+	 * the actor comes back to when either finishes, rather than idle. Null when the
+	 * actor simply stands (see {@link MugenBoard.holdMove}).
+	 */
+	stance: string | null;
 	/** While set, the actor has been knocked out and is fading off the board:
 	 * it holds its hurt pose, dims to nothing, then is removed. */
 	fade: KnockOutFade | null;
@@ -841,6 +849,7 @@ export class MugenBoard {
 			finalTarget: null,
 			onArrive: null,
 			oneShot: null,
+			stance: null,
 			fade: null,
 			aura: null,
 			label: null,
@@ -1060,11 +1069,21 @@ export class MugenBoard {
 			}
 		} else {
 			actor.stepDir = 0;
-			this.setAnimation(actor, 'idle');
+			this.setAnimation(actor, this.standing(actor));
 		}
 	}
 
-	/** Drive a one-shot combat animation to completion, then release to idle. */
+	/**
+	 * What an actor that is doing nothing stands in: the stance it has been put in, or
+	 * idle. A stance whose animation never loaded falls back to idle rather than leaving
+	 * the actor frozen in whatever it happened to be showing.
+	 */
+	private standing(actor: Actor): string {
+		return actor.stance && actor.animations[actor.stance] ? actor.stance : 'idle';
+	}
+
+	/** Drive a one-shot combat animation to completion, then release to whatever the
+	 * actor stands in — its stance if it is holding one, else idle. */
 	private advanceOneShot(actor: Actor, deltaMs: number): void {
 		const shot = actor.oneShot;
 		if (!shot) return;
@@ -1072,7 +1091,7 @@ export class MugenBoard {
 		this.advanceFrame(actor, deltaMs);
 		if (shot.elapsed >= shot.total) {
 			actor.oneShot = null;
-			this.setAnimation(actor, 'idle');
+			this.setAnimation(actor, this.standing(actor));
 			shot.resolve();
 		}
 	}
@@ -1428,6 +1447,44 @@ export class MugenBoard {
 	 */
 	playMove(id: string, move: CharacterMove): Promise<void> {
 		return this.playAnimationOnce(id, move.source);
+	}
+
+	/**
+	 * Stand a character *in* one of its moves and leave it there — the guard a fighter
+	 * told to cover holds for the whole turn, rather than a brace it throws once and
+	 * drops. The animation loops where every other pose plays out, because that is the
+	 * difference between doing a thing and being in a state: a fighter covering is
+	 * covering until it is told otherwise ({@link clearHold}).
+	 *
+	 * It is not a one-shot and owns nothing. Whatever the turn asks of the actor next —
+	 * a walk, a strike, a flinch — plays straight over the top, and the actor drops back
+	 * into the held move when that finishes instead of into idle. So a fighter can brace,
+	 * be walked onto ground it has won, and still be braced when it gets there.
+	 *
+	 * A move binding no animation (or one that failed to load) clears the hold rather
+	 * than freezing the actor: there is no pose to stand in, so it idles as before.
+	 */
+	holdMove(id: string, move: CharacterMove): void {
+		const actor = this.findActor(id);
+		if (!actor) return;
+		actor.stance = move.source && actor.animations[move.source] ? move.source : null;
+		// Into the pose now, unless something is already playing on the sprite — that
+		// releases into the stance when it ends, so the hold lands either way.
+		if (!actor.oneShot && !actor.fade) this.setAnimation(actor, this.standing(actor));
+	}
+
+	/** Let a character out of the move it was standing in, back to idle. */
+	clearHold(id: string): void {
+		const actor = this.findActor(id);
+		if (!actor || !actor.stance) return;
+		actor.stance = null;
+		if (!actor.oneShot && !actor.fade) this.setAnimation(actor, 'idle');
+	}
+
+	/** Let every character out of whatever it was standing in — the turn holding them
+	 * there is over. */
+	clearHolds(): void {
+		for (const actor of this.actors) this.clearHold(actor.id);
 	}
 
 	/** Play a character's hurt flinch once; resolves when it finishes. */

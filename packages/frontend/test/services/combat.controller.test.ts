@@ -282,4 +282,49 @@ describe('CombatController — what the board is left showing', () => {
 			calls.findLastIndex((call) => call.startsWith('showCallout'))
 		);
 	});
+
+	it('stands a covering fighter in its defend move for the turn, and lets it out at the end', async () => {
+		// A board that says which fighter each call was about, which is the whole point
+		// here: a guard belongs to the fighter holding it.
+		const calls: string[] = [];
+		const board = new Proxy(
+			{},
+			{
+				get:
+					(_target, property) =>
+					(...args: unknown[]) => {
+						calls.push(
+							String(property) + (typeof args[0] === 'string' ? `:${args[0]}` : '')
+						);
+						return Promise.resolve();
+					}
+			}
+		) as MugenBoard;
+
+		// A guard is only held where the definition binds one, so these fighters carry the
+		// defend move a real character's JSON declares.
+		const armed = seeds(['blue', 'blue', 'blue', 'blue', 'blue', 'blue']).map((seed) => ({
+			...seed,
+			moves: [{ name: 'Defend', type: 'defend' as const, source: 'guard-stand' }]
+		}));
+		const controller = new CombatController(armed);
+		controller.attachBoard(board);
+
+		const covering = playerFighters(controller);
+		for (const fighter of covering) tap(controller, fighter, 'defend');
+		await playTurn(controller);
+
+		// Every one of them was stood in its guard, and stood in it — not thrown into it
+		// and dropped, which is what playing the pose as a one-shot amounted to.
+		for (const fighter of covering) {
+			expect(calls).toContain(`holdMove:${fighter.id}`);
+			expect(calls).not.toContain(`playMove:${fighter.id}`);
+		}
+		// And let out of it as the next turn's orders are asked for, so nobody is left
+		// braced into a turn they have not been given an order in yet.
+		expect(get(controller).phase).toBe('planning');
+		expect(calls.lastIndexOf('clearHolds')).toBeGreaterThan(
+			calls.findLastIndex((call) => call.startsWith('holdMove'))
+		);
+	});
 });
