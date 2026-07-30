@@ -10,6 +10,7 @@ import {
 	type FighterView
 } from '$services/combat.controller';
 import { cellScreenY } from '$utils/mugen/mugen-board';
+import { LAST_COLUMN } from '$utils/mugen/grid';
 import type { CombatColor } from '$types/character-definition.type';
 import type { BattleBoardSnapshot } from '$types/battle.type';
 
@@ -177,6 +178,29 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 			// Restoring by slot is what keeps the lanes as they were, so a board that
 			// numbers them differently is a different fight, not this one rearranged.
 			expect(boardFitsLineup(swapped, lineup)).toBe(false);
+		});
+
+		it('refuses a board standing a line on ground its side could never hold', () => {
+			const snapshot = new CombatController(seeds(COLORS)).snapshot();
+			// A fight opened when the lines stood on other columns: its fighters are on
+			// ground this game does not use, and standing them back up there would draw a
+			// board nobody could be playing. Refused whole, so the fight starts instead.
+			const moved = (side: 'info' | 'error', q: number): BattleBoardSnapshot => ({
+				...snapshot,
+				fighters: snapshot.fighters.map((fighter) =>
+					fighter.side === side && fighter.cell
+						? { ...fighter, cell: { ...fighter.cell, q } }
+						: fighter
+				)
+			});
+
+			expect(boardFitsLineup(moved('info', LAST_COLUMN), lineup)).toBe(false);
+			expect(boardFitsLineup(moved('error', 0), lineup)).toBe(false);
+			// Its own opening column, and the one column its side's settling move reaches,
+			// are both ground it could be holding.
+			expect(boardFitsLineup(moved('info', PLAYER_CELLS[0].q), lineup)).toBe(true);
+			expect(boardFitsLineup(moved('info', 0), lineup)).toBe(true);
+			expect(boardFitsLineup(moved('error', RIVAL_CELLS[0].q - 1), lineup)).toBe(true);
 		});
 	});
 

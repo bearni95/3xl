@@ -44,7 +44,7 @@
  * they are carried out by the same resolution, gifts and ordering included.
  *
  * The two lines open **face to face across the central white column** — the rivals on
- * column b, the player's fighters on column e, one pair to a row — so that column, which
+ * column b, the player's fighters on column d, one pair to a row — so that column, which
  * nobody starts on, is the ground being fought over, lane by lane. A lane is settled on
  * the board the turn it is decided: the winner either takes that white cell (the player's
  * fighter walks up onto it) or falls back a column deeper into its own half (the rival).
@@ -111,10 +111,10 @@ export const MAX_TURNS = 20;
 export const ENCOUNTERS_TO_WIN = 2;
 
 /**
- * The ground the player's line opens on, listed top→bottom on screen — column e, the
- * far column of its own half, one fighter to a row, each facing the rival on the same
- * row of column b. A fighter holds its own cell until the lane in front of it is won,
- * and the only ground it ever takes is that lane's white cell (see
+ * The ground the player's line opens on, listed top→bottom on screen — column d, the
+ * front of its own half, one fighter to a row, each facing the rival on the same row of
+ * column b. A fighter holds its own cell until the lane in front of it is won, and the
+ * only ground it ever takes is that lane's white cell (see
  * {@link CombatController.settleGround}).
  *
  * Three a side on a three-row board, so a line is one fighter to every row of it: every
@@ -122,14 +122,14 @@ export const ENCOUNTERS_TO_WIN = 2;
  * nobody.
  */
 export const PLAYER_CELLS: Cell[] = [
-	{ q: 2, r: 0 },
-	{ q: 2, r: 1 },
-	{ q: 2, r: 2 }
+	{ q: 1, r: 0 },
+	{ q: 1, r: 1 },
+	{ q: 1, r: 2 }
 ];
 
 /**
- * The ground the rival line opens on, listed top→bottom on screen: column b — the
- * forward column of its own half, one fighter to a row, each facing the player across
+ * The ground the rival line opens on, listed top→bottom on screen: column b — the front
+ * of its own half, one fighter to a row, each facing the player one column away across
  * the white column between them. Neither line opens on that white column: it is the
  * ground the lanes are played for, so it starts empty and is only ever stood on by
  * whoever wins a lane (see {@link CombatController.settleGround}) — the player walks up
@@ -155,14 +155,36 @@ export interface LineupFighter {
 }
 
 /**
+ * Whether a fighter of `side` could be standing on `cell` at any point in a fight.
+ *
+ * A line only ever leaves the column it opened on one way, and only by one column: the
+ * player's fighter that wins its lane walks up onto the white column, and the rival that
+ * wins one falls back a column deeper into its own half ({@link
+ * CombatController.settleGround}). So each side is only ever found between its opening
+ * column and the end of that single move, and a fighter anywhere else is standing on
+ * ground this game does not use — a board saved when the lines opened somewhere else.
+ * A fighter with no cell at all is standing nowhere and so disagrees with nothing.
+ */
+function standsOnOwnGround(side: FighterSide, cell: { q: number; r: number } | null): boolean {
+	if (!cell) return true;
+	const opening = (side === 'info' ? PLAYER_CELLS : RIVAL_CELLS)[0];
+	if (!opening) return true;
+	const settled = side === 'info' ? 0 : opening.q - 1;
+	return cell.q >= Math.min(opening.q, settled) && cell.q <= Math.max(opening.q, settled);
+}
+
+/**
  * Whether a saved board describes `lineup` — the fighters in **seed order**, which is
- * the order each side's lanes are numbered in.
+ * the order each side's lanes are numbered in — and describes it standing on this
+ * game's ground.
  *
  * A board is only ever taken whole: the same number of fighters, each standing in the
- * lane it was saved in, each fielded from the spawn it was saved with. Anything else —
- * a team changed since, a board belonging to another battle, a row half-written — is
- * refused rather than patched in, and the fight is started instead. A half-restored
- * fight would be a different game wearing this one's turn number.
+ * lane it was saved in, each fielded from the spawn it was saved with, each on a column
+ * its side could have reached ({@link standsOnOwnGround}). Anything else — a team changed
+ * since, a board belonging to another battle, a row half-written, a fight opened when the
+ * lines stood on other columns — is refused rather than patched in, and the fight is
+ * started instead. A half-restored fight would be a different game wearing this one's
+ * turn number.
  *
  * It is exported because the fight is not the only thing a board is put back onto: the
  * arena stands the line-up up on the cells that board records, and a board good enough
@@ -180,7 +202,9 @@ export function boardFitsLineup(
 		error: lineup.filter((fighter) => fighter.side === 'error')
 	};
 	return snapshot.fighters.every(
-		(entry) => lines[entry.side]?.[entry.slot]?.spawnId === entry.spawnId
+		(entry) =>
+			lines[entry.side]?.[entry.slot]?.spawnId === entry.spawnId &&
+			standsOnOwnGround(entry.side, entry.cell)
 	);
 }
 

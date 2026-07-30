@@ -799,7 +799,8 @@ describe('the stand-off', () => {
 			}
 			for (const cell of PLAYER_CELLS) {
 				expect(isBoardCell(cell.q, cell.r)).toBe(true);
-				expect(columnLabel(cell.q)).toBe('e');
+				// Column d: the front of the player's own half, facing b across the white one.
+				expect(columnLabel(cell.q)).toBe('d');
 				expect(cellSide(cell.q)).toBe('blue');
 			}
 			// Nobody opens on the white column: it is what the lanes are played for, so it
