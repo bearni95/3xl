@@ -4,14 +4,15 @@ import MusicPlayer from '$components/core/MusicPlayer.svelte';
 import type { MusicCollection } from '$types/music.type';
 
 /**
- * The plate in the map's corner. It owns none of the music — the collection, which
- * song is loaded and whether it is running are all musicService's, because the sound
- * has to outlive anything that happens on screen — so what is asserted here is that
- * the plate says what the service holds, and that its two controls reach it.
+ * The plate in the map's corner. It owns none of the music — the collection, what is
+ * on air and whether it is running are all musicService's, because the sound has to
+ * outlive anything that happens on screen — so what is asserted here is that the
+ * plate says what the service holds, and that its two controls reach it.
  *
- * The audio element itself is the browser's, and happy-dom does not play sound: a
- * `play()` here neither starts nor is expected to. The swap is what can be seen
- * without it, and it is the whole of "change between the songs".
+ * The audio element itself is the browser's, and happy-dom neither plays sound nor
+ * reports how long a file is: no length ever arrives, so the stations here cannot be
+ * placed on a clock and each falls back to its day order from the top. That is the
+ * fallback being exercised, and it is what leaves the dial something visible to do.
  */
 
 const COLLECTION: MusicCollection = {
@@ -40,19 +41,20 @@ function stubFetch(collection: MusicCollection | null): void {
 describe('the music player', () => {
 	beforeEach(() => stubFetch(COLLECTION));
 
-	it('letters the loaded song, and steps to the next one', async () => {
+	it('letters what is on air, and turns to the next station', async () => {
 		const { getByText, getByLabelText } = render(MusicPlayer);
 
 		// Nothing is drawn until the collection has been read: the plate is what the
 		// service holds, and before the read it holds no song.
 		await waitFor(() => expect(getByText('First song')).toBeTruthy());
 
-		await fireEvent.click(getByLabelText('Next song'));
+		// A station is a show, so these two songs are two stations — the one their show
+		// opens, and the one for the songs that open none.
+		await fireEvent.click(getByLabelText('Next station'));
 		expect(getByText('Second song')).toBeTruthy();
 
-		// The collection wraps, so the next press comes back to the first song — which is
-		// what makes one button enough to move between two of them.
-		await fireEvent.click(getByLabelText('Next song'));
+		// The dial wraps, so the next press comes back round to the first station.
+		await fireEvent.click(getByLabelText('Next station'));
 		expect(getByText('First song')).toBeTruthy();
 	});
 

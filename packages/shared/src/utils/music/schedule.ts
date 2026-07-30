@@ -28,6 +28,20 @@ export interface ScheduledTrack {
 }
 
 /**
+ * One song's length in milliseconds, or null for a length that is not one.
+ *
+ * `seconds` is what an audio element yields: a file that has not answered yet is
+ * undefined, one that would not decode is NaN, and neither is a length. Nor is zero —
+ * a song of no length would put two songs on the same instant. The part-seconds are
+ * kept, not dropped: a song is not a whole number of seconds long, and twenty of them
+ * rounded down is a station running a quarter of a minute early by the end of the day.
+ */
+export function trackLengthMs(seconds: number | undefined): number | null {
+	if (seconds === undefined || !Number.isFinite(seconds) || seconds <= 0) return null;
+	return Math.round(seconds * 1000);
+}
+
+/**
  * `tracks`, in the order they are given, each with the moment it comes up.
  *
  * `lengths` is how long each song is **in seconds**, by file — the shape
@@ -43,14 +57,8 @@ export function stationSchedule(
 	let clock: number | null = 0;
 	return tracks.map((track) => {
 		const startsAt = clock;
-		const length = lengths.get(track.file);
-		// The part-seconds a length comes with are kept, not dropped: a song is not a
-		// whole number of seconds long, and twenty of them rounded down is a station
-		// running a quarter of a minute early by the end of the day.
-		clock =
-			clock === null || length === undefined || !Number.isFinite(length) || length <= 0
-				? null
-				: clock + Math.round(length * 1000);
+		const length = trackLengthMs(lengths.get(track.file));
+		clock = clock === null || length === null ? null : clock + length;
 		return { track, startsAt };
 	});
 }

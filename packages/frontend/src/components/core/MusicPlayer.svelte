@@ -6,9 +6,15 @@
 	import { showLogos, loadShowLogos } from '$services/shows.service';
 	import { showIconName } from '$utils/show/show-icon';
 
-	// The map's music: the songs vendored in @3xl/assets, one plate in the corner with
-	// the three things a player needs — what is loaded, a play/pause, and the step to
-	// the next song.
+	// The map's radio: one plate in the corner with the three things a listener needs —
+	// what is on air, a play/pause, and the turn of the dial to the next station.
+	//
+	// A station is a show, and what is playing on it is decided by the clock rather
+	// than by this plate: the song and the second of it come from musicService, which
+	// folds the time of day into the show's day order (see there). So there is no step
+	// to the next song here — a listener turns to another station, they do not skip
+	// what a station is playing. The dial is drawn only when there is more than one
+	// station to turn to.
 	//
 	// It reads as the town panel below it does — the same black plate, the same glyph
 	// tile at the left end with two lines of text beside it — because the two stand in
@@ -16,9 +22,10 @@
 	// black for the town panel's reason: it sits over satellite imagery, and the
 	// lettering has to be read off the plate rather than off the terrain.
 	//
-	// No state of its own: which song is loaded and whether it is running belong to
-	// musicService, which owns the audio element so that the sound outlives anything
-	// that happens on screen, and which reads the authored collection itself.
+	// No state of its own: what is on air, whether it is running and which station it
+	// is on belong to musicService, which owns the audio element so that the sound
+	// outlives anything that happens on screen, and which reads the authored
+	// collection itself.
 
 	export let classes: string = '';
 
@@ -82,15 +89,23 @@
 			{/if}
 		</button>
 
-		<button
-			type="button"
-			class="btn btn-circle btn-ghost btn-sm flex-none text-white"
-			aria-label="Next song"
-			on:click={() => musicService.next()}
-		>
-			<svg viewBox="0 0 24 24" fill="currentColor" class="size-5" aria-hidden="true">
-				<path d="M6 18l8.5-6L6 6v12zM16 6h2.5v12H16z" />
-			</svg>
-		</button>
+		<!-- The dial. A turn, not a skip: it leaves this station playing what it is
+			playing and joins the next one wherever that one has got to. Drawn only when
+			the collection makes more than one station — a dial with one stop on it would
+			be a button that does nothing. -->
+		{#if state.stations > 1}
+			<button
+				type="button"
+				class="btn btn-circle btn-ghost btn-sm flex-none text-white"
+				aria-label="Next station"
+				on:click={() => musicService.nextStation()}
+			>
+				<svg viewBox="0 0 24 24" fill="currentColor" class="size-5" aria-hidden="true">
+					<path
+						d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+					/>
+				</svg>
+			</button>
+		{/if}
 	</div>
 {/if}

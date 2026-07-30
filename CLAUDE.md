@@ -133,7 +133,22 @@ kind of full-view surface in this app and not one per feature. The map's top-lef
 stack of plates: `MusicPlayer.svelte` at its head, always up, then the town panel when a town
 is picked, then the Location plate. The player draws nothing until a song is loaded, and the
 audio element belongs to `music.service.ts` rather than to the component, so the sound
-outlives whatever opens and closes over the map. Admin routes: `/characters` (definition editor),
+outlives whatever opens and closes over the map.
+
+**The player is a radio, and a show is a station.** Nothing on the plate chooses a song: a
+station's songs are put in an order drawn from the day's seed (`utils/music/daily-shuffle`,
+a UTC day — deliberately *not* the game's Catalan day, since nothing is awarded off it),
+they run end to end from that day's midnight and start again when they run out, and what is
+playing is whichever song the clock lands in, at the second it lands on
+(`utils/music/station`). So two players hear the same bar of the same song without anything
+being stored, sent or agreed on, and a listener who pauses rejoins where the station has got
+to rather than resuming. The plate's two controls are play/pause and the **dial** — the turn
+to the next station, not a skip, since a radio has no next song. The lengths that clock is
+built out of are the files' and nobody authors them: they are read off audio elements that
+load metadata and nothing else, one per song, which is why a station that has not been
+measured yet (or holds a file that will not decode) falls back to playing its day order from
+the top. The admin `/music` screen's Radio tab is the same three things drawn as a table.
+Admin routes: `/characters` (definition editor),
 `/shows` (TMDB browser), `/achievements` (badge editor + Supabase rule sync) and `/music`
 (what each vendored song is called and which show it opens).
 
