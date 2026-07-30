@@ -565,6 +565,64 @@ interface Actor {
 	stepDir: number;
 }
 
+/** A rectangle in stage coordinates — the shape `Container.getBounds()` returns, cut
+ * down to the four numbers {@link contentCrop} reads off it. */
+export interface ContentBounds {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
+}
+
+/** Breathing room kept on every side of the drawn board, so nothing sits hard against
+ * the canvas edge — and so the small per-frame wobble in the bounds as animations play
+ * has somewhere to go. */
+const CROP_MARGIN = 8;
+
+/**
+ * The canvas the board is drawn on, worked out from the box the board actually occupies:
+ * where to put the stage's origin, and how big to make the framebuffer.
+ *
+ * Two things want room that is not in those bounds, and both want it on one side only:
+ * the order buttons are hung off a fighter's right long after this crop is taken
+ * (`reserve`), and the empty row above the grid ({@link HEAD_ROOM}) is room for the
+ * auras, poses and callouts that reach up out of the top row, none of which are drawn
+ * yet — so the top is pinned at the layout's own zero rather than cropped to whatever
+ * happens to be standing there.
+ *
+ * Reserving on one side alone would leave the board sitting off-centre in its own
+ * canvas: pushed left by the width of an order strip, and low by the depth of the head
+ * room. So each of those is a floor on the room on *its* side, and the opposite side is
+ * grown to match it — the crop is the smallest box centred on the board that contains
+ * every side's requirement. The board therefore lands in the middle of the canvas on
+ * both axes, whatever the canvas is then scaled to, and nothing that was being reserved
+ * for has lost any of its room.
+ */
+export function contentCrop(
+	bounds: ContentBounds,
+	{ reserve = 0, margin = CROP_MARGIN }: { reserve?: number; margin?: number } = {}
+): { left: number; top: number; width: number; height: number } {
+	const centerX = (bounds.minX + bounds.maxX) / 2;
+	const centerY = (bounds.minY + bounds.maxY) / 2;
+	// Half-extents: the furthest any side has to reach from the board's own middle.
+	const halfWidth = Math.max(
+		centerX - (bounds.minX - margin),
+		bounds.maxX + margin + reserve - centerX
+	);
+	const halfHeight = Math.max(
+		centerY - Math.min(0, bounds.minY - margin),
+		bounds.maxY + margin - centerY
+	);
+	const left = Math.floor(centerX - halfWidth);
+	const top = Math.floor(centerY - halfHeight);
+	return {
+		left,
+		top,
+		width: Math.ceil(centerX + halfWidth) - left,
+		height: Math.ceil(centerY + halfHeight) - top
+	};
+}
+
 /**
  * Renders the board — a field of pointy-topped hexagons, drawn face-on — on a PixiJS
  * canvas. Cells left of centre take the first grid colour, cells to the right the
@@ -732,40 +790,31 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Shrink the canvas to the bounding box of everything drawn (grid + coordinates +
-	 * characters), so the board sits flush against its edges, with room off its right-hand
-	 * side for the order buttons that stand *there*. The stage is offset so the content
-	 * stays in view; the grid's own coordinates are left untouched, so no cell shifts.
+	 * Shrink the canvas to the box the board actually occupies (grid + coordinates +
+	 * characters), centred in it. The stage is offset so the content stays in view; the
+	 * grid's own coordinates are left untouched, so no cell shifts.
 	 *
-	 * Flush on three sides, that is. The top edge is **not** cropped to what happens to be
-	 * drawn: it is pinned to the canvas's own top, which is the far side of the empty row
-	 * kept above the grid ({@link HEAD_ROOM}). This crop is taken once, as the board opens,
-	 * off the frame every character happens to be standing in at that moment — and the
-	 * things that reach highest are not there yet. A guard held on the top row, an aura
-	 * lit under a fighter, the callout that floats over its head: all of them are drawn
-	 * later and all of them go *up*, and a canvas cropped to the tallest idle frame has
-	 * nowhere to put them. They are simply cut off at the top edge, which is the one edge
-	 * a player cannot scroll to see past, since the canvas is scaled to fit its box rather
-	 * than overflowing it.
+	 * The crop is taken once, as the board opens, off the frame every character happens to
+	 * be standing in at that moment — and the things that reach furthest are not there yet.
+	 * A guard held on the top row, an aura lit under a fighter, the callout that floats over
+	 * its head all go *up*; the order buttons are hung off a fighter's right. A canvas
+	 * cropped to the tallest idle frame has nowhere to put any of them, and they are simply
+	 * cut off at the edge, which a player cannot scroll to see past — the canvas is scaled
+	 * to fit its box rather than overflowing it. Hence the two reservations
+	 * ({@link HEAD_ROOM} above, {@link MugenBoard.orderReserve} to the right) that
+	 * {@link contentCrop} takes as floors on the room on those sides.
 	 *
-	 * It still grows past that if something is somehow drawn higher, so the pin is a floor
-	 * on the room above the board and never a lid on it.
+	 * Both are floors and neither is a lid: the crop still grows past them for anything
+	 * drawn further out, and it mirrors each one onto the opposite side so the board is
+	 * centred rather than shoved off by the room reserved beside it.
 	 */
 	private fitToContent(): void {
 		if (!this.app) return;
-		const bounds = this.app.stage.getBounds();
-		// A little breathing room so nothing sits hard against the edge (and to absorb
-		// the small per-frame bounds wobble as animations play).
-		const margin = 8;
-		// Plus standing room to the right of the board for the order buttons, which are
-		// hung beside a fighter long after this crop is taken.
-		const reserve = this.orderReserve();
-		const left = Math.floor(bounds.minX - margin);
-		// Zero is the top of the layout this board was sized from — the empty row above the
-		// grid starts there — so keeping the crop at or above it keeps that row.
-		const top = Math.min(0, Math.floor(bounds.minY - margin));
-		const width = Math.ceil(bounds.maxX + margin + reserve) - left;
-		const height = Math.ceil(bounds.maxY + margin) - top;
+		const { left, top, width, height } = contentCrop(this.app.stage.getBounds(), {
+			// Plus standing room to the right of the board for the order buttons, which are
+			// hung beside a fighter long after this crop is taken.
+			reserve: this.orderReserve()
+		});
 		this.app.stage.position.set(-left, -top);
 		this.app.renderer.resize(width, height);
 	}
