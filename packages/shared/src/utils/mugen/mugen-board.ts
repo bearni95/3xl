@@ -101,6 +101,13 @@ const DEFAULTS = {
 // the first grid's colour, cells to the right the second's.
 
 /**
+ * The colour every line of the grid is drawn in. The lattice is not a side's marking —
+ * it is the board itself — so it is one colour all the way across, and black is the one
+ * that says "ruled line" over the pale fills the halves are tinted with.
+ */
+const GRID_LINE = 0x000000;
+
+/**
  * The most of the viewport's height the canvas may take.
  *
  * The board is a wide rectangle — five columns by three rows — but the characters
@@ -659,6 +666,10 @@ export class MugenBoard {
 	 * (q = 0) — the shared ground both sides can enter — is painted `centerColor`.
 	 * Iterates the exact cell list from the shared grid utility, so every occupiable
 	 * cell is drawn and nothing else is.
+	 *
+	 * Only the fills are coloured: every line of the grid is drawn in {@link GRID_LINE},
+	 * so the lattice reads as one board rather than as two colours meeting, and a cell's
+	 * side is said by the ground inside it alone.
 	 */
 	private drawBoard(leftColor: number, rightColor: number, centerColor: number): void {
 		if (!this.app) return;
@@ -674,7 +685,7 @@ export class MugenBoard {
 			const bottomRight = this.project(corner.x + 1, corner.y + 1);
 			graphics.rect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
 			graphics.fill({ color, alpha: 0.08 });
-			graphics.stroke({ width: 2, color, alpha: 0.9 });
+			graphics.stroke({ width: 2, color: GRID_LINE, alpha: 0.9 });
 		}
 		this.app.stage.addChild(graphics);
 	}

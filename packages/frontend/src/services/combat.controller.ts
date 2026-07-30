@@ -43,11 +43,12 @@
  * by this: the rivals' orders are decided blind ({@link CombatController.planRivals}) but
  * they are carried out by the same resolution, gifts and ordering included.
  *
- * The rivals open **on the central white column**, as far forward as the board allows,
- * one cell facing each of the player's fighters — so the ground itself is what is being
- * fought over, lane by lane. A lane is settled on the board the turn it is decided: the
- * winner either takes that white cell (the player's fighter walks up onto it) or
- * withdraws off it into its own half (the rival). So the board itself shows how the
+ * The two lines open **face to face across the central white column** — the rivals on
+ * column b, the player's fighters on column e, one pair to a row — so that column, which
+ * nobody starts on, is the ground being fought over, lane by lane. A lane is settled on
+ * the board the turn it is decided: the winner either takes that white cell (the player's
+ * fighter walks up onto it) or falls back a column deeper into its own half (the rival).
+ * So the board itself shows how the
  * fight is going, with nothing drawn under anybody's
  * feet: there is no health to track, and a fighter holding a charge simply *burns* —
  * an aura in its own colour, lit the turn it loads and out the turn it fires, so who
@@ -110,10 +111,10 @@ export const MAX_TURNS = 20;
 export const ENCOUNTERS_TO_WIN = 2;
 
 /**
- * The ground the player's line opens on, listed top→bottom on screen — the far column
- * of its own half, one fighter to a row, each facing the rival on the same row of the
- * white column. A fighter holds its own cell until the lane in front of it is won, and
- * the only ground it ever takes is that lane's white cell (see
+ * The ground the player's line opens on, listed top→bottom on screen — column e, the
+ * far column of its own half, one fighter to a row, each facing the rival on the same
+ * row of column b. A fighter holds its own cell until the lane in front of it is won,
+ * and the only ground it ever takes is that lane's white cell (see
  * {@link CombatController.settleGround}).
  *
  * Three a side on a three-row board, so a line is one fighter to every row of it: every
@@ -127,17 +128,17 @@ export const PLAYER_CELLS: Cell[] = [
 ];
 
 /**
- * The ground the rival line opens on, listed top→bottom on screen: the shared white
- * column itself — as far forward as the board allows, one cell facing each of the
- * player's. Holding it is what the fight is about, and a rival only ever leaves it
- * one way (see {@link CombatController.settleGround}): the turn it wins its lane, it
- * withdraws a column into its own half, and the turn it loses one the player's
- * fighter walks up and takes the cell off it.
+ * The ground the rival line opens on, listed top→bottom on screen: column b — the
+ * forward column of its own half, one fighter to a row, each facing the player across
+ * the white column between them. Neither line opens on that white column: it is the
+ * ground the lanes are played for, so it starts empty and is only ever stood on by
+ * whoever wins a lane (see {@link CombatController.settleGround}) — the player walks up
+ * onto it, or the rival withdraws off b a column deeper into its own half.
  */
 export const RIVAL_CELLS: Cell[] = [
-	{ q: 0, r: 0 },
-	{ q: 0, r: 1 },
-	{ q: 0, r: 2 }
+	{ q: -1, r: 0 },
+	{ q: -1, r: 1 },
+	{ q: -1, r: 2 }
 ];
 
 /** Animation played when a fighter attacks and its definition binds no melee move. */
@@ -789,10 +790,12 @@ export class CombatController {
 	 * won that ground — so it is moved, once, and holds where it lands for the rest of
 	 * the fight:
 	 *
-	 *   · **The player's fighter won** — it walks up onto the white cell the rival was
-	 *     holding and takes it. Ground gained is ground shown.
+	 *   · **The player's fighter won** — it walks up onto its lane's white cell, the
+	 *     ground between the two lines, and takes it. Ground gained is ground shown. Not
+	 *     the cell the rival was standing on: that is the rival's own half, which is not
+	 *     ground either side can hold, and the white column is what the lane was for.
 	 *   · **The rival won** — there is nothing left in front of it, so it withdraws off
-	 *     the white column into its own half, a column back the way it came.
+	 *     the front of its half, a column back the way it came.
 	 *
 	 * Both sides falling together settles nothing: neither is standing to take the
 	 * ground, and the cell is simply left empty. The walks are taken one at a time —
@@ -805,8 +808,9 @@ export class CombatController {
 			if (!winner || winner.down) continue;
 			const ground =
 				fighter.side === 'error'
-					? // The white cell the fallen rival was holding, now the player's.
-						fighter.cell
+					? // The white cell of the lane just won, now the player's: the fallen
+						// rival's row, on the column both halves meet at.
+						{ q: 0, r: fighter.cell.r }
 					: // A column back the way it came: its own half is out from the centre.
 						winner.cell && { q: winner.cell.q - 1, r: winner.cell.r };
 			if (!ground || !isBoardCell(ground.q, ground.r)) continue;

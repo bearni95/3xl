@@ -203,8 +203,8 @@
 	// Where each side opens. Both sides' ground belongs to the controller — it is what
 	// decides who faces whom, and it is what walks the winner of a lane on or off the
 	// white cell it was fought over — so the cells are taken from there rather than
-	// restated here: the rivals on the board's central white column, the player's team
-	// on the far column of its own half, level with them row for row.
+	// restated here: the rivals on column b, the player's team on column e, level with
+	// them row for row and the white column standing empty between the two.
 	//
 	// The controller lists each line top→bottom on screen; the player's team fills its
 	// column the other way about, its first slot standing nearest the viewer, so the
@@ -256,8 +256,9 @@
 		return color ? combatColorHex(color) : fallback;
 	}
 
-	// Left: the rival line on the central column; right: the player's team on the far
-	// column of its own half. Each side's first slot leads (it is the grid's own
+	// Left: the rival line on column b, the front of its own half; right: the player's
+	// team on column e, the far column of its own half — the white column between them
+	// starts empty, being the ground the lanes are played for. Each side's first slot leads (it is the grid's own
 	// character, the rest are extras) and stands on the topmost cell, so team order and
 	// the board's top→bottom order are one and the same. Rebuilt whenever a slot or a
 	// spawn changes. `spawns` is passed in explicitly so Svelte's legacy reactive

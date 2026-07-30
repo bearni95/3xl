@@ -8,7 +8,7 @@ import {
 	type CombatState,
 	type FighterSeed
 } from '$services/combat.controller';
-import { type Cell, cellSide, findPath, isBoardCell } from '$utils/mugen/grid';
+import { type Cell, cellSide, columnLabel, findPath, isBoardCell } from '$utils/mugen/grid';
 import { ORDER_ICONS } from '$utils/color/traits';
 import type { CombatColor } from '$types/character-definition.type';
 import type { BattleBoardSnapshot, BattleFighterSnapshot } from '$types/battle.type';
@@ -785,20 +785,30 @@ describe('the stand-off', () => {
 	});
 
 	describe('the ground a lane is fought over', () => {
-		it('opens with the rivals on the white column and the player facing them', () => {
+		// The white cell of a lane: the ground between the two lines, and what the player's
+		// fighter walks onto the turn it wins there.
+		const wonGround = (lane: number): Cell => ({ q: 0, r: RIVAL_CELLS[lane].r });
+
+		it('opens with each line in its own half, the white column between them empty', () => {
 			expect(RIVAL_CELLS).toHaveLength(PLAYER_CELLS.length);
 			for (const cell of RIVAL_CELLS) {
 				expect(isBoardCell(cell.q, cell.r)).toBe(true);
-				// As far forward as the board allows: the shared white column, which is
-				// the ground each lane is played for.
-				expect(cellSide(cell.q)).toBe('purple');
+				// Column b: the front of the rival's own half, not the shared ground.
+				expect(columnLabel(cell.q)).toBe('b');
+				expect(cellSide(cell.q)).toBe('red');
 			}
 			for (const cell of PLAYER_CELLS) {
 				expect(isBoardCell(cell.q, cell.r)).toBe(true);
+				expect(columnLabel(cell.q)).toBe('e');
 				expect(cellSide(cell.q)).toBe('blue');
 			}
+			// Nobody opens on the white column: it is what the lanes are played for, so it
+			// is ground to be taken rather than ground either line starts on.
+			for (const cell of [...RIVAL_CELLS, ...PLAYER_CELLS]) {
+				expect(cellSide(cell.q)).not.toBe('purple');
+			}
 			// Each pair is drawn on one row, which is what puts the two of them in one
-			// lane — and what makes the white cell in front of the player its own to take.
+			// lane — and what makes the white cell between them the ground it is won over.
 			RIVAL_CELLS.forEach((rival, lane) => {
 				expect(PLAYER_CELLS[lane].r).toBe(rival.r);
 			});
@@ -815,7 +825,7 @@ describe('the stand-off', () => {
 			const half = (side: 'red' | 'blue') => (cell: Cell) =>
 				isBoardCell(cell.q, cell.r) && cellSide(cell.q) !== (side === 'blue' ? 'red' : 'blue');
 			RIVAL_CELLS.forEach((rival, lane) => {
-				expect(findPath(PLAYER_CELLS[lane], rival, half('blue'))).not.toBeNull();
+				expect(findPath(PLAYER_CELLS[lane], wonGround(lane), half('blue'))).not.toBeNull();
 				expect(findPath(rival, { q: rival.q - 1, r: rival.r }, half('red'))).not.toBeNull();
 			});
 		});
@@ -831,8 +841,8 @@ describe('the stand-off', () => {
 			controller.setAction('p0', 'shoot');
 			await playTurn(controller);
 			expect(fighterOf(get(controller), 'r0').down).toBe(true);
-			// The cell the rival was holding is the player's now.
-			expect(log.moved).toEqual([{ id: 'p0', cell: RIVAL_CELLS[0] }]);
+			// The white cell the lane was played for is the player's now.
+			expect(log.moved).toEqual([{ id: 'p0', cell: wonGround(0) }]);
 			expect(cellSide(log.moved[0].cell.q)).toBe('purple');
 		});
 
@@ -855,7 +865,7 @@ describe('the stand-off', () => {
 			// P0 took the white cell its lane was played for, and with it the lane: there is
 			// nobody in front of it and never will be, so it stands down for the rest of the
 			// fight rather than being given orders that could do nothing.
-			expect(log.moved).toEqual([{ id: 'p0', cell: RIVAL_CELLS[0] }]);
+			expect(log.moved).toEqual([{ id: 'p0', cell: wonGround(0) }]);
 			const held = fighterOf(get(controller), 'p0');
 			expect(held.holdsGround).toBe(true);
 			expect(held.ordered).toBe(true);
@@ -881,7 +891,7 @@ describe('the stand-off', () => {
 			controller.setAction('p0', 'charge');
 			await playTurn(controller);
 			expect(fighterOf(get(controller), 'p0').down).toBe(true);
-			// Off the white column, one column back the way it came.
+			// Off the front of its half, one column back the way it came.
 			expect(log.moved).toEqual([{ id: 'r0', cell: { q: RIVAL_CELLS[0].q - 1, r: RIVAL_CELLS[0].r } }]);
 			expect(cellSide(log.moved[0].cell.q)).toBe('red');
 		});
@@ -920,7 +930,7 @@ describe('the stand-off', () => {
 			controller.setAction('p1', 'charge');
 			await playTurn(controller);
 			// Lane 0 was decided and only lane 0 moved.
-			expect(log.moved).toEqual([{ id: 'p0', cell: RIVAL_CELLS[0] }]);
+			expect(log.moved).toEqual([{ id: 'p0', cell: wonGround(0) }]);
 		});
 	});
 
