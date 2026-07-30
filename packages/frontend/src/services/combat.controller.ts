@@ -277,6 +277,17 @@ export interface Fighter extends FighterSeed {
 	/** Those of them it has already had. Each is worth one use in the whole battle, so
 	 * a gift in here is gone for good. */
 	spent: PassiveOrder[];
+	/**
+	 * Those of them that actually *did* something — the free shot that was fired, the
+	 * guard that turned a bullet aside, the charge that went into the bank.
+	 *
+	 * A subset of {@link spent}, and the difference between the two is the difference
+	 * between a gift taken and a gift that merely ran out at the end of the turn it was in
+	 * hand for ({@link CombatController.lapsePassives}). Nothing in the rules reads it — it
+	 * is what the board's fourth slot shows, which is a record of what the fighter's colour
+	 * did for it, and a gift that did nothing is not that.
+	 */
+	used: PassiveOrder[];
 	/** The board cell it is standing on. Its line-up slot's opening ground until the
 	 * lane it fights in is decided, and then whatever ground that left it on — the white
 	 * column it won, or the back of its own half (see
@@ -304,6 +315,9 @@ export interface FighterView {
 	 * board wears at the fighter's corner, and which of them still stand for something. */
 	passives: PassiveOrder[];
 	spent: PassiveOrder[];
+	/** Those its colour actually carried out for it, never secret and never taken back —
+	 * the board's fourth slot. See {@link Fighter.used}. */
+	used: PassiveOrder[];
 	charges: number;
 	maxCharges: number;
 	down: boolean;
@@ -419,6 +433,7 @@ export class CombatController {
 				...entry,
 				passives: colorPassives(entry.color),
 				spent: [],
+				used: [],
 				// Where it stands. A line longer than the board's own ground has no cell
 				// for its extra fighters — they still fight their lane, they are just not
 				// standing anywhere the board can move them to or from.
@@ -460,6 +475,7 @@ export class CombatController {
 				charges: fighter.charges,
 				down: fighter.down,
 				spent: [...fighter.spent],
+				used: [...fighter.used],
 				action: fighter.action,
 				// A line longer than the board's ground leaves its extras standing nowhere.
 				cell: fighter.cell ? { q: fighter.cell.q, r: fighter.cell.r } : null
@@ -489,6 +505,11 @@ export class CombatController {
 			// one it never carried says nothing about it either way.
 			const spent = entry.spent ?? [];
 			fighter.spent = fighter.passives.filter((order) => spent.includes(order));
+			// A board written before gifts were told apart names none as used, which reads
+			// as a fight whose colours did nothing — the fourth slots come back empty rather
+			// than wrong.
+			const used = entry.used ?? [];
+			fighter.used = fighter.spent.filter((order) => used.includes(order));
 			fighter.action = entry.action;
 			// Ground won earlier in the fight, as long as it is ground: a cell the board
 			// would refuse leaves the fighter on the one its slot opened on.
@@ -631,7 +652,7 @@ export class CombatController {
 				// fighter with nothing banked and nothing loading keeps the gift for a turn
 				// it can fire. A turn spent loading is not such a turn: the charge above is
 				// already banked, and this is what it pays for.
-				if (fire(true)) this.spend(fighter, 'shoot');
+				if (fire(true)) this.spend(fighter, 'shoot', true);
 			}
 		}
 		// The blows land in the order the fighters stand in — top→bottom down each
@@ -688,7 +709,7 @@ export class CombatController {
 			// so a fighter ordered to load is not also handed one.
 			if (this.passiveReady(fighter, 'charge') && !full()) {
 				fighter.charges += 1;
-				this.spend(fighter, 'charge');
+				this.spend(fighter, 'charge', true);
 				this.log.push(`${fighter.name} banks a free charge.`);
 			}
 		}
@@ -828,7 +849,7 @@ export class CombatController {
 			// Blue's free guard. It is only had on a turn the fighter wasn't covering
 			// anyway (the branch above), and only spent on a shot it actually turns
 			// aside — a quiet turn costs it nothing.
-			this.spend(target, 'defend');
+			this.spend(target, 'defend', true);
 			this.log.push(`${from} at ${target.name} — turned aside by its free guard.`);
 			this.board?.showCallout(target.id, 'GUARD', target.color);
 		} else {
@@ -1131,6 +1152,8 @@ export class CombatController {
 			// worn at the fighter's corner all fight long, rivals included.
 			passives: [...fighter.passives],
 			spent: [...fighter.spent],
+			// Never withheld: what a colour did is done, and it is shown as it happens.
+			used: [...fighter.used],
 			charges: fighter.charges,
 			maxCharges: MAX_CHARGES,
 			down: fighter.down,
@@ -1292,15 +1315,23 @@ export class CombatController {
 	}
 
 	/**
-	 * Mark a gift as had — it is worth the one use — and let the board fade the glyph
-	 * that stood for it, so a corner never offers what the fighter no longer holds. The
-	 * same call takes down a gift that merely ran out ({@link lapsePassives}): to
-	 * everything downstream the two are one state, which is the point of it.
+	 * Mark a gift as had — it is worth the one use — and take the glyph that stood for it
+	 * off the fighter's corner, so a corner never offers what the fighter no longer holds.
+	 *
+	 * `taken` says whether the gift *did* something: a free shot that was fired, a guard
+	 * that turned a bullet aside, a charge that went into the bank. To every rule in this
+	 * fight that is the same state as a gift that merely ran out at the end of the turn it
+	 * was in hand for ({@link lapsePassives}) — both are gone, and that is the point of
+	 * having one call for them. The one thing that tells them apart is what is *shown*:
+	 * the slot over a fighter's orders is a record of what its colour did for it, and a
+	 * gift that did nothing has nothing to record.
 	 */
-	private spend(fighter: Fighter, order: PassiveOrder): void {
+	private spend(fighter: Fighter, order: PassiveOrder, taken: boolean): void {
 		if (fighter.spent.includes(order)) return;
 		fighter.spent.push(order);
+		if (taken) fighter.used.push(order);
 		this.showTraits(fighter);
+		this.emit();
 	}
 
 	/**
@@ -1324,7 +1355,7 @@ export class CombatController {
 	private lapsePassives(): void {
 		for (const fighter of this.fighters) {
 			for (const order of fighter.passives) {
-				if (this.owes(fighter, order)) this.spend(fighter, order);
+				if (this.owes(fighter, order)) this.spend(fighter, order, false);
 			}
 		}
 	}

@@ -411,20 +411,70 @@
 	}
 
 	/**
-	 * The three orders drawn beside one of the player's fighters. Every one of them is
-	 * always drawn — an order out of reach is greyed rather than dropped, so a
-	 * fighter's column never changes shape under the cursor — and all of them lock while a
-	 * turn is playing out.
+	 * The slot over a fighter's three orders: what its colour did for it, free, on the turn
+	 * it was owed something.
+	 *
+	 * It is empty for most of a fight and for most fighters, and that is the point of its
+	 * being a slot rather than a button that appears. A gift only ever fires beside an order
+	 * the player gave — never as the order they gave — so what goes in here is a *second*
+	 * thing the fighter did that turn, and reading it needs the column it happened in to
+	 * have looked the same before it happened. A column that grew a fourth button would be
+	 * three fighters' columns changing shape mid-turn.
+	 *
+	 * Once something goes in, it stays: a gift is worth one use in the whole battle, so this
+	 * is the fight's record of what a colour was worth and not a light that comes on for a
+	 * turn. Only a gift that *did* something goes in — the controller keeps `used` apart
+	 * from `spent` for exactly this — because a gift that ran out unused did nothing to
+	 * record.
+	 *
+	 * A colour that mixes two primaries can fire both on the opening turn and there is one
+	 * slot; the first to fire is the one it keeps.
+	 */
+	function passiveSlot(fighter: FighterView): BoardOrder {
+		const done = fighter.used[0];
+		if (!done) {
+			return {
+				id: 'passive',
+				icon: '',
+				selected: false,
+				disabled: false,
+				readonly: true,
+				empty: true,
+				color: fighter.color
+			};
+		}
+		return {
+			// Named for what is in it, so the strip is rebuilt when the slot fills rather
+			// than repainted — an empty slot has no glyph loaded to swap.
+			id: `passive:${done}`,
+			icon: ACTION_ICONS[done],
+			// Filled in the fighter's colour like the order it was given beside: both are
+			// things this fighter did, and the colour is how this board says whose.
+			selected: true,
+			disabled: false,
+			readonly: true,
+			color: fighter.color
+		};
+	}
+
+	/**
+	 * The column beside one of the player's fighters: its colour's slot, and under it the
+	 * three orders it can be given. Every one of the three is always drawn — an order out of
+	 * reach is greyed rather than dropped, so a fighter's column never changes shape under
+	 * the cursor — and all of them lock while a turn is playing out.
 	 */
 	function orderButtons(fighter: FighterView, phase: CombatState['phase']): BoardOrder[] {
 		const locked = phase !== 'planning';
-		return COMBAT_ACTIONS.map((action) => ({
-			id: action,
-			icon: ACTION_ICONS[action],
-			selected: fighter.action === action,
-			disabled: locked || (action === 'shoot' && !fighter.canShoot),
-			color: fighter.color
-		}));
+		return [
+			passiveSlot(fighter),
+			...COMBAT_ACTIONS.map((action) => ({
+				id: action,
+				icon: ACTION_ICONS[action],
+				selected: fighter.action === action,
+				disabled: locked || (action === 'shoot' && !fighter.canShoot),
+				color: fighter.color
+			}))
+		];
 	}
 
 	/**
@@ -437,17 +487,23 @@
 	 * it over as the turn is carried out, so the button lights up at the moment the fighter
 	 * acts and stays lit for the rest of the turn.
 	 *
-	 * It lights up in the fighter's own colour, as the player's own column does.
+	 * It lights up in the fighter's own colour, as the player's own column does. And it
+	 * carries the same colour slot over it: what a rival's colour did for it is not a secret
+	 * — it has already happened by the time it is drawn — and it is a thing the player has
+	 * to be able to count, since a gift fired is a gift that will not fire again.
 	 */
 	function rivalOrderButtons(fighter: FighterView): BoardOrder[] {
-		return COMBAT_ACTIONS.map((action) => ({
-			id: action,
-			icon: ACTION_ICONS[action],
-			selected: fighter.action === action,
-			disabled: false,
-			readonly: true,
-			color: fighter.color
-		}));
+		return [
+			passiveSlot(fighter),
+			...COMBAT_ACTIONS.map((action) => ({
+				id: action,
+				icon: ACTION_ICONS[action],
+				selected: fighter.action === action,
+				disabled: false,
+				readonly: true,
+				color: fighter.color
+			}))
+		];
 	}
 
 	// Push every fighter's orders onto the board whenever the fight moves. Both `state`

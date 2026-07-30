@@ -64,6 +64,15 @@ export interface BattleFighterSnapshot {
 	 * from anything else on the board, which is why it is stored.
 	 */
 	spent: BattleOrder[];
+	/**
+	 * Which of those it actually carried out, as against merely running out of turns to
+	 * carry them out in — always a subset of `spent`. No rule of the fight reads it: it is
+	 * what a fighter's column shows for what its colour did, which a resumed fight would
+	 * otherwise have forgotten. Optional, because a board written before the two were told
+	 * apart names none, and a fight resumed off one is a fight whose colours are recorded
+	 * as having done nothing rather than as having done the wrong thing.
+	 */
+	used?: BattleOrder[];
 	/** The order it is carrying into the turn about to be played, or null. */
 	action: BattleOrder | null;
 	/** The board cell it is standing on — ground won and given up is part of the

@@ -266,12 +266,13 @@ export const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color]
 const ORDER_GAP = 8;
 /**
  * How many orders a column is sized to hold. A fighter that can be ordered at all is
- * given all three of them (charge, defend, shoot), so the column is drawn to come to
- * exactly one cell of the grid: it is as tall as the ground its fighter is standing on,
- * which is what keeps it beside that fighter and out of the lane above. A list of some
- * other length keeps this button size and simply runs shorter or longer.
+ * given all three of them (charge, defend, shoot) and a fourth slot over them for what
+ * its colour did of its own accord, so the column is drawn to come to exactly one cell of
+ * the grid: it is as tall as the ground its fighter is standing on, which is what keeps
+ * it beside that fighter and out of the lane above. A list of some other length keeps
+ * this button size and simply runs shorter or longer.
  */
-const ORDER_COLUMN_COUNT = 3;
+const ORDER_COLUMN_COUNT = 4;
 /** Gap between buttons in a column, as a fraction of a button's height. */
 const ORDER_SPACING_RATIO = 0.12;
 /** A button's height as a fraction of a cell's side: the count and the gaps above,
@@ -290,6 +291,9 @@ const ORDER_IDLE_FILL = 0x1f2937;
 const ORDER_DISABLED_FILL = 0x374151;
 /** How far the glyph on a disabled button fades toward its background. */
 const ORDER_DISABLED_ALPHA = 0.35;
+/** How far an empty slot's outline fades. Enough to hold the place and say a slot is
+ * there, not enough to read as a button with nothing in it. */
+const ORDER_EMPTY_ALPHA = 0.3;
 
 // --- Trait badges (drawn on the board, at the top-left corner of a fighter) ---
 /**
@@ -411,6 +415,13 @@ export interface BoardOrder {
 	 */
 	readonly?: boolean;
 	/**
+	 * A slot rather than an order: an outline where a button would be, holding a place in
+	 * the column for something that may yet go in it. No glyph is loaded and nothing is
+	 * filled, so {@link icon} is not read and neither `selected` nor `disabled` says
+	 * anything. Never reported, whatever `readonly` says.
+	 */
+	empty?: boolean;
+	/**
 	 * Combat colour name to fill this button with when it is the chosen one — the
 	 * fighter's own, not its side's. Six fighters carry a column and two colours could
 	 * only say which half of the board an order belonged to, which is the one thing the
@@ -446,6 +457,8 @@ interface OrderButton {
 	disabled: boolean;
 	/** Combat colour name for the chosen fill. */
 	color: string;
+	/** An outlined place-holder rather than a button. */
+	empty: boolean;
 }
 
 /** Which side of its fighter a column of orders stands on. */
@@ -1926,15 +1939,18 @@ export class MugenBoard {
 			const button = strip.buttons[i];
 			if (!button) return;
 			const color = order.color;
+			const empty = order.empty ?? false;
 			if (
 				button.selected === order.selected &&
 				button.disabled === order.disabled &&
-				button.color === color
+				button.color === color &&
+				button.empty === empty
 			)
 				return;
 			button.selected = order.selected;
 			button.disabled = order.disabled;
 			button.color = color;
+			button.empty = empty;
 			this.paintOrder(button);
 		});
 		this.updateOrders(actor);
@@ -1957,14 +1973,15 @@ export class MugenBoard {
 				glyph,
 				selected: order.selected,
 				disabled: order.disabled,
-				color: order.color
+				color: order.color,
+				empty: order.empty ?? false
 			};
 			button.container.addChild(face, glyph);
-			// A reporting button is not an input: it is left with no event mode at all, so it
-			// takes no pointer, shows no cursor and cannot be hit-tested — rather than taking
-			// the tap and dropping it, which is a button that looks pressable and does
-			// nothing.
-			if (!order.readonly) {
+			// A reporting button is not an input, and neither is an empty slot: both are left
+			// with no event mode at all, so they take no pointer, show no cursor and cannot be
+			// hit-tested — rather than taking the tap and dropping it, which is a button that
+			// looks pressable and does nothing.
+			if (!order.readonly && !order.empty) {
 				// The button itself takes the tap, so the hit area is exactly its face.
 				button.container.eventMode = 'static';
 				button.container.cursor = 'pointer';
@@ -1975,12 +1992,15 @@ export class MugenBoard {
 			}
 			container.addChild(button.container);
 
-			void this.loadIcon(order.icon).then((texture) => {
-				// The strip may have been rebuilt (or the board torn down) while loading.
-				if (!texture || glyph.destroyed) return;
-				glyph.texture = texture;
-				this.layOutOrders(actor);
-			});
+			// An empty slot has no artwork to fetch and no glyph to show it in.
+			if (!order.empty) {
+				void this.loadIcon(order.icon).then((texture) => {
+					// The strip may have been rebuilt (or the board torn down) while loading.
+					if (!texture || glyph.destroyed) return;
+					glyph.texture = texture;
+					this.layOutOrders(actor);
+				});
+			}
 			this.paintOrder(button);
 			return button;
 		});
@@ -1991,16 +2011,28 @@ export class MugenBoard {
 		return strip;
 	}
 
-	/** Repaint one button for its current state: chosen, plain, or out of reach. */
+	/** Repaint one button for its current state: chosen, plain, out of reach — or an empty
+	 * slot, which is none of those and is drawn as the outline of one. */
 	private paintOrder(button: OrderButton): void {
 		const { width, height } = this.orderSize();
 		const radius = height * ORDER_RADIUS_RATIO;
+		button.face.clear();
+
+		if (button.empty) {
+			// Nothing filled: an unfilled rounded rect is a place kept rather than a button
+			// that has lost its picture, which is what a dark face with no glyph on it would
+			// read as beside three that have one.
+			button.face.roundRect(-width / 2, -height / 2, width, height, radius);
+			button.face.stroke({ width: 2, color: 0xffffff, alpha: ORDER_EMPTY_ALPHA });
+			button.glyph.alpha = 0;
+			return;
+		}
+
 		// The chosen order takes the fighter's own colour, so a fighter's orders read as
 		// belonging to it rather than to some palette of the interface's own.
 		const chosen = combatColorHex(button.color);
 		const fill = button.disabled ? ORDER_DISABLED_FILL : button.selected ? chosen : ORDER_IDLE_FILL;
 
-		button.face.clear();
 		button.face.roundRect(-width / 2, -height / 2, width, height, radius);
 		button.face.fill({ color: fill });
 		button.face.roundRect(-width / 2, -height / 2, width, height, radius);

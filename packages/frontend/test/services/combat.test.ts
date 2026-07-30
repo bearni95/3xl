@@ -385,6 +385,75 @@ describe('the stand-off', () => {
 		});
 	});
 
+	describe('what a colour turned out to be worth', () => {
+		/**
+		 * A gift that did something and a gift that merely ran out are the same state to
+		 * every rule of the fight — both are gone — and are told apart for one purpose: the
+		 * slot over a fighter's orders records what its colour did for it, and a gift that
+		 * did nothing has nothing to record.
+		 */
+		it('separates a gift that fired from one that ran out unused', async () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'red'), // owed a shot, and fires it on turn one
+				seed('p0', 'info', 'green') // owed a guard and a charge
+			]);
+			controller.attachBoard(fakeBoard(boardLog()));
+
+			// Ordered to load, so the free charge is never a second thing p0 did — but the
+			// bullet red's colour bought arrives, and the free guard turns it aside.
+			controller.setAction('p0', 'charge');
+			await playTurn(controller);
+
+			const green = fighterOf(get(controller), 'p0');
+			// Both gifts are gone by the end of the opening turn, and only the guard did
+			// anything, so only the guard is on the record.
+			expect([...green.spent].sort()).toEqual(['charge', 'defend']);
+			expect(green.used).toEqual(['defend']);
+
+			// And the shot red's colour owed it was fired, so red's own record is that shot.
+			expect(fighterOf(get(controller), 'r0').used).toEqual(['shoot']);
+		});
+
+		it('carries that record through a fight put down and picked up again', async () => {
+			const line = () => [seed('r0', 'error', 'red'), seed('p0', 'info', 'green')];
+			const controller = new CombatController(line());
+			controller.attachBoard(fakeBoard(boardLog()));
+			controller.setAction('p0', 'charge');
+			await playTurn(controller);
+
+			// A gift is worth one use in the whole battle, so what a colour did is part of the
+			// fight and not of the turn it happened on: a board written mid-fight has to carry
+			// it or the slot comes back empty on a fighter whose colour has already paid out.
+			const resumed = new CombatController(line(), controller.snapshot());
+			resumed.attachBoard(fakeBoard(boardLog()));
+
+			expect(fighterOf(get(resumed), 'p0').used).toEqual(['defend']);
+			expect(fighterOf(get(resumed), 'r0').used).toEqual(['shoot']);
+		});
+
+		it('reads a board written before the two were told apart as a colour that did nothing', () => {
+			const line = () => [seed('r0', 'error', 'red'), seed('p0', 'info', 'green')];
+			const controller = new CombatController(line());
+			const old = controller.snapshot();
+			// The field the older format has no opinion about, on a fighter it says has had
+			// everything its colour gave.
+			old.fighters = old.fighters.map((entry) => ({
+				...entry,
+				spent: ['defend', 'charge', 'shoot'],
+				used: undefined
+			}));
+
+			const resumed = new CombatController(line(), old);
+			resumed.attachBoard(fakeBoard(boardLog()));
+
+			// Nothing is offered any more — the gifts are had — and nothing is claimed to have
+			// happened either, which is the honest reading of a board that was never asked.
+			const green = fighterOf(get(resumed), 'p0');
+			expect([...green.spent].sort()).toEqual(['charge', 'defend']);
+			expect(green.used).toEqual([]);
+		});
+	});
+
 	describe('the aura a charge burns with', () => {
 		it("lights in the fighter's own colour the turn it loads, and stays lit", async () => {
 			const log = boardLog();
