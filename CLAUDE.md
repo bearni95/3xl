@@ -220,10 +220,14 @@ player's three for the day and can never be claimed.
   what a surface calls to get one player's wording.
 - `utils/achievement/requirement.ts` — `achievementMet(achievement, context)`: whether a
   player has earned it. A preview, not the authority (see below).
-- `utils/achievement/daily.ts` — the three badges a player is set today: a seed hashed from
-  their id and the Catalan day, and a draw from the pool of badges that have a rule. Nothing
-  is stored, so there is no table of assignments to seed or to disagree about, and everyone's
-  three change at midnight Europe/Madrid.
+- `utils/achievement/daily.ts` — the badges a player is set today: a seed hashed from their
+  id and the Catalan day, and a draw from the pool of badges that have a rule. Nothing is
+  stored, so there is no table of assignments to seed or to disagree about, and everyone's
+  set changes at midnight Europe/Madrid. **How many** is a setting, not a constant:
+  `achievement_settings.daily_count` (three as provisioned), read by
+  `daily_achievement_count()` in the database and handed to the browser with the pool, so
+  both sides draw the same set. `DAILY_ACHIEVEMENT_COUNT` is only the fallback for a reader
+  that has not got the row yet.
 - `utils/achievement/variables.ts` — the rules about the *set* (names that collide or shadow
   a source, placeholders naming nothing, a requirement quoting a name nobody declared),
   called by both the admin editor and the backend
@@ -260,6 +264,11 @@ that drift apart pay out badges nobody earned. So:
 - The award is a third of the span of the level the player is on **at completion time**
   (`achievementExpAward` mirrors it), re-read per badge inside one claim, and recorded on
   `player_achievements.exp_awarded`.
+- Anything both sides of the draw have to agree on lives in Supabase for the same reason:
+  the pool (`achievement_templates.requirement`), and how many are drawn
+  (`achievement_settings.daily_count`, moved from the admin through
+  `PUT /api/achievement-templates/settings`). A number written into two languages is one
+  that can be changed in only one of them.
 
 ## Backend API (`@3xl/backend`)
 

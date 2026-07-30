@@ -25,9 +25,32 @@
 //   * the pool is sorted by id before anything is drawn from it, so the order the
 //     ids happened to arrive in — Supabase's row order, a JSON file's order —
 //     cannot change what is picked.
+//
+// How many are drawn is a setting rather than a number written here: it is read from
+// Supabase (see {@link DAILY_ACHIEVEMENT_COUNT}), so the game can be set to four a
+// day, and both sides read it from the same place for the same reason they read the
+// pool from the same place.
 
-/** How many badges a player is set each day. */
+/**
+ * How many badges a player is set each day — the number the database is
+ * provisioned with, and what anything that has not read the setting yet assumes.
+ *
+ * It is **not** the authority. The count lives in Supabase
+ * (`achievement_settings.daily_count`, read by `daily_achievement_count()`), so it
+ * can be changed to four or to one without a deploy; `claim_achievements` reads it
+ * there and the browser is handed it with everything else it loads. This constant is
+ * the fallback for the moment before that arrives and for a game with no row yet.
+ */
 export const DAILY_ACHIEVEMENT_COUNT = 3;
+
+/**
+ * What the setting may be moved to, matching the check on
+ * `achievement_settings.daily_count`. One is a game that sets a badge a day; twenty
+ * is more than any pool is likely to hold, and a pool smaller than the count simply
+ * yields the whole pool.
+ */
+export const DAILY_ACHIEVEMENT_COUNT_MIN = 1;
+export const DAILY_ACHIEVEMENT_COUNT_MAX = 20;
 
 /** 2^32: the ring all the arithmetic below is done in. */
 const RING = 4294967296;
@@ -74,20 +97,25 @@ export function drawIds(pool: readonly string[], seed: number, count: number): s
 }
 
 /**
- * The ids of the badges set for `userId` on `day` — {@link DAILY_ACHIEVEMENT_COUNT}
- * of them, or the whole pool where there are fewer.
+ * The ids of the badges set for `userId` on `day` — `count` of them, or the whole
+ * pool where there are fewer.
  *
  * `pool` is the badges that can be set at all: the ones Supabase holds a
  * requirement for, since a badge with no requirement is one the server could never
- * confirm anybody had earned. Both sides read that same pool
- * (`achievement_templates where requirement is not null`), which is what keeps the
- * browser's three and the RPC's three the same three.
+ * confirm anybody had earned. `count` is Supabase's too. Both come from the same
+ * read the caller already makes, which is what keeps the browser's pick and the
+ * RPC's the same pick — a browser that guessed either would draw a different set
+ * from the one that can actually be claimed.
  */
 export function dailyAchievementIds(
 	userId: string,
 	day: string,
-	pool: readonly string[]
+	pool: readonly string[],
+	count: number = DAILY_ACHIEVEMENT_COUNT
 ): string[] {
 	if (!userId || !day) return [];
-	return drawIds(pool, dailySeed(userId, day), DAILY_ACHIEVEMENT_COUNT);
+	// A count that is not a whole number of badges is no count at all: fall back
+	// rather than draw nothing, since the number arrives over the wire.
+	const wanted = Number.isFinite(count) && count > 0 ? Math.floor(count) : DAILY_ACHIEVEMENT_COUNT;
+	return drawIds(pool, dailySeed(userId, day), wanted);
 }

@@ -3,10 +3,16 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type {
 	Achievement,
+	AchievementSettings,
 	AchievementsCollection,
 	AchievementSyncResult,
 	AchievementTemplateRow
 } from '@3xl/shared/types/achievement.type';
+import {
+	DAILY_ACHIEVEMENT_COUNT,
+	DAILY_ACHIEVEMENT_COUNT_MAX,
+	DAILY_ACHIEVEMENT_COUNT_MIN
+} from '@3xl/shared/utils/achievement/daily';
 import {
 	FormulaError,
 	parseCondition,
@@ -45,6 +51,11 @@ import { ensureTables as ensureCoreSchema } from './show-templates';
  * with it. That is the intended meaning of retiring a badge — a badge that no longer
  * exists cannot be held — and `removed` in the result names exactly which ids it
  * happened to.
+ *
+ * `GET/PUT /settings` is the one number that is a setting rather than a rule — how
+ * many badges a day — which lives in Supabase for the same reason the rules do: the
+ * browser and `claim_achievements` both read it, and a number written into two
+ * languages is one that can be changed in only one of them.
  *
  * Mirrors ./character-templates: talks to Supabase's Postgres directly via ../db
  * (the DB password) so it can provision its own schema — no manual SQL step.
@@ -165,6 +176,55 @@ async function fetchRemote(): Promise<AchievementTemplateRow[]> {
 }
 
 export const achievementTemplatesRouter = Router();
+
+// GET /settings — the one number that is a setting rather than a rule: how many
+// badges a day. Read from Supabase (see achievement_settings), which is where both
+// the draw in the database and the browser read it, so this endpoint exists only so
+// the admin can *see* and *move* it — nothing here is the authority.
+achievementTemplatesRouter.get(
+	'/settings',
+	asyncHandler(async (_req, res) => {
+		await ensureTables();
+		const { rows } = await getPool().query<{ daily_count: number }>(
+			'select daily_count from achievement_settings limit 1'
+		);
+		const settings: AchievementSettings = {
+			dailyCount: Number(rows[0]?.daily_count ?? DAILY_ACHIEVEMENT_COUNT)
+		};
+		res.json(settings);
+	})
+);
+
+// PUT /settings — move it. The table takes no client writes at all (raising the count
+// raises what the game pays out), so this goes through the DB password like every
+// other authoring write. The bound is the same one the column's own check enforces,
+// stated here so the refusal is a sentence rather than a constraint violation.
+achievementTemplatesRouter.put(
+	'/settings',
+	asyncHandler(async (req, res) => {
+		await ensureTables();
+		const body = req.body as { dailyCount?: unknown };
+		const dailyCount = Number(body?.dailyCount);
+		if (!Number.isInteger(dailyCount)) {
+			httpError(400, 'dailyCount must be a whole number of badges');
+		}
+		if (dailyCount < DAILY_ACHIEVEMENT_COUNT_MIN || dailyCount > DAILY_ACHIEVEMENT_COUNT_MAX) {
+			httpError(
+				400,
+				`A day can be set between ${DAILY_ACHIEVEMENT_COUNT_MIN} and ${DAILY_ACHIEVEMENT_COUNT_MAX} badges`
+			);
+		}
+		const { rows } = await getPool().query<{ daily_count: number }>(
+			`insert into achievement_settings (singleton, daily_count)
+			 values (true, $1)
+			 on conflict (singleton) do update set daily_count = excluded.daily_count, updated_at = now()
+			 returning daily_count`,
+			[dailyCount]
+		);
+		const settings: AchievementSettings = { dailyCount: Number(rows[0].daily_count) };
+		res.json(settings);
+	})
+);
 
 // The remote rows, for the admin to compare against the local collection.
 achievementTemplatesRouter.get(

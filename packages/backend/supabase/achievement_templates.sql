@@ -20,6 +20,10 @@
 -- inlined in a TypeScript string beside the other DDL, is what makes the two
 -- readable side by side.
 --
+-- How many badges a day is a setting, not a constant: `achievement_settings` holds it
+-- and `daily_achievement_count()` reads it, so the same number reaches the draw here
+-- and the browser that has to show the same pick.
+--
 -- Idempotent: safe to re-run. Requires the core schema (character_spawns,
 -- player_profiles, level_for_exp, exp_for_level, level_span_exp) to exist first,
 -- which the backend guarantees by provisioning it before running this.
@@ -44,6 +48,39 @@ alter table public.achievement_templates enable row level security;
 drop policy if exists achievement_templates_select_all on public.achievement_templates;
 create policy achievement_templates_select_all on public.achievement_templates
 	for select using (true);
+
+-- ---------------------------------------------------------------------------
+-- How many badges a day
+-- ---------------------------------------------------------------------------
+-- One row, holding the one number that is a *setting* rather than a rule: how many
+-- badges a player is set each day. It lives here rather than in the code because
+-- both sides of the draw have to agree on it — the browser, which shows the day's
+-- badges, and `claim_achievements`, which will only pay for one of them — and a
+-- number written into two languages is a number that can be changed in one of them.
+--
+-- World-readable, since the browser has to draw the same set it will be allowed to
+-- claim, and writable by nobody through the anon key: raising the count raises what
+-- the game pays out, so it is changed with the database password (the admin's
+-- achievements screen does it through @3xl/backend) and never from a page.
+create table if not exists public.achievement_settings (
+	-- One row, and the check is what keeps it that way.
+	singleton boolean primary key default true check (singleton),
+	daily_count integer not null default 3 check (daily_count between 1 and 20),
+	updated_at timestamptz not null default now()
+);
+insert into public.achievement_settings (singleton) values (true) on conflict do nothing;
+
+alter table public.achievement_settings enable row level security;
+drop policy if exists achievement_settings_select_all on public.achievement_settings;
+create policy achievement_settings_select_all on public.achievement_settings
+	for select using (true);
+
+-- The setting, or the number the game ships with when there is no row to read. Every
+-- reader goes through this so "no row" and "a row" cannot disagree.
+create or replace function public.daily_achievement_count()
+returns int language sql stable set search_path = public as $$
+	select coalesce((select s.daily_count from public.achievement_settings s limit 1), 3);
+$$;
 
 -- The users-to-achievements join: one row per badge a player holds. Readable by
 -- everyone (a badge is worn), and writable by nobody through the anon key — there is
@@ -314,16 +351,17 @@ begin
 end;
 $$;
 
--- The ids set for one player on one day: three of them, drawn without replacement
--- from every template the database holds a rule for, sorted by id first so the row
--- order the pool happened to arrive in cannot change the answer. Same 32-bit LCG,
--- same `seed % remaining` index as the browser's.
+-- The ids set for one player on one day: `daily_achievement_count()` of them, drawn
+-- without replacement from every template the database holds a rule for, sorted by id
+-- first so the row order the pool happened to arrive in cannot change the answer. Same
+-- 32-bit LCG, same `seed % remaining` index as the browser's.
 create or replace function public.daily_achievement_ids(p_user uuid, p_day date)
 returns text[] language plpgsql stable set search_path = public as $$
 declare
 	v_pool text[];
 	v_drawn text[] := '{}';
 	v_state bigint := public.achievement_daily_seed(p_user, p_day);
+	v_count int := public.daily_achievement_count();
 	v_index int;
 begin
 	select coalesce(array_agg(t.id order by t.id), '{}')
@@ -331,7 +369,7 @@ begin
 		from public.achievement_templates t
 		where t.requirement_tree is not null;
 
-	while coalesce(array_length(v_drawn, 1), 0) < 3 and coalesce(array_length(v_pool, 1), 0) > 0 loop
+	while coalesce(array_length(v_drawn, 1), 0) < v_count and coalesce(array_length(v_pool, 1), 0) > 0 loop
 		v_state := (1664525 * v_state + 1013904223) % 4294967296;
 		v_index := (v_state % array_length(v_pool, 1)) + 1;
 		v_drawn := v_drawn || v_pool[v_index];

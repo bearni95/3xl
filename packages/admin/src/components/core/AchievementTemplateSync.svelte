@@ -2,10 +2,16 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import type {
 		Achievement,
+		AchievementSettings,
 		AchievementStatus,
 		AchievementSyncResult,
 		AchievementTemplateRow
 	} from '$types/achievement.type';
+	import {
+		DAILY_ACHIEVEMENT_COUNT,
+		DAILY_ACHIEVEMENT_COUNT_MAX,
+		DAILY_ACHIEVEMENT_COUNT_MIN
+	} from '$utils/achievement/daily';
 
 	// The sync API is served by @3xl/backend (default :2002), which owns the
 	// Supabase DB password. This component owns the diff between the local
@@ -37,6 +43,16 @@
 	let syncError = '';
 	let lastSync: AchievementSyncResult | null = null;
 
+	// How many badges a day the game sets. A setting rather than a rule — it decides how
+	// much is offered, never whether anything is earned — and it lives in Supabase
+	// because the draw happens in two places (the browser and `claim_achievements`) and
+	// both have to read the same number. `dailyCount` is what the database says;
+	// `dailyDraft` is what this input holds until it is saved.
+	let dailyCount = DAILY_ACHIEVEMENT_COUNT;
+	let dailyDraft = DAILY_ACHIEVEMENT_COUNT;
+	let savingDaily = false;
+	let dailyError = '';
+
 	onMount(loadRemote);
 
 	async function loadRemote() {
@@ -45,9 +61,10 @@
 		try {
 			// The holder counts come from the same trip: they are what says whether
 			// retiring a badge would take anything away from anyone.
-			const [templatesRes, holdersRes] = await Promise.all([
+			const [templatesRes, holdersRes, settingsRes] = await Promise.all([
 				fetch(`${API_BASE}/api/achievement-templates`),
-				fetch(`${API_BASE}/api/achievement-templates/holders`)
+				fetch(`${API_BASE}/api/achievement-templates/holders`),
+				fetch(`${API_BASE}/api/achievement-templates/settings`)
 			]);
 			if (!templatesRes.ok) {
 				const body = await templatesRes.json().catch(() => ({ message: templatesRes.statusText }));
@@ -57,6 +74,11 @@
 			if (holdersRes.ok) {
 				const data = (await holdersRes.json()) as { holders: Record<string, number> };
 				holders = new Map(Object.entries(data.holders));
+			}
+			if (settingsRes.ok) {
+				const settings = (await settingsRes.json()) as AchievementSettings;
+				dailyCount = settings.dailyCount;
+				dailyDraft = settings.dailyCount;
 			}
 			loaded = true;
 		} catch (err) {
@@ -85,6 +107,33 @@
 			syncing = false;
 		}
 	}
+
+	/**
+	 * Move the setting. Written through the backend rather than from here, like every
+	 * other authoring write: the table takes no client writes at all, since raising the
+	 * count raises what the game pays out.
+	 */
+	async function saveDailyCount() {
+		savingDaily = true;
+		dailyError = '';
+		try {
+			const res = await fetch(`${API_BASE}/api/achievement-templates/settings`, {
+				method: 'PUT',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ dailyCount: dailyDraft })
+			});
+			const body = await res.json().catch(() => ({ message: res.statusText }));
+			if (!res.ok) throw new Error(body.message ?? `Save failed (${res.status})`);
+			dailyCount = (body as AchievementSettings).dailyCount;
+			dailyDraft = dailyCount;
+		} catch (err) {
+			dailyError = err instanceof Error ? err.message : String(err);
+		} finally {
+			savingDaily = false;
+		}
+	}
+
+	$: dailyDirty = Number.isInteger(dailyDraft) && dailyDraft !== dailyCount;
 
 	// Recomputed whenever either side moves — the page re-loads the collection on
 	// every save, so `local` changing is what republishes the badges.
@@ -164,6 +213,39 @@
 			deleting an id also removes it from every player who held it
 			(<code class="font-mono">player_achievements</code> cascades).
 		</p>
+
+		<!-- The one number here that is a setting rather than a rule. It is read from
+		     Supabase by both the browser and `claim_achievements`, so this is the one
+		     place it is changed and neither side has it written into it. -->
+		<div class="flex flex-wrap items-center gap-3 rounded-box bg-base-200 p-3">
+			<span class="text-sm font-medium">Badges set per day</span>
+			<input
+				class="input input-bordered input-sm w-20"
+				type="number"
+				min={DAILY_ACHIEVEMENT_COUNT_MIN}
+				max={DAILY_ACHIEVEMENT_COUNT_MAX}
+				bind:value={dailyDraft}
+				aria-label="How many badges a player is set each day"
+			/>
+			<button
+				class="btn btn-sm"
+				type="button"
+				disabled={!dailyDirty || savingDaily}
+				on:click={saveDailyCount}
+			>
+				{#if savingDaily}
+					<span class="loading loading-spinner loading-xs"></span>
+				{/if}
+				Save
+			</button>
+			<span class="text-xs opacity-60">
+				<code class="font-mono">achievement_settings.daily_count</code> — the pool is drawn from
+				every badge with a rule, so a pool smaller than this simply gives all of it.
+			</span>
+			{#if dailyError}
+				<span class="text-error text-xs">{dailyError}</span>
+			{/if}
+		</div>
 
 		{#if orphanIds.length > 0}
 			<div class="alert alert-warning">

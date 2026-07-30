@@ -184,6 +184,16 @@ export interface AchievementClaimRow {
 }
 
 /**
+ * The achievement system's settings, as Supabase holds them — one row, one number.
+ * A setting rather than a rule: it decides how much is *offered*, never whether
+ * anything is earned.
+ */
+export interface AchievementSettings {
+	/** How many badges a player is set each day. */
+	dailyCount: number;
+}
+
+/**
  * One remote `achievement_templates` row as the admin reads it back: the id, and
  * whether the database is holding a rule for it. The compiled tree itself is not
  * something the screen shows — what matters is that there is one and that it says

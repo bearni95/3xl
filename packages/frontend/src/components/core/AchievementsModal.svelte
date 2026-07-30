@@ -11,7 +11,7 @@
 	import type { FormulaContext } from '$utils/achievement/formula';
 	import { renderAchievement } from '$utils/achievement/template';
 	import { achievementMet } from '$utils/achievement/requirement';
-	import { dailyAchievementIds } from '$utils/achievement/daily';
+	import { DAILY_ACHIEVEMENT_COUNT, dailyAchievementIds } from '$utils/achievement/daily';
 	import { catalanDayIso, nextCatalanMidnight, shiftDayIso } from '$utils/festes/catalan-day';
 	import { achievementExpAward } from '$utils/progression/level';
 	import { errorMessage } from '$utils/error/error-message';
@@ -46,6 +46,9 @@
 	// a set of ids for the tiles that only ask whether a badge is worn.
 	let awards: AchievementAward[] = [];
 	let held = new Set<string>();
+	// How many badges a day, as Supabase has it. The constant is only what stands until
+	// that row has been read.
+	let dailyCount = DAILY_ACHIEVEMENT_COUNT;
 	let loading = false;
 	let error = '';
 	// Guards the one-time load so the reactive block below doesn't refire on a tick.
@@ -90,6 +93,7 @@
 		claimable = snapshot.claimable;
 		awards = snapshot.awards;
 		held = snapshot.held;
+		dailyCount = snapshot.dailyCount;
 	}
 
 	/**
@@ -138,7 +142,9 @@
 	// The day's three, by the same seed the RPC recomputes: who is looking and which
 	// Catalan day it is. Nothing is stored — at midnight Europe/Madrid today's three
 	// change, which is why the countdown beside them is worth showing.
-	$: dayIds = currentUserId ? dailyAchievementIds(currentUserId, viewedDay, claimable) : [];
+	$: dayIds = currentUserId
+		? dailyAchievementIds(currentUserId, viewedDay, claimable, dailyCount)
+		: [];
 	$: byId = new Map(achievements.map((achievement) => [achievement.id, achievement]));
 
 	/**

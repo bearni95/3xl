@@ -19,6 +19,7 @@ let templateRows: { id: string; requirement: string | null }[] = [];
 let templatesError: unknown = null;
 let awardRows: AchievementAwardRow[] = [];
 let awardQuery: string[] = [];
+let settingsRow: { daily_count: number } | null = null;
 let claimRows: AchievementClaimRow[] | null = [];
 let rpcError: unknown = null;
 let rpcCalls: string[] = [];
@@ -29,6 +30,9 @@ vi.mock('$services/supabase.client', () => ({
 			select: (columns: string) => {
 				if (table === 'achievement_templates') {
 					return Promise.resolve({ data: templateRows, error: templatesError });
+				}
+				if (table === 'achievement_settings') {
+					return { maybeSingle: () => Promise.resolve({ data: settingsRow, error: null }) };
 				}
 				awardQuery.push(columns);
 				// The chain the service builds: filtered to one player, newest first.
@@ -82,6 +86,7 @@ beforeEach(() => {
 	templatesError = null;
 	awardRows = [];
 	awardQuery = [];
+	settingsRow = null;
 	claimRows = [];
 	rpcError = null;
 	rpcCalls = [];
@@ -174,6 +179,18 @@ describe('loading the game’s achievements', () => {
 			{ achievement_id: 'conqueridor', awarded_at: '2026-07-28T11:30:00Z', exp_awarded: null }
 		];
 		expect((await load()).awards[0].expAwarded).toBe(0);
+	});
+
+	it('reads how many badges a day from Supabase, not from the code', async () => {
+		templateRows = [{ id: 'conqueridor', requirement: 'cards >= 1' }];
+		settingsRow = { daily_count: 5 };
+		expect((await load()).dailyCount).toBe(5);
+	});
+
+	it('falls back to the shipped count when there is no settings row', async () => {
+		templateRows = [{ id: 'conqueridor', requirement: 'cards >= 1' }];
+		settingsRow = null;
+		expect((await load()).dailyCount).toBe(3);
 	});
 
 	it('is empty when nothing has been synced', async () => {

@@ -1,5 +1,6 @@
 import { getSupabaseClient } from '$services/supabase.client';
 import { achievementAdapter } from '$adapters/classes/achievement.adapter';
+import { DAILY_ACHIEVEMENT_COUNT } from '$utils/achievement/daily';
 import type {
 	Achievement,
 	AchievementAward,
@@ -68,6 +69,13 @@ export interface AchievementsSnapshot {
 	awards: AchievementAward[];
 	/** The same thing as a set of ids, which is all a tile needs to know. */
 	held: Set<string>;
+	/**
+	 * How many badges a day the game sets, read from `achievement_settings` — the same
+	 * row `daily_achievement_count()` reads inside `claim_achievements`. It is a setting
+	 * rather than a constant so it can be moved without a deploy, and it is read here
+	 * rather than assumed so the browser draws the pick that can actually be claimed.
+	 */
+	dailyCount: number;
 }
 
 /**
@@ -77,7 +85,7 @@ export interface AchievementsSnapshot {
  */
 export async function loadAchievements(userId: string | null): Promise<AchievementsSnapshot> {
 	const supabase = getSupabaseClient();
-	const [templates, authored, awards] = await Promise.all([
+	const [templates, authored, awards, settings] = await Promise.all([
 		supabase.from('achievement_templates').select('id, requirement'),
 		loadCollection(),
 		userId
@@ -86,10 +94,16 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 					.select('achievement_id, awarded_at, exp_awarded')
 					.eq('user_id', userId)
 					.order('awarded_at', { ascending: false })
-			: Promise.resolve({ data: [], error: null })
+			: Promise.resolve({ data: [], error: null }),
+		supabase.from('achievement_settings').select('daily_count').maybeSingle()
 	]);
 	if (templates.error) throw templates.error;
 	if (awards.error) throw awards.error;
+	// A missing settings row is not a failure: the constant is what the table would
+	// have been provisioned with, so the draw carries on with it.
+	const dailyCount = Number(
+		(settings.data as { daily_count?: number } | null)?.daily_count ?? DAILY_ACHIEVEMENT_COUNT
+	);
 
 	const byId = new Map(authored.achievements.map((achievement) => [achievement.id, achievement]));
 	const achievements: Achievement[] = [];
@@ -111,7 +125,8 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 		achievements,
 		claimable,
 		awards: completed,
-		held: new Set(completed.map((award) => award.achievementId))
+		held: new Set(completed.map((award) => award.achievementId)),
+		dailyCount
 	};
 }
 

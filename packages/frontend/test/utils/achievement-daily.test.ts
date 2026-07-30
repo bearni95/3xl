@@ -106,6 +106,33 @@ describe('the three of the day', () => {
 		for (const count of counts.values()) expect(count).toBeLessThan(300);
 	});
 
+	it('draws as many as it is told to, which is Supabase\u2019s number and not this file\u2019s', () => {
+		// The count is a setting (achievement_settings.daily_count), handed in by the
+		// caller that read it; the constant is only the fallback.
+		expect(dailyAchievementIds(USER, '2026-07-30', POOL, 4)).toEqual([
+			'gamma',
+			'delta',
+			'epsilon',
+			'alpha'
+		]);
+		expect(dailyAchievementIds(USER, '2026-07-30', POOL, 1)).toEqual(['gamma']);
+		expect(dailyAchievementIds(USER, '2026-07-30', POOL, 6)).toHaveLength(6);
+		// The first three of a longer draw are the same three: the generator is walked in
+		// one order, so raising the count adds to the set rather than reshuffling it.
+		expect(dailyAchievementIds(USER, '2026-07-30', POOL, 4).slice(0, 3)).toEqual(
+			dailyAchievementIds(USER, '2026-07-30', POOL, 3)
+		);
+	});
+
+	it('falls back to three for a count that is not a number of badges', () => {
+		const three = dailyAchievementIds(USER, '2026-07-30', POOL);
+		expect(dailyAchievementIds(USER, '2026-07-30', POOL, 0)).toEqual(three);
+		expect(dailyAchievementIds(USER, '2026-07-30', POOL, -2)).toEqual(three);
+		expect(dailyAchievementIds(USER, '2026-07-30', POOL, Number.NaN)).toEqual(three);
+		// A fractional count is floored rather than refused.
+		expect(dailyAchievementIds(USER, '2026-07-30', POOL, 2.9)).toHaveLength(2);
+	});
+
 	it('draws from a seed directly, for the count the caller asks for', () => {
 		expect(drawIds(POOL, 1, 6)).toHaveLength(6);
 		expect(new Set(drawIds(POOL, 1, 6)).size).toBe(6);
