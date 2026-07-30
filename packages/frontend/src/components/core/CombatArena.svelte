@@ -891,8 +891,11 @@
 			<div class="card-body items-center gap-3">
 				<!-- Nothing stands between the fight and the board: what a rival is holding
 				     and what it has just done are read off the board itself — its aura, its
-				     callout, whether it is still standing — not off a readout beside it. -->
-				<div class="flex w-full min-w-0 flex-col items-center gap-3">
+				     callout, whether it is still standing — not off a readout beside it.
+				     `relative` so the end of the fight has something to be centred on: the
+				     canvas is this box's only child and is centred in it, so this box's middle
+				     is the board's middle. -->
+				<div class="relative flex w-full min-w-0 flex-col items-center gap-3">
 					{#key boardKey}
 						<!-- The border goes on the canvas rather than on the host: the host is
 						     full-width and centres a canvas that is narrower than it, so a border
@@ -905,82 +908,102 @@
 							on:ready={(event) => onBoardReady(event.detail)}
 						/>
 					{/key}
-				</div>
-				{#if reportFailure}
-					<!-- The fight is played out and the server would not take it. The board
-					     stands as it finished, with the refusal in the server's own words —
-					     the battle is still open, so this is the fight the player is in, not
-					     a fight they have lost track of. -->
-					<div class="alert alert-error max-w-md text-sm" role="alert">
-						<span>{reportFailure}</span>
-					</div>
-					<button
-						type="button"
-						class="btn btn-primary btn-wide"
-						disabled={reporting}
-						on:click={retryReport}
-					>
-						{#if reporting}
-							<span class="loading loading-spinner loading-xs"></span>
-							Reporting the fight
-						{:else}
-							Report the fight again
-						{/if}
-					</button>
-				{:else if state?.outcome}
-					<!-- The fight is over and the board stands exactly as it finished — every
-					     fighter where the last blow left it, the ground each side took still held.
-					     Nothing is dismissed for the player: the result is read out under the
-					     board it happened on, and the arena is left when they say so. Reporting is
-					     what ends the battle server-side, so Close waits on it — leaving first
-					     would walk out of a fight the server still has open. -->
-					<div class="flex w-full max-w-xs flex-col items-center gap-3">
-						<p class={classNames('text-lg font-bold', OUTCOME_CLASSES[state.outcome])}>
-							{OUTCOME_LABELS[state.outcome]}
-						</p>
-						<dl class="flex w-full flex-col gap-1 text-sm">
-							<!-- The fight is three duels and this is how they went: the same count the
-							     board has been keeping all along, standing still now. -->
-							<div class="flex items-baseline justify-between gap-4">
-								<dt class="opacity-70">Encounters won</dt>
-								<dd class="font-mono font-bold tabular-nums">
-									<span class="text-info">{state.wins.info}</span>
-									<span class="opacity-40">–</span>
-									<span class="text-error">{state.wins.error}</span>
-								</dd>
+					{#if state?.outcome}
+						<!-- The fight is over, and everything there is left to say about it is said
+						     on one panel in the middle of the board it happened on. The board itself
+						     stands exactly as it finished underneath — every fighter where the last
+						     blow left it, the ground each side took still held — so the result is
+						     read against the thing it is a result of rather than under it, where a
+						     tall board pushed it off the bottom of the sheet.
+
+						     Laid over the canvas rather than in the column with it, so it takes no
+						     room and nothing below shifts when it arrives. The sheet takes no
+						     pointer of its own — only the panel does — so it covers the board
+						     without swallowing anything the board still answers. -->
+						<div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+							<div
+								class="pointer-events-auto card w-full max-w-xs border border-base-300 bg-base-100/95 shadow-2xl"
+							>
+								<div class="card-body items-center gap-3 p-5">
+									{#if reportFailure}
+										<!-- Played out, and the server would not take it. The refusal is
+										     given in the server's own words — the battle is still open, so
+										     this is the fight the player is in, not one they have lost track
+										     of — and the offer is to report it again, not to leave. -->
+										<div class="alert alert-error text-sm" role="alert">
+											<span>{reportFailure}</span>
+										</div>
+										<button
+											type="button"
+											class="btn btn-primary btn-block"
+											disabled={reporting}
+											on:click={retryReport}
+										>
+											{#if reporting}
+												<span class="loading loading-spinner loading-xs"></span>
+												Reporting the fight
+											{:else}
+												Report the fight again
+											{/if}
+										</button>
+									{:else}
+										<!-- Nothing is dismissed for the player: the arena is left when they
+										     say so. Reporting is what ends the battle server-side, so Close
+										     waits on it — leaving first would walk out of a fight the server
+										     still has open. -->
+										<p class={classNames('text-lg font-bold', OUTCOME_CLASSES[state.outcome])}>
+											{OUTCOME_LABELS[state.outcome]}
+										</p>
+										<dl class="flex w-full flex-col gap-1 text-sm">
+											<!-- The fight is three duels and this is how they went: the same
+											     count the board has been keeping all along, standing still now. -->
+											<div class="flex items-baseline justify-between gap-4">
+												<dt class="opacity-70">Encounters won</dt>
+												<dd class="font-mono font-bold tabular-nums">
+													<span class="text-info">{state.wins.info}</span>
+													<span class="opacity-40">–</span>
+													<span class="text-error">{state.wins.error}</span>
+												</dd>
+											</div>
+											{#if reward}
+												<!-- Both figures are the server's own count of the team it paid
+												     for, not this tab's: the award is a share of the level's span
+												     decided from how much of the team came through, so the count
+												     and the number it produced are read out together. -->
+												<div class="flex items-baseline justify-between gap-4">
+													<dt class="opacity-70">Fighters standing</dt>
+													<dd class="font-mono font-bold tabular-nums">
+														{reward.survivors} / {reward.fielded}
+													</dd>
+												</div>
+												<div class="flex items-baseline justify-between gap-4">
+													<dt class="opacity-70">Experience gained</dt>
+													<dd class="font-mono font-bold tabular-nums text-success">
+														+{reward.awarded}
+													</dd>
+												</div>
+											{/if}
+										</dl>
+										<button
+											type="button"
+											class="btn btn-primary btn-block"
+											disabled={reporting}
+											on:click={close}
+										>
+											{#if reporting}
+												<span class="loading loading-spinner loading-xs"></span>
+												Reporting the fight
+											{:else}
+												Close
+											{/if}
+										</button>
+									{/if}
+								</div>
 							</div>
-							{#if reward}
-								<!-- Both figures are the server's own count of the team it paid for, not
-								     this tab's: the award is a share of the level's span decided from how
-								     much of the team came through, so the count and the number it
-								     produced are read out together. -->
-								<div class="flex items-baseline justify-between gap-4">
-									<dt class="opacity-70">Fighters standing</dt>
-									<dd class="font-mono font-bold tabular-nums">
-										{reward.survivors} / {reward.fielded}
-									</dd>
-								</div>
-								<div class="flex items-baseline justify-between gap-4">
-									<dt class="opacity-70">Experience gained</dt>
-									<dd class="font-mono font-bold tabular-nums text-success">+{reward.awarded}</dd>
-								</div>
-							{/if}
-						</dl>
-						<button
-							type="button"
-							class="btn btn-primary btn-wide"
-							disabled={reporting}
-							on:click={close}
-						>
-							{#if reporting}
-								<span class="loading loading-spinner loading-xs"></span>
-								Reporting the fight
-							{:else}
-								Close
-							{/if}
-						</button>
-					</div>
-				{:else if state}
+						</div>
+					{/if}
+				</div>
+				{#if state && !state.outcome}
 					{#if saveFailure}
 						<!-- The turn was played out and the server would not take it. The fight
 						     holds here rather than playing on over a turn nothing has recorded:
