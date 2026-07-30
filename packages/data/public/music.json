@@ -2,12 +2,117 @@
 	"tracks": [
 		{
 			"file": "one-piece-we-are.mp3",
-			"title": "We are",
+			"title": "Fortuna, Fama I Poder",
 			"showId": 37854
 		},
 		{
 			"file": "inuyasha-change-the-world.mp3",
-			"title": "Change the world",
+			"title": "Canviarem El Món",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-my-will-tvc.mp3",
+			"title": "My will",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-my-will-charm.mp3",
+			"title": "My will (Charm)",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-fukai-mori-charm.mp3",
+			"title": "Fukai mori (Charm)",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-i-am-tvc.mp3",
+			"title": "I am",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-dearest-tvc.mp3",
+			"title": "Dearest",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-every-heart-minna-no-kimochi-tvc.mp3",
+			"title": "Every heart ~Minna no kimochi~",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-owari-nai-yume-charm.mp3",
+			"title": "Owari nai yume (Charm)",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-owari-nai-yume-tvc.mp3",
+			"title": "Owari nai yume",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-shinjitsu-no-uta-tvc.mp3",
+			"title": "Shinjitsu no uta",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-grip-tvc.mp3",
+			"title": "Grip",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-itazura-na-kiss-tvc.mp3",
+			"title": "Itazura na kiss",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-one-day-one-dream-tvc.mp3",
+			"title": "One day, one dream",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-come-tvc-tv.mp3",
+			"title": "Come",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-come-tvc-restaurada.mp3",
+			"title": "Come (restaurada)",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-brand-new-world-tvc.mp3",
+			"title": "Brand new world",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-anjerasu-tvc-1r.mp3",
+			"title": "Angelus ~Anjerasu~ (1a edició)",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-anjerasu-tvc-2n.mp3",
+			"title": "Angelus ~Anjerasu~ (2a edició)",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-kimi-ga-inai-mirai-tvc.mp3",
+			"title": "Kimi ga inai mirai",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-with-you-tvc.mp3",
+			"title": "With you",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-diamond-tvc.mp3",
+			"title": "Diamond",
+			"showId": 35610
+		},
+		{
+			"file": "inuyasha-tooi-michi-no-saki-de-tvc.mp3",
+			"title": "Tooi michi no saki de",
 			"showId": 35610
 		}
 	]

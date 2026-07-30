@@ -1,10 +1,21 @@
-The Catalan (TVC) opening themes the map's music player plays, one per show in the
-game. These are the versions broadcast on Televisió de Catalunya, not the Japanese
-originals — rights stay with their owners; they are here for the same reason the
-MUGEN sprite archives are.
+The Catalan show themes the map's music player plays. These are the versions sung in
+Catalan, not the Japanese originals — rights stay with their owners; they are here for
+the same reason the MUGEN sprite archives are.
 
-- inuyasha-change-the-world.mp3 — InuYasha, "Change the world" (català, v. TVC).
 - one-piece-we-are.mp3 — One Piece, "We are" (català, v. TVC).
+- inuyasha-*.mp3 — InuYasha's openings and endings, 22 of them.
+
+Most are the versions broadcast on Televisió de Catalunya. Three are by Charm, a fan
+group, and are marked `-charm` in the file name and "(Charm)" in the title, because a
+cover is not what went out on air. Where the same song was captured twice the file name
+says which take it is: `-tv` and `-restaurada` for the raw rip and the restored pass of
+"Come", `-1r` and `-2n` for the two editions of "Angelus ~Anjerasu~".
+
+The InuYasha set came off the Wayback Machine's capture of amiboshi.cat, which is gone —
+`download-inuyasha-songs.js` at the repo root is what pulled and verified them, and it
+writes a manifest recording, per song, the capture it was served and its sha256. Re-run
+it to fetch them again; the mp3s it stages are git-ignored, and these are the ones that
+were curated in from that staging folder.
 
 What each of these is — its title, and the show it opens — is not recorded here: it
 is authored per file into @3xl/data's public/music.json on the admin /music screen,
