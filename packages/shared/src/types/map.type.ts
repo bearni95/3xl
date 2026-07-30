@@ -45,36 +45,10 @@ export interface MapLine {
 }
 
 /**
- * A line drawn from a point on the map to the centre of a DOM element sitting over it —
- * the leader tying the open town to the panel that talks about it. One end is
- * geographic and the other is a place on the screen, so the map re-reads the element's
- * box and re-projects that end on every pan, zoom and resize: at a still map it is a
- * line between a town and a panel, and while the map moves the panel end stays put
- * while the town end travels with the terrain.
- */
-export interface MapTether {
-	/**
-	 * The map end: the point the town's pin stands on. The line is drawn to the middle of
-	 * that pin rather than to the point itself — a pin grows upwards out of its point, so
-	 * the point is its bottom edge, and the map decides the rise from the pin it drew.
-	 */
-	position: [number, number];
-	/**
-	 * The screen end: the element whose centre the line runs to, measured live from its
-	 * bounding box. Null (an element not mounted yet) draws no line.
-	 */
-	anchor: HTMLElement | null;
-	/** The line's colour — the town's own, so the leader is read as belonging to it. */
-	color: string;
-	/** Stroke width in px. */
-	weight?: number;
-}
-
-/**
- * What the map's corner says about taking the town it is open on: how far the reader has
- * got towards it, and the one control that acts on it. The side to be beaten is standing
- * out on that town's own pin, with a leader run from there to this, so the two are read
- * as one thing about one place without the odds being written over the terrain.
+ * What a pin says about taking the region it stands on: how far the reader has got
+ * towards it, and the one control that acts on it. Drawn under the side holding the
+ * place, at the foot of the pin, so who is to be beaten and the way to fight them are
+ * read as one thing standing on one town.
  *
  * Plain data and a callback — which of the button and the countdown is drawn is
  * decided by whoever hands this over, since the rules (one fight per town per day,
@@ -132,6 +106,12 @@ export interface MapMarker {
 		locationName: string | null;
 		showId: number | null;
 	}[];
+	/**
+	 * The siege standing and the challenge control, drawn at the foot of the pin under
+	 * the team. Absent leaves the pin a picture with nothing to act on — which is every
+	 * pin but the one the reader has picked, and that one too once they hold the place.
+	 */
+	challenge?: MapChallenge | null;
 	/**
 	 * Classes painted onto the glyph's tile at the left end of the pin's plate — the
 	 * region's own colour, as a fill plus the ink that reads on it. Null leaves the

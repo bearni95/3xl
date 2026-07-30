@@ -2,17 +2,11 @@
 	import { mount, onMount, onDestroy, unmount } from 'svelte';
 	import type L from 'leaflet';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
+	import TownChallenge from '$components/core/TownChallenge.svelte';
 	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
 	import { iconMarkup } from '$components/core/icon-markup';
 	import { showIconName } from '$utils/show/show-icon';
-	import type {
-		MapBoosterBox,
-		MapCircle,
-		MapLine,
-		MapMarker,
-		MapOverlay,
-		MapTether
-	} from '$types/map.type';
+	import type { MapBoosterBox, MapCircle, MapLine, MapMarker, MapOverlay } from '$types/map.type';
 
 	let {
 		center = [20, 0] as [number, number],
@@ -24,8 +18,6 @@
 		lines = [],
 		markers = [],
 		markerLevels = null,
-		pinnedId = null,
-		tether = null,
 		boxes = [],
 		highlightId = null,
 		highlightStyle = null,
@@ -71,22 +63,6 @@
 		 * falls back to the previous rendering. Takes precedence over `markers`.
 		 */
 		markerLevels?: MapMarker[][] | null;
-		/**
-		 * The one marker id that is drawn whatever the view is doing: it is added to the
-		 * pins on screen even when the tier it belongs to is not the one being drawn, and
-		 * even when it falls outside the culling box. That is what lets the open town keep
-		 * its pin at every zoom — the map folds its towns up into comarques and provinces
-		 * as it zooms out, and the town being looked at is the one whose mark must survive
-		 * that. Searched for through the whole level stack, so the caller need only name
-		 * it. Null draws exactly the tier the view calls for.
-		 */
-		pinnedId?: string | null;
-		/**
-		 * A line from a point on the map to the centre of a DOM element over it — the open
-		 * town tied to the panel that talks about it. Re-projected on every pan, zoom and
-		 * resize; null draws nothing.
-		 */
-		tether?: MapTether | null;
 		/**
 		 * Booster boxes stood on individual points (the festa-major towns the booster
 		 * window reaches), hung under the same points the region pins stand on — a town
@@ -158,10 +134,6 @@
 	// a statue runs a frame timer of its own, so every rebuild unmounts the previous crop
 	// first rather than leaving it animating for a pin no longer on the map.
 	let pinMounts: Record<string, unknown>[] = [];
-	// The leader tying the open town to the panel over the map, kept as one polyline and
-	// re-pointed rather than redrawn: only its screen end moves, and a line taken off the
-	// map and put back on it every frame of a drag is a line that flickers.
-	let tetherLine: L.Polyline | null = null;
 	// The festa-box layer, rebuilt whenever the boxes prop changes. Kept separate from the
 	// region pins — it follows their tier but marks its towns its own way, and at the
 	// coarsest tier not at all (see markKindForLevel) — and drawn under them.
@@ -195,18 +167,6 @@
 	// Watches the map container so Leaflet re-projects when the container resizes
 	// (e.g. a side panel opening reserves horizontal space). Torn down on destroy.
 	let resizeObserver: ResizeObserver | null = null;
-	// Watches the tether's anchor for the same reason, one element at a time: the panel's
-	// centre is where the leader ends, and the panel resizes itself without the map moving.
-	let anchorObserver: ResizeObserver | null = null;
-	// The pinned pin's wrapper, kept from the last rebuild: the leader ends at the middle of
-	// that pin, and how tall it is is a question only the drawn element can answer (a plate's
-	// height is its type and its padding). Null when no pin is pinned or none is on screen,
-	// which lands the leader on the point the pin stands on.
-	let pinnedPinElement: HTMLElement | null = null;
-	// True for the length of an animated zoom — between `zoomanim` and the `zoomend` that
-	// closes it. While it is up, the view the map reports is the one it is leaving, not the
-	// one being drawn, so the leader is pointed from the animation's own target instead.
-	let zoomAnimating = false;
 	// municipality `properties.id` → the featureIds of the pin region it currently
 	// belongs to (at the tier on screen), rebuilt with the pins. Lets hovering
 	// anywhere in a pinned region's polygons light that whole region, not just the pin.
@@ -269,31 +229,9 @@
 		// Rebuild the pins whenever the parent swaps the markers (e.g. the selection
 		// changes which regions are imaged, or supplies a new level stack). Gated on
 		// `ready` so a set passed before mount still applies once the layer exists.
-		// `pinnedId` is in here too: which town outlives its tier is part of what the pins
-		// are, and naming another one must redraw them.
 		void markers;
 		void markerLevels;
-		void pinnedId;
 		if (ready) rebuildMarkers();
-	});
-
-	$effect(() => {
-		// Re-point the leader whenever the parent hands over another one — a different town,
-		// a different colour, or the panel element arriving once it is mounted — and watch
-		// that element's own box while it is the anchor. The panel changes height on its own
-		// account (a challenge bar arriving, a countdown taking a button's place, a name that
-		// wraps), and its centre moves with it while nothing about the map or the props has
-		// changed; the map's own resize observer would never see it.
-		void tether;
-		if (!ready) return;
-		rebuildTether();
-
-		anchorObserver?.disconnect();
-		anchorObserver = null;
-		if (tether?.anchor) {
-			anchorObserver = new ResizeObserver(() => rebuildTether());
-			anchorObserver.observe(tether.anchor);
-		}
 	});
 
 	$effect(() => {
@@ -364,7 +302,7 @@
 	// map's mark on a place, and the place does not stop being named because somebody is
 	// standing on it. So the statues are added to the pin rather than drawn in place of any
 	// part of it, and they go BELOW the plate — the mark reads first and what is holding the
-	// town stands on the point under it.
+	// town stands on the point under it, with the way to fight them last of all.
 	function markerElement(marker: MapMarker): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className = classNamesFor(marker);
@@ -448,6 +386,23 @@
 				})
 			);
 			wrap.appendChild(frame);
+		}
+
+		// What can be done about the region, right under the side holding it: the siege
+		// standing and the one control that acts on it. Mounted and tracked exactly as the
+		// team is — it runs a clock of its own when it is counting down — and last in the
+		// pin, so the mark reads down as the place, who is on it, and what to do about it.
+		if (marker.challenge) {
+			const bar = document.createElement('div');
+			bar.className = 'mt-1';
+			// The controls are the pin's, not the map's: without this a click on the button
+			// would go on up to the marker (re-opening the region, re-framing the view under
+			// the reader) and a drag begun on it would pan the map. Leaflet's own way of
+			// saying "this DOM is a widget, not terrain".
+			Leaf!.DomEvent.disableClickPropagation(bar);
+			Leaf!.DomEvent.disableScrollPropagation(bar);
+			pinMounts.push(mount(TownChallenge, { target: bar, props: { ...marker.challenge } }));
+			wrap.appendChild(bar);
 		}
 
 		return wrap;
@@ -580,31 +535,12 @@
 
 		const visible = chosen.filter((marker) => bounds.contains(marker.position));
 
-		// The open town's pin, added whether or not this tier is the one it belongs to and
-		// whether or not it is inside the culling box. Zooming out folds towns up into their
-		// comarca and then their province, which would take the mark off the very town the
-		// panel is about at the moment the reader pulls back to see where it is — so that one
-		// pin outlives its tier, and the leader running to the panel has something to leave
-		// from at every zoom. Taken from the finest level that carries it (a municipality is a
-		// leaf, so every tier from its own downwards repeats it, and they are all the same pin).
-		if (pinnedId != null && !visible.some((marker) => marker.id === pinnedId)) {
-			for (let i = levels.length - 1; i >= 0; i--) {
-				const found = levels[i].find((marker) => marker.id === pinnedId);
-				if (found) {
-					visible.push(found);
-					break;
-				}
-			}
-		}
-
-		// The pinned pin's own markup is dropped here and picked up again below, because the
-		// leader is drawn to the middle of it and only the element knows how tall it is. A
-		// rebuild detaches the last one, so the reference is dropped with it.
-		pinnedPinElement = null;
-
+		// No pin outlives its tier, the picked town's included: it carries the side holding
+		// it and the way to fight them, and a mark that size cannot be left standing over a
+		// view of provinces where the town it belongs to is no longer drawn. Zooming out
+		// folds a town into its comarca and takes everything hung on it away together.
 		for (const marker of visible) {
 			const element = markerElement(marker);
-			if (marker.id === pinnedId) pinnedPinElement = element;
 			const icon = Leaf.divIcon({
 				html: element,
 				className: '',
@@ -618,84 +554,6 @@
 			pin.on('mouseout', () => highlightRegion(marker.featureIds, false));
 			pin.addTo(markerLayer!);
 		}
-	}
-
-	// (Re)point the leader between the middle of the open town's pin and the middle of the
-	// panel over the map. Both ends are worked out in the container's own pixels — one is a
-	// box on the page, the other a point on the map raised by half a pin — and unprojected
-	// back into latlngs, from where Leaflet carries the line like any other. Re-running it on
-	// every move is what keeps the screen end where the panel is while the map end travels
-	// with the terrain.
-	//
-	// Drawn in the overlay pane with the polygons, so it passes UNDER the pins and the
-	// boxes (their panes are 600 and 590): the line is what joins two things, and it must
-	// not be drawn over either of them. Non-interactive for the same reason the washes are
-	// — a leader is not something to click, and it crosses a great deal of clickable map.
-	//
-	// `view` is the view to measure both ends against, for the one case where that is not the
-	// view the map is in right now: a zoom animation (see the zoomanim handler).
-	function rebuildTether(view?: { center: L.LatLng; zoom: number }) {
-		if (!mapInstance || !Leaf) return;
-		if (!tether?.anchor) {
-			tetherLine?.remove();
-			tetherLine = null;
-			return;
-		}
-
-		// The anchor's centre in the map container's own pixels: both boxes are read live, so
-		// a panel that has grown (a longer name, a challenge bar arriving) or a map that has
-		// been resized is measured as it is now rather than as it was when the line was drawn.
-		const anchorBox = tether.anchor.getBoundingClientRect();
-		const mapBox = mapContainer.getBoundingClientRect();
-		const centre = Leaf.point(
-			anchorBox.left - mapBox.left + anchorBox.width / 2,
-			anchorBox.top - mapBox.top + anchorBox.height / 2
-		);
-
-		// The map end is the middle of the pin's mark, not the point it stands on. A pin is
-		// anchored by its bottom edge and grows upwards out of its point, so a line to the
-		// point alone arrived under the plate and touched its bottom edge: the leader reads as
-		// joining two panels, and it should meet this one where it meets the other, in the
-		// middle. Half the drawn pin's height, measured live off the element — a plate is as
-		// tall as its type and padding make it — and taken off in pixels at the view being
-		// drawn, since the same rise is a different distance on the ground at every zoom. The
-		// horizontal centre needs no such correction: a pin is already centred on its point.
-		const rise = (pinnedPinElement?.getBoundingClientRect().height ?? 0) / 2;
-		const town = pointAtLatLng(tether.position, view).subtract(Leaf.point(0, rise));
-
-		const ends: L.LatLngExpression[] = [latLngAtPoint(town, view), latLngAtPoint(centre, view)];
-
-		const style = { color: tether.color, weight: tether.weight ?? 5, opacity: 1 };
-		if (!tetherLine) {
-			tetherLine = Leaf.polyline(ends, { ...style, interactive: false }).addTo(mapInstance);
-		} else {
-			tetherLine.setLatLngs(ends);
-			tetherLine.setStyle(style);
-		}
-	}
-
-	// Which latlng a point in the container currently sits over — or would sit over in the
-	// view passed in. Leaflet's own `containerPointToLatLng` answers the first and has no way
-	// to ask the second, so the projection is done the way it does it: the container's
-	// top-left in projected pixels is the centre's projection less half the container, and a
-	// point in the container is that plus its own offset, unprojected at the same zoom.
-	function latLngAtPoint(point: L.Point, view?: { center: L.LatLng; zoom: number }): L.LatLng {
-		if (!view) return mapInstance!.containerPointToLatLng(point);
-		return mapInstance!.unproject(containerTopLeft(view).add(point), view.zoom);
-	}
-
-	/** The same in reverse: where a latlng falls in the container, in that same view. */
-	function pointAtLatLng(
-		latlng: L.LatLngExpression,
-		view?: { center: L.LatLng; zoom: number }
-	): L.Point {
-		if (!view) return mapInstance!.latLngToContainerPoint(latlng);
-		return mapInstance!.project(latlng, view.zoom).subtract(containerTopLeft(view));
-	}
-
-	/** A view's top-left corner in projected pixels: its centre less half the container. */
-	function containerTopLeft(view: { center: L.LatLng; zoom: number }): L.Point {
-		return mapInstance!.project(view.center, view.zoom).subtract(mapInstance!.getSize().divideBy(2));
 	}
 
 	/** Tear down everything mounted into a pin, so no detached timer keeps running. */
@@ -880,51 +738,9 @@
 		syncView();
 		// Re-cull the pins and re-sync the view after any pan or zoom settles.
 		mapInstance.on('moveend zoomend', () => {
-			zoomAnimating = false;
 			syncView();
 			rebuildMarkers();
 			rebuildBoxes();
-			rebuildTether();
-		});
-
-		// The leader alone follows the map continuously rather than waiting for it to settle:
-		// one of its ends is a fixed place on the screen, so a line left until moveend would
-		// come unstuck from the panel for the whole of a drag and snap back at the end of it.
-		// Re-pointing a single polyline is a couple of projections, which is cheap enough to
-		// do on every frame of a pan — the pins and boxes, which are DOM, are not, and they
-		// go on waiting for the view to settle.
-		//
-		// Not while a zoom animation is running, though: that is the one case where the view
-		// the map reports is not the view being drawn, and re-pointing off it would put the
-		// screen end back where the panel was before the zoom began. The zoomanim handler
-		// below has already pointed the line for the view the animation is heading into.
-		mapInstance.on('move zoom', () => {
-			if (!zoomAnimating) rebuildTether();
-		});
-
-		// A zoom is animated by transitioning a transform on the panes, so for its whole
-		// quarter-second the paths hold the coordinates they were projected in and the browser
-		// slides them into place. A line pointed at the panel in the old view therefore rides
-		// the terrain out of position and only reaches the panel on the next projection, which
-		// read as the line halting for the length of every zoom.
-		//
-		// zoomanim carries the view the animation is heading into, and fires before a frame of
-		// it is drawn. Pointing the screen end at where the panel WILL be and letting the same
-		// transform carry it there is what makes the transition land the line on the panel: it
-		// moves with the map, as everything in that pane must, and arrives pointing at the
-		// panel rather than snapping to it once the zoom is over.
-		//
-		// The flag goes up at zoomstart as well, which is what a pinch raises: mid-pinch the
-		// map reports a fractional view its panes have not been re-projected to, so a line
-		// re-pointed off it would be transformed twice. A pinch therefore rides the terrain
-		// while the fingers are down and is landed on the panel by the zoomanim its release
-		// fires — the same arrival, one gesture later.
-		mapInstance.on('zoomstart', () => {
-			zoomAnimating = true;
-		});
-		mapInstance.on('zoomanim', (event) => {
-			zoomAnimating = true;
-			rebuildTether({ center: event.center, zoom: event.zoom });
 		});
 
 		// Keep Leaflet's cached viewport in sync with its container: when the parent
@@ -937,7 +753,6 @@
 			syncView();
 			rebuildMarkers();
 			rebuildBoxes();
-			rebuildTether();
 		});
 		resizeObserver.observe(mapContainer);
 
@@ -1034,7 +849,6 @@
 
 	onDestroy(() => {
 		resizeObserver?.disconnect();
-		anchorObserver?.disconnect();
 		unmountPinMounts();
 		unmountBoxMounts();
 		mapInstance?.remove();

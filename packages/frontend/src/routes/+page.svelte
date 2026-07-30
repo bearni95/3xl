@@ -8,7 +8,6 @@
 	import AuthMenu from '$components/core/AuthMenu.svelte';
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
-	import TownChallenge from '$components/core/TownChallenge.svelte';
 	import MusicPlayer from '$components/core/MusicPlayer.svelte';
 	import CollapsiblePlate from '$components/core/CollapsiblePlate.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
@@ -1502,8 +1501,9 @@
 	// A team on the map is three cards' worth of picture, and every town wearing one at
 	// once is a terrain of cards with no map left under it. On the town being looked at it
 	// is the point — who is holding this, standing where they are holding it — so the map
-	// says it exactly there and nowhere else. What is left in the corner over the map is
-	// what can be *done* about it (see townChallenge), tied back to the town by the leader.
+	// says it exactly there and nowhere else, with what can be *done* about it (see
+	// townChallenge) at the foot of the same pin. Nothing about a picked town is said in
+	// the map's corner, and nothing is drawn between the two.
 	//
 	// Read off the clicked selection rather than `openRegion`, and not only because a
 	// zoom focus is not a choice of town: `openRegion` falls back to the focus, the focus
@@ -1550,36 +1550,15 @@
 		showsByCharacter
 	);
 
-	// The picked town's own node. It used to letter a panel's first row — the place, its show
-	// and a tile in its colour — which the crumb at the end of the bar says already, in the same
-	// three parts. What is still read off it is the one thing nothing else says: the colour the
-	// leader tying the town to the challenge bar is drawn in (see townTether).
-	$: pickedNode = statuedTown ? (findNode(regionNodes, statuedTown) ?? null) : null;
-
-	// The challenge bar's own box on the page, bound from its wrapper (see the map column). The
-	// map takes the element and not a pair of coordinates: where that box's centre falls is
-	// something only the live box knows, and it is re-read on every pan, zoom and resize.
-	let panelAnchor: HTMLDivElement | null = null;
-
-	// The leader tying the open town to that bar: from the point the town's pin stands on to
-	// the bar's centre, in the town's own colour so the line is read as the town's rather than
-	// as a piece of map furniture. It is what says the two are about one place, the side being
-	// out on the map and the way to fight it in the corner. Everything it needs must be there
-	// — the town, its point, and a mounted bar — or nothing is drawn. A town with no colour yet
-	// (its show's roster hasn't landed) takes the map's own white, its borders' colour.
-	$: townTether =
-		statuedTown && panelAnchor && regionGeometry.centers.get(statuedTown)
-			? {
-					position: regionGeometry.centers.get(statuedTown)!,
-					anchor: panelAnchor,
-					color: pickedNode?.color ? SPAWN_COLOR_CSS[pickedNode.color] : lineColor,
-					weight: 5
-				}
-			: null;
-
-	// What the map's corner says about the town whose side is standing out on it: how far this
-	// player has got towards taking the place, and the one control that acts on it — the siege
-	// counter and the challenge button, which used to sit in the sidebar's Location tab.
+	// What the picked town's pin says under the side standing on it: how far this player has
+	// got towards taking the place, and the one control that acts on it — the siege counter
+	// and the challenge button, which used to sit in the sidebar's Location tab and then on a
+	// plate at the map's corner. They belong on the pin: what is being fought is standing
+	// right there, and reading the odds off one side of the screen while looking at the town
+	// on the other made two things of one.
+	//
+	// Rebuilt off `statuedTown` for the same reason the statues are: the zoom focus is
+	// measured from the pins, so nothing the pins are drawn from may be measured back off it.
 	//
 	// Null hides the bar entirely: no town selected, or one this player already holds —
 	// there is nothing to take from yourself, which is exactly when the sidebar says
@@ -1693,17 +1672,20 @@
 	}
 
 	// Every pin the map draws at one tier. All built the same way but for one thing: the
-	// picked town gets the side holding it standing under its plate — who is holding this,
-	// standing on the very place they are holding, which is what picking a town is asked
-	// for. It is added to that pin and takes nothing away from it, so the mark on the town
-	// is the same mark whichever town is picked. The statues are handed in already built
-	// (see pinTeam), since which three they are is the page's question and not the pin's.
+	// picked town gets the side holding it standing under its plate, and under them the
+	// siege count and the way to fight them — who is holding this, standing on the very
+	// place they are holding, and what to do about it. All of it is added to that pin and
+	// takes nothing away from it, so the mark on the town is the same mark whichever town
+	// is picked. The statues and the bar are handed in already built (see pinTeam and
+	// townChallenge), since which three they are and what may be done about them are the
+	// page's questions and not the pin's.
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
 		relevant: Set<string> | null,
 		statuedTown: string | null,
-		statues: PinTeam
+		statues: PinTeam,
+		challengeBar: MapChallenge | null
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
@@ -1720,6 +1702,9 @@
 				// tier above the towns, is its plate by itself. Only a municipality's key is
 				// a municipality id, so the coarser tiers never match.
 				team: node.key === statuedTown ? statues : [],
+				// The siege line and the challenge control go with the statues, on that same
+				// one pin: what is being fought is standing right there.
+				challenge: node.key === statuedTown ? challengeBar : null,
 				iconSvg: iconMarkup(showIconName(node.show.id)),
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
@@ -1743,12 +1728,20 @@
 		geometry: RegionGeometry,
 		relevant: Set<string> | null,
 		statuedTown: string | null,
-		statues: PinTeam
+		statues: PinTeam,
+		challengeBar: MapChallenge | null
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
 			levels.push(
-				buildMarkers(frontierAtDepth(d, nodes), geometry, relevant, statuedTown, statues)
+				buildMarkers(
+					frontierAtDepth(d, nodes),
+					geometry,
+					relevant,
+					statuedTown,
+					statues,
+					challengeBar
+				)
 			);
 		}
 		return levels;
@@ -1760,7 +1753,8 @@
 		regionGeometry,
 		relevantKeys,
 		statuedTown,
-		pinTeam
+		pinTeam,
+		townChallenge
 	);
 
 	// The bounding box the map fits when a region is selected: the union of every
@@ -1804,8 +1798,6 @@
 			minZoom={7}
 			{overlays}
 			{markerLevels}
-			pinnedId={statuedTown}
-			tether={townTether}
 			boxes={festaBoxes}
 			{hiddenLineUrls}
 			{focusBounds}
@@ -1890,30 +1882,8 @@
 						as one stack rather than as two kinds of thing. It draws nothing at all until a
 						song is loaded, so the corner is unchanged on a map whose music never arrived. -->
 					<MusicPlayer classes="pointer-events-auto w-72" />
-					<!-- What can be done about the town being looked at, on the plate below the player:
-						the siege standing and the one control that acts on it. The side it is about is
-						not here — it is standing out on the town's own pin, where it is a picture of who
-						is holding the place put on the place they are holding — and the leader running
-						from that pin to this bar is what says the two are one town. Nothing about the
-						place itself goes in either: the crumb at the end of the bar above already names
-						it, flies its show and carries its colour.
-
-						Up only while there is something to take: a town this player already holds has
-						no bar, and then there is nothing in this corner for the leader to run to. -->
-					{#if townChallenge}
-						<!-- The leader's screen end is this box's centre, so the element itself is what
-							the map is handed (see townTether): this div shrinks to its content — the
-							stack is `items-start` — which makes its box the bar's box. -->
-						<div bind:this={panelAnchor} class="max-w-full">
-							<TownChallenge
-								siege={townChallenge.siege}
-								button={townChallenge.button}
-								unlocksAt={townChallenge.unlocksAt}
-								onUnlock={townChallenge.onUnlock}
-								classes="pointer-events-auto w-72"
-							/>
-						</div>
-					{/if}
+					<!-- (Picking a town adds nothing to this corner. The side holding it and the way to
+						fight them stand on the town's own pin, out on the map where the place is.) -->
 
 					<!-- Where the map is looking, at the foot of the corner: the drill table for the
 						open region — its siblings and its children — or, for a leaf municipality with
@@ -1985,9 +1955,8 @@
 											<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
 										{/if}
 										<!-- The siege counter and the challenge button used to sit here; they
-											are on the plate above this one now (see buildTownChallenge), with a
-											leader running from it to the town they are about. What is left is who
-											holds it. -->
+											are on the town's own pin now (see buildTownChallenge), standing under
+											the very team they are about. What is left is who holds it. -->
 										{#if holdsOpenTown}
 											<span class="badge badge-success badge-sm ml-auto">Yours</span>
 										{/if}

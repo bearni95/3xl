@@ -3,13 +3,12 @@
 	import Countdown from '$components/core/Countdown.svelte';
 	import type { MapChallenge } from '$types/map.type';
 
-	// The plate at the map's corner about the town whose side is standing out on the map:
-	// how far this player has got towards taking it, and the one control that acts on it.
-	// The side it is about is on the town's own pin, with a leader running from there to
-	// here, so this is a plate in its own right rather than a bar inside a panel — which is
-	// why it carries the same chrome the pins' plates and the breadcrumb bar do: enough of
-	// a surface to be read over satellite imagery, and little enough to see the ground
-	// through.
+	// The line a pin carries at its foot, under the statues holding the town: how far this
+	// player has got towards taking the place, and the one control that acts on it. It
+	// stands on the map rather than in a panel, so it carries the same chrome the pin's own
+	// plate does — enough of a surface to be read over satellite imagery, and little enough
+	// to see the ground through — the picture above it needing no such thing, a character
+	// being their own silhouette while text is not.
 	//
 	// It decides nothing: which of the button and the countdown it draws is handed to
 	// it, since the rules behind that (one fight per town per day, one battle at a
