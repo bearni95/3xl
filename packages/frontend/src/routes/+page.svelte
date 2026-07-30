@@ -132,11 +132,11 @@
 	// Point the URL at a region (or clear it), which reactively re-derives every
 	// piece of open/expanded/selected state below. Pushed as history so the back
 	// button walks the drill path; focus and scroll are preserved across the nav.
-	// The Location tab is brought forward with it: opening a region from a pin, a
-	// crumb, a search hit or a won-town row has to put that region on screen, and
-	// the panel is the only place it is drawn.
+	// Nothing is brought forward with it any more: the region is drawn on the map's own
+	// Location plate, which is folded or unfolded because the player left it that way, and
+	// a pin click is not a reason to overrule that — the map frames the region either way,
+	// and a picked town says so on its own plate.
 	function open(key: string | null) {
-		panelTab = PanelTab.Location;
 		const params = new URLSearchParams($page.url.searchParams);
 		if (key) params.set('region', key);
 		else params.delete('region');
@@ -315,13 +315,16 @@
 	}
 	$: if (!$openBattle) resumedBattle = null;
 
-	// The panel's four views: the player themselves (their own card and the side they
-	// field, on one grid), the open region (the drill table, or a leaf town's show and house team),
-	// the standing of every show across the whole map, and the booster pack of whichever
-	// festa town's box was clicked last. Every one of them lives here rather than in a
-	// panel of its own, so the map only ever gives up room to one of them — the
-	// breadcrumbs above the strip stay put across all four, since they name what the map
-	// is looking at whichever view is forward.
+	// The panel's three views: the player themselves (their own card and the side they
+	// field, on one grid), the standing of every show across the whole map, and the booster
+	// pack of whichever festa town's box was clicked last. Every one of them lives here
+	// rather than in a panel of its own, so the map only ever gives up room to one of them —
+	// the breadcrumbs above the strip stay put across all three, since they name what the
+	// map is looking at whichever view is forward.
+	//
+	// The open region was a fourth view here and is not any more: it is a plate at the map's
+	// own corner (see CollapsiblePlate), because a table of place names is read against the
+	// map and this column could only put it up by taking whichever view was forward down.
 	//
 	// Who you are is a view like any other now, rather than a header sitting over all of
 	// them: an account card and a three-sprite line-up took a fixed slice off the top of
@@ -330,7 +333,6 @@
 	// the 30vh there is.
 	const PanelTab = {
 		Profile: 'profile',
-		Location: 'location',
 		Leaderboard: 'leaderboard',
 		Pack: 'pack'
 	} as const;
@@ -342,7 +344,6 @@
 	let panelTabs: { id: PanelTab; label: string }[];
 	$: panelTabs = [
 		{ id: PanelTab.Profile, label: 'Profile' },
-		{ id: PanelTab.Location, label: 'Location' },
 		{ id: PanelTab.Leaderboard, label: 'Leaderboard' },
 		{
 			id: PanelTab.Pack,
@@ -351,8 +352,7 @@
 	];
 	// Opens on the profile view: the panel's first word is who is playing — signing in is
 	// the one thing nothing else on the map works without, and a signed-in player's own
-	// team is what every town on it is read against. The Location tab is a click away and
-	// comes forward by itself the moment a region is opened from anywhere.
+	// team is what every town on it is read against.
 	let panelTab: PanelTab = PanelTab.Profile;
 
 	// How many municipalities each show flies, and its share of them all. Tallied
@@ -712,8 +712,8 @@
 		...displayPath.map((node) => ({ label: restoreCatalanArticle(node.name), key: node.key as string | null }))
 	];
 
-	// The open location's own node and its plurality ("most seen") show. Surfaced in the
-	// panel's Location tab when the open region is a leaf municipality (the table there
+	// The open location's own node and its plurality ("most seen") show. Surfaced on the
+	// corner's Location plate when the open region is a leaf municipality (the table there
 	// lists child rows, so a leaf has nothing to list and shows the town's own show
 	// instead), and used to pick the roster the town's OG team rolls from.
 	$: openNode = openRegion ? findNode(regionNodes, openRegion) : null;
@@ -721,7 +721,7 @@
 
 	// --- The open municipality's deterministic "house team" ---------------------
 	// A leaf region (a municipality) has no children to drill into; instead of an
-	// empty table the Location tab previews the town's team: three cards rolled
+	// empty table the Location plate previews the town's team: three cards rolled
 	// deterministically from the town's own seed, drawn from its top show's roster.
 	// It's a read-only, client-side mirror of the claim roll (a card is never written
 	// to Supabase from here) — only the show→character assignment is read below.
@@ -1254,9 +1254,9 @@
 	// A box is clicked where the town is, so the click is a click on the town as much as
 	// on its pack: `open` points the URL at the municipality exactly as a pin, a crumb or
 	// a table row does, which frames the map onto its polygons — the reader lands zoomed
-	// on the place the pack belongs to, with the pack already stood up. It brings the
-	// Location tab forward with it, which is why the Booster tab is asked for after and
-	// not before: the town is what the map shows, the pack is what the panel shows.
+	// on the place the pack belongs to, with the pack already stood up. The two no longer
+	// compete for one column: the town is what the map and its corner show, the pack is
+	// what the panel shows.
 	function openPack(id: string): void {
 		clearPackFeedback();
 		open(id);
@@ -1653,19 +1653,17 @@
 	reading order and second on screen: the right-hand column of the row on a wide
 	viewport, the strip under the map on a narrow one. -->
 <div class="flex h-screen flex-col-reverse md:flex-row-reverse">
-	<!-- The one panel beside the map, on four tabs — the right-hand column on a wide
+	<!-- The one panel beside the map, on three tabs — the right-hand column on a wide
 		viewport, docked under the map below `md` (30vh showing, its handle row toggling it
 		up to the full screen). Same markup either way. The breadcrumbs sit above the tab
 		strip rather than inside any tab: the region the map is looking at (clicked, or
 		followed from the zoom) is read against every view, so it stays on screen whichever
-		tab is forward.
+		tab is forward — and it is the whole of what the panel says about the open region
+		now, the drill table itself having moved out to a plate at the map's corner.
 		— Profile: the player's own full-width row — picture, reading, and the way through to
 		  the full card and the roster — then the three they field as a row of three cards
 		  under it. The tab the panel opens on, and the only one that says nothing about the
 		  map.
-		— Location: the drill table for the open region — its siblings and its children —
-		  or, for a leaf municipality with nothing left to list, that town's show and the
-		  team sitting on it. The search box above it matches every location in the tree.
 		— Leaderboard: how much of the map each show flies, tallied over every
 		  municipality's current show — seeded, or the ruling team's where a town has been
 		  taken.
@@ -1714,12 +1712,12 @@
 					</ul>
 				</div>
 
-				<!-- One column per tab, so the four split the panel's width evenly however long
+				<!-- One column per tab, so the three split the panel's width evenly however long
 					their labels are (Booster's grows a counter) instead of each being as wide as
 					its own text. Still a join: `grid` only overrides its inline-flex display —
 					the joined radii and collapsed borders come from child rules that hold in a
 					grid just as well. -->
-				<div class="join grid grid-cols-4">
+				<div class="join grid grid-cols-3">
 					{#each panelTabs as tab (tab.id)}
 						<!-- The tab that is forward is filled in the theme's primary; the rest stay
 							outlined. btn-active only darkened the outline, which barely read as a
