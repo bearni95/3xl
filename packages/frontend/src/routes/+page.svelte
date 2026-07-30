@@ -1453,6 +1453,22 @@
 	// what the town's pin says out on the map, said again where the cards are.
 	$: panelNode = panelTown ? (findNode(regionNodes, panelTown) ?? null) : null;
 
+	// Whether the statues above have already said what the Location plate would say. A leaf
+	// municipality has no children to drill into, so that plate falls back to naming the
+	// town's show and who is holding it — which is the town panel's whole first row and the
+	// side standing under it, one plate higher in the same corner. Two plates saying one
+	// thing, and the fuller one on top, so the plate below it is dropped rather than
+	// repeating it. Only ever about the same town: `openRegion` may have followed the zoom
+	// somewhere the picked town is not, and then the plate is about a different place and
+	// stays. Named deps so it re-reads as the selection and the zoom move.
+	$: townPanelSaysIt = panelTeam.length > 0 && panelTown === openRegion;
+
+	// So the plate is up for everything it alone can say: the matches for a search (which is
+	// about no region at all, and is typed on the bar whether a town is picked or not), and
+	// the drill table wherever there is one. What it is not up for is the leaf fallback the
+	// statues have already covered.
+	$: showLocationPlate = Boolean(normalizedQuery) || regionRows.length > 0 || !townPanelSaysIt;
+
 	// The panel's own box on the page, bound from its wrapper (see the map column). The map
 	// takes the element and not a pair of coordinates: where the panel's centre falls is
 	// something only the live box knows, and it is re-read on every pan, zoom and resize.
@@ -1951,77 +1967,85 @@
 						the music and the picked town keep the corner they already had.
 						Folded away by default, and folded or not is remembered (see locationPanel).
 						A height it cannot pass, with the table scrolling inside it: this is a corner
-						of the map, not a column, so the plate never grows into the whole of it. -->
-					<CollapsiblePlate
-						title="Location"
-						bind:collapsed={$locationPanelCollapsed}
-						classes="pointer-events-auto w-96 max-w-full"
-						bodyClasses="flex max-h-[50vh] flex-col bg-base-100 text-base-content"
-					>
-						{#if normalizedQuery}
-							<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
-						{:else if regionRows.length === 0}
-							<!-- A leaf region (a municipality) has no children to drill into, so instead of
-								an empty table we surface its own top show — the only place the open location's
-								show appears — and say who is holding the place. The side itself is out on the
-								map, standing on the town. -->
-							<div class="flex min-h-0 flex-1 flex-col gap-3 p-3">
-								{#if openShow}
-									<div class="flex flex-none items-center gap-3">
-										{#if openShow.posterUrl}
-											<img
-												src={openShow.posterUrl}
-												alt={openShow.name}
-												class="h-16 w-auto flex-none rounded shadow"
-											/>
-										{/if}
-										<div class="min-w-0">
-											<!-- A held town flies its ruling team's show, so the label says so
-												rather than claiming it is the town's most-seen one. -->
-											<p class="text-xs font-bold uppercase tracking-wide opacity-60">
-												{openHolder ? 'Ruling show' : 'Most seen'}
-											</p>
-											<p class="truncate font-semibold">{openShow.name}</p>
+						of the map, not a column, so the plate never grows into the whole of it.
+						Gone entirely, title bar and all, when the town panel above is already saying its
+						leaf fallback (see townPanelSaysIt): an empty body under a heading is still a
+						plate a player opens for nothing. -->
+					{#if showLocationPlate}
+						<CollapsiblePlate
+							title="Location"
+							bind:collapsed={$locationPanelCollapsed}
+							classes="pointer-events-auto w-96 max-w-full"
+							bodyClasses="flex max-h-[50vh] flex-col bg-base-100 text-base-content"
+						>
+							{#if normalizedQuery}
+								<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
+							{:else if regionRows.length === 0}
+								<!-- A leaf region (a municipality) with no town panel over it saying the same
+									thing: no children to drill into, so instead of an empty table we surface its
+									own top show — the only place the open location's show appears — and say who
+									is holding the place. The side itself is out on the map, standing on the
+									town. This is the fallback the statues make redundant, which is why the whole
+									plate is dropped when they are up (see townPanelSaysIt) — so it is only ever
+									read for a town with no side to field. -->
+								<div class="flex min-h-0 flex-1 flex-col gap-3 p-3">
+									{#if openShow}
+										<div class="flex flex-none items-center gap-3">
+											{#if openShow.posterUrl}
+												<img
+													src={openShow.posterUrl}
+													alt={openShow.name}
+													class="h-16 w-auto flex-none rounded shadow"
+												/>
+											{/if}
+											<div class="min-w-0">
+												<!-- A held town flies its ruling team's show, so the label says so
+													rather than claiming it is the town's most-seen one. -->
+												<p class="text-xs font-bold uppercase tracking-wide opacity-60">
+													{openHolder ? 'Ruling show' : 'Most seen'}
+												</p>
+												<p class="truncate font-semibold">{openShow.name}</p>
+											</div>
 										</div>
-									</div>
-								{:else}
-									<p class="flex-none text-center opacity-60">No show here yet.</p>
-								{/if}
+									{:else}
+										<p class="flex-none text-center opacity-60">No show here yet.</p>
+									{/if}
 
-								{#if municipalityTeam.length > 0}
-									<!-- Whoever holds the town. Until a player beats it, that's the town's
-										built-in, seed-rolled "OG" (original) roster — the same for every
-										player, badged so it reads as the house team. Once somebody takes the
-										town it's their frozen winning team instead, and it's their name on
-										the badge.
+									{#if municipalityTeam.length > 0}
+										<!-- Whoever holds the town. Until a player beats it, that's the town's
+											built-in, seed-rolled "OG" (original) roster — the same for every
+											player, badged so it reads as the house team. Once somebody takes the
+											town it's their frozen winning team instead, and it's their name on
+											the badge.
 
-										The team itself is not drawn here any more: it is standing in the town
-										panel higher up this same corner (see panelTown), so this plate names
-										who holds the place and the plate above it shows them holding it. -->
-									<div class="flex flex-none items-center gap-2">
-										{#if openHolder}
-											<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
-											<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
-												{openHolder.holderName}
-											</span>
-										{:else}
-											<span class="badge badge-primary badge-sm font-bold">OG</span>
-											<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
-										{/if}
-										<!-- The siege counter and the challenge button used to sit here; they
-											are in the town panel over the map now (see buildTownChallenge),
-											standing under the very team they are about. What is left is who
-											holds it. -->
-										{#if holdsOpenTown}
-											<span class="badge badge-success badge-sm ml-auto">Yours</span>
-										{/if}
-									</div>
-								{/if}
-							</div>
-						{:else}
-							<RegionTable rows={regionRows} onSelect={select} />
-						{/if}
-					</CollapsiblePlate>
+											The team itself is not drawn here any more: it is standing in the town
+											panel higher up this same corner (see panelTown), so this plate names
+											who holds the place and the plate above it shows them holding it. -->
+										<div class="flex flex-none items-center gap-2">
+											{#if openHolder}
+												<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
+												<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
+													{openHolder.holderName}
+												</span>
+											{:else}
+												<span class="badge badge-primary badge-sm font-bold">OG</span>
+												<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
+											{/if}
+											<!-- The siege counter and the challenge button used to sit here; they
+												are in the town panel over the map now (see buildTownChallenge),
+												standing under the very team they are about. What is left is who
+												holds it. -->
+											{#if holdsOpenTown}
+												<span class="badge badge-success badge-sm ml-auto">Yours</span>
+											{/if}
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<RegionTable rows={regionRows} onSelect={select} />
+							{/if}
+						</CollapsiblePlate>
+					{/if}
 				</div>
 			</div>
 		{:else}
