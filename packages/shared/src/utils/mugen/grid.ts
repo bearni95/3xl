@@ -9,7 +9,7 @@
  * square drawn face-on, so the grid's coordinates and the screen's are the same
  * two axes.
  *
- * It is five columns by five rows, and symmetric about its middle column: two
+ * It is five columns by three rows, and symmetric about its middle column: two
  * columns of red half, the shared white one at q = 0, two of blue. So the ground both
  * sides are playing for sits dead centre, and each half is the same two columns deep
  * — one to be pushed back onto, and one behind that.
@@ -17,9 +17,9 @@
  * Cells left of centre are the red half, right the blue half. Every column runs the
  * full depth of the board, so a row is a **lane**: the two fighters holding the same
  * row face each other across it, and the ground between them is the white cell they
- * are playing for. Which rows a fight opens on is the fight's own business (see the
- * combat controller's opening cells) — three a side leaves the outermost rows as
- * ground nobody starts on.
+ * are playing for. Three rows is three lanes, which is a side's whole line — so every
+ * row of the board is fought over and none of it is ground nobody stands on (see the
+ * combat controller's opening cells).
  */
 
 /** A cell coordinate: column across, row down. */
@@ -36,7 +36,7 @@ export const FIRST_COLUMN = -2;
 export const LAST_COLUMN = 2;
 /** The board's rows — a lane apiece, counted downward from the top of the screen. */
 export const FIRST_ROW = 0;
-export const LAST_ROW = 4;
+export const LAST_ROW = 2;
 
 /** The board's extent in cells, which is what sizes the drawn grid. */
 export const BOARD_COLUMNS = LAST_COLUMN - FIRST_COLUMN + 1;
@@ -44,6 +44,24 @@ export const BOARD_ROWS = LAST_ROW - FIRST_ROW + 1;
 
 /** The board's middle row: the lane halfway down it. */
 export const MIDDLE_ROW = Math.floor((FIRST_ROW + LAST_ROW) / 2);
+
+/**
+ * What a column is called, the way a chess file is: a letter, counted from `a` at the
+ * board's left edge. A column's own coordinate is signed and centred on the white one
+ * (`q = 0`), which is the right way to write the board's rules and the wrong way to
+ * point at a square out loud — so the name is the column's position across the board
+ * rather than its distance from the middle.
+ */
+export const columnLabel = (q: number): string => String.fromCharCode(97 + (q - FIRST_COLUMN));
+
+/**
+ * What a row is called: a number, counted from 1 at the top row. Chess numbers its
+ * ranks up from the bottom because the bottom is white's own end; here the two sides
+ * are the left and right halves and no row belongs to either, so the numbering follows
+ * the board's own rows instead and runs the way they are read — row `r` is row
+ * `r + 1`, and the letter/number pair never disagrees with the coordinate behind it.
+ */
+export const rowLabel = (r: number): string => String(r - FIRST_ROW + 1);
 
 /** The four neighbours of a square cell: no diagonals, so a step is one side. */
 const NEIGHBOR_DELTAS: Cell[] = [
