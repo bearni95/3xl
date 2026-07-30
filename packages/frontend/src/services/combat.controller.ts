@@ -746,11 +746,12 @@ export class CombatController {
 	}
 
 	/**
-	 * One attack, played out on its own: the attacker walks out of its cell, up to the
-	 * fighter opposite, and strikes it where it stands. What the target chose to do about
-	 * it is settled and shown before the attacker walks back and the next attack is
-	 * thrown. A target already struck earlier in the volley takes this one too — it just
-	 * changes nothing, because it was already going down.
+	 * One attack, played out on its own, in the order the thing itself happens: the fighter
+	 * opposite braces if that is what it chose, the attacker walks out of its cell up to it,
+	 * strikes it where it stands, and what the blow amounted to is said before the attacker
+	 * walks back and the next attack is thrown. A target already struck earlier in the
+	 * volley takes this one too — it just changes nothing, because it was already going
+	 * down.
 	 *
 	 * A blow that lands settles the lane *here*, before the next attack is thrown: the
 	 * two of them walk their result out where they are standing (see {@link settleLane}),
@@ -763,6 +764,27 @@ export class CombatController {
 		const { shooter, target, extra } = shot;
 		const from = extra ? `${shooter.name}'s free shot` : `${shooter.name} shoots`;
 		this.setStatus(`${shooter.name} goes at ${target.name}.`);
+
+		// The fighter opposite braces first, if covering is what it chose.
+		//
+		// Nothing about that is decided here — it was decided when the order was given — so
+		// there is nothing to wait for: the guard goes up before the attacker has moved,
+		// stands through the approach, and is what the blow is thrown *at*. Put after the
+		// strike, where the rest of the outcome belongs, it was a defence that appeared once
+		// the attack was already over: the two poses played in the order they were written
+		// rather than the order they happen in, and the picture read as a fighter bracing
+		// against a blow it had just taken.
+		//
+		// It braces because a blow is coming, though — not because it chose to cover. A
+		// covering fighter nobody fires at still shows nothing all turn (see
+		// {@link showOrders}). The pose is held rather than thrown, and ringed in the
+		// fighter's colour so it reads as a stance it is in rather than a frame of its
+		// animation, and both stand for the rest of the turn: the next shot down this lane
+		// meets a fighter still braced.
+		const covering = !target.down && target.action === 'defend';
+		const guard = covering ? findMove(target, 'defend') : null;
+		if (guard) this.board?.holdMove(target.id, guard, target.color);
+
 		// Close in, then strike: the blow is awaited to its last frame, so what it did is
 		// only said once it has actually been thrown.
 		await this.board?.closeIn(shooter.id, target.id);
@@ -770,17 +792,10 @@ export class CombatController {
 
 		if (target.down) {
 			this.log.push(`${from} — ${target.name} was already falling.`);
-		} else if (target.action === 'defend') {
+		} else if (covering) {
+			// The brace is already up; this is what it amounted to.
 			this.log.push(`${from} at ${target.name}, who blocked it.`);
 			this.board?.showCallout(target.id, 'BLOCK', target.color);
-			// *Now* it braces — on the blow, not back at the reveal. It was covering all
-			// along; what happens here is the covering becoming visible, because until a shot
-			// came down the lane there was nothing for it to be visibly doing. The pose is
-			// held rather than thrown, and ringed in the fighter's colour so it reads as a
-			// stance the fighter is in rather than a frame of its animation, and both stand
-			// for the rest of the turn: the shot after this one meets a fighter still braced.
-			const guard = findMove(target, 'defend');
-			if (guard) this.board?.holdMove(target.id, guard, target.color);
 		} else if (this.passiveReady(target, 'defend')) {
 			// Blue's free guard. It is only had on a turn the fighter wasn't covering
 			// anyway (the branch above), and only spent on a shot it actually turns

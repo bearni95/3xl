@@ -283,7 +283,7 @@ describe('CombatController — what the board is left showing', () => {
 		);
 	});
 
-	it('braces a covering fighter on the blow it turns aside, and not before', async () => {
+	it('braces a covering fighter before the blow, not after it', async () => {
 		// A board that says which fighter each call was about and what it was told — a guard
 		// belongs to the fighter holding it, and the whole question here is *when* it starts.
 		const calls: string[] = [];
@@ -319,12 +319,16 @@ describe('CombatController — what the board is left showing', () => {
 		// answers the turn before it is played out.
 		expect(calls.some((call) => call.includes('GUARD'))).toBe(false);
 
-		// The first thing that happens on the board is an attacker setting off; the bracing
-		// comes after it, because it is a response to the blow and not to the order.
-		const firstApproach = calls.findIndex((call) => call.startsWith('closeIn'));
+		// The guard is up before the attacker has switched into its attack pose — before it
+		// has even set off — so the blow is thrown at a fighter already braced. Played the
+		// other way round it was a defence that appeared once the attack was over.
 		const firstBrace = calls.findIndex((call) => call.startsWith('holdMove'));
-		expect(firstApproach).toBeGreaterThan(-1);
-		expect(firstBrace).toBeGreaterThan(firstApproach);
+		const firstApproach = calls.findIndex((call) => call.startsWith('closeIn'));
+		const firstStrike = calls.findIndex((call) => call.startsWith('playMove'));
+		expect(firstBrace).toBeGreaterThan(-1);
+		expect(firstStrike).toBeGreaterThan(-1);
+		expect(firstBrace).toBeLessThan(firstStrike);
+		expect(firstBrace).toBeLessThan(firstApproach);
 
 		for (const fighter of covering) {
 			// Each of them was stood in its guard, and *stood* in it — not thrown into it and
