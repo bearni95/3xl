@@ -328,6 +328,26 @@
 		});
 	})(filterName, filterColor, filterShow, characterShows, pickableColors, teamSlotById);
 
+	// The ids of the cards the grid may stand up — the filtered roster as a set, which is
+	// the question a place selector asks of one copy at a time: may this cell stand as that
+	// card? Everything else the player owns of the same character is a place the selector
+	// still lists and cannot go to.
+	$: selectableIds = new Set(filteredSpawns.map((spawn) => spawn.id));
+
+	// Every card the player owns, by character, filters and team aside. The grid is built
+	// from the narrowed roster, but a cell's place selector is not: it names every town this
+	// character was ever pulled in, so a player reads the whole of what they hold of a
+	// fighter from the one cell rather than watching towns appear and vanish as they filter.
+	$: copiesByCharacter = ((all: CharacterSpawn[]) => {
+		const byCharacter = new Map<string, CharacterSpawn[]>();
+		for (const spawn of all) {
+			const copies = byCharacter.get(spawn.characterId);
+			if (copies) copies.push(spawn);
+			else byCharacter.set(spawn.characterId, [spawn]);
+		}
+		return byCharacter;
+	})($spawns);
+
 	// The filters and the pager work on the same list: filtering narrows it, the pager
 	// walks it a page at a time. So any filter change re-pages from the start — the
 	// narrowed roster always opens on its first page rather than on a page number that
@@ -433,22 +453,37 @@
 	interface PlaceOption {
 		copy: CharacterSpawn;
 		locationName: string;
+		// Whether the cell can actually stand as this card. A copy the filters have put
+		// aside, or one holding a team slot, is still one of this character's places — it is
+		// listed and disabled rather than dropped, so the selector says what the player holds
+		// and, separately, what is reachable from here right now.
+		selectable: boolean;
 	}
 
 	// A character's copies as the places they were pulled in, one entry per town and
 	// colour: two reds from the same town say the same thing, so they are one entry, and
-	// it stands the first of them up. Insertion order again, so the list follows the
-	// order the copies were claimed in. `names` is taken as an argument so the caller's
-	// reactive statement has to name the layer these places are read from.
+	// it stands the first of them up — the first *selectable* one where there is one, since
+	// an entry a copy can be shown for must carry that copy and not the twin that cannot.
+	// Insertion order again, so the list follows the order the copies were claimed in, and a
+	// later copy taking over an entry keeps the place where its first copy put it. `names` is
+	// taken as an argument so the caller's reactive statement has to name the layer these
+	// places are read from.
 	function groupPlaces(
 		copies: CharacterSpawn[],
+		selectable: Set<string>,
 		_names: Map<string, string> | null
 	): PlaceOption[] {
 		const byPlace = new Map<string, PlaceOption>();
 		for (const copy of copies) {
 			const key = `${copy.locationId}|${copy.color}`;
-			if (byPlace.has(key)) continue;
-			byPlace.set(key, { copy, locationName: locationNameFor(copy.locationId) });
+			const held = byPlace.get(key);
+			const canShow = selectable.has(copy.id);
+			if (held && !(canShow && !held.selectable)) continue;
+			byPlace.set(key, {
+				copy,
+				locationName: locationNameFor(copy.locationId),
+				selectable: canShow
+			});
 		}
 		return [...byPlace.values()];
 	}
@@ -507,7 +542,9 @@
 		names: Map<string, string> | null,
 		shows: Map<string, { id: number; name: string }[]>,
 		shown: Map<string, string>,
-		slots: Map<string, number>
+		slots: Map<string, number>,
+		owned: Map<string, CharacterSpawn[]>,
+		selectable: Set<string>
 	) =>
 		pagedGroups.map((group) => {
 			const shownId = shown.get(group.id);
@@ -515,7 +552,12 @@
 				group.copies.find((spawn) => spawn.id === shownId) ??
 				fieldedCopy(group.copies, slots) ??
 				group.copies[0];
-			const places = groupPlaces(group.copies, names);
+			// The places are read off everything the player owns of this character rather than
+			// off the cell's own copies, which are only the ones that got through the filters:
+			// the rest are the disabled entries. What the cell may stand as is still the cell's
+			// copies, and that is what `selectable` marks — it is the same question the grid
+			// answered when it built them.
+			const places = groupPlaces(owned.get(group.characterId) ?? group.copies, selectable, names);
 			// Which entry the place selector sits on. Two copies from one town in one
 			// colour are a single entry, so a shown copy that was the second of them has
 			// none of its own — the entry that stands for its town and colour is the one
@@ -536,7 +578,14 @@
 				// character to a copy that isn't on the team and the border goes with it.
 				fielded: slots.has(copy.id)
 			};
-		}))(municipalityNames, characterShows, shownCopyByCell, teamSlotById);
+		}))(
+		municipalityNames,
+		characterShows,
+		shownCopyByCell,
+		teamSlotById,
+		copiesByCharacter,
+		selectableIds
+	);
 
 	// The line-up as that row: one cell per slot in slot order, carrying the card standing
 	// in it and the statue of that card, or nothing at all where the slot is empty. The
@@ -960,7 +1009,13 @@
 										on:change={(event) => showCopy(group.id, event.currentTarget.value)}
 									>
 										{#each places as place (place.copy.id)}
-											<option value={place.copy.id}>
+											<!-- A town the cell cannot go to is still listed, disabled: the card is
+											     one the player holds, and it is out of reach either because a filter
+											     put it aside or because it is on the team and standing in the grid
+											     to the left. Dropping it had made the selector a different list
+											     under every filter, saying a character was claimed in fewer places
+											     than they were. -->
+											<option value={place.copy.id} disabled={!place.selectable}>
 												{SPAWN_SQUARE_GLYPHS[place.copy.color]}
 												{place.locationName}
 											</option>
