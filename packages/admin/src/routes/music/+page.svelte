@@ -63,9 +63,15 @@
 	let loadedFile: string | null = null;
 	let playing = false;
 
-	// The day the shuffle below is shown for. Today by default; steppable, because a
-	// per-day order is only visibly a per-day order when two days can be put side by
-	// side. `today` is read once — this screen is not open across a midnight.
+	// The two halves of this screen, one at a time: the songs, where a file is named and
+	// linked, and the radio, which is what the naming is for. Both read the same two
+	// fetches — the tab decides what is drawn, not what is loaded, so switching costs
+	// nothing and a half-typed row is still there when you come back to it.
+	let tab: 'songs' | 'radio' = 'songs';
+
+	// The day the radio is shown for. Today by default; steppable, because a per-day
+	// order is only visibly a per-day order when two days can be put side by side.
+	// `today` is read once — this screen is not open across a midnight.
 	const today = utcDayIso();
 	let shuffleDay = today;
 
@@ -271,336 +277,364 @@
 			<p class="text-sm opacity-70">
 				The songs vendored in <code class="font-mono">@3xl/assets</code>'
 				<code class="font-mono">public/music/</code>, and what the game says about each: its
-				name, and the show it opens. Play a row to hear which song it is, then name it and
-				link it — Save writes that row into
-				<code class="font-mono">@3xl/data</code>'s
-				<code class="font-mono">public/music.json</code>, which is what the player in the map's
-				corner reads. A song is added by dropping the file into that folder; the table is
-				whatever is found in it.
+				name, and the show it opens. <strong>Songs</strong> is where a file is named and linked;
+				<strong>Radio</strong> is what that naming is for — the order each show's songs come up
+				in on a given day.
 			</p>
 			<a class="link link-primary text-sm" href="/">← Back to stage</a>
 		</header>
 
-		<section class="card bg-base-100 shadow-xl">
-			<div class="card-body gap-4">
-				<div class="flex flex-wrap items-center gap-3">
-					<h2 class="card-title">Vendored songs</h2>
-					<span class="badge badge-ghost font-mono text-xs">/data/music.json</span>
-				</div>
+		<div role="tablist" class="tabs tabs-bordered">
+			<button
+				role="tab"
+				type="button"
+				class={classNames('tab', { 'tab-active': tab === 'songs' })}
+				on:click={() => (tab = 'songs')}
+			>
+				Songs
+				<span class="badge badge-sm badge-neutral ml-2">{files.length}</span>
+			</button>
+			<button
+				role="tab"
+				type="button"
+				class={classNames('tab', { 'tab-active': tab === 'radio' })}
+				on:click={() => (tab = 'radio')}
+			>
+				Radio
+				<span class="badge badge-sm badge-neutral ml-2">{shuffles.length}</span>
+			</button>
+		</div>
 
-				{#if loadError}
-					<div class="alert alert-error">
-						<span>{loadError}</span>
-					</div>
-				{:else if loading}
-					<div class="flex items-center gap-2 opacity-70">
-						<span class="loading loading-spinner loading-sm"></span>
-						<span>Loading music…</span>
-					</div>
-				{:else if files.length === 0}
-					<p class="text-sm opacity-60">
-						No songs found. Drop an mp3 into <code class="font-mono">@3xl/assets</code>'
-						<code class="font-mono">public/music/</code> and reload.
-					</p>
-				{:else}
-					<div class="overflow-x-auto">
-						<table class="table table-sm">
-							<thead>
-								<tr>
-									<th class="w-10"></th>
-									<th>Song</th>
-									<th class="w-1/3">Name</th>
-									<th class="w-1/3">Show</th>
-									<th class="text-right">Definition</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each rows as row (row.file)}
-									<tr class={classNames({ 'bg-base-200': loadedFile === row.file && playing })}>
-										<td>
-											<!-- The song itself, so the author can hear which one they are naming: a
-												file name is not enough to tell two openings apart. -->
-											<button
-												type="button"
-												class="btn btn-circle btn-ghost btn-sm"
-												aria-label={loadedFile === row.file && playing
-													? `Pause ${row.file}`
-													: `Play ${row.file}`}
-												on:click={() => togglePlay(row.file)}
-											>
-												{#if loadedFile === row.file && playing}
-													<svg
-														viewBox="0 0 24 24"
-														fill="currentColor"
-														class="size-4"
-														aria-hidden="true"
-													>
-														<path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-													</svg>
-												{:else}
-													<svg
-														viewBox="0 0 24 24"
-														fill="currentColor"
-														class="size-4"
-														aria-hidden="true"
-													>
-														<path d="M8 5v14l11-7z" />
-													</svg>
-												{/if}
-											</button>
-										</td>
-										<td>
-											<div class="font-mono text-xs">{row.file}</div>
-											{#if !row.track}
-												<span class="badge badge-warning badge-xs">No definition</span>
-											{/if}
-										</td>
-										<td>
-											<input
-												class={classNames('input input-sm input-bordered w-full', {
-													'input-error': row.draft.title.length > 0 && !row.valid
-												})}
-												placeholder="We are"
-												maxlength={MUSIC_TITLE_MAX_LENGTH}
-												value={row.draft.title}
-												on:input={(event) =>
-													setDraft(row.file, { title: event.currentTarget.value })}
-											/>
-										</td>
-										<td>
-											<!-- The saved shows and nothing else: the link is what puts the show's
-												glyph on the plate in the map's corner, so it has to name a show the
-												game holds. A song that opens none is left on the first option and
-												lettered by its name alone. -->
-											<select
-												class={classNames('select select-sm select-bordered w-full', {
-													'select-error': !row.valid && row.draft.title.length > 0
-												})}
-												aria-label={`Show for ${row.file}`}
-												value={row.draft.showId === null ? '' : String(row.draft.showId)}
-												on:change={(event) =>
-													setDraft(row.file, {
-														showId: event.currentTarget.value
-															? Number(event.currentTarget.value)
-															: null
-													})}
-											>
-												<option value="">— No show —</option>
-												{#each shows as show (show.id)}
-													<option value={String(show.id)}>{show.name}</option>
-												{/each}
-												<!-- An id the saved collection no longer holds: kept as an option of
-													its own so the row shows what the file says instead of silently
-													reading as "no show", and refused until it is repointed. -->
-												{#if row.draft.showId !== null && !showNameById.has(row.draft.showId)}
-													<option value={String(row.draft.showId)}>
-														Unknown show {row.draft.showId}
-													</option>
-												{/if}
-											</select>
-										</td>
-										<td>
-											<div class="flex items-center justify-end gap-2">
-												<button
-													class="btn btn-primary btn-sm"
-													type="button"
-													disabled={!row.dirty || !row.valid || savingFile === row.file}
-													on:click={() => save(row.file)}
-												>
-													{#if savingFile === row.file}
-														<span class="loading loading-spinner loading-xs"></span>
-													{/if}
-													{row.track ? 'Save' : 'Define'}
-												</button>
-												{#if row.track}
-													<button
-														class="btn btn-ghost btn-sm"
-														type="button"
-														disabled={deletingFile === row.file}
-														on:click={() => remove(row.file)}
-													>
-														{#if deletingFile === row.file}
-															<span class="loading loading-spinner loading-xs"></span>
-														{/if}
-														Remove
-													</button>
-												{/if}
-											</div>
-										</td>
-									</tr>
-									{#if errorByFile.has(row.file)}
-										<tr>
-											<td colspan="5" class="pt-0">
-												<div class="alert alert-error py-2 text-sm">
-													<span>{errorByFile.get(row.file)}</span>
-												</div>
-											</td>
-										</tr>
-									{/if}
-								{/each}
-							</tbody>
-						</table>
-					</div>
-				{/if}
-			</div>
-		</section>
-
-		<section class="card bg-base-100 shadow-xl">
-			<div class="card-body gap-4">
-				<div class="flex flex-wrap items-center gap-3">
-					<h2 class="card-title">Daily shuffle</h2>
-					<span class="badge badge-ghost font-mono text-xs">
-						{Number.isFinite(shuffleMidnight) ? shuffleMidnight : '—'}
-					</span>
-				</div>
-				<p class="text-sm opacity-70">
-					A show with a dozen themes would otherwise open with the same one for ever, so each
-					show's songs are put in a different order every day. The order is not rolled and not
-					stored: it is drawn from a seed hashed out of the show's id and the day's midnight UTC
-					as a Unix timestamp — the number in the badge above — so anyone asking on that day
-					gets this same order, each show is ordered independently of every other, and all of
-					them turn over at once when the timestamp does. Step the day to watch it move.
-				</p>
-
-				<div class="flex flex-wrap items-center gap-2">
-					<button
-						type="button"
-						class="btn btn-ghost btn-sm"
-						aria-label="Previous day"
-						on:click={() => (shuffleDay = shiftDayIso(shuffleDay, -1))}
-					>
-						←
-					</button>
-					<input
-						type="date"
-						class="input input-sm input-bordered"
-						aria-label="Shuffle day"
-						bind:value={shuffleDay}
-					/>
-					<button
-						type="button"
-						class="btn btn-ghost btn-sm"
-						aria-label="Next day"
-						on:click={() => (shuffleDay = shiftDayIso(shuffleDay, 1))}
-					>
-						→
-					</button>
-					<button
-						type="button"
-						class="btn btn-outline btn-sm"
-						disabled={shuffleDay === today}
-						on:click={() => (shuffleDay = today)}
-					>
-						Today
-					</button>
-					{#if Number.isFinite(turnsOver)}
-						<span class="text-xs opacity-60">
-							turns over {new Date(turnsOver).toISOString().replace('T', ' ').slice(0, 16)} UTC
-						</span>
-					{/if}
-				</div>
-
-				{#if shuffles.length === 0}
-					<p class="text-sm opacity-60">
-						Nothing to order yet — a song is in a show's shuffle once it has a definition and
-						its file is still in <code class="font-mono">public/music/</code>.
-					</p>
-				{:else}
-					<div class="grid gap-4 md:grid-cols-2">
-						{#each shuffles as shuffle (shuffle.showId ?? 'none')}
-							<div class="rounded-box border border-base-300 p-4">
-								<div class="mb-3 flex flex-wrap items-baseline gap-2">
-									<h3 class="font-semibold">
-										{shuffle.showId === null
-											? 'No show'
-											: (showNameById.get(shuffle.showId) ?? `Unknown show ${shuffle.showId}`)}
-									</h3>
-									<span class="badge badge-neutral badge-sm">{shuffle.tracks.length}</span>
-									<!-- The seed itself, because the whole claim of this panel is that the
-										order is derived and not rolled: a reader can hash the id and the
-										timestamp and get this number back. -->
-									<span class="font-mono text-xs opacity-50">seed {shuffle.seed}</span>
-								</div>
-								<ol class="flex flex-col gap-1">
-									{#each shuffle.tracks as track, position (track.file)}
-										<li
-											class={classNames('flex items-baseline gap-2 rounded px-2 py-1', {
-												'bg-base-200': loadedFile === track.file && playing
-											})}
-										>
-											<span class="w-6 shrink-0 text-right font-mono text-xs opacity-50">
-												{position + 1}
-											</span>
-											<!-- The same one preview element the table above plays through, so
-												hearing a song from here is hearing the song, not a second copy
-												of it over the first. -->
-											<button
-												type="button"
-												class="link link-hover text-left text-sm"
-												on:click={() => togglePlay(track.file)}
-											>
-												{track.title}
-											</button>
-											<span class="ml-auto truncate font-mono text-xs opacity-40">
-												{track.file}
-											</span>
-										</li>
-									{/each}
-								</ol>
-							</div>
-						{/each}
-					</div>
-				{/if}
-			</div>
-		</section>
-
-		{#if orphans.length > 0}
+		{#if tab === 'songs'}
 			<section class="card bg-base-100 shadow-xl">
 				<div class="card-body gap-4">
 					<div class="flex flex-wrap items-center gap-3">
-						<h2 class="card-title">Definitions with no song</h2>
-						<span class="badge badge-error badge-sm">{orphans.length}</span>
+						<h2 class="card-title">Vendored songs</h2>
+						<span class="badge badge-ghost font-mono text-xs">/data/music.json</span>
 					</div>
 					<p class="text-sm opacity-70">
-						These entries name a file that is not in <code class="font-mono">public/music/</code>
-						any more. Nothing plays them — either put the file back, or remove the definition.
+						Play a row to hear which song it is, then name it and link it — Save writes that
+						row into <code class="font-mono">@3xl/data</code>'s
+						<code class="font-mono">public/music.json</code>, which is what the player in the
+						map's corner reads. A song is added by dropping the file into
+						<code class="font-mono">public/music/</code>; the table is whatever is found there.
 					</p>
-					<div class="overflow-x-auto">
-						<table class="table table-sm">
-							<tbody>
-								{#each orphans as orphan (orphan.file)}
+
+					{#if loadError}
+						<div class="alert alert-error">
+							<span>{loadError}</span>
+						</div>
+					{:else if loading}
+						<div class="flex items-center gap-2 opacity-70">
+							<span class="loading loading-spinner loading-sm"></span>
+							<span>Loading music…</span>
+						</div>
+					{:else if files.length === 0}
+						<p class="text-sm opacity-60">
+							No songs found. Drop an mp3 into <code class="font-mono">@3xl/assets</code>'
+							<code class="font-mono">public/music/</code> and reload.
+						</p>
+					{:else}
+						<div class="overflow-x-auto">
+							<table class="table table-sm">
+								<thead>
 									<tr>
-										<td>
-											<div class="font-medium">{orphan.title}</div>
-											<div class="font-mono text-xs opacity-50">{orphan.file}</div>
-										</td>
-										<td class="text-right">
-											<button
-												type="button"
-												class="btn btn-error btn-outline btn-sm"
-												disabled={deletingFile === orphan.file}
-												on:click={() => remove(orphan.file)}
-											>
-												{#if deletingFile === orphan.file}
-													<span class="loading loading-spinner loading-xs"></span>
-												{/if}
-												Remove definition
-											</button>
-										</td>
+										<th class="w-10"></th>
+										<th>Song</th>
+										<th class="w-1/3">Name</th>
+										<th class="w-1/3">Show</th>
+										<th class="text-right">Definition</th>
 									</tr>
-									{#if errorByFile.has(orphan.file)}
-										<tr>
-											<td colspan="2" class="pt-0">
-												<div class="alert alert-error py-2 text-sm">
-													<span>{errorByFile.get(orphan.file)}</span>
+								</thead>
+								<tbody>
+									{#each rows as row (row.file)}
+										<tr class={classNames({ 'bg-base-200': loadedFile === row.file && playing })}>
+											<td>
+												<!-- The song itself, so the author can hear which one they are naming: a
+													file name is not enough to tell two openings apart. -->
+												<button
+													type="button"
+													class="btn btn-circle btn-ghost btn-sm"
+													aria-label={loadedFile === row.file && playing
+														? `Pause ${row.file}`
+														: `Play ${row.file}`}
+													on:click={() => togglePlay(row.file)}
+												>
+													{#if loadedFile === row.file && playing}
+														<svg
+															viewBox="0 0 24 24"
+															fill="currentColor"
+															class="size-4"
+															aria-hidden="true"
+														>
+															<path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+														</svg>
+													{:else}
+														<svg
+															viewBox="0 0 24 24"
+															fill="currentColor"
+															class="size-4"
+															aria-hidden="true"
+														>
+															<path d="M8 5v14l11-7z" />
+														</svg>
+													{/if}
+												</button>
+											</td>
+											<td>
+												<div class="font-mono text-xs">{row.file}</div>
+												{#if !row.track}
+													<span class="badge badge-warning badge-xs">No definition</span>
+												{/if}
+											</td>
+											<td>
+												<input
+													class={classNames('input input-sm input-bordered w-full', {
+														'input-error': row.draft.title.length > 0 && !row.valid
+													})}
+													placeholder="We are"
+													maxlength={MUSIC_TITLE_MAX_LENGTH}
+													value={row.draft.title}
+													on:input={(event) =>
+														setDraft(row.file, { title: event.currentTarget.value })}
+												/>
+											</td>
+											<td>
+												<!-- The saved shows and nothing else: the link is what puts the show's
+													glyph on the plate in the map's corner, so it has to name a show the
+													game holds. A song that opens none is left on the first option and
+													lettered by its name alone. -->
+												<select
+													class={classNames('select select-sm select-bordered w-full', {
+														'select-error': !row.valid && row.draft.title.length > 0
+													})}
+													aria-label={`Show for ${row.file}`}
+													value={row.draft.showId === null ? '' : String(row.draft.showId)}
+													on:change={(event) =>
+														setDraft(row.file, {
+															showId: event.currentTarget.value
+																? Number(event.currentTarget.value)
+																: null
+														})}
+												>
+													<option value="">— No show —</option>
+													{#each shows as show (show.id)}
+														<option value={String(show.id)}>{show.name}</option>
+													{/each}
+													<!-- An id the saved collection no longer holds: kept as an option of
+														its own so the row shows what the file says instead of silently
+														reading as "no show", and refused until it is repointed. -->
+													{#if row.draft.showId !== null && !showNameById.has(row.draft.showId)}
+														<option value={String(row.draft.showId)}>
+															Unknown show {row.draft.showId}
+														</option>
+													{/if}
+												</select>
+											</td>
+											<td>
+												<div class="flex items-center justify-end gap-2">
+													<button
+														class="btn btn-primary btn-sm"
+														type="button"
+														disabled={!row.dirty || !row.valid || savingFile === row.file}
+														on:click={() => save(row.file)}
+													>
+														{#if savingFile === row.file}
+															<span class="loading loading-spinner loading-xs"></span>
+														{/if}
+														{row.track ? 'Save' : 'Define'}
+													</button>
+													{#if row.track}
+														<button
+															class="btn btn-ghost btn-sm"
+															type="button"
+															disabled={deletingFile === row.file}
+															on:click={() => remove(row.file)}
+														>
+															{#if deletingFile === row.file}
+																<span class="loading loading-spinner loading-xs"></span>
+															{/if}
+															Remove
+														</button>
+													{/if}
 												</div>
 											</td>
 										</tr>
-									{/if}
-								{/each}
-							</tbody>
-						</table>
+										{#if errorByFile.has(row.file)}
+											<tr>
+												<td colspan="5" class="pt-0">
+													<div class="alert alert-error py-2 text-sm">
+														<span>{errorByFile.get(row.file)}</span>
+													</div>
+												</td>
+											</tr>
+										{/if}
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{/if}
+				</div>
+			</section>
+
+			{#if orphans.length > 0}
+				<section class="card bg-base-100 shadow-xl">
+					<div class="card-body gap-4">
+						<div class="flex flex-wrap items-center gap-3">
+							<h2 class="card-title">Definitions with no song</h2>
+							<span class="badge badge-error badge-sm">{orphans.length}</span>
+						</div>
+						<p class="text-sm opacity-70">
+							These entries name a file that is not in <code class="font-mono">public/music/</code>
+							any more. Nothing plays them — either put the file back, or remove the definition.
+						</p>
+						<div class="overflow-x-auto">
+							<table class="table table-sm">
+								<tbody>
+									{#each orphans as orphan (orphan.file)}
+										<tr>
+											<td>
+												<div class="font-medium">{orphan.title}</div>
+												<div class="font-mono text-xs opacity-50">{orphan.file}</div>
+											</td>
+											<td class="text-right">
+												<button
+													type="button"
+													class="btn btn-error btn-outline btn-sm"
+													disabled={deletingFile === orphan.file}
+													on:click={() => remove(orphan.file)}
+												>
+													{#if deletingFile === orphan.file}
+														<span class="loading loading-spinner loading-xs"></span>
+													{/if}
+													Remove definition
+												</button>
+											</td>
+										</tr>
+										{#if errorByFile.has(orphan.file)}
+											<tr>
+												<td colspan="2" class="pt-0">
+													<div class="alert alert-error py-2 text-sm">
+														<span>{errorByFile.get(orphan.file)}</span>
+													</div>
+												</td>
+											</tr>
+										{/if}
+									{/each}
+								</tbody>
+							</table>
+						</div>
 					</div>
+				</section>
+			{/if}
+		{:else}
+			<section class="card bg-base-100 shadow-xl">
+				<div class="card-body gap-4">
+					<div class="flex flex-wrap items-center gap-3">
+						<h2 class="card-title">Radio</h2>
+						<span class="badge badge-ghost font-mono text-xs">
+							{Number.isFinite(shuffleMidnight) ? shuffleMidnight : '—'}
+						</span>
+					</div>
+					<p class="text-sm opacity-70">
+						Each show's own station: the order its songs come up in today. A show with a dozen
+						themes would otherwise open with the same one for ever, so the running order is
+						redrawn every day — not rolled and not stored, but drawn from a seed hashed out of
+						the show's id and the day's midnight UTC as a Unix timestamp, the number in the
+						badge above. So anyone asking on that day gets this same order, each show is
+						ordered independently of every other, and all of them turn over at once when the
+						timestamp does. Step the day to watch it move.
+					</p>
+
+					<div class="flex flex-wrap items-center gap-2">
+						<button
+							type="button"
+							class="btn btn-ghost btn-sm"
+							aria-label="Previous day"
+							on:click={() => (shuffleDay = shiftDayIso(shuffleDay, -1))}
+						>
+							←
+						</button>
+						<input
+							type="date"
+							class="input input-sm input-bordered"
+							aria-label="Shuffle day"
+							bind:value={shuffleDay}
+						/>
+						<button
+							type="button"
+							class="btn btn-ghost btn-sm"
+							aria-label="Next day"
+							on:click={() => (shuffleDay = shiftDayIso(shuffleDay, 1))}
+						>
+							→
+						</button>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm"
+							disabled={shuffleDay === today}
+							on:click={() => (shuffleDay = today)}
+						>
+							Today
+						</button>
+						{#if Number.isFinite(turnsOver)}
+							<span class="text-xs opacity-60">
+								turns over {new Date(turnsOver).toISOString().replace('T', ' ').slice(0, 16)} UTC
+							</span>
+						{/if}
+					</div>
+
+					{#if shuffles.length === 0}
+						<p class="text-sm opacity-60">
+							Nothing to order yet — a song is in a show's shuffle once it has a definition and
+							its file is still in <code class="font-mono">public/music/</code>.
+						</p>
+					{:else}
+						<div class="grid gap-4 md:grid-cols-2">
+							{#each shuffles as shuffle (shuffle.showId ?? 'none')}
+								<div class="rounded-box border border-base-300 p-4">
+									<div class="mb-3 flex flex-wrap items-baseline gap-2">
+										<h3 class="font-semibold">
+											{shuffle.showId === null
+												? 'No show'
+												: (showNameById.get(shuffle.showId) ?? `Unknown show ${shuffle.showId}`)}
+										</h3>
+										<span class="badge badge-neutral badge-sm">{shuffle.tracks.length}</span>
+										<!-- The seed itself, because the whole claim of this panel is that the
+											order is derived and not rolled: a reader can hash the id and the
+											timestamp and get this number back. -->
+										<span class="font-mono text-xs opacity-50">seed {shuffle.seed}</span>
+									</div>
+									<ol class="flex flex-col gap-1">
+										{#each shuffle.tracks as track, position (track.file)}
+											<li
+												class={classNames('flex items-baseline gap-2 rounded px-2 py-1', {
+													'bg-base-200': loadedFile === track.file && playing
+												})}
+											>
+												<span class="w-6 shrink-0 text-right font-mono text-xs opacity-50">
+													{position + 1}
+												</span>
+												<!-- The same one preview element the table above plays through, so
+													hearing a song from here is hearing the song, not a second copy
+													of it over the first. -->
+												<button
+													type="button"
+													class="link link-hover text-left text-sm"
+													on:click={() => togglePlay(track.file)}
+												>
+													{track.title}
+												</button>
+												<span class="ml-auto truncate font-mono text-xs opacity-40">
+													{track.file}
+												</span>
+											</li>
+										{/each}
+									</ol>
+								</div>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			</section>
 		{/if}
