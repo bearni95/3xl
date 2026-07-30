@@ -143,10 +143,14 @@
 		1: 'grid-cols-1',
 		2: 'grid-cols-2',
 		3: 'grid-cols-3',
-		4: 'grid-cols-4'
+		4: 'grid-cols-4',
+		5: 'grid-cols-5'
 	};
+	// Five is the ceiling because five is what a pack gives: on a full-view sheet the whole
+	// of a pull stands in one row, which no smaller count can do without putting part of it
+	// on a second one.
 	const columnClass = (count: number): string =>
-		COLUMN_CLASSES[Math.min(4, Math.max(1, Math.round(count)))];
+		COLUMN_CLASSES[Math.min(5, Math.max(1, Math.round(count)))];
 
 	function pick(pack: OpenerPack): void {
 		selected = pack.id;

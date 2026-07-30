@@ -12,17 +12,19 @@
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
-	import ShowStandingsTable from '$components/core/ShowStandingsTable.svelte';
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
-	import PackGrid from '$components/core/pack/PackGrid.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
 	import AchievementsModal from '$components/core/AchievementsModal.svelte';
+	import LeaderboardModal from '$components/core/LeaderboardModal.svelte';
+	import BoosterModal from '$components/core/BoosterModal.svelte';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { achievementsModalOpen } from '$services/achievementsModal';
 	import { avatarPickerOpen } from '$services/avatarPicker';
+	import { leaderboardModalOpen } from '$services/leaderboardModal';
+	import { boosterModalOpen } from '$services/boosterModal';
 	import { locationPanelCollapsed } from '$services/locationPanel';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
@@ -1386,28 +1388,25 @@
 	}
 
 	// Back to the whole window's grid, from a box-opened town or a picked pack alike.
-	// The grid is in the document now, so this is only the state it reads: nothing is
+	// The grid is in the document, so this is only the state it reads: nothing is
 	// rebuilt, and a pack stood back down leaves the grid exactly as it was.
 	function showPackGrid(): void {
 		clearPackFeedback();
 		packTownId = null;
 	}
 
-	// Picking the Booster tab by its own button always lands on the grid of every pack
-	// the window offers; only a map box click narrows the tab to one town's pack.
-	function selectTab(id: PanelTab): void {
-		if (id === PanelTab.Pack) showPackGrid();
-		panelTab = id;
-	}
-
 	// The pack a map box click stands up, picked out of the window's full set. Null when
 	// no box has been clicked, the player is signed out, or the town has no claimable show
-	// yet — the last of which is the only case the panel has anything to say about, since
+	// yet — the last of which is the only case the modal has anything to say about, since
 	// a town clicked on the map is a town the player expected a pack from. The grid
 	// itself works off the same id, so this is read only to tell that case apart.
 	$: packForTown = packTownId
 		? (claimPacks.find((pack) => pack.id === packTownId) ?? null)
 		: null;
+
+	// A box was clicked on a town the window holds no pack for — what the modal prints in
+	// place of the grid.
+	$: townHasNoPack = !!packTownId && !packForTown;
 
 	// A pin frame's fill per region colour: the same six swatches the cards, the
 	// avatar rings and the combat buttons paint with, each with the ink that reads
@@ -1737,24 +1736,14 @@
 	reading order and second on screen: the right-hand column of the row on a wide
 	viewport, the strip under the map on a narrow one. -->
 <div class="flex h-screen flex-col-reverse md:flex-row-reverse">
-	<!-- The one panel beside the map, on three tabs — the right-hand column on a wide
-		viewport, docked under the map below `md` (30vh showing, its handle row toggling it
-		up to the full screen). Same markup either way. Nothing here is about the open region
-		any more: the drill table is a plate at the map's corner and the breadcrumbs are a bar
-		across the top of the map, both of them over the thing they name.
-		— Profile: the player's own full-width row — picture, reading, and the way through to
-		  the full card and the roster. The tab the panel opens on, and the only one that says
-		  nothing about the map. The three they field used to sit under that row and stand at
-		  the map's bottom-left corner now.
-		— Leaderboard: how much of the map each show flies, tallied over every
-		  municipality's current show — seeded, or the ruling team's where a town has been
-		  taken.
-		— Booster: the window's festa packs — every town de festa from three days back
-		  through four days ahead, all of them openable. Picked from the tab strip it lays
-		  every one of them out in the document (two to a row at this width) — pick one to
-		  stand it up and slice it open. Reached by clicking the box standing on that town
-		  instead, it
-		  skips straight to that town's pack, already stood up. -->
+	<!-- The one panel beside the map — the right-hand column on a wide viewport, docked under
+		the map below `md` (30vh showing, its handle row toggling it up to the full screen).
+		Same markup either way, and one view rather than three tabs: the account, with the two
+		buttons that raise the leaderboard and the window's booster packs above it. Both of
+		those were tabs of this column and are full-view modals now (see LeaderboardModal and
+		BoosterModal), and everything about where the map is looking left before them — the
+		drill table and the picked town are plates at the map's own corners, the breadcrumbs a
+		bar across the top of it, all of them over the thing they name. -->
 	<aside class={panelClasses} aria-label="Map panel">
 		<!-- The panel's handle row, mobile only: the whole row is the toggle between the
 			30vh peek and the full screen, drawn as the grab bar the gesture would use. The
@@ -1777,133 +1766,41 @@
 			is `display: contents` — it draws no box at all, so its children go back to being
 			the aside's own flex children and each tab keeps its own scroller. -->
 		<div class="min-h-0 flex-1 overflow-y-auto md:contents">
-			<!-- The header is the tab strip and nothing else now: the breadcrumbs that used to
-				sit over it are a bar across the top of the map (see MapBreadcrumbs), which is
-				what they were always about. -->
+			<!-- The header: the two views this column used to hold, now the two buttons that
+				raise them over the map. They are still the head of the panel because that is
+				where they were picked from, and they are buttons rather than tabs because
+				nothing here goes forward or back any more — each opens the whole view and the
+				panel is left as it was underneath.
+				A column each, so the two split the panel's width evenly however long their
+				labels are (Booster's grows a counter) instead of each being as wide as its own
+				text. Still a join: `grid` only overrides its inline-flex display — the joined
+				radii and collapsed borders come from child rules that hold in a grid just as
+				well. -->
 			<div class="flex flex-none flex-col gap-3 border-b border-base-300 px-4 py-3">
-				<!-- One column per tab, so the three split the panel's width evenly however long
-					their labels are (Booster's grows a counter) instead of each being as wide as
-					its own text. Still a join: `grid` only overrides its inline-flex display —
-					the joined radii and collapsed borders come from child rules that hold in a
-					grid just as well. -->
-				<div class="join grid grid-cols-3">
-					{#each panelTabs as tab (tab.id)}
-						<!-- The tab that is forward is filled in the theme's primary; the rest stay
-							outlined. btn-active only darkened the outline, which barely read as a
-							selection at this size. -->
-						<button
-							type="button"
-							class={classNames(
-								'btn btn-sm join-item',
-								panelTab === tab.id ? 'btn-primary' : 'btn-outline'
-							)}
-							aria-pressed={panelTab === tab.id}
-							on:click={() => selectTab(tab.id)}
-						>
-							{tab.label}
-						</button>
-					{/each}
+				<div class="join grid grid-cols-2">
+					<button
+						type="button"
+						class="btn btn-outline btn-sm join-item"
+						on:click={() => leaderboardModalOpen.set(true)}
+					>
+						Leaderboard
+					</button>
+					<button type="button" class="btn btn-outline btn-sm join-item" on:click={openBoosters}>
+						{boosterLabel}
+					</button>
 				</div>
 			</div>
 
-			{#if panelTab === PanelTab.Profile}
-				<!-- Who is playing: signed out it is the sign-in panel, so this tab is the way
-					into the game; signed in it is the player's own full-width row and nothing
-					else — the side they field stands at the map's bottom-left corner now, which is
-					where it can be read against the town being looked at whichever tab is
-					forward. Its own scroller on the desktop panel,
-					exactly like the tables in the tabs beside it; on the mobile panel the whole
-					thing scrolls as one, so the `flex-1` is inert there and the section simply
-					takes the height its contents ask for. -->
-				<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-					<AuthMenu embedded />
-				</div>
-			{:else if panelTab === PanelTab.Leaderboard}
-				<ShowStandingsTable rows={showStandings} />
-			{:else}
-				<!-- Two ways in, one grid: picking the tab shows every pack in the booster
-					window, two to a row since the panel is 450px wide,
-					while clicking a town's box on the map stands that town's pack up in it straight away. Either
-					way the same three taps — pick a pack, tap it again to open it, and the
-					cards it held stand up in its place as statues; "Tots els sobres" goes
-					back to the grid. All of it is in the document: a day's covers and the
-					cards they open onto cost the page no WebGL context at all. -->
-				<!-- The one tab that has to be told a height on the mobile panel: a pack stood
-					up fills the box it is handed, and inside that panel's one scroller there is
-					no leftover space to hand it. 60vh is enough of a stage to pick and open a
-					pack on, and the panel scrolls to it when collapsed. -->
-				<div class="flex min-h-0 flex-1 flex-col max-md:min-h-[60vh]">
-					<!-- The stretch of calendar on offer, both ends of it named. Every pack below is
-						openable: a festa major runs over its weekend rather than on one evening, so
-						the window reaches three days back and four ahead, and `claim_booster` takes
-						the same range. -->
-					<div class="flex flex-none items-center justify-center border-b border-base-300 px-4 py-2">
-						<span class="truncate text-sm font-bold first-letter:uppercase">{packWindowLabel}</span>
-					</div>
-
-					<!-- Why the last roll revealed nothing. `claim_booster` refuses for reasons the
-						player can act on (the allowance is spent, the town's festa is out of the
-						window), and the panel that normally reports them is mounted hidden here — so a
-						pack sliced open onto an empty canvas would say nothing at all without this. -->
-					{#if claimError}
-						<div class="alert alert-error mx-3 mt-3 flex-none py-2 text-xs" role="alert">
-							<span>{claimError}</span>
-						</div>
-					{:else if lastRevealed === 0}
-						<!-- The pack opened and the roll came back with nothing, without an error to
-							go with it. Rare, but it must not read as a blank canvas. -->
-						<div class="alert alert-warning mx-3 mt-3 flex-none py-2 text-xs" role="alert">
-							<span>El sobre s'ha obert però no n'ha sortit cap carta.</span>
-						</div>
-					{:else if allowanceSpent}
-						<div class="alert alert-warning mx-3 mt-3 flex-none py-2 text-xs">
-							<span>Ja has obert tots els sobres d'avui. Se'n desbloquegen més a mitjanit.</span>
-						</div>
-					{/if}
-
-					<div class="relative min-h-0 flex-1 p-3">
-						{#if packTownId && !packForTown}
-							<!-- A box was clicked on a town the window has no pack for — the one
-								thing the grid itself cannot say, since it only ever knows the packs
-								it was handed. -->
-							<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
-								<p class="max-w-xs text-sm opacity-60">
-									Aquest municipi encara no té cap sobre per obrir. Inicia sessió i torna-ho a provar.
-								</p>
-							</div>
-						{:else if claimPacks.length}
-							<!-- Two packs to a row at this width, and an opened one stands its cards in
-								three columns: a card is read at whatever width its column leaves it, and
-								five of them two to a row is three rows deep, which puts part of a pull
-								under the fold. Three fits five in two rows, so the whole of what a pack
-								gave is one look. The stood-up pack is bound to the same id a map box
-								click sets, so the map and the grid are never looking at two different
-								packs. -->
-							<PackGrid
-								packs={claimPacks}
-								columns={2}
-								revealColumns={3}
-								interactive={!allowanceSpent}
-								bind:selected={packTownId}
-								classes={classNames(
-									'h-full rounded-md bg-gradient-to-b from-base-300/80 to-base-200 p-2',
-									{ 'opacity-50': allowanceSpent }
-								)}
-								on:select={clearPackFeedback}
-								on:back={clearPackFeedback}
-								on:openComplete={(event) => onPackOpened(event.detail)}
-							/>
-						{:else}
-							<div class="flex h-full items-center justify-center rounded-md bg-base-200 p-6 text-center">
-								<p class="max-w-xs text-sm opacity-60">
-									Ara mateix no hi ha cap sobre per obrir. Inicia sessió i clica una estrella daurada
-									del mapa.
-								</p>
-							</div>
-						{/if}
-					</div>
-				</div>
-			{/if}
+			<!-- Who is playing, and what to do about it: signed out it is the sign-in panel, so
+				this is the way into the game; signed in it is the account's three buttons. The
+				picture and the reading are a plate at the map's top-right corner and the side they
+				field stands at its foot, so what is left in this column is what has nowhere else to
+				be. Its own scroller on the desktop panel; on the mobile panel the whole panel
+				scrolls as one, so the `flex-1` is inert there and the section simply takes the
+				height its contents ask for. -->
+			<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+				<AuthMenu embedded />
+			</div>
 		</div>
 	</aside>
 
@@ -2208,4 +2105,38 @@
 	     more for the whole day), so the header's counter is re-read when one lands — the
 	     same reading a pack being opened triggers, since both change the same number. -->
 	<AchievementsModal on:claimed={refreshBoosters} />
+{/if}
+
+<!-- Every show's standing across the map, on the same sheet. The tally is the map's own —
+	counted over every municipality's current show, seeded or ruling — so it is handed in
+	rather than read again here, and it is as fresh as the map behind it. Opened from the
+	Leaderboard button at the head of the panel; it was a tab of that panel, three columns of
+	table in a 450px column. -->
+{#if $leaderboardModalOpen}
+	<LeaderboardModal rows={showStandings} />
+{/if}
+
+<!-- The window's booster packs, on the same sheet, and the one view here that is not just a
+	reading: a pack is picked, stood up and sliced open, and the cards it held stand up in its
+	place. That is what took it out of the panel — it was doing all of it in a 450px column,
+	two covers to a row.
+	Everything it works from stays on this page: the packs the hidden claim panel assembles,
+	the town a map box click narrowed it to (bound, so picking a cover in there and clicking a
+	box out here move the one selection), the day's allowance and whatever the last roll said.
+	Mounted only while it is open, so the opener is built on opening and goes with the close.
+	Two ways in — the panel's Booster button, which lands on the grid of the whole window, and
+	a click on the box standing on a festa town, which opens straight onto that town's pack. -->
+{#if $boosterModalOpen}
+	<BoosterModal
+		packs={claimPacks}
+		bind:selected={packTownId}
+		windowLabel={packWindowLabel}
+		{claimError}
+		{lastRevealed}
+		{allowanceSpent}
+		{townHasNoPack}
+		on:select={clearPackFeedback}
+		on:back={clearPackFeedback}
+		on:openComplete={(event) => onPackOpened(event.detail)}
+	/>
 {/if}
