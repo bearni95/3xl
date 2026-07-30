@@ -145,6 +145,23 @@ export interface CharacterDefinition {
 	 * character stops at the edge instead of spilling past it.
 	 */
 	renderScale?: number;
+	/**
+	 * Whether this character is stood on the board by its **crown** — the middle of the
+	 * highest painted pixels of the pose it stands in — rather than by the MUGEN axis its
+	 * sheet is drawn around. Omitted means yes, which is what every character gets and
+	 * what almost every character wants: the axis sits between a fighter's feet and a
+	 * fighter leans, so centring the axis in a cell leaves the head off to one side of it,
+	 * and the head is what a viewer reads as the character. See `paintedCrown`.
+	 *
+	 * Set to `false` for a sheet the rule reads wrong. It is decided by what is highest in
+	 * the artwork, so a character whose tallest point is not its head — a raised weapon, a
+	 * staff, one horn of a pair drawn at different heights — is centred on that instead,
+	 * and comes out further off centre than the axis had it. That is a fact about a
+	 * particular sheet, which is why the escape is per character and lives in the
+	 * character's own file, beside {@link CharacterDefinition.renderScale}, the other
+	 * correction the art rather than the game asks for.
+	 */
+	crownAlign?: boolean;
 }
 
 /** A square region of a face sprite, in that sprite's own pixels. */
@@ -209,3 +226,8 @@ export const DEFAULT_RENDER_SCALE = 1;
  * screen. */
 export const RENDER_SCALE_MIN = 0.25;
 export const RENDER_SCALE_MAX = 4;
+
+/** Stood by its crown rather than by its axis — what a definition with no
+ * {@link CharacterDefinition.crownAlign} means. On by default because it is right for
+ * almost every sheet; the field exists to turn it off for the ones it is not. */
+export const DEFAULT_CROWN_ALIGN = true;

@@ -3,7 +3,7 @@ import { destroyPixiApp } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
 import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/character-fit';
 import { characterIdFromFramesPath, readRenderScale } from './character-render-scale';
-import { type Crown, paintedCrown } from './character-crown';
+import { type Crown, paintedCrown, readCrownAlign } from './character-crown';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
 	BOARD_HEIGHT,
@@ -1029,7 +1029,11 @@ export class MugenBoard {
 
 		// Where the character's head is, relative to the axis it is drawn around — the
 		// correction that puts the head over the middle of the cell instead of the axis.
-		const crownShift = crownCorrection(baseFrames, fitScale, flip);
+		// Every character gets it but the ones whose own definition opts out, which are
+		// the sheets whose highest painted pixel is not a head at all.
+		const crownShift = readCrownAlign(definition)
+			? crownCorrection(baseFrames, fitScale, flip)
+			: 0;
 		const stand = { x: mark.x + crownShift, y: mark.y };
 
 		const sprite = new Sprite();

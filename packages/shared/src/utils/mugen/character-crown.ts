@@ -19,7 +19,16 @@
  * Only the offset between the two is taken from here. Frames still align to each other
  * through the axis, as they must — the crown is measured once, off the pose the
  * character stands in, and the whole fighter is moved by it.
+ *
+ * The rule is on for every character and off for the ones whose own file says so
+ * ({@link readCrownAlign}): what is highest in a sheet is usually a head, and where it is
+ * not, no reading of the pixels can tell.
  */
+
+import {
+	DEFAULT_CROWN_ALIGN,
+	type CharacterDefinition
+} from '../../types/character-definition.type';
 
 /**
  * How opaque a pixel has to be to count as painted, out of 255.
@@ -30,6 +39,16 @@
  * artwork and leaves the fringe.
  */
 const PAINTED_ALPHA = 8;
+
+/**
+ * Whether to stand this character by its crown. Only an explicit `false` turns it off —
+ * a definition that says nothing, one that predates the field, and one whose value is
+ * some other thing entirely all get the rule, because it is the placement every
+ * character is meant to have and an unreadable file is not a reason to single one out.
+ */
+export function readCrownAlign(definition: Partial<CharacterDefinition> | null): boolean {
+	return definition?.crownAlign === false ? false : DEFAULT_CROWN_ALIGN;
+}
 
 /** The highest painted pixels of a frame: which row they are on, and where across it. */
 export interface Crown {

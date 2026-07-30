@@ -197,6 +197,13 @@ function validate(id: string, body: unknown): CharacterDefinition {
 			? rawScale
 			: undefined;
 
+	// Whether the board stands this character by its crown or by its sheet's own axis —
+	// like the scale above, authored in the JSON rather than in this editor, so all this
+	// does is carry it through a save. Only an explicit `false` is kept: the field exists
+	// to turn the rule off, and writing back the `true` that omission already means would
+	// put a line in every file to say what every file says by saying nothing.
+	const crownAlign = def.crownAlign === false ? false : undefined;
+
 	const result: CharacterDefinition = {
 		id,
 		label: def.label,
@@ -210,6 +217,7 @@ function validate(id: string, body: unknown): CharacterDefinition {
 	if (face) result.face = face;
 	if (faceCrop) result.faceCrop = faceCrop;
 	if (renderScale !== undefined) result.renderScale = renderScale;
+	if (crownAlign !== undefined) result.crownAlign = crownAlign;
 	return result;
 }
 
