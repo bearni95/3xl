@@ -118,15 +118,6 @@ const FACE_COVER_SHIFT_RIGHT = 0.14109;
 // at 90% of the picture taking whatever height its own proportions give it.
 const TYPE_SIZE = 0.054;
 const TYPE_LEADING = 1.375; // leading-snug
-// Room round the type inside its own bitmap, as a share of the type size. A canvas text is
-// baked into a texture measured with `measureText`, which reports an advance width and not an
-// ink extent: a bold face whose last letter overhangs its advance — which is most of them — is
-// baked with that overhang off the right-hand edge of the texture, and a box standing up draws
-// that texture three or four times over, so the sliver that costs is a visibly cut letter. It
-// moves nothing: what a Text measures — and so what the head band is made as deep as — is the
-// lines and not the bitmap, and the quad the padded bitmap is drawn on is offset by the same
-// margin it added, so the type sits where it sat.
-const TYPE_PADDING = 0.25;
 const HEAD_PAD_X = 0.03;
 const HEAD_PAD_TOP = 0.02;
 const HEAD_PAD_BOTTOM = 0.09;
@@ -692,7 +683,6 @@ export class BoosterBoxSprite extends Container {
 				lineHeight: size * TYPE_LEADING,
 				fill: this.stock.ink,
 				align: 'center',
-				padding: size * TYPE_PADDING,
 				wordWrap: true,
 				wordWrapWidth: FRONT_WIDTH * w - HEAD_PAD_X * 2 * w
 			}
