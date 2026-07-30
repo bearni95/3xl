@@ -13,9 +13,9 @@
 	// 3:4 portrait.
 	//
 	// Three columns, each a third: the picture they wear, the reading (name, level, the
-	// bar), and the account's ways out of the panel — the full card, the roster and the
-	// badges. Those are on the tile because it is the account's row now, and a row that
-	// says who is playing is where what to do about it belongs.
+	// bar), and the account's ways out of the panel — the roster, the badges and the
+	// account's settings. Those are on the tile because it is the account's row now, and a
+	// row that says who is playing is where what to do about it belongs.
 
 	export let profile: Profile;
 	export let classes: string = '';
@@ -79,18 +79,21 @@
 		<span class="text-xs font-semibold">
 			{$_('profile.levelBadge', { values: { level: progress.level } })}
 		</span>
+		<!-- The same cumulative pair the full card prints: total earned, then the total the
+			next level begins at. -->
 		<span class="truncate font-mono text-[0.65rem] text-base-content/70">
 			{#if progress.atMax}
 				{$_('profile.expMax', { values: { exp: progress.exp.toLocaleString() } })}
 			{:else}
 				{$_('profile.expProgress', {
 					values: {
-						into: progress.expIntoLevel.toLocaleString(),
-						span: (progress.expForLevelSpan ?? 0).toLocaleString()
+						total: progress.exp.toLocaleString(),
+						next: (progress.nextLevelExp ?? 0).toLocaleString()
 					}
 				})}
 			{/if}
 		</span>
+		<!-- As on the full card: the bar spans this level alone, not the totals above it. -->
 		<progress
 			class="progress progress-primary w-full"
 			value={expPercent}
@@ -99,15 +102,13 @@
 		></progress>
 	</div>
 
-	<!-- The account's ways out of the panel, stacked in the last third: the full card
-		(details list, username field, sign-out), the player's own cards, and the badges
-		they can earn. Each only raises a modal mounted at the layout root, so the tile
-		dispatches and the host does it. -->
+	<!-- The account's ways out of the panel, stacked in the last third: the player's own
+		cards, the badges they can earn, and then the account itself (details list, username
+		field, sign-out) — what the player came to look at first, and the account's own
+		settings last, outlined rather than filled. Each only raises a modal mounted at the
+		layout root, so the tile dispatches and the host does it. -->
 	<div class="flex min-w-0 flex-col gap-2">
-		<button type="button" class="btn btn-primary btn-sm" on:click={() => dispatch('openprofile')}>
-			{$_('profile.title')}
-		</button>
-		<button type="button" class="btn btn-outline btn-sm" on:click={() => dispatch('openroster')}>
+		<button type="button" class="btn btn-primary btn-sm" on:click={() => dispatch('openroster')}>
 			Roster
 		</button>
 		<button
@@ -116,6 +117,9 @@
 			on:click={() => dispatch('openachievements')}
 		>
 			Achievements
+		</button>
+		<button type="button" class="btn btn-outline btn-sm" on:click={() => dispatch('openprofile')}>
+			Settings
 		</button>
 	</div>
 </div>
