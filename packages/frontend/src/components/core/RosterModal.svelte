@@ -769,11 +769,15 @@
 				     be clamped at all, an element that scrolls having no minimum height of its own to
 				     push the frame open with. content-start on both keeps their rows at their own
 				     heights rather than stretched down the frame.
-				     The panel is the right grid's own rather than the frame's: one that ran under
-				     both said the filters and the cards were a single surface at the very moment they
-				     stopped being a single grid. So the cards sit on base-200 and everything on the
-				     left stands on the page itself — the filter card being its own panel already, in
-				     the lighter stock, and the line-up wanting nothing behind it. -->
+				     The panel is each card's own, not the grid's and not the frame's. One under the
+				     whole frame had said the filters, the line-up and the cards were a single
+				     surface; one under the right grid alone still said the cards were a sheet with
+				     things on it. They are a set of cards, so each of them is a panel of base-200
+				     and what shows between them is the page. Everything on the left stands on that
+				     same page — the filter card being its own panel already, in the lighter stock,
+				     and the line-up wanting nothing behind it. Dropping the grid's padding with its
+				     background also puts the four columns back exactly on four of the frame's
+				     seven, which the padding had been shaving a few pixels off. -->
 				<div class="grid min-h-0 min-w-0 flex-1 grid-cols-7 gap-3">
 					<!-- The filters and the line-up, three across: the filter card over two of those
 					     columns and one cell per team slot under it. Every control ANDs with the
@@ -919,7 +923,7 @@
 					     controls a player has to reach to undo the filter that emptied it. -->
 					<div
 						bind:this={gridScroller}
-						class="col-span-4 grid min-h-0 grid-cols-4 content-start gap-3 overflow-y-auto rounded-box bg-base-200 p-3"
+						class="col-span-4 grid min-h-0 grid-cols-4 content-start gap-3 overflow-y-auto"
 					>
 						{#each pagedStatues as { group, copy, places, placeValue, statue, fielded } (group.id)}
 							<!-- The border is on the cell, not on the statue: it takes in the strip over
@@ -931,10 +935,13 @@
 							     nothing to leave standing, and it is the one thing that would have to be
 							     found again if the two ever became one. -->
 							<div
-								class={classNames('relative flex flex-col gap-2 rounded-box border-2 p-1.5', {
-									'border-primary': fielded,
-									'border-transparent': !fielded
-								})}
+								class={classNames(
+									'relative flex flex-col gap-2 rounded-box border-2 bg-base-200 p-1.5',
+									{
+										'border-primary': fielded,
+										'border-transparent': !fielded
+									}
+								)}
 							>
 								<!-- The top of the cell, over the statue rather than laid out above it, so
 								     the strip is in the same place in every cell whatever the art below it
