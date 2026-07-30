@@ -597,6 +597,12 @@
 	and slides up from the bottom edge to do it, and slides back down on the way out.
 	Nothing behind it is dimmed and there is no backdrop to click, because there is
 	nothing of the map left showing to click at — Escape and the ✕ are how it closes.
+	The page is not quite opaque all the way down: base-100 at full strength at the top,
+	graded to nine tenths at the foot, so the map is faintly there under the last of the
+	cards and the view reads as something laid over the map rather than as another screen.
+	It is the gradient alone that paints it — a background colour under a stop with alpha
+	in it would show through and make the foot opaque again, which is the whole of what the
+	grade says.
 	The slide is a Svelte transition rather than a stylesheet's, since the component is
 	only ever mounted while it is open (a CSS transition has nothing to animate from on a
 	fresh mount) and the parent's {#if} is what lets the way out play at all.
@@ -611,7 +617,9 @@
 	aria-modal="true"
 	transition:fly={{ y: '100%', duration: 250, opacity: 1 }}
 >
-	<div class="flex h-full w-full flex-col gap-4 overflow-hidden bg-base-100 p-6">
+	<div
+		class="flex h-full w-full flex-col gap-4 overflow-hidden bg-gradient-to-b from-base-100 to-base-100/90 p-6"
+	>
 		<div class="flex flex-none items-center gap-3">
 			<h2 class="text-lg font-bold">Roster</h2>
 			<button
