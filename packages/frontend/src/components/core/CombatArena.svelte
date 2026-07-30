@@ -1092,45 +1092,52 @@
 							</div>
 						</div>
 					{/if}
-				</div>
-				{#if state && !state.outcome}
-					{#if saveFailure}
-						<!-- The turn was played out and the server would not take it. The fight
-						     holds here rather than playing on over a turn nothing has recorded:
-						     everything after it would be built on a board that was never written,
-						     and gone the moment this page is reloaded. -->
-						<div class="alert alert-warning max-w-md text-sm" role="alert">
-							<span>{saveFailure}</span>
-						</div>
-						<button
-							type="button"
-							class="btn btn-primary btn-wide"
-							disabled={savingTurn !== 0}
-							on:click={retrySave}
+					{#if state && !state.outcome}
+						<!-- The way out of a fight, and the only one there is: a battle is ended by
+						     a result, never by walking off, so giving it up reports the loss it is
+						     and closes the arena exactly as being wiped out would. Between turns only
+						     — a turn already being carried out settles itself.
+						     At the foot of the board, opposite the score at its head, so the two things
+						     that are true of the fight as a whole stand on the fight as a whole and the
+						     column beside a fighter is left to say what is true of that fighter. Ghost
+						     rather than a button with a fill: it is the one control here that is not
+						     part of playing, and it is standing on the board. -->
+						<div
+							class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3"
 						>
-							{#if savingTurn}
-								<span class="loading loading-spinner loading-xs"></span>
-								Saving turn {state.turn}
-							{:else}
-								Save turn {state.turn} again
-							{/if}
-						</button>
+							<button
+								type="button"
+								class="btn pointer-events-auto btn-ghost btn-sm text-error"
+								disabled={state.phase !== 'planning'}
+								on:click={() => controller?.concede()}
+							>
+								Admit defeat
+							</button>
+						</div>
 					{/if}
-					<!-- The one control the fight has, and nothing under it: what just happened
-					     was played out on the board, so it is not also recounted here in words,
-					     and closing a turn is not asked for either — the turn goes the moment
-					     its last order is given. -->
-					<!-- The way out of a fight, and the only one there is: a battle is ended by
-					     a result, never by walking off, so giving it up reports the loss it is
-					     and closes the arena exactly as being wiped out would. Between turns
-					     only — a turn already being carried out settles itself. -->
+				</div>
+				{#if state && !state.outcome && saveFailure}
+					<!-- The turn was played out and the server would not take it. The fight
+					     holds here rather than playing on over a turn nothing has recorded:
+					     everything after it would be built on a board that was never written,
+					     and gone the moment this page is reloaded. Under the board rather than
+					     over it, unlike the score and the way out: this is words to read and a
+					     thing to decide about, not a mark on the fight. -->
+					<div class="alert alert-warning max-w-md text-sm" role="alert">
+						<span>{saveFailure}</span>
+					</div>
 					<button
 						type="button"
-						class="btn btn-ghost btn-sm text-error"
-						disabled={state.phase !== 'planning'}
-						on:click={() => controller?.concede()}
+						class="btn btn-primary btn-wide"
+						disabled={savingTurn !== 0}
+						on:click={retrySave}
 					>
-						Admit defeat
+						{#if savingTurn}
+							<span class="loading loading-spinner loading-xs"></span>
+							Saving turn {state.turn}
+						{:else}
+							Save turn {state.turn} again
+						{/if}
 					</button>
 				{/if}
 			</div>
