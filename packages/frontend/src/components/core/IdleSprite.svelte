@@ -52,6 +52,12 @@
 	// and a caller cannot hand a colour to something it never mounts. Defaults to VeilBlock's
 	// own white.
 	export let veilFill: string | undefined = undefined;
+	// Veil this character even if it has been revealed before this session — for a surface
+	// where the reveal is not incidental to something else being done but the point of
+	// opening it, and every picture on it is meant to arrive. It only turns off the skip in
+	// `load`; a sweep watched here is still recorded, so it is this surface that stops
+	// taking the shared answer, not the surfaces that ask it.
+	export let alwaysReveal: boolean = false;
 	export let classes: string = '';
 
 	// The box the clip is placed in, measured rather than assumed: the caller sizes it
@@ -156,8 +162,9 @@
 		frameIndex = 0;
 		renderScale = DEFAULT_RENDER_SCALE;
 		// A character already revealed is not covered at all: no veil goes up, and the picture
-		// is there as soon as its geometry is.
-		if (path && revealedPaths.has(path)) veil = 'down';
+		// is there as soon as its geometry is. Unless this surface has asked for the reveal
+		// whatever the session has seen (see `alwaysReveal`).
+		if (!alwaysReveal && path && revealedPaths.has(path)) veil = 'down';
 		const [clip, scale] = await Promise.all([loadIdleClip(path), loadRenderScale(path)]);
 		// A different character may have come forward while this one was loading.
 		if (path !== loadedPath) return;

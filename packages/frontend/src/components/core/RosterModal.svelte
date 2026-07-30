@@ -776,7 +776,14 @@
 				     town only changes which copy is shown. Only the current page is mounted —
 				     the filters narrow the roster, the pager walks what's left ROWS_PER_PAGE rows
 				     at a time — and that page scrolls in its own grid, the filters and the line-up
-				     keeping their place beside it rather than travelling with it. -->
+				     keeping their place beside it rather than travelling with it.
+				     Every statue here is veiled and uncovered whatever the session has already
+				     watched arrive elsewhere (alwaysReveal). A reveal is spent once per character
+				     across the page normally, which on a surface whose whole content is characters
+				     meant some cards swept in and the ones the player had met on the map or in a
+				     pack were simply already there — one grid drawing itself two different ways. The
+				     roster is the place a player comes to look at their cards, so here the picture
+				     always arrives. -->
 				<!-- Two grids, not one: three columns of the filters and the line-up on the left,
 				     four of the roster on the right, standing in a seven-column frame at the gap both
 				     of them use, so a cell of either is one column of that frame wide and the two
@@ -924,6 +931,7 @@
 										locationName={statue.locationName}
 										spawnedAt={statue.spawnedAt}
 										showId={statue.showId}
+										alwaysReveal
 									/>
 								</div>
 							{:else}
@@ -1035,6 +1043,7 @@
 										locationName={statue.locationName}
 										spawnedAt={statue.spawnedAt}
 										showId={statue.showId}
+										alwaysReveal
 									/>
 								</button>
 							</div>

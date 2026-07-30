@@ -50,6 +50,10 @@
 	// Mirror the character. True is the player's own side; false the unmirrored art a
 	// rival side uses, so the two face each other.
 	export let flipped: boolean = true;
+	// Passed straight to the sprite: veil this character even if the session has already
+	// watched it arrive somewhere else. A statue has no opinion on whether a reveal is worth
+	// spending — the surface standing it up does (see IdleSprite's `alwaysReveal`).
+	export let alwaysReveal: boolean = false;
 	export let classes: string = '';
 
 	// The ground: the square itself, laid down flat and seen in perspective, rather than
@@ -222,6 +226,7 @@
 				{basePath}
 				{label}
 				{flipped}
+				{alwaysReveal}
 				baseline={BASELINE}
 				veilFill={SPAWN_FILL_CLASSES[color]}
 			/>
