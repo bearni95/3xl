@@ -12,7 +12,7 @@
 	import { renderAchievement } from '$utils/achievement/template';
 	import { achievementMet } from '$utils/achievement/requirement';
 	import { dailyAchievementIds } from '$utils/achievement/daily';
-	import { catalanDayIso, nextCatalanMidnight } from '$utils/festes/catalan-day';
+	import { catalanDayIso, nextCatalanMidnight, shiftDayIso } from '$utils/festes/catalan-day';
 	import { achievementExpAward } from '$utils/progression/level';
 	import { errorMessage } from '$utils/error/error-message';
 	import FullScreenModal from '$components/core/FullScreenModal.svelte';
@@ -105,11 +105,46 @@
 	// derived from their stored experience, so it needs nothing fetched of its own.
 	$: context = { level: $profile?.level ?? 0, cards: $spawns } satisfies FormulaContext;
 
-	// Today's three, by the same seed the RPC recomputes: who is looking and which
-	// Catalan day it is. Nothing is stored — at midnight Europe/Madrid the three
+	// Which day is being looked at, as a step from today. The three are a function of
+	// the player and the day and nothing else, so any day's are one subtraction away —
+	// there is no history to have kept and no future to have generated, which is the
+	// whole reason walking through the days costs nothing.
+	let dayOffset = 0;
+
+	function stepDay(days: number): void {
+		dayOffset += days;
+	}
+
+	$: viewedDay = shiftDayIso(catalanDayIso(), dayOffset);
+	$: viewingToday = dayOffset === 0;
+
+	// The day's three, by the same seed the RPC recomputes: who is looking and which
+	// Catalan day it is. Nothing is stored — at midnight Europe/Madrid today's three
 	// change, which is why the countdown beside them is worth showing.
-	$: today = currentUserId ? dailyAchievementIds(currentUserId, catalanDayIso(), claimable) : [];
+	$: dayIds = currentUserId ? dailyAchievementIds(currentUserId, viewedDay, claimable) : [];
 	$: byId = new Map(achievements.map((achievement) => [achievement.id, achievement]));
+
+	/**
+	 * How the day being viewed is named: the three days either side of now read as
+	 * words, and anything further out as the date itself. Formatted in UTC because
+	 * `viewedDay` is a calendar date rather than an instant — read in the device's own
+	 * zone, a date west of Greenwich would print as the day before.
+	 */
+	const dayFormat = new Intl.DateTimeFormat(undefined, {
+		weekday: 'short',
+		day: 'numeric',
+		month: 'short',
+		timeZone: 'UTC'
+	});
+
+	$: dayLabel =
+		dayOffset === 0
+			? 'Today'
+			: dayOffset === -1
+				? 'Yesterday'
+				: dayOffset === 1
+					? 'Tomorrow'
+					: dayFormat.format(new Date(`${viewedDay}T00:00:00Z`));
 
 	/** One badge as a tile reads it: this player's wording, and where it stands. */
 	function tile(achievement: Achievement, ctx: FormulaContext, holders: Set<string>) {
@@ -126,7 +161,7 @@
 	// The three, dropped to the ones the file can actually draw — a rule synced for a
 	// badge that was retired locally has nothing to show, and re-syncing takes it out
 	// of the pool.
-	$: todayTiles = today
+	$: dayTiles = dayIds
 		.map((id) => byId.get(id))
 		.filter((achievement): achievement is Achievement => !!achievement)
 		.map((achievement) => tile(achievement, context, held));
@@ -137,7 +172,9 @@
 	$: award = achievementExpAward($profile?.level ?? 1);
 	// Whether there is anything to submit: a badge of today's that is ready and not
 	// already worn. The button stands whatever the answer, since the server is the one
-	// that decides — it just says so.
+	// that decides — it just says so. Counted off today's three however far the view has
+	// wandered, since those are the only ones a claim can settle.
+	$: todayTiles = viewingToday ? dayTiles : [];
 	$: readyCount = todayTiles.filter((entry) => entry.met && !entry.held).length;
 	// Epoch milliseconds, which is what the countdown reads.
 	$: midnight = nextCatalanMidnight().getTime();
@@ -178,22 +215,63 @@
 				Loading achievements…
 			</div>
 		{:else}
-			<!-- Today's three: the same three all day, the same three however often this
+			<!-- The day's three: the same three all day, the same three however often this
 			     opens, and three others tomorrow. They are not written down anywhere — the
 			     pick is a function of who is asking and which Catalan day it is, which is
 			     also why the countdown is to midnight Europe/Madrid rather than to the
-			     device's own. -->
-			{#if todayTiles.length > 0}
+			     device's own, and why the arrows can walk to any day at all: another day's
+			     three are the same subtraction with a different date in it.
+			     Only today's can be claimed, whatever is on screen — `claim_achievements`
+			     recomputes the day itself and settles that one.
+			     A day other than today is drawn from the pool as it stands *now*, since the
+			     pool is not history either: authoring a new badge changes what a past day
+			     works out to, which is the price of keeping nothing. -->
+
+			{#if claimable.length > 0}
 				<section class="flex flex-none flex-col gap-3">
 					<div class="flex flex-wrap items-center gap-3">
-						<h3 class="text-base font-semibold">Today</h3>
-						<span class="text-xs opacity-60">
-							new badges in <Countdown until={midnight} />
-						</span>
+						<div class="join">
+							<button
+								class="btn join-item btn-sm"
+								type="button"
+								aria-label="The day before"
+								title="The day before"
+								on:click={() => stepDay(-1)}
+							>
+								‹
+							</button>
+							<span class="btn no-animation join-item pointer-events-none btn-sm font-semibold">
+								{dayLabel}
+							</span>
+							<button
+								class="btn join-item btn-sm"
+								type="button"
+								aria-label="The day after"
+								title="The day after"
+								on:click={() => stepDay(1)}
+							>
+								›
+							</button>
+						</div>
+						{#if viewingToday}
+							<span class="text-xs opacity-60">
+								new badges in <Countdown until={midnight} />
+							</span>
+						{:else}
+							<!-- One press back to the day that can be acted on, since the arrows are
+							     free to have wandered a long way from it. -->
+							<button class="btn btn-ghost btn-xs" type="button" on:click={() => (dayOffset = 0)}>
+								Back to today
+							</button>
+							<span class="font-mono text-xs opacity-50">{viewedDay}</span>
+						{/if}
 						<button
 							class="btn btn-primary btn-sm ml-auto"
 							type="button"
-							disabled={claiming}
+							disabled={claiming || !viewingToday}
+							title={viewingToday
+								? 'Claim the badges you have earned today'
+								: "Only today's badges can be claimed"}
 							on:click={claim}
 						>
 							{#if claiming}
@@ -207,9 +285,13 @@
 						<div class="alert alert-error py-2 text-sm"><span>{claimError}</span></div>
 					{/if}
 
+					{#if dayTiles.length === 0}
+						<p class="text-sm opacity-60">Nothing to show for this day.</p>
+					{/if}
+
 					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-						{#each todayTiles as entry (entry.achievement.id)}
-							{@const outcome = claimed.get(entry.achievement.id)}
+						{#each dayTiles as entry (entry.achievement.id)}
+							{@const outcome = viewingToday ? claimed.get(entry.achievement.id) : undefined}
 							<!-- Earned reads in primary, ready to claim in success, and everything
 							     else is a card standing on the page like any other. -->
 							<div

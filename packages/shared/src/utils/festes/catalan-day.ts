@@ -69,3 +69,19 @@ export function nextCatalanMidnight(at: Date = new Date()): Date {
 export function msUntilCatalanMidnight(at: Date = new Date()): number {
 	return nextCatalanMidnight(at).getTime() - at.getTime();
 }
+
+/**
+ * The `YYYY-MM-DD` day `days` calendar days from `day` (negative to go back).
+ *
+ * Calendar arithmetic on the string, not clock arithmetic on an instant: adding
+ * 24 hours across a summer-time switch lands on the same date or skips one, while
+ * "the day before the 1st" is the last of the previous month whatever the clocks
+ * did — and `Date.UTC` rolls a day 0 or a day 32 into the neighbouring month for
+ * us. Nothing here is converted through a zone, so no zone can move it.
+ */
+export function shiftDayIso(day: string, days: number): string {
+	const [year, month, date] = day.split('-').map(Number);
+	if (!year || !month || !date) return day;
+	const shifted = new Date(Date.UTC(year, month - 1, date + days));
+	return shifted.toISOString().slice(0, 10);
+}

@@ -3,7 +3,8 @@ import {
 	CATALAN_TIME_ZONE,
 	catalanDayIso,
 	msUntilCatalanMidnight,
-	nextCatalanMidnight
+	nextCatalanMidnight,
+	shiftDayIso
 } from '$utils/festes/catalan-day';
 
 describe('catalanDayIso', () => {
@@ -83,5 +84,35 @@ describe('msUntilCatalanMidnight', () => {
 
 	it('counts a short summer-time day as 23 hours', () => {
 		expect(msUntilCatalanMidnight(new Date('2026-03-28T23:00:00.000Z'))).toBe(23 * 3600_000);
+	});
+});
+
+describe('shiftDayIso', () => {
+	it('steps a calendar day either way', () => {
+		expect(shiftDayIso('2026-07-28', 1)).toBe('2026-07-29');
+		expect(shiftDayIso('2026-07-28', -1)).toBe('2026-07-27');
+		expect(shiftDayIso('2026-07-28', 0)).toBe('2026-07-28');
+		expect(shiftDayIso('2026-07-28', 30)).toBe('2026-08-27');
+	});
+
+	it('rolls over months, years and a leap day', () => {
+		expect(shiftDayIso('2026-08-01', -1)).toBe('2026-07-31');
+		expect(shiftDayIso('2026-12-31', 1)).toBe('2027-01-01');
+		expect(shiftDayIso('2027-01-01', -1)).toBe('2026-12-31');
+		expect(shiftDayIso('2028-02-28', 1)).toBe('2028-02-29');
+		expect(shiftDayIso('2026-02-28', 1)).toBe('2026-03-01');
+	});
+
+	it('is calendar arithmetic, so a summer-time switch does not move it', () => {
+		// 29 March 2026 is a 23-hour day in Madrid, 25 October a 25-hour one. Stepping
+		// across either is still one date.
+		expect(shiftDayIso('2026-03-28', 1)).toBe('2026-03-29');
+		expect(shiftDayIso('2026-03-29', 1)).toBe('2026-03-30');
+		expect(shiftDayIso('2026-10-25', -1)).toBe('2026-10-24');
+	});
+
+	it('hands back anything that is not a day untouched', () => {
+		expect(shiftDayIso('', 1)).toBe('');
+		expect(shiftDayIso('not-a-day', 1)).toBe('not-a-day');
 	});
 });
