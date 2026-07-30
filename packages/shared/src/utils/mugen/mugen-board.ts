@@ -187,6 +187,20 @@ const AURA_FRAME_MS = 120;
  * flame is stretched to this multiple of the actor's nominal display size. */
 const AURA_WIDTH_RATIO = 1.7;
 const AURA_HEIGHT_RATIO = 1.25;
+/**
+ * How long the flame takes to well up from the fighter's feet to its full height.
+ *
+ * An aura is not a thing that switches on — it is the fighter having loaded, and that
+ * is an act, so it is drawn as one: the flame comes up off the ground it is standing
+ * on and reaches its height. Short enough to be over inside the beat the orders are
+ * read out in ({@link CombatController}'s reveal), because it is what *says* the
+ * fighter loaded and cannot still be arriving once the shooting starts.
+ */
+const AURA_RISE_MS = 320;
+/** How much of its width the flame starts with, as it leaves the ground. Not zero:
+ * a flame that grew from a point reads as a spark rather than as fire coming up, and
+ * one that came up at full width is a flat smear across the feet on its first frames. */
+const AURA_RISE_WIDTH = 0.7;
 
 /**
  * Where each half's lead character stands when its grid doesn't say: the middle
@@ -331,6 +345,13 @@ interface Aura {
 	frames: Texture[];
 	frameIndex: number;
 	frameElapsed: number;
+	/** The size the flame settles at, once it is all the way up — what the rise below
+	 * is a fraction of, kept here because the sprite's own scale is mid-rise. */
+	scaleX: number;
+	scaleY: number;
+	/** How far into {@link AURA_RISE_MS} the flame is. It only ever counts up, and at
+	 * the end of it the aura is simply burning. */
+	rise: number;
 }
 
 /** A transient slash mark drawn over a struck fighter, in the attacker's colour.
@@ -1069,7 +1090,8 @@ export class MugenBoard {
 	}
 
 	/** Loop the actor's aura animation and keep it glued to the actor's feet,
-	 * just behind it in depth order. */
+	 * just behind it in depth order — and, for its first moments, bring it up off
+	 * those feet to its full height (see {@link AURA_RISE_MS}). */
 	private updateAura(actor: Actor, deltaMs: number): void {
 		const aura = actor.aura;
 		if (!aura) return;
@@ -1079,6 +1101,18 @@ export class MugenBoard {
 			aura.frameIndex = (aura.frameIndex + 1) % aura.frames.length;
 		}
 		aura.sprite.texture = aura.frames[aura.frameIndex];
+		if (aura.rise < AURA_RISE_MS) {
+			aura.rise = Math.min(AURA_RISE_MS, aura.rise + deltaMs);
+			// Eased out, so the flame leaps off the ground and settles into its height
+			// rather than creeping up at one rate. The sprite is anchored at its foot
+			// (see showAura), so scaling its height is the flame growing upwards from
+			// where it stands and never from its middle.
+			const t = 1 - Math.pow(1 - aura.rise / AURA_RISE_MS, 3);
+			aura.sprite.scale.set(
+				aura.scaleX * (AURA_RISE_WIDTH + (1 - AURA_RISE_WIDTH) * t),
+				aura.scaleY * t
+			);
+		}
 		aura.sprite.x = actor.x;
 		aura.sprite.y = actor.y;
 		aura.sprite.zIndex = actor.y - 0.5;
@@ -1568,6 +1602,11 @@ export class MugenBoard {
 	 * come from static/auras/<color>/ (scripts/generate-auras.js); the aura sits
 	 * base-down at the actor's feet, scaled to envelop the character, and follows
 	 * it as it moves. Replaces any aura the actor already has.
+	 *
+	 * It arrives rather than appearing: the flame comes up off the fighter's feet to
+	 * its full height over {@link AURA_RISE_MS}, which is the whole of what is drawn
+	 * about a fighter loading — a charge produces something the moment it is given,
+	 * and this is that something happening, so nothing needs to say it in words.
 	 */
 	async showAura(id: string, color: string): Promise<void> {
 		const actor = this.findActor(id);
@@ -1581,18 +1620,20 @@ export class MugenBoard {
 		const sprite = new Sprite(frames[0]);
 		// Base-down behind the character: bottom-centre on the actor's feet. The
 		// flame is stretched per axis to envelop the character's nominal size, so
-		// wide and tall sprites alike sit inside their aura.
+		// wide and tall sprites alike sit inside their aura. The anchor at the foot
+		// is also what the rise is measured from — scaling this sprite's height moves
+		// its top and leaves its base on the ground.
 		sprite.anchor.set(0.5, 1);
-		sprite.scale.set(
-			(actor.displayWidth * AURA_WIDTH_RATIO) / frames[0].width,
-			(actor.displayHeight * AURA_HEIGHT_RATIO) / frames[0].height
-		);
+		const scaleX = (actor.displayWidth * AURA_WIDTH_RATIO) / frames[0].width;
+		const scaleY = (actor.displayHeight * AURA_HEIGHT_RATIO) / frames[0].height;
+		// Flat on the ground to begin with: the first tick brings it up (see updateAura).
+		sprite.scale.set(scaleX * AURA_RISE_WIDTH, 0);
 		sprite.alpha = 0.85;
 		sprite.x = actor.x;
 		sprite.y = actor.y;
 		sprite.zIndex = actor.y - 0.5;
 		this.app.stage.addChild(sprite);
-		actor.aura = { sprite, frames, frameIndex: 0, frameElapsed: 0 };
+		actor.aura = { sprite, frames, frameIndex: 0, frameElapsed: 0, scaleX, scaleY, rise: 0 };
 	}
 
 	/** Put out a character's aura, if it has one. */
@@ -1611,7 +1652,7 @@ export class MugenBoard {
 
 	/**
 	 * Float a short callout above a character — what its turn amounted to
-	 * (`CHARGE`, `BLOCK`, `HIT!`) — tinted in `color`, so a turn in which every
+	 * (`BLOCK`, `HIT!`) — tinted in `color`, so a turn in which every
 	 * fighter acts at once can still be read off the board a fighter at a time.
 	 * Replaces any existing callout on that character.
 	 */

@@ -268,8 +268,12 @@ describe('CombatController — what the board is left showing', () => {
 
 	it('takes the turn’s callouts down as the next turn is handed over', async () => {
 		const { calls, board } = recordingBoard();
+		// Red rivals against blue players: each rival banks a charge on turn one and fires
+		// the shot its colour owes it out of that charge, and each blue fighter's own free
+		// guard turns the bullet aside — which is a thing the board says a word about
+		// (`GUARD`), where a turn of quiet loading is not.
 		const controller = new CombatController(
-			seeds(['blue', 'blue', 'blue', 'blue', 'blue', 'blue'])
+			seeds(['red', 'red', 'red', 'blue', 'blue', 'blue'])
 		);
 		controller.attachBoard(board);
 

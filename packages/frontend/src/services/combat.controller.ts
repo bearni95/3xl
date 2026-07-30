@@ -894,6 +894,14 @@ export class CombatController {
 	 * fired, which is not worth a pose or a word. It braces when it is hit, and only then
 	 * (see {@link playShot}).
 	 *
+	 * And the aura is the whole of what says so — no word goes with it. A charge is the one
+	 * order that leaves something standing on the board afterwards, so it is the one order
+	 * that needs nothing said about it: the flame comes up off the fighter's feet as the
+	 * orders are read out (see the board's `showAura`) and then simply stays, which is both
+	 * that this fighter loaded *and* that it is still holding it, told once. `CHARGE` over
+	 * its head said the first of those in words that were gone by the next turn, over a
+	 * fighter that was going to go on burning either way.
+	 *
 	 * Which is also why nothing announces a guard. A callout over a covering fighter's head
 	 * gave the whole thing away at the reveal, before any of the shooting: the lane's own
 	 * rival is deciding nothing at that point, but the *player* reads it, and a turn where
@@ -907,7 +915,6 @@ export class CombatController {
 	private showOrders(acting: Fighter[]): void {
 		for (const fighter of acting) {
 			if (fighter.action !== 'charge') continue;
-			this.board?.showCallout(fighter.id, 'CHARGE', fighter.color);
 			void this.raiseAura(fighter);
 		}
 	}
@@ -989,7 +996,7 @@ export class CombatController {
 		this.lapsePassives();
 
 		this.turn += 1;
-		// What the last turn said — CHARGE, BLOCK, CLASH, HIT! — belonged to that turn. The orders
+		// What the last turn said — BLOCK, CLASH, HIT! — belonged to that turn. The orders
 		// are being asked for again, so it comes off the board with them: the words never
 		// outlive the turn whose pickers are locked. Any guard braced during it, and the ring
 		// around it, come down for the same reason and at the same moment: a fighter covers
