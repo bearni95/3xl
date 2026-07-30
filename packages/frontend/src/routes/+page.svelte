@@ -715,9 +715,32 @@
 	// The breadcrumb crumbs: a root crumb back to the top view, then one per
 	// ancestor down to the effective region. The last crumb is the current region
 	// and renders as plain text; the rest link back up to their tier.
+	//
+	// Every crumb carries what the town panel is given for the town it is open on, because
+	// the bar letters a step the same way that panel letters its town: the show the place
+	// flies, and the tile colour it is drawn in. Both are read off the node, so both are
+	// whatever the map itself says — the ruling team's show on a held town, the seeded
+	// plurality otherwise (see the ruling-show map), and above the municipality the
+	// plurality of the towns underneath. A place cannot fly one show on the map and another
+	// in the bar over it.
+	//
+	// The root crumb is the whole of the Països Catalans, which is not a region in the tree:
+	// no node, so no show and no colour, and the bar draws it as its name alone.
 	$: crumbs = [
-		{ label: 'Països Catalans', key: null as string | null },
-		...displayPath.map((node) => ({ label: restoreCatalanArticle(node.name), key: node.key as string | null }))
+		{
+			label: 'Països Catalans',
+			key: null as string | null,
+			showName: null as string | null,
+			showId: null as number | null,
+			tileClasses: null as string | null
+		},
+		...displayPath.map((node) => ({
+			label: restoreCatalanArticle(node.name),
+			key: node.key as string | null,
+			showName: node.show?.name ?? null,
+			showId: node.show?.id ?? null,
+			tileClasses: node.color ? pinColorClasses[node.color] : null
+		}))
 	];
 
 	// The open location's own node and its plurality ("most seen") show. Surfaced on the
