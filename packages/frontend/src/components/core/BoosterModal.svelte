@@ -140,15 +140,20 @@
 			behind it, so what comes apart is a canvas and what it uncovers is the page.
 
 			It stands on the same plate the grid beside it does — the padding and the ground are the
-			plate's, so the canvas is handed a box holding boxes and draws no margin of its own. The
-			two columns are one window drawn twice and pick from it separately: each keeps its own
-			selection, and either can spend a pack, which is what the day's allowance is for. -->
+			plate's, so the canvas is handed a box holding boxes and draws no margin of its own.
+
+			Both columns are bound to the one selection, which is the same id a click on a town's box
+			out on the map sets: they are one window drawn twice, so a pack picked anywhere is the
+			pack both of them stand up, and a modal opened on a town opens on that town's box in
+			both. What each does with it after that is its own — either can spend a pack, which is
+			what the day's allowance is for. -->
 		<div class="min-h-0 min-w-0 rounded-box bg-gradient-to-b from-base-300/80 to-base-200 p-3">
 			{#if packs.length}
 				<BoosterBoxCanvas
 					{packs}
 					columns={4}
 					interactive={!allowanceSpent}
+					bind:selected
 					on:select={() => dispatch('select')}
 					on:back={() => dispatch('back')}
 					on:openComplete={(event) => dispatch('openComplete', event.detail)}

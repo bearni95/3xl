@@ -27,6 +27,11 @@
 	// the cards stand once a box is open, which is not: they come out of the box, so their row is
 	// the box's to say (see REVEAL_COLUMNS and `opening`).
 	export let columns: number = 4;
+	// The box standing up, by pack id, or null for the window. Bindable, and bound to the same
+	// thing the document grid's is: a click on a town's box out on the map picks a pack, and both
+	// drawings of the window stand that one up rather than one of them showing the window it is
+	// in. It is set from here too, so picking a box on this canvas is the same pick.
+	export let selected: string | null = null;
 	// False shows the window but opens nothing — the allowance is spent.
 	export let interactive: boolean = true;
 	export let classes: string = '';
@@ -81,6 +86,10 @@
 	// changes into the live scene rather than waiting for a remount.
 	$: scene?.setPacks(packs, columns, interactive);
 
+	// And the pick along with it, whoever made it. A pick this canvas made itself comes back
+	// through here as the id it just set, which the scene answers by doing nothing.
+	$: scene?.setSelected(selected);
+
 	// Built off the host element rather than on mount, so the block below coming back after a
 	// lost context builds a scene on the new canvas — `bind:this` is what says there is one.
 	$: if (host && !scene) build();
@@ -90,8 +99,13 @@
 			packs,
 			columns,
 			interactive,
-			onSelect: (pack) => dispatch('select', pack),
+			selected,
+			onSelect: (pack) => {
+				selected = pack.id;
+				dispatch('select', pack);
+			},
 			onBack: () => {
+				selected = null;
 				clearReveal();
 				dispatch('back');
 			},

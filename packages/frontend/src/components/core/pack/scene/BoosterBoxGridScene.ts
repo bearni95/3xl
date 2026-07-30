@@ -57,6 +57,10 @@ export interface BoosterBoxGridSceneOptions {
 	/** False lays the window out as a display: it still scrolls, but no tap stands a box up —
 	 * the allowance is spent, so a box would only open onto nothing. */
 	interactive?: boolean;
+	/** Which box is standing up, by pack id, or null for the window. The host's as much as this
+	 * canvas's: clicking a town's box out on the map picks a pack without this canvas being
+	 * touched at all, and the canvas has to be showing that pack and not the window it is in. */
+	selected?: string | null;
 	/** A box was stood up. */
 	onSelect?: (pack: OpenerPack) => void;
 	/** The stood-up box went back down, or the reveal it left was dismissed. */
@@ -118,6 +122,11 @@ export class BoosterBoxGridScene {
 	private entries: BoxEntry[] = [];
 	private stood: BoxEntry | null = null;
 	private state: SceneState = 'grid';
+	// Which box the host wants standing, which is not always which one is: the pick can arrive
+	// before there are boxes to pick from (a modal opened on a town's pack is picked while the
+	// window is still baking), so it is kept and applied whenever there is a window to apply it
+	// to. Null is the window itself.
+	private wanted: string | null = null;
 
 	// The width one column got when the boxes were built, what they are drawn at now, and how
 	// tall the whole of both grids is in built units.
@@ -146,9 +155,24 @@ export class BoosterBoxGridScene {
 		this.packs = options.packs;
 		this.columns = Math.max(1, Math.round(options.columns));
 		this.interactive = options.interactive ?? true;
+		this.wanted = options.selected ?? null;
 		this.callbacks = options;
 		this.app = new Application();
 		void this.init();
+	}
+
+	/**
+	 * Stand a box up, or stand the standing one back down — the same pick a tap makes, made from
+	 * outside. It is how a click on a town's box out on the map lands here: the map picks a pack,
+	 * the host holds which one, and both drawings of the window follow it.
+	 *
+	 * A box that is coming apart is not swapped out from under the player: the pick is remembered
+	 * and the crumble is left to finish.
+	 */
+	setSelected(id: string | null): void {
+		if (this.wanted === id) return;
+		this.wanted = id;
+		if (this.ready) this.applySelection();
 	}
 
 	/** Show another window, or the same one at another column count. A box standing open is left
@@ -185,6 +209,29 @@ export class BoosterBoxGridScene {
 	standDown(): void {
 		if (this.state === 'stood') void this.lower();
 		else if (this.state === 'opened' || this.state === 'opening') this.dismiss();
+	}
+
+	/** Make what is standing what the host asked for. Called whenever either changes — the pick,
+	 * or the window it has to be found in. */
+	private applySelection(): void {
+		const id = this.wanted;
+		if ((this.stood?.pack.id ?? null) === id) return;
+		if (id === null) {
+			this.standDown();
+			return;
+		}
+		const entry = this.entries.find((candidate) => candidate.pack.id === id);
+		if (!entry) return;
+		if (this.state === 'grid') this.raise(entry);
+		// One box down and the other up, without a word to the host in between: it asked for this,
+		// and a "the box went back down" on the way would only untell it its own pick.
+		else if (this.state === 'stood') void this.swap(entry);
+	}
+
+	private async swap(entry: BoxEntry): Promise<void> {
+		await this.lower(true);
+		if (this.isDestroyed || this.state !== 'grid') return;
+		this.raise(entry);
 	}
 
 	destroy(): void {
@@ -272,6 +319,9 @@ export class BoosterBoxGridScene {
 			return { pack, sprite, x: 0, y: 0 };
 		});
 		this.place();
+		// A window with a pack already picked opens on that pack, not on the window: the pick may
+		// well have been made before there was a box to stand up (see `wanted`).
+		this.applySelection();
 	}
 
 	/**
@@ -397,6 +447,7 @@ export class BoosterBoxGridScene {
 	private raise(entry: BoxEntry): void {
 		this.state = 'standing';
 		this.stood = entry;
+		this.wanted = entry.pack.id;
 		this.callbacks.onSelect?.(entry.pack);
 
 		const fromScale = this.scale;
@@ -426,8 +477,10 @@ export class BoosterBoxGridScene {
 		this.callbacks.onOpening?.(sprite ? lidBackWidth(this.builtWidth * sprite.scale.x) : null);
 	}
 
-	/** Back into its cell, and the window back with it. */
-	private async lower(): Promise<void> {
+	/** Back into its cell, and the window back with it. `quiet` is for a box being swapped for
+	 * another: the host asked for that, and telling it the first box went down would only untell
+	 * it its own pick. */
+	private async lower(quiet = false): Promise<void> {
 		const entry = this.stood;
 		if (!entry) return;
 		this.state = 'standing';
@@ -447,13 +500,23 @@ export class BoosterBoxGridScene {
 		this.stood = null;
 		this.state = 'grid';
 		this.reportOpening();
+		if (quiet) return;
+		this.wanted = null;
 		this.callbacks.onBack?.();
 	}
 
 	/** Put the reveal away and give the window back. The box that was opened is not stood back
 	 * down but built again with the rest: an opened box is a box that has gone, and what the grid
-	 * shows is boxes there are to open. */
+	 * shows is boxes there are to open.
+	 *
+	 * The state is put back before the host is told, and not after: the host holds the pick, so
+	 * hearing this it drops it — which comes straight back here as "stand nothing up", and a scene
+	 * still calling itself opened would answer that by dismissing all over again. */
 	private dismiss(): void {
+		this.state = 'grid';
+		this.stood = null;
+		this.wanted = null;
+		this.reportOpening();
 		this.callbacks.onBack?.();
 		void this.build();
 	}
