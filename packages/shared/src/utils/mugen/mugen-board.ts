@@ -5,10 +5,12 @@ import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/character-fi
 import { characterIdFromFramesPath, readRenderScale } from './character-render-scale';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
-	BOARD_COLUMNS,
-	BOARD_ROWS,
+	BOARD_HEIGHT,
+	BOARD_WIDTH,
 	boardCells,
 	type Cell,
+	cellCenter,
+	cellFoot,
 	cellSide,
 	type CellSide,
 	columnLabel,
@@ -17,6 +19,7 @@ import {
 	findClosestApproach,
 	findMeleeMeeting,
 	findPath,
+	hexCorners,
 	isBoardCell,
 	LAST_COLUMN,
 	LAST_ROW,
@@ -74,7 +77,8 @@ export interface BoardGrid {
 
 export interface MugenBoardOptions {
 	grids: [BoardGrid, BoardGrid];
-	/** Side of a single grid cell, in pixels. Every cell is this square. */
+	/** Width of a single grid cell, in pixels — the hexagon's short way across, which is
+	 * also how far apart two neighbours on a row stand. Every cell is this wide. */
 	cellSize?: number;
 	/** Outer padding around the grid, in pixels. */
 	padding?: number;
@@ -83,22 +87,24 @@ export interface MugenBoardOptions {
 }
 
 const DEFAULTS = {
-	// A cell's side in canvas px. Five columns of it is the whole board's width, so this
-	// is what decides the canvas's resolution: enough that the arena — which scales the
-	// canvas to fit the viewport (see MAX_CANVAS_HEIGHT) — is always scaling it *down*
-	// rather than up, which is what keeps the pixel art crisp.
+	// A cell's width in canvas px. Five columns of it is very nearly the whole board's
+	// width, so this is what decides the canvas's resolution: enough that the arena —
+	// which scales the canvas to fit the viewport (see MAX_CANVAS_HEIGHT) — is always
+	// scaling it *down* rather than up, which is what keeps the pixel art crisp.
 	cellSize: 220,
 	padding: 40,
 	centerColor: 0xffffff // white
 };
 
-// --- Board layout (a flat rectangle of square cells) ------------------------
+// --- Board layout (a field of pointy-topped hexagons) -----------------------
 // The grid is drawn face-on: no tilt, no vanishing point, no per-row scaling.
-// A cell is a square of `cellSize` px wherever it sits, so the board's columns
-// and rows map straight onto screen x and y — column FIRST_COLUMN at the left
-// edge, row FIRST_ROW at the top — and a character keeps its size wherever it
-// walks, because there is no depth for it to walk into. Cells left of centre are
-// the first grid's colour, cells to the right the second's.
+// A cell is the same hexagon of `cellSize` px across wherever it sits, so a
+// character keeps its size wherever it walks, because there is no depth for it to
+// walk into. Where a cell *is* comes from the grid module — `cellCenter`,
+// `cellFoot` and `hexCorners`, all in cell widths off the grid's top-left corner —
+// so the only arithmetic here is the scale by `cellSize` and the translation into
+// the canvas ({@link MugenBoard.project}). Cells left of centre are the first
+// grid's colour, cells to the right the second's.
 
 /**
  * The colour every line of the grid is drawn in. The lattice is not a side's marking —
@@ -110,7 +116,7 @@ const GRID_LINE = 0x000000;
 /**
  * The most of the viewport's height the canvas may take.
  *
- * The board is a wide rectangle — five columns by three rows — but the characters
+ * The board is a wide field — five columns by three rows — but the characters
  * standing on it are taller than their cells, so scaling it to its container's *width*,
  * which is all `max-width` can do, can still run it off the bottom of
  * the screen. Both axes are capped instead: a canvas has an intrinsic size, so one
@@ -129,10 +135,10 @@ const MAX_CANVAS_HEIGHT = '70vh';
 const CHAR_HEIGHT_RATIO = 1.3;
 
 /**
- * The room the canvas keeps above the grid, in cells: **a whole row of it**, empty, on
- * top of everything else drawn.
+ * The room the canvas keeps above the grid, in cell widths: **a whole cell of it**,
+ * empty, on top of everything else drawn.
  *
- * A character plants its feet on its cell's lower edge and stands taller than the cell
+ * A character plants its feet on its cell's foot line and stands taller than the cell
  * ({@link CHAR_HEIGHT_RATIO}), so everybody on the top row is partly above the grid to
  * begin with — but the exact amount is not something this can be worked out from. A
  * character's own `renderScale` rides along on the fit, so one drawn small in its source
@@ -141,8 +147,9 @@ const CHAR_HEIGHT_RATIO = 1.3;
  * fighter's head. Only the first of those is even known when the canvas is sized, and
  * every one of them reaches up out of the top row.
  *
- * So the room is not calculated, it is reserved: one full row, which is more than any of
- * them needs and is the one measurement on this board that is guaranteed to be enough.
+ * So the room is not calculated, it is reserved: a full cell width, which is more than a
+ * row's own step down the board and more than any of them needs, and is the one
+ * measurement on this board that is guaranteed to be enough.
  * Everything else is pushed down by it, and {@link MugenBoard.fitToContent} is careful
  * not to crop it back off.
  */
@@ -155,15 +162,22 @@ const HEAD_ROOM = 1;
 // beside each row, so a cell is read off the two bands meeting at it and nothing is
 // written over the ground the fight is played on.
 //
+// A column of hexagons is not a straight line — every other row steps half a cell to
+// the right — so a letter is set under its own column's cell **on the bottom row**
+// rather than under the average of a zigzag, which would be under no cell at all. The
+// row numbers stay in one straight band down the left, level with each row's centre:
+// the gutter is a third of a cell wide and the offset is half of one, so a number
+// that followed its row's own left edge would be standing on the board.
+//
 // The band is outside the grid, which is why the labels are drawn in white over a
 // dark outline rather than in a cell's colour: the board is mounted over the map as
 // often as on a card, so what a label sits on is not this engine's to know, and only
 // the pair reads against both.
 
-/** Width of the gutter, as a fraction of a cell's side: the room kept off the grid's
+/** Width of the gutter, as a fraction of a cell's width: the room kept off the grid's
  * left edge for the row numbers, and under its bottom row for the column letters. */
 const COORD_GUTTER_RATIO = 0.34;
-/** A label's font size, as a fraction of a cell's side. Comfortably inside the band
+/** A label's font size, as a fraction of a cell's width. Comfortably inside the band
  * above, so a letter and the row number beside it never touch the grid. */
 const COORD_FONT_RATIO = 0.2;
 /** The dark outline around a label, as a fraction of its own font size. */
@@ -502,16 +516,17 @@ interface Actor {
 }
 
 /**
- * Renders the board — a flat rectangle of square cells, drawn face-on — on a PixiJS
+ * Renders the board — a field of pointy-topped hexagons, drawn face-on — on a PixiJS
  * canvas. Cells left of centre take the first grid colour, cells to the right the
  * second, and the shared central column the centre colour. Two MUGEN characters loop
  * (idle by default) standing upright, one on each half.
  *
- * Nothing is tilted: a cell is the same square wherever it is on the board, so a
+ * Nothing is tilted: a cell is the same hexagon wherever it is on the board, so a
  * character's size says something about the character and nothing about where it
  * stands, and walking it forward neither resizes it nor moves it toward a vanishing
  * point. The only thing depth still decides is paint order — a row further down the
- * screen draws over the row above it.
+ * screen draws over the row above it, and hexagonal rows interlock, so it decides it
+ * rather more than a rectangle's did.
  *
  * Frame decoding happens at build time (scripts/generate-sprites.js); this
  * class only lays out the grid and plays the loaded frames. All rendering
@@ -543,16 +558,19 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Total canvas size: the grid at one `cellSize` square per cell, plus the padding
-	 * around it, the empty row kept above it for everything that reaches up out of the top
-	 * row ({@link HEAD_ROOM}), and the coordinate gutter's own band, once down the
-	 * left-hand side and once under the bottom row.
+	 * Total canvas size: the grid's own extent at `cellSize` px to the cell width
+	 * ({@link BOARD_WIDTH}, {@link BOARD_HEIGHT} — which is why neither figure is simply
+	 * the count of columns or rows: the offset rows hang half a cell out to the right,
+	 * and the rows interlock rather than stack), plus the padding around it, the empty
+	 * cell kept above it for everything that reaches up out of the top row
+	 * ({@link HEAD_ROOM}), and the coordinate gutter's own band, once down the left-hand
+	 * side and once under the bottom row.
 	 */
 	get dimensions(): { width: number; height: number } {
 		const { cellSize, padding } = this.options;
 		return {
-			width: padding * 2 + this.coordGutter + cellSize * BOARD_COLUMNS,
-			height: padding * 2 + this.coordGutter + cellSize * (BOARD_ROWS + HEAD_ROOM)
+			width: padding * 2 + this.coordGutter + cellSize * BOARD_WIDTH,
+			height: padding * 2 + this.coordGutter + cellSize * (BOARD_HEIGHT + HEAD_ROOM)
 		};
 	}
 
@@ -567,9 +585,9 @@ export class MugenBoard {
 		return this.options.padding + this.coordGutter;
 	}
 
-	/** Screen y of the grid's top edge: the padding, plus the empty row kept above it —
-	 * which is what pushes every cell, every character and every coordinate down by a row
-	 * from where they would otherwise be drawn. */
+	/** Screen y of the grid's top edge: the padding, plus the empty room kept above it —
+	 * which is what pushes every cell, every character and every coordinate down by a
+	 * cell width from where they would otherwise be drawn. */
 	private get gridTop(): number {
 		const { cellSize, padding } = this.options;
 		return padding + cellSize * HEAD_ROOM;
@@ -716,34 +734,29 @@ export class MugenBoard {
 
 
 	/**
-	 * Screen point of a place on the grid, given in cells off its top-left corner
-	 * (column 0 is the left edge, row 0 the top one). One cell is `cellSize` px each
-	 * way wherever it is, so this is a scale and a translation and nothing else — which
-	 * is the whole of what "not tilted" means here. Fractional values are supported, so
-	 * a cell's corners and the middle of its foot line all project through it.
+	 * Screen point of a place on the grid, given in **cell widths** off its top-left
+	 * corner. One cell width is `cellSize` px on both axes, so this is a scale and a
+	 * translation and nothing else — which is the whole of what "not tilted" means here.
+	 * The hexagons' own proportions are already inside the figures handed to it, so
+	 * anything measured in cell widths projects through it unchanged: a cell's corners,
+	 * its foot line, and the height a character is drawn at alike.
 	 */
 	private project(col: number, row: number): Point {
 		const { cellSize } = this.options;
 		return { x: this.gridLeft + col * cellSize, y: this.gridTop + row * cellSize };
 	}
 
-	/** Grid coordinates (cells off the grid's top-left corner) of the top-left corner
-	 * of the cell at [q, r]. */
-	private cellCorner(q: number, r: number): Point {
-		return { x: q - FIRST_COLUMN, y: r - FIRST_ROW };
-	}
-
 	/** Screen-space point an actor stands on in the cell at [q, r]: horizontally
-	 * centred, feet on the cell's lower edge, so it reads as inside the cell rather
-	 * than floating at its centre. */
+	 * centred, feet on the cell's foot line ({@link cellFoot}), so it reads as inside
+	 * the cell rather than floating at its centre or balancing on its bottom point. */
 	private cellMark(q: number, r: number): Point {
-		const corner = this.cellCorner(q, r);
-		return this.project(corner.x + 0.5, corner.y + 1);
+		const foot = cellFoot(q, r);
+		return this.project(foot.x, foot.y);
 	}
 
 	/**
 	 * The width of a cell in screen px — one figure for the whole board, since every
-	 * cell is the same square. It is the box every character is fitted into, so how big
+	 * cell is the same hexagon. It is the box every character is fitted into, so how big
 	 * a fighter is drawn says something about the fighter and nothing about where on the
 	 * board it happens to be, and walking a fighter forward never resizes it.
 	 */
@@ -764,11 +777,11 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Draw the board: one square per cell, laid out face-on. Cells left of the central
-	 * column take `leftColor`, cells to the right `rightColor`, and the central column
-	 * (q = 0) — the shared ground both sides can enter — is painted `centerColor`.
-	 * Iterates the exact cell list from the shared grid utility, so every occupiable
-	 * cell is drawn and nothing else is.
+	 * Draw the board: one hexagon per cell, standing on end, laid out face-on. Cells left
+	 * of the central column take `leftColor`, cells to the right `rightColor`, and the
+	 * central column (q = 0) — the shared ground both sides can enter — is painted
+	 * `centerColor`. Iterates the exact cell list from the shared grid utility, so every
+	 * occupiable cell is drawn and nothing else is.
 	 *
 	 * Only the fills are coloured: every line of the grid is drawn in {@link GRID_LINE},
 	 * so the lattice reads as one board rather than as two colours meeting, and a cell's
@@ -783,10 +796,7 @@ export class MugenBoard {
 			const side = cellSide(q);
 			const color = side === 'red' ? leftColor : side === 'blue' ? rightColor : centerColor;
 
-			const corner = this.cellCorner(q, r);
-			const topLeft = this.project(corner.x, corner.y);
-			const bottomRight = this.project(corner.x + 1, corner.y + 1);
-			graphics.rect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+			graphics.poly(this.cellOutline(q, r));
 			graphics.fill({ color, alpha: 0.08 });
 			graphics.stroke({ width: 2, color: GRID_LINE, alpha: 0.9 });
 		}
@@ -794,11 +804,24 @@ export class MugenBoard {
 	}
 
 	/**
+	 * The cell at [q, r] as a closed screen-space outline: its six corners projected in
+	 * order, flattened to the `[x, y, x, y, …]` list Pixi draws a polygon from. Every
+	 * hexagon on this board — the ruled grid, a claimed cell's overlay — is drawn from
+	 * this one path, so the paint can never sit a hair off the line under it.
+	 */
+	private cellOutline(q: number, r: number): number[] {
+		return hexCorners(q, r).flatMap((corner) => {
+			const at = this.project(corner.x, corner.y);
+			return [at.x, at.y];
+		});
+	}
+
+	/**
 	 * Name the grid's cells along two of its edges, as a chessboard does: a letter
 	 * under each column and a number beside each row, so any cell is said by the pair
 	 * meeting at it ("c2"). Each label is centred on the band it stands in and on the
-	 * column or row it belongs to, so a letter is under its own column and a number
-	 * level with its own row however big a cell is drawn.
+	 * cell it belongs to, so a letter is under its own column's bottom-row cell and a
+	 * number level with its own row however big a cell is drawn.
 	 */
 	private drawCoordinates(): void {
 		if (!this.app) return;
@@ -806,7 +829,7 @@ export class MugenBoard {
 		const size = cellSize * COORD_FONT_RATIO;
 		// Centre of the band: half a gutter off the grid's edge, on the side the labels
 		// sit. Both anchor at their own centre, so this is the whole of the placement.
-		const lettersY = this.project(0, BOARD_ROWS).y + this.coordGutter / 2;
+		const lettersY = this.project(0, BOARD_HEIGHT).y + this.coordGutter / 2;
 		const numbersX = this.gridLeft - this.coordGutter / 2;
 
 		const label = (text: string, x: number, y: number): Text => {
@@ -830,11 +853,12 @@ export class MugenBoard {
 
 		const labels = new Container();
 		for (let q = FIRST_COLUMN; q <= LAST_COLUMN; q++) {
-			const centre = this.project(this.cellCorner(q, FIRST_ROW).x + 0.5, 0).x;
+			// Under the bottom row's own cell, which is the one the letter is beneath.
+			const centre = this.project(cellCenter(q, LAST_ROW).x, 0).x;
 			labels.addChild(label(columnLabel(q), centre, lettersY));
 		}
 		for (let r = FIRST_ROW; r <= LAST_ROW; r++) {
-			const centre = this.project(0, this.cellCorner(FIRST_COLUMN, r).y + 0.5).y;
+			const centre = this.project(0, cellCenter(FIRST_COLUMN, r).y).y;
 			labels.addChild(label(rowLabel(r), numbersX, centre));
 		}
 		this.app.stage.addChild(labels);
@@ -892,13 +916,13 @@ export class MugenBoard {
 		const baseFrames = animations[startName];
 		if (!baseFrames || baseFrames.length === 0) return;
 
-		// The character stands centred on its cell's lower edge, feet on it.
+		// The character stands centred on its cell's foot line, feet on it.
 		const mark = this.cellMark(q, r);
 
 		// How big the character is drawn is the cards' question, asked of the cards' own
 		// answer ({@link characterFitScale}): one shared source→screen ratio for every
 		// character, capped so neither a tall one nor a wide one spills out of its box.
-		// The box is a cell — the same square anywhere on the board — so the two lines are
+		// The box is a cell's width — the same anywhere on the board — so the two lines are
 		// scaled alike wherever each stands, and a fighter keeps its size as it walks. Both
 		// surfaces then agree on every character's size relative to the others.
 		// The character's own render scale rides along: the definition is already loaded
@@ -908,14 +932,14 @@ export class MugenBoard {
 		// not the furthest one reach from the axis doubled — which is the rule this board
 		// used to ask for, on the grounds that a fighter is pinned to its cell's mark by
 		// that axis (see below) and so ought to keep every limb within half a cell of it.
-		// What that bought was a fighter that never crossed its neighbour's square; what
+		// What that bought was a fighter that never crossed into its neighbour's cell; what
 		// it cost was the fighter being a different size from its own card. Frieza paid
 		// most of it — his idle sweeps a tail most of a body-width to one side, so he was
 		// held at half the size his card draws him, his own correction and all — and it
 		// was eating the InuYasha cast's correction too, Kagome's 1.4 among them. The
 		// crossing is the smaller thing: every fighter here already stands a third taller
 		// than its cell and over the row behind it ({@link CHAR_HEIGHT_RATIO}), so a limb
-		// reaching past the square is the overlap this board is drawn with throughout.
+		// reaching past the hexagon is the overlap this board is drawn with throughout.
 		const box = this.cellWidth();
 		const fitScale = characterFitScale(
 			baseFrames,
@@ -1152,8 +1176,9 @@ export class MugenBoard {
 		}
 
 		if (actor.moving) {
-			// Advance along the straight line to the target cell. A step is one cell side,
-			// so it is purely horizontal along a row and purely vertical between rows.
+			// Advance along the straight line to the target cell. A step crosses one side of
+			// the hexagon, so it is purely horizontal along a row and a diagonal — half a
+			// cell across, three quarters of one down — onto the row above or below.
 			const step = MOVE_SPEED * dt;
 			const dx = actor.targetX - actor.x;
 			const dy = actor.targetY - actor.y;
@@ -1373,11 +1398,8 @@ export class MugenBoard {
 		if (!side) return;
 
 		const color = side === 'red' ? this.options.grids[0].color : this.options.grids[1].color;
-		const corner = this.cellCorner(cell.q, cell.r);
-		const topLeft = this.project(corner.x, corner.y);
-		const bottomRight = this.project(corner.x + 1, corner.y + 1);
 		const graphics = new Graphics();
-		graphics.rect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+		graphics.poly(this.cellOutline(cell.q, cell.r));
 		// Stronger fill than the base grid's 0.08 so the takeover reads clearly.
 		graphics.fill({ color, alpha: 0.35 });
 		graphics.stroke({ width: 2, color, alpha: 1 });
@@ -1677,8 +1699,8 @@ export class MugenBoard {
 	 * White, for the same reason — a clash is not either side's, and the ground it happens
 	 * on is the white column. Placed clear above the heads of anybody standing in that cell,
 	 * so it sits over the collision rather than in it: a character stands
-	 * {@link CHAR_HEIGHT_RATIO} cells tall from the cell's own floor, and the label's foot
-	 * goes a little above where that reaches.
+	 * {@link CHAR_HEIGHT_RATIO} cell widths tall from the cell's own foot line, and the
+	 * label's foot goes a little above where that reaches.
 	 *
 	 * Taken down with every other callout ({@link clearCallouts}) — it belongs to the turn
 	 * it was drawn in, like everything else said on this board.
@@ -1686,9 +1708,8 @@ export class MugenBoard {
 	showCellCallout(cell: Cell, text: string): void {
 		if (!this.app) return;
 		const label = this.calloutText(text, 0xffffff);
-		const corner = this.cellCorner(cell.q, cell.r);
-		const above = corner.y + 1 - CHAR_HEIGHT_RATIO - CELL_CALLOUT_GAP;
-		const at = this.project(corner.x + 0.5, above);
+		const foot = cellFoot(cell.q, cell.r);
+		const at = this.project(foot.x, foot.y - CHAR_HEIGHT_RATIO - CELL_CALLOUT_GAP);
 		label.x = at.x;
 		label.y = at.y;
 		// Over everything the lane holds, as a callout is: what has just happened is never

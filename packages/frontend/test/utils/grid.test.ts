@@ -1,15 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import {
 	BOARD_COLUMNS,
+	BOARD_HEIGHT,
 	BOARD_ROWS,
+	BOARD_WIDTH,
 	boardCells,
 	type Cell,
+	cellCenter,
 	cellDistance,
+	cellFoot,
 	cellSide,
 	columnLabel,
 	FIRST_COLUMN,
+	FIRST_ROW,
 	findMeleeMeeting,
 	findPath,
+	HEX_HEIGHT,
+	HEX_ROW_STEP,
+	hexCorners,
 	isBoardCell,
 	LAST_COLUMN,
 	LAST_ROW,
@@ -81,19 +89,57 @@ describe('cell names', () => {
 });
 
 describe('adjacency and pathfinding', () => {
-	it('neighbours are the four sides, all valid board cells at distance 1', () => {
+	it('neighbours are the six sides, all valid board cells at distance 1', () => {
+		// The middle cell of the middle row: an offset row, and far enough inside the
+		// board that all six of its sides land on real cells.
 		const from: Cell = { q: 0, r: 1 };
 		const around = neighbors(from.q, from.r);
-		expect(around).toHaveLength(4);
+		expect(around).toHaveLength(6);
 		for (const nb of around) {
 			expect(isBoardCell(nb.q, nb.r)).toBe(true);
 			expect(cellDistance(from, nb)).toBe(1);
 		}
+		// A hexagon's six neighbours are six different cells.
+		expect(new Set(around.map((c) => `${c.q},${c.r}`)).size).toBe(6);
 	});
 
-	it('has no diagonal step: a corner is two moves away', () => {
-		expect(cellDistance({ q: 0, r: 0 }, { q: 1, r: 1 })).toBe(2);
+	it('reaches the next row by stepping half a cell across, either way', () => {
+		// A level row overhangs the columns to its left, so from a cell on one the row
+		// below is reached at its own column or the one before it — and never the one
+		// after, which is a corner away rather than a side.
+		expect(neighbors(0, 0)).toContainEqual({ q: 0, r: 1 });
+		expect(neighbors(0, 0)).toContainEqual({ q: -1, r: 1 });
 		expect(neighbors(0, 0)).not.toContainEqual({ q: 1, r: 1 });
+		expect(cellDistance({ q: 0, r: 0 }, { q: 1, r: 1 })).toBe(2);
+
+		// An offset row is shoved right, so its cells overhang the columns to their
+		// right instead — the mirror of the above, and what makes the two rows nest.
+		expect(neighbors(0, 1)).toContainEqual({ q: 0, r: 2 });
+		expect(neighbors(0, 1)).toContainEqual({ q: 1, r: 2 });
+		expect(neighbors(0, 1)).not.toContainEqual({ q: -1, r: 2 });
+	});
+
+	it('measures a walk in sides crossed, not in rows plus columns', () => {
+		// Two rows straight down from a level row: one step onto the offset row below
+		// and one back, landing a column to the left of where it started. Counted as
+		// two offset axes summed it would come to three.
+		expect(cellDistance({ q: 0, r: 0 }, { q: -1, r: 2 })).toBe(2);
+		// Across a whole row is the columns between, as it always was.
+		expect(cellDistance({ q: -2, r: 1 }, { q: 2, r: 1 })).toBe(4);
+	});
+
+	it('agrees with the walk: a path is as long as the distance says', () => {
+		const pairs: [Cell, Cell][] = [
+			[{ q: -2, r: 0 }, { q: 2, r: 2 }],
+			[{ q: -2, r: 2 }, { q: 2, r: 0 }],
+			[{ q: 0, r: 0 }, { q: -1, r: 2 }],
+			[{ q: -1, r: 1 }, { q: 1, r: 1 }]
+		];
+		for (const [start, goal] of pairs) {
+			const path = findPath(start, goal, (c) => isBoardCell(c.q, c.r)) as Cell[];
+			expect(path).not.toBeNull();
+			expect(path.length - 1).toBe(cellDistance(start, goal));
+		}
 	});
 
 	it('findPath returns a contiguous path including both endpoints', () => {
@@ -107,6 +153,61 @@ describe('adjacency and pathfinding', () => {
 		for (let i = 1; i < cells.length; i++) {
 			expect(cellDistance(cells[i - 1], cells[i])).toBe(1);
 		}
+	});
+});
+
+describe('the shape of a cell', () => {
+	it('is a hexagon standing on end: taller than it is wide, points top and bottom', () => {
+		// Pointy-topped, so the long axis is the vertical one.
+		expect(HEX_HEIGHT).toBeGreaterThan(1);
+		const corners = hexCorners(0, 0);
+		expect(corners).toHaveLength(6);
+		const centre = cellCenter(0, 0);
+		// Exactly two corners sit on the cell's own vertical centre line — its top and
+		// bottom points — and they are a full height apart.
+		const points = corners.filter((corner) => Math.abs(corner.x - centre.x) < 1e-9);
+		expect(points).toHaveLength(2);
+		expect(Math.abs(points[0].y - points[1].y)).toBeCloseTo(HEX_HEIGHT);
+		// The four others are the ends of the two vertical sides, half a width out.
+		for (const corner of corners.filter((c) => !points.includes(c))) {
+			expect(Math.abs(corner.x - centre.x)).toBeCloseTo(0.5);
+		}
+	});
+
+	it('meets its neighbours on a row side by side, a full width apart', () => {
+		expect(cellCenter(1, 0).x - cellCenter(0, 0).x).toBeCloseTo(1);
+		expect(cellCenter(0, 0).y).toBeCloseTo(cellCenter(2, 0).y);
+	});
+
+	it('nests the rows: three quarters of a height down, half a width across', () => {
+		expect(HEX_ROW_STEP).toBeCloseTo(HEX_HEIGHT * 0.75);
+		expect(cellCenter(0, 1).y - cellCenter(0, 0).y).toBeCloseTo(HEX_ROW_STEP);
+		// The middle row is the offset one, so the top and bottom rows stay level with
+		// each other and it is the one that steps out.
+		expect(cellCenter(0, 1).x - cellCenter(0, 0).x).toBeCloseTo(0.5);
+		expect(cellCenter(0, 2).x).toBeCloseTo(cellCenter(0, 0).x);
+	});
+
+	it('is exactly as big as the board says it is', () => {
+		// Every cell of the board lies inside the extent the renderer sizes its canvas
+		// from, and the extent is no bigger than it needs to be.
+		const corners = boardCells().flatMap((cell) => hexCorners(cell.q, cell.r));
+		expect(Math.min(...corners.map((c) => c.x))).toBeCloseTo(0);
+		expect(Math.min(...corners.map((c) => c.y))).toBeCloseTo(0);
+		expect(Math.max(...corners.map((c) => c.x))).toBeCloseTo(BOARD_WIDTH);
+		expect(Math.max(...corners.map((c) => c.y))).toBeCloseTo(BOARD_HEIGHT);
+		// The half-width beyond the columns is the offset rows hanging out to the right.
+		expect(BOARD_WIDTH).toBeCloseTo(BOARD_COLUMNS + 0.5);
+	});
+
+	it('stands a fighter where its cell is still full width, not on its bottom point', () => {
+		const centre = cellCenter(0, FIRST_ROW);
+		const foot = cellFoot(0, FIRST_ROW);
+		expect(foot.x).toBeCloseTo(centre.x);
+		// Below the centre, so the fighter reads as inside its cell — but above the
+		// bottom point, which is the corner shared with the two cells underneath.
+		expect(foot.y).toBeGreaterThan(centre.y);
+		expect(foot.y).toBeLessThan(centre.y + HEX_HEIGHT / 2);
 	});
 });
 

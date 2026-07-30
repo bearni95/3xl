@@ -1,13 +1,24 @@
 /**
- * Pure square-grid helpers for the board, shared between the renderer
+ * Pure hex-grid helpers for the board, shared between the renderer
  * ({@link file://./mugen-board.ts}) and combat pathfinding so the two can never
  * disagree about which cells exist.
  *
- * The board is a plain rectangle of square cells, addressed by column (`q`, across
- * the width) and row (`r`, down the screen): row 0 is the top row, and rows count
- * downward exactly as they are read, because nothing here is tilted — a cell is a
- * square drawn face-on, so the grid's coordinates and the screen's are the same
- * two axes.
+ * The board is a field of **pointy-topped** hexagons — each cell standing on end, a
+ * point at its top and another at its bottom, taller than it is wide — addressed by
+ * column (`q`, across the width) and row (`r`, down the screen): row 0 is the top row,
+ * and rows count downward exactly as they are read, because nothing here is tilted.
+ * A hexagon in this orientation has two vertical sides and four slanted ones, which is
+ * what decides everything below: a row is a straight, level line of cells meeting side
+ * by side, and the rows above and below it nest into its slants, each offset half a
+ * cell across (the odd ones, so the board's middle row is the one that steps out and
+ * its top and bottom rows stay level with each other).
+ *
+ * The coordinates are the offset kind — the column a cell is drawn in, and the row it
+ * sits on — because that is what the board's rules are written in: a column has a
+ * colour and a row is a lane, and both have to survive being counted. What the offset
+ * costs is that a step's arithmetic depends on which row it is taken from, so
+ * {@link neighbors} and {@link cellDistance} are the only two places in the codebase
+ * that know it, and everything else goes on asking them.
  *
  * It is five columns by three rows, and symmetric about its middle column: two
  * columns of red half, the shared white one at q = 0, two of blue. So the ground both
@@ -49,7 +60,7 @@ export const MIDDLE_ROW = Math.floor((FIRST_ROW + LAST_ROW) / 2);
  * What a column is called, the way a chess file is: a letter, counted from `a` at the
  * board's left edge. A column's own coordinate is signed and centred on the white one
  * (`q = 0`), which is the right way to write the board's rules and the wrong way to
- * point at a square out loud — so the name is the column's position across the board
+ * point at a cell out loud — so the name is the column's position across the board
  * rather than its distance from the middle.
  */
 export const columnLabel = (q: number): string => String.fromCharCode(97 + (q - FIRST_COLUMN));
@@ -63,13 +74,58 @@ export const columnLabel = (q: number): string => String.fromCharCode(97 + (q - 
  */
 export const rowLabel = (r: number): string => String(r - FIRST_ROW + 1);
 
-/** The four neighbours of a square cell: no diagonals, so a step is one side. */
-const NEIGHBOR_DELTAS: Cell[] = [
-	{ q: 1, r: 0 },
-	{ q: -1, r: 0 },
-	{ q: 0, r: 1 },
-	{ q: 0, r: -1 }
-];
+/**
+ * Whether a row is one of the offset ones — the rows shoved half a cell to the right so
+ * they nest into the slants of the rows either side. Counted off the board's own first
+ * row rather than off zero, so it is the board's middle row that steps out however the
+ * rows happen to be numbered.
+ */
+const isOffsetRow = (r: number): boolean => Math.abs(r - FIRST_ROW) % 2 === 1;
+
+/**
+ * The six neighbours of a hexagon, as the offset coordinates reach them: the two
+ * alongside it on its own row, and two apiece on the rows above and below. Which two
+ * depends on whether the row is an offset one — a cell on a level row overhangs the
+ * columns to its own left, one on an offset row the columns to its own right — which is
+ * the whole of what the offset costs, and it is paid here and in {@link cellDistance}
+ * and nowhere else.
+ *
+ * Every one of the six is a full side of the hexagon, so unlike the square board this
+ * replaced there is no such thing as a diagonal here: the four steps that used to be two
+ * moves apart across a corner are one move apart across an edge, and a step off a row is
+ * a step half a cell across as well as a row down.
+ */
+const NEIGHBOR_DELTAS: Record<'level' | 'offset', Cell[]> = {
+	level: [
+		{ q: 1, r: 0 },
+		{ q: -1, r: 0 },
+		{ q: 0, r: -1 },
+		{ q: -1, r: -1 },
+		{ q: 0, r: 1 },
+		{ q: -1, r: 1 }
+	],
+	offset: [
+		{ q: 1, r: 0 },
+		{ q: -1, r: 0 },
+		{ q: 1, r: -1 },
+		{ q: 0, r: -1 },
+		{ q: 1, r: 1 },
+		{ q: 0, r: 1 }
+	]
+};
+
+/**
+ * A cell in cube coordinates — the three axes a hex grid measures distance along, one
+ * per pair of opposite sides, summing to zero. The board is not addressed this way
+ * (see the module note), so this is a conversion used for the one thing offset
+ * coordinates cannot answer directly.
+ */
+function cube(cell: Cell): { x: number; y: number; z: number } {
+	const offset = isOffsetRow(cell.r) ? 1 : 0;
+	const x = cell.q - (cell.r - FIRST_ROW - offset) / 2;
+	const z = cell.r - FIRST_ROW;
+	return { x, y: -x - z, z };
+}
 
 /** Whether [q, r] is a real, occupiable board cell. */
 export function isBoardCell(q: number, r: number): boolean {
@@ -94,19 +150,98 @@ export function cellSide(q: number): CellSide {
 	return 'purple';
 }
 
-/** The (up to four) valid board neighbours of a cell. */
+/** The (up to six) valid board neighbours of a cell. */
 export function neighbors(q: number, r: number): Cell[] {
-	return NEIGHBOR_DELTAS.map((d) => ({ q: q + d.q, r: r + d.r })).filter((c) =>
-		isBoardCell(c.q, c.r)
-	);
+	const deltas = NEIGHBOR_DELTAS[isOffsetRow(r) ? 'offset' : 'level'];
+	return deltas.map((d) => ({ q: q + d.q, r: r + d.r })).filter((c) => isBoardCell(c.q, c.r));
 }
 
-/** Step distance between two cells: no diagonal move, so it is the two axes summed. */
+/**
+ * Step distance between two cells: how many sides a fighter crosses walking from one to
+ * the other, which on a hex grid is half the cube coordinates' spread. Not the two offset
+ * axes summed — a row's cells are staggered against the next row's, so the same difference
+ * in `q` means a different walk depending on which rows it is measured between.
+ */
 export function cellDistance(a: Cell, b: Cell): number {
-	return Math.abs(a.q - b.q) + Math.abs(a.r - b.r);
+	const from = cube(a);
+	const to = cube(b);
+	return (Math.abs(from.x - to.x) + Math.abs(from.y - to.y) + Math.abs(from.z - to.z)) / 2;
 }
 
 const key = (q: number, r: number): string => `${q},${r}`;
+
+// --- The shape of a cell, and where it sits ---------------------------------
+// Everything below is measured in **cell widths**: one unit is the width of a hexagon,
+// which is also the distance between two neighbours' centres along a row. That unit is
+// the renderer's `cellSize`, so a board is drawn by scaling these figures by it and
+// nothing else — and the shape of the board stays here, next to the rules written on
+// it, rather than being re-derived by whatever happens to be drawing.
+//
+// A pointy-topped hexagon is taller than it is wide by a fixed ratio, and its rows nest:
+// each one is drawn three quarters of a hexagon's height below the last, the top quarter
+// of every row tucked into the slants of the row above. So three rows are not three
+// heights tall — they are two steps plus one hexagon.
+
+/** A point on the board, in cell widths off the grid's top-left corner. */
+export interface GridPoint {
+	x: number;
+	y: number;
+}
+
+/** A hexagon's height, as a multiple of its width: point to point down the long axis. */
+export const HEX_HEIGHT = 2 / Math.sqrt(3);
+
+/** How far below one row's centres the next row's sit — three quarters of a hexagon,
+ * because the rows interlock rather than stack. */
+export const HEX_ROW_STEP = HEX_HEIGHT * 0.75;
+
+/** The board's own extent in cell widths: the columns, plus the half-cell the offset
+ * rows hang out to the right by, and the rows' interlocked height. */
+export const BOARD_WIDTH = BOARD_COLUMNS + 0.5;
+export const BOARD_HEIGHT = (BOARD_ROWS - 1) * HEX_ROW_STEP + HEX_HEIGHT;
+
+/** Centre of the cell at [q, r]. */
+export function cellCenter(q: number, r: number): GridPoint {
+	return {
+		x: q - FIRST_COLUMN + 0.5 + (isOffsetRow(r) ? 0.5 : 0),
+		y: (r - FIRST_ROW) * HEX_ROW_STEP + HEX_HEIGHT / 2
+	};
+}
+
+/**
+ * The line a fighter standing in the cell at [q, r] plants its feet on: the cell's
+ * centre across, and down at the foot of its two vertical sides.
+ *
+ * Not the bottom point. A hexagon standing on end tapers to a single vertex shared with
+ * the two cells below it, and a fighter stood on that reads as balancing on the crack
+ * between them; the foot of the vertical sides is the lowest line at which the cell is
+ * still its full width, so a fighter stood there has the whole width of its own cell
+ * under it and is plainly inside it.
+ */
+export function cellFoot(q: number, r: number): GridPoint {
+	const centre = cellCenter(q, r);
+	return { x: centre.x, y: centre.y + HEX_HEIGHT / 4 };
+}
+
+/**
+ * The six corners of the cell at [q, r], from the top point clockwise. Stated as exact
+ * fractions of the hexagon rather than swept out with trigonometry: a pointy-topped
+ * hexagon's corners are its two points, top and bottom, and the four ends of its
+ * vertical sides, which stand a quarter of its height either side of centre.
+ */
+export function hexCorners(q: number, r: number): GridPoint[] {
+	const { x, y } = cellCenter(q, r);
+	const half = HEX_HEIGHT / 2;
+	const quarter = HEX_HEIGHT / 4;
+	return [
+		{ x, y: y - half },
+		{ x: x + 0.5, y: y - quarter },
+		{ x: x + 0.5, y: y + quarter },
+		{ x, y: y + half },
+		{ x: x - 0.5, y: y + quarter },
+		{ x: x - 0.5, y: y - quarter }
+	];
+}
 
 /**
  * Breadth-first search from `start` to `goal` across cells for which
@@ -171,7 +306,9 @@ export interface Approach {
  * cells either side of one vertical grid line, one legal for red (q ≤ 0), one legal
  * for blue (q ≥ 1) — that minimises the two fighters' combined walking distance
  * from their starts. Meeting side by side on one row is what makes the duel read
- * horizontally on screen, and on a square grid a row is level all the way across.
+ * horizontally on screen, and a row of pointy-topped hexagons is level all the way
+ * across — every cell of it at the same height, meeting its neighbours on their
+ * vertical sides, which is why the cells are drawn standing on end.
  * Red may stand on its own colour or the shared white column; blue stays strictly
  * on blue. When `redCell` is given the meeting spot is fixed instead of searched:
  * red walks to that exact cell and blue to its east neighbour on the same row.
@@ -208,7 +345,12 @@ export function findMeleeMeeting(
 	const redDist = distanceMap(startRed, redAllowed);
 	const blueDist = distanceMap(startBlue, blueAllowed);
 
-	let best: { redCell: Cell; blueCell: Cell; cost: number; central: number } | null = null;
+	let best: {
+		redCell: Cell;
+		blueCell: Cell;
+		cost: number;
+		central: number;
+	} | null = null;
 	for (const cell of boardCells()) {
 		if (!redAllowed(cell)) continue;
 		const rd = redDist.get(key(cell.q, cell.r));
@@ -255,7 +397,12 @@ export function findClosestApproach(
 	isAllowed: (c: Cell) => boolean
 ): Approach | null {
 	const dist = distanceMap(start, isAllowed);
-	let best: { cell: Cell; toTarget: number; offRow: number; walk: number } | null = null;
+	let best: {
+		cell: Cell;
+		toTarget: number;
+		offRow: number;
+		walk: number;
+	} | null = null;
 	for (const cell of boardCells()) {
 		if (!isAllowed(cell)) continue;
 		const walk = dist.get(key(cell.q, cell.r));
