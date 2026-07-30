@@ -38,8 +38,9 @@ create table if not exists public.achievement_templates (
 -- table can tell what a badge wants), as the tree the evaluator below walks, and as
 -- the compiled formulas of the badge's own variables, keyed by name, since a
 -- requirement may quote them. All null for a badge with no checkable rule — which is
--- allowed, and simply means the badge is never set as one of a player's three and
--- can never be claimed.
+-- allowed: such a badge is still set as one of a player's day, since the pick is over
+-- every badge the game has, and simply cannot be completed until somebody writes it a
+-- rule.
 alter table public.achievement_templates add column if not exists requirement text;
 alter table public.achievement_templates add column if not exists requirement_tree jsonb;
 alter table public.achievement_templates add column if not exists variables jsonb;
@@ -352,9 +353,17 @@ end;
 $$;
 
 -- The ids set for one player on one day: `daily_achievement_count()` of them, drawn
--- without replacement from every template the database holds a rule for, sorted by id
--- first so the row order the pool happened to arrive in cannot change the answer. Same
--- 32-bit LCG, same `seed % remaining` index as the browser's.
+-- without replacement from **every** template, sorted by id first so the row order the
+-- pool happened to arrive in cannot change the answer. Same 32-bit LCG, same
+-- `seed % remaining` index as the browser's.
+--
+-- Every template, not only the ones with a rule. Drawing from the rules alone meant a
+-- game whose badges had none was set nothing at all — the player opened the panel to an
+-- empty day, which is a state about the authoring rather than about them. A badge with
+-- no rule is simply one nothing can complete: it is set, it is shown, and the claim
+-- below finds no tree to walk and grants it nothing. Both sides read the same pool for
+-- the same reason as ever, so this widening happens here and in
+-- @3xl/shared's daily.ts together.
 create or replace function public.daily_achievement_ids(p_user uuid, p_day date)
 returns text[] language plpgsql stable set search_path = public as $$
 declare
@@ -366,8 +375,7 @@ declare
 begin
 	select coalesce(array_agg(t.id order by t.id), '{}')
 		into v_pool
-		from public.achievement_templates t
-		where t.requirement_tree is not null;
+		from public.achievement_templates t;
 
 	while coalesce(array_length(v_drawn, 1), 0) < v_count and coalesce(array_length(v_pool, 1), 0) > 0 loop
 		v_state := (1664525 * v_state + 1013904223) % 4294967296;

@@ -10,8 +10,8 @@ import type {
  * which of them the game holds a rule for, and the authored file says what each one
  * is. What matters is that the seam holds — the order is the database's, the wording
  * is the file's, an id the file has nothing for is not drawn at all rather than drawn
- * blank, and the claimable pool is the database's list rather than the file's, since
- * that is the pool the RPC will draw today's three from.
+ * blank, and the pool drawn from is the database's list rather than the file's, since
+ * that is the pool the RPC draws the day's badges from.
  */
 
 // What the tables and the RPC hand back, set per test.
@@ -115,26 +115,26 @@ describe('loading the game’s achievements', () => {
 		expect(snapshot.achievements[0].variables).toEqual([{ name: 'target', formula: 'level' }]);
 	});
 
-	it('drops an id the file has nothing for, but keeps it in the claimable pool', async () => {
-		// The RPC would still draw a synced rule whose badge was retired locally, so
-		// leaving it out of the pool would have the two sides pick different threes.
+	it('drops an id the file has nothing for, but keeps it in the pool', async () => {
+		// The RPC would still draw a row whose badge was retired locally, so leaving it
+		// out of the pool would have the two sides pick different sets.
 		templateRows = [
 			{ id: 'conqueridor', requirement: 'cards >= 1' },
 			{ id: 'retired-badge', requirement: 'cards >= 5' }
 		];
 		const snapshot = await load();
 		expect(snapshot.achievements.map((a) => a.id)).toEqual(['conqueridor']);
-		expect(snapshot.claimable).toEqual(['conqueridor', 'retired-badge']);
+		expect(snapshot.pool).toEqual(['conqueridor', 'retired-badge']);
 	});
 
-	it('leaves a badge with no rule out of the claimable pool', async () => {
+	it('keeps a badge with no rule in the pool — it is set, it just cannot be earned', async () => {
 		templateRows = [
 			{ id: 'conqueridor', requirement: null },
 			{ id: 'first-blood', requirement: 'cards >= target' }
 		];
 		const snapshot = await load();
 		expect(snapshot.achievements).toHaveLength(2);
-		expect(snapshot.claimable).toEqual(['first-blood']);
+		expect(snapshot.pool).toEqual(['conqueridor', 'first-blood']);
 	});
 
 	it('reports what the player has completed, and what each of them paid', async () => {
@@ -197,7 +197,7 @@ describe('loading the game’s achievements', () => {
 		templateRows = [];
 		const snapshot = await load();
 		expect(snapshot.achievements).toEqual([]);
-		expect(snapshot.claimable).toEqual([]);
+		expect(snapshot.pool).toEqual([]);
 	});
 
 	it('fetches the file once however often the list is asked for', async () => {

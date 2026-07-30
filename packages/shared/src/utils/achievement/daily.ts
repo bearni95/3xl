@@ -100,12 +100,16 @@ export function drawIds(pool: readonly string[], seed: number, count: number): s
  * The ids of the badges set for `userId` on `day` — `count` of them, or the whole
  * pool where there are fewer.
  *
- * `pool` is the badges that can be set at all: the ones Supabase holds a
- * requirement for, since a badge with no requirement is one the server could never
- * confirm anybody had earned. `count` is Supabase's too. Both come from the same
- * read the caller already makes, which is what keeps the browser's pick and the
- * RPC's the same pick — a browser that guessed either would draw a different set
- * from the one that can actually be claimed.
+ * `pool` is every badge the game has — every `achievement_templates` row, whether or
+ * not one carries a requirement yet. A badge with no requirement is still set and
+ * still shown; it is simply one that nothing can complete, which is the claim's
+ * business rather than the draw's. Drawing from the rules alone meant a game whose
+ * badges had none set nobody anything, which is a state about the authoring rather
+ * than about the player.
+ *
+ * `count` is Supabase's too. Both come from the same read the caller already makes,
+ * which is what keeps the browser's pick and the RPC's the same pick — a browser that
+ * guessed either would draw a different set from the one that can be claimed.
  */
 export function dailyAchievementIds(
 	userId: string,

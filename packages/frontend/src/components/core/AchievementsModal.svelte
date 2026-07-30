@@ -41,7 +41,7 @@
 	const spawns = spawnService.spawns;
 
 	let achievements: Achievement[] = [];
-	let claimable: string[] = [];
+	let pool: string[] = [];
 	// What Supabase says this player has completed, newest first, and the same thing as
 	// a set of ids for the tiles that only ask whether a badge is worn.
 	let awards: AchievementAward[] = [];
@@ -90,7 +90,7 @@
 	async function refresh(userId: string): Promise<void> {
 		const snapshot = await loadAchievements(userId);
 		achievements = snapshot.achievements;
-		claimable = snapshot.claimable;
+		pool = snapshot.pool;
 		awards = snapshot.awards;
 		held = snapshot.held;
 		dailyCount = snapshot.dailyCount;
@@ -143,7 +143,7 @@
 	// Catalan day it is. Nothing is stored — at midnight Europe/Madrid today's three
 	// change, which is why the countdown beside them is worth showing.
 	$: dayIds = currentUserId
-		? dailyAchievementIds(currentUserId, viewedDay, claimable, dailyCount)
+		? dailyAchievementIds(currentUserId, viewedDay, pool, dailyCount)
 		: [];
 	$: byId = new Map(achievements.map((achievement) => [achievement.id, achievement]));
 
@@ -177,7 +177,10 @@
 			held: holders.has(achievement.id),
 			// A preview, not the verdict: the RPC walks the same rule against rows this
 			// browser cannot write, and its answer is what the tile shows after a claim.
-			met: achievementMet(achievement, ctx)
+			met: achievementMet(achievement, ctx),
+			// A badge with no rule is set and shown like any other, and cannot be
+			// completed by anybody until one is written for it.
+			ruled: !!achievement.requirement?.trim()
 		};
 	}
 
@@ -235,7 +238,7 @@
 	// three refusals, not a second opinion on the rule. A claim that goes through is
 	// still free to be turned down badge by badge.
 	$: todayTiles = viewingToday ? dayTiles : [];
-	$: readyCount = todayTiles.filter((entry) => entry.met && !entry.held).length;
+	$: readyCount = todayTiles.filter((entry) => entry.ruled && entry.met && !entry.held).length;
 	// Epoch milliseconds, which is what the countdown reads.
 	$: midnight = nextCatalanMidnight().getTime();
 </script>
@@ -349,9 +352,9 @@
 					<div class="alert alert-error py-2 text-sm"><span>{claimError}</span></div>
 				{/if}
 
-				{#if claimable.length === 0}
+				{#if pool.length === 0}
 					<p class="text-sm opacity-60">
-						No badges are in play yet — a badge is set only once it says what earns it.
+						No badges have reached the game yet — they are authored in the admin and synced.
 					</p>
 				{:else if dayTiles.length === 0}
 					<p class="text-sm opacity-60">Nothing to show for this day.</p>
@@ -384,6 +387,9 @@
 											+{outcome.expAwarded.toLocaleString()} exp
 										</span>
 									{/if}
+								{:else if !entry.ruled}
+									<!-- Nothing says what earns it yet, so nothing can. -->
+									<span class="badge badge-ghost badge-sm">Not available yet</span>
 								{:else if entry.met}
 									<span class="badge badge-success badge-sm">Ready</span>
 									<span class="opacity-70">worth {award.toLocaleString()} exp</span>

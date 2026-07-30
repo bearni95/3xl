@@ -55,12 +55,16 @@ export interface AchievementsSnapshot {
 	/** Every badge Supabase holds, resolved against the file, in row order. */
 	achievements: Achievement[];
 	/**
-	 * The ids the database holds a rule for, which is the pool a player's three for
-	 * the day are drawn from. Read from the database rather than from the file so the
-	 * browser draws from exactly the pool `claim_achievements` will draw from: a
-	 * badge whose rule has not been synced yet is not in the game.
+	 * Every badge Supabase holds, as ids — the pool a player's day is drawn from. Read
+	 * from the database rather than from the file so the browser draws from exactly the
+	 * pool `daily_achievement_ids` draws from: a badge authored locally but not synced is
+	 * not in the game yet, and one synced but retired locally still is.
+	 *
+	 * Every badge, not only the ones with a rule. A badge with no rule is still set and
+	 * still shown; it simply cannot be completed until somebody writes it one, which is
+	 * the claim's business rather than the draw's.
 	 */
-	claimable: string[];
+	pool: string[];
 	/**
 	 * What this player has completed, newest first, as `player_achievements` records
 	 * it: the badge, the moment it landed and the experience it paid. Empty for a
@@ -79,9 +83,9 @@ export interface AchievementsSnapshot {
 }
 
 /**
- * The badges, the claimable pool and what this player has completed — one trip for
- * all three, since a modal that showed the list before it knew what was held would
- * have to redraw itself.
+ * The badges, the pool they are drawn from and what this player has completed — one
+ * trip for all of it, since a modal that showed the list before it knew what was held
+ * would have to redraw itself.
  */
 export async function loadAchievements(userId: string | null): Promise<AchievementsSnapshot> {
 	const supabase = getSupabaseClient();
@@ -107,13 +111,13 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 
 	const byId = new Map(authored.achievements.map((achievement) => [achievement.id, achievement]));
 	const achievements: Achievement[] = [];
-	const claimable: string[] = [];
+	const pool: string[] = [];
 	for (const row of templates.data ?? []) {
 		const id = String(row.id);
-		// The pool is every rule the database holds, drawable or not: a rule for a
-		// badge the file has nothing for is still one the RPC would draw, so leaving it
-		// out here would have the two sides pick different threes.
-		if (row.requirement !== null) claimable.push(id);
+		// In the pool whether or not the file can draw it: a row the file has nothing for
+		// is still one the RPC would pick, so leaving it out here would have the two sides
+		// pick different sets.
+		pool.push(id);
 		const achievement = byId.get(id);
 		if (achievement) achievements.push(achievement);
 	}
@@ -123,7 +127,7 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 	const completed = achievementAdapter.fromAwardRows(awards.data as AchievementAwardRow[] | null);
 	return {
 		achievements,
-		claimable,
+		pool,
 		awards: completed,
 		held: new Set(completed.map((award) => award.achievementId)),
 		dailyCount
