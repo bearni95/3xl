@@ -1798,23 +1798,31 @@
 	// reached is exactly the one an empty position asks to be taken to.
 	$: centrePath = focusedPath(maxLevel, markerLevels, currentCenter, regionNodes);
 
-	// Take the map to the zoom a tier is read at, leaving the centre where it is.
+	// Take the map to the zoom a tier is read at, leaving the centre where it is: press the
+	// comarca position and the bar's comarca position is the one that fills.
 	//
-	// Which tier of pins the map draws is decided by whether the region CONTAINING the view
-	// stands whole in the canvas, and the tier drawn is that region's children (see
-	// levelIndexForView) — so the box to fit is the deepest region under the centre coarser
-	// than the tier asked for. Above the territories that is the whole map. It is a size test
-	// and not a place one, which is why nothing here has to move the view: the same centre at
-	// that zoom is inside the same region, and the tier asked for is the tier drawn.
+	// So the box to fit is that tier's OWN region under the centre, not the region above it.
+	// The two are a tier apart and it is the same tier twice over, which is why: what the bar
+	// names is the region the view is INSIDE, and what the map pins is that region's parts (see
+	// levelIndexForView) — so the view that fills the comarca position is the one framed on a
+	// comarca, which is pinning its towns. Fitting the province instead is the view that *pins*
+	// comarques, and its deepest crumb is the province — a position short of the one pressed,
+	// which is a bar asking to be pressed twice.
 	//
-	// A tier the place under the centre does not have resolves to the same box as the tier
+	// It is a test of a region's size and not of where it sits, which is why nothing here has
+	// to move the view: the same centre at that zoom is inside the same region.
+	//
+	// A tier the place under the centre does not have resolves to the box of the nearest tier
 	// above it, which is the truth about it: at Andorra there is no comarca between the
 	// territory and the towns, so its comarca position is the territory's own zoom.
 	function zoomToTier(word: string) {
 		const tier = tierByWord.get(word);
 		if (!tier) return;
-		const above = centrePath.filter((node) => tierRank[node.type] < tierRank[tier]);
-		const container = above[above.length - 1] ?? null;
+		const down = centrePath.filter((node) => tierRank[node.type] <= tierRank[tier]);
+		const container = down[down.length - 1] ?? null;
+		// Nothing under the centre at that tier or above it means there is no path under the
+		// centre at all — the polygons are still loading, or the view is out at sea. The whole
+		// map is the box then, which is where a bar with nothing in it belongs.
 		const bounds = container
 			? (regionGeometry.boxes.get(container.key) ?? null)
 			: municipalities
