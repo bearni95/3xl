@@ -10,6 +10,7 @@
 	import TownPanel from '$components/core/TownPanel.svelte';
 	import CollapsiblePlate from '$components/core/CollapsiblePlate.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
+	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
 	import ShowStandingsTable from '$components/core/ShowStandingsTable.svelte';
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
@@ -336,50 +337,25 @@
 	}
 	$: if (!$openBattle) resumedBattle = null;
 
-	// The panel's three views: the player themselves (their own card), the standing of every
-	// show across the whole map, and the booster pack of whichever festa town's box was
-	// clicked last. Every one of them lives here rather than in a panel of its own, so the
-	// map only ever gives up room to one of them — the breadcrumbs above the strip stay put
-	// across all three, since they name what the map is looking at whichever view is forward.
+	// The panel had three tabbed views and has none: it is the account, and the two views it
+	// used to hold beside it — every show's standing across the map, and the window's booster
+	// packs — are full-view modals on the sheet the roster and the badges already use (see
+	// LeaderboardModal and BoosterModal). Both were tables and pictures being read in a 450px
+	// column, and both could only be up by putting the other away; a pack in particular is
+	// picked, stood up and sliced open, which is worth the viewport rather than a third of it.
 	//
-	// The side the player fields was the second half of the first of those and stands at the
-	// map's own bottom-left corner now (see the lineup over the map, below), for the reason
-	// the open region left this column too: a team is what every town on the map is read
-	// against, so it is wanted whichever of these three is forward, and a view here can only
-	// be up by putting another one away.
-	//
-	// The open region was a fourth view here and is not any more: it is a plate at the map's
-	// own corner (see CollapsiblePlate), because a table of place names is read against the
-	// map and this column could only put it up by taking whichever view was forward down.
-	//
-	// Who you are is a view like any other now, rather than a header sitting over all of
-	// them: an account card and a three-sprite line-up took a fixed slice off the top of
-	// the panel at every moment, including the ones spent reading a table that had
-	// nothing to do with either, and on the collapsed mobile panel that slice was most of
-	// the 30vh there is.
-	const PanelTab = {
-		Profile: 'profile',
-		Leaderboard: 'leaderboard',
-		Pack: 'pack'
-	} as const;
-	type PanelTab = (typeof PanelTab)[keyof typeof PanelTab];
-	// The strip's labels. Booster carries the day's allowance in parentheses — what is
-	// left to open over the daily cap, "Booster (2/3)" — which is where that counter
-	// lives now that the account card no longer has a row for it. Plain "Booster"
-	// until there is an allowance to name: signed out, or the status not yet in.
-	let panelTabs: { id: PanelTab; label: string }[];
-	$: panelTabs = [
-		{ id: PanelTab.Profile, label: 'Profile' },
-		{ id: PanelTab.Leaderboard, label: 'Leaderboard' },
-		{
-			id: PanelTab.Pack,
-			label: boosters ? `Booster (${boosters.remaining}/${boosters.level})` : 'Booster'
-		}
-	];
-	// Opens on the profile view: the panel's first word is who is playing — signing in is
-	// the one thing nothing else on the map works without, and a signed-in player's own
-	// team is what every town on it is read against.
-	let panelTab: PanelTab = PanelTab.Profile;
+	// So the panel is the two buttons that raise them plus the account section under them, and
+	// everything about *where the map is looking* had already left this column before them: the
+	// open region is a plate at the map's own corner (see CollapsiblePlate), the picked town
+	// another, the side the player fields stands at the foot of the map, and who is playing is
+	// a plate at its top-right. What is left in this column is the way in (signing in) and the
+	// ways out of it.
+
+	// What the Booster button is called: the day's allowance in parentheses — what is left to
+	// open over the daily cap, "Booster (2/3)" — which is where that counter lives, the account
+	// card having no row for it. Plain "Booster" until there is an allowance to name: signed
+	// out, or the status not yet in.
+	$: boosterLabel = boosters ? `Booster (${boosters.remaining}/${boosters.level})` : 'Booster';
 
 	// How many municipalities each show flies, and its share of them all. Tallied
 	// over `showsById`, which is already the seeded assignment with every held
@@ -1319,27 +1295,31 @@
 		return result;
 	})();
 
-	// Show a town's pack: open the town on the map, remember which town, and bring the
-	// Booster tab forward so the pack is on screen straight away (the tab renders the
-	// opener, so this is what mounts its canvas).
+	// Show a town's pack: open the town on the map, remember which town, and raise the booster
+	// modal, which mounts the opener with that pack already stood up.
 	//
 	// A box is clicked where the town is, so the click is a click on the town as much as
 	// on its pack: `open` points the URL at the municipality exactly as a pin, a crumb or
-	// a table row does, which frames the map onto its polygons — the reader lands zoomed
-	// on the place the pack belongs to, with the pack already stood up. The two no longer
-	// compete for one column: the town is what the map and its corner show, the pack is
-	// what the panel shows.
+	// a table row does, which frames the map onto its polygons — so the map is left framed on
+	// the place the pack belongs to, waiting behind the pack and there again when it closes.
 	function openPack(id: string): void {
 		clearPackFeedback();
 		open(id);
 		packTownId = id;
-		panelTab = PanelTab.Pack;
+		boosterModalOpen.set(true);
 	}
 
-	// --- Which packs the Booster tab shows ----------------------------------------
+	// Raise the booster modal on the whole window's grid, which is what its own button does:
+	// only a box click on the map narrows it to one town's pack.
+	function openBoosters(): void {
+		showPackGrid();
+		boosterModalOpen.set(true);
+	}
+
+	// --- Which packs the booster modal shows --------------------------------------
 	// Every festa major in the booster window — three days back through four days
 	// ahead of today, today included. A festa major is not a single evening, and the
-	// window is what `claim_booster` accepts too, so every pack the tab lays out is a
+	// window is what `claim_booster` accepts too, so every pack it lays out is a
 	// pack that can actually be opened; nothing here is a preview. The claim panel
 	// mounted at the foot of the page assembles them (`claimPacks`).
 
@@ -1970,7 +1950,8 @@
 			<div class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex flex-col gap-2">
 				<!-- Where the map is looking. Full width, at the head of everything: a path is
 					read across, and the plates below it are read down.
-					The location search sits at the bar's far end. It was above the drill table in the
+					The location search sits at the bar's far end, as the looking glass that stands for
+					it until it is pressed (see LocationSearchBox). It was above the drill table in the
 					Location plate, which is the one place its matches are listed — but that plate
 					starts folded, so the way to look for a town was behind a fold, while the bar
 					naming where the map is was always up. Naming a place and being told where you are
@@ -1978,13 +1959,7 @@
 					table's plate, which unfolds itself as soon as there is a query (see
 					locationPanelCollapsed below). -->
 				<MapBreadcrumbs {crumbs} onSelect={open} classes="pointer-events-auto">
-					<input
-						slot="end"
-						type="search"
-						class="input input-bordered input-sm w-40 sm:w-56"
-						placeholder="Search locations…"
-						bind:value={searchQuery}
-					/>
+					<LocationSearchBox slot="end" bind:value={searchQuery} />
 				</MapBreadcrumbs>
 
 				<!-- The row under the bar, with a corner of the map at each end of it: the plates about
