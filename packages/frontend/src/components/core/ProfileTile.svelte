@@ -104,9 +104,15 @@
 			></progress>
 			<!-- Over the bar, so it is painted after it — and centred across the width as well,
 				since a figure about the whole bar reads from the middle of it rather than from
-				the end the fill happens to have reached. -->
+				the end the fill happens to have reached.
+
+				A tight black shadow under the type, which is what lets one colour of lettering
+				cross a bar that is two: the fill is the theme's yellow and the track is a fifth
+				of it over the dark surface, so light type has the fill to contend with and the
+				shadow is what holds its edge there without giving the label a second colour of
+				its own halfway along. -->
 			<span
-				class="relative block truncate px-1 py-0.5 text-center font-mono text-[0.65rem] text-base-content/70"
+				class="relative block truncate px-1 py-0.5 text-center font-mono text-[0.65rem] text-base-content/70 text-shadow-xs text-shadow-black"
 			>
 				{#if progress.atMax}
 					{$_('profile.expMax', { values: { exp: progress.exp.toLocaleString() } })}
