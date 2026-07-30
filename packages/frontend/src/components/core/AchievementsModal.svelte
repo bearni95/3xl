@@ -19,9 +19,15 @@
 	import GameIcon from '$components/core/GameIcon.svelte';
 	import Countdown from '$components/core/Countdown.svelte';
 
-	// The badges the game has, on the same sheet the roster is drawn on — mounted
-	// only while it is up, so the reads below happen on opening and nothing of them
-	// outlives the close. The host raises it with `achievementsModalOpen`.
+	// The three badges set for a day, and the ones this player has completed, on the
+	// same sheet the roster is drawn on — mounted only while it is up, so the reads
+	// below happen on opening and nothing of them outlives the close. The host raises it
+	// with `achievementsModalOpen`.
+	//
+	// There is deliberately no list of every badge the game has: a player is set three a
+	// day, and a catalogue of everything beside them made the modal read as a list with
+	// three of its rows marked rather than as today's three. What is on screen is what
+	// the seed picked for the day being looked at, and what has been earned.
 	function close(): void {
 		achievementsModalOpen.set(false);
 	}
@@ -176,8 +182,6 @@
 		.map((id) => byId.get(id))
 		.filter((achievement): achievement is Achievement => !!achievement)
 		.map((achievement) => tile(achievement, context, held));
-	$: everyTile = achievements.map((achievement) => tile(achievement, context, held));
-
 	/**
 	 * The completed section: the award ledger as Supabase keeps it, newest first, each
 	 * row paired with the badge it names. A row the file has nothing for is dropped —
@@ -426,35 +430,6 @@
 											<span>· +{entry.award.expAwarded.toLocaleString()} exp</span>
 										{/if}
 									</span>
-								</div>
-							</div>
-						{/each}
-					</div>
-				{/if}
-			</section>
-
-			<!-- Every badge the game has, in the order Supabase handed them over: the glyph
-			     on the dark tile it needs (GameIcon), then the name and the line saying what
-			     earns it, with this player's own numbers in them. -->
-			<section class="flex flex-col gap-3">
-				<h3 class="text-base font-semibold">All badges</h3>
-				{#if everyTile.length === 0}
-					<p class="text-sm opacity-60">There are no achievements yet.</p>
-				{:else}
-					<div class="grid content-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-						{#each everyTile as entry (entry.achievement.id)}
-							<div
-								class={classNames('flex items-start gap-3 rounded-box bg-base-200/50 p-3', {
-									'opacity-60': !entry.held
-								})}
-							>
-								<GameIcon name={entry.achievement.icon} size="size-14" />
-								<div class="flex min-w-0 flex-col gap-1">
-									<span class="font-semibold">{entry.name}</span>
-									<span class="text-sm opacity-70">{entry.description}</span>
-									{#if entry.held}
-										<span class="badge badge-primary badge-sm w-fit">Earned</span>
-									{/if}
 								</div>
 							</div>
 						{/each}
