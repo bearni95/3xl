@@ -5,6 +5,13 @@
 	import { MUSIC_TITLE_MAX_LENGTH, type MusicTrack, type MusicCollection } from '$types/music.type';
 	import type { ShowsCollection } from '$types/show.type';
 	import { musicTrackSrc } from '$utils/music/tracks';
+	import {
+		dailyShowShuffles,
+		nextUtcMidnightMs,
+		utcDayIso,
+		utcMidnightMs
+	} from '$utils/music/daily-shuffle';
+	import { shiftDayIso } from '$utils/festes/catalan-day';
 
 	// One row per song found in @3xl/assets, and the row is the definition: the name is
 	// typed in it, the show is picked in it, and the song is played from it. There is no
@@ -55,6 +62,12 @@
 	let preview: HTMLAudioElement | null = null;
 	let loadedFile: string | null = null;
 	let playing = false;
+
+	// The day the shuffle below is shown for. Today by default; steppable, because a
+	// per-day order is only visibly a per-day order when two days can be put side by
+	// side. `today` is read once — this screen is not open across a midnight.
+	const today = utcDayIso();
+	let shuffleDay = today;
 
 	onMount(load);
 	// The preview is this screen's, unlike the player on the map: leaving the page is
@@ -237,6 +250,15 @@
 	// shown apart from the songs rather than among them.
 	$: orphans = tracks.filter((track) => !files.includes(track.file));
 	$: defined = rows.filter((row) => row.track !== null).length;
+
+	// The day's order, per show. Only songs the assets actually back are in it: an entry
+	// whose file has gone is in no order, because nothing can play it. Every lookup is
+	// spelled out in the statement for the same reason the rows' are — a `tracks` read
+	// hidden behind a helper would not re-run these when a row is saved.
+	$: playable = tracks.filter((track) => files.includes(track.file));
+	$: shuffles = dailyShowShuffles(playable, shuffleDay);
+	$: shuffleMidnight = utcMidnightMs(shuffleDay);
+	$: turnsOver = nextUtcMidnightMs(shuffleDay);
 </script>
 
 <div class="flex-1 bg-base-200 p-6 md:p-10">
@@ -418,6 +440,115 @@
 								{/each}
 							</tbody>
 						</table>
+					</div>
+				{/if}
+			</div>
+		</section>
+
+		<section class="card bg-base-100 shadow-xl">
+			<div class="card-body gap-4">
+				<div class="flex flex-wrap items-center gap-3">
+					<h2 class="card-title">Daily shuffle</h2>
+					<span class="badge badge-ghost font-mono text-xs">
+						{Number.isFinite(shuffleMidnight) ? shuffleMidnight : '—'}
+					</span>
+				</div>
+				<p class="text-sm opacity-70">
+					A show with a dozen themes would otherwise open with the same one for ever, so each
+					show's songs are put in a different order every day. The order is not rolled and not
+					stored: it is drawn from a seed hashed out of the show's id and the day's midnight UTC
+					as a Unix timestamp — the number in the badge above — so anyone asking on that day
+					gets this same order, each show is ordered independently of every other, and all of
+					them turn over at once when the timestamp does. Step the day to watch it move.
+				</p>
+
+				<div class="flex flex-wrap items-center gap-2">
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm"
+						aria-label="Previous day"
+						on:click={() => (shuffleDay = shiftDayIso(shuffleDay, -1))}
+					>
+						←
+					</button>
+					<input
+						type="date"
+						class="input input-sm input-bordered"
+						aria-label="Shuffle day"
+						bind:value={shuffleDay}
+					/>
+					<button
+						type="button"
+						class="btn btn-ghost btn-sm"
+						aria-label="Next day"
+						on:click={() => (shuffleDay = shiftDayIso(shuffleDay, 1))}
+					>
+						→
+					</button>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm"
+						disabled={shuffleDay === today}
+						on:click={() => (shuffleDay = today)}
+					>
+						Today
+					</button>
+					{#if Number.isFinite(turnsOver)}
+						<span class="text-xs opacity-60">
+							turns over {new Date(turnsOver).toISOString().replace('T', ' ').slice(0, 16)} UTC
+						</span>
+					{/if}
+				</div>
+
+				{#if shuffles.length === 0}
+					<p class="text-sm opacity-60">
+						Nothing to order yet — a song is in a show's shuffle once it has a definition and
+						its file is still in <code class="font-mono">public/music/</code>.
+					</p>
+				{:else}
+					<div class="grid gap-4 md:grid-cols-2">
+						{#each shuffles as shuffle (shuffle.showId ?? 'none')}
+							<div class="rounded-box border border-base-300 p-4">
+								<div class="mb-3 flex flex-wrap items-baseline gap-2">
+									<h3 class="font-semibold">
+										{shuffle.showId === null
+											? 'No show'
+											: (showNameById.get(shuffle.showId) ?? `Unknown show ${shuffle.showId}`)}
+									</h3>
+									<span class="badge badge-neutral badge-sm">{shuffle.tracks.length}</span>
+									<!-- The seed itself, because the whole claim of this panel is that the
+										order is derived and not rolled: a reader can hash the id and the
+										timestamp and get this number back. -->
+									<span class="font-mono text-xs opacity-50">seed {shuffle.seed}</span>
+								</div>
+								<ol class="flex flex-col gap-1">
+									{#each shuffle.tracks as track, position (track.file)}
+										<li
+											class={classNames('flex items-baseline gap-2 rounded px-2 py-1', {
+												'bg-base-200': loadedFile === track.file && playing
+											})}
+										>
+											<span class="w-6 shrink-0 text-right font-mono text-xs opacity-50">
+												{position + 1}
+											</span>
+											<!-- The same one preview element the table above plays through, so
+												hearing a song from here is hearing the song, not a second copy
+												of it over the first. -->
+											<button
+												type="button"
+												class="link link-hover text-left text-sm"
+												on:click={() => togglePlay(track.file)}
+											>
+												{track.title}
+											</button>
+											<span class="ml-auto truncate font-mono text-xs opacity-40">
+												{track.file}
+											</span>
+										</li>
+									{/each}
+								</ol>
+							</div>
+						{/each}
 					</div>
 				{/if}
 			</div>
