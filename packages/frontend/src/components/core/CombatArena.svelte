@@ -854,7 +854,16 @@
 				     callout, whether it is still standing — not off a readout beside it. -->
 				<div class="flex w-full min-w-0 flex-col items-center gap-3">
 					{#key boardKey}
-						<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
+						<!-- The border goes on the canvas rather than on the host: the host is
+						     full-width and centres a canvas that is narrower than it, so a border
+						     there would be drawn round the room around the board instead of round
+						     the board. Pixi owns the canvas element, so it is reached as the
+						     wrapper's child. -->
+						<MugenBoard
+							{grids}
+							classes="[&>canvas]:border-4 [&>canvas]:border-yellow-400"
+							on:ready={(event) => onBoardReady(event.detail)}
+						/>
 					{/key}
 				</div>
 				{#if reportFailure}
