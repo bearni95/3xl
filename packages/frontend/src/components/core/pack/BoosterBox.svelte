@@ -255,10 +255,11 @@
 	$: showIcon = showIconName(showId);
 
 	// Taking the lid off, which is the one thing this box does rather than merely shows. It
-	// breaks into a grid of squares and the grid dissolves — the very squares a character's art
-	// arrives behind (VeilBlock's, on IdleSprite's clock), laid inside the tilted square so they
-	// are tilted and clipped with the top they are breaking up. Three states, in the order they
-	// happen: the top whole, the top crazed into squares, the squares gone.
+	// breaks into a grid of squares and the grid dissolves, from the middle of the top outwards
+	// — the very squares a character's art arrives behind (VeilBlock's, on IdleSprite's clock),
+	// laid inside the tilted square so they are tilted and clipped with the top they are breaking
+	// up. Three states, in the order they happen: the top whole, the top crazed into squares,
+	// the squares gone.
 	//
 	// `printed` is what turns the second into the third: the lid's own tone and the mark stamped
 	// on it go the moment the grid is all the way in — invisibly, the squares being opaque and
@@ -409,10 +410,13 @@
 					breaks up is the plane and not a rectangle drawn over it — the rows flatten as they
 					recede, which is a grid on a surface a sixth of a width deep seen from where this
 					box is seen. They are painted the lid's own tone, so the top crazes into squares
-					rather than being covered by something else, and the sweep runs from the front edge
-					backwards: VeilBlock goes up from its bottom row, and on a lid the bottom row is the
-					edge nearest the eye. What it looks like is its own; this says where it is, what it
-					is printed on, and when to leave. -->
+					rather than being covered by something else, and the sweep starts at the middle
+					square and travels out to the edges — a lid gives at the middle of itself, and a
+					sweep off one edge would only have said which edge (the loading veils keep that
+					one, running up the way a character stands). Measured in squares, so on this plane
+					the ring the sweep opens in is drawn as the ellipse the perspective makes of it.
+					What it looks like is its own; this says where it is, what it is printed on, which
+					way it goes and when to leave. -->
 				<VeilBlock
 					left="0px"
 					bottom="0px"
@@ -420,6 +424,7 @@
 					height="{lidWidth}px"
 					cell={lidWidth * LID_CELL}
 					fill={skin.top}
+					from="centre"
 					fading={lid === 'dissolving'}
 					on:shown={lidCrazed}
 				/>

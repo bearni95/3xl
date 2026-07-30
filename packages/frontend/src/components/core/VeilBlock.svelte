@@ -4,8 +4,9 @@
 
 	// One piece of a loading veil: a rectangle somewhere in the box, tiled with a grid of
 	// grey squares, that blurs itself into place square by square and, when whatever it
-	// stands in for has arrived, blurs away again — both times from the bottom row up, and
-	// both times with the columns broken up out of order, though not the same order twice.
+	// stands in for has arrived, blurs away again — both times out from wherever the sweep
+	// starts (see `from`), and both times with the columns broken up out of order, though not
+	// the same order twice.
 	//
 	// It is a shape and nothing else — it neither knows what is loading nor decides when to
 	// go. A surface says where it is and how big, and whoever is doing the loading says
@@ -30,8 +31,16 @@
 	// the shading is laid over, so a colour comes back through the greys rather than being
 	// replaced by them. White is the default for a surface with no colour to give.
 	export let fill: string = 'bg-white';
-	// Go. Once this turns true the squares blur away from the bottom up and do not come
-	// back; the caller stops drawing the piece once the sweep is over.
+	// Where the sweep starts, and so which way it runs. `bottom` is the loading veils' own:
+	// it begins along the bottom edge and runs up the block, the way a character stands, so a
+	// sprite is uncovered from the feet up. `centre` begins at the middle square and runs out
+	// from it, every square waiting on how far it is from the middle rather than on how high
+	// it is, so what opens is a ring rather than a line — which is what a lid coming off wants
+	// (see BoosterBox): a top breaks apart in the middle of itself and the break travels to
+	// its edges, where an edge that went first would only say which edge.
+	export let from: 'bottom' | 'centre' = 'bottom';
+	// Go. Once this turns true the squares blur away in that same order and do not come back;
+	// the caller stops drawing the piece once the sweep is over.
 	export let fading: boolean = false;
 
 	// Says when every square is in and the veil is at full strength. What put it up waits
@@ -40,11 +49,11 @@
 	// character whose art is already in the browser's cache would get.
 	const dispatch = createEventDispatcher<{ shown: void }>();
 
-	// How long one square takes to go, how far apart the bottom row and the top one start,
+	// How long one square takes to go, how far apart the first square and the last one start,
 	// and how late a column can be on top of that. The three add up to the whole sweep,
 	// which is IdleSprite's VEIL_FADE — it stops drawing this at that point, so a sweep that
-	// ran longer would be cut off mid-blur. The rows get the larger share of the waiting:
-	// the sweep is up the block, and the columns only break the line it goes up in.
+	// ran longer would be cut off mid-blur. The sweep gets the larger share of the waiting:
+	// it is what crosses the block, and the columns only break the line it crosses it in.
 	// `duration-500` below is VEIL_BLUR_MS said in CSS; keep the four numbers agreeing.
 	//
 	// A second for a sweep, half of it the blur of any one square. The proportions are what
@@ -150,23 +159,44 @@
 	$: columns = cell > 0 && boxWidth > 0 ? Math.ceil(boxWidth / cell) : 0;
 	$: rows = cell > 0 && boxHeight > 0 ? Math.ceil(boxHeight / cell) : 0;
 
-	// Every square with its grey and the two moments it moves at. Its row says most of both —
-	// the bottom row goes at once and each row above waits a little longer, the whole spread
-	// fixed at VEIL_STAGGER_MS however many rows there are, so a tall sheet and a short one
-	// are uncovered in the same time and every piece of the veil stays on the one clock — and
-	// its column adds the rest, which is what stops a row moving all at once as a band.
+	/** How far along the sweep a square is, 0 for the first to move and 1 for the last: its
+	 * distance from where the sweep starts, over the furthest any square in this grid is. Being
+	 * a share rather than a count of squares, the whole spread stays VEIL_STAGGER_MS however
+	 * many rows and columns there are — a tall sheet and a short one are uncovered in the same
+	 * time, and every piece of one veil stays on the one clock.
+	 *
+	 * From the bottom it is the row's own height up the block, the columns of a row all moving
+	 * together. From the centre it is the distance out from the middle square, across and up
+	 * together, so squares on a ring about the middle move together instead: measured in
+	 * squares and not in drawn pixels, which is what keeps a ring a ring on a surface the
+	 * caller has tilted (a lid draws it as the ellipse the perspective makes of it, as it
+	 * must).
+	 *
+	 * Which of the two is handed in rather than read off `from`: the statement below is what
+	 * has to re-run when it changes, and a reactive statement only follows what is named in it. */
+	function reach(row: number, column: number, origin: 'bottom' | 'centre'): number {
+		if (origin === 'bottom') return rows > 1 ? (rows - 1 - row) / (rows - 1) : 0;
+		const down = row - (rows - 1) / 2;
+		const across = column - (columns - 1) / 2;
+		const furthest = Math.hypot((rows - 1) / 2, (columns - 1) / 2);
+		return furthest > 0 ? Math.hypot(across, down) / furthest : 0;
+	}
+
+	// Every square with its grey and the two moments it moves at. Where it lies says most of
+	// both — the square the sweep starts at goes at once and each one further out waits a little
+	// longer (see `reach`) — and its column adds the rest, which is what stops a whole row or
+	// ring moving at once as one band.
 	//
-	// The row's share is the same coming and going: both sweeps run up the block, the way the
-	// character stands. The column's share is the one dealt twice, so the two sweeps break in
-	// different places while running the same way.
+	// The reach is the same coming and going: both sweeps run the same way out of the same
+	// place. The column's share is the one dealt twice, so the two sweeps break in different
+	// places while running the same way.
 	$: cells = Array.from({ length: columns * rows }, (_, index) => {
-		const rowsFromBottom = rows - 1 - Math.floor(index / columns);
-		const rowWait = rows > 1 ? (rowsFromBottom / (rows - 1)) * VEIL_STAGGER_MS : 0;
+		const reachWait = reach(Math.floor(index / columns), index % columns, from) * VEIL_STAGGER_MS;
 		const column = (index % columns) % COLUMN_POOL;
 		return {
 			shade: CELL_SHADES[index % CELL_SHADES.length],
-			waitIn: Math.round(rowWait + columnWaitsIn[column] * VEIL_COLUMN_MS),
-			waitOut: Math.round(rowWait + columnWaitsOut[column] * VEIL_COLUMN_MS)
+			waitIn: Math.round(reachWait + columnWaitsIn[column] * VEIL_COLUMN_MS),
+			waitOut: Math.round(reachWait + columnWaitsOut[column] * VEIL_COLUMN_MS)
 		};
 	});
 
