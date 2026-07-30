@@ -883,10 +883,18 @@ export class MugenBoard {
 		// The character's own render scale rides along: the definition is already loaded
 		// above for its bindings, and it is the same correction the cards and the statues
 		// read, so a set drawn small stands as tall here as it does on a card.
-		// The width cap keeps its default axis rule here, unlike the cards and the statues:
-		// an actor is pinned by its body axis to the mark on its cell (see below), so what
-		// must fit in half a cell is the furthest the cycle reaches from that axis — the
-		// sweep would let a long-limbed character hang over the cell beside it.
+		// The width cap measures the cycle's whole sweep, as it does everywhere else, and
+		// not the furthest one reach from the axis doubled — which is the rule this board
+		// used to ask for, on the grounds that a fighter is pinned to its cell's mark by
+		// that axis (see below) and so ought to keep every limb within half a cell of it.
+		// What that bought was a fighter that never crossed its neighbour's square; what
+		// it cost was the fighter being a different size from its own card. Frieza paid
+		// most of it — his idle sweeps a tail most of a body-width to one side, so he was
+		// held at half the size his card draws him, his own correction and all — and it
+		// was eating the InuYasha cast's correction too, Kagome's 1.4 among them. The
+		// crossing is the smaller thing: every fighter here already stands a third taller
+		// than its cell and over the row behind it ({@link CHAR_HEIGHT_RATIO}), so a limb
+		// reaching past the square is the overlap this board is drawn with throughout.
 		const box = this.cellWidth();
 		const fitScale = characterFitScale(
 			baseFrames,

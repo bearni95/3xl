@@ -37,40 +37,41 @@ describe('characterFitScale', () => {
 		expect(scale).toBeLessThan(BOARD_BOX.height / REFERENCE_SOURCE_HEIGHT);
 	});
 
-	it('holds a wide character inside half the box, axis to edge', () => {
-		// A frame whose body axis sits off-centre reaches further one way than the
-		// other; the far side is what has to fit.
+	it('holds a wide character inside the box', () => {
+		// A cycle wider than the box at the shared ratio is brought back until it fits
+		// across it — the whole cycle, edge to edge.
 		const wide = frame(300, 100, 0.2);
 		const scale = characterFitScale(wide, BOARD_BOX);
-		expect(0.8 * 300 * scale).toBeCloseTo(BOARD_BOX.width / 2, 10);
+		expect(300 * scale).toBeCloseTo(BOARD_BOX.width, 10);
 	});
 
-	it('holds a centred sweep inside the whole box, not half of it', () => {
-		// Frieza's shape: a body on the axis and a tail reaching a long way to one side. A
-		// surface that centres the sweep (a card, a statue) fits the sweep — the axis rule
-		// would fit only its longer half and throw away the rest of the box.
+	it('fits the sweep a cycle occupies, not its longer half doubled', () => {
+		// Frieza's shape: a body on the axis and a tail reaching a long way to one side.
+		// What has to fit is the rectangle he actually occupies; measuring the tail's reach
+		// off the axis and doubling it would fit a body-width of empty room beside him and
+		// draw him a head shorter for it.
 		const tailed = frame(140, 118, 0.7);
-		const sweep = characterFitScale(tailed, BOARD_BOX, 1, 'sweep');
-		expect(140 * sweep).toBeCloseTo(BOARD_BOX.width, 10);
-		expect(sweep).toBeGreaterThan(characterFitScale(tailed, BOARD_BOX, 1, 'axis'));
+		const scale = characterFitScale(tailed, BOARD_BOX);
+		expect(140 * scale).toBeCloseTo(BOARD_BOX.width, 10);
+		expect(scale).toBeGreaterThan(BOARD_BOX.width / (2 * 0.7 * 140));
 	});
 
 	it('reads the same sweep whichever way the art is mirrored', () => {
 		// A mirror swaps the axis's two reaches, and their sum is what the sweep is: the
 		// character comes out the same size facing either way.
-		const left = characterFitScale(frame(140, 118, 0.7), BOARD_BOX, 1, 'sweep');
-		const right = characterFitScale(frame(140, 118, 0.3), BOARD_BOX, 1, 'sweep');
+		const left = characterFitScale(frame(140, 118, 0.7), BOARD_BOX);
+		const right = characterFitScale(frame(140, 118, 0.3), BOARD_BOX);
 		expect(left).toBeCloseTo(right, 10);
 	});
 
-	it('pins the axis by default, for the surface that pins the axis', () => {
-		// The board stands a fighter on its cell's mark, so the default is the strict rule:
-		// asking for nothing must not quietly let a long-limbed character over the next cell.
-		const tailed = frame(140, 118, 0.7);
-		expect(characterFitScale(tailed, BOARD_BOX)).toBeCloseTo(
-			characterFitScale(tailed, BOARD_BOX, 1, 'axis'),
-			10
+	it('sizes a character by the room its cycle takes, not by where its axis sits in it', () => {
+		// The same silhouette, hung off its axis three different ways: a fighter pinned to
+		// its cell's mark, a card centring the art, anything else — none of them may come
+		// out a different size for it, since it is the same character on all of them.
+		const sizes = [0.2, 0.5, 0.7].map((anchorX) =>
+			characterFitScale(frame(140, 118, anchorX), BOARD_BOX)
 		);
+		for (const size of sizes) expect(size).toBeCloseTo(sizes[0], 10);
 	});
 
 	it('measures the whole cycle, not just its first frame', () => {

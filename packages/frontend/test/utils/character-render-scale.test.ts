@@ -54,7 +54,7 @@ const STATUE_SQUARE = 300;
 function statueHeight(id: string): number {
 	const frames = idleFrames(id);
 	const room = { width: STATUE_SQUARE, height: (STATUE_SQUARE * 5) / 6 };
-	const scale = characterFitScale(frames, room, readRenderScale(definitionOf(id)), 'sweep');
+	const scale = characterFitScale(frames, room, readRenderScale(definitionOf(id)));
 	return Math.max(...frames.map((frame) => frame.height)) * scale;
 }
 
@@ -170,14 +170,21 @@ describe('authored render scales', () => {
 	});
 
 	it('draws Frieza at his full height rather than fitting his tail to half the box', () => {
-		// The scale only reaches him because the statue caps his width on the sweep his cycle
-		// actually occupies. Under the board's axis rule his tail reaches most of a body-width
-		// off his axis, which would hold him below Trunks however high the scale went — so this
-		// is the pair of decisions, not either one alone.
+		// The scale only reaches him because the width cap measures the sweep his cycle
+		// actually occupies. Measured off his axis instead — his tail reaches most of a
+		// body-width to one side, and doubling that reach is the rule every surface here
+		// used to apply — he stays below Trunks however high the scale is taken, so this is
+		// the pair of decisions and not either one alone.
 		const frames = idleFrames('frieza');
 		const room = { width: STATUE_SQUARE, height: (STATUE_SQUARE * 5) / 6 };
 		const height = Math.max(...frames.map((frame) => frame.height));
-		const axisBound = characterFitScale(frames, room, RENDER_SCALE_MAX, 'axis') * height;
+		const axisWidth =
+			2 * Math.max(...frames.map((frame) => Math.max(frame.anchorX, 1 - frame.anchorX) * frame.width));
+		const axisBound =
+			Math.min(
+				characterFitScale(frames, room, RENDER_SCALE_MAX),
+				room.width / axisWidth
+			) * height;
 		expect(axisBound).toBeLessThan(statueHeight('eb-trunks'));
 	});
 });
