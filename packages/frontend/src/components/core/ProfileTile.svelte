@@ -65,10 +65,11 @@
 		/>
 	</button>
 
-	<!-- The reading, on the same three rows a statue's panel carries: the name, then the
-		level, then the bar it is measured on. Read from the left, since it is a column
-		beside the picture and no longer a caption under it. Too long a name is cut rather
-		than wrapped — the row keeps one height whatever the account is called. -->
+	<!-- The reading, on three rows: the name, then the level, then the bar — which carries the
+		experience figure inside it rather than on a fourth row above it. Read from the left,
+		since it is a column beside the picture and no longer a caption under it. Too long a
+		name is cut rather than wrapped — the row keeps one height whatever the account is
+		called. -->
 	<div class="flex min-w-0 flex-col gap-1">
 		<span
 			class={classNames('truncate text-sm font-semibold', {
@@ -79,27 +80,46 @@
 		<span class="text-xs font-semibold">
 			{$_('profile.levelBadge', { values: { level: progress.level } })}
 		</span>
-		<!-- The same cumulative pair the full card prints: total earned, then the total the
-			next level begins at. -->
-		<span class="truncate font-mono text-[0.65rem] text-base-content/70">
-			{#if progress.atMax}
-				{$_('profile.expMax', { values: { exp: progress.exp.toLocaleString() } })}
-			{:else}
-				{$_('profile.expProgress', {
-					values: {
-						total: progress.exp.toLocaleString(),
-						next: (progress.nextLevelExp ?? 0).toLocaleString()
-					}
-				})}
-			{/if}
-		</span>
-		<!-- As on the full card: the bar spans this level alone, not the totals above it. -->
-		<progress
-			class="progress progress-primary w-full"
-			value={expPercent}
-			max="100"
-			aria-label={$_('profile.exp')}
-		></progress>
+		<!-- The bar and the reading of it are one thing: the same cumulative pair the full card
+			prints — total earned, then the total the next level begins at — inside the bar
+			rather than on a line of its own above it. Two rows saying one number is a row more
+			than the reading is worth in a column this narrow, and a bar with the figure across
+			it says how far along it is and how far that is at once.
+
+			The height is the label's, not a number picked to look like room for it: the reading
+			stands in flow with its own padding and the bar is absolutely stretched behind it
+			(`inset-0`, with `h-full` because `.progress` brings a height of its own that an
+			over-constrained top/bottom pair would otherwise lose to). So whatever the label's
+			type comes to, the bar is exactly that much plus the padding, and the label is
+			centred in it by construction — nothing to keep in step by hand if the type ever
+			changes.
+
+			As on the full card, the bar spans this level alone, not the totals written on it. -->
+		<div class="relative w-full">
+			<progress
+				class="progress progress-primary absolute inset-0 h-full w-full"
+				value={expPercent}
+				max="100"
+				aria-label={$_('profile.exp')}
+			></progress>
+			<!-- Over the bar, so it is painted after it — and centred across the width as well,
+				since a figure about the whole bar reads from the middle of it rather than from
+				the end the fill happens to have reached. -->
+			<span
+				class="relative block truncate px-1 py-0.5 text-center font-mono text-[0.65rem] text-base-content/70"
+			>
+				{#if progress.atMax}
+					{$_('profile.expMax', { values: { exp: progress.exp.toLocaleString() } })}
+				{:else}
+					{$_('profile.expProgress', {
+						values: {
+							total: progress.exp.toLocaleString(),
+							next: (progress.nextLevelExp ?? 0).toLocaleString()
+						}
+					})}
+				{/if}
+			</span>
+		</div>
 	</div>
 
 	<!-- The account's ways out of the panel, stacked in the last third: the player's own
