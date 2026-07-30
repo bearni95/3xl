@@ -25,7 +25,12 @@
 		type FighterSeed,
 		type LineupFighter
 	} from '$services/combat.controller';
-	import type { CombatReport, CombatReward, TerritoryResult } from '$types/combat.type';
+	import type {
+		CombatOutcome,
+		CombatReport,
+		CombatReward,
+		TerritoryResult
+	} from '$types/combat.type';
 	import type { BattleBoardSnapshot } from '$types/battle.type';
 	import { battleService } from '$services/battle.service';
 	import {
@@ -630,10 +635,9 @@
 		);
 	}
 
-	// A decided fight is over: report it, then leave. There is nothing left to play on
-	// the board, so the arena closes itself rather than putting a dialog over it. The
-	// close waits on the report so the host still gets the `territory` event — that is
-	// what redraws the town.
+	// A decided fight is over: report it, and then stand still. The arena does not walk
+	// itself out — the board stays up with the result read out under it, and it is left
+	// when the player says so (see `reward` and the Close button).
 	async function reportOutcome(
 		current: CombatState | null,
 		ctrl: CombatController | null
@@ -648,17 +652,32 @@
 	let reportFailure: string | null = null;
 	// True while a report is in flight, so the fight cannot be reported twice over.
 	let reporting = false;
+	// What the server paid for the finished fight, once it has taken the report: the
+	// experience it awarded and the team it counted to arrive at it. Null until then —
+	// which is what the results block reads to know whether the number is in yet.
+	//
+	// It is the *server's* account of the fight, not this tab's, which is the only one
+	// worth showing: the amount is decided from the player's stored experience by the
+	// same RPC that banks it, so a figure worked out here would be a guess at what was
+	// actually paid.
+	let reward: CombatReward | null = null;
 
 	/**
-	 * Hand the finished fight to the server, and leave once it has been taken.
+	 * Hand the finished fight to the server, and stay where we are once it has been taken.
 	 *
 	 * A refusal is not a shrug. Reporting is what *ends* the battle — the row is deleted
 	 * inside the same RPC that pays the award — so a report the server turns down leaves
 	 * the player in this fight, and closing on it would put them straight back into the
 	 * very same board, to win it again and be refused again, with nothing on screen ever
 	 * saying why. So the arena holds, shows what the server said, and offers the report
-	 * again: the fight is only walked away from once it has actually been settled, or
-	 * once the player closes it themselves.
+	 * again.
+	 *
+	 * A report the server *takes* does not close the arena either. The fight is over and
+	 * there is something to say about it — how it went and what it earned — so the board
+	 * stays up with the result under it and the player leaves when they have read it. An
+	 * arena that walked itself out the moment the last fighter fell was throwing that
+	 * away: the one screen that could say what the fight was worth appeared for no time
+	 * at all.
 	 */
 	async function sendReport(ctrl: CombatController): Promise<void> {
 		const report = ctrl.report();
@@ -672,7 +691,7 @@
 			// The amount, which town this was, and whether it changed hands are all the
 			// server's to decide — read off the open battle it has been holding since
 			// the fight started. This only states how the fight went.
-			const reward: CombatReward | null = await authService.reportCombat({
+			const paid: CombatReward | null = await authService.reportCombat({
 				...report,
 				fighters: inTeamOrder(report.fighters)
 			});
@@ -681,7 +700,9 @@
 			battleService.clear();
 			// Let the host redraw the town: a capture rewrites its team and its
 			// turnover, and even a banked win moves the progress it shows.
-			if (reward?.territory) dispatch('territory', reward.territory);
+			if (paid?.territory) dispatch('territory', paid.territory);
+			// What the fight earned, for the block under the board to read out.
+			reward = paid;
 		} catch (error) {
 			// The battle is left alone: the server still has it open and the player is
 			// still in it, which is exactly what the message has to be read against. The
@@ -693,7 +714,6 @@
 		} finally {
 			reporting = false;
 		}
-		close();
 	}
 
 	/** Hand the same finished fight over again, after a refusal. */
@@ -701,6 +721,21 @@
 		if (!controller || reporting) return;
 		void sendReport(controller);
 	}
+
+	// How a finished fight is headed, and in whose colour. The three outcomes are the
+	// player's — a fight is always read from their side — so a win is the info colour the
+	// player's own line holds the board in and a loss is the rivals' error colour, the
+	// same two the score above the board is counted in.
+	const OUTCOME_LABELS: Record<CombatOutcome, string> = {
+		win: 'You won the fight',
+		lose: 'You lost the fight',
+		draw: 'The fight was a draw'
+	};
+	const OUTCOME_CLASSES: Record<CombatOutcome, string> = {
+		win: 'text-info',
+		lose: 'text-error',
+		draw: 'opacity-70'
+	};
 
 	// What the server said, as it said it. Supabase hands back a plain object rather
 	// than an Error, so both shapes are read before falling back to a line of our own.
@@ -750,10 +785,13 @@
 		<!-- The score in the top-left corner and the way out of the fight in the
 		     top-right, and nothing else above the board. -->
 		<div class="flex w-full items-center gap-2">
-			{#if state}
+			{#if state && !state.outcome}
 				<!-- Encounters won, yours first: the fight is three duels and this is what
 				     each side has taken of them. Each count is drawn in its own side's
-				     colour, the same one that side's fighters hold the board in. -->
+				     colour, the same one that side's fighters hold the board in.
+				     While the fight is *running*, that is: a decided one reads its score out
+				     of the results under the board, and the same two numbers standing at both
+				     ends of one screen would be one score too many. -->
 				<p class="font-mono text-lg font-bold tabular-nums" aria-label="Encounters won">
 					<span class="text-info">{state.wins.info}</span>
 					<span class="opacity-40">–</span>
@@ -761,9 +799,13 @@
 				</p>
 			{/if}
 			{#if closable}
+				<!-- Held shut while the finished fight is on its way to the server, for the
+				     reason the Close button below is: the report is what ends the battle, so
+				     slipping out before it lands walks away from a fight still open. -->
 				<button
 					type="button"
 					class="btn btn-circle btn-ghost btn-sm ml-auto"
+					disabled={reporting}
 					on:click={close}
 					aria-label="Close"
 				>
@@ -853,6 +895,59 @@
 							Report the fight again
 						{/if}
 					</button>
+				{:else if state?.outcome}
+					<!-- The fight is over and the board stands exactly as it finished — every
+					     fighter where the last blow left it, the ground each side took still held.
+					     Nothing is dismissed for the player: the result is read out under the
+					     board it happened on, and the arena is left when they say so. Reporting is
+					     what ends the battle server-side, so Close waits on it — leaving first
+					     would walk out of a fight the server still has open. -->
+					<div class="flex w-full max-w-xs flex-col items-center gap-3">
+						<p class={classNames('text-lg font-bold', OUTCOME_CLASSES[state.outcome])}>
+							{OUTCOME_LABELS[state.outcome]}
+						</p>
+						<dl class="flex w-full flex-col gap-1 text-sm">
+							<!-- The fight is three duels and this is how they went: the same count the
+							     board has been keeping all along, standing still now. -->
+							<div class="flex items-baseline justify-between gap-4">
+								<dt class="opacity-70">Encounters won</dt>
+								<dd class="font-mono font-bold tabular-nums">
+									<span class="text-info">{state.wins.info}</span>
+									<span class="opacity-40">–</span>
+									<span class="text-error">{state.wins.error}</span>
+								</dd>
+							</div>
+							{#if reward}
+								<!-- Both figures are the server's own count of the team it paid for, not
+								     this tab's: the award is a share of the level's span decided from how
+								     much of the team came through, so the count and the number it
+								     produced are read out together. -->
+								<div class="flex items-baseline justify-between gap-4">
+									<dt class="opacity-70">Fighters standing</dt>
+									<dd class="font-mono font-bold tabular-nums">
+										{reward.survivors} / {reward.fielded}
+									</dd>
+								</div>
+								<div class="flex items-baseline justify-between gap-4">
+									<dt class="opacity-70">Experience gained</dt>
+									<dd class="font-mono font-bold tabular-nums text-success">+{reward.awarded}</dd>
+								</div>
+							{/if}
+						</dl>
+						<button
+							type="button"
+							class="btn btn-primary btn-wide"
+							disabled={reporting}
+							on:click={close}
+						>
+							{#if reporting}
+								<span class="loading loading-spinner loading-xs"></span>
+								Reporting the fight
+							{:else}
+								Close
+							{/if}
+						</button>
+					</div>
 				{:else if state}
 					{#if saveFailure}
 						<!-- The turn was played out and the server would not take it. The fight
