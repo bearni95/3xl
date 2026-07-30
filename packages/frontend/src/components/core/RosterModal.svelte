@@ -797,15 +797,60 @@
 			<div
 				class="grid min-h-0 min-w-0 flex-1 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] gap-3 lg:grid-cols-7 lg:grid-rows-none"
 			>
-				<!-- The filters and the line-up, three across: the filter card over all three of
-				     those columns, and the line-up as one row of three under it, a column to a
-				     slot. Every control ANDs with the others. Clear stands at the head of the
-				     card: it is what undoes everything below it, and a list of shows long enough
-				     to run on had pushed it out of sight at the very moment there was most to
-				     undo. -->
+				<!-- The line-up and the filters, three across: the line-up first, one row of
+				     three with a column to a slot, and the filter card under it over all three of
+				     those columns. The team is what this side of the view is for and the filters
+				     are what the other side is read with, so the three slots meet the eye at the
+				     top of the column and the card that narrows the roster sits below them, next
+				     to the cards it narrows. -->
 				<div
 					class="grid max-h-[45vh] min-h-0 grid-cols-3 content-start gap-3 overflow-y-auto lg:col-span-3 lg:max-h-none"
 				>
+					<!-- The line-up at the head of the column, a row of three with a cell per slot:
+					     the card standing in it or the empty slot itself. A slot is a place on the team
+					     whether or not there is a card in it, so the empty ones are drawn too —
+					     three cells that say how big a team is and how much of one the player has,
+					     which a row of only the cards fielded could never say. Every filled cell is
+					     bordered in primary and carries a minus button, and taking a card back off
+					     the team is the one thing this grid does. -->
+					{#each partyCells as { slot, spawn, statue } (slot)}
+						{#if spawn && statue}
+							<div class="relative flex flex-col gap-2 rounded-box border-2 border-primary p-1.5">
+								{#if !recycleMode}
+									<button
+										type="button"
+										class="btn btn-circle btn-primary btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow"
+										disabled={$teamSaving}
+										title="Remove {statue.label} from your team"
+										aria-label="Remove {statue.label} from your team"
+										on:click={() => handleTeamButton(spawn)}
+									>
+										−
+									</button>
+								{/if}
+								<CharacterStatue
+									label={statue.label}
+									basePath={statue.basePath}
+									color={statue.color}
+									locationName={statue.locationName}
+									spawnedAt={statue.spawnedAt}
+									showId={statue.showId}
+									alwaysReveal
+								/>
+							</div>
+						{:else}
+							<div
+								class="flex items-center justify-center rounded-box border-2 border-dashed border-base-content/20 p-1.5 text-center text-xs opacity-50"
+							>
+								Empty slot
+							</div>
+						{/if}
+					{/each}
+
+					<!-- The filter card, under the line-up and over all three columns. Every control
+					     in it ANDs with the others. Clear stands at the head of the card: it is what
+					     undoes everything below it, and a list of shows long enough to run on had
+					     pushed it out of sight at the very moment there was most to undo. -->
 					<div class="col-span-3 flex flex-col gap-3 rounded-box bg-base-100 p-3">
 						<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
 							Clear
@@ -884,47 +929,6 @@
 							{/if}
 						</div>
 					</div>
-
-					<!-- The line-up under the filter card, a row of three with a cell per slot: the
-					     card standing in it or the empty slot itself. A slot is a place on the team
-					     whether or not there is a card in it, so the empty ones are drawn too —
-					     three cells that say how big a team is and how much of one the player has,
-					     which a row of only the cards fielded could never say. Every filled cell is
-					     bordered in primary and carries a minus button, and taking a card back off
-					     the team is the one thing this grid does. -->
-					{#each partyCells as { slot, spawn, statue } (slot)}
-						{#if spawn && statue}
-							<div class="relative flex flex-col gap-2 rounded-box border-2 border-primary p-1.5">
-								{#if !recycleMode}
-									<button
-										type="button"
-										class="btn btn-circle btn-primary btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow"
-										disabled={$teamSaving}
-										title="Remove {statue.label} from your team"
-										aria-label="Remove {statue.label} from your team"
-										on:click={() => handleTeamButton(spawn)}
-									>
-										−
-									</button>
-								{/if}
-								<CharacterStatue
-									label={statue.label}
-									basePath={statue.basePath}
-									color={statue.color}
-									locationName={statue.locationName}
-									spawnedAt={statue.spawnedAt}
-									showId={statue.showId}
-									alwaysReveal
-								/>
-							</div>
-						{:else}
-							<div
-								class="flex items-center justify-center rounded-box border-2 border-dashed border-base-content/20 p-1.5 text-center text-xs opacity-50"
-							>
-								Empty slot
-							</div>
-						{/if}
-					{/each}
 
 				</div>
 
