@@ -2,10 +2,11 @@
 	import classNames from 'classnames';
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
-	import type {
-		Achievement,
-		AchievementsCollection,
-		AchievementStatus
+	import {
+		ACHIEVEMENT_NAME_MAX_LENGTH,
+		type Achievement,
+		type AchievementsCollection,
+		type AchievementStatus
 	} from '$types/achievement.type';
 	import GameIcon from '$components/core/GameIcon.svelte';
 	import AchievementEditor from '$components/core/AchievementEditor.svelte';
@@ -30,6 +31,12 @@
 	let saving = false;
 	let deleting = false;
 	let editorError = '';
+
+	// Which card's Duplicate is in flight, so only that button spins.
+	let duplicatingId: string | null = null;
+	// A duplicate is written before it is edited, so a failure belongs to the card
+	// that was clicked rather than to the editor, which is not open yet.
+	let duplicateError = '';
 
 	// Per-id Supabase status, published by the sync bar; badges each card.
 	let statusById = new Map<string, AchievementStatus>();
@@ -106,12 +113,73 @@
 
 	function edit(id: string): void {
 		editorError = '';
+		duplicateError = '';
 		editing = id;
 	}
 
 	function createNew(): void {
 		editorError = '';
+		duplicateError = '';
 		editing = NEW;
+	}
+
+	/**
+	 * A free id for a copy of `id`: `<id>-copy`, then `-copy-2`, `-copy-3`… A save
+	 * is an upsert by id, so reusing one would overwrite the badge it names.
+	 */
+	function copyId(id: string): string {
+		const taken = new Set(achievements.map((achievement) => achievement.id));
+		let candidate = `${id}-copy`;
+		for (let n = 2; taken.has(candidate); n += 1) candidate = `${id}-copy-${n}`;
+		return candidate;
+	}
+
+	/**
+	 * The copy's name: the original with a suffix, or the original untouched when
+	 * that would run past the limit. Not truncated — a name may template `{vars}`
+	 * between braces, and cutting one in half would leave a stray brace behind.
+	 */
+	function copyName(name: string): string {
+		const suffixed = `${name} (copy)`;
+		return suffixed.length <= ACHIEVEMENT_NAME_MAX_LENGTH ? suffixed : name;
+	}
+
+	/**
+	 * Duplicate a badge: write the copy into the collection (a real entry on disk,
+	 * under an id of its own) and open the editor on it, so what is being edited is
+	 * the duplicate and never the original.
+	 */
+	async function duplicate(achievement: Achievement): Promise<void> {
+		const copy: Achievement = {
+			...achievement,
+			id: copyId(achievement.id),
+			name: copyName(achievement.name),
+			// The rows are the copy's own from the first save — editing one must not
+			// reach back into the badge it was copied from.
+			...(achievement.variables
+				? { variables: achievement.variables.map((variable) => ({ ...variable })) }
+				: {})
+		};
+		duplicatingId = achievement.id;
+		duplicateError = '';
+		editorError = '';
+		try {
+			const res = await fetch(`${API_BASE}/api/achievements`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(copy)
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({ message: res.statusText }));
+				throw new Error(body.message ?? 'Duplicate failed');
+			}
+			achievements = ((await res.json()) as AchievementsCollection).achievements;
+			editing = copy.id;
+		} catch (error) {
+			duplicateError = error instanceof Error ? error.message : String(error);
+		} finally {
+			duplicatingId = null;
+		}
 	}
 
 	$: selected = typeof editing === 'string'
@@ -180,36 +248,59 @@
 						{#each achievements as achievement (achievement.id)}
 							{@const status = statusById.get(achievement.id)}
 							{@const holders = holdersById.get(achievement.id) ?? 0}
-							<button
-								type="button"
+							<div
 								class={classNames(
-									'flex items-start gap-3 rounded-box border p-3 text-left transition',
+									'flex flex-col rounded-box border transition',
 									editing === achievement.id
 										? 'border-primary bg-primary/5'
 										: 'border-base-300 hover:bg-base-200'
 								)}
-								on:click={() => edit(achievement.id)}
 							>
-								<GameIcon name={achievement.icon} size="size-14" />
-								<span class="flex min-w-0 flex-1 flex-col gap-1">
-									<span class="flex items-center gap-2">
-										<span class="truncate font-semibold">{achievement.name}</span>
-										{#if status}
-											<span class={classNames('badge badge-xs', statusBadges[status])}>
-												{statusLabels[status]}
-											</span>
-										{/if}
+								<button
+									type="button"
+									class="flex flex-1 items-start gap-3 p-3 text-left"
+									on:click={() => edit(achievement.id)}
+								>
+									<GameIcon name={achievement.icon} size="size-14" />
+									<span class="flex min-w-0 flex-1 flex-col gap-1">
+										<span class="flex items-center gap-2">
+											<span class="truncate font-semibold">{achievement.name}</span>
+											{#if status}
+												<span class={classNames('badge badge-xs', statusBadges[status])}>
+													{statusLabels[status]}
+												</span>
+											{/if}
+										</span>
+										<span class="line-clamp-2 text-xs opacity-70">{achievement.description}</span>
+										<span class="flex items-center gap-2 font-mono text-[10px] opacity-50">
+											<span class="truncate">{achievement.id}</span>
+											{#if holders > 0}
+												<span>· {holders} held</span>
+											{/if}
+										</span>
 									</span>
-									<span class="line-clamp-2 text-xs opacity-70">{achievement.description}</span>
-									<span class="flex items-center gap-2 font-mono text-[10px] opacity-50">
-										<span class="truncate">{achievement.id}</span>
-										{#if holders > 0}
-											<span>· {holders} held</span>
+								</button>
+								<div class="px-3 pb-3">
+									<button
+										type="button"
+										class="btn btn-ghost btn-xs"
+										disabled={duplicatingId !== null}
+										on:click={() => duplicate(achievement)}
+									>
+										{#if duplicatingId === achievement.id}
+											<span class="loading loading-spinner loading-xs"></span>
 										{/if}
-									</span>
-								</span>
-							</button>
+										Duplicate
+									</button>
+								</div>
+							</div>
 						{/each}
+					</div>
+				{/if}
+
+				{#if duplicateError}
+					<div class="alert alert-error">
+						<span>{duplicateError}</span>
 					</div>
 				{/if}
 			</div>
