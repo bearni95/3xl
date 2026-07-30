@@ -23,6 +23,11 @@ import type { CombatColor } from '$types/character-definition.type';
  * first of those holding the most charges). Rivals seeded on a colour with no head
  * start therefore open the game by charging, which is the quiet backdrop most of
  * these cases need; rivals seeded yellow open the game shooting.
+ *
+ * The one thing that is *not* a quiet backdrop is a colour carrying red: a charge is
+ * banked before the volley, so a fighter told to load fires the free shot its colour
+ * owes it out of that very charge, on turn one. A case that wants nothing happening
+ * around it keeps red off both sides.
  */
 
 function seed(
@@ -54,12 +59,16 @@ async function playTurn(controller: CombatController): Promise<void> {
 /**
  * Play the opening turn with every player fighter loading.
  *
- * No colour opens armed any more — a free charge is a gift like any other and has to
- * be given on a turn spent elsewhere — so **nobody can fire on turn one**, and any
- * test about shooting starts by getting past it. A fighter that spends turn one
- * charging takes its charge from the order, not from its colour, so this leaves every
- * side holding exactly one charge with every gift still in hand (the rivals load too:
- * with nothing opposite to fear they always do).
+ * No colour opens armed — a free charge is a gift like any other and has to be given on
+ * a turn spent elsewhere — so **nobody can fire an ordered shot on turn one**, and any
+ * test about shooting starts by getting past it. A fighter that spends turn one charging
+ * takes its charge from the order, not from its colour, so this leaves every side holding
+ * exactly one charge with every gift still in hand (the rivals load too: with nothing
+ * opposite to fear they always do).
+ *
+ * Every gift, that is, except a shot: a fighter carrying red fires one out of the charge
+ * it just banked, so cases that open this way and want their gifts untouched keep red off
+ * the board.
  */
 async function openWithCharges(controller: CombatController): Promise<void> {
 	for (const fighter of get(controller).fighters) {
@@ -207,18 +216,20 @@ describe('the stand-off', () => {
 	describe('what a turn does', () => {
 		it('takes down a fighter caught reloading', async () => {
 			const controller = new CombatController([
-				// Red, whose gift is a shot: a rival whose gift were a charge would simply
-				// re-arm for free the turn it fired, and never be caught empty.
+				// Red, whose gift is a shot: it goes off on the turn the rival loads, and
+				// leaves it empty again — which is what puts it in front of the bullet below.
 				seed('r0', 'error', 'red'),
-				seed('p0', 'info', 'yellow')
+				// Blue, so the free shot of that first turn is turned aside and the fight
+				// gets as far as a second one.
+				seed('p0', 'info', 'blue')
 			]);
 			await openWithCharges(controller);
-			// Turn two the rival fires and the cover holds, which leaves it empty...
-			controller.setAction('p0', 'defend');
-			await playTurn(controller);
+			// Turn one the rival loaded and spent the charge on its free shot, which blue's
+			// free guard turned aside...
 			expect(fighterOf(get(controller), 'p0').down).toBe(false);
-			// ...so turn three it has to load again, and loading is the one thing that
-			// leaves a fighter open.
+			expect(fighterOf(get(controller), 'p0').spent).toEqual(['defend']);
+			// ...so turn two it has to load again, and loading is the one thing that leaves
+			// a fighter open.
 			controller.setAction('p0', 'shoot');
 			await playTurn(controller);
 			const state = get(controller);
@@ -308,7 +319,7 @@ describe('the stand-off', () => {
 		it('marks a gift spent the moment it is taken, and leaves the rest in hand', async () => {
 			const log = boardLog();
 			const controller = new CombatController([
-				seed('r0', 'error', 'red'),
+				seed('r0', 'error', 'yellow'),
 				seed('p0', 'info', 'green') // the free guard and the free charge
 			]);
 			controller.attachBoard(fakeBoard(log));
@@ -321,13 +332,14 @@ describe('the stand-off', () => {
 				{ icon: ORDER_ICONS.charge, spent: false }
 			]);
 
-			// A turn spent firing takes both: the guard turns the rival's bullet aside and
-			// the charge pays back what the shot spent.
+			// A turn spent firing takes the guard, which turns the rival's answering bullet
+			// aside — and leaves the charge exactly where it was: the fighter was full when
+			// the charges were banked, so there was nowhere to put it.
 			controller.setAction('p0', 'shoot');
 			await playTurn(controller);
 			expect(badgeOf(log, 'p0')?.traits).toEqual([
 				{ icon: ORDER_ICONS.defend, spent: true },
-				{ icon: ORDER_ICONS.charge, spent: true }
+				{ icon: ORDER_ICONS.charge, spent: false }
 			]);
 		});
 	});
@@ -471,7 +483,9 @@ describe('the stand-off', () => {
 
 		it('never comes on the order it *is*', async () => {
 			const controller = new CombatController([
-				seed('r0', 'error', 'red'),
+				// Yellow, so nothing is fired on the opening turn and blue's guard is still
+				// in hand for the turn under test.
+				seed('r0', 'error', 'yellow'),
 				seed('p0', 'info', 'blue')
 			]);
 			await openWithCharges(controller);
@@ -523,22 +537,27 @@ describe('the stand-off', () => {
 			expect(fighterOf(state, 'p1').spent).toEqual([]);
 		});
 
-		it('brings both of a compound in the same turn', async () => {
+		it('brings both of a compound in the same turn, the charge first', async () => {
 			const controller = new CombatController([
+				// Red, so it loads on turn one and has no guard of its own to hide behind.
 				seed('r0', 'error', 'red'),
-				seed('p0', 'info', 'green') // green = blue + yellow: a free guard and a free charge
+				seed('p0', 'info', 'orange') // orange = red + yellow: a free shot and a free charge
 			]);
-			await openWithCharges(controller);
-			// Neither gift is the order given, so the turn it fires is the turn it gets
-			// both: the guard turns the answering bullet aside and the charge pays back
-			// what the shot spent.
-			controller.setAction('p0', 'shoot');
+			// Told to do nothing but cover, on the opening turn, with nothing banked.
+			controller.setAction('p0', 'defend');
 			await playTurn(controller);
 			const state = get(controller);
-			expect(fighterOf(state, 'r0').down).toBe(true);
+			// Neither gift is the order given, so both come — and in sequence: the charge is
+			// banked first, and the free shot is fired out of that very charge, which is why
+			// the fighter ends the turn empty rather than loaded.
+			expect(fighterOf(state, 'p0').spent).toEqual(['charge', 'shoot']);
+			expect(fighterOf(state, 'p0').charges).toBe(0);
+			expect(state.log.some((line) => line.includes('free charge'))).toBe(true);
+			expect(state.log.some((line) => line.includes('free shot'))).toBe(true);
+			// The cover it was actually ordered to give held, and the rival is down to a
+			// bullet nobody ordered.
 			expect(fighterOf(state, 'p0').down).toBe(false);
-			expect(fighterOf(state, 'p0').charges).toBe(1);
-			expect(fighterOf(state, 'p0').spent).toEqual(['defend', 'charge']);
+			expect(fighterOf(state, 'r0').down).toBe(true);
 		});
 
 		it("fires red's shot beside the order the fighter was given", async () => {
@@ -548,22 +567,67 @@ describe('the stand-off', () => {
 				seed('p0', 'info', 'red')
 			]);
 			await openWithCharges(controller);
-			controller.setAction('p0', 'charge');
-			await playTurn(controller);
 			const state = get(controller);
-			// It was never ordered to shoot, and the rival went down all the same.
+			// Neither was ordered to shoot on that opening turn — both were ordered to load —
+			// and both are down: the charge is banked before the volley, so each fired the
+			// shot its colour owed it out of the charge it had just banked.
 			expect(fighterOf(state, 'p0').action).toBe('charge');
+			expect(fighterOf(state, 'p0').down).toBe(true);
 			expect(fighterOf(state, 'r0').down).toBe(true);
 			expect(fighterOf(state, 'p0').spent).toEqual(['shoot']);
-			expect(state.log.some((line) => line.includes('free shot'))).toBe(true);
+			expect(fighterOf(state, 'r0').spent).toEqual(['shoot']);
+			expect(state.log.filter((line) => line.includes('free shot'))).toHaveLength(2);
+			expect(state.outcome).toBe('draw');
+		});
+
+		it('keeps a free charge back from a fighter that is about to fire', async () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'yellow'),
+				seed('p0', 'info', 'yellow')
+			]);
+			await openWithCharges(controller);
+			controller.setAction('p0', 'shoot');
+			await playTurn(controller);
+			const state = get(controller);
+			// Charges are banked before the shooting, and a fighter about to fire is full at
+			// that moment: there is nowhere to put a free charge, so it is not taken and the
+			// shot empties the fighter as any shot would. The gift keeps for a turn with room.
+			expect(fighterOf(state, 'p0').charges).toBe(0);
+			expect(fighterOf(state, 'p0').spent).toEqual([]);
 		});
 
 		it("never doubles a fighter's own shot", async () => {
-			const controller = new CombatController([
-				seed('r0', 'error', 'blue'),
-				seed('p0', 'info', 'red')
-			]);
-			await openWithCharges(controller);
+			// A charge in hand *and* red's shot still owed is a state a turn cannot arrive at
+			// — the turn a red fighter loads, the free shot goes out of the charge it banked —
+			// so the fight is resumed into it, exactly as a battle picked up from the server is.
+			const controller = new CombatController(
+				[seed('r0', 'error', 'blue'), seed('p0', 'info', 'red')],
+				{
+					turn: 4,
+					fighters: [
+						{
+							side: 'error',
+							slot: 0,
+							spawnId: 'r0',
+							charges: 0,
+							down: false,
+							spent: [],
+							action: 'charge',
+							cell: RIVAL_CELLS[0]
+						},
+						{
+							side: 'info',
+							slot: 0,
+							spawnId: 'p0',
+							charges: 1,
+							down: false,
+							spent: [],
+							action: null,
+							cell: PLAYER_CELLS[0]
+						}
+					]
+				}
+			);
 			controller.setAction('p0', 'shoot');
 			await playTurn(controller);
 			const state = get(controller);
@@ -571,6 +635,76 @@ describe('the stand-off', () => {
 			// still there to be had on some later turn.
 			expect(fighterOf(state, 'p0').spent).toEqual([]);
 			expect(state.log.some((line) => line.includes('free shot'))).toBe(false);
+			expect(state.log.filter((line) => line.includes('P0 shoots'))).toHaveLength(1);
+		});
+	});
+
+	describe('the rival side, playing by the same rules', () => {
+		it('fires the shot its colour owes it out of the charge it was ordered to bank', async () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'red'),
+				// Yellow: nothing of its own stands between it and a bullet on turn one.
+				seed('p0', 'info', 'yellow')
+			]);
+			// Both sides load on the opening turn — and the rival's colour turns that into a
+			// shot, out of the charge the order banked, without anybody choosing it.
+			await openWithCharges(controller);
+			const state = get(controller);
+			expect(fighterOf(state, 'r0').spent).toEqual(['shoot']);
+			expect(fighterOf(state, 'r0').charges).toBe(0);
+			expect(fighterOf(state, 'p0').down).toBe(true);
+			expect(state.outcome).toBe('lose');
+		});
+
+		it('counts a fighter that stands empty owing a shot as dangerous all the same', async () => {
+			// A loaded rival facing an empty fighter: whether covering is worth a turn comes
+			// down to whether that fighter can still put a bullet across the lane, and one
+			// whose colour owes it a shot can — it loads, and the gift pays for itself the
+			// same turn. Pinned high, the rival's weighted pick lands on the last option, so
+			// the two runs below differ only in what it read off the fighter opposite.
+			const fired = async (spent: ('shoot' | 'charge' | 'defend')[]) => {
+				vi.spyOn(Math, 'random').mockReturnValue(0.99);
+				const controller = new CombatController(
+					[seed('r0', 'error', 'yellow'), seed('p0', 'info', 'red')],
+					{
+						turn: 4,
+						fighters: [
+							{
+								side: 'error',
+								slot: 0,
+								spawnId: 'r0',
+								charges: 1,
+								down: false,
+								spent: ['charge'],
+								action: 'defend',
+								cell: RIVAL_CELLS[0]
+							},
+							{
+								side: 'info',
+								slot: 0,
+								spawnId: 'p0',
+								charges: 0,
+								down: false,
+								spent,
+								action: null,
+								cell: PLAYER_CELLS[0]
+							}
+						]
+					}
+				);
+				// One quiet turn to get past the resumed orders and have the rival plan a
+				// fresh one against the fighter as it now stands.
+				controller.setAction('p0', 'defend');
+				await playTurn(controller);
+				controller.setAction('p0', 'defend');
+				await playTurn(controller);
+				return get(controller).log.some((line) => line.includes('R0'));
+			};
+			// Its gift already spent, the fighter opposite is harmless while empty — so the
+			// rival simply fires.
+			expect(await fired(['shoot'])).toBe(true);
+			// Still owing a shot, the same empty fighter is a threat, and the rival covers.
+			expect(await fired([])).toBe(false);
 		});
 	});
 

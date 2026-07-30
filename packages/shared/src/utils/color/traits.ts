@@ -12,7 +12,7 @@
  *   · yellow → a free **charge**.
  *   · blue   → a free **defend**.
  *
- * Three rules hold it down, and they are the whole of it:
+ * Four rules hold it down, and they are the whole of it:
  *
  *   1. **Once in the battle.** A free order is a single gift, not an allowance. Spend
  *      it and the colour has given what it had.
@@ -20,17 +20,24 @@
  *      fighter does, so it only comes on a turn spent on something else: a fighter
  *      that picks Shoot gets no free shot out of red, and one that picks Defend gets
  *      no free guard out of blue. Passive means it happens beside what you chose,
- *      which means it cannot *be* what you chose.
+ *      which means it cannot *be* what you chose — and ordering it on purpose is how a
+ *      fighter keeps the gift in hand for a later turn.
  *   3. **Spent only when it does something.** A free charge on a fighter already full
  *      up, a free guard on a turn nobody fires, a free shot with nothing banked to
  *      fire it with — none of these are the gift being taken, so none of them use it
  *      up. It waits for the turn it can be had.
+ *   4. **The charge goes first.** Whichever of the two is a charge — the order or the
+ *      gift — is resolved before anything else in the turn, because a charge is the one
+ *      order another order *needs*. So the two things a fighter does on a turn happen in
+ *      sequence and can feed each other: red told to load fires its free shot out of the
+ *      charge it just banked. (The sequence itself belongs to the fight, not to this
+ *      file — see the frontend's combat controller.)
  *
  * A compound colour carries both of the primaries it mixes, and **both come at once**
- * on any turn both are allowed: green (blue + yellow) that picks Shoot covers itself
- * and banks a charge in the same turn, and has now spent both for the rest of the
- * fight. So a compound is not twice the fighter — it is one turn, twice as good, and
- * then it is a plain card.
+ * on any turn both are allowed: orange (red + yellow) that picks Defend banks its free
+ * charge, fires its free shot out of it, and covers — all in the one turn, and it has now
+ * spent both for the rest of the fight. So a compound is not twice the fighter — it is
+ * one turn, twice as good, and then it is a plain card.
  */
 import {
 	COMPOUND_COMPONENTS,
@@ -42,7 +49,7 @@ import { isPrimaryColor } from './compare';
 /**
  * The glyph each of the three orders is drawn with, from the game-icons.net set in
  * @3xl/assets: gathering energy to charge, a shield to defend, a sword to shoot. The
- * board puts these under a fighter, the cards carry them in their corners and every
+ * board puts these beside a fighter, the cards carry them in their corners and every
  * fighter wears the ones its colour grants it — so they are named once, here, beside
  * the colours that grant them.
  *

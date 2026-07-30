@@ -24,9 +24,19 @@
  * three orders, taken for free: red a shot, yellow a charge, blue a defend. It is
  * worth **one use in the whole battle**, it only comes on a turn the fighter was
  * given something *else* to do — a passive happens beside your order, so it can never
- * be your order — and it is only used up on a turn it actually did something. A
- * compound colour carries both of the primaries it mixes and spends both at once on
- * any turn both are allowed, so it is one very good turn rather than a better card.
+ * be your order, and ordering the very thing your colour owes you keeps it for a later
+ * turn — and it is only used up on a turn it actually did something. A compound colour
+ * carries both of the primaries it mixes and spends both at once on any turn both are
+ * allowed, so it is one very good turn rather than a better card.
+ *
+ * A fighter's two things therefore happen on the same turn, and they happen **in
+ * sequence**: the **charge** — ordered or free — is resolved before everything else,
+ * because it is the only order another order needs, and the shots of the turn are fired
+ * out of what it banked (see {@link CombatController.bankCharges}). So a red fighter told
+ * to load banks the charge and then fires the shot its colour owes it out of that very
+ * charge, and an orange one told to cover does it off its own two gifts. Both sides play
+ * by this: the rivals' orders are decided blind ({@link CombatController.planRivals}) but
+ * they are carried out by the same resolution, gifts and ordering included.
  *
  * The rivals open **on the central white column**, as far forward as the board allows,
  * one cell facing each of the player's fighters — so the ground itself is what is being
@@ -440,9 +450,21 @@ export class CombatController {
 	 * Serialising the playback changes nothing about the outcome: the shot list is
 	 * fixed before any of it plays, so a fighter felled early in the volley still
 	 * fires the shot it had already taken, and only falls when the shooting stops.
+	 *
+	 * The one thing that is *ordered* within a turn is the charge, and it comes first:
+	 * see {@link bankCharges}.
 	 */
 	private async resolve(): Promise<void> {
 		const acting = this.fighters.filter((fighter) => !fighter.down && fighter.action);
+		this.log = [];
+
+		// Charges are banked before a single shot is aimed — see bankCharges for why a
+		// charge outranks the rest of the turn. Everything below is paid for out of what
+		// it leaves banked.
+		this.bankCharges(acting);
+		// So the loaders are already burning by the time the orders are read out, whether
+		// the charge came from the order or from the colour.
+		this.syncCharges();
 
 		// Every shot of the turn, aimed straight across the lane and worked out before
 		// any of it plays, so who is opposite whom is settled by where everybody stood
@@ -462,8 +484,10 @@ export class CombatController {
 				fire(false);
 			} else if (this.passiveReady(fighter, 'shoot')) {
 				// Red's free shot, fired beside whatever the turn was actually spent on.
-				// It is only the *turn* that comes free — the charge is paid as ever — so
-				// a fighter with nothing banked keeps the gift for a turn it can fire.
+				// It is only the *turn* that comes free — the charge is paid as ever — so a
+				// fighter with nothing banked and nothing loading keeps the gift for a turn
+				// it can fire. A turn spent loading is not such a turn: the charge above is
+				// already banked, and this is what it pays for.
 				if (fire(true)) this.spend(fighter, 'shoot');
 			}
 		}
@@ -471,7 +495,6 @@ export class CombatController {
 		// side's line, red before blue. Nothing about a fighter makes its shot arrive
 		// sooner: the running order is the board's, not a rating's.
 
-		this.log = [];
 		this.setStatus('Orders are revealed.');
 		this.showOrders(acting);
 		await pause(REVEAL_MS);
@@ -491,23 +514,8 @@ export class CombatController {
 			);
 		}
 
-		// Charging pays out last, and only for those still standing: a fighter shot
-		// while loading never gets to bank it. Yellow's free charge pays out here too,
-		// and being last is what lets a fighter fire and re-load in the one turn.
-		for (const fighter of acting) {
-			if (fighter.down) continue;
-			const full = fighter.charges >= MAX_CHARGES;
-			if (fighter.action === 'charge') {
-				if (full) this.log.push(`${fighter.name} is already full up on charges.`);
-				else fighter.charges += 1;
-			} else if (this.passiveReady(fighter, 'charge') && !full) {
-				// A fighter already full up has nowhere to put it, so the gift is not taken
-				// and waits for a turn it can be.
-				fighter.charges += 1;
-				this.spend(fighter, 'charge');
-				this.log.push(`${fighter.name} banks a free charge.`);
-			}
-		}
+		// The shots have been paid for out of what was banked at the top of the turn, so
+		// the auras that are out are the ones that fired.
 		this.syncCharges();
 
 		// Ground won and given up: every lane the volley decided is walked out on the
@@ -515,6 +523,42 @@ export class CombatController {
 		await this.settleGround(felled);
 
 		this.finishTurn();
+	}
+
+	/**
+	 * Bank every charge the turn produces, before anything else in it happens: the
+	 * fighters ordered to load, and the fighters whose colour hands them one for free.
+	 *
+	 * A charge outranks the rest of a turn because it is the only one of the three orders
+	 * another order *needs*: a shot is paid for out of a charge, a guard and a charge are
+	 * paid for out of nothing. Resolving it first is what makes a fighter's two things —
+	 * the order it was given and the gift its colour throws in — resolve in sequence
+	 * rather than in a heap: a red fighter told to load banks the charge and then fires
+	 * the free shot out of it, on the one turn, in that order. An orange one told to cover
+	 * does the same off its own two gifts.
+	 *
+	 * A fighter with nowhere to put a charge does not get one. Ordering a charge while
+	 * full is a turn thrown away (the turn is still gone), and a *free* charge that lands
+	 * on a full fighter is simply not taken — it waits for a turn with room for it, which
+	 * is the rule about a gift only being spent on doing something. A fighter about to
+	 * fire is full at this moment and empties itself later in the turn, so a colour's
+	 * charge keeps for a turn that can hold it rather than quietly re-arming a shooter.
+	 */
+	private bankCharges(acting: Fighter[]): void {
+		for (const fighter of acting) {
+			const full = (): boolean => fighter.charges >= MAX_CHARGES;
+			if (fighter.action === 'charge') {
+				if (full()) this.log.push(`${fighter.name} is already full up on charges.`);
+				else fighter.charges += 1;
+			}
+			// Never both of these: a gift is never the order it was given (passiveReady),
+			// so a fighter ordered to load is not also handed one.
+			if (this.passiveReady(fighter, 'charge') && !full()) {
+				fighter.charges += 1;
+				this.spend(fighter, 'charge');
+				this.log.push(`${fighter.name} banks a free charge.`);
+			}
+		}
 	}
 
 	/**
@@ -703,7 +747,12 @@ export class CombatController {
 	 *
 	 * Nothing here decides what its colour hands it: a free order is not chosen by
 	 * anybody, so a rival's gifts arrive off the back of the order it picked, exactly
-	 * as the player's do.
+	 * as the player's do. What it *does* read is the gifts still in hand, its own and
+	 * its lane's, because those change what a turn is worth: a fighter opposite with
+	 * nothing banked is still dangerous while its colour owes it a shot (it loads, and
+	 * the charge pays for the gift the same turn), and a rival whose own colour owes it
+	 * a charge is loaded by covering, so it has no reason to stand open to load by hand.
+	 * Reading them is not choosing them — they still arrive off the order, for both sides.
 	 */
 	private planRivals(): void {
 		for (const rival of this.rivals()) {
@@ -716,10 +765,15 @@ export class CombatController {
 				rival.action = rival.charges >= MAX_CHARGES ? 'defend' : 'charge';
 				continue;
 			}
-			const threatened = target.charges > 0;
+			const threatened = this.threatens(target);
 			if (rival.charges < 1) {
+				// Covering is the timid choice — except for a fighter its colour still owes a
+				// charge, which is loaded by the turn it covers on. Under threat that beats
+				// standing open to load by hand: it ends the turn armed either way.
 				rival.action = threatened
-					? (pickWeighted(['charge', 'defend'], [3, 1]) ?? 'charge')
+					? this.owes(rival, 'charge')
+						? 'defend'
+						: (pickWeighted(['charge', 'defend'], [3, 1]) ?? 'charge')
 					: 'charge';
 			} else if (!threatened) {
 				rival.action = 'shoot';
@@ -873,9 +927,30 @@ export class CombatController {
 	 */
 	private passiveReady(fighter: Fighter, order: PassiveOrder): boolean {
 		if (fighter.down) return false;
-		if (!fighter.passives.includes(order)) return false;
-		if (fighter.spent.includes(order)) return false;
+		if (!this.owes(fighter, order)) return false;
 		return fighter.action !== order;
+	}
+
+	/**
+	 * Whether this fighter's colour still owes it `order` — it grants it and it has not
+	 * been had yet. Says nothing about the turn: this is the gift being *in hand*, which
+	 * is what both sides can read off any fighter's corner all fight long, as against
+	 * {@link passiveReady}, which is the gift being owed *now*.
+	 */
+	private owes(fighter: Fighter, order: PassiveOrder): boolean {
+		return fighter.passives.includes(order) && !fighter.spent.includes(order);
+	}
+
+	/**
+	 * Whether this fighter could put a bullet across its lane on the turn about to be
+	 * played. A charge in hand is one way; the other is a colour that still owes it a
+	 * shot, because a charge is banked before the volley — so a fighter standing empty
+	 * can order a load and have the free shot pay for itself the same turn. Anybody
+	 * weighing whether to cover has to count that as a threat, or it would read half the
+	 * rules.
+	 */
+	private threatens(fighter: Fighter): boolean {
+		return !fighter.down && (fighter.charges > 0 || this.owes(fighter, 'shoot'));
 	}
 
 	/**

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import {
 	CombatController,
@@ -67,6 +67,8 @@ async function playTurn(controller: CombatController): Promise<void> {
 }
 
 describe('CombatController — giving orders', () => {
+	afterEach(() => vi.restoreAllMocks());
+
 	it('refuses the sword to a fighter with nothing banked, whatever its colour', () => {
 		// Nobody opens armed: a colour's free charge is a gift like any other and has to
 		// be given on a turn spent elsewhere, so turn one has no shot in it for anybody.
@@ -84,12 +86,22 @@ describe('CombatController — giving orders', () => {
 	it('takes the sword as the order itself, never as something on top of one', async () => {
 		// Orange carries red's free shot, which used to be bought by tapping the sword on
 		// top of another order. It is passive now: the sword is Shoot and nothing else.
+		//
+		// Two turns spent loading, because the first of them is the one that free shot goes
+		// off on — a charge is banked before the volley, so the gift fires out of it and
+		// leaves the fighter empty again. The second turn is the one it keeps a charge from,
+		// with nothing owed any more. The rivals are pinned to the timid end of their
+		// weighted picks so that nothing is fired back while that happens.
+		vi.spyOn(Math, 'random').mockReturnValue(0.99);
 		const controller = new CombatController(
 			seeds(['blue', 'blue', 'blue', 'orange', 'blue', 'blue'])
 		);
 		const red = () => playerFighters(controller).find((fighter) => fighter.color === 'orange')!;
-		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'charge');
-		await playTurn(controller);
+		for (let turn = 0; turn < 2; turn++) {
+			for (const fighter of playerFighters(controller)) tap(controller, fighter, 'charge');
+			await playTurn(controller);
+		}
+		expect(red().charges).toBe(1);
 
 		// Cover, then tap the sword: the sword replaces the cover rather than riding it.
 		tap(controller, red(), 'defend');
