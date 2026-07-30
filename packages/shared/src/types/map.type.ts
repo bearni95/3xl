@@ -1,5 +1,4 @@
 import type { PathOptions } from 'leaflet';
-import type { SpawnColor } from './character-spawn.type';
 
 /** A GeoJSON layer drawn on top of the base map, in array order (last = topmost). */
 export interface MapOverlay {
@@ -45,9 +44,10 @@ export interface MapLine {
 }
 
 /**
- * What a pin says about taking the region it stands on: how far the reader has got
- * towards it, and the one control that acts on it. Drawn under the team, so the
- * side sitting on a town and the way to fight it read as one thing in one place.
+ * What the map's town panel says about taking the town it is open on: how far the reader
+ * has got towards it, and the one control that acts on it. Drawn under the side holding
+ * the place, so who is to be beaten and the way to fight them read as one thing in one
+ * place.
  *
  * Plain data and a callback — which of the button and the countdown is drawn is
  * decided by whoever hands this over, since the rules (one fight per town per day,
@@ -81,38 +81,12 @@ export interface MapMarker {
 	 */
 	bounds?: [[number, number], [number, number]];
 	/**
-	 * Raw SVG markup drawn in the pin's frame — the show's glyph, inlined so it
-	 * paints in the frame's own colour rather than a baked one. The pin is
-	 * caption-only when null (no glyph drawn for that show yet), exactly as the
-	 * panel's tables fall back to the show's name alone.
-	 *
-	 * Only reached when the pin has no {@link MapMarker.team}: a region that can
-	 * name the side sitting on it shows *them* rather than a glyph for the show
-	 * they happen to belong to.
+	 * Raw SVG markup drawn on the pin's tile — the show's glyph, inlined so it paints
+	 * in the tile's own colour rather than a baked one. The pin is lettering-only when
+	 * null (no glyph drawn for that show yet), exactly as the panel's tables fall back
+	 * to the show's name alone.
 	 */
 	iconSvg: string | null;
-	/**
-	 * The team currently holding this region, in the order it is fielded — drawn in
-	 * the pin in place of the show glyph, as the very cards the sidebar's strip draws
-	 * a team with. One member per card, in the shape `TeamLineup` takes.
-	 *
-	 * Only a municipality has one: a comarca or a province is not a thing anybody
-	 * holds, so those pins keep their show's glyph. Absent or empty means the same
-	 * thing.
-	 */
-	team?: {
-		label: string;
-		basePath: string | null;
-		color: SpawnColor;
-		locationName: string | null;
-		showId: number | null;
-	}[];
-	/**
-	 * The siege standing and the challenge control, drawn right under the team.
-	 * Absent leaves the pin a picture with nothing to act on — which is every pin
-	 * but the one the reader has picked.
-	 */
-	challenge?: MapChallenge | null;
 	/**
 	 * Classes painted onto the glyph's tile at the left end of the pin's plate — the
 	 * region's own colour, as a fill plus the ink that reads on it. Null leaves the

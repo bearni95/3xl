@@ -6,6 +6,7 @@
 	import { characters } from '@3xl/data';
 	import AuthMenu from '$components/core/AuthMenu.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
+	import TownPanel from '$components/core/TownPanel.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
 	import ShowStandingsTable from '$components/core/ShowStandingsTable.svelte';
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
@@ -446,28 +447,14 @@
 	// the one whose pins are on screen, so the polygons say in colour what the pins
 	// over them already say.
 	//
-	// Except under the one town standing its team up (`statuedTown`): three statues say
-	// that colour three times over, once per floor and panel, and a 90% wash of a
-	// fourth under them is the ground competing with what is standing on it. That one
-	// shape keeps its white outline and goes bare, letting the satellite read through
-	// to their feet. Every other town makes no such statement and washes as before —
-	// which is also what keeps the coarser tiers painting exactly as they did.
-	function tierStyle(
-		tier: RegionType,
-		weight: number,
-		colors: RegionColors,
-		imaged: number,
-		statuedTown: string | null
-	) {
+	// The selected town is no exception: a town is drawn on the map the same whether it
+	// is the one being looked at or not (the side that used to stand on its shape, and
+	// the bare polygon that made room for it, are both in the panel over the map's
+	// corner now), so picking a town repaints nothing.
+	function tierStyle(tier: RegionType, weight: number, colors: RegionColors, imaged: number) {
 		return (feature?: GeoJSON.Feature) => {
 			const color = featureColor(tier, feature, colors);
-			// Keyed exactly as `featureColor` keys a municipality, and as the pins are
-			// built — a town's polygon id IS its region node's key.
-			const statued =
-				tier === 'Municipality' &&
-				statuedTown != null &&
-				String(feature?.properties?.id ?? '') === statuedTown;
-			const washes = color != null && tierRank[tier] === imaged && !statued;
+			const washes = color != null && tierRank[tier] === imaged;
 			return {
 				color: lineColor,
 				weight,
@@ -486,36 +473,35 @@
 	// and the thicker that line is drawn.
 	//
 	// Every tier draws its borders in white, and the tier the map is imaging also
-	// washes each of its shapes in the colour that region's pin flies — except under
-	// the selected town, whose statues say the colour for themselves (see tierStyle).
-	// So a region is coloured on the map exactly as it is on its pin, and never twice.
+	// washes each of its shapes in the colour that region's pin flies. So a region is
+	// coloured on the map exactly as it is on its pin, and never twice.
 	// Every other tier is line-only, so the satellite basemap keeps reading through
 	// them, and `hiddenLineUrls` still drops the lines of the tiers finer than the
 	// imaged one. All decorative: the wash is not something to click or hover, so no
 	// layer captures pointer events and the pins and boxes own every click.
 	//
-	// Rebuilt (a fresh array) whenever a region changes colour, another town is
-	// selected or the map images another tier — that is what repaints the layers,
-	// which are fetched only once.
+	// Rebuilt (a fresh array) whenever a region changes colour or the map images another
+	// tier — that is what repaints the layers, which are fetched only once. Not on a
+	// selection: which town is open makes no difference to any shape.
 	$: overlays = [
 		{
 			url: '/data/geo/municipis.json',
-			style: tierStyle('Municipality', 1, regionColors, hiddenRank, statuedTown),
+			style: tierStyle('Municipality', 1, regionColors, hiddenRank),
 			interactive: false
 		},
 		{
 			url: '/data/geo/comarques.json',
-			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank, statuedTown),
+			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank),
 			interactive: false
 		},
 		{
 			url: '/data/geo/provincies.json',
-			style: tierStyle('Province', 2, regionColors, hiddenRank, statuedTown),
+			style: tierStyle('Province', 2, regionColors, hiddenRank),
 			interactive: false
 		},
 		{
 			url: '/data/geo/territoris.json',
-			style: tierStyle('Territory', 3, regionColors, hiddenRank, statuedTown),
+			style: tierStyle('Territory', 3, regionColors, hiddenRank),
 			interactive: false
 		}
 	] satisfies MapOverlay[];
@@ -791,13 +777,13 @@
 	$: challengedOpenTown = !!openRegion && challenges.has(openRegion);
 
 	// (A player already in a fight is not offered another one, and a town fought today
-	// says when it reopens instead — both now read on the pin, off `$openBattle` and
-	// the next Catalan midnight; see buildPinChallenge.)
+	// says when it reopens instead — both now read in the town panel over the map, off
+	// `$openBattle` and the next Catalan midnight; see buildTownChallenge.)
 
 	// (The town's team was drawn here as cards on the shared card canvas — portraits,
-	// show row and all. It is statues on the town's own pin now, which take a frames
-	// folder and nothing else, so the faces and show names that fed those cards are no
-	// longer loaded at all.)
+	// show row and all. It is statues in the town panel over the map now, which take a
+	// frames folder and nothing else, so the faces and show names that fed those cards
+	// are no longer loaded at all.)
 
 	// --- The player's own team (the panel's account section) ---------------------
 	// Stood up in the document as the three cards under the player's own row (see
@@ -1399,41 +1385,69 @@
 
 	$: townTeams = buildTownTeams(municipalitySeeds, showsById, showCharacterIds, holders);
 
-	// The one town that stands its side up on its pin: the selected municipality, and
-	// only while it has a side to stand. Every other pin keeps the show's glyph.
-	//
-	// A team on the map is three cards' worth of picture, and every town wearing one at
-	// once is a terrain of cards with no map left under it. On the town being looked at
-	// it is the point — who is holding this, standing where they are holding it — so
-	// the map says it exactly there and nowhere else.
+	// The one town the panel over the map is open on: the selected municipality, and only
+	// while it has a side to name. Nothing on the map itself changes with it — every pin
+	// and every polygon is drawn the same whichever town this is (see tierStyle and
+	// buildMarkers). The side used to stand on the town's own pin, which put three cards'
+	// worth of picture over the very place it was about and left the shape under them
+	// bare to make room; in one panel at the map's corner it is the same statement with
+	// the map left alone to be a map.
 	//
 	// Read off the clicked selection rather than `openRegion`, and not only because a
-	// zoom focus is not a choice of town: `openRegion` falls back to the focus, the
-	// focus is measured from the pins, and pins that moved with it would be deciding
-	// what they are drawn from. The two agree on a municipality in any case — the focus
-	// opens the tier ABOVE its pins, so only a click ever names one. A key naming a
+	// zoom focus is not a choice of town: `openRegion` falls back to the focus, and the
+	// focus is measured from the pins. The two agree on a municipality in any case — the
+	// focus opens the tier ABOVE its pins, so only a click ever names one. A key naming a
 	// coarser region simply isn't in `townTeams` and lands the same as no selection.
-	//
-	// The polygon wash reads the same value (see tierStyle): the shape that gets the
-	// statues is the shape that goes bare under them.
-	$: statuedTown = selected && townTeams.has(selected) ? selected : null;
+	$: panelTown = selected && townTeams.has(selected) ? selected : null;
 
-	// What that pin says under the statues: how far this player has got towards taking
-	// the town, and the one control that acts on it — the siege counter and the
-	// challenge button, which used to sit in the sidebar's Location tab. They belong on
-	// the pin: what is being fought is standing right there, and reading the odds off
-	// one side of the screen while looking at the town on the other made two things of
-	// one.
-	//
-	// Rebuilt off `statuedTown` rather than `openRegion`, for the same reason the
-	// statues are: the zoom focus is measured from the pins, so anything the pins are
-	// drawn from must not be measured back off it. The two name the same town whenever
-	// either does.
+	// The side holding that town, in the shape the statues take: who they are, the colour
+	// they bend, where the card itself is from and what show it flies. The very cards the
+	// pin used to stand up, drawn by the same component off the same roll.
+	function buildPanelTeam(
+		town: string | null,
+		teams: ReadonlyMap<string, TeamMemberRoll[]>,
+		nodes: RegionNode[],
+		placeNames: Map<string, string> | null,
+		memberShows: ReadonlyMap<string, number[]>
+	) {
+		if (!town) return [];
+		const standingIn = restoreCatalanArticle(findNode(nodes, town)?.name ?? '');
+		return (teams.get(town) ?? []).map((member) => ({
+			label: charactersById.get(member.characterId)?.label ?? member.characterId,
+			basePath: charactersById.get(member.characterId)?.basePath ?? null,
+			color: member.color,
+			// Where the card itself is from, not where it is standing (see memberPlace): a
+			// claimed card carries its own town about with it.
+			locationName: memberPlace(member, standingIn, placeNames),
+			// The character's own show, not the town's: a held town fields the occupier's
+			// cards, and marking their floor with the town's show would be a lie — the same
+			// rule the sidebar's cards follow.
+			showId: memberShows.get(member.characterId)?.[0] ?? null
+		}));
+	}
+
+	$: panelTeam = buildPanelTeam(
+		panelTown,
+		townTeams,
+		regionNodes,
+		municipalityNames,
+		showsByCharacter
+	);
+
+	// The town panel's own node, for the two things it letters beside the side: the place's
+	// name and the show it flies, with that show's colour and glyph on the tile — exactly
+	// what the town's pin says out on the map, said again where the cards are.
+	$: panelNode = panelTown ? (findNode(regionNodes, panelTown) ?? null) : null;
+
+	// What the panel says under the side: how far this player has got towards taking the
+	// town, and the one control that acts on it — the siege counter and the challenge
+	// button, which used to sit in the sidebar's Location tab and then on the pin itself.
+	// They belong with the side: what is being fought is pictured right above them.
 	//
 	// Null hides the bar entirely: no town selected, or one this player already holds —
 	// there is nothing to take from yourself, which is exactly when the sidebar says
 	// "Yours" instead.
-	function buildPinChallenge(
+	function buildTownChallenge(
 		town: string | null,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
 		banked: ReadonlyMap<string, MunicipalitySiege>,
@@ -1493,8 +1507,8 @@
 		};
 	}
 
-	$: pinChallenge = buildPinChallenge(
-		statuedTown,
+	$: townChallenge = buildTownChallenge(
+		panelTown,
 		holders,
 		sieges,
 		challenges,
@@ -1541,15 +1555,15 @@
 		return name ? restoreCatalanArticle(name) : standingIn;
 	}
 
+	// Every pin the map draws at one tier, all built the same way: nothing here reads the
+	// selection except the fade that tells a region outside it from one within. What the
+	// selected town has to say for itself — the side holding it, and what can be done about
+	// that — is the town panel's over the map (see TownPanel), which is why no team or
+	// challenge reaches a marker any more.
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
-		relevant: Set<string> | null,
-		teams: ReadonlyMap<string, TeamMemberRoll[]>,
-		statuedTown: string | null,
-		challengeBar: MapChallenge | null,
-		placeNames: Map<string, string> | null,
-		memberShows: ReadonlyMap<string, number[]>
+		relevant: Set<string> | null
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
@@ -1557,32 +1571,12 @@
 			const box = geometry.boxes.get(node.key);
 			const center = geometry.centers.get(node.key);
 			if (!box || !center) continue;
-			// The whole side, but on the selected town alone (see statuedTown) — every
-			// other pin, and every tier above the towns, falls through to the show's
-			// glyph below. Only a municipality's key is a municipality id, so the coarser
-			// tiers find nothing here in any case.
-			const team = node.key === statuedTown ? (teams.get(node.key) ?? []) : [];
 			pins.push({
 				id: node.key,
 				// On the region's own shape, not in the middle of the box around it.
 				position: center,
 				bounds: box,
-				team: team.map((member) => ({
-					label: charactersById.get(member.characterId)?.label ?? member.characterId,
-					basePath: charactersById.get(member.characterId)?.basePath ?? null,
-					color: member.color,
-					// Where the card itself is from, not where it is standing (see
-					// memberPlace): a claimed card carries its own town about with it.
-					locationName: memberPlace(member, restoreCatalanArticle(node.name), placeNames),
-					// The character's own show, not the town's: a held town fields the
-					// occupier's cards, and marking their floor with the town's show would
-					// be a lie — the same rule the panel's cards follow.
-					showId: memberShows.get(member.characterId)?.[0] ?? null
-				})),
 				iconSvg: iconMarkup(showIconName(node.show.id)),
-				// The siege line and the challenge control go with the statues, on that
-				// same one pin: what is being fought is standing right there.
-				challenge: node.key === statuedTown ? challengeBar : null,
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
 				subtitle: restoreCatalanArticle(node.name),
@@ -1603,42 +1597,16 @@
 		depth: number,
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
-		relevant: Set<string> | null,
-		teams: ReadonlyMap<string, TeamMemberRoll[]>,
-		statuedTown: string | null,
-		challengeBar: MapChallenge | null,
-		placeNames: Map<string, string> | null,
-		memberShows: ReadonlyMap<string, number[]>
+		relevant: Set<string> | null
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
-			levels.push(
-				buildMarkers(
-					frontierAtDepth(d, nodes),
-					geometry,
-					relevant,
-					teams,
-					statuedTown,
-					challengeBar,
-					placeNames,
-					memberShows
-				)
-			);
+			levels.push(buildMarkers(frontierAtDepth(d, nodes), geometry, relevant));
 		}
 		return levels;
 	}
 
-	$: markerLevels = buildMarkerLevels(
-		maxLevel,
-		regionNodes,
-		regionGeometry,
-		relevantKeys,
-		townTeams,
-		statuedTown,
-		pinChallenge,
-		municipalityNames,
-		showsByCharacter
-	);
+	$: markerLevels = buildMarkerLevels(maxLevel, regionNodes, regionGeometry, relevantKeys);
 
 	// The bounding box the map fits when a region is selected: the union of every
 	// municipality polygon under the selected key. A fresh array each time (even
@@ -1821,9 +1789,9 @@
 								town it's their frozen winning team instead, and it's their name on
 								the badge.
 
-								The team itself is not drawn here any more: it is standing on the
-								town's own pin (see statuedTown), so the panel names who holds the
-								place and the map shows them holding it. -->
+								The team itself is not drawn here any more: it is standing in the town
+								panel at the map's corner (see panelTown), so the sidebar names who
+								holds the place and the panel over the map shows them holding it. -->
 							<div class="flex flex-none items-center gap-2">
 								{#if openHolder}
 									<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
@@ -1835,8 +1803,9 @@
 									<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
 								{/if}
 								<!-- The siege counter and the challenge button used to sit here; they
-									are on the town's own pin now (see buildPinChallenge), standing under
-									the very team they are about. What is left is who holds it. -->
+									are in the town panel over the map now (see buildTownChallenge),
+									standing under the very team they are about. What is left is who
+									holds it. -->
 								{#if holdsOpenTown}
 									<span class="badge badge-success badge-sm ml-auto">Yours</span>
 								{/if}
@@ -1956,6 +1925,33 @@
 				bind:currentCenter
 				classes="min-h-0 flex-1"
 			/>
+
+			<!-- The one thing picking a town adds to the map: who is holding it and what can be
+				done about that, on a panel in the map's top-left corner. It used to be drawn
+				into the town's own pin — the side standing on the very place it was about — but
+				a pin is a mark on a town and three cards' worth of picture is not: it buried
+				the town it stood on, moved with every zoom, and forced the shape beneath it to
+				go unwashed to make room. Here the map draws every town alike and the panel
+				answers the selection, in the corner it can be read in.
+
+				Absolute inside the map column (which is `relative`), above Leaflet's own panes
+				— its overlays sit at 400-600 and its controls at 800, so z-[900] clears them
+				both while staying under the arena's 1200. `pointer-events-none` on the corner
+				and back on for the panel, so the map is still pannable and zoomable through
+				every part of the corner the panel does not itself cover. -->
+			{#if panelTown}
+				<div class="pointer-events-none absolute left-3 top-3 z-[900] max-w-[calc(100%-1.5rem)]">
+					<TownPanel
+						name={restoreCatalanArticle(panelNode?.name ?? '')}
+						showName={panelNode?.show?.name ?? null}
+						showId={panelNode?.show?.id ?? null}
+						tileClasses={panelNode?.color ? pinColorClasses[panelNode.color] : null}
+						team={panelTeam}
+						challenge={townChallenge}
+						classes="pointer-events-auto w-72"
+					/>
+				</div>
+			{/if}
 		{:else}
 			<div class="flex min-h-0 flex-1 items-center justify-center">
 				<span class="loading loading-spinner loading-lg"></span>

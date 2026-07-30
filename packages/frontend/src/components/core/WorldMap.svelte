@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { mount, onMount, onDestroy, unmount } from 'svelte';
 	import type L from 'leaflet';
-	import TeamLineup from '$components/core/TeamLineup.svelte';
-	import PinChallenge from '$components/core/PinChallenge.svelte';
 	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
 	import { iconMarkup } from '$components/core/icon-markup';
 	import { showIconName } from '$utils/show/show-icon';
@@ -127,13 +125,11 @@
 	// The geoJSON layer groups, in overlay order, captured at mount so the
 	// highlight/hidden-stroke $effect can repaint reactively.
 	let overlayGroups: L.GeoJSON[] = [];
-	// The pins layer, rebuilt whenever the markers prop changes.
+	// The pins layer, rebuilt whenever the markers prop changes. Nothing is *mounted* into
+	// a pin any more — a pin is plain DOM built by markerElement, so a rebuild has only its
+	// own markup to clear, and the components that used to stand on the selected town's pin
+	// (its side, its challenge bar) live in the page's own panel over the map.
 	let markerLayer: L.LayerGroup | null = null;
-	// The components mounted into the pins on screen — the teams standing on them and
-	// the challenge bars under those. Clearing the layer only detaches their DOM, and
-	// each of them runs a timer of its own (a sprite's frames, a countdown's seconds),
-	// so every rebuild unmounts the previous crop first.
-	let pinMounts: Record<string, unknown>[] = [];
 	// The festa-box layer, rebuilt whenever the boxes prop changes. Kept separate from the
 	// region pins — it follows their tier but marks its towns its own way, and at the
 	// coarsest tier not at all (see markKindForLevel) — and drawn under them.
@@ -269,51 +265,29 @@
 		return [(south + north) / 2, (west + east) / 2];
 	}
 
-	// Build a pin's DOM: the side or the show's glyph, and under it the one plate that
-	// says what the pin is — the glyph's tile at its left end, the place's name and its
-	// show's beside it. The wrapper is translated so its bottom centre sits on the point
-	// (the marker itself is zero-sized, see rebuildMarkers), giving a pin that stands
-	// above its region.
+	// Build a pin's DOM: one plate saying what the pin is — the show's glyph on a tile at
+	// its left end, the place's name and its show's beside it. The wrapper is translated so
+	// its bottom centre sits on the point (the marker itself is zero-sized, see
+	// rebuildMarkers), giving a pin that stands above its region.
+	//
+	// Every pin is built exactly the same way, the selected town's included: picking a town
+	// changes nothing about how the map draws it. What used to stand on that one pin — the
+	// side holding the town, and the siege line and challenge button under them — is drawn
+	// in the panel over the map's top-left corner now (see TownPanel), so the map says the
+	// same thing everywhere and the selection is answered off it.
 	function markerElement(marker: MapMarker): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className = classNamesFor(marker);
 
-		// The show's tile, built below and hung on the plate at the end — a pin with a side
-		// standing on it draws the cards instead and leaves this null.
+		// A square tile in the region's colour carrying the show's glyph, standing at the
+		// left end of the plate below. The glyph is inlined rather than pointed at by an
+		// <img> so it inherits the tile's ink (see icon-markup) — which is why the fill and
+		// the ink arrive together in `frameClasses`. Sized through a CSS rule, which outranks
+		// the svg's own 1em width/height attributes. Decorative: the show is named in the
+		// line right beside it, so announcing the glyph too would read it twice. A pin with
+		// neither a colour nor a glyph is lettering alone and skips the tile entirely.
 		let tile: HTMLElement | null = null;
-
-		// The side sitting on the region, where there is one: the very cards the sidebar
-		// draws a team with — floor, character, name, place and all — three across, in
-		// place of the tile. Which pins get one is the caller's to say (today, the
-		// selected town alone); every other pin falls through to its glyph below. It is
-		// the same component (see TeamLineup), mounted into the pin's DOM because this
-		// is imperative code rather than a template, and tracked so the next rebuild can
-		// unmount it: each sprite runs a frame timer, and a pin merely detached from the
-		// map would go on animating for nothing.
-		if (marker.team?.length) {
-			const frame = document.createElement('div');
-			// A fixed 500px for the side together, shared out by the row. Fixed, so the
-			// statues come out the same size whichever town is selected, rather than
-			// tracking anything about the map or the region under them.
-			frame.className = 'w-[500px] drop-shadow-lg';
-			pinMounts.push(
-				mount(TeamLineup, {
-					target: frame,
-					// A town's team is somebody else's side, so it faces the viewer
-					// unmirrored, as a rival side does on the board.
-					props: { members: marker.team, flipped: false, classes: 'gap-1' }
-				})
-			);
-			wrap.appendChild(frame);
-		} else if (marker.iconSvg || marker.frameClasses) {
-			// A square tile in the region's colour carrying the show's glyph, standing at the
-			// left end of the plate below rather than over it. The glyph is inlined rather
-			// than pointed at by an <img> so it inherits the tile's ink (see icon-markup) —
-			// which is why the fill and the ink arrive together in `frameClasses`. Sized
-			// through a CSS rule, which outranks the svg's own 1em width/height attributes.
-			// Decorative: the show is named in the line right beside it, so announcing the
-			// glyph too would read it twice. A pin with neither a colour nor a glyph is
-			// lettering alone and skips the tile entirely.
+		if (marker.iconSvg || marker.frameClasses) {
 			tile = document.createElement('div');
 			tile.className =
 				'flex size-10 flex-none items-center justify-center rounded-lg [&>svg]:size-7 ' +
@@ -323,22 +297,6 @@
 				(marker.dimmed ? ' opacity-50' : '');
 			tile.setAttribute('aria-hidden', 'true');
 			if (marker.iconSvg) tile.innerHTML = marker.iconSvg;
-		}
-
-		// What can be done about the region, right under the side holding it: the siege
-		// standing and the one control that acts on it. Mounted and tracked exactly as
-		// the team is — it runs a clock of its own when it is counting down.
-		if (marker.challenge) {
-			const bar = document.createElement('div');
-			bar.className = 'mt-1';
-			// The controls are the pin's, not the map's: without this a click on the
-			// button would go on up to the marker (re-opening the region, re-framing the
-			// view under the reader) and a drag begun on it would pan the map. Leaflet's
-			// own way of saying "this DOM is a widget, not terrain".
-			Leaf!.DomEvent.disableClickPropagation(bar);
-			Leaf!.DomEvent.disableScrollPropagation(bar);
-			pinMounts.push(mount(PinChallenge, { target: bar, props: { ...marker.challenge } }));
-			wrap.appendChild(bar);
 		}
 
 		// One plate for everything the pin says: the tile at its left end, and to the right
@@ -481,7 +439,6 @@
 	function rebuildMarkers() {
 		if (!mapInstance || !Leaf) return;
 		if (!markerLayer) markerLayer = Leaf.layerGroup().addTo(mapInstance);
-		unmountPinMounts();
 		markerLayer.clearLayers();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
@@ -520,13 +477,7 @@
 		}
 	}
 
-	/** Tear down everything mounted into a pin, so no detached timer keeps running. */
-	function unmountPinMounts() {
-		for (const mounted of pinMounts) void unmount(mounted);
-		pinMounts = [];
-	}
-
-	/** The same, for the boxes: a box no longer on screen must not keep its images. */
+	/** The boxes' teardown: a box no longer on screen must not keep its images. */
 	function unmountBoxMounts() {
 		for (const mounted of boxMounts) void unmount(mounted);
 		boxMounts = [];
@@ -813,7 +764,6 @@
 
 	onDestroy(() => {
 		resizeObserver?.disconnect();
-		unmountPinMounts();
 		unmountBoxMounts();
 		mapInstance?.remove();
 	});

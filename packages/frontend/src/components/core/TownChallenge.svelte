@@ -3,11 +3,10 @@
 	import Countdown from '$components/core/Countdown.svelte';
 	import type { MapChallenge } from '$types/map.type';
 
-	// The line a pin carries under its statues: how far this player has got towards
-	// taking the town, and the one control that acts on it. It sits on the map rather
-	// than in a panel, so it draws itself an opaque plate to be legible over satellite
-	// imagery — the picture above it needs no such thing, a character being their own
-	// silhouette while text is not.
+	// The line the town panel carries under its side: how far this player has got towards
+	// taking the town, and the one control that acts on it. The panel it sits on is the
+	// dark plate that makes it legible over satellite imagery, so this draws itself only a
+	// lighter step of that plate — enough to read as a bar of its own within it.
 	//
 	// It decides nothing: which of the button and the countdown it draws is handed to
 	// it, since the rules behind that (one fight per town per day, one battle at a
@@ -26,7 +25,7 @@
 
 <div
 	class={classNames(
-		'flex items-center justify-center gap-2 rounded bg-base-100 px-2 py-1 shadow',
+		'flex items-center justify-center gap-2 rounded bg-white/10 px-2 py-1',
 		classes
 	)}
 >
