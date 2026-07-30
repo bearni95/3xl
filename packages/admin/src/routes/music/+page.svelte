@@ -1,22 +1,27 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { browser } from '$app/environment';
-	import { onMount } from 'svelte';
-	import type { MusicTrack, MusicCollection } from '$types/music.type';
+	import { onDestroy, onMount } from 'svelte';
+	import { MUSIC_TITLE_MAX_LENGTH, type MusicTrack, type MusicCollection } from '$types/music.type';
 	import type { ShowsCollection } from '$types/show.type';
-	import MusicTrackEditor from '$components/core/MusicTrackEditor.svelte';
+	import { musicTrackSrc } from '$utils/music/tracks';
 
+	// One row per song found in @3xl/assets, and the row is the definition: the name is
+	// typed in it, the show is picked in it, and the song is played from it. There is no
+	// editor to open first — a definition is three fields, and every one of them fits in
+	// a cell, so an intermediate form would only have hidden them behind a click.
+	//
 	// The music read/write API is served by @3xl/backend (default :2002), which writes
 	// public/music.json straight into the git tree. The songs themselves are static and
-	// same-origin, served by this app's vite at /assets — which is what lets the editor
-	// play one back.
+	// same-origin, served by this app's vite at /assets — which is what lets a row play
+	// one back.
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
 
-	// The two halves this screen puts together: the songs found in @3xl/assets, and
-	// what the collection says about them. The files are the list — a definition
-	// answers a song, never the other way round — so a file with no entry is a row
-	// waiting to be filled in, and an entry whose file has gone is reported on its own
-	// below, since there is nothing left for it to be about.
+	// The two halves this screen puts together: the songs found in @3xl/assets, and what
+	// the collection says about them. The files are the list — a definition answers a
+	// song, never the other way round — so a file with no entry is a row waiting to be
+	// filled in, and an entry whose file has gone is reported on its own below, since
+	// there is nothing left for it to be about.
 	let files: string[] = [];
 	let tracks: MusicTrack[] = [];
 	// Every saved show, reduced to what the select needs: the collection carries every
@@ -26,16 +31,35 @@
 	let loading = false;
 	let loadError = '';
 
-	// Which song's definition the editor holds, by file name, or null for none open.
-	// A file is enough on its own here: unlike an achievement there is no such thing
-	// as a new entry with no key yet — the key is the asset.
-	let editing: string | null = null;
+	/** What a row's two fields currently say, which is not yet what the file says. */
+	interface MusicDraft {
+		title: string;
+		showId: number | null;
+	}
 
-	let saving = false;
-	let deleting = false;
-	let editorError = '';
+	// One draft per song, by file name. Held apart from `tracks` so that saving one row
+	// cannot throw away what is half-typed in another: only the row that was saved is
+	// re-seeded from the response.
+	let drafts = new Map<string, MusicDraft>();
+
+	// Which row is in flight, so only that row's button spins and the rest stay usable.
+	let savingFile: string | null = null;
+	let deletingFile: string | null = null;
+	// The last refusal per row, in the server's own words.
+	let errorByFile = new Map<string, string>();
+
+	// The preview: one element for the whole table, because two songs playing over each
+	// other tells the author nothing. `loadedFile` is what its src points at and
+	// `playing` comes off its own events, so a row's button says what the element is
+	// really doing rather than what it was last told to do.
+	let preview: HTMLAudioElement | null = null;
+	let loadedFile: string | null = null;
+	let playing = false;
 
 	onMount(load);
+	// The preview is this screen's, unlike the player on the map: leaving the page is
+	// the end of listening to a file you are naming.
+	onDestroy(() => preview?.pause());
 
 	async function load(): Promise<void> {
 		if (!browser) return;
@@ -55,6 +79,8 @@
 					.map((entry) => ({ id: entry.show.id, name: entry.show.name }))
 					.sort((a, b) => a.name.localeCompare(b.name));
 			}
+			// Every row starts on what the file says — an undefined song on empty fields.
+			drafts = new Map(files.map((file) => [file, draftOf(entryFor(tracks, file))]));
 		} catch (error) {
 			loadError = error instanceof Error ? error.message : String(error);
 		} finally {
@@ -62,32 +88,65 @@
 		}
 	}
 
-	async function handleSave(event: CustomEvent<MusicTrack>): Promise<void> {
-		saving = true;
-		editorError = '';
+	function entryFor(collection: MusicTrack[], file: string): MusicTrack | null {
+		return collection.find((track) => track.file === file) ?? null;
+	}
+
+	function draftOf(track: MusicTrack | null): MusicDraft {
+		return { title: track?.title ?? '', showId: track?.showId ?? null };
+	}
+
+	/**
+	 * Replace one row's draft. A new Map rather than a mutation: the rows, and the
+	 * dirty/valid reading each of them shows, are derived from `drafts`, and a mutated
+	 * Map is the same Map as far as that derivation is concerned.
+	 */
+	function setDraft(file: string, change: Partial<MusicDraft>): void {
+		const current = drafts.get(file) ?? { title: '', showId: null };
+		drafts = new Map(drafts).set(file, { ...current, ...change });
+		if (errorByFile.has(file)) {
+			errorByFile = new Map(errorByFile);
+			errorByFile.delete(file);
+		}
+	}
+
+	function setError(file: string, message: string): void {
+		errorByFile = new Map(errorByFile).set(file, message);
+	}
+
+	function clearError(file: string): void {
+		if (!errorByFile.has(file)) return;
+		const next = new Map(errorByFile);
+		next.delete(file);
+		errorByFile = next;
+	}
+
+	/** Write one row into the collection. The row's own draft is what is sent. */
+	async function save(file: string): Promise<void> {
+		const draft = drafts.get(file);
+		if (!draft) return;
+		savingFile = file;
+		clearError(file);
 		try {
 			const res = await fetch(`${API_BASE}/api/music`, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify(event.detail)
+				body: JSON.stringify({ file, title: draft.title.trim(), showId: draft.showId })
 			});
 			if (!res.ok) {
 				const body = await res.json().catch(() => ({ message: res.statusText }));
 				throw new Error(body.message ?? 'Save failed');
 			}
-			// The response is the whole collection as it now stands on disk, so the list
-			// re-renders from the file rather than from what was typed.
+			// The response is the whole collection as it now stands on disk, so the table
+			// re-renders from the file rather than from what was typed — and this row's
+			// draft is re-seeded from it, which is what makes the row stop reading dirty.
 			tracks = ((await res.json()) as MusicCollection).tracks;
-			editing = event.detail.file;
+			drafts = new Map(drafts).set(file, draftOf(entryFor(tracks, file)));
 		} catch (error) {
-			editorError = error instanceof Error ? error.message : String(error);
+			setError(file, error instanceof Error ? error.message : String(error));
 		} finally {
-			saving = false;
+			savingFile = null;
 		}
-	}
-
-	async function handleDelete(event: CustomEvent<{ file: string }>): Promise<void> {
-		await remove(event.detail.file);
 	}
 
 	/**
@@ -97,8 +156,8 @@
 	 */
 	async function remove(file: string): Promise<void> {
 		if (!confirm(`Remove the definition for "${file}"? The song file itself stays.`)) return;
-		deleting = true;
-		editorError = '';
+		deletingFile = file;
+		clearError(file);
 		try {
 			const res = await fetch(`${API_BASE}/api/music/${file}`, { method: 'DELETE' });
 			if (!res.ok) {
@@ -106,42 +165,73 @@
 				throw new Error(body.message ?? 'Delete failed');
 			}
 			tracks = ((await res.json()) as MusicCollection).tracks;
-			editing = null;
+			drafts = new Map(drafts).set(file, draftOf(null));
 		} catch (error) {
-			editorError = error instanceof Error ? error.message : String(error);
+			setError(file, error instanceof Error ? error.message : String(error));
 		} finally {
-			deleting = false;
+			deletingFile = null;
 		}
 	}
 
-	function edit(file: string): void {
-		editorError = '';
-		editing = file;
+	/**
+	 * Play this song, or pause it if it is the one already running. Switching rows
+	 * pauses what was playing first, so the element only ever carries one song: the
+	 * `pause` that the src change fires is the same event the button reads, which is why
+	 * `playing` is never set by hand.
+	 */
+	function togglePlay(file: string): void {
+		if (!browser) return;
+		const audio = (preview ??= newPreview());
+		if (loadedFile === file && playing) {
+			audio.pause();
+			return;
+		}
+		if (loadedFile !== file) {
+			audio.pause();
+			audio.src = musicTrackSrc(file);
+			loadedFile = file;
+		}
+		// A refused play (a file that will not decode) leaves the element paused, and its
+		// own event has already said so — there is nothing to set here.
+		void audio.play().catch(() => undefined);
 	}
 
-	// The screen's one derived list: a row per song found on disk, carrying whatever the
-	// collection says about it. Every lookup is written into the statements themselves
-	// rather than reached through a helper — a reactive statement re-runs when the
-	// variables *it* mentions change, so a `tracks` read hidden inside a function would
-	// leave the rows showing what the collection said before the last save.
+	function newPreview(): HTMLAudioElement {
+		const audio = new Audio();
+		audio.preload = 'metadata';
+		audio.addEventListener('play', () => (playing = true));
+		audio.addEventListener('pause', () => (playing = false));
+		audio.addEventListener('ended', () => (playing = false));
+		return audio;
+	}
+
+	// The table's one derived list. Every lookup is written into the statements
+	// themselves rather than reached through a helper — a reactive statement re-runs when
+	// the variables *it* mentions change, so a `tracks` or `drafts` read hidden inside a
+	// function would leave the rows showing what they said before the last keystroke.
 	$: trackByFile = new Map(tracks.map((track) => [track.file, track]));
 	$: showNameById = new Map(shows.map((show) => [show.id, show.name]));
 	$: rows = files.map((file) => {
 		const track = trackByFile.get(file) ?? null;
+		const draft = drafts.get(file) ?? { title: '', showId: null };
+		const title = draft.title.trim();
 		return {
 			file,
 			track,
-			// The show as it is named on the /shows screen. An id the collection no longer
-			// holds is said as itself: the row has to show that the link is broken, and the
-			// editor refuses to save it until it is repointed.
-			show:
-				track && track.showId !== null
-					? (showNameById.get(track.showId) ?? `Unknown show ${track.showId}`)
-					: null
+			draft,
+			// What the backend will insist on, read here so the row's Save says so before a
+			// round trip does: a name that is there and fits, and a link naming a show the
+			// game actually holds.
+			valid:
+				title.length > 0 &&
+				title.length <= MUSIC_TITLE_MAX_LENGTH &&
+				(draft.showId === null || showNameById.has(draft.showId)),
+			// An undefined song is dirty the moment it has a name, since saving it is what
+			// defines it at all.
+			dirty: !track || track.title !== title || track.showId !== draft.showId
 		};
 	});
 
-	$: selected = editing ? (trackByFile.get(editing) ?? null) : null;
 	// Entries the assets no longer back: the file was renamed or taken out of
 	// @3xl/assets and the definition was left behind. Nothing plays them, so they are
 	// shown apart from the songs rather than among them.
@@ -150,7 +240,7 @@
 </script>
 
 <div class="flex-1 bg-base-200 p-6 md:p-10">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6">
+	<div class="mx-auto flex max-w-5xl flex-col gap-6">
 		<header class="flex flex-col gap-2">
 			<div class="flex items-center gap-3">
 				<h1 class="text-3xl font-bold">Music</h1>
@@ -159,10 +249,11 @@
 			<p class="text-sm opacity-70">
 				The songs vendored in <code class="font-mono">@3xl/assets</code>'
 				<code class="font-mono">public/music/</code>, and what the game says about each: its
-				title, and the show it opens. Authored into
+				name, and the show it opens. Play a row to hear which song it is, then name it and
+				link it — Save writes that row into
 				<code class="font-mono">@3xl/data</code>'s
 				<code class="font-mono">public/music.json</code>, which is what the player in the map's
-				corner reads. A song is added by dropping the file into that folder — the list here is
+				corner reads. A song is added by dropping the file into that folder; the table is
 				whatever is found in it.
 			</p>
 			<a class="link link-primary text-sm" href="/">← Back to stage</a>
@@ -190,71 +281,147 @@
 						<code class="font-mono">public/music/</code> and reload.
 					</p>
 				{:else}
-					<ul class="flex flex-col gap-2">
-						{#each rows as row (row.file)}
-							<li>
-								<button
-									type="button"
-									class={classNames(
-										'flex w-full items-center gap-3 rounded-box border p-3 text-left transition',
-										editing === row.file
-											? 'border-primary bg-primary/5'
-											: 'border-base-300 hover:bg-base-200'
-									)}
-									on:click={() => edit(row.file)}
-								>
-									<span class="flex min-w-0 flex-1 flex-col gap-1">
-										<span class="flex items-center gap-2">
-											<span class="truncate font-semibold">
-												{row.track ? row.track.title : 'Not defined'}
-											</span>
+					<div class="overflow-x-auto">
+						<table class="table table-sm">
+							<thead>
+								<tr>
+									<th class="w-10"></th>
+									<th>Song</th>
+									<th class="w-1/3">Name</th>
+									<th class="w-1/3">Show</th>
+									<th class="text-right">Definition</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each rows as row (row.file)}
+									<tr class={classNames({ 'bg-base-200': loadedFile === row.file && playing })}>
+										<td>
+											<!-- The song itself, so the author can hear which one they are naming: a
+												file name is not enough to tell two openings apart. -->
+											<button
+												type="button"
+												class="btn btn-circle btn-ghost btn-sm"
+												aria-label={loadedFile === row.file && playing
+													? `Pause ${row.file}`
+													: `Play ${row.file}`}
+												on:click={() => togglePlay(row.file)}
+											>
+												{#if loadedFile === row.file && playing}
+													<svg
+														viewBox="0 0 24 24"
+														fill="currentColor"
+														class="size-4"
+														aria-hidden="true"
+													>
+														<path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+													</svg>
+												{:else}
+													<svg
+														viewBox="0 0 24 24"
+														fill="currentColor"
+														class="size-4"
+														aria-hidden="true"
+													>
+														<path d="M8 5v14l11-7z" />
+													</svg>
+												{/if}
+											</button>
+										</td>
+										<td>
+											<div class="font-mono text-xs">{row.file}</div>
 											{#if !row.track}
 												<span class="badge badge-warning badge-xs">No definition</span>
-											{:else if row.track.showId === null}
-												<span class="badge badge-ghost badge-xs">No show</span>
 											{/if}
-										</span>
-										<span class="truncate font-mono text-[10px] opacity-50">{row.file}</span>
-									</span>
-									{#if row.show}
-										<span class="badge badge-outline shrink-0">{row.show}</span>
+										</td>
+										<td>
+											<input
+												class={classNames('input input-sm input-bordered w-full', {
+													'input-error': row.draft.title.length > 0 && !row.valid
+												})}
+												placeholder="We are"
+												maxlength={MUSIC_TITLE_MAX_LENGTH}
+												value={row.draft.title}
+												on:input={(event) =>
+													setDraft(row.file, { title: event.currentTarget.value })}
+											/>
+										</td>
+										<td>
+											<!-- The saved shows and nothing else: the link is what puts the show's
+												glyph on the plate in the map's corner, so it has to name a show the
+												game holds. A song that opens none is left on the first option and
+												lettered by its name alone. -->
+											<select
+												class={classNames('select select-sm select-bordered w-full', {
+													'select-error': !row.valid && row.draft.title.length > 0
+												})}
+												aria-label={`Show for ${row.file}`}
+												value={row.draft.showId === null ? '' : String(row.draft.showId)}
+												on:change={(event) =>
+													setDraft(row.file, {
+														showId: event.currentTarget.value
+															? Number(event.currentTarget.value)
+															: null
+													})}
+											>
+												<option value="">— No show —</option>
+												{#each shows as show (show.id)}
+													<option value={String(show.id)}>{show.name}</option>
+												{/each}
+												<!-- An id the saved collection no longer holds: kept as an option of
+													its own so the row shows what the file says instead of silently
+													reading as "no show", and refused until it is repointed. -->
+												{#if row.draft.showId !== null && !showNameById.has(row.draft.showId)}
+													<option value={String(row.draft.showId)}>
+														Unknown show {row.draft.showId}
+													</option>
+												{/if}
+											</select>
+										</td>
+										<td>
+											<div class="flex items-center justify-end gap-2">
+												<button
+													class="btn btn-primary btn-sm"
+													type="button"
+													disabled={!row.dirty || !row.valid || savingFile === row.file}
+													on:click={() => save(row.file)}
+												>
+													{#if savingFile === row.file}
+														<span class="loading loading-spinner loading-xs"></span>
+													{/if}
+													{row.track ? 'Save' : 'Define'}
+												</button>
+												{#if row.track}
+													<button
+														class="btn btn-ghost btn-sm"
+														type="button"
+														disabled={deletingFile === row.file}
+														on:click={() => remove(row.file)}
+													>
+														{#if deletingFile === row.file}
+															<span class="loading loading-spinner loading-xs"></span>
+														{/if}
+														Remove
+													</button>
+												{/if}
+											</div>
+										</td>
+									</tr>
+									{#if errorByFile.has(row.file)}
+										<tr>
+											<td colspan="5" class="pt-0">
+												<div class="alert alert-error py-2 text-sm">
+													<span>{errorByFile.get(row.file)}</span>
+												</div>
+											</td>
+										</tr>
 									{/if}
-								</button>
-							</li>
-						{/each}
-					</ul>
+								{/each}
+							</tbody>
+						</table>
+					</div>
 				{/if}
 			</div>
 		</section>
-
-		{#if editing !== null}
-			<section class="card bg-base-100 shadow-xl">
-				<div class="card-body gap-4">
-					<div class="flex items-center gap-3">
-						<h2 class="card-title">
-							{selected ? `${selected.title} — definition` : 'New definition'}
-						</h2>
-						<span class="badge badge-ghost font-mono text-xs">{editing}</span>
-					</div>
-
-					<!-- Remount per song so the draft is always the one being edited, never the
-					     fields left over from the last selection. -->
-					{#key editing}
-						<MusicTrackEditor
-							file={editing}
-							track={selected}
-							{shows}
-							{saving}
-							{deleting}
-							errorMessage={editorError}
-							on:save={handleSave}
-							on:delete={handleDelete}
-							on:cancel={() => (editing = null)}
-						/>
-					{/key}
-				</div>
-			</section>
-		{/if}
 
 		{#if orphans.length > 0}
 			<section class="card bg-base-100 shadow-xl">
@@ -267,29 +434,42 @@
 						These entries name a file that is not in <code class="font-mono">public/music/</code>
 						any more. Nothing plays them — either put the file back, or remove the definition.
 					</p>
-					<ul class="flex flex-col gap-2">
-						{#each orphans as orphan (orphan.file)}
-							<li class="flex items-center gap-3 rounded-box border border-base-300 p-3">
-								<span class="flex min-w-0 flex-1 flex-col">
-									<span class="truncate font-semibold">{orphan.title}</span>
-									<span class="truncate font-mono text-[10px] opacity-50">{orphan.file}</span>
-								</span>
-								<button
-									type="button"
-									class="btn btn-error btn-outline btn-xs shrink-0"
-									disabled={deleting}
-									on:click={() => remove(orphan.file)}
-								>
-									Remove definition
-								</button>
-							</li>
-						{/each}
-					</ul>
-					{#if editorError && editing === null}
-						<div class="alert alert-error">
-							<span>{editorError}</span>
-						</div>
-					{/if}
+					<div class="overflow-x-auto">
+						<table class="table table-sm">
+							<tbody>
+								{#each orphans as orphan (orphan.file)}
+									<tr>
+										<td>
+											<div class="font-medium">{orphan.title}</div>
+											<div class="font-mono text-xs opacity-50">{orphan.file}</div>
+										</td>
+										<td class="text-right">
+											<button
+												type="button"
+												class="btn btn-error btn-outline btn-sm"
+												disabled={deletingFile === orphan.file}
+												on:click={() => remove(orphan.file)}
+											>
+												{#if deletingFile === orphan.file}
+													<span class="loading loading-spinner loading-xs"></span>
+												{/if}
+												Remove definition
+											</button>
+										</td>
+									</tr>
+									{#if errorByFile.has(orphan.file)}
+										<tr>
+											<td colspan="2" class="pt-0">
+												<div class="alert alert-error py-2 text-sm">
+													<span>{errorByFile.get(orphan.file)}</span>
+												</div>
+											</td>
+										</tr>
+									{/if}
+								{/each}
+							</tbody>
+						</table>
+					</div>
 				</div>
 			</section>
 		{/if}
