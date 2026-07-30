@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { get } from 'svelte/store';
 import {
+	boardFitsLineup,
 	CombatController,
 	PLAYER_CELLS,
 	RIVAL_CELLS,
@@ -135,6 +136,48 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 		const short: BattleBoardSnapshot = { turn: 6, fighters: snapshot.fighters.slice(0, 4) };
 
 		expect(get(new CombatController(seeds(COLORS), short)).turn).toBe(1);
+	});
+
+	/**
+	 * The arena asks the same question before it stands anybody up on a saved board, so
+	 * the picture and the fight are decided by one rule: a board good enough to draw but
+	 * not good enough to play would put a line-up on ground belonging to another fight.
+	 */
+	describe('whether a board describes a line-up', () => {
+		const lineup = seeds(COLORS).map(({ side, spawnId }) => ({ side, spawnId }));
+
+		it('takes the board the line-up was saved from', () => {
+			const controller = new CombatController(seeds(COLORS));
+			expect(boardFitsLineup(controller.snapshot(), lineup)).toBe(true);
+		});
+
+		it('refuses no board at all, and a board of no turns', () => {
+			const snapshot = new CombatController(seeds(COLORS)).snapshot();
+			expect(boardFitsLineup(null, lineup)).toBe(false);
+			expect(boardFitsLineup({ ...snapshot, turn: 0 }, lineup)).toBe(false);
+		});
+
+		it('refuses a board fielded from other spawns, or of another size', () => {
+			const snapshot = new CombatController(seeds(COLORS)).snapshot();
+			const others = lineup.map((fighter) => ({ ...fighter, spawnId: `${fighter.spawnId}-other` }));
+
+			expect(boardFitsLineup(snapshot, others)).toBe(false);
+			expect(boardFitsLineup(snapshot, lineup.slice(0, 5))).toBe(false);
+		});
+
+		it('refuses a board whose fighters have swapped lanes', () => {
+			const snapshot = new CombatController(seeds(COLORS)).snapshot();
+			const swapped = {
+				...snapshot,
+				fighters: snapshot.fighters.map((fighter) =>
+					fighter.side === 'info' ? { ...fighter, slot: 2 - fighter.slot } : fighter
+				)
+			};
+
+			// Restoring by slot is what keeps the lanes as they were, so a board that
+			// numbers them differently is a different fight, not this one rearranged.
+			expect(boardFitsLineup(swapped, lineup)).toBe(false);
+		});
 	});
 
 	/**

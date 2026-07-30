@@ -106,18 +106,31 @@ class BattleService {
 	}
 
 	/**
-	 * Write the board back, as each turn closes.
+	 * Write the board back, as each turn closes. Throws if the server would not take it.
 	 *
-	 * Fire-and-forget by design: a save that fails or races the report which ended the
-	 * fight costs the player the resumption of one turn at worst, and blocking the
-	 * board on the network would cost them the fight's rhythm every turn. The server
-	 * silently ignores a save with no battle behind it for the same reason.
+	 * This is what makes a turn a turn: a fight lives in that row, not in the tab playing
+	 * it, so a turn that has been played out but not written back has not happened as far
+	 * as anything outside this browser is concerned. The arena therefore waits on this and
+	 * holds the fight where it is if it fails, rather than stacking further turns on a
+	 * board the server never took — every one of which would be gone on the next reload.
+	 *
+	 * It updates; it never inserts. `save_battle` writes the one row the caller has open —
+	 * the table's primary key is the player — so a fight has exactly one record of itself
+	 * from the moment it is opened to the moment reporting it deletes it. A save that finds
+	 * no such row wrote nothing, and says so rather than passing for a save: it means the
+	 * battle behind this arena is gone (reported from somewhere else), which the player has
+	 * to be told, because nothing they do here will be kept.
 	 */
 	async save(board: BattleBoardSnapshot): Promise<void> {
 		if (!isSupabaseConfigured()) return;
 		const supabase = getSupabaseClient();
-		const { error } = await supabase.rpc('save_battle', { p_board: board });
+		const { data, error } = await supabase.rpc('save_battle', { p_board: board });
 		if (error) throw error;
+		// `save_battle` answers whether it found a row to write. An older deployment of it
+		// returns void (null here), which is read as the write it always was.
+		if (data === false) {
+			throw new Error('This fight is no longer open on the server — nothing was saved.');
+		}
 		this.openStore.update((current) => (current ? { ...current, board } : current));
 	}
 

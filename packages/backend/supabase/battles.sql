@@ -202,14 +202,29 @@ grant execute on function public.start_battle(text, int, jsonb) to authenticated
 drop function if exists public.start_challenge(text);
 
 -- Write the board back, called as each turn closes. The only mutable part of a
--- battle, and the only thing the browser is the author of. Silently does nothing
--- when the caller has no open battle — a save racing the report that ended the
--- fight is not an error, it is just too late to matter.
+-- battle, and the only thing the browser is the author of.
+--
+-- An UPDATE, always: the row is the player's one open battle (user_id is the primary
+-- key), opened by start_battle and deleted by award_combat_exp, so a fight has exactly
+-- one record of itself for its whole life and a turn overwrites the last turn rather
+-- than adding to a history nobody reads.
+--
+-- Returns whether it found that row. The arena waits on this answer and holds the fight
+-- if it is false: a save that wrote nothing means the battle is gone (reported from
+-- another tab or device), and a client that took silence for success would go on playing
+-- turns that no reload would ever bring back. It is still not an *error* — it is late,
+-- not wrong — so it is reported as a value rather than raised.
+--
+-- The old void-returning version is dropped rather than replaced: a return type cannot
+-- be changed in place.
+drop function if exists public.save_battle(jsonb);
+
 create or replace function public.save_battle(p_board jsonb)
-returns void
+returns boolean
 language plpgsql security definer set search_path = public as $$
 declare
 	v_uid uuid := auth.uid();
+	v_written int;
 begin
 	if v_uid is null then
 		raise exception 'You must be signed in to play a battle.';
@@ -217,6 +232,8 @@ begin
 	update public.battles
 		set board = p_board, updated_at = now()
 		where user_id = v_uid;
+	get diagnostics v_written = row_count;
+	return v_written > 0;
 end;
 $$;
 

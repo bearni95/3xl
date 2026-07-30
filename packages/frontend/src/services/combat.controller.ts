@@ -126,6 +126,46 @@ export const RIVAL_CELLS: Hex[] = [
 /** Animation played when a fighter attacks and its definition binds no melee move. */
 const FALLBACK_STRIKE: CharacterMove = { name: 'Strike', type: 'melee', source: '' };
 
+/**
+ * A fighter as a line-up identifies it: the line it stands in and the spawn it is
+ * fielded from. Everything a saved board is matched against, and no more — what a
+ * fighter *is* has nothing to do with whether a board is describing it.
+ */
+export interface LineupFighter {
+	side: FighterSide;
+	spawnId: string;
+}
+
+/**
+ * Whether a saved board describes `lineup` — the fighters in **seed order**, which is
+ * the order each side's lanes are numbered in.
+ *
+ * A board is only ever taken whole: the same number of fighters, each standing in the
+ * lane it was saved in, each fielded from the spawn it was saved with. Anything else —
+ * a team changed since, a board belonging to another battle, a row half-written — is
+ * refused rather than patched in, and the fight is started instead. A half-restored
+ * fight would be a different game wearing this one's turn number.
+ *
+ * It is exported because the fight is not the only thing a board is put back onto: the
+ * arena stands the line-up up on the cells that board records, and a board good enough
+ * to draw but not good enough to play would show a fight nobody is having. One rule,
+ * asked by both.
+ */
+export function boardFitsLineup(
+	snapshot: BattleBoardSnapshot | null,
+	lineup: readonly LineupFighter[]
+): boolean {
+	if (!snapshot || snapshot.turn < 1) return false;
+	if (snapshot.fighters.length !== lineup.length) return false;
+	const lines: Record<FighterSide, LineupFighter[]> = {
+		info: lineup.filter((fighter) => fighter.side === 'info'),
+		error: lineup.filter((fighter) => fighter.side === 'error')
+	};
+	return snapshot.fighters.every(
+		(entry) => lines[entry.side]?.[entry.slot]?.spawnId === entry.spawnId
+	);
+}
+
 /** The data the page hands the controller for one fighter. */
 export interface FighterSeed {
 	id: string;
@@ -344,26 +384,19 @@ export class CombatController {
 	}
 
 	/**
-	 * Put a saved board back onto this line-up, or refuse it whole.
-	 *
-	 * A snapshot is only applied when it describes *this* fight: the same number of
-	 * fighters, each standing in the lane it was saved in, each fielded from the spawn
-	 * it was saved with. Anything else — a team changed since, a board from another
-	 * battle, a row half-written — is refused rather than patched in, and the caller
-	 * starts the fight instead. A half-restored fight would be a different game
-	 * wearing this one's turn number.
+	 * Put a saved board back onto this line-up, or refuse it whole — see
+	 * {@link boardFitsLineup} for what "this line-up" means, which is the one rule both
+	 * this and the arena's own placement read.
 	 */
 	private restore(snapshot: BattleBoardSnapshot | null): boolean {
-		if (!snapshot || snapshot.turn < 1) return false;
-		if (snapshot.fighters.length !== this.fighters.length) return false;
+		if (!boardFitsLineup(snapshot, this.fighters)) return false;
+		const board = snapshot as BattleBoardSnapshot;
 
 		const lines: Record<FighterSide, Fighter[]> = { info: this.players(), error: this.rivals() };
-		const pairs: [Fighter, BattleFighterSnapshot][] = [];
-		for (const entry of snapshot.fighters) {
-			const fighter = lines[entry.side]?.[entry.slot];
-			if (!fighter || fighter.spawnId !== entry.spawnId) return false;
-			pairs.push([fighter, entry]);
-		}
+		const pairs: [Fighter, BattleFighterSnapshot][] = board.fighters.map((entry) => [
+			lines[entry.side][entry.slot],
+			entry
+		]);
 
 		for (const [fighter, entry] of pairs) {
 			fighter.charges = Math.max(0, Math.min(entry.charges, MAX_CHARGES));
@@ -378,7 +411,7 @@ export class CombatController {
 			if (entry.cell && isBoardCell(entry.cell.q, entry.cell.r)) fighter.cell = entry.cell;
 		}
 
-		this.turn = snapshot.turn;
+		this.turn = board.turn;
 		this.phase = 'planning';
 		this.status = `Turn ${this.turn} — give your orders.`;
 		return true;
@@ -408,6 +441,9 @@ export class CombatController {
 	attachBoard(board: MugenBoard): void {
 		this.board = board;
 		for (const fighter of this.fighters) {
+			// The fallen are not on the board a resumed fight comes back to — they were
+			// taken off it when they fell — so nothing is drawn for them here either.
+			if (fighter.down) continue;
 			// What its colour gives it for nothing, and how much of that it still has.
 			// Every fighter wears it, rivals included: what a rival will *do* is the
 			// guess, but what it is was never a secret.

@@ -1014,20 +1014,30 @@ export function ensureTables(): Promise<void> {
 					-- way to spend the day with nothing holding it to the fight.
 					drop function if exists start_challenge(text);
 					-- Write the board back, called as each turn closes — the only mutable part
-					-- of a battle and the only thing the browser authors. A save that finds no
-					-- open battle does nothing: it raced the report that ended the fight, which
-					-- is late rather than wrong.
+					-- of a battle and the only thing the browser authors. Always an UPDATE of
+					-- the player's one open row (user_id is the primary key), so a fight has
+					-- exactly one record of itself from start_battle to award_combat_exp.
+					--
+					-- Returns whether it found that row. A save that wrote nothing means the
+					-- battle is gone, and the arena holds the fight and says so rather than
+					-- playing on over turns no reload would bring back. Late rather than wrong,
+					-- so it is an answer and not an exception. The void-returning version is
+					-- dropped first: a return type cannot be changed in place.
+					drop function if exists save_battle(jsonb);
 					create or replace function save_battle(p_board jsonb)
-					returns void
+					returns boolean
 					language plpgsql security definer set search_path = public as $save_battle$
 					declare
 							v_uid uuid := auth.uid();
+							v_written int;
 					begin
 							if v_uid is null then
 								raise exception 'You must be signed in to play a battle.';
 							end if;
 							update battles set board = p_board, updated_at = now()
 								where user_id = v_uid;
+							get diagnostics v_written = row_count;
+							return v_written > 0;
 					end;
 					$save_battle$;
 					grant execute on function save_battle(jsonb) to authenticated;

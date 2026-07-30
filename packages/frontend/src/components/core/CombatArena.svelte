@@ -8,12 +8,13 @@
 		BoardCharacter,
 		BoardGrid,
 		BoardOrder,
-		MugenBoard as MugenBoardEngine,
-		PlacedCharacter
+		MugenBoard as MugenBoardEngine
 	} from '$utils/mugen/mugen-board';
 	import type { Hex } from '$utils/mugen/hex';
+	import { standingLine, type StandingFighter } from '$utils/mugen/board-standing';
 	import type { Manifest } from '$utils/mugen/mugen-player';
 	import {
+		boardFitsLineup,
 		CombatController,
 		COMBAT_ACTIONS,
 		PLAYER_CELLS,
@@ -21,7 +22,8 @@
 		type CombatAction,
 		type CombatState,
 		type FighterView,
-		type FighterSeed
+		type FighterSeed,
+		type LineupFighter
 	} from '$services/combat.controller';
 	import type { CombatReport, CombatReward, TerritoryResult } from '$types/combat.type';
 	import type { BattleBoardSnapshot } from '$types/battle.type';
@@ -63,10 +65,16 @@
 	// wherever the page last looked.
 	const openBattle = battleService.open;
 
-	// The board the open battle was left on, if any. Handed to the controller, which
-	// refuses a snapshot that does not describe this line-up (see
-	// CombatController.restore).
+	// The board the open battle was left on, if any — the live one, rewritten by every
+	// turn this arena closes.
 	$: battleBoard = ($openBattle?.board ?? null) as BattleBoardSnapshot | null;
+
+	// The board *this* fight was built from: `battleBoard` as it stood when the fight was
+	// set up, and then held still for the rest of it. It is the one thing both halves of a
+	// resumed fight read — the controller restores the state off it, and the grids stand
+	// everyone on the ground it records — so what the player sees and what the fight
+	// believes can never be two different fights.
+	let placement: BattleBoardSnapshot | null = null;
 
 	// The spawn ids that battle is being fought with, in **fielded order** — a fight is
 	// fixed at what was put on the board, so a resumed one fields these rather than
@@ -254,32 +262,60 @@
 	// the board's top→bottom order are one and the same. Rebuilt whenever a slot or a
 	// spawn changes. `spawns` is passed in explicitly so Svelte's legacy reactive
 	// tracking sees the spawn map as a dependency of `grids`.
+	//
+	// Those cells are where a line *opens*, and a fight being picked up did not stop
+	// there: `resumed` is the board the battle was left on, and it is what actually
+	// stands the fighters up — each on the ground it holds, with the fallen not drawn at
+	// all, because the board they were taken off is the board that comes back. Without
+	// it a reloaded fight redraws itself as a fresh one — three a side on their opening
+	// cells — over a controller that knows better, and the picture is a lie about the
+	// score.
 	function buildGrids(
 		ids: string[],
-		spawns: Map<string, CharacterSpawn>
+		spawns: Map<string, CharacterSpawn>,
+		resumed: BattleBoardSnapshot | null
 	): [BoardGrid, BoardGrid] {
-		const half = (side: 'error' | 'info', offset: number, cells: Hex[], fallback: number) => ({
-			color: leaderColorHex(ids[offset], spawns, fallback),
-			character: {
-				...boardCharacter(ids[offset], side, spawns),
-				...cells[0]
-			},
-			extras: cells.slice(1).map((cell, i) => ({
-				...boardCharacter(ids[offset + 1 + i], side, spawns),
-				...cell
-			}))
-		});
+		// Matched by the instance id, not by the spawn: the two sides can field the same
+		// spawn (a mirror match), and each of them stands somewhere of its own.
+		const held: StandingFighter[] = (resumed?.fighters ?? []).map((fighter) => ({
+			id: instanceId(fighter.side, fighter.spawnId),
+			cell: fighter.cell,
+			down: fighter.down
+		}));
+		const half = (
+			side: 'error' | 'info',
+			offset: number,
+			cells: Hex[],
+			fallback: number
+		): BoardGrid => {
+			const characters = new Map(
+				cells.map((cell, index) => {
+					const character = boardCharacter(ids[offset + index], side, spawns);
+					return [character.id as string, { character, opening: cell }];
+				})
+			);
+			const placed = standingLine(
+				[...characters].map(([id, entry]) => ({ id, opening: entry.opening })),
+				held
+			).map((entry) => ({ ...characters.get(entry.id)!.character, ...entry.cell }));
+			return {
+				color: leaderColorHex(ids[offset], spawns, fallback),
+				character: placed[0],
+				extras: placed.slice(1)
+			};
+		};
 		return [
 			half('error', 0, RIVAL_CELLS, 0xff0000),
 			half('info', 3, PLAYER_LINEUP_CELLS, 0x2563eb)
 		];
 	}
 
-	$: grids = buildGrids(slots, spawnById);
+	$: grids = buildGrids(slots, spawnById, placement);
 	// Remounts the Pixi board (and thus repositions everyone) on any slot change or
 	// spawn-colour change (so home cells and order buttons repaint once colours load).
 	// A finished fight never restarts in place — the arena closes — so there is nothing
-	// else to key on.
+	// else to key on: the board a fight is resumed onto is settled once, with the fight
+	// itself, and never moves under a running one (see `placement`).
 	$: boardKey = `${slots.join(',')}:${slots
 		.map((id) => spawnById.get(id)?.color ?? '')
 		.join(',')}`;
@@ -307,24 +343,34 @@
 		gridY: number;
 	}
 
-	// One side's characters in line-up order: sorted by where they stand top→bottom on
-	// the board, which is exactly the left→right order the canvas draws that side's
-	// cards in. The controller is seeded in this order, and it is the order the rivals
-	// hold their ranks in as they are pushed back — so keep the sort here in step with
-	// the board's own card ordering (`collectCards`).
+	// One side's whole line, in the order the controller is seeded in: sorted by where
+	// that side's slots stand top→bottom on screen, which is the order the lanes are
+	// numbered in and the order a saved board's slots mean.
+	//
+	// Read off the cells the line **opens** on, never off where anybody is standing now.
+	// A fighter that has taken ground stands somewhere else and a fallen one stands
+	// nowhere, so seeding from the live board would renumber the lanes of the very fight
+	// being resumed — every fighter into somebody else's duel — and would refuse the
+	// board outright once a side is short. The line-up is the whole six, the fallen
+	// included: they are gone from the canvas, not from the fight.
 	function rosterFor(
-		characters: PlacedCharacter[],
-		side: 'error' | 'info'
+		ids: string[],
+		side: 'error' | 'info',
+		offset: number,
+		cells: Hex[],
+		spawns: Map<string, CharacterSpawn>
 	): Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] {
-		return characters
-			.map((c) => ({
-				id: c.id as string,
-				basePath: c.basePath,
-				side,
-				// Vertical on-screen position of the cell, so the cards can be laid out
-				// left→right in the order the characters stand top-of-board first.
-				gridY: cellScreenY(c.q, c.r)
-			}))
+		return cells
+			.map((cell, index) => {
+				const character = boardCharacter(ids[offset + index], side, spawns);
+				return {
+					id: character.id as string,
+					basePath: character.basePath,
+					side,
+					// Vertical on-screen position of the opening cell.
+					gridY: cellScreenY(cell.q, cell.r)
+				};
+			})
 			.sort((a, b) => a.gridY - b.gridY);
 	}
 
@@ -387,6 +433,17 @@
 		}
 	}
 
+	// The line-up the controller will be seeded with, as identities alone: both sides in
+	// seed order, which is the order a saved board's slots are numbered in. Built without
+	// fetching anything, so whether a board is this fight's can be asked before the fight
+	// is built — and it is, because the board's own placement rides on the answer.
+	function lineupOf(ids: string[]): LineupFighter[] {
+		return [
+			...rosterFor(ids, 'error', 0, RIVAL_CELLS, spawnById),
+			...rosterFor(ids, 'info', 3, PLAYER_LINEUP_CELLS, spawnById)
+		].map((entry) => ({ side: entry.side, spawnId: spawnIdOf(entry.id) }));
+	}
+
 	// Bumped on every setup() call so a stale in-flight load can't clobber a
 	// newer roster after the line-up changes mid-fetch.
 	let setupToken = 0;
@@ -396,16 +453,9 @@
 	// playable line-up changes.
 	async function setup(): Promise<void> {
 		const token = ++setupToken;
-		const currentGrids = buildGrids(slots, spawnById);
 		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] = [
-			...rosterFor(
-				[currentGrids[0].character as PlacedCharacter, ...(currentGrids[0].extras ?? [])],
-				'error'
-			),
-			...rosterFor(
-				[currentGrids[1].character as PlacedCharacter, ...(currentGrids[1].extras ?? [])],
-				'info'
-			)
+			...rosterFor(slots, 'error', 0, RIVAL_CELLS, spawnById),
+			...rosterFor(slots, 'info', 3, PLAYER_LINEUP_CELLS, spawnById)
 		];
 
 		const loaded = await Promise.all(
@@ -457,15 +507,24 @@
 		}));
 		unsubscribe?.();
 		// Read at the moment the controller is built, not captured earlier: whatever the
-		// last closed turn wrote back is what this fight resumes from.
-		controller = new CombatController(seeds, battleBoard);
+		// last closed turn wrote back is what this fight resumes from — and it is the same
+		// board `placement` stood the fighters up on.
+		controller = new CombatController(seeds, placement);
 		savedTurn = 0;
+		savingTurn = 0;
+		saveFailure = null;
 		unsubscribe = controller.subscribe((next) => (state = next));
 		if (board) controller.attachBoard(board);
 	}
 
-	// The turn whose board has already been written back, so each is saved once.
+	// The turn whose board the server has taken, so each is written back once.
 	let savedTurn = 0;
+	// The turn being written back right now, or 0 while nothing is in flight — both the
+	// re-entry guard (the store emits several times a turn) and what the button reads.
+	let savingTurn = 0;
+	// Why the server would not take the last turn, or null. While it is set the fight
+	// holds: the next turn cannot be committed on top of one that was never recorded.
+	let saveFailure: string | null = null;
 
 	// Write the board back as each turn closes — and once as the fight opens, so a
 	// battle left before a single order is given still comes back to this board rather
@@ -480,14 +539,45 @@
 		// Only between turns: mid-resolution the board is half-played, and a decided
 		// fight is about to be reported, which deletes the battle outright.
 		if (!current || !ctrl || current.phase !== 'planning' || current.outcome) return;
-		if (current.turn === savedTurn) return;
-		savedTurn = current.turn;
+		if (current.turn === savedTurn || current.turn === savingTurn) return;
+		await writeBoard(ctrl, current.turn);
+	}
+
+	/**
+	 * Hand the board as this turn opens to the player's battle row, and only call the
+	 * turn before it closed once the server has it.
+	 *
+	 * A turn is not over when it has been played out on screen — it is over when it has
+	 * been recorded, because the fight lives in that row and not in this tab. So a write
+	 * that fails is not shrugged off: the fight holds where it is, says so, and offers
+	 * the write again. Playing on over a refused save would build turns on top of a
+	 * board the server never took, and every one of them would be gone on the next
+	 * reload — which is exactly the thing being prevented.
+	 *
+	 * The row is never created here and never duplicated: `save_battle` updates the one
+	 * row the player has open (its primary key is the player), so a fight has exactly one
+	 * record of itself from the moment it is opened to the moment it is reported.
+	 */
+	async function writeBoard(ctrl: CombatController, turn: number): Promise<void> {
+		savingTurn = turn;
+		saveFailure = null;
 		try {
 			await battleService.save(ctrl.snapshot());
-		} catch {
-			// A turn that failed to save costs the player that one turn of resumption if
-			// they walk away right now. It is not worth interrupting the fight for.
+			savedTurn = turn;
+		} catch (error) {
+			// The whole refusal to the console — Postgres' code, detail and hint — and its
+			// sentence to the player, as with a refused report.
+			console.error('Battle save refused', error);
+			saveFailure = refusal(error, 'This turn could not be saved — the fight is waiting on it.');
+		} finally {
+			savingTurn = 0;
 		}
+	}
+
+	/** Write the same turn back again, after a refusal. */
+	function retrySave(): void {
+		if (!controller || !state || savingTurn) return;
+		void writeBoard(controller, state.turn);
 	}
 
 	// The controller whose result has already been reported, so the award fires
@@ -586,12 +676,15 @@
 
 	// What the server said, as it said it. Supabase hands back a plain object rather
 	// than an Error, so both shapes are read before falling back to a line of our own.
-	function refusal(error: unknown): string {
+	function refusal(
+		error: unknown,
+		fallback = 'The server would not take the result of this fight.'
+	): string {
 		const message =
 			error instanceof Error
 				? error.message
 				: String((error as { message?: unknown } | null)?.message ?? '');
-		return message.trim() || 'The server would not take the result of this fight.';
+		return message.trim() || fallback;
 	}
 
 	onMount(() => authService.init());
@@ -608,6 +701,17 @@
 	let lastFightKey = '';
 	$: if (fightKey && fightKey !== lastFightKey) {
 		lastFightKey = fightKey;
+		// The board this fight is picked up from, taken once — here, where the fight is
+		// built — and not followed afterwards. Every closed turn writes a new board to the
+		// open battle, so a placement that tracked `battleBoard` would restand the
+		// line-up in the middle of the fight that just moved it. What a fight resumes
+		// from is settled when the fight is built, and the controller is handed the very
+		// same board (see `setup`).
+		//
+		// A board this line-up cannot take is dropped here rather than half-used: the
+		// fight would refuse it anyway and start fresh, and drawing a line-up on it
+		// meanwhile would leave the canvas showing a fight nobody is playing.
+		placement = boardFitsLineup(battleBoard, lineupOf(slots)) ? battleBoard : null;
 		void setup();
 	}
 
@@ -722,18 +826,44 @@
 						{/if}
 					</button>
 				{:else if state}
+					{#if saveFailure}
+						<!-- The turn was played out and the server would not take it. The fight
+						     holds here rather than playing on over a turn nothing has recorded:
+						     everything after it would be built on a board that was never written,
+						     and gone the moment this page is reloaded. -->
+						<div class="alert alert-warning max-w-md text-sm" role="alert">
+							<span>{saveFailure}</span>
+						</div>
+						<button
+							type="button"
+							class="btn btn-primary btn-wide"
+							disabled={savingTurn !== 0}
+							on:click={retrySave}
+						>
+							{#if savingTurn}
+								<span class="loading loading-spinner loading-xs"></span>
+								Saving turn {state.turn}
+							{:else}
+								Save turn {state.turn} again
+							{/if}
+						</button>
+					{/if}
 					<!-- The two controls the fight has, and nothing under them: what just
 					     happened was played out on the board, so it is not also recounted
-					     here in words. -->
+					     here in words. A turn is not over until it is recorded, so the button
+					     stays down while the last one is still on its way to the server. -->
 					<button
 						type="button"
 						class="btn btn-primary btn-wide"
-						disabled={!state.ready}
+						disabled={!state.ready || savingTurn !== 0 || !!saveFailure}
 						on:click={() => controller?.commit()}
 					>
 						{#if state.phase === 'resolving'}
 							<span class="loading loading-spinner loading-xs"></span>
 							Playing out turn {state.turn}
+						{:else if savingTurn}
+							<span class="loading loading-spinner loading-xs"></span>
+							Saving turn {state.turn}
 						{:else}
 							Commit turn {state.turn}
 						{/if}
