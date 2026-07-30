@@ -57,6 +57,9 @@ class FakeAudio {
 	/** Files whose metadata takes five seconds to come back. */
 	static slow = new Set<string>();
 
+	/** Whether `play()` is refused, as a browser refuses one no gesture asked for. */
+	static refuse = false;
+
 	preload = '';
 	currentTime = 0;
 	paused = true;
@@ -122,6 +125,7 @@ class FakeAudio {
 	}
 
 	play(): Promise<void> {
+		if (FakeAudio.refuse) return Promise.reject(new Error('NotAllowedError'));
 		this.paused = false;
 		this.emit('play');
 		return Promise.resolve();
@@ -181,6 +185,7 @@ describe('the radio', () => {
 	beforeEach(() => {
 		FakeAudio.instances = [];
 		FakeAudio.slow = new Set();
+		FakeAudio.refuse = false;
 		vi.useFakeTimers({ now: CLOCK });
 		vi.stubGlobal('Audio', FakeAudio);
 		vi.stubGlobal(
@@ -263,21 +268,32 @@ describe('the radio', () => {
 		expect(get(service.state).track).toEqual(order(11)[3]);
 	});
 
-	it('turns the dial to another show, on its own clock', async () => {
+	it('offers a station per show, and tunes to the one asked for', async () => {
 		const service = await tunedIn();
-		expect(get(service.state).stations).toBe(2);
+		// The dial as a surface draws it: the shows that have a song, by id, and the
+		// songs that open no show last. This collection makes two.
+		expect(get(service.state).stations).toEqual([11, 22]);
+		expect(get(service.state).station).toBe(11);
 
-		service.nextStation();
+		service.tuneTo(22);
 		await settle();
 		// Station 22 is two songs of thirty seconds, so its minute-long order has come
 		// round twice by the same instant, and it is at the top of its second song.
 		expect(get(service.state).track).toEqual(order(22)[1]);
-		expect(get(service.state).stations).toBe(2);
+		expect(get(service.state).station).toBe(22);
 
-		// And back round: the first station is where its own clock has got to in the
-		// meantime, not where it was left.
-		service.nextStation();
+		// And back: the first station is where its own clock has got to in the meantime,
+		// not where it was left.
+		service.tuneTo(11);
 		await settle();
+		expect(get(service.state).track).toEqual(order(11)[2]);
+	});
+
+	it('does not tune to a show there is no station for', async () => {
+		const service = await tunedIn();
+		service.tuneTo(999);
+		await settle();
+		expect(get(service.state).station).toBe(11);
 		expect(get(service.state).track).toEqual(order(11)[2]);
 	});
 
@@ -289,9 +305,69 @@ describe('the radio', () => {
 		FakeAudio.slow = new Set(['b-one.mp3', 'b-two.mp3']);
 		const service = await tunedIn();
 
-		service.nextStation();
+		service.tuneTo(22);
 		await settle(5_000);
 		expect(get(service.state).track).toEqual(order(22)[1]);
+	});
+
+	it('remembers the station and the play across a reload', async () => {
+		const first = await tunedIn();
+		first.tuneTo(22);
+		first.toggle();
+		await settle();
+		expect(get(first.state).playing).toBe(true);
+
+		// A reload: the module is thrown away and read back from nothing but
+		// localStorage. The station is the one that was chosen, and the radio is on
+		// again — but joined where that station now is, not where it was left, since it
+		// never stopped.
+		const reloaded = await tunedIn();
+		await settle(30_000);
+		expect(get(reloaded.state).station).toBe(22);
+		expect(get(reloaded.state).playing).toBe(true);
+		// Half a minute on, that station's minute-long order has come round to its top —
+		// it kept running while the page was gone and while it was being read back.
+		expect(get(reloaded.state).track).toEqual(order(22)[0]);
+	});
+
+	it('comes back off if that is how it was left', async () => {
+		const first = await tunedIn();
+		first.toggle();
+		await settle();
+		first.toggle();
+		expect(get(first.state).playing).toBe(false);
+
+		const reloaded = await tunedIn();
+		await settle();
+		expect(get(reloaded.state).playing).toBe(false);
+		// And the plate still says what the station is playing, which is the point of
+		// its being off rather than silent.
+		expect(get(reloaded.state).track).toEqual(order(11)[2]);
+	});
+
+	it('is off on a first visit, and does not turn itself on', async () => {
+		const service = await tunedIn();
+		await settle(60_000);
+		expect(get(service.state).playing).toBe(false);
+	});
+
+	it('keeps the remembered play through an autoplay the browser refuses', async () => {
+		const first = await tunedIn();
+		first.toggle();
+		await settle();
+
+		// A reload where nothing may play without a gesture. The radio reads as off,
+		// because it is — but the listener never turned it off, so the setting stands:
+		// the visit after this one tries again.
+		FakeAudio.refuse = true;
+		const refused = await tunedIn();
+		await settle();
+		expect(get(refused.state).playing).toBe(false);
+
+		FakeAudio.refuse = false;
+		const allowed = await tunedIn();
+		await settle();
+		expect(get(allowed.state).playing).toBe(true);
 	});
 
 	it('plays the day order from the top when a length never arrives', async () => {

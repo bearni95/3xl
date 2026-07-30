@@ -7,8 +7,12 @@ const track = (file: string): MusicTrack => ({ file, title: file, showId: 35610 
 const TRACKS = [track('a.mp3'), track('b.mp3'), track('c.mp3')];
 
 /** Lengths as the audio element yields them: seconds, and often not whole ones. */
-const lengths = (...seconds: number[]): Map<string, number> =>
-	new Map(TRACKS.map((entry, index) => [entry.file, seconds[index]]).filter(([, s]) => s != null));
+const lengths = (...seconds: (number | undefined)[]): Map<string, number> =>
+	new Map(
+		TRACKS.map((entry, index) => [entry.file, seconds[index]] as const).filter(
+			(pair): pair is readonly [string, number] => pair[1] !== undefined
+		)
+	);
 
 describe('when a station`s songs come up', () => {
 	it('starts at midnight and stacks each song on the one before it', () => {
@@ -36,7 +40,7 @@ describe('when a station`s songs come up', () => {
 		// The second song's length has not arrived; the third cannot be placed either,
 		// and neither can anything behind it — a guess would be wrong for the rest of
 		// the day, not just for that one row.
-		const schedule = stationSchedule(TRACKS, lengths(90, undefined as unknown as number, 60));
+		const schedule = stationSchedule(TRACKS, lengths(90, undefined, 60));
 		expect(schedule.map((entry) => entry.startsAt)).toEqual([0, 90_000, null]);
 	});
 

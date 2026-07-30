@@ -7,14 +7,19 @@
 	import { showIconName } from '$utils/show/show-icon';
 
 	// The map's radio: one plate in the corner with the three things a listener needs —
-	// what is on air, a play/pause, and the turn of the dial to the next station.
+	// what is on air, a play/pause, and the dial that picks the station.
 	//
 	// A station is a show, and what is playing on it is decided by the clock rather
 	// than by this plate: the song and the second of it come from musicService, which
 	// folds the time of day into the show's day order (see there). So there is no step
-	// to the next song here — a listener turns to another station, they do not skip
-	// what a station is playing. The dial is drawn only when there is more than one
-	// station to turn to.
+	// to the next song here — a listener picks another station, they do not skip what a
+	// station is playing.
+	//
+	// The dial is the second line rather than a control beside it, because that line
+	// was already naming the show: on a radio the station's name and the way to change
+	// it are one thing, and the plate has no room to say it twice. It is the select
+	// itself when there is a choice to make and the plain line when there is not — a
+	// select with one option is an affordance that lies about what it can do.
 	//
 	// It reads as the town panel below it does — the same black plate, the same glyph
 	// tile at the left end with two lines of text beside it — because the two stand in
@@ -41,9 +46,26 @@
 
 	const music = musicService.state;
 
+	/** A station's value in the select: an id, and the one word that is not an id. */
+	const NO_SHOW = 'none';
+
+	function stationKey(showId: number | null): string {
+		return showId === null ? NO_SHOW : String(showId);
+	}
+
 	$: state = $music;
 	$: showIcon = showIconName(state.track?.showId ?? null);
-	$: showName = state.track?.showId ? ($showLogos.get(state.track.showId)?.name ?? null) : null;
+	// The stations to choose between, named from the same baked shows.json the statues
+	// read. The songs that open no show are the dash the town panel leaves for anything
+	// unnameable; a show that file has nothing for is lettered by its id instead, since
+	// two stations reading the same dash would be a dial that cannot be turned by
+	// looking at it.
+	$: stations = state.stations.map((showId) => ({
+		showId,
+		key: stationKey(showId),
+		name: showId === null ? '—' : ($showLogos.get(showId)?.name ?? `#${showId}`)
+	}));
+	$: tunedName = stations.find((station) => station.showId === state.station)?.name ?? '—';
 </script>
 
 {#if state.track}
@@ -67,10 +89,32 @@
 		<!-- `min-w-0` is what lets a long title truncate instead of widening the plate. -->
 		<div class="flex min-w-0 flex-1 flex-col text-left leading-tight">
 			<span class="truncate text-sm font-semibold">{state.track.title}</span>
-			<span class="truncate text-xs font-medium text-white/70">{showName ?? '—'}</span>
+			{#if stations.length > 1}
+				<!-- The dial: stripped of the select's own box so it reads as the line it
+					replaced, and left with the caret, which is the only thing that says it can
+					be opened. The options carry the page's own colours because the list is
+					drawn by the browser, where the plate's white-on-black does not reach. -->
+				<select
+					class="select select-ghost h-5 min-h-0 w-full max-w-full truncate rounded-none border-0 bg-transparent p-0 pe-5 text-xs font-medium text-white/70 focus:outline-none"
+					aria-label="Station"
+					value={stationKey(state.station)}
+					on:change={(event) =>
+						musicService.tuneTo(
+							event.currentTarget.value === NO_SHOW ? null : Number(event.currentTarget.value)
+						)}
+				>
+					{#each stations as station (station.key)}
+						<option class="bg-base-100 text-base-content" value={station.key}>
+							{station.name}
+						</option>
+					{/each}
+				</select>
+			{:else}
+				<span class="truncate text-xs font-medium text-white/70">{tunedName}</span>
+			{/if}
 		</div>
 
-		<!-- Ghost circles: the plate is already a dark object, and two filled buttons on it
+		<!-- A ghost circle: the plate is already a dark object, and a filled button on it
 			would read louder than the town's Challenge control one plate below. -->
 		<button
 			type="button"
@@ -89,23 +133,5 @@
 			{/if}
 		</button>
 
-		<!-- The dial. A turn, not a skip: it leaves this station playing what it is
-			playing and joins the next one wherever that one has got to. Drawn only when
-			the collection makes more than one station — a dial with one stop on it would
-			be a button that does nothing. -->
-		{#if state.stations > 1}
-			<button
-				type="button"
-				class="btn btn-circle btn-ghost btn-sm flex-none text-white"
-				aria-label="Next station"
-				on:click={() => musicService.nextStation()}
-			>
-				<svg viewBox="0 0 24 24" fill="currentColor" class="size-5" aria-hidden="true">
-					<path
-						d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
-					/>
-				</svg>
-			</button>
-		{/if}
 	</div>
 {/if}

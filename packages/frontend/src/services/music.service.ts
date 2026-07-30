@@ -1,5 +1,6 @@
-import { writable, type Readable } from 'svelte/store';
+import { get, writable, type Readable } from 'svelte/store';
 import { browser } from '$app/environment';
+import localStorageWritableStore from '$utils/localStorageWritableStore';
 import { musicTrackSrc } from '$utils/music/tracks';
 import {
 	dailyShowShuffles,
@@ -37,8 +38,17 @@ import type { MusicTrack, MusicCollection } from '$types/music.type';
  * back to being a playlist in the day's order, which is the closest thing to a radio
  * that can be had without knowing when anything ends.
  *
+ * Two things about a radio belong to the listener rather than to the clock, and both
+ * are remembered in localStorage across a reload: which station they are on, and
+ * whether they had it on at all. Neither is a position — there is nothing to resume,
+ * because the station kept playing while the page was gone — so what is restored is a
+ * station tuned in where it now is, and a play that the browser may still refuse: a
+ * reload is not a gesture, and an autoplay policy is not something to argue with. A
+ * refusal leaves the plate showing Play, and does not unremember anything, so the
+ * setting is still there for the next load and for the first click.
+ *
  * The store says only what a surface has to draw: which song is on, whether it is
- * running, and how many stations there are to turn to.
+ * running, and the stations there are to choose between.
  */
 
 /** Metadata is loaded, so `currentTime` can be set — `HTMLMediaElement.HAVE_METADATA`. */
@@ -59,6 +69,9 @@ const DRIFT_MS = 1500;
  */
 const RETUNE_MARGIN_MS = 50;
 
+/** Where the listener's two choices are kept between visits. */
+const MEMORY_KEY = 'music-player';
+
 /** What a surface needs to letter the player. */
 export interface MusicState {
 	/**
@@ -69,11 +82,29 @@ export interface MusicState {
 	/** Whether it is actually running — read off the element, not off the last order. */
 	playing: boolean;
 	/**
-	 * How many stations the collection makes: one per show that has a song, plus one
-	 * for the songs that open no show. A surface offers the turn only when there is
-	 * more than one thing to turn to.
+	 * Every station there is to choose between, as show ids in dial order — the shows
+	 * that have a song, by id, and `null` last for the songs that open no show. Empty
+	 * until the collection has been read.
 	 */
-	stations: number;
+	stations: (number | null)[];
+	/**
+	 * Which of them is tuned. The station actually playing, not the remembered choice:
+	 * a listener whose station has lost its last song is on the first one, and this
+	 * says so. Meaningless while {@link stations} is empty, where nothing is drawn.
+	 */
+	station: number | null;
+}
+
+/** The listener's own two choices, kept in localStorage across a reload. */
+interface MusicMemory {
+	/**
+	 * The station last chosen — a show id, `null` for the songs that open no show, and
+	 * absent for a listener who has never chosen one, which is not the same as having
+	 * chosen the unlinked songs.
+	 */
+	station?: number | null;
+	/** Whether the radio was left on. */
+	on: boolean;
 }
 
 class MusicService {
@@ -94,8 +125,8 @@ class MusicService {
 
 	/**
 	 * The tuned station's show, `null` for the songs that open no show, and
-	 * `undefined` for a listener who has not turned the dial: that is not a station's
-	 * key, so it falls through to the first one.
+	 * `undefined` for a listener who has not chosen one: that is not a station's key,
+	 * so it falls through to the first one. Seeded from the last visit's choice.
 	 */
 	private tuned: number | null | undefined = undefined;
 
@@ -125,11 +156,31 @@ class MusicService {
 	/** The in-flight (or finished) read, so several mounts share one fetch. */
 	private reading: Promise<void> | null = null;
 
+	/**
+	 * Whether the remembered "on" has been acted on. Once only, and on the first
+	 * station that can be placed: a reload that turned the radio back on and then kept
+	 * turning it back on would be a play button that could not be pressed off.
+	 */
+	private resumed = false;
+
+	/**
+	 * The listener's two choices, written only where they make one — never from a
+	 * refused autoplay or from anything the clock did.
+	 */
+	private readonly memory = localStorageWritableStore<MusicMemory>(MEMORY_KEY, { on: false });
+
 	private readonly stateStore = writable<MusicState>({
 		track: null,
 		playing: false,
-		stations: 0
+		stations: [],
+		station: null
 	});
+
+	constructor() {
+		// The station chosen last time, before anything is read: the collection may not
+		// still hold it, and a key naming no station falls through to the first.
+		this.tuned = get(this.memory).station;
+	}
 
 	/** What is on air and whether it is running, for a surface to subscribe to. */
 	get state(): Readable<MusicState> {
@@ -181,25 +232,29 @@ class MusicService {
 		// a tab that was suspended. That click is asking for it back, not for silence.
 		if (this.wanted && !audio.paused) {
 			this.wanted = false;
+			this.remember({ on: false });
 			audio.pause();
 			return;
 		}
 		this.wanted = true;
+		this.remember({ on: true });
 		this.tune();
 	}
 
 	/**
-	 * Turn to the next station, wrapping at the end, and keep the radio on or off as it
-	 * was. The new station is joined where it now is, like any other tuning — there is
-	 * no starting a station from the top.
+	 * Tune to a station by the show it is: an id from {@link MusicState.stations}, or
+	 * `null` for the songs that open no show. The radio stays on or off as it was, and
+	 * the new station is joined where it now is — there is no starting one from the
+	 * top. A show the collection has no station for is not tuned to.
 	 */
-	nextStation(): void {
+	tuneTo(showId: number | null): void {
 		const current = this.station();
-		if (!current || this.stations.length < 2) return;
+		if (!current || current.showId === showId) return;
+		if (!this.stations.some((station) => station.showId === showId)) return;
 
-		const at = this.stations.indexOf(current);
-		this.tuned = this.stations[(at + 1) % this.stations.length].showId;
+		this.tuned = showId;
 		this.index = 0;
+		this.remember({ station: showId });
 		this.tune();
 		this.measure(this.station());
 	}
@@ -297,14 +352,47 @@ class MusicService {
 	 */
 	private station(): ShowShuffle | null {
 		const day = utcDayIso();
-		if (day !== this.day) {
+		const regrouped = day !== this.day;
+		if (regrouped) {
 			this.day = day;
 			this.stations = dailyShowShuffles(this.tracks, day);
-			const stations = this.stations.length;
-			this.stateStore.update((state) => ({ ...state, stations }));
 		}
 		if (this.stations.length === 0) return null;
-		return this.stations.find((station) => station.showId === this.tuned) ?? this.stations[0];
+
+		const tuned =
+			this.stations.find((station) => station.showId === this.tuned) ?? this.stations[0];
+		// The dial as a surface draws it, published from the one place that works out
+		// which station is really on — and only when it has moved, since this is asked
+		// again at every song boundary and a store set is a redraw.
+		this.stateStore.update((state) =>
+			!regrouped && state.station === tuned.showId
+				? state
+				: {
+						...state,
+						station: tuned.showId,
+						stations: this.stations.map((station) => station.showId)
+					}
+		);
+		return tuned;
+	}
+
+	/** Write down one of the listener's two choices, for the next time they are here. */
+	private remember(choice: Partial<MusicMemory>): void {
+		this.memory.update((memory) => ({ ...memory, ...choice }));
+	}
+
+	/**
+	 * Turn the radio back on if that is how it was left, once there is a station to
+	 * turn it on to. A reload is not a gesture, so the browser may refuse — that is
+	 * reported as not playing and is not written down as the listener having turned it
+	 * off, since they did not.
+	 */
+	private resume(): void {
+		if (this.resumed) return;
+		this.resumed = true;
+		if (!get(this.memory).on || !this.element()) return;
+		this.wanted = true;
+		this.tune();
 	}
 
 	/**
@@ -325,6 +413,10 @@ class MusicService {
 			// measure() will tune when it is ready.
 			if (this.station()?.showId !== showId) return;
 			this.tune();
+			// The first station that can be placed is where a remembered "on" is acted
+			// on: turning it back on before that would put the listener into the
+			// fallback's first song and then jump them out of it a second later.
+			this.resume();
 			return Promise.all(
 				this.stations
 					.filter((other) => other.showId !== showId)

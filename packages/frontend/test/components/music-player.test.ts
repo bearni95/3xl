@@ -41,7 +41,7 @@ function stubFetch(collection: MusicCollection | null): void {
 describe('the music player', () => {
 	beforeEach(() => stubFetch(COLLECTION));
 
-	it('letters what is on air, and turns to the next station', async () => {
+	it('letters what is on air, and picks the station it comes from', async () => {
 		const { getByText, getByLabelText } = render(MusicPlayer);
 
 		// Nothing is drawn until the collection has been read: the plate is what the
@@ -49,12 +49,14 @@ describe('the music player', () => {
 		await waitFor(() => expect(getByText('First song')).toBeTruthy());
 
 		// A station is a show, so these two songs are two stations — the one their show
-		// opens, and the one for the songs that open none.
-		await fireEvent.click(getByLabelText('Next station'));
+		// opens, and the one for the songs that open none. Both are on the dial.
+		const dial = getByLabelText('Station') as HTMLSelectElement;
+		expect([...dial.options].map((option) => option.value)).toEqual(['37854', 'none']);
+
+		await fireEvent.change(dial, { target: { value: 'none' } });
 		expect(getByText('Second song')).toBeTruthy();
 
-		// The dial wraps, so the next press comes back round to the first station.
-		await fireEvent.click(getByLabelText('Next station'));
+		await fireEvent.change(dial, { target: { value: '37854' } });
 		expect(getByText('First song')).toBeTruthy();
 	});
 
@@ -65,11 +67,14 @@ describe('the music player', () => {
 		await waitFor(() => expect(getByLabelText('Play music')).toBeTruthy());
 	});
 
-	it('holds the show line open when the show cannot be named', async () => {
-		// The second line is the show, read from the same shows.json the statues read. A
-		// song linked to no show — or to one the file has nothing for — leaves the dash
-		// the town panel leaves, so the plate keeps its two lines either way.
-		const { getByText } = render(MusicPlayer);
-		await waitFor(() => expect(getByText('—')).toBeTruthy());
+	it('names the stations it cannot name apart', async () => {
+		// A station is named from the same shows.json the statues read. The one for the
+		// songs that open no show has no name to read — it is the dash the town panel
+		// leaves — and a show that file has nothing for is lettered by its id, because
+		// two stations reading the same dash could not be told apart on the dial.
+		const { getByText, getByLabelText } = render(MusicPlayer);
+		await waitFor(() => expect(getByLabelText('Station')).toBeTruthy());
+		expect((getByText('—') as HTMLOptionElement).value).toBe('none');
+		expect((getByText('#37854') as HTMLOptionElement).value).toBe('37854');
 	});
 });

@@ -142,8 +142,13 @@ they run end to end from that day's midnight and start again when they run out, 
 playing is whichever song the clock lands in, at the second it lands on
 (`utils/music/station`). So two players hear the same bar of the same song without anything
 being stored, sent or agreed on, and a listener who pauses rejoins where the station has got
-to rather than resuming. The plate's two controls are play/pause and the **dial** — the turn
-to the next station, not a skip, since a radio has no next song. The lengths that clock is
+to rather than resuming. The plate's two controls are play/pause and the **dial** — a select
+naming the stations, which *is* the plate's second line, since that line was already naming
+the show and a radio says its station once. There is no skip: a radio has no next song. Both
+of the listener's choices — which station, and whether it was left on — are remembered in
+localStorage (`music-player`) and restored on the next visit; the play is restored as an
+attempt, because a reload is not a gesture and the browser may refuse it, and a refusal is
+not written back as the listener having turned it off. The lengths that clock is
 built out of are the files' and nobody authors them: they are read off audio elements that
 load metadata and nothing else, one per song, which is why a station that has not been
 measured yet (or holds a file that will not decode) falls back to playing its day order from
