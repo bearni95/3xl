@@ -30,14 +30,19 @@
 		if (event.key === 'Escape') close();
 	}
 
-	// The view is two grids side by side, and both counts are fixed: the roster's cards are
-	// four across on the right, the filters and the line-up three across on the left. The
-	// two stand in a seven-column frame, three columns and four, at the one gap the inner
-	// grids use — so a cell of either grid is exactly one column of that frame wide and the
-	// two read as one rhythm across the view rather than as two grids that happen to be
-	// adjacent. There is no column setting any more: the counts are the layout, so there is
+	// The view is two grids, and every count in it is fixed. From lg up they stand side by
+	// side in a seven-column frame — the filters and the line-up three columns wide on the
+	// left, the roster four on the right, at the one gap the inner grids use, so a cell of
+	// either is exactly one column of that frame wide and the two read as one rhythm across
+	// the view rather than as two grids that happen to be adjacent. Below lg there is no
+	// room to set four cards beside anything, so the frame becomes a single column and the
+	// two stack, the cards dropping to three across to match the grid above them. There is
+	// no column setting for a player to change: the counts are the layout, so there is
 	// nothing left for a slider to say. (`roster:columns` is left behind in localStorage
 	// unread; nothing writes it and nothing looks for it.)
+	//
+	// This is the page budget rather than the rendered count, which is why it stays four
+	// where the grid shows three: what it bounds is how many sprites one page may stand up.
 	const CARD_COLUMNS = 4;
 
 	// Whether a character's copies are gathered into one cell — one statue, with a select
@@ -768,6 +773,8 @@
 				     four of the roster on the right, standing in a seven-column frame at the gap both
 				     of them use, so a cell of either is one column of that frame wide and the two
 				     read across as a single rhythm.
+				     Below lg the frame is one column instead and the two stack, the filters and the
+				     line-up over the cards, both three across.
 				     The frame itself does not scroll and takes exactly the height the toolbar leaves
 				     it: it is the cards that scroll, inside their own grid, so the filters and the
 				     line-up stay where they are however far down the roster the player reads. That is
@@ -775,6 +782,11 @@
 				     be clamped at all, an element that scrolls having no minimum height of its own to
 				     push the frame open with. content-start on both keeps their rows at their own
 				     heights rather than stretched down the frame.
+				     Stacked, the same thing is said with rows: the first takes the height the filters
+				     and the line-up ask for and the second takes the rest, which is the pane that
+				     scrolls. The first is capped at 45vh, or a long enough list of shows would ask for
+				     the whole frame and leave the cards a pane of no height at all; past the cap that
+				     grid scrolls on its own, which it is already a box for.
 				     The panel is each card's own, not the grid's and not the frame's. One under the
 				     whole frame had said the filters, the line-up and the cards were a single
 				     surface; one under the right grid alone still said the cards were a sheet with
@@ -784,14 +796,18 @@
 				     and the line-up wanting nothing behind it. Dropping the grid's padding with its
 				     background also puts the four columns back exactly on four of the frame's
 				     seven, which the padding had been shaving a few pixels off. -->
-				<div class="grid min-h-0 min-w-0 flex-1 grid-cols-7 gap-3">
+				<div
+					class="grid min-h-0 min-w-0 flex-1 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] gap-3 lg:grid-cols-7 lg:grid-rows-none"
+				>
 					<!-- The filters and the line-up, three across: the filter card over all three of
 					     those columns, and the line-up as one row of three under it, a column to a
 					     slot. Every control ANDs with the others. Clear stands at the head of the
 					     card: it is what undoes everything below it, and a list of shows long enough
 					     to run on had pushed it out of sight at the very moment there was most to
 					     undo. -->
-					<div class="col-span-3 grid min-h-0 grid-cols-3 content-start gap-3 overflow-y-auto">
+					<div
+						class="grid max-h-[45vh] min-h-0 grid-cols-3 content-start gap-3 overflow-y-auto lg:col-span-3 lg:max-h-none"
+					>
 						<div class="col-span-3 flex flex-col gap-3 rounded-box bg-base-100 p-3">
 							<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
 								Clear
@@ -921,7 +937,7 @@
 					     controls a player has to reach to undo the filter that emptied it. -->
 					<div
 						bind:this={gridScroller}
-						class="col-span-4 grid min-h-0 grid-cols-4 content-start gap-3 overflow-y-auto"
+						class="grid min-h-0 grid-cols-3 content-start gap-3 overflow-y-auto lg:col-span-4 lg:grid-cols-4"
 					>
 						{#each pagedStatues as { group, copy, places, placeValue, statue, fielded } (group.id)}
 							<!-- The border is on the cell, not on the statue: it takes in the strip over
@@ -1022,7 +1038,9 @@
 					     empty grid with nothing hiding anything, the party row above holding every
 					     card they own, and blaming the filters for that would be a lie. -->
 					{#if filteredSpawns.length === 0 && $spawns.length > teamFilledCount}
-						<div class="col-span-4 flex flex-col items-center justify-center gap-3 py-12 text-center">
+						<div
+							class="col-span-3 flex flex-col items-center justify-center gap-3 py-12 text-center lg:col-span-4"
+						>
 							<p class="text-sm opacity-60">No characters match these filters.</p>
 							<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
 						</div>
