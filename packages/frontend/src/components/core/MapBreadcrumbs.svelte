@@ -146,11 +146,20 @@
 			{#if collapsed}
 				<!-- Collapsed: the button that holds the rest of the path, and then the step the map
 					is on. The button is to its left because that is where the path it stands for was —
-					it is the head of the row folded into one mark, not a menu appended to the end. -->
-				<div class="flex items-center gap-1">
+					it is the head of the row folded into one mark, not a menu appended to the end.
+					Drawn as an outlined square the size of a crumb's tile: the row it stands in is a
+					line of 32px tiles, so the one thing here that is pressed rather than read is given
+					the same square and told apart by being a rule around empty rather than a fill.
+					DaisyUI's square and its 32px are taken as they come; its colours are not — an
+					outline button letters itself in `base-content`, the theme's periwinkle, which on a
+					bar that forces white over terrain reads as a stray colour, and its hover fills the
+					square with the surface and takes the rule with it, so the mark loses the very thing
+					it is. White at 60%, brightening to white on a wash of it — the same answer to the
+					pointer the crumbs beside it give. -->
+				<div class="flex items-center gap-2">
 					<button
 						type="button"
-						class="flex-none rounded-md px-1 py-1 hover:bg-white/10"
+						class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
 						aria-expanded={expanded}
 						aria-label="Show the whole path"
 						on:click={() => (expanded = !expanded)}
