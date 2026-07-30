@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
+	import { fly } from 'svelte/transition';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { characters } from '@3xl/data';
@@ -932,48 +933,47 @@
 	// own sign-in gate is still the way in, so the button stays live.
 	$: canFieldTeam = !currentUserId || $teamSpawns.length === TEAM_SIZE;
 
-	// --- The panel's mobile shape ------------------------------------------------
-	// Narrow viewports have no room for a 36rem column beside the map, so below `md` the
-	// same panel docks under it instead: 30vh of it showing, with the handle row at its
-	// top toggling it up to the full screen and back. Both states are plain heights on
-	// the one element, so the CSS height transition slides its top edge up and down — no
-	// second panel, no remount, nothing in the tabs (breadcrumbs, search, a half-sliced
-	// pack) resets on the way. The map takes whatever height is left, so growing the
-	// panel shrinks the map rather than covering it.
-	let panelExpanded = false;
+	// --- The menu ----------------------------------------------------------------
+	// The column beside the map is a burger menu now, summoned from the far end of the
+	// breadcrumb bar and standing over the map's right edge while it is up. It was a sibling
+	// of the map taking a flat 450px of the row (30vh of the column on a narrow viewport,
+	// with a handle row toggling it to the full screen), which was the shape it needed while
+	// it held tables and a pack opener. It holds five buttons and the sign-in: a column of
+	// that permanently taking an eighth of the window was the map paying rent for a menu.
+	//
+	// Mounted only while it is open, so it slides in and out (a CSS transition has nothing to
+	// animate from on a fresh mount) exactly as the full-view sheets do — the same reason
+	// FullScreenModal has no `open` prop.
+	let menuOpen = false;
 
-	// The single panel holding all three views, a sibling of the map rather than a layer
-	// over it: it takes its own 36rem of the row (its own 30vh of the column on mobile)
-	// and the map gets the rest. Nothing of the map is ever hidden behind it, which is
-	// why it needs no z-index of its own, no shadow lifting it off anything, and no
-	// see-through surface — with no map underneath there is nothing left to read
-	// through, so the base surface is opaque at both mobile heights.
-	//
-	// It is flush against the viewport edges it docks to, so it carries no radius: the
-	// only line it draws is the one separating it from the map — a left border in the
-	// desktop row, a top border in the mobile column.
-	//
-	// One height for every tab: the breadcrumbs and the tab strip take a fixed slice of
-	// the panel before a tab draws anything, so whatever that header does not use goes to
-	// the tab, which is the only part that scrolls. The column is as tall as the row,
-	// since a panel hugging its content would leave the rest of its own column as bare
-	// background beside the map.
-	$: panelClasses = classNames(
-		'flex flex-none flex-col overflow-hidden bg-base-100',
-		'border-base-300',
-		'transition-[height] duration-300 ease-in-out',
-		// Mobile: the full-width strip under the map, on the bottom edge. Its height is
-		// the toggle — the handle row swaps the peek for the whole screen, which squeezes
-		// the map above it down to nothing rather than covering it.
-		'w-full border-t',
-		panelExpanded ? 'h-screen' : 'h-[30vh]',
-		// md and up: the right-hand column of the row — full height, since it is the row
-		// that bounds it now, and a flat 450px wide. A fixed width and not a share of the
-		// viewport: everything in it is laid out in cards to a row (the booster grid two of
-		// them, the Profile tab's statues three), so the column is the width those read well
-		// at and the map takes whatever is left, however wide the window is.
-		'md:h-full md:w-[450px] md:border-t-0 md:border-l'
-	);
+	// The menu's own box and the button that summons it, so a press anywhere else can close
+	// it: the menu stands over the map, so a press outside it is a press on something it is
+	// covering rather than a press on the menu. The button is excluded because it would
+	// otherwise close on the way down and reopen on the way up, leaving the summon unable to
+	// dismiss what it summoned.
+	let menuEl: HTMLElement | null = null;
+	let menuButtonEl: HTMLElement | null = null;
+
+	function onWindowPointerDown(event: PointerEvent): void {
+		if (!menuOpen) return;
+		const target = event.target as Node;
+		if (menuEl?.contains(target) || menuButtonEl?.contains(target)) return;
+		menuOpen = false;
+	}
+
+	function onWindowKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape') menuOpen = false;
+	}
+
+	/**
+	 * Raise one of the menu's views, and put the menu away as it goes: what it raises is a
+	 * full-view sheet over the whole map, so leaving the menu standing behind it would only
+	 * mean finding it still there when the sheet comes down.
+	 */
+	function pickFromMenu(raise: () => void): void {
+		menuOpen = false;
+		raise();
+	}
 
 	// Fight this town: spend the day's challenge on it, then snapshot whichever team
 	// currently sits on it — the holder's if a player has taken it, the seeded roll
@@ -1742,373 +1742,382 @@
 	// outside it.
 </script>
 
-<!-- The map and its panel split the viewport between them — the panel is never over the
-	map. Both orders are the reverse of the markup's, which puts the panel first for
-	reading order and second on screen: the right-hand column of the row on a wide
-	viewport, the strip under the map on a narrow one. -->
-<div class="flex h-screen flex-col-reverse md:flex-row-reverse">
-	<!-- The one panel beside the map — the right-hand column on a wide viewport, docked under
-		the map below `md` (30vh showing, its handle row toggling it up to the full screen).
-		Same markup either way, and one view rather than three tabs: the account, with the two
-		buttons that raise the leaderboard and the window's booster packs above it. Both of
-		those were tabs of this column and are full-view modals now (see LeaderboardModal and
-		BoosterModal), and everything about where the map is looking left before them — the
-		drill table and the picked town are plates at the map's own corners, the breadcrumbs a
-		bar across the top of it, all of them over the thing they name. -->
-	<aside class={panelClasses} aria-label="Map panel">
-		<!-- The panel's handle row, mobile only: the whole row is the toggle between the
-			30vh peek and the full screen, drawn as the grab bar the gesture would use. The
-			panel animates the change itself (its height is transitioned), so this only has
-			to flip the flag. -->
-		<button
-			type="button"
-			class="flex flex-none items-center justify-center border-b border-base-300 py-2.5 md:hidden"
-			aria-expanded={panelExpanded}
-			aria-label={panelExpanded ? 'Collapse panel' : 'Expand panel'}
-			on:click={() => (panelExpanded = !panelExpanded)}
-		>
-			<span class="h-1.5 w-10 rounded-full bg-base-content/30"></span>
-		</button>
+<svelte:window on:pointerdown={onWindowPointerDown} on:keydown={onWindowKeydown} />
 
-		<!-- On the mobile panel this is the one scroller: the sections below keep their
-			natural heights inside it (it is a plain block there, so their `flex-1` is
-			inert) and the whole panel scrolls as one, which is the only thing that works
-			when the header and a tab together outrun the collapsed 30vh. On the desktop panel it
-			is `display: contents` — it draws no box at all, so its children go back to being
-			the aside's own flex children and each tab keeps its own scroller. -->
-		<div class="min-h-0 flex-1 overflow-y-auto md:contents">
-			<!-- Every way out of this column, and all of them one group: the two views that used
-				to be tabs here (the leaderboard and the window's booster packs) and, for a
-				signed-in account, its three — the player's cards, the badges they can earn, and
-				the account itself. One `join`, turned vertical, so the five are a single block of
-				buttons with nothing between them: no gaps, no rules, no tile behind any of them
-				and no header holding two of them apart. They are the same kind of thing — a press
-				that raises a view over the map — and they were reading as two unrelated sets
-				because of where each of them used to live rather than because of what it does. The
-				join is what says they are one set: only the top and bottom of the block are
-				rounded, and the borders between neighbours collapse into one line.
-				Nothing else is in this column. Who is playing is a plate at the map's top-right
-				corner, the side they field stands at its foot, and where the map is looking is a
-				plate at its own corner, so what is left here is the way in (signing in, below)
-				and the ways on.
-				Its own scroller on the desktop panel; on the mobile panel the whole panel scrolls
-				as one, so the `flex-1` is inert there and the section simply takes the height its
-				contents ask for. -->
-			<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
-				<div class="join join-vertical w-full">
+<!-- The map is the whole page now. It used to share the viewport with the column beside it —
+	a flat 450px of the row, or 30vh of the column on a narrow viewport — and everything that
+	column held has since moved onto the map itself or onto a sheet over it, leaving five
+	buttons and a sign-in holding an eighth of the window open. Those are a menu, so they are
+	behind one (see the drawer below the map), and the map has the room back. -->
+<!-- The map, the whole viewport of it. Nothing sizes it any more — raising a view over it
+	or summoning the menu leaves its box alone, so the map is never re-framed by anything but
+	a pan, a zoom or a region being opened. `relative` is what the plates over its corners and
+	the menu's own edge are positioned against. -->
+<div class="relative flex h-screen min-w-0 flex-col">
+	{#if ready}
+		<WorldMap
+			center={[41.8, 1.7]}
+			zoom={8}
+			minZoom={7}
+			{overlays}
+			{markerLevels}
+			pinnedId={panelTown}
+			tether={townTether}
+			boxes={festaBoxes}
+			{hiddenLineUrls}
+			{focusBounds}
+			bind:currentZoom
+			bind:activeLevel
+			bind:currentCenter
+			classes="min-h-0 flex-1"
+		/>
+
+		<!-- Everything the map draws over its top edge, in one absolutely positioned column: the
+			breadcrumb bar across the top, and under it the corner's stack of plates — the town
+			panel when a town is picked, and under it the Location plate, folded away until it is
+			asked for. (The player's own side is over the map too, at the foot of it — three
+			statues on nothing, positioned on their own rather than as a row of this column,
+			since they are at the other corner; see below.) The bar is in the column
+			rather than over it, so it pushes the plates down by taking its own row instead
+			of by being cleared with an offset nobody would remember to keep in step with it.
+			Absolute inside the map
+			column (which is `relative`), above Leaflet's own panes — its overlays sit at
+			400-600 and its controls at 800, so z-[900] clears them both while staying
+			under the arena's 1200. `pointer-events-none` on the whole column and back on
+			for each plate, so the map is still pannable and zoomable through every part of
+			it the plates do not themselves cover. Inset on all three sides it touches, so
+			the bar is as wide as the map less its margins and nothing needs a max-width of
+			its own. -->
+		<div class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex flex-col gap-2">
+			<!-- Where the map is looking. Full width, at the head of everything: a path is
+				read across, and the plates below it are read down.
+				The location search sits at the bar's far end, as the looking glass that stands for
+				it until it is pressed (see LocationSearchBox). It was above the drill table in the
+				Location plate — but that plate starts folded, so the way to look for a town was
+				behind a fold, while the bar naming where the map is was always up. Naming a place
+				and being told where you are are the same subject, so they share the one row; the
+				matches come down at the corner right below the field, on their own plate (see
+				LocationSearchPanel). -->
+			<MapBreadcrumbs {crumbs} onSelect={open} classes="pointer-events-auto">
+				<!-- The far end of the bar: the way to look for a place, and past it the way to
+					everything that is not the map. Both belong at this end for the same reason — the
+					bar is the one row that is always up, so what a player reaches for however deep
+					into the map they are is reached for here. -->
+				<div slot="end" class="flex items-center gap-2">
+					<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
+					<!-- The three bars, in the same square and the same white as the search button it
+						stands beside and the dots button at the other end of the row: this bar is a line
+						of 32px tiles, so everything on it that is pressed rather than read is given the
+						same square, and the white is spelled out because an outlined DaisyUI button
+						letters itself in the theme's periwinkle — a stray colour on a bar that forces
+						white over terrain — and its hover fills the square and takes the rule with it.
+						The glyph is the vendored game-icons one, as an `<img>` by URL: those ship as
+						white artwork for the canvases to tint, which is exactly what a mark on this bar
+						wants (see the icons note in CLAUDE.md), and it is how the search beside it draws
+						its own. -->
 					<button
+						bind:this={menuButtonEl}
 						type="button"
-						class="btn btn-outline btn-sm join-item"
-						on:click={() => leaderboardModalOpen.set(true)}
+						class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
+						aria-expanded={menuOpen}
+						aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+						on:click={() => (menuOpen = !menuOpen)}
 					>
-						Leaderboard
+						<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
 					</button>
-					<button
-						type="button"
-						class="btn btn-outline btn-sm join-item"
-						on:click={openBoosters}
-					>
-						{boosterLabel}
-					</button>
-					{#if $profile}
-						<!-- The account's own three, in the same block and in the same stock as the two
-							above them: every button here is outlined. A filled one says the block has a
-							first choice in it, and it has not — the five are five views, and which one a
-							player wants is theirs to say. Each raises a modal mounted at the layout
-							root, so pressing one is the whole of what happens here. -->
-						<button
-							type="button"
-							class="btn btn-outline btn-sm join-item"
-							on:click={() => rosterModalOpen.set(true)}
+				</div>
+			</MapBreadcrumbs>
+
+			<!-- The row under the bar, with a corner of the map at each end of it: the plates about
+				where the map is looking on the left, and the plate saying who is looking on the right.
+				A row rather than two absolutely positioned corners, so both ends are put under the
+				breadcrumbs by the bar taking its own row above them and neither has an offset of its
+				own to keep in step with a bar that changes height. -->
+			<div class="flex items-start justify-between gap-2">
+				<!-- Where the map is looking, at its left corner: each plate only as wide as it asks
+					to be — which is what `items-start` is for, the column itself being as wide as the
+					room the row leaves it.
+					The music player used to head this stack, always up whether or not anything was
+					picked. The corner is the picked town's and the open region's now. -->
+				<div class="flex min-w-0 flex-col items-start gap-2">
+					<!-- The one thing picking a town adds to the map: who is holding it and what can
+						be done about that, on the first plate under the bar. It used to be drawn into the
+						town's own pin — the side standing on the very place it was about — but a pin is
+						a mark on a town and three cards' worth of picture is not: it buried the town it
+						stood on, moved with every zoom, and forced the shape beneath it to go unwashed
+						to make room. Here the map draws every town alike and the panel answers the
+						selection, in the corner it can be read in. -->
+					{#if panelTown}
+						<!-- The leader's screen end is this box's centre, so the element itself is what
+							the map is handed (see townTether): this div shrinks to its content — the
+							stack is `items-start` — which makes its box the panel's box. -->
+						<div bind:this={panelAnchor} class="max-w-full">
+							<TownPanel
+								name={restoreCatalanArticle(panelNode?.name ?? '')}
+								showName={panelNode?.show?.name ?? null}
+								showId={panelNode?.show?.id ?? null}
+								tileClasses={panelNode?.color ? pinColorClasses[panelNode.color] : null}
+								team={panelTeam}
+								challenge={townChallenge}
+								classes="pointer-events-auto w-72"
+							/>
+						</div>
+					{/if}
+
+					<!-- Where the map is looking, at the foot of the corner: the drill table for the
+						open region — its siblings and its children — or, for a leaf municipality with
+						nothing left to list, that town's show and who is holding it. The matches for a
+						search used to be a third thing this plate could be showing; they are their own
+						plate at the opposite corner now, so this one is only ever about the open region.
+						It was a tab of the panel beside the map, which made it one of four views
+						competing for that column: a table of place names is read *against* the map,
+						and the panel could only show it by putting away whichever view was forward.
+						Here it stands over the map it is about, and it is the last plate in the stack
+						because it is the biggest and the one a player asks for rather than is handed —
+						the picked town keeps the corner it already had.
+						Folded away by default, and folded or not is remembered (see locationPanel).
+						A height it cannot pass, with the table scrolling inside it: this is a corner
+						of the map, not a column, so the plate never grows into the whole of it.
+						Gone entirely, title bar and all, when the town panel above is already saying its
+						leaf fallback (see townPanelSaysIt): an empty body under a heading is still a
+						plate a player opens for nothing. -->
+					{#if showLocationPlate}
+						<CollapsiblePlate
+							title="Location"
+							bind:collapsed={$locationPanelCollapsed}
+							classes="pointer-events-auto w-96 max-w-full"
+							bodyClasses="flex max-h-[50vh] flex-col bg-base-100 text-base-content"
 						>
-							Roster
-						</button>
-						<button
-							type="button"
-							class="btn btn-outline btn-sm join-item"
-							on:click={() => achievementsModalOpen.set(true)}
-						>
-							Achievements
-						</button>
-						<button
-							type="button"
-							class="btn btn-outline btn-sm join-item"
-							on:click={() => settingsModalOpen.set(true)}
-						>
-							Settings
-						</button>
+							{#if regionRows.length === 0}
+								<!-- A leaf region (a municipality) with no town panel over it saying the same
+									thing: no children to drill into, so instead of an empty table we surface its
+									own top show — the only place the open location's show appears — and say who
+									is holding the place. The side itself is out on the map, standing on the
+									town. This is the fallback the statues make redundant, which is why the whole
+									plate is dropped when they are up (see townPanelSaysIt) — so it is only ever
+									read for a town with no side to field. -->
+								<div class="flex min-h-0 flex-1 flex-col gap-3 p-3">
+									{#if openShow}
+										<div class="flex flex-none items-center gap-3">
+											{#if openShow.posterUrl}
+												<img
+													src={openShow.posterUrl}
+													alt={openShow.name}
+													class="h-16 w-auto flex-none rounded shadow"
+												/>
+											{/if}
+											<div class="min-w-0">
+												<!-- A held town flies its ruling team's show, so the label says so
+													rather than claiming it is the town's most-seen one. -->
+												<p class="text-xs font-bold uppercase tracking-wide opacity-60">
+													{openHolder ? 'Ruling show' : 'Most seen'}
+												</p>
+												<p class="truncate font-semibold">{openShow.name}</p>
+											</div>
+										</div>
+									{:else}
+										<p class="flex-none text-center opacity-60">No show here yet.</p>
+									{/if}
+
+									{#if municipalityTeam.length > 0}
+										<!-- Whoever holds the town. Until a player beats it, that's the town's
+											built-in, seed-rolled "OG" (original) roster — the same for every
+											player, badged so it reads as the house team. Once somebody takes the
+											town it's their frozen winning team instead, and it's their name on
+											the badge.
+
+											The team itself is not drawn here any more: it is standing in the town
+											panel higher up this same corner (see panelTown), so this plate names
+											who holds the place and the plate above it shows them holding it. -->
+										<div class="flex flex-none items-center gap-2">
+											{#if openHolder}
+												<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
+												<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
+													{openHolder.holderName}
+												</span>
+											{:else}
+												<span class="badge badge-primary badge-sm font-bold">OG</span>
+												<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
+											{/if}
+											<!-- The siege counter and the challenge button used to sit here; they
+												are in the town panel over the map now (see buildTownChallenge),
+												standing under the very team they are about. What is left is who
+												holds it. -->
+											{#if holdsOpenTown}
+												<span class="badge badge-success badge-sm ml-auto">Yours</span>
+											{/if}
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<RegionTable rows={regionRows} onSelect={select} />
+							{/if}
+						</CollapsiblePlate>
 					{/if}
 				</div>
 
-				<!-- The way in, under the block and not part of it: signed out this is the email
-					link and the OAuth providers, which is the one thing nothing else on the map works
-					without. Signed in it draws nothing at all — the account's buttons above are what
-					it used to hold. -->
-				<AuthMenu embedded />
+				<!-- The map's right corner, read down: what the search box at the end of the bar
+					above has turned up, and then who is playing. `items-end` so each plate is only
+					as wide as it asks to be and both keep the corner's edge. -->
+				<div class="flex min-w-0 flex-col items-end gap-2">
+					<!-- The matches, directly under the field that produced them and the first thing in
+						this corner while a search is on: what is asked for at the top right is answered
+						at the top right. Only ever up for a query — an empty box is the search not
+						happening, and there is no plate for it — and the cross on it ends the search
+						outright rather than folding the plate away from a query still typed in a field
+						still standing open (see closeSearch). -->
+					{#if normalizedQuery}
+						<LocationSearchPanel
+							results={searchResults}
+							onSelect={openSearchResult}
+							onClose={closeSearch}
+							classes="pointer-events-auto w-96 max-w-full"
+						/>
+					{/if}
+
+					<!-- Who is playing: the picture they wear and the reading beside it (see
+						PlayerPanel). It was the first two thirds of the panel's Profile tab, which meant
+						who you are was on screen only while that one tab was forward — and it is read
+						against every town on the map, the same way the side at the foot of the map is.
+						Opposite the town panel across this row: the place being looked at on the left, the
+						account looking at it on the right. `flex-none` so a long name truncates inside the
+						plate rather than the plate growing into the column beside it.
+						Only for a signed-in account: there is no picture, no level and no bar to draw
+						without one, and the way in is the panel's Profile tab, which is where signing in
+						has always been. -->
+					{#if $profile}
+						<PlayerPanel
+							profile={$profile}
+							on:editavatar={() => avatarPickerOpen.set(true)}
+							classes="pointer-events-auto w-64 flex-none"
+						/>
+					{/if}
+				</div>
 			</div>
 		</div>
-	</aside>
-
-	<!-- The map takes whatever the panel leaves — the rest of the row on a wide viewport,
-		the rest of the column on a narrow one. Switching tabs or drilling into a region
-		doesn't change that share, so the view still stays exactly where it was; only
-		toggling the mobile panel between its two heights re-frames the map, which is the
-		point of the toggle. -->
-	<div class="relative flex min-h-0 min-w-0 flex-1 flex-col">
-		{#if ready}
-			<WorldMap
-				center={[41.8, 1.7]}
-				zoom={8}
-				minZoom={7}
-				{overlays}
-				{markerLevels}
-				pinnedId={panelTown}
-				tether={townTether}
-				boxes={festaBoxes}
-				{hiddenLineUrls}
-				{focusBounds}
-				bind:currentZoom
-				bind:activeLevel
-				bind:currentCenter
-				classes="min-h-0 flex-1"
-			/>
-
-			<!-- Everything the map draws over its top edge, in one absolutely positioned column: the
-				breadcrumb bar across the top, and under it the corner's stack of plates — the town
-				panel when a town is picked, and under it the Location plate, folded away until it is
-				asked for. (The player's own side is over the map too, at the foot of it — three
-				statues on nothing, positioned on their own rather than as a row of this column,
-				since they are at the other corner; see below.) The bar is in the column
-				rather than over it, so it pushes the plates down by taking its own row instead
-				of by being cleared with an offset nobody would remember to keep in step with it.
-				Absolute inside the map
-				column (which is `relative`), above Leaflet's own panes — its overlays sit at
-				400-600 and its controls at 800, so z-[900] clears them both while staying
-				under the arena's 1200. `pointer-events-none` on the whole column and back on
-				for each plate, so the map is still pannable and zoomable through every part of
-				it the plates do not themselves cover. Inset on all three sides it touches, so
-				the bar is as wide as the map less its margins and nothing needs a max-width of
-				its own. -->
-			<div class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex flex-col gap-2">
-				<!-- Where the map is looking. Full width, at the head of everything: a path is
-					read across, and the plates below it are read down.
-					The location search sits at the bar's far end, as the looking glass that stands for
-					it until it is pressed (see LocationSearchBox). It was above the drill table in the
-					Location plate — but that plate starts folded, so the way to look for a town was
-					behind a fold, while the bar naming where the map is was always up. Naming a place
-					and being told where you are are the same subject, so they share the one row; the
-					matches come down at the corner right below the field, on their own plate (see
-					LocationSearchPanel). -->
-				<MapBreadcrumbs {crumbs} onSelect={open} classes="pointer-events-auto">
-					<LocationSearchBox slot="end" bind:value={searchQuery} bind:open={searchOpen} />
-				</MapBreadcrumbs>
-
-				<!-- The row under the bar, with a corner of the map at each end of it: the plates about
-					where the map is looking on the left, and the plate saying who is looking on the right.
-					A row rather than two absolutely positioned corners, so both ends are put under the
-					breadcrumbs by the bar taking its own row above them and neither has an offset of its
-					own to keep in step with a bar that changes height. -->
-				<div class="flex items-start justify-between gap-2">
-					<!-- Where the map is looking, at its left corner: each plate only as wide as it asks
-						to be — which is what `items-start` is for, the column itself being as wide as the
-						room the row leaves it.
-						The music player used to head this stack, always up whether or not anything was
-						picked. The corner is the picked town's and the open region's now. -->
-					<div class="flex min-w-0 flex-col items-start gap-2">
-						<!-- The one thing picking a town adds to the map: who is holding it and what can
-							be done about that, on the first plate under the bar. It used to be drawn into the
-							town's own pin — the side standing on the very place it was about — but a pin is
-							a mark on a town and three cards' worth of picture is not: it buried the town it
-							stood on, moved with every zoom, and forced the shape beneath it to go unwashed
-							to make room. Here the map draws every town alike and the panel answers the
-							selection, in the corner it can be read in. -->
-						{#if panelTown}
-							<!-- The leader's screen end is this box's centre, so the element itself is what
-								the map is handed (see townTether): this div shrinks to its content — the
-								stack is `items-start` — which makes its box the panel's box. -->
-							<div bind:this={panelAnchor} class="max-w-full">
-								<TownPanel
-									name={restoreCatalanArticle(panelNode?.name ?? '')}
-									showName={panelNode?.show?.name ?? null}
-									showId={panelNode?.show?.id ?? null}
-									tileClasses={panelNode?.color ? pinColorClasses[panelNode.color] : null}
-									team={panelTeam}
-									challenge={townChallenge}
-									classes="pointer-events-auto w-72"
-								/>
-							</div>
-						{/if}
-
-						<!-- Where the map is looking, at the foot of the corner: the drill table for the
-							open region — its siblings and its children — or, for a leaf municipality with
-							nothing left to list, that town's show and who is holding it. The matches for a
-							search used to be a third thing this plate could be showing; they are their own
-							plate at the opposite corner now, so this one is only ever about the open region.
-							It was a tab of the panel beside the map, which made it one of four views
-							competing for that column: a table of place names is read *against* the map,
-							and the panel could only show it by putting away whichever view was forward.
-							Here it stands over the map it is about, and it is the last plate in the stack
-							because it is the biggest and the one a player asks for rather than is handed —
-							the picked town keeps the corner it already had.
-							Folded away by default, and folded or not is remembered (see locationPanel).
-							A height it cannot pass, with the table scrolling inside it: this is a corner
-							of the map, not a column, so the plate never grows into the whole of it.
-							Gone entirely, title bar and all, when the town panel above is already saying its
-							leaf fallback (see townPanelSaysIt): an empty body under a heading is still a
-							plate a player opens for nothing. -->
-						{#if showLocationPlate}
-							<CollapsiblePlate
-								title="Location"
-								bind:collapsed={$locationPanelCollapsed}
-								classes="pointer-events-auto w-96 max-w-full"
-								bodyClasses="flex max-h-[50vh] flex-col bg-base-100 text-base-content"
-							>
-								{#if regionRows.length === 0}
-									<!-- A leaf region (a municipality) with no town panel over it saying the same
-										thing: no children to drill into, so instead of an empty table we surface its
-										own top show — the only place the open location's show appears — and say who
-										is holding the place. The side itself is out on the map, standing on the
-										town. This is the fallback the statues make redundant, which is why the whole
-										plate is dropped when they are up (see townPanelSaysIt) — so it is only ever
-										read for a town with no side to field. -->
-									<div class="flex min-h-0 flex-1 flex-col gap-3 p-3">
-										{#if openShow}
-											<div class="flex flex-none items-center gap-3">
-												{#if openShow.posterUrl}
-													<img
-														src={openShow.posterUrl}
-														alt={openShow.name}
-														class="h-16 w-auto flex-none rounded shadow"
-													/>
-												{/if}
-												<div class="min-w-0">
-													<!-- A held town flies its ruling team's show, so the label says so
-														rather than claiming it is the town's most-seen one. -->
-													<p class="text-xs font-bold uppercase tracking-wide opacity-60">
-														{openHolder ? 'Ruling show' : 'Most seen'}
-													</p>
-													<p class="truncate font-semibold">{openShow.name}</p>
-												</div>
-											</div>
-										{:else}
-											<p class="flex-none text-center opacity-60">No show here yet.</p>
-										{/if}
-
-										{#if municipalityTeam.length > 0}
-											<!-- Whoever holds the town. Until a player beats it, that's the town's
-												built-in, seed-rolled "OG" (original) roster — the same for every
-												player, badged so it reads as the house team. Once somebody takes the
-												town it's their frozen winning team instead, and it's their name on
-												the badge.
-
-												The team itself is not drawn here any more: it is standing in the town
-												panel higher up this same corner (see panelTown), so this plate names
-												who holds the place and the plate above it shows them holding it. -->
-											<div class="flex flex-none items-center gap-2">
-												{#if openHolder}
-													<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
-													<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
-														{openHolder.holderName}
-													</span>
-												{:else}
-													<span class="badge badge-primary badge-sm font-bold">OG</span>
-													<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
-												{/if}
-												<!-- The siege counter and the challenge button used to sit here; they
-													are in the town panel over the map now (see buildTownChallenge),
-													standing under the very team they are about. What is left is who
-													holds it. -->
-												{#if holdsOpenTown}
-													<span class="badge badge-success badge-sm ml-auto">Yours</span>
-												{/if}
-											</div>
-										{/if}
-									</div>
-								{:else}
-									<RegionTable rows={regionRows} onSelect={select} />
-								{/if}
-							</CollapsiblePlate>
-						{/if}
-					</div>
-
-					<!-- The map's right corner, read down: what the search box at the end of the bar
-						above has turned up, and then who is playing. `items-end` so each plate is only
-						as wide as it asks to be and both keep the corner's edge. -->
-					<div class="flex min-w-0 flex-col items-end gap-2">
-						<!-- The matches, directly under the field that produced them and the first thing in
-							this corner while a search is on: what is asked for at the top right is answered
-							at the top right. Only ever up for a query — an empty box is the search not
-							happening, and there is no plate for it — and the cross on it ends the search
-							outright rather than folding the plate away from a query still typed in a field
-							still standing open (see closeSearch). -->
-						{#if normalizedQuery}
-							<LocationSearchPanel
-								results={searchResults}
-								onSelect={openSearchResult}
-								onClose={closeSearch}
-								classes="pointer-events-auto w-96 max-w-full"
-							/>
-						{/if}
-
-						<!-- Who is playing: the picture they wear and the reading beside it (see
-							PlayerPanel). It was the first two thirds of the panel's Profile tab, which meant
-							who you are was on screen only while that one tab was forward — and it is read
-							against every town on the map, the same way the side at the foot of the map is.
-							Opposite the town panel across this row: the place being looked at on the left, the
-							account looking at it on the right. `flex-none` so a long name truncates inside the
-							plate rather than the plate growing into the column beside it.
-							Only for a signed-in account: there is no picture, no level and no bar to draw
-							without one, and the way in is the panel's Profile tab, which is where signing in
-							has always been. -->
-						{#if $profile}
-							<PlayerPanel
-								profile={$profile}
-								on:editavatar={() => avatarPickerOpen.set(true)}
-								classes="pointer-events-auto w-64 flex-none"
-							/>
-						{/if}
-					</div>
-				</div>
-			</div>
-			<!-- The side this player fields, at the opposite corner of the map from the town
-				panel: the three being challenged sit under the breadcrumbs at the top, the three
-				doing the challenging stand at the foot, so the fight the Challenge button opens
-				is both sides of it read on the one screen. It was a slice of the panel's Profile
-				tab, which meant the team was on screen only while that tab was forward — and it
-				is the one thing on this page that is about no tab at all.
-				The three statues and nothing else: no plate under them, no heading over them, so
-				what stands at the corner is the side itself rather than a panel about it. It can
-				stand bare where the corner's other things cannot because a statue brings its own
-				ground and its own panel — every word on it is already read off the card's own
-				colour, never off the terrain behind it.
-				Absolutely positioned rather than a row of the corner's stack, since it belongs at
-				the other end of the map from that stack. Same z-[900] as the stack: clear of
-				Leaflet's own panes (overlays 400-600, controls 800) and under the arena's 1200.
-				Only drawn once there is a side to draw: signed out, or an account with no card in
-				a team slot, leaves the corner empty rather than standing up an empty frame. And
-				only inside `ready`, so a statue never says Ultramar at a town whose name is still
-				on its way (see claimPlaceFor). -->
-			{#if playerTeamLineup.length > 0}
-				<!-- The row is given its box rather than positioned itself: it is `w-full` of
-					whatever holds it, and a width handed to it in the same breath would be two
-					width utilities on one element with nothing but stylesheet order to settle
-					which of them wins.
-					A flat 400px, which is the width three statues and their captions are read at —
-					a share of the map would set the size of a card by how wide the window is —
-					capped at the viewport so the narrowest phone shrinks them rather than carrying
-					them off the screen. -->
-				<div class="absolute bottom-3 left-3 z-[900] w-[400px] max-w-[100vw]">
-					<TeamLineup members={playerTeamLineup} />
-				</div>
-			{/if}
-		{:else}
-			<div class="flex min-h-0 flex-1 items-center justify-center">
-				<span class="loading loading-spinner loading-lg"></span>
+		<!-- The side this player fields, at the opposite corner of the map from the town
+			panel: the three being challenged sit under the breadcrumbs at the top, the three
+			doing the challenging stand at the foot, so the fight the Challenge button opens
+			is both sides of it read on the one screen. It was a slice of the panel's Profile
+			tab, which meant the team was on screen only while that tab was forward — and it
+			is the one thing on this page that is about no tab at all.
+			The three statues and nothing else: no plate under them, no heading over them, so
+			what stands at the corner is the side itself rather than a panel about it. It can
+			stand bare where the corner's other things cannot because a statue brings its own
+			ground and its own panel — every word on it is already read off the card's own
+			colour, never off the terrain behind it.
+			Absolutely positioned rather than a row of the corner's stack, since it belongs at
+			the other end of the map from that stack. Same z-[900] as the stack: clear of
+			Leaflet's own panes (overlays 400-600, controls 800) and under the arena's 1200.
+			Only drawn once there is a side to draw: signed out, or an account with no card in
+			a team slot, leaves the corner empty rather than standing up an empty frame. And
+			only inside `ready`, so a statue never says Ultramar at a town whose name is still
+			on its way (see claimPlaceFor). -->
+		{#if playerTeamLineup.length > 0}
+			<!-- The row is given its box rather than positioned itself: it is `w-full` of
+				whatever holds it, and a width handed to it in the same breath would be two
+				width utilities on one element with nothing but stylesheet order to settle
+				which of them wins.
+				A flat 400px, which is the width three statues and their captions are read at —
+				a share of the map would set the size of a card by how wide the window is —
+				capped at the viewport so the narrowest phone shrinks them rather than carrying
+				them off the screen. -->
+			<div class="absolute bottom-3 left-3 z-[900] w-[400px] max-w-[100vw]">
+				<TeamLineup members={playerTeamLineup} />
 			</div>
 		{/if}
-	</div>
-
+	{:else}
+		<div class="flex min-h-0 flex-1 items-center justify-center">
+			<span class="loading loading-spinner loading-lg"></span>
+		</div>
+	{/if}
 </div>
+
+<!-- The menu, on the map's right edge and summoned from the far end of the breadcrumb bar.
+	It is the column that used to stand there permanently, and it holds what that column was
+	left holding: the one joined block of buttons — the leaderboard, the window's booster
+	packs and, for a signed-in account, its cards, its badges and its settings — with the
+	sign-in under it.
+	Mounted only while it is up, so it slides in from the edge it docks to and slides back out
+	the same way; the whole of the way out is a Svelte transition for the reason
+	FullScreenModal's is (nothing to animate from on a fresh mount).
+	Its own edge only: no wash over the map behind it, nothing dimmed, because a menu this
+	size covers a strip of the map and the rest is still there to be read — and being read is
+	the reason it is a menu rather than a column. A press anywhere it is not, or Escape, puts
+	it away; so does picking any of its buttons, each of which raises a sheet over the whole
+	map anyway.
+	z-[1000] clears the plates over the map (z-[900]) and stays under the full-view sheets
+	(z-[1300]), which are what its own buttons raise: a sheet is over everything, the menu
+	included. -->
+{#if menuOpen}
+	<aside
+		bind:this={menuEl}
+		aria-label="Menu"
+		transition:fly={{ x: '100%', duration: 200, opacity: 1 }}
+		class="fixed inset-y-0 right-0 z-[1000] flex w-80 max-w-[85vw] flex-col gap-4 overflow-y-auto border-l border-base-300 bg-base-100 p-4 shadow-2xl"
+	>
+		<!-- Every way out of the map, and all of them one group: the two views that used to be
+			tabs of the old column (the leaderboard and the window's booster packs) and, for a
+			signed-in account, its three — the player's cards, the badges they can earn, and the
+			account itself. One `join`, turned vertical, so the five are a single block of buttons
+			with nothing between them: no gaps, no rules, no tile behind any of them and no header
+			holding two of them apart. They are the same kind of thing — a press that raises a view
+			over the map — and they were reading as two unrelated sets because of where each of them
+			used to live rather than because of what it does. The join is what says they are one
+			set: only the ends of the block are rounded, and the borders between neighbours collapse
+			into one line.
+			Every one of them is outlined. A filled button would say the block has a first choice in
+			it, and it has not — the five are five views, and which one a player wants is theirs to
+			say. -->
+		<div class="join join-vertical w-full">
+			<button
+				type="button"
+				class="btn btn-outline btn-sm join-item"
+				on:click={() => pickFromMenu(() => leaderboardModalOpen.set(true))}
+			>
+				Leaderboard
+			</button>
+			<button
+				type="button"
+				class="btn btn-outline btn-sm join-item"
+				on:click={() => pickFromMenu(openBoosters)}
+			>
+				{boosterLabel}
+			</button>
+			{#if $profile}
+				<!-- Each of these raises a modal mounted at the layout root, so pressing one is the
+					whole of what happens here. -->
+				<button
+					type="button"
+					class="btn btn-outline btn-sm join-item"
+					on:click={() => pickFromMenu(() => rosterModalOpen.set(true))}
+				>
+					Roster
+				</button>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm join-item"
+					on:click={() => pickFromMenu(() => achievementsModalOpen.set(true))}
+				>
+					Achievements
+				</button>
+				<button
+					type="button"
+					class="btn btn-outline btn-sm join-item"
+					on:click={() => pickFromMenu(() => settingsModalOpen.set(true))}
+				>
+					Settings
+				</button>
+			{/if}
+		</div>
+
+		<!-- The way in, under the block and not part of it: signed out this is the email link and
+			the OAuth providers, which is the one thing nothing else on the map works without.
+			Signed in it draws nothing at all — the account's buttons above are what it used to
+			hold. -->
+		<AuthMenu embedded />
+	</aside>
+{/if}
 
 <!-- Hidden, but mounted: the claim panel, kept alive only
 	to compute the window's booster packs (bind:packs) so a map box click can open the town's
@@ -2149,15 +2158,20 @@
 			still a different fight, and must remount rather than reuse the last one. -->
 		{#key `${fightLocationId}:${fightTurnover}:${fightSpawns.map((spawn) => spawn.characterId).join(',')}`}
 			<!-- The board is centred on the sheet and scrolls inside it when it does not fit,
-				rather than the sheet growing: the title bar stays put. -->
-			<div class="flex min-h-0 flex-1 items-center justify-center overflow-auto">
-				<CombatArena
-					ogTeam={fightSpawns}
-					ogLocationId={fightLocationId}
-					bind:reporting={fightReporting}
-					on:territory={(event) => onTerritory(event.detail)}
-					on:close={onFightClosed}
-				/>
+				rather than the sheet growing: the title bar stays put. Centred by auto margins
+				rather than by `items-center`, which centres a too-tall child by overflowing it
+				equally at both ends and leaves the top of it somewhere no scroll can reach —
+				auto margins give up and align to the start once there is no room to share. -->
+			<div class="flex min-h-0 flex-1 overflow-auto">
+				<div class="m-auto w-full">
+					<CombatArena
+						ogTeam={fightSpawns}
+						ogLocationId={fightLocationId}
+						bind:reporting={fightReporting}
+						on:territory={(event) => onTerritory(event.detail)}
+						on:close={onFightClosed}
+					/>
+				</div>
 			</div>
 		{/key}
 	</FullScreenModal>
