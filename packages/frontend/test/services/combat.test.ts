@@ -117,6 +117,8 @@ function fakeBoard(log: AuraLog) {
 		clearAuras: () => {},
 		clearCallouts: () => {},
 		showCallout: () => {},
+		// The one callout that belongs to a cell rather than to a fighter: a lane's clash.
+		showCellCallout: () => {},
 		showSlash: () => {},
 		playMove: done,
 		// The guard a covering fighter is stood in for the turn, and the release of every

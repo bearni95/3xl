@@ -296,6 +296,10 @@ const ICON_RASTER_PX = 256;
 /** Lifetime of a strike slash overlay (ms). */
 const SLASH_MS = 420;
 
+/** How far a cell's callout is lifted clear of the heads of whoever is standing in it,
+ * in cells. Small: it is meant to sit just over the pair it is about. */
+const CELL_CALLOUT_GAP = 0.08;
+
 // --- The guard ring (drawn around a fighter holding its defend stance) ---
 /** The ring's radius, as a fraction of half the character's longer nominal side. A little
  * over one, so the circle stands clear of the sprite instead of cutting across it. */
@@ -501,6 +505,10 @@ export class MugenBoard {
 	private actors: Actor[] = [];
 	/** Transient slash overlays, faded out each tick until they expire. */
 	private slashes: SlashEffect[] = [];
+	/** Callouts pinned to a cell rather than to a fighter (see {@link showCellCallout}).
+	 * A fighter's own is held on the actor, which is what takes it down; these have
+	 * nobody, so the board keeps them until the turn's callouts are cleared. */
+	private cellLabels: Text[] = [];
 	/** Colour overlays on claimed cells, keyed by "q,r". */
 	private cellPaint = new Map<string, Graphics>();
 	/** Loaded aura frame textures, keyed by aura color name. */
@@ -1603,10 +1611,50 @@ export class MugenBoard {
 		const actor = this.findActor(id);
 		if (!actor || !this.app) return;
 		this.clearCallout(id);
+		const label = this.calloutText(text, combatColorHex(color));
+		this.app.stage.addChild(label);
+		actor.label = label;
+		this.updateLabel(actor);
+	}
+
+	/**
+	 * Float one callout over a **cell** rather than over a fighter, for something that
+	 * happened to a piece of ground instead of to somebody: two attacks meeting in the
+	 * middle of a lane, which is one event and belongs to neither of the pair that caused
+	 * it. Said over each of them it read as two things happening at once, and as each
+	 * fighter's own doing, when the whole point of a clash is that it is the one thing and
+	 * nobody's.
+	 *
+	 * White, for the same reason — a clash is not either side's, and the ground it happens
+	 * on is the white column. Placed clear above the heads of anybody standing in that cell,
+	 * so it sits over the collision rather than in it: a character stands
+	 * {@link CHAR_HEIGHT_RATIO} cells tall from the cell's own floor, and the label's foot
+	 * goes a little above where that reaches.
+	 *
+	 * Taken down with every other callout ({@link clearCallouts}) — it belongs to the turn
+	 * it was drawn in, like everything else said on this board.
+	 */
+	showCellCallout(cell: Cell, text: string): void {
+		if (!this.app) return;
+		const label = this.calloutText(text, 0xffffff);
+		const corner = this.cellCorner(cell.q, cell.r);
+		const above = corner.y + 1 - CHAR_HEIGHT_RATIO - CELL_CALLOUT_GAP;
+		const at = this.project(corner.x + 0.5, above);
+		label.x = at.x;
+		label.y = at.y;
+		// Over everything the lane holds, as a callout is: what has just happened is never
+		// covered by whoever it happened to.
+		label.zIndex = at.y + 10000;
+		this.app.stage.addChild(label);
+		this.cellLabels.push(label);
+	}
+
+	/** The type every callout on this board is set in, whatever it is anchored to. */
+	private calloutText(text: string, fill: number): Text {
 		const label = new Text({
 			text,
 			style: {
-				fill: combatColorHex(color),
+				fill,
 				fontSize: 28,
 				fontWeight: '900',
 				fontFamily: 'system-ui, sans-serif',
@@ -1614,10 +1662,9 @@ export class MugenBoard {
 				align: 'center'
 			}
 		});
+		// The anchor point is the label's foot, so a caller places the line it sits above.
 		label.anchor.set(0.5, 1);
-		this.app.stage.addChild(label);
-		actor.label = label;
-		this.updateLabel(actor);
+		return label;
 	}
 
 	/**
@@ -1670,6 +1717,13 @@ export class MugenBoard {
 	/** Clear every callout on the board. */
 	clearCallouts(): void {
 		for (const actor of this.actors) this.clearCallout(actor.id);
+		// And the ones pinned to ground rather than to anybody, which no actor would take
+		// down for us.
+		for (const label of this.cellLabels) {
+			label.parent?.removeChild(label);
+			label.destroy();
+		}
+		this.cellLabels = [];
 	}
 
 	// --- Order buttons --------------------------------------------------------

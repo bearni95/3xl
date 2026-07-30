@@ -2,12 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import {
 	CombatController,
+	RIVAL_CELLS,
+	WON_COLUMN,
 	type CombatAction,
 	type CombatState,
 	type FighterSeed,
 	type FighterView
 } from '$services/combat.controller';
 import type { CombatColor } from '$types/character-definition.type';
+import type { Cell } from '$utils/mugen/grid';
 import type { MugenBoard } from '$utils/mugen/mugen-board';
 
 /** Three a side, in line-up order: the first three colours are the rivals', the
@@ -260,6 +263,9 @@ describe('CombatController — giving the fight up', () => {
 });
 
 describe('CombatController — what the board is left showing', () => {
+	// One of these pins the rivals' weighted picks; nothing after it should inherit that.
+	afterEach(() => vi.restoreAllMocks());
+
 	it('takes the turn’s callouts down as the next turn is handed over', async () => {
 		const { calls, board } = recordingBoard();
 		const controller = new CombatController(
@@ -346,6 +352,59 @@ describe('CombatController — what the board is left showing', () => {
 		expect(calls.lastIndexOf('clearHolds')).toBeGreaterThan(
 			calls.findLastIndex((call) => call.startsWith('holdMove'))
 		);
+	});
+
+	it('says a clash once, over the ground it happens on, as the blows land', async () => {
+		// The rivals' choices are weighted picks, so they are pinned: with random at zero a
+		// rival holding a charge and facing somebody who holds one fires. Both lines fire
+		// across every lane, which is three clashes.
+		vi.spyOn(Math, 'random').mockReturnValue(0);
+		const calls: { method: string; args: unknown[] }[] = [];
+		const board = new Proxy(
+			{},
+			{
+				get:
+					(_target, property) =>
+					(...args: unknown[]) => {
+						calls.push({ method: String(property), args });
+						return Promise.resolve();
+					}
+			}
+		) as MugenBoard;
+
+		// Yellow throughout: no free shot on either side, so nothing fires until a charge has
+		// been banked by hand and both lines fire on the same turn.
+		const controller = new CombatController(
+			seeds(['yellow', 'yellow', 'yellow', 'yellow', 'yellow', 'yellow'])
+		);
+		controller.attachBoard(board);
+		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'charge');
+		await playTurn(controller);
+		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'shoot');
+		calls.length = 0;
+		await playTurn(controller);
+
+		// One callout per lane, and it is the lane's own ground it is drawn over — not a word
+		// apiece over two fighters, each claiming a collision neither of them owns.
+		const clashes = calls.filter((call) => call.method === 'showCellCallout');
+		expect(clashes).toHaveLength(RIVAL_CELLS.length);
+		expect(clashes.map((clash) => clash.args[1])).toEqual(clashes.map(() => 'CLASH'));
+		expect(clashes.map((clash) => (clash.args[0] as Cell).q)).toEqual(clashes.map(() => WON_COLUMN));
+		// One per lane, each on its own row.
+		expect(new Set(clashes.map((clash) => (clash.args[0] as Cell).r)).size).toBe(clashes.length);
+		// And nothing said CLASH over a fighter.
+		expect(calls.some((call) => call.method === 'showCallout' && call.args[1] === 'CLASH')).toBe(
+			false
+		);
+
+		// Said as the blows land: after the pair have walked out to meet each other, and not
+		// before they set off — the word is the collision, so it cannot precede the meeting.
+		const met = calls.findIndex((call) => call.method === 'meleeApproach');
+		const said = calls.findIndex((call) => call.method === 'showCellCallout');
+		const struck = calls.findIndex((call) => call.method === 'playMove');
+		expect(met).toBeGreaterThan(-1);
+		expect(said).toBeGreaterThan(met);
+		expect(said).toBeLessThan(struck);
 	});
 
 	it('leaves a covering fighter nobody shot at standing as it was', async () => {

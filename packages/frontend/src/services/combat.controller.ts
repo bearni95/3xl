@@ -719,20 +719,28 @@ export class CombatController {
 	 * hand afterwards.
 	 *
 	 * Both are shown at once rather than one after the other — they walk out to meet each
-	 * other and strike together. Taken in turn they would read as one fighter attacking
-	 * and the other answering, which is the one thing a turn given blind never is.
+	 * other and strike together, under one word for the pair. Taken in turn they would read
+	 * as one fighter attacking and the other answering, which is the one thing a turn given
+	 * blind never is.
 	 */
 	private async playExchange(one: Shot, two: Shot): Promise<void> {
 		const named = (shot: Shot) =>
 			shot.extra ? `${shot.shooter.name}'s free shot` : `${shot.shooter.name}'s shot`;
 		this.setStatus(`${one.shooter.name} and ${two.shooter.name} go at each other at once.`);
 		this.log.push(`${named(one)} and ${named(two)} meet in the lane — both come to nothing.`);
-		for (const shot of [one, two]) {
-			this.board?.showCallout(shot.shooter.id, 'CLASH', shot.shooter.color);
-		}
 		// Out to the middle together — neither is walked onto the other, because neither
 		// of them got there first — and then both strike at the one moment.
 		await this.board?.meleeApproach(one.shooter.id, two.shooter.id);
+		// One word, over the ground they meet on, at the moment they meet on it.
+		//
+		// A clash is a single event and it is nobody's: two blows arrive together and cancel,
+		// and neither fighter did it. Said over each of their heads it was two announcements
+		// of one thing, each of them reading as that fighter's own doing — and said before
+		// the approach, it announced the collision while they were still walking towards each
+		// other. So it goes where the collision is, on the white column their lane is played
+		// over, as the blows land.
+		const lane = one.shooter.cell?.r ?? two.shooter.cell?.r;
+		if (lane !== undefined) this.board?.showCellCallout({ q: WON_COLUMN, r: lane }, 'CLASH');
 		await Promise.all([
 			this.board?.playMove(one.shooter.id, this.strikeMove(one.shooter)),
 			this.board?.playMove(two.shooter.id, this.strikeMove(two.shooter))
@@ -975,7 +983,7 @@ export class CombatController {
 		}
 
 		this.turn += 1;
-		// What the last turn said — CHARGE, BLOCK, HIT! — belonged to that turn. The orders
+		// What the last turn said — CHARGE, BLOCK, CLASH, HIT! — belonged to that turn. The orders
 		// are being asked for again, so it comes off the board with them: the words never
 		// outlive the turn whose pickers are locked. Any guard braced during it, and the ring
 		// around it, come down for the same reason and at the same moment: a fighter covers
