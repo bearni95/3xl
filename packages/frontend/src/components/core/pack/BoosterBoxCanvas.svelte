@@ -23,10 +23,10 @@
 	// gives is a document, so the thing that owns the document owns the call.
 
 	export let packs: OpenerPack[] = [];
-	// How many boxes a row holds, and how many columns the cards stand in once a box is open.
-	// Both are the host's call, as they are for the document grid.
+	// How many boxes a row holds. The host's call, as it is for the document grid — unlike how
+	// the cards stand once a box is open, which is not: they come out of the box, so their row is
+	// the box's to say (see REVEAL_COLUMNS and `opening`).
 	export let columns: number = 4;
-	export let revealColumns: number = 5;
 	// False shows the window but opens nothing — the allowance is spent.
 	export let interactive: boolean = true;
 	export let classes: string = '';
@@ -51,6 +51,11 @@
 	let avatar: Avatar | null = null;
 	let avatarIsNew = false;
 	let uncovering = false;
+	// How wide the box that is standing has its mouth: the back end of its tilted top, in canvas
+	// pixels, said by the scene and said again whenever the box is re-fitted. It is what the cards
+	// are laid out in — they came out of that opening — so they stand centred in it rather than
+	// filling a canvas the box is only a part of. Null while no box is up.
+	let opening: number | null = null;
 
 	// Which cards have their picture up, held as a set of spawn ids rather than counted, so a
 	// statue that says it twice cannot count as two and let the box go early.
@@ -61,17 +66,10 @@
 	const STATUES_WAIT = 4000;
 	let statuesTimer: ReturnType<typeof setTimeout> | null = null;
 
-	// Tailwind only emits the column classes it can see spelled out, so the counts a host may ask
-	// for are written in full. Five is the ceiling because five is what a pack gives.
-	const COLUMN_CLASSES: Record<number, string> = {
-		1: 'grid-cols-1',
-		2: 'grid-cols-2',
-		3: 'grid-cols-3',
-		4: 'grid-cols-4',
-		5: 'grid-cols-5'
-	};
-	const columnClass = (count: number): string =>
-		COLUMN_CLASSES[Math.min(5, Math.max(1, Math.round(count)))];
+	// How many cards a row of the reveal holds. Three, and not the caller's to change: what a box
+	// opens onto is laid out in the mouth of the box, which is nothing like as wide as the canvas
+	// (see `opening`), and five across that would be five slivers.
+	const REVEAL_COLUMNS = 'grid-cols-3';
 
 	// A cell of the reveal, ringed in the primary when the card is one the collection did not
 	// hold. A border either way and never none, so a row with one repeat in it does not sit a
@@ -98,6 +96,7 @@
 				dispatch('back');
 			},
 			onOpen: (pack) => void open(pack),
+			onOpening: (width) => (opening = width),
 			onUncovering: () => (uncovering = true),
 			onContextLost: () => {
 				scene?.destroy();
@@ -190,7 +189,20 @@
 				)}
 			>
 				{#if pulls.length}
-					<div class={classNames('grid w-full gap-2', columnClass(revealColumns))}>
+					<!-- Laid out in the mouth of the box and not across the canvas: as wide as the back
+						end of the box's tilted top, centred where the box stands — which is the middle,
+						always, the scene fitting a stood box to the canvas about its centre. The width
+						is a measured length, so it comes through as a custom property; no class can
+						carry a number only known at runtime. Until the scene has said one — which
+						cannot happen before a box is standing — the layer's own width stands in. -->
+					<div
+						class={classNames(
+							'mx-auto grid gap-2',
+							REVEAL_COLUMNS,
+							opening ? 'w-[var(--opening)]' : 'w-full'
+						)}
+						style:--opening={opening ? `${opening}px` : null}
+					>
 						{#each pulls as pull (pull.spawn.id)}
 							<div class={cellClasses(pull.isNew)}>
 								<!-- Bare, and not behind a veil of its own: the box dissolving over it is the

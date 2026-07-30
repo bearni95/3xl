@@ -428,19 +428,10 @@ export class BoosterBoxSprite extends Container {
 
 	// --- The lid ---------------------------------------------------------------------
 
-	/**
-	 * A point of the lid's square as the perspective draws it, in box units: `u` across the
-	 * square and `v` down it, the front edge (v = 1) being the axis the square is turned about
-	 * and the top edge of the front.
-	 */
+	/** This box's own lid, projected: `u` across the square and `v` down it (see
+	 * {@link projectLid}). */
 	private projectLid(u: number, v: number): { x: number; y: number } {
-		const w = this.boxWidth;
-		const above = 1 - v; // how far back from the axis, in widths
-		const scale = LID_DISTANCE / (LID_DISTANCE + above * Math.sin(LID_TILT));
-		return {
-			x: (0.5 + (u - 0.5) * scale) * w,
-			y: (LID_DEPTH - above * Math.cos(LID_TILT) * scale) * w
-		};
+		return projectLid(u, v, this.boxWidth);
 	}
 
 	/** The lid as it is drawn: its octagon, projected, as a flat point list. A projection maps
@@ -842,6 +833,41 @@ export class BoosterBoxSprite extends Container {
 		silhouette.position.set(0, SHADOW_OFFSET_Y);
 		return group;
 	}
+}
+
+/**
+ * A point of the lid's square as the perspective draws it, in the units a box of `width` is drawn
+ * in: `u` across the square and `v` down it, the front edge (v = 1) being the axis the square is
+ * turned about and the top edge of the front.
+ *
+ * In module scope because it is a fact about the shape and not about any one box: it is what
+ * lays the lid down, what stamps the mark on it, what the lid's grain is mapped through, and
+ * what {@link lidBackWidth} is read off — and that last one is asked by a surface that has no box
+ * to ask.
+ */
+function projectLid(u: number, v: number, width: number): { x: number; y: number } {
+	const above = 1 - v; // how far back from the axis, in widths
+	const scale = LID_DISTANCE / (LID_DISTANCE + above * Math.sin(LID_TILT));
+	return {
+		x: (0.5 + (u - 0.5) * scale) * width,
+		y: (LID_DEPTH - above * Math.cos(LID_TILT) * scale) * width
+	};
+}
+
+/**
+ * How wide the back end of a box's tilted top is drawn — the flat run along the far edge of the
+ * lid, between the two corners the cut takes off it. Two things narrow it: the perspective, which
+ * draws the back edge at 66% of the front's width, and the cut, which takes a tenth off each end
+ * of that edge. Both are read off the same figures the lid itself is drawn from rather than
+ * quoted, so a change to either follows through.
+ *
+ * It is the width of the opening, which is why anything standing where the box was is asked to
+ * be it: what comes out of a box comes out of the hole in its top, not out of its footprint.
+ */
+export function lidBackWidth(boxWidth: number): number {
+	const [left] = LID_CUT[0];
+	const [right] = LID_CUT[1];
+	return projectLid(right, 0, boxWidth).x - projectLid(left, 0, boxWidth).x;
 }
 
 /** A picture covering a box: scaled to the larger of the two fits, centred, and cropped to the

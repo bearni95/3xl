@@ -148,7 +148,6 @@
 				<BoosterBoxCanvas
 					{packs}
 					columns={4}
-					revealColumns={5}
 					interactive={!allowanceSpent}
 					on:select={() => dispatch('select')}
 					on:back={() => dispatch('back')}
