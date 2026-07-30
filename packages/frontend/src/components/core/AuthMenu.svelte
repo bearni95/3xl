@@ -8,6 +8,7 @@
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { profileModalOpen } from '$services/profileModal';
 	import { rosterModalOpen } from '$services/rosterModal';
+	import { achievementsModalOpen } from '$services/achievementsModal';
 	import { AuthStatus, type OAuthProvider } from '$types/profile.type';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
@@ -89,6 +90,11 @@
 		rosterModalOpen.set(true);
 	}
 
+	function openAchievements(): void {
+		// The badges, on the same sheet as the roster and raised the same way.
+		achievementsModalOpen.set(true);
+	}
+
 	function openAvatarPicker(): void {
 		avatarPickerOpen.set(true);
 	}
@@ -159,14 +165,16 @@
 					{:else if $status === AuthStatus.SignedIn && $profile}
 						{#if embedded}
 							<!-- The account across the whole width, above the cards rather than in among
-								them: the picture, the reading and the two ways out of the panel (the full
-								card, the roster) on one row of three columns. Both buttons raise a modal
-								mounted at the layout root, so the tile only says they were pressed. -->
+								them: the picture, the reading and the ways out of the panel (the full
+								card, the roster, the badges) on one row of three columns. Every one of
+								those buttons raises a modal mounted at the layout root, so the tile only
+								says it was pressed. -->
 							<ProfileTile
 								profile={$profile}
 								on:editavatar={openAvatarPicker}
 								on:openprofile={openProfile}
 								on:openroster={openRoster}
+								on:openachievements={openAchievements}
 							/>
 
 							<!-- The side they field, three cards to a row — the whole team on one row,

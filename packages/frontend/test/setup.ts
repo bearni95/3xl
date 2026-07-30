@@ -37,6 +37,23 @@ Object.defineProperty(window, 'localStorage', {
 	value: localStorageMock
 });
 
+// Svelte plays a transition through the Web Animations API, which happy-dom does not
+// implement — so mounting a component that slides in dies on `element.animate` before
+// any of it can be asserted. The animation itself is not what a test is about, so the
+// stub does nothing and reports itself finished.
+if (!Element.prototype.animate) {
+	Element.prototype.animate = () =>
+		({
+			cancel: () => {},
+			finish: () => {},
+			currentTime: 0,
+			playState: 'finished',
+			startTime: 0,
+			addEventListener: () => {},
+			removeEventListener: () => {}
+		}) as unknown as Animation;
+}
+
 // Clear mocks and localStorage before each test
 beforeEach(() => {
 	localStorage.clear();

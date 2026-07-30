@@ -15,7 +15,9 @@
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
+	import AchievementsModal from '$components/core/AchievementsModal.svelte';
 	import { rosterModalOpen } from '$services/rosterModal';
+	import { achievementsModalOpen } from '$services/achievementsModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { authService } from '$services/auth.service';
@@ -2034,4 +2036,12 @@
 	Profile, and from the arena's "no active team" card, both through `rosterModalOpen`. -->
 {#if $rosterModalOpen}
 	<RosterModal />
+{/if}
+
+<!-- The badges, on the same sheet as the roster and over the map like it. Mounted only
+	while it is open, so the Supabase read that lists them happens on opening rather than
+	on every page load. Opened from the Achievements button beside Roster on the panel's
+	account row, through `achievementsModalOpen`. -->
+{#if $achievementsModalOpen}
+	<AchievementsModal />
 {/if}

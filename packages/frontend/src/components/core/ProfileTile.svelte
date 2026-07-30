@@ -13,8 +13,8 @@
 	// 3:4 portrait.
 	//
 	// Three columns, each a third: the picture they wear, the reading (name, level, the
-	// bar), and the account's two ways out of the panel — the full card and the roster.
-	// Those two are back on the tile because it is the account's row now, and a row that
+	// bar), and the account's ways out of the panel — the full card, the roster and the
+	// badges. Those are on the tile because it is the account's row now, and a row that
 	// says who is playing is where what to do about it belongs.
 
 	export let profile: Profile;
@@ -24,6 +24,7 @@
 		editavatar: void;
 		openprofile: void;
 		openroster: void;
+		openachievements: void;
 	}>();
 
 	// Same as the full card: the letter avatar stands on the chosen name alone, so an
@@ -98,15 +99,23 @@
 		></progress>
 	</div>
 
-	<!-- The account's two ways out of the panel, stacked in the last third: the full card
-		(details list, username field, sign-out) and the player's own cards. Both only raise
-		a modal mounted at the layout root, so the tile dispatches and the host does it. -->
+	<!-- The account's ways out of the panel, stacked in the last third: the full card
+		(details list, username field, sign-out), the player's own cards, and the badges
+		they can earn. Each only raises a modal mounted at the layout root, so the tile
+		dispatches and the host does it. -->
 	<div class="flex min-w-0 flex-col gap-2">
 		<button type="button" class="btn btn-primary btn-sm" on:click={() => dispatch('openprofile')}>
 			{$_('profile.title')}
 		</button>
 		<button type="button" class="btn btn-outline btn-sm" on:click={() => dispatch('openroster')}>
 			Roster
+		</button>
+		<button
+			type="button"
+			class="btn btn-primary btn-sm"
+			on:click={() => dispatch('openachievements')}
+		>
+			Achievements
 		</button>
 	</div>
 </div>
