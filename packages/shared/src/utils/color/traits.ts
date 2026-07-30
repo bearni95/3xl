@@ -14,18 +14,21 @@
  *
  * Four rules hold it down, and they are the whole of it:
  *
- *   1. **Once in the battle.** A free order is a single gift, not an allowance. Spend
- *      it and the colour has given what it had.
+ *   1. **Once, on the opening turn.** A free order is a single gift, not an allowance —
+ *      and it is what the fighter opens the fight with, not something it holds back for
+ *      the turn that would pay best. Whatever it has not done by the end of the first
+ *      turn lapses exactly as if it had been taken.
  *   2. **Never the order it was already given.** A passive is a *second* thing the
  *      fighter does, so it only comes on a turn spent on something else: a fighter
  *      that picks Shoot gets no free shot out of red, and one that picks Defend gets
  *      no free guard out of blue. Passive means it happens beside what you chose,
- *      which means it cannot *be* what you chose — and ordering it on purpose is how a
- *      fighter keeps the gift in hand for a later turn.
+ *      which means it cannot *be* what you chose — so ordering the very thing your
+ *      colour owes you is how a fighter throws its gift away.
  *   3. **Spent only when it does something.** A free charge on a fighter already full
  *      up, a free guard on a turn nobody fires, a free shot with nothing banked to
- *      fire it with — none of these are the gift being taken, so none of them use it
- *      up. It waits for the turn it can be had.
+ *      fire it with — none of these are the gift being taken. It is not used up by
+ *      them; it simply runs out with the turn (rule 1), which from the outside is the
+ *      same thing.
  *   4. **The charge goes first.** Whichever of the two is a charge — the order or the
  *      gift — is resolved before anything else in the turn, because a charge is the one
  *      order another order *needs*. So the two things a fighter does on a turn happen in
@@ -33,11 +36,11 @@
  *      charge it just banked. (The sequence itself belongs to the fight, not to this
  *      file — see the frontend's combat controller.)
  *
- * A compound colour carries both of the primaries it mixes, and **both come at once**
- * on any turn both are allowed: orange (red + yellow) that picks Defend banks its free
- * charge, fires its free shot out of it, and covers — all in the one turn, and it has now
- * spent both for the rest of the fight. So a compound is not twice the fighter — it is
- * one turn, twice as good, and then it is a plain card.
+ * A compound colour carries both of the primaries it mixes, and **both come at once**:
+ * orange (red + yellow) that picks Defend banks its free charge, fires its free shot out
+ * of it, and covers — all in the one turn, which is the only turn either of them was ever
+ * going to come on. So a compound is not twice the fighter — it is one opening, twice as
+ * good, and then it is a plain card.
  */
 import {
 	COMPOUND_COMPONENTS,

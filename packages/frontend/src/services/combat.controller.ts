@@ -26,13 +26,14 @@
  *
  * What separates one card from another is nothing but its **colour** (see
  * `colorPassives` in @3xl/shared), and what a colour hands over is one of those very
- * three orders, taken for free: red a shot, yellow a charge, blue a defend. It is
- * worth **one use in the whole battle**, it only comes on a turn the fighter was
- * given something *else* to do — a passive happens beside your order, so it can never
- * be your order, and ordering the very thing your colour owes you keeps it for a later
- * turn — and it is only used up on a turn it actually did something. A compound colour
- * carries both of the primaries it mixes and spends both at once on any turn both are
- * allowed, so it is one very good turn rather than a better card.
+ * three orders, taken for free: red a shot, yellow a charge, blue a defend. It is worth
+ * **one use, on the opening turn**: it only comes on a turn the fighter was given
+ * something *else* to do — a passive happens beside your order, so it can never be your
+ * order — and whatever it has not done by the end of that turn lapses as though it had
+ * been spent ({@link CombatController.lapsePassives}). So a colour is what a fighter
+ * opens with and not something banked for the turn it would pay best. A compound colour
+ * carries both of the primaries it mixes and takes both at once, so it is one very good
+ * opening rather than a better card.
  *
  * A fighter's two things therefore happen on the same turn, and they happen **in
  * sequence**: the **charge** — ordered or free — is resolved before everything else,
@@ -982,6 +983,11 @@ export class CombatController {
 			return;
 		}
 
+		// Whatever a colour was still owing goes with the turn it was owed on — see
+		// {@link lapsePassives}. Before the next turn is set up, so a fighter is never asked
+		// for an order while holding a gift that has already run out.
+		this.lapsePassives();
+
 		this.turn += 1;
 		// What the last turn said — CHARGE, BLOCK, CLASH, HIT! — belonged to that turn. The orders
 		// are being asked for again, so it comes off the board with them: the words never
@@ -1237,10 +1243,11 @@ export class CombatController {
 	}
 
 	/**
-	 * Whether this fighter's colour still owes it `order` — it grants it and it has not
-	 * been had yet. Says nothing about the turn: this is the gift being *in hand*, which
-	 * is what both sides can read off any fighter's corner all fight long, as against
-	 * {@link passiveReady}, which is the gift being owed *now*.
+	 * Whether this fighter's colour still owes it `order` — it grants it and it has
+	 * neither been had nor run out. Says nothing about the turn: this is the gift being
+	 * *in hand*, which is what both sides read off a fighter's corner, as against
+	 * {@link passiveReady}, which is the gift being owed *now*. Nothing is in hand past
+	 * the opening turn (see {@link lapsePassives}).
 	 */
 	private owes(fighter: Fighter, order: PassiveOrder): boolean {
 		return fighter.passives.includes(order) && !fighter.spent.includes(order);
@@ -1259,14 +1266,41 @@ export class CombatController {
 	}
 
 	/**
-	 * Mark a gift as had — it is worth one use in the whole battle — and let the board
-	 * fade the glyph that stood for it, so a corner never offers what the fighter no
-	 * longer holds.
+	 * Mark a gift as had — it is worth the one use — and let the board fade the glyph
+	 * that stood for it, so a corner never offers what the fighter no longer holds. The
+	 * same call takes down a gift that merely ran out ({@link lapsePassives}): to
+	 * everything downstream the two are one state, which is the point of it.
 	 */
 	private spend(fighter: Fighter, order: PassiveOrder): void {
 		if (fighter.spent.includes(order)) return;
 		fighter.spent.push(order);
 		this.showTraits(fighter);
+	}
+
+	/**
+	 * Run out every gift still in hand, at the end of the turn it was in hand for.
+	 *
+	 * A colour's free order is what a fighter opens the fight with, and it lasts that
+	 * opening turn: whatever it did not do on the turn it was there for, it does not do
+	 * later. A gift that could sit in a corner until the turn it happened to pay best was
+	 * a card's advantage waiting for its moment — it made the opening turn the one turn
+	 * nobody could read, since every fighter on the board was still owed everything, and
+	 * it made a colour something a player banked rather than opened with. Spent or lapsed,
+	 * it comes to the same thing from here on: the corner stops offering it, the rivals
+	 * stop counting it as a threat, and every fighter left is the three orders and nothing
+	 * else.
+	 *
+	 * Called at the end of every turn, though it can only ever find anything on the first
+	 * — after that there is nothing left in hand to run out. Which is also what makes a
+	 * fight resumed from an old board (one saved under the rule that kept gifts) settle
+	 * into this one at the end of its next turn rather than carrying them for ever.
+	 */
+	private lapsePassives(): void {
+		for (const fighter of this.fighters) {
+			for (const order of fighter.passives) {
+				if (this.owes(fighter, order)) this.spend(fighter, order);
+			}
+		}
 	}
 
 	/** Whether a fighter's order is complete: given, and only firing where it can. A
