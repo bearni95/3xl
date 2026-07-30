@@ -265,21 +265,17 @@
 	);
 
 	/**
-	 * When an award landed, in the device's own zone — unlike the day of the three
-	 * above, this is an instant rather than a calendar date, so the reader's clock is
-	 * exactly the right one to read it in.
+	 * The day a completion belongs to, as `dd/mm/yyyy`.
+	 *
+	 * Rearranged from the stored `YYYY-MM-DD` rather than formatted through a `Date`,
+	 * because the day is a calendar date and not an instant: read in the device's own
+	 * zone, a Catalan day would print as the day before for any reader west of
+	 * Greenwich, and the day a badge was set for is not a thing that changes with who
+	 * is looking at it.
 	 */
-	const awardedFormat = new Intl.DateTimeFormat(undefined, {
-		day: 'numeric',
-		month: 'short',
-		year: 'numeric',
-		hour: '2-digit',
-		minute: '2-digit'
-	});
-
-	function awardedLabel(iso: string): string {
-		const at = new Date(iso);
-		return Number.isNaN(at.getTime()) ? '' : awardedFormat.format(at);
+	function dateLabel(day: string): string {
+		const [year, month, date] = day.split('-');
+		return year && month && date ? `${date}/${month}/${year}` : day;
 	}
 
 	// What one badge would pay right now, mirroring the RPC's arithmetic so the row
@@ -385,7 +381,7 @@
 						<button class="btn btn-ghost btn-xs" type="button" on:click={() => (dayOffset = 0)}>
 							Back to today
 						</button>
-						<span class="font-mono text-xs opacity-50">{viewedDay}</span>
+						<span class="font-mono text-xs opacity-50">{dateLabel(viewedDay)}</span>
 					{/if}
 					<button
 						class="btn btn-primary btn-sm ml-auto"
@@ -524,7 +520,9 @@
 									<span class="font-semibold">{entry.name}</span>
 									<span class="text-sm opacity-70">{entry.description}</span>
 									<span class="flex flex-wrap items-center gap-2 text-xs opacity-60">
-										<span>{awardedLabel(entry.award.awardedAt)}</span>
+										<!-- The day it was set and completed for, which is what the row is
+										     about — not the moment it landed. -->
+										<span>{dateLabel(entry.award.day)}</span>
 										{#if entry.award.expAwarded > 0}
 											<span>· +{entry.award.expAwarded.toLocaleString()} exp</span>
 										{/if}
