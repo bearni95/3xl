@@ -149,6 +149,29 @@ export interface AchievementClaim {
 	totalExp: number;
 }
 
+/**
+ * One badge a player has completed, as `player_achievements` records it. The table
+ * is the whole of what the game knows about a completion: which badge, when it
+ * landed, and what it paid — the wording is still the file's, and the amount is kept
+ * here because it was a third of the level the player was on at that moment and that
+ * level is gone the instant the award lands.
+ */
+export interface AchievementAward {
+	/** The badge completed. */
+	achievementId: string;
+	/** ISO timestamp the award landed. */
+	awardedAt: string;
+	/** Experience it paid. Zero for a badge earned at the level cap. */
+	expAwarded: number;
+}
+
+/** The raw `player_achievements` row (snake_case, bigint as a string). */
+export interface AchievementAwardRow {
+	achievement_id: string;
+	awarded_at: string;
+	exp_awarded: string | number | null;
+}
+
 /** The raw `claim_achievements()` row (snake_case, bigints as strings). */
 export interface AchievementClaimRow {
 	achievement_id: string;

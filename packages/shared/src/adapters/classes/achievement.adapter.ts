@@ -1,16 +1,36 @@
 import { AdapterClass } from './adapter.class';
-import type { AchievementClaim, AchievementClaimRow } from '../../types/achievement.type';
+import type {
+	AchievementAward,
+	AchievementAwardRow,
+	AchievementClaim,
+	AchievementClaimRow
+} from '../../types/achievement.type';
 
 /**
- * Transforms the rows `claim_achievements` returns into the internal
- * {@link AchievementClaim} model. Postgres serialises `bigint` — the experience
- * figures — as a string over the wire, so those are normalised back to numbers
- * here; the booleans are read defensively so a row missing one reads as "nothing
- * happened" rather than as an award.
+ * Transforms Supabase's achievement rows into the internal models: the
+ * `player_achievements` rows that say what a player has completed, and the rows
+ * `claim_achievements` returns when they claim. Postgres serialises `bigint` — the
+ * experience figures — as a string over the wire, so those are normalised back to
+ * numbers here; the booleans are read defensively so a row missing one reads as
+ * "nothing happened" rather than as an award.
  */
 export class AchievementAdapter extends AdapterClass {
 	constructor() {
 		super('achievement');
+	}
+
+	/** One `player_achievements` row: a badge this player has completed. */
+	fromAwardRow(row: AchievementAwardRow): AchievementAward {
+		return {
+			achievementId: String(row.achievement_id),
+			awardedAt: row.awarded_at,
+			expAwarded: Number(row.exp_awarded ?? 0)
+		};
+	}
+
+	/** Every award a player holds, in the order the query returned them. */
+	fromAwardRows(rows: readonly AchievementAwardRow[] | null): AchievementAward[] {
+		return (rows ?? []).map((row) => this.fromAwardRow(row));
 	}
 
 	/** One row of the claim RPC's result. */

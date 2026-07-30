@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { AchievementClaimRow, AchievementsCollection } from '$types/achievement.type';
+import type {
+	AchievementAwardRow,
+	AchievementClaimRow,
+	AchievementsCollection
+} from '$types/achievement.type';
 
 /**
  * The badge list is stitched from two places: Supabase says which ids exist and
@@ -13,7 +17,8 @@ import type { AchievementClaimRow, AchievementsCollection } from '$types/achieve
 // What the tables and the RPC hand back, set per test.
 let templateRows: { id: string; requirement: string | null }[] = [];
 let templatesError: unknown = null;
-let awardRows: { achievement_id: string }[] = [];
+let awardRows: AchievementAwardRow[] = [];
+let awardQuery: string[] = [];
 let claimRows: AchievementClaimRow[] | null = [];
 let rpcError: unknown = null;
 let rpcCalls: string[] = [];
@@ -21,10 +26,24 @@ let rpcCalls: string[] = [];
 vi.mock('$services/supabase.client', () => ({
 	getSupabaseClient: () => ({
 		from: (table: string) => ({
-			select: () =>
-				table === 'achievement_templates'
-					? Promise.resolve({ data: templateRows, error: templatesError })
-					: { eq: () => Promise.resolve({ data: awardRows, error: null }) }
+			select: (columns: string) => {
+				if (table === 'achievement_templates') {
+					return Promise.resolve({ data: templateRows, error: templatesError });
+				}
+				awardQuery.push(columns);
+				// The chain the service builds: filtered to one player, newest first.
+				return {
+					eq: (column: string, value: string) => {
+						awardQuery.push(`${column}=${value}`);
+						return {
+							order: (column2: string, options: { ascending: boolean }) => {
+								awardQuery.push(`${column2} ${options.ascending ? 'asc' : 'desc'}`);
+								return Promise.resolve({ data: awardRows, error: null });
+							}
+						};
+					}
+				};
+			}
 		}),
 		rpc: (name: string) => {
 			rpcCalls.push(name);
@@ -62,6 +81,7 @@ beforeEach(() => {
 	templateRows = [];
 	templatesError = null;
 	awardRows = [];
+	awardQuery = [];
 	claimRows = [];
 	rpcError = null;
 	rpcCalls = [];
@@ -112,16 +132,48 @@ describe('loading the game’s achievements', () => {
 		expect(snapshot.claimable).toEqual(['first-blood']);
 	});
 
-	it('reports what the player already holds', async () => {
-		templateRows = [{ id: 'conqueridor', requirement: 'cards >= 1' }];
-		awardRows = [{ achievement_id: 'conqueridor' }];
-		expect([...(await load()).held]).toEqual(['conqueridor']);
+	it('reports what the player has completed, and what each of them paid', async () => {
+		templateRows = [
+			{ id: 'conqueridor', requirement: 'cards >= 1' },
+			{ id: 'first-blood', requirement: 'cards >= target' }
+		];
+		awardRows = [
+			{ achievement_id: 'first-blood', awarded_at: '2026-07-30T09:00:00Z', exp_awarded: '200' },
+			{ achievement_id: 'conqueridor', awarded_at: '2026-07-28T11:30:00Z', exp_awarded: '100' }
+		];
+		const snapshot = await load();
+		expect(snapshot.awards).toEqual([
+			{ achievementId: 'first-blood', awardedAt: '2026-07-30T09:00:00Z', expAwarded: 200 },
+			{ achievementId: 'conqueridor', awardedAt: '2026-07-28T11:30:00Z', expAwarded: 100 }
+		]);
+		// The same ledger as a set, which is all a tile asks for.
+		expect([...snapshot.held]).toEqual(['first-blood', 'conqueridor']);
+		// Asked for as one player's, newest first — the table is world-readable, so the
+		// filter is what makes it theirs rather than everybody's.
+		expect(awardQuery).toEqual([
+			'achievement_id, awarded_at, exp_awarded',
+			'user_id=user-1',
+			'awarded_at desc'
+		]);
 	});
 
 	it('asks for nobody’s awards when there is no player', async () => {
 		templateRows = [{ id: 'conqueridor', requirement: 'cards >= 1' }];
-		awardRows = [{ achievement_id: 'conqueridor' }];
-		expect([...(await load(null)).held]).toEqual([]);
+		awardRows = [
+			{ achievement_id: 'conqueridor', awarded_at: '2026-07-28T11:30:00Z', exp_awarded: '100' }
+		];
+		const snapshot = await load(null);
+		expect(snapshot.awards).toEqual([]);
+		expect([...snapshot.held]).toEqual([]);
+		expect(awardQuery).toEqual([]);
+	});
+
+	it('reads a badge earned at the level cap as having paid nothing', async () => {
+		templateRows = [{ id: 'conqueridor', requirement: 'cards >= 1' }];
+		awardRows = [
+			{ achievement_id: 'conqueridor', awarded_at: '2026-07-28T11:30:00Z', exp_awarded: null }
+		];
+		expect((await load()).awards[0].expAwarded).toBe(0);
 	});
 
 	it('is empty when nothing has been synced', async () => {

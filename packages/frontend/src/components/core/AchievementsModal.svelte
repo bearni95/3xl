@@ -7,7 +7,7 @@
 	import { spawnService } from '$services/spawn.service';
 	import { claimAchievements, loadAchievements } from '$services/achievements.service';
 	import { AuthStatus } from '$types/profile.type';
-	import type { Achievement, AchievementClaim } from '$types/achievement.type';
+	import type { Achievement, AchievementAward, AchievementClaim } from '$types/achievement.type';
 	import type { FormulaContext } from '$utils/achievement/formula';
 	import { renderAchievement } from '$utils/achievement/template';
 	import { achievementMet } from '$utils/achievement/requirement';
@@ -36,6 +36,9 @@
 
 	let achievements: Achievement[] = [];
 	let claimable: string[] = [];
+	// What Supabase says this player has completed, newest first, and the same thing as
+	// a set of ids for the tiles that only ask whether a badge is worn.
+	let awards: AchievementAward[] = [];
 	let held = new Set<string>();
 	let loading = false;
 	let error = '';
@@ -60,20 +63,27 @@
 		loading = true;
 		error = '';
 		try {
-			// The badges, the pool, what is already held, and the cards their formulas
+			// The badges, the pool, what is already completed, and the cards their formulas
 			// count — together, so nothing on screen is drawn twice.
-			const [snapshot] = await Promise.all([
-				loadAchievements(userId),
-				spawnService.loadSpawns(userId)
-			]);
-			achievements = snapshot.achievements;
-			claimable = snapshot.claimable;
-			held = snapshot.held;
+			await Promise.all([refresh(userId), spawnService.loadSpawns(userId)]);
 		} catch (err) {
 			error = errorMessage(err);
 		} finally {
 			loading = false;
 		}
+	}
+
+	/**
+	 * Re-read what Supabase holds, without the spinner. Called again after a claim
+	 * lands: the completed list and the experience it paid are the database's, so the
+	 * screen is brought up to what is there rather than patched with what was expected.
+	 */
+	async function refresh(userId: string): Promise<void> {
+		const snapshot = await loadAchievements(userId);
+		achievements = snapshot.achievements;
+		claimable = snapshot.claimable;
+		awards = snapshot.awards;
+		held = snapshot.held;
 	}
 
 	/**
@@ -91,8 +101,9 @@
 			const rows = await claimAchievements();
 			claimed = new Map(rows.map((row) => [row.achievementId, row]));
 			if (rows.some((row) => row.granted)) {
-				held = new Set([...held, ...rows.filter((row) => row.granted).map((r) => r.achievementId)]);
-				await authService.refreshProfile();
+				// Both of these landed on rows this browser cannot write: the award ledger
+				// and the experience total. Read them back rather than guessing them.
+				await Promise.all([refresh(currentUserId), authService.refreshProfile()]);
 			}
 		} catch (err) {
 			claimError = errorMessage(err);
@@ -167,6 +178,40 @@
 		.map((achievement) => tile(achievement, context, held));
 	$: everyTile = achievements.map((achievement) => tile(achievement, context, held));
 
+	/**
+	 * The completed section: the award ledger as Supabase keeps it, newest first, each
+	 * row paired with the badge it names. A row the file has nothing for is dropped —
+	 * a badge retired locally has no glyph and no wording left to draw it with — which
+	 * is why the total below is summed off the ledger rather than off these tiles: the
+	 * experience was earned whether or not the badge can still be shown.
+	 */
+	$: completedTiles = awards
+		.map((award) => ({ award, achievement: byId.get(award.achievementId) }))
+		.filter(
+			(entry): entry is { award: AchievementAward; achievement: Achievement } =>
+				!!entry.achievement
+		)
+		.map((entry) => ({ award: entry.award, ...tile(entry.achievement, context, held) }));
+	$: completedExp = awards.reduce((total, award) => total + award.expAwarded, 0);
+
+	/**
+	 * When an award landed, in the device's own zone — unlike the day of the three
+	 * above, this is an instant rather than a calendar date, so the reader's clock is
+	 * exactly the right one to read it in.
+	 */
+	const awardedFormat = new Intl.DateTimeFormat(undefined, {
+		day: 'numeric',
+		month: 'short',
+		year: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit'
+	});
+
+	function awardedLabel(iso: string): string {
+		const at = new Date(iso);
+		return Number.isNaN(at.getTime()) ? '' : awardedFormat.format(at);
+	}
+
 	// What one badge would pay right now, mirroring the RPC's arithmetic so the row
 	// can say it before the claim does.
 	$: award = achievementExpAward($profile?.level ?? 1);
@@ -225,113 +270,161 @@
 			     recomputes the day itself and settles that one.
 			     A day other than today is drawn from the pool as it stands *now*, since the
 			     pool is not history either: authoring a new badge changes what a past day
-			     works out to, which is the price of keeping nothing. -->
-
-			{#if claimable.length > 0}
-				<section class="flex flex-none flex-col gap-3">
-					<div class="flex flex-wrap items-center gap-3">
-						<div class="join">
-							<button
-								class="btn join-item btn-sm"
-								type="button"
-								aria-label="The day before"
-								title="The day before"
-								on:click={() => stepDay(-1)}
-							>
-								‹
-							</button>
-							<span class="btn no-animation join-item pointer-events-none btn-sm font-semibold">
-								{dayLabel}
-							</span>
-							<button
-								class="btn join-item btn-sm"
-								type="button"
-								aria-label="The day after"
-								title="The day after"
-								on:click={() => stepDay(1)}
-							>
-								›
-							</button>
-						</div>
-						{#if viewingToday}
-							<span class="text-xs opacity-60">
-								new badges in <Countdown until={midnight} />
-							</span>
-						{:else}
-							<!-- One press back to the day that can be acted on, since the arrows are
-							     free to have wandered a long way from it. -->
-							<button class="btn btn-ghost btn-xs" type="button" on:click={() => (dayOffset = 0)}>
-								Back to today
-							</button>
-							<span class="font-mono text-xs opacity-50">{viewedDay}</span>
-						{/if}
+			     works out to, which is the price of keeping nothing.
+			     The arrows and the day's name stand whatever the pool holds. Gating them on
+			     there being something to draw meant that a game with no rules synced yet
+			     showed no day controls at all, which reads as a missing feature rather than
+			     as an empty pool — and the pool is a thing the admin fills, not the player. -->
+			<section class="flex flex-none flex-col gap-3">
+				<div class="flex flex-wrap items-center gap-3">
+					<div class="join">
 						<button
-							class="btn btn-primary btn-sm ml-auto"
+							class="btn join-item btn-sm"
 							type="button"
-							disabled={claiming || !viewingToday}
-							title={viewingToday
-								? 'Claim the badges you have earned today'
-								: "Only today's badges can be claimed"}
-							on:click={claim}
+							aria-label="The day before"
+							title="The day before"
+							on:click={() => stepDay(-1)}
 						>
-							{#if claiming}
-								<span class="loading loading-spinner loading-xs"></span>
-							{/if}
-							{readyCount > 0 ? `Claim ${readyCount}` : 'Claim'}
+							‹
+						</button>
+						<span class="btn no-animation join-item pointer-events-none btn-sm font-semibold">
+							{dayLabel}
+						</span>
+						<button
+							class="btn join-item btn-sm"
+							type="button"
+							aria-label="The day after"
+							title="The day after"
+							on:click={() => stepDay(1)}
+						>
+							›
 						</button>
 					</div>
-
-					{#if claimError}
-						<div class="alert alert-error py-2 text-sm"><span>{claimError}</span></div>
+					{#if viewingToday}
+						<span class="text-xs opacity-60">
+							new badges in <Countdown until={midnight} />
+						</span>
+					{:else}
+						<!-- One press back to the day that can be acted on, since the arrows are
+						     free to have wandered a long way from it. -->
+						<button class="btn btn-ghost btn-xs" type="button" on:click={() => (dayOffset = 0)}>
+							Back to today
+						</button>
+						<span class="font-mono text-xs opacity-50">{viewedDay}</span>
 					{/if}
+					<button
+						class="btn btn-primary btn-sm ml-auto"
+						type="button"
+						disabled={claiming || !viewingToday}
+						title={viewingToday
+							? 'Claim the badges you have earned today'
+							: "Only today's badges can be claimed"}
+						on:click={claim}
+					>
+						{#if claiming}
+							<span class="loading loading-spinner loading-xs"></span>
+						{/if}
+						{readyCount > 0 ? `Claim ${readyCount}` : 'Claim'}
+					</button>
+				</div>
 
-					{#if dayTiles.length === 0}
-						<p class="text-sm opacity-60">Nothing to show for this day.</p>
-					{/if}
+				{#if claimError}
+					<div class="alert alert-error py-2 text-sm"><span>{claimError}</span></div>
+				{/if}
 
-					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-						{#each dayTiles as entry (entry.achievement.id)}
-							{@const outcome = viewingToday ? claimed.get(entry.achievement.id) : undefined}
-							<!-- Earned reads in primary, ready to claim in success, and everything
-							     else is a card standing on the page like any other. -->
-							<div
-								class={classNames('flex flex-col gap-2 rounded-box border-2 bg-base-200/50 p-3', {
-									'border-primary': entry.held,
-									'border-success': !entry.held && entry.met,
-									'border-transparent': !entry.held && !entry.met
-								})}
-							>
-								<div class="flex items-start gap-3">
-									<GameIcon name={entry.achievement.icon} size="size-14" />
-									<div class="flex min-w-0 flex-col gap-1">
-										<span class="font-semibold">{entry.name}</span>
-										<span class="text-sm opacity-70">{entry.description}</span>
-									</div>
+				{#if claimable.length === 0}
+					<p class="text-sm opacity-60">
+						No badges are in play yet — a badge is set only once it says what earns it.
+					</p>
+				{:else if dayTiles.length === 0}
+					<p class="text-sm opacity-60">Nothing to show for this day.</p>
+				{/if}
+
+				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					{#each dayTiles as entry (entry.achievement.id)}
+						{@const outcome = viewingToday ? claimed.get(entry.achievement.id) : undefined}
+						<!-- Earned reads in primary, ready to claim in success, and everything
+						     else is a card standing on the page like any other. -->
+						<div
+							class={classNames('flex flex-col gap-2 rounded-box border-2 bg-base-200/50 p-3', {
+								'border-primary': entry.held,
+								'border-success': !entry.held && entry.met,
+								'border-transparent': !entry.held && !entry.met
+							})}
+						>
+							<div class="flex items-start gap-3">
+								<GameIcon name={entry.achievement.icon} size="size-14" />
+								<div class="flex min-w-0 flex-col gap-1">
+									<span class="font-semibold">{entry.name}</span>
+									<span class="text-sm opacity-70">{entry.description}</span>
 								</div>
-								<div class="flex flex-wrap items-center gap-2 text-xs">
-									{#if entry.held}
-										<span class="badge badge-primary badge-sm">Earned</span>
-										{#if outcome?.granted}
-											<span class="opacity-70">
-												+{outcome.expAwarded.toLocaleString()} exp
-											</span>
+							</div>
+							<div class="flex flex-wrap items-center gap-2 text-xs">
+								{#if entry.held}
+									<span class="badge badge-primary badge-sm">Earned</span>
+									{#if outcome?.granted}
+										<span class="opacity-70">
+											+{outcome.expAwarded.toLocaleString()} exp
+										</span>
+									{/if}
+								{:else if entry.met}
+									<span class="badge badge-success badge-sm">Ready</span>
+									<span class="opacity-70">worth {award.toLocaleString()} exp</span>
+								{:else}
+									<span class="badge badge-ghost badge-sm">Not yet</span>
+									<span class="opacity-70">worth {award.toLocaleString()} exp</span>
+								{/if}
+								{#if outcome && !outcome.granted && !outcome.held && !outcome.met}
+									<span class="text-warning">the server says not yet</span>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+			</section>
+
+			<!-- What the player has actually completed, read from Supabase's own ledger
+			     rather than worked out here: `player_achievements` is the whole of what the
+			     game knows about a completion — which badge, when it landed, and what it
+			     paid — and the wording beside it is still the file's, rendered with this
+			     player's numbers as they stand now (what they were on the day is not
+			     something the row keeps). Newest first, as the query ordered them. -->
+			<section class="flex flex-col gap-3">
+				<div class="flex flex-wrap items-center gap-3">
+					<h3 class="text-base font-semibold">Completed</h3>
+					<span class="badge badge-primary badge-sm">{awards.length}</span>
+					{#if completedExp > 0}
+						<span class="text-xs opacity-60">
+							{completedExp.toLocaleString()} exp earned from badges
+						</span>
+					{/if}
+				</div>
+				{#if completedTiles.length === 0}
+					<p class="text-sm opacity-60">
+						Nothing completed yet — claim one of today's when it is ready.
+					</p>
+				{:else}
+					<div class="grid content-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+						{#each completedTiles as entry (entry.achievement.id)}
+							<div
+								class="flex items-start gap-3 rounded-box border-2 border-primary bg-base-200/50 p-3"
+							>
+								<GameIcon name={entry.achievement.icon} size="size-14" />
+								<div class="flex min-w-0 flex-col gap-1">
+									<span class="font-semibold">{entry.name}</span>
+									<span class="text-sm opacity-70">{entry.description}</span>
+									<span class="flex flex-wrap items-center gap-2 text-xs opacity-60">
+										<span>{awardedLabel(entry.award.awardedAt)}</span>
+										{#if entry.award.expAwarded > 0}
+											<span>· +{entry.award.expAwarded.toLocaleString()} exp</span>
 										{/if}
-									{:else if entry.met}
-										<span class="badge badge-success badge-sm">Ready</span>
-										<span class="opacity-70">worth {award.toLocaleString()} exp</span>
-									{:else}
-										<span class="badge badge-ghost badge-sm">Not yet</span>
-										<span class="opacity-70">worth {award.toLocaleString()} exp</span>
-									{/if}
-									{#if outcome && !outcome.granted && !outcome.held && !outcome.met}
-										<span class="text-warning">the server says not yet</span>
-									{/if}
+									</span>
 								</div>
 							</div>
 						{/each}
 					</div>
-				</section>
-			{/if}
+				{/if}
+			</section>
 
 			<!-- Every badge the game has, in the order Supabase handed them over: the glyph
 			     on the dark tile it needs (GameIcon), then the name and the line saying what

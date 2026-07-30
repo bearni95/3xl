@@ -2,6 +2,8 @@ import { getSupabaseClient } from '$services/supabase.client';
 import { achievementAdapter } from '$adapters/classes/achievement.adapter';
 import type {
 	Achievement,
+	AchievementAward,
+	AchievementAwardRow,
 	AchievementClaim,
 	AchievementClaimRow,
 	AchievementsCollection
@@ -58,12 +60,18 @@ export interface AchievementsSnapshot {
 	 * badge whose rule has not been synced yet is not in the game.
 	 */
 	claimable: string[];
-	/** The ids this player already holds. Empty for a visitor who is not signed in. */
+	/**
+	 * What this player has completed, newest first, as `player_achievements` records
+	 * it: the badge, the moment it landed and the experience it paid. Empty for a
+	 * visitor who is not signed in.
+	 */
+	awards: AchievementAward[];
+	/** The same thing as a set of ids, which is all a tile needs to know. */
 	held: Set<string>;
 }
 
 /**
- * The badges, the claimable pool and what this player already holds — one trip for
+ * The badges, the claimable pool and what this player has completed — one trip for
  * all three, since a modal that showed the list before it knew what was held would
  * have to redraw itself.
  */
@@ -73,7 +81,11 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 		supabase.from('achievement_templates').select('id, requirement'),
 		loadCollection(),
 		userId
-			? supabase.from('player_achievements').select('achievement_id').eq('user_id', userId)
+			? supabase
+					.from('player_achievements')
+					.select('achievement_id, awarded_at, exp_awarded')
+					.eq('user_id', userId)
+					.order('awarded_at', { ascending: false })
 			: Promise.resolve({ data: [], error: null })
 	]);
 	if (templates.error) throw templates.error;
@@ -92,10 +104,15 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 		if (achievement) achievements.push(achievement);
 	}
 
-	const held = new Set(
-		((awards.data ?? []) as { achievement_id: string }[]).map((row) => String(row.achievement_id))
-	);
-	return { achievements, claimable, held };
+	// The table is world-readable (a badge is worn), so the `user_id` filter is what
+	// makes this the caller's own list rather than everybody's.
+	const completed = achievementAdapter.fromAwardRows(awards.data as AchievementAwardRow[] | null);
+	return {
+		achievements,
+		claimable,
+		awards: completed,
+		held: new Set(completed.map((award) => award.achievementId))
+	};
 }
 
 /**
