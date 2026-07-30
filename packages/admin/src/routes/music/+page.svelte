@@ -12,6 +12,7 @@
 		utcMidnightMs
 	} from '$utils/music/daily-shuffle';
 	import { shiftDayIso } from '$utils/festes/catalan-day';
+	import { formatTrackLength } from '$utils/time/format-duration';
 
 	// One row per song found in @3xl/assets, and the row is the definition: the name is
 	// typed in it, the show is picked in it, and the song is played from it. There is no
@@ -74,6 +75,44 @@
 	// `today` is read once — this screen is not open across a midnight.
 	const today = utcDayIso();
 	let shuffleDay = today;
+
+	// Which station is tuned in. A show's id as a string, because that is what a select
+	// carries, and `none` for the songs that open no show — the one group whose key is
+	// not a number. Empty until the collection is read and the first station is picked.
+	let station = '';
+
+	/** A station's key, which is its show's id or the one word that is not an id. */
+	function stationKey(showId: number | null): string {
+		return showId === null ? 'none' : String(showId);
+	}
+
+	// How long each song is, in seconds, by file. Nothing authors this — a length is the
+	// file's, and the browser is the only thing here that can read one, so each is asked
+	// of an audio element that loads metadata and nothing else. Kept for the session: a
+	// file's length does not change between two days of the radio.
+	let durations = new Map<string, number>();
+	/** Files already asked, so a re-render does not ask again. */
+	const measured = new Set<string>();
+
+	/**
+	 * Read the length of any of `files` that has not been read yet. A file that will not
+	 * decode is left unmeasured rather than recorded as zero — the table says so with a
+	 * dash, which is the truth about it.
+	 */
+	function measure(files: readonly string[]): void {
+		if (!browser) return;
+		for (const file of files) {
+			if (measured.has(file)) continue;
+			measured.add(file);
+			const probe = new Audio();
+			probe.preload = 'metadata';
+			probe.addEventListener('loadedmetadata', () => {
+				// A new Map, not a mutation: the table's lengths are derived from this one.
+				durations = new Map(durations).set(file, probe.duration);
+			});
+			probe.src = musicTrackSrc(file);
+		}
+	}
 
 	onMount(load);
 	// The preview is this screen's, unlike the player on the map: leaving the page is
@@ -265,6 +304,16 @@
 	$: shuffles = dailyShowShuffles(playable, shuffleDay);
 	$: shuffleMidnight = utcMidnightMs(shuffleDay);
 	$: turnsOver = nextUtcMidnightMs(shuffleDay);
+
+	// The station the table draws, and the one the select reads itself back off. A key
+	// naming no station — nothing is tuned yet, or the last song of a show was just
+	// unlinked — falls through to the first, rather than being written back into
+	// `station`: what is picked is the reader's and only their picking changes it, which
+	// is also what keeps this a derivation and not a cycle.
+	$: tuned = shuffles.find((shuffle) => stationKey(shuffle.showId) === station) ?? shuffles[0] ?? null;
+	// Only what is on screen is measured: reading the metadata of every song in the
+	// collection would be seventy requests to letter one column of eighteen rows.
+	$: measure(tuned?.tracks.map((track) => track.file) ?? []);
 </script>
 
 <div class="flex-1 bg-base-200 p-6 md:p-10">
@@ -537,14 +586,35 @@
 						</span>
 					</div>
 					<p class="text-sm opacity-70">
-						Each show's own station: the order its songs come up in today. A show with a dozen
-						themes would otherwise open with the same one for ever, so the running order is
-						redrawn every day — not rolled and not stored, but drawn from a seed hashed out of
-						the show's id and the day's midnight UTC as a Unix timestamp, the number in the
-						badge above. So anyone asking on that day gets this same order, each show is
-						ordered independently of every other, and all of them turn over at once when the
-						timestamp does. Step the day to watch it move.
+						One show's station at a time: the order its songs come up in on the chosen day. A
+						show with a dozen themes would otherwise open with the same one for ever, so the
+						running order is redrawn every day — not rolled and not stored, but drawn from a
+						seed hashed out of the show's id and the day's midnight UTC as a Unix timestamp,
+						the number in the badge above. So anyone asking on that day gets this same order,
+						each show is ordered independently of every other, and all of them turn over at
+						once when the timestamp does. Step the day to watch it move.
 					</p>
+
+					<div class="flex flex-wrap items-center gap-2">
+						<!-- The stations, which are the shows that have a song rather than the shows the
+							game holds: a show nothing was linked to has no order to look at. -->
+						<select
+							class="select select-sm select-bordered"
+							aria-label="Station"
+							value={tuned ? stationKey(tuned.showId) : ''}
+							disabled={shuffles.length === 0}
+							on:change={(event) => (station = event.currentTarget.value)}
+						>
+							{#each shuffles as shuffle (stationKey(shuffle.showId))}
+								<option value={stationKey(shuffle.showId)}>
+									{shuffle.showId === null
+										? 'No show'
+										: (showNameById.get(shuffle.showId) ?? `Unknown show ${shuffle.showId}`)}
+									({shuffle.tracks.length})
+								</option>
+							{/each}
+						</select>
+					</div>
 
 					<div class="flex flex-wrap items-center gap-2">
 						<button
@@ -586,53 +656,47 @@
 
 					{#if shuffles.length === 0}
 						<p class="text-sm opacity-60">
-							Nothing to order yet — a song is in a show's shuffle once it has a definition and
+							Nothing to order yet — a song is in a show's station once it has a definition and
 							its file is still in <code class="font-mono">public/music/</code>.
 						</p>
-					{:else}
-						<div class="grid gap-4 md:grid-cols-2">
-							{#each shuffles as shuffle (shuffle.showId ?? 'none')}
-								<div class="rounded-box border border-base-300 p-4">
-									<div class="mb-3 flex flex-wrap items-baseline gap-2">
-										<h3 class="font-semibold">
-											{shuffle.showId === null
-												? 'No show'
-												: (showNameById.get(shuffle.showId) ?? `Unknown show ${shuffle.showId}`)}
-										</h3>
-										<span class="badge badge-neutral badge-sm">{shuffle.tracks.length}</span>
-										<!-- The seed itself, because the whole claim of this panel is that the
-											order is derived and not rolled: a reader can hash the id and the
-											timestamp and get this number back. -->
-										<span class="font-mono text-xs opacity-50">seed {shuffle.seed}</span>
-									</div>
-									<ol class="flex flex-col gap-1">
-										{#each shuffle.tracks as track, position (track.file)}
-											<li
-												class={classNames('flex items-baseline gap-2 rounded px-2 py-1', {
-													'bg-base-200': loadedFile === track.file && playing
-												})}
-											>
-												<span class="w-6 shrink-0 text-right font-mono text-xs opacity-50">
-													{position + 1}
-												</span>
-												<!-- The same one preview element the table above plays through, so
+					{:else if tuned}
+						<!-- The seed itself, because the whole claim of this panel is that the order is
+							derived and not rolled: a reader can hash the show's id and the timestamp in
+							the heading and get this number back. -->
+						<p class="font-mono text-xs opacity-50">seed {tuned.seed}</p>
+						<div class="overflow-x-auto">
+							<table class="table table-sm">
+								<thead>
+									<tr>
+										<th class="w-12 text-right">#</th>
+										<th>Title</th>
+										<th class="w-24 text-right">Length</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each tuned.tracks as track, position (track.file)}
+										<tr class={classNames({ 'bg-base-200': loadedFile === track.file && playing })}>
+											<td class="text-right font-mono opacity-50">{position + 1}</td>
+											<td>
+												<!-- The same one preview element the songs table plays through, so
 													hearing a song from here is hearing the song, not a second copy
 													of it over the first. -->
 												<button
 													type="button"
-													class="link link-hover text-left text-sm"
+													class="link link-hover text-left"
 													on:click={() => togglePlay(track.file)}
 												>
 													{track.title}
 												</button>
-												<span class="ml-auto truncate font-mono text-xs opacity-40">
-													{track.file}
-												</span>
-											</li>
-										{/each}
-									</ol>
-								</div>
-							{/each}
+												<div class="font-mono text-xs opacity-40">{track.file}</div>
+											</td>
+											<td class="text-right font-mono tabular-nums">
+												{formatTrackLength(durations.get(track.file))}
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
 						</div>
 					{/if}
 				</div>

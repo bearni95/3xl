@@ -12,3 +12,21 @@ export function formatDuration(ms: number): string {
 	const pad = (value: number): string => String(value).padStart(2, '0');
 	return `${hours}:${pad(minutes)}:${pad(seconds)}`;
 }
+
+/**
+ * A song's length, `M:SS` — the other shape a span is read in, and the one a list of
+ * tracks wants. The hour slot is dropped rather than kept, because nothing is ticking
+ * here for it to hold its shape against, and appears only for a song long enough to
+ * need it. A length that is not known yet (a file whose metadata has not been read, or
+ * one the browser could not decode) is null and reads as a dash, since a song is never
+ * nought seconds long.
+ */
+export function formatTrackLength(seconds: number | null | undefined): string {
+	if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '—';
+	const total = Math.round(seconds);
+	const hours = Math.floor(total / 3600);
+	const minutes = Math.floor((total % 3600) / 60);
+	const pad = (value: number): string => String(value).padStart(2, '0');
+	const rest = `${hours > 0 ? pad(minutes) : minutes}:${pad(total % 60)}`;
+	return hours > 0 ? `${hours}:${rest}` : rest;
+}
