@@ -54,6 +54,11 @@
 	// watched it arrive somewhere else. A statue has no opinion on whether a reveal is worth
 	// spending — the surface standing it up does (see IdleSprite's `alwaysReveal`).
 	export let alwaysReveal: boolean = false;
+	// Passed straight to the sprite as well: whether the character arrives behind a veil at all.
+	// False for a surface that uncovers its statues itself — a pack's box dissolves to show them
+	// (see PackGrid) — and such a surface waits for `ready`, which the sprite says when its
+	// picture is up and this statue forwards.
+	export let veiled: boolean = true;
 	export let classes: string = '';
 
 	// The ground: the square itself, laid down flat and seen in perspective, rather than
@@ -227,8 +232,10 @@
 				{label}
 				{flipped}
 				{alwaysReveal}
+				{veiled}
 				baseline={BASELINE}
 				veilFill={SPAWN_FILL_CLASSES[color]}
+				on:ready
 			/>
 		</div>
 	</div>

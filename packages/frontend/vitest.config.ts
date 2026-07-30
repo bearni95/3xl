@@ -16,6 +16,9 @@ export default defineConfig({
 		}
 	},
 	resolve: {
+		// The browser build of Svelte, so a component test mounts a component rather than
+		// asking the server build to.
+		conditions: ['browser'],
 		alias: {
 			$lib: resolve(__dirname, './src/lib'),
 			$components: resolve(__dirname, './src/components'),

@@ -122,6 +122,13 @@
 	// that event before putting the cards where the box was (see PackGrid). Turned off again the
 	// box is simply whole, for a roll that never answered.
 	export let opening: boolean = false;
+	// Whether what is under the box is there to be uncovered. The crazed shell waits on it: the
+	// squares go up on `opening` and then hold, and only when this turns true do they dissolve. So
+	// a box never comes apart onto an empty space — whatever is behind it has the whole crumble
+	// and as long after as it needs to get itself standing (see PackGrid, which stands the cards
+	// up behind the box and says so once their art is up). True by default: a caller with nothing
+	// to wait for is not made to say so.
+	export let ready: boolean = true;
 	export let classes: string = '';
 
 	// The lid: the square top of the box, laid flat and seen in perspective rather than a
@@ -259,8 +266,9 @@
 	// Coming apart, which is the one thing this box does rather than merely shows. Every surface
 	// of it breaks into a grid of squares and the squares dissolve, each grid starting at the
 	// middle of its own plane and travelling out to that plane's edges — the very squares a
-	// character's art arrives behind (VeilBlock's, on IdleSprite's clock). Three states, in the
-	// order they happen: the shell whole, the shell crazed into squares, the squares gone.
+	// character's art arrives behind (VeilBlock's, on IdleSprite's clock). Four states, in the
+	// order they happen: the shell whole, crazing into squares, crazed and waiting on there being
+	// something under it to show (see `ready`), and the squares gone.
 	//
 	// It is four grids and not one because a box is four planes and a grid is drawn in a plane:
 	// each is a child of the surface it breaks up, so the lid's is laid down under the lid's
@@ -275,7 +283,7 @@
 	// squares being opaque and each painted its own surface's tone — so that what the sweep
 	// uncovers is the inside of the box and not the shell it has just broken up. Without it the
 	// squares would dissolve back onto the box they came off.
-	let shell: 'whole' | 'crazing' | 'dissolving' | 'gone' = 'whole';
+	let shell: 'whole' | 'crazing' | 'crazed' | 'dissolving' | 'gone' = 'whole';
 	let inked = true;
 	let shellTimer: ReturnType<typeof setTimeout> | null = null;
 	// The box's own width, measured: the grids count their rows and columns off a square given in
@@ -284,7 +292,9 @@
 	// `clientWidth` is read before any transform folds anything down.
 	let boxWidth = 0;
 
-	// How long the crazed shell holds before it goes, and how long it takes to go. The second is
+	// How long the shell holds after it has crazed, and how long it takes to go once it may. The
+	// first is a beat and not a wait — what it is waiting for is `ready`, which the caller settles;
+	// this only keeps the crazing and the dissolving from running into each other. The second is
 	// VeilBlock's whole sweep — a grid stops being drawn at the end of it, so a sweep that ran
 	// longer would be cut off mid-blur; its blur and its stagger are what add up to this
 	// (IdleSprite holds the same two numbers for the same reason).
@@ -297,7 +307,12 @@
 	// gets the single column of that grain it has room for rather than a fine grid of its own.
 	const CELL = 0.1;
 
-	const dispatch = createEventDispatcher<{ opened: void }>();
+	// `uncovering` when the squares start to go, `opened` when the last of them has. Two moments
+	// and not one because they are two different things to a caller: the first is when whatever is
+	// behind the box may be seen — it has a second of dissolving squares to come up through, which
+	// is what keeps the crumble from uncovering an empty space — and the second is when the box is
+	// out of the way for good.
+	const dispatch = createEventDispatcher<{ uncovering: void; opened: void }>();
 
 	// The box comes apart when it is asked to and is whole again when the asking stops, which is
 	// what a roll that never answered leaves behind: a box still sealed.
@@ -307,8 +322,13 @@
 	// Whether there are grids to draw at all, and how big their squares are. Nothing is drawn
 	// before the box has been measured: a square of no size would leave every grid empty, and an
 	// empty grid never says it is in, which is what the clock below waits on.
-	$: crazed = (shell === 'crazing' || shell === 'dissolving') && boxWidth > 0;
+	$: crumbs = shell !== 'whole' && shell !== 'gone' && boxWidth > 0;
 	$: cell = boxWidth * CELL;
+
+	// A crazed shell goes as soon as there is something under it to show, which may be the moment
+	// it finished crazing or long after — a roll still out, or cards whose art is still coming, is
+	// a box that holds itself together and waits.
+	$: if (shell === 'crazed' && ready) dissolve();
 
 	/** Craze the shell: the grids go up over it, and nothing else happens until they say they are
 	 * all the way in. */
@@ -318,20 +338,31 @@
 	}
 
 	/** A grid is all there, so the surfaces under them are no longer needed — and once they have
-	 * held a beat, neither are the grids. Any one of the four may be the one that says so: they go
-	 * up together and every sweep is the same length, so the first to finish has finished for all
-	 * of them, and this being the whole box's clock the rest find it already running. */
+	 * held a beat, the shell is crazed and waiting. Any one of the four may be the one that says
+	 * so: they go up together and every sweep is the same length, so the first to finish has
+	 * finished for all of them, and this being the whole box's clock the rest find it already
+	 * running. */
 	function shellCrazed(): void {
 		if (shell !== 'crazing' || shellTimer) return;
 		inked = false;
 		shellTimer = setTimeout(() => {
-			shell = 'dissolving';
-			shellTimer = setTimeout(() => {
-				shell = 'gone';
-				shellTimer = null;
-				dispatch('opened');
-			}, SHELL_FADE);
+			shellTimer = null;
+			shell = 'crazed';
 		}, SHELL_HOLD);
+	}
+
+	/** Away, and gone once the sweep is over. Said at the start as well as at the end: the sweep is
+	 * a second long and what is behind the box comes up through it, so a caller told only at the
+	 * end would have a second of dissolving squares over nothing. */
+	function dissolve(): void {
+		if (shell !== 'crazed' || shellTimer) return;
+		shell = 'dissolving';
+		dispatch('uncovering');
+		shellTimer = setTimeout(() => {
+			shell = 'gone';
+			shellTimer = null;
+			dispatch('opened');
+		}, SHELL_FADE);
 	}
 
 	/** Shell whole, no grids, no clock. */
@@ -557,7 +588,7 @@
 	four (see `shellCrazed`, which the rest find already running). Reporting from one nominated
 	surface would have hung the whole crumble on that surface having had a size to be drawn at. -->
 {#snippet crumble(tone: string, width: string, height: string)}
-	{#if crazed}
+	{#if crumbs}
 		<VeilBlock
 			left="0px"
 			bottom="0px"

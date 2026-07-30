@@ -16,7 +16,7 @@
 
 <script lang="ts">
 	import classNames from 'classnames';
-	import { onDestroy } from 'svelte';
+	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import VeilBlock from '$components/core/VeilBlock.svelte';
 	import {
 		loadIdleClip,
@@ -58,6 +58,17 @@
 	// `load`; a sweep watched here is still recorded, so it is this surface that stops
 	// taking the shared answer, not the surfaces that ask it.
 	export let alwaysReveal: boolean = false;
+	// Whether there is a veil here at all. False for a surface that does its own uncovering:
+	// a pack's cards are stood up behind a box that is dissolving to show them (see PackGrid),
+	// and a veil under that is a reveal nobody can watch — spent, by this page's own rule that a
+	// character is revealed once, on a sweep hidden behind something opaque. The picture simply
+	// goes up when it is ready, and `ready` below is what the surface waits on instead.
+	//
+	// It is the stronger of the two answers about the veil: `alwaysReveal` says which characters
+	// a veil is put up for, this says whether one is put up, and no settles it. Nothing is
+	// recorded either — a character pulled out of a pack has not had its reveal, and gets one the
+	// next time a surface does veil it.
+	export let veiled: boolean = true;
 	export let classes: string = '';
 
 	// The box the clip is placed in, measured rather than assumed: the caller sizes it
@@ -104,6 +115,15 @@
 	// is ready within a frame or two of the veil going up, and a veil turned round halfway
 	// in reads as a flicker rather than as a reveal.
 	let veilShown = false;
+
+	// Says the picture is up — all of it, and nothing over it. See `announce`.
+	const dispatch = createEventDispatcher<{ ready: void }>();
+	let announced = false;
+	let mounted = false;
+
+	onMount(() => {
+		mounted = true;
+	});
 
 	// How many of the clip's frames the browser has finished with. Every frame is in
 	// the document at once, so the picture is up only when all of them are: the loop
@@ -158,13 +178,15 @@
 	async function load(path: string | null): Promise<void> {
 		stop();
 		cover();
+		announced = false;
 		frames = null;
 		frameIndex = 0;
 		renderScale = DEFAULT_RENDER_SCALE;
 		// A character already revealed is not covered at all: no veil goes up, and the picture
 		// is there as soon as its geometry is. Unless this surface has asked for the reveal
-		// whatever the session has seen (see `alwaysReveal`).
-		if (!alwaysReveal && path && revealedPaths.has(path)) veil = 'down';
+		// whatever the session has seen (see `alwaysReveal`) — or has asked for no veil at all,
+		// which no session memory can argue with (see `veiled`).
+		if (!veiled || (!alwaysReveal && path && revealedPaths.has(path))) veil = 'down';
 		const [clip, scale] = await Promise.all([loadIdleClip(path), loadRenderScale(path)]);
 		// A different character may have come forward while this one was loading.
 		if (path !== loadedPath) return;
@@ -224,6 +246,29 @@
 	// where the character will be, not that it is there yet.
 	$: ready = placement !== null && loadedFrames >= placement.frames.length;
 	$: if (ready) uncover();
+
+	// Said once, when there is nothing further to wait for: every frame in and nothing left over
+	// the picture. A surface that is uncovering these itself waits on it before it starts (see
+	// PackGrid, which holds a crazed box together until the cards behind it are standing), so
+	// what a dissolve uncovers is a finished picture and not an empty space.
+	//
+	// A character with no frames folder says it at once: nothing is coming, and a surface waiting
+	// on a picture that was never going to arrive would wait for ever. Which is also why it is
+	// this and not `ready` that is announced — `ready` cannot be reached without a placement, and
+	// there is no placement without frames.
+	// Never before this component is mounted, whatever the answer: a character with no art at all
+	// is up on the first pass through this script, and a surface counting these has not yet had the
+	// listener it counts with attached. Said once, and after mount, it cannot be missed.
+	$: up = basePath === null || (ready && veil === 'down');
+	$: if (mounted && up) announce();
+
+	/** Say the picture is up, once per character. Reset with the clip, so a surface counting
+	 * these gets one per character it stood up and not one per load that happened to finish. */
+	function announce(): void {
+		if (announced) return;
+		announced = true;
+		dispatch('ready');
+	}
 
 	// Whether the character may be drawn at all. Not while the veil is still coming in: its
 	// squares are half transparent on the way, so a frame that arrived during the entrance
