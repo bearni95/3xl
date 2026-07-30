@@ -888,17 +888,19 @@
 
 </script>
 
-<div class="flex w-full flex-col items-center gap-4">
+<!-- The arena is the sheet: it takes the whole of it and centres one thing in it. That one
+     thing is the board while there is a fight to draw, and a card saying why there is not
+     otherwise — those carry their own margin, since a card wants to stand off the edge of a
+     screen and a board does not. -->
+<div class="flex h-full w-full items-center justify-center">
 	{#if !authService.configured}
-		<div class="alert alert-warning max-w-md text-sm">
+		<div class="alert alert-warning m-6 max-w-md text-sm">
 			<span>Sign-in is unavailable — Supabase is not configured, so no team can be played.</span>
 		</div>
 	{:else if $authStatus === AuthStatus.Loading || spawnsPending}
-		<div class="flex justify-center py-12">
-			<span class="loading loading-spinner loading-md"></span>
-		</div>
+		<span class="loading loading-spinner loading-md"></span>
 	{:else if $authStatus !== AuthStatus.SignedIn}
-		<div class="card max-w-md bg-base-100 shadow-xl">
+		<div class="card m-6 max-w-md bg-base-100 shadow-xl">
 			<div class="card-body gap-4">
 				<h2 class="card-title">Sign in to play</h2>
 				<p class="text-sm opacity-70">
@@ -912,7 +914,7 @@
 		</div>
 	{:else if !teamReady}
 		<!-- Signed in, but there's no team ready to field. -->
-		<div class="card max-w-md bg-base-100 shadow-xl">
+		<div class="card m-6 max-w-md bg-base-100 shadow-xl">
 			<div class="card-body gap-4">
 				<h2 class="card-title">No team to field</h2>
 				<p class="text-sm opacity-70">
@@ -930,217 +932,222 @@
 			</div>
 		</div>
 	{:else}
-		<!-- Full width on small screens (so the canvas can shrink to the viewport), back to
-		     hugging its content from lg up. No card chrome of its own: the arena is drawn on
-		     the same sheet the roster and the boosters are, and a base-100 card with a shadow
-		     on a base-100 sheet would be a raised box around nothing. -->
-		<div class="card w-full min-w-0 lg:w-auto">
-			<div class="card-body items-center gap-3">
-				<!-- Nothing stands between the fight and the board: what a rival is holding
-				     and what it has just done are read off the board itself — its aura, its
-				     callout, whether it is still standing — not off a readout beside it.
-				     `relative` so the end of the fight has something to be centred on: the
-				     canvas is this box's only child and is centred in it, so this box's middle
-				     is the board's middle. -->
-				<div class="relative flex w-full min-w-0 flex-col items-center gap-3">
-					{#key boardKey}
-						<!-- The border goes on the canvas rather than on the host: the host is
-						     full-width and centres a canvas that is narrower than it, so a border
-						     there would be drawn round the room around the board instead of round
-						     the board. Pixi owns the canvas element, so it is reached as the
-						     wrapper's child. -->
-						<MugenBoard
-							{grids}
-							classes="[&>canvas]:border-4 [&>canvas]:border-yellow-400"
-							on:ready={(event) => onBoardReady(event.detail)}
-						/>
-					{/key}
-					{#if state && !state.outcome}
-						<!-- The score, over the top of the board it is a score of.
-						     The fight is three duels, each played for one cell of the white column
-						     down the middle of the board, so the score is drawn as that ground:
-						     three rings a side, one filled for each of the three a side has taken.
-						     A number said how many; these say which of a known three, so a fight
-						     that is one duel from over looks like it. Each side's rings sit over
-						     the half of the board that side holds — the rivals' to the left, the
-						     player's to the right — and are drawn in that side's own colour, the
-						     one its fighters hold the ground in.
-						     Between them, the turn, which is the other thing a fight is counted
-						     in and belongs between the two counts rather than beside one of them.
-						     While the fight is running only: a decided one reads its score off the
-						     panel in the middle of the board, and the same score at both ends of
-						     one canvas would be one score too many. -->
-						<div
-							class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center gap-4 p-3"
-						>
-							<div class="flex gap-1.5" aria-label="Encounters won by the rival team">
-								{#each LANES as lane}
-									<span
-										class={classNames(
-											'h-3 w-3 rounded-full border-2 border-error',
-											lane <= state.wins.error && 'bg-error'
-										)}
-									></span>
-								{/each}
-							</div>
-							<span class="font-mono text-sm font-bold tabular-nums opacity-70">
-								Turn {state.turn}
-							</span>
-							<div class="flex gap-1.5" aria-label="Encounters won by your team">
-								{#each LANES as lane}
-									<span
-										class={classNames(
-											'h-3 w-3 rounded-full border-2 border-info',
-											lane <= state.wins.info && 'bg-info'
-										)}
-									></span>
-								{/each}
-							</div>
-						</div>
-					{/if}
-					{#if state?.outcome}
-						<!-- The fight is over, and everything there is left to say about it is said
-						     on one panel in the middle of the board it happened on. The board itself
-						     stands exactly as it finished underneath — every fighter where the last
-						     blow left it, the ground each side took still held — so the result is
-						     read against the thing it is a result of rather than under it, where a
-						     tall board pushed it off the bottom of the sheet.
-
-						     Laid over the canvas rather than in the column with it, so it takes no
-						     room and nothing below shifts when it arrives. The sheet takes no
-						     pointer of its own — only the panel does — so it covers the board
-						     without swallowing anything the board still answers. -->
-						<div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
-							<div
-								class="pointer-events-auto card w-full max-w-xs border border-base-300 bg-base-100/95 shadow-2xl"
-							>
-								<div class="card-body items-center gap-3 p-5">
-									{#if reportFailure}
-										<!-- Played out, and the server would not take it. The refusal is
-										     given in the server's own words — the battle is still open, so
-										     this is the fight the player is in, not one they have lost track
-										     of — and the offer is to report it again, not to leave. -->
-										<div class="alert alert-error text-sm" role="alert">
-											<span>{reportFailure}</span>
-										</div>
-										<button
-											type="button"
-											class="btn btn-primary btn-block"
-											disabled={reporting}
-											on:click={retryReport}
-										>
-											{#if reporting}
-												<span class="loading loading-spinner loading-xs"></span>
-												Reporting the fight
-											{:else}
-												Report the fight again
-											{/if}
-										</button>
-									{:else}
-										<!-- Nothing is dismissed for the player: the arena is left when they
-										     say so. Reporting is what ends the battle server-side, so Close
-										     waits on it — leaving first would walk out of a fight the server
-										     still has open. -->
-										<p class={classNames('text-lg font-bold', OUTCOME_CLASSES[state.outcome])}>
-											{OUTCOME_LABELS[state.outcome]}
-										</p>
-										<dl class="flex w-full flex-col gap-1 text-sm">
-											<!-- The fight is three duels and this is how they went: the same
-											     count the board has been keeping all along, standing still now. -->
-											<div class="flex items-baseline justify-between gap-4">
-												<dt class="opacity-70">Encounters won</dt>
-												<dd class="font-mono font-bold tabular-nums">
-													<span class="text-info">{state.wins.info}</span>
-													<span class="opacity-40">–</span>
-													<span class="text-error">{state.wins.error}</span>
-												</dd>
-											</div>
-											{#if reward}
-												<!-- Both figures are the server's own count of the team it paid
-												     for, not this tab's: the award is a share of the level's span
-												     decided from how much of the team came through, so the count
-												     and the number it produced are read out together. -->
-												<div class="flex items-baseline justify-between gap-4">
-													<dt class="opacity-70">Fighters standing</dt>
-													<dd class="font-mono font-bold tabular-nums">
-														{reward.survivors} / {reward.fielded}
-													</dd>
-												</div>
-												<div class="flex items-baseline justify-between gap-4">
-													<dt class="opacity-70">Experience gained</dt>
-													<dd class="font-mono font-bold tabular-nums text-success">
-														+{reward.awarded}
-													</dd>
-												</div>
-											{/if}
-										</dl>
-										<button
-											type="button"
-											class="btn btn-primary btn-block"
-											disabled={reporting}
-											on:click={close}
-										>
-											{#if reporting}
-												<span class="loading loading-spinner loading-xs"></span>
-												Reporting the fight
-											{:else}
-												Close
-											{/if}
-										</button>
-									{/if}
-								</div>
-							</div>
-						</div>
-					{/if}
-					{#if state && !state.outcome}
-						<!-- The way out of a fight, and the only one there is: a battle is ended by
-						     a result, never by walking off, so giving it up reports the loss it is
-						     and closes the arena exactly as being wiped out would. Between turns only
-						     — a turn already being carried out settles itself.
-						     At the foot of the board, opposite the score at its head, so the two things
-						     that are true of the fight as a whole stand on the fight as a whole and the
-						     column beside a fighter is left to say what is true of that fighter. Ghost
-						     rather than a button with a fill: it is the one control here that is not
-						     part of playing, and it is standing on the board. -->
-						<div
-							class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3"
-						>
-							<button
-								type="button"
-								class="btn pointer-events-auto btn-ghost btn-sm text-error"
-								disabled={state.phase !== 'planning'}
-								on:click={() => controller?.concede()}
-							>
-								Admit defeat
-							</button>
-						</div>
-					{/if}
-				</div>
-				{#if state && !state.outcome && saveFailure}
-					<!-- The turn was played out and the server would not take it. The fight
-					     holds here rather than playing on over a turn nothing has recorded:
-					     everything after it would be built on a board that was never written,
-					     and gone the moment this page is reloaded. Under the board rather than
-					     over it, unlike the score and the way out: this is words to read and a
-					     thing to decide about, not a mark on the fight. -->
-					<div class="alert alert-warning max-w-md text-sm" role="alert">
-						<span>{saveFailure}</span>
+		<!-- The board, and nothing round it. No card, no body, no column: the arena is one
+		     drawing and every box round a drawing is scale taken off it, since the canvas is
+		     fitted to the room it is given. What used to stand under the board stands on it
+		     now — the score at its head, the way out at its foot, and whatever the fight has
+		     to say in the middle.
+		     This box hugs the canvas rather than filling the sheet: it is a flex item and the
+		     canvas is its only child in flow, so it is exactly the canvas on both axes, which
+		     is what makes `inset-0` on the three overlays mean the board's own edges and not
+		     the viewport's. -->
+		<div class="relative">
+			{#key boardKey}
+				<!-- The border goes on the canvas rather than on the host: the host is
+				     full-width and centres a canvas that is narrower than it, so a border
+				     there would be drawn round the room around the board instead of round
+				     the board. Pixi owns the canvas element, so it is reached as the
+				     wrapper's child. -->
+				<MugenBoard
+					{grids}
+					classes="[&>canvas]:border-4 [&>canvas]:border-yellow-400"
+					on:ready={(event) => onBoardReady(event.detail)}
+				/>
+			{/key}
+			{#if state && !state.outcome}
+				<!-- The score, over the top of the board it is a score of.
+				     The fight is three duels, each played for one cell of the white column
+				     down the middle of the board, so the score is drawn as that ground:
+				     three rings a side, one filled for each of the three a side has taken.
+				     A number said how many; these say which of a known three, so a fight
+				     that is one duel from over looks like it. Each side's rings sit over
+				     the half of the board that side holds — the rivals' to the left, the
+				     player's to the right — and are drawn in that side's own colour, the
+				     one its fighters hold the ground in.
+				     Between them, the turn, which is the other thing a fight is counted
+				     in and belongs between the two counts rather than beside one of them.
+				     While the fight is running only: a decided one reads its score off the
+				     panel in the middle of the board, and the same score at both ends of
+				     one canvas would be one score too many. -->
+				<div
+					class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center gap-4 p-3"
+				>
+					<div class="flex gap-1.5" aria-label="Encounters won by the rival team">
+						{#each LANES as lane}
+							<span
+								class={classNames(
+									'h-3 w-3 rounded-full border-2 border-error',
+									lane <= state.wins.error && 'bg-error'
+								)}
+							></span>
+						{/each}
 					</div>
+					<span class="font-mono text-sm font-bold tabular-nums opacity-70">
+						Turn {state.turn}
+					</span>
+					<div class="flex gap-1.5" aria-label="Encounters won by your team">
+						{#each LANES as lane}
+							<span
+								class={classNames(
+									'h-3 w-3 rounded-full border-2 border-info',
+									lane <= state.wins.info && 'bg-info'
+								)}
+							></span>
+						{/each}
+					</div>
+				</div>
+			{/if}
+			{#if state?.outcome}
+				<!-- The fight is over, and everything there is left to say about it is said
+				     on one panel in the middle of the board it happened on. The board itself
+				     stands exactly as it finished underneath — every fighter where the last
+				     blow left it, the ground each side took still held — so the result is
+				     read against the thing it is a result of rather than under it, where a
+				     tall board pushed it off the bottom of the sheet.
+
+				     Laid over the canvas rather than in the column with it, so it takes no
+				     room and nothing below shifts when it arrives. The sheet takes no
+				     pointer of its own — only the panel does — so it covers the board
+				     without swallowing anything the board still answers. -->
+				<div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+					<div
+						class="pointer-events-auto card w-full max-w-xs border border-base-300 bg-base-100/95 shadow-2xl"
+					>
+						<div class="card-body items-center gap-3 p-5">
+							{#if reportFailure}
+								<!-- Played out, and the server would not take it. The refusal is
+								     given in the server's own words — the battle is still open, so
+								     this is the fight the player is in, not one they have lost track
+								     of — and the offer is to report it again, not to leave. -->
+								<div class="alert alert-error text-sm" role="alert">
+									<span>{reportFailure}</span>
+								</div>
+								<button
+									type="button"
+									class="btn btn-primary btn-block"
+									disabled={reporting}
+									on:click={retryReport}
+								>
+									{#if reporting}
+										<span class="loading loading-spinner loading-xs"></span>
+										Reporting the fight
+									{:else}
+										Report the fight again
+									{/if}
+								</button>
+							{:else}
+								<!-- Nothing is dismissed for the player: the arena is left when they
+								     say so. Reporting is what ends the battle server-side, so Close
+								     waits on it — leaving first would walk out of a fight the server
+								     still has open. -->
+								<p class={classNames('text-lg font-bold', OUTCOME_CLASSES[state.outcome])}>
+									{OUTCOME_LABELS[state.outcome]}
+								</p>
+								<dl class="flex w-full flex-col gap-1 text-sm">
+									<!-- The fight is three duels and this is how they went: the same
+									     count the board has been keeping all along, standing still now. -->
+									<div class="flex items-baseline justify-between gap-4">
+										<dt class="opacity-70">Encounters won</dt>
+										<dd class="font-mono font-bold tabular-nums">
+											<span class="text-info">{state.wins.info}</span>
+											<span class="opacity-40">–</span>
+											<span class="text-error">{state.wins.error}</span>
+										</dd>
+									</div>
+									{#if reward}
+										<!-- Both figures are the server's own count of the team it paid
+										     for, not this tab's: the award is a share of the level's span
+										     decided from how much of the team came through, so the count
+										     and the number it produced are read out together. -->
+										<div class="flex items-baseline justify-between gap-4">
+											<dt class="opacity-70">Fighters standing</dt>
+											<dd class="font-mono font-bold tabular-nums">
+												{reward.survivors} / {reward.fielded}
+											</dd>
+										</div>
+										<div class="flex items-baseline justify-between gap-4">
+											<dt class="opacity-70">Experience gained</dt>
+											<dd class="font-mono font-bold tabular-nums text-success">
+												+{reward.awarded}
+											</dd>
+										</div>
+									{/if}
+								</dl>
+								<button
+									type="button"
+									class="btn btn-primary btn-block"
+									disabled={reporting}
+									on:click={close}
+								>
+									{#if reporting}
+										<span class="loading loading-spinner loading-xs"></span>
+										Reporting the fight
+									{:else}
+										Close
+									{/if}
+								</button>
+							{/if}
+						</div>
+					</div>
+				</div>
+			{/if}
+			{#if state && !state.outcome}
+				<!-- The way out of a fight, and the only one there is: a battle is ended by
+				     a result, never by walking off, so giving it up reports the loss it is
+				     and closes the arena exactly as being wiped out would. Between turns only
+				     — a turn already being carried out settles itself.
+				     At the foot of the board, opposite the score at its head, so the two things
+				     that are true of the fight as a whole stand on the fight as a whole and the
+				     column beside a fighter is left to say what is true of that fighter. Ghost
+				     rather than a button with a fill: it is the one control here that is not
+				     part of playing, and it is standing on the board. -->
+				<div
+					class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3"
+				>
 					<button
 						type="button"
-						class="btn btn-primary btn-wide"
-						disabled={savingTurn !== 0}
-						on:click={retrySave}
+						class="btn pointer-events-auto btn-ghost btn-sm text-error"
+						disabled={state.phase !== 'planning'}
+						on:click={() => controller?.concede()}
 					>
-						{#if savingTurn}
-							<span class="loading loading-spinner loading-xs"></span>
-							Saving turn {state.turn}
-						{:else}
-							Save turn {state.turn} again
-						{/if}
+						Admit defeat
 					</button>
-				{/if}
-			</div>
+				</div>
+			{/if}
+			{#if state && !state.outcome && saveFailure}
+				<!-- The turn was played out and the server would not take it. The fight holds
+				     here rather than playing on over a turn nothing has recorded: everything
+				     after it would be built on a board that was never written, and gone the
+				     moment this page is reloaded.
+				     On the board like the rest of it, and in the middle like the end of the
+				     fight, which it cannot be up at the same time as: both are the fight stopped
+				     on something the player has to answer, and the middle of the board is where
+				     this arena puts a thing that is waiting on an answer. -->
+				<div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+					<div
+						class="pointer-events-auto card w-full max-w-xs border border-base-300 bg-base-100/95 shadow-2xl"
+					>
+						<div class="card-body items-center gap-3 p-5">
+							<div class="alert alert-warning text-sm" role="alert">
+								<span>{saveFailure}</span>
+							</div>
+							<button
+								type="button"
+								class="btn btn-primary btn-block"
+								disabled={savingTurn !== 0}
+								on:click={retrySave}
+							>
+								{#if savingTurn}
+									<span class="loading loading-spinner loading-xs"></span>
+									Saving turn {state.turn}
+								{:else}
+									Save turn {state.turn} again
+								{/if}
+							</button>
+						</div>
+					</div>
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>

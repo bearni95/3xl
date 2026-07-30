@@ -17,15 +17,12 @@
 	let host: HTMLDivElement;
 	let board: MugenBoard | null = null;
 
-	// Full-width, centred host so the canvas can scale down to the viewport instead of
-	// forcing the page to overflow. The canvas caps itself on both axes and asserts
-	// neither, so it is left at the top of the row rather than stretched to it: a cross
-	// size handed to it from outside is a cross size it did not work out from its own
-	// aspect ratio.
-	$: wrapperClasses = classNames(
-		'flex w-full min-w-0 items-start justify-center overflow-hidden rounded-box leading-none',
-		classes
-	);
+	// A host that is exactly its canvas. The canvas caps itself on both axes and asserts
+	// neither, so it comes out at whatever size fits inside both — and this box is left to
+	// take that size rather than given one of its own, so anything a caller hangs off the
+	// host (`classes`, and the absolutely-placed things a host puts beside it) lines up
+	// with the board's own edges instead of with a row the board sits in the middle of.
+	$: wrapperClasses = classNames('flex overflow-hidden rounded-box leading-none', classes);
 
 	onMount(async () => {
 		// Import Pixi only in the browser so it never runs during SSR/prerender.

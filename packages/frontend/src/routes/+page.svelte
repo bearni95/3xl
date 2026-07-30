@@ -2213,14 +2213,19 @@
 	itself, hence the binding.
 	Keyed so each new challenge remounts a clean fight. -->
 {#if fightOpen}
-	<!-- No title bar on this one: the board is the whole of what the sheet is for, and a row
-		naming it "Combat" over the top of it says nothing the board does not. The arena carries
-		its own way out — the Close under the result, which is the one that waits on the fight
-		reaching the server — and Escape is bound to the sheet either way, `closeDisabled` and
-		all. The title stays as the sheet's name to a screen reader. -->
+	<!-- Bare: no title bar and no padding, so the sheet is the viewport and the board has all
+		of it. A row naming it "Combat" says nothing the board does not, and a margin round the
+		board is scale taken off it — the canvas is fitted to the box it is given, so every pixel
+		the sheet keeps for itself is a smaller fight. The arena carries its own way out — the
+		Close under the result, which is the one that waits on the fight reaching the server —
+		and Escape is bound to the sheet either way, `closeDisabled` and all. The title stays as
+		the sheet's name to a screen reader.
+		Nothing between the sheet and the arena, either: the arena fills it and centres the
+		canvas itself, and the canvas is capped to the viewport on both axes, so there is
+		nothing to scroll and no box to scroll it in. -->
 	<FullScreenModal
 		title="Combat"
-		titleBar={false}
+		bare
 		closeLabel="Close combat"
 		closeDisabled={fightReporting}
 		on:close={onFightClosed}
@@ -2229,22 +2234,13 @@
 			different town whose sitting team happens to field the same characters is
 			still a different fight, and must remount rather than reuse the last one. -->
 		{#key `${fightLocationId}:${fightTurnover}:${fightSpawns.map((spawn) => spawn.characterId).join(',')}`}
-			<!-- The board is centred on the sheet and scrolls inside it when it does not fit,
-				rather than the sheet growing: the title bar stays put. Centred by auto margins
-				rather than by `items-center`, which centres a too-tall child by overflowing it
-				equally at both ends and leaves the top of it somewhere no scroll can reach —
-				auto margins give up and align to the start once there is no room to share. -->
-			<div class="flex min-h-0 flex-1 overflow-auto">
-				<div class="m-auto w-full">
-					<CombatArena
-						ogTeam={fightSpawns}
-						ogLocationId={fightLocationId}
-						bind:reporting={fightReporting}
-						on:territory={(event) => onTerritory(event.detail)}
-						on:close={onFightClosed}
-					/>
-				</div>
-			</div>
+			<CombatArena
+				ogTeam={fightSpawns}
+				ogLocationId={fightLocationId}
+				bind:reporting={fightReporting}
+				on:territory={(event) => onTerritory(event.detail)}
+				on:close={onFightClosed}
+			/>
 		{/key}
 	</FullScreenModal>
 {/if}

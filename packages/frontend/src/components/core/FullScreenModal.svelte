@@ -1,4 +1,5 @@
 <script lang="ts">
+	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
 	import { fly } from 'svelte/transition';
 
@@ -31,8 +32,9 @@
 	// places that sends the player to the roster — and which of them is in front is
 	// decided by the order the page mounts them in, the roster being the later. The
 	// sheet is a full-height flex column: the title bar takes what it needs and the
-	// slot gets the rest, which is what a scroll box inside it is sized from. Without
-	// the bar (`titleBar`) the slot is the whole of it, and Escape is the way out.
+	// slot gets the rest, which is what a scroll box inside it is sized from. A `bare`
+	// sheet has neither the bar nor the padding round it — the slot is the viewport, and
+	// Escape is the way out.
 
 	/** The heading in the title bar, and the sheet's name to a screen reader whether that
 	 * bar is drawn or not. */
@@ -40,14 +42,19 @@
 	/** What the ✕ is called to a screen reader, e.g. `Close roster`. */
 	export let closeLabel: string = 'Close';
 	/**
-	 * Draw the title bar — the heading and the ✕ — or leave the sheet to its content.
+	 * Give the whole sheet over to the slot: no title bar, and no padding around it.
 	 *
-	 * For a view whose content says what it is and carries its own way out, where a bar
-	 * naming it again is a row of chrome over the thing the player came for. Escape is
-	 * unaffected either way: it is bound to the window, not to the bar, so a sheet with no
-	 * bar is still a sheet that closes — and `closeDisabled` still holds it shut.
+	 * For a view whose content *is* the view — one drawing that wants every pixel it can
+	 * have and sizes itself to what it is given — where a bar naming it and a margin round
+	 * it are both chrome taken off the thing the player came for. A padded sheet with a
+	 * heading is the right shape for a page of content and the wrong one for a single
+	 * picture.
+	 *
+	 * Escape is unaffected: it is bound to the window, not to the bar, so a bare sheet is
+	 * still a sheet that closes — and `closeDisabled` still holds it shut. The title is
+	 * still given, and is still the sheet's name to a screen reader.
 	 */
-	export let titleBar: boolean = true;
+	export let bare: boolean = false;
 	/**
 	 * Hold the way out shut: the ✕ greys and Escape does nothing while this is true.
 	 *
@@ -80,9 +87,12 @@
 	transition:fly={{ y: '100%', duration: 250, opacity: 1 }}
 >
 	<div
-		class="flex h-full w-full flex-col gap-4 overflow-hidden bg-gradient-to-b from-base-100 to-base-100/90 p-6"
+		class={classNames(
+			'flex h-full w-full flex-col overflow-hidden bg-gradient-to-b from-base-100 to-base-100/90',
+			{ 'gap-4 p-6': !bare }
+		)}
 	>
-		{#if titleBar}
+		{#if !bare}
 			<div class="flex flex-none items-center gap-3">
 				<h2 class="text-lg font-bold">{title}</h2>
 				<button
