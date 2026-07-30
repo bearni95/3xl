@@ -2043,9 +2043,13 @@
 	FullScreenModal's is (nothing to animate from on a fresh mount).
 	Its own edge only: no wash over the map behind it, nothing dimmed, because a menu this
 	size covers a strip of the map and the rest is still there to be read — and being read is
-	the reason it is a menu rather than a column. A press anywhere it is not, or Escape, puts
-	it away; so does picking any of its buttons, each of which raises a sheet over the whole
-	map anyway.
+	the reason it is a menu rather than a column. The strip it does cover is not quite covered
+	either: the surface is 80% of itself, the same share the breadcrumb bar takes, so the
+	terrain under the menu stays faintly there and the menu reads as something over the map
+	rather than as a wall at the side of it. Both are still plates and not captions laid on the
+	imagery — a fifth of the way through is not enough to make the buttons hard to read.
+	A press anywhere the menu is not, or Escape, puts it away; so does picking any of its
+	buttons, each of which raises a sheet over the whole map anyway.
 	z-[1000] clears the plates over the map (z-[900]) and stays under the full-view sheets
 	(z-[1300]), which are what its own buttons raise: a sheet is over everything, the menu
 	included. -->
@@ -2054,7 +2058,7 @@
 		bind:this={menuEl}
 		aria-label="Menu"
 		transition:fly={{ x: '100%', duration: 200, opacity: 1 }}
-		class="fixed inset-y-0 right-0 z-[1000] flex w-80 max-w-[85vw] flex-col gap-4 overflow-y-auto border-l border-base-300 bg-base-100 p-4 shadow-2xl"
+		class="fixed inset-y-0 right-0 z-[1000] flex w-80 max-w-[85vw] flex-col gap-4 overflow-y-auto border-l border-base-300 bg-base-100/80 p-4 shadow-2xl"
 	>
 		<!-- The way out, at the top of the menu and at the edge it docks to: the burger that
 			summoned it is a press away on the bar behind it, and a menu whose only dismissal is
