@@ -52,7 +52,11 @@ export interface MapLine {
  * while the town end travels with the terrain.
  */
 export interface MapTether {
-	/** The map end: the point the line starts from — the town's own pin point. */
+	/**
+	 * The map end: the point the town's pin stands on. The line is drawn to the middle of
+	 * that pin rather than to the point itself — a pin grows upwards out of its point, so
+	 * the point is its bottom edge, and the map decides the rise from the pin it drew.
+	 */
 	position: [number, number];
 	/**
 	 * The screen end: the element whose centre the line runs to, measured live from its

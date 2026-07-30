@@ -195,6 +195,11 @@
 	// Watches the tether's anchor for the same reason, one element at a time: the panel's
 	// centre is where the leader ends, and the panel resizes itself without the map moving.
 	let anchorObserver: ResizeObserver | null = null;
+	// The pinned pin's wrapper, kept from the last rebuild: the leader ends at the middle of
+	// that pin, and how tall it is is a question only the drawn element can answer (a plate's
+	// height is its type and its padding). Null when no pin is pinned or none is on screen,
+	// which lands the leader on the point the pin stands on.
+	let pinnedPinElement: HTMLElement | null = null;
 	// True for the length of an animated zoom — between `zoomanim` and the `zoomend` that
 	// closes it. While it is up, the view the map reports is the one it is leaving, not the
 	// one being drawn, so the leader is pointed from the animation's own target instead.
@@ -536,9 +541,16 @@
 			}
 		}
 
+		// The pinned pin's own markup is dropped here and picked up again below, because the
+		// leader is drawn to the middle of it and only the element knows how tall it is. A
+		// rebuild detaches the last one, so the reference is dropped with it.
+		pinnedPinElement = null;
+
 		for (const marker of visible) {
+			const element = markerElement(marker);
+			if (marker.id === pinnedId) pinnedPinElement = element;
 			const icon = Leaf.divIcon({
-				html: markerElement(marker),
+				html: element,
 				className: '',
 				iconSize: [0, 0]
 			});
@@ -552,19 +564,20 @@
 		}
 	}
 
-	// (Re)point the leader from the open town to the panel over the map. The map end is a
-	// latlng and the screen end is a box on the page, so the element's centre is measured
-	// against the map container and unprojected back into a latlng: from there Leaflet
-	// carries the line like any other, and re-running this on every move is what keeps the
-	// screen end where the panel is while the town end travels with the terrain.
+	// (Re)point the leader between the middle of the open town's pin and the middle of the
+	// panel over the map. Both ends are worked out in the container's own pixels — one is a
+	// box on the page, the other a point on the map raised by half a pin — and unprojected
+	// back into latlngs, from where Leaflet carries the line like any other. Re-running it on
+	// every move is what keeps the screen end where the panel is while the map end travels
+	// with the terrain.
 	//
 	// Drawn in the overlay pane with the polygons, so it passes UNDER the pins and the
 	// boxes (their panes are 600 and 590): the line is what joins two things, and it must
 	// not be drawn over either of them. Non-interactive for the same reason the washes are
 	// — a leader is not something to click, and it crosses a great deal of clickable map.
 	//
-	// `view` is the view to measure the screen end against, for the one case where that is
-	// not the view the map is in right now: a zoom animation (see the zoomanim handler).
+	// `view` is the view to measure both ends against, for the one case where that is not the
+	// view the map is in right now: a zoom animation (see the zoomanim handler).
 	function rebuildTether(view?: { center: L.LatLng; zoom: number }) {
 		if (!mapInstance || !Leaf) return;
 		if (!tether?.anchor) {
@@ -582,7 +595,19 @@
 			anchorBox.left - mapBox.left + anchorBox.width / 2,
 			anchorBox.top - mapBox.top + anchorBox.height / 2
 		);
-		const ends: L.LatLngExpression[] = [tether.position, latLngAtPoint(centre, view)];
+
+		// The map end is the middle of the pin's mark, not the point it stands on. A pin is
+		// anchored by its bottom edge and grows upwards out of its point, so a line to the
+		// point alone arrived under the plate and touched its bottom edge: the leader reads as
+		// joining two panels, and it should meet this one where it meets the other, in the
+		// middle. Half the drawn pin's height, measured live off the element — a plate is as
+		// tall as its type and padding make it — and taken off in pixels at the view being
+		// drawn, since the same rise is a different distance on the ground at every zoom. The
+		// horizontal centre needs no such correction: a pin is already centred on its point.
+		const rise = (pinnedPinElement?.getBoundingClientRect().height ?? 0) / 2;
+		const town = pointAtLatLng(tether.position, view).subtract(Leaf.point(0, rise));
+
+		const ends: L.LatLngExpression[] = [latLngAtPoint(town, view), latLngAtPoint(centre, view)];
 
 		const style = { color: tether.color, weight: tether.weight ?? 5, opacity: 1 };
 		if (!tetherLine) {
@@ -600,10 +625,21 @@
 	// point in the container is that plus its own offset, unprojected at the same zoom.
 	function latLngAtPoint(point: L.Point, view?: { center: L.LatLng; zoom: number }): L.LatLng {
 		if (!view) return mapInstance!.containerPointToLatLng(point);
-		const topLeft = mapInstance!.project(view.center, view.zoom).subtract(
-			mapInstance!.getSize().divideBy(2)
-		);
-		return mapInstance!.unproject(topLeft.add(point), view.zoom);
+		return mapInstance!.unproject(containerTopLeft(view).add(point), view.zoom);
+	}
+
+	/** The same in reverse: where a latlng falls in the container, in that same view. */
+	function pointAtLatLng(
+		latlng: L.LatLngExpression,
+		view?: { center: L.LatLng; zoom: number }
+	): L.Point {
+		if (!view) return mapInstance!.latLngToContainerPoint(latlng);
+		return mapInstance!.project(latlng, view.zoom).subtract(containerTopLeft(view));
+	}
+
+	/** A view's top-left corner in projected pixels: its centre less half the container. */
+	function containerTopLeft(view: { center: L.LatLng; zoom: number }): L.Point {
+		return mapInstance!.project(view.center, view.zoom).subtract(mapInstance!.getSize().divideBy(2));
 	}
 
 	/** The boxes' teardown: a box no longer on screen must not keep its images. */
