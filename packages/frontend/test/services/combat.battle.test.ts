@@ -225,22 +225,22 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 	const fieldedTeam = (snapshot: BattleBoardSnapshot): string[] =>
 		snapshot.fighters
 			.filter((fighter) => fighter.side === 'info')
-			.sort((a, b) => b.slot - a.slot)
+			.sort((a, b) => a.slot - b.slot)
 			.map((fighter) => fighter.spawnId);
 
-	it('gives the fielded team back in the order it was fielded, not in lane order', () => {
-		// The arena's own placement, replicated: the team fills its column with its
-		// first member nearest the viewer (PLAYER_CELLS reversed), and each side is then
-		// seeded in the order it stands top→bottom on screen.
+	it('gives the fielded team back in the order it was fielded', () => {
+		// The arena's own placement, replicated: each side fills its column with its lead on
+		// the top row and the rest of the party unfolding downwards, and is then seeded in
+		// the order it stands top→bottom on screen — so both sides are placed and seeded the
+		// same way round, and slot order is team order.
 		const team = ['team-a', 'team-b', 'team-c'];
-		const lineupCells = [...PLAYER_CELLS].reverse();
 		const place = (ids: string[], cells: typeof PLAYER_CELLS, side: 'error' | 'info') =>
 			ids
 				.map((spawnId, index) => ({ spawnId, side, gridY: cellScreenY(cells[index]) }))
 				.sort((a, b) => a.gridY - b.gridY);
 		const seeded = [
 			...place(['og-0', 'og-1', 'og-2'], RIVAL_CELLS, 'error'),
-			...place(team, lineupCells, 'info')
+			...place(team, PLAYER_CELLS, 'info')
 		].map(
 			(entry, index): FighterSeed => ({
 				id: `${entry.side}:${entry.spawnId}`,
@@ -252,10 +252,25 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 			})
 		);
 
-		// A team read back off its own board must be the team that was put on it. Read
-		// in lane order it comes back reversed, which silently moves every fighter into
-		// somebody else's duel — and, because the line-up drives the board's identity,
-		// makes the board rebuild itself on every save.
+		// A team read back off its own board must be the team that was put on it. Read in
+		// the wrong order it silently moves every fighter into somebody else's duel — and,
+		// because the line-up drives the board's identity, makes the board rebuild itself on
+		// every save.
 		expect(fieldedTeam(new CombatController(seeded).snapshot())).toEqual(team);
+	});
+
+	it('faces the two parties lead against lead, and in step down the board', () => {
+		// The point of filling both columns the same way round: a lane is a row, so the
+		// fighters that share one are the two parties' fighters of the same rank. Lead
+		// against lead at the top, and the rest of both parties in step downwards from
+		// there.
+		RIVAL_CELLS.forEach((rival, rank) => {
+			expect(PLAYER_CELLS[rank].r).toBe(rival.r);
+		});
+		// Read down the screen, each line is its own party in its own order — the top row is
+		// rank one on both sides.
+		const rows = (cells: typeof PLAYER_CELLS) => cells.map((cell) => cellScreenY(cell));
+		expect(rows(PLAYER_CELLS)).toEqual([...rows(PLAYER_CELLS)].sort((a, b) => a - b));
+		expect(rows(RIVAL_CELLS)).toEqual([...rows(RIVAL_CELLS)].sort((a, b) => a - b));
 	});
 });

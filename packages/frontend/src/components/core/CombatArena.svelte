@@ -116,17 +116,17 @@
 	/**
 	 * The player's line-up out of a saved board, back in team order.
 	 *
-	 * A fighter's slot is its **lane**, and the lanes run top→bottom down the board —
-	 * but the team fills its column the other way about, its first member standing
-	 * nearest the viewer (`PLAYER_LINEUP_CELLS` is `PLAYER_CELLS` reversed). So the
-	 * lane order is the team order backwards, and handing it back the way it is stored
-	 * would field the team reversed, quietly putting every fighter in somebody else's
-	 * duel.
+	 * A fighter's slot is its **lane**, and the lanes run top→bottom down the board, which
+	 * is the order the team is fielded in: the lead takes the top row and the rest of the
+	 * party unfolds downwards from it. So slot order *is* team order and this only has to
+	 * sort by it — but it does have to sort, because nothing promises a saved board's rows
+	 * come back in the order they were written, and a line-up assembled in the wrong order
+	 * would quietly put every fighter in somebody else's duel.
 	 */
 	function fieldedTeam(board: BattleBoardSnapshot | null): string[] {
 		return (board?.fighters ?? [])
 			.filter((fighter) => fighter.side === 'info')
-			.sort((a, b) => b.slot - a.slot)
+			.sort((a, b) => a.slot - b.slot)
 			.map((fighter) => fighter.spawnId);
 	}
 
@@ -213,10 +213,12 @@
 	// restated here: the rivals on column b, the player's team on column d, level with
 	// them row for row and the white column standing empty between the two.
 	//
-	// The controller lists each line top→bottom on screen; the player's team fills its
-	// column the other way about, its first slot standing nearest the viewer, so the
-	// cells are handed out bottom→top here.
-	const PLAYER_LINEUP_CELLS: Cell[] = [...PLAYER_CELLS].reverse();
+	// Both lines are filled the same way round: the party's lead on the top row, the rest
+	// of it unfolding downwards in the order the team is held in. So slot one faces slot
+	// one across the board, and reading either line down the screen reads that party in
+	// its own order. The player's used to fill its column upwards, its lead nearest the
+	// viewer, which put the two parties' leads in different lanes and made the player's
+	// line the one you read bottom to top.
 
 	// The two sides can field the SAME spawn line-up (a mirror match), so a bare spawn
 	// id is not unique across the board. Every board actor / fighter is identified by a
@@ -315,7 +317,7 @@
 		};
 		return [
 			half('error', 0, RIVAL_CELLS, 0xff0000),
-			half('info', 3, PLAYER_LINEUP_CELLS, 0x2563eb)
+			half('info', 3, PLAYER_CELLS, 0x2563eb)
 		];
 	}
 
@@ -450,7 +452,7 @@
 	function lineupOf(ids: string[]): LineupFighter[] {
 		return [
 			...rosterFor(ids, 'error', 0, RIVAL_CELLS, spawnById),
-			...rosterFor(ids, 'info', 3, PLAYER_LINEUP_CELLS, spawnById)
+			...rosterFor(ids, 'info', 3, PLAYER_CELLS, spawnById)
 		].map((entry) => ({ side: entry.side, spawnId: spawnIdOf(entry.id) }));
 	}
 
@@ -465,7 +467,7 @@
 		const token = ++setupToken;
 		const roster: Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] = [
 			...rosterFor(slots, 'error', 0, RIVAL_CELLS, spawnById),
-			...rosterFor(slots, 'info', 3, PLAYER_LINEUP_CELLS, spawnById)
+			...rosterFor(slots, 'info', 3, PLAYER_CELLS, spawnById)
 		];
 
 		const loaded = await Promise.all(
@@ -624,10 +626,12 @@
 	$: void reportOutcome(state, controller);
 
 	// The player's fighters back in the order the team was built — slots 3–5, i.e. the
-	// roster's team order. The line-up the controller hands over is the board's
-	// top→bottom order, which the placement above keeps in step with the team's; this
-	// pins that down, because a captured town freezes the reported line-up verbatim as
-	// its garrison and the map's panel then draws the town's team from it.
+	// roster's team order. The line-up the controller hands over is the board's top→bottom
+	// order, which is the team's own order now that the lead fills the top row: this sorts
+	// a list that should already be in step. It stays because a captured town freezes the
+	// reported line-up verbatim as its garrison and the map's panel draws the town's team
+	// from it — the one place the order outlives the fight is not the place to be relying
+	// on two orders happening to agree.
 	function inTeamOrder(fighters: CombatReport['fighters']): CombatReport['fighters'] {
 		const fielded = slots.slice(TEAM_SIZE);
 		if (fielded.length === 0) return fighters;

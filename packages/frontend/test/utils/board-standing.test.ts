@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { standingLine, type LineFighter, type StandingFighter } from '$utils/mugen/board-standing';
 import { fallenColumn, PLAYER_CELLS } from '$services/combat.controller';
 
-/** The player's line as the arena opens it: its first member nearest the viewer. */
-const line: LineFighter[] = [...PLAYER_CELLS]
-	.reverse()
-	.map((opening, index) => ({ id: `info:spawn-${index}`, opening }));
+/** The player's line as the arena opens it: its lead on the top row, the rest of the
+ * party unfolding downwards from there. */
+const line: LineFighter[] = PLAYER_CELLS.map((opening, index) => ({
+	id: `info:spawn-${index}`,
+	opening
+}));
 
 const saved = (id: string, cell: { q: number; r: number } | null): StandingFighter => ({
 	id,
