@@ -773,13 +773,14 @@ export class CombatController {
 		} else if (target.action === 'defend') {
 			this.log.push(`${from} at ${target.name}, who blocked it.`);
 			this.board?.showCallout(target.id, 'BLOCK', target.color);
-			// It is already standing in its guard — it has been since the reveal — so this
-			// only restarts the pose on the blow, which is what makes the block land as a
-			// braced-against moment rather than as a word over a fighter that was holding
-			// the same shape a frame earlier. It releases back into the held guard, not into
-			// idle, so the cover it is under outlives the shot it just turned aside.
+			// *Now* it braces — on the blow, not back at the reveal. It was covering all
+			// along; what happens here is the covering becoming visible, because until a shot
+			// came down the lane there was nothing for it to be visibly doing. The pose is
+			// held rather than thrown, and ringed in the fighter's colour so it reads as a
+			// stance the fighter is in rather than a frame of its animation, and both stand
+			// for the rest of the turn: the shot after this one meets a fighter still braced.
 			const guard = findMove(target, 'defend');
-			if (guard) void this.board?.playMove(target.id, guard);
+			if (guard) this.board?.holdMove(target.id, guard, target.color);
 		} else if (this.passiveReady(target, 'defend')) {
 			// Blue's free guard. It is only had on a turn the fighter wasn't covering
 			// anyway (the branch above), and only spent on a shot it actually turns
@@ -857,37 +858,33 @@ export class CombatController {
 	}
 
 	/**
-	 * Put every acting fighter's order on the board at once: the loaders flare, the
-	 * guards brace, and the attackers are left standing where they are — an attack is
-	 * not a pose thrown from a cell, it is the walk out and the blow at the end of it,
-	 * which is what unfolds after the reveal. The aura and the guard are both started
-	 * and left to run: the turn is not held up while an aura's textures are fetched,
-	 * nor while a pose plays out, since the reveal is one thing to read.
+	 * Put the turn's orders on the board: the loaders flare, and everybody else is left
+	 * standing where they are. An attack is not a pose thrown from a cell — it is the walk
+	 * out and the blow at the end of it, which is what unfolds after the reveal — and a
+	 * guard is not a pose either until there is something to guard against.
 	 *
-	 * A guard is **held**, not thrown: a fighter told to cover stands in its definition's
-	 * defend animation for the rest of the turn, the way a loader wears its aura for the
-	 * rest of the turn. Covering is a state the fighter is in — it is what the shot coming
-	 * down its lane will be turned aside by, whenever in the volley that shot is played —
-	 * so a pose that flashed once at the reveal and dropped back to idle was showing the
-	 * fighter doing something it had in fact stopped doing, and every block after it read
-	 * as a fighter standing there getting away with it. Both sides are stood in it: what a
-	 * rival chose is no longer secret once the orders are out.
+	 * So a **charge** is the only order this shows. A charge produces something the moment
+	 * it is given: the fighter is holding a shot it did not have before, and the aura is
+	 * that fact, standing until it is spent. Covering produces nothing at all unless a blow
+	 * arrives — and if none does, the fighter spent its turn braced against a shot nobody
+	 * fired, which is not worth a pose or a word. It braces when it is hit, and only then
+	 * (see {@link playShot}).
 	 *
-	 * Nothing is cleared here: the callouts of the turn just played, and the guards held
-	 * through it, are taken down when the next turn is handed over (see
-	 * {@link finishTurn}), so both stand for as long as the turn they belong to is still
-	 * being resolved.
+	 * Which is also why nothing announces a guard. A callout over a covering fighter's head
+	 * gave the whole thing away at the reveal, before any of the shooting: the lane's own
+	 * rival is deciding nothing at that point, but the *player* reads it, and a turn where
+	 * the answer is on screen before the question is played out is a turn already over.
+	 * What a guard did is said when it does it — `BLOCK`, on the blow it turned aside.
+	 *
+	 * Nothing is cleared here: the callouts of the turn just played, and any guard held
+	 * through the rest of it, are taken down when the next turn is handed over (see
+	 * {@link finishTurn}).
 	 */
 	private showOrders(acting: Fighter[]): void {
 		for (const fighter of acting) {
-			if (fighter.action === 'charge') {
-				this.board?.showCallout(fighter.id, 'CHARGE', fighter.color);
-				void this.raiseAura(fighter);
-			} else if (fighter.action === 'defend') {
-				this.board?.showCallout(fighter.id, 'GUARD', fighter.color);
-				const move = findMove(fighter, 'defend');
-				if (move) this.board?.holdMove(fighter.id, move);
-			}
+			if (fighter.action !== 'charge') continue;
+			this.board?.showCallout(fighter.id, 'CHARGE', fighter.color);
+			void this.raiseAura(fighter);
 		}
 	}
 
@@ -963,12 +960,12 @@ export class CombatController {
 		}
 
 		this.turn += 1;
-		// What the last turn said — CHARGE, GUARD, BLOCK, HIT! — belonged to that turn.
-		// The orders are being asked for again, so it comes off the board with them: the
-		// words never outlive the turn whose pickers are locked. The guards held through it
-		// come down for the same reason and at the same moment: a fighter covers for the
-		// turn it was told to cover in, and a new turn is asking it what to do next — so
-		// standing there braced into it would be showing an order nobody has given yet.
+		// What the last turn said — CHARGE, BLOCK, HIT! — belonged to that turn. The orders
+		// are being asked for again, so it comes off the board with them: the words never
+		// outlive the turn whose pickers are locked. Any guard braced during it, and the ring
+		// around it, come down for the same reason and at the same moment: a fighter covers
+		// for the turn it was told to cover in, and a new turn is asking it what to do next —
+		// so standing there braced into it would be showing an order nobody has given yet.
 		this.board?.clearCallouts();
 		this.board?.clearHolds();
 		for (const fighter of this.fighters) fighter.action = null;

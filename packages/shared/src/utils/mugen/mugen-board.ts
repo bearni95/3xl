@@ -296,6 +296,13 @@ const ICON_RASTER_PX = 256;
 /** Lifetime of a strike slash overlay (ms). */
 const SLASH_MS = 420;
 
+// --- The guard ring (drawn around a fighter holding its defend stance) ---
+/** The ring's radius, as a fraction of half the character's longer nominal side. A little
+ * over one, so the circle stands clear of the sprite instead of cutting across it. */
+const GUARD_RING_RATIO = 1.08;
+/** How thick the ring is drawn, in canvas px — read against a cell's 220. */
+const GUARD_RING_WIDTH = 5;
+
 interface Point {
 	x: number;
 	y: number;
@@ -427,15 +434,22 @@ interface Actor {
 	/** While set, a one-shot animation owns playback (movement/idle suspended). */
 	oneShot: OneShot | null;
 	/**
-	 * A raw manifest animation name the actor **stands in** instead of idling — the
-	 * guard a fighter told to cover holds for the whole turn. Unlike a {@link oneShot}
-	 * it owns nothing: a walk still walks and a pose still plays over it, and it is what
-	 * the actor comes back to when either finishes, rather than idle. Null when the
-	 * actor simply stands (see {@link MugenBoard.holdMove}).
+	 * A raw manifest animation name the actor **stands in** instead of idling — the guard a
+	 * fighter braces into on a blow and holds for the rest of the turn. Unlike a
+	 * {@link oneShot} it owns nothing: a walk still walks and a pose still plays over it,
+	 * and it is what the actor comes back to when either finishes, rather than idle. Null
+	 * when the actor simply stands (see {@link MugenBoard.holdMove}).
 	 */
 	stance: string | null;
 	/** The looping combat aura shown behind the actor, or null. */
 	aura: Aura | null;
+	/**
+	 * The ring drawn around the actor while it holds a {@link stance}, or null. It says
+	 * the stance is *on* — a pose alone is a frame of animation, and a fighter braced
+	 * against a blow looks much like one caught mid-swing — so the two go up and come down
+	 * together (see {@link MugenBoard.holdMove}).
+	 */
+	ring: Graphics | null;
 	/** Floating callout (what its turn amounted to) above the actor, so a turn every
 	 * fighter acts in at once can be read one fighter at a time. Null when clear. */
 	label: Text | null;
@@ -903,6 +917,7 @@ export class MugenBoard {
 			oneShot: null,
 			stance: null,
 			aura: null,
+			ring: null,
 			label: null,
 			orders: null,
 			traits: null,
@@ -1009,6 +1024,7 @@ export class MugenBoard {
 			actor.sprite.zIndex = actor.y;
 			this.applyFrame(actor);
 			this.updateAura(actor, deltaMs);
+			this.updateRing(actor);
 			this.updateOrders(actor);
 			this.updateTraits(actor);
 			this.updateLabel(actor);
@@ -1438,33 +1454,44 @@ export class MugenBoard {
 
 	/**
 	 * Stand a character *in* one of its moves and leave it there — the guard a fighter
-	 * told to cover holds for the whole turn, rather than a brace it throws once and
-	 * drops. The animation loops where every other pose plays out, because that is the
-	 * difference between doing a thing and being in a state: a fighter covering is
-	 * covering until it is told otherwise ({@link clearHold}).
+	 * turned a blow aside with holds for the rest of the turn, rather than a brace it
+	 * throws once and drops. The animation loops where every other pose plays out, because
+	 * that is the difference between doing a thing and being in a state: a fighter covering
+	 * is covering until it is told otherwise ({@link clearHold}).
 	 *
 	 * It is not a one-shot and owns nothing. Whatever the turn asks of the actor next —
 	 * a walk, a strike, a flinch — plays straight over the top, and the actor drops back
 	 * into the held move when that finishes instead of into idle. So a fighter can brace,
 	 * be walked onto ground it has won, and still be braced when it gets there.
 	 *
+	 * Given a `color`, a ring of it is drawn around the character for as long as the stance
+	 * lasts. A held pose on its own is not legible as a state: it is a frame of the
+	 * character's own animation, and braced-against-a-blow looks a good deal like
+	 * caught-mid-swing. The ring is what says the stance is *on*, and it is the fighter's
+	 * own colour because whose stance it is is the other half of that.
+	 *
 	 * A move binding no animation (or one that failed to load) clears the hold rather
-	 * than freezing the actor: there is no pose to stand in, so it idles as before.
+	 * than freezing the actor: there is no pose to stand in, so it idles as before — and
+	 * no ring goes up either, since there would be no stance for it to be saying.
 	 */
-	holdMove(id: string, move: CharacterMove): void {
+	holdMove(id: string, move: CharacterMove, color?: string): void {
 		const actor = this.findActor(id);
 		if (!actor) return;
 		actor.stance = move.source && actor.animations[move.source] ? move.source : null;
 		// Into the pose now, unless something is already playing on the sprite — that
 		// releases into the stance when it ends, so the hold lands either way.
 		if (!actor.oneShot) this.setAnimation(actor, this.standing(actor));
+		this.clearRing(actor);
+		if (actor.stance && color) this.drawRing(actor, color);
 	}
 
-	/** Let a character out of the move it was standing in, back to idle. */
+	/** Let a character out of the move it was standing in, back to idle — and out of the
+	 * ring that was saying it was in one. */
 	clearHold(id: string): void {
 		const actor = this.findActor(id);
 		if (!actor || !actor.stance) return;
 		actor.stance = null;
+		this.clearRing(actor);
 		if (!actor.oneShot) this.setAnimation(actor, 'idle');
 	}
 
@@ -1472,6 +1499,46 @@ export class MugenBoard {
 	 * there is over. */
 	clearHolds(): void {
 		for (const actor of this.actors) this.clearHold(actor.id);
+	}
+
+	/**
+	 * Draw the ring that says a character is holding a stance: a circle of its own colour
+	 * around it, wide enough to enclose the whole character rather than to sit at its feet
+	 * — it is a guard being read, not a mark on the floor.
+	 *
+	 * Sized off the actor's nominal box, which is its full reach over the whole animation
+	 * cycle rather than the frame currently showing, so the ring holds still while the
+	 * fighter breathes inside it. Behind the character and above the board: a fighter
+	 * stands in its own guard, not behind it.
+	 */
+	private drawRing(actor: Actor, color: string): void {
+		if (!this.app) return;
+		const radius = (Math.max(actor.displayWidth, actor.displayHeight) / 2) * GUARD_RING_RATIO;
+		const ring = new Graphics();
+		ring.circle(0, 0, radius);
+		ring.stroke({ color: combatColorHex(color), width: GUARD_RING_WIDTH, alpha: 0.9 });
+		this.app.stage.addChild(ring);
+		actor.ring = ring;
+		this.updateRing(actor);
+	}
+
+	/** Keep a stance ring centred on the character it belongs to as it walks. */
+	private updateRing(actor: Actor): void {
+		const ring = actor.ring;
+		if (!ring) return;
+		ring.x = actor.x;
+		// Around the middle of the character, not its feet: the actor's own y is the foot
+		// line it stands on, and a circle centred there would be a ring around its ankles.
+		ring.y = actor.y - actor.displayHeight / 2;
+		ring.zIndex = actor.y - 0.25;
+	}
+
+	/** Take a character's stance ring off the board. */
+	private clearRing(actor: Actor): void {
+		if (!actor.ring) return;
+		actor.ring.parent?.removeChild(actor.ring);
+		actor.ring.destroy();
+		actor.ring = null;
 	}
 
 	/** Play a character's hurt flinch once; resolves when it finishes. */

@@ -283,9 +283,9 @@ describe('CombatController — what the board is left showing', () => {
 		);
 	});
 
-	it('stands a covering fighter in its defend move for the turn, and lets it out at the end', async () => {
-		// A board that says which fighter each call was about, which is the whole point
-		// here: a guard belongs to the fighter holding it.
+	it('braces a covering fighter on the blow it turns aside, and not before', async () => {
+		// A board that says which fighter each call was about and what it was told — a guard
+		// belongs to the fighter holding it, and the whole question here is *when* it starts.
 		const calls: string[] = [];
 		const board = new Proxy(
 			{},
@@ -293,17 +293,18 @@ describe('CombatController — what the board is left showing', () => {
 				get:
 					(_target, property) =>
 					(...args: unknown[]) => {
-						calls.push(
-							String(property) + (typeof args[0] === 'string' ? `:${args[0]}` : '')
-						);
+						calls.push([String(property), ...args.filter((a) => typeof a === 'string')].join(':'));
 						return Promise.resolve();
 					}
 			}
 		) as MugenBoard;
 
-		// A guard is only held where the definition binds one, so these fighters carry the
+		// Red rivals, so each one banks a charge on turn one and spends its colour's free
+		// shot out of it — the blows this turn are theirs. Yellow players, so no free guard
+		// of their own is in the picture: what turns those shots aside is the order given.
+		// A guard is only held where the definition binds one, so everybody carries the
 		// defend move a real character's JSON declares.
-		const armed = seeds(['blue', 'blue', 'blue', 'blue', 'blue', 'blue']).map((seed) => ({
+		const armed = seeds(['red', 'red', 'red', 'yellow', 'yellow', 'yellow']).map((seed) => ({
 			...seed,
 			moves: [{ name: 'Defend', type: 'defend' as const, source: 'guard-stand' }]
 		}));
@@ -314,17 +315,65 @@ describe('CombatController — what the board is left showing', () => {
 		for (const fighter of covering) tap(controller, fighter, 'defend');
 		await playTurn(controller);
 
-		// Every one of them was stood in its guard, and stood in it — not thrown into it
-		// and dropped, which is what playing the pose as a one-shot amounted to.
+		// Nothing announced the guard. A word over a covering fighter's head at the reveal
+		// answers the turn before it is played out.
+		expect(calls.some((call) => call.includes('GUARD'))).toBe(false);
+
+		// The first thing that happens on the board is an attacker setting off; the bracing
+		// comes after it, because it is a response to the blow and not to the order.
+		const firstApproach = calls.findIndex((call) => call.startsWith('closeIn'));
+		const firstBrace = calls.findIndex((call) => call.startsWith('holdMove'));
+		expect(firstApproach).toBeGreaterThan(-1);
+		expect(firstBrace).toBeGreaterThan(firstApproach);
+
 		for (const fighter of covering) {
-			expect(calls).toContain(`holdMove:${fighter.id}`);
+			// Each of them was stood in its guard, and *stood* in it — not thrown into it and
+			// dropped, which is what playing the pose as a one-shot amounted to — and the
+			// hold carries the fighter's own colour, which is what rings it.
+			expect(calls).toContain(`holdMove:${fighter.id}:${fighter.color}`);
 			expect(calls).not.toContain(`playMove:${fighter.id}`);
+			// It blocked, and that is what is said about it.
+			expect(calls).toContain(`showCallout:${fighter.id}:BLOCK:${fighter.color}`);
 		}
+
 		// And let out of it as the next turn's orders are asked for, so nobody is left
-		// braced into a turn they have not been given an order in yet.
+		// braced — or ringed — into a turn they have not been given an order in yet.
 		expect(get(controller).phase).toBe('planning');
 		expect(calls.lastIndexOf('clearHolds')).toBeGreaterThan(
 			calls.findLastIndex((call) => call.startsWith('holdMove'))
 		);
+	});
+
+	it('leaves a covering fighter nobody shot at standing as it was', async () => {
+		const calls: string[] = [];
+		const board = new Proxy(
+			{},
+			{
+				get:
+					(_target, property) =>
+					(...args: unknown[]) => {
+						calls.push([String(property), ...args.filter((a) => typeof a === 'string')].join(':'));
+						return Promise.resolve();
+					}
+			}
+		) as MugenBoard;
+
+		// Blue on both sides: a colour with no free shot in it, so nobody can fire on turn
+		// one — a shot is paid for out of a charge, and nobody opens holding one.
+		const armed = seeds(['blue', 'blue', 'blue', 'blue', 'blue', 'blue']).map((seed) => ({
+			...seed,
+			moves: [{ name: 'Defend', type: 'defend' as const, source: 'guard-stand' }]
+		}));
+		const controller = new CombatController(armed);
+		controller.attachBoard(board);
+
+		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'defend');
+		await playTurn(controller);
+
+		// A fighter braced against a shot nobody fired spent its turn doing nothing visible,
+		// which is exactly what it did: no pose, no ring, no word. The turn it was covering
+		// in is over and the board never had to say so.
+		expect(calls.some((call) => call.startsWith('holdMove'))).toBe(false);
+		expect(calls.some((call) => call.includes('GUARD'))).toBe(false);
 	});
 });
