@@ -123,12 +123,30 @@
 	// The map centre WorldMap reports, used to tell which region the view is
 	// focused on so the sidebar and polygons follow what's zoomed into.
 	let currentCenter: [number, number] = [41.8, 1.7];
+	// The top view, as a value the `region` param can hold. The view above every territory
+	// is the one step of the drill path with no node behind it, so there is no key for it —
+	// and without one, picking it could only be said by clearing the param, which does not
+	// mean the same thing: an empty param is nothing picked, and nothing picked follows the
+	// zoom (see effectiveSelected), so asking for the whole of the Països Catalans while
+	// zoomed into a comarca left the crumbs and the table exactly where they were. It is a
+	// selection like any other now, and a linkable one. No territory slugifies to this, so
+	// it can never be mistaken for a region in the tree.
+	const TOP_VIEW_KEY = 'paisos-catalans';
+
+	// What the URL says is open.
+	$: regionParam = $page.url.searchParams.get('region');
+
+	// Whether the player asked for the top view itself, as against not having asked for
+	// anything. Both leave `selected` null — there is no node to name — but only the second
+	// hands the view over to the zoom.
+	$: topPicked = regionParam === TOP_VIEW_KEY;
+
 	// The single open region, driven entirely by the `region` query param, by its
 	// node key — the only region the map paints with its poster, and the head of
 	// the one open drill path. A node's key matches the fill index: a territory is
 	// its own id, deeper tiers append theirs, a municipality is its own id. Null
-	// (no param) means nothing is open — the map's top view.
-	$: selected = $page.url.searchParams.get('region');
+	// means no region of the tree is open, which is the top view either way.
+	$: selected = topPicked ? null : regionParam;
 
 	// Point the URL at a region (or clear it), which reactively re-derives every
 	// piece of open/expanded/selected state below. Pushed as history so the back
@@ -662,14 +680,20 @@
 	// the pointer, without touching the URL selection.
 	$: effectiveSelected = focusPath.length >= 2 ? focusPath[focusPath.length - 2].key : null;
 
-	// The region whose children the sidebar lists: an explicit click (the URL
+	// The region whose children the Location plate lists: an explicit click (the URL
 	// `region` param) wins, so a row always drills straight into what was clicked;
-	// with nothing clicked the sidebar follows the zoom-driven focus instead.
-	$: openRegion = selected ?? effectiveSelected;
+	// with nothing clicked the plate follows the zoom-driven focus instead. Asking for the
+	// top view is a click too, and it names no region — which is what makes the plate list
+	// the territories, the same way any other region's click makes it list that region's
+	// children (see regionRowsForSelection).
+	$: openRegion = topPicked ? null : (selected ?? effectiveSelected);
 
 	// The breadcrumb drill path down to (and including) the open region: the URL
-	// path when a region is clicked, else the zoom focus path minus its frontier pin.
-	$: displayPath = selected ? openPath : focusPath.slice(0, -1);
+	// path when a region is clicked, else the zoom focus path minus its frontier pin. The
+	// top view is a path of no regions at all, so the bar is the root crumb by itself —
+	// and it stays that way while the map settles, rather than re-growing the focus path
+	// the click was asking to leave.
+	$: displayPath = topPicked ? [] : selected ? openPath : focusPath.slice(0, -1);
 
 	// Every region's siege counter, so the drill table carries the same wins/needed
 	// figure the latest-wins table does: a municipality's own — its holder row's
@@ -731,11 +755,14 @@
 	// the same tally every tier under it gets, one tier further up, so the top view names
 	// what most of the map is flying — and the step a player walks back to is lettered like
 	// every other step rather than dropping to a bare word at the head of the row.
+	//
+	// It carries a key like every other step too (see TOP_VIEW_KEY), so clicking it opens the
+	// top view instead of merely forgetting whatever was open.
 	$: mapPlurality = everyTownPlurality(regionNodes);
 	$: crumbs = [
 		{
 			label: 'Països Catalans',
-			key: null as string | null,
+			key: TOP_VIEW_KEY as string | null,
 			showName: mapPlurality.show?.name ?? null,
 			showId: mapPlurality.show?.id ?? null,
 			tileClasses: mapPlurality.color ? pinColorClasses[mapPlurality.color] : null
@@ -1690,10 +1717,17 @@
 	// municipality polygon under the selected key. A fresh array each time (even
 	// re-selecting the same region) so the map re-frames on every pick. Null while
 	// nothing is selected, leaving the map where it is.
-	$: focusBounds =
-		selected && municipalities
-			? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
-			: null;
+	//
+	// The top view frames every town there is, because a crumb click frames what the crumb
+	// names and that crumb names the lot of them. Without this the panel would have said the
+	// territories while the map stayed down in the comarca the player was leaving.
+	$: focusBounds = !municipalities
+		? null
+		: topPicked
+			? boundsForFeatures(municipalities, new Set(fillIndex.keys()))
+			: selected
+				? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
+				: null;
 
 	// Selecting a region doesn't repaint its polygons — a shape's colour says which
 	// region it belongs to, not which one is open — so the open selection reads from
