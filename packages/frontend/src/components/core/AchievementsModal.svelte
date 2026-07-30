@@ -245,6 +245,10 @@
 		)
 		.map((entry) => ({ award: entry.award, ...tile(entry.achievement, context, held) }));
 	$: completedExp = awards.reduce((total, award) => total + award.expAwarded, 0);
+	// What each earned badge actually paid, by badge — `player_achievements.exp_awarded`,
+	// which is the experience as it landed rather than what the badge would be worth to
+	// this player now. A badge earned three levels ago paid what it paid.
+	$: awardedExp = new Map(awards.map((entry) => [entry.achievementId, entry.expAwarded]));
 
 	/**
 	 * When an award landed, in the device's own zone — unlike the day of the three
@@ -431,24 +435,38 @@
 									<span class="font-semibold">{entry.name}</span>
 									<span class="text-sm opacity-70">{entry.description}</span>
 								</div>
+								<!-- The experience, in the card's top corner: what an earned badge paid
+								     — the ledger's own number, not what it would pay today — and what an
+								     unearned one is worth. A badge nothing can earn is worth nothing to
+								     say, so that corner stays empty for it. -->
+								{#if entry.held}
+									<span class="ml-auto shrink-0 text-xs text-primary">
+										+{(awardedExp.get(entry.achievement.id) ?? outcome?.expAwarded ?? 0).toLocaleString()} exp
+									</span>
+								{:else if entry.ruled}
+									<span class="ml-auto shrink-0 text-xs opacity-70">
+										worth {award.toLocaleString()} exp
+									</span>
+								{/if}
 							</div>
 							<div class="flex flex-wrap items-center gap-2 text-xs">
 								{#if entry.held}
 									<span class="badge badge-primary badge-sm">Earned</span>
-									{#if outcome?.granted}
-										<span class="opacity-70">
-											+{outcome.expAwarded.toLocaleString()} exp
-										</span>
-									{/if}
 								{:else if !entry.ruled}
 									<!-- Nothing says what earns it yet, so nothing can. -->
 									<span class="badge badge-ghost badge-sm">Not available yet</span>
 								{:else if entry.met}
 									<span class="badge badge-success badge-sm">Ready</span>
-									<span class="opacity-70">worth {award.toLocaleString()} exp</span>
 								{:else}
-									<span class="badge badge-ghost badge-sm">Not yet — {entry.percent}%</span>
-									<span class="opacity-70">worth {award.toLocaleString()} exp</span>
+									<!-- How far along, as the bar it is: a percentage of a rule that is
+									     two amounts compared. The number stays beside it, since a bar
+									     says "some" and the player is counting cards. -->
+									<progress
+										class="progress progress-primary h-2 min-w-24 flex-1"
+										value={entry.percent}
+										max="100"
+									></progress>
+									<span class="shrink-0 opacity-70">{entry.percent}%</span>
 								{/if}
 								{#if outcome && !outcome.granted && !outcome.held && !outcome.met}
 									<span class="text-warning">the server says not yet</span>
