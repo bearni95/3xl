@@ -124,6 +124,12 @@
 	// While active, tapping a card selects it for recycling instead of toggling its
 	// team membership. Every RECYCLE_GROUP_SIZE cards recycled grants one extra claim
 	// for today. Selection is tracked by spawn id, so it survives filter changes.
+	//
+	// Nothing enters this mode: the button that did has been taken off the filter card, so
+	// `recycleMode` is false for the life of the component and the bar, the branches in the
+	// cells and `enterRecycleMode` are all unreachable. The mode is left standing rather
+	// than torn out because only its way in was asked for — whatever offers recycling next
+	// has this to switch on.
 	let recycleMode = false;
 	let selectedForRecycle = new Set<string>();
 	let recycling = false;
@@ -863,15 +869,6 @@
 									</div>
 								{/if}
 							</div>
-
-							<button
-								class="btn btn-sm w-full"
-								class:btn-outline={!recycleMode}
-								class:btn-warning={recycleMode}
-								on:click={() => (recycleMode ? cancelRecycle() : enterRecycleMode())}
-							>
-								{recycleMode ? 'Cancel' : 'Recycle'}
-							</button>
 						</div>
 
 						<!-- The line-up under the filter card, a row of three with a cell per slot: the
