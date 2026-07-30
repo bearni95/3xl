@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '$services/supabase.client';
 import { achievementAdapter } from '$adapters/classes/achievement.adapter';
 import { DAILY_ACHIEVEMENT_COUNT } from '$utils/achievement/daily';
+import { catalanDayIso } from '$utils/festes/catalan-day';
 import type {
 	Achievement,
 	AchievementAward,
@@ -74,12 +75,49 @@ export interface AchievementsSnapshot {
 	/** The same thing as a set of ids, which is all a tile needs to know. */
 	held: Set<string>;
 	/**
+	 * How many municipalities this player occupies — the `towns` a formula reads, and
+	 * the one thing a badge can be about that is neither on their profile nor in their
+	 * roster. Counted rather than listed, because a count is the whole of what the
+	 * language can ask (see the `towns` source in `$utils/achievement/formula`), and
+	 * counted server-side so the number does not depend on the map having been open.
+	 * 0 for a visitor who is not signed in.
+	 */
+	towns: number;
+	/**
 	 * How many badges a day the game sets, read from `achievement_settings` — the same
 	 * row `daily_achievement_count()` reads inside `claim_achievements`. It is a setting
 	 * rather than a constant so it can be moved without a deploy, and it is read here
 	 * rather than assumed so the browser draws the pick that can actually be claimed.
 	 */
 	dailyCount: number;
+	/**
+	 * The level each day's badges are set against, by Catalan day — `achievement_day_levels`
+	 * as this player's own rows, plus today's, which reading it pins.
+	 *
+	 * A target written on `level` (`level * 5` cards) is read at the level of the day it
+	 * was set, not at the level the player is on now: levelling up in the afternoon must
+	 * not move a bar they spent the morning working towards. Today's is the number
+	 * `claim_achievements` will judge them at; a past day's is what that day's badges
+	 * asked for, which is what makes walking back through the days say anything true.
+	 * Empty for a visitor who is not signed in.
+	 */
+	dayLevels: Map<string, number>;
+}
+
+/**
+ * The pinned levels as a day → level map. The RPC's answer for today wins over the
+ * row read beside it: the two were asked in the same breath, and it is the RPC that
+ * pins the day, so a row that had not been written when the select ran is not a day
+ * with no level.
+ */
+function dayLevelMap(
+	rows: { day: string; level: number }[] | null,
+	today: number | null
+): Map<string, number> {
+	const levels = new Map<string, number>();
+	for (const row of rows ?? []) levels.set(String(row.day), Number(row.level));
+	if (typeof today === 'number') levels.set(catalanDayIso(), today);
+	return levels;
 }
 
 /**
@@ -89,7 +127,7 @@ export interface AchievementsSnapshot {
  */
 export async function loadAchievements(userId: string | null): Promise<AchievementsSnapshot> {
 	const supabase = getSupabaseClient();
-	const [templates, authored, awards, settings] = await Promise.all([
+	const [templates, authored, awards, settings, towns, dayLevelRows, todayLevel] = await Promise.all([
 		supabase.from('achievement_templates').select('id, requirement'),
 		loadCollection(),
 		userId
@@ -99,10 +137,34 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 					.eq('user_id', userId)
 					.order('awarded_at', { ascending: false })
 			: Promise.resolve({ data: [], error: null }),
-		supabase.from('achievement_settings').select('daily_count').maybeSingle()
+		supabase.from('achievement_settings').select('daily_count').maybeSingle(),
+		// Just the number, not the rows: `head` asks Postgres to count and send nothing,
+		// which is all a formula reading `towns` can use. `municipality_holders` is
+		// world-readable (the map names every town's occupant to everyone), so the
+		// `user_id` filter is what makes this the caller's own tally.
+		userId
+			? supabase
+					.from('municipality_holders')
+					.select('location_id', { count: 'exact', head: true })
+					.eq('user_id', userId)
+			: Promise.resolve({ count: 0, error: null }),
+		// Every day this player has looked, and the level that day's badges were set
+		// against. RLS scopes the table to its owner, so this is theirs by construction.
+		userId
+			? supabase.from('achievement_day_levels').select('day, level')
+			: Promise.resolve({ data: [], error: null }),
+		// Today's, which is a write as much as a read: the first look at a day is what
+		// pins it. Nothing about it is the browser's to name — the RPC takes no arguments
+		// and reads `auth.uid()` and the Catalan day itself.
+		userId
+			? supabase.rpc('daily_achievement_level')
+			: Promise.resolve({ data: null, error: null })
 	]);
 	if (templates.error) throw templates.error;
 	if (awards.error) throw awards.error;
+	if (towns.error) throw towns.error;
+	if (dayLevelRows.error) throw dayLevelRows.error;
+	if (todayLevel.error) throw todayLevel.error;
 	// A missing settings row is not a failure: the constant is what the table would
 	// have been provisioned with, so the draw carries on with it.
 	const dailyCount = Number(
@@ -130,7 +192,12 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 		pool,
 		awards: completed,
 		held: new Set(completed.map((award) => award.achievementId)),
-		dailyCount
+		dailyCount,
+		towns: towns.count ?? 0,
+		dayLevels: dayLevelMap(
+			dayLevelRows.data as { day: string; level: number }[] | null,
+			todayLevel.data as number | null
+		)
 	};
 }
 

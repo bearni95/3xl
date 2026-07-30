@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import authored from '../../../data/public/achievements.json';
+import type { Achievement } from '$types/achievement.type';
 import {
 	conditionError,
 	evaluateCondition,
@@ -23,9 +25,10 @@ function card(partial: Partial<FormulaCard> = {}): FormulaCard {
 	};
 }
 
-/** Level 5, six cards: three red, two white-box, one fielded. */
+/** Level 5, six cards (three red, two white-box, one fielded), four towns held. */
 const context: FormulaContext = {
 	level: 5,
+	towns: 4,
 	cards: [
 		card({ color: SpawnColor.Red, teamSlot: 0 }),
 		card({ color: SpawnColor.Red }),
@@ -98,7 +101,18 @@ describe('requirement conditions', () => {
 	});
 
 	it('says what a requirement can read when a name is not one of them', () => {
-		expect(conditionError('wins >= 1', ['target'])).toMatch(/level, cards, target/);
+		expect(conditionError('wins >= 1', ['target'])).toMatch(/level, cards, towns, target/);
+	});
+
+	it('compares the towns held, against a number or a variable', () => {
+		expect(evaluateCondition('towns >= 4', context)).toBe(true);
+		expect(evaluateCondition('towns >= 5', context)).toBe(false);
+		expect(evaluateCondition('towns >= target', { ...context, variables: { target: 3 } })).toBe(
+			true
+		);
+		// Nothing taken yet is the state every player starts in, and no rule about
+		// territory holds there.
+		expect(evaluateCondition('towns >= 1', { ...context, towns: 0 })).toBe(false);
 	});
 
 	it('parses to a tree whose shape is the wire format the database walks', () => {
@@ -173,6 +187,43 @@ describe('validating a requirement', () => {
 			requirement: `cards >= ${'1'.repeat(400)}`
 		});
 		expect(problem.message).toMatch(/cannot be longer than 400/);
+	});
+});
+
+describe('the badges the game actually ships', () => {
+	// The authored collection itself, read off disk — @3xl/data's public/achievements.json
+	// is what the modal renders and what the sync compiles. A badge in there with no
+	// requirement is drawn as one of somebody's day and reads "Not available yet"
+	// forever, and one whose requirement does not parse is refused by the sync outright,
+	// so both are worth failing here rather than in a player's panel.
+	const collection = authored as { achievements: Achievement[] };
+
+	it('has a requirement on every badge, and one that parses', () => {
+		expect(collection.achievements.length).toBeGreaterThan(0);
+		for (const achievement of collection.achievements) {
+			expect(achievement.requirement?.trim(), `${achievement.id} has no requirement`).toBeTruthy();
+			expect(validateVariables(achievement), `${achievement.id} does not validate`).toEqual([]);
+		}
+	});
+
+	it('is earned by somebody, and not by a player who has just started', () => {
+		// A rule nobody could ever meet is as broken as no rule at all, and one that is
+		// already met on an empty account is a badge given away. The generous player holds
+		// enough of everything for any of today's rules; the new one holds nothing.
+		const empty: FormulaContext = { level: 1, cards: [], towns: 0 };
+		const generous: FormulaContext = {
+			level: 5,
+			towns: 99,
+			cards: Object.values(SpawnColor).flatMap((color) =>
+				Array.from({ length: 40 }, () => card({ color }))
+			)
+		};
+		for (const achievement of collection.achievements) {
+			expect(achievementMet(achievement, generous), `${achievement.id} cannot be earned`).toBe(true);
+			expect(achievementMet(achievement, empty), `${achievement.id} is earned by nobody`).toBe(
+				false
+			);
+		}
 	});
 });
 

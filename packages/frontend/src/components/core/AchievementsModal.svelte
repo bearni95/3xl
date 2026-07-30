@@ -49,6 +49,15 @@
 	// How many badges a day, as Supabase has it. The constant is only what stands until
 	// that row has been read.
 	let dailyCount = DAILY_ACHIEVEMENT_COUNT;
+	// How many towns this player holds — the other half of what a badge can be about,
+	// counted in Supabase rather than off the map's holder store, so a badge about
+	// territory reads the same whether or not the map behind this has loaded.
+	let towns = 0;
+	// The level each day's badges are set against, by Catalan day. A target written on
+	// `level` is read at the day's level rather than at the level the player is on now,
+	// so a badge does not get harder while it is being worked on; opening this pins
+	// today's, and it is `claim_achievements` that pinned it.
+	let dayLevels = new Map<string, number>();
 	let loading = false;
 	let error = '';
 	// Guards the one-time load so the reactive block below doesn't refire on a tick.
@@ -94,6 +103,8 @@
 		awards = snapshot.awards;
 		held = snapshot.held;
 		dailyCount = snapshot.dailyCount;
+		towns = snapshot.towns;
+		dayLevels = snapshot.dayLevels;
 	}
 
 	/**
@@ -122,10 +133,6 @@
 		}
 	}
 
-	// What a formula reads: this player's level and this player's cards. The level is
-	// derived from their stored experience, so it needs nothing fetched of its own.
-	$: context = { level: $profile?.level ?? 0, cards: $spawns } satisfies FormulaContext;
-
 	// Which day is being looked at, as a step from today. The three are a function of
 	// the player and the day and nothing else, so any day's are one subtraction away —
 	// there is no history to have kept and no future to have generated, which is the
@@ -138,6 +145,18 @@
 
 	$: viewedDay = shiftDayIso(catalanDayIso(), dayOffset);
 	$: viewingToday = dayOffset === 0;
+
+	// The level the day being looked at was set at. A day the player never opened has no
+	// pinned level — there was nobody there for it to be pinned for — so it is drawn at
+	// the level they are on now, which is what it would be pinned at if they opened it.
+	$: dayLevel = dayLevels.get(viewedDay) ?? $profile?.level ?? 0;
+
+	// What a formula reads: the day's level, this player's cards, and the towns they
+	// hold. The level is the pinned one rather than the live one, so a target written on
+	// it says the same thing all day — the same level `claim_achievements` will read;
+	// what the player *has* is live, or a badge could not be progressed on the day it
+	// was set.
+	$: context = { level: dayLevel, cards: $spawns, towns } satisfies FormulaContext;
 
 	// The day's three, by the same seed the RPC recomputes: who is looking and which
 	// Catalan day it is. Nothing is stored — at midnight Europe/Madrid today's three

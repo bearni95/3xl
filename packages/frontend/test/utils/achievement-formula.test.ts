@@ -29,9 +29,13 @@ function card(partial: Partial<FormulaCard> = {}): FormulaCard {
 	};
 }
 
-/** A player at level 5 holding six cards: three red, two white-box, one fielded. */
+/**
+ * A player at level 5 holding six cards — three red, two white-box, one fielded —
+ * and four municipalities.
+ */
 const context: FormulaContext = {
 	level: 5,
+	towns: 4,
 	cards: [
 		card({ color: SpawnColor.Red, teamSlot: 0 }),
 		card({ color: SpawnColor.Red }),
@@ -79,12 +83,22 @@ describe('formula sources', () => {
 		expect(evaluateFormula('cards / 2', context)).toBe(3);
 	});
 
-	it('mixes sources and arithmetic', () => {
-		expect(evaluateFormula('(level + cards) * 2', context)).toBe(22);
+	it('counts the towns the player holds', () => {
+		expect(evaluateFormula('towns', context)).toBe(4);
+		expect(evaluateFormula('towns * 3', context)).toBe(12);
+		// A count, so it takes no filter — the parentheses are read as an amount of
+		// their own and the source has nothing to do with them.
+		expect(formulaError('towns(color = red)')).toMatch(/Unexpected "\("|Expected a card field/);
 	});
 
-	it('reads a level the context has not loaded as zero', () => {
-		expect(evaluateFormula('level', { level: Number.NaN, cards: [] })).toBe(0);
+	it('mixes sources and arithmetic', () => {
+		expect(evaluateFormula('(level + cards) * 2', context)).toBe(22);
+		expect(evaluateFormula('towns + cards(color = red)', context)).toBe(7);
+	});
+
+	it('reads a level or a town count the context has not loaded as zero', () => {
+		expect(evaluateFormula('level', { level: Number.NaN, cards: [], towns: 0 })).toBe(0);
+		expect(evaluateFormula('towns', { level: 5, cards: [], towns: Number.NaN })).toBe(0);
 	});
 });
 

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { catalanDayIso } from '$utils/festes/catalan-day';
 import type {
 	AchievementAwardRow,
 	AchievementClaimRow,
@@ -20,6 +21,12 @@ let templatesError: unknown = null;
 let awardRows: AchievementAwardRow[] = [];
 let awardQuery: string[] = [];
 let settingsRow: { daily_count: number } | null = null;
+// The `towns` a formula reads: a count, asked for as a count.
+let townCount: number | null = 0;
+let townQuery: string[] = [];
+// The pinned level of each day this player has looked, and what the RPC pins today at.
+let dayLevelRows: { day: string; level: number }[] = [];
+let pinnedLevel: number | null = null;
 let claimRows: AchievementClaimRow[] | null = [];
 let rpcError: unknown = null;
 let rpcCalls: string[] = [];
@@ -27,12 +34,26 @@ let rpcCalls: string[] = [];
 vi.mock('$services/supabase.client', () => ({
 	getSupabaseClient: () => ({
 		from: (table: string) => ({
-			select: (columns: string) => {
+			select: (columns: string, options?: { count?: string; head?: boolean }) => {
 				if (table === 'achievement_templates') {
 					return Promise.resolve({ data: templateRows, error: templatesError });
 				}
 				if (table === 'achievement_settings') {
 					return { maybeSingle: () => Promise.resolve({ data: settingsRow, error: null }) };
+				}
+				if (table === 'achievement_day_levels') {
+					return Promise.resolve({ data: dayLevelRows, error: null });
+				}
+				if (table === 'municipality_holders') {
+					// Counted, and with no rows sent back: `head` is what makes this a number
+					// rather than every town the player holds.
+					townQuery.push(`${columns} count=${options?.count} head=${options?.head}`);
+					return {
+						eq: (column: string, value: string) => {
+							townQuery.push(`${column}=${value}`);
+							return Promise.resolve({ count: townCount, error: null });
+						}
+					};
 				}
 				awardQuery.push(columns);
 				// The chain the service builds: filtered to one player, newest first.
@@ -51,6 +72,9 @@ vi.mock('$services/supabase.client', () => ({
 		}),
 		rpc: (name: string) => {
 			rpcCalls.push(name);
+			if (name === 'daily_achievement_level') {
+				return Promise.resolve({ data: pinnedLevel, error: null });
+			}
 			return Promise.resolve({ data: claimRows, error: rpcError });
 		}
 	})
@@ -87,6 +111,10 @@ beforeEach(() => {
 	awardRows = [];
 	awardQuery = [];
 	settingsRow = null;
+	townCount = 0;
+	townQuery = [];
+	dayLevelRows = [];
+	pinnedLevel = null;
 	claimRows = [];
 	rpcError = null;
 	rpcCalls = [];
@@ -179,6 +207,54 @@ describe('loading the game’s achievements', () => {
 			{ achievement_id: 'conqueridor', awarded_at: '2026-07-28T11:30:00Z', exp_awarded: null }
 		];
 		expect((await load()).awards[0].expAwarded).toBe(0);
+	});
+
+	it('counts the towns the player holds, as a count and as their own', async () => {
+		templateRows = [{ id: 'conqueridor', requirement: 'towns >= 3' }];
+		townCount = 7;
+		expect((await load()).towns).toBe(7);
+		expect(townQuery).toEqual(['location_id count=exact head=true', 'user_id=user-1']);
+	});
+
+	it('reads no towns for a visitor, and asks nobody', async () => {
+		templateRows = [{ id: 'conqueridor', requirement: 'towns >= 3' }];
+		townCount = 7;
+		expect((await load(null)).towns).toBe(0);
+		expect(townQuery).toEqual([]);
+	});
+
+	it('reads a count Supabase did not send as no towns at all', async () => {
+		templateRows = [{ id: 'conqueridor', requirement: 'towns >= 3' }];
+		townCount = null;
+		expect((await load()).towns).toBe(0);
+	});
+
+	it('reads the level each day’s badges are set against, today’s pinned by the read', async () => {
+		templateRows = [{ id: 'conqueridor', requirement: 'towns >= 3' }];
+		dayLevelRows = [{ day: '2026-07-28', level: 2 }];
+		pinnedLevel = 5;
+		const snapshot = await load();
+		// A past day keeps the level it was set at, whatever the player is now.
+		expect(snapshot.dayLevels.get('2026-07-28')).toBe(2);
+		expect(snapshot.dayLevels.get(catalanDayIso())).toBe(5);
+		expect(rpcCalls).toEqual(['daily_achievement_level']);
+	});
+
+	it('takes the RPC’s word for today over the row read beside it', async () => {
+		// The two were asked in the same breath, and it is the RPC that pins the day: a
+		// row written a moment after the select is not a day with no level.
+		templateRows = [{ id: 'conqueridor', requirement: 'towns >= 3' }];
+		dayLevelRows = [{ day: catalanDayIso(), level: 3 }];
+		pinnedLevel = 5;
+		expect((await load()).dayLevels.get(catalanDayIso())).toBe(5);
+	});
+
+	it('pins nothing for a visitor', async () => {
+		templateRows = [{ id: 'conqueridor', requirement: 'towns >= 3' }];
+		pinnedLevel = 5;
+		const snapshot = await load(null);
+		expect([...snapshot.dayLevels]).toEqual([]);
+		expect(rpcCalls).toEqual([]);
 	});
 
 	it('reads how many badges a day from Supabase, not from the code', async () => {

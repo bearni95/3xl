@@ -8,12 +8,14 @@
 // things by it.
 //
 // A formula is an arithmetic expression over what the game knows about the player
-// it is being rendered for: their level, and the cards they own. Both are read
-// through the named sources below — `level` is a number, and `cards` counts cards,
-// either all of them or the ones matching a filter written in its parentheses:
+// it is being rendered for: their level, the cards they own, and the towns they
+// hold. All three are read through the named sources below — `level` and `towns`
+// are numbers, and `cards` counts cards, either all of them or the ones matching a
+// filter written in its parentheses:
 //
 //     level * 3
 //     cards
+//     towns
 //     cards(color = red)
 //     cards(box = white and not color = orange)
 //     cards(color in [red, blue, yellow]) / 2
@@ -40,6 +42,7 @@
 //
 //     cards(color = red) >= 3
 //     cards >= target and level >= 5
+//     towns >= target
 //     not cards(box = white) = 0
 //
 // A requirement is the one part of an achievement the *database* has to know, since
@@ -83,6 +86,14 @@ export interface FormulaContext {
 	level: number;
 	/** Every card the player owns. */
 	cards: readonly FormulaCard[];
+	/**
+	 * How many municipalities the player occupies right now — one per
+	 * `municipality_holders` row of theirs. A count rather than a list, because
+	 * unlike a card there is nothing about a held town a formula can test: which
+	 * comarca a town belongs to is map data the database does not have, and the
+	 * database is the side that has to reach the same answer.
+	 */
+	towns: number;
 }
 
 /**
@@ -112,7 +123,7 @@ export class FormulaError extends Error {
 }
 
 /** The named sources a formula can read. */
-export const FORMULA_SOURCES = ['level', 'cards'] as const;
+export const FORMULA_SOURCES = ['level', 'cards', 'towns'] as const;
 
 // ---------------------------------------------------------------------------
 // The card fields a `cards(...)` filter can test
@@ -189,6 +200,8 @@ export type FormulaNode =
 	| { kind: 'level' }
 	/** How many owned cards match — all of them when the filter is null. */
 	| { kind: 'cards'; filter: FilterNode | null }
+	/** How many municipalities the player holds. */
+	| { kind: 'towns' }
 	/**
 	 * One of the achievement's own variables, by name. Only ever parsed inside a
 	 * requirement, where the badge's variables are in scope — a variable's own
@@ -425,7 +438,7 @@ class Parser {
 	}
 
 	/**
-	 * `level`, `cards` with an optional filter in parentheses, or — inside a
+	 * `level`, `towns`, `cards` with an optional filter in parentheses, or — inside a
 	 * requirement — one of the badge's own variables. A variable is matched on the
 	 * name as written, since a variable name may carry capitals and two that differ
 	 * only in case are two variables; the sources are matched folded, since `level`
@@ -436,6 +449,7 @@ class Parser {
 		if (this.variables.has(token.value)) return { kind: 'variable', name: token.value };
 		const name = token.value.toLowerCase();
 		if (name === 'level') return { kind: 'level' };
+		if (name === 'towns') return { kind: 'towns' };
 		if (name === 'cards') {
 			if (!this.eat('(')) return { kind: 'cards', filter: null };
 			// `cards()` is `cards`: no filter, so every card counts.
@@ -716,6 +730,8 @@ function evaluateNode(node: FormulaNode, context: ConditionContext): number {
 			return Number.isFinite(context.level) ? context.level : 0;
 		case 'cards':
 			return countCards(context, node.filter);
+		case 'towns':
+			return Number.isFinite(context.towns) ? context.towns : 0;
 		case 'variable': {
 			// A name with no value is a requirement that outlived the variable it
 			// quoted, which validation refuses to save; here it simply reads as 0

@@ -1,3 +1,68 @@
 {
-	"achievements": []
+	"achievements": [
+		{
+			"id": "conqueridor",
+			"name": "Conqueridor {x}",
+			"description": "Conquereix {x} municipalitats.",
+			"icon": "delapouite/sand-castle",
+			"variables": [
+				{
+					"name": "x",
+					"formula": "level * 3"
+				}
+			],
+			"requirement": "towns >= x"
+		},
+		{
+			"id": "coleccionista-blau-x",
+			"name": "Coleccionista Blau {x}",
+			"description": "Colecciona {x} personatges de color blau",
+			"icon": "lorc/book-cover",
+			"variables": [
+				{
+					"name": "x",
+					"formula": "level * 5"
+				},
+				{
+					"name": "y",
+					"formula": "cards(color=blue)"
+				}
+			],
+			"requirement": "y >= x"
+		},
+		{
+			"id": "coleccionista-blau-x-copy",
+			"name": "Coleccionista Vermell {x}",
+			"description": "Colecciona {x} personatges de color vermell",
+			"icon": "lorc/book-cover",
+			"variables": [
+				{
+					"name": "x",
+					"formula": "level * 5"
+				},
+				{
+					"name": "y",
+					"formula": "cards(color=red)"
+				}
+			],
+			"requirement": "y >= x"
+		},
+		{
+			"id": "coleccionista-blau-x-copy-copy",
+			"name": "Coleccionista Groc {x}",
+			"description": "Colecciona {x} personatges de color groc",
+			"icon": "lorc/book-cover",
+			"variables": [
+				{
+					"name": "x",
+					"formula": "level * 5"
+				},
+				{
+					"name": "y",
+					"formula": "cards(color=yellow)"
+				}
+			],
+			"requirement": "y >= x"
+		}
+	]
 }

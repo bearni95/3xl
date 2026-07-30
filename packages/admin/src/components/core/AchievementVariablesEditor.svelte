@@ -59,8 +59,16 @@
 	}
 
 	let sampleLevel = 5;
+	// The other number the sample player is: how many towns they hold. Editable beside
+	// the level because a requirement about territory is otherwise previewed against a
+	// player who has taken nothing, which reads as a rule that can never be met.
+	let sampleTowns = 4;
 
-	$: sampleContext = { level: sampleLevel, cards: SAMPLE_CARDS } satisfies FormulaContext;
+	$: sampleContext = {
+		level: sampleLevel,
+		cards: SAMPLE_CARDS,
+		towns: sampleTowns
+	} satisfies FormulaContext;
 	$: values = achievementValues({ variables }, sampleContext);
 	$: preview = renderAchievement({ name, description, variables }, sampleContext);
 	// Placeholders naming nothing and the like — reported once above the rows, since
@@ -232,6 +240,14 @@
 					max={MAX_LEVEL}
 					bind:value={sampleLevel}
 				/>
+				<span class="text-xs opacity-60">holding</span>
+				<input
+					class="input input-bordered input-xs w-16"
+					type="number"
+					min="0"
+					bind:value={sampleTowns}
+				/>
+				<span class="text-xs opacity-60">towns</span>
 			</div>
 			<p class="font-semibold">{preview.name}</p>
 			<p class="text-sm opacity-80">{preview.description}</p>
@@ -249,6 +265,7 @@
 				<code class="font-mono">level</code> — the player's level.
 				<code class="font-mono">cards</code> — how many cards they own, all of them or the ones
 				matching a filter in its parentheses.
+				<code class="font-mono">towns</code> — how many municipalities they occupy on the map.
 			</p>
 			<p>A filter tests these fields, combined with <code class="font-mono">and</code>,
 				<code class="font-mono">or</code>, <code class="font-mono">not</code> and parentheses, using
@@ -272,8 +289,8 @@
 				comparison, and may name the variables above:
 			</p>
 			<p class="font-mono opacity-70">
-				cards(color = red) &gt;= 3 &nbsp; cards &gt;= target and level &gt;= 5 &nbsp; not
-				cards(box = white) = 0
+				cards(color = red) &gt;= 3 &nbsp; cards &gt;= target and level &gt;= 5 &nbsp; towns &gt;=
+				target &nbsp; not cards(box = white) = 0
 			</p>
 		</div>
 	</details>

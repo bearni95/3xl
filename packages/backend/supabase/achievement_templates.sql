@@ -24,9 +24,17 @@
 -- and `daily_achievement_count()` reads it, so the same number reaches the draw here
 -- and the browser that has to show the same pick.
 --
+-- The *level* a day's badges are set against is pinned the same way, and for the same
+-- reason both sides have to agree on it: `achievement_day_levels` holds one row per
+-- player per day and `daily_achievement_level()` writes it on the day's first look, so
+-- a target written on `level` cannot be raised by the levelling-up the day's own badges
+-- pay for.
+--
 -- Idempotent: safe to re-run. Requires the core schema (character_spawns,
--- player_profiles, level_for_exp, exp_for_level, level_span_exp) to exist first,
--- which the backend guarantees by provisioning it before running this.
+-- municipality_holders, player_profiles, level_for_exp, exp_for_level,
+-- level_span_exp) to exist first, which the backend guarantees by provisioning it
+-- before running this — a `language sql` body is parsed as it is created, so a
+-- function reading a table that is not there yet fails outright rather than later.
 
 create table if not exists public.achievement_templates (
 	id text primary key,
@@ -114,6 +122,79 @@ create policy player_achievements_select_all on public.player_achievements
 	for select using (true);
 
 -- ---------------------------------------------------------------------------
+-- The level a day's badges are set against
+-- ---------------------------------------------------------------------------
+-- A badge's target is usually written on the player's level — `level * 3` towns,
+-- `level * 5` cards — so reading `level` live meant a day's badges got harder while
+-- the player was working on them: level up at noon and the three you were three cards
+-- away from want five more. The target has to hold still for the day, so the level it
+-- is worked out from is pinned to a row: one per player per Catalan day, written the
+-- first time that day is looked at and never again.
+--
+-- What it pins is the level as it stood when the day was first *seen*, which is the
+-- earliest moment there is anything to pin — nothing runs at midnight Europe/Madrid,
+-- and a player who does not open the game until the evening has no earlier level for
+-- the database to have known about. From that moment on the day is settled.
+--
+-- Only the target is pinned. What the player *has* — their cards, their towns — is
+-- read live, or a badge could never be progressed on the day it was set. And what a
+-- badge *pays* is read live too (a third of the span of the level they are on when it
+-- lands), because that is the value of the level they are actually on.
+--
+-- A player reads only their own rows, and writes none: `daily_achievement_level()`
+-- below is the only writer and it is security definer, so the level a day is set
+-- against can never be chosen from a browser.
+create table if not exists public.achievement_day_levels (
+	user_id uuid not null references auth.users (id) on delete cascade,
+	-- The Catalan day, as `daily_achievement_ids` counts days.
+	day date not null,
+	level integer not null,
+	created_at timestamptz not null default now(),
+	primary key (user_id, day)
+);
+
+alter table public.achievement_day_levels enable row level security;
+drop policy if exists achievement_day_levels_select_own on public.achievement_day_levels;
+create policy achievement_day_levels_select_own on public.achievement_day_levels
+	for select using (auth.uid() = user_id);
+
+-- The level the caller's badges are set against today: the pinned one, or their
+-- current level pinned right now if this is the day's first look. Takes no arguments
+-- for the same reason `claim_achievements` does not — whose level, and which day, are
+-- not a browser's to name.
+--
+-- Both the browser (which draws the targets) and the claim below go through this, so
+-- there is one answer rather than two that could disagree.
+create or replace function public.daily_achievement_level()
+returns int language plpgsql security definer set search_path = public as $$
+declare
+	v_uid uuid := auth.uid();
+	v_day date := (now() at time zone 'Europe/Madrid')::date;
+	v_level int;
+begin
+	if v_uid is null then
+		raise exception 'You must be signed in to read the day''s level.';
+	end if;
+
+	insert into public.achievement_day_levels (user_id, day, level)
+		select v_uid, v_day, public.level_for_exp(coalesce(p.exp, 0))
+			from public.player_profiles p
+			where p.user_id = v_uid
+		on conflict (user_id, day) do nothing;
+
+	select l.level into v_level
+		from public.achievement_day_levels l
+		where l.user_id = v_uid and l.day = v_day;
+
+	-- No row and nothing inserted means no profile row yet, which is a player who has
+	-- earned nothing: the first level, which is what `level_for_exp(0)` answers.
+	return coalesce(v_level, public.level_for_exp(0));
+end;
+$$;
+
+grant execute on function public.daily_achievement_level() to authenticated;
+
+-- ---------------------------------------------------------------------------
 -- The formula language, evaluated in the database
 -- ---------------------------------------------------------------------------
 -- Mirrors @3xl/shared's utils/achievement/formula.ts node for node. The tree is the
@@ -163,10 +244,22 @@ $$;
 -- The number a formula tree produces. `p_vars` is the badge's variable values by
 -- name (see achievement_variable_values) — empty for a variable's own formula, which
 -- cannot quote another variable.
+--
+-- The context arguments are the whole of what the language can read, and they arrive
+-- already reduced to numbers and to that array of cards: `p_towns` is how many towns
+-- the player holds (see achievement_player_towns), which is a count here for the same
+-- reason it is one in the browser — there is nothing about a held town a filter could
+-- test that both sides would agree on.
+--
+-- Dropped rather than replaced: this gained an argument, and `create or replace`
+-- would leave the previous signature behind as a second overload that still reads a
+-- `towns` node as unknown and raises.
+drop function if exists public.achievement_formula_value(jsonb, int, jsonb, jsonb);
 create or replace function public.achievement_formula_value(
 	p_node jsonb,
 	p_level int,
 	p_cards jsonb,
+	p_towns int,
 	p_vars jsonb
 )
 returns double precision language plpgsql immutable as $$
@@ -182,6 +275,8 @@ begin
 		return (p_node ->> 'value')::double precision;
 	elsif v_kind = 'level' then
 		return p_level::double precision;
+	elsif v_kind = 'towns' then
+		return coalesce(p_towns, 0)::double precision;
 	elsif v_kind = 'variable' then
 		-- A name nothing has a value for reads as 0 rather than failing, exactly as it
 		-- does in the browser: it means a requirement outlived the variable it quoted.
@@ -195,14 +290,14 @@ begin
 			where public.achievement_filter_matches(p_node -> 'filter', c.value);
 		return v_count::double precision;
 	elsif v_kind = 'unary' then
-		v_value := public.achievement_formula_value(p_node -> 'operand', p_level, p_cards, p_vars);
+		v_value := public.achievement_formula_value(p_node -> 'operand', p_level, p_cards, p_towns, p_vars);
 		if p_node ->> 'op' = '-' then
 			return -v_value;
 		end if;
 		return v_value;
 	elsif v_kind = 'binary' then
-		v_left := public.achievement_formula_value(p_node -> 'left', p_level, p_cards, p_vars);
-		v_right := public.achievement_formula_value(p_node -> 'right', p_level, p_cards, p_vars);
+		v_left := public.achievement_formula_value(p_node -> 'left', p_level, p_cards, p_towns, p_vars);
+		v_right := public.achievement_formula_value(p_node -> 'right', p_level, p_cards, p_towns, p_vars);
 		v_op := p_node ->> 'op';
 		-- Guarded as one block: an overflow, or a power Postgres refuses outright,
 		-- answers 0 — which is what a browser's non-finite result answers.
@@ -244,10 +339,14 @@ $$;
 
 -- Whether a requirement tree holds: comparisons of two amounts, combined with
 -- and/or/not. `=` is an exact comparison of two doubles, as it is in the browser.
+-- Dropped rather than replaced for the same reason as the evaluator above: the extra
+-- context argument would otherwise leave the old signature standing.
+drop function if exists public.achievement_condition_holds(jsonb, int, jsonb, jsonb);
 create or replace function public.achievement_condition_holds(
 	p_node jsonb,
 	p_level int,
 	p_cards jsonb,
+	p_towns int,
 	p_vars jsonb
 )
 returns boolean language plpgsql immutable as $$
@@ -258,16 +357,16 @@ declare
 	v_right double precision;
 begin
 	if v_kind = 'and' then
-		return public.achievement_condition_holds(p_node -> 'left', p_level, p_cards, p_vars)
-			and public.achievement_condition_holds(p_node -> 'right', p_level, p_cards, p_vars);
+		return public.achievement_condition_holds(p_node -> 'left', p_level, p_cards, p_towns, p_vars)
+			and public.achievement_condition_holds(p_node -> 'right', p_level, p_cards, p_towns, p_vars);
 	elsif v_kind = 'or' then
-		return public.achievement_condition_holds(p_node -> 'left', p_level, p_cards, p_vars)
-			or public.achievement_condition_holds(p_node -> 'right', p_level, p_cards, p_vars);
+		return public.achievement_condition_holds(p_node -> 'left', p_level, p_cards, p_towns, p_vars)
+			or public.achievement_condition_holds(p_node -> 'right', p_level, p_cards, p_towns, p_vars);
 	elsif v_kind = 'not' then
-		return not public.achievement_condition_holds(p_node -> 'operand', p_level, p_cards, p_vars);
+		return not public.achievement_condition_holds(p_node -> 'operand', p_level, p_cards, p_towns, p_vars);
 	elsif v_kind = 'compare' then
-		v_left := public.achievement_formula_value(p_node -> 'left', p_level, p_cards, p_vars);
-		v_right := public.achievement_formula_value(p_node -> 'right', p_level, p_cards, p_vars);
+		v_left := public.achievement_formula_value(p_node -> 'left', p_level, p_cards, p_towns, p_vars);
+		v_right := public.achievement_formula_value(p_node -> 'right', p_level, p_cards, p_towns, p_vars);
 		v_op := p_node ->> 'op';
 		if v_op = '>=' then return v_left >= v_right;
 		elsif v_op = '<=' then return v_left <= v_right;
@@ -306,20 +405,40 @@ returns jsonb language sql stable set search_path = public as $$
 $$;
 revoke all on function public.achievement_player_cards(uuid) from public;
 
+-- How many municipalities one player occupies: one per `municipality_holders` row of
+-- theirs, which is the same thing the map draws in their colour. The towns they have
+-- merely besieged do not count — a siege is progress towards a town, not a town — and
+-- neither does the seeded OG team a town wears until somebody takes it.
+--
+-- A count, not the towns themselves, because that is the whole of what the language
+-- can read (see the `towns` source in formula.ts): the browser reaches the same number
+-- off the same table.
+--
+-- Not security definer, and not callable by a client, exactly as the cards above: it
+-- is reached only from the definer function below, and a client able to call it could
+-- ask about anybody.
+create or replace function public.achievement_player_towns(p_user uuid)
+returns int language sql stable set search_path = public as $$
+	select count(*)::int from public.municipality_holders h where h.user_id = p_user;
+$$;
+revoke all on function public.achievement_player_towns(uuid) from public;
+
 -- Each of a badge's variables evaluated for one player, as a name → number object —
 -- what a requirement's `variable` nodes are resolved against. A variable's own
 -- formula is evaluated with no variables in scope, which is what makes the set
 -- acyclic by construction.
+drop function if exists public.achievement_variable_values(jsonb, int, jsonb);
 create or replace function public.achievement_variable_values(
 	p_variables jsonb,
 	p_level int,
-	p_cards jsonb
+	p_cards jsonb,
+	p_towns int
 )
 returns jsonb language sql immutable as $$
 	select coalesce(
 		jsonb_object_agg(
 			v.key,
-			to_jsonb(public.achievement_formula_value(v.value, p_level, p_cards, '{}'::jsonb))
+			to_jsonb(public.achievement_formula_value(v.value, p_level, p_cards, p_towns, '{}'::jsonb))
 		),
 		'{}'::jsonb
 	)
@@ -408,8 +527,13 @@ revoke all on function public.daily_achievement_ids(uuid, date) from public;
 -- The experience is a third of the span of the level the player is on **at
 -- completion time** (achievementExpAward in @3xl/shared mirrors it). The level is
 -- re-read for each badge in the same claim, so a badge that levels a player up makes
--- the next one in the same call worth more — and, for the same reason, the level the
--- requirements are evaluated against is the running one too.
+-- the next one in the same call worth more.
+--
+-- The level the *rules* are read at is a different level, and deliberately so: it is
+-- the day's pinned one (`daily_achievement_level`), so a target written on `level`
+-- says the same thing all day and cannot be moved by the levelling-up that happens
+-- while the badges are being worked on — including the levelling-up this very call
+-- does. What the player has is still read live; only the bar is pinned.
 create or replace function public.claim_achievements()
 returns table (
 	achievement_id text,
@@ -430,8 +554,12 @@ declare
 	v_ids text[];
 	v_id text;
 	v_cards jsonb;
+	v_towns int;
 	v_exp bigint;
+	-- The level the player is on right now, re-read per badge: what an award is worth.
 	v_level int;
+	-- The level this day's badges are set against: what a rule is read at.
+	v_rule_level int;
 	v_tree jsonb;
 	v_variables jsonb;
 	v_vars jsonb;
@@ -449,6 +577,13 @@ begin
 
 	v_ids := public.daily_achievement_ids(v_uid, v_day);
 	v_cards := public.achievement_player_cards(v_uid);
+	-- Read once for the whole claim, as the cards are: nothing this function does takes
+	-- a town or loses one, so every badge in the call is judged against the same map.
+	v_towns := public.achievement_player_towns(v_uid);
+	-- The day's pinned level, pinning it if this claim is the day's first look at all.
+	-- Read before anything is awarded, so the experience this call pays cannot raise the
+	-- bar the same call is judging against.
+	v_rule_level := public.daily_achievement_level();
 	select coalesce(p.exp, 0) into v_exp from public.player_profiles p where p.user_id = v_uid;
 	v_exp := coalesce(v_exp, 0);
 
@@ -463,9 +598,9 @@ begin
 			where pa.user_id = v_uid and pa.achievement_id = v_id
 		);
 		v_level := public.level_for_exp(v_exp);
-		v_vars := public.achievement_variable_values(v_variables, v_level, v_cards);
+		v_vars := public.achievement_variable_values(v_variables, v_rule_level, v_cards, v_towns);
 		v_met := v_tree is not null
-			and public.achievement_condition_holds(v_tree, v_level, v_cards, v_vars);
+			and public.achievement_condition_holds(v_tree, v_rule_level, v_cards, v_towns, v_vars);
 		v_award := 0;
 
 		if v_met and not v_held then
