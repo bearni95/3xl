@@ -11,15 +11,16 @@
  *     the fighter wide open for the turn it takes.
  *   · **Defend** turns aside every shot aimed at the fighter that turn, but banks
  *     nothing — spend the whole fight defending and you never fire.
- *   · **Shoot** spends a charge and fires **straight across the lane**. Nobody
- *     shoots sideways: the fight is three private duels, each between the two fighters
- *     drawn level with each other, so a turn asks whether to fire, never at whom — and
- *     a lane whose other half has fallen simply has nobody left to shoot at. A shot
- *     that isn't turned aside takes its target down: **one hit is all it takes**,
- *     whoever it lands on. Two fighters who fire at each other in the same turn,
- *     though, fire at the same *moment*: the two shots meet in the lane and cancel, so
- *     neither reaches anybody and neither fighter falls (see
- *     {@link CombatController.playExchange}). A bullet stops a bullet — a free shot
+ *   · **Shoot** spends a charge and attacks **straight across the lane**: the fighter
+ *     walks out of its cell, up to the one opposite, and hits it with its own melee
+ *     move. Nobody attacks sideways: the fight is three private duels, each between the
+ *     two fighters drawn level with each other, so a turn asks whether to strike, never
+ *     at whom — and a lane whose other half has fallen simply has nobody left to go at.
+ *     A blow that isn't turned aside takes its target down: **one hit is all it takes**,
+ *     whoever it lands on. Two fighters who go at each other in the same turn, though,
+ *     set off at the same *moment*: they meet in the middle of the lane and their blows
+ *     cancel, so neither gets through and neither fighter falls (see
+ *     {@link CombatController.playExchange}). A blow stops a blow — a free attack
  *     included, since a gift is an attack like any other — which is why a lane is never
  *     emptied on both sides at once.
  *
@@ -122,8 +123,8 @@ export const RIVAL_CELLS: Hex[] = [
 	{ q: 0, r: -3 }
 ];
 
-/** Animation played when a fighter fires and its definition binds no ranged move. */
-const FALLBACK_SHOT: CharacterMove = { name: 'Shot', type: 'ranged', source: '' };
+/** Animation played when a fighter attacks and its definition binds no melee move. */
+const FALLBACK_STRIKE: CharacterMove = { name: 'Strike', type: 'melee', source: '' };
 
 /** The data the page hands the controller for one fighter. */
 export interface FighterSeed {
@@ -460,15 +461,16 @@ export class CombatController {
 	/**
 	 * Carry out the turn both sides committed to.
 	 *
-	 * The turn *happens* all at once — every charge is spent and every shot is aimed
-	 * off the state the orders were given in, before a single bullet is measured — but
-	 * it is *shown* one shot at a time. A volley resolved simultaneously on screen is
+	 * The turn *happens* all at once — every charge is spent and every attack is aimed
+	 * off the state the orders were given in, before a single blow is measured — but
+	 * it is *shown* one attack at a time. A volley resolved simultaneously on screen is
 	 * six things to read in one instant and reads as a stutter; taken in turn, each
-	 * shot flies, is answered, and is seen to be answered before the next is fired.
+	 * fighter walks out, strikes, is answered, and is seen to be answered before the
+	 * next one sets off.
 	 *
 	 * Serialising the playback changes nothing about the outcome: the shot list is
 	 * fixed before any of it plays, so a fighter felled early in the volley still
-	 * fires the shot it had already taken, and only falls when the shooting stops.
+	 * throws the attack it had already taken, and only falls when the volley ends.
 	 *
 	 * The one thing that is *ordered* within a turn is the charge, and it comes first:
 	 * see {@link bankCharges}.
@@ -510,10 +512,10 @@ export class CombatController {
 				if (fire(true)) this.spend(fighter, 'shoot');
 			}
 		}
-		// The bullets land in the order the fighters stand in — top→bottom down each
-		// side's line, red before blue. Nothing about a fighter makes its shot arrive
+		// The blows land in the order the fighters stand in — top→bottom down each
+		// side's line, red before blue. Nothing about a fighter makes its attack land
 		// sooner: the running order is the board's, not a rating's. The one exception is a
-		// lane that fired both ways, whose two shots are one event (see groupShots).
+		// lane that attacked both ways, whose two blows are one event (see groupShots).
 
 		this.setStatus('Orders are revealed.');
 		this.showOrders(acting);
@@ -617,54 +619,66 @@ export class CombatController {
 	}
 
 	/**
-	 * A lane that fired both ways, played as the one thing it is: the two shots leave at
-	 * the same moment, meet somewhere in the lane, and cancel. Neither reaches anybody, so
-	 * neither fighter falls.
+	 * A lane that attacked both ways, played as the one thing it is: the two set off at
+	 * the same moment, meet in the middle of the lane, and their blows cancel. Neither
+	 * gets through, so neither fighter falls.
 	 *
-	 * Nothing else about the turn is touched by this. The charges are spent — they paid for
-	 * bullets, and the bullets were fired — and a free shot spent on one of them stays
-	 * spent, because stopping the shot that was coming for you is the gift doing something.
-	 * What is *not* called on is either fighter's guard: a shot stopped by another shot was
-	 * never turned aside by anything else, so a free guard is still in hand afterwards.
+	 * Nothing else about the turn is touched by this. The charges are spent — they paid
+	 * for the attacks, and the attacks were thrown — and a free attack spent on one of
+	 * them stays spent, because meeting the one that was coming for you is the gift doing
+	 * something. What is *not* called on is either fighter's guard: a blow stopped by
+	 * another blow was never turned aside by anything else, so a free guard is still in
+	 * hand afterwards.
 	 *
-	 * Both are shown at once rather than one after the other. Taken in turn they would read
-	 * as one fighter shooting and the other answering, which is the one thing a turn given
-	 * blind never is.
+	 * Both are shown at once rather than one after the other — they walk out to meet each
+	 * other and strike together. Taken in turn they would read as one fighter attacking
+	 * and the other answering, which is the one thing a turn given blind never is.
 	 */
 	private async playExchange(one: Shot, two: Shot): Promise<void> {
 		const named = (shot: Shot) =>
 			shot.extra ? `${shot.shooter.name}'s free shot` : `${shot.shooter.name}'s shot`;
-		this.setStatus(`${one.shooter.name} and ${two.shooter.name} fire at once.`);
+		this.setStatus(`${one.shooter.name} and ${two.shooter.name} go at each other at once.`);
 		this.log.push(`${named(one)} and ${named(two)} meet in the lane — both come to nothing.`);
 		for (const shot of [one, two]) {
 			this.board?.showCallout(shot.shooter.id, 'CLASH', shot.shooter.color);
 		}
+		// Out to the middle together — neither is walked onto the other, because neither
+		// of them got there first — and then both strike at the one moment.
+		await this.board?.meleeApproach(one.shooter.id, two.shooter.id);
 		await Promise.all([
-			this.board?.shoot(one.shooter.id, one.target.id, this.shotMove(one.shooter)),
-			this.board?.shoot(two.shooter.id, two.target.id, this.shotMove(two.shooter))
+			this.board?.playMove(one.shooter.id, this.strikeMove(one.shooter)),
+			this.board?.playMove(two.shooter.id, this.strikeMove(two.shooter))
+		]);
+		await Promise.all([
+			this.board?.returnHome(one.shooter.id),
+			this.board?.returnHome(two.shooter.id)
 		]);
 		this.emit();
 		await pause(SHOT_BEAT_MS);
 	}
 
 	/**
-	 * One shot, played out on its own: it flies, and what its target chose to do about
-	 * it is settled and shown before the next shot is taken. A target already hit
-	 * earlier in the volley takes this one too — it just changes nothing, because it
-	 * was already going down.
+	 * One attack, played out on its own: the attacker walks out of its cell, up to the
+	 * fighter opposite, and strikes it where it stands. What the target chose to do about
+	 * it is settled and shown before the attacker walks back and the next attack is
+	 * thrown. A target already struck earlier in the volley takes this one too — it just
+	 * changes nothing, because it was already going down.
 	 */
 	private async playShot(shot: Shot, felled: Casualty[]): Promise<void> {
 		const { shooter, target, extra } = shot;
 		const from = extra ? `${shooter.name}'s free shot` : `${shooter.name} shoots`;
-		this.setStatus(`${shooter.name} fires at ${target.name}.`);
-		await this.board?.shoot(shooter.id, target.id, this.shotMove(shooter));
+		this.setStatus(`${shooter.name} goes at ${target.name}.`);
+		// Close in, then strike: the blow is awaited to its last frame, so what it did is
+		// only said once it has actually been thrown.
+		await this.board?.closeIn(shooter.id, target.id);
+		await this.board?.playMove(shooter.id, this.strikeMove(shooter));
 
 		if (target.down) {
 			this.log.push(`${from} — ${target.name} was already falling.`);
 		} else if (target.action === 'defend') {
 			this.log.push(`${from} at ${target.name}, who blocked it.`);
 			this.board?.showCallout(target.id, 'BLOCK', target.color);
-			// Brace again on the bullet, so the block is seen and not just labelled.
+			// Brace again on the blow, so the block is seen and not just labelled.
 			const guard = findMove(target, 'defend');
 			if (guard) void this.board?.playMove(target.id, guard);
 		} else if (this.passiveReady(target, 'defend')) {
@@ -678,21 +692,26 @@ export class CombatController {
 			target.down = true;
 			felled.push({ fighter: target, by: shooter });
 			this.log.push(`${from} — ${target.name} is down.`);
-			// The slash is drawn in the colour of whoever's bullet got through.
+			// The slash is drawn in the colour of whoever's blow got through.
 			this.board?.showSlash(target.id, shooter.color);
 			this.board?.showCallout(target.id, 'HIT!', shooter.color);
 			await this.board?.playHurt(target.id);
 		}
+		// Back to its own cell, struck or blocked: the ground a fighter holds is not
+		// changed by having gone out to hit somebody, and the next lane's attack is
+		// played from the line as it stood.
+		await this.board?.returnHome(shooter.id);
 		this.emit();
 		await pause(SHOT_BEAT_MS);
 	}
 
 	/**
 	 * Put every acting fighter's order on the board at once: the loaders flare, the
-	 * guards brace, and the shooters are left to their own firing pose. Both are
-	 * started and left to run — the turn is not held up while an aura's textures are
-	 * fetched, nor while a pose plays out, since the reveal is one thing to read and
-	 * the shooting is what unfolds after it.
+	 * guards brace, and the attackers are left standing where they are — an attack is
+	 * not a pose thrown from a cell, it is the walk out and the blow at the end of it,
+	 * which is what unfolds after the reveal. The aura and the guard are both started
+	 * and left to run: the turn is not held up while an aura's textures are fetched,
+	 * nor while a pose plays out, since the reveal is one thing to read.
 	 *
 	 * Nothing is cleared here: the callouts of the turn just played are taken down when
 	 * the next turn is handed over (see {@link finishTurn}), so they stand for as long
@@ -1124,9 +1143,10 @@ export class CombatController {
 		this.board?.clearAura(fighter.id);
 	}
 
-	/** The animation a fighter fires with: its own ranged move, or the empty
-	 * fallback (which still flies a plain shot) for the melee-only fighters. */
-	private shotMove(fighter: Fighter): CharacterMove {
-		return findMove(fighter, 'ranged') ?? FALLBACK_SHOT;
+	/** The animation a fighter strikes with: its own melee move, or the empty fallback
+	 * — a fighter whose definition binds nothing still walks out and lands the blow,
+	 * it simply throws no pose over it. */
+	private strikeMove(fighter: Fighter): CharacterMove {
+		return findMove(fighter, 'melee') ?? FALLBACK_STRIKE;
 	}
 }

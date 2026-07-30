@@ -11,7 +11,6 @@ import {
 	findClosestApproach,
 	findMeleeMeeting,
 	findPath,
-	findRetreatCell,
 	isBoardCell,
 	type Hex
 } from './hex';
@@ -174,8 +173,6 @@ const CHAR_HEIGHT_RATIO = 1.3;
 
 /** Horizontal speed (canvas px/s) a character runs between cells during combat. */
 const MOVE_SPEED = 260;
-/** Speed (canvas px/s) a fired projectile travels from shooter to target. */
-const PROJECTILE_SPEED = 720;
 /** Frames of an aura animation (static/auras/<color>/1..N.png). */
 const AURA_FRAMES = 4;
 /** How long each aura frame shows (ms). */
@@ -275,22 +272,6 @@ interface KnockOutFade {
 	total: number;
 	elapsed: number;
 	/** Resolves once the fade finishes and the actor has been removed. */
-	resolve: () => void;
-}
-
-/** A projectile fired by a ranged attack, flying from a shooter to a target. */
-interface Projectile {
-	/** The flying sprite (an animated projectile frame, or a plain dot). */
-	display: Sprite;
-	/** Projectile animation frames, or null when the character binds none. */
-	frames: LoadedFrame[] | null;
-	frameIndex: number;
-	frameElapsed: number;
-	x: number;
-	y: number;
-	targetX: number;
-	targetY: number;
-	/** Resolves once the projectile reaches its target and is removed. */
 	resolve: () => void;
 }
 
@@ -465,8 +446,6 @@ export class MugenBoard {
 	// instead of resurrecting a destroyed board.
 	private destroyed = false;
 	private actors: Actor[] = [];
-	/** In-flight ranged projectiles, advanced each tick until they land. */
-	private projectiles: Projectile[] = [];
 	/** Transient slash overlays, faded out each tick until they expire. */
 	private slashes: SlashEffect[] = [];
 	/** Colour overlays on claimed cells, keyed by "q,r". */
@@ -605,7 +584,6 @@ export class MugenBoard {
 			this.app = null;
 		}
 		this.actors = [];
-		this.projectiles = [];
 		this.slashes = [];
 		this.cellPaint.clear();
 	}
@@ -754,8 +732,10 @@ export class MugenBoard {
 		// Every actor can be walked cell to cell by combat, so all of them load the
 		// directional animations bound in the character's JSON definition
 		// (move-left/move-right), the hurt flinch, and every move the definition
-		// declares (plus any inline projectile), so combat can play whichever move
-		// gets picked. Without a definition the directional anims fall back to run.
+		// declares, so combat can play whichever move gets picked. Nothing loads a
+		// move's projectile: nothing on this board flies any more — an attack is walked
+		// over to its target ({@link MugenBoard.closeIn}). Without a definition the
+		// directional anims fall back to run.
 		let moveRightAnim = 'run';
 		let moveLeftAnim = 'run';
 		let hurtAnim = '';
@@ -769,7 +749,6 @@ export class MugenBoard {
 			hurtAnim = definition.animations.hurt?.source || '';
 			for (const move of definition.moves ?? []) {
 				if (move.source) moveSources.push(move.source);
-				if (move.projectile?.source) moveSources.push(move.projectile.source);
 			}
 		}
 		const names = [
@@ -953,7 +932,6 @@ export class MugenBoard {
 			this.updateTraits(actor);
 			this.updateLabel(actor);
 		}
-		this.updateProjectiles(deltaMs);
 		this.updateSlashes(deltaMs);
 	};
 
@@ -1000,43 +978,6 @@ export class MugenBoard {
 		label.x = actor.x;
 		label.y = actor.y - actor.displayHeight - 12;
 		label.zIndex = actor.y + 10000;
-	}
-
-	/** Advance every in-flight projectile toward its target; land and resolve on arrival. */
-	private updateProjectiles(deltaMs: number): void {
-		if (this.projectiles.length === 0) return;
-		const dt = deltaMs / 1000;
-		const remaining: Projectile[] = [];
-		for (const projectile of this.projectiles) {
-			// Loop the projectile's own animation while it travels, if it has one.
-			const frames = projectile.frames;
-			if (frames && frames.length > 1) {
-				projectile.frameElapsed += deltaMs;
-				let guard = frames.length;
-				while (projectile.frameElapsed >= frames[projectile.frameIndex].duration && guard-- > 0) {
-					projectile.frameElapsed -= frames[projectile.frameIndex].duration;
-					projectile.frameIndex = (projectile.frameIndex + 1) % frames.length;
-				}
-				projectile.display.texture = frames[projectile.frameIndex].texture;
-			}
-
-			const dx = projectile.targetX - projectile.x;
-			const dy = projectile.targetY - projectile.y;
-			const dist = Math.hypot(dx, dy);
-			const step = PROJECTILE_SPEED * dt;
-			if (dist <= step || dist === 0) {
-				projectile.display.parent?.removeChild(projectile.display);
-				projectile.display.destroy();
-				projectile.resolve();
-				continue;
-			}
-			projectile.x += (dx / dist) * step;
-			projectile.y += (dy / dist) * step;
-			projectile.display.x = projectile.x;
-			projectile.display.y = projectile.y;
-			remaining.push(projectile);
-		}
-		this.projectiles = remaining;
 	}
 
 	/**
@@ -1248,8 +1189,10 @@ export class MugenBoard {
 	/**
 	 * The cells an actor may occupy: its own half, plus the central white column, which
 	 * is neither side's — it is the ground between the two lines, and the only ground
-	 * either of them can take off the other. Nobody ever crosses it into the far half.
-	 * Every combat move is confined to this predicate.
+	 * either of them can take off the other. Nobody ever *stands* across it in the far
+	 * half: every move that leaves a fighter somewhere is confined to this predicate.
+	 * The one thing that is not is the strike run ({@link closeIn}), which crosses and
+	 * comes straight back, because a blow is not ground taken.
 	 */
 	private sideAllowed(actor: Actor): (c: Hex) => boolean {
 		const far: CellSide = actor.side === 'blue' ? 'red' : 'blue';
@@ -1325,16 +1268,24 @@ export class MugenBoard {
 		this.cellPaint.set(k, graphics);
 	}
 
-	/** Walk an actor back to the cell it started on, staying on its own side. */
+	/** Walk an actor back to the cell it started on — the ground it holds, which a
+	 * strike run only ever borrows it away from. */
 	async returnHome(id: string): Promise<void> {
 		const actor = this.findActor(id);
 		if (!actor) return;
 		const home: Hex = { q: actor.homeCell, r: actor.homeRow };
-		// Route around other characters when a clear path exists; if occupancy boxes
-		// it in, fall back to the side-only path so the actor still reaches home.
+		// Its own ground, by a clear route through it, first. But a fighter walking back
+		// off a strike run is standing in the far half, which its own side rule would
+		// refuse to lead it out of, so the ways home loosen one rule at a time until one
+		// of them answers: around the others over any ground, then straight over
+		// everything. Coming home settles nothing, so no rule of the fight is spent here.
+		const blocked = this.occupied([actor]);
+		const anyCell = (c: Hex) => isBoardCell(c.q, c.r);
 		const path =
 			findPath(this.cellOf(actor), home, this.walkAllowed(actor)) ??
-			findPath(this.cellOf(actor), home, this.sideAllowed(actor));
+			findPath(this.cellOf(actor), home, this.sideAllowed(actor)) ??
+			findPath(this.cellOf(actor), home, (c) => anyCell(c) && !blocked(c)) ??
+			findPath(this.cellOf(actor), home, anyCell);
 		if (!path) return;
 		// Passing the home mark as the walk's end point also covers the fighter
 		// whose home *is* the cell it logically occupies but who is standing half a
@@ -1394,94 +1345,58 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Back an actor off to shoot: walk it to the cell furthest from the central
-	 * column on its own side, so its ranged attack fires from as deep in its
-	 * territory as the board allows. Resolves once it has settled there.
+	 * Run an attacker up to the fighter it is striking and stand it face to face with
+	 * it, close enough for the blow to land. Resolves once it has settled there; the
+	 * caller then plays the strike and walks it back ({@link returnHome}).
+	 *
+	 * It comes at the target's face: the red half leads with its right and the blue
+	 * half (mirrored) with its left, so each closes on the cell beside the target on
+	 * its own side of it and on the target's own row, which is what makes the pair
+	 * read horizontally. Where that cell is taken (or off the board) it settles for
+	 * the nearest cell it can reach instead.
+	 *
+	 * A strike run is the one thing on this board that crosses the white line. The
+	 * line is about ground *held* — where a fighter stands between turns, and what a
+	 * lane is won and lost over — and a blow is not ground taken: the attacker is back
+	 * on its own cell before the turn is over. What it may not do is walk *through*
+	 * whoever else is standing about, so the route is still laid around them.
 	 */
-	async retreat(id: string): Promise<void> {
-		const actor = this.findActor(id);
-		if (!actor) return;
-		const retreat =
-			findRetreatCell(this.cellOf(actor), this.walkAllowed(actor)) ??
-			findRetreatCell(this.cellOf(actor), this.sideAllowed(actor));
-		if (!retreat) return;
-		await this.walkCells(actor, retreat.path.slice(1));
+	async closeIn(attackerId: string, targetId: string): Promise<void> {
+		const attacker = this.findActor(attackerId);
+		const target = this.findActor(targetId);
+		if (!attacker || !target) return;
+		const from = this.cellOf(attacker);
+		const targetCell = this.cellOf(target);
+		const beside: Hex = {
+			q: targetCell.q + (attacker.side === 'blue' ? 1 : -1),
+			r: targetCell.r
+		};
+		const blocked = this.occupied([attacker]);
+		const open = (c: Hex) => isBoardCell(c.q, c.r) && !blocked(c);
+		// Short of that cell it takes the nearest one it can reach that still leaves it
+		// in front of the target — coming at a fighter from behind it is not a duel —
+		// and only if even that is boxed in does it settle for the nearest cell at all.
+		const inFront = (c: Hex) =>
+			attacker.side === 'blue' ? c.q > targetCell.q : c.q < targetCell.q;
+		const path =
+			(open(beside) ? findPath(from, beside, open) : null) ??
+			findClosestApproach(from, targetCell, (c) => open(c) && inFront(c))?.path ??
+			findClosestApproach(from, targetCell, open)?.path;
+		if (!path) return;
+		await this.walkCells(attacker, path.slice(1), this.strikeMark(attacker, target));
 	}
 
 	/**
-	 * Walk a (melee) actor as close to `targetId` as its own side allows. It never
-	 * crosses the white line, so against a foe who backed off to shoot it advances
-	 * up to the boundary rather than reaching them — the strike still lands (for
-	 * halved damage) from there. Resolves once it has settled.
+	 * Where an attacker stands to strike `target`: level with it, on its foot line,
+	 * with the two sprites' leading edges flush — face to face and touching, without
+	 * overlapping. The extents are read off each sprite's current frame (anchor
+	 * fraction × scaled width); the blue half is mirrored, so for both of them the
+	 * leading edge is the frame's far side.
 	 */
-	async advance(moverId: string, targetId: string): Promise<void> {
-		const mover = this.findActor(moverId);
-		const target = this.findActor(targetId);
-		if (!mover || !target) return;
-		const approach = findClosestApproach(
-			this.cellOf(mover),
-			this.cellOf(target),
-			this.sideAllowed(mover)
-		);
-		if (!approach) return;
-		await this.walkCells(mover, approach.path.slice(1));
-	}
-
-	/** Screen-space point roughly at an actor's chest, where projectiles enter/leave. */
-	private chestPoint(actor: Actor): Point {
-		return { x: actor.x, y: actor.y - actor.sprite.height * 0.5 };
-	}
-
-	/**
-	 * Fire `move`'s projectile from `shooterId` toward `targetId`: the shooter plays
-	 * the move's own pose while its projectile sprite flies across the board.
-	 * Resolves once the projectile reaches the target. If the move binds no
-	 * projectile it still flies a small dot, so combat keeps its beat.
-	 */
-	shoot(shooterId: string, targetId: string, move: CharacterMove): Promise<void> {
-		const shooter = this.findActor(shooterId);
-		const target = this.findActor(targetId);
-		if (!this.app || !shooter || !target) return Promise.resolve();
-
-		// Play the firing pose; it recovers to idle on its own, so don't block on it.
-		void this.playMove(shooterId, move);
-
-		const from = this.chestPoint(shooter);
-		const to = this.chestPoint(target);
-		const projName = move.projectile?.source;
-		const frames = (projName && shooter.animations[projName]) || null;
-
-		const display = new Sprite(frames && frames.length > 0 ? frames[0].texture : Texture.WHITE);
-		display.anchor.set(0.5);
-		if (frames && frames.length > 0) {
-			frames[0].texture.source.scaleMode = 'nearest';
-			// Size the projectile to a fraction of the shooter's height; mirror it to
-			// face the direction of travel.
-			const scale = (shooter.sprite.height * 0.4) / frames[0].height;
-			display.scale.set(from.x <= to.x ? scale : -scale, scale);
-		} else {
-			display.width = 16;
-			display.height = 16;
-			display.tint = 0xffe066;
-		}
-		display.x = from.x;
-		display.y = from.y;
-		display.zIndex = 1_000_000; // always drawn above the board and characters
-		this.app.stage.addChild(display);
-
-		return new Promise((resolve) => {
-			this.projectiles.push({
-				display,
-				frames: frames && frames.length > 0 ? frames : null,
-				frameIndex: 0,
-				frameElapsed: 0,
-				x: from.x,
-				y: from.y,
-				targetX: to.x,
-				targetY: to.y,
-				resolve
-			});
-		});
+	private strikeMark(attacker: Actor, target: Actor): Point {
+		const lead = (actor: Actor) => (1 - actor.sprite.anchor.x) * Math.abs(actor.sprite.width);
+		const gap = lead(attacker) + lead(target);
+		return { x: attacker.side === 'blue' ? target.x + gap : target.x - gap, y: target.y };
 	}
 
 	/**

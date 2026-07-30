@@ -117,7 +117,9 @@ function fakeBoard(log: AuraLog) {
 		showSlash: () => {},
 		playMove: done,
 		playHurt: done,
-		shoot: done,
+		closeIn: done,
+		meleeApproach: done,
+		returnHome: done,
 		knockOut: done,
 		regroup: (id: string, cell: Hex) => {
 			log.moved.push({ id, cell });
