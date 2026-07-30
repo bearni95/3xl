@@ -426,7 +426,32 @@
 		}));
 	}
 
-	// Push the player's orders onto the board whenever the fight moves. Both `state`
+	/**
+	 * The same three orders beside a rival — and they are the same three, because that is
+	 * the whole of what the player is guessing at. The column is not an input: it is never
+	 * tapped, and it says nothing about what the rival *can* do, only what it turned out to
+	 * have done. So none of them is greyed for being out of reach, which would answer the
+	 * question the fight is asking, and none is chosen while the rival's order is still
+	 * secret — the controller withholds a rival's `action` right through planning and hands
+	 * it over as the turn is carried out, so the button lights up at the moment the fighter
+	 * acts and stays lit for the rest of the turn.
+	 *
+	 * It lights up in the fighter's own colour rather than the side red every rival shares:
+	 * three rivals act in one turn, and whose order just fired is the thing worth reading
+	 * off the board.
+	 */
+	function rivalOrderButtons(fighter: FighterView): BoardOrder[] {
+		return COMBAT_ACTIONS.map((action) => ({
+			id: action,
+			icon: ACTION_ICONS[action],
+			selected: fighter.action === action,
+			disabled: false,
+			readonly: true,
+			color: fighter.color
+		}));
+	}
+
+	// Push every fighter's orders onto the board whenever the fight moves. Both `state`
 	// and `board` are named so Svelte's legacy reactive tracking sees them as
 	// dependencies; the board itself only redraws what actually changed.
 	$: syncOrders(state, board);
@@ -434,15 +459,24 @@
 	function syncOrders(current: CombatState | null, engine: MugenBoardEngine | null): void {
 		if (!engine || !current) return;
 		for (const fighter of current.fighters) {
-			// Only the player is given orders; the rivals commit theirs out of sight.
-			if (fighter.side !== 'info') continue;
 			// Two fighters are asked for nothing more and keep no buttons: one standing on the
 			// white cell it won, which has settled its lane, and one that has been taken down,
 			// which is still on the board — at the back of its own half — and must not go on
-			// wearing a column of orders it can never be given. An empty list is what clears a
-			// strip.
+			// wearing a column of orders it can never be given, or be shown one it can never
+			// carry out. An empty list is what clears a strip.
 			const spent = fighter.down || fighter.holdsGround;
-			engine.setOrders(fighter.id, spent ? [] : orderButtons(fighter, current.phase));
+			if (spent) {
+				engine.setOrders(fighter.id, []);
+				continue;
+			}
+			// Both sides wear a column; only the player's is a way of giving an order. The
+			// rival's is the same three glyphs read back to the player.
+			engine.setOrders(
+				fighter.id,
+				fighter.side === 'info'
+					? orderButtons(fighter, current.phase)
+					: rivalOrderButtons(fighter)
+			);
 		}
 	}
 

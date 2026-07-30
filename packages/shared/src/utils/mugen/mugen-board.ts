@@ -403,10 +403,24 @@ export interface BoardOrder {
 	/** URL of the glyph drawn inside the button (an SVG under /assets). The artwork
 	 * must be white: it is tinted, and tinting only ever darkens. */
 	icon: string;
-	/** Drawn as the chosen one, in its side's colour. */
+	/** Drawn as the chosen one, in {@link color} or failing that its side's colour. */
 	selected: boolean;
 	/** Drawn greyed, and taps on it are ignored. */
 	disabled: boolean;
+	/**
+	 * Drawn but never reported: no pointer, no cursor, taps pass through it. A column of
+	 * these is a reading of a fighter rather than a way of commanding one — which is what
+	 * a rival's orders are, since they are shown only once they have been carried out.
+	 */
+	readonly?: boolean;
+	/**
+	 * Combat colour name to fill this button with when it is the chosen one. Left out, the
+	 * chosen order takes the colour of the *side* the fighter belongs to, which is what
+	 * says "these are yours" about a column the player is giving orders in. A column that
+	 * is only reporting has no such job, so it names the fighter's own colour instead and
+	 * the order that was carried out is marked in the colour of whoever carried it out.
+	 */
+	color?: string;
 }
 
 /**
@@ -430,6 +444,8 @@ interface OrderButton {
 	glyph: Sprite;
 	selected: boolean;
 	disabled: boolean;
+	/** Combat colour name for the chosen fill, or null to take the side's colour. */
+	color: string | null;
 }
 
 /** The column of order buttons beside one fighter. */
@@ -1898,9 +1914,16 @@ export class MugenBoard {
 		orders.forEach((order, i) => {
 			const button = strip.buttons[i];
 			if (!button) return;
-			if (button.selected === order.selected && button.disabled === order.disabled) return;
+			const color = order.color ?? null;
+			if (
+				button.selected === order.selected &&
+				button.disabled === order.disabled &&
+				button.color === color
+			)
+				return;
 			button.selected = order.selected;
 			button.disabled = order.disabled;
+			button.color = color;
 			this.paintOrder(actor, button);
 		});
 		this.updateOrders(actor);
@@ -1922,16 +1945,23 @@ export class MugenBoard {
 				face,
 				glyph,
 				selected: order.selected,
-				disabled: order.disabled
+				disabled: order.disabled,
+				color: order.color ?? null
 			};
 			button.container.addChild(face, glyph);
-			// The button itself takes the tap, so the hit area is exactly its face.
-			button.container.eventMode = 'static';
-			button.container.cursor = 'pointer';
-			button.container.on('pointertap', () => {
-				if (button.disabled) return;
-				this.orderHandler?.(actor.id, button.id);
-			});
+			// A reporting button is not an input: it is left with no event mode at all, so it
+			// takes no pointer, shows no cursor and cannot be hit-tested — rather than taking
+			// the tap and dropping it, which is a button that looks pressable and does
+			// nothing.
+			if (!order.readonly) {
+				// The button itself takes the tap, so the hit area is exactly its face.
+				button.container.eventMode = 'static';
+				button.container.cursor = 'pointer';
+				button.container.on('pointertap', () => {
+					if (button.disabled) return;
+					this.orderHandler?.(actor.id, button.id);
+				});
+			}
 			container.addChild(button.container);
 
 			void this.loadIcon(order.icon).then((texture) => {
@@ -1954,9 +1984,14 @@ export class MugenBoard {
 	private paintOrder(actor: Actor, button: OrderButton): void {
 		const { width, height } = this.orderSize();
 		const radius = height * ORDER_RADIUS_RATIO;
-		// The chosen order takes its own side's colour, so a fighter's orders read as
-		// belonging to it rather than to some palette of the interface's own.
-		const chosen = actor.side === 'blue' ? this.options.grids[1].color : this.options.grids[0].color;
+		// The chosen order takes the fighter's own colour where one was named, and otherwise
+		// its side's, so a fighter's orders read as belonging to it rather than to some
+		// palette of the interface's own.
+		const chosen = button.color
+			? combatColorHex(button.color)
+			: actor.side === 'blue'
+				? this.options.grids[1].color
+				: this.options.grids[0].color;
 		const fill = button.disabled ? ORDER_DISABLED_FILL : button.selected ? chosen : ORDER_IDLE_FILL;
 
 		button.face.clear();
