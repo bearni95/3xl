@@ -833,6 +833,38 @@ describe('the stand-off', () => {
 			expect(cellSide(log.moved[0].cell.q)).toBe('purple');
 		});
 
+		it('asks nothing more of a fighter that has taken the white cell', async () => {
+			const log = boardLog();
+			const controller = new CombatController([
+				seed('r0', 'error', 'red'),
+				seed('r1', 'error', 'red'),
+				// Blue both: the free guard sees each through the rivals' opening free shot,
+				// so the fight gets to a turn the player can win a lane on.
+				seed('p0', 'info', 'blue'),
+				seed('p1', 'info', 'blue')
+			]);
+			controller.attachBoard(fakeBoard(log));
+			await openWithCharges(controller);
+			controller.setAction('p0', 'shoot');
+			controller.setAction('p1', 'charge');
+			await playTurn(controller);
+
+			// P0 took the white cell its lane was played for, and with it the lane: there is
+			// nobody in front of it and never will be, so it stands down for the rest of the
+			// fight rather than being given orders that could do nothing.
+			expect(log.moved).toEqual([{ id: 'p0', cell: RIVAL_CELLS[0] }]);
+			const held = fighterOf(get(controller), 'p0');
+			expect(held.holdsGround).toBe(true);
+			expect(held.ordered).toBe(true);
+			// Nothing is asked of it, and nothing can be given to it either.
+			controller.setAction('p0', 'charge');
+			expect(fighterOf(get(controller), 'p0').action).toBeNull();
+			// And the turn is waiting on the fighter that *is* still fighting, alone.
+			expect(get(controller).ready).toBe(false);
+			controller.setAction('p1', 'defend');
+			expect(get(controller).ready).toBe(true);
+		});
+
 		it('withdraws the rival a column into its own half when it wins its lane', async () => {
 			const log = boardLog();
 			const controller = new CombatController([

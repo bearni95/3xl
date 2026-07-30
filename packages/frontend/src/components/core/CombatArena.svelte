@@ -379,7 +379,11 @@
 			// Only the player is given orders; the rivals commit theirs out of sight, and
 			// a fighter that has gone down has left the board along with its buttons.
 			if (fighter.side !== 'info' || fighter.down) continue;
-			engine.setOrders(fighter.id, orderButtons(fighter, current.phase));
+			// A fighter standing on the white cell it won has settled its lane and is asked
+			// for nothing more, so its buttons come off the board rather than standing there
+			// offering orders that would do nothing. An empty list is what clears a strip.
+			const orders = fighter.holdsGround ? [] : orderButtons(fighter, current.phase);
+			engine.setOrders(fighter.id, orders);
 		}
 	}
 

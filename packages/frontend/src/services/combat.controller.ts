@@ -62,7 +62,7 @@
  * player's current level — all of it for a flawless win, nothing for a loss.
  */
 import { writable } from 'svelte/store';
-import { isBoardCell, type Hex } from '$utils/mugen/hex';
+import { cellSide, isBoardCell, type Hex } from '$utils/mugen/hex';
 import type { MugenBoard } from '$utils/mugen/mugen-board';
 import { findMove, type CharacterMove, type CombatColor } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
@@ -185,6 +185,13 @@ export interface FighterView {
 	/** Whether Shoot is a legal order for it right now: a charge to spend, and
 	 * somebody opposite to spend it on. */
 	canShoot: boolean;
+	/**
+	 * Whether this fighter has taken the white cell its lane was played for and is out of
+	 * the turn order for good ({@link CombatController.holdsGround}). Nothing is asked of
+	 * it any more: the page draws it no buttons, and it is not one of the fighters the
+	 * turn is waiting on.
+	 */
+	holdsGround: boolean;
 	/** Whether its order is complete — given, and firing only when it can. */
 	ordered: boolean;
 }
@@ -904,6 +911,7 @@ export class CombatController {
 			opponentId: opponent?.id ?? null,
 			opponentName: opponent?.name ?? null,
 			canShoot: this.canShoot(fighter),
+			holdsGround: this.holdsGround(fighter),
 			ordered: this.isOrdered(fighter)
 		};
 	}
@@ -984,7 +992,27 @@ export class CombatController {
 		if (this.phase !== 'planning') return null;
 		const fighter = this.find(id);
 		if (!fighter || fighter.side !== 'info' || fighter.down) return null;
+		// One that has taken the ground its lane was played for is out of the fight: it
+		// takes no more orders, so a tap on it is nothing.
+		if (this.holdsGround(fighter)) return null;
 		return fighter;
+	}
+
+	/**
+	 * Whether this fighter has taken the ground its lane was fought over and stands down
+	 * for the rest of the fight: one of the player's, standing on the shared white column.
+	 *
+	 * That column is what every lane is played for, and the only way onto it for the
+	 * player's side is winning the lane in front of it ({@link settleGround}) — so a
+	 * fighter that holds one has settled its encounter: nobody in front of it to shoot,
+	 * nobody left who could shoot it, and no charge worth banking, because the lines never
+	 * re-pair and it will never face anybody again ({@link opposite}). It is therefore
+	 * asked for nothing more: no buttons of its own on the board, and the turn does not
+	 * wait on it to be commitable. It simply holds what it took.
+	 */
+	private holdsGround(fighter: Fighter): boolean {
+		if (fighter.side !== 'info' || fighter.down) return false;
+		return !!fighter.cell && cellSide(fighter.cell.q) === 'purple';
 	}
 
 	/** Whether this fighter could fire at all right now: a charge to spend, and
@@ -1041,9 +1069,11 @@ export class CombatController {
 		this.showTraits(fighter);
 	}
 
-	/** Whether a fighter's order is complete: given, and only firing where it can. */
+	/** Whether a fighter's order is complete: given, and only firing where it can. A
+	 * fighter nothing is asked of — down, or holding the ground it won — is complete by
+	 * standing there, so the turn is never held up waiting on one. */
 	private isOrdered(fighter: Fighter): boolean {
-		if (fighter.down) return true;
+		if (fighter.down || this.holdsGround(fighter)) return true;
 		if (!fighter.action) return false;
 		if (fighter.action === 'shoot' && !this.canShoot(fighter)) return false;
 		return true;
