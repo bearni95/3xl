@@ -1886,8 +1886,9 @@
 				</div>
 			</div>
 		</div>
-		<!-- The map's bottom-left corner, a column of two: the side this player fields, and
-			under it who is playing. The two belong together and belong here — a side and the
+		<!-- The foot of the map — its bottom-left corner where there is room for a corner, the
+			whole width of it on a phone (see the widths below) — a column of two: the side this
+			player fields, and under it who is playing. The two belong together and belong here — a side and the
 			account fielding it are one statement, and it is the statement every town on the map
 			is read against: the three being challenged are on a plate under the breadcrumbs at
 			the top, the three doing the challenging stand at the foot with their player under
@@ -1901,14 +1902,21 @@
 			since it is at the other end of the map from that stack. Same z-[900] as the stack:
 			clear of Leaflet's own panes (overlays 400-600, controls 800) and under the full-view
 			sheets.
-			A flat 400px, which is the width three statues and their captions are read at — a
-			share of the map would set the size of a card by how wide the window is — capped at
-			the viewport so the narrowest phone shrinks them rather than carrying them off the
-			screen. The plate takes the same width: they are one column at one corner, and a
+			A flat 400px from `sm` up, which is the width three statues and their captions are read
+			at — a share of the map would set the size of a card by how wide the window is. Below
+			that it is not a corner at all: a phone has no room to keep 400px of statues to one side
+			of the map and nothing worth putting beside them, so the column spans the width the way
+			the breadcrumb bar above it does (`inset-x-3`, the same margins), and the side and the
+			account sit across the foot of the screen as one bottom panel. It was capped at the
+			viewport instead, which kept the statues on screen but left them hugging one edge with
+			a strip of map beside them that nothing was ever going to occupy.
+			The plate takes the column's width either way: they are one column at one corner, and a
 			plate narrower than the side above it would read as a second thing that happens to be
 			nearby. Nothing is drawn at all when there is neither to draw. -->
 		{#if playerTeamLineup.length > 0 || $profile}
-			<div class="absolute bottom-3 left-3 z-[900] flex w-[400px] max-w-[100vw] flex-col gap-2">
+			<div
+				class="absolute inset-x-3 bottom-3 z-[900] flex flex-col gap-2 sm:right-auto sm:w-[400px]"
+			>
 				<!-- The three statues and nothing else: no plate under them, no heading over them,
 					so what stands here is the side itself rather than a panel about it. It can stand
 					bare where the map's other furniture cannot because a statue brings its own ground
