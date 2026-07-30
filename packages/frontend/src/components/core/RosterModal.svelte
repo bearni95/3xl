@@ -846,14 +846,11 @@
 					{/each}
 
 					<!-- The filter card, under the line-up and over all three columns. Every control
-					     in it ANDs with the others. Clear stands at the head of the card: it is what
-					     undoes everything below it, and a list of shows long enough to run on had
-					     pushed it out of sight at the very moment there was most to undo. -->
+					     in it ANDs with the others, and Clear at the foot lets go of all of them at
+					     once. Where the shows run long the card runs past the frame, which is why the
+					     column it is in is a scroll box of its own — Clear is at the bottom of the
+					     card wherever that bottom falls. -->
 					<div class="col-span-3 flex flex-col gap-3 rounded-box bg-base-100 p-3">
-						<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
-							Clear
-						</button>
-
 						<!-- No caption over any of the three: a search box says what it is with its
 						     own placeholder, a swatch is the colour it filters to and a chip is the
 						     show's own wordmark, so a word above each of them was naming what was
@@ -924,6 +921,14 @@
 								</div>
 							{/if}
 						</div>
+
+						<!-- Clear closes the card, under everything it undoes: the three filters are
+						     what the card is, and the way out of them is read after them rather than
+						     before there is anything to get out of. Disabled while no filter is
+						     narrowing anything, so it is only a button when it has something to do. -->
+						<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
+							Clear
+						</button>
 					</div>
 
 				</div>
