@@ -247,17 +247,51 @@ const ORDER_DISABLED_FILL = 0x374151;
 const ORDER_DISABLED_ALPHA = 0.35;
 
 // --- Trait badges (drawn on the board, at the top-left corner of a fighter) ---
-/** A trait glyph's size, as a fraction of the fighter's nominal width. */
-const TRAIT_ICON_RATIO = 0.26;
-/** Gap between a compound's two glyphs, as a fraction of one glyph's size. */
+/**
+ * The white disc one gift is drawn on: 48 canvas px across, whatever it belongs to.
+ *
+ * A fixed size, not a fraction of the fighter — which is what it used to be, and meant
+ * every character wore its gifts at a different size, a wide sprite carrying a bigger
+ * coin than a narrow one for no reason a player could read. A badge says the same thing
+ * about every fighter, so it is the same mark on all of them.
+ *
+ * Canvas px: the unit the whole board is laid out in ({@link DEFAULTS.cellSize} and the
+ * rest), so a disc is 48 against a cell's 220 — a little under a quarter of a cell —
+ * however the finished canvas is then scaled to fit its box.
+ */
+const TRAIT_DISC_PX = 48;
+/** The glyph inside that disc, as a fraction of it. Under one, so the corners of a glyph
+ * drawn to the edges of its own box (a sword lies across its) still land on white rather
+ * than off the rim. */
+const TRAIT_GLYPH_RATIO = 0.8;
+/** Gap between a compound's two discs, as a fraction of one disc. */
 const TRAIT_SPACING_RATIO = 0.2;
-/** Radius of the white disc a glyph sits on, as a fraction of the glyph's size. Over
- * a half, so the corners of a glyph drawn to the edges of its box (a sword lies
- * across its own) still land on white rather than off it. */
-const TRAIT_DISC_RATIO = 0.62;
 /** How far a spent trait's glyph fades. It is not taken off the fighter — what a
  * card *is* does not change — it simply stops reading as something still in hand. */
 const TRAIT_SPENT_ALPHA = 0.25;
+
+/**
+ * The square each icon SVG is rasterised into, in px, before anything draws it.
+ *
+ * An SVG is resolution-independent right up to the moment something turns it into pixels,
+ * and then the size it is turned into is the only resolution it will ever have. Pixi
+ * rasterises one at its *intrinsic* size — whatever the file's own `width`/`height` say —
+ * so leaving that to the file means leaving the artwork's resolution to an attribute
+ * written for some other purpose entirely. The three glyphs the board draws had
+ * `width="1em"`, which is 16px in a standalone document: they were being baked into 16×16
+ * bitmaps and then drawn at three times that. Hence "fuzzy as fuck" — every one of them
+ * was a 16-pixel picture blown up. (Those three have since been put back into the form
+ * their 4,180 siblings are in, `viewBox` and a white fill and nothing about size, but the
+ * lesson is that the *board* should name the resolution it wants rather than inherit one.)
+ *
+ * 256 is a generous square for it: the largest anything draws one of these at is about
+ * 48px (a trait disc, an order button's glyph), so there is resolution to spare for a
+ * high-dpi screen, and it is a power of two, which is what the mipmap chain that keeps
+ * the downscale from shimmering wants. Square, because the artwork is
+ * (`viewBox="0 0 512 512"` throughout the set) — and one that is not simply sits centred
+ * inside the square, undistorted, since an SVG scaled into a box keeps its aspect ratio.
+ */
+const ICON_RASTER_PX = 256;
 
 /** Lifetime of a strike slash overlay (ms). */
 const SLASH_MS = 420;
@@ -506,7 +540,13 @@ export class MugenBoard {
 			width,
 			height,
 			backgroundAlpha: 0,
-			antialias: false,
+			// On, for the drawn shapes: the trait discs, the order buttons' rounded corners
+			// and the slashes are all geometry with a curve or a diagonal in them, and with
+			// this off every one of those edges is a staircase — which the scaling this canvas
+			// then goes through smears into a soft fringe rather than tidying up. It costs the
+			// characters nothing: a sprite is an axis-aligned quad, and how its artwork is
+			// sampled is its texture's own business (`nearest`, set per frame sheet), not this.
+			antialias: true,
 			roundPixels: true
 		});
 		// The host can unmount while the boot is in flight (combat closed as it opens).
@@ -1799,8 +1839,12 @@ export class MugenBoard {
 		const container = new Container();
 		this.app!.stage.addChild(container);
 		const tint = combatColorHex(color);
-		const size = actor.displayWidth * TRAIT_ICON_RATIO;
-		const step = size * (1 + TRAIT_SPACING_RATIO);
+		// One disc, one size, on every fighter — see TRAIT_DISC_PX. The mark's box *is* the
+		// disc, so the glyph is placed and fitted against the coin it sits on rather than
+		// against a box the coin then overflows.
+		const disc = TRAIT_DISC_PX;
+		const step = disc * (1 + TRAIT_SPACING_RATIO);
+		const glyphBox = disc * TRAIT_GLYPH_RATIO;
 
 		const marks = icons.map((url, index) => {
 			// Laid out rightward from the corner, so a compound's second mark reads left
@@ -1808,25 +1852,27 @@ export class MugenBoard {
 			const mark = new Container();
 			mark.x = index * step;
 
-			const disc = new Graphics();
-			disc.circle(size / 2, size / 2, size * TRAIT_DISC_RATIO);
-			disc.fill({ color: 0xffffff });
+			const coin = new Graphics();
+			coin.circle(disc / 2, disc / 2, disc / 2);
+			coin.fill({ color: 0xffffff });
 
 			const glyph = new Sprite(Texture.EMPTY);
 			// Centred on the disc, so a glyph wider than it is tall still sits in the
 			// middle of its coin rather than hanging off the top of it.
 			glyph.anchor.set(0.5);
-			glyph.position.set(size / 2, size / 2);
+			glyph.position.set(disc / 2, disc / 2);
 			// Tint only ever darkens, so the artwork is white and the tint is the colour.
 			glyph.tint = tint;
-			mark.addChild(disc, glyph);
+			mark.addChild(coin, glyph);
 			container.addChild(mark);
 
 			void this.loadIcon(url).then((texture) => {
 				// The badge may have been rebuilt (or the board torn down) while loading.
 				if (!texture || glyph.destroyed) return;
 				glyph.texture = texture;
-				glyph.scale.set(size / Math.max(texture.width, texture.height));
+				// The raster is square (see ICON_RASTER_PX), so this is one scale for both
+				// axes and the artwork lands inside the rim on every side.
+				glyph.scale.set(glyphBox / Math.max(texture.width, texture.height));
 			});
 			return mark;
 		});
@@ -1859,13 +1905,37 @@ export class MugenBoard {
 		badge.container.destroy({ children: true });
 	}
 
-	/** Load (and cache) one button glyph. Resolves to null if it cannot be had, so a
-	 * missing icon costs the button its picture and nothing else. */
+	/**
+	 * Load (and cache) one icon glyph, rasterised into a known square at a resolution
+	 * worth looking at. Resolves to null if it cannot be had, so a missing icon costs the
+	 * mark its picture and nothing else.
+	 *
+	 * The size is given rather than taken from the file, because a file's own `width` is
+	 * not a statement about how much resolution the artwork in it deserves — see
+	 * {@link ICON_RASTER_PX} for what taking it was costing. Mipmaps are asked for with it:
+	 * a 256px glyph drawn at about 48 is a heavy minification, and sampling one straight
+	 * off the full-size bitmap picks a sparse scatter of its pixels, which is what makes
+	 * fine artwork crawl and sparkle as the thing it is pinned to moves.
+	 *
+	 * One texture serves every mark that names the same glyph — the trait discs and the
+	 * order buttons both come through here — so it is rasterised for the largest of them
+	 * and each scales the one bitmap down to its own size.
+	 */
 	private async loadIcon(url: string): Promise<Texture | null> {
 		const cached = this.iconTextures.get(url);
 		if (cached) return cached;
 		try {
-			const texture = await Assets.load<Texture>(url);
+			const texture = await Assets.load<Texture>({
+				src: url,
+				// `width`/`height` are what the SVG parser rasterises into; the rest is passed
+				// on to the texture source it builds around that bitmap.
+				data: {
+					width: ICON_RASTER_PX,
+					height: ICON_RASTER_PX,
+					autoGenerateMipmaps: true,
+					scaleMode: 'linear'
+				}
+			});
 			this.iconTextures.set(url, texture);
 			return texture;
 		} catch {
