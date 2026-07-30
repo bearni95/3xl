@@ -1,0 +1,184 @@
+import { Router } from 'express';
+import { readFile, writeFile, readdir, access } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+	ACHIEVEMENT_ID_PATTERN,
+	ACHIEVEMENT_ICON_PATTERN,
+	ACHIEVEMENT_NAME_MAX_LENGTH,
+	ACHIEVEMENT_DESCRIPTION_MAX_LENGTH,
+	NON_GAME_ICON_FOLDERS,
+	type Achievement,
+	type AchievementsCollection
+} from '@3xl/shared/types/achievement.type';
+import { asyncHandler, httpError } from '../http-error';
+
+/**
+ * Read/write API for the achievement collection stored as JSON in the @3xl/data
+ * package under `public/achievements.json` (served to the apps at
+ * `/data/achievements.json`). The admin `/achievements` screen calls this to
+ * author badges straight into the git tree.
+ *
+ * Mirrors ./shows: one collection file rather than a folder per id, upserted by
+ * id. Supabase holds only the ids — see ./achievement-templates — so everything
+ * a badge *says* is written here and nowhere else.
+ *
+ * `GET /icons` lists the game-icons.net glyphs an achievement may use, read off
+ * @3xl/assets' `public/icons/` at request time; the same directory listing backs
+ * the icon validation below, so the picker can never offer a glyph the save
+ * would then refuse.
+ */
+
+// packages/backend/src/routes → packages/data / packages/assets. Resolved from
+// this file's location so the process cwd doesn't matter.
+const ACHIEVEMENTS_PATH = fileURLToPath(
+	new URL('../../../data/public/achievements.json', import.meta.url)
+);
+const ICONS_DIR = fileURLToPath(new URL('../../../assets/public/icons', import.meta.url));
+
+const EMPTY: AchievementsCollection = { achievements: [] };
+
+/** Read the collection, returning an empty one when the file doesn't exist yet. */
+async function readCollection(): Promise<AchievementsCollection> {
+	try {
+		const raw = await readFile(ACHIEVEMENTS_PATH, 'utf-8');
+		const parsed = JSON.parse(raw) as AchievementsCollection;
+		return Array.isArray(parsed?.achievements) ? parsed : EMPTY;
+	} catch {
+		return EMPTY;
+	}
+}
+
+/** Pretty-print with tabs + trailing newline to match the checked-in JSON style. */
+async function writeCollection(collection: AchievementsCollection): Promise<void> {
+	await writeFile(ACHIEVEMENTS_PATH, JSON.stringify(collection, null, '\t') + '\n', 'utf-8');
+}
+
+/**
+ * Every game-icons.net glyph in @3xl/assets, as `<artist>/<slug>`, sorted. The
+ * `shows` folder is left out: those are Noun Project glyphs that each stand for
+ * one show, so offering them here would put a show's mark on a badge.
+ */
+export async function listGameIcons(): Promise<string[]> {
+	const names: string[] = [];
+	let folders: string[];
+	try {
+		folders = (await readdir(ICONS_DIR, { withFileTypes: true }))
+			.filter((entry) => entry.isDirectory() && !NON_GAME_ICON_FOLDERS.includes(entry.name))
+			.map((entry) => entry.name);
+	} catch {
+		return names;
+	}
+	for (const folder of folders) {
+		const files = await readdir(resolve(ICONS_DIR, folder));
+		for (const file of files) {
+			if (file.endsWith('.svg')) names.push(`${folder}/${file.slice(0, -4)}`);
+		}
+	}
+	return names.sort();
+}
+
+/** Whether `<folder>/<slug>` names a glyph that is actually on disk and offerable. */
+async function iconExists(icon: string): Promise<boolean> {
+	// The pattern already bars dots and extra separators, so this cannot escape
+	// ICONS_DIR; the folder check keeps the show set out.
+	if (!ACHIEVEMENT_ICON_PATTERN.test(icon)) return false;
+	const [folder, slug] = icon.split('/');
+	if (NON_GAME_ICON_FOLDERS.includes(folder)) return false;
+	try {
+		await access(resolve(ICONS_DIR, folder, `${slug}.svg`));
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Narrow an unknown POST body to an Achievement. Everything not named here is
+ * dropped, so a crafted body can't smuggle extra fields into the git tree.
+ */
+async function validate(body: unknown): Promise<Achievement> {
+	const draft = body as Partial<Achievement>;
+	if (!draft || typeof draft !== 'object') httpError(400, 'Body must be an object');
+
+	const id = typeof draft.id === 'string' ? draft.id.trim() : '';
+	if (!ACHIEVEMENT_ID_PATTERN.test(id)) {
+		httpError(400, `Invalid achievement id "${id}" — lowercase letters, digits and hyphens only`);
+	}
+
+	const name = typeof draft.name === 'string' ? draft.name.trim() : '';
+	if (!name) httpError(400, 'Name cannot be empty');
+	if (name.length > ACHIEVEMENT_NAME_MAX_LENGTH) {
+		httpError(400, `Name cannot be longer than ${ACHIEVEMENT_NAME_MAX_LENGTH} characters`);
+	}
+
+	const description = typeof draft.description === 'string' ? draft.description.trim() : '';
+	if (!description) httpError(400, 'Description cannot be empty');
+	if (description.length > ACHIEVEMENT_DESCRIPTION_MAX_LENGTH) {
+		httpError(
+			400,
+			`Description cannot be longer than ${ACHIEVEMENT_DESCRIPTION_MAX_LENGTH} characters`
+		);
+	}
+
+	const icon = typeof draft.icon === 'string' ? draft.icon.trim() : '';
+	if (!(await iconExists(icon))) {
+		httpError(400, `Unknown icon "${icon}" — pick one of the game-icons in @3xl/assets`);
+	}
+
+	return { id, name, description, icon };
+}
+
+export const achievementsRouter = Router();
+
+// GET /api/achievements/icons — the pickable glyphs, for the admin's picker. The
+// artwork itself is not served from here: each app already mounts @3xl/assets'
+// public/ at /assets, so a name from this list is an <img src> away.
+achievementsRouter.get(
+	'/icons',
+	asyncHandler(async (_req, res) => {
+		res.json({ icons: await listGameIcons() });
+	})
+);
+
+// GET /api/achievements — the whole authored collection.
+achievementsRouter.get(
+	'/',
+	asyncHandler(async (_req, res) => {
+		res.json(await readCollection());
+	})
+);
+
+// POST /api/achievements — upsert one achievement (keyed by id). Returns the
+// updated collection so the admin re-renders from what actually landed on disk.
+achievementsRouter.post(
+	'/',
+	asyncHandler(async (req, res) => {
+		const achievement = await validate(req.body);
+		const collection = await readCollection();
+		const index = collection.achievements.findIndex((a) => a.id === achievement.id);
+		if (index >= 0) collection.achievements[index] = achievement;
+		else collection.achievements.push(achievement);
+		await writeCollection(collection);
+		res.json(collection);
+	})
+);
+
+// DELETE /api/achievements/:id — drop one from the git tree. Its Supabase row
+// (and every award of it) survives until the next sync, which is what reports
+// the removal — see ./achievement-templates.
+achievementsRouter.delete(
+	'/:id',
+	asyncHandler(async (req, res) => {
+		const id = String(req.params.id);
+		if (!ACHIEVEMENT_ID_PATTERN.test(id)) httpError(400, `Invalid achievement id: ${id}`);
+		const collection = await readCollection();
+		const remaining = collection.achievements.filter((a) => a.id !== id);
+		if (remaining.length === collection.achievements.length) {
+			httpError(404, `No achievement "${id}"`);
+		}
+		const updated: AchievementsCollection = { achievements: remaining };
+		await writeCollection(updated);
+		res.json(updated);
+	})
+);

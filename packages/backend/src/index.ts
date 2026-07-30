@@ -6,6 +6,8 @@ import { charactersRouter } from './routes/characters';
 import { characterTemplatesRouter } from './routes/character-templates';
 import { showsRouter } from './routes/shows';
 import { showTemplatesRouter, ensureTables } from './routes/show-templates';
+import { achievementsRouter } from './routes/achievements';
+import { achievementTemplatesRouter } from './routes/achievement-templates';
 import { festivitiesRouter } from './routes/festivities';
 import { usersRouter } from './routes/users';
 import { statsRouter } from './routes/stats';
@@ -32,7 +34,9 @@ const app = express();
 app.use(
 	cors({
 		origin: [ADMIN_ORIGIN, FRONTEND_ORIGIN],
-		methods: ['GET', 'POST', 'PUT'],
+		// DELETE is here for the admin's achievements screen, the one authored
+		// collection whose entries can be retired as well as written.
+		methods: ['GET', 'POST', 'PUT', 'DELETE'],
 		allowedHeaders: ['content-type']
 	})
 );
@@ -45,6 +49,8 @@ app.use('/api/characters', charactersRouter);
 app.use('/api/character-templates', characterTemplatesRouter);
 app.use('/api/shows', showsRouter);
 app.use('/api/show-templates', showTemplatesRouter);
+app.use('/api/achievements', achievementsRouter);
+app.use('/api/achievement-templates', achievementTemplatesRouter);
 app.use('/api/festivities', festivitiesRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/stats', statsRouter);

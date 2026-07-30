@@ -79,7 +79,10 @@ interchangeable:
   background path and keep the white before committing it.
 
 Inlining a canvas glyph would put white on white, which is why `icon-markup.ts`'s
-glob deliberately takes only the show set.
+glob deliberately takes only the show set. The admin's achievement editor is the one
+place a game-icons glyph is shown *outside* a canvas — it stays an `<img>` by URL and
+is always given a dark tile to stand on (`GameIcon.svelte`), because the white it
+carries is the canvas's requirement and is not negotiable from a page.
 
 **Do not hand-edit generated files** (`registry.generated.ts`, `manifest.json`,
 `mugen-moves.json`, `public/geo/*.json`, `public/icons/shows/*`) or decoded assets —
@@ -118,7 +121,8 @@ src/
 Frontend routes: `/` (home), `/map` (Països Catalans map), `/roster` (the player's claimed
 cards). Neither claiming nor combat has a route of its own — the booster packs live on the
 map's right-hand panel (its Booster tab), and `CombatArena` is hosted in a panel over the
-map (the Challenge button on a municipality). Admin routes: `/characters` (definition editor) and `/shows` (TMDB browser).
+map (the Challenge button on a municipality). Admin routes: `/characters` (definition editor), `/shows` (TMDB browser) and
+`/achievements` (badge editor + Supabase id sync).
 
 **Types, utils, and adapters no longer live in the apps** — they moved to `@3xl/shared`
 (see below). Only `components/`, `routes/`, `services/`, `css/`, and `i18n/` are per-app.
@@ -192,6 +196,21 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   (`SUPABASE_DB_KEY`, host derived from `PUBLIC_SUPABASE_URL`) and auto-creates the table;
   the admin `/characters` screen visualises the local↔remote diff and triggers the manual
   sync. `packages/backend/supabase/character_templates.sql` is kept for reference only.
+- `GET/POST /api/achievements` + `DELETE /api/achievements/:id` — read/upsert/retire one
+  achievement in `@3xl/data`'s `public/achievements.json` (glyph + name + description),
+  validated against `@3xl/shared/types/achievement.type`. `GET /api/achievements/icons`
+  lists the game-icons.net glyphs an achievement may use, read off `@3xl/assets`'
+  `public/icons/<artist>/` — the same listing the save validates against, so the admin's
+  picker can never offer a glyph the save would refuse.
+- `GET /api/achievement-templates` + `POST /api/achievement-templates/sync` — mirror the
+  local achievement **ids** into Supabase's `achievement_templates`, which holds nothing
+  else: a badge's wording lives only in the JSON, so it can never go stale up there. The
+  table exists to be the FK target of `player_achievements` (who holds what) — world-readable,
+  with no client write policy at all, so awarding will come from a security-definer RPC.
+  Retiring a badge locally and syncing deletes the row *and* every award of it (cascade);
+  `GET /api/achievement-templates/holders` reports the per-badge holder count so the admin
+  can see that cost first. Provisions its own tables;
+  `packages/backend/supabase/achievement_templates.sql` is kept for reference only.
 - `/api/tmdb/*` — proxy for the admin `/shows` screen. Keeps the TMDB key server-side and
   **disk-caches** every search response, image-list, and image binary under
   `packages/backend/.cache/` (git-ignored) so TMDB is never queried twice for the same thing.

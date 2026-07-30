@@ -1,0 +1,105 @@
+<script lang="ts">
+	import classNames from 'classnames';
+	import { createEventDispatcher } from 'svelte';
+	import capitalize from '$utils/string/capitalize';
+	import GameIcon from '$components/core/GameIcon.svelte';
+
+	// Every pickable glyph, as `<artist>/<slug>`, from GET /api/achievements/icons
+	// — the same directory listing the save validates against.
+	export let icons: string[] = [];
+	export let selected: string = '';
+	export let open: boolean = false;
+
+	const dispatch = createEventDispatcher<{ select: { icon: string }; close: void }>();
+
+	let query = '';
+
+	// Each opening starts from the whole set rather than from whatever was typed
+	// the last time the modal was up. `query` is only assigned here, so this runs
+	// on `open` alone and typing doesn't clear itself.
+	$: if (open) query = '';
+
+	$: needle = query.trim().toLowerCase();
+	$: filtered = needle ? icons.filter((icon) => icon.toLowerCase().includes(needle)) : icons;
+
+	/** `lorc/bordered-shield` → "Bordered Shield", the artist kept as its own line. */
+	function label(icon: string): string {
+		return capitalize(icon.split('/')[1] ?? icon);
+	}
+
+	function artist(icon: string): string {
+		return icon.split('/')[0] ?? '';
+	}
+
+	function choose(icon: string): void {
+		dispatch('select', { icon });
+	}
+
+	function handleKeydown(event: KeyboardEvent): void {
+		if (open && event.key === 'Escape') dispatch('close');
+	}
+</script>
+
+<svelte:window on:keydown={handleKeydown} />
+
+{#if open}
+	<div class="modal modal-open" role="dialog" aria-modal="true" aria-label="Choose an icon">
+		<div class="modal-box flex max-h-[85vh] max-w-3xl flex-col gap-4">
+			<div class="flex items-start justify-between gap-3">
+				<div>
+					<h3 class="font-semibold">Choose an icon</h3>
+					<p class="text-base-content/60 text-xs">
+						The game-icons.net artwork already in <code class="font-mono">@3xl/assets</code>
+						({icons.length} available). Drop an SVG into
+						<code class="font-mono">public/icons/&lt;artist&gt;/</code> to add one.
+					</p>
+				</div>
+				<button
+					type="button"
+					class="btn btn-sm btn-circle btn-ghost"
+					on:click={() => dispatch('close')}
+					aria-label="Close icon picker"
+				>
+					✕
+				</button>
+			</div>
+
+			<input
+				class="input input-bordered input-sm w-full"
+				type="search"
+				placeholder="Filter icons…"
+				bind:value={query}
+			/>
+
+			{#if filtered.length === 0}
+				<p class="text-base-content/50 py-6 text-center text-sm">No icon matches “{query}”.</p>
+			{:else}
+				<div class="grid grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4 md:grid-cols-6">
+					{#each filtered as icon (icon)}
+						<button
+							type="button"
+							class={classNames(
+								'flex flex-col items-center gap-1 rounded-box border p-2 text-center transition',
+								icon === selected
+									? 'border-primary bg-primary/10'
+									: 'border-transparent hover:bg-base-200'
+							)}
+							on:click={() => choose(icon)}
+							aria-pressed={icon === selected}
+						>
+							<GameIcon name={icon} size="size-14" />
+							<span class="w-full truncate text-xs" title={icon}>{label(icon)}</span>
+							<span class="text-base-content/50 w-full truncate text-[10px]">{artist(icon)}</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
+		<button
+			type="button"
+			class="modal-backdrop"
+			on:click={() => dispatch('close')}
+			aria-label="Close icon picker"
+		></button>
+	</div>
+{/if}
