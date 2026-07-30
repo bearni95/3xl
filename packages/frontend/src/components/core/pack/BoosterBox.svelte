@@ -1,76 +1,14 @@
-<script context="module" lang="ts">
-	import { SpawnBox } from '$types/character-spawn.type';
-
-	// The two stocks a box is printed on, and the four tones of each: the stock itself and
-	// three steps off it, a twentieth, an eighth and a fifth of the way to the other end
-	// (#0f0f0f / #1f1f1f / #333333 over black, #f0f0f0 / #e0e0e0 / #cccccc under white).
-	// They are written as the colours they are rather than as veils laid over the stock,
-	// because a veil can only tint a surface a single flat amount: the front and the two
-	// grounds over the picture are gradients, and a gradient needs its ends to be colours.
-	//
-	// Every surface takes its step off the same scale, in the order a light above and to the
-	// left would leave them — the top furthest from the stock, then the left face, then the
-	// right, and the front graded from the left face's step at its head down to the pure
-	// stock at its foot. Nothing on the box is one flat black or one flat white any more; the
-	// front is where that shows, since the picture covers all of it but the frame and the
-	// frame is what the eye reads the material off.
-	//
-	// The two grounds over the picture are drawn from the same scale, each starting in the
-	// tone the front actually is where it sits — the head in the front's own head tone, the
-	// foot in the stock the front reaches at its foot. That is what lets the poster's top and
-	// bottom edges dissolve into the frame instead of ending on a line against it. Both are
-	// written as ending in their own colour at zero alpha, which is a note to a reader rather
-	// than to the browser: a gradient interpolates premultiplied, so a stop at zero alpha
-	// contributes no colour at all and the fall is through the tone it started in whatever is
-	// named at the far end. (Tailwind compiles the alpha-zero end of an arbitrary colour to a
-	// transparent black; it renders the same, as it must.)
-	//
-	// The scale turns over with the stock and the order survives the turn: on black card each
-	// step is lighter than the last, on white card darker, and either way the top is the
-	// furthest from the front and the right face the nearest.
-	//
-	// In module scope because it is a fact about the two stocks and not about any one box: every
-	// box drawn on the page reads the same record, and the squares each surface breaks into when
-	// the box is opened are painted that surface's own tone off it rather than off a second copy
-	// of these hexes.
-	const PACK_STOCK: Record<
-		SpawnBox,
-		{
-			top: string;
-			left: string;
-			right: string;
-			front: string;
-			head: string;
-			foot: string;
-			ink: string;
-		}
-	> = {
-		[SpawnBox.White]: {
-			top: 'bg-[#cccccc]',
-			left: 'bg-[#e0e0e0]',
-			right: 'bg-[#f0f0f0]',
-			front: 'from-[#e0e0e0] to-white',
-			head: 'from-[#e0e0e0] to-[#e0e0e0]/0',
-			foot: 'from-white to-white/0',
-			ink: 'text-black'
-		},
-		[SpawnBox.Black]: {
-			top: 'bg-[#333333]',
-			left: 'bg-[#1f1f1f]',
-			right: 'bg-[#0f0f0f]',
-			front: 'from-[#1f1f1f] to-black',
-			head: 'from-[#1f1f1f] to-[#1f1f1f]/0',
-			foot: 'from-black to-black/0',
-			ink: 'text-white'
-		}
-	};
-</script>
-
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher, onDestroy } from 'svelte';
+	import { SpawnBox } from '$types/character-spawn.type';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
 	import VeilBlock from '$components/core/VeilBlock.svelte';
+	// The four tones every surface of this box takes its step off, as the classes that fill
+	// them. The same file holds them as hexes for the canvas that draws this same box on the
+	// booster sheet, which is why they no longer live in this component (see box-stock.ts,
+	// and BoosterBoxSprite for the canvas side).
+	import { PACK_STOCK } from './box-stock';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { showIconName } from '$utils/show/show-icon';
 	import { spawnYearLabel } from '$utils/spawn/year';
