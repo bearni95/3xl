@@ -436,6 +436,15 @@
 	// there. A province polygon also answers from its territory: the tree drops the
 	// province tier where a territory holds a single one (Illes Balears, Catalunya
 	// Nord, Andorra, l'Alguer), and there the province polygon IS the territory.
+	// How a feature of `tier` names itself: a municipality by its feature id, any
+	// grouping by its NAME (see RegionColors). The one place that spelling is written,
+	// so the colour lookup and the selection test below ask the same question of a shape.
+	function featureKey(tier: RegionType, feature: GeoJSON.Feature | undefined): string | null {
+		const props = feature?.properties;
+		if (!props) return null;
+		return tier === 'Municipality' ? String(props.id ?? '') : String(props.name ?? '');
+	}
+
 	function featureColor(
 		tier: RegionType,
 		feature: GeoJSON.Feature | undefined,
@@ -443,7 +452,7 @@
 	): SpawnColor | null {
 		const props = feature?.properties;
 		if (!props) return null;
-		const key = tier === 'Municipality' ? String(props.id ?? '') : String(props.name ?? '');
+		const key = featureKey(tier, feature)!;
 		const own = colors[tier].get(key);
 		if (own) return own;
 		if (tier === 'Province' && props.territory) {
@@ -452,28 +461,53 @@
 		return null;
 	}
 
+	// The opened region as a shape names itself — its tier plus the key its polygons
+	// carry (see featureKey) — which is what lets a paint ask "is this the one that was
+	// picked?" without knowing anything about the tree. Null with nothing picked, and
+	// null for a key no node answers to.
+	function selectedFeature(
+		chosen: string | null,
+		nodes: RegionNode[]
+	): { tier: RegionType; key: string } | null {
+		if (!chosen) return null;
+		const node = findNode(nodes, chosen);
+		if (!node) return null;
+		return { tier: node.type, key: node.type === 'Municipality' ? node.key : node.name };
+	}
+
+	$: pickedFeature = selectedFeature(selected, regionNodes);
+
 	// One tier's paint: a solid white line of this tier's weight, plus — on the tier
-	// the map is imaging — a wash of the region's own colour at 90% across the shape.
+	// the map is imaging — a wash of the region's own colour across the shape.
 	// Only that one tier washes: the layers stack coarsest-on-top, so a territory
 	// filling too would bury every division under it, and the imaged tier is exactly
 	// the one whose pins are on screen, so the polygons say in colour what the pins
 	// over them already say.
 	//
-	// The selected town is no exception: a town is drawn on the map the same whether it
-	// is the one being looked at or not (the side that used to stand on its shape, and
-	// the bare polygon that made room for it, are both in the panel over the map's
-	// corner now), so picking a town repaints nothing.
-	function tierStyle(tier: RegionType, weight: number, colors: RegionColors, imaged: number) {
+	// The wash sits at half strength, and only the opened region's own shape is taken up
+	// to 90%: a colour is a region's team, and every region on screen flying its colour
+	// at full opacity left the one being looked at indistinguishable from its neighbours.
+	// The boost is by definition confined to the imaged tier — no other tier fills at all —
+	// so picking a comarca brightens nothing while the map is drawing municipalities, and
+	// its own shape lights up as soon as the zoom walks back out to the tier it belongs to.
+	function tierStyle(
+		tier: RegionType,
+		weight: number,
+		colors: RegionColors,
+		imaged: number,
+		picked: { tier: RegionType; key: string } | null
+	) {
 		return (feature?: GeoJSON.Feature) => {
 			const color = featureColor(tier, feature, colors);
 			const washes = color != null && tierRank[tier] === imaged;
+			const isPicked = picked?.tier === tier && picked.key === featureKey(tier, feature);
 			return {
 				color: lineColor,
 				weight,
 				opacity: 1,
 				fill: washes,
 				fillColor: washes ? SPAWN_COLOR_CSS[color!] : lineColor,
-				fillOpacity: 0.9
+				fillOpacity: isPicked ? 0.9 : 0.5
 			};
 		};
 	}
@@ -492,28 +526,28 @@
 	// imaged one. All decorative: the wash is not something to click or hover, so no
 	// layer captures pointer events and the pins and boxes own every click.
 	//
-	// Rebuilt (a fresh array) whenever a region changes colour or the map images another
-	// tier — that is what repaints the layers, which are fetched only once. Not on a
-	// selection: which town is open makes no difference to any shape.
+	// Rebuilt (a fresh array) whenever a region changes colour, the map images another
+	// tier, or another region is opened — that is what repaints the layers, which are
+	// fetched only once.
 	$: overlays = [
 		{
 			url: '/data/geo/municipis.json',
-			style: tierStyle('Municipality', 1, regionColors, hiddenRank),
+			style: tierStyle('Municipality', 1, regionColors, hiddenRank, pickedFeature),
 			interactive: false
 		},
 		{
 			url: '/data/geo/comarques.json',
-			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank),
+			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank, pickedFeature),
 			interactive: false
 		},
 		{
 			url: '/data/geo/provincies.json',
-			style: tierStyle('Province', 2, regionColors, hiddenRank),
+			style: tierStyle('Province', 2, regionColors, hiddenRank, pickedFeature),
 			interactive: false
 		},
 		{
 			url: '/data/geo/territoris.json',
-			style: tierStyle('Territory', 3, regionColors, hiddenRank),
+			style: tierStyle('Territory', 3, regionColors, hiddenRank, pickedFeature),
 			interactive: false
 		}
 	] satisfies MapOverlay[];
@@ -1736,10 +1770,10 @@
 				? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
 				: null;
 
-	// Selecting a region doesn't repaint its polygons — a shape's colour says which
-	// region it belongs to, not which one is open — so the open selection reads from
-	// the map purely through its framing (focusBounds) and its pins, which still fade
-	// outside it.
+	// Selecting a region doesn't recolour its polygons — a shape's colour says which
+	// region it belongs to, not which one is open — it only brings the shape's own wash
+	// forward (see tierStyle), on top of the framing (focusBounds) and the pins, which
+	// still fade outside it.
 </script>
 
 <svelte:window on:pointerdown={onWindowPointerDown} on:keydown={onWindowKeydown} />
@@ -2044,10 +2078,14 @@
 	Its own edge only: no wash over the map behind it, nothing dimmed, because a menu this
 	size covers a strip of the map and the rest is still there to be read — and being read is
 	the reason it is a menu rather than a column. The strip it does cover is not quite covered
-	either: the surface is 80% of itself, the same share the breadcrumb bar takes, so the
-	terrain under the menu stays faintly there and the menu reads as something over the map
-	rather than as a wall at the side of it. Both are still plates and not captions laid on the
-	imagery — a fifth of the way through is not enough to make the buttons hard to read.
+	either, and it is graded exactly as the full-view sheets are (see FullScreenModal): base-100
+	at full strength at the top, nine tenths of it at the foot, so the terrain comes back under
+	the last of the menu and the whole thing reads as something laid over the map rather than as
+	a wall at the side of it. The gradient is the whole of the paint — a background colour under
+	a stop with alpha in it would show through and make the foot opaque again, which is the one
+	thing the grade is saying. What is written on the menu is not left to it: the block of
+	buttons carries its own solid base-100 (see below), so the map comes through beside the
+	labels and never behind them.
 	A press anywhere the menu is not, or Escape, puts it away; so does picking any of its
 	buttons, each of which raises a sheet over the whole map anyway.
 	z-[1000] clears the plates over the map (z-[900]) and stays under the full-view sheets
@@ -2058,7 +2096,7 @@
 		bind:this={menuEl}
 		aria-label="Menu"
 		transition:fly={{ x: '100%', duration: 200, opacity: 1 }}
-		class="fixed inset-y-0 right-0 z-[1000] flex w-80 max-w-[85vw] flex-col gap-4 overflow-y-auto border-l border-base-300 bg-base-100/80 p-4 shadow-2xl"
+		class="fixed inset-y-0 right-0 z-[1000] flex w-80 max-w-[85vw] flex-col gap-4 overflow-y-auto border-l border-base-300 bg-gradient-to-b from-base-100 to-base-100/90 p-4 shadow-2xl"
 	>
 		<!-- The way out, at the top of the menu and at the edge it docks to: the burger that
 			summoned it is a press away on the bar behind it, and a menu whose only dismissal is
