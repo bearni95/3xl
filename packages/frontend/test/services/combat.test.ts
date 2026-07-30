@@ -250,7 +250,7 @@ describe('the stand-off', () => {
 			expect(fighterOf(get(controller), 'p0').down).toBe(false);
 		});
 
-		it('leaves a shooter open — two who shoot each other both fall', async () => {
+		it('cancels the two shots of a lane that fired both ways', async () => {
 			const controller = new CombatController([
 				seed('r0', 'error', 'yellow'),
 				seed('p0', 'info', 'yellow')
@@ -259,9 +259,30 @@ describe('the stand-off', () => {
 			controller.setAction('p0', 'shoot');
 			await playTurn(controller);
 			const state = get(controller);
-			expect(fighterOf(state, 'r0').down).toBe(true);
-			expect(fighterOf(state, 'p0').down).toBe(true);
-			expect(state.outcome).toBe('draw');
+			// Both fired at the same moment, so the shots met in the lane: neither reached
+			// anybody, and neither fighter is down. The charges are gone all the same — they
+			// paid for bullets, and the bullets were fired.
+			expect(fighterOf(state, 'r0').down).toBe(false);
+			expect(fighterOf(state, 'p0').down).toBe(false);
+			expect(fighterOf(state, 'p0').charges).toBe(0);
+			expect(state.log.some((line) => line.includes('meet in the lane'))).toBe(true);
+			// Nothing was settled, so the fight is still on.
+			expect(state.outcome).toBeNull();
+			expect(state.wins).toEqual({ info: 0, error: 0 });
+		});
+
+		it('leaves a guard in hand when a shot was stopped by another shot', async () => {
+			const controller = new CombatController([
+				seed('r0', 'error', 'yellow'),
+				seed('p0', 'info', 'blue') // carries the free guard
+			]);
+			await openWithCharges(controller);
+			controller.setAction('p0', 'shoot');
+			await playTurn(controller);
+			// Its own bullet is what stopped the one coming for it, so nothing was turned
+			// aside by anything else and the gift is still there.
+			expect(fighterOf(get(controller), 'p0').spent).toEqual([]);
+			expect(fighterOf(get(controller), 'p0').down).toBe(false);
 		});
 
 		it('takes a fighter down through the lane it stands in', async () => {
@@ -332,10 +353,11 @@ describe('the stand-off', () => {
 				{ icon: ORDER_ICONS.charge, spent: false }
 			]);
 
-			// A turn spent firing takes the guard, which turns the rival's answering bullet
+			// A turn spent loading again takes the guard, which turns the rival's bullet
 			// aside — and leaves the charge exactly where it was: the fighter was full when
-			// the charges were banked, so there was nowhere to put it.
-			controller.setAction('p0', 'shoot');
+			// the charges were banked, so there was nowhere to put it. (Firing back would
+			// have stopped that bullet with a bullet and left the guard in hand too.)
+			controller.setAction('p0', 'charge');
 			await playTurn(controller);
 			expect(badgeOf(log, 'p0')?.traits).toEqual([
 				{ icon: ORDER_ICONS.defend, spent: true },
@@ -539,8 +561,9 @@ describe('the stand-off', () => {
 
 		it('brings both of a compound in the same turn, the charge first', async () => {
 			const controller = new CombatController([
-				// Red, so it loads on turn one and has no guard of its own to hide behind.
-				seed('r0', 'error', 'red'),
+				// Blue, so it fires nothing back on the opening turn and the free shot below
+				// arrives at something: its own free guard, which is what stops it.
+				seed('r0', 'error', 'blue'),
 				seed('p0', 'info', 'orange') // orange = red + yellow: a free shot and a free charge
 			]);
 			// Told to do nothing but cover, on the opening turn, with nothing banked.
@@ -554,10 +577,11 @@ describe('the stand-off', () => {
 			expect(fighterOf(state, 'p0').charges).toBe(0);
 			expect(state.log.some((line) => line.includes('free charge'))).toBe(true);
 			expect(state.log.some((line) => line.includes('free shot'))).toBe(true);
-			// The cover it was actually ordered to give held, and the rival is down to a
-			// bullet nobody ordered.
+			// And the bullet was a bullet: it reached the rival, which spent its own gift
+			// turning it aside.
+			expect(fighterOf(state, 'r0').spent).toEqual(['defend']);
 			expect(fighterOf(state, 'p0').down).toBe(false);
-			expect(fighterOf(state, 'r0').down).toBe(true);
+			expect(fighterOf(state, 'r0').down).toBe(false);
 		});
 
 		it("fires red's shot beside the order the fighter was given", async () => {
@@ -569,15 +593,18 @@ describe('the stand-off', () => {
 			await openWithCharges(controller);
 			const state = get(controller);
 			// Neither was ordered to shoot on that opening turn — both were ordered to load —
-			// and both are down: the charge is banked before the volley, so each fired the
-			// shot its colour owed it out of the charge it had just banked.
-			expect(fighterOf(state, 'p0').action).toBe('charge');
-			expect(fighterOf(state, 'p0').down).toBe(true);
-			expect(fighterOf(state, 'r0').down).toBe(true);
+			// and both fired all the same: the charge is banked before the volley, so each
+			// took the shot its colour owed it out of the charge it had just banked.
 			expect(fighterOf(state, 'p0').spent).toEqual(['shoot']);
 			expect(fighterOf(state, 'r0').spent).toEqual(['shoot']);
-			expect(state.log.filter((line) => line.includes('free shot'))).toHaveLength(2);
-			expect(state.outcome).toBe('draw');
+			expect(fighterOf(state, 'p0').charges).toBe(0);
+			// Two shots fired at one moment across the one lane, so they met each other and
+			// nobody was hit. A gift is an attack like any other, and cancels like one.
+			expect(state.log.some((line) => line.includes('meet in the lane'))).toBe(true);
+			expect(fighterOf(state, 'p0').down).toBe(false);
+			expect(fighterOf(state, 'r0').down).toBe(false);
+			// Nothing was settled by any of it, so the fight is asking for turn two.
+			expect(state.turn).toBe(2);
 		});
 
 		it('keeps a free charge back from a fighter that is about to fire', async () => {
@@ -824,7 +851,7 @@ describe('the stand-off', () => {
 			expect(cellSide(log.moved[0].cell.q)).toBe('red');
 		});
 
-		it('leaves the ground alone when both halves of a lane fall together', async () => {
+		it("leaves the ground alone when a lane's two shots cancel", async () => {
 			const log = boardLog();
 			const controller = new CombatController([
 				seed('r0', 'error', 'yellow'),
@@ -832,12 +859,13 @@ describe('the stand-off', () => {
 			]);
 			controller.attachBoard(fakeBoard(log));
 			await openWithCharges(controller);
-			// Both are loaded and both fire: nobody is left standing to take the cell.
+			// Both are loaded and both fire, so the two shots stop each other: nobody fell,
+			// so nobody won that ground and nobody is walked anywhere.
 			controller.setAction('p0', 'shoot');
 			await playTurn(controller);
 			const state = get(controller);
-			expect(fighterOf(state, 'r0').down).toBe(true);
-			expect(fighterOf(state, 'p0').down).toBe(true);
+			expect(fighterOf(state, 'r0').down).toBe(false);
+			expect(fighterOf(state, 'p0').down).toBe(false);
 			expect(log.moved).toEqual([]);
 		});
 
@@ -890,12 +918,14 @@ describe('the stand-off', () => {
 			expect(state.wins).toEqual({ info: 1, error: 1 });
 		});
 
-		it('gives an encounter to neither side when both of them fall', async () => {
+		it('gives an encounter to neither side while it is still standing', async () => {
 			const controller = new CombatController([
 				seed('r0', 'error', 'yellow'),
 				seed('p0', 'info', 'yellow')
 			]);
 			await openWithCharges(controller);
+			// The whole lane fired and the shots cancelled: an encounter is won by being the
+			// one left standing in it, and both of these are.
 			controller.setAction('p0', 'shoot');
 			await playTurn(controller);
 			expect(get(controller).wins).toEqual({ info: 0, error: 0 });
@@ -933,18 +963,17 @@ describe('the stand-off', () => {
 
 		it('states the player side only, standing or down', async () => {
 			const controller = new CombatController([
-				seed('r0', 'error', 'yellow'),
+				seed('r0', 'error', 'red'),
 				seed('p0', 'info', 'yellow'),
 				seed('p1', 'info', 'red')
 			]);
+			// Both lines load on the opening turn, and the rival's colour turns that into a
+			// shot P0 has nothing to answer with: its lane is settled, P1's was never
+			// anybody's (the rival line is a fighter short), so the fight is called at once.
 			await openWithCharges(controller);
-			// P0 trades shots with the rival: both fall, and P1 is left holding the field.
-			controller.setAction('p0', 'shoot');
-			controller.setAction('p1', 'charge');
-			await playTurn(controller);
 
 			const report = controller.report()!;
-			expect(report.outcome).toBe('win');
+			expect(report.outcome).toBe('lose');
 			expect(report.fighters).toHaveLength(2);
 			expect(report.fighters.map((f) => f.spawnId).sort()).toEqual(['p0', 'p1']);
 			// A fighter is standing or it is not: no half-measures either way.

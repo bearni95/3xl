@@ -16,8 +16,12 @@
  *     drawn level with each other, so a turn asks whether to fire, never at whom — and
  *     a lane whose other half has fallen simply has nobody left to shoot at. A shot
  *     that isn't turned aside takes its target down: **one hit is all it takes**,
- *     whoever it lands on. Shooting is also not defending, so two fighters who shoot
- *     each other across a lane both fall.
+ *     whoever it lands on. Two fighters who fire at each other in the same turn,
+ *     though, fire at the same *moment*: the two shots meet in the lane and cancel, so
+ *     neither reaches anybody and neither fighter falls (see
+ *     {@link CombatController.playExchange}). A bullet stops a bullet — a free shot
+ *     included, since a gift is an attack like any other — which is why a lane is never
+ *     emptied on both sides at once.
  *
  * What separates one card from another is nothing but its **colour** (see
  * `colorPassives` in @3xl/shared), and what a colour hands over is one of those very
@@ -215,6 +219,12 @@ interface Shot {
 	/** True for red's extra shot, so the log can name it as such. */
 	extra: boolean;
 }
+
+/**
+ * One thing the shooting of a turn shows: a lone shot, or the two shots of a lane whose
+ * fighters both fired — which are one event, because they happened at one moment.
+ */
+type ShotGroup = [Shot] | [Shot, Shot];
 
 /** A fighter taken down this turn, and the shot that did it. */
 interface Casualty {
@@ -493,14 +503,18 @@ export class CombatController {
 		}
 		// The bullets land in the order the fighters stand in — top→bottom down each
 		// side's line, red before blue. Nothing about a fighter makes its shot arrive
-		// sooner: the running order is the board's, not a rating's.
+		// sooner: the running order is the board's, not a rating's. The one exception is a
+		// lane that fired both ways, whose two shots are one event (see groupShots).
 
 		this.setStatus('Orders are revealed.');
 		this.showOrders(acting);
 		await pause(REVEAL_MS);
 
 		const felled: Casualty[] = [];
-		for (const shot of shots) await this.playShot(shot, felled);
+		for (const group of this.groupShots(shots)) {
+			if (group.length === 2) await this.playExchange(group[0], group[1]);
+			else await this.playShot(group[0], felled);
+		}
 
 		// The fallen have held their flinch through the rest of the volley; now the
 		// shooting is over they leave the board together.
@@ -559,6 +573,69 @@ export class CombatController {
 				this.log.push(`${fighter.name} banks a free charge.`);
 			}
 		}
+	}
+
+	/**
+	 * Sort the turn's shots into what is actually played out: mostly one shot at a time,
+	 * but a lane whose *both* fighters fired is a single event, because they fired at one
+	 * moment. Two shots pair up when each is aimed at the other's shooter, which — since
+	 * every shot goes straight across a lane — is the same thing as a lane having fired
+	 * both ways. Where the shot came from does not come into it: an ordered shot and a
+	 * free one are both attacks, so they pair like any other two.
+	 *
+	 * A fighter fires at most one shot a turn (a gift is never the order it was given, so
+	 * nobody both orders a shot and is handed one), which is why a pair is a pair and not
+	 * a tally to be worked through.
+	 */
+	private groupShots(shots: Shot[]): ShotGroup[] {
+		const groups: ShotGroup[] = [];
+		const paired = new Set<Shot>();
+		for (const shot of shots) {
+			if (paired.has(shot)) continue;
+			paired.add(shot);
+			const back = shots.find(
+				(other) =>
+					!paired.has(other) && other.shooter === shot.target && other.target === shot.shooter
+			);
+			if (back) {
+				paired.add(back);
+				groups.push([shot, back]);
+			} else {
+				groups.push([shot]);
+			}
+		}
+		return groups;
+	}
+
+	/**
+	 * A lane that fired both ways, played as the one thing it is: the two shots leave at
+	 * the same moment, meet somewhere in the lane, and cancel. Neither reaches anybody, so
+	 * neither fighter falls.
+	 *
+	 * Nothing else about the turn is touched by this. The charges are spent — they paid for
+	 * bullets, and the bullets were fired — and a free shot spent on one of them stays
+	 * spent, because stopping the shot that was coming for you is the gift doing something.
+	 * What is *not* called on is either fighter's guard: a shot stopped by another shot was
+	 * never turned aside by anything else, so a free guard is still in hand afterwards.
+	 *
+	 * Both are shown at once rather than one after the other. Taken in turn they would read
+	 * as one fighter shooting and the other answering, which is the one thing a turn given
+	 * blind never is.
+	 */
+	private async playExchange(one: Shot, two: Shot): Promise<void> {
+		const named = (shot: Shot) =>
+			shot.extra ? `${shot.shooter.name}'s free shot` : `${shot.shooter.name}'s shot`;
+		this.setStatus(`${one.shooter.name} and ${two.shooter.name} fire at once.`);
+		this.log.push(`${named(one)} and ${named(two)} meet in the lane — both come to nothing.`);
+		for (const shot of [one, two]) {
+			this.board?.showCallout(shot.shooter.id, 'CLASH', shot.shooter.color);
+		}
+		await Promise.all([
+			this.board?.shoot(one.shooter.id, one.target.id, this.shotMove(one.shooter)),
+			this.board?.shoot(two.shooter.id, two.target.id, this.shotMove(two.shooter))
+		]);
+		this.emit();
+		await pause(SHOT_BEAT_MS);
 	}
 
 	/**
