@@ -341,7 +341,7 @@
 	}
 
 	/**
-	 * A button under a fighter was tapped. The board only reports which one; what an
+	 * A button beside a fighter was tapped. The board only reports which one; what an
 	 * order means is the controller's, as it is for every other input.
 	 *
 	 * There are only three orders and each button is one of them. What a fighter's
@@ -353,9 +353,9 @@
 	}
 
 	/**
-	 * The three orders drawn under one of the player's fighters. Every one of them is
+	 * The three orders drawn beside one of the player's fighters. Every one of them is
 	 * always drawn — an order out of reach is greyed rather than dropped, so a
-	 * fighter's row never changes shape under the cursor — and all of them lock while a
+	 * fighter's column never changes shape under the cursor — and all of them lock while a
 	 * turn is playing out.
 	 */
 	function orderButtons(fighter: FighterView, phase: CombatState['phase']): BoardOrder[] {

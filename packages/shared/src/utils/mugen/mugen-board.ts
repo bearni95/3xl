@@ -212,14 +212,15 @@ const COMBAT_COLOR_HEX: Record<string, number> = {
 /** Hex for a combat colour name, defaulting to white for anything unknown. */
 export const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color] ?? 0xffffff;
 
-// --- Order buttons (drawn on the board, under the fighter they command) ------
-/** A strip's width as a multiple of the actor's nominal width, and the gap (px)
- * from the actor's feet down to the top of the strip. */
-const ORDER_WIDTH_RATIO = 1.15;
+// --- Order buttons (drawn on the board, beside the fighter they command) -----
+/** Horizontal gap (px) from the actor's right-hand side to the near edge of its
+ * column of buttons. */
 const ORDER_GAP = 8;
-/** A button's height as a fraction of its own width. */
-const ORDER_ASPECT = 0.9;
-/** Gap between buttons in a strip, as a fraction of a button's width. */
+/** A button's width as a fraction of its own height. The height is dictated by the
+ * cell the fighter stands in ({@link MugenBoard.cellSideHeight}), so the aspect is
+ * all that is left to say about a button's size. */
+const ORDER_WIDTH_RATIO = 1.11;
+/** Gap between buttons in a column, as a fraction of a button's height. */
 const ORDER_SPACING_RATIO = 0.12;
 /** The glyph's size inside a button, as a fraction of the button's height. */
 const ORDER_ICON_RATIO = 0.62;
@@ -230,15 +231,6 @@ const ORDER_IDLE_FILL = 0x1f2937;
 const ORDER_DISABLED_FILL = 0x374151;
 /** How far the glyph on a disabled button fades toward its background. */
 const ORDER_DISABLED_ALPHA = 0.35;
-/**
- * Room kept below the board for a strip of order buttons, as a multiple of the
- * near-edge cell size. The crop is taken once, before any orders exist, and the
- * strips hang below their fighter's feet — including the fighter standing on the
- * near row, whose feet *are* the bottom of the crop. Without this the buttons under
- * it would be cut off by the canvas edge. Generous enough for the largest strip a
- * near-row fighter can carry.
- */
-const ORDER_RESERVE_RATIO = 0.5;
 
 // --- Trait badges (drawn on the board, at the top-left corner of a fighter) ---
 /** A trait glyph's size, as a fraction of the fighter's nominal width. */
@@ -322,7 +314,7 @@ interface SlashEffect {
 }
 
 /**
- * One order a fighter can be given, drawn as a button under it. The board knows
+ * One order a fighter can be given, drawn as a button beside it. The board knows
  * nothing about what an order *means* — it draws what it is handed and reports which
  * one was tapped, by the caller's own id.
  */
@@ -361,10 +353,16 @@ interface OrderButton {
 	disabled: boolean;
 }
 
-/** The row of order buttons under one fighter. */
+/** The column of order buttons beside one fighter. */
 interface OrderStrip {
 	container: Container;
 	buttons: OrderButton[];
+	/**
+	 * Button height (px) the column was last laid out at — the side of the cell its
+	 * fighter was standing in. A fighter that walks into another cell is standing in
+	 * another size of cell, so this is what says the column must be measured again.
+	 */
+	height: number;
 }
 
 /** The marks of what one fighter's colour grants it — a white disc with a glyph on
@@ -426,7 +424,7 @@ interface Actor {
 	/** Floating callout (what its turn amounted to) above the actor, so a turn every
 	 * fighter acts in at once can be read one fighter at a time. Null when clear. */
 	label: Text | null;
-	/** The row of order buttons drawn under this fighter, or null when it commands
+	/** The column of order buttons drawn beside this fighter, or null when it commands
 	 * nothing (every rival, and the player's side once the fight is over). */
 	orders: OrderStrip | null;
 	/**
@@ -576,11 +574,11 @@ export class MugenBoard {
 
 	/**
 	 * Shrink the canvas to the bounding box of everything drawn (grid + characters),
-	 * so the hex grid sits flush against the left/right edges and the canvas is exactly
-	 * tall enough for the grid, the front-row characters standing below its near edge,
-	 * and the order buttons that hang below *them*. The stage is offset so the content
-	 * stays in view; the projection's design size is left untouched so hex positions
-	 * don't shift.
+	 * so the hex grid sits flush against its edges and the canvas is exactly tall enough
+	 * for the grid and the front-row characters standing below its near edge, with room
+	 * off its right-hand side for the order buttons that stand *there*. The stage is
+	 * offset so the content stays in view; the projection's design size is left untouched
+	 * so hex positions don't shift.
 	 */
 	private fitToContent(): void {
 		if (!this.app) return;
@@ -588,13 +586,13 @@ export class MugenBoard {
 		// A little breathing room so nothing sits hard against the edge (and to absorb
 		// the small per-frame bounds wobble as animations play).
 		const margin = 8;
-		// Plus standing room under the near row for the order buttons, which are hung
-		// below a fighter's feet long after this crop is taken.
-		const reserve = this.options.cellSize * ORDER_RESERVE_RATIO;
+		// Plus standing room to the right of the board for the order buttons, which are
+		// hung beside a fighter long after this crop is taken.
+		const reserve = this.orderReserve();
 		const left = Math.floor(bounds.minX - margin);
 		const top = Math.floor(bounds.minY - margin);
-		const width = Math.ceil(bounds.maxX + margin) - left;
-		const height = Math.ceil(bounds.maxY + margin + reserve) - top;
+		const width = Math.ceil(bounds.maxX + margin + reserve) - left;
+		const height = Math.ceil(bounds.maxY + margin) - top;
 		this.app.stage.position.set(-left, -top);
 		this.app.renderer.resize(width, height);
 	}
@@ -670,6 +668,37 @@ export class MugenBoard {
 		return Math.abs(
 			this.project(centre.x + half, footY).x - this.project(centre.x - half, footY).x
 		);
+	}
+
+	/**
+	 * On-screen length of the side the hex at axial [q, r] shares with its eastern
+	 * neighbour — the cell's right-hand edge, which a pointy-top hex draws vertical. It
+	 * runs from the line a character plants its feet on (the lower corners) up to the
+	 * line through the upper ones, so it is the height of the cell as read by whoever is
+	 * standing in it. Measured on the actor's *own* cell rather than on the reference
+	 * one: this is what the order buttons beside a fighter are as tall as, so a fighter
+	 * deep in the board gets buttons matching the cell it is actually in.
+	 */
+	private cellSideHeight(q: number, r: number): number {
+		const centre = this.hexCoord(q, r);
+		const half = (SQRT3 / 2) * HEX_SCALE_X; // pointy-top hex half-width: the flat side's x
+		const foot = this.project(centre.x + half, centre.y + HEX_FOOT_Y);
+		const head = this.project(centre.x + half, centre.y - HEX_FOOT_Y);
+		return Math.abs(foot.y - head.y);
+	}
+
+	/**
+	 * Width (px) to keep clear off the board's right-hand edge for a column of order
+	 * buttons. Measured rather than guessed: the widest button any cell on the board can
+	 * carry, plus the gap it stands off its fighter by. The crop is taken once, before
+	 * any orders exist, and a column hangs off its fighter's right — including a fighter
+	 * in the outermost column, whose own side *is* the right edge of the crop.
+	 */
+	private orderReserve(): number {
+		const tallest = Math.max(
+			...boardCells().map((cell) => this.cellSideHeight(cell.q, cell.r))
+		);
+		return ORDER_GAP + tallest * ORDER_WIDTH_RATIO;
 	}
 
 	/**
@@ -1607,9 +1636,10 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Give a fighter the row of orders it can be given, drawn as buttons under its
-	 * feet — where the association is unambiguous, because they are literally beneath
-	 * the character they command.
+	 * Give a fighter the orders it can be given, drawn as a column of buttons off its
+	 * right-hand side — where the association is unambiguous, because they stand
+	 * immediately beside the character they command, each one as tall as the side of the
+	 * hex it is standing next to.
 	 *
 	 * Called on every change of the fight's state, so it rebuilds only when the *set*
 	 * of orders changes and otherwise just repaints the buttons it already has: a
@@ -1683,7 +1713,8 @@ export class MugenBoard {
 			return button;
 		});
 
-		const strip: OrderStrip = { container, buttons };
+		// Height 0 until laid out below, which is also what makes a first layout happen.
+		const strip: OrderStrip = { container, buttons, height: 0 };
 		actor.orders = strip;
 		this.layOutOrders(actor);
 		return strip;
@@ -1711,23 +1742,34 @@ export class MugenBoard {
 		button.glyph.alpha = button.disabled ? ORDER_DISABLED_ALPHA : 1;
 	}
 
-	/** A button's drawn size for this actor: the strip spans the actor's own width. */
+	/**
+	 * A button's drawn size for this actor: as tall as the side its cell shares with the
+	 * cell to its east — the edge of the hex the column is stacked alongside — and as
+	 * wide as that height allows. The count no longer comes into it, as it did when the
+	 * strip had to span the fighter's width: a column grows downward instead, so more
+	 * orders make it longer rather than each button smaller.
+	 */
 	private orderSize(actor: Actor): { width: number; height: number; gap: number } {
-		const count = Math.max(1, actor.orders?.buttons.length ?? 1);
-		const stripWidth = actor.displayWidth * ORDER_WIDTH_RATIO;
-		const width = stripWidth / (count + (count - 1) * ORDER_SPACING_RATIO);
-		return { width, height: width * ORDER_ASPECT, gap: width * ORDER_SPACING_RATIO };
+		const height = this.cellSideHeight(actor.cell, actor.rowFront);
+		return { width: height * ORDER_WIDTH_RATIO, height, gap: height * ORDER_SPACING_RATIO };
 	}
 
-	/** Place the buttons side by side and size their glyphs to fit. */
+	/**
+	 * Stack the buttons in a column and size their glyphs to fit. The column is laid out
+	 * upward from its own origin — the fighter's feet — so the bottom button spans exactly
+	 * the hex edge beside it and the rest rise from the ground the fighter stands on,
+	 * while the list still reads top to bottom in the order it was handed in.
+	 */
 	private layOutOrders(actor: Actor): void {
 		const strip = actor.orders;
 		if (!strip) return;
-		const { width, height, gap } = this.orderSize(actor);
-		const step = width + gap;
-		const start = -((strip.buttons.length - 1) * step) / 2;
+		const { height, gap } = this.orderSize(actor);
+		const step = height + gap;
+		const column = strip.buttons.length * height + (strip.buttons.length - 1) * gap;
+		const start = -column + height / 2;
 		strip.buttons.forEach((button, i) => {
-			button.container.x = start + i * step;
+			button.container.x = 0;
+			button.container.y = start + i * step;
 			this.paintOrder(actor, button);
 			const glyph = button.glyph;
 			if (glyph.texture && glyph.texture.width > 0) {
@@ -1735,15 +1777,20 @@ export class MugenBoard {
 				glyph.scale.set(target / Math.max(glyph.texture.width, glyph.texture.height));
 			}
 		});
+		strip.height = height;
 	}
 
-	/** Keep a fighter's strip planted just below its feet as it moves. */
+	/** Keep a fighter's column planted off its right-hand side as it moves. */
 	private updateOrders(actor: Actor): void {
 		const strip = actor.orders;
 		if (!strip) return;
-		const { height } = this.orderSize(actor);
-		strip.container.x = actor.x;
-		strip.container.y = actor.y + ORDER_GAP + height / 2;
+		const { width, height } = this.orderSize(actor);
+		// A fighter that has walked into another cell is standing in another size of cell,
+		// so the column is re-measured rather than kept at the size of the cell it was
+		// built in. Only on a real change: a re-layout repaints every face.
+		if (Math.abs(height - strip.height) > 0.5) this.layOutOrders(actor);
+		strip.container.x = actor.x + actor.displayWidth / 2 + ORDER_GAP + width / 2;
+		strip.container.y = actor.y;
 		// Above the board and its own fighter, below the callouts and slashes.
 		strip.container.zIndex = actor.y + 5000;
 	}
@@ -1762,7 +1809,7 @@ export class MugenBoard {
 	/**
 	 * Say what a fighter's colour gives it for nothing, drawn as glyphs at its
 	 * top-left corner — the free shot, the free charge, the free guard. The orders
-	 * under its feet are what it may be *told* to do; this is what it does without
+	 * beside it are what it may be *told* to do; this is what it does without
 	 * being told, so it is drawn off the strip and shaped nothing like it: a round
 	 * white coin apiece rather than a button, carrying the glyph in the fighter's own
 	 * colour, so a glance at the corner says both what the fighter has and what colour
