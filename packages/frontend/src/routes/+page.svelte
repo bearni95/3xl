@@ -9,6 +9,7 @@
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import MusicPlayer from '$components/core/MusicPlayer.svelte';
+	import MusicToggle from '$components/core/MusicToggle.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
 	import LocationSearchPanel from '$components/core/LocationSearchPanel.svelte';
@@ -1786,9 +1787,10 @@
 		/>
 
 		<!-- Everything the map draws over its top edge, in one absolutely positioned column: the
-			breadcrumb bar across the top, and under it the corner's stack of plates — the music
-			player, always up, the town panel when a town is picked, and last the Location plate,
-			folded away until it is asked for. (The player's own side is over the map too, at the foot of it — three
+			breadcrumb bar across the top, and under it the search results when there are any.
+			The music player stood under it too, in the left corner, and is in the menu now —
+			what a player reaches for often is its pause, and that is on the bar itself (see
+			MusicToggle). (The player's own side is over the map too, at the foot of it — three
 			statues on nothing, positioned on their own rather than as a row of this column,
 			since they are at the other corner; see below.) The bar is in the column
 			rather than over it, so it pushes the plates down by taking its own row instead
@@ -1817,6 +1819,17 @@
 					bar is the one row that is always up, so what a player reaches for however deep
 					into the map they are is reached for here. -->
 				<div slot="end" class="flex items-center gap-2">
+					<!-- The radio's play/pause, in the same 32px square and the same white as the
+						search and the burger beside it. The whole radio is in the menu — which
+						station, and what is on it — but stopping the sound is not a thing to open a
+						menu for, and this bar is the one row that is up wherever a player has got to
+						in the map. It is the same button as the plate's and reads the same store, so
+						either one says what the other did. Nothing is drawn here on a map whose
+						music never arrived. -->
+					<MusicToggle
+						classes="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
+						iconClasses="size-4"
+					/>
 					<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
 					<!-- The three bars, in the same square and the same white as the search button it
 						stands beside and the dots button at the other end of the row: this bar is a line
@@ -1841,49 +1854,30 @@
 				</div>
 			</MapBreadcrumbs>
 
-			<!-- The row under the bar, with a corner of the map at each end of it: what is playing
-				on the left, and the plates about the search and who is looking on the right. A row
-				rather than two absolutely positioned corners, so both ends are put under the
-				breadcrumbs by the bar taking its own row above them and neither has an offset of its
-				own to keep in step with a bar that changes height. -->
-			<div class="flex items-start justify-between gap-2">
-				<!-- The map's left corner. It held a folding plate about the open region under this
-					— a table of that region's children to drill through, falling back to the open
-					town's show and holder — and holds nothing but the music now: the way down into
-					the map is the pins on it, the way back up is the bar above, and what is on a town
-					stands on the town. `items-start` so a plate is only as wide as it asks to be, the
-					column itself being as wide as the room the row leaves it. -->
-				<div class="flex min-w-0 flex-col items-start gap-2">
-					<!-- The show themes: always up, whether or not anything is picked, because what is
-						playing is not about the town under the cursor and does not stop being true when
-						the selection is dropped. It is here rather than in the panel beside the map
-						because that panel's tabs replace each other, which would carry the player off
-						screen mid-song. It draws nothing at all until a song is loaded, so the corner is
-						unchanged on a map whose music never arrived. -->
-					<MusicPlayer classes="pointer-events-auto w-72" />
-				</div>
-
-				<!-- The map's right corner, read down: what the search box at the end of the bar
-					above has turned up, and then who is playing. `items-end` so each plate is only
-					as wide as it asks to be and both keep the corner's edge. -->
-				<div class="flex min-w-0 flex-col items-end gap-2">
-					<!-- The matches, directly under the field that produced them and the whole of this
-						corner while a search is on: what is asked for at the top right is answered at the
-						top right. The account's plate stood under them here for a while and is at the foot
-						of the map now, under the side it fields.
-						Only ever up for a query — an empty box is the search not happening, and there is no
-						plate for it — and the cross on it ends the search outright rather than folding the
-						plate away from a query still typed in a field still standing open (see closeSearch). -->
-					{#if normalizedQuery}
-						<LocationSearchPanel
-							results={searchResults}
-							onSelect={openSearchResult}
-							onClose={closeSearch}
-							classes="pointer-events-auto w-96 max-w-full"
-						/>
-					{/if}
-
-				</div>
+			<!-- The map's right corner, read down: what the search box at the end of the bar
+				above has turned up. It was one end of a row that had the music on the other
+				end; the music is in the menu now (see the drawer below the map) and the left
+				corner with it, so this is a plate under the bar rather than a side of anything.
+				A row of the column above rather than a corner positioned on its own, so the bar
+				pushes it down by taking its own row instead of by an offset nobody would
+				remember to keep in step with it. `items-end` so the plate is only as wide as it
+				asks to be and still keeps the corner's edge. -->
+			<div class="flex min-w-0 flex-col items-end gap-2">
+				<!-- The matches, directly under the field that produced them and the whole of this
+					corner while a search is on: what is asked for at the top right is answered at the
+					top right. The account's plate stood under them here for a while and is at the foot
+					of the map now, under the side it fields.
+					Only ever up for a query — an empty box is the search not happening, and there is no
+					plate for it — and the cross on it ends the search outright rather than folding the
+					plate away from a query still typed in a field still standing open (see closeSearch). -->
+				{#if normalizedQuery}
+					<LocationSearchPanel
+						results={searchResults}
+						onSelect={openSearchResult}
+						onClose={closeSearch}
+						classes="pointer-events-auto w-96 max-w-full"
+					/>
+				{/if}
 			</div>
 		</div>
 		<!-- The foot of the map — its bottom-left corner where there is room for a corner, the
@@ -2069,6 +2063,15 @@
 			Signed in it draws nothing at all — the account's buttons above are what it used to
 			hold. -->
 		<AuthMenu embedded />
+
+		<!-- The radio, at the foot of the menu and pushed there by `mt-auto`: it is not a way
+			out of the map like the block above it and not the way in like the sign-in, it is
+			the one thing here that is running whether or not this menu is open, so it sits
+			apart from both at the bottom edge. It stood in the map's top-left corner and was
+			always in the way there; the only part of it worth having always up is the pause,
+			and that is on the bar. `flex-none` because the menu is a scrolling column and a
+			plate at the foot of one must not be squeezed by what is above it. -->
+		<MusicPlayer classes="mt-auto w-full flex-none" />
 	</aside>
 {/if}
 

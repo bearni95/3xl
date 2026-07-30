@@ -129,11 +129,12 @@ map's right-hand panel (its Booster tab), and `CombatArena` is raised by the Cha
 button on a municipality. The roster and the achievements have no route either. All of them
 are full-view modals over the map, drawn on the shared `FullScreenModal` sheet — the roster
 and the badges raised from the panel's account row, combat from the town — so there is one
-kind of full-view surface in this app and not one per feature. The map's top-left corner is a
-stack of plates: `MusicPlayer.svelte` at its head, always up, then the town panel when a town
-is picked, then the Location plate. The player draws nothing until a song is loaded, and the
-audio element belongs to `music.service.ts` rather than to the component, so the sound
-outlives whatever opens and closes over the map.
+kind of full-view surface in this app and not one per feature. Everything that is not the map
+is behind the **burger menu** — the `<aside>` drawer summoned from the far end of the
+breadcrumb bar: the block of buttons that raise those sheets, the sign-in, and at its foot
+`MusicPlayer.svelte`. The plate draws nothing until a song is loaded, and the audio element
+belongs to `music.service.ts` rather than to the component, so the sound outlives the drawer
+being closed — or anything else that opens over the map.
 
 **The player is a radio, and a show is a station.** Nothing on the plate chooses a song: a
 station's songs are put in an order drawn from the day's seed (`utils/music/daily-shuffle`,
@@ -144,7 +145,12 @@ playing is whichever song the clock lands in, at the second it lands on
 being stored, sent or agreed on, and a listener who pauses rejoins where the station has got
 to rather than resuming. The plate's two controls are play/pause and the **dial** — a select
 naming the stations, which *is* the plate's second line, since that line was already naming
-the show and a radio says its station once. There is no skip: a radio has no next song. Both
+the show and a radio says its station once. There is no skip: a radio has no next song. The
+play/pause is `MusicToggle.svelte`, and it stands twice: on the plate, and on the breadcrumb
+bar over the map, which is the one row that is always up — stopping the sound is not worth
+opening a menu for, while choosing a station is. Both copies are the same component over the
+same store, and the bar's is what asks for the collection at all, since the plate is mounted
+only while the drawer is open. Both
 of the listener's choices — which station, and whether it was left on — are remembered in
 localStorage (`music-player`) and restored on the next visit; the play is restored as an
 attempt, because a reload is not a gesture and the browser may refuse it, and a refusal is

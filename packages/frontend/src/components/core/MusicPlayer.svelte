@@ -1,13 +1,21 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
+	import MusicToggle from '$components/core/MusicToggle.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
 	import { musicService } from '$services/music.service';
 	import { showLogos, loadShowLogos } from '$services/shows.service';
 	import { showIconName } from '$utils/show/show-icon';
 
-	// The map's radio: one plate in the corner with the three things a listener needs —
-	// what is on air, a play/pause, and the dial that picks the station.
+	// The radio, whole: one plate in the burger menu with the three things a listener
+	// needs — what is on air, a play/pause, and the dial that picks the station.
+	//
+	// It stood in the map's top-left corner, which is a corner of the map: a plate that
+	// is always up is a plate that is always in the way, and the one thing on it a
+	// player reaches for often is the pause — which is on the bar over the map now (see
+	// MusicToggle), where it costs nothing. What is left here is what is only wanted
+	// when it is wanted: which station, and what is on it. The menu is where everything
+	// that is not the map already lives.
 	//
 	// A station is a show, and what is playing on it is decided by the clock rather
 	// than by this plate: the song and the second of it come from musicService, which
@@ -21,11 +29,10 @@
 	// itself when there is a choice to make and the plain line when there is not — a
 	// select with one option is an affordance that lies about what it can do.
 	//
-	// It reads as the town panel below it does — the same black plate, the same glyph
-	// tile at the left end with two lines of text beside it — because the two stand in
-	// one corner and are one stack of plates, not two kinds of thing. The plate is
-	// black for the town panel's reason: it sits over satellite imagery, and the
-	// lettering has to be read off the plate rather than off the terrain.
+	// It is a base-100 plate with a border, not the black one it was over the terrain:
+	// black was for being read off satellite imagery, and inside the menu there is no
+	// terrain to be read off — the surface it stands on is the page's own, and the block
+	// of buttons above it is bordered base-100 for the same reason.
 	//
 	// No state of its own: what is on air, whether it is running and which station it
 	// is on belong to musicService, which owns the audio element so that the sound
@@ -35,10 +42,12 @@
 	export let classes: string = '';
 
 	// The two reads the plate is drawn from: the songs (@3xl/data's music.json, by way
-	// of the service) and the shows, for the name on the second line — the same baked
+	// of the service) and the shows, for the names on the dial — the same baked
 	// shows.json the statues read, so this is a no-op on a page that has already asked
-	// for it. A failed music read leaves no song loaded, and the plate is then not
-	// drawn at all rather than standing there empty.
+	// for it. The music read is asked for again here because the menu is a place that
+	// can be opened before anything else has; it is one shared fetch either way. A
+	// failed read leaves no song loaded, and the plate is then not drawn at all rather
+	// than standing there empty.
 	onMount(() => {
 		void musicService.load().catch(() => undefined);
 		void loadShowLogos();
@@ -71,7 +80,7 @@
 {#if state.track}
 	<div
 		class={classNames(
-			'flex items-center gap-2 rounded-lg bg-black p-2 text-white shadow-xl',
+			'flex items-center gap-2 rounded-lg border border-base-300 bg-base-100 p-2 text-base-content',
 			classes
 		)}
 	>
@@ -79,7 +88,7 @@
 			panel and the pins draw. Decorative: the show is named in the line beside it. -->
 		{#if showIcon}
 			<div
-				class="flex size-10 flex-none items-center justify-center rounded-lg bg-base-100 text-base-content"
+				class="flex size-10 flex-none items-center justify-center rounded-lg bg-base-200 text-base-content"
 				aria-hidden="true"
 			>
 				<ShowIcon name={showIcon} classes="[&>svg]:size-7" />
@@ -92,10 +101,9 @@
 			{#if stations.length > 1}
 				<!-- The dial: stripped of the select's own box so it reads as the line it
 					replaced, and left with the caret, which is the only thing that says it can
-					be opened. The options carry the page's own colours because the list is
-					drawn by the browser, where the plate's white-on-black does not reach. -->
+					be opened. -->
 				<select
-					class="select select-ghost h-5 min-h-0 w-full max-w-full truncate rounded-none border-0 bg-transparent p-0 pe-5 text-xs font-medium text-white/70 focus:outline-none"
+					class="select select-ghost h-5 min-h-0 w-full max-w-full truncate rounded-none border-0 bg-transparent p-0 pe-5 text-xs font-medium text-base-content/70 focus:outline-none"
 					aria-label="Station"
 					value={stationKey(state.station)}
 					on:change={(event) =>
@@ -104,34 +112,17 @@
 						)}
 				>
 					{#each stations as station (station.key)}
-						<option class="bg-base-100 text-base-content" value={station.key}>
-							{station.name}
-						</option>
+						<option value={station.key}>{station.name}</option>
 					{/each}
 				</select>
 			{:else}
-				<span class="truncate text-xs font-medium text-white/70">{tunedName}</span>
+				<span class="truncate text-xs font-medium text-base-content/70">{tunedName}</span>
 			{/if}
 		</div>
 
-		<!-- A ghost circle: the plate is already a dark object, and a filled button on it
-			would read louder than the town's Challenge control one plate below. -->
-		<button
-			type="button"
-			class="btn btn-circle btn-ghost btn-sm flex-none text-white"
-			aria-label={state.playing ? 'Pause music' : 'Play music'}
-			on:click={() => musicService.toggle()}
-		>
-			{#if state.playing}
-				<svg viewBox="0 0 24 24" fill="currentColor" class="size-5" aria-hidden="true">
-					<path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-				</svg>
-			{:else}
-				<svg viewBox="0 0 24 24" fill="currentColor" class="size-5" aria-hidden="true">
-					<path d="M8 5v14l11-7z" />
-				</svg>
-			{/if}
-		</button>
-
+		<!-- The same button as the one on the bar over the map, and the same store behind
+			it: a ghost circle here because the plate is a quiet object among the menu's
+			outlined ones, and a filled button on it would read louder than any of them. -->
+		<MusicToggle classes="btn btn-circle btn-ghost btn-sm flex-none" />
 	</div>
 {/if}
