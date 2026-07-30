@@ -128,9 +128,25 @@ const MAX_CANVAS_HEIGHT = '70vh';
  * this height rather than standing out of its cell. */
 const CHAR_HEIGHT_RATIO = 1.3;
 
-/** How far (in cells) a character standing on the top row rises above the grid, which
- * is the room the canvas keeps over it. */
-const HEAD_ROOM = Math.max(0, CHAR_HEIGHT_RATIO - 1);
+/**
+ * The room the canvas keeps above the grid, in cells: **a whole row of it**, empty, on
+ * top of everything else drawn.
+ *
+ * A character plants its feet on its cell's lower edge and stands taller than the cell
+ * ({@link CHAR_HEIGHT_RATIO}), so everybody on the top row is partly above the grid to
+ * begin with — but the exact amount is not something this can be worked out from. A
+ * character's own `renderScale` rides along on the fit, so one drawn small in its source
+ * sheet is scaled up past that cap; a pose is not the height of the cycle it belongs to;
+ * an aura is drawn to envelop the whole sprite; and a callout floats clear above the
+ * fighter's head. Only the first of those is even known when the canvas is sized, and
+ * every one of them reaches up out of the top row.
+ *
+ * So the room is not calculated, it is reserved: one full row, which is more than any of
+ * them needs and is the one measurement on this board that is guaranteed to be enough.
+ * Everything else is pushed down by it, and {@link MugenBoard.fitToContent} is careful
+ * not to crop it back off.
+ */
+const HEAD_ROOM = 1;
 
 // --- The coordinate gutter (a chessboard's letters and numbers) ---------------
 // Every cell is named the way a chess square is — its column's letter and its row's
@@ -451,11 +467,9 @@ export class MugenBoard {
 
 	/**
 	 * Total canvas size: the grid at one `cellSize` square per cell, plus the padding
-	 * around it, the head room a character standing on the top row needs — it plants
-	 * its feet on that row's lower edge and stands {@link CHAR_HEIGHT_RATIO} cells tall,
-	 * so the part of it above the grid has to be inside the canvas before
-	 * {@link fitToContent} crops anything — and the coordinate gutter's own band, once
-	 * down the left-hand side and once under the bottom row.
+	 * around it, the empty row kept above it for everything that reaches up out of the top
+	 * row ({@link HEAD_ROOM}), and the coordinate gutter's own band, once down the
+	 * left-hand side and once under the bottom row.
 	 */
 	get dimensions(): { width: number; height: number } {
 		const { cellSize, padding } = this.options;
@@ -476,7 +490,9 @@ export class MugenBoard {
 		return this.options.padding + this.coordGutter;
 	}
 
-	/** Screen y of the grid's top edge: the padding, plus the head room above it. */
+	/** Screen y of the grid's top edge: the padding, plus the empty row kept above it —
+	 * which is what pushes every cell, every character and every coordinate down by a row
+	 * from where they would otherwise be drawn. */
 	private get gridTop(): number {
 		const { cellSize, padding } = this.options;
 		return padding + cellSize * HEAD_ROOM;
@@ -566,10 +582,23 @@ export class MugenBoard {
 
 	/**
 	 * Shrink the canvas to the bounding box of everything drawn (grid + coordinates +
-	 * characters), so the board sits flush against its edges and the canvas is exactly as
-	 * tall as the grid and the characters standing on it, with room off its right-hand side for the
-	 * order buttons that stand *there*. The stage is offset so the content stays in view;
-	 * the grid's own coordinates are left untouched, so no cell shifts.
+	 * characters), so the board sits flush against its edges, with room off its right-hand
+	 * side for the order buttons that stand *there*. The stage is offset so the content
+	 * stays in view; the grid's own coordinates are left untouched, so no cell shifts.
+	 *
+	 * Flush on three sides, that is. The top edge is **not** cropped to what happens to be
+	 * drawn: it is pinned to the canvas's own top, which is the far side of the empty row
+	 * kept above the grid ({@link HEAD_ROOM}). This crop is taken once, as the board opens,
+	 * off the frame every character happens to be standing in at that moment — and the
+	 * things that reach highest are not there yet. A guard held on the top row, an aura
+	 * lit under a fighter, the callout that floats over its head: all of them are drawn
+	 * later and all of them go *up*, and a canvas cropped to the tallest idle frame has
+	 * nowhere to put them. They are simply cut off at the top edge, which is the one edge
+	 * a player cannot scroll to see past, since the canvas is scaled to fit its box rather
+	 * than overflowing it.
+	 *
+	 * It still grows past that if something is somehow drawn higher, so the pin is a floor
+	 * on the room above the board and never a lid on it.
 	 */
 	private fitToContent(): void {
 		if (!this.app) return;
@@ -581,7 +610,9 @@ export class MugenBoard {
 		// hung beside a fighter long after this crop is taken.
 		const reserve = this.orderReserve();
 		const left = Math.floor(bounds.minX - margin);
-		const top = Math.floor(bounds.minY - margin);
+		// Zero is the top of the layout this board was sized from — the empty row above the
+		// grid starts there — so keeping the crop at or above it keeps that row.
+		const top = Math.min(0, Math.floor(bounds.minY - margin));
 		const width = Math.ceil(bounds.maxX + margin + reserve) - left;
 		const height = Math.ceil(bounds.maxY + margin) - top;
 		this.app.stage.position.set(-left, -top);
