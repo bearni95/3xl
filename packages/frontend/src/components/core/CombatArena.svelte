@@ -418,28 +418,34 @@
 	}
 
 	/**
-	 * The slot over a fighter's three orders: what its colour did for it, free, on the turn
-	 * it was owed something.
+	 * The slot over a fighter's three orders: what its colour is about to do for it, free,
+	 * and then what it did.
 	 *
-	 * It is empty for most of a fight and for most fighters, and that is the point of its
-	 * being a slot rather than a button that appears. A gift only ever fires beside an order
-	 * the player gave — never as the order they gave — so what goes in here is a *second*
-	 * thing the fighter did that turn, and reading it needs the column it happened in to
-	 * have looked the same before it happened. A column that grew a fourth button would be
-	 * three fighters' columns changing shape mid-turn.
+	 * A colour hands a fighter one free order per primary it mixes, on the turn the fight
+	 * opens and only then. So on the opening turn the slot holds that gift, drawn plain like
+	 * an order nobody has chosen — the fighter has it, and whether it comes to anything
+	 * depends on the order it is given beside, since a gift is never the order you chose.
+	 * The moment it does come to something the same button fills with the fighter's colour,
+	 * which is how the rest of this board says a thing happened, and there it stays: a gift
+	 * is worth one use in the whole battle, so this is the fight's record of what a colour
+	 * was worth and not a light that comes on for a turn.
 	 *
-	 * Once something goes in, it stays: a gift is worth one use in the whole battle, so this
-	 * is the fight's record of what a colour was worth and not a light that comes on for a
-	 * turn. Only a gift that *did* something goes in — the controller keeps `used` apart
-	 * from `spent` for exactly this — because a gift that ran out unused did nothing to
-	 * record.
+	 * Empty means empty, then, and it says one of two things: a fighter with nothing in hand
+	 * and nothing to its name — every colour grants something, so this is a gift that ran out
+	 * unused at the end of the opening turn — or, past that turn, a colour that did nothing.
+	 * That is also why the slot is a slot and not a button that appears: three columns
+	 * growing a fourth button mid-fight would be three columns changing shape, and the
+	 * emptiness is itself worth reading.
 	 *
-	 * A colour that mixes two primaries can fire both on the opening turn and there is one
-	 * slot; the first to fire is the one it keeps.
+	 * A colour that mixes two primaries has two gifts and there is one slot: it shows the
+	 * first still in hand until one of them fires, and then the one that fired.
 	 */
 	function passiveSlot(fighter: FighterView): BoardOrder {
+		// What it did, or failing that what it still might: the record outranks the offer,
+		// since a gift that has fired is the thing worth saying about a colour.
 		const done = fighter.used[0];
-		if (!done) {
+		const shown = done ?? fighter.passives.find((order) => !fighter.spent.includes(order));
+		if (!shown) {
 			return {
 				id: 'passive',
 				icon: '',
@@ -451,13 +457,15 @@
 			};
 		}
 		return {
-			// Named for what is in it, so the strip is rebuilt when the slot fills rather
-			// than repainted — an empty slot has no glyph loaded to swap.
-			id: `passive:${done}`,
-			icon: ACTION_ICONS[done],
-			// Filled in the fighter's colour like the order it was given beside: both are
-			// things this fighter did, and the colour is how this board says whose.
-			selected: true,
+			// Named for what is in it, so a slot that empties or changes hands is rebuilt
+			// rather than repainted — an empty slot has no glyph loaded to swap. A gift that
+			// fires having been the one on offer keeps its id and only changes its fill.
+			id: `passive:${shown}`,
+			icon: ACTION_ICONS[shown],
+			// Filled in the fighter's colour once it has fired, like the order it fired
+			// beside: both are things this fighter did, and the colour is how this board says
+			// whose. Until then it is a plain face — the fighter has it, it has not used it.
+			selected: Boolean(done),
 			disabled: false,
 			readonly: true,
 			color: fighter.color
