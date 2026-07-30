@@ -9,8 +9,9 @@
 	// same kind of thing — this is where the map is looking — so they are lettered alike, and
 	// walking up the path reads as a column of those plates laid on their side.
 	//
-	// Every tier has a show, not just a town: above the municipality it is the plurality of
-	// the towns underneath, which is the same show that tier's polygon is filled from.
+	// Every step has a show, not just a town: above the municipality it is the plurality of
+	// the towns underneath, which is the same show that tier's polygon is filled from, and
+	// at the head of the path it is the plurality of every town on the map.
 	//
 	// Split out of MapBreadcrumbs because a crumb has two states and one body: the step the
 	// map is on is inert text and every step above it is a button back to its tier, and
@@ -25,8 +26,7 @@
 	export let showId: number | null = null;
 	// The tile's fill plus the ink that reads on it — the place's own colour, in the same six
 	// the pins, the cards and the town panel paint with. Null leaves the tile on the neutral
-	// surface, which is what the root crumb (the whole of the Països Catalans, no one colour)
-	// and any uncoloured tier get.
+	// surface, which is what a tier with nothing rolled under it yet gets.
 	export let tileClasses: string | null = null;
 	// The step the map is actually on: the end of the path, and the one crumb that is not a
 	// way of leaving it. Only the weight of the name changes — a crumb is the same statement

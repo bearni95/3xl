@@ -57,6 +57,7 @@
 		buildRegionNodes,
 		regionRowsForSelection,
 		flattenRegionNodes,
+		everyTownPlurality,
 		nodePath,
 		municipalityIdsForKey,
 		type FillLevel,
@@ -724,15 +725,20 @@
 	// plurality of the towns underneath. A place cannot fly one show on the map and another
 	// in the bar over it.
 	//
-	// The root crumb is the whole of the Països Catalans, which is not a region in the tree:
-	// no node, so no show and no colour, and the bar draws it as its name alone.
+	// The root crumb is the whole of the Països Catalans, which is the one step of the path
+	// with no region of its own: nothing in the tree stands for the lot of them, so its show
+	// and colour are tallied here (see everyTownPlurality) rather than read off a node. It is
+	// the same tally every tier under it gets, one tier further up, so the top view names
+	// what most of the map is flying — and the step a player walks back to is lettered like
+	// every other step rather than dropping to a bare word at the head of the row.
+	$: mapPlurality = everyTownPlurality(regionNodes);
 	$: crumbs = [
 		{
 			label: 'Països Catalans',
 			key: null as string | null,
-			showName: null as string | null,
-			showId: null as number | null,
-			tileClasses: null as string | null
+			showName: mapPlurality.show?.name ?? null,
+			showId: mapPlurality.show?.id ?? null,
+			tileClasses: mapPlurality.color ? pinColorClasses[mapPlurality.color] : null
 		},
 		...displayPath.map((node) => ({
 			label: restoreCatalanArticle(node.name),

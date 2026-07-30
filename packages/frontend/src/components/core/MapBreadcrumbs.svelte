@@ -21,9 +21,10 @@
 	// where the map is and is not a link; every one before it walks back up to its tier.
 	//
 	// Each crumb also carries the show its place flies and the colour that place is drawn
-	// in, which every tier has — a town's own, and above it the plurality of the towns
-	// under it. The caller decides what those are (a held town flies its ruling team's
-	// show, not its own most-seen one); this bar just letters whatever it is handed.
+	// in, which every step has — a town's own, above it the plurality of the towns under
+	// it, and at the head of the path the plurality of the whole map. The caller decides
+	// what those are (a held town flies its ruling team's show, not its own most-seen one);
+	// this bar just letters whatever it is handed.
 	export let crumbs: {
 		label: string;
 		key: string | null;

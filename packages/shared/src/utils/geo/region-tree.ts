@@ -167,6 +167,32 @@ export function buildRegionNodes(territories: RegionTerritory[]): RegionNode[] {
 }
 
 /**
+ * What the whole map flies: the plurality show and colour over every municipality
+ * node in the forest, counted and tie-broken exactly as each tier's own are (see
+ * {@link majorityShow}), so the top view is read off the same towns the same way
+ * every region under it is.
+ *
+ * The top view is the one place on the map with no region of its own — there is no
+ * node for the Països Catalans entire, so the tier above the territories has
+ * nothing baked onto it and is worked out here instead. Reading it off the built
+ * nodes rather than off the source tree is what keeps it current: a town changing
+ * hands rebuilds the nodes, and this re-tallies with them.
+ */
+export function everyTownPlurality(nodes: RegionNode[]): {
+	show?: RegionShow;
+	color?: SpawnColor;
+} {
+	const towns: RegionNode[] = [];
+	const walk = (node: RegionNode) => {
+		if (node.type === 'Municipality') towns.push(node);
+		for (const child of node.children) walk(child);
+	};
+	for (const node of nodes) walk(node);
+
+	return { show: majorityShow(towns), color: majorityColor(towns) };
+}
+
+/**
  * One region flattened out of the tree for free-text search: its selection key,
  * name, tier, top show, and the ancestor region names from the top territory
  * down to (but not including) it — shown on the search card for context.
@@ -344,8 +370,13 @@ export function municipalityIdsForKey(
  * The plurality show among a set of municipalities: the one held by the most of
  * them (simple count), ties broken by name for a stable pick. Municipalities
  * with no show are ignored.
+ *
+ * Takes the field and not the type, so the same count serves a tier being built
+ * out of source municipalities and a tier being read back off built nodes (see
+ * {@link everyTownPlurality}) — one rule for what a region flies, wherever the
+ * towns under it are being counted from.
  */
-function majorityShow(municipis: RegionMunicipality[]): RegionShow | undefined {
+function majorityShow(municipis: { show?: RegionShow }[]): RegionShow | undefined {
 	const tally = new Map<number, { show: RegionShow; count: number }>();
 	for (const municipality of municipis) {
 		if (!municipality.show) continue;
@@ -373,7 +404,7 @@ function majorityShow(municipis: RegionMunicipality[]): RegionShow | undefined {
  * shows, so a region's colour and its show are read off the same towns the same
  * way. Municipalities with no colour (nothing rolled for them yet) are ignored.
  */
-function majorityColor(municipis: RegionMunicipality[]): SpawnColor | undefined {
+function majorityColor(municipis: { color?: SpawnColor }[]): SpawnColor | undefined {
 	const tally = new Map<SpawnColor, number>();
 	for (const municipality of municipis) {
 		if (!municipality.color) continue;
