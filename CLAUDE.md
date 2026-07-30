@@ -200,11 +200,16 @@ variable belongs to the achievement that declares it and is reachable from nowhe
 so two badges may both call a number `target`.
 
 A formula is arithmetic (`+ - * / % ^`, unary minus, parentheses) over what the game knows
-about the player being rendered for, and *only* that: `level`, and `cards` — every owned
+about the player being rendered for, and *only* that: `level`; `cards` — every owned
 card, or the ones matching a compound filter written in its parentheses
-(`cards(box = white and not color = orange)`, `cards(color in [red, blue]) / 2`). There are
+(`cards(box = white and not color = orange)`, `cards(color in [red, blue]) / 2`); and
+`towns`, how many municipalities they occupy (one per `municipality_holders` row of theirs —
+a count, not a list, since which comarca a town sits in is map data Postgres does not have
+and Postgres is the side that has to reach the same answer). There are
 no functions to call and no way to name anything outside the evaluation context, which is
 what makes a formula safe to run against whoever turns out to be reading.
+
+The `level` a formula reads is **the day's, not the moment's** — see the pinning below.
 
 - `utils/achievement/formula.ts` — the language: tokenizer, parser, evaluator, and
   `CARD_FIELDS`, the one table saying which card fields a filter may test and which values
@@ -214,15 +219,16 @@ what makes a formula safe to run against whoever turns out to be reading.
 The same language writes the other half of a badge: its **requirement**, the condition that
 earns it — two amounts compared (`>= <= > < = !=`), any number of those combined with
 `and`/`or`/`not` and parentheses, and free to quote the badge's own variables by name
-(`cards(color = red) >= target`). A badge with no requirement is never set as one of a
-player's three for the day and can never be claimed.
+(`cards(color = red) >= target`). A badge with no requirement is set and shown like any
+other — the day's draw is over every badge the game has — and simply cannot be completed by
+anybody until one is written for it; the panel words it "Not available yet".
 
 - `utils/achievement/template.ts` — the braces: `renderAchievement(achievement, context)` is
   what a surface calls to get one player's wording.
 - `utils/achievement/requirement.ts` — `achievementMet(achievement, context)`: whether a
   player has earned it. A preview, not the authority (see below).
 - `utils/achievement/daily.ts` — the badges a player is set today: a seed hashed from their
-  id and the Catalan day, and a draw from the pool of badges that have a rule. Nothing is
+  id and the Catalan day, and a draw from every badge the game has. Nothing is
   stored, so there is no table of assignments to seed or to disagree about, and everyone's
   set changes at midnight Europe/Madrid. **How many** is a setting, not a constant:
   `achievement_settings.daily_count` (three as provisioned), read by
@@ -265,6 +271,16 @@ that drift apart pay out badges nobody earned. So:
 - The award is a third of the span of the level the player is on **at completion time**
   (`achievementExpAward` mirrors it), re-read per badge inside one claim, and recorded on
   `player_achievements.exp_awarded`.
+- The level a **rule** is read at is a different level: the day's pinned one.
+  `achievement_day_levels` holds one row per player per Catalan day, written by
+  `daily_achievement_level()` (security definer, no arguments) on that day's first look and
+  by nothing else, and read by both the browser drawing the targets and
+  `claim_achievements` walking them. Otherwise a target written as `level * 5` got harder
+  while it was being worked on, and the experience a claim paid could raise the bar that
+  same claim was judging against. Only the bar is pinned: `cards` and `towns` stay live, or
+  a badge could not be progressed on the day it was set. What it pins is the level as it
+  stood when the day was first *seen* — nothing runs at midnight Europe/Madrid, so that is
+  the earliest moment there is anything to pin.
 - Anything both sides of the draw have to agree on lives in Supabase for the same reason:
   the pool (`achievement_templates.requirement`), and how many are drawn
   (`achievement_settings.daily_count`, moved from the admin through

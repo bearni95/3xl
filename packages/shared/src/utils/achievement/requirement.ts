@@ -23,8 +23,12 @@ type Earnable = Pick<Achievement, 'variables' | 'requirement'>;
  *
  * A badge with no requirement is **not** met: it says nothing about what earns it,
  * so there is nothing to have done. That is the same reading the database takes —
- * a template with a null requirement is not even offered as one of the day's three
- * (see `daily.ts`).
+ * such a badge is still set as one of the day's (the draw is over every badge the
+ * game has, see `daily.ts`) and `claim_achievements` finds no tree to walk for it.
+ *
+ * The `level` in the context is the day's pinned one rather than the player's live
+ * one, so a target written on it holds still while the day is being played; that is
+ * the caller's business, not this file's — see `achievement_day_levels`.
  */
 export function achievementMet(achievement: Earnable, context: FormulaContext): boolean {
 	const requirement = achievement.requirement?.trim();
