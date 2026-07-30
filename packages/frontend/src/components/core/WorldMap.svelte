@@ -195,6 +195,10 @@
 	// Watches the tether's anchor for the same reason, one element at a time: the panel's
 	// centre is where the leader ends, and the panel resizes itself without the map moving.
 	let anchorObserver: ResizeObserver | null = null;
+	// True for the length of an animated zoom — between `zoomanim` and the `zoomend` that
+	// closes it. While it is up, the view the map reports is the one it is leaving, not the
+	// one being drawn, so the leader is pointed from the animation's own target instead.
+	let zoomAnimating = false;
 	// municipality `properties.id` → the featureIds of the pin region it currently
 	// belongs to (at the tier on screen), rebuilt with the pins. Lets hovering
 	// anywhere in a pinned region's polygons light that whole region, not just the pin.
@@ -558,7 +562,10 @@
 	// boxes (their panes are 600 and 590): the line is what joins two things, and it must
 	// not be drawn over either of them. Non-interactive for the same reason the washes are
 	// — a leader is not something to click, and it crosses a great deal of clickable map.
-	function rebuildTether() {
+	//
+	// `view` is the view to measure the screen end against, for the one case where that is
+	// not the view the map is in right now: a zoom animation (see the zoomanim handler).
+	function rebuildTether(view?: { center: L.LatLng; zoom: number }) {
 		if (!mapInstance || !Leaf) return;
 		if (!tether?.anchor) {
 			tetherLine?.remove();
@@ -575,10 +582,7 @@
 			anchorBox.left - mapBox.left + anchorBox.width / 2,
 			anchorBox.top - mapBox.top + anchorBox.height / 2
 		);
-		const ends: L.LatLngExpression[] = [
-			tether.position,
-			mapInstance.containerPointToLatLng(centre)
-		];
+		const ends: L.LatLngExpression[] = [tether.position, latLngAtPoint(centre, view)];
 
 		const style = { color: tether.color, weight: tether.weight ?? 5, opacity: 1 };
 		if (!tetherLine) {
@@ -587,6 +591,19 @@
 			tetherLine.setLatLngs(ends);
 			tetherLine.setStyle(style);
 		}
+	}
+
+	// Which latlng a point in the container currently sits over — or would sit over in the
+	// view passed in. Leaflet's own `containerPointToLatLng` answers the first and has no way
+	// to ask the second, so the projection is done the way it does it: the container's
+	// top-left in projected pixels is the centre's projection less half the container, and a
+	// point in the container is that plus its own offset, unprojected at the same zoom.
+	function latLngAtPoint(point: L.Point, view?: { center: L.LatLng; zoom: number }): L.LatLng {
+		if (!view) return mapInstance!.containerPointToLatLng(point);
+		const topLeft = mapInstance!.project(view.center, view.zoom).subtract(
+			mapInstance!.getSize().divideBy(2)
+		);
+		return mapInstance!.unproject(topLeft.add(point), view.zoom);
 	}
 
 	/** The boxes' teardown: a box no longer on screen must not keep its images. */
@@ -765,6 +782,7 @@
 		syncView();
 		// Re-cull the pins and re-sync the view after any pan or zoom settles.
 		mapInstance.on('moveend zoomend', () => {
+			zoomAnimating = false;
 			syncView();
 			rebuildMarkers();
 			rebuildBoxes();
@@ -777,7 +795,39 @@
 		// Re-pointing a single polyline is a couple of projections, which is cheap enough to
 		// do on every frame of a pan — the pins and boxes, which are DOM, are not, and they
 		// go on waiting for the view to settle.
-		mapInstance.on('move zoom', () => rebuildTether());
+		//
+		// Not while a zoom animation is running, though: that is the one case where the view
+		// the map reports is not the view being drawn, and re-pointing off it would put the
+		// screen end back where the panel was before the zoom began. The zoomanim handler
+		// below has already pointed the line for the view the animation is heading into.
+		mapInstance.on('move zoom', () => {
+			if (!zoomAnimating) rebuildTether();
+		});
+
+		// A zoom is animated by transitioning a transform on the panes, so for its whole
+		// quarter-second the paths hold the coordinates they were projected in and the browser
+		// slides them into place. A line pointed at the panel in the old view therefore rides
+		// the terrain out of position and only reaches the panel on the next projection, which
+		// read as the line halting for the length of every zoom.
+		//
+		// zoomanim carries the view the animation is heading into, and fires before a frame of
+		// it is drawn. Pointing the screen end at where the panel WILL be and letting the same
+		// transform carry it there is what makes the transition land the line on the panel: it
+		// moves with the map, as everything in that pane must, and arrives pointing at the
+		// panel rather than snapping to it once the zoom is over.
+		//
+		// The flag goes up at zoomstart as well, which is what a pinch raises: mid-pinch the
+		// map reports a fractional view its panes have not been re-projected to, so a line
+		// re-pointed off it would be transformed twice. A pinch therefore rides the terrain
+		// while the fingers are down and is landed on the panel by the zoomanim its release
+		// fires — the same arrival, one gesture later.
+		mapInstance.on('zoomstart', () => {
+			zoomAnimating = true;
+		});
+		mapInstance.on('zoomanim', (event) => {
+			zoomAnimating = true;
+			rebuildTether({ center: event.center, zoom: event.zoom });
+		});
 
 		// Keep Leaflet's cached viewport in sync with its container: when the parent
 		// shrinks the map to reserve room for an open side panel, invalidateSize
