@@ -17,9 +17,11 @@
 	// When embedded, the trigger button is dropped and the card renders in flow,
 	// always visible and full-width — it is a section of the map page's right-hand
 	// panel — instead of the hover/click dropdown that hangs off the navbar. Signed in,
-	// that section is the player's own full-width row and nothing else: the side they
-	// field used to be a three-column grid under it, and stands at the map's own
-	// bottom-left corner now, so this tab is about the account alone.
+	// that section is the account's ways out of the panel and nothing else: the side they
+	// field used to be a three-column grid under it and stands at the map's own bottom-left
+	// corner now, and who is playing — the picture and the reading — is a plate at its
+	// top-right (see PlayerPanel). What is left in the tab is the sign-in that gets a player
+	// there in the first place, and the three buttons that lead back out of it.
 	export let embedded: boolean = false;
 
 	const status = authService.status;
@@ -156,13 +158,12 @@
 						</div>
 					{:else if $status === AuthStatus.SignedIn && $profile}
 						{#if embedded}
-							<!-- The account across the whole width: the picture, the reading and the ways
-								out of the panel (the roster, the badges, the account's settings) on one row
-								of three columns. Every one of those buttons raises a modal mounted at the
-								layout root, so the tile only says it was pressed. -->
+							<!-- The account's ways out of the panel, three across: the roster, the badges,
+								the account's settings. Who is playing — the picture and the reading — is a
+								plate at the map's top-right corner now (see PlayerPanel), so what is left
+								here is what to do about it. Every one of these buttons raises a modal
+								mounted at the layout root, so the tile only says it was pressed. -->
 							<ProfileTile
-								profile={$profile}
-								on:editavatar={openAvatarPicker}
 								on:opensettings={openSettings}
 								on:openroster={openRoster}
 								on:openachievements={openAchievements}
