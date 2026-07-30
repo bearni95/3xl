@@ -143,6 +143,13 @@
 	// picture each wherever the game speaks of them.
 	const ACTION_ICONS: Record<CombatAction, string> = ORDER_ICONS;
 
+	// The lanes of the fight, 1..n, for the score's rings: one ring per lane, filled once
+	// that many have been won. A lane is a fighter of each side and the white cell between
+	// them, so there are as many of them as a team has members — the score is drawn from
+	// the same count the team is built to, and cannot come to say a fight is longer or
+	// shorter than it is.
+	const LANES = Array.from({ length: TEAM_SIZE }, (_, index) => index + 1);
+
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
 
 	// The blue side is the player's team; the red side (the CPU) either mirrors it or,
@@ -882,22 +889,6 @@
 </script>
 
 <div class="flex w-full flex-col items-center gap-4">
-	{#if state && !state.outcome}
-		<!-- The score above the board, and nothing else: the way out of the fight is the
-		     sheet's own, in the title bar over this.
-		     Encounters won, yours first: the fight is three duels and this is what each side
-		     has taken of them. Each count is drawn in its own side's colour, the same one
-		     that side's fighters hold the board in.
-		     While the fight is *running*, that is: a decided one reads its score out of the
-		     results under the board, and the same two numbers standing at both ends of one
-		     screen would be one score too many. -->
-		<p class="w-full font-mono text-lg font-bold tabular-nums" aria-label="Encounters won">
-			<span class="text-info">{state.wins.info}</span>
-			<span class="opacity-40">–</span>
-			<span class="text-error">{state.wins.error}</span>
-		</p>
-	{/if}
-
 	{#if !authService.configured}
 		<div class="alert alert-warning max-w-md text-sm">
 			<span>Sign-in is unavailable — Supabase is not configured, so no team can be played.</span>
@@ -964,6 +955,49 @@
 							on:ready={(event) => onBoardReady(event.detail)}
 						/>
 					{/key}
+					{#if state && !state.outcome}
+						<!-- The score, over the top of the board it is a score of.
+						     The fight is three duels, each played for one cell of the white column
+						     down the middle of the board, so the score is drawn as that ground:
+						     three rings a side, one filled for each of the three a side has taken.
+						     A number said how many; these say which of a known three, so a fight
+						     that is one duel from over looks like it. Each side's rings sit over
+						     the half of the board that side holds — the rivals' to the left, the
+						     player's to the right — and are drawn in that side's own colour, the
+						     one its fighters hold the ground in.
+						     Between them, the turn, which is the other thing a fight is counted
+						     in and belongs between the two counts rather than beside one of them.
+						     While the fight is running only: a decided one reads its score off the
+						     panel in the middle of the board, and the same score at both ends of
+						     one canvas would be one score too many. -->
+						<div
+							class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center gap-4 p-3"
+						>
+							<div class="flex gap-1.5" aria-label="Encounters won by the rival team">
+								{#each LANES as lane}
+									<span
+										class={classNames(
+											'h-3 w-3 rounded-full border-2 border-error',
+											lane <= state.wins.error && 'bg-error'
+										)}
+									></span>
+								{/each}
+							</div>
+							<span class="font-mono text-sm font-bold tabular-nums opacity-70">
+								Turn {state.turn}
+							</span>
+							<div class="flex gap-1.5" aria-label="Encounters won by your team">
+								{#each LANES as lane}
+									<span
+										class={classNames(
+											'h-3 w-3 rounded-full border-2 border-info',
+											lane <= state.wins.info && 'bg-info'
+										)}
+									></span>
+								{/each}
+							</div>
+						</div>
+					{/if}
 					{#if state?.outcome}
 						<!-- The fight is over, and everything there is left to say about it is said
 						     on one panel in the middle of the board it happened on. The board itself
