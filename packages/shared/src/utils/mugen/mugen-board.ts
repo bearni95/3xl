@@ -560,45 +560,47 @@ export interface ContentBounds {
 const CROP_MARGIN = 8;
 
 /**
- * The canvas the board is drawn on, worked out from the box the board actually occupies:
- * where to put the stage's origin, and how big to make the framebuffer.
+ * The canvas the board is drawn on: where to put the stage's origin, and how big to make
+ * the framebuffer. The two axes are answered by different things.
  *
- * Two things want room that is not in those bounds, and both want it on one side only:
- * the order buttons are hung off a fighter's right long after this crop is taken
- * (`reserve`), and the empty row above the grid ({@link HEAD_ROOM}) is room for the
- * auras, poses and callouts that reach up out of the top row, none of which are drawn
- * yet — so the top is pinned at the layout's own zero rather than cropped to whatever
- * happens to be standing there.
+ * **Across, it is the grid and nothing else.** `gridSpan` is the hexagons' own left and
+ * right edges, and the canvas is cut to exactly that — no margin, nothing reserved. The
+ * canvas is scaled to fit its box, so every pixel of canvas that is not board is scale
+ * the board does not get: a strip kept clear down one side is the whole grid drawn
+ * smaller for it. Fitting the width to the *drawn* bounds instead would hand that strip
+ * to whichever fighter happens to be standing furthest out on the frame the crop is taken
+ * from, which is both wasteful and arbitrary. So the hexagons run edge to edge and the
+ * width of the canvas says the width of the board.
  *
- * Reserving on one side alone would leave the board sitting off-centre in its own
- * canvas: pushed left by the width of an order strip, and low by the depth of the head
- * room. So each of those is a floor on the room on *its* side, and the opposite side is
- * grown to match it — the crop is the smallest box centred on the board that contains
- * every side's requirement. The board therefore lands in the middle of the canvas on
- * both axes, whatever the canvas is then scaled to, and nothing that was being reserved
- * for has lost any of its room.
+ * What that costs is real and is the trade being made: a sprite wider than its cell on an
+ * outer column, and the order strip hung off a fighter in one, are clipped at the canvas
+ * edge rather than given room beside the board.
+ *
+ * **Down, it is the drawn bounds, centred.** The empty row above the grid
+ * ({@link HEAD_ROOM}) is room for the auras, poses and callouts that reach up out of the
+ * top row and are not drawn when this is taken, so the top is pinned at the layout's own
+ * zero rather than cropped to whatever happens to be standing there — and the same depth
+ * is then given back underneath, so the board sits in the middle of its canvas instead of
+ * riding high in it. The pin is a floor and never a lid: anything drawn higher still
+ * grows the crop.
  */
 export function contentCrop(
 	bounds: ContentBounds,
-	{ reserve = 0, margin = CROP_MARGIN }: { reserve?: number; margin?: number } = {}
+	gridSpan: { left: number; right: number },
+	{ margin = CROP_MARGIN }: { margin?: number } = {}
 ): { left: number; top: number; width: number; height: number } {
-	const centerX = (bounds.minX + bounds.maxX) / 2;
 	const centerY = (bounds.minY + bounds.maxY) / 2;
-	// Half-extents: the furthest any side has to reach from the board's own middle.
-	const halfWidth = Math.max(
-		centerX - (bounds.minX - margin),
-		bounds.maxX + margin + reserve - centerX
-	);
+	// Half-extent: the furthest either side has to reach from the board's own middle.
 	const halfHeight = Math.max(
 		centerY - Math.min(0, bounds.minY - margin),
 		bounds.maxY + margin - centerY
 	);
-	const left = Math.floor(centerX - halfWidth);
+	const left = Math.floor(gridSpan.left);
 	const top = Math.floor(centerY - halfHeight);
 	return {
 		left,
 		top,
-		width: Math.ceil(centerX + halfWidth) - left,
+		width: Math.ceil(gridSpan.right) - left,
 		height: Math.ceil(centerY + halfHeight) - top
 	};
 }
@@ -721,6 +723,8 @@ export class MugenBoard {
 		app.canvas.style.maxHeight = MAX_CANVAS_HEIGHT;
 		app.canvas.style.width = 'auto';
 		app.canvas.style.height = 'auto';
+		// Held back until the board is assembled — see the reveal at the end of this method.
+		app.canvas.style.visibility = 'hidden';
 		container.appendChild(app.canvas);
 
 		// One rectangular board: cells left of centre take the left leader's colour, right
@@ -753,42 +757,46 @@ export class MugenBoard {
 		// down in the meantime, and destroy() has already freed the app.
 		if (this.destroyed) return;
 
-		// Crop the view to what's actually drawn: the board ends up flush with the canvas
-		// edges — so it fills the width when the canvas is scaled to its container — and
-		// the height becomes the grid's own plus the room the characters standing on its
-		// rows need above it and the coordinate band under it. Cell positions are absolute
-		// px off the grid's origin, so this only translates the stage and resizes the
-		// framebuffer; nothing moves.
+		// Crop the view to what's actually drawn: the board ends up centred in the canvas
+		// with the height it needs and no more — the grid's own, plus the room the
+		// characters standing on its rows need above it. Cell positions are absolute px off
+		// the grid's origin, so this only translates the stage and resizes the framebuffer;
+		// nothing moves.
 		this.fitToContent();
+
+		// And only now is any of it shown. A Pixi application renders every frame from the
+		// moment it is created, so a canvas in the document is a live picture of a board
+		// being built: the empty grid paints first, then each fighter appears as its sheets
+		// arrive one after another, and the crop above lands last — resizing the framebuffer
+		// under a canvas whose width is pinned to its container, which restates its height
+		// and shifts everything below it. That is the flicker. It is not something to slow
+		// down or fade out, because none of it is anything to look at: the board is worth
+		// showing when it is a board. So the canvas is hidden from the moment it is
+		// appended, drawn once here in its finished state, and revealed with that frame
+		// already on it. `visibility` rather than `display`, so the space it will take is
+		// held from the start and the layout does not jump when it arrives.
+		app.renderer.render(app.stage);
+		app.canvas.style.visibility = 'visible';
 
 		app.ticker.add(this.tick);
 	}
 
 	/**
-	 * Shrink the canvas to the box the board actually occupies (grid + coordinates +
-	 * characters), centred in it. The stage is offset so the content stays in view; the
-	 * grid's own coordinates are left untouched, so no cell shifts.
+	 * Cut the canvas to the board: the hexagons' own span across, and the height they and
+	 * the characters standing on them need. The stage is offset so the board lands inside
+	 * it; the grid's own coordinates are untouched, so no cell shifts.
 	 *
-	 * The crop is taken once, as the board opens, off the frame every character happens to
-	 * be standing in at that moment — and the things that reach furthest are not there yet.
-	 * A guard held on the top row, an aura lit under a fighter, the callout that floats over
-	 * its head all go *up*; the order buttons are hung off a fighter's right. A canvas
-	 * cropped to the tallest idle frame has nowhere to put any of them, and they are simply
-	 * cut off at the edge, which a player cannot scroll to see past — the canvas is scaled
-	 * to fit its box rather than overflowing it. Hence the two reservations
-	 * ({@link HEAD_ROOM} above, {@link MugenBoard.orderReserve} to the right) that
-	 * {@link contentCrop} takes as floors on the room on those sides.
-	 *
-	 * Both are floors and neither is a lid: the crop still grows past them for anything
-	 * drawn further out, and it mirrors each one onto the opposite side so the board is
-	 * centred rather than shoved off by the room reserved beside it.
+	 * The grid's edges are geometry rather than a measurement — the first and last column's
+	 * outer sides at the size a cell is drawn — so the width does not depend on the frame
+	 * the crop happens to be taken in, and is the same board however the fighters in it are
+	 * standing. Everything else about the crop, and what running the hexagons to the canvas
+	 * edge costs, is on {@link contentCrop}.
 	 */
 	private fitToContent(): void {
 		if (!this.app) return;
 		const { left, top, width, height } = contentCrop(this.app.stage.getBounds(), {
-			// Plus standing room to the right of the board for the order buttons, which are
-			// hung beside a fighter long after this crop is taken.
-			reserve: this.orderReserve()
+			left: this.project(0, 0).x,
+			right: this.project(BOARD_WIDTH, 0).x
 		});
 		this.app.stage.position.set(-left, -top);
 		this.app.renderer.resize(width, height);
@@ -852,18 +860,6 @@ export class MugenBoard {
 	 */
 	private cellWidth(): number {
 		return Math.abs(this.project(1, 0).x - this.project(0, 0).x);
-	}
-
-	/**
-	 * Width (px) to keep clear off the board's right-hand edge for a column of order
-	 * buttons: a button's own width, plus the gap it stands off its fighter by. Measured
-	 * off {@link orderSize} rather than restated, so the two can never disagree. The crop
-	 * is taken once, before any orders exist, and a column hangs off its fighter's right
-	 * — including a fighter in the outermost column, whose own side *is* the right edge
-	 * of the crop.
-	 */
-	private orderReserve(): number {
-		return ORDER_GAP + this.orderSize().width;
 	}
 
 	/**
