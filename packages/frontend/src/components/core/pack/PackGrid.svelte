@@ -95,6 +95,26 @@
 		pulls !== null &&
 		(statuesTimedOut || pulls.every((pull) => statuesUp.has(pull.spawn.id)));
 
+	// The stood-up pack's own space, measured, and where the front of the box has its middle in it.
+	//
+	// The cards are centred on the picture they came out of rather than on the space they are
+	// standing in, and the two are not the same point: a box is a lid over a front, so the front's
+	// middle falls half the lid's depth below the middle of the whole box — a twelfth of the box's
+	// width, the lid being a sixth of it deep — and the box itself is centred here. The drawn width
+	// is whichever measurement runs out first at the box's own 30:37, which is the same `min` the
+	// box is handed as a height below; a share of the space alone would be wrong for every panel
+	// that bounds the height instead of the width.
+	//
+	// Measured rather than said in cqw, which would only cover the width-limited case: a length in
+	// two container units needs the space to be a size container, and this one takes its height off
+	// a flex line — a host that mounted it without a definite height would find the whole panel
+	// collapse to nothing rather than merely mis-centre.
+	const BOX_RATIO = 37 / 30;
+	let bodyWidth = 0;
+	let bodyHeight = 0;
+	$: boxWidth = Math.min(bodyWidth, bodyHeight / BOX_RATIO);
+	$: frontDrop = boxWidth / 12;
+
 	/** One statue's picture is up. */
 	function statueUp(id: string): void {
 		statuesUp = new Set(statuesUp).add(id);
@@ -219,36 +239,62 @@
 			away, and outside it — a stood-up box fills one measurement of this space and the cards fill
 			both — there is nothing to hand anything over, so the fade is what brings those in. One second
 			for both, so the box's card and the cards it held cross in the middle. -->
-		<div class="relative flex min-h-0 min-w-0 flex-1 flex-col" aria-busy={unsealing && !unsealed}>
+		<div
+			class="relative flex min-h-0 min-w-0 flex-1 flex-col"
+			aria-busy={unsealing && !unsealed}
+			bind:clientWidth={bodyWidth}
+			bind:clientHeight={bodyHeight}
+		>
 			{#if pulls}
 				{#if pulls.length}
-					<!-- The cards keep their own height and pack to the top of the box: rows left
-						to take a share of whatever height is spare would stand five cards at two
-						different sizes, and a row of statues has to read as one row. -->
+					<!-- Three boxes and not one, because the cards are doing three things at once: this
+						one scrolls, the one inside it centres, and the grid inside that lays the cards out.
+						They cannot be the same box — a grid that centred its rows *and* scrolled would put
+						its first row above the top of its own scroll, where nothing can reach it, which is
+						what a centred overflow always does. Kept apart, the middle box is exactly as tall as
+						the scroller while the cards fit and grows past it when they do not, so the centring
+						gives way to scrolling instead of fighting it.
+
+						What they are centred on is the front of the box and not this space: the padding is
+						twice the drop (see `frontDrop`), which against a border-box height moves the middle
+						down by half of it and leaves the box its own height, so a pull that fits adds
+						nothing to scroll. It comes through as a custom property, being a measured length no
+						class can carry.
+
+						The cards keep their own height whichever way it goes: rows left to take a share of
+						whatever height is spare would stand five cards at two different sizes, and a row of
+						statues has to read as one row. -->
 					<div
 						class={classNames(
-							'grid min-h-0 flex-1 content-start gap-2 overflow-y-auto transition-opacity duration-1000',
-							columnClass(revealColumns),
+							'min-h-0 flex-1 overflow-y-auto transition-opacity duration-1000',
 							uncovering ? 'opacity-100' : 'pointer-events-none opacity-0'
 						)}
 					>
-						{#each pulls as pull (pull.spawn.id)}
-							<!-- Bare, and not behind a veil of its own: the box dissolving over it is the
-								reveal, and a sprite veil under that would spend a character's one reveal on a
-								sweep held behind something opaque (see IdleSprite's `veiled`). What it says
-								instead is when its picture is up, which is what the box is waiting to hear. -->
-							<CharacterStatue
-								label={pull.label}
-								basePath={pull.basePath}
-								color={pull.color}
-								box={pull.spawn.box}
-								locationName={pull.locationName}
-								spawnedAt={pull.spawnedAt}
-								showId={pull.spawn.showId}
-								veiled={false}
-								on:ready={() => statueUp(pull.spawn.id)}
-							/>
-						{/each}
+						<div
+							class="flex min-h-full items-center pt-[calc(var(--front-drop)*2)]"
+							style:--front-drop="{frontDrop}px"
+						>
+							<div class={classNames('grid w-full gap-2', columnClass(revealColumns))}>
+								{#each pulls as pull (pull.spawn.id)}
+									<!-- Bare, and not behind a veil of its own: the box dissolving over it is the
+										reveal, and a sprite veil under that would spend a character's one reveal on
+										a sweep held behind something opaque (see IdleSprite's `veiled`). What it
+										says instead is when its picture is up, which is what the box is waiting to
+										hear. -->
+									<CharacterStatue
+										label={pull.label}
+										basePath={pull.basePath}
+										color={pull.color}
+										box={pull.spawn.box}
+										locationName={pull.locationName}
+										spawnedAt={pull.spawnedAt}
+										showId={pull.spawn.showId}
+										veiled={false}
+										on:ready={() => statueUp(pull.spawn.id)}
+									/>
+								{/each}
+							</div>
+						</div>
 					</div>
 				{:else}
 					<!-- The pack sliced open onto nothing. Why is the host's to say — every
