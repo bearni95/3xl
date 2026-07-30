@@ -12,7 +12,8 @@
 		utcMidnightMs
 	} from '$utils/music/daily-shuffle';
 	import { shiftDayIso } from '$utils/festes/catalan-day';
-	import { formatTrackLength } from '$utils/time/format-duration';
+	import { formatDuration, formatTrackLength } from '$utils/time/format-duration';
+	import { stationSchedule } from '$utils/music/schedule';
 
 	// One row per song found in @3xl/assets, and the row is the definition: the name is
 	// typed in it, the show is picked in it, and the song is played from it. There is no
@@ -312,8 +313,11 @@
 	// is also what keeps this a derivation and not a cycle.
 	$: tuned = shuffles.find((shuffle) => stationKey(shuffle.showId) === station) ?? shuffles[0] ?? null;
 	// Only what is on screen is measured: reading the metadata of every song in the
-	// collection would be seventy requests to letter one column of eighteen rows.
+	// collection would be ninety requests to letter one column of eighteen rows.
 	$: measure(tuned?.tracks.map((track) => track.file) ?? []);
+	// The order plus the lengths: what the station plays, and when. Redrawn as each
+	// length arrives, so the column fills in from the top rather than all at once.
+	$: schedule = tuned ? stationSchedule(tuned.tracks, durations) : [];
 </script>
 
 <div class="flex-1 bg-base-200 p-6 md:p-10">
@@ -592,7 +596,9 @@
 						seed hashed out of the show's id and the day's midnight UTC as a Unix timestamp,
 						the number in the badge above. So anyone asking on that day gets this same order,
 						each show is ordered independently of every other, and all of them turn over at
-						once when the timestamp does. Step the day to watch it move.
+						once when the timestamp does. Step the day to watch it move. Starts is that
+						order read as a clock: the first song at the day's midnight UTC, each one after
+						it when the one before it ends.
 					</p>
 
 					<div class="flex flex-wrap items-center gap-2">
@@ -671,10 +677,11 @@
 										<th class="w-12 text-right">#</th>
 										<th>Title</th>
 										<th class="w-24 text-right">Length</th>
+										<th class="w-28 text-right">Starts</th>
 									</tr>
 								</thead>
 								<tbody>
-									{#each tuned.tracks as track, position (track.file)}
+									{#each schedule as { track, startsAt }, position (track.file)}
 										<tr class={classNames({ 'bg-base-200': loadedFile === track.file && playing })}>
 											<td class="text-right font-mono opacity-50">{position + 1}</td>
 											<td>
@@ -692,6 +699,13 @@
 											</td>
 											<td class="text-right font-mono tabular-nums">
 												{formatTrackLength(durations.get(track.file))}
+											</td>
+											<!-- Read off the songs above it rather than off this one, so a length
+												still on its way leaves this and everything under it a dash: an
+												offset built on a guessed length would be wrong for the whole of
+												the rest of the day. -->
+											<td class="text-right font-mono tabular-nums opacity-70">
+												{startsAt === null ? '—' : formatDuration(startsAt)}
 											</td>
 										</tr>
 									{/each}
