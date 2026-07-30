@@ -21,8 +21,9 @@ describe('standing a line back up off a saved board', () => {
 	});
 
 	it('stands each fighter on the ground the fight left it holding', () => {
-		// The white column the player's fighter walked up onto when it won its lane.
-		const won = { q: 0, r: -1 };
+		// The white cell on its own row that the player's fighter walked up onto when it
+		// won its lane.
+		const won = { q: 0, r: line[0].opening.r };
 		const placed = standingLine(line, [saved(line[0].id, won), saved(line[1].id, null)]);
 
 		expect(placed[0].cell).toEqual(won);

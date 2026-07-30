@@ -4,11 +4,11 @@
 	import { createEventDispatcher } from 'svelte';
 	import type { BoardGrid, MugenBoard } from '$utils/mugen/mugen-board';
 
-	// The two 3x3 grids to render, each with its colour and centre character.
+	// The board's two halves, each with its colour and lead character.
 	export let grids: [BoardGrid, BoardGrid];
-	export let cellSize: number = 120;
-	export let depth: number = 760;
-	export let farRatio: number = 0.97;
+	// Both mirror the engine's own defaults (see MugenBoardOptions), so the board looks
+	// the same whether a host says anything about its size or not.
+	export let cellSize: number = 280;
 	export let padding: number = 40;
 	export let classes: string = '';
 
@@ -27,7 +27,7 @@
 	onMount(async () => {
 		// Import Pixi only in the browser so it never runs during SSR/prerender.
 		const { MugenBoard } = await import('$utils/mugen/mugen-board');
-		board = new MugenBoard({ grids, cellSize, depth, farRatio, padding });
+		board = new MugenBoard({ grids, cellSize, padding });
 		try {
 			await board.start(host);
 			dispatch('ready', board);

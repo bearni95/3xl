@@ -179,7 +179,8 @@ What lives here today:
 - **types** — `core.type` (`ThemeColors`, `ThemeSizes`, `ID`, …), `character-definition.type`,
   `mugen-move.type`, `map.type`, `location.type`, `profile.type`, `player-card.type`,
   `tmdb.type`, `navigation.type`.
-- **utils** — `mugen/*` (frame sheets, animation, board engine, hex, PixiJS player),
+- **utils** — `mugen/*` (frame sheets, animation, board engine, square board grid,
+  PixiJS player),
   `achievement/*` (the formula language, templating, variable rules),
   `geo/pointInPolygon`, `dice/roll`, `color/compare`, `string/*`, `tmdb/*`
   (client + rate limiter), `routes/get-routes`, `localStorageWritableStore`.
@@ -843,7 +844,7 @@ app services plus the `@3xl/shared` utils/adapters the frontend consumes.
 packages/frontend/test/
 ├── services/     # Service unit tests
 ├── adapters/     # Adapter unit tests
-├── utils/        # Utility function tests (dice, hex, color, localStorage store…)
+├── utils/        # Utility function tests (dice, board grid, color, localStorage store…)
 └── components/   # Component tests (with @testing-library/svelte)
 ```
 

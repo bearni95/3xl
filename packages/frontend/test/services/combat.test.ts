@@ -8,7 +8,7 @@ import {
 	type CombatState,
 	type FighterSeed
 } from '$services/combat.controller';
-import { cellSide, findPath, isBoardCell, type Hex } from '$utils/mugen/hex';
+import { type Cell, cellSide, findPath, isBoardCell } from '$utils/mugen/grid';
 import { ORDER_ICONS } from '$utils/color/traits';
 import type { CombatColor } from '$types/character-definition.type';
 import type { BattleBoardSnapshot, BattleFighterSnapshot } from '$types/battle.type';
@@ -83,7 +83,7 @@ async function openWithCharges(controller: CombatController): Promise<void> {
 interface AuraLog {
 	lit: { id: string; color: string }[];
 	doused: string[];
-	moved: { id: string; cell: Hex }[];
+	moved: { id: string; cell: Cell }[];
 	/** Every badge the board was asked to draw at a fighter's corner: the glyphs of
 	 * what its colour grants it, whether each has been used up, and the colour they
 	 * were drawn in. Appended to on every change, so the last entry for an id is what
@@ -122,7 +122,7 @@ function fakeBoard(log: AuraLog) {
 		meleeApproach: done,
 		returnHome: done,
 		knockOut: done,
-		regroup: (id: string, cell: Hex) => {
+		regroup: (id: string, cell: Cell) => {
 			log.moved.push({ id, cell });
 			return done();
 		}
@@ -797,10 +797,10 @@ describe('the stand-off', () => {
 				expect(isBoardCell(cell.q, cell.r)).toBe(true);
 				expect(cellSide(cell.q)).toBe('blue');
 			}
-			// Each pair is drawn a row apart, which is what puts the two of them in one
+			// Each pair is drawn on one row, which is what puts the two of them in one
 			// lane — and what makes the white cell in front of the player its own to take.
 			RIVAL_CELLS.forEach((rival, lane) => {
-				expect(PLAYER_CELLS[lane].r).toBe(rival.r - 1);
+				expect(PLAYER_CELLS[lane].r).toBe(rival.r);
 			});
 			// Nobody shares a cell with anybody.
 			const keys = [...RIVAL_CELLS, ...PLAYER_CELLS].map((cell) => `${cell.q},${cell.r}`);
@@ -812,7 +812,7 @@ describe('the stand-off', () => {
 			// be reachable: a route over its own half plus the shared white column, which
 			// is exactly what the board allows. Without one the fighter would simply stay
 			// where it was, with nothing to say so.
-			const half = (side: 'red' | 'blue') => (cell: Hex) =>
+			const half = (side: 'red' | 'blue') => (cell: Cell) =>
 				isBoardCell(cell.q, cell.r) && cellSide(cell.q) !== (side === 'blue' ? 'red' : 'blue');
 			RIVAL_CELLS.forEach((rival, lane) => {
 				expect(findPath(PLAYER_CELLS[lane], rival, half('blue'))).not.toBeNull();

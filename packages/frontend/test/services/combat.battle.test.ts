@@ -199,7 +199,7 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 		const lineupCells = [...PLAYER_CELLS].reverse();
 		const place = (ids: string[], cells: typeof PLAYER_CELLS, side: 'error' | 'info') =>
 			ids
-				.map((spawnId, index) => ({ spawnId, side, gridY: cellScreenY(cells[index].q, cells[index].r) }))
+				.map((spawnId, index) => ({ spawnId, side, gridY: cellScreenY(cells[index]) }))
 				.sort((a, b) => a.gridY - b.gridY);
 		const seeded = [
 			...place(['og-0', 'og-1', 'og-2'], RIVAL_CELLS, 'error'),

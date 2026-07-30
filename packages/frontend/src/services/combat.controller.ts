@@ -68,7 +68,7 @@
  * draw. The amount is the server's, always; nothing here names one.
  */
 import { writable } from 'svelte/store';
-import { cellSide, isBoardCell, type Hex } from '$utils/mugen/hex';
+import { type Cell, cellSide, isBoardCell } from '$utils/mugen/grid';
 import type { MugenBoard } from '$utils/mugen/mugen-board';
 import { findMove, type CharacterMove, type CombatColor } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
@@ -111,14 +111,15 @@ export const ENCOUNTERS_TO_WIN = 2;
 
 /**
  * The ground the player's line opens on, listed top→bottom on screen — the far column
- * of its own half, facing the rivals a row apart. A fighter holds its own cell until
- * the lane in front of it is won, and the only ground it ever takes is that lane's
- * white cell (see {@link CombatController.settleGround}).
+ * of its own half, one fighter to a row, each facing the rival on the same row of the
+ * white column. A fighter holds its own cell until the lane in front of it is won, and
+ * the only ground it ever takes is that lane's white cell (see
+ * {@link CombatController.settleGround}).
  */
-export const PLAYER_CELLS: Hex[] = [
-	{ q: 2, r: -2 },
-	{ q: 2, r: -3 },
-	{ q: 2, r: -4 }
+export const PLAYER_CELLS: Cell[] = [
+	{ q: 2, r: 0 },
+	{ q: 2, r: 1 },
+	{ q: 2, r: 2 }
 ];
 
 /**
@@ -129,10 +130,10 @@ export const PLAYER_CELLS: Hex[] = [
  * withdraws a column into its own half, and the turn it loses one the player's
  * fighter walks up and takes the cell off it.
  */
-export const RIVAL_CELLS: Hex[] = [
-	{ q: 0, r: -1 },
-	{ q: 0, r: -2 },
-	{ q: 0, r: -3 }
+export const RIVAL_CELLS: Cell[] = [
+	{ q: 0, r: 0 },
+	{ q: 0, r: 1 },
+	{ q: 0, r: 2 }
 ];
 
 /** Animation played when a fighter attacks and its definition binds no melee move. */
@@ -204,7 +205,7 @@ export interface Fighter extends FighterSeed {
 	/** The board cell it is standing on. Its line-up slot's opening ground until the
 	 * lane it fights in is decided, and then whatever ground that left it holding
 	 * (see {@link CombatController.settleGround}). */
-	cell: Hex;
+	cell: Cell;
 	/** Charges banked, 0..{@link MAX_CHARGES}. Shooting spends one — the free shot
 	 * included: it is the *turn* a colour hands over, never the ammunition. */
 	charges: number;

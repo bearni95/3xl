@@ -5,15 +5,19 @@ import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/character-fi
 import { characterIdFromFramesPath, readRenderScale } from './character-render-scale';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
+	BOARD_COLUMNS,
+	BOARD_ROWS,
 	boardCells,
+	type Cell,
 	cellSide,
 	type CellSide,
+	FIRST_COLUMN,
+	FIRST_ROW,
 	findClosestApproach,
 	findMeleeMeeting,
 	findPath,
-	isBoardCell,
-	type Hex
-} from './hex';
+	isBoardCell
+} from './grid';
 
 /** A frame with its loaded texture and pre-computed anchor fractions. */
 interface LoadedFrame {
@@ -39,11 +43,11 @@ export interface BoardCharacter {
 	id?: string;
 }
 
-/** A character placed on a specific hex cell (axial coordinates). */
+/** A character placed on a specific board cell. */
 export interface PlacedCharacter extends BoardCharacter {
-	/** Axial column (q) of the hex to stand on. Sign must match the grid's half. */
+	/** Column (q) of the cell to stand on. Sign must match the grid's half. */
 	q: number;
-	/** Axial row (r) of the hex to stand on. */
+	/** Row (r) of the cell to stand on, counted down the screen. */
 	r: number;
 }
 
@@ -58,118 +62,57 @@ export interface BoardGrid {
 	character: BoardCharacter | PlacedCharacter;
 	/**
 	 * Extra characters standing idle on this half of the board, each pinned to its
-	 * own hex cell. They loop their animation in place until combat walks them.
+	 * own cell. They loop their animation in place until combat walks them.
 	 */
 	extras?: PlacedCharacter[];
 }
 
 export interface MugenBoardOptions {
 	grids: [BoardGrid, BoardGrid];
-	/** Near-edge (closest to viewer) size of a single grid cell, in pixels. */
+	/** Side of a single grid cell, in pixels. Every cell is this square. */
 	cellSize?: number;
-	/** Screen distance from the near (bottom) edge to the far (top) edge. */
-	depth?: number;
-	/**
-	 * Far-edge width as a fraction of the near-edge width (0..1). Lower values
-	 * tilt the grids harder toward the shared vanishing point. 1 = flat.
-	 */
-	farRatio?: number;
-	/** Outer padding around the grids, in pixels. */
+	/** Outer padding around the grid, in pixels. */
 	padding?: number;
-	/**
-	 * Vertical shift (px) applied to the whole projected board. Positive moves it
-	 * down. Used to re-centre after front rows are trimmed off the near edge.
-	 */
-	yOffset?: number;
-	/** Colour of the central column (q = 0), the shared row between the halves. */
+	/** Colour of the central column (q = 0), the shared ground between the halves. */
 	centerColor?: number;
 }
 
 const DEFAULTS = {
-	cellSize: 120,
-	depth: 760,
-	farRatio: 0.97,
+	// A cell's side in canvas px. Four columns of it is the whole board's width, so this
+	// is what decides the canvas's resolution: enough that the arena — a full-viewport
+	// panel — scales the canvas *down* to fit rather than up, which is what keeps the
+	// pixel art crisp.
+	cellSize: 280,
 	padding: 40,
-	yOffset: 110,
 	centerColor: 0xffffff // white
 };
 
-/** Grid extents used to size the projection footprint (unchanged canvas size). */
-const ROWS = 5;
-const COLS = 10;
-
-// --- Hex board layout (single hexagon-of-hexagons) --------------------------
-// The board is one hexagon of radius HEX_RADIUS cells, addressed in axial
-// coordinates (q across the width, r into the depth). The hexes are pointy-top
-// (points up/down, flat edges left/right), so each hex reads vertically; lines
-// of constant q slant half a step per row, but within any row cells are still
-// ordered left-to-right by q, so q alone keeps deciding the red/blue side. Its
-// raw (size-1) bounding box is symmetric about the origin and fitted
-// independently on each axis into the projection box (col 0..COLS, row 0..ROWS)
-// so it fills the whole footprint; every hex corner is then projected through
-// the same one-point perspective the square grid used. Cells left of centre are
+// --- Board layout (a flat rectangle of square cells) ------------------------
+// The grid is drawn face-on: no tilt, no vanishing point, no per-row scaling.
+// A cell is a square of `cellSize` px wherever it sits, so the board's columns
+// and rows map straight onto screen x and y — column FIRST_COLUMN at the left
+// edge, row FIRST_ROW at the top — and a character keeps its size wherever it
+// walks, because there is no depth for it to walk into. Cells left of centre are
 // the first grid's colour, cells to the right the second's.
-const HEX_RADIUS = 3; // rings out from the centre hex (centre + 3 = 4 cells per spoke)
-const SQRT3 = Math.sqrt(3);
-const HEX_HALF_W = SQRT3 * (HEX_RADIUS + 0.5); // raw half-width (q extreme + flat edge)
-const HEX_HALF_H = HEX_RADIUS * 1.5 + 1; // raw half-height (r extreme + corner point)
-const HEX_SCALE_X = COLS / (2 * HEX_HALF_W); // raw x → grid columns
-const HEX_SCALE_Y = ROWS / (2 * HEX_HALF_H); // raw y → grid rows
-/** Corner offsets (in grid units) for a pointy-top hex, relative to its centre. */
-const HEX_CORNERS: { x: number; y: number }[] = Array.from({ length: 6 }, (_, k) => {
-	const angle = ((60 * k - 30) * Math.PI) / 180;
-	return { x: Math.cos(angle) * HEX_SCALE_X, y: Math.sin(angle) * HEX_SCALE_Y };
-});
-/**
- * Offset (grid rows) from a hex's centre to the horizontal line through its two
- * lower corners — the line standing characters plant their feet on, so they read
- * as inside the cell rather than floating at its centre. Grid rows increase away
- * from the viewer (up-screen), so the lower-on-screen corners sit at −sin 30°.
- */
-const HEX_FOOT_Y = -0.5 * HEX_SCALE_Y;
-
-/**
- * Left→right screen position of the standing point in the hex at axial [q, r],
- * in arbitrary units (only the ordering is meaningful). Mirrors the horizontal
- * term of {@link MugenBoard.project} — the raw x scaled by the perspective
- * half-width at that row — so callers outside the engine (e.g. the board page's
- * character cards) can sort characters into the exact left-to-right order they
- * stand in on the canvas, tie-breaks and all. Uses the board's default
- * `farRatio`, the only value the app configures it with.
- */
-export function cellScreenX(q: number, r: number, farRatio: number = DEFAULTS.farRatio): number {
-	const rawX = SQRT3 * (q + r / 2);
-	const row = ROWS / 2 + 1.5 * r * HEX_SCALE_Y;
-	// Perspective depth parameter (0 near, 1 far), then the half-width at that row
-	// relative to the near edge — matches project()'s halfWidth up to a positive
-	// scale, which the ordering ignores.
-	const t = row / (ROWS * farRatio + row * (1 - farRatio));
-	const halfWidth = 1 + t * (farRatio - 1);
-	return halfWidth * rawX;
-}
-
-/**
- * Top→bottom screen position of the standing point in the hex at axial [q, r], in
- * arbitrary units that increase downward (only the ordering is meaningful). Mirrors
- * the vertical term of {@link MugenBoard.project}: far rows (larger r) sit higher up
- * the canvas, so this returns the negated depth parameter — sort it ascending to lay
- * characters out top-of-board first. Uses the board's default `farRatio`, the only
- * value the app configures it with.
- */
-export function cellScreenY(q: number, r: number, farRatio: number = DEFAULTS.farRatio): number {
-	const row = ROWS / 2 + 1.5 * r * HEX_SCALE_Y;
-	// Depth parameter t grows toward the far (upper) edge; screen y falls as t rises,
-	// so negate it to get a value that increases down the screen.
-	const t = row / (ROWS * farRatio + row * (1 - farRatio));
-	return -t;
-}
 
 /** On-screen height of a reference-height ({@link REFERENCE_SOURCE_HEIGHT}) character
- * as a multiple of the board's reference cell width — the height of the box every
- * character is fitted into. Every other character scales by the same source→screen
- * ratio, so shorter/taller sprites read shorter/taller; anything taller than the
- * reference is brought back to this height rather than standing out of its cell. */
+ * as a multiple of a cell's width — the height of the box every character is fitted
+ * into. Every other character scales by the same source→screen ratio, so shorter/taller
+ * sprites read shorter/taller; anything taller than the reference is brought back to
+ * this height rather than standing out of its cell. */
 const CHAR_HEIGHT_RATIO = 1.3;
+
+/** How far (in cells) a character standing on the top row rises above the grid, which
+ * is the room the canvas keeps over it. */
+const HEAD_ROOM = Math.max(0, CHAR_HEIGHT_RATIO - 1);
+
+/**
+ * Top→bottom screen position of the cell — rows run down the screen, so it is the
+ * row itself. Callers outside the engine (the arena's line-up, the saved board's
+ * lane numbering) sort by it to lay characters out top-of-board first, and go on
+ * asking the renderer which way its rows run rather than assuming it.
+ */
+export const cellScreenY = (cell: Cell): number => cell.r;
 
 /** Horizontal speed (canvas px/s) a character runs between cells during combat. */
 const MOVE_SPEED = 260;
@@ -183,17 +126,17 @@ const AURA_WIDTH_RATIO = 1.7;
 const AURA_HEIGHT_RATIO = 1.25;
 
 /**
- * Where each half's lead character stands when its grid doesn't say: red
- * lower-left, blue upper-right. A grid overrides this by giving its `character`
- * `q`/`r` of its own.
+ * Where each half's lead character stands when its grid doesn't say: the middle
+ * row of each side's outer column, red facing blue across the board. A grid
+ * overrides this by giving its `character` `q`/`r` of its own.
  */
-const LEAD_CELLS: [Hex, Hex] = [
-	{ q: -1, r: -1 },
-	{ q: 2, r: -3 }
+const LEAD_CELLS: [Cell, Cell] = [
+	{ q: -1, r: 1 },
+	{ q: 2, r: 1 }
 ];
 
 /** The cell a half's lead character stands on: its own `q`/`r`, or `fallback`. */
-const leadCell = (grid: BoardGrid, fallback: Hex): Hex =>
+const leadCell = (grid: BoardGrid, fallback: Cell): Cell =>
 	'q' in grid.character ? { q: grid.character.q, r: grid.character.r } : fallback;
 
 /** Canvas hex for each combat colour, for tinting callouts and slashes. */
@@ -213,9 +156,12 @@ export const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color]
 /** Horizontal gap (px) from the actor's right-hand side to the near edge of its
  * column of buttons. */
 const ORDER_GAP = 8;
-/** A button's width as a fraction of its own height. The height is dictated by the
- * cell the fighter stands in ({@link MugenBoard.cellSideHeight}), so the aspect is
- * all that is left to say about a button's size. */
+/** A button's height as a fraction of a cell's side. A column of the three orders is
+ * then about as tall as the fighter it stands beside — which is what a strip of them
+ * has to be to read as belonging to it, rather than as furniture of its own. */
+const ORDER_HEIGHT_RATIO = 0.4;
+/** A button's width as a fraction of its own height, which is all that is left to say
+ * about its size once {@link ORDER_HEIGHT_RATIO} has set the height. */
 const ORDER_WIDTH_RATIO = 1.11;
 /** Gap between buttons in a column, as a fraction of a button's height. */
 const ORDER_SPACING_RATIO = 0.12;
@@ -338,12 +284,6 @@ interface OrderButton {
 interface OrderStrip {
 	container: Container;
 	buttons: OrderButton[];
-	/**
-	 * Button height (px) the column was last laid out at — the side of the cell its
-	 * fighter was standing in. A fighter that walks into another cell is standing in
-	 * another size of cell, so this is what says the column must be measured again.
-	 */
-	height: number;
 }
 
 /** The marks of what one fighter's colour grants it — a white disc with a glyph on
@@ -367,8 +307,8 @@ interface Actor {
 	 * is standing on: a fighter that has taken the white column still belongs to its
 	 * own side, and must never be read as having changed halves. */
 	side: CellSide;
-	/** Axial cell the actor started on, so it can walk back after combat. */
-	homeCell: number;
+	/** The cell the actor started on, so it can walk back after combat. */
+	homeColumn: number;
 	homeRow: number;
 	/** Every loaded animation for this actor, keyed by name (idle, run, …). */
 	animations: Record<string, LoadedFrame[]>;
@@ -377,17 +317,17 @@ interface Actor {
 	currentName: string;
 	frameIndex: number;
 	frameElapsed: number;
-	// Movement. Actors step hex to hex; `cell`/`rowFront` are the axial column (q)
-	// and row (r) currently occupied. Movement is programmatic (combat) via `pathQueue`.
-	/** Axial row (r) the actor currently occupies. */
-	rowFront: number;
-	/** Axial column (q) the actor currently occupies. */
-	cell: number;
+	// Movement. Actors step cell to cell; `column`/`row` are the ones currently
+	// occupied. Movement is programmatic (combat) via `pathQueue`.
+	/** Row (r) the actor currently occupies. */
+	row: number;
+	/** Column (q) the actor currently occupies. */
+	column: number;
 	/** Raw manifest animation played while running right / left (from the JSON). */
 	moveRightAnim: string;
 	moveLeftAnim: string;
 	/** Remaining cells to step through (programmatic movement). */
-	pathQueue: Hex[];
+	pathQueue: Cell[];
 	/**
 	 * When set, the walk's final step targets this exact screen point instead of
 	 * the last cell's standing mark — e.g. a fighter's half of a shared duel cell.
@@ -429,14 +369,19 @@ interface Actor {
 }
 
 /**
- * Renders a single pointy-top hex board (one hexagon of radius HEX_RADIUS cells)
- * on a PixiJS canvas, tilted in one-point perspective toward a vanishing point
- * above its centre. Cells left of centre take the first grid colour, cells to the
- * right the second. Two MUGEN characters loop (idle by default) standing upright
- * — one on each half — while only the board tilts, not the characters.
+ * Renders the board — a flat rectangle of square cells, drawn face-on — on a PixiJS
+ * canvas. Cells left of centre take the first grid colour, cells to the right the
+ * second, and the shared central column the centre colour. Two MUGEN characters loop
+ * (idle by default) standing upright, one on each half.
+ *
+ * Nothing is tilted: a cell is the same square wherever it is on the board, so a
+ * character's size says something about the character and nothing about where it
+ * stands, and walking it forward neither resizes it nor moves it toward a vanishing
+ * point. The only thing depth still decides is paint order — a row further down the
+ * screen draws over the row above it.
  *
  * Frame decoding happens at build time (scripts/generate-sprites.js); this
- * class only projects the grids and plays the loaded frames. All rendering
+ * class only lays out the grid and plays the loaded frames. All rendering
  * state lives here so the Svelte component stays UI-only.
  */
 export class MugenBoard {
@@ -455,22 +400,30 @@ export class MugenBoard {
 	private iconTextures = new Map<string, Texture>();
 	/** What to call when an order button is tapped; set by {@link onOrder}. */
 	private orderHandler: ((actorId: string, orderId: string) => void) | null = null;
-	/** Character cards drawn in the empty space around the grid (rival + player). */
-
-	/** Canvas size, cached so {@link project} can map grid coords to screen space. */
-	private canvasWidth = 0;
-	private canvasHeight = 0;
 
 	constructor(options: MugenBoardOptions) {
 		this.options = { ...DEFAULTS, ...options };
 	}
 
-	/** Total canvas size — width sized to the grid, height a tall-ish fraction of it
-	 * so the hexes get real vertical room (they were squashed at 2:1). */
+	/**
+	 * Total canvas size: the grid at one `cellSize` square per cell, plus the padding
+	 * around it and the head room a character standing on the top row needs — it plants
+	 * its feet on that row's lower edge and stands {@link CHAR_HEIGHT_RATIO} cells tall,
+	 * so the part of it above the grid has to be inside the canvas before
+	 * {@link fitToContent} crops anything.
+	 */
 	get dimensions(): { width: number; height: number } {
 		const { cellSize, padding } = this.options;
-		const width = padding * 2 + cellSize * COLS;
-		return { width, height: Math.round(width * 0.72) };
+		return {
+			width: padding * 2 + cellSize * BOARD_COLUMNS,
+			height: padding * 2 + cellSize * (BOARD_ROWS + HEAD_ROOM)
+		};
+	}
+
+	/** Screen y of the grid's top edge: the padding, plus the head room above it. */
+	private get gridTop(): number {
+		const { cellSize, padding } = this.options;
+		return padding + cellSize * HEAD_ROOM;
 	}
 
 	/** Boot Pixi inside `container`, draw the grids and start the game loop. */
@@ -494,8 +447,8 @@ export class MugenBoard {
 			return;
 		}
 		this.app = app;
-		// Sort stage children by zIndex so characters nearer the viewer (lower rows,
-		// larger screen-y) paint over those set further back into the board's depth.
+		// Sort stage children by zIndex so characters further down the screen (larger
+		// rows, larger screen-y) paint over those standing behind them.
 		app.stage.sortableChildren = true;
 		// Order buttons live on the board, so the stage has to be hit-tested for taps.
 		app.stage.eventMode = 'static';
@@ -507,10 +460,7 @@ export class MugenBoard {
 		app.canvas.style.height = 'auto';
 		container.appendChild(app.canvas);
 
-		this.canvasWidth = width;
-		this.canvasHeight = height;
-
-		// One hexagonal board: cells left of centre take the left leader's colour, right
+		// One rectangular board: cells left of centre take the left leader's colour, right
 		// the right leader's, the shared centre column white.
 		this.drawBoard(
 			this.options.grids[0].color,
@@ -519,15 +469,15 @@ export class MugenBoard {
 		);
 
 		// The lead character of each half stands where its grid asks, or on the half's
-		// default lead cell: the left one lower-left (unflipped), the right one
-		// (flipped) to the upper-right. Combat can walk any actor into the central
-		// white column.
+		// default lead cell: the left one in its own outer column (unflipped), the right
+		// one (flipped) in its own. Combat can walk any actor into the central white
+		// column.
 		const redLead = leadCell(this.options.grids[0], LEAD_CELLS[0]);
 		const blueLead = leadCell(this.options.grids[1], LEAD_CELLS[1]);
 		await this.addActor(this.options.grids[0].character, redLead.q, redLead.r, false);
 		await this.addActor(this.options.grids[1].character, blueLead.q, blueLead.r, true);
 
-		// Extra characters stand idle on their assigned hexes — left half faces
+		// Extra characters stand idle on their assigned cells — left half faces
 		// right (unflipped), right half faces left (flipped) like the centre pair.
 		for (const extra of this.options.grids[0].extras ?? []) {
 			await this.addActor(extra, extra.q, extra.r, false);
@@ -540,12 +490,11 @@ export class MugenBoard {
 		// down in the meantime, and destroy() has already freed the app.
 		if (this.destroyed) return;
 
-		// Crop the view to what's actually drawn: the hex grid (the widest element)
-		// ends up flush with the canvas edges — so it fills the width when the canvas
-		// is scaled to its container — and the height becomes the grid's height plus
-		// the room the front-row characters need below it. The projection keeps using
-		// the original design size (canvasWidth/Height), so combat movement still lands
-		// on the right cells; we only translate the stage and resize the framebuffer.
+		// Crop the view to what's actually drawn: the grid ends up flush with the canvas
+		// edges — so it fills the width when the canvas is scaled to its container — and
+		// the height becomes the grid's own plus the room the characters standing on its
+		// rows need above it. Cell positions are absolute px off the grid's origin, so
+		// this only translates the stage and resizes the framebuffer; nothing moves.
 		this.fitToContent();
 
 		app.ticker.add(this.tick);
@@ -553,11 +502,10 @@ export class MugenBoard {
 
 	/**
 	 * Shrink the canvas to the bounding box of everything drawn (grid + characters),
-	 * so the hex grid sits flush against its edges and the canvas is exactly tall enough
-	 * for the grid and the front-row characters standing below its near edge, with room
-	 * off its right-hand side for the order buttons that stand *there*. The stage is
-	 * offset so the content stays in view; the projection's design size is left untouched
-	 * so hex positions don't shift.
+	 * so the grid sits flush against its edges and the canvas is exactly as tall as the
+	 * grid and the characters standing on it, with room off its right-hand side for the
+	 * order buttons that stand *there*. The stage is offset so the content stays in view;
+	 * the grid's own coordinates are left untouched, so no cell shifts.
 	 */
 	private fitToContent(): void {
 		if (!this.app) return;
@@ -590,118 +538,73 @@ export class MugenBoard {
 
 
 	/**
-	 * Project a point given in grid coordinates (column 0..COLS across the width,
-	 * row 0..ROWS into the depth) to screen space. The near edge (row 0) spans the
-	 * full width at the bottom; the far edge (row ROWS) is narrower and centred, so
-	 * all depth lines converge on one vanishing point above the horizontal centre.
-	 * Fractional columns and rows are supported, so hex corners project correctly.
+	 * Screen point of a place on the grid, given in cells off its top-left corner
+	 * (column 0 is the left edge, row 0 the top one). One cell is `cellSize` px each
+	 * way wherever it is, so this is a scale and a translation and nothing else — which
+	 * is the whole of what "not tilted" means here. Fractional values are supported, so
+	 * a cell's corners and the middle of its foot line all project through it.
 	 */
 	private project(col: number, row: number): Point {
-		const { depth, farRatio, padding, yOffset } = this.options;
-		const cx = this.canvasWidth / 2;
-		const nearHalf = (this.canvasWidth - padding * 2) / 2;
-		const farHalf = nearHalf * farRatio;
-		// Centre the (short) grid vertically within the canvas.
-		const nearY = (this.canvasHeight + depth) / 2;
-		const farY = (this.canvasHeight - depth) / 2;
+		const { cellSize, padding } = this.options;
+		return { x: padding + col * cellSize, y: this.gridTop + row * cellSize };
+	}
 
-		// Perspective-correct depth parameter: rows bunch up toward the far edge.
-		// t=0 at the near edge, t=1 at the far edge.
-		const t = row / (ROWS * farRatio + row * (1 - farRatio));
-		const halfWidth = nearHalf + t * (farHalf - nearHalf);
-		const y = nearY + t * (farY - nearY);
-		const frac = col / COLS; // 0 = left edge, 1 = right edge
-		return { x: cx - halfWidth + frac * halfWidth * 2, y: y + yOffset };
+	/** Grid coordinates (cells off the grid's top-left corner) of the top-left corner
+	 * of the cell at [q, r]. */
+	private cellCorner(q: number, r: number): Point {
+		return { x: q - FIRST_COLUMN, y: r - FIRST_ROW };
+	}
+
+	/** Screen-space point an actor stands on in the cell at [q, r]: horizontally
+	 * centred, feet on the cell's lower edge, so it reads as inside the cell rather
+	 * than floating at its centre. */
+	private cellMark(q: number, r: number): Point {
+		const corner = this.cellCorner(q, r);
+		return this.project(corner.x + 0.5, corner.y + 1);
 	}
 
 	/**
-	 * Grid coordinates (column/row, pre-projection) of the centre of the hex at
-	 * axial [q, r]. The origin hex sits at the centre of the board; the field is
-	 * scaled independently on each axis so the hexagon fills the whole footprint.
+	 * The width of a cell in screen px — one figure for the whole board, since every
+	 * cell is the same square. It is the box every character is fitted into, so how big
+	 * a fighter is drawn says something about the fighter and nothing about where on the
+	 * board it happens to be, and walking a fighter forward never resizes it.
 	 */
-	private hexCoord(q: number, r: number): Point {
-		const rawX = SQRT3 * (q + r / 2);
-		const rawY = 1.5 * r;
-		return { x: COLS / 2 + rawX * HEX_SCALE_X, y: ROWS / 2 + rawY * HEX_SCALE_Y };
-	}
-
-	/** Screen-space point an actor stands on in the hex at axial [q, r]:
-	 * horizontally centred, vertically on the hex's lower-corner line. */
-	private hexMark(q: number, r: number): Point {
-		const centre = this.hexCoord(q, r);
-		return this.project(centre.x, centre.y + HEX_FOOT_Y);
-	}
-
-	/**
-	 * The width of the board's reference cell — the centre hex, measured edge to edge
-	 * along the line characters stand on. Every character is drawn against this one
-	 * cell rather than the cell it stands on, so how big a fighter is drawn says
-	 * something about the fighter and nothing about where on the board it happens to
-	 * be: the two lines match, and walking a fighter forward never resizes it.
-	 */
-	private referenceCellWidth(): number {
-		const centre = this.hexCoord(0, 0);
-		const half = (SQRT3 / 2) * HEX_SCALE_X; // pointy-top hex half-width (flat edge), in grid columns
-		const footY = centre.y + HEX_FOOT_Y;
-		return Math.abs(
-			this.project(centre.x + half, footY).x - this.project(centre.x - half, footY).x
-		);
-	}
-
-	/**
-	 * On-screen length of the side the hex at axial [q, r] shares with its eastern
-	 * neighbour — the cell's right-hand edge, which a pointy-top hex draws vertical. It
-	 * runs from the line a character plants its feet on (the lower corners) up to the
-	 * line through the upper ones, so it is the height of the cell as read by whoever is
-	 * standing in it. Measured on the actor's *own* cell rather than on the reference
-	 * one: this is what the order buttons beside a fighter are as tall as, so a fighter
-	 * deep in the board gets buttons matching the cell it is actually in.
-	 */
-	private cellSideHeight(q: number, r: number): number {
-		const centre = this.hexCoord(q, r);
-		const half = (SQRT3 / 2) * HEX_SCALE_X; // pointy-top hex half-width: the flat side's x
-		const foot = this.project(centre.x + half, centre.y + HEX_FOOT_Y);
-		const head = this.project(centre.x + half, centre.y - HEX_FOOT_Y);
-		return Math.abs(foot.y - head.y);
+	private cellWidth(): number {
+		return Math.abs(this.project(1, 0).x - this.project(0, 0).x);
 	}
 
 	/**
 	 * Width (px) to keep clear off the board's right-hand edge for a column of order
-	 * buttons. Measured rather than guessed: the widest button any cell on the board can
-	 * carry, plus the gap it stands off its fighter by. The crop is taken once, before
-	 * any orders exist, and a column hangs off its fighter's right — including a fighter
-	 * in the outermost column, whose own side *is* the right edge of the crop.
+	 * buttons: a button's own width, plus the gap it stands off its fighter by. Measured
+	 * off {@link orderSize} rather than restated, so the two can never disagree. The crop
+	 * is taken once, before any orders exist, and a column hangs off its fighter's right
+	 * — including a fighter in the outermost column, whose own side *is* the right edge
+	 * of the crop.
 	 */
 	private orderReserve(): number {
-		const tallest = Math.max(
-			...boardCells().map((cell) => this.cellSideHeight(cell.q, cell.r))
-		);
-		return ORDER_GAP + tallest * ORDER_WIDTH_RATIO;
+		return ORDER_GAP + this.orderSize().width;
 	}
 
 	/**
-	 * Draw the board. Cells left of the vertical centre line take `leftColor`,
-	 * cells to the right `rightColor`, and the central column (q = 0) — the shared
-	 * row both creatures can enter — is painted `centerColor`. Iterates the exact
-	 * cell list from the shared hex utility (rather than a fixed radius box) so
-	 * every occupiable cell is drawn, no matter how far its column reaches.
+	 * Draw the board: one square per cell, laid out face-on. Cells left of the central
+	 * column take `leftColor`, cells to the right `rightColor`, and the central column
+	 * (q = 0) — the shared ground both sides can enter — is painted `centerColor`.
+	 * Iterates the exact cell list from the shared grid utility, so every occupiable
+	 * cell is drawn and nothing else is.
 	 */
 	private drawBoard(leftColor: number, rightColor: number, centerColor: number): void {
 		if (!this.app) return;
 		const graphics = new Graphics();
 		for (const { q, r } of boardCells()) {
 			// q alone decides the side; the central column (q = 0) is the shared
-			// white row.
+			// white ground.
 			const side = cellSide(q);
 			const color = side === 'red' ? leftColor : side === 'blue' ? rightColor : centerColor;
 
-			const centre = this.hexCoord(q, r);
-			const pts: number[] = [];
-			for (const corner of HEX_CORNERS) {
-				const p = this.project(centre.x + corner.x, centre.y + corner.y);
-				pts.push(p.x, p.y);
-			}
-			graphics.poly(pts);
+			const corner = this.cellCorner(q, r);
+			const topLeft = this.project(corner.x, corner.y);
+			const bottomRight = this.project(corner.x + 1, corner.y + 1);
+			graphics.rect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
 			graphics.fill({ color, alpha: 0.08 });
 			graphics.stroke({ width: 2, color, alpha: 0.9 });
 		}
@@ -709,9 +612,9 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Load a character and stand it in the centre of the hex at axial [q, r], feet on
-	 * the hex's lower-corner line. Every actor loads its directional walk animations so
-	 * combat can drive it hex to hex.
+	 * Load a character and stand it in the centre of the cell at [q, r], feet on the
+	 * cell's lower edge. Every actor loads its directional walk animations so combat
+	 * can drive it cell to cell.
 	 */
 	private async addActor(
 		character: BoardCharacter,
@@ -760,17 +663,15 @@ export class MugenBoard {
 		const baseFrames = animations[startName];
 		if (!baseFrames || baseFrames.length === 0) return;
 
-		// The character stands centred on its hex's lower-corner line, feet on it (the
-		// line itself is not drawn).
-		const mark = this.hexMark(q, r);
+		// The character stands centred on its cell's lower edge, feet on it.
+		const mark = this.cellMark(q, r);
 
 		// How big the character is drawn is the cards' question, asked of the cards' own
 		// answer ({@link characterFitScale}): one shared source→screen ratio for every
 		// character, capped so neither a tall one nor a wide one spills out of its box.
-		// The box is the *reference* cell — one cell for the whole board, not the cell
-		// this actor happens to stand on — so the two lines are scaled alike however
-		// deep each stands, and a fighter keeps its size as it walks. Both surfaces then
-		// agree on every character's size relative to the others.
+		// The box is a cell — the same square anywhere on the board — so the two lines are
+		// scaled alike wherever each stands, and a fighter keeps its size as it walks. Both
+		// surfaces then agree on every character's size relative to the others.
 		// The character's own render scale rides along: the definition is already loaded
 		// above for its bindings, and it is the same correction the cards and the statues
 		// read, so a set drawn small stands as tall here as it does on a card.
@@ -778,7 +679,7 @@ export class MugenBoard {
 		// an actor is pinned by its body axis to the mark on its cell (see below), so what
 		// must fit in half a cell is the furthest the cycle reaches from that axis — the
 		// sweep would let a long-limbed character hang over the cell beside it.
-		const box = this.referenceCellWidth();
+		const box = this.cellWidth();
 		const fitScale = characterFitScale(
 			baseFrames,
 			{ width: box, height: box * CHAR_HEIGHT_RATIO },
@@ -790,7 +691,7 @@ export class MugenBoard {
 		sprite.scale.set(flip ? -fitScale : fitScale, fitScale);
 		sprite.x = mark.x;
 		sprite.y = mark.y;
-		// Feet-y drives depth order: nearer (lower) rows sit at larger y and on top.
+		// Feet-y drives paint order: rows further down the screen sit at larger y and on top.
 		sprite.zIndex = mark.y;
 		this.app.stage.addChild(sprite);
 
@@ -799,15 +700,15 @@ export class MugenBoard {
 			sprite,
 			// The grid it was placed from: `flip` is what tells the two halves apart.
 			side: flip ? 'blue' : 'red',
-			homeCell: q,
+			homeColumn: q,
 			homeRow: r,
 			animations,
 			hurtAnim,
 			currentName: startName,
 			frameIndex: 0,
 			frameElapsed: 0,
-			rowFront: r,
-			cell: q,
+			row: r,
+			column: q,
 			moveRightAnim,
 			moveLeftAnim,
 			pathQueue: [],
@@ -892,7 +793,7 @@ export class MugenBoard {
 		const frame = frames[actor.frameIndex % frames.length];
 		actor.sprite.texture = frame.texture;
 		// Horizontal: the character's body (foot) anchor keeps it centred over the
-		// cell; vertical: 1 so the sprite's bottom end sits on the hex's lower-corner line.
+		// cell; vertical: 1 so the sprite's bottom end sits on the cell's lower edge.
 		actor.sprite.anchor.set(frame.anchorX, 1);
 	}
 
@@ -924,7 +825,7 @@ export class MugenBoard {
 				this.advanceFrame(actor, deltaMs);
 			}
 			// Re-sort by feet-y each frame so a moving character passes in front of the
-			// hexes/characters it draws level with and behind those it moves past.
+			// cells/characters it draws level with and behind those it moves past.
 			actor.sprite.zIndex = actor.y;
 			this.applyFrame(actor);
 			this.updateAura(actor, deltaMs);
@@ -990,13 +891,13 @@ export class MugenBoard {
 		if (!actor.moving) {
 			const next = actor.pathQueue.shift();
 			if (next) {
-				actor.cell = next.q;
-				actor.rowFront = next.r;
+				actor.column = next.q;
+				actor.row = next.r;
 				// The final step may be overridden to an exact point (a fighter's half
 				// of a shared duel cell) instead of the cell's standing mark.
 				const override = actor.pathQueue.length === 0 ? actor.finalTarget : null;
 				if (actor.pathQueue.length === 0) actor.finalTarget = null;
-				const target = override ?? this.hexMark(next.q, next.r);
+				const target = override ?? this.cellMark(next.q, next.r);
 				actor.stepDir = Math.sign(target.x - actor.x) || actor.stepDir || 1;
 				actor.targetX = target.x;
 				actor.targetY = target.y;
@@ -1005,9 +906,8 @@ export class MugenBoard {
 		}
 
 		if (actor.moving) {
-			// Advance along the straight line to the target hex. Pointy-top steps along
-			// a row are purely horizontal; steps that change row also shift half a
-			// column sideways, so they move diagonally.
+			// Advance along the straight line to the target cell. A step is one cell side,
+			// so it is purely horizontal along a row and purely vertical between rows.
 			const step = MOVE_SPEED * dt;
 			const dx = actor.targetX - actor.x;
 			const dy = actor.targetY - actor.y;
@@ -1109,9 +1009,9 @@ export class MugenBoard {
 		return this.actors.find((actor) => actor.id === id);
 	}
 
-	/** The actor's current axial cell. */
-	private cellOf(actor: Actor): Hex {
-		return { q: actor.cell, r: actor.rowFront };
+	/** The cell the actor is currently on. */
+	private cellOf(actor: Actor): Cell {
+		return { q: actor.column, r: actor.row };
 	}
 
 	/**
@@ -1121,7 +1021,7 @@ export class MugenBoard {
 	 * (a fighter's half of a shared duel cell) stay one continuous motion. With no
 	 * cells to walk it still glides straight to `finalPoint` if it isn't there yet.
 	 */
-	private walkCells(actor: Actor, cells: Hex[], finalPoint?: Point): Promise<void> {
+	private walkCells(actor: Actor, cells: Cell[], finalPoint?: Point): Promise<void> {
 		return new Promise((resolve) => {
 			if (cells.length === 0) {
 				if (finalPoint && (actor.x !== finalPoint.x || actor.y !== finalPoint.y)) {
@@ -1152,7 +1052,7 @@ export class MugenBoard {
 	 * cell face to face without overlapping. Resolves once both have settled.
 	 * Ids may be given in any order (sides are inferred).
 	 */
-	async meleeApproach(aId: string, bId: string, meetingCell?: Hex): Promise<void> {
+	async meleeApproach(aId: string, bId: string, meetingCell?: Cell): Promise<void> {
 		const a = this.findActor(aId);
 		const b = this.findActor(bId);
 		if (!a || !b) return;
@@ -1175,9 +1075,8 @@ export class MugenBoard {
 		// fraction × scaled width; blue is mirrored, so its lead edge is the frame's
 		// far side). Logical cells are untouched (blue still counts as standing on
 		// its east-neighbour cell); only the final step's landing point is offset.
-		const centre = this.hexCoord(meeting.red.destination.q, meeting.red.destination.r);
-		const footY = centre.y + HEX_FOOT_Y; // duel pair stands on the lower-corner line too
-		const mid = this.project(centre.x, footY);
+		// The duel pair stands on the cell's own foot line, as everybody else does.
+		const mid = this.cellMark(meeting.red.destination.q, meeting.red.destination.r);
 		const redLead = (1 - red.sprite.anchor.x) * Math.abs(red.sprite.width);
 		const blueLead = (1 - blue.sprite.anchor.x) * Math.abs(blue.sprite.width);
 		await Promise.all([
@@ -1194,7 +1093,7 @@ export class MugenBoard {
 	 * The one thing that is not is the strike run ({@link closeIn}), which crosses and
 	 * comes straight back, because a blow is not ground taken.
 	 */
-	private sideAllowed(actor: Actor): (c: Hex) => boolean {
+	private sideAllowed(actor: Actor): (c: Cell) => boolean {
 		const far: CellSide = actor.side === 'blue' ? 'red' : 'blue';
 		return (c) => isBoardCell(c.q, c.r) && cellSide(c.q) !== far;
 	}
@@ -1205,18 +1104,18 @@ export class MugenBoard {
 	 * cell another character is standing on; the movers themselves are excluded so
 	 * their own start cell never counts as blocked.
 	 */
-	private occupied(exclude: Actor[]): (c: Hex) => boolean {
+	private occupied(exclude: Actor[]): (c: Cell) => boolean {
 		const taken = new Set<string>();
 		for (const other of this.actors) {
 			if (exclude.includes(other)) continue;
-			taken.add(`${other.cell},${other.rowFront}`);
+			taken.add(`${other.column},${other.row}`);
 		}
 		return (c) => taken.has(`${c.q},${c.r}`);
 	}
 
 	/** The side rule combined with occupancy: `actor` may walk a cell only if it's
 	 * on its own side and no other character is standing there. */
-	private walkAllowed(actor: Actor): (c: Hex) => boolean {
+	private walkAllowed(actor: Actor): (c: Cell) => boolean {
 		const side = this.sideAllowed(actor);
 		const blocked = this.occupied([actor]);
 		return (c) => side(c) && !blocked(c);
@@ -1229,18 +1128,18 @@ export class MugenBoard {
 	 * logical cell is untouched, so a later duel on this cell re-splits it into
 	 * halves as usual.
 	 */
-	async claimCell(id: string, cell: Hex): Promise<void> {
+	async claimCell(id: string, cell: Cell): Promise<void> {
 		const actor = this.findActor(id);
 		if (!actor) return;
-		await this.walkCells(actor, [], this.hexMark(cell.q, cell.r));
+		await this.walkCells(actor, [], this.cellMark(cell.q, cell.r));
 	}
 
 	/**
 	 * Tint a cell in one side's colour while an occupant holds it, or restore the
-	 * base board colour with null. The overlay redraws the hex's fill and outline
+	 * base board colour with null. The overlay redraws the cell's fill and outline
 	 * above the base grid but beneath the characters.
 	 */
-	paintCell(cell: Hex, side: 'red' | 'blue' | null): void {
+	paintCell(cell: Cell, side: 'red' | 'blue' | null): void {
 		if (!this.app) return;
 		const k = `${cell.q},${cell.r}`;
 		const existing = this.cellPaint.get(k);
@@ -1252,14 +1151,11 @@ export class MugenBoard {
 		if (!side) return;
 
 		const color = side === 'red' ? this.options.grids[0].color : this.options.grids[1].color;
-		const centre = this.hexCoord(cell.q, cell.r);
-		const pts: number[] = [];
-		for (const corner of HEX_CORNERS) {
-			const p = this.project(centre.x + corner.x, centre.y + corner.y);
-			pts.push(p.x, p.y);
-		}
+		const corner = this.cellCorner(cell.q, cell.r);
+		const topLeft = this.project(corner.x, corner.y);
+		const bottomRight = this.project(corner.x + 1, corner.y + 1);
 		const graphics = new Graphics();
-		graphics.poly(pts);
+		graphics.rect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
 		// Stronger fill than the base grid's 0.08 so the takeover reads clearly.
 		graphics.fill({ color, alpha: 0.35 });
 		graphics.stroke({ width: 2, color, alpha: 1 });
@@ -1273,14 +1169,14 @@ export class MugenBoard {
 	async returnHome(id: string): Promise<void> {
 		const actor = this.findActor(id);
 		if (!actor) return;
-		const home: Hex = { q: actor.homeCell, r: actor.homeRow };
+		const home: Cell = { q: actor.homeColumn, r: actor.homeRow };
 		// Its own ground, by a clear route through it, first. But a fighter walking back
 		// off a strike run is standing in the far half, which its own side rule would
 		// refuse to lead it out of, so the ways home loosen one rule at a time until one
 		// of them answers: around the others over any ground, then straight over
 		// everything. Coming home settles nothing, so no rule of the fight is spent here.
 		const blocked = this.occupied([actor]);
-		const anyCell = (c: Hex) => isBoardCell(c.q, c.r);
+		const anyCell = (c: Cell) => isBoardCell(c.q, c.r);
 		const path =
 			findPath(this.cellOf(actor), home, this.walkAllowed(actor)) ??
 			findPath(this.cellOf(actor), home, this.sideAllowed(actor)) ??
@@ -1290,7 +1186,7 @@ export class MugenBoard {
 		// Passing the home mark as the walk's end point also covers the fighter
 		// whose home *is* the cell it logically occupies but who is standing half a
 		// cell off centre after a shared-cell duel — it glides straight back.
-		await this.walkCells(actor, path.slice(1), this.hexMark(home.q, home.r));
+		await this.walkCells(actor, path.slice(1), this.cellMark(home.q, home.r));
 	}
 
 	/**
@@ -1300,7 +1196,7 @@ export class MugenBoard {
 	 * down: the ground they were holding is given up for good, not borrowed.
 	 * Resolves once it has settled; a cell off the actor's own side is refused.
 	 */
-	async regroup(id: string, cell: Hex): Promise<void> {
+	async regroup(id: string, cell: Cell): Promise<void> {
 		const actor = this.findActor(id);
 		if (!actor || !this.sideAllowed(actor)(cell)) return;
 		// Route around whoever else is standing about; if occupancy boxes the actor
@@ -1309,8 +1205,8 @@ export class MugenBoard {
 			findPath(this.cellOf(actor), cell, this.walkAllowed(actor)) ??
 			findPath(this.cellOf(actor), cell, this.sideAllowed(actor));
 		if (!path) return;
-		await this.walkCells(actor, path.slice(1), this.hexMark(cell.q, cell.r));
-		actor.homeCell = cell.q;
+		await this.walkCells(actor, path.slice(1), this.cellMark(cell.q, cell.r));
+		actor.homeColumn = cell.q;
 		actor.homeRow = cell.r;
 	}
 
@@ -1367,16 +1263,16 @@ export class MugenBoard {
 		if (!attacker || !target) return;
 		const from = this.cellOf(attacker);
 		const targetCell = this.cellOf(target);
-		const beside: Hex = {
+		const beside: Cell = {
 			q: targetCell.q + (attacker.side === 'blue' ? 1 : -1),
 			r: targetCell.r
 		};
 		const blocked = this.occupied([attacker]);
-		const open = (c: Hex) => isBoardCell(c.q, c.r) && !blocked(c);
+		const open = (c: Cell) => isBoardCell(c.q, c.r) && !blocked(c);
 		// Short of that cell it takes the nearest one it can reach that still leaves it
 		// in front of the target — coming at a fighter from behind it is not a duel —
 		// and only if even that is boxed in does it settle for the nearest cell at all.
-		const inFront = (c: Hex) =>
+		const inFront = (c: Cell) =>
 			attacker.side === 'blue' ? c.q > targetCell.q : c.q < targetCell.q;
 		const path =
 			(open(beside) ? findPath(from, beside, open) : null) ??
@@ -1553,8 +1449,8 @@ export class MugenBoard {
 	/**
 	 * Give a fighter the orders it can be given, drawn as a column of buttons off its
 	 * right-hand side — where the association is unambiguous, because they stand
-	 * immediately beside the character they command, each one as tall as the side of the
-	 * hex it is standing next to.
+	 * immediately beside the character they command, each one a fraction of the cell it
+	 * is standing next to ({@link ORDER_HEIGHT_RATIO}).
 	 *
 	 * Called on every change of the fight's state, so it rebuilds only when the *set*
 	 * of orders changes and otherwise just repaints the buttons it already has: a
@@ -1628,8 +1524,7 @@ export class MugenBoard {
 			return button;
 		});
 
-		// Height 0 until laid out below, which is also what makes a first layout happen.
-		const strip: OrderStrip = { container, buttons, height: 0 };
+		const strip: OrderStrip = { container, buttons };
 		actor.orders = strip;
 		this.layOutOrders(actor);
 		return strip;
@@ -1637,7 +1532,7 @@ export class MugenBoard {
 
 	/** Repaint one button for its current state: chosen, plain, or out of reach. */
 	private paintOrder(actor: Actor, button: OrderButton): void {
-		const { width, height } = this.orderSize(actor);
+		const { width, height } = this.orderSize();
 		const radius = height * ORDER_RADIUS_RATIO;
 		// The chosen order takes its own side's colour, so a fighter's orders read as
 		// belonging to it rather than to some palette of the interface's own.
@@ -1658,27 +1553,27 @@ export class MugenBoard {
 	}
 
 	/**
-	 * A button's drawn size for this actor: as tall as the side its cell shares with the
-	 * cell to its east — the edge of the hex the column is stacked alongside — and as
-	 * wide as that height allows. The count no longer comes into it, as it did when the
-	 * strip had to span the fighter's width: a column grows downward instead, so more
-	 * orders make it longer rather than each button smaller.
+	 * A button's drawn size: a fraction of the cell it is stacked alongside, and as wide
+	 * as that height allows. One size for every fighter, because one size is what a cell
+	 * is now, so a fighter that walks carries the same column of buttons with it. The
+	 * count does not come into it: a column grows downward, so more orders make it
+	 * longer rather than each button smaller.
 	 */
-	private orderSize(actor: Actor): { width: number; height: number; gap: number } {
-		const height = this.cellSideHeight(actor.cell, actor.rowFront);
+	private orderSize(): { width: number; height: number; gap: number } {
+		const height = this.cellWidth() * ORDER_HEIGHT_RATIO;
 		return { width: height * ORDER_WIDTH_RATIO, height, gap: height * ORDER_SPACING_RATIO };
 	}
 
 	/**
 	 * Stack the buttons in a column and size their glyphs to fit. The column is laid out
-	 * upward from its own origin — the fighter's feet — so the bottom button spans exactly
-	 * the hex edge beside it and the rest rise from the ground the fighter stands on,
-	 * while the list still reads top to bottom in the order it was handed in.
+	 * upward from its own origin — the fighter's feet — so the bottom button sits on the
+	 * ground the fighter stands on and the rest rise from it, while the list still reads
+	 * top to bottom in the order it was handed in.
 	 */
 	private layOutOrders(actor: Actor): void {
 		const strip = actor.orders;
 		if (!strip) return;
-		const { height, gap } = this.orderSize(actor);
+		const { height, gap } = this.orderSize();
 		const step = height + gap;
 		const column = strip.buttons.length * height + (strip.buttons.length - 1) * gap;
 		const start = -column + height / 2;
@@ -1692,18 +1587,13 @@ export class MugenBoard {
 				glyph.scale.set(target / Math.max(glyph.texture.width, glyph.texture.height));
 			}
 		});
-		strip.height = height;
 	}
 
 	/** Keep a fighter's column planted off its right-hand side as it moves. */
 	private updateOrders(actor: Actor): void {
 		const strip = actor.orders;
 		if (!strip) return;
-		const { width, height } = this.orderSize(actor);
-		// A fighter that has walked into another cell is standing in another size of cell,
-		// so the column is re-measured rather than kept at the size of the cell it was
-		// built in. Only on a real change: a re-layout repaints every face.
-		if (Math.abs(height - strip.height) > 0.5) this.layOutOrders(actor);
+		const { width } = this.orderSize();
 		strip.container.x = actor.x + actor.displayWidth / 2 + ORDER_GAP + width / 2;
 		strip.container.y = actor.y;
 		// Above the board and its own fighter, below the callouts and slashes.

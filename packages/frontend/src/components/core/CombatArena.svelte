@@ -10,7 +10,7 @@
 		BoardOrder,
 		MugenBoard as MugenBoardEngine
 	} from '$utils/mugen/mugen-board';
-	import type { Hex } from '$utils/mugen/hex';
+	import type { Cell } from '$utils/mugen/grid';
 	import { standingLine, type StandingFighter } from '$utils/mugen/board-standing';
 	import type { Manifest } from '$utils/mugen/mugen-player';
 	import {
@@ -204,12 +204,12 @@
 	// decides who faces whom, and it is what walks the winner of a lane on or off the
 	// white cell it was fought over — so the cells are taken from there rather than
 	// restated here: the rivals on the board's central white column, the player's team
-	// on the far column of its own half, facing them.
+	// on the far column of its own half, level with them row for row.
 	//
 	// The controller lists each line top→bottom on screen; the player's team fills its
 	// column the other way about, its first slot standing nearest the viewer, so the
 	// cells are handed out bottom→top here.
-	const PLAYER_LINEUP_CELLS: Hex[] = [...PLAYER_CELLS].reverse();
+	const PLAYER_LINEUP_CELLS: Cell[] = [...PLAYER_CELLS].reverse();
 
 	// The two sides can field the SAME spawn line-up (a mirror match), so a bare spawn
 	// id is not unique across the board. Every board actor / fighter is identified by a
@@ -244,7 +244,7 @@
 		};
 	}
 
-	// Each side's hexes take the colour of that side's leader — the team's first slot
+	// Each side's cells take the colour of that side's leader — the team's first slot
 	// (ids[0] on the left, ids[3] on the right). Falls back to the classic red/blue if
 	// the leader has no rolled colour yet.
 	function leaderColorHex(
@@ -285,7 +285,7 @@
 		const half = (
 			side: 'error' | 'info',
 			offset: number,
-			cells: Hex[],
+			cells: Cell[],
 			fallback: number
 		): BoardGrid => {
 			const characters = new Map(
@@ -357,7 +357,7 @@
 		ids: string[],
 		side: 'error' | 'info',
 		offset: number,
-		cells: Hex[],
+		cells: Cell[],
 		spawns: Map<string, CharacterSpawn>
 	): Pick<Badge, 'id' | 'basePath' | 'side' | 'gridY'>[] {
 		return cells
@@ -368,7 +368,7 @@
 					basePath: character.basePath,
 					side,
 					// Vertical on-screen position of the opening cell.
-					gridY: cellScreenY(cell.q, cell.r)
+					gridY: cellScreenY(cell)
 				};
 			})
 			.sort((a, b) => a.gridY - b.gridY);

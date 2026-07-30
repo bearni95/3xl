@@ -11,21 +11,21 @@
  * the ones still standing and the cell each of them is on. What a fighter *is* — its
  * sprite, its colour, its moves — is the caller's business.
  */
-import { isBoardCell, type Hex } from './hex';
+import { type Cell, isBoardCell } from './grid';
 
 /** One fighter of a line, and the cell its slot opens on. */
 export interface LineFighter {
 	/** Whatever the caller identifies a fighter by; matched against `StandingFighter.id`. */
 	id: string;
 	/** The cell this slot stands on at the start of the fight. */
-	opening: Hex;
+	opening: Cell;
 }
 
 /** One fighter as a saved board records it. */
 export interface StandingFighter {
 	id: string;
 	/** The cell it holds, or null when the board says nothing about where it stood. */
-	cell: Hex | null;
+	cell: Cell | null;
 	/** Whether it has been taken down: it is off the board for the rest of the fight. */
 	down: boolean;
 }
@@ -33,7 +33,7 @@ export interface StandingFighter {
 /** A fighter that is still standing, and the cell to stand it on. */
 export interface PlacedFighter {
 	id: string;
-	cell: Hex;
+	cell: Cell;
 }
 
 /**
