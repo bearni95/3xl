@@ -1,0 +1,11 @@
+The Catalan (TVC) opening themes the map's music player plays, one per show in the
+game. These are the versions broadcast on Televisió de Catalunya, not the Japanese
+originals — rights stay with their owners; they are here for the same reason the
+MUGEN sprite archives are.
+
+- inuyasha-change-the-world.mp3 — InuYasha, "Change the world" (català, v. TVC).
+- one-piece-we-are.mp3 — One Piece, "We are" (català, v. TVC).
+
+Which show a track belongs to is the hand-maintained list in
+@3xl/shared/utils/music/tracks.ts, keyed by the same TMDB show id everything else
+here is; that is what puts the show's glyph on the track in the player.

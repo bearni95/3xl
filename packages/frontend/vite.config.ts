@@ -21,8 +21,39 @@ const MIME: Record<string, string> = {
 	'.gif': 'image/gif',
 	'.webp': 'image/webp',
 	'.svg': 'image/svg+xml',
-	'.json': 'application/json'
+	'.json': 'application/json',
+	'.mp3': 'audio/mpeg'
 };
+
+/**
+ * The byte range a request asked for, clamped to a file of `size`:
+ *  - null  — no range asked for, or one this server does not honour (a
+ *            multi-range list), which is answered with the whole file;
+ *  - false — a range that cannot be satisfied, answered 416.
+ *
+ * Only the single-range forms are honoured, which is all any client actually
+ * sends: `bytes=start-`, `bytes=start-end`, and the suffix `bytes=-lastN`.
+ */
+function byteRange(
+	header: string | undefined,
+	size: number
+): { start: number; end: number } | null | false {
+	if (!header) return null;
+	const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+	if (!match) return null;
+	const [, from, to] = match;
+	if (!from && !to) return null;
+	// Suffix range: the last `to` bytes of the file.
+	if (!from) {
+		const length = Number(to);
+		if (length === 0) return false;
+		return { start: Math.max(0, size - length), end: size - 1 };
+	}
+	const start = Number(from);
+	const end = to ? Math.min(Number(to), size - 1) : size - 1;
+	if (start > end) return false;
+	return { start, end };
+}
 
 /** Connect middleware that serves files under `root` at URL `prefix`. */
 function serveDir(prefix: string, root: string) {
@@ -53,6 +84,29 @@ function serveDir(prefix: string, root: string) {
 			'Content-Type',
 			MIME[extname(filePath).toLowerCase()] ?? 'application/octet-stream'
 		);
+
+		// Media is fetched by range, not as one download: an <audio> element asks for a
+		// couple of bytes first to read the header, then for the rest as it plays, and
+		// Safari will not play a file at all if the server answers those with the whole
+		// thing. So ranges are honoured here — `Accept-Ranges` advertises it, and a
+		// satisfiable range 206s with just those bytes. Everything else (every icon,
+		// manifest and geo layer) never asks for one and is served whole as before.
+		res.setHeader('Accept-Ranges', 'bytes');
+		const range = byteRange(req.headers.range, stat.size);
+		if (range === false) {
+			res.statusCode = 416;
+			res.setHeader('Content-Range', `bytes */${stat.size}`);
+			res.end();
+			return;
+		}
+		if (range) {
+			res.statusCode = 206;
+			res.setHeader('Content-Range', `bytes ${range.start}-${range.end}/${stat.size}`);
+			res.setHeader('Content-Length', range.end - range.start + 1);
+			createReadStream(filePath, { start: range.start, end: range.end }).pipe(res);
+			return;
+		}
+
 		res.setHeader('Content-Length', stat.size);
 		createReadStream(filePath).pipe(res);
 	};
