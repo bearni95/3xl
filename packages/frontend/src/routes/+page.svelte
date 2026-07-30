@@ -2089,18 +2089,22 @@
 			into one line.
 			Every one of them is outlined. A filled button would say the block has a first choice in
 			it, and it has not — the five are five views, and which one a player wants is theirs to
-			say. -->
+			say. Outlined is not see-through though: each carries a solid base-100 of its own, so
+			the terrain coming through the menu's surface comes through behind the block and never
+			behind a label. The hover fill has to be spelled out beside it, because DaisyUI's own
+			lives in a sublayer that a plain `bg-*` utility outranks whatever the state — set the
+			rest colour and the answer to the pointer goes with it unless it is said too. -->
 		<div class="join join-vertical w-full">
 			<button
 				type="button"
-				class="btn btn-outline btn-sm join-item"
+				class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
 				on:click={() => pickFromMenu(() => leaderboardModalOpen.set(true))}
 			>
 				Leaderboard
 			</button>
 			<button
 				type="button"
-				class="btn btn-outline btn-sm join-item"
+				class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
 				on:click={() => pickFromMenu(openBoosters)}
 			>
 				{boosterLabel}
@@ -2110,21 +2114,21 @@
 					whole of what happens here. -->
 				<button
 					type="button"
-					class="btn btn-outline btn-sm join-item"
+					class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
 					on:click={() => pickFromMenu(() => rosterModalOpen.set(true))}
 				>
 					Roster
 				</button>
 				<button
 					type="button"
-					class="btn btn-outline btn-sm join-item"
+					class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
 					on:click={() => pickFromMenu(() => achievementsModalOpen.set(true))}
 				>
 					Achievements
 				</button>
 				<button
 					type="button"
-					class="btn btn-outline btn-sm join-item"
+					class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
 					on:click={() => pickFromMenu(() => settingsModalOpen.set(true))}
 				>
 					Settings
