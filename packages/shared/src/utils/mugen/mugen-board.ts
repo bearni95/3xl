@@ -171,15 +171,23 @@ export const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color]
 /** Horizontal gap (px) from the actor's right-hand side to the near edge of its
  * column of buttons. */
 const ORDER_GAP = 8;
-/** A button's height as a fraction of a cell's side. A column of the three orders is
- * then about as tall as the fighter it stands beside — which is what a strip of them
- * has to be to read as belonging to it, rather than as furniture of its own. */
-const ORDER_HEIGHT_RATIO = 0.4;
+/**
+ * How many orders a column is sized to hold. A fighter that can be ordered at all is
+ * given all three of them (charge, defend, shoot), so the column is drawn to come to
+ * exactly one cell of the grid: it is as tall as the ground its fighter is standing on,
+ * which is what keeps it beside that fighter and out of the lane above. A list of some
+ * other length keeps this button size and simply runs shorter or longer.
+ */
+const ORDER_COLUMN_COUNT = 3;
+/** Gap between buttons in a column, as a fraction of a button's height. */
+const ORDER_SPACING_RATIO = 0.12;
+/** A button's height as a fraction of a cell's side: the count and the gaps above,
+ * solved so that many buttons and the gaps between them span one whole cell. */
+const ORDER_HEIGHT_RATIO =
+	1 / (ORDER_COLUMN_COUNT + (ORDER_COLUMN_COUNT - 1) * ORDER_SPACING_RATIO);
 /** A button's width as a fraction of its own height, which is all that is left to say
  * about its size once {@link ORDER_HEIGHT_RATIO} has set the height. */
 const ORDER_WIDTH_RATIO = 1.11;
-/** Gap between buttons in a column, as a fraction of a button's height. */
-const ORDER_SPACING_RATIO = 0.12;
 /** The glyph's size inside a button, as a fraction of the button's height. */
 const ORDER_ICON_RATIO = 0.62;
 /** Corner rounding, as a fraction of a button's height. */
@@ -1468,8 +1476,8 @@ export class MugenBoard {
 	/**
 	 * Give a fighter the orders it can be given, drawn as a column of buttons off its
 	 * right-hand side — where the association is unambiguous, because they stand
-	 * immediately beside the character they command, each one a fraction of the cell it
-	 * is standing next to ({@link ORDER_HEIGHT_RATIO}).
+	 * immediately beside the character they command, the three of them together coming to
+	 * the height of the cell it is standing on ({@link ORDER_HEIGHT_RATIO}).
 	 *
 	 * Called on every change of the fight's state, so it rebuilds only when the *set*
 	 * of orders changes and otherwise just repaints the buttons it already has: a
@@ -1572,11 +1580,11 @@ export class MugenBoard {
 	}
 
 	/**
-	 * A button's drawn size: a fraction of the cell it is stacked alongside, and as wide
-	 * as that height allows. One size for every fighter, because one size is what a cell
-	 * is now, so a fighter that walks carries the same column of buttons with it. The
-	 * count does not come into it: a column grows downward, so more orders make it
-	 * longer rather than each button smaller.
+	 * A button's drawn size: a cell's side split {@link ORDER_COLUMN_COUNT} ways with the
+	 * gaps taken out of it, and as wide as that height allows — so the column of orders
+	 * comes to exactly the cell it is stacked alongside. One size for every fighter,
+	 * because one size is what a cell is, so a fighter that walks carries the same column
+	 * of buttons with it.
 	 */
 	private orderSize(): { width: number; height: number; gap: number } {
 		const height = this.cellWidth() * ORDER_HEIGHT_RATIO;
