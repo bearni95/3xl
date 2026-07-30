@@ -311,9 +311,6 @@ const TRAIT_DISC_PX = 48;
 const TRAIT_GLYPH_RATIO = 0.8;
 /** Gap between a compound's two discs, as a fraction of one disc. */
 const TRAIT_SPACING_RATIO = 0.2;
-/** How far a spent trait's glyph fades. It is not taken off the fighter — what a
- * card *is* does not change — it simply stops reading as something still in hand. */
-const TRAIT_SPENT_ALPHA = 0.25;
 
 /**
  * The square each icon SVG is rasterised into, in px, before anything draws it.
@@ -426,16 +423,17 @@ export interface BoardOrder {
 }
 
 /**
- * One thing a fighter's colour hands it for free, drawn as a glyph at its top-left
- * corner. As with an order, the board is told what to draw and nothing about what it
- * means: a picture, and whether it has been used up.
+ * One thing a fighter's colour hands it for free and has not yet handed over, drawn as a
+ * glyph at its top-left corner. As with an order, the board is told what to draw and
+ * nothing about what it means: a picture, and that is all.
+ *
+ * A gift that has been had is not one of these. The list is what the fighter still holds,
+ * so a spent gift is simply not sent again and its mark comes off.
  */
 export interface BoardTrait {
 	/** URL of the glyph (an SVG under /assets). The artwork must be white: it is
 	 * tinted, and tinting only ever darkens. */
 	icon: string;
-	/** Drawn faded — the fighter still has this colour, but no longer this gift. */
-	spent: boolean;
 }
 
 /** One drawn order button, kept so its look can be updated without rebuilding it. */
@@ -2086,12 +2084,13 @@ export class MugenBoard {
 	 * colour, so a glance at the corner says both what the fighter has and what colour
 	 * it is.
 	 *
-	 * The board is handed the glyphs and whether each has been used up, exactly as it
-	 * is handed a strip of orders: it draws what it is given and knows nothing of what
-	 * a trait means. Called again as gifts are spent, so — as with the strip — the
-	 * badge is rebuilt only when the *set* changes and is otherwise just repainted: a
-	 * badge torn down and rebuilt would flicker its glyphs while their textures
-	 * reloaded, for nothing but a change of alpha. An empty list takes it off.
+	 * The board is handed the glyphs of what the fighter *still has*, exactly as it is
+	 * handed a strip of orders: it draws what it is given and knows nothing of what a
+	 * trait means. Called again as gifts are spent, each time with one fewer, so the badge
+	 * is rebuilt whenever the set changes and left alone when it has not — and a fighter
+	 * that has had everything its colour gives is handed an empty list, which takes the
+	 * badge off altogether. Rebuilding costs no fetch: the glyph textures are kept by URL
+	 * and the marks that remain are drawn again from the same ones.
 	 */
 	setTraits(actorId: string, traits: BoardTrait[], color: string): void {
 		const actor = this.findActor(actorId);
@@ -2109,15 +2108,6 @@ export class MugenBoard {
 			this.clearTraits(actor);
 			actor.traits = this.buildTraits(actor, icons, color);
 		}
-
-		const badge = actor.traits;
-		if (!badge) return;
-		traits.forEach((trait, i) => {
-			// The disc fades with the glyph it carries: the two are one mark, and a white
-			// coin left burning under a spent glyph would be the louder half of it.
-			const mark = badge.marks[i];
-			if (mark) mark.alpha = trait.spent ? TRAIT_SPENT_ALPHA : 1;
-		});
 		this.updateTraits(actor);
 	}
 

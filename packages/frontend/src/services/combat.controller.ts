@@ -1347,15 +1347,21 @@ export class CombatController {
 
 	// --- Board ----------------------------------------------------------------
 
-	/** Put a fighter's gifts at its corner: the glyph of each order its colour hands
-	 * over, faded once it has been had. */
+	/**
+	 * Put a fighter's gifts at its corner: the glyph of each order its colour hands over
+	 * and it has not yet had. A gift comes off the moment it is spent rather than staying
+	 * on faded — the corner says what the fighter can still do for free, which is the thing
+	 * being read off it mid-fight, and a mark that has stopped meaning anything is one more
+	 * thing over a board with six fighters on it. What the fighter *is* is not lost with it:
+	 * that is its colour, and the colour is its aura, its callouts and the fill of its
+	 * orders.
+	 */
 	private showTraits(fighter: Fighter): void {
 		this.board?.setTraits(
 			fighter.id,
-			fighter.passives.map((order) => ({
-				icon: ORDER_ICONS[order],
-				spent: fighter.spent.includes(order)
-			})),
+			fighter.passives
+				.filter((order) => !fighter.spent.includes(order))
+				.map((order) => ({ icon: ORDER_ICONS[order] })),
 			fighter.color
 		);
 	}
