@@ -128,8 +128,9 @@ cards). Neither claiming nor combat has a route of its own — the booster packs
 map's right-hand panel (its Booster tab), and `CombatArena` is hosted in a panel over the
 map (the Challenge button on a municipality). The roster and the achievements have no route
 either: both are full-view modals over the map, drawn on the shared `FullScreenModal` sheet
-and raised from the panel's account row. The music player is a plate in the map's top-left
-corner, stacked above the town panel. Admin routes: `/characters` (definition editor),
+and raised from the panel's account row. The map's top-left corner is the town panel and the
+Location plate under it; `MusicPlayer.svelte` and `music.service.ts` are still here but are
+mounted nowhere, so the game plays no music. Admin routes: `/characters` (definition editor),
 `/shows` (TMDB browser), `/achievements` (badge editor + Supabase rule sync) and `/music`
 (what each vendored song is called and which show it opens).
 
