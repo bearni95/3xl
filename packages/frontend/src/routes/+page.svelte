@@ -16,6 +16,7 @@
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
+	import FullScreenModal from '$components/core/FullScreenModal.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
 	import AchievementsModal from '$components/core/AchievementsModal.svelte';
 	import LeaderboardModal from '$components/core/LeaderboardModal.svelte';
@@ -914,6 +915,10 @@
 	let fightLocationId: string | null = null;
 	let fightTurnover = 0;
 	let fightOpen = false;
+	// True while the arena is handing a finished fight to the server. Bound out of it,
+	// because it is the one thing the sheet holding it cannot know for itself and the one
+	// moment the sheet must not let go of it: the report is what ends the battle.
+	let fightReporting = false;
 
 	// True while the day's challenge is being claimed off the server, so a double
 	// click can't fire two `start_battle` calls (the second of which the server
@@ -2115,33 +2120,47 @@
 	<CharacterClaimPanel bind:packs={claimPacks} bind:claimError bind:boosters />
 </div>
 
-<!-- Challenge → the board's combat arena, hosted as a full-viewport floating panel over
-	the map so a fight for a town plays out without ever navigating away. This is the
-	only place combat is mounted — there is no standalone combat route any more. A plain
-	fixed panel (not a DaisyUI modal) at z-[1200] — above the modal layer (999), and so
-	above everything on the page, the map and its side panel included — over a 30%-white
-	wash so what it covers still reads through behind it.
+<!-- Challenge → the board's combat arena, on the same full-view sheet the roster, the
+	badges, the leaderboard and the boosters are drawn on, so a fight for a town plays out
+	without ever navigating away. This is the only place combat is mounted — there is no
+	standalone combat route any more. It used to be a fixed panel of its own over a 30%-white
+	wash, which was a second kind of full-view surface for no reason other than that combat
+	came later: FullScreenModal is the one this game has, and it brings the slide up from the
+	bottom edge, the title bar, the ✕ and Escape with it.
 	CombatArena fields the team the battle is being fought with against the line-up it
 	was opened against, and handles all its own gating. Only the town rides along, to
 	key and label the fight: which town a battle is over and which generation of its
 	team it is against are the server's record, kept on the battle itself, so the fight
 	that is reported is the fight that was opened.
+	The sheet's own way out is held shut while a finished fight is on its way to the server:
+	reporting is what ends the battle, so a player let out before it lands would walk away
+	from a fight the server still has open. That is the one thing the sheet cannot know for
+	itself, hence the binding.
 	Keyed so each new challenge remounts a clean fight. -->
 {#if fightOpen}
-	<div class="fixed inset-0 z-[1200] flex items-center justify-center overflow-auto bg-white/30 p-4">
+	<FullScreenModal
+		title="Combat"
+		closeLabel="Close combat"
+		closeDisabled={fightReporting}
+		on:close={onFightClosed}
+	>
 		<!-- Keyed on the town and the generation as well as the line-up: challenging a
 			different town whose sitting team happens to field the same characters is
 			still a different fight, and must remount rather than reuse the last one. -->
 		{#key `${fightLocationId}:${fightTurnover}:${fightSpawns.map((spawn) => spawn.characterId).join(',')}`}
-			<CombatArena
-				ogTeam={fightSpawns}
-				ogLocationId={fightLocationId}
-				closable
-				on:territory={(event) => onTerritory(event.detail)}
-				on:close={onFightClosed}
-			/>
+			<!-- The board is centred on the sheet and scrolls inside it when it does not fit,
+				rather than the sheet growing: the title bar stays put. -->
+			<div class="flex min-h-0 flex-1 items-center justify-center overflow-auto">
+				<CombatArena
+					ogTeam={fightSpawns}
+					ogLocationId={fightLocationId}
+					bind:reporting={fightReporting}
+					on:territory={(event) => onTerritory(event.detail)}
+					on:close={onFightClosed}
+				/>
+			</div>
 		{/key}
-	</div>
+	</FullScreenModal>
 {/if}
 
 <!-- The roster, over the map. Mounted only while it is open — it builds a card canvas

@@ -26,20 +26,31 @@
 	// all. So this component has no `open` prop: it exists while the modal is up, it
 	// dispatches `close`, and the host's store is what decides.
 	//
-	// z-[1300] still puts it above both the map's pinned panel (z-[900]) and the
-	// combat arena (z-[1200]) — the arena is one of the places that sends the player
-	// to the roster, so it has to open on top of it. The sheet is a full-height flex
-	// column: the title bar takes what it needs and the slot gets the rest, which is
-	// what a scroll box inside it is sized from.
+	// z-[1300] puts it above the map's pinned panel (z-[900]). The combat arena wears
+	// this same sheet, so two of these can be up at once — the arena is one of the
+	// places that sends the player to the roster — and which of them is in front is
+	// decided by the order the page mounts them in, the roster being the later. The
+	// sheet is a full-height flex column: the title bar takes what it needs and the
+	// slot gets the rest, which is what a scroll box inside it is sized from.
 
 	/** The heading in the title bar. */
 	export let title: string;
 	/** What the ✕ is called to a screen reader, e.g. `Close roster`. */
 	export let closeLabel: string = 'Close';
+	/**
+	 * Hold the way out shut: the ✕ greys and Escape does nothing while this is true.
+	 *
+	 * For a view that is in the middle of something the player must not walk out of —
+	 * the combat arena handing a finished fight to the server, which is what ends the
+	 * battle — rather than for keeping anybody in. It is the host that knows when that
+	 * is, so it is the host that says.
+	 */
+	export let closeDisabled: boolean = false;
 
 	const dispatch = createEventDispatcher<{ close: void }>();
 
 	function close(): void {
+		if (closeDisabled) return;
 		dispatch('close');
 	}
 
@@ -65,6 +76,7 @@
 				type="button"
 				class="btn btn-circle btn-ghost btn-sm ml-auto"
 				aria-label={closeLabel}
+				disabled={closeDisabled}
 				on:click={close}
 			>
 				✕

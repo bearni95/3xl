@@ -58,10 +58,12 @@
 	// back from there when the result is reported — so this is only ever used to key
 	// and label the fight on screen.
 	export let ogLocationId: string | null = null;
-	// When true the arena renders a close control to walk out of a fight in progress
-	// (used when hosted in a modal, e.g. the map page). `close` is dispatched either
-	// way — a decided fight closes itself.
-	export let closable = false;
+	// True while a finished fight is on its way to the server. Exported so the sheet this
+	// arena is drawn on can hold its own way out shut for that moment — reporting is what
+	// ends the battle, so a player let out before it lands walks away from a fight the
+	// server still has open, and the town it was over never gets redrawn. Written from in
+	// here and only ever read out (`bind:reporting` on the host).
+	export let reporting = false;
 
 	// Nothing about the fight in progress is a prop: the open battle is read off the
 	// service, so the board this arena picks up is always the last one written back —
@@ -650,8 +652,6 @@
 	// Why the server refused the last report, or null while none has been refused. The
 	// arena stays open on it and says so.
 	let reportFailure: string | null = null;
-	// True while a report is in flight, so the fight cannot be reported twice over.
-	let reporting = false;
 	// What the server paid for the finished fight, once it has taken the report: the
 	// experience it awarded and the team it counted to arrive at it. Null until then —
 	// which is what the results block reads to know whether the number is in yet.
@@ -781,38 +781,20 @@
 </script>
 
 <div class="flex w-full flex-col items-center gap-4">
-	{#if state || closable}
-		<!-- The score in the top-left corner and the way out of the fight in the
-		     top-right, and nothing else above the board. -->
-		<div class="flex w-full items-center gap-2">
-			{#if state && !state.outcome}
-				<!-- Encounters won, yours first: the fight is three duels and this is what
-				     each side has taken of them. Each count is drawn in its own side's
-				     colour, the same one that side's fighters hold the board in.
-				     While the fight is *running*, that is: a decided one reads its score out
-				     of the results under the board, and the same two numbers standing at both
-				     ends of one screen would be one score too many. -->
-				<p class="font-mono text-lg font-bold tabular-nums" aria-label="Encounters won">
-					<span class="text-info">{state.wins.info}</span>
-					<span class="opacity-40">–</span>
-					<span class="text-error">{state.wins.error}</span>
-				</p>
-			{/if}
-			{#if closable}
-				<!-- Held shut while the finished fight is on its way to the server, for the
-				     reason the Close button below is: the report is what ends the battle, so
-				     slipping out before it lands walks away from a fight still open. -->
-				<button
-					type="button"
-					class="btn btn-circle btn-ghost btn-sm ml-auto"
-					disabled={reporting}
-					on:click={close}
-					aria-label="Close"
-				>
-					✕
-				</button>
-			{/if}
-		</div>
+	{#if state && !state.outcome}
+		<!-- The score above the board, and nothing else: the way out of the fight is the
+		     sheet's own, in the title bar over this.
+		     Encounters won, yours first: the fight is three duels and this is what each side
+		     has taken of them. Each count is drawn in its own side's colour, the same one
+		     that side's fighters hold the board in.
+		     While the fight is *running*, that is: a decided one reads its score out of the
+		     results under the board, and the same two numbers standing at both ends of one
+		     screen would be one score too many. -->
+		<p class="w-full font-mono text-lg font-bold tabular-nums" aria-label="Encounters won">
+			<span class="text-info">{state.wins.info}</span>
+			<span class="opacity-40">–</span>
+			<span class="text-error">{state.wins.error}</span>
+		</p>
 	{/if}
 
 	{#if !authService.configured}
@@ -856,15 +838,11 @@
 			</div>
 		</div>
 	{:else}
-		<!-- Full width on small screens (so the canvas can shrink to the viewport),
-		     back to hugging its content from lg up. In panel mode (over the map) the
-		     card is transparent so the map shows through behind the board; on its own
-		     page it keeps the solid base card. -->
-		<div
-			class={classNames('card w-full min-w-0 lg:w-auto', {
-				'bg-base-100 shadow-xl': !closable
-			})}
-		>
+		<!-- Full width on small screens (so the canvas can shrink to the viewport), back to
+		     hugging its content from lg up. No card chrome of its own: the arena is drawn on
+		     the same sheet the roster and the boosters are, and a base-100 card with a shadow
+		     on a base-100 sheet would be a raised box around nothing. -->
+		<div class="card w-full min-w-0 lg:w-auto">
 			<div class="card-body items-center gap-3">
 				<!-- Nothing stands between the fight and the board: what a rival is holding
 				     and what it has just done are read off the board itself — its aura, its
