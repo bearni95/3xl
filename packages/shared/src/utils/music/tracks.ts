@@ -1,27 +1,16 @@
-// What the map's music player has to play.
+// Where a song is served from.
 //
-// The files are vendored in @3xl/assets under `public/music/` and served at
-// /assets/music/<id>.mp3, the same way every sprite frame and icon in that package
-// is. The list is hand-maintained, like `showIconName`'s map is: a track is authored
-// content — a title and the show it opens — and there is nothing in an mp3 to derive
-// either from.
-//
-// Order is playing order: the player steps through this list and wraps at the end.
+// The files are vendored in @3xl/assets under `public/music/`, which every app
+// mounts at `/assets` — so a track's URL is its file name under that one folder, and
+// nothing about a track has to say where it lives. What is authored about each of
+// them (its title and the show it opens) is @3xl/data's `public/music.json`, written
+// by the admin `/music` screen; this is the only thing about a track that is derived
+// rather than authored.
 
-import type { MusicTrack } from '../../types/music.type';
+/** The folder the vendored songs are served from, under each app's `/assets` mount. */
+export const MUSIC_ASSET_PREFIX = '/assets/music';
 
-/** Every playable track, in the order the player steps through them. */
-export const MUSIC_TRACKS: readonly MusicTrack[] = [
-	{
-		id: 'one-piece-we-are',
-		title: 'We are',
-		showId: 37854,
-		src: '/assets/music/one-piece-we-are.mp3'
-	},
-	{
-		id: 'inuyasha-change-the-world',
-		title: 'Change the world',
-		showId: 35610,
-		src: '/assets/music/inuyasha-change-the-world.mp3'
-	}
-];
+/** The URL a song's file is served at. */
+export function musicTrackSrc(file: string): string {
+	return `${MUSIC_ASSET_PREFIX}/${file}`;
+}
