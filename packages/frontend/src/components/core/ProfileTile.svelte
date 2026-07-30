@@ -22,7 +22,7 @@
 
 	const dispatch = createEventDispatcher<{
 		editavatar: void;
-		openprofile: void;
+		opensettings: void;
 		openroster: void;
 		openachievements: void;
 	}>();
@@ -118,7 +118,7 @@
 		>
 			Achievements
 		</button>
-		<button type="button" class="btn btn-outline btn-sm" on:click={() => dispatch('openprofile')}>
+		<button type="button" class="btn btn-outline btn-sm" on:click={() => dispatch('opensettings')}>
 			Settings
 		</button>
 	</div>

@@ -4,9 +4,8 @@
 	import { _, locale } from 'svelte-i18n';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
-	import { usernameEditRequested } from '$services/usernamePrompt';
 	import { avatarPickerOpen } from '$services/avatarPicker';
-	import { profileModalOpen } from '$services/profileModal';
+	import { settingsModalOpen } from '$services/settingsModal';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { achievementsModalOpen } from '$services/achievementsModal';
 	import { AuthStatus, type OAuthProvider } from '$types/profile.type';
@@ -68,24 +67,17 @@
 		}
 	}
 
-	// Naming the account happens on the profile card itself, so this raises the full
-	// card — mounted at the layout root, like the avatar picker — with its username
-	// field switched on.
-	function openUsernameField(): void {
+	// Naming the account happens on the settings sheet, where the field is simply always
+	// there — so the dropdown's button has nothing to ask for beyond raising it.
+	function openSettings(): void {
+		// The sheet is a modal of its own, mounted at the layout root — raising it from
+		// here would trap it inside the map panel's stacking context.
 		errorMessage = null;
-		usernameEditRequested.set(true);
-		profileModalOpen.set(true);
-	}
-
-	function openProfile(): void {
-		// The full card is a modal of its own, mounted at the layout root — raising it
-		// from here would trap it inside the map panel's stacking context.
-		errorMessage = null;
-		profileModalOpen.set(true);
+		settingsModalOpen.set(true);
 	}
 
 	function openRoster(): void {
-		// Like the profile card, the roster is a modal mounted at the layout root — the
+		// Like the settings sheet, the roster is a modal mounted at the layout root — the
 		// glance card only raises it.
 		rosterModalOpen.set(true);
 	}
@@ -165,14 +157,14 @@
 					{:else if $status === AuthStatus.SignedIn && $profile}
 						{#if embedded}
 							<!-- The account across the whole width, above the cards rather than in among
-								them: the picture, the reading and the ways out of the panel (the full
-								card, the roster, the badges) on one row of three columns. Every one of
-								those buttons raises a modal mounted at the layout root, so the tile only
-								says it was pressed. -->
+								them: the picture, the reading and the ways out of the panel (the roster,
+								the badges, the account's settings) on one row of three columns. Every one
+								of those buttons raises a modal mounted at the layout root, so the tile
+								only says it was pressed. -->
 							<ProfileTile
 								profile={$profile}
 								on:editavatar={openAvatarPicker}
-								on:openprofile={openProfile}
+								on:opensettings={openSettings}
 								on:openroster={openRoster}
 								on:openachievements={openAchievements}
 							/>
@@ -189,7 +181,7 @@
 								profile={$profile}
 								{signingOut}
 								on:signout={handleSignOut}
-								on:editusername={openUsernameField}
+								on:editusername={openSettings}
 								on:editavatar={openAvatarPicker}
 							/>
 						{/if}
