@@ -1994,12 +1994,13 @@
 					above has turned up, and then who is playing. `items-end` so each plate is only
 					as wide as it asks to be and both keep the corner's edge. -->
 				<div class="flex min-w-0 flex-col items-end gap-2">
-					<!-- The matches, directly under the field that produced them and the first thing in
-						this corner while a search is on: what is asked for at the top right is answered
-						at the top right. Only ever up for a query — an empty box is the search not
-						happening, and there is no plate for it — and the cross on it ends the search
-						outright rather than folding the plate away from a query still typed in a field
-						still standing open (see closeSearch). -->
+					<!-- The matches, directly under the field that produced them and the whole of this
+						corner while a search is on: what is asked for at the top right is answered at the
+						top right. The account's plate stood under them here for a while and is at the foot
+						of the map now, under the side it fields.
+						Only ever up for a query — an empty box is the search not happening, and there is no
+						plate for it — and the cross on it ends the search outright rather than folding the
+						plate away from a query still typed in a field still standing open (see closeSearch). -->
 					{#if normalizedQuery}
 						<LocationSearchPanel
 							results={searchResults}
@@ -2009,57 +2010,65 @@
 						/>
 					{/if}
 
-					<!-- Who is playing: the picture they wear and the reading beside it (see
-						PlayerPanel). It was the first two thirds of the panel's Profile tab, which meant
-						who you are was on screen only while that one tab was forward — and it is read
-						against every town on the map, the same way the side at the foot of the map is.
-						Opposite the town panel across this row: the place being looked at on the left, the
-						account looking at it on the right. `flex-none` so a long name truncates inside the
-						plate rather than the plate growing into the column beside it.
-						Only for a signed-in account: there is no picture, no level and no bar to draw
-						without one, and the way in is the panel's Profile tab, which is where signing in
-						has always been. -->
-					{#if $profile}
-						<PlayerPanel
-							profile={$profile}
-							on:editavatar={() => avatarPickerOpen.set(true)}
-							classes="pointer-events-auto w-64 flex-none"
-						/>
-					{/if}
 				</div>
 			</div>
 		</div>
-		<!-- The side this player fields, at the opposite corner of the map from the town
-			panel: the three being challenged sit under the breadcrumbs at the top, the three
-			doing the challenging stand at the foot, so the fight the Challenge button opens
-			is both sides of it read on the one screen. It was a slice of the panel's Profile
-			tab, which meant the team was on screen only while that tab was forward — and it
-			is the one thing on this page that is about no tab at all.
-			The three statues and nothing else: no plate under them, no heading over them, so
-			what stands at the corner is the side itself rather than a panel about it. It can
-			stand bare where the corner's other things cannot because a statue brings its own
-			ground and its own panel — every word on it is already read off the card's own
-			colour, never off the terrain behind it.
-			Absolutely positioned rather than a row of the corner's stack, since it belongs at
-			the other end of the map from that stack. Same z-[900] as the stack: clear of
-			Leaflet's own panes (overlays 400-600, controls 800) and under the arena's 1200.
-			Only drawn once there is a side to draw: signed out, or an account with no card in
-			a team slot, leaves the corner empty rather than standing up an empty frame. And
-			only inside `ready`, so a statue never says Ultramar at a town whose name is still
-			on its way (see claimPlaceFor). -->
-		{#if playerTeamLineup.length > 0}
-			<!-- The row is given its box rather than positioned itself: it is `w-full` of
-				whatever holds it, and a width handed to it in the same breath would be two
-				width utilities on one element with nothing but stylesheet order to settle
-				which of them wins.
-				A flat 400px, which is the width three statues and their captions are read at —
-				a share of the map would set the size of a card by how wide the window is —
-				capped at the viewport so the narrowest phone shrinks them rather than carrying
-				them off the screen. -->
-			<div class="absolute bottom-3 left-3 z-[900] w-[400px] max-w-[100vw]">
-				<TeamLineup members={playerTeamLineup} />
+		<!-- The map's bottom-left corner, a column of two: the side this player fields, and
+			under it who is playing. The two belong together and belong here — a side and the
+			account fielding it are one statement, and it is the statement every town on the map
+			is read against: the three being challenged are on a plate under the breadcrumbs at
+			the top, the three doing the challenging stand at the foot with their player under
+			them, so a fight the Challenge button opens is both sides of it read on the one
+			screen. The account's plate was at the map's top-right, opposite the town panel, which
+			put the player at one corner and the side they field at another with nothing but the
+			reader to say which of them was whose.
+			Anchored at the bottom, so the column grows upwards: what arrives in it — the plate,
+			as an account signs in — pushes the statues up rather than walking the account off the
+			foot of the map. Absolutely positioned rather than a row of the stack under the bar,
+			since it is at the other end of the map from that stack. Same z-[900] as the stack:
+			clear of Leaflet's own panes (overlays 400-600, controls 800) and under the full-view
+			sheets.
+			A flat 400px, which is the width three statues and their captions are read at — a
+			share of the map would set the size of a card by how wide the window is — capped at
+			the viewport so the narrowest phone shrinks them rather than carrying them off the
+			screen. The plate takes the same width: they are one column at one corner, and a
+			plate narrower than the side above it would read as a second thing that happens to be
+			nearby. Nothing is drawn at all when there is neither to draw. -->
+		{#if playerTeamLineup.length > 0 || $profile}
+			<div class="absolute bottom-3 left-3 z-[900] flex w-[400px] max-w-[100vw] flex-col gap-2">
+				<!-- The three statues and nothing else: no plate under them, no heading over them,
+					so what stands here is the side itself rather than a panel about it. It can stand
+					bare where the map's other furniture cannot because a statue brings its own ground
+					and its own panel — every word on it is already read off the card's own colour,
+					never off the terrain behind it.
+					The row is given its box by the column rather than positioning itself: it is
+					`w-full` of whatever holds it, and a width handed to it in the same breath would be
+					two width utilities on one element with nothing but stylesheet order to settle
+					which of them wins.
+					Only drawn once there is a side to draw — an account with no card in a team slot
+					leaves the column to its plate alone — and only inside `ready`, so a statue never
+					says Ultramar at a town whose name is still on its way (see claimPlaceFor). -->
+				{#if playerTeamLineup.length > 0}
+					<TeamLineup members={playerTeamLineup} />
+				{/if}
+
+				<!-- Who is playing, under the side they field: the picture they wear, the name with
+					the level at the end of its row, and the experience bar with the figure written
+					across it. Only for a signed-in account — there is no picture, no level and no bar
+					to draw without one, and the way in is the menu's sign-in.
+					No `pointer-events-auto` on it here: it needed one while it stood in the column
+					under the bar, which turns its own events off so the map stays pannable through the
+					gaps between its plates. This corner is not that column. -->
+				{#if $profile}
+					<PlayerPanel
+						profile={$profile}
+						on:editavatar={() => avatarPickerOpen.set(true)}
+						classes="w-full"
+					/>
+				{/if}
 			</div>
 		{/if}
+
 	{:else}
 		<div class="flex min-h-0 flex-1 items-center justify-center">
 			<span class="loading loading-spinner loading-lg"></span>
