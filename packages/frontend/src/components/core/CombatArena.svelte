@@ -422,7 +422,8 @@
 			id: action,
 			icon: ACTION_ICONS[action],
 			selected: fighter.action === action,
-			disabled: locked || (action === 'shoot' && !fighter.canShoot)
+			disabled: locked || (action === 'shoot' && !fighter.canShoot),
+			color: fighter.color
 		}));
 	}
 
@@ -436,9 +437,7 @@
 	 * it over as the turn is carried out, so the button lights up at the moment the fighter
 	 * acts and stays lit for the rest of the turn.
 	 *
-	 * It lights up in the fighter's own colour rather than the side red every rival shares:
-	 * three rivals act in one turn, and whose order just fired is the thing worth reading
-	 * off the board.
+	 * It lights up in the fighter's own colour, as the player's own column does.
 	 */
 	function rivalOrderButtons(fighter: FighterView): BoardOrder[] {
 		return COMBAT_ACTIONS.map((action) => ({

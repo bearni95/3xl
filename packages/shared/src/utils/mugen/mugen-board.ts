@@ -403,7 +403,7 @@ export interface BoardOrder {
 	/** URL of the glyph drawn inside the button (an SVG under /assets). The artwork
 	 * must be white: it is tinted, and tinting only ever darkens. */
 	icon: string;
-	/** Drawn as the chosen one, in {@link color} or failing that its side's colour. */
+	/** Drawn as the chosen one, filled with {@link color}. */
 	selected: boolean;
 	/** Drawn greyed, and taps on it are ignored. */
 	disabled: boolean;
@@ -414,13 +414,15 @@ export interface BoardOrder {
 	 */
 	readonly?: boolean;
 	/**
-	 * Combat colour name to fill this button with when it is the chosen one. Left out, the
-	 * chosen order takes the colour of the *side* the fighter belongs to, which is what
-	 * says "these are yours" about a column the player is giving orders in. A column that
-	 * is only reporting has no such job, so it names the fighter's own colour instead and
-	 * the order that was carried out is marked in the colour of whoever carried it out.
+	 * Combat colour name to fill this button with when it is the chosen one — the
+	 * fighter's own, not its side's. Six fighters carry a column and two colours could
+	 * only say which half of the board an order belonged to, which is the one thing the
+	 * column's own position already says. A fighter's colour is what the rest of its
+	 * marks are drawn in — its aura, its callouts, the coins at its corner — so its
+	 * order is filled in the same, and every mark on the board saying something about
+	 * one fighter says it in one colour.
 	 */
-	color?: string;
+	color: string;
 }
 
 /**
@@ -444,8 +446,8 @@ interface OrderButton {
 	glyph: Sprite;
 	selected: boolean;
 	disabled: boolean;
-	/** Combat colour name for the chosen fill, or null to take the side's colour. */
-	color: string | null;
+	/** Combat colour name for the chosen fill. */
+	color: string;
 }
 
 /** Which side of its fighter a column of orders stands on. */
@@ -1925,7 +1927,7 @@ export class MugenBoard {
 		orders.forEach((order, i) => {
 			const button = strip.buttons[i];
 			if (!button) return;
-			const color = order.color ?? null;
+			const color = order.color;
 			if (
 				button.selected === order.selected &&
 				button.disabled === order.disabled &&
@@ -1935,7 +1937,7 @@ export class MugenBoard {
 			button.selected = order.selected;
 			button.disabled = order.disabled;
 			button.color = color;
-			this.paintOrder(actor, button);
+			this.paintOrder(button);
 		});
 		this.updateOrders(actor);
 	}
@@ -1957,7 +1959,7 @@ export class MugenBoard {
 				glyph,
 				selected: order.selected,
 				disabled: order.disabled,
-				color: order.color ?? null
+				color: order.color
 			};
 			button.container.addChild(face, glyph);
 			// A reporting button is not an input: it is left with no event mode at all, so it
@@ -1981,7 +1983,7 @@ export class MugenBoard {
 				glyph.texture = texture;
 				this.layOutOrders(actor);
 			});
-			this.paintOrder(actor, button);
+			this.paintOrder(button);
 			return button;
 		});
 
@@ -1992,17 +1994,12 @@ export class MugenBoard {
 	}
 
 	/** Repaint one button for its current state: chosen, plain, or out of reach. */
-	private paintOrder(actor: Actor, button: OrderButton): void {
+	private paintOrder(button: OrderButton): void {
 		const { width, height } = this.orderSize();
 		const radius = height * ORDER_RADIUS_RATIO;
-		// The chosen order takes the fighter's own colour where one was named, and otherwise
-		// its side's, so a fighter's orders read as belonging to it rather than to some
-		// palette of the interface's own.
-		const chosen = button.color
-			? combatColorHex(button.color)
-			: actor.side === 'blue'
-				? this.options.grids[1].color
-				: this.options.grids[0].color;
+		// The chosen order takes the fighter's own colour, so a fighter's orders read as
+		// belonging to it rather than to some palette of the interface's own.
+		const chosen = combatColorHex(button.color);
 		const fill = button.disabled ? ORDER_DISABLED_FILL : button.selected ? chosen : ORDER_IDLE_FILL;
 
 		button.face.clear();
@@ -2046,7 +2043,7 @@ export class MugenBoard {
 		strip.buttons.forEach((button, i) => {
 			button.container.x = 0;
 			button.container.y = start + i * step;
-			this.paintOrder(actor, button);
+			this.paintOrder(button);
 			const glyph = button.glyph;
 			if (glyph.texture && glyph.texture.width > 0) {
 				const target = height * ORDER_ICON_RATIO;
