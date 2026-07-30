@@ -30,8 +30,9 @@
 	// furthest from the front and the right face the nearest.
 	//
 	// In module scope because it is a fact about the two stocks and not about any one box: every
-	// box drawn on the page reads the same record, and the squares the lid breaks into when it is
-	// opened are painted the top's own tone off it rather than off a second copy of these hexes.
+	// box drawn on the page reads the same record, and the squares each surface breaks into when
+	// the box is opened are painted that surface's own tone off it rather than off a second copy
+	// of these hexes.
 	const PACK_STOCK: Record<
 		SpawnBox,
 		{
@@ -114,11 +115,12 @@
 	// material. The caller says which — the box has no idea why one run of them would be
 	// printed differently.
 	export let light: boolean = false;
-	// Take the lid off. The top breaks into a grid of squares of its own tone and dissolves,
-	// front row first, and `opened` is dispatched once it is gone — which is the whole of what a
-	// box does when it is opened: what comes out of it is the caller's to stand up, and it is
-	// what has to wait for that event before putting the cards where the box was (see PackGrid).
-	// Turned off again the lid is simply back on, for a roll that never answered.
+	// Open the box. Every surface of it breaks into a grid of squares of its own tone and
+	// dissolves, all four together and each out of the middle of its own plane, and `opened` is
+	// dispatched once the last of it has gone — which is the whole of what a box does when it is
+	// opened: what comes out of it is the caller's to stand up, and it is what has to wait for
+	// that event before putting the cards where the box was (see PackGrid). Turned off again the
+	// box is simply whole, for a roll that never answered.
 	export let opening: boolean = false;
 	export let classes: string = '';
 
@@ -254,78 +256,94 @@
 	// with none drawn yet, which leaves the lid bare.
 	$: showIcon = showIconName(showId);
 
-	// Taking the lid off, which is the one thing this box does rather than merely shows. It
-	// breaks into a grid of squares and the grid dissolves, from the middle of the top outwards
-	// — the very squares a character's art arrives behind (VeilBlock's, on IdleSprite's clock),
-	// laid inside the tilted square so they are tilted and clipped with the top they are breaking
-	// up. Three states, in the order they happen: the top whole, the top crazed into squares,
-	// the squares gone.
+	// Coming apart, which is the one thing this box does rather than merely shows. Every surface
+	// of it breaks into a grid of squares and the squares dissolve, each grid starting at the
+	// middle of its own plane and travelling out to that plane's edges — the very squares a
+	// character's art arrives behind (VeilBlock's, on IdleSprite's clock). Three states, in the
+	// order they happen: the shell whole, the shell crazed into squares, the squares gone.
 	//
-	// `printed` is what turns the second into the third: the lid's own tone and the mark stamped
-	// on it go the moment the grid is all the way in — invisibly, the squares being opaque and
-	// the lid's own colour — so that what the sweep uncovers is the inside of the box and not
-	// the top it has just broken up. Without it the squares would dissolve back onto a lid that
-	// was still there.
-	let lid: 'on' | 'crazing' | 'dissolving' | 'off' = 'on';
-	let printed = true;
-	let lidTimer: ReturnType<typeof setTimeout> | null = null;
-	// The lid's own width, measured: the grid counts its rows and columns off a square given in
-	// pixels, and this is the one number the box knows in shares of itself alone. It is the plane's
-	// own width and not the drawn one — `clientWidth` is read off the layout box, before the
-	// transform folds it down.
-	let lidWidth = 0;
+	// It is four grids and not one because a box is four planes and a grid is drawn in a plane:
+	// each is a child of the surface it breaks up, so the lid's is laid down under the lid's
+	// perspective, each bevel face's is sheared with the face, and the front's stands square —
+	// which is the whole of what "adapting to the tilt" needs, a child being transformed with
+	// its parent. What makes them one box coming apart rather than four things happening at once
+	// is that they are handed the same square size, the same direction and the same clock (see
+	// the `crumble` snippet, which is the only place any of the three is said).
+	//
+	// `inked` is what turns the second state into the third: every surface's own tone and
+	// everything printed on it go the moment the grids are all the way in — invisibly, the
+	// squares being opaque and each painted its own surface's tone — so that what the sweep
+	// uncovers is the inside of the box and not the shell it has just broken up. Without it the
+	// squares would dissolve back onto the box they came off.
+	let shell: 'whole' | 'crazing' | 'dissolving' | 'gone' = 'whole';
+	let inked = true;
+	let shellTimer: ReturnType<typeof setTimeout> | null = null;
+	// The box's own width, measured: the grids count their rows and columns off a square given in
+	// pixels, and this is the one number every plane of the box is a share of. It is the layout
+	// width and not the drawn one, which is what makes it usable on the tilted surfaces too —
+	// `clientWidth` is read before any transform folds anything down.
+	let boxWidth = 0;
 
-	// How long the crazed top holds before it goes, and how long it takes to go. The second is
-	// VeilBlock's whole sweep — the grid stops being drawn at the end of it, so a sweep that ran
+	// How long the crazed shell holds before it goes, and how long it takes to go. The second is
+	// VeilBlock's whole sweep — a grid stops being drawn at the end of it, so a sweep that ran
 	// longer would be cut off mid-blur; its blur and its stagger are what add up to this
 	// (IdleSprite holds the same two numbers for the same reason).
-	const LID_HOLD = 300;
-	const LID_FADE = 1000;
-	// How big a square is, as a share of the lid's own square — the tenth a statue's veil takes
-	// of the card it covers, so a box comes apart into the same grid its cards arrive behind. The
-	// rows come out flat and flatter as they recede, a lid being a plane only a sixth of a width
-	// deep, which is what a grid laid down on it rather than drawn over it looks like.
-	const LID_CELL = 0.1;
+	const SHELL_HOLD = 300;
+	const SHELL_FADE = 1000;
+	// How big a square is, as a share of the box's own width — the tenth a statue's veil takes of
+	// the card it covers, so a box comes apart into the same grid its cards arrive behind. A share
+	// of the whole box and not of the surface it lands on: one card was folded into these four
+	// planes, so one grain of it runs across all four, and a face a twentieth of the width wide
+	// gets the single column of that grain it has room for rather than a fine grid of its own.
+	const CELL = 0.1;
 
 	const dispatch = createEventDispatcher<{ opened: void }>();
 
-	// The lid comes off when it is asked for and goes back on when the asking stops, which is
+	// The box comes apart when it is asked to and is whole again when the asking stops, which is
 	// what a roll that never answered leaves behind: a box still sealed.
-	$: if (opening) breakLid();
-	else resetLid();
+	$: if (opening) breakShell();
+	else resetShell();
 
-	/** Craze the top: the grid goes up over it, and nothing else happens until the grid says it
-	 * is all the way in. */
-	function breakLid(): void {
-		if (lid !== 'on') return;
-		lid = 'crazing';
+	// Whether there are grids to draw at all, and how big their squares are. Nothing is drawn
+	// before the box has been measured: a square of no size would leave every grid empty, and an
+	// empty grid never says it is in, which is what the clock below waits on.
+	$: crazed = (shell === 'crazing' || shell === 'dissolving') && boxWidth > 0;
+	$: cell = boxWidth * CELL;
+
+	/** Craze the shell: the grids go up over it, and nothing else happens until they say they are
+	 * all the way in. */
+	function breakShell(): void {
+		if (shell !== 'whole') return;
+		shell = 'crazing';
 	}
 
-	/** The grid is all there, so the top under it is no longer needed — and once it has held a
-	 * beat, neither is the grid. */
-	function lidCrazed(): void {
-		if (lid !== 'crazing' || lidTimer) return;
-		printed = false;
-		lidTimer = setTimeout(() => {
-			lid = 'dissolving';
-			lidTimer = setTimeout(() => {
-				lid = 'off';
-				lidTimer = null;
+	/** A grid is all there, so the surfaces under them are no longer needed — and once they have
+	 * held a beat, neither are the grids. Any one of the four may be the one that says so: they go
+	 * up together and every sweep is the same length, so the first to finish has finished for all
+	 * of them, and this being the whole box's clock the rest find it already running. */
+	function shellCrazed(): void {
+		if (shell !== 'crazing' || shellTimer) return;
+		inked = false;
+		shellTimer = setTimeout(() => {
+			shell = 'dissolving';
+			shellTimer = setTimeout(() => {
+				shell = 'gone';
+				shellTimer = null;
 				dispatch('opened');
-			}, LID_FADE);
-		}, LID_HOLD);
+			}, SHELL_FADE);
+		}, SHELL_HOLD);
 	}
 
-	/** Lid on, no grid, no clock. */
-	function resetLid(): void {
-		if (lidTimer) clearTimeout(lidTimer);
-		lidTimer = null;
-		lid = 'on';
-		printed = true;
+	/** Shell whole, no grids, no clock. */
+	function resetShell(): void {
+		if (shellTimer) clearTimeout(shellTimer);
+		shellTimer = null;
+		shell = 'whole';
+		inked = true;
 	}
 
 	onDestroy(() => {
-		if (lidTimer) clearTimeout(lidTimer);
+		if (shellTimer) clearTimeout(shellTimer);
 	});
 
 	// What the head says, exactly as the baked pack says it: the place with the year this
@@ -350,6 +368,7 @@
 	edges. -->
 <div
 	class={classNames('@container flex aspect-[30/37] min-h-0 flex-col drop-shadow-md', classes)}
+	bind:clientWidth={boxWidth}
 >
 	<!-- The lid stands in a strip exactly as deep as the tilted square draws (a sixth of
 		the width), so the face below it starts where the lid's front edge is and comes out
@@ -377,19 +396,18 @@
 			paints its floor in a veiled white, since a character stands in front of that floor
 			and must not be argued with while nothing stands on a lid.
 
-			The tone and the mark are both dropped the moment the grid below is all the way in: from
-			there on the squares are the top, and it is they that go (see `printed`). -->
+			The tone and the mark are both dropped the moment the grids are all the way in: from
+			there on the squares are the top, and it is they that go (see `inked`). -->
 		<div
 			class={classNames(
 				'absolute inset-x-0 bottom-0 aspect-square',
-				printed ? skin.top : null,
+				inked ? skin.top : null,
 				skin.ink,
 				LID,
 				LID_CUT
 			)}
-			bind:clientWidth={lidWidth}
 		>
-			{#if showIcon && printed}
+			{#if showIcon && inked}
 				<!-- Inside the tilted square, so the glyph is laid down with the lid rather than
 					standing up on it, and clipped by the corner cuts along with it: the mark is
 					printed on the top of the box, and a print on a plane seen in perspective is seen
@@ -404,31 +422,15 @@
 				/>
 			{/if}
 
-			{#if (lid === 'crazing' || lid === 'dissolving') && lidWidth > 0}
-				<!-- The top coming apart, inside the tilted square: the squares are laid down with the
-					lid and clipped by its corner cuts exactly as the mark stamped on it is, so what
-					breaks up is the plane and not a rectangle drawn over it — the rows flatten as they
-					recede, which is a grid on a surface a sixth of a width deep seen from where this
-					box is seen. They are painted the lid's own tone, so the top crazes into squares
-					rather than being covered by something else, and the sweep starts at the middle
-					square and travels out to the edges — a lid gives at the middle of itself, and a
-					sweep off one edge would only have said which edge (the loading veils keep that
-					one, running up the way a character stands). Measured in squares, so on this plane
-					the ring the sweep opens in is drawn as the ellipse the perspective makes of it.
-					What it looks like is its own; this says where it is, what it is printed on, which
-					way it goes and when to leave. -->
-				<VeilBlock
-					left="0px"
-					bottom="0px"
-					width="{lidWidth}px"
-					height="{lidWidth}px"
-					cell={lidWidth * LID_CELL}
-					fill={skin.top}
-					from="centre"
-					fading={lid === 'dissolving'}
-					on:shown={lidCrazed}
-				/>
-			{/if}
+			<!-- The top coming apart, inside the tilted square: the squares are laid down with the
+				lid and clipped by its corner cuts exactly as the mark stamped on it is, so what breaks
+				up is the plane and not a rectangle drawn over it — the rows flatten as they recede,
+				which is a grid on a surface a sixth of a width deep seen from where this box is seen.
+				It is the one plane whose grid is given its size in pixels rather than in per cent: the
+				square takes its height off an aspect ratio, and a percentage measured against a height
+				that is itself derived is not a thing to lean on. A full width either way, the lid
+				being the box's own width square. -->
+			{@render crumble(skin.top, `${boxWidth}px`, `${boxWidth}px`)}
 		</div>
 	</div>
 
@@ -457,52 +459,118 @@
 			ways (see `skin`), and each carries a flipped third of the cover over that (see
 			FACE_COVER) with the poster's own two fades over that again, tilted with the face (see
 			FACE_GROUNDS). Nothing is written on them, so they are hidden from a screen reader,
-			which is being read the place and the mark. -->
+			which is being read the place and the mark.
+
+			Each crazes in its own tone like every other surface, which leaves the left face and the
+			front in one tone — the front's grade starts at the step the left face takes, and there is
+			no fifth step to give either of them instead. What still tells the two apart once the
+			print has gone is the tiling itself: a face's squares are sheared with the face and the
+			front's stand square, so the fold reads off the direction of the grain rather than off a
+			difference in colour. The strip is a twentieth of the box wide against a square a tenth of
+			it, so what a face gets is one column of the box's grain, clipped — which is all a plane
+			that narrow can show of any tiling. -->
 		<div
-			class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, skin.left, 'overflow-hidden')}
+			class={classNames(
+				BEVEL_FACE,
+				BEVEL_FACE_LEFT,
+				inked ? skin.left : null,
+				'overflow-hidden'
+			)}
 			aria-hidden="true"
 		>
-			{#if coverUrl}
-				<img src={coverUrl} alt="" class={classNames(FACE_COVER, FACE_COVER_LEFT)} />
+			{#if inked}
+				{#if coverUrl}
+					<img src={coverUrl} alt="" class={classNames(FACE_COVER, FACE_COVER_LEFT)} />
+				{/if}
+				<div class={FACE_GROUNDS}>{@render grounds(false)}</div>
 			{/if}
-			<div class={FACE_GROUNDS}>{@render grounds(false)}</div>
+			{@render crumble(skin.left, '100%', '100%')}
 		</div>
 		<div
-			class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, skin.right, 'overflow-hidden')}
+			class={classNames(
+				BEVEL_FACE,
+				BEVEL_FACE_RIGHT,
+				inked ? skin.right : null,
+				'overflow-hidden'
+			)}
 			aria-hidden="true"
 		>
-			{#if coverUrl}
-				<img src={coverUrl} alt="" class={classNames(FACE_COVER, FACE_COVER_RIGHT)} />
+			{#if inked}
+				{#if coverUrl}
+					<img src={coverUrl} alt="" class={classNames(FACE_COVER, FACE_COVER_RIGHT)} />
+				{/if}
+				<div class={FACE_GROUNDS}>{@render grounds(false)}</div>
 			{/if}
-			<div class={FACE_GROUNDS}>{@render grounds(false)}</div>
+			{@render crumble(skin.right, '100%', '100%')}
 		</div>
 
-		<div class={classNames('h-full w-full bg-gradient-to-b', skin.front)}>
+		<div class={classNames('h-full w-full bg-gradient-to-b', inked ? skin.front : null)}>
 			<!-- The picture and the two things written over it, in one box. Nothing pads it: the
 				cover is the front, edge to edge on all four sides, and what that costs is a crop
 				off two of them — a poster is not the box's shape and something has to give, so it
 				covers rather than fits. With no padding this box and the front are the same box,
 				which is also what the two bevel faces measure their strip of the picture against. -->
 			<div class="relative h-full w-full">
-				{#if coverUrl}
-					<!-- The poster covers the front rather than fitting inside it: the widest posters
-						saved are about 0.76 against the front's 0.75, so most of them are narrower than
-						it is and lose off the height instead — a 2:3 one about a tenth, top and bottom.
-						Whichever way it goes the front is all picture, which is what covering means. -->
-					<img
-						src={coverUrl}
-						alt=""
-						class={classNames('h-full w-full bg-gradient-to-b object-cover', skin.front)}
-					/>
-				{:else}
-					<div class={classNames('h-full w-full bg-gradient-to-b', skin.front)}></div>
+				{#if inked}
+					{#if coverUrl}
+						<!-- The poster covers the front rather than fitting inside it: the widest posters
+							saved are about 0.76 against the front's 0.75, so most of them are narrower than
+							it is and lose off the height instead — a 2:3 one about a tenth, top and bottom.
+							Whichever way it goes the front is all picture, which is what covering means. -->
+						<img
+							src={coverUrl}
+							alt=""
+							class={classNames('h-full w-full bg-gradient-to-b object-cover', skin.front)}
+						/>
+					{:else}
+						<div class={classNames('h-full w-full bg-gradient-to-b', skin.front)}></div>
+					{/if}
+
+					{@render grounds(true)}
 				{/if}
 
-				{@render grounds(true)}
+				<!-- The front coming apart, in the box the picture was in: the largest plane and the only
+					one standing square to the eye, so it is where the grain is read and where the crumble
+					is actually watched. The picture, the two fades and the type all go together at the
+					moment the grids are in — the squares are opaque and the print is under them, so what
+					dissolves is bare card and never a poster half rubbed out. The tone is the step the
+					front's own grade starts in, the grade itself being no use to a grid: a square carries
+					one colour, and the tone a face crazes in has to be one the front actually is
+					somewhere. -->
+				{@render crumble(skin.left, '100%', '100%')}
 			</div>
 		</div>
 	</div>
 </div>
+
+<!-- One surface's worth of the box coming apart: a grid of squares of that surface's own tone,
+	blurred into place and then blurred away, drawn inside the surface so it is tilted, sheared or
+	left square with it (see VeilBlock for what it looks like, and `shell` for the clock). Given the
+	surface's tone and its size, and nothing else — one snippet and not four copies of it because
+	the whole of "in tandem" lives in the three things it does not take: the square is a share of
+	the box and so the same on every plane, the sweep starts at the middle of each plane and runs
+	out, and the leaving is the one `shell` state, so four surfaces craze and dissolve as one object
+	rather than four kept in step by hand.
+
+	Every one of them reports back, and the first to do it is the one the clock starts on: they go up
+	in the same frame and every sweep is the same length, so whichever says it first says it for all
+	four (see `shellCrazed`, which the rest find already running). Reporting from one nominated
+	surface would have hung the whole crumble on that surface having had a size to be drawn at. -->
+{#snippet crumble(tone: string, width: string, height: string)}
+	{#if crazed}
+		<VeilBlock
+			left="0px"
+			bottom="0px"
+			{width}
+			{height}
+			{cell}
+			fill={tone}
+			from="centre"
+			fading={shell === 'dissolving'}
+			on:shown={shellCrazed}
+		/>
+	{/if}
+{/snippet}
 
 <!-- The two grounds over the picture, drawn wherever the print goes: over the front, where they
 	are also what is written on it, and over each bevel face, where they are the same two fades

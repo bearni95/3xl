@@ -45,13 +45,14 @@
 	// True while the roll is in flight — the pack is already tapped, and a second tap
 	// must not fire a second claim.
 	let opening = false;
-	// The tap has landed and the box is taking its lid off (see BoosterBox, which breaks the top
-	// into a grid of squares of its own card and dissolves them). It is not the same thing as the
-	// roll being out: the dissolve is the box's own animation and holds through a roll that
-	// answers inside it, which is why the cards wait on `unsealed` and not on `pulls` alone —
-	// swapping them in the moment the server replied would cut the top off mid-crumble.
+	// The tap has landed and the box is coming apart (see BoosterBox, which breaks every surface of
+	// it into a grid of squares of that surface's own tone and dissolves the four together). It is
+	// not the same thing as the roll being out: the dissolve is the box's own animation and holds
+	// through a roll that answers inside it, which is why the cards wait on `unsealed` and not on
+	// `pulls` alone — swapping them in the moment the server replied would cut the box off
+	// mid-crumble.
 	let unsealing = false;
-	// The lid is off: the box says so itself, once the last of it has gone.
+	// The box has gone: it says so itself, once the last of its squares has.
 	let unsealed = false;
 
 	// Which pack the state above belongs to. `selected` is the host's to change too,
@@ -103,7 +104,7 @@
 		if (!pack || opening || pulls) return;
 		const id = pack.id;
 		opening = true;
-		// The lid comes off on the tap and not on the answer: the tap is the box being opened, and
+		// The box comes apart on the tap and not on the answer: the tap is the box being opened, and
 		// whatever the roll takes is time the opened box stands there.
 		unsealing = true;
 		unsealed = false;
@@ -117,7 +118,7 @@
 		} finally {
 			if (shown === id) {
 				opening = false;
-				// The roll threw rather than answering with cards: the lid goes back on, since a box
+				// The roll threw rather than answering with cards: the box is whole again, since a box
 				// that opened onto nothing at all never opened. Why is the host's to say, as every
 				// other refusal is.
 				if (!pulls) {
@@ -140,8 +141,8 @@
 		</div>
 
 		<!-- The cards stand where the box stood, once there are cards *and* the box has finished
-			taking its lid off: a roll that answers inside the dissolve waits for it, since what
-			opens a pack is the top coming apart and half of that is not an opening. -->
+			coming apart: a roll that answers inside the dissolve waits for it, since what opens a pack
+			is the box coming apart and half of that is not an opening. -->
 		{#if pulls && unsealed}
 			{#if pulls.length}
 				<!-- The cards keep their own height and pack to the top of the box: rows left
@@ -200,11 +201,11 @@
 						aspect, which is what left the box a tall thin slab of the panel's full height
 						rather than a box.
 
-						The tap tells it to take its lid off and it says when the lid is gone; nothing is
+						The tap tells it to come apart and it says when the last of it has gone; nothing is
 						dimmed while that is happening, a box coming apart being its own answer to having
-						been tapped. Only a roll still out after the last of the top has gone falls back on
-						the dimmed-and-spinning wait, which is what a box with its lid off and nothing yet
-						to show is really doing. -->
+						been tapped. Only a roll still out after the last square has gone falls back on the
+						dimmed-and-spinning wait, which is what a box that has opened onto nothing yet is
+						really doing. -->
 					<BoosterBox
 						coverUrl={selectedPack.coverUrl}
 						logoUrl={selectedPack.logoUrl}
@@ -220,7 +221,7 @@
 				</button>
 
 				{#if opening && unsealed}
-					<!-- The roll is slower than the box was: the top has gone and there is still
+					<!-- The roll is slower than the box was: the box has gone and there is still
 						nothing to put where it was, so the dissolve gives way to the plain wait it used
 						to be. Not before then — a spinner over a box mid-crumble is two things saying
 						the same thing, and only one of them is the box. -->
