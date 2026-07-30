@@ -12,15 +12,24 @@
 
 	const dispatch = createEventDispatcher<{ select: { icon: string }; close: void }>();
 
+	// The whole game-icons.net set is a few thousand glyphs, and each tile is its
+	// own request for its own file, so the grid is drawn a page at a time: the
+	// filter is the way through the set, and "show more" is there for browsing.
+	const PAGE_SIZE = 120;
+
 	let query = '';
+	let limit = PAGE_SIZE;
 
 	// Each opening starts from the whole set rather than from whatever was typed
 	// the last time the modal was up. `query` is only assigned here, so this runs
 	// on `open` alone and typing doesn't clear itself.
 	$: if (open) query = '';
+	// A new search is a new first page — same trick, `limit` is only written here.
+	$: query, (limit = PAGE_SIZE);
 
 	$: needle = query.trim().toLowerCase();
 	$: filtered = needle ? icons.filter((icon) => icon.toLowerCase().includes(needle)) : icons;
+	$: shown = filtered.slice(0, limit);
 
 	/** `lorc/bordered-shield` → "Bordered Shield", the artist kept as its own line. */
 	function label(icon: string): string {
@@ -74,24 +83,41 @@
 			{#if filtered.length === 0}
 				<p class="text-base-content/50 py-6 text-center text-sm">No icon matches “{query}”.</p>
 			{:else}
-				<div class="grid grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4 md:grid-cols-6">
-					{#each filtered as icon (icon)}
-						<button
-							type="button"
-							class={classNames(
-								'flex flex-col items-center gap-1 rounded-box border p-2 text-center transition',
-								icon === selected
-									? 'border-primary bg-primary/10'
-									: 'border-transparent hover:bg-base-200'
-							)}
-							on:click={() => choose(icon)}
-							aria-pressed={icon === selected}
-						>
-							<GameIcon name={icon} size="size-14" />
-							<span class="w-full truncate text-xs" title={icon}>{label(icon)}</span>
-							<span class="text-base-content/50 w-full truncate text-[10px]">{artist(icon)}</span>
-						</button>
-					{/each}
+				<div class="flex min-h-0 flex-col gap-3 overflow-y-auto">
+					<div class="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+						{#each shown as icon (icon)}
+							<button
+								type="button"
+								class={classNames(
+									'flex flex-col items-center gap-1 rounded-box border p-2 text-center transition',
+									icon === selected
+										? 'border-primary bg-primary/10'
+										: 'border-transparent hover:bg-base-200'
+								)}
+								on:click={() => choose(icon)}
+								aria-pressed={icon === selected}
+							>
+								<GameIcon name={icon} size="size-14" />
+								<span class="w-full truncate text-xs" title={icon}>{label(icon)}</span>
+								<span class="text-base-content/50 w-full truncate text-[10px]">{artist(icon)}</span>
+							</button>
+						{/each}
+					</div>
+
+					<div class="flex items-center justify-center gap-3 pb-1">
+						<span class="text-base-content/50 text-xs">
+							Showing {shown.length} of {filtered.length}{needle ? ' matches' : ''}
+						</span>
+						{#if shown.length < filtered.length}
+							<button
+								type="button"
+								class="btn btn-xs"
+								on:click={() => (limit += PAGE_SIZE)}
+							>
+								Show more
+							</button>
+						{/if}
+					</div>
 				</div>
 			{/if}
 		</div>

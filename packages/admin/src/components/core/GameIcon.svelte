@@ -21,6 +21,13 @@
 
 <span class={computedClasses}>
 	{#if name}
-		<img class="h-2/3 w-2/3 object-contain" src={`/assets/icons/${name}.svg`} alt="" />
+		<!-- Lazy: the icon picker draws a grid of these, and an off-screen row of a
+		     few thousand-strong set should not be a few thousand requests. -->
+		<img
+			class="h-2/3 w-2/3 object-contain"
+			src={`/assets/icons/${name}.svg`}
+			loading="lazy"
+			alt=""
+		/>
 	{/if}
 </span>

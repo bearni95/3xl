@@ -74,9 +74,14 @@ interchangeable:
   the combat orders' glyphs go into a Pixi texture, which is not a place a stylesheet
   reaches, so these are fetched by URL and carry a baked **white** fill, which the
   canvas then tints (tinting only
-  ever darkens, so white artwork is what makes any colour reachable). A
-  game-icons.net SVG ships as white artwork on an opaque black square: strip the
-  background path and keep the white before committing it.
+  ever darkens, so white artwork is what makes any colour reachable). The **whole**
+  game-icons.net collection is vendored here — ~4,200 glyphs across 36 contributor
+  folders, downloaded in the site's `ffffff / transparent` variant, which is why
+  nothing had to be stripped: that variant is already white artwork on nothing, the
+  form both the canvas and the achievement picker want. Take the same variant when
+  adding more (the site also offers white-on-an-opaque-black-square, whose background
+  path would have to come out first). Attribution for the set is
+  `public/icons/license.txt`; keep it with the folders.
 
 Inlining a canvas glyph would put white on white, which is why `icon-markup.ts`'s
 glob deliberately takes only the show set. The admin's achievement editor is the one
