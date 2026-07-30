@@ -1,9 +1,17 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import { onMount } from 'svelte';
 	import MugenAnimationPreview from '$components/core/MugenAnimationPreview.svelte';
 	import RarityBadge from '$components/core/RarityBadge.svelte';
 	import type { CharacterOption } from '@3xl/data';
-	import { LABEL_MAX_LENGTH } from '$types/character-definition.type';
+	import {
+		LABEL_MAX_LENGTH,
+		type CharacterDefinition
+	} from '$types/character-definition.type';
+	import {
+		definitionAnimations,
+		type DefinitionAnimation
+	} from '$utils/mugen/definition-animations';
 	import { DEFAULT_RARITY, RARITY_MIN } from '$types/character-template.type';
 	import type { ShowTemplate } from '$types/show-template.type';
 
@@ -65,6 +73,33 @@
 		showBaseline !== null && !shows.some((show) => show.id === showBaseline)
 			? [...shows, { id: showBaseline, name: `Show ${showBaseline}` }]
 			: shows;
+
+	// Which animations this row previews is the character's own definition to say —
+	// the poses and directions it binds plus a move per entry it declares — so a
+	// character with no ranged move shows one preview fewer rather than a gap.
+	//
+	// Read straight off the definition JSON committed in @3xl/data, which this app's
+	// vite serves at /data: it is a plain read of a file in the tree, so it needn't
+	// go through the backend the way this row's writes do. Note that the definition's
+	// own `basePath` is legacy and does not match where the frames are actually
+	// served — previews use the registry's.
+	//
+	// Until it has loaded (and if it cannot be read) the row stands on the idle alone,
+	// which is what this cell showed before and is keyed `idle` in every manifest.
+	const IDLE_ONLY: DefinitionAnimation[] = [{ label: 'idle', source: 'idle' }];
+	let bound: DefinitionAnimation[] | null = null;
+	$: previews = bound ?? IDLE_ONLY;
+
+	onMount(async () => {
+		try {
+			const res = await fetch(`/data/characters/${character.id}/definition.json`);
+			if (!res.ok) return;
+			bound = definitionAnimations((await res.json()) as CharacterDefinition);
+		} catch {
+			// A definition that cannot be read costs the row its extra previews, not
+			// the fields it exists to edit.
+		}
+	});
 
 	/** Message out of a failed save response, preferring the API's own. */
 	async function failure(res: Response, fallback: string): Promise<string> {
@@ -150,8 +185,23 @@
 
 <tr>
 	<td>
-		<!-- Every character's idle animation is keyed `idle` in its manifest. -->
-		<MugenAnimationPreview basePath={character.basePath} animation="idle" size="h-16 w-16" />
+		<div class="flex flex-wrap gap-2">
+			{#each previews as preview (`${preview.label}:${preview.source}`)}
+				<div class="flex w-16 flex-col items-center gap-0.5">
+					<MugenAnimationPreview
+						basePath={character.basePath}
+						animation={preview.source}
+						size="h-16 w-16"
+					/>
+					<!-- Names which animation this is, since several of them are the same
+					     character doing different things. The full name stays reachable on
+					     hover for a move whose own name is longer than the box. -->
+					<span class="w-full truncate text-center text-xs leading-tight opacity-60" title={preview.label}>
+						{preview.label}
+					</span>
+				</div>
+			{/each}
+		</div>
 	</td>
 	<td>
 		<div class="flex items-center gap-2">

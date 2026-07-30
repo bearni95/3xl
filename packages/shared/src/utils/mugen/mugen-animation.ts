@@ -43,9 +43,7 @@ export class MugenAnimationPlayer {
 
 	/** Load the animation's frames, mount an `<img>` in `container` and loop. */
 	async start(container: HTMLElement): Promise<void> {
-		const response = await fetch(`${this.basePath}/manifest.json`);
-		if (!response.ok) throw new Error(`Failed to load manifest: ${response.status}`);
-		const manifest: Manifest = await response.json();
+		const manifest = await loadManifest(this.basePath);
 
 		const anim = manifest.animations[this.animation];
 		if (!anim) throw new Error(`Animation "${this.animation}" missing in ${this.basePath}/manifest.json`);
@@ -103,6 +101,37 @@ export class MugenAnimationPlayer {
 
 		this.rafId = requestAnimationFrame(this.tick);
 	};
+}
+
+/**
+ * The manifest of one frames folder, shared by every player pointed at it.
+ *
+ * A decoded manifest describes a character's whole sheet — hundreds of animations,
+ * a few hundred kilobytes of JSON — and each player only reads one animation out of
+ * it. A surface showing several of a character's animations at once (the admin
+ * dashboard shows a row per character with every slot its definition binds) would
+ * otherwise fetch and parse the same document once per preview, so it is kept by
+ * folder for as long as the page lives.
+ *
+ * A failed load is dropped instead of kept: it says nothing about the character, only
+ * about the moment, and a preview mounted later should get to try again.
+ */
+const manifests = new Map<string, Promise<Manifest>>();
+
+function loadManifest(basePath: string): Promise<Manifest> {
+	const cached = manifests.get(basePath);
+	if (cached) return cached;
+
+	const promise = (async () => {
+		const response = await fetch(`${basePath}/manifest.json`);
+		if (!response.ok) throw new Error(`Failed to load manifest: ${response.status}`);
+		return (await response.json()) as Manifest;
+	})().catch((error: unknown) => {
+		manifests.delete(basePath);
+		throw error;
+	});
+	manifests.set(basePath, promise);
+	return promise;
 }
 
 /** Resolve once the image at `url` has loaded (or errored — never rejects). */

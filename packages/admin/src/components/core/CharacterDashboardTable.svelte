@@ -125,7 +125,9 @@
 	<table class="table table-zebra">
 		<thead>
 			<tr>
-				<th class="w-20"></th>
+				<!-- Wide enough for three of the row's animation previews abreast; the rest
+				     wrap under them rather than pushing the editable fields off-screen. -->
+				<th class="w-56"></th>
 				<th>Character</th>
 				<th>Show</th>
 				<th>Rarity</th>
