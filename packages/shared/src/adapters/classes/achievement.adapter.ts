@@ -19,10 +19,15 @@ export class AchievementAdapter extends AdapterClass {
 		super('achievement');
 	}
 
-	/** One `player_achievements` row: a badge this player has completed. */
+	/**
+	 * One `player_achievements` row: a badge this player completed on one day. The day
+	 * comes back as a Postgres `date`, which is already the `YYYY-MM-DD` the rest of the
+	 * game counts Catalan days in — no zone to read it in, because a date has none.
+	 */
 	fromAwardRow(row: AchievementAwardRow): AchievementAward {
 		return {
 			achievementId: String(row.achievement_id),
+			day: String(row.day),
 			awardedAt: row.awarded_at,
 			expAwarded: Number(row.exp_awarded ?? 0)
 		};

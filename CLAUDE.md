@@ -275,6 +275,13 @@ that drift apart pay out badges nobody earned. So:
 - Supabase therefore holds a badge's id **and its rule** — never its wording. A rule edited
   locally leaves the database enforcing the old one until the next sync, which is what the
   admin's `mismatch` status is for.
+- A completion is a **badge on a day**, not a badge: `player_achievements` is keyed
+  `(user_id, achievement_id, day)`. The same badge drawn again next week is work to do
+  again — claimable again, paying again — and one earned today says nothing about a day it
+  has not been set for, so nothing about a future day can be pre-earned. Only today's set is
+  ever claimable anyway: the RPC recomputes the ids from the date it reads off the clock, so
+  a browser walking to another day has nothing it can submit about it. In the app, "held" is
+  therefore always asked of a day (`heldOn(awards, day)`), never of a badge alone.
 - The award is a third of the span of the level the player is on **at completion time**
   (`achievementExpAward` mirrors it), re-read per badge inside one claim, and recorded on
   `player_achievements.exp_awarded`.

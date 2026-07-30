@@ -171,20 +171,39 @@ describe('loading the game’s achievements', () => {
 			{ id: 'first-blood', requirement: 'cards >= target' }
 		];
 		awardRows = [
-			{ achievement_id: 'first-blood', awarded_at: '2026-07-30T09:00:00Z', exp_awarded: '200' },
-			{ achievement_id: 'conqueridor', awarded_at: '2026-07-28T11:30:00Z', exp_awarded: '100' }
+			{
+				achievement_id: 'first-blood',
+				day: '2026-07-30',
+				awarded_at: '2026-07-30T09:00:00Z',
+				exp_awarded: '200'
+			},
+			{
+				achievement_id: 'conqueridor',
+				day: '2026-07-28',
+				awarded_at: '2026-07-28T11:30:00Z',
+				exp_awarded: '100'
+			}
 		];
 		const snapshot = await load();
 		expect(snapshot.awards).toEqual([
-			{ achievementId: 'first-blood', awardedAt: '2026-07-30T09:00:00Z', expAwarded: 200 },
-			{ achievementId: 'conqueridor', awardedAt: '2026-07-28T11:30:00Z', expAwarded: 100 }
+			{
+				achievementId: 'first-blood',
+				day: '2026-07-30',
+				awardedAt: '2026-07-30T09:00:00Z',
+				expAwarded: 200
+			},
+			{
+				achievementId: 'conqueridor',
+				day: '2026-07-28',
+				awardedAt: '2026-07-28T11:30:00Z',
+				expAwarded: 100
+			}
 		]);
-		// The same ledger as a set, which is all a tile asks for.
-		expect([...snapshot.held]).toEqual(['first-blood', 'conqueridor']);
 		// Asked for as one player's, newest first — the table is world-readable, so the
-		// filter is what makes it theirs rather than everybody's.
+		// filter is what makes it theirs rather than everybody's. The day comes with it:
+		// a completion belongs to a day, not only to a badge.
 		expect(awardQuery).toEqual([
-			'achievement_id, awarded_at, exp_awarded',
+			'achievement_id, day, awarded_at, exp_awarded',
 			'user_id=user-1',
 			'awarded_at desc'
 		]);
@@ -193,20 +212,80 @@ describe('loading the game’s achievements', () => {
 	it('asks for nobody’s awards when there is no player', async () => {
 		templateRows = [{ id: 'conqueridor', requirement: 'cards >= 1' }];
 		awardRows = [
-			{ achievement_id: 'conqueridor', awarded_at: '2026-07-28T11:30:00Z', exp_awarded: '100' }
+			{
+				achievement_id: 'conqueridor',
+				day: '2026-07-28',
+				awarded_at: '2026-07-28T11:30:00Z',
+				exp_awarded: '100'
+			}
 		];
 		const snapshot = await load(null);
 		expect(snapshot.awards).toEqual([]);
-		expect([...snapshot.held]).toEqual([]);
 		expect(awardQuery).toEqual([]);
 	});
 
 	it('reads a badge earned at the level cap as having paid nothing', async () => {
 		templateRows = [{ id: 'conqueridor', requirement: 'cards >= 1' }];
 		awardRows = [
-			{ achievement_id: 'conqueridor', awarded_at: '2026-07-28T11:30:00Z', exp_awarded: null }
+			{
+				achievement_id: 'conqueridor',
+				day: '2026-07-28',
+				awarded_at: '2026-07-28T11:30:00Z',
+				exp_awarded: null
+			}
 		];
 		expect((await load()).awards[0].expAwarded).toBe(0);
+	});
+
+	it('keeps the same badge earned on two days as two completions', async () => {
+		// The badge was drawn again a week later and done again: two days' work, each
+		// paid at the level of its own day.
+		templateRows = [{ id: 'conqueridor', requirement: 'cards >= 1' }];
+		awardRows = [
+			{
+				achievement_id: 'conqueridor',
+				day: '2026-07-30',
+				awarded_at: '2026-07-30T09:00:00Z',
+				exp_awarded: '600'
+			},
+			{
+				achievement_id: 'conqueridor',
+				day: '2026-07-23',
+				awarded_at: '2026-07-23T20:00:00Z',
+				exp_awarded: '200'
+			}
+		];
+		const { awards } = await load();
+		expect(awards.map((award) => [award.day, award.expAwarded])).toEqual([
+			['2026-07-30', 600],
+			['2026-07-23', 200]
+		]);
+	});
+});
+
+describe('which badges a player holds for a day', () => {
+	it('is a question about that day, and no other', async () => {
+		const { heldOn } = await import('$services/achievements.service');
+		const awards = [
+			{
+				achievementId: 'conqueridor',
+				day: '2026-07-30',
+				awardedAt: '2026-07-30T09:00:00Z',
+				expAwarded: 200
+			},
+			{
+				achievementId: 'first-blood',
+				day: '2026-07-28',
+				awardedAt: '2026-07-28T11:30:00Z',
+				expAwarded: 100
+			}
+		];
+		expect([...heldOn(awards, '2026-07-30')]).toEqual(['conqueridor']);
+		expect([...heldOn(awards, '2026-07-28')]).toEqual(['first-blood']);
+		// The day it was drawn again, and the day it has not been drawn for yet: a badge
+		// completed on the 30th is not completed on either of them.
+		expect([...heldOn(awards, '2026-07-29')]).toEqual([]);
+		expect([...heldOn(awards, '2026-08-05')]).toEqual([]);
 	});
 
 	it('counts the towns the player holds, as a count and as their own', async () => {

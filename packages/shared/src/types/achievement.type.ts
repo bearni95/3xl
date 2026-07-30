@@ -171,6 +171,13 @@ export interface AchievementClaim {
 export interface AchievementAward {
 	/** The badge completed. */
 	achievementId: string;
+	/**
+	 * The Catalan day it was set and completed for, `YYYY-MM-DD`. Part of what the
+	 * completion is: the same badge drawn on a later day is a separate row, separately
+	 * earned and separately paid, and a badge is only ever "held" for a day it was
+	 * actually claimed on.
+	 */
+	day: string;
 	/** ISO timestamp the award landed. */
 	awardedAt: string;
 	/** Experience it paid. Zero for a badge earned at the level cap. */
@@ -180,6 +187,7 @@ export interface AchievementAward {
 /** The raw `player_achievements` row (snake_case, bigint as a string). */
 export interface AchievementAwardRow {
 	achievement_id: string;
+	day: string;
 	awarded_at: string;
 	exp_awarded: string | number | null;
 }

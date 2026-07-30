@@ -91,10 +91,17 @@ returns int language sql stable set search_path = public as $$
 	select coalesce((select s.daily_count from public.achievement_settings s limit 1), 3);
 $$;
 
--- The users-to-achievements join: one row per badge a player holds. Readable by
--- everyone (a badge is worn), and writable by nobody through the anon key — there is
--- deliberately no insert/update/delete policy. `claim_achievements` below is the
--- only writer, and it is security definer.
+-- The users-to-achievements join: one row per badge a player has completed **on one
+-- day**. Readable by everyone (a badge is worn), and writable by nobody through the
+-- anon key — there is deliberately no insert/update/delete policy.
+-- `claim_achievements` below is the only writer, and it is security definer.
+--
+-- The day is part of what a completion *is*, not a timestamp attached to one. A badge
+-- is set for a day and earned for that day: the same badge drawn again next week is a
+-- new thing to do, claimable again and paying again, and one earned today says nothing
+-- about a day it has not been set for yet. Keyed on the badge alone, the game read a
+-- badge completed this morning as already held every future day it came up — a day's
+-- work that could be done before the day, which is no work at all.
 --
 -- Both foreign keys cascade: deleting a player, or retiring a badge from the local
 -- collection and syncing, removes the awards along with them.
@@ -102,9 +109,38 @@ create table if not exists public.player_achievements (
 	user_id uuid not null references auth.users (id) on delete cascade,
 	achievement_id text not null
 		references public.achievement_templates (id) on delete cascade,
+	-- The Catalan day it was set and earned for, as `daily_achievement_ids` counts days.
+	day date not null default ((now() at time zone 'Europe/Madrid')::date),
 	awarded_at timestamptz not null default now(),
-	primary key (user_id, achievement_id)
+	primary key (user_id, achievement_id, day)
 );
+
+-- Migration for a table from when a badge was a once-ever thing: the day it was earned
+-- for is the Catalan day its timestamp fell in, which is exactly what the old rows
+-- meant. Then the key becomes the three columns, so the same badge can be earned again
+-- on a later day. Guarded on the key's width so re-running finds nothing to do.
+alter table public.player_achievements add column if not exists day date;
+update public.player_achievements
+	set day = (awarded_at at time zone 'Europe/Madrid')::date
+	where day is null;
+alter table public.player_achievements
+	alter column day set default ((now() at time zone 'Europe/Madrid')::date);
+alter table public.player_achievements alter column day set not null;
+
+do $migrate_key$
+begin
+	if not exists (
+		select 1 from pg_constraint
+		where conrelid = 'public.player_achievements'::regclass
+			and contype = 'p'
+			and array_length(conkey, 1) = 3
+	) then
+		alter table public.player_achievements drop constraint if exists player_achievements_pkey;
+		alter table public.player_achievements
+			add constraint player_achievements_pkey primary key (user_id, achievement_id, day);
+	end if;
+end;
+$migrate_key$;
 
 -- What the badge paid when it was awarded. Kept on the row rather than recomputed,
 -- because it is a third of the level the player was on *at that moment* and that
@@ -522,7 +558,12 @@ revoke all on function public.daily_achievement_ids(uuid, date) from public;
 -- Every one of today's three is reported, whether or not it was granted, so the
 -- screen can say which were paid out, which were already held, and which are not
 -- there yet. Idempotent: claiming twice in a day pays once, since the second call
--- finds the row already held.
+-- finds the row already held *for today*.
+--
+-- Held is a question about a day, not about a badge. A badge earned on an earlier day
+-- is claimable again when it is drawn again, and pays again; nothing about a future
+-- day can be claimed at all, since the only ids this settles are the ones it works out
+-- for the date it reads off the clock.
 --
 -- A completion pays twice over: experience, and the day's booster allowance. Each
 -- badge granted is worth one extra pack today, and finishing the whole of the day's
@@ -565,10 +606,10 @@ returns table (
 language plpgsql security definer set search_path = public as $$
 declare
 	v_uid uuid := auth.uid();
+	-- The day being settled, and the day every row this writes belongs to. Only today's
+	-- set is ever claimable: the ids are recomputed here from this date, so a browser
+	-- looking at another day has nothing it can submit about it.
 	v_day date := (now() at time zone 'Europe/Madrid')::date;
-	-- Catalan midnight, for telling a badge completed today from one carried over.
-	v_day_start timestamptz :=
-		date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
 	-- What a completion is worth in booster packs. The game's numbers, and they live
 	-- only here: the browser is told what it was granted and never names an amount.
 	v_per_badge constant int := 1;
@@ -621,9 +662,12 @@ begin
 			from public.achievement_templates t
 			where t.id = v_id;
 
+		-- Held *for today*. A badge earned on an earlier day is not this day's work: it
+		-- comes up again as something to do again, worth its experience and its pack
+		-- again, which is what makes a day's set a day's set.
 		v_held := exists (
 			select 1 from public.player_achievements pa
-			where pa.user_id = v_uid and pa.achievement_id = v_id
+			where pa.user_id = v_uid and pa.achievement_id = v_id and pa.day = v_day
 		);
 		v_level := public.level_for_exp(v_exp);
 		v_vars := public.achievement_variable_values(v_variables, v_rule_level, v_cards, v_towns);
@@ -637,8 +681,8 @@ begin
 			-- `achievement_id` is also one of this function's output parameters, and a
 			-- column list in a conflict target would not know which of the two was meant.
 			-- Belt and braces anyway — the advisory lock plus v_held already settle it.
-			insert into public.player_achievements (user_id, achievement_id, exp_awarded)
-				values (v_uid, v_id, v_award)
+			insert into public.player_achievements (user_id, achievement_id, day, exp_awarded)
+				values (v_uid, v_id, v_day, v_award)
 				on conflict on constraint player_achievements_pkey do nothing;
 			if v_award > 0 then
 				insert into public.player_profiles (user_id, exp)
@@ -682,12 +726,14 @@ begin
 	-- second claim the same day grants no badge, so it adds no packs and cannot re-earn
 	-- the set bonus.
 	if v_granted_count > 0 then
+		-- Every one of today's, earned for today. The day is on the row, so this asks the
+		-- question directly rather than reading it off a timestamp.
 		v_set_completed := coalesce(array_length(v_ids, 1), 0) > 0 and (
 			select count(distinct pa.achievement_id)
 				from public.player_achievements pa
 				where pa.user_id = v_uid
 					and pa.achievement_id = any(v_ids)
-					and pa.awarded_at >= v_day_start
+					and pa.day = v_day
 		) = array_length(v_ids, 1);
 		v_boosters := v_granted_count * v_per_badge
 			+ case when v_set_completed then v_set_bonus else 0 end;

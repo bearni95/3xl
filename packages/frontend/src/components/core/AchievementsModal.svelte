@@ -5,7 +5,7 @@
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { achievementsModalOpen } from '$services/achievementsModal';
 	import { spawnService } from '$services/spawn.service';
-	import { claimAchievements, loadAchievements } from '$services/achievements.service';
+	import { claimAchievements, heldOn, loadAchievements } from '$services/achievements.service';
 	import { AuthStatus } from '$types/profile.type';
 	import type { Achievement, AchievementAward, AchievementClaim } from '$types/achievement.type';
 	import type { FormulaContext } from '$utils/achievement/formula';
@@ -47,10 +47,9 @@
 
 	let achievements: Achievement[] = [];
 	let pool: string[] = [];
-	// What Supabase says this player has completed, newest first, and the same thing as
-	// a set of ids for the tiles that only ask whether a badge is worn.
+	// What Supabase says this player has completed, newest first: one row per badge per
+	// day. Whether a tile is earned is asked of a day, never of a badge — `heldOn`.
 	let awards: AchievementAward[] = [];
-	let held = new Set<string>();
 	// How many badges a day, as Supabase has it. The constant is only what stands until
 	// that row has been read.
 	let dailyCount = DAILY_ACHIEVEMENT_COUNT;
@@ -106,7 +105,6 @@
 		achievements = snapshot.achievements;
 		pool = snapshot.pool;
 		awards = snapshot.awards;
-		held = snapshot.held;
 		dailyCount = snapshot.dailyCount;
 		towns = snapshot.towns;
 		dayLevels = snapshot.dayLevels;
@@ -204,12 +202,17 @@
 					? 'Tomorrow'
 					: dayFormat.format(new Date(`${viewedDay}T00:00:00Z`));
 
-	/** One badge as a tile reads it: this player's wording, and where it stands. */
-	function tile(achievement: Achievement, ctx: FormulaContext, holders: Set<string>) {
+	/**
+	 * One badge as a tile reads it: this player's wording, and where it stands. `earned`
+	 * is whether they hold it *for the day this tile belongs to* — a badge is completed
+	 * for a day, so one earned this morning is not earned on a day it has not been set
+	 * for yet, and comes up as work to do again when it is drawn again.
+	 */
+	function tile(achievement: Achievement, ctx: FormulaContext, earned: boolean) {
 		return {
 			achievement,
 			...renderAchievement(achievement, ctx),
-			held: holders.has(achievement.id),
+			held: earned,
 			// A preview, not the verdict: the RPC walks the same rule against rows this
 			// browser cannot write, and its answer is what the tile shows after a claim.
 			met: achievementMet(achievement, ctx),
@@ -226,16 +229,24 @@
 	// The three, dropped to the ones the file can actually draw — a rule synced for a
 	// badge that was retired locally has nothing to show, and re-syncing takes it out
 	// of the pool.
+	// What the player holds for the day being looked at, which is the only day any of it
+	// says anything about: another day's completions are another day's.
+	$: heldOnViewedDay = heldOn(awards, viewedDay);
+
 	$: dayTiles = dayIds
 		.map((id) => byId.get(id))
 		.filter((achievement): achievement is Achievement => !!achievement)
-		.map((achievement) => tile(achievement, context, held));
+		.map((achievement) => tile(achievement, context, heldOnViewedDay.has(achievement.id)));
 	/**
 	 * The completed section: the award ledger as Supabase keeps it, newest first, each
 	 * row paired with the badge it names. A row the file has nothing for is dropped —
 	 * a badge retired locally has no glyph and no wording left to draw it with — which
 	 * is why the total below is summed off the ledger rather than off these tiles: the
 	 * experience was earned whether or not the badge can still be shown.
+	 *
+	 * One row per badge per day, so a badge completed on three days is three entries
+	 * here, each with what it paid that day. That is what the ledger holds and what the
+	 * player did.
 	 */
 	$: completedTiles = awards
 		.map((award) => ({ award, achievement: byId.get(award.achievementId) }))
@@ -243,12 +254,15 @@
 			(entry): entry is { award: AchievementAward; achievement: Achievement } =>
 				!!entry.achievement
 		)
-		.map((entry) => ({ award: entry.award, ...tile(entry.achievement, context, held) }));
+		.map((entry) => ({ award: entry.award, ...tile(entry.achievement, context, true) }));
 	$: completedExp = awards.reduce((total, award) => total + award.expAwarded, 0);
-	// What each earned badge actually paid, by badge — `player_achievements.exp_awarded`,
-	// which is the experience as it landed rather than what the badge would be worth to
-	// this player now. A badge earned three levels ago paid what it paid.
-	$: awardedExp = new Map(awards.map((entry) => [entry.achievementId, entry.expAwarded]));
+	// What an earned badge paid on the day being looked at — `player_achievements.exp_awarded`,
+	// the experience as it landed rather than what the badge would be worth to this player
+	// now. A badge earned three levels ago paid what it paid, and the same badge earned on
+	// two days paid twice, each at its own level.
+	$: awardedExp = new Map(
+		awards.filter((entry) => entry.day === viewedDay).map((entry) => [entry.achievementId, entry.expAwarded])
+	);
 
 	/**
 	 * When an award landed, in the device's own zone — unlike the day of the three
@@ -479,10 +493,12 @@
 
 			<!-- What the player has actually completed, read from Supabase's own ledger
 			     rather than worked out here: `player_achievements` is the whole of what the
-			     game knows about a completion — which badge, when it landed, and what it
-			     paid — and the wording beside it is still the file's, rendered with this
-			     player's numbers as they stand now (what they were on the day is not
-			     something the row keeps). Newest first, as the query ordered them. -->
+			     game knows about a completion — which badge, which day it was set for, when
+			     it landed and what it paid — and the wording beside it is still the file's,
+			     rendered with this player's numbers as they stand now (what they were on the
+			     day is not something the row keeps). Newest first, as the query ordered them.
+			     A badge completed on three days is three entries, since it was three days'
+			     work; the key below is the pair, not the badge. -->
 			<section class="flex flex-col gap-3">
 				<div class="flex flex-wrap items-center gap-3">
 					<h3 class="text-base font-semibold">Completed</h3>
@@ -499,7 +515,7 @@
 					</p>
 				{:else}
 					<div class="grid content-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-						{#each completedTiles as entry (entry.achievement.id)}
+						{#each completedTiles as entry (`${entry.achievement.id}|${entry.award.day}`)}
 							<div
 								class="flex items-start gap-3 rounded-box border-2 border-primary bg-base-200/50 p-3"
 							>

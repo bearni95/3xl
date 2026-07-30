@@ -237,12 +237,16 @@ achievementTemplatesRouter.get(
 // How many players hold each achievement, keyed by id — the one thing about a
 // badge that only Supabase can answer, and what makes deleting one legible
 // before the sync does it.
+//
+// Distinct players, not rows: `player_achievements` holds one row per badge per
+// day, so a badge one player completed on five days is one holder and five
+// completions. What the admin is about to destroy is measured in people.
 achievementTemplatesRouter.get(
 	'/holders',
 	asyncHandler(async (_req, res) => {
 		await ensureTables();
 		const { rows } = await getPool().query<{ achievement_id: string; holders: string }>(
-			'select achievement_id, count(*) as holders from player_achievements group by achievement_id'
+			'select achievement_id, count(distinct user_id) as holders from player_achievements group by achievement_id'
 		);
 		const holders: Record<string, number> = {};
 		for (const row of rows) holders[row.achievement_id] = Number(row.holders);

@@ -68,12 +68,15 @@ export interface AchievementsSnapshot {
 	pool: string[];
 	/**
 	 * What this player has completed, newest first, as `player_achievements` records
-	 * it: the badge, the moment it landed and the experience it paid. Empty for a
-	 * visitor who is not signed in.
+	 * it: the badge, the **day** it was set and earned for, the moment it landed and the
+	 * experience it paid. Empty for a visitor who is not signed in.
+	 *
+	 * One row per badge per day, so the same badge appears once for each day it was
+	 * drawn and claimed. Whether a tile is earned is therefore a question about a day —
+	 * see {@link heldOn} — and never about the badge alone: a badge completed this
+	 * morning is not held on a day it has not been set for yet.
 	 */
 	awards: AchievementAward[];
-	/** The same thing as a set of ids, which is all a tile needs to know. */
-	held: Set<string>;
 	/**
 	 * How many municipalities this player occupies — the `towns` a formula reads, and
 	 * the one thing a badge can be about that is neither on their profile nor in their
@@ -133,7 +136,7 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 		userId
 			? supabase
 					.from('player_achievements')
-					.select('achievement_id, awarded_at, exp_awarded')
+					.select('achievement_id, day, awarded_at, exp_awarded')
 					.eq('user_id', userId)
 					.order('awarded_at', { ascending: false })
 			: Promise.resolve({ data: [], error: null }),
@@ -191,7 +194,6 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 		achievements,
 		pool,
 		awards: completed,
-		held: new Set(completed.map((award) => award.achievementId)),
 		dailyCount,
 		towns: towns.count ?? 0,
 		dayLevels: dayLevelMap(
@@ -199,6 +201,18 @@ export async function loadAchievements(userId: string | null): Promise<Achieveme
 			todayLevel.data as number | null
 		)
 	};
+}
+
+/**
+ * The badges a player holds **for one day**, as ids — which is the only sense in
+ * which a badge is held at all. A day the player did not claim on has none, whatever
+ * they have earned before or since, so a badge drawn again is something to do again
+ * and a day still to come is never already done.
+ */
+export function heldOn(awards: readonly AchievementAward[], day: string): Set<string> {
+	const ids = new Set<string>();
+	for (const award of awards) if (award.day === day) ids.add(award.achievementId);
+	return ids;
 }
 
 /**
