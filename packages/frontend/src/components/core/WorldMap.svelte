@@ -6,6 +6,7 @@
 	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
 	import { iconMarkup } from '$components/core/icon-markup';
 	import { showIconName } from '$utils/show/show-icon';
+	import { levelIndexForView } from '$utils/geo/level-of-detail';
 	import type { MapBoosterBox, MapCircle, MapLine, MapMarker, MapOverlay } from '$types/map.type';
 
 	let {
@@ -248,40 +249,57 @@
 		void ready;
 		if (!focusBounds || !mapInstance) return;
 
-		// The largest zoom at which the whole box still stands inside the canvas with a
-		// margin around it — `getBoundsZoom` snaps down, so what it answers is a zoom the
-		// region provably fits at, and the centre of the box is put in the centre of the
-		// canvas, so it fits with room on all four sides.
+		// The zoom at which the box stands inside the canvas with the margin around it, and
+		// the centre of the box in the centre of the canvas — so the region is framed whole,
+		// with room on all four sides.
 		//
-		// This used to be stepped one zoom deeper whenever the region came out smaller
-		// than the level-of-detail fit factor, to force the map to unfold into the
-		// region's children the moment it was picked. A zoom step is a doubling: the
-		// region it was framing came out at up to twice the canvas, so picking a place
-		// could put its far side off the screen — and the point of framing a region is
-		// to be shown the region. The unfolding is left to the zoom now, which is where
-		// every other tier change comes from: the picked region is framed whole, its own
-		// tier is what the map images (so its shape carries the wash and the selected
-		// polygon's own 90%), and scrolling in from there opens it into its children.
+		// That is also, and deliberately, the zoom at which the map unfolds the region into
+		// its parts: "does this region stand inside the canvas" is the very question the tier
+		// rule asks, against this very margin (see boundsFitAtZoom), and the tier it draws is
+		// the children of the coarsest region that answers yes. So framing a place and opening
+		// it are one movement rather than two rules kept in step by hand — a click frames what
+		// it named and pins what is inside it, which is what can be clicked next. A leaf has
+		// nothing to unfold into and simply comes to rest framed whole, which is all a town was
+		// ever going to do.
+		//
+		// This used to be stepped one zoom deeper to force that unfolding, and the step was
+		// dropped because a zoom was a doubling: the region it was framing came out at up to
+		// twice the canvas, so picking a place could put its far side off the screen. Nothing
+		// is stepped now and nothing needs to be — the zoom is fractional (see zoomSnap), so
+		// the framing lands exactly on the fit rather than up to a doubling short of it, and
+		// exactly on the fit is the side of the threshold the children are drawn on.
 		const target = mapInstance.getBoundsZoom(focusBounds, false, focusPadding());
 		const centre = focusBoundsCentre(focusBounds);
 		mapInstance.setView(centre, target, { animate: true });
 	});
 
-	// The margin the framing keeps clear between a region and the edge of the canvas, per
-	// side: a share of the canvas, capped in pixels, so a small map gives up a margin it
-	// can afford rather than the same 24px a large one hardly notices.
+	// The margin kept clear between a region and the edge of the canvas, per side: a share
+	// of the canvas, capped in pixels, so a small map gives up a margin it can afford rather
+	// than the same 24px a large one hardly notices.
+	//
+	// One margin, read by both halves of the same statement: the framing puts a region
+	// inside it (focusPadding), and the level of detail asks whether a region is inside it
+	// (boundsFitAtZoom). They were a 4% margin and a flat 85% of the canvas, two figures for
+	// one idea — so a framed region measured as fitting or as overflowing depending on how far
+	// `getBoundsZoom` had snapped down for it, and clicking a pin unfolded the map into the
+	// region for some regions and left it pinning the region itself for others.
 	const FOCUS_MARGIN = 24;
 	const FOCUS_MARGIN_SHARE = 0.04;
 
-	// That margin in the form `getBoundsZoom` wants it: it takes the padding off the
+	/** That margin against the canvas as it stands, in pixels, per side. */
+	function focusMargin(): L.Point {
+		const size = mapInstance!.getSize();
+		return Leaf!.point(
+			Math.min(FOCUS_MARGIN, size.x * FOCUS_MARGIN_SHARE),
+			Math.min(FOCUS_MARGIN, size.y * FOCUS_MARGIN_SHARE)
+		);
+	}
+
+	// The same margin in the form `getBoundsZoom` wants it: it takes the padding off the
 	// canvas ONCE for the whole axis, so a margin wanted at both ends is handed over
 	// doubled.
 	function focusPadding(): L.Point {
-		const size = mapInstance!.getSize();
-		return Leaf!.point(
-			2 * Math.min(FOCUS_MARGIN, size.x * FOCUS_MARGIN_SHARE),
-			2 * Math.min(FOCUS_MARGIN, size.y * FOCUS_MARGIN_SHARE)
-		);
+		return focusMargin().multiplyBy(2);
 	}
 
 	// The geographic centre of a `[[south, west], [north, east]]` box.
@@ -450,12 +468,6 @@
 		}
 	}
 
-	// A grouping tier is drawn while its regions are no bigger than this fraction of
-	// the viewport. Once the region you're over grows past it (zooming in), the map
-	// unfolds to its children; once its parent shrinks back under it (zooming out),
-	// the map folds up a tier — so every step, coarse or fine, switches on zoom.
-	const LEVEL_FIT_FACTOR = 0.85;
-
 	// The available pin renderings, coarsest → finest. `markerLevels` (a stack of
 	// breakdowns) wins; a plain `markers` array is treated as a single level.
 	function markerLevelStack(): MapMarker[][] {
@@ -463,26 +475,17 @@
 		return markers.length ? [markers] : [];
 	}
 
-	// The pin of a level nearest the map centre — the region the view is focused on
-	// (zoom centres on the pointer), used to decide the tier by that region's size.
-	function focusedMarker(level: MapMarker[], centre: L.LatLng): MapMarker | null {
-		let nearest: MapMarker | null = null;
-		let best = Infinity;
-		for (const marker of level) {
-			const dLat = marker.position[0] - centre.lat;
-			const dLng = marker.position[1] - centre.lng;
-			const distance = dLat * dLat + dLng * dLng;
-			if (distance < best) {
-				best = distance;
-				nearest = marker;
-			}
-		}
-		return nearest;
-	}
+	// A pixel of slack on that comparison. The framing computes its zoom from this very
+	// margin, so a region framed by it lands exactly on the boundary and is decided by the
+	// last bit of a float — and the whole point of measuring both against one margin is that
+	// a framed region is never the one that comes out too big by a rounding error.
+	const FIT_TOLERANCE = 1;
 
-	// Whether a bounding box projects small enough to sit within the viewport (times
-	// the fit factor) at a given zoom — i.e. this tier is the right size to show
-	// rather than unfolding into its children.
+	// Whether a region's box stands whole inside the canvas at a given zoom, margin and all —
+	// the same question the framing answers by choosing a zoom (see focusMargin), asked here
+	// of the zoom the map is at. This is the map's half of the level-of-detail rule: the
+	// projection and the canvas are Leaflet's, and the rule itself (which tier that makes the
+	// one to draw) is in @3xl/shared, knowing nothing of either.
 	function boundsFitAtZoom(
 		bounds: [[number, number], [number, number]],
 		zoom: number
@@ -492,30 +495,25 @@
 		const topLeft = mapInstance.project([north, west], zoom);
 		const bottomRight = mapInstance.project([south, east], zoom);
 		const size = mapInstance.getSize();
+		const margin = focusMargin();
 		return (
-			Math.abs(bottomRight.x - topLeft.x) <= size.x * LEVEL_FIT_FACTOR &&
-			Math.abs(bottomRight.y - topLeft.y) <= size.y * LEVEL_FIT_FACTOR
+			Math.abs(bottomRight.x - topLeft.x) <= size.x - 2 * margin.x + FIT_TOLERANCE &&
+			Math.abs(bottomRight.y - topLeft.y) <= size.y - 2 * margin.y + FIT_TOLERANCE
 		);
 	}
 
-	// Whether a marker's region still fits at the current zoom. Markers without
-	// bounds always "fit".
-	function regionFits(marker: MapMarker): boolean {
-		if (!marker.bounds || !mapInstance) return true;
-		return boundsFitAtZoom(marker.bounds, mapInstance.getZoom());
-	}
-
-	// The index of the tier to draw: the COARSEST level whose focused region still
-	// fits the viewport. Region size shrinks as the level gets finer, so the first
-	// (coarsest) level that fits is the right one; if even the finest region
-	// overflows (zoomed in hard), the finest level is shown. This switches on every
-	// zoom step — including the coarse ones the old pin-count cap never triggered.
-	function levelIndexForView(levels: MapMarker[][], centre: L.LatLng): number {
-		for (let i = 0; i < levels.length; i++) {
-			const focus = focusedMarker(levels[i], centre);
-			if (focus && regionFits(focus)) return i;
-		}
-		return levels.length - 1;
+	// The index of the tier to draw: the children of the coarsest region that stands whole in
+	// the canvas (see levelIndexForView). That is what makes a click on a pin of any tier land
+	// on that pin's subdivisions — the click frames its region whole, framed whole is what
+	// "fits" means here, and what fits has its children pinned. Before, the tier drawn was the
+	// fitting region's OWN, so opening a comarca framed it and marked it with the very pin
+	// that had just been clicked, and its towns only appeared once the reader zoomed past the
+	// comarca by hand.
+	function levelForView(levels: MapMarker[][], centre: L.LatLng): number {
+		const zoom = mapInstance!.getZoom();
+		return levelIndexForView(levels, [centre.lat, centre.lng], (bounds) =>
+			boundsFitAtZoom(bounds, zoom)
+		);
 	}
 
 	// (Re)build the pins for the current view: clear the layer, pick the level of
@@ -532,7 +530,7 @@
 
 		const bounds = mapInstance.getBounds().pad(0.25);
 		const levels = markerLevelStack();
-		const index = levels.length ? levelIndexForView(levels, mapInstance.getCenter()) : 0;
+		const index = levels.length ? levelForView(levels, mapInstance.getCenter()) : 0;
 		// Publish the chosen tier so the parent can mirror it (polygons, sidebar).
 		activeLevel = index;
 		// Tell the box layer where the pins have got to, so it can mark its towns to match.
@@ -717,6 +715,17 @@
 			minZoom,
 			maxZoom,
 			worldCopyJump: true,
+			// Any zoom, not the whole ones a tile pyramid is cut at. Two things want it, and
+			// the second is why it is here. A wheel or a pinch moves the view by the amount it
+			// was pushed rather than by a doubling, which is what a map that changes what it
+			// draws as it is zoomed wants: the tier gives way when the region on screen has
+			// grown past the canvas, and the reader can stop on either side of that. And the
+			// framing can land exactly on the fit — a whole-numbered zoom can only land at or
+			// under it, by up to a factor of two, so a region opened by a click came to rest
+			// anywhere between filling the canvas and taking a quarter of it, and whether its
+			// children were pinned or it was pinned by itself came down to where that fell
+			// (see the focus effect and levelIndexForView).
+			zoomSnap: 0,
 			// No +/- zoom buttons — the map is driven by scroll/pinch only.
 			zoomControl: false,
 			// The badge carries the Esri credit the imagery licence requires, so it
