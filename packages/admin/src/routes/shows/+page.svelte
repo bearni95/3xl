@@ -11,7 +11,7 @@
 		DisplayTMDBImage,
 		TMDBImageKind
 	} from '$types/tmdb.type';
-	import type { ShowEntry, ShowsCollection } from '$types/show.type';
+	import type { ShowEntry, ShowsCollection, ShowRefreshResult } from '$types/show.type';
 
 	// UI-only state. All TMDB access goes through the @3xl/backend proxy (default
 	// :2002) so the API key stays server-side; this page just renders whatever the
@@ -39,6 +39,15 @@
 	// Per-show state for persisting an enabled-images change.
 	let savingEnabled: Record<number, boolean> = {};
 	let enabledError: Record<number, string> = {};
+
+	// Catalan re-query state. The backend asks TMDB for every saved show's title
+	// and description again and rewrites shows.json, so the whole collection comes
+	// back at once and the report says what actually moved.
+	let refreshing = false;
+	let refreshError = '';
+	let refreshResult: ShowRefreshResult | null = null;
+	// Only the renamed shows are worth listing; the rest were already Catalan.
+	$: renamed = refreshResult?.refreshed.filter((show) => show.previousName) ?? [];
 
 	// The three sections, singular kind + label, for the "enabled images" summary.
 	const enabledSections: { kind: TMDBImageKind; label: string }[] = [
@@ -118,6 +127,28 @@
 			savedError = err instanceof Error ? err.message : String(err);
 		} finally {
 			savedLoading = false;
+		}
+	}
+
+	// Re-read every saved show's title and description from TMDB in Catalan.
+	async function refreshSavedShows() {
+		refreshing = true;
+		refreshError = '';
+		refreshResult = null;
+		try {
+			const res = await fetch(`${API_BASE}/api/shows/refresh`, { method: 'POST' });
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({ message: res.statusText }));
+				throw new Error(body.message ?? `Re-query failed (${res.status})`);
+			}
+			const data = (await res.json()) as ShowRefreshResult;
+			refreshResult = data;
+			savedShows = data.shows;
+			savedShowIds = new Set(data.shows.map((entry) => entry.show.id));
+		} catch (err) {
+			refreshError = err instanceof Error ? err.message : String(err);
+		} finally {
+			refreshing = false;
 		}
 	}
 
@@ -370,6 +401,57 @@
 				> tab to add some.
 			</p>
 		{:else}
+			<!-- Bring every saved title and description back from TMDB in Catalan. -->
+			<div class="mb-4 flex flex-wrap items-center gap-3">
+				<button
+					class="btn btn-secondary btn-sm"
+					type="button"
+					on:click={refreshSavedShows}
+					disabled={refreshing}
+					title="Re-query TMDB for every saved show's Catalan title and description"
+				>
+					{#if refreshing}
+						<span class="loading loading-spinner loading-xs"></span>
+					{/if}
+					Re-query in Catalan
+				</button>
+				<span class="text-base-content/50 text-xs">
+					Rewrites titles and descriptions only — images and enabled selections are kept.
+				</span>
+			</div>
+
+			{#if refreshError}
+				<div class="alert alert-error mb-4" role="alert">
+					<span>{refreshError}</span>
+				</div>
+			{:else if refreshResult}
+				<div class="alert alert-success mb-4 flex-col items-start gap-1" role="status">
+					<span class="text-sm">
+						{refreshResult.refreshed.length} show{refreshResult.refreshed.length === 1 ? '' : 's'}
+						re-queried · {renamed.length} renamed ·
+						{refreshResult.refreshed.filter((show) => show.overviewChanged).length} description{refreshResult.refreshed.filter(
+							(show) => show.overviewChanged
+						).length === 1
+							? ''
+							: 's'} updated
+					</span>
+					{#if renamed.length > 0}
+						<ul class="text-xs opacity-80">
+							{#each renamed as show (show.id)}
+								<li>{show.previousName} → <strong>{show.name}</strong></li>
+							{/each}
+						</ul>
+					{/if}
+					{#if refreshResult.failed.length > 0}
+						<ul class="text-error text-xs">
+							{#each refreshResult.failed as show (show.id)}
+								<li>{show.name}: {show.message}</li>
+							{/each}
+						</ul>
+					{/if}
+				</div>
+			{/if}
+
 			<ul class="flex flex-col gap-4">
 				{#each savedShows as entry (entry.show.id)}
 					{@const show = entry.show}

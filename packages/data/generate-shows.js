@@ -34,10 +34,18 @@ const OUTPUT = resolve(here, 'public/municipality-shows.json');
 // a boundary vertex with it are flagged for painting.
 const CENTER_NAME = 'Barcelona';
 
-// The shows eligible for assignment, by exact name. Only these are drawn from
-// the saved shows.json pool, so every municipality gets one of them; set to null
-// (or empty) to use the whole pool. Kept here so a re-run reproduces the subset.
-const SHOW_ALLOWLIST = ['Dragon Ball Z', 'InuYasha', 'One Piece'];
+// The shows eligible for assignment, by TMDB id. Only these are drawn from the
+// saved shows.json pool, so every municipality gets one of them; set to null (or
+// empty) to use the whole pool. Kept here so a re-run reproduces the subset.
+//
+// By id and not by name: a saved show's name is TMDB's Catalan title, which the
+// admin's Catalan re-query can change under this list (Dragon Ball Z is "Bola de
+// Drac Z" there). An id is the one thing about a show no translation touches.
+const SHOW_ALLOWLIST = [
+	12971, // Dragon Ball Z
+	35610, // InuYasha
+	37854 // One Piece
+];
 
 /**
  * Fold every coordinate number of a GeoJSON geometry into a 32-bit FNV-1a hash
@@ -135,11 +143,11 @@ if (!Array.isArray(allShows) || allShows.length === 0) {
 // shows.json so the seeded pick stays deterministic); an empty/null list uses all.
 const shows =
 	SHOW_ALLOWLIST && SHOW_ALLOWLIST.length
-		? allShows.filter((entry) => SHOW_ALLOWLIST.includes(entry.show.name))
+		? allShows.filter((entry) => SHOW_ALLOWLIST.includes(entry.show.id))
 		: allShows;
 
 const missing = (SHOW_ALLOWLIST ?? []).filter(
-	(name) => !allShows.some((entry) => entry.show.name === name)
+	(id) => !allShows.some((entry) => entry.show.id === id)
 );
 if (missing.length) {
 	throw new Error(`Allow-listed shows not found in ${SHOWS}: ${missing.join(', ')}`);

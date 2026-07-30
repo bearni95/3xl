@@ -1,8 +1,15 @@
 import { Router } from 'express';
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ShowEntry, ShowsCollection } from '@3xl/shared/types/show.type';
+import type {
+	ShowEntry,
+	ShowsCollection,
+	ShowRefreshEntry,
+	ShowRefreshResult
+} from '@3xl/shared/types/show.type';
+import { TMDB_FALLBACK_LANGUAGE } from '@3xl/shared/types/tmdb.type';
+import { fetchTvTranslated } from '@3xl/shared/utils/tmdb/client';
+import { tmdbAdapter } from '@3xl/shared/adapters/classes/tmdb.adapter';
 import { asyncHandler, httpError } from '../http-error';
 
 /**
@@ -13,6 +20,12 @@ import { asyncHandler, httpError } from '../http-error';
  *
  * Mirrors ./characters: same "author writes into @3xl/data's public dir" model,
  * but a single collection file rather than one folder per id.
+ *
+ * `POST /refresh` re-reads every saved show's *text* from TMDB in Catalan (see
+ * TMDB_LANGUAGE) and rewrites it in place. Shows saved before the search asked
+ * for Catalan carry the English title and description TMDB handed over then, and
+ * a saved entry is otherwise never touched again — so this is the one path that
+ * brings the collection up to the language the game is played in.
  */
 
 // Resolve from this file's location (packages/backend/src/routes → packages/data)
@@ -102,5 +115,59 @@ showsRouter.post(
 		else collection.shows.push(entry);
 		await writeCollection(collection);
 		res.json(collection);
+	})
+);
+
+// POST /api/shows/refresh — re-query TMDB for every saved show and rewrite its
+// title and description in Catalan, falling back per field for the many shows
+// TMDB has a Catalan name but no Catalan overview for.
+//
+// Only the text moves. Images, the author's enabled selection, votes and the
+// proxied poster/backdrop URLs are all kept exactly as saved: they are either
+// language-independent or hand-curated, and a re-read of what a show is *called*
+// has no business discarding either.
+//
+// Deliberately NOT disk-cached, unlike every call in ./tmdb: this is an explicit
+// authoring action whose whole point is to ask TMDB again, and its answer is
+// persisted in the git tree rather than in `.cache/`. A show TMDB cannot answer
+// for is reported and left alone — a failed re-read must not blank a title.
+showsRouter.post(
+	'/refresh',
+	asyncHandler(async (_req, res) => {
+		const apiKey = process.env.TMDB_API_KEY;
+		if (!apiKey) httpError(500, 'TMDB_API_KEY is not configured on the server');
+
+		const collection = await readCollection();
+		const refreshed: ShowRefreshEntry[] = [];
+		const failed: ShowRefreshResult['failed'] = [];
+
+		for (const entry of collection.shows) {
+			const { id, name: previousName, overview: previousOverview } = entry.show;
+			let details;
+			try {
+				details = await fetchTvTranslated(apiKey, id);
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
+				failed.push({ id, name: previousName, message });
+				continue;
+			}
+			if (!details) {
+				failed.push({ id, name: previousName, message: 'TMDB holds no show with this id' });
+				continue;
+			}
+
+			const localized = tmdbAdapter.translatedTvShowToDisplay(details, TMDB_FALLBACK_LANGUAGE);
+			entry.show = { ...entry.show, name: localized.name, overview: localized.overview };
+			refreshed.push({
+				id,
+				name: localized.name,
+				...(localized.name !== previousName ? { previousName } : {}),
+				overviewChanged: localized.overview !== previousOverview,
+				overviewFallback: !details.overview && Boolean(localized.overview)
+			});
+		}
+
+		await writeCollection(collection);
+		res.json({ shows: collection.shows, refreshed, failed } satisfies ShowRefreshResult);
 	})
 );

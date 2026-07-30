@@ -1,9 +1,11 @@
 import { Router, type Request } from 'express';
 import { searchTvShows, fetchTvImages } from '@3xl/shared/utils/tmdb/client';
 import { tmdbAdapter } from '@3xl/shared/adapters/classes/tmdb.adapter';
-import type {
-	DisplayTMDBTvSearchResponse,
-	DisplayTMDBTvImages
+import {
+	TMDB_LANGUAGE,
+	TMDB_FALLBACK_LANGUAGE,
+	type DisplayTMDBTvSearchResponse,
+	type DisplayTMDBTvImages
 } from '@3xl/shared/types/tmdb.type';
 import { asyncHandler, httpError } from '../http-error';
 import { cacheSlug, getOrCreateJson, getOrFetchImage } from '../cache/tmdb-cache';
@@ -88,14 +90,36 @@ tmdbRouter.get(
 		const apiKey = process.env.TMDB_API_KEY;
 		if (!apiKey) httpError(500, 'TMDB_API_KEY is not configured on the server');
 
-		// Cache the raw TMDB payload keyed by the exact query params; adapting and
-		// URL-rewriting happen fresh each request so the proxy base can change.
-		const response = await getOrCreateJson(`search/${cacheSlug(query, page, year)}.json`, () =>
-			searchTvShows(apiKey, query, page, year)
+		// Cache the raw TMDB payload keyed by the exact query params — the language
+		// among them, so a Catalan search never reads a cache entry written when
+		// results came back in English. Adapting and URL-rewriting happen fresh each
+		// request so the proxy base can change.
+		const response = await getOrCreateJson(
+			`search/${cacheSlug(query, page, year, TMDB_LANGUAGE)}.json`,
+			() => searchTvShows(apiKey, query, page, year)
 		);
 		if (!response) httpError(502, 'TMDB search request failed');
 
-		res.json(proxifySearch(selfBase(req), tmdbAdapter.searchResponseToDisplay(response)));
+		let display = tmdbAdapter.searchResponseToDisplay(response);
+		// Plenty of shows have a Catalan title and no Catalan overview, and TMDB
+		// answers those with an empty string rather than falling back itself. Fill
+		// just those blanks from the same query in the fallback language, so the card
+		// the author reads is the card that gets saved — one extra request, only when
+		// a blank is actually there, and cached like the first.
+		if (display.results.some((show) => !show.overview)) {
+			const fallback = await getOrCreateJson(
+				`search/${cacheSlug(query, page, year, TMDB_FALLBACK_LANGUAGE)}.json`,
+				() => searchTvShows(apiKey, query, page, year, TMDB_FALLBACK_LANGUAGE)
+			);
+			if (fallback) {
+				display = tmdbAdapter.fillMissingText(
+					display,
+					tmdbAdapter.searchResponseToDisplay(fallback)
+				);
+			}
+		}
+
+		res.json(proxifySearch(selfBase(req), display));
 	})
 );
 

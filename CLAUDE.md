@@ -344,9 +344,26 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   count so the admin can see that cost first. Provisions its own schema by **executing**
   `packages/backend/supabase/achievement_templates.sql` — the one file in that folder that is
   not reference-only.
+- `GET/POST /api/shows` + `POST /api/shows/refresh` — read/upsert the saved-show collection in
+  `@3xl/data`'s `public/shows.json` (a show, every image TMDB holds for it, and the author's
+  enabled selection per section), and re-read every saved show's **title and description** from
+  TMDB. The game is Catalan, so a saved show's text is Catalan text: `TMDB_LANGUAGE`
+  (`@3xl/shared/types/tmdb.type`, `ca-ES` — the only Catalan variant TMDB has) goes on every
+  text-bearing call. TMDB answers a field it has no Catalan text for with an empty string rather
+  than falling back itself, and a Catalan title with no Catalan overview is common, so each
+  field falls back independently to `TMDB_FALLBACK_LANGUAGE`: a details fetch takes it from the
+  `translations` appended to the same payload, a search from one extra search of the same query
+  matched by id. The refresh moves **only the text** — images, the enabled selection, votes and
+  the proxied URLs are language-independent or hand-curated — and is the one call here that is
+  deliberately *not* disk-cached, its whole point being to ask again. A show's name is therefore
+  translated data: things that select shows key on the TMDB id instead (`showIconName`,
+  `generate-shows.js`'s allowlist), and `show_templates` in Supabase needs a re-sync after a
+  refresh to carry the new names.
 - `/api/tmdb/*` — proxy for the admin `/shows` screen. Keeps the TMDB key server-side and
   **disk-caches** every search response, image-list, and image binary under
   `packages/backend/.cache/` (git-ignored) so TMDB is never queried twice for the same thing.
+  The cache key includes the language, so a Catalan search never reads an entry written when
+  results came back in English.
 
 ## Environment variables
 

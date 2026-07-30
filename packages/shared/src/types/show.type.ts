@@ -30,6 +30,30 @@ export interface ShowsCollection {
 	shows: ShowEntry[];
 }
 
+/** What became of one saved show in a Catalan re-query (see below). */
+export interface ShowRefreshEntry {
+	id: number;
+	/** The name it now carries — Catalan where TMDB holds one. */
+	name: string;
+	/** What it was called before, when the re-query renamed it. */
+	previousName?: string;
+	/** Whether the description changed too. */
+	overviewChanged: boolean;
+	/** True when TMDB has no Catalan overview and the fallback language filled it. */
+	overviewFallback: boolean;
+}
+
+/**
+ * Result of `POST /api/shows/refresh`: the collection as written, plus what each
+ * show's title and description did. Shows TMDB could not answer for are listed
+ * separately and left exactly as they were.
+ */
+export interface ShowRefreshResult {
+	shows: ShowEntry[];
+	refreshed: ShowRefreshEntry[];
+	failed: { id: number; name: string; message: string }[];
+}
+
 /**
  * One municipality's baked show assignment, as written by @3xl/data's
  * `generate:shows` into `public/municipality-shows.json`. The pick is a pure

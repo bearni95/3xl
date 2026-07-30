@@ -1,14 +1,16 @@
 import { AdapterClass } from './adapter.class';
-import type {
-	TMDBTvShow,
-	TMDBTvSearchResponse,
-	TMDBImage,
-	TMDBTvImagesResponse,
-	TMDBImageKind,
-	DisplayTMDBTvShow,
-	DisplayTMDBTvSearchResponse,
-	DisplayTMDBImage,
-	DisplayTMDBTvImages
+import {
+	TMDB_FALLBACK_LANGUAGE,
+	type TMDBTvShow,
+	type TMDBTvShowTranslated,
+	type TMDBTvSearchResponse,
+	type TMDBImage,
+	type TMDBTvImagesResponse,
+	type TMDBImageKind,
+	type DisplayTMDBTvShow,
+	type DisplayTMDBTvSearchResponse,
+	type DisplayTMDBImage,
+	type DisplayTMDBTvImages
 } from '../../types/tmdb.type';
 
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
@@ -62,6 +64,29 @@ export class TmdbAdapter extends AdapterClass {
 		};
 	}
 
+	/**
+	 * A show fetched in one language, with any text that language has none of
+	 * taken from `fallbackLanguage`'s appended translation (see
+	 * {@link fetchTvTranslated}). A show may well have a Catalan title and no
+	 * Catalan overview, so the two fields fall back independently — the title is
+	 * never replaced when TMDB gave one, even if the description had to come from
+	 * elsewhere.
+	 */
+	translatedTvShowToDisplay(
+		tvShow: TMDBTvShowTranslated,
+		fallbackLanguage: string = TMDB_FALLBACK_LANGUAGE
+	): DisplayTMDBTvShow {
+		const display = this.tvShowToDisplay(tvShow);
+		const fallback = tvShow.translations?.translations.find(
+			(translation) => translation.iso_639_1 === fallbackLanguage
+		)?.data;
+		return {
+			...display,
+			name: display.name || fallback?.name || tvShow.original_name,
+			overview: display.overview || fallback?.overview || ''
+		};
+	}
+
 	imageToDisplay(image: TMDBImage, kind: TMDBImageKind): DisplayTMDBImage {
 		return {
 			thumbnailUrl: `${IMAGE_BASE_URL}/w342${image.file_path}`,
@@ -94,6 +119,33 @@ export class TmdbAdapter extends AdapterClass {
 			results: response.results.map((show) => this.tvShowToDisplay(show)),
 			totalPages: response.total_pages,
 			totalResults: response.total_results
+		};
+	}
+
+	/**
+	 * Fill each result's empty text from the same search run in another language,
+	 * matched by show id. `/search/tv` takes no `append_to_response`, so unlike a
+	 * details fetch the fallback for a page of results is a second page of
+	 * results — one whose ordering may differ, hence the match by id rather than
+	 * by position. Only blanks are filled; `fallback` never overrides text the
+	 * asked-for language actually had.
+	 */
+	fillMissingText(
+		response: DisplayTMDBTvSearchResponse,
+		fallback: DisplayTMDBTvSearchResponse
+	): DisplayTMDBTvSearchResponse {
+		const byId = new Map(fallback.results.map((show) => [show.id, show]));
+		return {
+			...response,
+			results: response.results.map((show) => {
+				const other = byId.get(show.id);
+				if (!other) return show;
+				return {
+					...show,
+					name: show.name || other.name,
+					overview: show.overview || other.overview
+				};
+			})
 		};
 	}
 }

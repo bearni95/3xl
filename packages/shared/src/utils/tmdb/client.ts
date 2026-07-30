@@ -6,10 +6,12 @@
 // Ported from the new-mhaol tmdb addon, scoped to the TV endpoints the
 // /admin/shows screen needs.
 
-import type {
-	TMDBTvSearchResponse,
-	TMDBTvShowDetails,
-	TMDBTvImagesResponse
+import {
+	TMDB_LANGUAGE,
+	type TMDBTvSearchResponse,
+	type TMDBTvShowDetails,
+	type TMDBTvShowTranslated,
+	type TMDBTvImagesResponse
 } from '../../types/tmdb.type';
 import { tmdbRateLimiter } from './rate-limiter';
 
@@ -64,12 +66,14 @@ export async function searchTvShows(
 	apiKey: string,
 	query: string,
 	page: number = 1,
-	firstAirYear?: number
+	firstAirYear?: number,
+	language: string = TMDB_LANGUAGE
 ): Promise<TMDBTvSearchResponse | null> {
 	const params: Record<string, string> = {
 		query,
 		page: page.toString(),
-		include_adult: 'false'
+		include_adult: 'false',
+		language
 	};
 	if (firstAirYear) {
 		params.first_air_date_year = firstAirYear.toString();
@@ -79,20 +83,44 @@ export async function searchTvShows(
 
 export async function getTvPopular(
 	apiKey: string,
-	page: number = 1
+	page: number = 1,
+	language: string = TMDB_LANGUAGE
 ): Promise<TMDBTvSearchResponse | null> {
 	return tmdbFetch<TMDBTvSearchResponse>(apiKey, '/tv/popular', {
-		page: page.toString()
+		page: page.toString(),
+		language
 	});
 }
 
 export async function fetchTvShow(
 	apiKey: string,
-	id: number
+	id: number,
+	language: string = TMDB_LANGUAGE
 ): Promise<TMDBTvShowDetails | null> {
 	return tmdbFetch<TMDBTvShowDetails>(apiKey, `/tv/${id}`, {
 		append_to_response: 'credits,images',
-		include_image_language: 'en,null'
+		include_image_language: 'en,null',
+		language
+	});
+}
+
+/**
+ * One show's text in `language`, with every other language's text appended.
+ *
+ * Deliberately one request rather than two: TMDB answers a field it has no
+ * `language` text for with an empty string, so the fallback has to come from
+ * somewhere, and `append_to_response=translations` carries every language in the
+ * same payload. Nothing else is asked for (no credits, no images) — this is the
+ * call behind "re-read what this show is called", not a full details fetch.
+ */
+export async function fetchTvTranslated(
+	apiKey: string,
+	id: number,
+	language: string = TMDB_LANGUAGE
+): Promise<TMDBTvShowTranslated | null> {
+	return tmdbFetch<TMDBTvShowTranslated>(apiKey, `/tv/${id}`, {
+		append_to_response: 'translations',
+		language
 	});
 }
 
