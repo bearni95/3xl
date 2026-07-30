@@ -9,7 +9,16 @@ import {
 	type CombatState,
 	type FighterSeed
 } from '$services/combat.controller';
-import { type Cell, cellSide, columnLabel, findPath, isBoardCell } from '$utils/mugen/grid';
+import {
+	BOARD_WIDTH,
+	type Cell,
+	cellCenter,
+	cellSide,
+	columnLabel,
+	findPath,
+	isBoardCell,
+	MIDDLE_ROW
+} from '$utils/mugen/grid';
 import { ORDER_ICONS } from '$utils/color/traits';
 import type { CombatColor } from '$types/character-definition.type';
 import type { BattleBoardSnapshot, BattleFighterSnapshot } from '$types/battle.type';
@@ -871,7 +880,7 @@ describe('the stand-off', () => {
 		// Where the fighter that lost the lane goes: the back of its own half, a column
 		// behind the line it opened on. It is out of the fight, not off the board.
 		const fallenGround = (side: 'error' | 'info', lane: number): Cell => ({
-			q: fallenColumn(side),
+			q: fallenColumn(side, RIVAL_CELLS[lane].r),
 			r: RIVAL_CELLS[lane].r
 		});
 
@@ -879,13 +888,15 @@ describe('the stand-off', () => {
 			expect(RIVAL_CELLS).toHaveLength(PLAYER_CELLS.length);
 			for (const cell of RIVAL_CELLS) {
 				expect(isBoardCell(cell.q, cell.r)).toBe(true);
-				// Column c: the front of the rival's own half, not the shared ground.
-				expect(columnLabel(cell.q)).toBe('c');
+				// The front of the rival's own half, never the shared ground: column c on
+				// the level lanes, and b on the staggered middle one, which is a column
+				// further back so that lane's pair meets where the other two meet.
+				expect(columnLabel(cell.q)).toBe(cell.r === MIDDLE_ROW ? 'b' : 'c');
 				expect(cellSide(cell.q)).toBe('red');
 			}
 			for (const cell of PLAYER_CELLS) {
 				expect(isBoardCell(cell.q, cell.r)).toBe(true);
-				// Column e: the front of the player's own half, facing c across the white one.
+				// Column e: the front of the player's own half, across the white one.
 				expect(columnLabel(cell.q)).toBe('e');
 				expect(cellSide(cell.q)).toBe('blue');
 			}
@@ -902,6 +913,46 @@ describe('the stand-off', () => {
 			// Nobody shares a cell with anybody.
 			const keys = [...RIVAL_CELLS, ...PLAYER_CELLS].map((cell) => `${cell.q},${cell.r}`);
 			expect(new Set(keys).size).toBe(keys.length);
+		});
+
+		it('opens both lines the same distance out from the board’s middle, on every lane', () => {
+			// What the rival's staggered middle cell is for. A lane that attacks both ways
+			// walks its pair out to the board's own middle line (`MugenBoard.meleeApproach`),
+			// so the two have to *start* the same distance from it or one of them arrives
+			// while the other is still walking, and the clash reads as one fighter waiting
+			// for the other. Level in columns is not level on screen: the middle row is
+			// drawn half a cell across from the two around it, which is exactly the half
+			// cell the rival's opening column gives back.
+			const middle = BOARD_WIDTH / 2;
+			RIVAL_CELLS.forEach((rival, lane) => {
+				const player = PLAYER_CELLS[lane];
+				const out = (cell: Cell) => Math.abs(cellCenter(cell.q, cell.r).x - middle);
+				expect(out(rival)).toBeCloseTo(out(player));
+				// And the meeting line is between them, not beyond either.
+				expect(cellCenter(rival.q, rival.r).x).toBeLessThan(middle);
+				expect(cellCenter(player.q, player.r).x).toBeGreaterThan(middle);
+			});
+			// The middle lane is the one that had to give ground for it, and only it.
+			expect(RIVAL_CELLS[MIDDLE_ROW].q).toBe(RIVAL_CELLS[0].q - 1);
+			expect(RIVAL_CELLS[2].q).toBe(RIVAL_CELLS[0].q);
+		});
+
+		it('leaves the fallen a step back from wherever their own lane opened', () => {
+			// A retreat is a step backwards, so it is read off the lane rather than off the
+			// line: the rival's middle fighter opens a column deeper than its castmates and
+			// so falls back a column deeper too — onto the odd cell the middle row has and
+			// the level rows do not. Asked of the side alone it would have been told to
+			// withdraw to the cell it was already standing on.
+			for (const side of ['info', 'error'] as const) {
+				const cells = side === 'info' ? PLAYER_CELLS : RIVAL_CELLS;
+				for (const opening of cells) {
+					const back = { q: fallenColumn(side, opening.r), r: opening.r };
+					expect(isBoardCell(back.q, back.r)).toBe(true);
+					// Behind the opening, on the fighter's own side, and somewhere else.
+					expect(Math.abs(back.q)).toBe(Math.abs(opening.q) + 1);
+					expect(cellSide(back.q)).toBe(cellSide(opening.q));
+				}
+			}
 		});
 
 		it('leaves every move walkable — each side may cross its own half and the white column', () => {

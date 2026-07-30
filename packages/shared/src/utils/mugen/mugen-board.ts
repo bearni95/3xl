@@ -1381,15 +1381,20 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Walk two fighters toward each other until they stand side by side on the
-	 * same row (immediately horizontal cells), each staying on its own colour or
-	 * the shared white column. When `meetingCell` is given, the red fighter
-	 * walks to that exact cell and the blue fighter to its east neighbour;
-	 * otherwise the cheapest meeting pair is searched. Each walk ends on the
-	 * meeting cell itself, split down its midline — red's sprite stops flush
-	 * against it from the left, blue's from the right — so the pair shares the
-	 * cell face to face without overlapping. Resolves once both have settled.
+	 * Walk two fighters toward each other until they stand face to face on the **board's
+	 * own middle**, on the row they are fighting down. When `meetingCell` is given, the
+	 * red fighter walks to that exact cell and the blue fighter to its east neighbour;
+	 * otherwise the cheapest meeting pair is searched. Resolves once both have settled.
 	 * Ids may be given in any order (sides are inferred).
+	 *
+	 * The line they meet on is the board's, not the meeting cell's. The two are the same
+	 * line on a level row, whose white cell sits dead centre — but the middle row is
+	 * staggered half a cell across, so its white cell is not centred and a pair that met
+	 * in the middle of it met half a cell right of where the lanes above and below them
+	 * did. Three lanes clashing on three different lines is not a board being fought
+	 * across. Both lines open the same distance out from this one (see the controller's
+	 * opening cells, which is where the stagger is answered), so meeting on it is also
+	 * the two of them walking out the same distance and arriving together.
 	 */
 	async meleeApproach(aId: string, bId: string, meetingCell?: Cell): Promise<void> {
 		const a = this.findActor(aId);
@@ -1407,15 +1412,19 @@ export class MugenBoard {
 			findMeleeMeeting(this.cellOf(red), this.cellOf(blue), meetingCell);
 		if (!meeting) return;
 
-		// Split the meeting cell down its midline, one half each, without the two
-		// sprites overlapping: red walks until its sprite's right edge stops at the
-		// midline, blue until its left edge starts there, so they stand face to face
-		// across the boundary. Extents come from each sprite's current frame (anchor
-		// fraction × scaled width; blue is mirrored, so its lead edge is the frame's
-		// far side). Logical cells are untouched (blue still counts as standing on
-		// its east-neighbour cell); only the final step's landing point is offset.
-		// The duel pair stands on the cell's own foot line, as everybody else does.
-		const mid = this.cellMark(meeting.red.destination.q, meeting.red.destination.r);
+		// One on each side of that line, without the two sprites overlapping: red walks
+		// until its sprite's right edge stops at it, blue until its left edge starts
+		// there, so they stand face to face across it. Extents come from each sprite's
+		// current frame (anchor fraction × scaled width; blue is mirrored, so its lead
+		// edge is the frame's far side). Logical cells are untouched (each still counts
+		// as standing on the cell it walked to); only the final step's landing point is
+		// offset — and the crown correction is not applied to it either, because two
+		// fighters brought edge to edge against a line are placed by their edges.
+		// The pair stands on the meeting cell's own foot line, as everybody else does.
+		const mid = {
+			x: this.project(BOARD_WIDTH / 2, 0).x,
+			y: this.cellMark(meeting.red.destination.q, meeting.red.destination.r).y
+		};
 		const redLead = (1 - red.sprite.anchor.x) * Math.abs(red.sprite.width);
 		const blueLead = (1 - blue.sprite.anchor.x) * Math.abs(blue.sprite.width);
 		await Promise.all([

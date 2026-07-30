@@ -207,16 +207,25 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 			// retracts to on losing one.
 			expect(boardFitsLineup(moved('info', PLAYER_CELLS[0].q), lineup)).toBe(true);
 			expect(boardFitsLineup(moved('info', WON_COLUMN), lineup)).toBe(true);
-			expect(boardFitsLineup(moved('info', fallenColumn('info')), lineup)).toBe(true);
+			expect(boardFitsLineup(moved('info', fallenColumn('info', 0)), lineup)).toBe(true);
 			expect(boardFitsLineup(moved('error', RIVAL_CELLS[0].q), lineup)).toBe(true);
 			expect(boardFitsLineup(moved('error', WON_COLUMN), lineup)).toBe(true);
-			expect(boardFitsLineup(moved('error', fallenColumn('error')), lineup)).toBe(true);
-			// And the column each side retracts to is the outermost one running the board's
-			// whole depth. For blue that is the board's own edge; for red it is a column in
-			// from it, since the field's outermost column holds one cell, on the middle lane,
-			// and a retreat has to mean the same thing on all three.
-			expect(fallenColumn('info')).toBe(LAST_COLUMN);
-			expect(fallenColumn('error')).toBe(FIRST_COLUMN + 1);
+			expect(boardFitsLineup(moved('error', fallenColumn('error', 0)), lineup)).toBe(true);
+			// The player's line is level, so it retracts to one column on every lane, and
+			// that column is the board's own edge.
+			expect(PLAYER_CELLS.map((cell) => fallenColumn('info', cell.r))).toEqual([
+				LAST_COLUMN,
+				LAST_COLUMN,
+				LAST_COLUMN
+			]);
+			// The rival's is not: its middle fighter opens a column deeper, so it falls back
+			// a column deeper too — onto the field's outermost column, which holds a cell on
+			// that lane and on no other. The level lanes fall back a column in from it.
+			expect(RIVAL_CELLS.map((cell) => fallenColumn('error', cell.r))).toEqual([
+				FIRST_COLUMN + 1,
+				FIRST_COLUMN,
+				FIRST_COLUMN + 1
+			]);
 		});
 	});
 

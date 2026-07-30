@@ -45,8 +45,9 @@
  * they are carried out by the same resolution, gifts and ordering included.
  *
  * The two lines open **face to face across the central white column** — the rivals on
- * column b, the player's fighters on column d, one pair to a row — so that column, which
- * nobody starts on, is the ground being fought over, lane by lane. A lane is settled on
+ * column c (b on the middle lane, see {@link RIVAL_CELLS}), the player's fighters on
+ * column e, one pair to a row — so that column, which nobody starts on, is the ground
+ * being fought over, lane by lane. A lane is settled on
  * the board the turn it is decided: the winner either takes that white cell (the player's
  * fighter walks up onto it) or falls back a column deeper into its own half (the rival).
  * So the board itself shows how the
@@ -112,11 +113,11 @@ export const MAX_TURNS = 20;
 export const ENCOUNTERS_TO_WIN = 2;
 
 /**
- * The ground the player's line opens on, listed top→bottom on screen — column d, the
- * front of its own half, one fighter to a row, each facing the rival on the same row of
- * column b. A fighter holds its own cell until the lane in front of it is decided, and
- * then it either takes that lane's white cell or retracts to column e behind it (see
- * {@link CombatController.settleLane}).
+ * The ground the player's line opens on, listed top→bottom on screen — column e, the
+ * front of its own half, one fighter to a row, each facing the rival across the white
+ * column on the same row. A fighter holds its own cell until the lane in front of it is
+ * decided, and then it either takes that lane's white cell or retracts to column f behind
+ * it (see {@link CombatController.settleLane}).
  *
  * Three a side on a three-row board, so a line is one fighter to every row of it: every
  * lane on the board is fought over, and there is no spare row for a fight to open on
@@ -129,16 +130,28 @@ export const PLAYER_CELLS: Cell[] = [
 ];
 
 /**
- * The ground the rival line opens on, listed top→bottom on screen: column b — the front
- * of its own half, one fighter to a row, each facing the player one column away across
- * the white column between them. Neither line opens on that white column: it is the
- * ground the lanes are played for, so it starts empty and is only ever stood on by
- * whoever wins a lane (see {@link CombatController.settleLane}) — either line's winner
- * walks up onto it, while the fighter that lost the lane retracts to column a behind it.
+ * The ground the rival line opens on, listed top→bottom on screen: the front of its own
+ * half, one fighter to a row, each facing the player across the white column between
+ * them. Neither line opens on that white column: it is the ground the lanes are played
+ * for, so it starts empty and is only ever stood on by whoever wins a lane (see
+ * {@link CombatController.settleLane}) — either line's winner walks up onto it, while
+ * the fighter that lost the lane retracts to the column behind it.
+ *
+ * Column c on the top and bottom lanes, and **b on the middle one**, which is the lane
+ * whose row is staggered half a cell right of the other two. Openings are ground, and
+ * ground is where it is drawn, so a line that is level in columns is not level on screen:
+ * on the middle lane both fighters sat half a cell right, which put the pair's own middle
+ * — the place they walk out to and meet when they both attack — half a cell right of the
+ * board's, while the other two lanes met dead centre. Standing the rival a column further
+ * back cancels the stagger: it is one and a half cells from the board's middle and so is
+ * the player, the two walk out the same distance, and all three lanes clash on the same
+ * line (see `MugenBoard.meleeApproach`). It costs the rival nothing but the ground it
+ * opens on — the column it retracts to moves back with it, onto the odd cell the middle
+ * row has and the others do not, which is the one thing that cell was ever for.
  */
 export const RIVAL_CELLS: Cell[] = [
 	{ q: -1, r: 0 },
-	{ q: -1, r: 1 },
+	{ q: -2, r: 1 },
 	{ q: -1, r: 2 }
 ];
 
@@ -152,17 +165,23 @@ export const WON_COLUMN = 0;
 
 /**
  * The column a fighter retracts to once it has been taken down: the back of its own half,
- * one column behind the line it opened on — column a for the rivals, column e for the
- * player. Nobody is ever taken off this board, so being knocked out is a place to stand
- * rather than a disappearance: the fallen give up the ground they were holding, withdraw
- * to the back of their own half, and stay there for the rest of the fight.
+ * one column behind the ground its **own lane** opened on. Nobody is ever taken off this
+ * board, so being knocked out is a place to stand rather than a disappearance: the fallen
+ * give up the ground they were holding, withdraw to the back of their own half, and stay
+ * there for the rest of the fight.
  *
  * Read off the opening ground rather than written down, so a line that opens somewhere
  * else falls back from wherever that is: it is the column one further out from the white
  * one, which is what "behind" means for a side whose own half is out from the centre.
+ * Asked of a lane and not of a side, because the rival's line is not level — its middle
+ * fighter opens a column further back than the other two ({@link RIVAL_CELLS}) — and a
+ * retreat has to be a step backwards from wherever the fighter making it stood. Read off
+ * the line, one column per lane, it would have told that fighter to withdraw to the cell
+ * it was already standing on, which is a fighter falling and not moving.
  */
-export function fallenColumn(side: FighterSide): number {
-	const opening = (side === 'info' ? PLAYER_CELLS : RIVAL_CELLS)[0];
+export function fallenColumn(side: FighterSide, row: number): number {
+	const cells = side === 'info' ? PLAYER_CELLS : RIVAL_CELLS;
+	const opening = cells.find((cell) => cell.r === row) ?? cells[0];
 	return opening.q + Math.sign(opening.q);
 }
 
@@ -868,7 +887,7 @@ export class CombatController {
 		const row = loser.cell?.r ?? winner.cell?.r;
 		if (row === undefined) return;
 		const ground: Cell = { q: WON_COLUMN, r: row };
-		const back: Cell = { q: fallenColumn(loser.side), r: row };
+		const back: Cell = { q: fallenColumn(loser.side, row), r: row };
 		if (!isBoardCell(ground.q, ground.r) || !isBoardCell(back.q, back.r)) return;
 		this.setStatus(`${winner.name} takes the ground; ${loser.name} falls back.`);
 		winner.cell = ground;

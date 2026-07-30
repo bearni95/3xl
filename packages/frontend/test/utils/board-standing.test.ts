@@ -38,7 +38,7 @@ describe('standing a line back up off a saved board', () => {
 		// rest of the fight, so a board that has one records where it went — and it is drawn
 		// there like anybody else. Nobody is ever dropped from the line: a fight with a
 		// fallen fighter in it still has six fighters standing on the board.
-		const retracted = { q: fallenColumn('info'), r: line[1].opening.r };
+		const retracted = { q: fallenColumn('info', line[1].opening.r), r: line[1].opening.r };
 		const placed = standingLine(line, [saved(line[1].id, retracted)]);
 
 		expect(placed.map((fighter) => fighter.id)).toEqual(line.map((fighter) => fighter.id));
@@ -61,7 +61,7 @@ describe('standing a line back up off a saved board', () => {
 		// three come back — there is no board this can be handed that draws fewer fighters
 		// than the line has.
 		const wiped = line.map((fighter) => ({
-			q: fallenColumn('info'),
+			q: fallenColumn('info', fighter.opening.r),
 			r: fighter.opening.r
 		}));
 		const placed = standingLine(
