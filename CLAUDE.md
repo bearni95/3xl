@@ -227,6 +227,12 @@ anybody until one is written for it; the panel words it "Not available yet".
   what a surface calls to get one player's wording.
 - `utils/achievement/requirement.ts` — `achievementMet(achievement, context)`: whether a
   player has earned it. A preview, not the authority (see below).
+- `utils/achievement/progress.ts` — `achievementProgress` / `progressPercent`: how far along
+  an unmet badge is, as the percentage its tile prints. A **reading**, not a rule — it has no
+  PL/pgSQL counterpart, the RPC is told no percentage and computes none — so it is the one
+  place in this language that makes a judgement the language does not: a comparison is the
+  ratio of the two amounts, `and` is the mean of its parts, `or` the best of them. An
+  unearned badge never prints 100.
 - `utils/achievement/daily.ts` — the badges a player is set today: a seed hashed from their
   id and the Catalan day, and a draw from every badge the game has. Nothing is
   stored, so there is no table of assignments to seed or to disagree about, and everyone's

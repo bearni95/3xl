@@ -11,6 +11,7 @@
 	import type { FormulaContext } from '$utils/achievement/formula';
 	import { renderAchievement } from '$utils/achievement/template';
 	import { achievementMet } from '$utils/achievement/requirement';
+	import { achievementProgress, progressPercent } from '$utils/achievement/progress';
 	import { DAILY_ACHIEVEMENT_COUNT, dailyAchievementIds } from '$utils/achievement/daily';
 	import { catalanDayIso, nextCatalanMidnight, shiftDayIso } from '$utils/festes/catalan-day';
 	import { achievementExpAward } from '$utils/progression/level';
@@ -199,7 +200,11 @@
 			met: achievementMet(achievement, ctx),
 			// A badge with no rule is set and shown like any other, and cannot be
 			// completed by anybody until one is written for it.
-			ruled: !!achievement.requirement?.trim()
+			ruled: !!achievement.requirement?.trim(),
+			// How far along it is, for the ones that are not there yet. A reading rather
+			// than a rule — the server is told no percentage and computes none — and it
+			// never reads 100 for a badge that is not earned.
+			percent: progressPercent(achievementProgress(achievement, ctx))
 		};
 	}
 
@@ -413,7 +418,7 @@
 									<span class="badge badge-success badge-sm">Ready</span>
 									<span class="opacity-70">worth {award.toLocaleString()} exp</span>
 								{:else}
-									<span class="badge badge-ghost badge-sm">Not yet</span>
+									<span class="badge badge-ghost badge-sm">Not yet — {entry.percent}%</span>
 									<span class="opacity-70">worth {award.toLocaleString()} exp</span>
 								{/if}
 								{#if outcome && !outcome.granted && !outcome.held && !outcome.met}
