@@ -1,21 +1,32 @@
 import { getSupabaseClient } from '$services/supabase.client';
-import type { Achievement, AchievementsCollection } from '$types/achievement.type';
+import { achievementAdapter } from '$adapters/classes/achievement.adapter';
+import type {
+	Achievement,
+	AchievementClaim,
+	AchievementClaimRow,
+	AchievementsCollection
+} from '$types/achievement.type';
 
 /**
  * The game's achievements, read the way they are stored — in two halves.
  *
- * Supabase's `achievement_templates` says which badges the game *has*: a row is
- * an id and nothing else, synced up from the local collection by the admin. What
- * each badge is — its glyph, its name, the line saying what earns it, and the
+ * Supabase's `achievement_templates` says which badges the game *has*: an id, and
+ * the badge's requirement compiled into a form the database can evaluate. What each
+ * badge *says* — its glyph, its name, the line saying what earns it, and the
  * formulas its wording quotes — lives only in the authored
- * `public/achievements.json`, served here at `/data/achievements.json`. So the
- * list comes from the database and every word on screen comes from the file, and
- * rewording a badge is one edit in the git tree that no row anywhere can
- * disagree with.
+ * `public/achievements.json`, served here at `/data/achievements.json`. So the list
+ * comes from the database and every word on screen comes from the file, and
+ * rewording a badge is one edit in the git tree that no row anywhere can disagree
+ * with.
  *
- * A row whose id the file has nothing for is dropped: that is the `orphan` state
- * the admin's sync screen names — a badge retired locally but still up there,
- * possibly still worn — and there is no glyph and no wording to draw it with.
+ * A row whose id the file has nothing for is dropped: that is the `orphan` state the
+ * admin's sync screen names — a badge retired locally but still up there, possibly
+ * still worn — and there is no glyph and no wording to draw it with.
+ *
+ * Awarding is not here. A badge is granted by the `claim_achievements` RPC, which
+ * recomputes which badges are today's, walks each requirement itself against rows
+ * the browser cannot write, and decides the experience — see
+ * {@link claimAchievements} and packages/backend/supabase/achievement_templates.sql.
  */
 
 /** The authored collection, fetched once per session and shared. */
@@ -36,25 +47,69 @@ function loadCollection(): Promise<AchievementsCollection> {
 	return collection;
 }
 
+/** Everything one opening of the achievements modal needs. */
+export interface AchievementsSnapshot {
+	/** Every badge Supabase holds, resolved against the file, in row order. */
+	achievements: Achievement[];
+	/**
+	 * The ids the database holds a rule for, which is the pool a player's three for
+	 * the day are drawn from. Read from the database rather than from the file so the
+	 * browser draws from exactly the pool `claim_achievements` will draw from: a
+	 * badge whose rule has not been synced yet is not in the game.
+	 */
+	claimable: string[];
+	/** The ids this player already holds. Empty for a visitor who is not signed in. */
+	held: Set<string>;
+}
+
 /**
- * Every badge Supabase holds, in the order it returns them, resolved against the
- * authored file. Both halves are fetched together — the file is cached, the table
- * is not: a badge synced up while the player was on the page should be here the
- * next time they open the modal.
+ * The badges, the claimable pool and what this player already holds — one trip for
+ * all three, since a modal that showed the list before it knew what was held would
+ * have to redraw itself.
  */
-export async function loadAchievements(): Promise<Achievement[]> {
+export async function loadAchievements(userId: string | null): Promise<AchievementsSnapshot> {
 	const supabase = getSupabaseClient();
-	const [rows, authored] = await Promise.all([
-		supabase.from('achievement_templates').select('id'),
-		loadCollection()
+	const [templates, authored, awards] = await Promise.all([
+		supabase.from('achievement_templates').select('id, requirement'),
+		loadCollection(),
+		userId
+			? supabase.from('player_achievements').select('achievement_id').eq('user_id', userId)
+			: Promise.resolve({ data: [], error: null })
 	]);
-	if (rows.error) throw rows.error;
+	if (templates.error) throw templates.error;
+	if (awards.error) throw awards.error;
 
 	const byId = new Map(authored.achievements.map((achievement) => [achievement.id, achievement]));
 	const achievements: Achievement[] = [];
-	for (const row of rows.data ?? []) {
-		const achievement = byId.get(String(row.id));
+	const claimable: string[] = [];
+	for (const row of templates.data ?? []) {
+		const id = String(row.id);
+		// The pool is every rule the database holds, drawable or not: a rule for a
+		// badge the file has nothing for is still one the RPC would draw, so leaving it
+		// out here would have the two sides pick different threes.
+		if (row.requirement !== null) claimable.push(id);
+		const achievement = byId.get(id);
 		if (achievement) achievements.push(achievement);
 	}
-	return achievements;
+
+	const held = new Set(
+		((awards.data ?? []) as { achievement_id: string }[]).map((row) => String(row.achievement_id))
+	);
+	return { achievements, claimable, held };
+}
+
+/**
+ * Claim today's badges: the player says they have done them, and the server decides.
+ *
+ * It takes no arguments, and that is the whole point — which badges are today's,
+ * whether each has been earned and what each pays are all recomputed inside the
+ * RPC, against rows the anon key cannot write. Returns a row per badge set today,
+ * so the caller can say which were paid out, which were already held and which are
+ * not there yet. Claiming twice pays once.
+ */
+export async function claimAchievements(): Promise<AchievementClaim[]> {
+	const supabase = getSupabaseClient();
+	const { data, error } = await supabase.rpc('claim_achievements');
+	if (error) throw error;
+	return achievementAdapter.fromClaimRows(data as AchievementClaimRow[] | null);
 }

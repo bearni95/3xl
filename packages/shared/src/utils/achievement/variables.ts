@@ -1,4 +1,5 @@
-// Whether an achievement's variables and wording agree with each other.
+// Whether an achievement's variables, wording and requirement agree with each
+// other.
 //
 // One list of rules, read by both sides on purpose: the admin editor calls it on
 // every keystroke to say why Save is disabled, and the backend calls it again
@@ -6,33 +7,35 @@
 // the API would have refused with. Nothing here is about a *single* formula — that
 // is `parseFormula`'s job, and it is called from here for each one — it is about
 // the set: names that collide, names that shadow a source, placeholders naming a
-// variable that was never declared.
+// variable that was never declared, and a requirement quoting one.
 
 import {
 	ACHIEVEMENT_FORMULA_MAX_LENGTH,
+	ACHIEVEMENT_REQUIREMENT_MAX_LENGTH,
 	ACHIEVEMENT_VARIABLES_MAX,
 	ACHIEVEMENT_VARIABLE_NAME_PATTERN,
 	type Achievement,
 	type AchievementVariable
 } from '../../types/achievement.type';
-import { FORMULA_SOURCES, formulaError } from './formula';
+import { FORMULA_SOURCES, conditionError, formulaError } from './formula';
 import { templateNames } from './template';
 
 /** One thing wrong with a draft's variables, in the words both sides report. */
 export interface VariableProblem {
 	/**
 	 * Which variable it is about, as its index in the list — or null when it is
-	 * about the badge's wording (a placeholder naming nothing) or the list itself.
+	 * about the badge's wording (a placeholder naming nothing), its requirement, or
+	 * the list itself.
 	 */
 	index: number | null;
 	/** Which input to point at, for an editor that has one per field. */
-	field: 'name' | 'formula' | 'text';
+	field: 'name' | 'formula' | 'text' | 'requirement';
 	/** The trouble in one sentence. */
 	message: string;
 }
 
 /** The draft an achievement's variables are checked against. */
-type VariablesDraft = Pick<Achievement, 'name' | 'description' | 'variables'>;
+type VariablesDraft = Pick<Achievement, 'name' | 'description' | 'variables' | 'requirement'>;
 
 /**
  * Everything wrong with a draft's variables, in reading order — empty when there
@@ -91,9 +94,26 @@ export function validateVariables(draft: VariablesDraft): VariableProblem[] {
 		}
 	});
 
+	// The requirement, which may quote any of the names above — so it is checked
+	// after them, against exactly the ones that survived. A badge without one is
+	// perfectly valid; it simply cannot be set or awarded (see `requirement.ts`).
+	const declared = new Set(variables.map((variable) => variable.name.trim()));
+	const requirement = draft.requirement?.trim();
+	if (requirement) {
+		if (requirement.length > ACHIEVEMENT_REQUIREMENT_MAX_LENGTH) {
+			problems.push({
+				index: null,
+				field: 'requirement',
+				message: `A requirement cannot be longer than ${ACHIEVEMENT_REQUIREMENT_MAX_LENGTH} characters`
+			});
+		} else {
+			const error = conditionError(requirement, declared);
+			if (error) problems.push({ index: null, field: 'requirement', message: error });
+		}
+	}
+
 	// A placeholder is only markup if it names a variable; one that names nothing
 	// would go out to players verbatim, braces and all.
-	const declared = new Set(variables.map((variable) => variable.name.trim()));
 	for (const [label, text] of [
 		['name', draft.name],
 		['description', draft.description]

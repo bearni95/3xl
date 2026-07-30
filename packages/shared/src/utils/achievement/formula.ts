@@ -32,6 +32,23 @@
 // produces a finite number (a division by zero reads as 0), because by then the
 // value is going into a line of text a player is reading and that line has to say
 // something.
+//
+// The same language writes the other half of a badge: its **requirement**, the
+// condition that earns it. A requirement is two amounts compared — `>=`, `<=`,
+// `>`, `<`, `=`, `!=` — and any number of those combined with `and`, `or`, `not`
+// and parentheses, and it may quote the badge's own variables by name:
+//
+//     cards(color = red) >= 3
+//     cards >= target and level >= 5
+//     not cards(box = white) = 0
+//
+// A requirement is the one part of an achievement the *database* has to know, since
+// awarding a badge is a rule and rules are enforced server-side: the tree parsed
+// here is what `POST /api/achievement-templates/sync` compiles into
+// `achievement_templates.requirement`, and `claim_achievements` walks that tree in
+// PL/pgSQL. So the shape of these nodes is a wire format between two evaluators —
+// this one and the one in `packages/backend/supabase/achievement_templates.sql` —
+// and changing a node's shape means changing both.
 
 import { SpawnBox, SpawnColor } from '../../types/character-spawn.type';
 
@@ -66,6 +83,17 @@ export interface FormulaContext {
 	level: number;
 	/** Every card the player owns. */
 	cards: readonly FormulaCard[];
+}
+
+/**
+ * What a requirement reads: the same player, plus the values of the badge's own
+ * variables — a condition may quote them by name, where a variable's own formula
+ * may not. Absent, a quoted name reads as 0; `achievementValues` is what computes
+ * them, and `achievementMet` is what puts the two together.
+ */
+export interface ConditionContext extends FormulaContext {
+	/** Each declared variable's value, by name. */
+	variables?: Readonly<Record<string, number>>;
 }
 
 /**
@@ -160,7 +188,14 @@ export type FormulaNode =
 	/** The player's level. */
 	| { kind: 'level' }
 	/** How many owned cards match — all of them when the filter is null. */
-	| { kind: 'cards'; filter: FilterNode | null };
+	| { kind: 'cards'; filter: FilterNode | null }
+	/**
+	 * One of the achievement's own variables, by name. Only ever parsed inside a
+	 * requirement, where the badge's variables are in scope — a variable's own
+	 * formula cannot name another, which is what keeps a formula acyclic without
+	 * anything having to check for cycles.
+	 */
+	| { kind: 'variable'; name: string };
 
 /** A parsed `cards(...)` filter. */
 export type FilterNode =
@@ -169,6 +204,22 @@ export type FilterNode =
 	| { kind: 'not'; operand: FilterNode }
 	/** A field against one value (`=`, or `!=` negated) or several (`in [...]`). */
 	| { kind: 'match'; field: string; negated: boolean; values: string[] };
+
+/** How two amounts are held against each other in a requirement. */
+export type CompareOperator = '>=' | '<=' | '>' | '<' | '=' | '!=';
+
+/**
+ * A parsed requirement: the condition that earns a badge, which is what the
+ * `complete_achievement` rule is checking when a player claims one. Two amounts
+ * compared, and any number of those combined with `and`, `or`, `not` and
+ * parentheses — the same combining words a card filter uses, so the language
+ * reads the same wherever a yes-or-no is being written.
+ */
+export type ConditionNode =
+	| { kind: 'compare'; op: CompareOperator; left: FormulaNode; right: FormulaNode }
+	| { kind: 'and'; left: ConditionNode; right: ConditionNode }
+	| { kind: 'or'; left: ConditionNode; right: ConditionNode }
+	| { kind: 'not'; operand: ConditionNode };
 
 // ---------------------------------------------------------------------------
 // Tokenizer
@@ -189,8 +240,8 @@ const WORD_RE = /[A-Za-z_][A-Za-z0-9_]*/y;
 const STRING_RE = /'([^']*)'|"([^"]*)"/y;
 
 /** Two-character operators, tried before the single characters they start with. */
-const LONG_PUNCT = ['!=', '=='];
-const SHORT_PUNCT = '()[],+-*/%^=';
+const LONG_PUNCT = ['!=', '==', '>=', '<='];
+const SHORT_PUNCT = '()[],+-*/%^=<>';
 
 /** Read a sticky regex at `at`, returning the match or null without moving on. */
 function match(re: RegExp, source: string, at: number): RegExpExecArray | null {
@@ -252,15 +303,23 @@ function tokenize(source: string): Token[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Recursive-descent parser over the token list. One instance parses one formula;
- * `parseFormula` is the only way in.
+ * Recursive-descent parser over the token list. One instance parses one thing —
+ * a formula, or a requirement; `parseFormula` and `parseCondition` are the only
+ * ways in.
  */
 class Parser {
 	private readonly tokens: Token[];
 	private index = 0;
+	/**
+	 * The achievement's own variable names, in scope for this parse. Empty for a
+	 * variable's own formula (where naming another variable is exactly what is not
+	 * allowed) and the badge's declared names for its requirement.
+	 */
+	private readonly variables: ReadonlySet<string>;
 
-	constructor(source: string) {
+	constructor(source: string, variables: ReadonlySet<string> = new Set()) {
 		this.tokens = tokenize(source);
+		this.variables = variables;
 	}
 
 	private get current(): Token {
@@ -365,9 +424,16 @@ class Parser {
 		);
 	}
 
-	/** `level`, or `cards` with an optional filter in parentheses. */
+	/**
+	 * `level`, `cards` with an optional filter in parentheses, or — inside a
+	 * requirement — one of the badge's own variables. A variable is matched on the
+	 * name as written, since a variable name may carry capitals and two that differ
+	 * only in case are two variables; the sources are matched folded, since `level`
+	 * is the language rather than anybody's chosen name.
+	 */
 	private source(): FormulaNode {
 		const token = this.advance();
+		if (this.variables.has(token.value)) return { kind: 'variable', name: token.value };
 		const name = token.value.toLowerCase();
 		if (name === 'level') return { kind: 'level' };
 		if (name === 'cards') {
@@ -378,9 +444,84 @@ class Parser {
 			this.expect(')', 'a closing ")" for the card filter');
 			return { kind: 'cards', filter };
 		}
+		const known = [...FORMULA_SOURCES, ...this.variables];
 		throw new FormulaError(
-			`Unknown value "${token.value}" — a formula can read ${FORMULA_SOURCES.join(' and ')}`,
+			`Unknown value "${token.value}" — this can read ${known.join(', ')}`,
 			token.start
+		);
+	}
+
+	// -- requirements ---------------------------------------------------------
+
+	/** The whole of a requirement: one condition and nothing after it. */
+	parseCondition(): ConditionNode {
+		if (this.current.kind === 'end') {
+			throw new FormulaError('A requirement cannot be empty', 0);
+		}
+		const node = this.condition();
+		const trailing = this.current;
+		if (trailing.kind !== 'end') {
+			throw new FormulaError(`Unexpected "${trailing.value}"`, trailing.start);
+		}
+		return node;
+	}
+
+	private condition(): ConditionNode {
+		let left = this.conditionAnd();
+		while (this.eatWord('or')) {
+			left = { kind: 'or', left, right: this.conditionAnd() };
+		}
+		return left;
+	}
+
+	private conditionAnd(): ConditionNode {
+		let left = this.conditionNot();
+		while (this.eatWord('and')) {
+			left = { kind: 'and', left, right: this.conditionNot() };
+		}
+		return left;
+	}
+
+	/**
+	 * `not`, a parenthesised condition, or a comparison. A parenthesis here is
+	 * ambiguous — `(level + 1) >= 3` opens an amount and `(level >= 3) and …` opens
+	 * a condition — so it is tried as a condition and rewound if what is inside
+	 * turns out to be an amount, which is the one place this parser looks ahead.
+	 */
+	private conditionNot(): ConditionNode {
+		if (this.eatWord('not')) return { kind: 'not', operand: this.conditionNot() };
+		if (this.current.kind === 'punct' && this.current.value === '(') {
+			const mark = this.index;
+			this.index++;
+			try {
+				const inner = this.condition();
+				this.expect(')', 'a closing ")"');
+				return inner;
+			} catch {
+				this.index = mark;
+			}
+		}
+		return this.compare();
+	}
+
+	/** Two amounts held against each other. */
+	private compare(): ConditionNode {
+		const left = this.expression();
+		const op = this.compareOperator();
+		return { kind: 'compare', op, left, right: this.expression() };
+	}
+
+	private compareOperator(): CompareOperator {
+		if (this.eat('>=')) return '>=';
+		if (this.eat('<=')) return '<=';
+		if (this.eat('>')) return '>';
+		if (this.eat('<')) return '<';
+		if (this.eat('!=')) return '!=';
+		// `=` and `==` are the same thing, as they are inside a card filter.
+		if (this.eat('==') || this.eat('=')) return '=';
+		throw new FormulaError(
+			'Expected a comparison — one of >=, <=, >, <, = or !=',
+			this.current.start
 		);
 	}
 
@@ -511,6 +652,29 @@ export function formulaError(source: string): string | null {
 	}
 }
 
+/**
+ * Parse a requirement into a tree, or throw {@link FormulaError}. `variables` are
+ * the badge's own declared names, which the condition may quote by name — pass
+ * them all, since a requirement naming one the badge does not declare is exactly
+ * what this is here to refuse.
+ */
+export function parseCondition(
+	source: string,
+	variables: Iterable<string> = []
+): ConditionNode {
+	return new Parser(source, new Set(variables)).parseCondition();
+}
+
+/** The reason a requirement will not parse, or null when it parses cleanly. */
+export function conditionError(source: string, variables: Iterable<string> = []): string | null {
+	try {
+		parseCondition(source, variables);
+		return null;
+	} catch (error) {
+		return error instanceof Error ? error.message : String(error);
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Evaluation
 // ---------------------------------------------------------------------------
@@ -544,7 +708,7 @@ function countCards(context: FormulaContext, filter: FilterNode | null): number 
 	return total;
 }
 
-function evaluateNode(node: FormulaNode, context: FormulaContext): number {
+function evaluateNode(node: FormulaNode, context: ConditionContext): number {
 	switch (node.kind) {
 		case 'number':
 			return node.value;
@@ -552,6 +716,13 @@ function evaluateNode(node: FormulaNode, context: FormulaContext): number {
 			return Number.isFinite(context.level) ? context.level : 0;
 		case 'cards':
 			return countCards(context, node.filter);
+		case 'variable': {
+			// A name with no value is a requirement that outlived the variable it
+			// quoted, which validation refuses to save; here it simply reads as 0
+			// rather than being a way to make evaluation fail.
+			const value = context.variables?.[node.name];
+			return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+		}
 		case 'unary': {
 			const value = evaluateNode(node.operand, context);
 			return node.op === '-' ? -value : value;
@@ -602,6 +773,63 @@ export function evaluateFormula(
 	}
 	const value = evaluateNode(node, context);
 	return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * Whether a requirement holds for one player: the same context a formula reads,
+ * plus the values of the badge's own variables (see `achievementValues`), since a
+ * condition may quote them.
+ *
+ * Unparseable source reads as **false**, which is the safe way round for something
+ * that decides whether a badge is earned: a rule nobody can read has not been met.
+ * A comparison of two amounts is exact — `=` is `===` on the two numbers — so a
+ * requirement written on a division is as brittle as one would expect and is best
+ * written with whole numbers.
+ */
+export function evaluateCondition(
+	condition: string | ConditionNode,
+	context: ConditionContext
+): boolean {
+	let node: ConditionNode;
+	if (typeof condition === 'string') {
+		try {
+			node = parseCondition(condition, Object.keys(context.variables ?? {}));
+		} catch {
+			return false;
+		}
+	} else {
+		node = condition;
+	}
+	return holds(node, context);
+}
+
+function holds(node: ConditionNode, context: ConditionContext): boolean {
+	switch (node.kind) {
+		case 'and':
+			return holds(node.left, context) && holds(node.right, context);
+		case 'or':
+			return holds(node.left, context) || holds(node.right, context);
+		case 'not':
+			return !holds(node.operand, context);
+		case 'compare': {
+			const left = evaluateNode(node.left, context);
+			const right = evaluateNode(node.right, context);
+			switch (node.op) {
+				case '>=':
+					return left >= right;
+				case '<=':
+					return left <= right;
+				case '>':
+					return left > right;
+				case '<':
+					return left < right;
+				case '=':
+					return left === right;
+				case '!=':
+					return left !== right;
+			}
+		}
+	}
 }
 
 /**

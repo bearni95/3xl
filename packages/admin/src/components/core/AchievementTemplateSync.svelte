@@ -3,15 +3,20 @@
 	import type {
 		Achievement,
 		AchievementStatus,
-		AchievementSyncResult
+		AchievementSyncResult,
+		AchievementTemplateRow
 	} from '$types/achievement.type';
 
 	// The sync API is served by @3xl/backend (default :2002), which owns the
 	// Supabase DB password. This component owns the diff between the local
-	// achievements.json collection and the remote `achievement_templates` table —
-	// same pattern as CharacterTemplateSync, with one difference that matters:
-	// Supabase holds only the id, so a badge is never "out of date" up there. It is
-	// either known to the database or it isn't.
+	// achievements.json collection and the remote `achievement_templates` table.
+	//
+	// Supabase holds no wording, so rewording a badge is not a divergence. It does
+	// hold each badge's **requirement** — awarding is a rule, and the rule has to live
+	// where it is enforced — compiled up there from the source text on this side. So a
+	// badge that exists on both sides can still be out of date: `mismatch` is a rule
+	// that has been edited here since the last sync, and until it is synced the
+	// database is still awarding the old one.
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
 
 	// The locally authored collection, loaded by the page (which already has it).
@@ -22,7 +27,7 @@
 		holderschange: Map<string, number>;
 	}>();
 
-	let remote: string[] = [];
+	let remote: AchievementTemplateRow[] = [];
 	let holders = new Map<string, number>();
 	let loading = false;
 	let loadError = '';
@@ -40,15 +45,15 @@
 		try {
 			// The holder counts come from the same trip: they are what says whether
 			// retiring a badge would take anything away from anyone.
-			const [idsRes, holdersRes] = await Promise.all([
+			const [templatesRes, holdersRes] = await Promise.all([
 				fetch(`${API_BASE}/api/achievement-templates`),
 				fetch(`${API_BASE}/api/achievement-templates/holders`)
 			]);
-			if (!idsRes.ok) {
-				const body = await idsRes.json().catch(() => ({ message: idsRes.statusText }));
-				throw new Error(body.message ?? `Failed to load achievements (${idsRes.status})`);
+			if (!templatesRes.ok) {
+				const body = await templatesRes.json().catch(() => ({ message: templatesRes.statusText }));
+				throw new Error(body.message ?? `Failed to load achievements (${templatesRes.status})`);
 			}
-			remote = ((await idsRes.json()) as { ids: string[] }).ids;
+			remote = ((await templatesRes.json()) as { templates: AchievementTemplateRow[] }).templates;
 			if (holdersRes.ok) {
 				const data = (await holdersRes.json()) as { holders: Record<string, number> };
 				holders = new Map(Object.entries(data.holders));
@@ -71,11 +76,9 @@
 				throw new Error(body.message ?? `Sync failed (${res.status})`);
 			}
 			lastSync = (await res.json()) as AchievementSyncResult;
-			remote = lastSync.ids;
-			loaded = true;
-			// Awards cascade off a deleted template, so the counts are stale the moment
-			// a sync removes anything.
-			if (lastSync.removed.length > 0) await loadRemote();
+			// The response carries the ids alone, and what the diff below compares is the
+			// rules — so the rows are re-read rather than reconstructed from it.
+			await loadRemote();
 		} catch (err) {
 			syncError = err instanceof Error ? err.message : String(err);
 		} finally {
@@ -89,17 +92,25 @@
 
 	function buildStatuses(
 		localList: Achievement[],
-		remoteIds: string[]
+		remoteRows: AchievementTemplateRow[]
 	): Map<string, AchievementStatus> {
-		const remoteSet = new Set(remoteIds);
+		const remoteById = new Map(remoteRows.map((row) => [row.id, row]));
 		const localSet = new Set(localList.map((achievement) => achievement.id));
 		const statuses = new Map<string, AchievementStatus>();
 		for (const achievement of localList) {
-			statuses.set(achievement.id, remoteSet.has(achievement.id) ? 'synced' : 'missing');
+			const row = remoteById.get(achievement.id);
+			if (!row) {
+				statuses.set(achievement.id, 'missing');
+				continue;
+			}
+			// The requirement as authored is stored beside the tree it compiled to, so
+			// the two sides can be compared without parsing anything here.
+			const mine = achievement.requirement?.trim() || null;
+			statuses.set(achievement.id, mine === (row.requirement ?? null) ? 'synced' : 'mismatch');
 		}
 		// Remote-only ids have no card on the grid, but they are still a divergence —
 		// and, unlike a missing one, players may be wearing them.
-		for (const id of remoteIds) if (!localSet.has(id)) statuses.set(id, 'orphan');
+		for (const row of remoteRows) if (!localSet.has(row.id)) statuses.set(row.id, 'orphan');
 		return statuses;
 	}
 
@@ -143,10 +154,13 @@
 		</div>
 
 		<p class="text-sm opacity-70">
-			Supabase keeps <strong>only the id</strong> of each achievement — the glyph, name and
+			Supabase keeps each achievement's <strong>id and its requirement</strong> — the glyph, name and
 			description stay in <code class="font-mono">@3xl/data</code>'s
 			<code class="font-mono">public/achievements.json</code>, so rewording a badge needs no sync at
-			all. Syncing inserts ids that are missing up there and deletes ids that no longer exist here;
+			all. The requirement is different: it is compiled up there and it is what
+			<code class="font-mono">claim_achievements</code> awards a badge against, so editing one leaves
+			the database enforcing the old rule until you sync. Syncing inserts ids that are missing up
+			there, rewrites the rules that have changed, and deletes ids that no longer exist here —
 			deleting an id also removes it from every player who held it
 			(<code class="font-mono">player_achievements</code> cascades).
 		</p>
@@ -178,7 +192,8 @@
 		{#if lastSync}
 			<div class="alert alert-success">
 				<span>
-					Synced — {lastSync.added.length} added, {lastSync.removed.length} removed.
+					Synced — {lastSync.added.length} added, {lastSync.updated.length} rules rewritten,
+					{lastSync.removed.length} removed.
 				</span>
 			</div>
 		{/if}

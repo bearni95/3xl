@@ -2,36 +2,52 @@ import { Router } from 'express';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type {
+	Achievement,
 	AchievementsCollection,
-	AchievementSyncResult
+	AchievementSyncResult,
+	AchievementTemplateRow
 } from '@3xl/shared/types/achievement.type';
+import {
+	FormulaError,
+	parseCondition,
+	parseFormula,
+	type ConditionNode,
+	type FormulaNode
+} from '@3xl/shared/utils/achievement/formula';
 import { asyncHandler, httpError } from '../http-error';
 import { getPool } from '../db';
+import { ensureTables as ensureCoreSchema } from './show-templates';
 
 /**
  * Read/sync API for achievements in Supabase, and the ledger of who holds them.
  *
- * Supabase keeps **only the id**: `achievement_templates` is a table of one
- * column plus a timestamp, existing so that `player_achievements` has something
- * to foreign-key to. A badge's glyph, name and description live in the local
- * @3xl/data `public/achievements.json` (see ./achievements) and are never pushed
- * up — so rewording a badge is one edit in the git tree, and no row anywhere can
- * disagree with it.
+ * Supabase holds no wording: a badge's glyph, name and description live in the local
+ * @3xl/data `public/achievements.json` (see ./achievements) and are never pushed up,
+ * so rewording a badge is one edit in the git tree and no row anywhere can disagree
+ * with it. What Supabase *does* hold is each badge's **rule** — the requirement that
+ * earns it — because awarding is a rule and rules are enforced where a browser
+ * cannot edit them. `claim_achievements` walks that rule itself; see
+ * ../../supabase/achievement_templates.sql.
  *
- * The local collection is the source of truth. `GET /` reports the remote ids;
- * `POST /sync` makes the remote table mirror the local file (insert every local
- * id, delete remote ids that no longer exist locally). Since the row is nothing
- * but its id there is no such thing as an out-of-date row — only a missing or a
- * surplus one.
+ * A requirement cannot be parsed in Postgres, so it is compiled here: the tree the
+ * database walks is produced by the very parser the frontend uses
+ * (`@3xl/shared/utils/achievement/formula`), and pushed alongside the source text it
+ * came from. That source is what makes a stale rule visible — an id that exists on
+ * both sides can now be out of date, which is what `mismatch` reports and what the
+ * `updated` list of a sync names.
  *
- * Deleting is the sync's one destructive act: `player_achievements` cascades off
- * the template, so removing an achievement locally and syncing takes every award
- * of it with it. That is the intended meaning of retiring a badge — a badge that
- * no longer exists cannot be held — and `removed` in the result names exactly
- * which ids it happened to.
+ * The local collection is the source of truth. `GET /` reports the remote rows;
+ * `POST /sync` makes the remote table mirror the local file (upsert every local id
+ * with its compiled rule, delete remote ids that no longer exist locally).
+ *
+ * Deleting is the sync's one destructive act: `player_achievements` cascades off the
+ * template, so removing an achievement locally and syncing takes every award of it
+ * with it. That is the intended meaning of retiring a badge — a badge that no longer
+ * exists cannot be held — and `removed` in the result names exactly which ids it
+ * happened to.
  *
  * Mirrors ./character-templates: talks to Supabase's Postgres directly via ../db
- * (the DB password) so it can provision its own tables — no manual SQL step.
+ * (the DB password) so it can provision its own schema — no manual SQL step.
  */
 
 // packages/backend/src/routes → packages/data. Same file as ./achievements writes.
@@ -39,45 +55,26 @@ const ACHIEVEMENTS_PATH = fileURLToPath(
 	new URL('../../../data/public/achievements.json', import.meta.url)
 );
 
-// Create the tables exactly once per process, lazily on first use, so we never
-// issue the DDL on a request that doesn't need it (and never at startup, where a
-// bad config would crash the whole server). Both are idempotent.
-//
-// `player_achievements` is the users-to-achievements join, and the only part of
-// this that holds player data. It is RLS-protected and readable by everyone —
-// a badge is worn, so one player seeing another's is the point — but carries no
-// insert/update/delete policy at all, so the anon key cannot award anything.
-// Awarding is a rule, and rules belong on the server: when there is one, it
-// arrives as a security-definer RPC that decides for itself whether the badge is
-// earned, exactly as claim_booster and award_combat_exp do for packs and
-// experience.
+// The schema and the RPCs, read off disk and executed rather than inlined here.
+// Every other table in this project is provisioned from a TypeScript string with a
+// reference .sql file kept beside it, but the achievement rule is evaluated in two
+// places — that file and @3xl/shared's formula.ts — and two copies of an awarding
+// rule that drift apart pay out badges nobody earned. One file, read at run time, is
+// what lets the two evaluators be read side by side.
+const SCHEMA_PATH = fileURLToPath(new URL('../../supabase/achievement_templates.sql', import.meta.url));
+
+/**
+ * Provision the achievement schema (tables, RLS, the evaluator, the daily pick and
+ * `claim_achievements`) exactly once per process, lazily on first use. The core
+ * schema goes first: the RPCs read `character_spawns` and `player_profiles` and call
+ * `level_for_exp` / `level_span_exp`, all of which ./show-templates owns.
+ */
 let ensured: Promise<void> | null = null;
 function ensureTables(): Promise<void> {
 	if (!ensured) {
-		ensured = getPool()
-			.query(
-				`create table if not exists achievement_templates (
-					id text primary key,
-					updated_at timestamptz not null default now()
-				);
-				alter table achievement_templates enable row level security;
-				drop policy if exists achievement_templates_select_all on achievement_templates;
-				create policy achievement_templates_select_all on achievement_templates
-						for select using (true);
-				create table if not exists player_achievements (
-					user_id uuid not null references auth.users (id) on delete cascade,
-					achievement_id text not null
-						references achievement_templates (id) on delete cascade,
-					awarded_at timestamptz not null default now(),
-					primary key (user_id, achievement_id)
-				);
-				create index if not exists player_achievements_achievement_idx
-					on player_achievements (achievement_id);
-				alter table player_achievements enable row level security;
-				drop policy if exists player_achievements_select_all on player_achievements;
-				create policy player_achievements_select_all on player_achievements
-						for select using (true)`
-			)
+		ensured = ensureCoreSchema()
+			.then(() => readFile(SCHEMA_PATH, 'utf-8'))
+			.then((sql) => getPool().query(sql))
 			.then(() => undefined)
 			.catch((error: unknown) => {
 				// Reset so a transient failure (e.g. bad password) can be retried on the
@@ -90,33 +87,90 @@ function ensureTables(): Promise<void> {
 	return ensured;
 }
 
-/** The local collection's ids, sorted — everything Supabase is meant to hold. */
-async function localIds(): Promise<string[]> {
+/** One local badge, with its rule compiled into what the database walks. */
+interface CompiledTemplate {
+	id: string;
+	/** The requirement as authored, or null when the badge has none. */
+	requirement: string | null;
+	/** The parsed condition, or null. */
+	tree: ConditionNode | null;
+	/** Each variable's parsed formula by name, or null when the badge declares none. */
+	variables: Record<string, FormulaNode> | null;
+}
+
+/**
+ * Compile one achievement's rule. A badge with no requirement compiles to nulls —
+ * which is a badge that is never set as one of a player's three and can never be
+ * claimed, and is exactly what most badges are until somebody writes a rule for one.
+ *
+ * A requirement that will not parse is a hard error rather than a skipped row: the
+ * write API refuses to store one, so a file holding one has been hand-edited, and
+ * silently syncing the badge with no rule would make it quietly unclaimable.
+ */
+function compile(achievement: Achievement): CompiledTemplate {
+	const names = (achievement.variables ?? []).map((variable) => variable.name);
+	const requirement = achievement.requirement?.trim() || null;
+	let variables: Record<string, FormulaNode> | null = null;
+	if (achievement.variables?.length) {
+		variables = {};
+		for (const variable of achievement.variables) {
+			try {
+				variables[variable.name] = parseFormula(variable.formula);
+			} catch (error) {
+				httpError(
+					400,
+					`Achievement "${achievement.id}": variable "${variable.name}" — ${
+						error instanceof FormulaError ? error.message : String(error)
+					}`
+				);
+			}
+		}
+	}
+	let tree: ConditionNode | null = null;
+	if (requirement) {
+		try {
+			tree = parseCondition(requirement, names);
+		} catch (error) {
+			httpError(
+				400,
+				`Achievement "${achievement.id}": requirement — ${
+					error instanceof FormulaError ? error.message : String(error)
+				}`
+			);
+		}
+	}
+	return { id: achievement.id, requirement, tree, variables };
+}
+
+/** The local collection, compiled and sorted by id — everything Supabase should hold. */
+async function localTemplates(): Promise<CompiledTemplate[]> {
+	let collection: AchievementsCollection;
 	try {
-		const raw = await readFile(ACHIEVEMENTS_PATH, 'utf-8');
-		const parsed = JSON.parse(raw) as AchievementsCollection;
-		return (parsed?.achievements ?? []).map((achievement) => achievement.id).sort();
+		collection = JSON.parse(await readFile(ACHIEVEMENTS_PATH, 'utf-8')) as AchievementsCollection;
 	} catch {
 		return [];
 	}
+	return (collection?.achievements ?? [])
+		.map(compile)
+		.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/** Fetch the remote ids, ordered. */
-async function fetchRemote(): Promise<string[]> {
+/** The remote rows: the id and the requirement the compiled tree was made from. */
+async function fetchRemote(): Promise<AchievementTemplateRow[]> {
 	await ensureTables();
-	const { rows } = await getPool().query<{ id: string }>(
-		'select id from achievement_templates order by id'
+	const { rows } = await getPool().query<{ id: string; requirement: string | null }>(
+		'select id, requirement from achievement_templates order by id'
 	);
-	return rows.map((row) => row.id);
+	return rows.map((row) => ({ id: row.id, requirement: row.requirement }));
 }
 
 export const achievementTemplatesRouter = Router();
 
-// The remote id list, for the admin to compare against the local collection.
+// The remote rows, for the admin to compare against the local collection.
 achievementTemplatesRouter.get(
 	'/',
 	asyncHandler(async (_req, res) => {
-		res.json({ ids: await fetchRemote() });
+		res.json({ templates: await fetchRemote() });
 	})
 );
 
@@ -136,36 +190,64 @@ achievementTemplatesRouter.get(
 	})
 );
 
-// Mirror the local collection into Supabase: insert every local id, then delete
-// any remote id that no longer exists locally (taking its awards with it).
-// Idempotent — running it with nothing to change reports all-zero counts.
+// Mirror the local collection into Supabase: upsert every local id with its compiled
+// rule, then delete any remote id that no longer exists locally (taking its awards
+// with it). Idempotent — running it with nothing to change reports all-zero counts.
 achievementTemplatesRouter.post(
 	'/sync',
 	asyncHandler(async (_req, res) => {
 		const pool = getPool();
-		const local = await localIds();
+		const local = await localTemplates();
 		const before = await fetchRemote();
 
-		const beforeSet = new Set(before);
-		const localSet = new Set(local);
-		const added = local.filter((id) => !beforeSet.has(id));
-		const removed = before.filter((id) => !localSet.has(id));
+		const beforeById = new Map(before.map((row) => [row.id, row]));
+		const localSet = new Set(local.map((template) => template.id));
+		const added = local.filter((template) => !beforeById.has(template.id)).map((t) => t.id);
+		// The rule is the one thing up there that can go stale, so a row already
+		// present is "updated" when the requirement it was compiled from has changed.
+		const updated = local
+			.filter((template) => {
+				const remote = beforeById.get(template.id);
+				return remote !== undefined && (remote.requirement ?? null) !== template.requirement;
+			})
+			.map((template) => template.id);
+		const removed = before.filter((row) => !localSet.has(row.id)).map((row) => row.id);
 
-		// Bulk insert; `do nothing` because an id that is already there is already
-		// correct — the row has no other column to bring up to date.
+		// One statement for the whole collection: four parallel arrays unnested into
+		// rows. `do update` unconditionally rewrites the rule — cheaper than comparing
+		// trees in SQL, and the row carries nothing else that could be lost.
 		if (local.length > 0) {
 			await pool.query(
-				`insert into achievement_templates (id)
-				 select * from unnest($1::text[])
-				 on conflict (id) do nothing`,
-				[local]
+				`insert into achievement_templates (id, requirement, requirement_tree, variables)
+				 select * from unnest(
+					 $1::text[],
+					 $2::text[],
+					 $3::jsonb[],
+					 $4::jsonb[]
+				 )
+				 on conflict (id) do update set
+					 requirement = excluded.requirement,
+					 requirement_tree = excluded.requirement_tree,
+					 variables = excluded.variables,
+					 updated_at = now()`,
+				[
+					local.map((template) => template.id),
+					local.map((template) => template.requirement),
+					local.map((template) => (template.tree ? JSON.stringify(template.tree) : null)),
+					local.map((template) => (template.variables ? JSON.stringify(template.variables) : null))
+				]
 			);
 		}
 		if (removed.length > 0) {
 			await pool.query('delete from achievement_templates where id = any($1::text[])', [removed]);
 		}
 
-		const result: AchievementSyncResult = { ids: await fetchRemote(), added, removed };
+		const result: AchievementSyncResult = {
+			ids: (await fetchRemote()).map((row) => row.id),
+			added,
+			updated,
+			removed
+		};
 		res.json(result);
 	})
 );

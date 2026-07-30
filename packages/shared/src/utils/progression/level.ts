@@ -133,6 +133,26 @@ export function combatExpAward({ exp, outcome, survivors, fielded }: CombatExpIn
 	return Math.round((span * left) / fielded);
 }
 
+/**
+ * Experience for completing one achievement: a third of the level the player is on
+ * when they complete it — the gap between the experience their current level began
+ * at and the experience the next one begins at, divided by three, rounded down.
+ *
+ * So it is worth more at every level rather than being a fixed number that stops
+ * mattering, and the three badges a day (see `utils/achievement/daily`) come to one
+ * level's worth if a player earns all of them. Zero at {@link MAX_LEVEL}, which has
+ * no next threshold to reach — as a fight's award is.
+ *
+ * The level is the one they hold **at completion time**, which is why this takes a
+ * level rather than an experience total: `claim_achievements` re-reads it for each
+ * badge it grants, so a badge that levels a player up makes the next one worth more
+ * in the same claim. That RPC is the authority; this mirrors its arithmetic so the
+ * modal can print the number before the claim is made.
+ */
+export function achievementExpAward(level: number): number {
+	return Math.floor(levelSpanExp(level) / 3);
+}
+
 /** A player's level and their progress through it, derived from an experience total. */
 export interface LevelProgress {
 	/** Current level, [{@link MIN_LEVEL}, {@link MAX_LEVEL}]. */

@@ -126,8 +126,12 @@ src/
 Frontend routes: `/` (home), `/map` (Països Catalans map), `/roster` (the player's claimed
 cards). Neither claiming nor combat has a route of its own — the booster packs live on the
 map's right-hand panel (its Booster tab), and `CombatArena` is hosted in a panel over the
-map (the Challenge button on a municipality). Admin routes: `/characters` (definition editor), `/shows` (TMDB browser) and
-`/achievements` (badge editor + Supabase id sync).
+map (the Challenge button on a municipality). The roster and the achievements have no route
+either: both are full-view modals over the map, drawn on the shared `FullScreenModal` sheet
+and raised from the panel's account row. The music player is a plate in the map's top-left
+corner, stacked above the town panel. Admin routes: `/characters` (definition editor),
+`/shows` (TMDB browser), `/achievements` (badge editor + Supabase rule sync) and `/music`
+(what each vendored song is called and which show it opens).
 
 **Types, utils, and adapters no longer live in the apps** — they moved to `@3xl/shared`
 (see below). Only `components/`, `routes/`, `services/`, `css/`, and `i18n/` are per-app.
@@ -206,11 +210,56 @@ what makes a formula safe to run against whoever turns out to be reading.
   each accepts. Every mistake is caught at **parse** time (unknown source or field, a colour
   that is not a colour, an unclosed paren); evaluation never fails and always yields a finite
   number, because by then it is going into a line a player is reading.
+The same language writes the other half of a badge: its **requirement**, the condition that
+earns it — two amounts compared (`>= <= > < = !=`), any number of those combined with
+`and`/`or`/`not` and parentheses, and free to quote the badge's own variables by name
+(`cards(color = red) >= target`). A badge with no requirement is never set as one of a
+player's three for the day and can never be claimed.
+
 - `utils/achievement/template.ts` — the braces: `renderAchievement(achievement, context)` is
   what a surface calls to get one player's wording.
+- `utils/achievement/requirement.ts` — `achievementMet(achievement, context)`: whether a
+  player has earned it. A preview, not the authority (see below).
+- `utils/achievement/daily.ts` — the three badges a player is set today: a seed hashed from
+  their id and the Catalan day, and a draw from the pool of badges that have a rule. Nothing
+  is stored, so there is no table of assignments to seed or to disagree about, and everyone's
+  three change at midnight Europe/Madrid.
 - `utils/achievement/variables.ts` — the rules about the *set* (names that collide or shadow
-  a source, placeholders naming nothing), called by both the admin editor and the backend
+  a source, placeholders naming nothing, a requirement quoting a name nobody declared),
+  called by both the admin editor and the backend
   route, so the message the author sees is the message the API would have refused with.
+
+### Awarding an achievement — the rule lives in Postgres
+
+Everything above is what the *browser* computes so it can show a badge and grey out one that
+is not ready. None of it awards anything. Awarding is a rule, so it is enforced where a
+browser cannot edit it: `claim_achievements()`, a security-definer RPC that takes **no
+arguments**. It recomputes today's three itself, walks each requirement itself, and decides
+the experience itself; the client submits an intention and nothing else — the same trust
+model as `claim_booster` and `award_combat_exp`.
+
+Which means the formula language has a **second implementation**, in PL/pgSQL, in
+`packages/backend/supabase/achievement_templates.sql` — and two copies of an awarding rule
+that drift apart pay out badges nobody earned. So:
+
+- The **parser** stays in TypeScript and runs once, at sync time: `POST
+  /api/achievement-templates/sync` compiles each requirement into a syntax tree and pushes it
+  (with the source text it came from, and the badge's variables' compiled formulas) into
+  `achievement_templates`. The database evaluates trees; it never parses.
+- The tree is therefore a **wire format** between the two evaluators. Changing a node's shape
+  means changing both, and the parity checks that hold them together are the pinned values in
+  `packages/frontend/test/utils/achievement-daily.test.ts` (the seed and the draw) plus a
+  formula/condition table run against both engines.
+- That .sql file is the one file under `supabase/` that is **not** reference-only: the backend
+  reads it off disk and executes it (`achievement-templates.ts`), so the server's evaluator and
+  the browser's can be read side by side rather than one of them living inside a TypeScript
+  string.
+- Supabase therefore holds a badge's id **and its rule** — never its wording. A rule edited
+  locally leaves the database enforcing the old one until the next sync, which is what the
+  admin's `mismatch` status is for.
+- The award is a third of the span of the level the player is on **at completion time**
+  (`achievementExpAward` mirrors it), re-read per badge inside one claim, and recorded on
+  `player_achievements.exp_awarded`.
 
 ## Backend API (`@3xl/backend`)
 
@@ -230,20 +279,30 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   sync. `packages/backend/supabase/character_templates.sql` is kept for reference only.
 - `GET/POST /api/achievements` + `DELETE /api/achievements/:id` — read/upsert/retire one
   achievement in `@3xl/data`'s `public/achievements.json` (glyph + name + description, plus
-  any **formula variables** — see below),
+  any **formula variables** and its **requirement** — see above),
   validated against `@3xl/shared/types/achievement.type`. `GET /api/achievements/icons`
   lists the game-icons.net glyphs an achievement may use, read off `@3xl/assets`'
   `public/icons/<artist>/` — the same listing the save validates against, so the admin's
   picker can never offer a glyph the save would refuse.
+- `GET/POST /api/music` + `DELETE /api/music/:file` — read/upsert/retire one song's
+  definition in `@3xl/data`'s `public/music.json` (title + the TMDB id of the show it
+  opens), validated against `@3xl/shared/types/music.type`. The songs themselves are
+  assets, not entries: `GET /api/music/files` lists the mp3s found in `@3xl/assets`'
+  `public/music/`, which is the list the admin `/music` screen is built from — a
+  definition answers a file, so a save naming a file that is not there is refused, as is
+  a link to a show `public/shows.json` does not hold.
 - `GET /api/achievement-templates` + `POST /api/achievement-templates/sync` — mirror the
-  local achievement **ids** into Supabase's `achievement_templates`, which holds nothing
-  else: a badge's wording lives only in the JSON, so it can never go stale up there. The
-  table exists to be the FK target of `player_achievements` (who holds what) — world-readable,
-  with no client write policy at all, so awarding will come from a security-definer RPC.
-  Retiring a badge locally and syncing deletes the row *and* every award of it (cascade);
-  `GET /api/achievement-templates/holders` reports the per-badge holder count so the admin
-  can see that cost first. Provisions its own tables;
-  `packages/backend/supabase/achievement_templates.sql` is kept for reference only.
+  local achievement **ids and compiled rules** into Supabase's `achievement_templates`. A
+  badge's wording lives only in the JSON and can never go stale up there; its requirement
+  *can*, which is why the sync compiles each one (with the TypeScript parser — Postgres
+  evaluates trees, it never parses) and reports an `updated` list beside `added`/`removed`.
+  The table is the FK target of `player_achievements` (who holds what) — world-readable, with
+  no client write policy at all, so the only writer is the security-definer
+  `claim_achievements()` RPC. Retiring a badge locally and syncing deletes the row *and* every
+  award of it (cascade); `GET /api/achievement-templates/holders` reports the per-badge holder
+  count so the admin can see that cost first. Provisions its own schema by **executing**
+  `packages/backend/supabase/achievement_templates.sql` — the one file in that folder that is
+  not reference-only.
 - `/api/tmdb/*` — proxy for the admin `/shows` screen. Keeps the TMDB key server-side and
   **disk-caches** every search response, image-list, and image binary under
   `packages/backend/.cache/` (git-ignored) so TMDB is never queried twice for the same thing.

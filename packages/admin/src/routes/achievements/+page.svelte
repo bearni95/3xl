@@ -189,11 +189,15 @@
 	const statusBadges: Record<AchievementStatus, string> = {
 		synced: 'badge-success',
 		missing: 'badge-warning',
+		// A stale rule is worse than an unsynced badge: this one *is* being awarded,
+		// against a requirement that is no longer the one on disk.
+		mismatch: 'badge-warning',
 		orphan: 'badge-error'
 	};
 	const statusLabels: Record<AchievementStatus, string> = {
 		synced: 'In Supabase',
 		missing: 'Not synced',
+		mismatch: 'Rule out of date',
 		orphan: 'Remote only'
 	};
 </script>

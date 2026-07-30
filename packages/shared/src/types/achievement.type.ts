@@ -29,6 +29,9 @@ export const ACHIEVEMENT_VARIABLE_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 /** A formula is one expression, not a program. */
 export const ACHIEVEMENT_FORMULA_MAX_LENGTH = 200;
 
+/** A requirement is one condition; the same bound as a formula, doubled for its two sides. */
+export const ACHIEVEMENT_REQUIREMENT_MAX_LENGTH = 400;
+
 /** How many variables one badge may declare — enough for a line, not a spreadsheet. */
 export const ACHIEVEMENT_VARIABLES_MAX = 8;
 
@@ -76,6 +79,25 @@ export interface Achievement {
 	 * entirely rather than written as an empty array.
 	 */
 	variables?: AchievementVariable[];
+	/**
+	 * What earns the badge, as a condition in the formula language — two amounts
+	 * compared, optionally combined with `and`/`or`/`not`, and free to quote this
+	 * badge's own {@link variables} by name:
+	 *
+	 * ```
+	 * cards(color = red) >= 3
+	 * cards >= target and level >= 5
+	 * ```
+	 *
+	 * Absent means the badge says nothing a machine can check, and it is then not a
+	 * badge the game can set or award: only templates whose requirement reached
+	 * Supabase are drawn as one of a player's three for the day, and
+	 * `claim_achievements` has nothing to hold a claim against without one. So this
+	 * is the one field of an achievement that is compiled and pushed to the
+	 * database — the wording stays in the git tree, but the *rule* has to live where
+	 * the rule is enforced.
+	 */
+	requirement?: string;
 }
 
 /** The whole authored collection — the file's top-level shape. */
@@ -84,24 +106,68 @@ export interface AchievementsCollection {
 }
 
 /**
- * Where one achievement id stands between the two sides. There is no `mismatch`
- * counterpart to the character/show templates': the remote row is the id alone,
- * so it either exists or it doesn't — `missing` is authored locally but not yet
- * synced, `orphan` is still in Supabase (possibly still worn by players) after
- * being retired locally.
+ * Where one achievement id stands between the two sides. `missing` is authored
+ * locally but not yet synced, `orphan` is still in Supabase (possibly still worn by
+ * players) after being retired locally, and `mismatch` is on both sides with a
+ * compiled requirement up there that no longer matches the one on disk — the one
+ * thing about a badge that *can* go stale in Supabase, since the rule is the one
+ * part of it the database has to hold.
  */
-export type AchievementStatus = 'synced' | 'missing' | 'orphan';
+export type AchievementStatus = 'synced' | 'missing' | 'orphan' | 'mismatch';
 
-/**
- * Outcome of a manual local→remote sync. There is no `updated` list: the remote
- * row is the id alone, so an id either exists on both sides or on one of them —
- * renaming a badge or redrawing its glyph changes nothing Supabase holds.
- */
+/** Outcome of a manual local→remote sync. */
 export interface AchievementSyncResult {
 	/** Every remote id after the sync completes. */
 	ids: string[];
 	/** Ids inserted into Supabase (present locally, absent remotely). */
 	added: string[];
+	/** Ids whose compiled requirement was rewritten to match the local one. */
+	updated: string[];
 	/** Ids deleted from Supabase, taking their awards with them (see the route). */
 	removed: string[];
+}
+
+/**
+ * What `claim_achievements` says about one of the badges it was asked about — one
+ * of the three set for the player today. The RPC decides every field: which badges
+ * were claimable, whether each was earned, and what it paid.
+ */
+export interface AchievementClaim {
+	/** The badge in question. */
+	achievementId: string;
+	/** Awarded by this call: earned, and not already held. */
+	granted: boolean;
+	/** Already held before the call — there is nothing to pay twice. */
+	held: boolean;
+	/** Whether its requirement holds right now, granted or not. */
+	met: boolean;
+	/** Experience this badge paid: a third of the level's span, or 0. */
+	expAwarded: number;
+	/** The level the player was on when this badge was settled. */
+	atLevel: number;
+	/** Their experience total after it. */
+	totalExp: number;
+}
+
+/** The raw `claim_achievements()` row (snake_case, bigints as strings). */
+export interface AchievementClaimRow {
+	achievement_id: string;
+	granted: boolean | null;
+	held: boolean | null;
+	met: boolean | null;
+	exp_awarded: string | number | null;
+	at_level: string | number | null;
+	total_exp: string | number | null;
+}
+
+/**
+ * One remote `achievement_templates` row as the admin reads it back: the id, and
+ * whether the database is holding a rule for it. The compiled tree itself is not
+ * something the screen shows — what matters is that there is one and that it says
+ * the same as the local file, which is what {@link AchievementStatus} reports.
+ */
+export interface AchievementTemplateRow {
+	id: string;
+	/** The requirement source the compiled tree was made from, or null for none. */
+	requirement: string | null;
 }

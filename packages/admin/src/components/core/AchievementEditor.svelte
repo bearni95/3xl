@@ -39,13 +39,17 @@
 	 * the rows below have something to iterate whether or not the badge on disk has
 	 * any. It is dropped again on the way out — see {@link payload}.
 	 */
-	type Draft = Achievement & { variables: AchievementVariable[] };
+	type Draft = Achievement & { variables: AchievementVariable[]; requirement: string };
 
 	// The one document this editor edits. The form and the JSON tab are two views
 	// of it, not two documents: whichever tab is open, Save sends this.
 	let draft: Draft = achievement
-		? { ...achievement, variables: (achievement.variables ?? []).map((v) => ({ ...v })) }
-		: { id: '', name: '', description: '', icon: '', variables: [] };
+		? {
+				...achievement,
+				variables: (achievement.variables ?? []).map((v) => ({ ...v })),
+				requirement: achievement.requirement ?? ''
+			}
+		: { id: '', name: '', description: '', icon: '', variables: [], requirement: '' };
 
 	let tab: 'form' | 'json' = 'form';
 	let pickerOpen = false;
@@ -61,8 +65,11 @@
 	 * rather than an empty list the file never has.
 	 */
 	function payload(value: Draft): Achievement {
-		const { variables, ...rest } = value;
-		return variables.length > 0 ? { ...rest, variables } : rest;
+		const { variables, requirement, ...rest } = value;
+		const entry: Achievement = { ...rest };
+		if (variables.length > 0) entry.variables = variables;
+		if (requirement.trim()) entry.requirement = requirement.trim();
+		return entry;
 	}
 
 	function serialize(value: Draft): string {
@@ -121,7 +128,8 @@
 			icon: String(parsed.icon ?? ''),
 			// Narrowed the same way the backend narrows the body, so a hand-typed
 			// document cannot put anything but name/formula pairs in the rows.
-			variables: normalizeVariables(parsed.variables)
+			variables: normalizeVariables(parsed.variables),
+			requirement: typeof parsed.requirement === 'string' ? parsed.requirement : ''
 		};
 		if (isNew && draft.id) idTouched = true;
 	}
@@ -134,6 +142,10 @@
 
 	function changeVariables(event: CustomEvent<{ variables: AchievementVariable[] }>): void {
 		draft = { ...draft, variables: event.detail.variables };
+	}
+
+	function changeRequirement(event: CustomEvent<{ requirement: string }>): void {
+		draft = { ...draft, requirement: event.detail.requirement };
 	}
 
 	function save(): void {
@@ -261,8 +273,10 @@
 			variables={draft.variables}
 			name={draft.name}
 			description={draft.description}
+			requirement={draft.requirement}
 			problems={variableProblems}
 			on:change={changeVariables}
+			on:changerequirement={changeRequirement}
 		/>
 	{:else}
 		<div class="flex flex-col gap-2">

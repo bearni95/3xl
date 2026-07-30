@@ -33,10 +33,15 @@ import { asyncHandler, httpError } from '../http-error';
  * would then refuse.
  *
  * A badge may also declare variables — its own numbers, each a formula over the
- * player reading it, templated into its wording between braces. They are held to
- * the rules in `@3xl/shared/utils/achievement/variables`, which is the same module
- * the admin editor validates with, so a formula this refuses is one the editor
- * already said no to.
+ * player reading it, templated into its wording between braces — and a requirement,
+ * the condition that earns it. Both are held to the rules in
+ * `@3xl/shared/utils/achievement/variables`, which is the same module the admin
+ * editor validates with, so a formula this refuses is one the editor already said
+ * no to.
+ *
+ * The requirement is written here as its source text and nothing else. Compiling it
+ * for the database — which is what actually decides whether a player has earned a
+ * badge — happens in ./achievement-templates, on sync.
  */
 
 // packages/backend/src/routes → packages/data / packages/assets. Resolved from
@@ -136,22 +141,26 @@ async function validate(body: unknown): Promise<Achievement> {
 		httpError(400, `Unknown icon "${icon}" — pick one of the game-icons in @3xl/assets`);
 	}
 
-	// The badge's own computed numbers. Narrowed first (so nothing but name/formula
-	// reaches the tree), then held against the same rules the editor shows: every
-	// formula has to parse, and every `{placeholder}` in the wording has to name one
-	// of these — a badge whose text quotes a variable it never declared would go out
-	// to players with the braces still in it.
+	// The badge's own computed numbers, and the condition that earns it. Narrowed
+	// first (so nothing but name/formula reaches the tree), then held against the
+	// same rules the editor shows: every formula has to parse, every `{placeholder}`
+	// in the wording has to name one of these — a badge whose text quotes a variable
+	// it never declared would go out to players with the braces still in it — and the
+	// requirement has to be a condition that parses against those same names.
 	const variables = normalizeVariables(draft.variables);
-	const problems = validateVariables({ name, description, variables });
+	const requirement = typeof draft.requirement === 'string' ? draft.requirement.trim() : '';
+	const problems = validateVariables({ name, description, variables, requirement });
 	if (problems.length > 0) {
 		httpError(400, problems.map((problem) => problem.message).join('; '));
 	}
 
-	// Left out entirely when there are none, so a badge with fixed wording stays the
-	// four fields it always was.
-	return variables.length > 0
-		? { id, name, description, icon, variables }
-		: { id, name, description, icon };
+	// Each of the two optional fields is left out entirely when it is empty, so a
+	// badge with fixed wording and no checkable rule stays the four fields it always
+	// was.
+	const achievement: Achievement = { id, name, description, icon };
+	if (variables.length > 0) achievement.variables = variables;
+	if (requirement) achievement.requirement = requirement;
+	return achievement;
 }
 
 export const achievementsRouter = Router();
