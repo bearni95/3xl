@@ -246,10 +246,6 @@ const TRAIT_SPENT_ALPHA = 0.25;
 /** Lifetime of a strike slash overlay (ms). */
 const SLASH_MS = 420;
 
-/** How long a knocked-out fighter holds its hurt pose while it fades to nothing
- * and is removed from the board (ms). */
-const KNOCKOUT_FADE_MS = 700;
-
 interface Point {
 	x: number;
 	y: number;
@@ -261,18 +257,6 @@ interface OneShot {
 	total: number;
 	elapsed: number;
 	/** Resolves when the animation finishes and the actor returns to idle. */
-	resolve: () => void;
-}
-
-/**
- * A knocked-out fighter dissolving off the board: it holds its hurt pose while
- * its sprite dims from full to nothing, then it's removed.
- */
-interface KnockOutFade {
-	/** Total fade duration (ms). */
-	total: number;
-	elapsed: number;
-	/** Resolves once the fade finishes and the actor has been removed. */
 	resolve: () => void;
 }
 
@@ -400,9 +384,6 @@ interface Actor {
 	 * actor simply stands (see {@link MugenBoard.holdMove}).
 	 */
 	stance: string | null;
-	/** While set, the actor has been knocked out and is fading off the board:
-	 * it holds its hurt pose, dims to nothing, then is removed. */
-	fade: KnockOutFade | null;
 	/** The looping combat aura shown behind the actor, or null. */
 	aura: Aura | null;
 	/** Floating callout (what its turn amounted to) above the actor, so a turn every
@@ -850,7 +831,6 @@ export class MugenBoard {
 			onArrive: null,
 			oneShot: null,
 			stance: null,
-			fade: null,
 			aura: null,
 			label: null,
 			orders: null,
@@ -944,12 +924,6 @@ export class MugenBoard {
 		if (!this.app) return;
 		const deltaMs = this.app.ticker.deltaMS;
 		for (const actor of this.actors) {
-			if (actor.fade) {
-				// Knocked out: frozen in its hurt pose, dimming to nothing before it's
-				// removed from the board entirely.
-				this.advanceFade(actor, deltaMs);
-				continue;
-			}
 			if (actor.oneShot) {
 				// A strike/flinch owns playback; movement and idle are suspended.
 				this.advanceOneShot(actor, deltaMs);
@@ -1094,40 +1068,6 @@ export class MugenBoard {
 			this.setAnimation(actor, this.standing(actor));
 			shot.resolve();
 		}
-	}
-
-	/**
-	 * Advance a knocked-out actor's fade: dim its sprite toward zero over
-	 * the fade's lifetime while it holds its hurt pose, then remove it from the board
-	 * and resolve. The hurt frame was pinned when the fade began, so nothing here
-	 * advances playback.
-	 */
-	private advanceFade(actor: Actor, deltaMs: number): void {
-		const fade = actor.fade;
-		if (!fade) return;
-		fade.elapsed += deltaMs;
-		const alpha = Math.max(0, 1 - fade.elapsed / fade.total);
-		actor.sprite.alpha = alpha;
-		if (actor.label) actor.label.alpha = alpha;
-		// The badge is the fighter's, so it goes down with it rather than hanging in
-		// the air over the space where it stood.
-		if (actor.traits) actor.traits.container.alpha = alpha;
-		if (fade.elapsed >= fade.total) {
-			actor.fade = null;
-			this.removeActor(actor);
-			fade.resolve();
-		}
-	}
-
-	/** Destroy an actor's display objects and drop it from the board for good. */
-	private removeActor(actor: Actor): void {
-		this.clearAura(actor.id);
-		this.clearCallout(actor.id);
-		this.clearOrders(actor);
-		this.clearTraits(actor);
-		actor.sprite.parent?.removeChild(actor.sprite);
-		actor.sprite.destroy();
-		this.actors = this.actors.filter((a) => a.id !== actor.id);
 	}
 
 	private advanceFrame(actor: Actor, deltaMs: number): void {
@@ -1336,10 +1276,16 @@ export class MugenBoard {
 
 	/**
 	 * Walk an actor to `cell` and **adopt it as its new home**, so this is where it
-	 * stands from now on and where {@link returnHome} would bring it back to. Combat
-	 * uses it to fall the rival line back a column each time one of them is taken
-	 * down: the ground they were holding is given up for good, not borrowed.
-	 * Resolves once it has settled; a cell off the actor's own side is refused.
+	 * stands from now on and where {@link returnHome} would bring it back to. Every
+	 * lasting move on this board is one of these: the winner of a lane taking the white
+	 * column it was played for, and the fighter that lost it retracting to the back of
+	 * its own half. The ground either of them was holding is given up for good, not
+	 * borrowed.
+	 *
+	 * Resolves once it has settled; a cell off the actor's own side is refused. An actor
+	 * already standing on `cell` still settles onto its mark — which is how the winner of
+	 * a duel, stopped flush against the fighter it just felled, glides to the middle of
+	 * the cell they were both standing in.
 	 */
 	async regroup(id: string, cell: Cell): Promise<void> {
 		const actor = this.findActor(id);
@@ -1353,36 +1299,6 @@ export class MugenBoard {
 		await this.walkCells(actor, path.slice(1), this.cellMark(cell.q, cell.r));
 		actor.homeColumn = cell.q;
 		actor.homeRow = cell.r;
-	}
-
-	/**
-	 * Knock a fighter out where it stands: freeze it on its hurt flinch, then fade
-	 * it out over {@link KNOCKOUT_FADE_MS} and
-	 * remove it from the board entirely. Resolves once it's gone. Any in-flight
-	 * movement or one-shot is cancelled so the hurt pose owns the sprite as it
-	 * dissolves.
-	 */
-	knockOut(id: string): Promise<void> {
-		const actor = this.findActor(id);
-		if (!actor) return Promise.resolve();
-		// Hold the hurt flinch (its last, most-crumpled frame) rather than looping or
-		// snapping back to idle.
-		const hurt = actor.hurtAnim ? actor.animations[actor.hurtAnim] : undefined;
-		if (hurt && hurt.length > 0) {
-			this.setAnimation(actor, actor.hurtAnim);
-			actor.frameIndex = hurt.length - 1;
-			actor.frameElapsed = 0;
-		}
-		this.applyFrame(actor);
-		// Stop everything else that could drive the sprite while it fades — settling
-		// rather than dropping, so nothing is left awaiting a pose or a walk that this
-		// knockout has just cancelled.
-		this.settleOneShot(actor);
-		this.settleWalk(actor);
-		this.clearAura(id);
-		return new Promise((resolve) => {
-			actor.fade = { total: KNOCKOUT_FADE_MS, elapsed: 0, resolve };
-		});
 	}
 
 	/**
@@ -1470,7 +1386,7 @@ export class MugenBoard {
 		actor.stance = move.source && actor.animations[move.source] ? move.source : null;
 		// Into the pose now, unless something is already playing on the sprite — that
 		// releases into the stance when it ends, so the hold lands either way.
-		if (!actor.oneShot && !actor.fade) this.setAnimation(actor, this.standing(actor));
+		if (!actor.oneShot) this.setAnimation(actor, this.standing(actor));
 	}
 
 	/** Let a character out of the move it was standing in, back to idle. */
@@ -1478,7 +1394,7 @@ export class MugenBoard {
 		const actor = this.findActor(id);
 		if (!actor || !actor.stance) return;
 		actor.stance = null;
-		if (!actor.oneShot && !actor.fade) this.setAnimation(actor, 'idle');
+		if (!actor.oneShot) this.setAnimation(actor, 'idle');
 	}
 
 	/** Let every character out of whatever it was standing in — the turn holding them
@@ -1955,16 +1871,6 @@ export class MugenBoard {
 		if (!shot) return;
 		actor.oneShot = null;
 		shot.resolve();
-	}
-
-	/** Likewise for a walk in progress: drop the route and resolve the arrival. */
-	private settleWalk(actor: Actor): void {
-		actor.moving = false;
-		actor.pathQueue = [];
-		actor.finalTarget = null;
-		const arrived = actor.onArrive;
-		actor.onArrive = null;
-		arrived?.();
 	}
 
 	/**

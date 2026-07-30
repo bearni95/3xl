@@ -3,14 +3,16 @@ import { get } from 'svelte/store';
 import {
 	boardFitsLineup,
 	CombatController,
+	fallenColumn,
 	PLAYER_CELLS,
 	RIVAL_CELLS,
+	WON_COLUMN,
 	type CombatState,
 	type FighterSeed,
 	type FighterView
 } from '$services/combat.controller';
 import { cellScreenY } from '$utils/mugen/mugen-board';
-import { LAST_COLUMN } from '$utils/mugen/grid';
+import { FIRST_COLUMN, LAST_COLUMN } from '$utils/mugen/grid';
 import type { CombatColor } from '$types/character-definition.type';
 import type { BattleBoardSnapshot } from '$types/battle.type';
 
@@ -194,13 +196,24 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 				)
 			});
 
-			expect(boardFitsLineup(moved('info', LAST_COLUMN), lineup)).toBe(false);
-			expect(boardFitsLineup(moved('error', 0), lineup)).toBe(false);
-			// Its own opening column, and the one column its side's settling move reaches,
-			// are both ground it could be holding.
+			// The other side's half is the one place a fighter can never be found: a lane
+			// leaves both of its fighters on their own half or on the white column between
+			// them, and nothing in the game walks anybody across.
+			expect(boardFitsLineup(moved('info', RIVAL_CELLS[0].q), lineup)).toBe(false);
+			expect(boardFitsLineup(moved('error', PLAYER_CELLS[0].q), lineup)).toBe(false);
+			expect(boardFitsLineup(moved('info', LAST_COLUMN + 1), lineup)).toBe(false);
+			// The three columns a fight actually leaves a fighter on: the one its line opened
+			// on, the white one it takes by winning its lane, and the back of its own half it
+			// retracts to on losing one.
 			expect(boardFitsLineup(moved('info', PLAYER_CELLS[0].q), lineup)).toBe(true);
-			expect(boardFitsLineup(moved('info', 0), lineup)).toBe(true);
-			expect(boardFitsLineup(moved('error', RIVAL_CELLS[0].q - 1), lineup)).toBe(true);
+			expect(boardFitsLineup(moved('info', WON_COLUMN), lineup)).toBe(true);
+			expect(boardFitsLineup(moved('info', fallenColumn('info')), lineup)).toBe(true);
+			expect(boardFitsLineup(moved('error', RIVAL_CELLS[0].q), lineup)).toBe(true);
+			expect(boardFitsLineup(moved('error', WON_COLUMN), lineup)).toBe(true);
+			expect(boardFitsLineup(moved('error', fallenColumn('error')), lineup)).toBe(true);
+			// And the outermost column each side retracts to is the board's own edge.
+			expect(fallenColumn('info')).toBe(LAST_COLUMN);
+			expect(fallenColumn('error')).toBe(FIRST_COLUMN);
 		});
 	});
 

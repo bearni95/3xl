@@ -1,17 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { standingLine, type LineFighter, type StandingFighter } from '$utils/mugen/board-standing';
-import { PLAYER_CELLS } from '$services/combat.controller';
+import { fallenColumn, PLAYER_CELLS } from '$services/combat.controller';
 
 /** The player's line as the arena opens it: its first member nearest the viewer. */
 const line: LineFighter[] = [...PLAYER_CELLS]
 	.reverse()
 	.map((opening, index) => ({ id: `info:spawn-${index}`, opening }));
 
-const saved = (
-	id: string,
-	cell: { q: number; r: number } | null,
-	down = false
-): StandingFighter => ({ id, cell, down });
+const saved = (id: string, cell: { q: number; r: number } | null): StandingFighter => ({
+	id,
+	cell
+});
 
 describe('standing a line back up off a saved board', () => {
 	it('opens the line where it opens when there is no board to resume', () => {
@@ -32,13 +31,19 @@ describe('standing a line back up off a saved board', () => {
 		expect(placed[2].cell).toEqual(line[2].opening);
 	});
 
-	it('leaves the fallen off the board without moving anybody else', () => {
-		const placed = standingLine(line, [saved(line[1].id, line[1].opening, true)]);
+	it('stands the fallen back up on the ground they retracted to', () => {
+		// A fighter taken down withdraws to the back of its own half and stays there for the
+		// rest of the fight, so a board that has one records where it went — and it is drawn
+		// there like anybody else. Nobody is ever dropped from the line: a fight with a
+		// fallen fighter in it still has six fighters standing on the board.
+		const retracted = { q: fallenColumn('info'), r: line[1].opening.r };
+		const placed = standingLine(line, [saved(line[1].id, retracted)]);
 
-		expect(placed.map((fighter) => fighter.id)).toEqual([line[0].id, line[2].id]);
-		// The survivors keep their own cells: dropping one is not the line closing up.
+		expect(placed.map((fighter) => fighter.id)).toEqual(line.map((fighter) => fighter.id));
+		expect(placed[1].cell).toEqual(retracted);
+		// And nobody else is moved by it.
 		expect(placed[0].cell).toEqual(line[0].opening);
-		expect(placed[1].cell).toEqual(line[2].opening);
+		expect(placed[2].cell).toEqual(line[2].opening);
 	});
 
 	it('ignores a cell that is not on the board', () => {
@@ -49,14 +54,19 @@ describe('standing a line back up off a saved board', () => {
 		expect(placed[0].cell).toEqual(line[0].opening);
 	});
 
-	it('never hands back an empty line, whatever the board claims', () => {
-		// Cannot come off a real board — a fight ends the moment a side is emptied, and a
-		// finished fight is never written back — but a half must have somebody to draw.
+	it('hands back the whole line whatever the fight did to it', () => {
+		// Every fighter of a wiped-out half is standing at the back of that half, so all
+		// three come back — there is no board this can be handed that draws fewer fighters
+		// than the line has.
+		const wiped = line.map((fighter) => ({
+			q: fallenColumn('info'),
+			r: fighter.opening.r
+		}));
 		const placed = standingLine(
 			line,
-			line.map((fighter) => saved(fighter.id, fighter.opening, true))
+			line.map((fighter, index) => saved(fighter.id, wiped[index]))
 		);
 
-		expect(placed).toEqual([{ id: line[0].id, cell: line[0].opening }]);
+		expect(placed).toEqual(line.map((fighter, index) => ({ id: fighter.id, cell: wiped[index] })));
 	});
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { get } from 'svelte/store';
 import {
 	CombatController,
+	fallenColumn,
 	MAX_CHARGES,
 	PLAYER_CELLS,
 	RIVAL_CELLS,
@@ -79,7 +80,8 @@ async function openWithCharges(controller: CombatController): Promise<void> {
 }
 
 /** What the controller asked the board to do about auras, and about the ground: a
- * lane's winner is walked onto (or off) the white cell it was fought over. */
+ * lane's winner is walked onto the white cell it was fought over, and the fighter it
+ * beat back to the back of its own half. */
 interface AuraLog {
 	lit: { id: string; color: string }[];
 	doused: string[];
@@ -125,7 +127,6 @@ function fakeBoard(log: AuraLog) {
 		closeIn: done,
 		meleeApproach: done,
 		returnHome: done,
-		knockOut: done,
 		regroup: (id: string, cell: Cell) => {
 			log.moved.push({ id, cell });
 			return done();
@@ -789,9 +790,15 @@ describe('the stand-off', () => {
 	});
 
 	describe('the ground a lane is fought over', () => {
-		// The white cell of a lane: the ground between the two lines, and what the player's
-		// fighter walks onto the turn it wins there.
+		// The white cell of a lane: the ground between the two lines, and what *either*
+		// side's fighter walks onto the turn it wins there.
 		const wonGround = (lane: number): Cell => ({ q: 0, r: RIVAL_CELLS[lane].r });
+		// Where the fighter that lost the lane goes: the back of its own half, a column
+		// behind the line it opened on. It is out of the fight, not off the board.
+		const fallenGround = (side: 'error' | 'info', lane: number): Cell => ({
+			q: fallenColumn(side),
+			r: RIVAL_CELLS[lane].r
+		});
 
 		it('opens with each line in its own half, the white column between them empty', () => {
 			expect(RIVAL_CELLS).toHaveLength(PLAYER_CELLS.length);
@@ -822,20 +829,26 @@ describe('the stand-off', () => {
 			expect(new Set(keys).size).toBe(keys.length);
 		});
 
-		it('leaves both moves walkable — each side may cross its own half and the white column', () => {
+		it('leaves every move walkable — each side may cross its own half and the white column', () => {
 			// The board only ever *walks* a fighter to its new ground, so the ground has to
 			// be reachable: a route over its own half plus the shared white column, which
 			// is exactly what the board allows. Without one the fighter would simply stay
-			// where it was, with nothing to say so.
+			// where it was, with nothing to say so. Both of a lane's two moves are checked
+			// for both sides — the winner's step onto the white cell, and the loser's step
+			// back to the back of its half.
 			const half = (side: 'red' | 'blue') => (cell: Cell) =>
 				isBoardCell(cell.q, cell.r) && cellSide(cell.q) !== (side === 'blue' ? 'red' : 'blue');
 			RIVAL_CELLS.forEach((rival, lane) => {
 				expect(findPath(PLAYER_CELLS[lane], wonGround(lane), half('blue'))).not.toBeNull();
-				expect(findPath(rival, { q: rival.q - 1, r: rival.r }, half('red'))).not.toBeNull();
+				expect(findPath(rival, wonGround(lane), half('red'))).not.toBeNull();
+				expect(
+					findPath(PLAYER_CELLS[lane], fallenGround('info', lane), half('blue'))
+				).not.toBeNull();
+				expect(findPath(rival, fallenGround('error', lane), half('red'))).not.toBeNull();
 			});
 		});
 
-		it('walks the player up onto the white cell it just won', async () => {
+		it('walks the player up onto the white cell it just won, and the rival it felled back', async () => {
 			const log = boardLog();
 			const controller = new CombatController([
 				seed('r0', 'error', 'red'),
@@ -846,9 +859,15 @@ describe('the stand-off', () => {
 			controller.setAction('p0', 'shoot');
 			await playTurn(controller);
 			expect(fighterOf(get(controller), 'r0').down).toBe(true);
-			// The white cell the lane was played for is the player's now.
-			expect(log.moved).toEqual([{ id: 'p0', cell: wonGround(0) }]);
-			expect(cellSide(log.moved[0].cell.q)).toBe('purple');
+			// Both halves of the lane's one result: the beaten rival withdraws to the back of
+			// its own half, and the white cell the lane was played for is the player's now.
+			// Nobody left the board.
+			expect(log.moved).toEqual([
+				{ id: 'r0', cell: fallenGround('error', 0) },
+				{ id: 'p0', cell: wonGround(0) }
+			]);
+			expect(columnLabel(log.moved[0].cell.q)).toBe('a');
+			expect(cellSide(log.moved[1].cell.q)).toBe('purple');
 		});
 
 		it('asks nothing more of a fighter that has taken the white cell', async () => {
@@ -870,7 +889,10 @@ describe('the stand-off', () => {
 			// P0 took the white cell its lane was played for, and with it the lane: there is
 			// nobody in front of it and never will be, so it stands down for the rest of the
 			// fight rather than being given orders that could do nothing.
-			expect(log.moved).toEqual([{ id: 'p0', cell: wonGround(0) }]);
+			expect(log.moved).toEqual([
+				{ id: 'r0', cell: fallenGround('error', 0) },
+				{ id: 'p0', cell: wonGround(0) }
+			]);
 			const held = fighterOf(get(controller), 'p0');
 			expect(held.holdsGround).toBe(true);
 			expect(held.ordered).toBe(true);
@@ -883,7 +905,7 @@ describe('the stand-off', () => {
 			expect(get(controller).ready).toBe(true);
 		});
 
-		it('withdraws the rival a column into its own half when it wins its lane', async () => {
+		it('walks the rival onto the same white cell when it is the one that wins the lane', async () => {
 			const log = boardLog();
 			const controller = new CombatController([
 				seed('r0', 'error', 'yellow'),
@@ -896,9 +918,59 @@ describe('the stand-off', () => {
 			controller.setAction('p0', 'charge');
 			await playTurn(controller);
 			expect(fighterOf(get(controller), 'p0').down).toBe(true);
-			// Off the front of its half, one column back the way it came.
-			expect(log.moved).toEqual([{ id: 'r0', cell: { q: RIVAL_CELLS[0].q - 1, r: RIVAL_CELLS[0].r } }]);
-			expect(cellSide(log.moved[0].cell.q)).toBe('red');
+			// A lane is won on the same ground whoever wins it: the rival takes the white
+			// cell, and the player's beaten fighter retracts to column e, the back of its own
+			// half. The ground is not a side's until somebody is standing on it.
+			expect(log.moved).toEqual([
+				{ id: 'p0', cell: fallenGround('info', 0) },
+				{ id: 'r0', cell: wonGround(0) }
+			]);
+			expect(columnLabel(log.moved[0].cell.q)).toBe('e');
+			expect(cellSide(log.moved[1].cell.q)).toBe('purple');
+		});
+
+		it('walks a decided lane out as the blow lands, not once the whole volley is over', async () => {
+			// Two lanes decided in one volley, played one after the other. The first lane's
+			// two fighters must have moved before the second lane's attacker has even set
+			// off: a hit is the moment a lane is decided, so it is the moment the board says
+			// so. Gathered up and walked out at the end of the turn instead, a fighter would
+			// still be standing on ground it had lost three attacks earlier.
+			const calls: string[] = [];
+			const board = new Proxy(
+				{},
+				{
+					get:
+						(_target, property) =>
+						(...args: unknown[]) => {
+							calls.push(String(property) + (typeof args[0] === 'string' ? `:${args[0]}` : ''));
+							return Promise.resolve();
+						}
+				}
+			) as unknown as Parameters<CombatController['attachBoard']>[0];
+			const controller = new CombatController([
+				seed('r0', 'error', 'red'),
+				seed('r1', 'error', 'red'),
+				// Yellow: no free guard, so each rival's opening free shot fells the fighter
+				// opposite it and both lanes are settled in the one volley.
+				seed('p0', 'info', 'yellow'),
+				seed('p1', 'info', 'yellow')
+			]);
+			controller.attachBoard(board);
+			controller.setAction('p0', 'charge');
+			controller.setAction('p1', 'charge');
+			await playTurn(controller);
+
+			expect(fighterOf(get(controller), 'p0').down).toBe(true);
+			expect(fighterOf(get(controller), 'p1').down).toBe(true);
+			const settled = calls.findIndex((call) => call.startsWith('regroup'));
+			const nextLane = calls.indexOf('closeIn:r1');
+			expect(settled).toBeGreaterThan(-1);
+			expect(nextLane).toBeGreaterThan(-1);
+			expect(settled).toBeLessThan(nextLane);
+			// Both of the first lane's fighters moved, and they moved on that blow.
+			expect(calls.slice(settled, nextLane)).toEqual(
+				expect.arrayContaining(['regroup:p0', 'regroup:r0'])
+			);
 		});
 
 		it("leaves the ground alone when a lane's two shots cancel", async () => {
@@ -934,8 +1006,11 @@ describe('the stand-off', () => {
 			controller.setAction('p0', 'shoot');
 			controller.setAction('p1', 'charge');
 			await playTurn(controller);
-			// Lane 0 was decided and only lane 0 moved.
-			expect(log.moved).toEqual([{ id: 'p0', cell: wonGround(0) }]);
+			// Lane 0 was decided and only lane 0 moved — both of its fighters, nobody else's.
+			expect(log.moved).toEqual([
+				{ id: 'r0', cell: fallenGround('error', 0) },
+				{ id: 'p0', cell: wonGround(0) }
+			]);
 		});
 	});
 

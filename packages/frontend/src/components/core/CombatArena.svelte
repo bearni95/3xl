@@ -266,22 +266,23 @@
 	//
 	// Those cells are where a line *opens*, and a fight being picked up did not stop
 	// there: `resumed` is the board the battle was left on, and it is what actually
-	// stands the fighters up — each on the ground it holds, with the fallen not drawn at
-	// all, because the board they were taken off is the board that comes back. Without
-	// it a reloaded fight redraws itself as a fresh one — three a side on their opening
-	// cells — over a controller that knows better, and the picture is a lie about the
-	// score.
+	// stands the fighters up — each on the ground it holds, the fallen included, since
+	// being beaten moves a fighter to the back of its own half rather than taking it off
+	// the board. Without it a reloaded fight redraws itself as a fresh one — everybody
+	// back on their opening cells — over a controller that knows better, and the picture
+	// is a lie about the score.
 	function buildGrids(
 		ids: string[],
 		spawns: Map<string, CharacterSpawn>,
 		resumed: BattleBoardSnapshot | null
 	): [BoardGrid, BoardGrid] {
 		// Matched by the instance id, not by the spawn: the two sides can field the same
-		// spawn (a mirror match), and each of them stands somewhere of its own.
+		// spawn (a mirror match), and each of them stands somewhere of its own. Whether a
+		// fighter is still in the fight says nothing about where it is drawn, so it is not
+		// passed on: every fighter the board records is stood back up on the cell it records.
 		const held: StandingFighter[] = (resumed?.fighters ?? []).map((fighter) => ({
 			id: instanceId(fighter.side, fighter.spawnId),
-			cell: fighter.cell,
-			down: fighter.down
+			cell: fighter.cell
 		}));
 		const half = (
 			side: 'error' | 'info',
@@ -423,14 +424,15 @@
 	function syncOrders(current: CombatState | null, engine: MugenBoardEngine | null): void {
 		if (!engine || !current) return;
 		for (const fighter of current.fighters) {
-			// Only the player is given orders; the rivals commit theirs out of sight, and
-			// a fighter that has gone down has left the board along with its buttons.
-			if (fighter.side !== 'info' || fighter.down) continue;
-			// A fighter standing on the white cell it won has settled its lane and is asked
-			// for nothing more, so its buttons come off the board rather than standing there
-			// offering orders that would do nothing. An empty list is what clears a strip.
-			const orders = fighter.holdsGround ? [] : orderButtons(fighter, current.phase);
-			engine.setOrders(fighter.id, orders);
+			// Only the player is given orders; the rivals commit theirs out of sight.
+			if (fighter.side !== 'info') continue;
+			// Two fighters are asked for nothing more and keep no buttons: one standing on the
+			// white cell it won, which has settled its lane, and one that has been taken down,
+			// which is still on the board — at the back of its own half — and must not go on
+			// wearing a column of orders it can never be given. An empty list is what clears a
+			// strip.
+			const spent = fighter.down || fighter.holdsGround;
+			engine.setOrders(fighter.id, spent ? [] : orderButtons(fighter, current.phase));
 		}
 	}
 

@@ -113,9 +113,9 @@ export const ENCOUNTERS_TO_WIN = 2;
 /**
  * The ground the player's line opens on, listed top→bottom on screen — column d, the
  * front of its own half, one fighter to a row, each facing the rival on the same row of
- * column b. A fighter holds its own cell until the lane in front of it is won, and the
- * only ground it ever takes is that lane's white cell (see
- * {@link CombatController.settleGround}).
+ * column b. A fighter holds its own cell until the lane in front of it is decided, and
+ * then it either takes that lane's white cell or retracts to column e behind it (see
+ * {@link CombatController.settleLane}).
  *
  * Three a side on a three-row board, so a line is one fighter to every row of it: every
  * lane on the board is fought over, and there is no spare row for a fight to open on
@@ -132,14 +132,38 @@ export const PLAYER_CELLS: Cell[] = [
  * of its own half, one fighter to a row, each facing the player one column away across
  * the white column between them. Neither line opens on that white column: it is the
  * ground the lanes are played for, so it starts empty and is only ever stood on by
- * whoever wins a lane (see {@link CombatController.settleGround}) — the player walks up
- * onto it, or the rival withdraws off b a column deeper into its own half.
+ * whoever wins a lane (see {@link CombatController.settleLane}) — either line's winner
+ * walks up onto it, while the fighter that lost the lane retracts to column a behind it.
  */
 export const RIVAL_CELLS: Cell[] = [
 	{ q: -1, r: 0 },
 	{ q: -1, r: 1 },
 	{ q: -1, r: 2 }
 ];
+
+/**
+ * The column a lane is won on: the white one both halves meet at, dead centre of the
+ * board. It is the ground every lane is played for, so it starts empty and is only ever
+ * stood on by the fighter that has won the lane in front of it — which is what standing
+ * there *says*, on either side of the board: this row was ours.
+ */
+export const WON_COLUMN = 0;
+
+/**
+ * The column a fighter retracts to once it has been taken down: the back of its own half,
+ * one column behind the line it opened on — column a for the rivals, column e for the
+ * player. Nobody is ever taken off this board, so being knocked out is a place to stand
+ * rather than a disappearance: the fallen give up the ground they were holding, withdraw
+ * to the back of their own half, and stay there for the rest of the fight.
+ *
+ * Read off the opening ground rather than written down, so a line that opens somewhere
+ * else falls back from wherever that is: it is the column one further out from the white
+ * one, which is what "behind" means for a side whose own half is out from the centre.
+ */
+export function fallenColumn(side: FighterSide): number {
+	const opening = (side === 'info' ? PLAYER_CELLS : RIVAL_CELLS)[0];
+	return opening.q + Math.sign(opening.q);
+}
 
 /** Animation played when a fighter attacks and its definition binds no melee move. */
 const FALLBACK_STRIKE: CharacterMove = { name: 'Strike', type: 'melee', source: '' };
@@ -157,20 +181,22 @@ export interface LineupFighter {
 /**
  * Whether a fighter of `side` could be standing on `cell` at any point in a fight.
  *
- * A line only ever leaves the column it opened on one way, and only by one column: the
- * player's fighter that wins its lane walks up onto the white column, and the rival that
- * wins one falls back a column deeper into its own half ({@link
- * CombatController.settleGround}). So each side is only ever found between its opening
- * column and the end of that single move, and a fighter anywhere else is standing on
- * ground this game does not use — a board saved when the lines opened somewhere else.
+ * A lane leaves each of its two fighters on one of three columns, and a fight only ever
+ * moves them once: the one that wins it takes the white column between the lines
+ * ({@link WON_COLUMN}), the one that loses it retracts to the back of its own half
+ * ({@link fallenColumn}), and until the lane is settled both stand where they opened. All
+ * three are its own half or the ground both halves meet on — so what a fighter can never
+ * be found on is the *other* side's half, and one saved there is standing on ground this
+ * game does not use: a board written by another fight, or by this one when its lines
+ * opened somewhere else.
+ *
  * A fighter with no cell at all is standing nowhere and so disagrees with nothing.
  */
 function standsOnOwnGround(side: FighterSide, cell: { q: number; r: number } | null): boolean {
 	if (!cell) return true;
-	const opening = (side === 'info' ? PLAYER_CELLS : RIVAL_CELLS)[0];
-	if (!opening) return true;
-	const settled = side === 'info' ? 0 : opening.q - 1;
-	return cell.q >= Math.min(opening.q, settled) && cell.q <= Math.max(opening.q, settled);
+	if (!isBoardCell(cell.q, cell.r)) return false;
+	const far = side === 'info' ? 'red' : 'blue';
+	return cellSide(cell.q) !== far;
 }
 
 /**
@@ -232,8 +258,10 @@ export interface Fighter extends FighterSeed {
 	 * a gift in here is gone for good. */
 	spent: PassiveOrder[];
 	/** The board cell it is standing on. Its line-up slot's opening ground until the
-	 * lane it fights in is decided, and then whatever ground that left it holding
-	 * (see {@link CombatController.settleGround}). */
+	 * lane it fights in is decided, and then whatever ground that left it on — the white
+	 * column it won, or the back of its own half (see
+	 * {@link CombatController.settleLane}). Every fighter is standing somewhere for the
+	 * whole fight; being beaten moves one, it does not take it off the board. */
 	cell: Cell;
 	/** Charges banked, 0..{@link MAX_CHARGES}. Shooting spends one — the free shot
 	 * included: it is the *turn* a colour hands over, never the ammunition. */
@@ -316,12 +344,6 @@ interface Shot {
  * fighters both fired — which are one event, because they happened at one moment.
  */
 type ShotGroup = [Shot] | [Shot, Shot];
-
-/** A fighter taken down this turn, and the shot that did it. */
-interface Casualty {
-	fighter: Fighter;
-	by: Fighter;
-}
 
 const pause = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -483,16 +505,18 @@ export class CombatController {
 	attachBoard(board: MugenBoard): void {
 		this.board = board;
 		for (const fighter of this.fighters) {
-			// The fallen are not on the board a resumed fight comes back to — they were
-			// taken off it when they fell — so nothing is drawn for them here either.
-			if (fighter.down) continue;
+			// Every fighter of both lines, the fallen included: they are standing at the back
+			// of their own half rather than gone, so a resumed fight draws all six of them.
+			//
 			// What its colour gives it for nothing, and how much of that it still has.
 			// Every fighter wears it, rivals included: what a rival will *do* is the
 			// guess, but what it is was never a secret.
 			this.showTraits(fighter);
 			// Light the aura of anyone holding a charge, so a fight picked up where it
-			// was left shows who is dangerous before a single order is given.
-			if (fighter.charges > 0) void this.raiseAura(fighter);
+			// was left shows who is dangerous before a single order is given. Never on one
+			// that is out of the fight: nothing it is carrying can be fired any more, so a
+			// fighter at the back of its half stands there dark whatever its charges say.
+			if (!fighter.down && fighter.charges > 0) void this.raiseAura(fighter);
 		}
 	}
 
@@ -599,31 +623,17 @@ export class CombatController {
 		this.showOrders(acting);
 		await pause(REVEAL_MS);
 
-		const felled: Casualty[] = [];
 		for (const group of this.groupShots(shots)) {
 			if (group.length === 2) await this.playExchange(group[0], group[1]);
-			else await this.playShot(group[0], felled);
-		}
-
-		// The fallen have held their flinch through the rest of the volley; now the
-		// shooting is over they leave the board together.
-		if (felled.length > 0) {
-			await Promise.all(
-				felled.map(({ fighter }) => {
-					// The board removes the actor outright, aura and all.
-					this.aura.delete(fighter.id);
-					return this.board?.knockOut(fighter.id);
-				})
-			);
+			else await this.playShot(group[0]);
 		}
 
 		// The shots have been paid for out of what was banked at the top of the turn, so
-		// the auras that are out are the ones that fired.
+		// the auras that are out are the ones that fired. Ground won and given up needs no
+		// pass of its own: a lane is settled by the blow that settles it, on the spot (see
+		// {@link settleLane}), so by here every fighter is already standing where the turn
+		// left it.
 		this.syncCharges();
-
-		// Ground won and given up: every lane the volley decided is walked out on the
-		// board before the next turn is asked for.
-		await this.settleGround(felled);
 
 		this.finishTurn();
 	}
@@ -741,8 +751,15 @@ export class CombatController {
 	 * it is settled and shown before the attacker walks back and the next attack is
 	 * thrown. A target already struck earlier in the volley takes this one too — it just
 	 * changes nothing, because it was already going down.
+	 *
+	 * A blow that lands settles the lane *here*, before the next attack is thrown: the
+	 * two of them walk their result out where they are standing (see {@link settleLane}),
+	 * rather than being left in place for a tidying-up pass at the end of the turn. A hit
+	 * is the moment a lane is decided, so it is the moment the board says so — a fighter
+	 * that took the ground three attacks ago must not still be standing on the cell it
+	 * won it from while the rest of the volley plays out.
 	 */
-	private async playShot(shot: Shot, felled: Casualty[]): Promise<void> {
+	private async playShot(shot: Shot): Promise<void> {
 		const { shooter, target, extra } = shot;
 		const from = extra ? `${shooter.name}'s free shot` : `${shooter.name} shoots`;
 		this.setStatus(`${shooter.name} goes at ${target.name}.`);
@@ -772,12 +789,18 @@ export class CombatController {
 			this.board?.showCallout(target.id, 'GUARD', target.color);
 		} else {
 			target.down = true;
-			felled.push({ fighter: target, by: shooter });
 			this.log.push(`${from} — ${target.name} is down.`);
 			// The slash is drawn in the colour of whoever's blow got through.
 			this.board?.showSlash(target.id, shooter.color);
 			this.board?.showCallout(target.id, 'HIT!', shooter.color);
 			await this.board?.playHurt(target.id);
+			// The blow decided the lane, so the lane is walked out now — and the attacker
+			// stays where that leaves it rather than going home to a cell it has just won
+			// the right to leave.
+			await this.settleLane(shooter, target);
+			this.emit();
+			await pause(SHOT_BEAT_MS);
+			return;
 		}
 		// Back to its own cell, struck or blocked: the ground a fighter holds is not
 		// changed by having gone out to hit somebody, and the next lane's attack is
@@ -785,6 +808,52 @@ export class CombatController {
 		await this.board?.returnHome(shooter.id);
 		this.emit();
 		await pause(SHOT_BEAT_MS);
+	}
+
+	/**
+	 * Walk out the result of a lane, the moment the blow that decided it lands.
+	 *
+	 * A lane is a duel over the white cell between the two who stand in it, and one blow
+	 * settles it for the whole fight. Both of them move, and they move together, because
+	 * it is one event:
+	 *
+	 *   · **The loser retracts** to the back of its own half ({@link fallenColumn}) — the
+	 *     column behind the one it opened on, where it stands for the rest of the fight. It
+	 *     is out of the fight, not off the board: nothing is ever taken off this board, so
+	 *     a fighter that has been beaten is a fighter standing at the back of its own half
+	 *     with nothing left to do, which is a thing the player can see and count.
+	 *   · **The winner takes the white column** ({@link WON_COLUMN}) on that row, on either
+	 *     side of the board. Standing there is what says the row was won, so it is the same
+	 *     cell and the same move whichever line won it — the ground a lane is played for
+	 *     does not belong to a side until somebody is standing on it.
+	 *
+	 * The winner has just struck from the cell beside the fighter it felled, which *is* the
+	 * white one — so its walk is usually the short glide from being flush against the loser
+	 * to standing in the middle of the ground it has taken, and the loser withdrawing out
+	 * from under it is what makes room to read that. Both are adopted as new homes, so
+	 * neither is walked back afterwards by anything.
+	 *
+	 * The lane's row is the loser's: it never moved from the ground it opened on, whereas
+	 * the winner is out on a strike run and standing somewhere it does not hold.
+	 */
+	private async settleLane(winner: Fighter, loser: Fighter): Promise<void> {
+		// Out of the fight, so nothing is loading: the aura goes out with the fighter,
+		// whatever it was still carrying when the blow landed.
+		this.dropAura(loser);
+		const row = loser.cell?.r ?? winner.cell?.r;
+		if (row === undefined) return;
+		const ground: Cell = { q: WON_COLUMN, r: row };
+		const back: Cell = { q: fallenColumn(loser.side), r: row };
+		if (!isBoardCell(ground.q, ground.r) || !isBoardCell(back.q, back.r)) return;
+		this.setStatus(`${winner.name} takes the ground; ${loser.name} falls back.`);
+		winner.cell = ground;
+		loser.cell = back;
+		// Together: one fighter withdrawing as the other comes forward is a single thing
+		// happening, and played one after the other it would read as two.
+		await Promise.all([
+			this.board?.regroup(loser.id, back),
+			this.board?.regroup(winner.id, ground)
+		]);
 	}
 
 	/**
@@ -819,46 +888,6 @@ export class CombatController {
 				const move = findMove(fighter, 'defend');
 				if (move) this.board?.holdMove(fighter.id, move);
 			}
-		}
-	}
-
-	/**
-	 * Walk out what the volley settled. A lane is a duel over the white cell between
-	 * the two who stand in it, and the one left standing when the other falls has just
-	 * won that ground — so it is moved, once, and holds where it lands for the rest of
-	 * the fight:
-	 *
-	 *   · **The player's fighter won** — it walks up onto its lane's white cell, the
-	 *     ground between the two lines, and takes it. Ground gained is ground shown. Not
-	 *     the cell the rival was standing on: that is the rival's own half, which is not
-	 *     ground either side can hold, and the white column is what the lane was for.
-	 *   · **The rival won** — there is nothing left in front of it, so it withdraws off
-	 *     the front of its half, a column back the way it came.
-	 *
-	 * Both sides falling together settles nothing: neither is standing to take the
-	 * ground, and the cell is simply left empty. The walks are taken one at a time —
-	 * one lane's route can run through another's cell — and a fighter with no cell to
-	 * move to (an over-long line, or a board that refuses the ground) just stays put.
-	 */
-	private async settleGround(felled: Casualty[]): Promise<void> {
-		for (const { fighter } of felled) {
-			const winner = this.counterpart(fighter);
-			if (!winner || winner.down) continue;
-			const ground =
-				fighter.side === 'error'
-					? // The white cell of the lane just won, now the player's: the fallen
-						// rival's row, on the column both halves meet at.
-						{ q: 0, r: fighter.cell.r }
-					: // A column back the way it came: its own half is out from the centre.
-						winner.cell && { q: winner.cell.q - 1, r: winner.cell.r };
-			if (!ground || !isBoardCell(ground.q, ground.r)) continue;
-			winner.cell = ground;
-			this.setStatus(
-				fighter.side === 'error'
-					? `${winner.name} takes the ground.`
-					: `${winner.name} falls back.`
-			);
-			await this.board?.regroup(winner.id, ground);
 		}
 	}
 
@@ -983,6 +1012,10 @@ export class CombatController {
 	private planRivals(): void {
 		for (const rival of this.rivals()) {
 			if (rival.down) continue;
+			// One standing on the ground it won is done fighting: it is asked for nothing,
+			// exactly as the player's own are, so no order is planned for it and it poses at
+			// no reveal.
+			if (this.holdsGround(rival)) continue;
 			const target = this.opposite(rival);
 			if (!target) {
 				// Nobody in this lane: there is nothing to shoot and nothing to fear, so it
@@ -1142,18 +1175,23 @@ export class CombatController {
 
 	/**
 	 * Whether this fighter has taken the ground its lane was fought over and stands down
-	 * for the rest of the fight: one of the player's, standing on the shared white column.
+	 * for the rest of the fight: standing on the shared white column, either side's.
 	 *
-	 * That column is what every lane is played for, and the only way onto it for the
-	 * player's side is winning the lane in front of it ({@link settleGround}) — so a
-	 * fighter that holds one has settled its encounter: nobody in front of it to shoot,
-	 * nobody left who could shoot it, and no charge worth banking, because the lines never
-	 * re-pair and it will never face anybody again ({@link opposite}). It is therefore
-	 * asked for nothing more: no buttons of its own on the board, and the turn does not
-	 * wait on it to be commitable. It simply holds what it took.
+	 * That column is what every lane is played for, and the only way onto it is winning the
+	 * lane in front of it ({@link settleLane}) — so a fighter that holds one has settled its
+	 * encounter: nobody in front of it to shoot, nobody left who could shoot it, and no
+	 * charge worth banking, because the lines never re-pair and it will never face anybody
+	 * again ({@link opposite}). It is therefore asked for nothing more: no buttons of its
+	 * own on the board, no order planned for it, and the turn does not wait on it to be
+	 * commitable. It simply holds what it took.
+	 *
+	 * Asked of the ground, not of the side. Both lines' winners take the same cell, so
+	 * reading it off the column is what keeps a settled rival as quiet as a settled fighter
+	 * of the player's — rather than one that goes on being handed orders it has nobody left
+	 * to carry out against.
 	 */
 	private holdsGround(fighter: Fighter): boolean {
-		if (fighter.side !== 'info' || fighter.down) return false;
+		if (fighter.down) return false;
 		return !!fighter.cell && cellSide(fighter.cell.q) === 'purple';
 	}
 
