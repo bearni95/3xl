@@ -14,18 +14,14 @@ import {
 	cellFoot,
 	cellSide,
 	type CellSide,
-	columnLabel,
 	FIRST_COLUMN,
-	FIRST_ROW,
 	findClosestApproach,
 	findMeleeMeeting,
 	findPath,
 	hexCorners,
 	isBoardCell,
 	LAST_COLUMN,
-	LAST_ROW,
-	MIDDLE_ROW,
-	rowLabel
+	MIDDLE_ROW
 } from './grid';
 
 /** A frame with its loaded texture and pre-computed anchor fractions. */
@@ -157,32 +153,16 @@ const CHAR_HEIGHT_RATIO = 1.3;
 const HEAD_ROOM = 1;
 
 // --- The coordinate gutter (a chessboard's letters and numbers) ---------------
-// Every cell is named the way a chess square is — its column's letter and its row's
-// number, `columnLabel`/`rowLabel` — and the names are printed once each along two
-// edges rather than on the cells themselves: a letter under each column, a number
-// beside each row, so a cell is read off the two bands meeting at it and nothing is
-// written over the ground the fight is played on.
-//
-// A column of hexagons is not a straight line — every other row steps half a cell to
-// the right — so a letter is set under the **lowest cell its own column has** rather
-// than under the average of a zigzag, which would be under no cell at all. The
-// row numbers stay in one straight band down the left, level with each row's centre:
-// the gutter is a third of a cell wide and the offset is half of one, so a number
-// that followed its row's own left edge would be standing on the board.
-//
-// The band is outside the grid, which is why the labels are drawn in white over a
-// dark outline rather than in a cell's colour: the board is mounted over the map as
-// often as on a card, so what a label sits on is not this engine's to know, and only
-// the pair reads against both.
-
-/** Width of the gutter, as a fraction of a cell's width: the room kept off the grid's
- * left edge for the row numbers, and under its bottom row for the column letters. */
-const COORD_GUTTER_RATIO = 0.34;
-/** A label's font size, as a fraction of a cell's width. Comfortably inside the band
- * above, so a letter and the row number beside it never touch the grid. */
-const COORD_FONT_RATIO = 0.2;
-/** The dark outline around a label, as a fraction of its own font size. */
-const COORD_STROKE_RATIO = 0.18;
+// A cell is still named the way a chess square is — its column's letter and its row's
+// number, `columnLabel`/`rowLabel` — but the names are not drawn on the board any more.
+// They were printed along two edges, a letter under each column and a number beside
+// each row, in a gutter a third of a cell wide taken off the left-hand side and out of
+// the bottom. Nothing in the game is played by naming a cell: an order is given by
+// tapping a fighter, and where it then walks is watched rather than read off a
+// coordinate. So the band was a third of a cell of canvas spent on a reading nobody
+// takes, and on a board scaled to fit its box that is a third of a cell the fight
+// itself does not get. The names live on in `grid.ts`, where the combat log still
+// says which cell a fighter moved to.
 
 /**
  * Top→bottom screen position of the cell — rows run down the screen, so it is the
@@ -669,33 +649,31 @@ export class MugenBoard {
 	 * Total canvas size: the grid's own extent at `cellSize` px to the cell width
 	 * ({@link BOARD_WIDTH}, {@link BOARD_HEIGHT} — which is why neither figure is simply
 	 * the count of columns or rows: the offset rows hang half a cell out to the right,
-	 * and the rows interlock rather than stack), plus the padding around it, the empty
+	 * and the rows interlock rather than stack), plus the padding around it and the empty
 	 * cell kept above it for everything that reaches up out of the top row
-	 * ({@link HEAD_ROOM}), and the coordinate gutter's own band, once down the left-hand
-	 * side and once under the bottom row.
+	 * ({@link HEAD_ROOM}).
+	 *
+	 * This is the size the board is *laid out* at, not the size it is seen at: the canvas
+	 * is cropped to what is actually drawn once the characters are standing on it
+	 * ({@link MugenBoard.fitToContent}) and then scaled to fit its box, so what these
+	 * figures decide between them is the board's proportions and its resolution.
 	 */
 	get dimensions(): { width: number; height: number } {
 		const { cellSize, padding } = this.options;
 		return {
-			width: padding * 2 + this.coordGutter + cellSize * BOARD_WIDTH,
-			height: padding * 2 + this.coordGutter + cellSize * (BOARD_HEIGHT + HEAD_ROOM)
+			width: padding * 2 + cellSize * BOARD_WIDTH,
+			height: padding * 2 + cellSize * (BOARD_HEIGHT + HEAD_ROOM)
 		};
 	}
 
-	/** Width of the coordinate gutter in px: the band the row numbers stand in off the
-	 * grid's left edge, and the column letters under its bottom row. */
-	private get coordGutter(): number {
-		return this.options.cellSize * COORD_GUTTER_RATIO;
-	}
-
-	/** Screen x of the grid's left edge: the padding, plus the gutter beside it. */
+	/** Screen x of the grid's left edge. */
 	private get gridLeft(): number {
-		return this.options.padding + this.coordGutter;
+		return this.options.padding;
 	}
 
 	/** Screen y of the grid's top edge: the padding, plus the empty room kept above it —
-	 * which is what pushes every cell, every character and every coordinate down by a
-	 * cell width from where they would otherwise be drawn. */
+	 * which is what pushes every cell and every character down by a cell width from where
+	 * they would otherwise be drawn. */
 	private get gridTop(): number {
 		const { cellSize, padding } = this.options;
 		return padding + cellSize * HEAD_ROOM;
@@ -752,9 +730,6 @@ export class MugenBoard {
 			this.options.grids[1].color,
 			this.options.centerColor
 		);
-
-		// And the letters and numbers that name its cells, in the band around it.
-		this.drawCoordinates();
 
 		// The lead character of each half stands where its grid asks, or on the half's
 		// default lead cell: the left one in its own outer column (unflipped), the right
@@ -830,7 +805,6 @@ export class MugenBoard {
 		this.slashes = [];
 		this.cellPaint.clear();
 	}
-
 
 	/**
 	 * Screen point of a place on the grid, given in **cell widths** off its top-left
@@ -930,67 +904,6 @@ export class MugenBoard {
 			const at = this.project(corner.x, corner.y);
 			return [at.x, at.y];
 		});
-	}
-
-	/**
-	 * Name the grid's cells along two of its edges, as a chessboard does: a letter
-	 * under each column and a number beside each row, so any cell is said by the pair
-	 * meeting at it ("d2"). Each label is centred on the band it stands in and on the
-	 * cell it belongs to, so a letter is under its own column's lowest cell and a
-	 * number level with its own row however big a cell is drawn.
-	 */
-	private drawCoordinates(): void {
-		if (!this.app) return;
-		const { cellSize } = this.options;
-		const size = cellSize * COORD_FONT_RATIO;
-		// Centre of the band: half a gutter off the grid's edge, on the side the labels
-		// sit. Both anchor at their own centre, so this is the whole of the placement.
-		const lettersY = this.project(0, BOARD_HEIGHT).y + this.coordGutter / 2;
-		const numbersX = this.gridLeft - this.coordGutter / 2;
-
-		const label = (text: string, x: number, y: number): Text => {
-			const drawn = new Text({
-				text,
-				style: {
-					// White over a dark outline: the board is mounted over the map as often
-					// as on a card, so a label has to read against whatever is behind it.
-					fill: 0xffffff,
-					fontSize: size,
-					fontWeight: '700',
-					fontFamily: 'system-ui, sans-serif',
-					stroke: { color: 0x000000, width: size * COORD_STROKE_RATIO },
-					align: 'center'
-				}
-			});
-			drawn.anchor.set(0.5);
-			drawn.position.set(x, y);
-			return drawn;
-		};
-
-		const labels = new Container();
-		for (let q = FIRST_COLUMN; q <= LAST_COLUMN; q++) {
-			// Under the lowest cell the column actually has — the bottom row's for all but
-			// the outermost column, which the level rows have no cell in at all and whose
-			// letter would otherwise be set under the empty corner beside the board.
-			const lowest = this.lowestRow(q);
-			if (lowest === null) continue;
-			const centre = this.project(cellCenter(q, lowest).x, 0).x;
-			labels.addChild(label(columnLabel(q), centre, lettersY));
-		}
-		for (let r = FIRST_ROW; r <= LAST_ROW; r++) {
-			const centre = this.project(0, cellCenter(FIRST_COLUMN, r).y).y;
-			labels.addChild(label(rowLabel(r), numbersX, centre));
-		}
-		this.app.stage.addChild(labels);
-	}
-
-	/** The lowest row on the board holding a cell in column `q`, or null for a column
-	 * with no cells at all. */
-	private lowestRow(q: number): number | null {
-		for (let r = LAST_ROW; r >= FIRST_ROW; r--) {
-			if (isBoardCell(q, r)) return r;
-		}
-		return null;
 	}
 
 	/**

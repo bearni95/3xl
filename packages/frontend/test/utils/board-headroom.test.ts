@@ -24,19 +24,20 @@ const board = (cellSize: number, padding: number) =>
 	new MugenBoard({ grids, cellSize, padding });
 
 describe('the room the canvas keeps over the board', () => {
-	it('is a whole cell deep, on top of the grid, the characters and the coordinates', () => {
+	it('is a whole cell deep, on top of the grid and the characters', () => {
 		const cellSize = 100;
 		const padding = 10;
 		const { width, height } = board(cellSize, padding).dimensions;
 
-		// The width says what the board's own span plus the surround costs: the padding at
-		// both ends and the one gutter the row numbers stand in down the left.
-		const gutter = width - (padding * 2 + cellSize * BOARD_WIDTH);
-		expect(gutter).toBeGreaterThan(0);
+		// Across, there is nothing but the board and the padding at either end of it: the
+		// gutter the row numbers and column letters used to stand in is gone, and with it
+		// the third of a cell it took off two sides of a canvas that is scaled to fit its
+		// box — so what it held is board now.
+		expect(width).toBeCloseTo(padding * 2 + cellSize * BOARD_WIDTH);
 
-		// The height is that same surround plus one cell width more than the board's own
+		// Down, it is that same padding plus one cell width more than the board's own
 		// height — the empty room kept above it.
-		expect(height).toBeCloseTo(padding * 2 + gutter + cellSize * (BOARD_HEIGHT + 1));
+		expect(height).toBeCloseTo(padding * 2 + cellSize * (BOARD_HEIGHT + 1));
 	});
 
 	it('is a width of the board’s own cells, so it scales with them', () => {
