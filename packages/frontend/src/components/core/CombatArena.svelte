@@ -575,6 +575,31 @@
 		}
 	}
 
+	// Close the turn the moment there is nothing left to decide about it. A turn used to
+	// be closed by a button, and that button was only ever tappable on this exact
+	// condition — every standing fighter ordered, this turn's board already recorded, and
+	// nothing refused — so the condition is the whole of what a commit was: pressing it
+	// was a formality over a decision the orders had already made. Ordering the last
+	// fighter is therefore what plays the turn out.
+	//
+	// The board is still written before the turn moves, not after it: `saveBoard` runs
+	// first (it is declared above) and holds `savingTurn` while the write is in flight,
+	// so the fight cannot play on over a turn the server has not taken — the same hold
+	// the button sat under. Every name here is spelled out so Svelte's legacy reactive
+	// tracking sees all four as dependencies, `savingTurn` included: it is what re-runs
+	// this once a save lands.
+	$: commitWhenReady(state, controller, savingTurn, saveFailure);
+
+	function commitWhenReady(
+		current: CombatState | null,
+		ctrl: CombatController | null,
+		saving: number,
+		failure: string | null
+	): void {
+		if (!current || !ctrl || !current.ready || saving !== 0 || failure) return;
+		ctrl.commit();
+	}
+
 	/** Write the same turn back again, after a refusal. */
 	function retrySave(): void {
 		if (!controller || !state || savingTurn) return;
@@ -849,26 +874,10 @@
 							{/if}
 						</button>
 					{/if}
-					<!-- The two controls the fight has, and nothing under them: what just
-					     happened was played out on the board, so it is not also recounted
-					     here in words. A turn is not over until it is recorded, so the button
-					     stays down while the last one is still on its way to the server. -->
-					<button
-						type="button"
-						class="btn btn-primary btn-wide"
-						disabled={!state.ready || savingTurn !== 0 || !!saveFailure}
-						on:click={() => controller?.commit()}
-					>
-						{#if state.phase === 'resolving'}
-							<span class="loading loading-spinner loading-xs"></span>
-							Playing out turn {state.turn}
-						{:else if savingTurn}
-							<span class="loading loading-spinner loading-xs"></span>
-							Saving turn {state.turn}
-						{:else}
-							Commit turn {state.turn}
-						{/if}
-					</button>
+					<!-- The one control the fight has, and nothing under it: what just happened
+					     was played out on the board, so it is not also recounted here in words,
+					     and closing a turn is not asked for either — the turn goes the moment
+					     its last order is given. -->
 					<!-- The way out of a fight, and the only one there is: a battle is ended by
 					     a result, never by walking off, so giving it up reports the loss it is
 					     and closes the arena exactly as being wiped out would. Between turns

@@ -391,7 +391,7 @@ export class CombatController {
 		});
 		if (!this.restore(resume)) {
 			this.planRivals();
-			this.status = 'Give each of your fighters an order, then commit.';
+			this.status = 'Give each of your fighters an order.';
 		}
 		this.emit();
 	}
