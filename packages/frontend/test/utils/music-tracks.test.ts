@@ -15,6 +15,46 @@ const DATA = join(__dirname, '../../../data/public');
 const music = JSON.parse(readFileSync(join(DATA, 'music.json'), 'utf-8')) as MusicCollection;
 const shows = JSON.parse(readFileSync(join(DATA, 'shows.json'), 'utf-8')) as ShowsCollection;
 
+/** Container magics that are not an MPEG stream, however the file is named. */
+const CONTAINERS = ['RIFF', 'OggS', 'fLaC', 'FORM', 'ftyp', '<!DO', '<htm'];
+
+/**
+ * Where the first MPEG frame of `path` starts, or null if there is none — the file is
+ * some other container, or an error page, or a stub.
+ *
+ * An ID3v2 tag is skipped by its own header (a syncsafe length, plus a footer if the
+ * flags say so), and the frame sync is looked for just past it rather than exactly at
+ * it: some of these carry a little padding between the tag and the audio, and one of
+ * them 155 bytes of it, which is a tagger being sloppy and not a broken song.
+ */
+function firstFrameOffset(path: string): number | null {
+	const handle = openSync(path, 'r');
+	try {
+		const header = Buffer.alloc(10);
+		readSync(handle, header, 0, 10, 0);
+
+		let start = 0;
+		if (header.subarray(0, 3).toString('latin1') === 'ID3') {
+			const size =
+				((header[6] & 0x7f) << 21) |
+				((header[7] & 0x7f) << 14) |
+				((header[8] & 0x7f) << 7) |
+				(header[9] & 0x7f);
+			start = 10 + size + (header[5] & 0x10 ? 10 : 0);
+		}
+
+		const window = Buffer.alloc(2048);
+		const read = readSync(handle, window, 0, window.length, start);
+		if (CONTAINERS.includes(window.subarray(0, 4).toString('latin1'))) return null;
+		for (let i = 0; i < read - 1; i++) {
+			if (window[i] === 0xff && (window[i + 1] & 0xe0) === 0xe0) return start + i;
+		}
+		return null;
+	} finally {
+		closeSync(handle);
+	}
+}
+
 describe('the authored music collection', () => {
 	it('names songs that are actually vendored', () => {
 		// A definition for a file that is not there is a play button that does nothing.
@@ -33,21 +73,16 @@ describe('the authored music collection', () => {
 		// plays nothing and has no length to print. The pull script refuses those on the
 		// way in (`verify`); this is the same check applied to what actually got kept,
 		// because a file can also arrive here by hand, and one did.
+		//
+		// It goes one step further than the pull's, because the other way a file lies
+		// about being an mp3 is subtler: an ID3 tag glued in front of a RIFF/WAVE
+		// container holding the very same MPEG data. It passes any check made at byte
+		// zero, and no browser will tell you how long it is. So what is asserted is what
+		// follows the tag: MPEG frames, and not the header of some other container.
 		for (const track of music.tracks) {
 			const path = join(ASSETS, 'music', track.file);
 			expect(statSync(path).size, `${track.file} is a stub`).toBeGreaterThan(64 * 1024);
-
-			const head = Buffer.alloc(4);
-			const handle = openSync(path, 'r');
-			try {
-				readSync(handle, head, 0, 4, 0);
-			} finally {
-				closeSync(handle);
-			}
-			const framed =
-				head.subarray(0, 3).toString('latin1') === 'ID3' ||
-				(head[0] === 0xff && (head[1] & 0xe0) === 0xe0);
-			expect(framed, `${track.file} has no ID3 tag or MPEG frame sync`).toBe(true);
+			expect(firstFrameOffset(path), `${track.file} is not an MPEG stream`).not.toBeNull();
 		}
 	});
 
