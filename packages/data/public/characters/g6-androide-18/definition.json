@@ -29,15 +29,6 @@
 			"source": "action-200"
 		},
 		{
-			"name": "Ranged",
-			"type": "ranged",
-			"source": "action-1150",
-			"projectile": {
-				"source": "",
-				"loop": true
-			}
-		},
-		{
 			"name": "Defend",
 			"type": "defend",
 			"source": "guard-stand"
