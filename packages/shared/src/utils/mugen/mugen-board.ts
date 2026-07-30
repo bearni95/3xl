@@ -261,8 +261,8 @@ const COMBAT_COLOR_HEX: Record<string, number> = {
 export const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color] ?? 0xffffff;
 
 // --- Order buttons (drawn on the board, beside the fighter they command) -----
-/** Horizontal gap (px) from the actor's right-hand side to the near edge of its
- * column of buttons. */
+/** Horizontal gap (px) from the actor's own side to the near edge of its column of
+ * buttons, whichever shoulder that column is standing off. */
 const ORDER_GAP = 8;
 /**
  * How many orders a column is sized to hold. A fighter that can be ordered at all is
@@ -448,10 +448,14 @@ interface OrderButton {
 	color: string | null;
 }
 
+/** Which side of its fighter a column of orders stands on. */
+export type OrderSide = 'left' | 'right';
+
 /** The column of order buttons beside one fighter. */
 interface OrderStrip {
 	container: Container;
 	buttons: OrderButton[];
+	side: OrderSide;
 }
 
 /** The marks of what one fighter's colour grants it — a white disc with a glyph on
@@ -1883,17 +1887,23 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Give a fighter the orders it can be given, drawn as a column of buttons off its
-	 * right-hand side — where the association is unambiguous, because they stand
-	 * immediately beside the character they command, the three of them together coming to
-	 * the height of the cell it is standing on ({@link ORDER_HEIGHT_RATIO}).
+	 * Give a fighter the orders it can be given, drawn as a column of buttons immediately
+	 * beside the character they belong to — where the association is unambiguous — the
+	 * three of them together coming to the height of the cell it is standing on
+	 * ({@link ORDER_HEIGHT_RATIO}).
+	 *
+	 * `side` says which of its shoulders the column stands off, and is the caller's to
+	 * decide because it is about the fight and not about the board: the two teams stand on
+	 * opposite halves, so a column on the outer shoulder of each puts every one of them
+	 * clear of the ground being fought over, and puts a team's columns together on that
+	 * team's own side of the screen.
 	 *
 	 * Called on every change of the fight's state, so it rebuilds only when the *set*
 	 * of orders changes and otherwise just repaints the buttons it already has: a
 	 * strip torn down and rebuilt each time would drop the pointer state mid-tap and
 	 * flicker its glyphs while their textures reloaded. An empty list clears the strip.
 	 */
-	setOrders(actorId: string, orders: BoardOrder[]): void {
+	setOrders(actorId: string, orders: BoardOrder[], side: OrderSide = 'right'): void {
 		const actor = this.findActor(actorId);
 		if (!actor || !this.app) return;
 		if (orders.length === 0) {
@@ -1906,11 +1916,12 @@ export class MugenBoard {
 			actor.orders.buttons.every((button, i) => button.id === orders[i].id);
 		if (!sameSet) {
 			this.clearOrders(actor);
-			actor.orders = this.buildOrders(actor, orders);
+			actor.orders = this.buildOrders(actor, orders, side);
 		}
 
 		const strip = actor.orders;
 		if (!strip) return;
+		strip.side = side;
 		orders.forEach((order, i) => {
 			const button = strip.buttons[i];
 			if (!button) return;
@@ -1930,7 +1941,7 @@ export class MugenBoard {
 	}
 
 	/** Build a fighter's strip: one button per order, glyphs loaded as they arrive. */
-	private buildOrders(actor: Actor, orders: BoardOrder[]): OrderStrip {
+	private buildOrders(actor: Actor, orders: BoardOrder[], side: OrderSide): OrderStrip {
 		const container = new Container();
 		container.sortableChildren = false;
 		this.app!.stage.addChild(container);
@@ -1974,7 +1985,7 @@ export class MugenBoard {
 			return button;
 		});
 
-		const strip: OrderStrip = { container, buttons };
+		const strip: OrderStrip = { container, buttons, side };
 		actor.orders = strip;
 		this.layOutOrders(actor);
 		return strip;
@@ -2044,12 +2055,15 @@ export class MugenBoard {
 		});
 	}
 
-	/** Keep a fighter's column planted off its right-hand side as it moves. */
+	/** Keep a fighter's column planted off the shoulder it was given, as the fighter
+	 * moves. Measured off the sprite's own half-width rather than off the cell, so the
+	 * gap is to the character and not to the ground it happens to be standing on. */
 	private updateOrders(actor: Actor): void {
 		const strip = actor.orders;
 		if (!strip) return;
 		const { width } = this.orderSize();
-		strip.container.x = actor.x + actor.displayWidth / 2 + ORDER_GAP + width / 2;
+		const reach = actor.displayWidth / 2 + ORDER_GAP + width / 2;
+		strip.container.x = actor.x + (strip.side === 'left' ? -reach : reach);
 		strip.container.y = actor.y;
 		// Above the board and its own fighter, below the callouts and slashes.
 		strip.container.zIndex = actor.y + 5000;
