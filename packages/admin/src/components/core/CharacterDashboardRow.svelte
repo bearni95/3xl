@@ -20,6 +20,15 @@
 	export let rarity: number = DEFAULT_RARITY;
 	export let shows: ShowTemplate[] = [];
 
+	// The four detail views a character is authored through, each its own route
+	// under this dashboard.
+	const views = [
+		{ segment: 'definition', label: 'Definition' },
+		{ segment: 'stats', label: 'Stats' },
+		{ segment: 'frames', label: 'Frames' },
+		{ segment: 'imported', label: 'Imported' }
+	];
+
 	// Editable drafts. Re-seeded from the props whenever they change, but never
 	// while a save of that field is in flight, so the save's echo (or an unrelated
 	// re-render) can't clobber what is being typed.
@@ -207,5 +216,14 @@
 		{#if rarityError}
 			<div class="text-xs text-error">{rarityError}</div>
 		{/if}
+	</td>
+	<td>
+		<div class="join">
+			{#each views as view (view.segment)}
+				<a class="btn btn-outline btn-xs join-item" href={`/characters/dashboard/${character.id}/${view.segment}`}>
+					{view.label}
+				</a>
+			{/each}
+		</div>
 	</td>
 </tr>

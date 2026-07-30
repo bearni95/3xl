@@ -36,7 +36,7 @@
 				portrait the board shows for a character, drag the square to frame the avatar the game
 				wears, then save straight into the git tree.
 			</p>
-			<a class="link link-primary text-sm" href="/characters">← Back to character frames</a>
+			<a class="link link-primary text-sm" href="/characters">← Back to characters</a>
 		</header>
 
 		<CharacterShowGroups {characters} {rarityById} variant="tabs" let:character>

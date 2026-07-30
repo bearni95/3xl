@@ -129,6 +129,7 @@
 				<th>Character</th>
 				<th>Show</th>
 				<th>Rarity</th>
+				<th>Detail</th>
 			</tr>
 		</thead>
 		<tbody>
