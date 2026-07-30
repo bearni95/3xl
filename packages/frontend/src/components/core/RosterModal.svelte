@@ -779,13 +779,14 @@
 				     background also puts the four columns back exactly on four of the frame's
 				     seven, which the padding had been shaving a few pixels off. -->
 				<div class="grid min-h-0 min-w-0 flex-1 grid-cols-7 gap-3">
-					<!-- The filters and the line-up, three across: the filter card over two of those
-					     columns and one cell per team slot under it. Every control ANDs with the
-					     others. Clear stands at the head of the card: it is what undoes everything
-					     below it, and a list of shows long enough to run on had pushed it out of sight
-					     at the very moment there was most to undo. -->
+					<!-- The filters and the line-up, three across: the filter card over all three of
+					     those columns, and the line-up as one row of three under it, a column to a
+					     slot. Every control ANDs with the others. Clear stands at the head of the
+					     card: it is what undoes everything below it, and a list of shows long enough
+					     to run on had pushed it out of sight at the very moment there was most to
+					     undo. -->
 					<div class="col-span-3 grid min-h-0 grid-cols-3 content-start gap-3 overflow-y-auto">
-						<div class="col-span-2 flex flex-col gap-3 rounded-box bg-base-100 p-3">
+						<div class="col-span-3 flex flex-col gap-3 rounded-box bg-base-100 p-3">
 							<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
 								Clear
 							</button>
@@ -873,13 +874,13 @@
 							</button>
 						</div>
 
-						<!-- The line-up under the filter card, one cell per slot: the card standing in
-						     it or the empty slot itself. A slot is a place on the team whether or not
-						     there is a card in it, so the empty ones are drawn too — three cells that
-						     say how big a team is and how much of one the player has, which a row of
-						     only the cards fielded could never say. Every filled cell is bordered in
-						     primary and carries a minus button, and taking a card back off the team is
-						     the one thing this grid does. -->
+						<!-- The line-up under the filter card, a row of three with a cell per slot: the
+						     card standing in it or the empty slot itself. A slot is a place on the team
+						     whether or not there is a card in it, so the empty ones are drawn too —
+						     three cells that say how big a team is and how much of one the player has,
+						     which a row of only the cards fielded could never say. Every filled cell is
+						     bordered in primary and carries a minus button, and taking a card back off
+						     the team is the one thing this grid does. -->
 						{#each partyCells as { slot, spawn, statue } (slot)}
 							{#if spawn && statue}
 								<div class="relative flex flex-col gap-2 rounded-box border-2 border-primary p-1.5">
