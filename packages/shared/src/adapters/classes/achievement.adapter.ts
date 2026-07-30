@@ -42,7 +42,9 @@ export class AchievementAdapter extends AdapterClass {
 			met: row.met === true,
 			expAwarded: Number(row.exp_awarded ?? 0),
 			atLevel: Number(row.at_level ?? 1),
-			totalExp: Number(row.total_exp ?? 0)
+			totalExp: Number(row.total_exp ?? 0),
+			boostersGranted: Number(row.boosters_granted ?? 0),
+			setCompleted: row.set_completed === true
 		};
 	}
 

@@ -292,6 +292,9 @@ describe('loading the game’s achievements', () => {
 
 describe('claiming today’s badges', () => {
 	it('submits nothing but the intention, and reads the server’s answer back', async () => {
+		// The booster columns are the same on every row — they are what the call did to
+		// today's allowance (a pack per badge granted, two more for the whole set), not
+		// what any one badge did.
 		claimRows = [
 			{
 				achievement_id: 'conqueridor',
@@ -300,7 +303,9 @@ describe('claiming today’s badges', () => {
 				met: true,
 				exp_awarded: '200',
 				at_level: 2,
-				total_exp: '506'
+				total_exp: '506',
+				boosters_granted: 3,
+				set_completed: true
 			},
 			{
 				achievement_id: 'first-blood',
@@ -309,7 +314,9 @@ describe('claiming today’s badges', () => {
 				met: false,
 				exp_awarded: '0',
 				at_level: 2,
-				total_exp: '506'
+				total_exp: '506',
+				boosters_granted: 3,
+				set_completed: true
 			}
 		];
 		const { claimAchievements } = await import('$services/achievements.service');
@@ -325,7 +332,9 @@ describe('claiming today’s badges', () => {
 				met: true,
 				expAwarded: 200,
 				atLevel: 2,
-				totalExp: 506
+				totalExp: 506,
+				boostersGranted: 3,
+				setCompleted: true
 			},
 			{
 				achievementId: 'first-blood',
@@ -334,9 +343,53 @@ describe('claiming today’s badges', () => {
 				met: false,
 				expAwarded: 0,
 				atLevel: 2,
-				totalExp: 506
+				totalExp: 506,
+				boostersGranted: 3,
+				setCompleted: true
 			}
 		]);
+	});
+
+	it('reads a claim that granted nothing as no packs and no completed day', async () => {
+		// A second claim the same day: every badge already held, so the allowance is not
+		// raised again and the set bonus cannot be re-earned.
+		claimRows = [
+			{
+				achievement_id: 'conqueridor',
+				granted: false,
+				held: true,
+				met: true,
+				exp_awarded: '0',
+				at_level: 2,
+				total_exp: '506',
+				boosters_granted: 0,
+				set_completed: false
+			}
+		];
+		const { claimAchievements } = await import('$services/achievements.service');
+		const [row] = await claimAchievements();
+		expect(row.boostersGranted).toBe(0);
+		expect(row.setCompleted).toBe(false);
+	});
+
+	it('reads booster columns an older server did not send as nothing granted', async () => {
+		claimRows = [
+			{
+				achievement_id: 'conqueridor',
+				granted: true,
+				held: false,
+				met: true,
+				exp_awarded: '200',
+				at_level: 2,
+				total_exp: '506',
+				boosters_granted: null,
+				set_completed: null
+			}
+		];
+		const { claimAchievements } = await import('$services/achievements.service');
+		const [row] = await claimAchievements();
+		expect(row.boostersGranted).toBe(0);
+		expect(row.setCompleted).toBe(false);
 	});
 
 	it('reads no rows as nothing claimed', async () => {

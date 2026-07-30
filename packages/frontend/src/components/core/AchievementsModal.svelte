@@ -1,6 +1,6 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import { onMount } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { achievementsModalOpen } from '$services/achievementsModal';
@@ -32,6 +32,10 @@
 	function close(): void {
 		achievementsModalOpen.set(false);
 	}
+
+	// Raised when a claim actually granted something, so the host can re-read what a
+	// completion moved outside this modal: today's booster allowance.
+	const dispatch = createEventDispatcher<{ claimed: void }>();
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -126,6 +130,11 @@
 				// Both of these landed on rows this browser cannot write: the award ledger
 				// and the experience total. Read them back rather than guessing them.
 				await Promise.all([refresh(currentUserId), authService.refreshProfile()]);
+				// A completion also raised today's booster allowance, on a third row this
+				// browser cannot write (`booster_grants`). The panel behind this modal is
+				// where that number is shown, so it is told to read it again rather than
+				// carrying a cap that went up while it was covered.
+				dispatch('claimed');
 			}
 		} catch (err) {
 			claimError = errorMessage(err);
@@ -133,6 +142,12 @@
 			claiming = false;
 		}
 	}
+
+	// What the last claim did to today's booster allowance, as the server reported it:
+	// one pack per badge completed, plus two for finishing the day's set. Read off the
+	// rows rather than worked out here — the amounts are the RPC's, and a browser that
+	// added them up would be a second place they were written.
+	$: lastClaim = [...claimed.values()].find((row) => row.granted) ?? null;
 
 	// Which day is being looked at, as a step from today. The three are a function of
 	// the player and the day and nothing else, so any day's are one subtraction away —
@@ -374,6 +389,20 @@
 
 				{#if claimError}
 					<div class="alert alert-error py-2 text-sm"><span>{claimError}</span></div>
+				{/if}
+
+				<!-- What the claim added to today's booster allowance. The numbers are the
+				     RPC's own, and the wording only says which of the two paid: a pack per
+				     badge, and two more for finishing the day. -->
+				{#if lastClaim && lastClaim.boostersGranted > 0}
+					<div class="alert alert-success py-2 text-sm">
+						<span>
+							+{lastClaim.boostersGranted} booster
+							{lastClaim.boostersGranted === 1 ? 'pack' : 'packs'} on today's allowance{lastClaim.setCompleted
+								? ' — the whole day completed'
+								: ''}.
+						</span>
+					</div>
 				{/if}
 
 				{#if pool.length === 0}

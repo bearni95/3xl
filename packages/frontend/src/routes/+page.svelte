@@ -1382,6 +1382,15 @@
 		lastRevealed = revealed;
 		// A successful open spends one of the day's packs; re-read the allowance so the
 		// counter in the header follows along.
+		refreshBoosters();
+	}
+
+	/**
+	 * Re-read today's booster allowance. Called whenever something has moved it on a row
+	 * this browser cannot write: a pack opened (spending one), or a badge claimed in the
+	 * achievements modal (granting one, and two more for the whole day's set).
+	 */
+	function refreshBoosters(): void {
 		void spawnService
 			.boostersStatus()
 			.then((status) => (boosters = status))
@@ -2168,5 +2177,8 @@
 	on every page load. Opened from the Achievements button beside Roster on the panel's
 	account row, through `achievementsModalOpen`. -->
 {#if $achievementsModalOpen}
-	<AchievementsModal />
+	<!-- A claim in there raises today's booster allowance (a pack per badge completed, two
+	     more for the whole day), so the header's counter is re-read when one lands — the
+	     same reading a pack being opened triggers, since both change the same number. -->
+	<AchievementsModal on:claimed={refreshBoosters} />
 {/if}

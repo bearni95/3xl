@@ -31,7 +31,7 @@
 -- pay for.
 --
 -- Idempotent: safe to re-run. Requires the core schema (character_spawns,
--- municipality_holders, player_profiles, level_for_exp, exp_for_level,
+-- municipality_holders, booster_grants, player_profiles, level_for_exp, exp_for_level,
 -- level_span_exp) to exist first, which the backend guarantees by provisioning it
 -- before running this — a `language sql` body is parsed as it is created, so a
 -- function reading a table that is not there yet fails outright rather than later.
@@ -524,6 +524,12 @@ revoke all on function public.daily_achievement_ids(uuid, date) from public;
 -- there yet. Idempotent: claiming twice in a day pays once, since the second call
 -- finds the row already held.
 --
+-- A completion pays twice over: experience, and the day's booster allowance. Each
+-- badge granted is worth one extra pack today, and finishing the whole of the day's
+-- set — every one of them completed today — is worth two more. Both go into
+-- `booster_grants`, the ledger the booster cap is already the sum of, so they lapse at
+-- Catalan midnight along with every other grant.
+--
 -- The experience is a third of the span of the level the player is on **at
 -- completion time** (achievementExpAward in @3xl/shared mirrors it). The level is
 -- re-read for each badge in the same claim, so a badge that levels a player up makes
@@ -534,6 +540,9 @@ revoke all on function public.daily_achievement_ids(uuid, date) from public;
 -- says the same thing all day and cannot be moved by the levelling-up that happens
 -- while the badges are being worked on — including the levelling-up this very call
 -- does. What the player has is still read live; only the bar is pinned.
+-- Dropped first: this gained output columns, and Postgres will not replace a
+-- function's return type in place (the same reason claim_booster is dropped).
+drop function if exists public.claim_achievements();
 create or replace function public.claim_achievements()
 returns table (
 	achievement_id text,
@@ -545,12 +554,31 @@ returns table (
 	met boolean,
 	exp_awarded bigint,
 	at_level int,
-	total_exp bigint
+	total_exp bigint,
+	-- Extra booster packs this call added to today's allowance: one per badge it
+	-- granted, plus the set bonus. The same on every row — it is what the call did.
+	boosters_granted int,
+	-- Whether this call finished the whole of the day's set, all of it earned today,
+	-- which is what the bonus above is paid for.
+	set_completed boolean
 )
 language plpgsql security definer set search_path = public as $$
 declare
 	v_uid uuid := auth.uid();
 	v_day date := (now() at time zone 'Europe/Madrid')::date;
+	-- Catalan midnight, for telling a badge completed today from one carried over.
+	v_day_start timestamptz :=
+		date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
+	-- What a completion is worth in booster packs. The game's numbers, and they live
+	-- only here: the browser is told what it was granted and never names an amount.
+	v_per_badge constant int := 1;
+	v_set_bonus constant int := 2;
+	v_granted_count int := 0;
+	v_boosters int := 0;
+	v_set_completed boolean := false;
+	-- Each badge's answer, held until the whole call is settled (see the loop).
+	v_results jsonb := '[]'::jsonb;
+	v_result jsonb;
 	v_ids text[];
 	v_id text;
 	v_cards jsonb;
@@ -621,13 +649,64 @@ begin
 			end if;
 		end if;
 
-		achievement_id := v_id;
-		granted := v_met and not v_held;
-		held := v_held;
-		met := v_met;
-		exp_awarded := v_award;
-		at_level := v_level;
-		total_exp := v_exp;
+		if v_met and not v_held then
+			v_granted_count := v_granted_count + 1;
+		end if;
+
+		-- Held back rather than returned here: what this call did to the day's booster
+		-- allowance is a fact about the call, not about one badge, and it is not known
+		-- until every badge has been settled. The rows are emitted after that.
+		v_results := v_results || jsonb_build_object(
+			'achievement_id', v_id,
+			'granted', v_met and not v_held,
+			'held', v_held,
+			'met', v_met,
+			'exp_awarded', v_award,
+			'at_level', v_level,
+			'total_exp', v_exp
+		);
+	end loop;
+
+	-- The day's booster allowance, raised by what was just completed. A badge is worth
+	-- one extra pack today, and finishing the whole of the day's set is worth two more
+	-- on top — earned only when every one of them was completed *today*, since a badge
+	-- carried over from an earlier day was not worked for on this one.
+	--
+	-- Written to `booster_grants`, which is the ledger `claim_booster` and
+	-- `boosters_status` already add to the level to get the cap (see booster_claims.sql,
+	-- and `recycle_spawns`, which pays into the same place). So nothing else has to be
+	-- taught about achievements: the allowance goes up, and it lapses at Catalan midnight
+	-- like every other grant, which is what "for the day" means.
+	--
+	-- Gated on this call having granted something, which is what keeps it paid once: a
+	-- second claim the same day grants no badge, so it adds no packs and cannot re-earn
+	-- the set bonus.
+	if v_granted_count > 0 then
+		v_set_completed := coalesce(array_length(v_ids, 1), 0) > 0 and (
+			select count(distinct pa.achievement_id)
+				from public.player_achievements pa
+				where pa.user_id = v_uid
+					and pa.achievement_id = any(v_ids)
+					and pa.awarded_at >= v_day_start
+		) = array_length(v_ids, 1);
+		v_boosters := v_granted_count * v_per_badge
+			+ case when v_set_completed then v_set_bonus else 0 end;
+		insert into public.booster_grants (user_id, grant_date, amount)
+			values (v_uid, v_day, v_boosters);
+	end if;
+
+	for v_result in select value from jsonb_array_elements(v_results) loop
+		achievement_id := v_result ->> 'achievement_id';
+		granted := (v_result ->> 'granted')::boolean;
+		held := (v_result ->> 'held')::boolean;
+		met := (v_result ->> 'met')::boolean;
+		exp_awarded := (v_result ->> 'exp_awarded')::bigint;
+		at_level := (v_result ->> 'at_level')::int;
+		total_exp := (v_result ->> 'total_exp')::bigint;
+		-- The same two numbers on every row, as the experience total already is: they are
+		-- what the call did, not what this badge did.
+		boosters_granted := v_boosters;
+		set_completed := v_set_completed;
 		return next;
 	end loop;
 end;

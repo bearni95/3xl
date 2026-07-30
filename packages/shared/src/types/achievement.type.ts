@@ -147,6 +147,18 @@ export interface AchievementClaim {
 	atLevel: number;
 	/** Their experience total after it. */
 	totalExp: number;
+	/**
+	 * Extra booster packs the call added to today's allowance: one per badge it
+	 * granted, plus two for finishing the day's set. A fact about the call rather than
+	 * about this badge, so it is the same on every row — as `totalExp` is. The server
+	 * decides it; nothing here may name an amount.
+	 */
+	boostersGranted: number;
+	/**
+	 * Whether this call completed the whole of the day's set, every one of them earned
+	 * today — which is what the two extra packs are paid for.
+	 */
+	setCompleted: boolean;
 }
 
 /**
@@ -181,6 +193,8 @@ export interface AchievementClaimRow {
 	exp_awarded: string | number | null;
 	at_level: string | number | null;
 	total_exp: string | number | null;
+	boosters_granted: string | number | null;
+	set_completed: boolean | null;
 }
 
 /**

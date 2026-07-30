@@ -278,6 +278,14 @@ that drift apart pay out badges nobody earned. So:
 - The award is a third of the span of the level the player is on **at completion time**
   (`achievementExpAward` mirrors it), re-read per badge inside one claim, and recorded on
   `player_achievements.exp_awarded`.
+- A completion also pays **booster packs**: one added to today's allowance per badge granted,
+  plus **two** for finishing the whole of the day's set (every one of them completed *today* —
+  a badge carried over from an earlier day does not count towards it). They go into
+  `booster_grants`, the same day-scoped ledger `recycle_spawns` and the admin write and that
+  `claim_booster` / `boosters_status` already add to the level to get the cap, so they lapse
+  at Catalan midnight and nothing else had to be taught about achievements. The two amounts
+  live only in `claim_achievements` and reach the browser as `boosters_granted` /
+  `set_completed` on every row of the claim — the client never names them.
 - The level a **rule** is read at is a different level: the day's pinned one.
   `achievement_day_levels` holds one row per player per Catalan day, written by
   `daily_achievement_level()` (security definer, no arguments) on that day's first look and
