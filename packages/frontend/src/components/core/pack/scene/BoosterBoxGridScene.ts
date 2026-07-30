@@ -212,8 +212,12 @@ export class BoosterBoxGridScene {
 	}
 
 	/** Make what is standing what the host asked for. Called whenever either changes — the pick,
-	 * or the window it has to be found in. */
-	private applySelection(): void {
+	 * or the window it has to be found in.
+	 *
+	 * `settled` is for a pick that was already made when the boxes were built: there is no move
+	 * to draw, because the window it would move out of has never been on the screen.
+	 */
+	private applySelection(settled = false): void {
 		const id = this.wanted;
 		if ((this.stood?.pack.id ?? null) === id) return;
 		if (id === null) {
@@ -222,7 +226,7 @@ export class BoosterBoxGridScene {
 		}
 		const entry = this.entries.find((candidate) => candidate.pack.id === id);
 		if (!entry) return;
-		if (this.state === 'grid') this.raise(entry);
+		if (this.state === 'grid') this.raise(entry, settled);
 		// One box down and the other up, without a word to the host in between: it asked for this,
 		// and a "the box went back down" on the way would only untell it its own pick.
 		else if (this.state === 'stood') void this.swap(entry);
@@ -320,8 +324,11 @@ export class BoosterBoxGridScene {
 		});
 		this.place();
 		// A window with a pack already picked opens on that pack, not on the window: the pick may
-		// well have been made before there was a box to stand up (see `wanted`).
-		this.applySelection();
+		// well have been made before there was a box to stand up (see `wanted`). It is standing the
+		// moment the boxes are up, and does not travel there — a pick that predates the boxes has
+		// no window to have come out of, and the first frame this canvas ever draws is the one it
+		// is meant to be showing.
+		this.applySelection(true);
 	}
 
 	/**
@@ -443,8 +450,14 @@ export class BoosterBoxGridScene {
 	 * Stand a box up. It is lifted out of the scrolling grid into screen space at the very spot it
 	 * was drawn at, so the move to the middle is a clean tween and not a jump followed by one, and
 	 * the rest of the window fades away under it.
+	 *
+	 * `settled` puts it straight in the middle instead, for a box that is standing before anybody
+	 * has looked at this canvas: a modal opened on a town's pack is picked while the window is
+	 * still baking, so there is no move from the window to draw — the window was never on the
+	 * screen. Tweening it anyway is what made the whole grid flash up and slide away under a box
+	 * that should simply have been standing there when the boxes arrived.
 	 */
-	private raise(entry: BoxEntry): void {
+	private raise(entry: BoxEntry, settled = false): void {
 		this.state = 'standing';
 		this.stood = entry;
 		this.wanted = entry.pack.id;
@@ -458,6 +471,15 @@ export class BoosterBoxGridScene {
 		entry.sprite.position.set(from.x, from.y);
 
 		const to = this.standTransform();
+		if (settled) {
+			entry.sprite.position.set(to.x, to.y);
+			entry.sprite.scale.set(to.scale);
+			this.layer.alpha = RESTING_ALPHA;
+			this.state = 'stood';
+			this.reportOpening();
+			return;
+		}
+
 		const restOf = this.layer.alpha;
 		void this.tween(STAND_MS, (t) => {
 			entry.sprite.position.set(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
