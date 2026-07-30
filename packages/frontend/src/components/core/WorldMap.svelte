@@ -375,8 +375,17 @@
 			const frame = document.createElement('div');
 			// A fixed 500px for the side together, shared out by the row. Fixed, so the
 			// statues come out the same size whichever town is picked, rather than tracking
-			// anything about the map or the region under them.
-			frame.className = 'mt-1 w-[500px] drop-shadow-lg';
+			// anything about the map or the region under them — up to the width of the screen,
+			// which is the one thing 500px cannot ignore: a phone is narrower than that, and the
+			// pin is centred on its point, so a side that size hung off both edges of the
+			// viewport at once with the outer two statues half in the sea. The cap is in viewport
+			// units and not a percentage of the pin, because there is no pin to take a percentage
+			// of: a marker's own box is zero-sized (see rebuildMarkers) and everything hung on it
+			// overflows that box on purpose, which is what centres it on the point. It is in
+			// viewport units rather than behind a breakpoint for the same reason the statues are
+			// flex-1 of the row — it says the thing itself, and it is inert on any screen with
+			// room for the 500px the side asked for.
+			frame.className = 'mt-1 w-[500px] max-w-[100vw] drop-shadow-lg';
 			pinMounts.push(
 				mount(TeamLineup, {
 					target: frame,
@@ -414,6 +423,12 @@
 	// to full — which took the plate's lettering down with the tile and left white type at
 	// half strength over the terrain it is meant to be read against. It goes on the tile
 	// instead (see markerElement), so a pin recedes without becoming unreadable.
+	//
+	// Nothing here caps the pin's width either, and nothing here can: the marker's box is
+	// zero-sized, so every part of a pin overflows it — which is what `items-center` centres
+	// on the point — and a cap on a box of no width caps nothing. Anything a pin hangs that
+	// could come out wider than the screen says so in viewport units of its own (the plate's
+	// 15rem never can; the side's 500px can, see markerElement).
 	function classNamesFor(marker: MapMarker): string {
 		let classes = 'flex -translate-x-1/2 -translate-y-full flex-col items-center';
 		if (marker.onClick) classes += ' cursor-pointer';
