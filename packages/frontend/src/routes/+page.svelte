@@ -9,6 +9,7 @@
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import TownPanel from '$components/core/TownPanel.svelte';
+	import MusicPlayer from '$components/core/MusicPlayer.svelte';
 	import CollapsiblePlate from '$components/core/CollapsiblePlate.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
@@ -1808,9 +1809,9 @@
 		/>
 
 		<!-- Everything the map draws over its top edge, in one absolutely positioned column: the
-			breadcrumb bar across the top, and under it the corner's stack of plates — the town
-			panel when a town is picked, and under it the Location plate, folded away until it is
-			asked for. (The player's own side is over the map too, at the foot of it — three
+			breadcrumb bar across the top, and under it the corner's stack of plates — the music
+			player, always up, the town panel when a town is picked, and last the Location plate,
+			folded away until it is asked for. (The player's own side is over the map too, at the foot of it — three
 			statues on nothing, positioned on their own rather than as a row of this column,
 			since they are at the other corner; see below.) The bar is in the column
 			rather than over it, so it pushes the plates down by taking its own row instead
@@ -1871,12 +1872,19 @@
 			<div class="flex items-start justify-between gap-2">
 				<!-- Where the map is looking, at its left corner: each plate only as wide as it asks
 					to be — which is what `items-start` is for, the column itself being as wide as the
-					room the row leaves it.
-					The music player used to head this stack, always up whether or not anything was
-					picked. The corner is the picked town's and the open region's now. -->
+					room the row leaves it. -->
 				<div class="flex min-w-0 flex-col items-start gap-2">
+					<!-- The show themes, at the head of the stack: always up, whether or not anything
+						is picked, because what is playing is not about the town under the cursor and
+						does not stop being true when the selection is dropped. It is here rather than
+						in the panel beside the map because that panel's tabs replace each other, which
+						would carry the player off screen mid-song. The plate is drawn as the town panel
+						below it is — same black, same glyph tile, same two lines — so the corner reads
+						as one stack rather than as two kinds of thing. It draws nothing at all until a
+						song is loaded, so the corner is unchanged on a map whose music never arrived. -->
+					<MusicPlayer classes="pointer-events-auto w-72" />
 					<!-- The one thing picking a town adds to the map: who is holding it and what can
-						be done about that, on the first plate under the bar. It used to be drawn into the
+						be done about that, on the plate below the player. It used to be drawn into the
 						town's own pin — the side standing on the very place it was about — but a pin is
 						a mark on a town and three cards' worth of picture is not: it buried the town it
 						stood on, moved with every zoom, and forced the shape beneath it to go unwashed
@@ -1909,7 +1917,7 @@
 						and the panel could only show it by putting away whichever view was forward.
 						Here it stands over the map it is about, and it is the last plate in the stack
 						because it is the biggest and the one a player asks for rather than is handed —
-						the picked town keeps the corner it already had.
+						the music and the picked town keep the corner they already had.
 						Folded away by default, and folded or not is remembered (see locationPanel).
 						A height it cannot pass, with the table scrolling inside it: this is a corner
 						of the map, not a column, so the plate never grows into the whole of it.

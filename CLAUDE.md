@@ -129,9 +129,11 @@ map's right-hand panel (its Booster tab), and `CombatArena` is raised by the Cha
 button on a municipality. The roster and the achievements have no route either. All of them
 are full-view modals over the map, drawn on the shared `FullScreenModal` sheet — the roster
 and the badges raised from the panel's account row, combat from the town — so there is one
-kind of full-view surface in this app and not one per feature. The map's top-left corner is the town panel and the
-Location plate under it; `MusicPlayer.svelte` and `music.service.ts` are still here but are
-mounted nowhere, so the game plays no music. Admin routes: `/characters` (definition editor),
+kind of full-view surface in this app and not one per feature. The map's top-left corner is a
+stack of plates: `MusicPlayer.svelte` at its head, always up, then the town panel when a town
+is picked, then the Location plate. The player draws nothing until a song is loaded, and the
+audio element belongs to `music.service.ts` rather than to the component, so the sound
+outlives whatever opens and closes over the map. Admin routes: `/characters` (definition editor),
 `/shows` (TMDB browser), `/achievements` (badge editor + Supabase rule sync) and `/music`
 (what each vendored song is called and which show it opens).
 
