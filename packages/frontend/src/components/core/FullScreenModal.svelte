@@ -31,12 +31,23 @@
 	// places that sends the player to the roster — and which of them is in front is
 	// decided by the order the page mounts them in, the roster being the later. The
 	// sheet is a full-height flex column: the title bar takes what it needs and the
-	// slot gets the rest, which is what a scroll box inside it is sized from.
+	// slot gets the rest, which is what a scroll box inside it is sized from. Without
+	// the bar (`titleBar`) the slot is the whole of it, and Escape is the way out.
 
-	/** The heading in the title bar. */
+	/** The heading in the title bar, and the sheet's name to a screen reader whether that
+	 * bar is drawn or not. */
 	export let title: string;
 	/** What the ✕ is called to a screen reader, e.g. `Close roster`. */
 	export let closeLabel: string = 'Close';
+	/**
+	 * Draw the title bar — the heading and the ✕ — or leave the sheet to its content.
+	 *
+	 * For a view whose content says what it is and carries its own way out, where a bar
+	 * naming it again is a row of chrome over the thing the player came for. Escape is
+	 * unaffected either way: it is bound to the window, not to the bar, so a sheet with no
+	 * bar is still a sheet that closes — and `closeDisabled` still holds it shut.
+	 */
+	export let titleBar: boolean = true;
 	/**
 	 * Hold the way out shut: the ✕ greys and Escape does nothing while this is true.
 	 *
@@ -65,23 +76,26 @@
 	class="fixed inset-0 z-[1300]"
 	role="dialog"
 	aria-modal="true"
+	aria-label={title}
 	transition:fly={{ y: '100%', duration: 250, opacity: 1 }}
 >
 	<div
 		class="flex h-full w-full flex-col gap-4 overflow-hidden bg-gradient-to-b from-base-100 to-base-100/90 p-6"
 	>
-		<div class="flex flex-none items-center gap-3">
-			<h2 class="text-lg font-bold">{title}</h2>
-			<button
-				type="button"
-				class="btn btn-circle btn-ghost btn-sm ml-auto"
-				aria-label={closeLabel}
-				disabled={closeDisabled}
-				on:click={close}
-			>
-				✕
-			</button>
-		</div>
+		{#if titleBar}
+			<div class="flex flex-none items-center gap-3">
+				<h2 class="text-lg font-bold">{title}</h2>
+				<button
+					type="button"
+					class="btn btn-circle btn-ghost btn-sm ml-auto"
+					aria-label={closeLabel}
+					disabled={closeDisabled}
+					on:click={close}
+				>
+					✕
+				</button>
+			</div>
+		{/if}
 		<slot />
 	</div>
 </div>

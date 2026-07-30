@@ -2103,8 +2103,14 @@
 	itself, hence the binding.
 	Keyed so each new challenge remounts a clean fight. -->
 {#if fightOpen}
+	<!-- No title bar on this one: the board is the whole of what the sheet is for, and a row
+		naming it "Combat" over the top of it says nothing the board does not. The arena carries
+		its own way out — the Close under the result, which is the one that waits on the fight
+		reaching the server — and Escape is bound to the sheet either way, `closeDisabled` and
+		all. The title stays as the sheet's name to a screen reader. -->
 	<FullScreenModal
 		title="Combat"
+		titleBar={false}
 		closeLabel="Close combat"
 		closeDisabled={fightReporting}
 		on:close={onFightClosed}
