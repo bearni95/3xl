@@ -14,7 +14,7 @@
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import PackGrid from '$components/core/pack/PackGrid.svelte';
-	import PartyPanel from '$components/core/PartyPanel.svelte';
+	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
 	import AchievementsModal from '$components/core/AchievementsModal.svelte';
@@ -340,11 +340,11 @@
 	// map only ever gives up room to one of them — the breadcrumbs above the strip stay put
 	// across all three, since they name what the map is looking at whichever view is forward.
 	//
-	// The side the player fields was the second half of the first of those and is a plate at
-	// the map's own bottom-left corner now (see PartyPanel), for the reason the open region
-	// left this column too: a team is what every town on the map is read against, so it is
-	// wanted whichever of these three is forward, and a view here can only be up by putting
-	// another one away.
+	// The side the player fields was the second half of the first of those and stands at the
+	// map's own bottom-left corner now (see the lineup over the map, below), for the reason
+	// the open region left this column too: a team is what every town on the map is read
+	// against, so it is wanted whichever of these three is forward, and a view here can only
+	// be up by putting another one away.
 	//
 	// The open region was a fourth view here and is not any more: it is a plate at the map's
 	// own corner (see CollapsiblePlate), because a table of place names is read against the
@@ -859,12 +859,12 @@
 	// frames folder and nothing else, so the faces and show names that fed those cards
 	// are no longer loaded at all.)
 
-	// --- The player's own team (the plate at the map's bottom-left corner) -------
-	// Stood up in the document as the three statues on their own plate over the map (see
-	// PartyPanel): the side this player would field, so what they are challenging with is
-	// read against the town they are looking at without leaving the map for the roster —
-	// and without the panel's Profile tab having to be forward for it to be on screen at
-	// all, which is what being a section of that tab cost it.
+	// --- The player's own team (the statues at the map's bottom-left corner) ------
+	// Stood up in the document as three statues over the map, on nothing at all (see the
+	// lineup at the corner): the side this player would field, so what they are challenging
+	// with is read against the town they are looking at without leaving the map for the
+	// roster — and without the panel's Profile tab having to be forward for it to be on
+	// screen at all, which is what being a section of that tab cost it.
 	// The team is the slots on the player's own cards, so it is only renderable once
 	// those have loaded; empty slots are left out, and a team with none shows nothing.
 	const teamSpawns = teamService.fielded;
@@ -1762,8 +1762,8 @@
 		across the top of the map, both of them over the thing they name.
 		— Profile: the player's own full-width row — picture, reading, and the way through to
 		  the full card and the roster. The tab the panel opens on, and the only one that says
-		  nothing about the map. The three they field used to sit under that row and are a
-		  plate at the map's bottom-left corner now (see PartyPanel).
+		  nothing about the map. The three they field used to sit under that row and stand at
+		  the map's bottom-left corner now.
 		— Leaderboard: how much of the map each show flies, tallied over every
 		  municipality's current show — seeded, or the ruling team's where a town has been
 		  taken.
@@ -1827,9 +1827,9 @@
 			{#if panelTab === PanelTab.Profile}
 				<!-- Who is playing: signed out it is the sign-in panel, so this tab is the way
 					into the game; signed in it is the player's own full-width row and nothing
-					else — the side they field is a plate at the map's bottom-left corner now (see
-					PartyPanel), which is where it can be read against the town being looked at
-					whichever tab is forward. Its own scroller on the desktop panel,
+					else — the side they field stands at the map's bottom-left corner now, which is
+					where it can be read against the town being looked at whichever tab is
+					forward. Its own scroller on the desktop panel,
 					exactly like the tables in the tabs beside it; on the mobile panel the whole
 					thing scrolls as one, so the `flex-1` is inert there and the section simply
 					takes the height its contents ask for. -->
@@ -1952,9 +1952,9 @@
 			<!-- Everything the map draws over its top edge, in one absolutely positioned column: the
 				breadcrumb bar across the top, and under it the corner's stack of plates — the town
 				panel when a town is picked, and under it the Location plate, folded away until it is
-				asked for. (The player's own side is over the map too, at the foot of it — its own
-				plate rather than a row of this column, since it is at the other corner; see
-				PartyPanel below.) The bar is in the column
+				asked for. (The player's own side is over the map too, at the foot of it — three
+				statues on nothing, positioned on their own rather than as a row of this column,
+				since they are at the other corner; see below.) The bar is in the column
 				rather than over it, so it pushes the plates down by taking its own row instead
 				of by being cleared with an offset nobody would remember to keep in step with it.
 				Absolute inside the map
@@ -2114,20 +2114,26 @@
 				is both sides of it read on the one screen. It was a slice of the panel's Profile
 				tab, which meant the team was on screen only while that tab was forward — and it
 				is the one thing on this page that is about no tab at all.
-				Its own absolutely positioned plate rather than a row of the corner's stack, since
-				it belongs at the other end of the map from that stack. Same z-[900] as the stack:
-				clear of Leaflet's own panes (overlays 400-600, controls 800) and under the arena's
-				1200. It captures its own clicks — a statue carries a title — and nothing else of
-				the map is covered.
+				The three statues and nothing else: no plate under them, no heading over them, so
+				what stands at the corner is the side itself rather than a panel about it. It can
+				stand bare where the corner's other things cannot because a statue brings its own
+				ground and its own panel — every word on it is already read off the card's own
+				colour, never off the terrain behind it.
+				Absolutely positioned rather than a row of the corner's stack, since it belongs at
+				the other end of the map from that stack. Same z-[900] as the stack: clear of
+				Leaflet's own panes (overlays 400-600, controls 800) and under the arena's 1200.
 				Only drawn once there is a side to draw: signed out, or an account with no card in
 				a team slot, leaves the corner empty rather than standing up an empty frame. And
 				only inside `ready`, so a statue never says Ultramar at a town whose name is still
 				on its way (see claimPlaceFor). -->
 			{#if playerTeamLineup.length > 0}
-				<PartyPanel
-					members={playerTeamLineup}
-					classes="absolute bottom-3 left-3 z-[900] w-80 max-w-[calc(100%-1.5rem)]"
-				/>
+				<!-- The row is given its box rather than positioned itself: it is `w-full` of
+					whatever holds it, and a width handed to it in the same breath would be two
+					width utilities on one element with nothing but stylesheet order to settle
+					which of them wins. -->
+				<div class="absolute bottom-3 left-3 z-[900] w-80 max-w-[calc(100%-1.5rem)]">
+					<TeamLineup members={playerTeamLineup} />
+				</div>
 			{/if}
 		{:else}
 			<div class="flex min-h-0 flex-1 items-center justify-center">

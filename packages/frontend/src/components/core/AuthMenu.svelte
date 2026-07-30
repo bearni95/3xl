@@ -18,8 +18,8 @@
 	// always visible and full-width — it is a section of the map page's right-hand
 	// panel — instead of the hover/click dropdown that hangs off the navbar. Signed in,
 	// that section is the player's own full-width row and nothing else: the side they
-	// field used to be a three-column grid under it, and is a plate at the map's own
-	// bottom-left corner now (see PartyPanel), so this tab is about the account alone.
+	// field used to be a three-column grid under it, and stands at the map's own
+	// bottom-left corner now, so this tab is about the account alone.
 	export let embedded: boolean = false;
 
 	const status = authService.status;
