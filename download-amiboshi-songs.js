@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Pull the Catalan InuYasha songs off the Wayback Machine's amiboshi.cat snapshot.
+ * Pull the Catalan show themes off the Wayback Machine's amiboshi.cat snapshot.
  *
- * amiboshi.cat is gone. What is left of it is the 2025-02-26 capture the local
- * inuyasha-songs.html came from, whose download links are relative to a site that no
- * longer answers, so each one has to be re-pointed at the archive. This script reads the
- * links out of that HTML rather than carrying a hardcoded list, and rewrites each into
+ * amiboshi.cat is gone. What is left of it are the captures the local pages came from,
+ * whose download links are relative to a site that no longer answers, so each one has to
+ * be re-pointed at the archive. This script reads the links out of those pages rather
+ * than carrying a hardcoded list, and rewrites each into
  *
  *   https://web.archive.org/web/<timestamp>id_/https://www.amiboshi.cat/mp3/<file>
  *
@@ -19,15 +19,22 @@
  * on disk whose recorded sha256 still matches is skipped, making the script resumable
  * against the archive's rate limiting.
  *
- * Downloads land in a staging folder at the repo root, not in @3xl/assets' public/music/:
- * which of these belong in the game, and under what name, is a curation call, and that
- * folder's files are already named for the show they open.
+ * Downloads land in a staging folder at the repo root, one per source page, not in
+ * @3xl/assets' public/music/: which of these belong in the game, and under what name, is
+ * a curation call, and that folder's files are already named for the show they open.
+ *
+ * The pages are listed in SOURCES below. Adding another of amiboshi.cat's show pages is a
+ * line there - nothing else here knows which show it is looking at, because the slug of
+ * every file comes out of the file's own name ("One Piece - We are (català)…" is already
+ * saying it) and the link between a song and a show is made later, by hand, in
+ * @3xl/data's music.json.
  *
  * Usage:
- *   node download-inuyasha-songs.js [options]
+ *   node download-amiboshi-songs.js [source...] [options]
  *
- *   --html <path>     source page      (default: ./inuyasha-songs.html)
- *   --out <dir>       staging folder   (default: ./inuyasha-mp3)
+ * With no source named, every page in SOURCES is pulled. Otherwise name them:
+ *   node download-amiboshi-songs.js one-piece
+ *
  *   --delay <ms>      pause between downloads (default: 1500)
  *   --retries <n>     attempts per file, backing off (default: 4)
  *   --list            print what would be fetched and exit
@@ -40,16 +47,30 @@ import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-/** The capture inuyasha-songs.html was taken from. */
+/**
+ * The capture the pages were taken from. It only has to name a moment the site was up:
+ * the archive answers a timestamp it holds no capture at with a redirect to the nearest
+ * one it does, and the mp3s all sit in this one folder, so a page saved from a different
+ * capture than another still resolves through it. Which capture each file actually came
+ * from is not assumed - it is read back off the redirect and recorded per song.
+ */
 const SNAPSHOT = '20250226191108';
 const ORIGIN = 'https://www.amiboshi.cat/';
 
 /** Below this an mp3 is a stub or an error page, whatever its headers claim. */
 const MIN_BYTES = 64 * 1024;
 
+/**
+ * The saved pages, and where each one's pull is staged. A source's name is what you pass
+ * on the command line; nothing else is keyed by it.
+ */
+const SOURCES = [
+	{ name: 'inuyasha', html: 'inuyasha-songs.html', out: 'inuyasha-mp3' },
+	{ name: 'one-piece', html: 'onepiece-music.html', out: 'onepiece-mp3' }
+];
+
 const DEFAULTS = {
-	html: 'inuyasha-songs.html',
-	out: 'inuyasha-mp3',
+	sources: [],
 	delay: 1500,
 	retries: 4,
 	list: false,
@@ -70,10 +91,6 @@ function parseArgs(argv) {
 			case '--force':
 				options.force = true;
 				break;
-			case '--html':
-			case '--out':
-				options[arg.slice(2)] = argv[++i];
-				break;
 			case '--delay':
 			case '--retries':
 				options[arg.slice(2)] = Number(argv[++i]);
@@ -83,10 +100,20 @@ function parseArgs(argv) {
 				console.log(help());
 				process.exit(0);
 				break;
-			default:
-				throw new Error(`unknown option: ${arg}`);
+			default: {
+				if (arg.startsWith('-')) throw new Error(`unknown option: ${arg}`);
+
+				const source = SOURCES.find((candidate) => candidate.name === arg);
+				if (!source) {
+					const names = SOURCES.map((candidate) => candidate.name).join(', ');
+					throw new Error(`unknown source: ${arg} (have: ${names})`);
+				}
+				options.sources.push(source);
+			}
 		}
 	}
+
+	if (!options.sources.length) options.sources = [...SOURCES];
 
 	for (const key of ['delay', 'retries']) {
 		if (!Number.isFinite(options[key]) || options[key] < 0) {
@@ -99,10 +126,10 @@ function parseArgs(argv) {
 
 function help() {
 	return [
-		'Usage: node download-inuyasha-songs.js [options]',
+		'Usage: node download-amiboshi-songs.js [source...] [options]',
 		'',
-		'  --html <path>   source page              (default: inuyasha-songs.html)',
-		'  --out <dir>     staging folder           (default: inuyasha-mp3)',
+		`Sources (all of them if none is named): ${SOURCES.map((s) => s.name).join(', ')}`,
+		'',
 		'  --delay <ms>    pause between downloads  (default: 1500)',
 		'  --retries <n>   attempts per file        (default: 4)',
 		'  --list          print the plan and exit',
@@ -254,7 +281,7 @@ async function download(song, options) {
 		try {
 			const response = await fetch(song.url, {
 				redirect: 'follow',
-				headers: { 'user-agent': 'inuyasha-songs-archival/1.0' },
+				headers: { 'user-agent': 'amiboshi-songs-archival/1.0' },
 				signal: AbortSignal.timeout(120_000)
 			});
 
@@ -306,8 +333,23 @@ function alreadyHave(song, manifest, outDir) {
 
 async function main() {
 	const options = parseArgs(process.argv.slice(2));
-	const htmlPath = path.resolve(options.html);
-	const outDir = path.resolve(options.out);
+
+	let failures = 0;
+	for (const source of options.sources) {
+		if (options.sources.length > 1) console.log(`--- ${source.name} ---`);
+		failures += await pull(source, options);
+	}
+
+	if (failures) {
+		console.log('\nRe-run to retry only what failed; verified files are skipped.');
+		process.exitCode = 1;
+	}
+}
+
+/** Fetch one source page's songs. Returns how many failed. */
+async function pull(source, options) {
+	const htmlPath = path.resolve(source.html);
+	const outDir = path.resolve(source.out);
 
 	const songs = parseSongs(await readFile(htmlPath, 'utf8'));
 	if (!songs.length) throw new Error(`no mp3 links found in ${htmlPath}`);
@@ -325,7 +367,7 @@ async function main() {
 		for (const song of songs) {
 			console.log(`${song.slug}\n   ${describe(song)}\n   ${song.url}\n`);
 		}
-		return;
+		return 0;
 	}
 
 	await mkdir(outDir, { recursive: true });
@@ -383,9 +425,9 @@ async function main() {
 	if (failed.length) {
 		console.log(`\n${failed.length} failed:`);
 		for (const entry of failed) console.log(`  ${entry.slug} - ${entry.error}`);
-		console.log('\nRe-run to retry only these; verified files are skipped.');
-		process.exitCode = 1;
 	}
+
+	return failed.length;
 }
 
 function entryFor(song) {

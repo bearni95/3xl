@@ -6,9 +6,10 @@ divisions-administratives-*
 # Eurostat LAU Europe source download (input to packages/data generate:geo)
 ref-lau-*
 
-# Wayback pull of amiboshi.cat's Catalan songs (output of download-inuyasha-songs.js);
-# the ones the game plays are curated by hand into packages/assets/public/music/
-inuyasha-mp3/
+# Wayback pulls of amiboshi.cat's Catalan songs, one folder per source page (output of
+# download-amiboshi-songs.js); the ones the game plays are curated by hand into
+# packages/assets/public/music/
+*-mp3/
 
 # Build output
 dist/

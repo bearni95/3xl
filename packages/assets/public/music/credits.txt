@@ -2,20 +2,29 @@ The Catalan show themes the map's music player plays. These are the versions sun
 Catalan, not the Japanese originals — rights stay with their owners; they are here for
 the same reason the MUGEN sprite archives are.
 
-- one-piece-we-are.mp3 — One Piece, "We are" (català, v. TVC).
 - inuyasha-*.mp3 — InuYasha's openings and endings, 22 of them.
+- one-piece-*.mp3 — One Piece's openings, endings and insert songs, 49 of them.
 
-Most are the versions broadcast on Televisió de Catalunya. Three are by Charm, a fan
-group, and are marked `-charm` in the file name and "(Charm)" in the title, because a
-cover is not what went out on air. Where the same song was captured twice the file name
-says which take it is: `-tv` and `-restaurada` for the raw rip and the restored pass of
-"Come", `-1r` and `-2n` for the two editions of "Angelus ~Anjerasu~".
+Most are the versions broadcast on Televisió de Catalunya. The rest say in the file name
+what else they are, because a dub or a cover is not the take that went out on TV3:
 
-The InuYasha set came off the Wayback Machine's capture of amiboshi.cat, which is gone —
-`download-inuyasha-songs.js` at the repo root is what pulled and verified them, and it
+- `-tvv` — Televisió Valenciana's own Catalan dub, a different recording of the same song
+  (the One Piece set has 15 of these). Titled "(TVV)".
+- `-charm` — Charm, a fan group; three of the InuYasha endings. Titled "(Charm)".
+- `-cover-fatima-ayats` — a cover of "Before dawn". Titled "(còver)".
+
+Where the same song was captured in more than one cut the file name says which: `-tv` and
+`-restaurada` for the raw rip and the restored pass of InuYasha's "Come", `-1r` and `-2n`
+for the two editions of "Angelus ~Anjerasu~", `-mugiwara-version` and `-10-years-version`
+for the two mixes of "We are".
+
+Both sets came off the Wayback Machine's captures of amiboshi.cat, which is gone —
+`download-amiboshi-songs.js` at the repo root is what pulled and verified them, and it
 writes a manifest recording, per song, the capture it was served and its sha256. Re-run
 it to fetch them again; the mp3s it stages are git-ignored, and these are the ones that
-were curated in from that staging folder.
+were curated in from those staging folders. Two songs are in that pull twice over —
+"Change the world" and "We are" were already vendored here before it existed, and the
+pull's copies were byte-identical, so they kept the names they already had.
 
 What each of these is — its title, and the show it opens — is not recorded here: it
 is authored per file into @3xl/data's public/music.json on the admin /music screen,
