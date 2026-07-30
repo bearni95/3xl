@@ -17,9 +17,9 @@
 	// When embedded, the trigger button is dropped and the card renders in flow,
 	// always visible and full-width — it is a section of the map page's right-hand
 	// panel — instead of the hover/click dropdown that hangs off the navbar. Signed in,
-	// that section is the player's own full-width row, and under it a three-column grid
-	// holding whatever the host puts in the default slot (the statues of the side they
-	// field) — the account above, the team it fields below.
+	// that section is the player's own full-width row and nothing else: the side they
+	// field used to be a three-column grid under it, and is a plate at the map's own
+	// bottom-left corner now (see PartyPanel), so this tab is about the account alone.
 	export let embedded: boolean = false;
 
 	const status = authService.status;
@@ -156,11 +156,10 @@
 						</div>
 					{:else if $status === AuthStatus.SignedIn && $profile}
 						{#if embedded}
-							<!-- The account across the whole width, above the cards rather than in among
-								them: the picture, the reading and the ways out of the panel (the roster,
-								the badges, the account's settings) on one row of three columns. Every one
-								of those buttons raises a modal mounted at the layout root, so the tile
-								only says it was pressed. -->
+							<!-- The account across the whole width: the picture, the reading and the ways
+								out of the panel (the roster, the badges, the account's settings) on one row
+								of three columns. Every one of those buttons raises a modal mounted at the
+								layout root, so the tile only says it was pressed. -->
 							<ProfileTile
 								profile={$profile}
 								on:editavatar={openAvatarPicker}
@@ -168,14 +167,6 @@
 								on:openroster={openRoster}
 								on:openachievements={openAchievements}
 							/>
-
-							<!-- The side they field, three cards to a row — the whole team on one row,
-								which is what a team of three should read as. With the account's own row
-								out of the grid there is nothing else in it to make room for, so the panel's
-								450px goes to the three statues alone. -->
-							<div class="grid grid-cols-3 items-start gap-2">
-								<slot />
-							</div>
 						{:else}
 							<ProfileCard
 								profile={$profile}

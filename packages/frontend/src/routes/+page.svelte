@@ -14,7 +14,7 @@
 	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import PackGrid from '$components/core/pack/PackGrid.svelte';
-	import CharacterStatue from '$components/core/CharacterStatue.svelte';
+	import PartyPanel from '$components/core/PartyPanel.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
 	import AchievementsModal from '$components/core/AchievementsModal.svelte';
@@ -334,12 +334,17 @@
 	}
 	$: if (!$openBattle) resumedBattle = null;
 
-	// The panel's three views: the player themselves (their own card and the side they
-	// field, on one grid), the standing of every show across the whole map, and the booster
-	// pack of whichever festa town's box was clicked last. Every one of them lives here
-	// rather than in a panel of its own, so the map only ever gives up room to one of them —
-	// the breadcrumbs above the strip stay put across all three, since they name what the
-	// map is looking at whichever view is forward.
+	// The panel's three views: the player themselves (their own card), the standing of every
+	// show across the whole map, and the booster pack of whichever festa town's box was
+	// clicked last. Every one of them lives here rather than in a panel of its own, so the
+	// map only ever gives up room to one of them — the breadcrumbs above the strip stay put
+	// across all three, since they name what the map is looking at whichever view is forward.
+	//
+	// The side the player fields was the second half of the first of those and is a plate at
+	// the map's own bottom-left corner now (see PartyPanel), for the reason the open region
+	// left this column too: a team is what every town on the map is read against, so it is
+	// wanted whichever of these three is forward, and a view here can only be up by putting
+	// another one away.
 	//
 	// The open region was a fourth view here and is not any more: it is a plate at the map's
 	// own corner (see CollapsiblePlate), because a table of place names is read against the
@@ -854,11 +859,12 @@
 	// frames folder and nothing else, so the faces and show names that fed those cards
 	// are no longer loaded at all.)
 
-	// --- The player's own team (the panel's account section) ---------------------
-	// Stood up in the document as the three cards under the player's own row (see
-	// CharacterStatue, and the grid AuthMenu holds them in): the side this player would field, so
-	// what they are challenging with is read against the town they are looking at without
-	// leaving the map for the roster.
+	// --- The player's own team (the plate at the map's bottom-left corner) -------
+	// Stood up in the document as the three statues on their own plate over the map (see
+	// PartyPanel): the side this player would field, so what they are challenging with is
+	// read against the town they are looking at without leaving the map for the roster —
+	// and without the panel's Profile tab having to be forward for it to be on screen at
+	// all, which is what being a section of that tab cost it.
 	// The team is the slots on the player's own cards, so it is only renderable once
 	// those have loaded; empty slots are left out, and a team with none shows nothing.
 	const teamSpawns = teamService.fielded;
@@ -867,7 +873,7 @@
 	$: currentUserId = $profile ? String($profile.id) : null;
 
 	// One load per signed-in player, exactly as the roster and the arena do it. A
-	// failure leaves the strip empty rather than breaking the panel.
+	// failure leaves the plate unmounted rather than breaking the map.
 	let spawnsLoadedFor: string | null = null;
 	$: if (currentUserId && currentUserId !== spawnsLoadedFor) {
 		spawnsLoadedFor = currentUserId;
@@ -878,8 +884,8 @@
 	// board. They ARE the team: a card holds a team slot or it doesn't, so this is the
 	// same line-up on every device the account is signed in on.
 	//
-	// The strip draws them from their frames folder alone: no portrait to load, and no
-	// show name to resolve, since it shows the show's logo rather than naming it.
+	// The plate draws them from their frames folder alone: no portrait to load, and no
+	// show name to resolve, since it paints the show's glyph rather than naming it.
 
 	// geojson feature id → municipality name, so each card can name where it was
 	// claimed. Null until the layer the map is drawn from has loaded.
@@ -894,7 +900,7 @@
 		return ULTRAMAR.municipality;
 	}
 
-	// The player's team as the strip draws it — not a card: who they are, the art that
+	// The player's team as the plate draws it — not a card: who they are, the art that
 	// stands them up, the colour they bend, where they were claimed and the show they
 	// come from, whose glyph goes on the floor they stand on. The show is the
 	// character's own first show, as `teamShowId` reads it for a town's pin, so a
@@ -1755,9 +1761,9 @@
 		any more: the drill table is a plate at the map's corner and the breadcrumbs are a bar
 		across the top of the map, both of them over the thing they name.
 		— Profile: the player's own full-width row — picture, reading, and the way through to
-		  the full card and the roster — then the three they field as a row of three cards
-		  under it. The tab the panel opens on, and the only one that says nothing about the
-		  map.
+		  the full card and the roster. The tab the panel opens on, and the only one that says
+		  nothing about the map. The three they field used to sit under that row and are a
+		  plate at the map's bottom-left corner now (see PartyPanel).
 		— Leaderboard: how much of the map each show flies, tallied over every
 		  municipality's current show — seeded, or the ruling team's where a town has been
 		  taken.
@@ -1820,31 +1826,15 @@
 
 			{#if panelTab === PanelTab.Profile}
 				<!-- Who is playing: signed out it is the sign-in panel, so this tab is the way
-					into the game; signed in it is the player's own full-width row, and
-					under it the side they field, three cards to a row. Its own scroller on the desktop panel,
+					into the game; signed in it is the player's own full-width row and nothing
+					else — the side they field is a plate at the map's bottom-left corner now (see
+					PartyPanel), which is where it can be read against the town being looked at
+					whichever tab is forward. Its own scroller on the desktop panel,
 					exactly like the tables in the tabs beside it; on the mobile panel the whole
 					thing scrolls as one, so the `flex-1` is inert there and the section simply
 					takes the height its contents ask for. -->
 				<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-					<!-- The statues fill the three-column grid AuthMenu puts under the player's row (see its
-						slot): each character's idle animation on a square of its own colour, standing
-						in the document rather than on a canvas — a canvas here was a WebGL context,
-						and a whole card's worth of chrome, spent on three sprites the panel only
-						shows. Nothing to render when the account fields no cards, which leaves the
-						player's row standing on its own. -->
-					<AuthMenu embedded>
-						{#each playerTeamLineup as member, index (index)}
-							<CharacterStatue
-								label={member.label}
-								basePath={member.basePath}
-								color={member.color}
-								box={member.box}
-								locationName={member.locationName}
-								spawnedAt={member.spawnedAt ?? null}
-								showId={member.showId}
-							/>
-						{/each}
-					</AuthMenu>
+					<AuthMenu embedded />
 				</div>
 			{:else if panelTab === PanelTab.Leaderboard}
 				<ShowStandingsTable rows={showStandings} />
@@ -1959,10 +1949,12 @@
 				classes="min-h-0 flex-1"
 			/>
 
-			<!-- Everything the map draws over itself, in one absolutely positioned column: the
+			<!-- Everything the map draws over its top edge, in one absolutely positioned column: the
 				breadcrumb bar across the top, and under it the corner's stack of plates — the town
 				panel when a town is picked, and under it the Location plate, folded away until it is
-				asked for. The bar is in the column
+				asked for. (The player's own side is over the map too, at the foot of it — its own
+				plate rather than a row of this column, since it is at the other corner; see
+				PartyPanel below.) The bar is in the column
 				rather than over it, so it pushes the plates down by taking its own row instead
 				of by being cleared with an offset nobody would remember to keep in step with it.
 				Absolute inside the map
@@ -2116,6 +2108,27 @@
 					{/if}
 				</div>
 			</div>
+			<!-- The side this player fields, at the opposite corner of the map from the town
+				panel: the three being challenged sit under the breadcrumbs at the top, the three
+				doing the challenging stand at the foot, so the fight the Challenge button opens
+				is both sides of it read on the one screen. It was a slice of the panel's Profile
+				tab, which meant the team was on screen only while that tab was forward — and it
+				is the one thing on this page that is about no tab at all.
+				Its own absolutely positioned plate rather than a row of the corner's stack, since
+				it belongs at the other end of the map from that stack. Same z-[900] as the stack:
+				clear of Leaflet's own panes (overlays 400-600, controls 800) and under the arena's
+				1200. It captures its own clicks — a statue carries a title — and nothing else of
+				the map is covered.
+				Only drawn once there is a side to draw: signed out, or an account with no card in
+				a team slot, leaves the corner empty rather than standing up an empty frame. And
+				only inside `ready`, so a statue never says Ultramar at a town whose name is still
+				on its way (see claimPlaceFor). -->
+			{#if playerTeamLineup.length > 0}
+				<PartyPanel
+					members={playerTeamLineup}
+					classes="absolute bottom-3 left-3 z-[900] w-80 max-w-[calc(100%-1.5rem)]"
+				/>
+			{/if}
 		{:else}
 			<div class="flex min-h-0 flex-1 items-center justify-center">
 				<span class="loading loading-spinner loading-lg"></span>
