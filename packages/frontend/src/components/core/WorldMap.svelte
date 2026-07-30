@@ -27,6 +27,7 @@
 		dimmedIds = new Set<string>(),
 		hiddenLineUrls = new Set<string>(),
 		focusBounds = null,
+		zoomBounds = null,
 		currentZoom = $bindable(zoom),
 		activeLevel = $bindable(0),
 		currentCenter = $bindable(center),
@@ -106,6 +107,15 @@
 		 * even to the same box, so re-selecting a region re-centres it.
 		 */
 		focusBounds?: [[number, number], [number, number]] | null;
+		/**
+		 * When set, the map zooms until this `[[south, west], [north, east]]` box stands whole
+		 * in the canvas — and moves nothing else. The same fit `focusBounds` frames to, minus
+		 * the framing: the view stays where it is looking and only the scale changes, which is
+		 * what a caller asking for a *tier* rather than for a place wants, since the tier drawn
+		 * is decided by the size of the region the centre is in and not by where it sits (see
+		 * boundsFitAtZoom). A fresh array re-zooms even to the same box.
+		 */
+		zoomBounds?: [[number, number], [number, number]] | null;
 		/** Live map zoom level, kept in sync with the map (bindable). */
 		currentZoom?: number;
 		/**
@@ -271,6 +281,19 @@
 		const target = mapInstance.getBoundsZoom(focusBounds, false, focusPadding());
 		const centre = focusBoundsCentre(focusBounds);
 		mapInstance.setView(centre, target, { animate: true });
+	});
+
+	$effect(() => {
+		// Zoom to fit a box without going to it. The zoom is computed exactly as the framing
+		// above computes its own, against the same margin, so a caller asking for the zoom at
+		// which a region stands whole gets the zoom that region would have been framed at —
+		// and, since the level-of-detail rule measures a region's size and not its place (see
+		// boundsFitAtZoom), the tier the map draws lands where the caller asked for it.
+		void ready;
+		if (!zoomBounds || !mapInstance) return;
+		mapInstance.setZoom(mapInstance.getBoundsZoom(zoomBounds, false, focusPadding()), {
+			animate: true
+		});
 	});
 
 	// The margin kept clear between a region and the edge of the canvas, per side: a share

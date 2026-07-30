@@ -33,15 +33,41 @@
 	// it, and at the head of the path the plurality of the whole map. The caller decides
 	// what those are (a held town flies its ruling team's show, not its own most-seen one);
 	// this bar just letters whatever it is handed.
+	//
+	// The path is a ladder of fixed positions and not just the steps that exist: every tier
+	// the map divides into has a place in the row whether or not the view has reached it, and
+	// whether or not the place being looked at has that tier at all (Andorra and l'Alguer have
+	// no comarca; the territories with one province skip that tier). A position with no step
+	// in it is drawn as an outlined square where the crumb would have been — the same square
+	// the buttons at either end of this bar are drawn in — and it is pressed for the one thing
+	// a tier with no place in it can still say: take the map to the zoom that tier is read at.
+	// So the row keeps its length as the map drills, and every tier is reachable from it
+	// rather than only the ones already walked into.
 	export let crumbs: {
 		label: string;
 		key: string | null;
 		showName?: string | null;
 		showId?: number | null;
 		tileClasses?: string | null;
+		/** A position with no region in it: drawn as the outlined square, pressed for `onZoom`. */
+		empty?: boolean;
+		/** The tier that position stands for — what the empty square is labelled by. */
+		tier?: string;
 	}[] = [];
 	export let onSelect: (key: string | null) => void;
+	// What an empty position does: the tier it stands for, handed back for the caller to zoom
+	// to. Never called for a crumb that names a region — that one is `onSelect`, as before.
+	export let onZoom: (tier: string) => void = () => {};
 	export let classes: string = '';
+
+	// The square an empty position is drawn in, and the two buttons at the ends of this bar
+	// with it: a line of 32px tiles, so everything on the row that is pressed rather than read
+	// is the same square, told apart by being a rule around empty rather than a fill. The
+	// colours are spelled out because an outlined DaisyUI button letters itself in the theme's
+	// periwinkle, a stray colour on a bar that forces white over terrain, and its hover fills
+	// the square and takes the rule with it.
+	const squareClasses =
+		'btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white';
 
 	// Whether the whole path fits the share of the row left over after the `end` slot has
 	// taken its width. Measured, not guessed at: how wide a path is depends on how many tiers
@@ -86,12 +112,20 @@
 	// Nothing to be dropped open once the path fits again.
 	$: if (!collapsed) expanded = false;
 
-	// The step the map is on: the one crumb the collapsed row keeps.
-	$: lastCrumb = crumbs[crumbs.length - 1];
+	// The step the map is on: the one crumb the collapsed row keeps. The last position that
+	// names a region, not the last position — the ladder's tail is empty squares whenever the
+	// map has not drilled to the bottom, and a row folded down to one thing keeps the thing
+	// that says where you are. The squares it drops are in the column the dots button opens.
+	$: lastCrumb = [...crumbs].reverse().find((crumb) => !crumb.empty);
 
 	function pick(key: string | null) {
 		expanded = false;
 		onSelect(key);
+	}
+
+	function zoomTo(tier: string) {
+		expanded = false;
+		onZoom(tier);
 	}
 
 	// The column stands over the map, so a press anywhere else is a press on something the
@@ -132,12 +166,16 @@
 				<ul>
 					{#each crumbs as crumb}
 						<li>
-							<MapBreadcrumb
-								label={crumb.label}
-								showName={crumb.showName ?? null}
-								showId={crumb.showId ?? null}
-								tileClasses={crumb.tileClasses ?? null}
-							/>
+							{#if crumb.empty}
+								<span class={squareClasses}></span>
+							{:else}
+								<MapBreadcrumb
+									label={crumb.label}
+									showName={crumb.showName ?? null}
+									showId={crumb.showId ?? null}
+									tileClasses={crumb.tileClasses ?? null}
+								/>
+							{/if}
 						</li>
 					{/each}
 				</ul>
@@ -159,7 +197,7 @@
 				<div class="flex items-center gap-2">
 					<button
 						type="button"
-						class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
+						class={squareClasses}
 						aria-expanded={expanded}
 						aria-label="Show the whole path"
 						on:click={() => (expanded = !expanded)}
@@ -188,9 +226,20 @@
 			{:else}
 				<div class="breadcrumbs py-0 text-sm">
 					<ul>
-						{#each crumbs as crumb, i}
+						{#each crumbs as crumb}
 							<li>
-								{#if i === crumbs.length - 1}
+								{#if crumb.empty}
+									<!-- A position with no region in it — a tier this place does not have, or one
+										the map has not drilled to yet. The square stands where the crumb would have
+										been, and pressing it takes the map to the zoom that tier is read at. -->
+									<button
+										type="button"
+										class={squareClasses}
+										title={crumb.tier ?? ''}
+										aria-label={crumb.tier ? `Zoom to ${crumb.tier}` : 'Zoom to this tier'}
+										on:click={() => zoomTo(crumb.tier ?? '')}
+									></button>
+								{:else if crumb === lastCrumb}
 									<!-- The step the map is on. `aria-current` and not a control: it is where you
 										already are, so there is nowhere for it to go — which is also why it undoes
 										DaisyUI's `cursor: pointer`, put on every child of an `li` on the assumption
@@ -252,8 +301,19 @@
 			transition:slide={{ duration: 200 }}
 			class="absolute left-0 top-full z-10 mt-2 flex w-max max-w-full flex-col gap-0.5 overflow-hidden rounded-lg bg-base-100 p-2 text-white shadow-xl"
 		>
-			{#each crumbs as crumb, i}
-				{#if i === crumbs.length - 1}
+			{#each crumbs as crumb}
+				{#if crumb.empty}
+					<!-- An empty position keeps its line down the column too — the ladder is the same
+						ladder read the other way round — and the square is what it is in the row. -->
+					<button
+						type="button"
+						class="flex items-center rounded-md px-2 py-1 text-left hover:bg-white/10"
+						aria-label={crumb.tier ? `Zoom to ${crumb.tier}` : 'Zoom to this tier'}
+						on:click={() => zoomTo(crumb.tier ?? '')}
+					>
+						<span class={squareClasses}></span>
+					</button>
+				{:else if crumb === lastCrumb}
 					<span aria-current="page" class="rounded-md px-2 py-1">
 						<MapBreadcrumb
 							label={crumb.label}

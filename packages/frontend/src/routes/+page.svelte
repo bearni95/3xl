@@ -35,10 +35,12 @@
 	import { territoryAdapter } from '$adapters/classes/territory.adapter';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
-	import type {
-		MunicipalityChallenge,
-		MunicipalityHolder,
-		MunicipalitySiege
+	import {
+		challengeAvailableAt,
+		challengeCoolingDown,
+		type MunicipalityChallenge,
+		type MunicipalityHolder,
+		type MunicipalitySiege
 	} from '$types/territory.type';
 	import type { TerritoryResult } from '$types/combat.type';
 	import type { OpenBattle } from '$types/battle.type';
@@ -81,7 +83,6 @@
 	} from '$utils/geo/center';
 	import { buildShowStandings } from '$utils/geo/show-standings';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
-	import { nextCatalanMidnight } from '$utils/festes/catalan-day';
 	import { boosterWindow } from '$utils/festes/booster-window';
 	import type { MapBoosterBox, MapChallenge, MapMarker, MapOverlay } from '$types/map.type';
 	import type {
@@ -252,13 +253,15 @@
 	// that is what the panel shows and what a challenger fights; the seeded roll
 	// below is only the fallback for towns nobody has taken yet. Taking a town needs
 	// as many wins as it has changed hands, plus one — so every flip makes the
-	// sitting team harder to shift. Those wins can only be banked one a day per town:
-	// a player gets one challenge per municipality per Catalan day, so a town that has
-	// flipped twice takes at least three days to take.
+	// sitting team harder to shift. Those wins are paced by a cooldown rather than
+	// rationed by the day: finishing a fight over a town shuts that town to that
+	// player for an hour, timed from the end of the fight, and they may walk straight
+	// back in once it runs out.
 
-	// Every occupied town, this player's banked wins, and the towns they have already
-	// challenged today, keyed by municipality id. Reassigned wholesale (never mutated)
-	// so the reactive statements below re-run.
+	// Every occupied town, this player's banked wins, and the towns currently closed to
+	// them — the one they are fighting over, plus every one still cooling down — keyed
+	// by municipality id. Reassigned wholesale (never mutated) so the reactive
+	// statements below re-run.
 	let holders = new Map<string, MunicipalityHolder>();
 	let sieges = new Map<string, MunicipalitySiege>();
 	let challenges = new Map<string, MunicipalityChallenge>();
@@ -293,8 +296,9 @@
 		await reloadChallenges();
 	}
 
-	// The day's spent challenges on their own — re-read whenever one is spent or a
-	// fight settles, so the Challenge button closes the town off without a reload.
+	// The running cooldowns on their own — re-read whenever a fight opens, a fight
+	// settles, or one of them runs out, so the Challenge button opens and closes the
+	// town without a reload.
 	async function reloadChallenges(): Promise<void> {
 		try {
 			challenges = await territoryService.loadChallenges();
@@ -309,11 +313,11 @@
 		void reloadTerritory();
 	}
 
-	// The arena is gone. Re-read the day's challenges, because the fight that just
-	// closed may no longer have cost anything: a town taken by somebody else while
-	// this fight was open hands the day back (the slot is voided server-side), and
-	// that applies to a fight walked away from as much as to a reported one — which
-	// is a fight `on:territory` never hears about.
+	// The arena is gone. Re-read the cooldowns, because the fight that just closed is
+	// what set this town's: reported, it starts the hour; taken by somebody else while
+	// it was open, it sets none at all (the slot is voided server-side). That applies
+	// to a fight walked away from as much as to a reported one — which is a fight
+	// `on:territory` never hears about.
 	function onFightClosed(): void {
 		fightOpen = false;
 		void reloadChallenges();
@@ -356,7 +360,7 @@
 	// show's tally to another's the moment the holders reload.
 	$: showStandings = buildShowStandings(showsById);
 
-	// Sieges and today's spent challenges are both RLS-scoped to the reader, so the
+	// Sieges and the running cooldowns are both RLS-scoped to the reader, so the
 	// sets loaded before sign-in are nobody's. Reload whenever the signed-in account
 	// changes (including signing out, which empties them). `$profile` is named
 	// directly so the statement tracks it.
@@ -763,6 +767,29 @@
 	//
 	// It carries a key like every other step too (see TOP_VIEW_KEY), so clicking it opens the
 	// top view instead of merely forgetting whatever was open.
+	// Below the root the bar is a ladder of the four tiers and not just the steps walked into:
+	// every tier has a position in the row whether or not the view has reached it, and whether
+	// or not the place being looked at has that tier at all — the drill path skips a tier where
+	// there is none (Andorra and l'Alguer have no comarca; a territory with one province lists
+	// its comarques directly), and it stops wherever the map has got to. A position with no
+	// step in it is drawn as an outlined square and pressed to take the map to the zoom that
+	// tier is read at (see zoomToTier). So the row keeps its length and its rhythm as the map
+	// drills — a place's name is always in the same position, whichever place it is — and every
+	// tier is a press away rather than only the ones already opened.
+	//
+	// The word beside each tier is what the square is labelled by, and what comes back when one
+	// is pressed: the bar names the tiers of this map in the map's own language, and one word
+	// serves as both the label and the key it is worked back out of.
+	const TIER_LADDER: [RegionType, string][] = [
+		['Territory', 'territori'],
+		['Province', 'província'],
+		['Comarca', 'comarca'],
+		['Municipality', 'municipi']
+	];
+	const tierByWord = new Map<string, RegionType>(
+		TIER_LADDER.map(([tier, word]) => [word, tier])
+	);
+
 	$: mapPlurality = everyTownPlurality(regionNodes);
 	$: crumbs = [
 		{
@@ -772,13 +799,19 @@
 			showId: mapPlurality.show?.id ?? null,
 			tileClasses: mapPlurality.color ? pinColorClasses[mapPlurality.color] : null
 		},
-		...displayPath.map((node) => ({
-			label: restoreCatalanArticle(node.name),
-			key: node.key as string | null,
-			showName: node.show?.name ?? null,
-			showId: node.show?.id ?? null,
-			tileClasses: node.color ? pinColorClasses[node.color] : null
-		}))
+		...TIER_LADDER.map(([tier, word]) => {
+			const node = displayPath.find((step) => step.type === tier);
+			if (!node) {
+				return { label: '', key: null as string | null, empty: true, tier: word };
+			}
+			return {
+				label: restoreCatalanArticle(node.name),
+				key: node.key as string | null,
+				showName: node.show?.name ?? null,
+				showId: node.show?.id ?? null,
+				tileClasses: node.color ? pinColorClasses[node.color] : null
+			};
+		})
 	];
 
 	// The open location's own node and its plurality ("most seen") show. Surfaced on the
@@ -844,16 +877,17 @@
 	// A player can't challenge a town they already hold — there is nothing to take.
 	$: holdsOpenTown = !!openHolder && !!$profile && openHolder.userId === String($profile.id);
 
-	// Nor one they have already been to today: a town is good for one challenge per
-	// Catalan day. The server is what enforces it (`start_battle`); this only
-	// closes the button so the fight isn't opened onto a refusal. A challenge the
-	// server has handed back — the town was taken by somebody else while the fight
-	// was open — is not in the loaded set at all, so the town reads as unfought.
-	$: challengedOpenTown = !!openRegion && challenges.has(openRegion);
+	// Nor one still cooling down from their last fight over it. The server is what
+	// enforces it (`start_battle`); this only closes the button so the fight isn't
+	// opened onto a refusal, and it reads the deadline the server set rather than
+	// timing anything itself. A challenge the server has handed back — the town was
+	// taken by somebody else while the fight was open — carries no deadline and is not
+	// in the loaded set at all, so the town reads as open.
+	$: challengedOpenTown = !!openRegion && challengeCoolingDown(challenges.get(openRegion));
 
-	// (A player already in a fight is not offered another one, and a town fought today
-	// says when it reopens instead — both now read in the town panel over the map, off
-	// `$openBattle` and the next Catalan midnight; see buildTownChallenge.)
+	// (A player already in a fight is not offered another one, and a cooling-down town
+	// says when it reopens instead — both read in the town panel over the map, off
+	// `$openBattle` and the challenge's own deadline; see buildTownChallenge.)
 
 	// (The town's team was drawn here as cards on the shared card canvas — portraits,
 	// show row and all. It is statues in the town panel over the map now, which take a
@@ -988,18 +1022,17 @@
 		raise();
 	}
 
-	// Fight this town: spend the day's challenge on it, then snapshot whichever team
-	// currently sits on it — the holder's if a player has taken it, the seeded roll
-	// otherwise — into synthetic spawns and open the combat modal. The town only
-	// changes hands server-side, once the fight is reported and enough wins have been
-	// banked.
+	// Fight this town: claim its challenge, then snapshot whichever team currently sits
+	// on it — the holder's if a player has taken it, the seeded roll otherwise — into
+	// synthetic spawns and open the combat modal. The town only changes hands
+	// server-side, once the fight is reported and enough wins have been banked.
 	//
-	// The day's challenge is claimed *before* the arena opens, and by the server: a
-	// town is good for one fight per Catalan day, and it is spent on opening rather
-	// than on reporting, so walking out of a fight that is going badly doesn't hand
-	// back a free retry. A refusal (the town already fought today, another tab having
-	// taken the slot first) leaves the arena closed and re-reads the day's challenges,
-	// which closes the button too.
+	// The challenge is claimed *before* the arena opens, and by the server. Walking out
+	// of a fight that is going badly still hands back no retry: the battle it opened is
+	// the one fight this player may be in until it is reported, and only reporting it
+	// starts the hour before this town can be fought again. A refusal (the town still
+	// cooling down, another tab having opened a battle first) leaves the arena closed
+	// and re-reads the cooldowns, which closes the button too.
 	//
 	// Signed out there is no ledger to spend from — and no fight that could ever be
 	// reported — so nothing is claimed and the arena opens exactly as it used to,
@@ -1024,7 +1057,7 @@
 		if ($profile) {
 			challengeStarting = true;
 			try {
-				// Opens the battle and spends the day's challenge in one transaction,
+				// Opens the battle and claims the town's challenge in one transaction,
 				// freezing the team being fought and proving the one doing the fighting —
 				// so the fight survives the town changing hands, cannot be walked away from
 				// for a fresh one, and is never opened with a line-up the report would
@@ -1032,8 +1065,8 @@
 				const challengeSlot = await battleService.start(townId, turnover, rivals);
 				if (challengeSlot) territoryService.noteChallenge(challengeSlot);
 			} catch (error) {
-				// Refused: a team that is not the caller's, already fought today, already
-				// in a battle, or the town is the player's own. Re-read both ledgers so the
+				// Refused: a team that is not the caller's, a town still cooling down, a
+				// battle already open, or the town is the player's own. Re-read both so the
 				// button tells the truth — and say which it was, since a challenge that
 				// simply does nothing is the one thing the button must never look like.
 				console.error('Challenge refused', error);
@@ -1546,7 +1579,7 @@
 		town: string | null,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
 		banked: ReadonlyMap<string, MunicipalitySiege>,
-		spent: ReadonlyMap<string, MunicipalityChallenge>,
+		cooling: ReadonlyMap<string, MunicipalityChallenge>,
 		player: Profile | null,
 		battle: OpenBattle | null,
 		starting: boolean,
@@ -1575,15 +1608,16 @@
 			};
 		}
 
-		// One challenge per town per day. Once today's is spent the control gives way to
-		// the time left until Catalan midnight, which is when the town can be fought
-		// again — and when it runs out the day's challenges are re-read, which brings the
-		// button back. The server enforces the limit either way (`start_battle`).
-		if (spent.has(town)) {
+		// A town just fought is shut for an hour, and the control gives way to the time
+		// left on it — the deadline the server set when it took the report, not a
+		// duration counted here. When it runs out the cooldowns are re-read, which
+		// brings the button back. The server enforces it either way (`start_battle`).
+		const coolingUntil = challengeAvailableAt(cooling.get(town));
+		if (coolingUntil !== null) {
 			return {
 				siege,
 				button: null,
-				unlocksAt: nextCatalanMidnight().getTime(),
+				unlocksAt: coolingUntil,
 				onUnlock: () => void reloadChallenges()
 			};
 		}
@@ -1752,6 +1786,51 @@
 				? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
 				: null;
 
+	// The box the map is zoomed to fit without being moved to — what an empty position on the
+	// breadcrumb ladder asks for. Set on the press and never cleared: a fresh array is what the
+	// map re-zooms on, so the same tier pressed twice is two arrays and two zooms.
+	let zoomBounds: LatLngBounds | null = null;
+
+	// The whole ladder of regions the map centre stands in, root down to the town — the finest
+	// pins are the ones that reach every branch, so the path to the one nearest the centre is
+	// the path this view is inside. The crumbs are drawn off `displayPath`, which stops where
+	// the map has drilled to; this goes all the way down, because a tier the bar has not
+	// reached is exactly the one an empty position asks to be taken to.
+	$: centrePath = focusedPath(maxLevel, markerLevels, currentCenter, regionNodes);
+
+	// Take the map to the zoom a tier is read at, leaving the centre where it is.
+	//
+	// Which tier of pins the map draws is decided by whether the region CONTAINING the view
+	// stands whole in the canvas, and the tier drawn is that region's children (see
+	// levelIndexForView) — so the box to fit is the deepest region under the centre coarser
+	// than the tier asked for. Above the territories that is the whole map. It is a size test
+	// and not a place one, which is why nothing here has to move the view: the same centre at
+	// that zoom is inside the same region, and the tier asked for is the tier drawn.
+	//
+	// A tier the place under the centre does not have resolves to the same box as the tier
+	// above it, which is the truth about it: at Andorra there is no comarca between the
+	// territory and the towns, so its comarca position is the territory's own zoom.
+	function zoomToTier(word: string) {
+		const tier = tierByWord.get(word);
+		if (!tier) return;
+		const above = centrePath.filter((node) => tierRank[node.type] < tierRank[tier]);
+		const container = above[above.length - 1] ?? null;
+		const bounds = container
+			? (regionGeometry.boxes.get(container.key) ?? null)
+			: municipalities
+				? boundsForFeatures(municipalities, new Set(fillIndex.keys()))
+				: null;
+		if (!bounds) return;
+		// The bar only follows the zoom while nothing is picked (see openRegion), so a tier
+		// asked for while a region is open hands the view back to the zoom first — otherwise
+		// the map would move under a bar frozen on the click that is being left behind.
+		if (regionParam) open(null);
+		zoomBounds = [
+			[bounds[0][0], bounds[0][1]],
+			[bounds[1][0], bounds[1][1]]
+		];
+	}
+
 	// Selecting a region doesn't recolour its polygons — a shape's colour says which
 	// region it belongs to, not which one is open — it only brings the shape's own wash
 	// forward (see tierStyle), on top of the framing (focusBounds) and the pins, which
@@ -1780,6 +1859,7 @@
 			boxes={festaBoxes}
 			{hiddenLineUrls}
 			{focusBounds}
+			{zoomBounds}
 			bind:currentZoom
 			bind:activeLevel
 			bind:currentCenter
@@ -1813,7 +1893,7 @@
 				and being told where you are are the same subject, so they share the one row; the
 				matches come down at the corner right below the field, on their own plate (see
 				LocationSearchPanel). -->
-			<MapBreadcrumbs {crumbs} onSelect={open} classes="pointer-events-auto">
+			<MapBreadcrumbs {crumbs} onSelect={open} onZoom={zoomToTier} classes="pointer-events-auto">
 				<!-- The far end of the bar: the way to look for a place, and past it the way to
 					everything that is not the map. Both belong at this end for the same reason — the
 					bar is the one row that is always up, so what a player reaches for however deep
