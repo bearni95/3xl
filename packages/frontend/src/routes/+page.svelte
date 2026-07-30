@@ -1439,6 +1439,26 @@
 	// what the town's pin says out on the map, said again where the cards are.
 	$: panelNode = panelTown ? (findNode(regionNodes, panelTown) ?? null) : null;
 
+	// The panel's own box on the page, bound from its wrapper (see the map column). The map
+	// takes the element and not a pair of coordinates: where the panel's centre falls is
+	// something only the live box knows, and it is re-read on every pan, zoom and resize.
+	let panelAnchor: HTMLDivElement | null = null;
+
+	// The leader tying the open town to that panel: from the point the town's pin stands on
+	// to the panel's centre, in the town's own colour so the line is read as the town's
+	// rather than as a piece of map furniture. Everything it needs must be there — the town,
+	// its point, and a mounted panel — or nothing is drawn. A town with no colour yet (its
+	// show's roster hasn't landed) takes the map's own white, the colour its borders are in.
+	$: townTether =
+		panelTown && panelAnchor && regionGeometry.centers.get(panelTown)
+			? {
+					position: regionGeometry.centers.get(panelTown)!,
+					anchor: panelAnchor,
+					color: panelNode?.color ? SPAWN_COLOR_CSS[panelNode.color] : lineColor,
+					weight: 5
+				}
+			: null;
+
 	// What the panel says under the side: how far this player has got towards taking the
 	// town, and the one control that acts on it — the siege counter and the challenge
 	// button, which used to sit in the sidebar's Location tab and then on the pin itself.
@@ -1917,6 +1937,8 @@
 				minZoom={7}
 				{overlays}
 				{markerLevels}
+				pinnedId={panelTown}
+				tether={townTether}
 				boxes={festaBoxes}
 				{hiddenLineUrls}
 				{focusBounds}
@@ -1940,7 +1962,13 @@
 				and back on for the panel, so the map is still pannable and zoomable through
 				every part of the corner the panel does not itself cover. -->
 			{#if panelTown}
-				<div class="pointer-events-none absolute left-3 top-3 z-[900] max-w-[calc(100%-1.5rem)]">
+				<!-- The leader's screen end is this box's centre, so the element itself is what
+					the map is handed (see townTether): an absolutely positioned div shrinks to
+					its content, which makes its box the panel's box. -->
+				<div
+					bind:this={panelAnchor}
+					class="pointer-events-none absolute left-3 top-3 z-[900] max-w-[calc(100%-1.5rem)]"
+				>
 					<TownPanel
 						name={restoreCatalanArticle(panelNode?.name ?? '')}
 						showName={panelNode?.show?.name ?? null}

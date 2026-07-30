@@ -44,6 +44,28 @@ export interface MapLine {
 }
 
 /**
+ * A line drawn from a point on the map to the centre of a DOM element sitting over it —
+ * the leader tying the open town to the panel that talks about it. One end is
+ * geographic and the other is a place on the screen, so the map re-reads the element's
+ * box and re-projects that end on every pan, zoom and resize: at a still map it is a
+ * line between a town and a panel, and while the map moves the panel end stays put
+ * while the town end travels with the terrain.
+ */
+export interface MapTether {
+	/** The map end: the point the line starts from — the town's own pin point. */
+	position: [number, number];
+	/**
+	 * The screen end: the element whose centre the line runs to, measured live from its
+	 * bounding box. Null (an element not mounted yet) draws no line.
+	 */
+	anchor: HTMLElement | null;
+	/** The line's colour — the town's own, so the leader is read as belonging to it. */
+	color: string;
+	/** Stroke width in px. */
+	weight?: number;
+}
+
+/**
  * What the map's town panel says about taking the town it is open on: how far the reader
  * has got towards it, and the one control that acts on it. Drawn under the side holding
  * the place, so who is to be beaten and the way to fight them read as one thing in one
