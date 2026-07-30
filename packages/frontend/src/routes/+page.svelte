@@ -9,11 +9,9 @@
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import MusicPlayer from '$components/core/MusicPlayer.svelte';
-	import CollapsiblePlate from '$components/core/CollapsiblePlate.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
 	import LocationSearchPanel from '$components/core/LocationSearchPanel.svelte';
-	import RegionTable from '$components/core/RegionTable.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
@@ -28,7 +26,6 @@
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
 	import { boosterModalOpen } from '$services/boosterModal';
-	import { locationPanelCollapsed } from '$services/locationPanel';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { authService } from '$services/auth.service';
@@ -63,18 +60,15 @@
 		buildRegionTree,
 		buildFillIndex,
 		buildRegionNodes,
-		regionRowsForSelection,
 		flattenRegionNodes,
 		everyTownPlurality,
 		nodePath,
 		municipalityIdsForKey,
 		type FillLevel,
-		type RegionRow,
 		type RegionNode,
 		type RegionShow,
 		type RegionType
 	} from '$utils/geo/region-tree';
-	import { buildRegionSieges } from '$utils/geo/region-siege';
 	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
 	import {
 		centroidsByFeatureId,
@@ -169,13 +163,6 @@
 		else params.delete('region');
 		const query = params.toString();
 		goto(query ? `?${query}` : location.pathname, { keepFocus: true, noScroll: true });
-	}
-
-	// Clicking a row drills into that region — the table then shows its children
-	// as the new current level, and the breadcrumbs grow a crumb. Going back up is
-	// done through the breadcrumbs, never the table.
-	function select(row: RegionRow) {
-		open(row.key);
 	}
 
 	onMount(async () => {
@@ -350,11 +337,11 @@
 	// picked, stood up and sliced open, which is worth the viewport rather than a third of it.
 	//
 	// So the panel is the two buttons that raise them plus the account section under them, and
-	// everything about *where the map is looking* had already left this column before them: the
-	// open region is a plate at the map's own corner (see CollapsiblePlate), the picked town
-	// another, the side the player fields stands at the foot of the map, and who is playing is
-	// a plate at its top-right. What is left in this column is the way in (signing in) and the
-	// ways out of it.
+	// everything about *where the map is looking* had already left this column before them:
+	// the path down to it is the bar across the top, the picked town says what it has to say
+	// on its own pin, the side the player fields stands at the foot of the map, and who is
+	// playing is a plate at its top-right. What is left in this column is the way in (signing
+	// in) and the ways out of it.
 
 	// What the Booster button is called: the day's allowance in parentheses — what is left to
 	// open over the daily cap, "Booster (2/3)" — which is where that counter lives, the account
@@ -677,9 +664,10 @@
 	// comarca → municipality) mirrored from the map's divisions, for the tree.
 	$: regionTree = buildRegionTree(municipalities, showsById, colorsById);
 
-	// The nested region nodes. The table shows only two tiers at a time — the open
-	// region's siblings and its children (see regionRowsForSelection) — while the
-	// breadcrumbs carry the full drill path back up.
+	// The nested region nodes. Nothing lists them tier by tier any more — the way down
+	// is the pins and the way back up is the breadcrumbs, which carry the full drill
+	// path — but every region on the map is read off this: its colour, its show, and
+	// what the crumbs and the search are built from.
 	$: regionNodes = buildRegionNodes(regionTree);
 
 	// The chain of nodes from the top territory down to the open (URL-selected)
@@ -696,18 +684,16 @@
 	// parent is the "open" region whose children that tier is.
 	$: focusPath = focusedPath(effectiveDepth, markerLevels, currentCenter, regionNodes);
 
-	// The effective open region the sidebar and polygons reflect: the focused pin's
-	// parent (null at the top view). So zooming into an area unfolds the breadcrumbs,
-	// table and border detail into it and zooming out walks them back up — following
-	// the pointer, without touching the URL selection.
+	// The effective open region the breadcrumbs and polygons reflect: the focused pin's
+	// parent (null at the top view). So zooming into an area unfolds the breadcrumbs and
+	// the border detail into it and zooming out walks them back up — following the
+	// pointer, without touching the URL selection.
 	$: effectiveSelected = focusPath.length >= 2 ? focusPath[focusPath.length - 2].key : null;
 
-	// The region whose children the Location plate lists: an explicit click (the URL
-	// `region` param) wins, so a row always drills straight into what was clicked;
-	// with nothing clicked the plate follows the zoom-driven focus instead. Asking for the
-	// top view is a click too, and it names no region — which is what makes the plate list
-	// the territories, the same way any other region's click makes it list that region's
-	// children (see regionRowsForSelection).
+	// The region the map is open on: an explicit click (the URL `region` param) wins, so a
+	// pick drills straight into what was clicked; with nothing clicked it follows the
+	// zoom-driven focus instead. Asking for the top view is a click too, and it names no
+	// region, which is the whole of the Països Catalans.
 	$: openRegion = topPicked ? null : (selected ?? effectiveSelected);
 
 	// The breadcrumb drill path down to (and including) the open region: the URL
@@ -716,15 +702,6 @@
 	// and it stays that way while the map settles, rather than re-growing the focus path
 	// the click was asking to leave.
 	$: displayPath = topPicked ? [] : selected ? openPath : focusPath.slice(0, -1);
-
-	// Every region's siege counter, so the drill table carries the same wins/needed
-	// figure the latest-wins table does: a municipality's own — its holder row's
-	// turnover sets the bar and the reader's own siege row the banked wins, with the
-	// untaken town falling back to 0/1 — and, above that tier, the sum over every town
-	// in the region. Named deps so it re-derives as the holders and sieges reload.
-	$: regionSieges = buildRegionSieges(regionNodes, holders, sieges);
-
-	$: regionRows = regionRowsForSelection(regionNodes, openRegion, regionSieges);
 
 	// Free-text search across every location in the whole tree (all tiers), matched
 	// against each region's displayed name (case- and accent-insensitive). While the
@@ -828,9 +805,10 @@
 	// The open leaf municipality's feature (matched by id), and the GPS seed that
 	// assigns its show — the same seed we reuse to roll its team, so a town's show and
 	// its team are both stable functions of its shape. Null unless a municipality with
-	// no sub-regions is open.
+	// no sub-regions is open, which is what having no children in the tree says: only
+	// the bottom tier is a place a team stands on.
 	$: municipalityFeature =
-		openRegion && municipalities && regionRows.length === 0
+		openRegion && municipalities && openNode?.children.length === 0
 			? (municipalities.features.find((feature) => String(feature.properties?.id) === openRegion) ??
 				null)
 			: null;
@@ -1863,110 +1841,26 @@
 				</div>
 			</MapBreadcrumbs>
 
-			<!-- The row under the bar, with a corner of the map at each end of it: the plates about
-				where the map is looking on the left, and the plate saying who is looking on the right.
-				A row rather than two absolutely positioned corners, so both ends are put under the
+			<!-- The row under the bar, with a corner of the map at each end of it: what is playing
+				on the left, and the plates about the search and who is looking on the right. A row
+				rather than two absolutely positioned corners, so both ends are put under the
 				breadcrumbs by the bar taking its own row above them and neither has an offset of its
 				own to keep in step with a bar that changes height. -->
 			<div class="flex items-start justify-between gap-2">
-				<!-- Where the map is looking, at its left corner: each plate only as wide as it asks
-					to be — which is what `items-start` is for, the column itself being as wide as the
-					room the row leaves it. -->
+				<!-- The map's left corner. It held a folding plate about the open region under this
+					— a table of that region's children to drill through, falling back to the open
+					town's show and holder — and holds nothing but the music now: the way down into
+					the map is the pins on it, the way back up is the bar above, and what is on a town
+					stands on the town. `items-start` so a plate is only as wide as it asks to be, the
+					column itself being as wide as the room the row leaves it. -->
 				<div class="flex min-w-0 flex-col items-start gap-2">
-					<!-- The show themes, at the head of the stack: always up, whether or not anything
-						is picked, because what is playing is not about the town under the cursor and
-						does not stop being true when the selection is dropped. It is here rather than
-						in the panel beside the map because that panel's tabs replace each other, which
-						would carry the player off screen mid-song. The plate is drawn as the town panel
-						below it is — same black, same glyph tile, same two lines — so the corner reads
-						as one stack rather than as two kinds of thing. It draws nothing at all until a
-						song is loaded, so the corner is unchanged on a map whose music never arrived. -->
+					<!-- The show themes: always up, whether or not anything is picked, because what is
+						playing is not about the town under the cursor and does not stop being true when
+						the selection is dropped. It is here rather than in the panel beside the map
+						because that panel's tabs replace each other, which would carry the player off
+						screen mid-song. It draws nothing at all until a song is loaded, so the corner is
+						unchanged on a map whose music never arrived. -->
 					<MusicPlayer classes="pointer-events-auto w-72" />
-					<!-- (Picking a town adds nothing to this corner. The side holding it and the way to
-						fight them stand on the town's own pin, out on the map where the place is.) -->
-
-					<!-- Where the map is looking, at the foot of the corner: the drill table for the
-						open region — its siblings and its children — or, for a leaf municipality with
-						nothing left to list, that town's show and who is holding it. The matches for a
-						search used to be a third thing this plate could be showing; they are their own
-						plate at the opposite corner now, so this one is only ever about the open region.
-						It was a tab of the panel beside the map, which made it one of four views
-						competing for that column: a table of place names is read *against* the map,
-						and the panel could only show it by putting away whichever view was forward.
-						Here it stands over the map it is about, and it is the last plate in the stack
-						because it is the biggest and the one a player asks for rather than is handed —
-						the music and the picked town keep the corner they already had.
-						Folded away by default, and folded or not is remembered (see locationPanel).
-						A height it cannot pass, with the table scrolling inside it: this is a corner
-						of the map, not a column, so the plate never grows into the whole of it. -->
-					<CollapsiblePlate
-						title="Location"
-						bind:collapsed={$locationPanelCollapsed}
-						classes="pointer-events-auto w-96 max-w-full"
-						bodyClasses="flex max-h-[50vh] flex-col bg-base-100 text-base-content"
-					>
-						{#if regionRows.length === 0}
-							<!-- A leaf region (a municipality): no children to drill into, so instead of an
-								empty table we surface its own top show — the only place the open location's
-								show appears — and say who is holding the place, which is the one thing about
-								a town nothing else on screen says. The side itself is out on the map,
-								standing on the town. -->
-							<div class="flex min-h-0 flex-1 flex-col gap-3 p-3">
-								{#if openShow}
-									<div class="flex flex-none items-center gap-3">
-										{#if openShow.posterUrl}
-											<img
-												src={openShow.posterUrl}
-												alt={openShow.name}
-												class="h-16 w-auto flex-none rounded shadow"
-											/>
-										{/if}
-										<div class="min-w-0">
-											<!-- A held town flies its ruling team's show, so the label says so
-												rather than claiming it is the town's most-seen one. -->
-											<p class="text-xs font-bold uppercase tracking-wide opacity-60">
-												{openHolder ? 'Ruling show' : 'Most seen'}
-											</p>
-											<p class="truncate font-semibold">{openShow.name}</p>
-										</div>
-									</div>
-								{:else}
-									<p class="flex-none text-center opacity-60">No show here yet.</p>
-								{/if}
-
-								{#if municipalityTeam.length > 0}
-									<!-- Whoever holds the town. Until a player beats it, that's the town's
-										built-in, seed-rolled "OG" (original) roster — the same for every
-										player, badged so it reads as the house team. Once somebody takes the
-										town it's their frozen winning team instead, and it's their name on
-										the badge.
-
-										The team itself is not drawn here any more: it is standing on the
-										town's own pin (see statuedTown), so this plate names who holds the
-										place and the map shows them holding it. -->
-									<div class="flex flex-none items-center gap-2">
-										{#if openHolder}
-											<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
-											<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
-												{openHolder.holderName}
-											</span>
-										{:else}
-											<span class="badge badge-primary badge-sm font-bold">OG</span>
-											<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
-										{/if}
-										<!-- The siege counter and the challenge button used to sit here; they
-											are on the town's own pin now (see buildTownChallenge), standing under
-											the very team they are about. What is left is who holds it. -->
-										{#if holdsOpenTown}
-											<span class="badge badge-success badge-sm ml-auto">Yours</span>
-										{/if}
-									</div>
-								{/if}
-							</div>
-						{:else}
-							<RegionTable rows={regionRows} onSelect={select} />
-						{/if}
-					</CollapsiblePlate>
 				</div>
 
 				<!-- The map's right corner, read down: what the search box at the end of the bar
