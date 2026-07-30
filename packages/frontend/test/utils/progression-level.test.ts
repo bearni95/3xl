@@ -7,7 +7,8 @@ import {
 	expForLevel,
 	levelProgress,
 	levelSpanExp,
-	combatExpAward
+	combatExpAward,
+	LOSS_CONSOLATION_SHARE
 } from '$utils/progression/level';
 
 describe('D&D experience-to-level', () => {
@@ -92,31 +93,50 @@ describe('level span', () => {
 describe('combat experience award', () => {
 	it('pays a flawless win the whole span of the current level', () => {
 		// Nobody down at level 1: exactly the 300 xp that reaches level 2.
-		expect(combatExpAward({ exp: 0, won: true, survivors: 3, fielded: 3 })).toBe(300);
+		expect(combatExpAward({ exp: 0, outcome: 'win', survivors: 3, fielded: 3 })).toBe(300);
 		// Level 2 (300..900) pays its own full 600 span, from the level's base —
 		// so it overshoots into level 3 for a player who was already partway.
-		expect(combatExpAward({ exp: 600, won: true, survivors: 3, fielded: 3 })).toBe(600);
+		expect(combatExpAward({ exp: 600, outcome: 'win', survivors: 3, fielded: 3 })).toBe(600);
 	});
 
 	it('scales linearly with the fighters the team kept standing', () => {
-		expect(combatExpAward({ exp: 0, won: true, survivors: 2, fielded: 4 })).toBe(150);
+		expect(combatExpAward({ exp: 0, outcome: 'win', survivors: 2, fielded: 4 })).toBe(150);
 		// Rounded to whole experience.
-		expect(combatExpAward({ exp: 0, won: true, survivors: 1, fielded: 3 })).toBe(100);
-		expect(combatExpAward({ exp: 0, won: true, survivors: 2, fielded: 3 })).toBe(200);
+		expect(combatExpAward({ exp: 0, outcome: 'win', survivors: 1, fielded: 3 })).toBe(100);
+		expect(combatExpAward({ exp: 0, outcome: 'win', survivors: 2, fielded: 3 })).toBe(200);
 	});
 
-	it('pays nothing for a loss, a draw, or a wipeout win', () => {
-		expect(combatExpAward({ exp: 0, won: false, survivors: 3, fielded: 3 })).toBe(0);
-		expect(combatExpAward({ exp: 0, won: true, survivors: 0, fielded: 3 })).toBe(0);
+	it('pays nothing for a draw or a wipeout win', () => {
+		expect(combatExpAward({ exp: 0, outcome: 'draw', survivors: 3, fielded: 3 })).toBe(0);
+		expect(combatExpAward({ exp: 0, outcome: 'win', survivors: 0, fielded: 3 })).toBe(0);
 	});
 
-	it('pays nothing at the level cap', () => {
-		expect(combatExpAward({ exp: 400_000, won: true, survivors: 3, fielded: 3 })).toBe(0);
+	it('pays a loss a hundredth of what that fight could ever have paid', () => {
+		// The ceiling is the whole span — the flawless win — so a loss at level 1 is 1% of
+		// 300, and at level 3 (900..2700) 1% of that level's own 1800.
+		expect(combatExpAward({ exp: 0, outcome: 'lose', survivors: 3, fielded: 3 })).toBe(3);
+		expect(combatExpAward({ exp: 1000, outcome: 'lose', survivors: 3, fielded: 3 })).toBe(18);
+		expect(LOSS_CONSOLATION_SHARE).toBe(0.01);
+	});
+
+	it('pays a loss the same whatever became of the team', () => {
+		// A consolation is for having turned up, so it does not read the survivors: wiped
+		// out or barely scratched, a loss is a loss.
+		const wiped = combatExpAward({ exp: 0, outcome: 'lose', survivors: 0, fielded: 3 });
+		expect(wiped).toBe(3);
+		expect(combatExpAward({ exp: 0, outcome: 'lose', survivors: 3, fielded: 3 })).toBe(wiped);
+		// And it needs no team at all to be worked out.
+		expect(combatExpAward({ exp: 0, outcome: 'lose', survivors: 0, fielded: 0 })).toBe(wiped);
+	});
+
+	it('pays nothing at the level cap, however it ended', () => {
+		expect(combatExpAward({ exp: 400_000, outcome: 'win', survivors: 3, fielded: 3 })).toBe(0);
+		expect(combatExpAward({ exp: 400_000, outcome: 'lose', survivors: 3, fielded: 3 })).toBe(0);
 	});
 
 	it('never exceeds the span or goes negative on an absurd count', () => {
-		expect(combatExpAward({ exp: 0, won: true, survivors: 9_000, fielded: 3 })).toBe(300);
-		expect(combatExpAward({ exp: 0, won: true, survivors: -5, fielded: 3 })).toBe(0);
-		expect(combatExpAward({ exp: 0, won: true, survivors: 3, fielded: 0 })).toBe(0);
+		expect(combatExpAward({ exp: 0, outcome: 'win', survivors: 9_000, fielded: 3 })).toBe(300);
+		expect(combatExpAward({ exp: 0, outcome: 'win', survivors: -5, fielded: 3 })).toBe(0);
+		expect(combatExpAward({ exp: 0, outcome: 'win', survivors: 3, fielded: 0 })).toBe(0);
 	});
 });

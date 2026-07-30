@@ -292,6 +292,25 @@ export function ensureTables(): Promise<void> {
 				-- screen, so re-picking it there moves every player's avatar with it.
 				alter table player_profiles add column if not exists avatar_character_id text
 					references character_templates (id) on delete set null;
+				-- The player's chosen name, and the only place in the schema one is stored.
+				-- Never derived: not from the full_name Google and Discord stamp onto the
+				-- auth user, not from the address a magic link went to. Null means
+				-- nameless, which is where every account starts and may stay, and
+				-- set_player_username below is the only writer. Unique across the game,
+				-- case-insensitively, with nulls left out of the index so any number of
+				-- accounts can be nameless at once.
+				alter table player_profiles add column if not exists username text;
+				create unique index if not exists player_profiles_username_key
+					on player_profiles (lower(username))
+					where username is not null;
+				-- Usernames are public; the experience beside them is not. RLS grants
+				-- rows, not columns, so the public column gets a view of its own —
+				-- definer-owned (security_invoker off), so it reads past the table's
+				-- select-own policy, and selecting nothing but the name.
+				create or replace view player_names
+					with (security_invoker = false) as
+					select user_id, username from player_profiles where username is not null;
+				grant select on player_names to anon, authenticated;
 				alter table player_profiles enable row level security;
 				drop policy if exists player_profiles_select_own on player_profiles;
 				create policy player_profiles_select_own on player_profiles
@@ -337,6 +356,58 @@ export function ensureTables(): Promise<void> {
 				end;
 				$set_player_avatar$;
 				grant execute on function set_player_avatar(text) to authenticated;
+				-- Set, change, or clear (with null or blank) the caller's username.
+				-- security definer for the same reasons as the avatar — the table takes
+				-- no client writes, and this touches one column and can never reach exp
+				-- — and because uniqueness cannot be checked by a caller who, under RLS,
+				-- sees only their own row. Nothing is defaulted or back-filled from the
+				-- identity they signed in with: a name has to be typed to get here, and
+				-- passing nothing simply makes them nameless again.
+				create or replace function set_player_username(p_username text)
+				returns text language plpgsql security definer set search_path = public as $set_player_username$
+				declare
+						v_uid uuid := auth.uid();
+						-- Blank, whitespace and null all mean the same thing: no name.
+						v_name text := nullif(btrim(coalesce(p_username, '')), '');
+				begin
+						if v_uid is null then
+								raise exception 'You must be signed in to choose a username.';
+						end if;
+						if v_name is not null then
+								if char_length(v_name) < 3 or char_length(v_name) > 32 then
+										raise exception 'A username is between 3 and 32 characters.'
+												using errcode = '22023';
+								end if;
+								-- Letters (accented included — these are Catalan names) and digits,
+								-- then spaces and a few joiners inside. Must open on a letter or
+								-- digit, so a name cannot be made of punctuation alone.
+								if v_name !~ '^[[:alnum:]][[:alnum:]_. ''·-]*$' then
+										raise exception 'A username may use letters, digits, spaces and . _ - only.'
+												using errcode = '22023';
+								end if;
+								-- Checked here as well as by the index, so the answer is a sentence
+								-- rather than a constraint name. Case-insensitive: one Bernat is enough.
+								if exists (
+										select 1 from player_profiles p
+										where p.user_id <> v_uid and lower(p.username) = lower(v_name)
+								) then
+										raise exception 'That username is already taken.' using errcode = '23505';
+								end if;
+						end if;
+						insert into player_profiles (user_id, username)
+								values (v_uid, v_name)
+								on conflict (user_id) do update
+										set username = excluded.username,
+												updated_at = now();
+						return v_name;
+				exception
+						-- Two players naming themselves the same thing at the same moment: the
+						-- index decides, and the loser is told the same thing.
+						when unique_violation then
+								raise exception 'That username is already taken.' using errcode = '23505';
+				end;
+				$set_player_username$;
+				grant execute on function set_player_username(text) to authenticated;
 				-- Retire the client-driven award path: add_player_exp(amount) took the
 				-- increment straight from the browser, so anyone holding the anon key could
 				-- grant themselves any total. Experience now comes from combat only, via
@@ -620,7 +691,8 @@ export function ensureTables(): Promise<void> {
 					$recycle_spawns$;
 					grant execute on function recycle_spawns(uuid[]) to authenticated;
 					-- Combat rewards: the ONLY way a player earns experience. Claiming cards,
-					-- opening packs and recycling award nothing at all — winning fights does.
+					-- opening packs and recycling award nothing at all — fighting does, a win
+						-- for what it was worth and a loss for a hundredth of that.
 					-- One row per finished fight, written solely by award_combat_exp below: the
 					-- audit trail behind every experience gain. RLS lets a player read only their
 					-- own fights; there is no client write path.
@@ -634,7 +706,8 @@ export function ensureTables(): Promise<void> {
 							-- The level whose span was at stake, and the span itself.
 							level integer not null,
 							level_span bigint not null,
-							-- Experience actually awarded (0 for anything but a win).
+							-- Experience actually awarded: a win's share of the span, a loss's hundredth
+							-- of it, 0 for a draw.
 							exp_awarded bigint not null,
 							fought_at timestamptz not null default now()
 						);
@@ -717,18 +790,31 @@ export function ensureTables(): Promise<void> {
 					create table if not exists municipality_holders (
 							location_id text primary key,
 							user_id uuid not null references auth.users (id) on delete cascade,
-							-- Display name resolved server-side when the town was taken, so the map
-							-- can name the occupant without reading auth.users from the browser.
-							holder_name text,
 							-- [{"character_id": text, "color": text}, …] in fielded order.
 							team jsonb not null default '[]'::jsonb,
 							turnover integer not null default 1,
 							taken_at timestamptz not null default now()
 						);
+					-- The holder's name is NOT kept here. It used to be copied in when the
+					-- town was taken, which made this a second home for a username: stale
+					-- the moment the holder renamed themselves, and a place a name nobody
+					-- typed could arrive. One home only — player_profiles.username — read
+					-- live through the view below.
+					alter table municipality_holders drop column if exists holder_name;
 					alter table municipality_holders enable row level security;
 					drop policy if exists municipality_holders_select_all on municipality_holders;
 					create policy municipality_holders_select_all on municipality_holders
 							for select using (true);
+					-- What the map selects: every taken town with its holder's current name
+					-- joined on. Null for a holder who has not named themselves, which the
+					-- frontend words itself rather than filling in from their sign-in.
+					create or replace view municipality_holders_public
+						with (security_invoker = false) as
+						select h.location_id, h.user_id, n.username as holder_name,
+								h.team, h.turnover, h.taken_at
+						from municipality_holders h
+						left join player_profiles n on n.user_id = h.user_id;
+					grant select on municipality_holders_public to anon, authenticated;
 					-- One challenger's progress against one town's sitting team: the wins banked
 					-- so far towards the turnover + 1 it takes to dethrone them. Scoped to the
 					-- generation they were won against (turnover), so when a town flips every
@@ -952,7 +1038,11 @@ export function ensureTables(): Promise<void> {
 					drop function if exists award_combat_exp(text, jsonb);
 					drop function if exists award_combat_exp(text, jsonb, text, int);
 					-- Award experience for one finished fight:
-					--   * a loss or a draw earns nothing;
+					--   * a draw earns nothing;
+						--   * a loss earns 1% of the most that fight could ever have paid — a
+						--     hundredth of the level's full span, flat, whatever became of the
+						--     team: turning up and losing is worth a hundredth of turning up and
+						--     winning it untouched, which is the smallest thing that is not nothing;
 					--   * a win earns a share of the player's CURRENT level's full span (see
 					--     level_span_exp), scaled linearly by how much of their team is left
 					--     standing: survivors / fielded. A flawless win — nobody taken down —
@@ -1026,7 +1116,6 @@ export function ensureTables(): Promise<void> {
 							v_stale boolean := false;
 							v_captured boolean := false;
 							v_team jsonb;
-							v_name text;
 							-- The battle being reported: the town and the generation as the server
 							-- recorded them when the fight was opened.
 							v_location text;
@@ -1070,12 +1159,14 @@ export function ensureTables(): Promise<void> {
 								(select count(*) from owned),
 								(select count(*) from owned where not down)
 							into v_reported, v_distinct, v_owned, v_standing;
-							-- The report is bounded where it can buy something, and only there. A
-							-- win pays experience and banks ground, so it has to name a real team.
-							-- A loss or a draw buys nothing at all — no experience, no siege, no
-							-- town — and its only effect is closing the battle, so it is always
-							-- taken. Refusing one protects nothing and strands the player in a
-							-- fight they have already given up.
+							-- The report is bounded where it can buy something worth lying for,
+							-- and only there. A win pays a level's worth of experience and banks
+							-- ground, so it has to name a real team. A loss banks nothing, takes
+							-- nothing and pays only the consolation below — a hundredth of what
+							-- the same fight would have paid won, off a team it says nothing
+							-- about — so it is always taken, whatever it names. Refusing one
+							-- protects nothing and strands the player in a fight they have
+							-- already given up.
 							if p_outcome = 'win' then
 								if v_reported = 0 then
 									raise exception 'A combat report must list the fighters that took part.';
@@ -1095,8 +1186,17 @@ export function ensureTables(): Promise<void> {
 							v_exp := coalesce(v_exp, 0);
 							v_level := level_for_exp(v_exp);
 							v_span := level_span_exp(v_level);
+							-- A win earns the level's whole span, scaled by the share of the team
+							-- left standing. A loss earns a hundredth of the most that same fight
+							-- could ever have paid — which is that whole span, the flawless win —
+							-- so a fight lost is still a fight fought. It does not read the team:
+							-- how badly it went is not what a consolation is for. A draw earns
+							-- nothing, as it always did, and so does a level-20 player, whose span
+							-- is zero and who is done earning either way.
 							if p_outcome = 'win' and v_span > 0 and v_owned > 0 then
 								v_award := round(v_span::numeric * v_standing::numeric / v_owned::numeric);
+							elsif p_outcome = 'lose' then
+								v_award := round(v_span::numeric * 0.01);
 							else
 								v_award := 0;
 							end if;
@@ -1147,8 +1247,10 @@ export function ensureTables(): Promise<void> {
 										where municipality_challenges.settled_at is null
 									returning municipality_challenges.settled_at into v_challenge;
 								-- Again the win only: a second win against the same town today
-								-- would be a second payout, a second loss is worth what the
-								-- first was, which is nothing.
+								-- would be a second payout of a level's worth, while a second
+								-- loss pays what the first did — a hundredth of a span, off a
+								-- battle that had to be opened to be reported at all, which is
+								-- not worth stranding anybody in a fight over.
 								if v_challenge is null and p_outcome = 'win' then
 									raise exception 'You have already challenged this town today. New challenges at midnight.';
 								end if;
@@ -1192,25 +1294,16 @@ export function ensureTables(): Promise<void> {
 												from jsonb_array_elements(p_fighters) with ordinality as e(elem, ord)
 											) f
 											join character_spawns cs on cs.id = f.spawn_id and cs.user_id = v_uid;
-										-- Name the new occupant from their account, so the map never has to
-										-- read auth.users from the browser.
-										select coalesce(
-												nullif(btrim(coalesce(
-													u.raw_user_meta_data->>'full_name',
-													u.raw_user_meta_data->>'name',
-													''
-												)), ''),
-												split_part(coalesce(u.email, ''), '@', 1)
-											)
-											into v_name
-											from auth.users u where u.id = v_uid;
+										-- The occupant is recorded as a user id and nothing else: their
+										-- name is read live off player_profiles.username through
+										-- municipality_holders_public, so it follows a rename and there
+										-- is no second place a username could come from.
 										insert into municipality_holders
-											(location_id, user_id, holder_name, team, turnover, taken_at)
-											values (v_location, v_uid, v_name, coalesce(v_team, '[]'::jsonb),
+											(location_id, user_id, team, turnover, taken_at)
+											values (v_location, v_uid, coalesce(v_team, '[]'::jsonb),
 												v_turnover + 1, now())
 											on conflict (location_id) do update
 												set user_id = excluded.user_id,
-													holder_name = excluded.holder_name,
 													team = excluded.team,
 													turnover = excluded.turnover,
 													taken_at = excluded.taken_at;

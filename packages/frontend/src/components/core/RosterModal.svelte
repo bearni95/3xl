@@ -70,16 +70,15 @@
 
 	/** One colour's swatch in the filter: the colour itself as a rounded square, ringed
 	 * while it is the one being filtered on. Nothing ringed means no colour filter, so
-	 * the six unringed squares are what "all colours" looks like. */
+	 * the six unringed squares are what "all colours" looks like. The ring is the whole of
+	 * the mark — an unpicked swatch is at full strength, since a swatch is the colour it
+	 * names and a dimmed one is a different colour. */
 	function colorSquareClasses(color: SpawnColor, active: SpawnColor | typeof ANY): string {
 		return classNames(
 			'aspect-square w-full rounded-md border border-black/30 transition',
 			'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
 			SPAWN_FILL_CLASSES[color],
-			{
-				'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': active === color,
-				'opacity-70 hover:opacity-100': active !== color
-			}
+			{ 'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': active === color }
 		);
 	}
 
@@ -91,15 +90,14 @@
 
 	/** One show's chip in the filter, ringed while it is the one being filtered on. The
 	 * band under it is the statue's — a show's lettering is drawn to sit on something
-	 * dark, and the panel it sits on there is what makes it readable here too. */
+	 * dark, and the panel it sits on there is what makes it readable here too. Unringed is
+	 * the only thing that says a chip is not the one picked: a wordmark held at less than
+	 * full strength is a wordmark drawn wrong. */
 	function showChipClasses(showId: number, active: number | typeof ANY): string {
 		return classNames(
 			'flex h-8 items-center justify-center overflow-hidden rounded-md bg-black/40 px-1 transition',
 			'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-			{
-				'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': active === showId,
-				'opacity-70 hover:opacity-100': active !== showId
-			}
+			{ 'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': active === showId }
 		);
 	}
 
@@ -856,15 +854,19 @@
 							Clear
 						</button>
 
-						<label class="flex flex-col gap-1 text-xs">
-							<span class="opacity-60">Name</span>
-							<input
-								type="search"
-								class="input input-sm input-bordered w-full"
-								placeholder="Search by name"
-								bind:value={filterName}
-							/>
-						</label>
+						<!-- No caption over any of the three: a search box says what it is with its
+						     own placeholder, a swatch is the colour it filters to and a chip is the
+						     show's own wordmark, so a word above each of them was naming what was
+						     already in front of the player. What the caption carried for a screen
+						     reader is carried instead by the control itself — the input's aria-label
+						     here, the two groups' below. -->
+						<input
+							type="search"
+							class="input input-sm input-bordered w-full"
+							placeholder="Search by name"
+							aria-label="Filter by name"
+							bind:value={filterName}
+						/>
 
 						<!-- The colours and the shows side by side, a column of the card each: the
 						     colours are a block six squares can be laid out inside rather than a row
@@ -877,20 +879,17 @@
 							     square saying red is quicker to read than the word and needs no
 							     translating. Not a <label>, since there is no one control here to
 							     label — a group of six buttons, each pressed or not. -->
-							<div class="flex flex-col gap-1 text-xs">
-								<span class="opacity-60">Colour</span>
-								<div class="grid grid-cols-3 gap-1" role="group" aria-label="Filter by colour">
-									{#each COLOR_OPTIONS as color (color)}
-										<button
-											type="button"
-											class={colorSquareClasses(color, filterColor)}
-											title={color}
-											aria-label="Filter by {color}"
-											aria-pressed={filterColor === color}
-											on:click={() => toggleColorFilter(color)}
-										></button>
-									{/each}
-								</div>
+							<div class="grid grid-cols-3 gap-1" role="group" aria-label="Filter by colour">
+								{#each COLOR_OPTIONS as color (color)}
+									<button
+										type="button"
+										class={colorSquareClasses(color, filterColor)}
+										title={color}
+										aria-label="Filter by {color}"
+										aria-pressed={filterColor === color}
+										on:click={() => toggleColorFilter(color)}
+									></button>
+								{/each}
 							</div>
 
 							<!-- The shows say themselves the way the statues do: their own lettering,
@@ -901,30 +900,27 @@
 							     roster holds cards from more than nothing, which leaves the colours the
 							     first of the pair's two columns and nothing in the second. -->
 							{#if showFilterOptions.length > 0}
-								<div class="flex flex-col gap-1 text-xs">
-									<span class="opacity-60">Show</span>
-									<div class="flex flex-col gap-1" role="group" aria-label="Filter by show">
-										{#each showFilterOptions as show (show.id)}
-											<button
-												type="button"
-												class={showChipClasses(show.id, filterShow)}
-												title={show.name}
-												aria-label="Filter by {show.name}"
-												aria-pressed={filterShow === show.id}
-												on:click={() => toggleShowFilter(show.id)}
-											>
-												{#if $showLogos.get(show.id)}
-													<img
-														src={$showLogos.get(show.id)?.url}
-														alt={show.name}
-														class="max-h-full max-w-full object-contain"
-													/>
-												{:else}
-													<span class="truncate text-[0.625rem] text-white/80">{show.name}</span>
-												{/if}
-											</button>
-										{/each}
-									</div>
+								<div class="flex flex-col gap-1" role="group" aria-label="Filter by show">
+									{#each showFilterOptions as show (show.id)}
+										<button
+											type="button"
+											class={showChipClasses(show.id, filterShow)}
+											title={show.name}
+											aria-label="Filter by {show.name}"
+											aria-pressed={filterShow === show.id}
+											on:click={() => toggleShowFilter(show.id)}
+										>
+											{#if $showLogos.get(show.id)}
+												<img
+													src={$showLogos.get(show.id)?.url}
+													alt={show.name}
+													class="max-h-full max-w-full object-contain"
+												/>
+											{:else}
+												<span class="truncate text-[0.625rem] text-white/80">{show.name}</span>
+											{/if}
+										</button>
+									{/each}
 								</div>
 							{/if}
 						</div>

@@ -8,11 +8,13 @@
  * level further. These functions are pure and framework-agnostic; the frontend
  * reads a player's stored `exp` from Supabase and derives everything else here.
  *
- * Experience is earned in exactly one way: winning a fight ({@link combatExpAward}).
- * Claiming cards awards nothing. The authority for an award is the
- * `award_combat_exp` Postgres RPC — {@link combatExpAward} mirrors its arithmetic
- * so the UI can show the same number, and the two must be kept in sync.
+ * Experience is earned in exactly one way: fighting ({@link combatExpAward}) — a win
+ * for what it was worth, a loss for a hundredth of that. Claiming cards awards
+ * nothing. The authority for an award is the `award_combat_exp` Postgres RPC —
+ * {@link combatExpAward} mirrors its arithmetic so the UI can show the same number,
+ * and the two must be kept in sync.
  */
+import type { CombatOutcome } from '../../types/combat.type';
 
 /**
  * Cumulative experience required to reach each level, D&D 5e (PHB, "Beyond 1st
@@ -82,12 +84,21 @@ export function levelSpanExp(level: number): number {
 	return expForLevel(clamped + 1) - expForLevel(clamped);
 }
 
+/**
+ * What a lost fight pays, as a fraction of the most that same fight could ever have
+ * paid — the whole of {@link levelSpanExp}, which is what a flawless win earns. One
+ * per cent: a fight lost is still a fight fought, and this is the smallest thing that
+ * is not nothing.
+ */
+export const LOSS_CONSOLATION_SHARE = 0.01;
+
 /** A finished fight, reduced to what decides its experience award. */
 export interface CombatExpInput {
 	/** The player's accumulated experience *before* the fight — fixes the level at stake. */
 	exp: number;
-	/** Whether the player won: anything else earns nothing. */
-	won: boolean;
+	/** How it ended. A win is paid for the team it was won with, a loss a flat
+	 * hundredth of that fight's ceiling, a draw nothing. */
+	outcome: CombatOutcome;
 	/** Fighters the player's team ended the fight still standing. */
 	survivors: number;
 	/** Fighters the player's team fielded. */
@@ -97,20 +108,27 @@ export interface CombatExpInput {
 /**
  * Experience for one finished fight.
  *
- * A loss (or a draw) earns nothing. A win earns a share of {@link levelSpanExp}
- * for the player's current level, scaled linearly by how much of the team is left
- * standing: a flawless win — nobody taken down — earns the level's entire span,
- * taking the player from the base of their level to the next one, while a win with
- * one of three left earns a third of it. Rounded to whole experience, and never
- * negative.
+ * A **win** earns a share of {@link levelSpanExp} for the player's current level,
+ * scaled linearly by how much of the team is left standing: a flawless win — nobody
+ * taken down — earns the level's entire span, taking the player from the base of their
+ * level to the next one, while a win with one of three left earns a third of it.
+ *
+ * A **loss** earns {@link LOSS_CONSOLATION_SHARE} of that ceiling — a hundredth of the
+ * whole span, flat, and it does not read the team: how badly a loss went is not what a
+ * consolation is for. A **draw** earns nothing, and so does anybody at
+ * {@link MAX_LEVEL}, whose span is zero.
+ *
+ * Rounded to whole experience, and never negative.
  *
  * Mirrors the `award_combat_exp` RPC, which is the authority — this exists so the
  * UI can preview and explain the same number.
  */
-export function combatExpAward({ exp, won, survivors, fielded }: CombatExpInput): number {
-	if (!won) return 0;
+export function combatExpAward({ exp, outcome, survivors, fielded }: CombatExpInput): number {
 	const span = levelSpanExp(levelForExp(exp));
-	if (span <= 0 || !Number.isFinite(fielded) || fielded <= 0) return 0;
+	if (span <= 0) return 0;
+	if (outcome === 'lose') return Math.round(span * LOSS_CONSOLATION_SHARE);
+	if (outcome !== 'win') return 0;
+	if (!Number.isFinite(fielded) || fielded <= 0) return 0;
 	const left = Number.isFinite(survivors) ? Math.min(Math.max(survivors, 0), fielded) : 0;
 	return Math.round((span * left) / fielded);
 }

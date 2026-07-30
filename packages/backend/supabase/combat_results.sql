@@ -4,7 +4,11 @@
 -- recycling award nothing. When a fight ends the browser reports it through the
 -- `award_combat_exp` security-definer RPC below, which decides the award itself:
 --
---   * A loss or a draw earns nothing at all.
+--   * A draw earns nothing at all.
+--   * A loss earns **1% of the most that fight could ever have paid** — a hundredth
+--     of the level's full span, flat, whatever became of the team. Turning up and
+--     losing is worth a hundredth of turning up and winning it untouched, which is
+--     the smallest thing that is not nothing.
 --   * A win earns a share of the player's *current level's full span* — the
 --     experience between the threshold where that level begins and the one where
 --     the next begins (300 at level 1, 600 at level 2, 1800 at level 3, …). The
@@ -38,13 +42,17 @@
 -- town's sitting team, and enough of them flip the town to the winner. See
 -- municipality_holders.sql for the tables and the rules.
 --
--- Every one of those bounds is on the WIN. A loss or a draw earns nothing, banks
--- nothing and takes nothing, so there is nothing in it to lie for: it is always
--- accepted, and all it does is close the battle. That is what makes conceding a fight
--- possible at all, and what stops a battle that can never be won — a team that has
--- since been recycled, a town taken in the meantime — from becoming a fight its owner
--- can never get out of. Opening one is where a team is proved instead (`start_battle`
--- in battles.sql), which is the only place the answer is any use to the player.
+-- Every one of those bounds is on the WIN. A loss banks nothing and takes nothing,
+-- and the consolation it does pay is a hundredth of what the same fight would have
+-- paid won — off a report that says nothing about the team, against a battle that had
+-- to be opened (and a town's challenge for the day spent) before it could be reported
+-- at all. There is nothing in that worth lying for while the win it is a hundredth of
+-- sits next to it, so a loss is always accepted, and all else it does is close the
+-- battle. That is what makes conceding a fight possible at all, and what stops a
+-- battle that can never be won — a team that has since been recycled, a town taken in
+-- the meantime — from becoming a fight its owner can never get out of. Opening one is
+-- where a team is proved instead (`start_battle` in battles.sql), which is the only
+-- place the answer is any use to the player.
 --
 -- Territory is also where the once-a-day challenge limit is enforced: settling a
 -- fight spends that town's challenge for the Catalan day, and a second *win*
@@ -73,7 +81,8 @@ create table if not exists public.combat_results (
 	-- The level whose span was at stake, and the span itself.
 	level integer not null,
 	level_span bigint not null,
-	-- Experience actually awarded (0 for anything but a win).
+	-- Experience actually awarded: a win's share of the span, a loss's
+	-- hundredth of it, 0 for a draw.
 	exp_awarded bigint not null,
 	fought_at timestamptz not null default now()
 );
@@ -212,7 +221,6 @@ declare
 	v_stale boolean := false;
 	v_captured boolean := false;
 	v_team jsonb;
-	v_name text;
 	-- The battle being reported: the town and the generation, as the server recorded
 	-- them when the fight was opened.
 	v_location text;
@@ -261,11 +269,12 @@ begin
 		(select count(*) from owned where not down)
 	into v_reported, v_distinct, v_owned, v_standing;
 
-	-- The report is bounded where it can buy something, and only there. A win pays
-	-- experience and banks ground, so it has to name a real team: at most three
-	-- fighters, each of them the caller's own, each named once. A loss or a draw buys
-	-- nothing whatever — no experience, no siege, no town — and its only effect is to
-	-- close the battle, so it is always taken. Refusing one would not protect anything;
+	-- The report is bounded where it can buy something worth lying for, and only there.
+	-- A win pays a level's worth of experience and banks ground, so it has to name a
+	-- real team: at most three fighters, each of them the caller's own, each named once.
+	-- A loss banks nothing, takes nothing, and pays only the consolation below — a
+	-- hundredth of a span, off a team it says nothing about — so it is always taken,
+	-- whatever it names. Refusing one would not protect anything;
 	-- it would strand a player in a fight they have already given up, which is exactly
 	-- what happens to a battle opened before start_battle proved the team.
 	if p_outcome = 'win' then
@@ -290,9 +299,15 @@ begin
 	v_span := public.level_span_exp(v_level);
 
 	-- A win earns the level's whole span, scaled by the share of the team still
-	-- standing; a loss or a draw earns nothing.
+	-- standing. A loss earns a hundredth of the most that same fight could ever have
+	-- paid — which is that whole span, the flawless win — so a fight lost is still a
+	-- fight fought. It does not read the team: how badly it went is not what a
+	-- consolation is for. A draw earns nothing, as it always did, and so does a
+	-- level-20 player, whose span is zero and who is done earning either way.
 	if p_outcome = 'win' and v_span > 0 and v_owned > 0 then
 		v_award := round(v_span::numeric * v_standing::numeric / v_owned::numeric);
+	elsif p_outcome = 'lose' then
+		v_award := round(v_span::numeric * 0.01);
 	else
 		v_award := 0;
 	end if;
@@ -352,8 +367,9 @@ begin
 				where municipality_challenges.settled_at is null
 			returning municipality_challenges.settled_at into v_challenge;
 		-- Again, only a win is refused for it: a second *win* against the same town
-		-- today would be a second payout, while a second loss is worth what the first
-		-- one was, which is nothing.
+		-- today would be a second payout of a level's worth, while a second loss pays
+		-- what the first one did — a hundredth of a span, off a battle that had to be
+		-- opened to be reported at all, which is not worth stranding anybody over.
 		if v_challenge is null and p_outcome = 'win' then
 			raise exception 'You have already challenged this town today. New challenges at midnight.';
 		end if;
@@ -408,26 +424,16 @@ begin
 					) f
 					join public.character_spawns cs on cs.id = f.spawn_id and cs.user_id = v_uid;
 
-				-- Name the new occupant from their account, so the map never has to read
-				-- auth.users from the browser.
-				select coalesce(
-						nullif(btrim(coalesce(
-							u.raw_user_meta_data->>'full_name',
-							u.raw_user_meta_data->>'name',
-							''
-						)), ''),
-						split_part(coalesce(u.email, ''), '@', 1)
-					)
-					into v_name
-					from auth.users u where u.id = v_uid;
-
+				-- The occupant is recorded as a user id and nothing else. Their name is not
+				-- copied in: the map reads it live off player_profiles.username through
+				-- municipality_holders_public, so it is right after a rename and there is
+				-- no second place a username could arrive from.
 				insert into public.municipality_holders
-					(location_id, user_id, holder_name, team, turnover, taken_at)
-					values (v_location, v_uid, v_name, coalesce(v_team, '[]'::jsonb),
+					(location_id, user_id, team, turnover, taken_at)
+					values (v_location, v_uid, coalesce(v_team, '[]'::jsonb),
 						v_turnover + 1, now())
 					on conflict (location_id) do update
 						set user_id = excluded.user_id,
-							holder_name = excluded.holder_name,
 							team = excluded.team,
 							turnover = excluded.turnover,
 							taken_at = excluded.taken_at;

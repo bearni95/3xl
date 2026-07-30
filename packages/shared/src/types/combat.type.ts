@@ -80,9 +80,10 @@ export interface TerritoryResult {
 }
 
 /**
- * What `award_combat_exp` gives back: the experience it decided to award (0 on
- * anything but a win) plus the state that produced it, so the endgame screen can
- * show the player exactly how the number was reached.
+ * What `award_combat_exp` gives back: the experience it decided to award — a win's
+ * share of the level's span, a hundredth of that span for a loss, nothing for a draw —
+ * plus the state that produced it, so the endgame screen can show the player exactly
+ * how the number was reached.
  */
 export interface CombatReward {
 	/** Experience actually added to the player's total. */
