@@ -16,7 +16,9 @@ import {
 	findClosestApproach,
 	findMeleeMeeting,
 	findPath,
-	isBoardCell
+	isBoardCell,
+	LAST_COLUMN,
+	MIDDLE_ROW
 } from './grid';
 
 /** A frame with its loaded texture and pre-computed anchor fractions. */
@@ -78,11 +80,11 @@ export interface MugenBoardOptions {
 }
 
 const DEFAULTS = {
-	// A cell's side in canvas px. Four columns of it is the whole board's width, so this
-	// is what decides the canvas's resolution: enough that the arena — a full-viewport
-	// panel — scales the canvas *down* to fit rather than up, which is what keeps the
-	// pixel art crisp.
-	cellSize: 280,
+	// A cell's side in canvas px. Five columns of it is the whole board's width, so this
+	// is what decides the canvas's resolution: enough that the arena — which scales the
+	// canvas to fit the viewport (see MAX_CANVAS_HEIGHT) — is always scaling it *down*
+	// rather than up, which is what keeps the pixel art crisp.
+	cellSize: 220,
 	padding: 40,
 	centerColor: 0xffffff // white
 };
@@ -94,6 +96,19 @@ const DEFAULTS = {
 // edge, row FIRST_ROW at the top — and a character keeps its size wherever it
 // walks, because there is no depth for it to walk into. Cells left of centre are
 // the first grid's colour, cells to the right the second's.
+
+/**
+ * The most of the viewport's height the canvas may take.
+ *
+ * The board is square-ish — five columns by five rows — so scaling it to its
+ * container's *width*, which is all `max-width` can do, would run it off the bottom of
+ * the screen. Both axes are capped instead: a canvas has an intrinsic size, so one
+ * given two maxima and no size of its own shrinks to fit inside both while keeping its
+ * aspect ratio, which is what puts the whole board on screen however the window is
+ * shaped. What is left of the height is the room the arena's own score row and buttons
+ * stand in above and below it.
+ */
+const MAX_CANVAS_HEIGHT = '70vh';
 
 /** On-screen height of a reference-height ({@link REFERENCE_SOURCE_HEIGHT}) character
  * as a multiple of a cell's width — the height of the box every character is fitted
@@ -131,8 +146,8 @@ const AURA_HEIGHT_RATIO = 1.25;
  * overrides this by giving its `character` `q`/`r` of its own.
  */
 const LEAD_CELLS: [Cell, Cell] = [
-	{ q: -1, r: 1 },
-	{ q: 2, r: 1 }
+	{ q: FIRST_COLUMN, r: MIDDLE_ROW },
+	{ q: LAST_COLUMN, r: MIDDLE_ROW }
 ];
 
 /** The cell a half's lead character stands on: its own `q`/`r`, or `fallback`. */
@@ -454,9 +469,13 @@ export class MugenBoard {
 		app.stage.eventMode = 'static';
 		// Render as a block so the canvas doesn't reserve inline-baseline descender
 		// space below it, and let it scale down responsively while keeping its
-		// aspect ratio rather than forcing its full pixel size.
+		// aspect ratio rather than forcing its full pixel size. Neither dimension is
+		// asserted, so the two maxima decide the size between them and the whole board
+		// stays on screen (see MAX_CANVAS_HEIGHT).
 		app.canvas.style.display = 'block';
 		app.canvas.style.maxWidth = '100%';
+		app.canvas.style.maxHeight = MAX_CANVAS_HEIGHT;
+		app.canvas.style.width = 'auto';
 		app.canvas.style.height = 'auto';
 		container.appendChild(app.canvas);
 

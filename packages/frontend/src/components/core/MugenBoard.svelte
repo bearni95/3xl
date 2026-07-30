@@ -8,7 +8,7 @@
 	export let grids: [BoardGrid, BoardGrid];
 	// Both mirror the engine's own defaults (see MugenBoardOptions), so the board looks
 	// the same whether a host says anything about its size or not.
-	export let cellSize: number = 280;
+	export let cellSize: number = 220;
 	export let padding: number = 40;
 	export let classes: string = '';
 
@@ -17,10 +17,13 @@
 	let host: HTMLDivElement;
 	let board: MugenBoard | null = null;
 
-	// Full-width, centred host so the canvas (max-width:100%, height:auto) can scale
-	// down to the viewport on small screens instead of forcing horizontal overflow.
+	// Full-width, centred host so the canvas can scale down to the viewport instead of
+	// forcing the page to overflow. The canvas caps itself on both axes and asserts
+	// neither, so it is left at the top of the row rather than stretched to it: a cross
+	// size handed to it from outside is a cross size it did not work out from its own
+	// aspect ratio.
 	$: wrapperClasses = classNames(
-		'flex w-full min-w-0 justify-center overflow-hidden rounded-box leading-none',
+		'flex w-full min-w-0 items-start justify-center overflow-hidden rounded-box leading-none',
 		classes
 	);
 

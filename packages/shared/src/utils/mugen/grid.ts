@@ -9,16 +9,17 @@
  * square drawn face-on, so the grid's coordinates and the screen's are the same
  * two axes.
  *
- * Cells left of centre are the red half, right the blue half, and the central
- * column (q = 0) is the shared white one. Every column runs the full depth of the
- * board, so a row is a **lane**: the two fighters holding the same row face each
- * other across it, and the ground between them is the white cell they are playing
- * for.
+ * It is five columns by five rows, and symmetric about its middle column: two
+ * columns of red half, the shared white one at q = 0, two of blue. So the ground both
+ * sides are playing for sits dead centre, and each half is the same two columns deep
+ * — one to be pushed back onto, and one behind that.
  *
- * The red half is a single column deep: the rivals open on the white column itself
- * and have exactly one column of their own to be pushed back onto. The blue half is
- * two, so the player's line opens a column clear of the white one and has ground to
- * cross to take it.
+ * Cells left of centre are the red half, right the blue half. Every column runs the
+ * full depth of the board, so a row is a **lane**: the two fighters holding the same
+ * row face each other across it, and the ground between them is the white cell they
+ * are playing for. Which rows a fight opens on is the fight's own business (see the
+ * combat controller's opening cells) — three a side leaves the outermost rows as
+ * ground nobody starts on.
  */
 
 /** A cell coordinate: column across, row down. */
@@ -30,16 +31,19 @@ export interface Cell {
 /** Which half of the board a column belongs to. */
 export type CellSide = 'red' | 'purple' | 'blue';
 
-/** The board's outermost columns: one red, the white one, two blue. */
-export const FIRST_COLUMN = -1;
+/** The board's outermost columns: two red, the white one at zero, two blue. */
+export const FIRST_COLUMN = -2;
 export const LAST_COLUMN = 2;
-/** The board's rows — one per lane, counted downward from the top of the screen. */
+/** The board's rows — a lane apiece, counted downward from the top of the screen. */
 export const FIRST_ROW = 0;
-export const LAST_ROW = 2;
+export const LAST_ROW = 4;
 
 /** The board's extent in cells, which is what sizes the drawn grid. */
 export const BOARD_COLUMNS = LAST_COLUMN - FIRST_COLUMN + 1;
 export const BOARD_ROWS = LAST_ROW - FIRST_ROW + 1;
+
+/** The board's middle row: the lane halfway down it. */
+export const MIDDLE_ROW = Math.floor((FIRST_ROW + LAST_ROW) / 2);
 
 /** The four neighbours of a square cell: no diagonals, so a step is one side. */
 const NEIGHBOR_DELTAS: Cell[] = [

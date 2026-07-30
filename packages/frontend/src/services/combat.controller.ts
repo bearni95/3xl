@@ -115,11 +115,15 @@ export const ENCOUNTERS_TO_WIN = 2;
  * white column. A fighter holds its own cell until the lane in front of it is won, and
  * the only ground it ever takes is that lane's white cell (see
  * {@link CombatController.settleGround}).
+ *
+ * Three a side on a five-row board, so the lines take the middle three rows and are
+ * centred on it: the outermost row of each end is ground the fight opens on nobody, and
+ * is there to be walked over rather than stood on.
  */
 export const PLAYER_CELLS: Cell[] = [
-	{ q: 2, r: 0 },
 	{ q: 2, r: 1 },
-	{ q: 2, r: 2 }
+	{ q: 2, r: 2 },
+	{ q: 2, r: 3 }
 ];
 
 /**
@@ -131,9 +135,9 @@ export const PLAYER_CELLS: Cell[] = [
  * fighter walks up and takes the cell off it.
  */
 export const RIVAL_CELLS: Cell[] = [
-	{ q: 0, r: 0 },
 	{ q: 0, r: 1 },
-	{ q: 0, r: 2 }
+	{ q: 0, r: 2 },
+	{ q: 0, r: 3 }
 ];
 
 /** Animation played when a fighter attacks and its definition binds no melee move. */
