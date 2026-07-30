@@ -216,9 +216,14 @@
 	// can say it before the claim does.
 	$: award = achievementExpAward($profile?.level ?? 1);
 	// Whether there is anything to submit: a badge of today's that is ready and not
-	// already worn. The button stands whatever the answer, since the server is the one
-	// that decides — it just says so. Counted off today's three however far the view has
-	// wandered, since those are the only ones a claim can settle.
+	// already worn, which is what the claim button is enabled by. Counted off today's
+	// three however far the view has wandered, since those are the only ones a claim can
+	// settle.
+	//
+	// It is this browser's reading that greys the button out, and the server's that
+	// decides — so the button is a shortcut past a call that would have come back with
+	// three refusals, not a second opinion on the rule. A claim that goes through is
+	// still free to be turned down badge by badge.
 	$: todayTiles = viewingToday ? dayTiles : [];
 	$: readyCount = todayTiles.filter((entry) => entry.met && !entry.held).length;
 	// Epoch milliseconds, which is what the countdown reads.
@@ -315,10 +320,12 @@
 					<button
 						class="btn btn-primary btn-sm ml-auto"
 						type="button"
-						disabled={claiming || !viewingToday}
-						title={viewingToday
-							? 'Claim the badges you have earned today'
-							: "Only today's badges can be claimed"}
+						disabled={claiming || !viewingToday || readyCount === 0}
+						title={!viewingToday
+							? "Only today's badges can be claimed"
+							: readyCount === 0
+								? 'Nothing to claim — none of today’s badges is ready'
+								: 'Claim the badges you have earned today'}
 						on:click={claim}
 					>
 						{#if claiming}
