@@ -18,11 +18,13 @@
 
 	/** What is being searched for. Bound: the plate listing the matches is the caller's. */
 	export let value: string = '';
+	// Whether the field is out. Never true with the button up — the two are the one control in
+	// its two states, not a field that a button opens beside it. Bound out because the plate of
+	// matches has a way out of its own (its cross), and ending the search there has to fold the
+	// field the press was not made on.
+	export let open: boolean = false;
 	export let classes: string = '';
 
-	// Whether the field is out. Never true with the button up — the two are the one control in
-	// its two states, not a field that a button opens beside it.
-	let open = false;
 	let inputEl: HTMLInputElement | null = null;
 
 	async function reveal() {

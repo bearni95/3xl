@@ -11,8 +11,8 @@
 	import CollapsiblePlate from '$components/core/CollapsiblePlate.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
+	import LocationSearchPanel from '$components/core/LocationSearchPanel.svelte';
 	import RegionTable from '$components/core/RegionTable.svelte';
-	import RegionSearchResults from '$components/core/RegionSearchResults.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
@@ -691,9 +691,12 @@
 
 	// Free-text search across every location in the whole tree (all tiers), matched
 	// against each region's displayed name (case- and accent-insensitive). While the
-	// box holds text the Location plate shows the matches as cards instead of the drill
-	// table; an empty box falls back to the table for the current view.
+	// box holds text its matches stand as cards on a plate of their own at the map's right
+	// corner (see LocationSearchPanel); an empty box has no plate and nothing to say.
 	let searchQuery = '';
+	// Whether the box is out or folded to its glyph. Held here rather than inside the box
+	// because the panel of matches can end the search too.
+	let searchOpen = false;
 	const foldText = (value: string) =>
 		value
 			.toLowerCase()
@@ -707,18 +710,20 @@
 				.slice(0, 100)
 		: [];
 
-	// The box is on the breadcrumb bar and the matches are in the Location plate, which
-	// starts folded and is remembered folded — so a query with nothing showing it would be
-	// typing into a void. A query unfolds the plate. Only ever open: clearing the box leaves
-	// it up, because what is under it then is the drill table for wherever the search landed,
-	// which is the next thing being read. `normalizedQuery` is named directly so the
-	// statement re-runs as it is typed.
-	$: if (normalizedQuery) $locationPanelCollapsed = false;
+	// Ending the search: what the panel's cross does, and the whole of it — the query goes, and
+	// with it the panel it was filling, and the box folds back to the glyph it came out of.
+	// The plate about the open region is untouched, since the search was never about it.
+	function closeSearch() {
+		searchQuery = '';
+		searchOpen = false;
+	}
 
 	// Opening a search result reuses the drill logic (URL region param → map
-	// framing + table), then clears the search so the cards give way to the table.
+	// framing + table), then ends the search: the question has been answered by landing
+	// somewhere, so the cards give way to that place's own table rather than to an empty
+	// field still standing open over it.
 	function openSearchResult(entry: { key: string }) {
-		searchQuery = '';
+		closeSearch();
 		open(entry.key);
 	}
 
@@ -1514,11 +1519,11 @@
 	// stays. Named deps so it re-reads as the selection and the zoom move.
 	$: townPanelSaysIt = panelTeam.length > 0 && panelTown === openRegion;
 
-	// So the plate is up for everything it alone can say: the matches for a search (which is
-	// about no region at all, and is typed on the bar whether a town is picked or not), and
-	// the drill table wherever there is one. What it is not up for is the leaf fallback the
-	// statues have already covered.
-	$: showLocationPlate = Boolean(normalizedQuery) || regionRows.length > 0 || !townPanelSaysIt;
+	// So the plate is up for what it alone can say: the drill table wherever there is one, and
+	// the leaf fallback wherever the statues have not already covered it. The matches for a
+	// search were a third thing it could be showing and are their own plate now, at the other
+	// corner (see LocationSearchPanel), so a search neither unfolds this plate nor keeps it up.
+	$: showLocationPlate = regionRows.length > 0 || !townPanelSaysIt;
 
 	// The panel's own box on the page, bound from its wrapper (see the map column). The map
 	// takes the element and not a pair of coordinates: where the panel's centre falls is
@@ -1771,13 +1776,13 @@
 				where they were picked from, and they are buttons rather than tabs because
 				nothing here goes forward or back any more — each opens the whole view and the
 				panel is left as it was underneath.
-				A column each, so the two split the panel's width evenly however long their
-				labels are (Booster's grows a counter) instead of each being as wide as its own
-				text. Still a join: `grid` only overrides its inline-flex display — the joined
-				radii and collapsed borders come from child rules that hold in a grid just as
-				well. -->
+				One to a row, like every other button in this column: side by side they were
+				two labels of different lengths splitting the width between them, and one of
+				them grows a counter. Stacked they are each as wide as the panel, so the label
+				is read at the same left edge whatever it says. `join-vertical` is what turns
+				the joined radii and collapsed borders through ninety degrees to match. -->
 			<div class="flex flex-none flex-col gap-3 border-b border-base-300 px-4 py-3">
-				<div class="join grid grid-cols-2">
+				<div class="join join-vertical grid grid-cols-1">
 					<button
 						type="button"
 						class="btn btn-outline btn-sm join-item"
@@ -1849,14 +1854,13 @@
 					read across, and the plates below it are read down.
 					The location search sits at the bar's far end, as the looking glass that stands for
 					it until it is pressed (see LocationSearchBox). It was above the drill table in the
-					Location plate, which is the one place its matches are listed — but that plate
-					starts folded, so the way to look for a town was behind a fold, while the bar
-					naming where the map is was always up. Naming a place and being told where you are
-					are the same subject, so they share the one row; the results still belong to the
-					table's plate, which unfolds itself as soon as there is a query (see
-					locationPanelCollapsed below). -->
+					Location plate — but that plate starts folded, so the way to look for a town was
+					behind a fold, while the bar naming where the map is was always up. Naming a place
+					and being told where you are are the same subject, so they share the one row; the
+					matches come down at the corner right below the field, on their own plate (see
+					LocationSearchPanel). -->
 				<MapBreadcrumbs {crumbs} onSelect={open} classes="pointer-events-auto">
-					<LocationSearchBox slot="end" bind:value={searchQuery} />
+					<LocationSearchBox slot="end" bind:value={searchQuery} bind:open={searchOpen} />
 				</MapBreadcrumbs>
 
 				<!-- The row under the bar, with a corner of the map at each end of it: the plates about
@@ -1897,9 +1901,9 @@
 
 						<!-- Where the map is looking, at the foot of the corner: the drill table for the
 							open region — its siblings and its children — or, for a leaf municipality with
-							nothing left to list, that town's show and who is holding it — or the matches for
-							whatever the bar's search box holds, which is the one thing here that is not
-							about the open region and is why a query unfolds this plate.
+							nothing left to list, that town's show and who is holding it. The matches for a
+							search used to be a third thing this plate could be showing; they are their own
+							plate at the opposite corner now, so this one is only ever about the open region.
 							It was a tab of the panel beside the map, which made it one of four views
 							competing for that column: a table of place names is read *against* the map,
 							and the panel could only show it by putting away whichever view was forward.
@@ -1919,9 +1923,7 @@
 								classes="pointer-events-auto w-96 max-w-full"
 								bodyClasses="flex max-h-[50vh] flex-col bg-base-100 text-base-content"
 							>
-								{#if normalizedQuery}
-									<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
-								{:else if regionRows.length === 0}
+								{#if regionRows.length === 0}
 									<!-- A leaf region (a municipality) with no town panel over it saying the same
 										thing: no children to drill into, so instead of an empty table we surface its
 										own top show — the only place the open location's show appears — and say who
@@ -1989,24 +1991,44 @@
 						{/if}
 					</div>
 
-					<!-- Who is playing, at the map's right corner: the picture they wear and the reading
-						beside it. It was the first two thirds of the panel's Profile tab (see PlayerPanel
-						and ProfileTile, which is the last third and nothing else now), which meant who you
-						are was on screen only while that one tab was forward — and it is read against every
-						town on the map, the same way the side at the foot of the map is.
-						Opposite the town panel across this row: the place being looked at on the left, the
-						account looking at it on the right. `flex-none` so a long name truncates inside the
-						plate rather than the plate growing into the column beside it.
-						Only for a signed-in account: there is no picture, no level and no bar to draw
-						without one, and the way in is the panel's Profile tab, which is where signing in
-						has always been. -->
-					{#if $profile}
-						<PlayerPanel
-							profile={$profile}
-							on:editavatar={() => avatarPickerOpen.set(true)}
-							classes="pointer-events-auto w-64 flex-none"
-						/>
-					{/if}
+					<!-- The map's right corner, read down: what the search box at the end of the bar
+						above has turned up, and then who is playing. `items-end` so each plate is only
+						as wide as it asks to be and both keep the corner's edge. -->
+					<div class="flex min-w-0 flex-col items-end gap-2">
+						<!-- The matches, directly under the field that produced them and the first thing in
+							this corner while a search is on: what is asked for at the top right is answered
+							at the top right. Only ever up for a query — an empty box is the search not
+							happening, and there is no plate for it — and the cross on it ends the search
+							outright rather than folding the plate away from a query still typed in a field
+							still standing open (see closeSearch). -->
+						{#if normalizedQuery}
+							<LocationSearchPanel
+								results={searchResults}
+								onSelect={openSearchResult}
+								onClose={closeSearch}
+								classes="pointer-events-auto w-96 max-w-full"
+							/>
+						{/if}
+
+						<!-- Who is playing: the picture they wear and the reading beside it. It was the
+							first two thirds of the panel's Profile tab (see PlayerPanel and ProfileTile,
+							which is the last third and nothing else now), which meant who you are was on
+							screen only while that one tab was forward — and it is read against every town on
+							the map, the same way the side at the foot of the map is.
+							Opposite the town panel across this row: the place being looked at on the left, the
+							account looking at it on the right. `flex-none` so a long name truncates inside the
+							plate rather than the plate growing into the column beside it.
+							Only for a signed-in account: there is no picture, no level and no bar to draw
+							without one, and the way in is the panel's Profile tab, which is where signing in
+							has always been. -->
+						{#if $profile}
+							<PlayerPanel
+								profile={$profile}
+								on:editavatar={() => avatarPickerOpen.set(true)}
+								classes="pointer-events-auto w-64 flex-none"
+							/>
+						{/if}
+					</div>
 				</div>
 			</div>
 			<!-- The side this player fields, at the opposite corner of the map from the town
