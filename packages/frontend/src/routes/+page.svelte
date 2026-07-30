@@ -1693,10 +1693,11 @@
 	}
 
 	// Every pin the map draws at one tier. All built the same way but for one thing: the
-	// picked town stands the side holding it where every other pin carries its show's tile
-	// — who is holding this, standing on the very place they are holding, which is what
-	// picking a town is asked for. The statues are handed in already built (see pinTeam),
-	// since which three they are is the page's question and not the pin's.
+	// picked town gets the side holding it standing under its plate — who is holding this,
+	// standing on the very place they are holding, which is what picking a town is asked
+	// for. It is added to that pin and takes nothing away from it, so the mark on the town
+	// is the same mark whichever town is picked. The statues are handed in already built
+	// (see pinTeam), since which three they are is the page's question and not the pin's.
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
@@ -1716,8 +1717,8 @@
 				position: center,
 				bounds: box,
 				// The whole side, but on the picked town alone — every other pin, and every
-				// tier above the towns, falls through to the show's glyph. Only a
-				// municipality's key is a municipality id, so the coarser tiers never match.
+				// tier above the towns, is its plate by itself. Only a municipality's key is
+				// a municipality id, so the coarser tiers never match.
 				team: node.key === statuedTown ? statues : [],
 				iconSvg: iconMarkup(showIconName(node.show.id)),
 				frameClasses: node.color ? pinColorClasses[node.color] : null,

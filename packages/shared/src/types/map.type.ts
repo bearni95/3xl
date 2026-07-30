@@ -112,17 +112,14 @@ export interface MapMarker {
 	 * in the tile's own colour rather than a baked one. The pin is lettering-only when
 	 * null (no glyph drawn for that show yet), exactly as the panel's tables fall back
 	 * to the show's name alone.
-	 *
-	 * Only reached when the pin has no {@link MapMarker.team}: a region standing the
-	 * side that holds it shows *them* rather than a glyph for the show they belong to,
-	 * their floors carrying that glyph anyway.
 	 */
 	iconSvg: string | null;
 	/**
 	 * The side standing on this region, in the order it is fielded — drawn on the pin
-	 * above its plate, in place of the show's tile, as the very statues the roster and
-	 * the town's own panel draw a team with. One member per statue, in the shape
-	 * `TeamLineup` takes.
+	 * *under* its plate, as the very statues the roster draws a team with. One member
+	 * per statue, in the shape `TeamLineup` takes. It adds to the pin and replaces no
+	 * part of it: the plate, its tile and its two lines are the same whether or not
+	 * anybody is standing on the place they name.
 	 *
 	 * Only a municipality has one, and only the picked one: a comarca or a province is
 	 * not a thing anybody holds, and every town wearing its side at once would be a

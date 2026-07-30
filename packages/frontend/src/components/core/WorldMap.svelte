@@ -354,48 +354,30 @@
 		return [(south + north) / 2, (west + east) / 2];
 	}
 
-	// Build a pin's DOM: the side standing on the region where there is one, else the show's
-	// glyph, and under either the one plate that says what the pin is — the tile at its left
-	// end, the place's name and its show's beside it. The wrapper is translated so its bottom
-	// centre sits on the point (the marker itself is zero-sized, see rebuildMarkers), giving
-	// a pin that stands above its region.
+	// Build a pin's DOM: the one plate that says what the pin is — the tile at its left end,
+	// the place's name and its show's beside it — and, on the picked town, the side holding
+	// it standing under that plate. The wrapper is translated so its bottom centre sits on
+	// the point (the marker itself is zero-sized, see rebuildMarkers), giving a pin that
+	// stands above its region.
+	//
+	// The plate is built the same way whether or not there is a side under it: a pin is the
+	// map's mark on a place, and the place does not stop being named because somebody is
+	// standing on it. So the statues are added to the pin rather than drawn in place of any
+	// part of it, and they go BELOW the plate — the mark reads first and what is holding the
+	// town stands on the point under it.
 	function markerElement(marker: MapMarker): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className = classNamesFor(marker);
 
-		// The show's tile, built below and hung on the plate at the end — a pin with a side
-		// standing on it draws the statues instead and leaves this null.
+		// A square tile in the region's colour carrying the show's glyph, standing at the
+		// left end of the plate below. The glyph is inlined rather than pointed at by an
+		// <img> so it inherits the tile's ink (see icon-markup) — which is why the fill and
+		// the ink arrive together in `frameClasses`. Sized through a CSS rule, which outranks
+		// the svg's own 1em width/height attributes. Decorative: the show is named in the
+		// line right beside it, so announcing the glyph too would read it twice. A pin with
+		// neither a colour nor a glyph is lettering alone and skips the tile entirely.
 		let tile: HTMLElement | null = null;
-
-		// The side sitting on the region, where there is one: the very statues the roster
-		// draws a team with — floor, character, name, place and all — three across, in place
-		// of the tile. Which pins get one is the caller's to say (today, the picked town
-		// alone); every other pin falls through to its glyph below. It is the same component
-		// (see TeamLineup), mounted into the pin's DOM because this is imperative code rather
-		// than a template, and tracked so the next rebuild can unmount it.
-		if (marker.team?.length) {
-			const frame = document.createElement('div');
-			// A fixed 500px for the side together, shared out by the row. Fixed, so the
-			// statues come out the same size whichever town is picked, rather than tracking
-			// anything about the map or the region under them.
-			frame.className = 'w-[500px] drop-shadow-lg';
-			pinMounts.push(
-				mount(TeamLineup, {
-					target: frame,
-					// A town's team is somebody else's side, so it faces the viewer
-					// unmirrored, as a rival side does on the board.
-					props: { members: marker.team, flipped: false, classes: 'gap-1' }
-				})
-			);
-			wrap.appendChild(frame);
-		} else if (marker.iconSvg || marker.frameClasses) {
-			// A square tile in the region's colour carrying the show's glyph, standing at the
-			// left end of the plate below. The glyph is inlined rather than pointed at by an
-			// <img> so it inherits the tile's ink (see icon-markup) — which is why the fill and
-			// the ink arrive together in `frameClasses`. Sized through a CSS rule, which outranks
-			// the svg's own 1em width/height attributes. Decorative: the show is named in the
-			// line right beside it, so announcing the glyph too would read it twice. A pin with
-			// neither a colour nor a glyph is lettering alone and skips the tile entirely.
+		if (marker.iconSvg || marker.frameClasses) {
 			tile = document.createElement('div');
 			tile.className =
 				'flex size-10 flex-none items-center justify-center rounded-lg [&>svg]:size-7 ' +
@@ -443,6 +425,30 @@
 
 		plate.appendChild(lines);
 		wrap.appendChild(plate);
+
+		// The side sitting on the region, where there is one: the very statues the roster
+		// draws a team with — floor, character, name, place and all — three across, standing
+		// on the point with the plate above them. Which pins get one is the caller's to say
+		// (today, the picked town alone); every other pin is the plate by itself. It is the
+		// same component (see TeamLineup), mounted into the pin's DOM because this is
+		// imperative code rather than a template, and tracked so the next rebuild can unmount
+		// it.
+		if (marker.team?.length) {
+			const frame = document.createElement('div');
+			// A fixed 500px for the side together, shared out by the row. Fixed, so the
+			// statues come out the same size whichever town is picked, rather than tracking
+			// anything about the map or the region under them.
+			frame.className = 'mt-1 w-[500px] drop-shadow-lg';
+			pinMounts.push(
+				mount(TeamLineup, {
+					target: frame,
+					// A town's team is somebody else's side, so it faces the viewer
+					// unmirrored, as a rival side does on the board.
+					props: { members: marker.team, flipped: false, classes: 'gap-1' }
+				})
+			);
+			wrap.appendChild(frame);
+		}
 
 		return wrap;
 	}
