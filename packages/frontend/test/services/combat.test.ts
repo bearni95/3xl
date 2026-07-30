@@ -11,6 +11,7 @@ import {
 import { cellSide, findPath, isBoardCell, type Hex } from '$utils/mugen/hex';
 import { ORDER_ICONS } from '$utils/color/traits';
 import type { CombatColor } from '$types/character-definition.type';
+import type { BattleBoardSnapshot, BattleFighterSnapshot } from '$types/battle.type';
 
 /**
  * The stand-off's rules, played out through the controller: what each of the three
@@ -983,6 +984,128 @@ describe('the stand-off', () => {
 			expect(state.turn).toBe(2);
 			expect(state.outcome).toBe('draw');
 			expect(state.phase).toBe('done');
+		});
+	});
+
+	/**
+	 * Best of three. Each case is set up by resuming a board rather than played there
+	 * from turn one: the rivals' orders are part of a saved board, so a fight can be
+	 * stood up on the exact position the rule is about and one turn played over it.
+	 *
+	 * Everybody is yellow throughout — the one colour that hands over neither a shot nor
+	 * a guard — so nothing fires or blocks except what each case orders.
+	 */
+	describe('two encounters, and the fight is over', () => {
+		const line = [
+			seed('r0', 'error', 'yellow'),
+			seed('r1', 'error', 'yellow'),
+			seed('r2', 'error', 'yellow'),
+			seed('p0', 'info', 'yellow'),
+			seed('p1', 'info', 'yellow'),
+			seed('p2', 'info', 'yellow')
+		];
+
+		/** One fighter of a saved board: standing, empty and unordered unless said. */
+		const at = (
+			side: 'error' | 'info',
+			slot: number,
+			spawnId: string,
+			state: Partial<BattleFighterSnapshot> = {}
+		): BattleFighterSnapshot => ({
+			side,
+			slot,
+			spawnId,
+			charges: 0,
+			down: false,
+			spent: [],
+			action: null,
+			cell: null,
+			...state
+		});
+
+		const from = (fighters: BattleFighterSnapshot[]): BattleBoardSnapshot => ({
+			turn: 4,
+			fighters
+		});
+
+		it('ends it the moment the player has taken the second rival down', async () => {
+			// One lane already won, one about to be: P1 is loaded and R1 is spending the
+			// turn loading, with nothing to turn a shot aside.
+			const controller = new CombatController(
+				line,
+				from([
+					at('error', 0, 'r0', { down: true }),
+					at('error', 1, 'r1', { action: 'charge' }),
+					at('error', 2, 'r2', { action: 'charge' }),
+					at('info', 0, 'p0'),
+					at('info', 1, 'p1', { charges: 1 }),
+					at('info', 2, 'p2')
+				])
+			);
+			controller.setAction('p0', 'charge');
+			controller.setAction('p1', 'shoot');
+			controller.setAction('p2', 'charge');
+			await playTurn(controller);
+
+			const state = get(controller);
+			expect(fighterOf(state, 'r1').down).toBe(true);
+			expect(state.wins).toEqual({ info: 2, error: 0 });
+			expect(state.outcome).toBe('win');
+			expect(state.phase).toBe('done');
+			// The third encounter is never played: two of three cannot be caught, so the
+			// last lane is left standing exactly as it was.
+			expect(fighterOf(state, 'p2').down).toBe(false);
+			expect(fighterOf(state, 'r2').down).toBe(false);
+		});
+
+		it('ends it just as flatly when the rivals take the second', async () => {
+			const controller = new CombatController(
+				line,
+				from([
+					at('error', 0, 'r0', { action: 'charge' }),
+					at('error', 1, 'r1', { charges: 1, action: 'shoot' }),
+					at('error', 2, 'r2', { action: 'charge' }),
+					at('info', 0, 'p0', { down: true }),
+					at('info', 1, 'p1'),
+					at('info', 2, 'p2')
+				])
+			);
+			// P1 spends the turn loading, which is what being caught by a shot is.
+			controller.setAction('p1', 'charge');
+			controller.setAction('p2', 'charge');
+			await playTurn(controller);
+
+			const state = get(controller);
+			expect(fighterOf(state, 'p1').down).toBe(true);
+			expect(state.wins).toEqual({ info: 0, error: 2 });
+			expect(state.outcome).toBe('lose');
+			expect(state.phase).toBe('done');
+			expect(fighterOf(state, 'p2').down).toBe(false);
+			expect(fighterOf(state, 'r2').down).toBe(false);
+		});
+
+		it('plays on at one encounter each, because neither has two', async () => {
+			const controller = new CombatController(
+				line,
+				from([
+					at('error', 0, 'r0', { down: true }),
+					at('error', 1, 'r1', { action: 'charge' }),
+					at('error', 2, 'r2', { action: 'charge' }),
+					at('info', 0, 'p0'),
+					at('info', 1, 'p1', { down: true }),
+					at('info', 2, 'p2')
+				])
+			);
+			controller.setAction('p0', 'charge');
+			controller.setAction('p2', 'charge');
+			await playTurn(controller);
+
+			const state = get(controller);
+			expect(state.wins).toEqual({ info: 1, error: 1 });
+			// A lane apiece is not a majority of three: the last one still decides it.
+			expect(state.outcome).toBeNull();
+			expect(state.phase).toBe('planning');
+			expect(state.turn).toBe(5);
 		});
 	});
 

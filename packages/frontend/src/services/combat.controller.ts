@@ -55,9 +55,13 @@
  *
  * The fight is never to sudden death. It is three encounters, and each one is won by
  * the fighter left standing when the other falls (both falling together is nobody's),
- * so the score — {@link CombatState.wins} — is what decides it. It is called the moment
- * every encounter is settled, at {@link MAX_TURNS} at the latest, and whenever the
- * player gives it up ({@link CombatController.concede}). Fighting is the game's only
+ * so the score — {@link CombatState.wins} — is what decides it. And it is a best of
+ * three: {@link ENCOUNTERS_TO_WIN} of them takes it outright, the moment the second one
+ * falls. A side two lanes up cannot be caught by the one that is left, so the fight is
+ * not made to sit through it — the last duel is left standing where it is, whoever was
+ * winning it. Otherwise it is called the moment every encounter is settled, at
+ * {@link MAX_TURNS} at the latest, and whenever the player gives it up
+ * ({@link CombatController.concede}). Fighting is the game's only
  * source of experience: {@link CombatController.report} then summarises the player's
  * side for the `award_combat_exp` RPC, which pays out a share of the player's current
  * level — all of it for a flawless win, a hundredth of it for a loss, nothing for a
@@ -96,6 +100,14 @@ export const MAX_CHARGES = 1;
  * clock runs out (an even count is a draw).
  */
 export const MAX_TURNS = 20;
+
+/**
+ * Encounters that take the fight. Three duels are played at once and two of them are a
+ * majority of three, so a side that has won two has won: the third cannot catch it, and
+ * a fight is not made better by playing out a lane whose result changes nothing. It ends
+ * there, for whichever side gets there first.
+ */
+export const ENCOUNTERS_TO_WIN = 2;
 
 /**
  * The ground the player's line opens on, listed top→bottom on screen — the far column
@@ -817,6 +829,28 @@ export class CombatController {
 		}
 		if (rivalsLeft === 0) {
 			this.end('win', 'The rival team has been taken down.');
+			return;
+		}
+		// Two encounters is the fight. The third cannot change the score — there are only
+		// three of them — so it is not played: whoever takes the second has taken it, and
+		// the last lane is left standing where it is rather than fought out for a result
+		// that is already settled. Both sides are read for it, so a rival pair that gets
+		// there first ends it just as flatly.
+		//
+		// Counted in encounters, which is the same thing as counting the other side's
+		// fallen: a lane can never lose both its fighters, since the only fighter who can
+		// hit one is the one opposite, and two who go at each other in the same turn meet
+		// in the middle and cancel ({@link playExchange}). So every fighter that falls
+		// hands its lane to somebody still standing, and "two encounters won" and "two of
+		// theirs down" are one count under two names.
+		const taken = this.lanesWon('info');
+		const conceded = this.lanesWon('error');
+		if (taken >= ENCOUNTERS_TO_WIN) {
+			this.end('win', `You take the fight ${taken}–${conceded}.`);
+			return;
+		}
+		if (conceded >= ENCOUNTERS_TO_WIN) {
+			this.end('lose', `The rivals take the fight ${conceded}–${taken}.`);
 			return;
 		}
 		// Every encounter settled: whoever is left standing has nobody in front of them
