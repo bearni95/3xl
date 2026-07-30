@@ -2056,6 +2056,23 @@
 		transition:fly={{ x: '100%', duration: 200, opacity: 1 }}
 		class="fixed inset-y-0 right-0 z-[1000] flex w-80 max-w-[85vw] flex-col gap-4 overflow-y-auto border-l border-base-300 bg-base-100 p-4 shadow-2xl"
 	>
+		<!-- The way out, at the top of the menu and at the edge it docks to: the burger that
+			summoned it is a press away on the bar behind it, and a menu whose only dismissal is
+			the mark that opened it asks a player to remember where that was. The same ghost circle
+			and the same ✕ the full-view sheets close with (see FullScreenModal), so closing
+			anything laid over this map is the one gesture wherever it is met. Escape and a press
+			outside still do it too. -->
+		<div class="flex flex-none justify-end">
+			<button
+				type="button"
+				class="btn btn-circle btn-ghost btn-sm"
+				aria-label="Close menu"
+				on:click={() => (menuOpen = false)}
+			>
+				✕
+			</button>
+		</div>
+
 		<!-- Every way out of the map, and all of them one group: the two views that used to be
 			tabs of the old column (the leaderboard and the window's booster packs) and, for a
 			signed-in account, its three — the player's cards, the badges they can earn, and the
