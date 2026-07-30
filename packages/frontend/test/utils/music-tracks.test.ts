@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { MUSIC_FILE_PATTERN, MUSIC_TITLE_MAX_LENGTH } from '$types/music.type';
 import type { MusicCollection } from '$types/music.type';
@@ -24,6 +24,30 @@ describe('the authored music collection', () => {
 		for (const track of music.tracks) {
 			expect(track.file).toMatch(MUSIC_FILE_PATTERN);
 			expect(existsSync(join(ASSETS, 'music', track.file))).toBe(true);
+		}
+	});
+
+	it('names songs that are audio, not what a failed download left behind', () => {
+		// The archive answers a miss with an HTML page, and it answers it with a 200: a
+		// curated-in copy of one is 140 kB of <!DOCTYPE under an .mp3 name, which exists,
+		// plays nothing and has no length to print. The pull script refuses those on the
+		// way in (`verify`); this is the same check applied to what actually got kept,
+		// because a file can also arrive here by hand, and one did.
+		for (const track of music.tracks) {
+			const path = join(ASSETS, 'music', track.file);
+			expect(statSync(path).size, `${track.file} is a stub`).toBeGreaterThan(64 * 1024);
+
+			const head = Buffer.alloc(4);
+			const handle = openSync(path, 'r');
+			try {
+				readSync(handle, head, 0, 4, 0);
+			} finally {
+				closeSync(handle);
+			}
+			const framed =
+				head.subarray(0, 3).toString('latin1') === 'ID3' ||
+				(head[0] === 0xff && (head[1] & 0xe0) === 0xe0);
+			expect(framed, `${track.file} has no ID3 tag or MPEG frame sync`).toBe(true);
 		}
 	});
 
