@@ -782,8 +782,14 @@
 	// crossing the whole ladder.
 	const MAX_NOTCHES_PER_WHEEL = 2;
 	// A pause long enough that the next push is a new gesture, and the part of a notch left
-	// over from the last one is forgotten rather than counting towards it.
+	// over from the last one is forgotten rather than counting towards it. The first push of
+	// one is a step whatever it is worth (see onWheelZoom).
 	const WHEEL_GESTURE_GAP = 400;
+	// The least time between two steps. A trackpad goes on sending for a second after the
+	// fingers have left it, and a ladder is six or seven rungs long: without this, the tail of
+	// one flick is the whole of it. It is also what makes a spin readable — a tier at a time,
+	// at a pace a reader can stop on the one they wanted.
+	const WHEEL_STEP_GAP = 120;
 	// Near enough to a stop to be standing on it, when working out which one a notch steps
 	// from. Also what keeps two tiers that fit at the same zoom — a tier the place under the
 	// view does not have has its parent's box — from being two stops with nothing between
@@ -836,6 +842,11 @@
 	// enough that the next push is a new one.
 	let wheelPush = 0;
 	let wheelPushAt = 0;
+	let wheelStepAt = 0;
+	// Whether this gesture has yet to move the map. The first push of one steps whatever it is
+	// worth, so a device that reports a flick as a handful of pixels is not a device this map
+	// ignores; it is only *inside* a gesture that a step costs a whole notch.
+	let wheelFresh = false;
 
 	// The zooms a gesture may come to rest at, coarsest first: each box that the ladder is made
 	// of, at the zoom it stands whole in the canvas at — computed here rather than handed over
@@ -904,7 +915,12 @@
 		if (!event.deltaY) return;
 
 		const now = performance.now();
-		if (now - wheelPushAt > WHEEL_GESTURE_GAP) wheelPush = 0;
+		// A gesture is a run of pushes with no real pause in it. A new one forgets whatever
+		// part-notch the last one ended on, and is owed a step for its first push.
+		if (now - wheelPushAt > WHEEL_GESTURE_GAP) {
+			wheelPush = 0;
+			wheelFresh = true;
+		}
 		wheelPushAt = now;
 
 		const notch = WHEEL_NOTCH[(event.deltaMode as 0 | 1 | 2) ?? 0] ?? WHEEL_NOTCH[0];
@@ -913,12 +929,19 @@
 			Math.min(MAX_NOTCHES_PER_WHEEL, -event.deltaY / notch)
 		);
 
-		// Whole notches only: what is left over is kept for the next push. So a wheel with
-		// detents moves a stop per detent, and a trackpad moves one once it has been pushed
-		// that far — and neither of them can come to rest part of the way between two.
-		const steps = Math.trunc(wheelPush);
-		if (!steps) return;
-		wheelPush -= steps;
+		// One step at a time, and one to a step gap. What earns it is a whole notch of pushing
+		// — a detent of a wheel, or as much of a trackpad — except for the push that opens a
+		// gesture, which earns one whatever it is worth: a device that reports a flick as a few
+		// pixels is asking for the same thing as a device that reports it as a hundred, and a
+		// map that waits for the hundred does nothing at all on the first.
+		if (now - wheelStepAt < WHEEL_STEP_GAP) return;
+		if (!wheelFresh && Math.abs(wheelPush) < 1) return;
+		const steps = wheelPush > 0 ? 1 : -1;
+		// Spent, along with anything pushed while the gap was closed: a step is a step, and the
+		// tail of a trackpad's flick is not a queue of them waiting to be taken.
+		wheelPush = 0;
+		wheelFresh = false;
+		wheelStepAt = now;
 
 		const map = mapInstance as GestureMap;
 		// A wheel overtakes whatever the map was doing on its own. A pan or a fly is stopped
