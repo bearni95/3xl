@@ -211,9 +211,12 @@ describe('CombatController — leaving a fight and coming back to it', () => {
 			expect(boardFitsLineup(moved('error', RIVAL_CELLS[0].q), lineup)).toBe(true);
 			expect(boardFitsLineup(moved('error', WON_COLUMN), lineup)).toBe(true);
 			expect(boardFitsLineup(moved('error', fallenColumn('error')), lineup)).toBe(true);
-			// And the outermost column each side retracts to is the board's own edge.
+			// And the column each side retracts to is the outermost one running the board's
+			// whole depth. For blue that is the board's own edge; for red it is a column in
+			// from it, since the field's outermost column holds one cell, on the middle lane,
+			// and a retreat has to mean the same thing on all three.
 			expect(fallenColumn('info')).toBe(LAST_COLUMN);
-			expect(fallenColumn('error')).toBe(FIRST_COLUMN);
+			expect(fallenColumn('error')).toBe(FIRST_COLUMN + 1);
 		});
 	});
 

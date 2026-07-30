@@ -20,17 +20,28 @@
  * {@link neighbors} and {@link cellDistance} are the only two places in the codebase
  * that know it, and everything else goes on asking them.
  *
- * It is five columns by three rows, and symmetric about its middle column: two
- * columns of red half, the shared white one at q = 0, two of blue. So the ground both
- * sides are playing for sits dead centre, and each half is the same two columns deep
- * — one to be pushed back onto, and one behind that.
+ * Three rows, of five cells each save the middle one, which has six. Staggered rows of
+ * equal length leave a field that is notched on one side and bulges on the other — the
+ * middle row here reaching half a cell further right than the two around it, and
+ * starting half a cell further in on the left — which is a lopsided thing to lay a duel
+ * out on. The sixth cell fills that notch: `q = FIRST_COLUMN` exists on the offset rows
+ * alone, and with it the field's outline is symmetric left to right, the middle row
+ * overhanging by the same half cell at both ends.
  *
- * Cells left of centre are the red half, right the blue half. Every column runs the
- * full depth of the board, so a row is a **lane**: the two fighters holding the same
- * row face each other across it, and the ground between them is the white cell they
- * are playing for. Three rows is three lanes, which is a side's whole line — so every
- * row of the board is fought over and none of it is ground nobody stands on (see the
- * combat controller's opening cells).
+ * That leaves the *colours* one cell out of true, which is the price and is worth
+ * stating plainly: the extra cell is on the left, so it is red's, and red holds seven
+ * cells to blue's six. It is the far back corner of the middle lane — behind the column
+ * a beaten fighter retracts to, which stays `FIRST_COLUMN + 1` because that is the
+ * outermost column running the board's whole depth — so nothing about the fight begins
+ * or ends there. It is ground red may walk on and blue may not, and the two lines'
+ * openings, retreats and the white ground between them are all untouched by it.
+ *
+ * Cells left of centre are the red half, right the blue half, the shared white one at
+ * q = 0. Every column but the sixth runs the full depth of the board, so a row is a
+ * **lane**: the two fighters holding the same row face each other across it, and the
+ * ground between them is the white cell they are playing for. Three rows is three lanes,
+ * which is a side's whole line — so every row of the board is fought over and none of it
+ * is ground nobody stands on (see the combat controller's opening cells).
  */
 
 /** A cell coordinate: column across, row down. */
@@ -42,14 +53,19 @@ export interface Cell {
 /** Which half of the board a column belongs to. */
 export type CellSide = 'red' | 'purple' | 'blue';
 
-/** The board's outermost columns: two red, the white one at zero, two blue. */
-export const FIRST_COLUMN = -2;
+/**
+ * The board's outermost columns: three red, the white one at zero, two blue. The
+ * outermost red one is the odd column out — it holds a cell on the offset rows only
+ * (see the module note), which is what makes the field's outline symmetric.
+ */
+export const FIRST_COLUMN = -3;
 export const LAST_COLUMN = 2;
 /** The board's rows — a lane apiece, counted downward from the top of the screen. */
 export const FIRST_ROW = 0;
 export const LAST_ROW = 2;
 
-/** The board's extent in cells, which is what sizes the drawn grid. */
+/** The board's extent in cells, which is what sizes the drawn grid: the columns its
+ * widest row spans, and the rows. Not every column holds a cell on every row. */
 export const BOARD_COLUMNS = LAST_COLUMN - FIRST_COLUMN + 1;
 export const BOARD_ROWS = LAST_ROW - FIRST_ROW + 1;
 
@@ -127,9 +143,15 @@ function cube(cell: Cell): { x: number; y: number; z: number } {
 	return { x, y: -x - z, z };
 }
 
-/** Whether [q, r] is a real, occupiable board cell. */
+/**
+ * Whether [q, r] is a real, occupiable board cell. Every column runs every row except
+ * the outermost, which the level rows have no cell in: the field is a rectangle of five
+ * columns with the offset rows reaching one cell further out on the left, and that reach
+ * is the only thing keeping its two ends the same shape.
+ */
 export function isBoardCell(q: number, r: number): boolean {
-	return q >= FIRST_COLUMN && q <= LAST_COLUMN && r >= FIRST_ROW && r <= LAST_ROW;
+	if (r < FIRST_ROW || r > LAST_ROW || q > LAST_COLUMN) return false;
+	return q >= (isOffsetRow(r) ? FIRST_COLUMN : FIRST_COLUMN + 1);
 }
 
 /** Every valid board cell, in a stable order (by column, then row). */
@@ -137,7 +159,7 @@ export function boardCells(): Cell[] {
 	const cells: Cell[] = [];
 	for (let q = FIRST_COLUMN; q <= LAST_COLUMN; q++) {
 		for (let r = FIRST_ROW; r <= LAST_ROW; r++) {
-			cells.push({ q, r });
+			if (isBoardCell(q, r)) cells.push({ q, r });
 		}
 	}
 	return cells;
@@ -195,15 +217,34 @@ export const HEX_HEIGHT = 2 / Math.sqrt(3);
  * because the rows interlock rather than stack. */
 export const HEX_ROW_STEP = HEX_HEIGHT * 0.75;
 
-/** The board's own extent in cell widths: the columns, plus the half-cell the offset
- * rows hang out to the right by, and the rows' interlocked height. */
-export const BOARD_WIDTH = BOARD_COLUMNS + 0.5;
+/** How far a level row steps across from the offset rows either side of it — half a
+ * cell, which is what makes the two nest instead of stacking. */
+const ROW_STAGGER = 0.5;
+
+/**
+ * The board's own extent in cell widths. The width is exactly the columns, with nothing
+ * hanging off either end: the offset rows have a cell in every column and so span the
+ * board edge to edge, and the level rows — a column shorter, and stepped half a cell
+ * across from them — are inset by half a cell at *both* ends, which is the symmetry the
+ * sixth cell was added for. The height is the rows' interlocked one.
+ */
+export const BOARD_WIDTH = BOARD_COLUMNS;
 export const BOARD_HEIGHT = (BOARD_ROWS - 1) * HEX_ROW_STEP + HEX_HEIGHT;
 
-/** Centre of the cell at [q, r]. */
+/**
+ * Centre of the cell at [q, r], measured from the board's own top-left corner.
+ *
+ * The offset rows are the ones that reach the board's two edges, so they are what the
+ * columns are measured against: an offset row's cell fills its column, centred half a
+ * cell into it. A level row's cell sits half a cell to the left of that — the stagger —
+ * so it straddles the join between two columns and lands squarely between the pair of
+ * offset-row cells above it and the pair below. Having no cell in the outermost column
+ * is what leaves a level row inset by that same half cell at either end.
+ */
 export function cellCenter(q: number, r: number): GridPoint {
+	const column = q - FIRST_COLUMN;
 	return {
-		x: q - FIRST_COLUMN + 0.5 + (isOffsetRow(r) ? 0.5 : 0),
+		x: column + 0.5 - (isOffsetRow(r) ? 0 : ROW_STAGGER),
 		y: (r - FIRST_ROW) * HEX_ROW_STEP + HEX_HEIGHT / 2
 	};
 }

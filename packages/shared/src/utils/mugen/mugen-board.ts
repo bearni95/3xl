@@ -3,6 +3,7 @@ import { destroyPixiApp } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
 import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/character-fit';
 import { characterIdFromFramesPath, readRenderScale } from './character-render-scale';
+import { type Crown, paintedCrown } from './character-crown';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
 	BOARD_HEIGHT,
@@ -163,8 +164,8 @@ const HEAD_ROOM = 1;
 // written over the ground the fight is played on.
 //
 // A column of hexagons is not a straight line — every other row steps half a cell to
-// the right — so a letter is set under its own column's cell **on the bottom row**
-// rather than under the average of a zigzag, which would be under no cell at all. The
+// the right — so a letter is set under the **lowest cell its own column has** rather
+// than under the average of a zigzag, which would be under no cell at all. The
 // row numbers stay in one straight band down the left, level with each row's centre:
 // the gutter is a third of a cell wide and the offset is half of one, so a number
 // that followed its row's own left edge would be standing on the board.
@@ -229,6 +230,42 @@ const LEAD_CELLS: [Cell, Cell] = [
 /** The cell a half's lead character stands on: its own `q`/`r`, or `fallback`. */
 const leadCell = (grid: BoardGrid, fallback: Cell): Cell =>
 	'q' in grid.character ? { q: grid.character.q, r: grid.character.r } : fallback;
+
+/**
+ * How far to move a character sideways so its **crown** — the middle of the highest
+ * painted pixels of the pose it stands in — sits over the middle of its cell, instead of
+ * the MUGEN axis it is drawn around doing so. See {@link paintedCrown} for why the axis
+ * is the wrong point to stand a fighter on.
+ *
+ * Read off the standing cycle, taking the frame whose paint reaches **highest**: that is
+ * the character's tallest point, and it is the one the phrase names. Every frame is
+ * bottom-aligned on the board's foot line ({@link MugenBoard.applyFrame} anchors at 1),
+ * so how high a frame reaches is its own height less the empty rows above its artwork —
+ * which is why the frames' differing heights are no obstacle to comparing them.
+ *
+ * The answer is in screen px at `scale`, and already mirrored for a `flip`ped half: a
+ * sprite drawn with a negative x-scale is reflected about its anchor, so the crown a
+ * fighter's own artwork puts to its left appears to its right, and the correction that
+ * brings it back has to turn round with it.
+ *
+ * Zero when nothing can be read — an empty cycle, artwork a canvas will not give up its
+ * pixels for. A fighter stood on its axis is the placement this board had all along, so
+ * failing to improve on it costs nothing.
+ */
+function crownCorrection(frames: LoadedFrame[], scale: number, flip: boolean): number {
+	let best: { frame: LoadedFrame; crown: Crown; reach: number } | null = null;
+	for (const frame of frames) {
+		const crown = paintedCrown(frame.texture.source.resource, frame.width, frame.height);
+		if (!crown) continue;
+		const reach = frame.height - crown.top;
+		if (!best || reach > best.reach) best = { frame, crown, reach };
+	}
+	if (!best) return 0;
+	// Both in the frame's own pixels, off its left edge: where the crown is, and where the
+	// axis the sprite is anchored at is. The gap between them is what has to be undone.
+	const axis = best.frame.anchorX * best.frame.width;
+	return (flip ? 1 : -1) * (best.crown.x - axis) * scale;
+}
 
 /** Canvas hex for each combat colour, for tinting callouts and slashes. */
 const COMBAT_COLOR_HEX: Record<string, number> = {
@@ -447,6 +484,19 @@ interface Actor {
 	homeRow: number;
 	/** Every loaded animation for this actor, keyed by name (idle, run, …). */
 	animations: Record<string, LoadedFrame[]>;
+	/**
+	 * Screen px to move this fighter by so that its crown — the middle of the highest
+	 * painted pixels of the pose it stands in ({@link paintedCrown}) — lands on the
+	 * middle of whatever cell it is standing on, rather than its MUGEN axis doing so.
+	 * Zero for a character whose head is already over its axis, and for one whose
+	 * artwork could not be read.
+	 *
+	 * Held per actor rather than applied per frame: the axis is what aligns a cycle's
+	 * frames to each other, so it goes on doing that, and this moves the whole fighter
+	 * by one fixed amount. Already mirrored for the half it stands on, so it is simply
+	 * added to a cell's standing mark ({@link MugenBoard.standPoint}).
+	 */
+	crownShift: number;
 	/** Raw manifest anim key of the hurt flinch (movement animation), or `''`. */
 	hurtAnim: string;
 	currentName: string;
@@ -746,12 +796,29 @@ export class MugenBoard {
 		return { x: this.gridLeft + col * cellSize, y: this.gridTop + row * cellSize };
 	}
 
-	/** Screen-space point an actor stands on in the cell at [q, r]: horizontally
-	 * centred, feet on the cell's foot line ({@link cellFoot}), so it reads as inside
-	 * the cell rather than floating at its centre or balancing on its bottom point. */
+	/** Screen-space point at the middle of the cell at [q, r]'s foot line
+	 * ({@link cellFoot}), so a fighter reads as inside the cell rather than floating at
+	 * its centre or balancing on its bottom point. */
 	private cellMark(q: number, r: number): Point {
 		const foot = cellFoot(q, r);
 		return this.project(foot.x, foot.y);
+	}
+
+	/**
+	 * Where a *particular* actor is put to stand in the cell at [q, r]: the cell's own
+	 * mark, moved by that actor's crown correction ({@link Actor.crownShift}), so what
+	 * ends up over the middle of the cell is the fighter's head rather than the axis its
+	 * artwork happens to be drawn around.
+	 *
+	 * Every placement that leaves a fighter *standing* somewhere goes through this — the
+	 * opening line-up, each step of a walk, a winner claiming ground, a loser retracting.
+	 * The one that does not is the duel split ({@link meleeApproach}), which is not a
+	 * fighter standing in the middle of a cell at all: it is two sprites brought edge to
+	 * edge against one line, and it measures from their edges for that reason.
+	 */
+	private standPoint(actor: Actor, q: number, r: number): Point {
+		const mark = this.cellMark(q, r);
+		return { x: mark.x + actor.crownShift, y: mark.y };
 	}
 
 	/**
@@ -819,8 +886,8 @@ export class MugenBoard {
 	/**
 	 * Name the grid's cells along two of its edges, as a chessboard does: a letter
 	 * under each column and a number beside each row, so any cell is said by the pair
-	 * meeting at it ("c2"). Each label is centred on the band it stands in and on the
-	 * cell it belongs to, so a letter is under its own column's bottom-row cell and a
+	 * meeting at it ("d2"). Each label is centred on the band it stands in and on the
+	 * cell it belongs to, so a letter is under its own column's lowest cell and a
 	 * number level with its own row however big a cell is drawn.
 	 */
 	private drawCoordinates(): void {
@@ -853,8 +920,12 @@ export class MugenBoard {
 
 		const labels = new Container();
 		for (let q = FIRST_COLUMN; q <= LAST_COLUMN; q++) {
-			// Under the bottom row's own cell, which is the one the letter is beneath.
-			const centre = this.project(cellCenter(q, LAST_ROW).x, 0).x;
+			// Under the lowest cell the column actually has — the bottom row's for all but
+			// the outermost column, which the level rows have no cell in at all and whose
+			// letter would otherwise be set under the empty corner beside the board.
+			const lowest = this.lowestRow(q);
+			if (lowest === null) continue;
+			const centre = this.project(cellCenter(q, lowest).x, 0).x;
 			labels.addChild(label(columnLabel(q), centre, lettersY));
 		}
 		for (let r = FIRST_ROW; r <= LAST_ROW; r++) {
@@ -862,6 +933,15 @@ export class MugenBoard {
 			labels.addChild(label(rowLabel(r), numbersX, centre));
 		}
 		this.app.stage.addChild(labels);
+	}
+
+	/** The lowest row on the board holding a cell in column `q`, or null for a column
+	 * with no cells at all. */
+	private lowestRow(q: number): number | null {
+		for (let r = LAST_ROW; r >= FIRST_ROW; r--) {
+			if (isBoardCell(q, r)) return r;
+		}
+		return null;
 	}
 
 	/**
@@ -947,13 +1027,18 @@ export class MugenBoard {
 			readRenderScale(definition)
 		);
 
+		// Where the character's head is, relative to the axis it is drawn around — the
+		// correction that puts the head over the middle of the cell instead of the axis.
+		const crownShift = crownCorrection(baseFrames, fitScale, flip);
+		const stand = { x: mark.x + crownShift, y: mark.y };
+
 		const sprite = new Sprite();
 		// A negative x-scale mirrors the sprite around its anchor (in place).
 		sprite.scale.set(flip ? -fitScale : fitScale, fitScale);
-		sprite.x = mark.x;
-		sprite.y = mark.y;
+		sprite.x = stand.x;
+		sprite.y = stand.y;
 		// Feet-y drives paint order: rows further down the screen sit at larger y and on top.
-		sprite.zIndex = mark.y;
+		sprite.zIndex = stand.y;
 		this.app.stage.addChild(sprite);
 
 		const actor: Actor = {
@@ -988,10 +1073,11 @@ export class MugenBoard {
 			// a label sits by the character's full reach rather than by frame one's.
 			displayWidth: Math.max(...baseFrames.map((frame) => frame.width)) * fitScale,
 			displayHeight: Math.max(...baseFrames.map((frame) => frame.height)) * fitScale,
-			x: mark.x,
-			y: mark.y,
-			targetX: mark.x,
-			targetY: mark.y,
+			crownShift,
+			x: stand.x,
+			y: stand.y,
+			targetX: stand.x,
+			targetY: stand.y,
 			moving: false,
 			stepDir: 0
 		};
@@ -1054,8 +1140,10 @@ export class MugenBoard {
 		if (!frames || frames.length === 0) return;
 		const frame = frames[actor.frameIndex % frames.length];
 		actor.sprite.texture = frame.texture;
-		// Horizontal: the character's body (foot) anchor keeps it centred over the
-		// cell; vertical: 1 so the sprite's bottom end sits on the cell's lower edge.
+		// Horizontal: the frame's own MUGEN axis, which is what holds the frames of a
+		// cycle to each other — where that axis is *put* is the standing mark plus the
+		// actor's one crown correction ({@link Actor.crownShift}), decided once, not
+		// here. Vertical: 1, so the sprite's bottom end sits on the cell's foot line.
 		actor.sprite.anchor.set(frame.anchorX, 1);
 	}
 
@@ -1167,7 +1255,7 @@ export class MugenBoard {
 				// of a shared duel cell) instead of the cell's standing mark.
 				const override = actor.pathQueue.length === 0 ? actor.finalTarget : null;
 				if (actor.pathQueue.length === 0) actor.finalTarget = null;
-				const target = override ?? this.cellMark(next.q, next.r);
+				const target = override ?? this.standPoint(actor, next.q, next.r);
 				actor.stepDir = Math.sign(target.x - actor.x) || actor.stepDir || 1;
 				actor.targetX = target.x;
 				actor.targetY = target.y;
@@ -1378,7 +1466,7 @@ export class MugenBoard {
 	async claimCell(id: string, cell: Cell): Promise<void> {
 		const actor = this.findActor(id);
 		if (!actor) return;
-		await this.walkCells(actor, [], this.cellMark(cell.q, cell.r));
+		await this.walkCells(actor, [], this.standPoint(actor, cell.q, cell.r));
 	}
 
 	/**
@@ -1430,7 +1518,7 @@ export class MugenBoard {
 		// Passing the home mark as the walk's end point also covers the fighter
 		// whose home *is* the cell it logically occupies but who is standing half a
 		// cell off centre after a shared-cell duel — it glides straight back.
-		await this.walkCells(actor, path.slice(1), this.cellMark(home.q, home.r));
+		await this.walkCells(actor, path.slice(1), this.standPoint(actor, home.q, home.r));
 	}
 
 	/**
@@ -1455,7 +1543,7 @@ export class MugenBoard {
 			findPath(this.cellOf(actor), cell, this.walkAllowed(actor)) ??
 			findPath(this.cellOf(actor), cell, this.sideAllowed(actor));
 		if (!path) return;
-		await this.walkCells(actor, path.slice(1), this.cellMark(cell.q, cell.r));
+		await this.walkCells(actor, path.slice(1), this.standPoint(actor, cell.q, cell.r));
 		actor.homeColumn = cell.q;
 		actor.homeRow = cell.r;
 	}

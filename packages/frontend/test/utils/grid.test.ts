@@ -27,18 +27,28 @@ import {
 } from '$utils/mugen/grid';
 
 describe('board cells', () => {
-	it('is five columns by three rows, symmetric about the white one', () => {
-		expect(BOARD_COLUMNS).toBe(5);
+	it('is three rows of five, with a sixth cell on the middle one', () => {
 		expect(BOARD_ROWS).toBe(3);
-		// The white column is q = 0, so a board symmetric about it is one whose outermost
-		// columns are the same distance out: two of red half, two of blue.
-		expect(FIRST_COLUMN).toBe(-LAST_COLUMN);
 		expect(MIDDLE_ROW).toBe(1);
+		// The widest row spans every column; the two level rows are a column shorter.
+		expect(BOARD_COLUMNS).toBe(6);
+		expect(boardCells()).toHaveLength(5 + 6 + 5);
+		for (let r = 0; r < BOARD_ROWS; r++) {
+			expect(boardCells().filter((cell) => cell.r === r)).toHaveLength(r === MIDDLE_ROW ? 6 : 5);
+		}
 	});
 
-	it('excludes everything off the rectangle', () => {
+	it('gives the outermost column to the middle row alone', () => {
+		// The cell added to make the field's outline symmetric — and the only one of its
+		// column, since the rows either side of the middle are staggered the other way.
+		expect(isBoardCell(FIRST_COLUMN, MIDDLE_ROW)).toBe(true);
+		expect(isBoardCell(FIRST_COLUMN, 0)).toBe(false);
+		expect(isBoardCell(FIRST_COLUMN, LAST_ROW)).toBe(false);
+	});
+
+	it('excludes everything off the field', () => {
 		expect(isBoardCell(3, 0)).toBe(false); // no such column
-		expect(isBoardCell(-3, 0)).toBe(false); // nor here — each half is two deep
+		expect(isBoardCell(-4, 1)).toBe(false); // nor here — nothing is deeper than a2
 		expect(isBoardCell(0, 3)).toBe(false); // below the bottom row
 		expect(isBoardCell(0, -1)).toBe(false); // above the top row
 	});
@@ -50,6 +60,7 @@ describe('board cells', () => {
 	});
 
 	it('assigns colour side by column sign', () => {
+		expect(cellSide(-3)).toBe('red');
 		expect(cellSide(-2)).toBe('red');
 		expect(cellSide(-1)).toBe('red');
 		expect(cellSide(0)).toBe('purple');
@@ -57,14 +68,14 @@ describe('board cells', () => {
 		expect(cellSide(2)).toBe('blue');
 	});
 
-	it('is a full rectangle — every column runs every row', () => {
+	it('runs every lane the full width, the extra cell aside', () => {
 		const cells = boardCells();
-		expect(cells).toHaveLength(BOARD_COLUMNS * BOARD_ROWS);
 		for (const cell of cells) expect(isBoardCell(cell.q, cell.r)).toBe(true);
-		// Every row is a lane, so no column may be missing one: each row holds exactly
-		// as many cells as the board has columns.
+		// Every row is a lane, so no column that runs the board's depth may be missing
+		// one: leaving out the odd column, each row holds the same five cells.
 		for (let r = 0; r < BOARD_ROWS; r++) {
-			expect(cells.filter((cell) => cell.r === r)).toHaveLength(BOARD_COLUMNS);
+			const lane = cells.filter((cell) => cell.r === r && cell.q > FIRST_COLUMN);
+			expect(lane).toHaveLength(BOARD_COLUMNS - 1);
 		}
 	});
 });
@@ -74,16 +85,19 @@ describe('cell names', () => {
 		// A column's coordinate is signed and centred on the white one; its name is its
 		// place across the board, so the left-hand column is `a` whatever q calls it.
 		expect(columnLabel(FIRST_COLUMN)).toBe('a');
-		expect(columnLabel(0)).toBe('c');
-		expect(columnLabel(LAST_COLUMN)).toBe('e');
+		expect(columnLabel(0)).toBe('d');
+		expect(columnLabel(LAST_COLUMN)).toBe('f');
 		// Rows read downward, so the top one is 1 and the numbering follows the rows.
 		expect(rowLabel(0)).toBe('1');
 		expect(rowLabel(LAST_ROW)).toBe(String(BOARD_ROWS));
+		// The odd cell is the middle row's alone, so `a` names one cell and it is a2.
+		expect(`${columnLabel(FIRST_COLUMN)}${rowLabel(MIDDLE_ROW)}`).toBe('a2');
 	});
 
 	it('names every cell, and no two the same', () => {
-		const names = boardCells().map((cell) => `${columnLabel(cell.q)}${rowLabel(cell.r)}`);
-		expect(names).toHaveLength(BOARD_COLUMNS * BOARD_ROWS);
+		const cells = boardCells();
+		const names = cells.map((cell) => `${columnLabel(cell.q)}${rowLabel(cell.r)}`);
+		expect(names).toHaveLength(cells.length);
 		expect(new Set(names).size).toBe(names.length);
 	});
 });
@@ -196,8 +210,21 @@ describe('the shape of a cell', () => {
 		expect(Math.min(...corners.map((c) => c.y))).toBeCloseTo(0);
 		expect(Math.max(...corners.map((c) => c.x))).toBeCloseTo(BOARD_WIDTH);
 		expect(Math.max(...corners.map((c) => c.y))).toBeCloseTo(BOARD_HEIGHT);
-		// The half-width beyond the columns is the offset rows hanging out to the right.
-		expect(BOARD_WIDTH).toBeCloseTo(BOARD_COLUMNS + 0.5);
+		// Nothing hangs off either end: the middle row spans every column edge to edge.
+		expect(BOARD_WIDTH).toBeCloseTo(BOARD_COLUMNS);
+	});
+
+	it('is symmetric left to right, which is what the odd cell buys', () => {
+		// Mirroring the field about its own middle lands it back on itself: every cell's
+		// reflection is a cell, which is the whole point of the sixth one.
+		const middle = BOARD_WIDTH / 2;
+		const at = (cells: Cell[]) =>
+			new Set(cells.map((c) => `${cellCenter(c.q, c.r).x.toFixed(4)},${c.r}`));
+		const board = at(boardCells());
+		const mirrored = new Set(
+			boardCells().map((c) => `${(2 * middle - cellCenter(c.q, c.r).x).toFixed(4)},${c.r}`)
+		);
+		expect(mirrored).toEqual(board);
 	});
 
 	it('stands a fighter where its cell is still full width, not on its bottom point', () => {

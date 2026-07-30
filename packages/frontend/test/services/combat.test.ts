@@ -879,14 +879,14 @@ describe('the stand-off', () => {
 			expect(RIVAL_CELLS).toHaveLength(PLAYER_CELLS.length);
 			for (const cell of RIVAL_CELLS) {
 				expect(isBoardCell(cell.q, cell.r)).toBe(true);
-				// Column b: the front of the rival's own half, not the shared ground.
-				expect(columnLabel(cell.q)).toBe('b');
+				// Column c: the front of the rival's own half, not the shared ground.
+				expect(columnLabel(cell.q)).toBe('c');
 				expect(cellSide(cell.q)).toBe('red');
 			}
 			for (const cell of PLAYER_CELLS) {
 				expect(isBoardCell(cell.q, cell.r)).toBe(true);
-				// Column d: the front of the player's own half, facing b across the white one.
-				expect(columnLabel(cell.q)).toBe('d');
+				// Column e: the front of the player's own half, facing c across the white one.
+				expect(columnLabel(cell.q)).toBe('e');
 				expect(cellSide(cell.q)).toBe('blue');
 			}
 			// Nobody opens on the white column: it is what the lanes are played for, so it
@@ -941,7 +941,10 @@ describe('the stand-off', () => {
 				{ id: 'r0', cell: fallenGround('error', 0) },
 				{ id: 'p0', cell: wonGround(0) }
 			]);
-			expect(columnLabel(log.moved[0].cell.q)).toBe('a');
+			// Column b, the back of red's half: the outermost column running the board's
+			// whole depth. The odd cell of column a is behind it on this one lane only, and
+			// nothing in a fight ever puts a fighter there.
+			expect(columnLabel(log.moved[0].cell.q)).toBe('b');
 			expect(cellSide(log.moved[1].cell.q)).toBe('purple');
 		});
 
@@ -994,13 +997,13 @@ describe('the stand-off', () => {
 			await playTurn(controller);
 			expect(fighterOf(get(controller), 'p0').down).toBe(true);
 			// A lane is won on the same ground whoever wins it: the rival takes the white
-			// cell, and the player's beaten fighter retracts to column e, the back of its own
+			// cell, and the player's beaten fighter retracts to column f, the back of its own
 			// half. The ground is not a side's until somebody is standing on it.
 			expect(log.moved).toEqual([
 				{ id: 'p0', cell: fallenGround('info', 0) },
 				{ id: 'r0', cell: wonGround(0) }
 			]);
-			expect(columnLabel(log.moved[0].cell.q)).toBe('e');
+			expect(columnLabel(log.moved[0].cell.q)).toBe('f');
 			expect(cellSide(log.moved[1].cell.q)).toBe('purple');
 		});
 
