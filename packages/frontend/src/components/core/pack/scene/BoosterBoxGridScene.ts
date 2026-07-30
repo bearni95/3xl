@@ -419,6 +419,7 @@ export class BoosterBoxGridScene {
 				const to = this.standTransform();
 				sprite.position.set(to.x, to.y);
 				sprite.scale.set(to.scale);
+				sprite.drawnAt(to.scale);
 				this.reportOpening();
 			}
 			return;
@@ -471,6 +472,10 @@ export class BoosterBoxGridScene {
 		entry.sprite.position.set(from.x, from.y);
 
 		const to = this.standTransform();
+		// Said before the move and not after it: the box is about to be drawn three or four times
+		// the size its type was baked at, and the whole of the move is spent at sizes nearer the
+		// one it is going to than the one it is leaving.
+		entry.sprite.drawnAt(to.scale);
 		if (settled) {
 			entry.sprite.position.set(to.x, to.y);
 			entry.sprite.scale.set(to.scale);
@@ -518,6 +523,9 @@ export class BoosterBoxGridScene {
 		this.layer.addChild(entry.sprite);
 		entry.sprite.scale.set(1);
 		entry.sprite.position.set(entry.x, entry.y);
+		// Back at the size it was built for, so its type is baked for that size again rather than
+		// held at a standing box's.
+		entry.sprite.drawnAt(1);
 		this.layer.alpha = 1;
 		this.stood = null;
 		this.state = 'grid';

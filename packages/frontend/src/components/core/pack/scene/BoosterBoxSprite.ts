@@ -118,6 +118,15 @@ const FACE_COVER_SHIFT_RIGHT = 0.14109;
 // at 90% of the picture taking whatever height its own proportions give it.
 const TYPE_SIZE = 0.054;
 const TYPE_LEADING = 1.375; // leading-snug
+// Room round the type inside its own bitmap, as a share of the type size. A canvas text is
+// baked into a texture measured with `measureText`, which reports an advance width and not an
+// ink extent: a bold face whose last letter overhangs its advance — which is most of them — is
+// baked with that overhang off the right-hand edge of the texture, and a box standing up draws
+// that texture three or four times over, so the sliver that costs is a visibly cut letter. It
+// moves nothing: what a Text measures — and so what the head band is made as deep as — is the
+// lines and not the bitmap, and the quad the padded bitmap is drawn on is offset by the same
+// margin it added, so the type sits where it sat.
+const TYPE_PADDING = 0.25;
 const HEAD_PAD_X = 0.03;
 const HEAD_PAD_TOP = 0.02;
 const HEAD_PAD_BOTTOM = 0.09;
@@ -208,6 +217,10 @@ export class BoosterBoxSprite extends Container {
 	// when the crumble is in.
 	private planes: BoxPlane[] = [];
 	private shadow: Container | null = null;
+	// The place set across the head of the front, held because it is the one thing on this box
+	// that is a bitmap rather than geometry: it has to be baked again whenever the box is drawn at
+	// another size (see {@link drawnAt}).
+	private type: Text | null = null;
 
 	// Coming apart, which is the one thing this box does rather than merely shows. Four states, in
 	// the order they happen: whole, crazing into squares, crazed and waiting on there being
@@ -412,6 +425,7 @@ export class BoosterBoxSprite extends Container {
 		// also what says how deep the fade round the whole box is.
 		const place = this.placeLabel();
 		const type = place ? this.placeType(place) : null;
+		this.type = type;
 		const bands = this.bandHeights(type, logo);
 
 		// The two faces are hung off the front's sides, so they are as tall as it is whatever
@@ -678,10 +692,32 @@ export class BoosterBoxSprite extends Container {
 				lineHeight: size * TYPE_LEADING,
 				fill: this.stock.ink,
 				align: 'center',
+				padding: size * TYPE_PADDING,
 				wordWrap: true,
 				wordWrapWidth: FRONT_WIDTH * w - HEAD_PAD_X * 2 * w
 			}
 		});
+	}
+
+	/**
+	 * The box is being drawn at `scale` — bake its type for that size.
+	 *
+	 * A box is built at the width its cell gives it and everything else about it is geometry, so
+	 * scaling the container is free and stays sharp; type is the one thing on it that is not
+	 * geometry but a bitmap, and a box stood up fills the canvas, which is three or four times the
+	 * cell it was built in. Baked once at the cell's own size it was that much blown up — the same
+	 * thing the crumble's squares are baked against the world transform to avoid (see
+	 * {@link open}), said here as the scale the caller is about to draw at rather than the one it
+	 * is drawing at, so the type is already sharp for the move that takes it there.
+	 *
+	 * Never below the renderer's own resolution: a box back in the grid is drawn at the size it
+	 * was built for, and there is nothing to gain by holding a bitmap for a size it is not.
+	 */
+	drawnAt(scale: number): void {
+		if (!this.type || this.type.destroyed) return;
+		const resolution = this.options.app.renderer.resolution * Math.max(1, scale);
+		if (Math.abs(this.type.resolution - resolution) < 0.01) return;
+		this.type.resolution = resolution;
 	}
 
 	private makeFront(
