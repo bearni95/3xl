@@ -1544,16 +1544,17 @@
 		showsByCharacter
 	);
 
-	// The town panel's own node, for the two things it letters beside the side: the place's
-	// name and the show it flies, with that show's colour and glyph on the tile — exactly
-	// what the town's pin says out on the map, said again where the cards are.
+	// The picked town's own node. It used to letter the panel's first row — the place, its show
+	// and a tile in its colour — which the crumb at the end of the bar says already, in the same
+	// three parts. What is still read off it is the one thing nothing else says: the colour the
+	// leader tying the town to that panel is drawn in (see townTether).
 	$: panelNode = panelTown ? (findNode(regionNodes, panelTown) ?? null) : null;
 
 	// Whether the statues above have already said what the Location plate would say. A leaf
 	// municipality has no children to drill into, so that plate falls back to naming the
-	// town's show and who is holding it — which is the town panel's whole first row and the
-	// side standing under it, one plate higher in the same corner. Two plates saying one
-	// thing, and the fuller one on top, so the plate below it is dropped rather than
+	// town's show and who is holding it — which is the side standing higher in the same corner,
+	// said in words. Two plates saying one thing, and the fuller one on top, so the plate below
+	// it is dropped rather than
 	// repeating it. Only ever about the same town: `openRegion` may have followed the zoom
 	// somewhere the picked town is not, and then the plate is about a different place and
 	// stays. Named deps so it re-reads as the selection and the zoom move.
@@ -1886,11 +1887,11 @@
 							the map is handed (see townTether): this div shrinks to its content — the
 							stack is `items-start` — which makes its box the panel's box. -->
 						<div bind:this={panelAnchor} class="max-w-full">
+							<!-- Nothing about the place itself goes in: the crumb at the end of the bar
+								above already names it, flies its show and carries its colour, so the panel is
+								the side standing there and what can be done about it. What the town is
+								called still reaches the map, in the tether's colour and in the crumbs. -->
 							<TownPanel
-								name={restoreCatalanArticle(panelNode?.name ?? '')}
-								showName={panelNode?.show?.name ?? null}
-								showId={panelNode?.show?.id ?? null}
-								tileClasses={panelNode?.color ? pinColorClasses[panelNode.color] : null}
 								team={panelTeam}
 								challenge={townChallenge}
 								classes="pointer-events-auto w-72"
