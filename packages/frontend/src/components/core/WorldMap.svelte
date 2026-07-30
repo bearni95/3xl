@@ -307,18 +307,41 @@
 		void ready;
 		if (!focusBounds || !mapInstance) return;
 
-		// `fitBounds` snaps down to the largest integer zoom at which the region still
-		// fits the (padded) viewport — which is often a zoom where the region is still
-		// within the level-of-detail fit factor, so its OWN pin tier stays on screen and
-		// clicking it reveals no new subdivisions until you zoom in again. Step one zoom
-		// deeper in that case so the region overflows the factor and its child tier
-		// becomes the active level right on click. Capped at maxZoom so a tiny leaf
-		// region (no children) just frames tighter instead of looping to the max.
-		let target = mapInstance.getBoundsZoom(focusBounds, false, [32, 32]);
-		if (target < maxZoom && boundsFitAtZoom(focusBounds, target)) target += 1;
+		// The largest zoom at which the whole box still stands inside the canvas with a
+		// margin around it — `getBoundsZoom` snaps down, so what it answers is a zoom the
+		// region provably fits at, and the centre of the box is put in the centre of the
+		// canvas, so it fits with room on all four sides.
+		//
+		// This used to be stepped one zoom deeper whenever the region came out smaller
+		// than the level-of-detail fit factor, to force the map to unfold into the
+		// region's children the moment it was picked. A zoom step is a doubling: the
+		// region it was framing came out at up to twice the canvas, so picking a place
+		// could put its far side off the screen — and the point of framing a region is
+		// to be shown the region. The unfolding is left to the zoom now, which is where
+		// every other tier change comes from: the picked region is framed whole, its own
+		// tier is what the map images (so its shape carries the wash and the selected
+		// polygon's own 90%), and scrolling in from there opens it into its children.
+		const target = mapInstance.getBoundsZoom(focusBounds, false, focusPadding());
 		const centre = focusBoundsCentre(focusBounds);
 		mapInstance.setView(centre, target, { animate: true });
 	});
+
+	// The margin the framing keeps clear between a region and the edge of the canvas, per
+	// side: a share of the canvas, capped in pixels, so a small map gives up a margin it
+	// can afford rather than the same 24px a large one hardly notices.
+	const FOCUS_MARGIN = 24;
+	const FOCUS_MARGIN_SHARE = 0.04;
+
+	// That margin in the form `getBoundsZoom` wants it: it takes the padding off the
+	// canvas ONCE for the whole axis, so a margin wanted at both ends is handed over
+	// doubled.
+	function focusPadding(): L.Point {
+		const size = mapInstance!.getSize();
+		return Leaf!.point(
+			2 * Math.min(FOCUS_MARGIN, size.x * FOCUS_MARGIN_SHARE),
+			2 * Math.min(FOCUS_MARGIN, size.y * FOCUS_MARGIN_SHARE)
+		);
+	}
 
 	// The geographic centre of a `[[south, west], [north, east]]` box.
 	function focusBoundsCentre(
