@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { mount, onMount, onDestroy, unmount } from 'svelte';
 	import type L from 'leaflet';
+	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
 	import { iconMarkup } from '$components/core/icon-markup';
 	import { showIconName } from '$utils/show/show-icon';
@@ -150,11 +151,13 @@
 	// The geoJSON layer groups, in overlay order, captured at mount so the
 	// highlight/hidden-stroke $effect can repaint reactively.
 	let overlayGroups: L.GeoJSON[] = [];
-	// The pins layer, rebuilt whenever the markers prop changes. Nothing is *mounted* into
-	// a pin any more — a pin is plain DOM built by markerElement, so a rebuild has only its
-	// own markup to clear, and the components that used to stand on the selected town's pin
-	// (its side, its challenge bar) live in the page's own panel over the map.
+	// The pins layer, rebuilt whenever the markers prop changes.
 	let markerLayer: L.LayerGroup | null = null;
+	// The sides standing on the pins on screen. A pin is plain DOM built by markerElement,
+	// except for this one thing: clearing the layer only detaches a mounted component, and
+	// a statue runs a frame timer of its own, so every rebuild unmounts the previous crop
+	// first rather than leaving it animating for a pin no longer on the map.
+	let pinMounts: Record<string, unknown>[] = [];
 	// The leader tying the open town to the panel over the map, kept as one polyline and
 	// re-pointed rather than redrawn: only its screen end moves, and a line taken off the
 	// map and put back on it every frame of a drag is a line that flickers.
@@ -351,29 +354,48 @@
 		return [(south + north) / 2, (west + east) / 2];
 	}
 
-	// Build a pin's DOM: one plate saying what the pin is — the show's glyph on a tile at
-	// its left end, the place's name and its show's beside it. The wrapper is translated so
-	// its bottom centre sits on the point (the marker itself is zero-sized, see
-	// rebuildMarkers), giving a pin that stands above its region.
-	//
-	// Every pin is built exactly the same way, the selected town's included: picking a town
-	// changes nothing about how the map draws it. What used to stand on that one pin — the
-	// side holding the town, and the siege line and challenge button under them — is drawn
-	// in the panel over the map's top-left corner now (see TownPanel), so the map says the
-	// same thing everywhere and the selection is answered off it.
+	// Build a pin's DOM: the side standing on the region where there is one, else the show's
+	// glyph, and under either the one plate that says what the pin is — the tile at its left
+	// end, the place's name and its show's beside it. The wrapper is translated so its bottom
+	// centre sits on the point (the marker itself is zero-sized, see rebuildMarkers), giving
+	// a pin that stands above its region.
 	function markerElement(marker: MapMarker): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className = classNamesFor(marker);
 
-		// A square tile in the region's colour carrying the show's glyph, standing at the
-		// left end of the plate below. The glyph is inlined rather than pointed at by an
-		// <img> so it inherits the tile's ink (see icon-markup) — which is why the fill and
-		// the ink arrive together in `frameClasses`. Sized through a CSS rule, which outranks
-		// the svg's own 1em width/height attributes. Decorative: the show is named in the
-		// line right beside it, so announcing the glyph too would read it twice. A pin with
-		// neither a colour nor a glyph is lettering alone and skips the tile entirely.
+		// The show's tile, built below and hung on the plate at the end — a pin with a side
+		// standing on it draws the statues instead and leaves this null.
 		let tile: HTMLElement | null = null;
-		if (marker.iconSvg || marker.frameClasses) {
+
+		// The side sitting on the region, where there is one: the very statues the roster
+		// draws a team with — floor, character, name, place and all — three across, in place
+		// of the tile. Which pins get one is the caller's to say (today, the picked town
+		// alone); every other pin falls through to its glyph below. It is the same component
+		// (see TeamLineup), mounted into the pin's DOM because this is imperative code rather
+		// than a template, and tracked so the next rebuild can unmount it.
+		if (marker.team?.length) {
+			const frame = document.createElement('div');
+			// A fixed 500px for the side together, shared out by the row. Fixed, so the
+			// statues come out the same size whichever town is picked, rather than tracking
+			// anything about the map or the region under them.
+			frame.className = 'w-[500px] drop-shadow-lg';
+			pinMounts.push(
+				mount(TeamLineup, {
+					target: frame,
+					// A town's team is somebody else's side, so it faces the viewer
+					// unmirrored, as a rival side does on the board.
+					props: { members: marker.team, flipped: false, classes: 'gap-1' }
+				})
+			);
+			wrap.appendChild(frame);
+		} else if (marker.iconSvg || marker.frameClasses) {
+			// A square tile in the region's colour carrying the show's glyph, standing at the
+			// left end of the plate below. The glyph is inlined rather than pointed at by an
+			// <img> so it inherits the tile's ink (see icon-markup) — which is why the fill and
+			// the ink arrive together in `frameClasses`. Sized through a CSS rule, which outranks
+			// the svg's own 1em width/height attributes. Decorative: the show is named in the
+			// line right beside it, so announcing the glyph too would read it twice. A pin with
+			// neither a colour nor a glyph is lettering alone and skips the tile entirely.
 			tile = document.createElement('div');
 			tile.className =
 				'flex size-10 flex-none items-center justify-center rounded-lg [&>svg]:size-7 ' +
@@ -529,6 +551,7 @@
 	function rebuildMarkers() {
 		if (!mapInstance || !Leaf) return;
 		if (!markerLayer) markerLayer = Leaf.layerGroup().addTo(mapInstance);
+		unmountPinMounts();
 		markerLayer.clearLayers();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
@@ -669,7 +692,13 @@
 		return mapInstance!.project(view.center, view.zoom).subtract(mapInstance!.getSize().divideBy(2));
 	}
 
-	/** The boxes' teardown: a box no longer on screen must not keep its images. */
+	/** Tear down everything mounted into a pin, so no detached timer keeps running. */
+	function unmountPinMounts() {
+		for (const mounted of pinMounts) void unmount(mounted);
+		pinMounts = [];
+	}
+
+	/** The same, for the boxes: a box no longer on screen must not keep its images. */
 	function unmountBoxMounts() {
 		for (const mounted of boxMounts) void unmount(mounted);
 		boxMounts = [];
@@ -1000,6 +1029,7 @@
 	onDestroy(() => {
 		resizeObserver?.disconnect();
 		anchorObserver?.disconnect();
+		unmountPinMounts();
 		unmountBoxMounts();
 		mapInstance?.remove();
 	});

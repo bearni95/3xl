@@ -8,7 +8,7 @@
 	import AuthMenu from '$components/core/AuthMenu.svelte';
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
-	import TownPanel from '$components/core/TownPanel.svelte';
+	import TownChallenge from '$components/core/TownChallenge.svelte';
 	import MusicPlayer from '$components/core/MusicPlayer.svelte';
 	import CollapsiblePlate from '$components/core/CollapsiblePlate.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
@@ -1496,31 +1496,36 @@
 
 	$: townTeams = buildTownTeams(municipalitySeeds, showsById, showCharacterIds, holders);
 
-	// The one town the panel over the map is open on: the selected municipality, and only
-	// while it has a side to name. Nothing on the map itself changes with it — every pin
-	// and every polygon is drawn the same whichever town this is (see tierStyle and
-	// buildMarkers). The side used to stand on the town's own pin, which put three cards'
-	// worth of picture over the very place it was about and left the shape under them
-	// bare to make room; in one panel at the map's corner it is the same statement with
-	// the map left alone to be a map.
+	// The one town that stands its side up on its pin: the selected municipality, and only
+	// while it has a side to stand. Every other pin keeps the show's glyph.
+	//
+	// A team on the map is three cards' worth of picture, and every town wearing one at
+	// once is a terrain of cards with no map left under it. On the town being looked at it
+	// is the point — who is holding this, standing where they are holding it — so the map
+	// says it exactly there and nowhere else. What is left in the corner over the map is
+	// what can be *done* about it (see townChallenge), tied back to the town by the leader.
 	//
 	// Read off the clicked selection rather than `openRegion`, and not only because a
-	// zoom focus is not a choice of town: `openRegion` falls back to the focus, and the
-	// focus is measured from the pins. The two agree on a municipality in any case — the
-	// focus opens the tier ABOVE its pins, so only a click ever names one. A key naming a
-	// coarser region simply isn't in `townTeams` and lands the same as no selection.
-	$: panelTown = selected && townTeams.has(selected) ? selected : null;
+	// zoom focus is not a choice of town: `openRegion` falls back to the focus, the focus
+	// is measured from the pins, and pins that moved with it would be deciding what they
+	// are drawn from. The two agree on a municipality in any case — the focus opens the
+	// tier ABOVE its pins, so only a click ever names one. A key naming a coarser region
+	// simply isn't in `townTeams` and lands the same as no selection.
+	$: statuedTown = selected && townTeams.has(selected) ? selected : null;
 
 	// The side holding that town, in the shape the statues take: who they are, the colour
-	// they bend, where the card itself is from and what show it flies. The very cards the
-	// pin used to stand up, drawn by the same component off the same roll.
-	function buildPanelTeam(
+	// they bend, where the card itself is from and what show it flies. Built here rather
+	// than in the pin because which three they are is the town's question and not the
+	// mark's, and handed to the marker as plain data (see buildMarkers).
+	type PinTeam = NonNullable<MapMarker['team']>;
+
+	function buildPinTeam(
 		town: string | null,
 		teams: ReadonlyMap<string, TeamMemberRoll[]>,
 		nodes: RegionNode[],
 		placeNames: Map<string, string> | null,
 		memberShows: ReadonlyMap<string, number[]>
-	) {
+	): PinTeam {
 		if (!town) return [];
 		const standingIn = restoreCatalanArticle(findNode(nodes, town)?.name ?? '');
 		return (teams.get(town) ?? []).map((member) => ({
@@ -1537,60 +1542,44 @@
 		}));
 	}
 
-	$: panelTeam = buildPanelTeam(
-		panelTown,
+	$: pinTeam = buildPinTeam(
+		statuedTown,
 		townTeams,
 		regionNodes,
 		municipalityNames,
 		showsByCharacter
 	);
 
-	// The picked town's own node. It used to letter the panel's first row — the place, its show
+	// The picked town's own node. It used to letter a panel's first row — the place, its show
 	// and a tile in its colour — which the crumb at the end of the bar says already, in the same
 	// three parts. What is still read off it is the one thing nothing else says: the colour the
-	// leader tying the town to that panel is drawn in (see townTether).
-	$: panelNode = panelTown ? (findNode(regionNodes, panelTown) ?? null) : null;
+	// leader tying the town to the challenge bar is drawn in (see townTether).
+	$: pickedNode = statuedTown ? (findNode(regionNodes, statuedTown) ?? null) : null;
 
-	// Whether the statues above have already said what the Location plate would say. A leaf
-	// municipality has no children to drill into, so that plate falls back to naming the
-	// town's show and who is holding it — which is the side standing higher in the same corner,
-	// said in words. Two plates saying one thing, and the fuller one on top, so the plate below
-	// it is dropped rather than
-	// repeating it. Only ever about the same town: `openRegion` may have followed the zoom
-	// somewhere the picked town is not, and then the plate is about a different place and
-	// stays. Named deps so it re-reads as the selection and the zoom move.
-	$: townPanelSaysIt = panelTeam.length > 0 && panelTown === openRegion;
-
-	// So the plate is up for what it alone can say: the drill table wherever there is one, and
-	// the leaf fallback wherever the statues have not already covered it. The matches for a
-	// search were a third thing it could be showing and are their own plate now, at the other
-	// corner (see LocationSearchPanel), so a search neither unfolds this plate nor keeps it up.
-	$: showLocationPlate = regionRows.length > 0 || !townPanelSaysIt;
-
-	// The panel's own box on the page, bound from its wrapper (see the map column). The map
-	// takes the element and not a pair of coordinates: where the panel's centre falls is
+	// The challenge bar's own box on the page, bound from its wrapper (see the map column). The
+	// map takes the element and not a pair of coordinates: where that box's centre falls is
 	// something only the live box knows, and it is re-read on every pan, zoom and resize.
 	let panelAnchor: HTMLDivElement | null = null;
 
-	// The leader tying the open town to that panel: from the point the town's pin stands on
-	// to the panel's centre, in the town's own colour so the line is read as the town's
-	// rather than as a piece of map furniture. Everything it needs must be there — the town,
-	// its point, and a mounted panel — or nothing is drawn. A town with no colour yet (its
-	// show's roster hasn't landed) takes the map's own white, the colour its borders are in.
+	// The leader tying the open town to that bar: from the point the town's pin stands on to
+	// the bar's centre, in the town's own colour so the line is read as the town's rather than
+	// as a piece of map furniture. It is what says the two are about one place, the side being
+	// out on the map and the way to fight it in the corner. Everything it needs must be there
+	// — the town, its point, and a mounted bar — or nothing is drawn. A town with no colour yet
+	// (its show's roster hasn't landed) takes the map's own white, its borders' colour.
 	$: townTether =
-		panelTown && panelAnchor && regionGeometry.centers.get(panelTown)
+		statuedTown && panelAnchor && regionGeometry.centers.get(statuedTown)
 			? {
-					position: regionGeometry.centers.get(panelTown)!,
+					position: regionGeometry.centers.get(statuedTown)!,
 					anchor: panelAnchor,
-					color: panelNode?.color ? SPAWN_COLOR_CSS[panelNode.color] : lineColor,
+					color: pickedNode?.color ? SPAWN_COLOR_CSS[pickedNode.color] : lineColor,
 					weight: 5
 				}
 			: null;
 
-	// What the panel says under the side: how far this player has got towards taking the
-	// town, and the one control that acts on it — the siege counter and the challenge
-	// button, which used to sit in the sidebar's Location tab and then on the pin itself.
-	// They belong with the side: what is being fought is pictured right above them.
+	// What the map's corner says about the town whose side is standing out on it: how far this
+	// player has got towards taking the place, and the one control that acts on it — the siege
+	// counter and the challenge button, which used to sit in the sidebar's Location tab.
 	//
 	// Null hides the bar entirely: no town selected, or one this player already holds —
 	// there is nothing to take from yourself, which is exactly when the sidebar says
@@ -1656,7 +1645,7 @@
 	}
 
 	$: townChallenge = buildTownChallenge(
-		panelTown,
+		statuedTown,
 		holders,
 		sieges,
 		challenges,
@@ -1703,15 +1692,17 @@
 		return name ? restoreCatalanArticle(name) : standingIn;
 	}
 
-	// Every pin the map draws at one tier, all built the same way: nothing here reads the
-	// selection except the fade that tells a region outside it from one within. What the
-	// selected town has to say for itself — the side holding it, and what can be done about
-	// that — is the town panel's over the map (see TownPanel), which is why no team or
-	// challenge reaches a marker any more.
+	// Every pin the map draws at one tier. All built the same way but for one thing: the
+	// picked town stands the side holding it where every other pin carries its show's tile
+	// — who is holding this, standing on the very place they are holding, which is what
+	// picking a town is asked for. The statues are handed in already built (see pinTeam),
+	// since which three they are is the page's question and not the pin's.
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
-		relevant: Set<string> | null
+		relevant: Set<string> | null,
+		statuedTown: string | null,
+		statues: PinTeam
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
@@ -1724,6 +1715,10 @@
 				// On the region's own shape, not in the middle of the box around it.
 				position: center,
 				bounds: box,
+				// The whole side, but on the picked town alone — every other pin, and every
+				// tier above the towns, falls through to the show's glyph. Only a
+				// municipality's key is a municipality id, so the coarser tiers never match.
+				team: node.key === statuedTown ? statues : [],
 				iconSvg: iconMarkup(showIconName(node.show.id)),
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
@@ -1745,16 +1740,27 @@
 		depth: number,
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
-		relevant: Set<string> | null
+		relevant: Set<string> | null,
+		statuedTown: string | null,
+		statues: PinTeam
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
-			levels.push(buildMarkers(frontierAtDepth(d, nodes), geometry, relevant));
+			levels.push(
+				buildMarkers(frontierAtDepth(d, nodes), geometry, relevant, statuedTown, statues)
+			);
 		}
 		return levels;
 	}
 
-	$: markerLevels = buildMarkerLevels(maxLevel, regionNodes, regionGeometry, relevantKeys);
+	$: markerLevels = buildMarkerLevels(
+		maxLevel,
+		regionNodes,
+		regionGeometry,
+		relevantKeys,
+		statuedTown,
+		pinTeam
+	);
 
 	// The bounding box the map fits when a region is selected: the union of every
 	// municipality polygon under the selected key. A fresh array each time (even
@@ -1797,7 +1803,7 @@
 			minZoom={7}
 			{overlays}
 			{markerLevels}
-			pinnedId={panelTown}
+			pinnedId={statuedTown}
 			tether={townTether}
 			boxes={festaBoxes}
 			{hiddenLineUrls}
@@ -1883,25 +1889,26 @@
 						as one stack rather than as two kinds of thing. It draws nothing at all until a
 						song is loaded, so the corner is unchanged on a map whose music never arrived. -->
 					<MusicPlayer classes="pointer-events-auto w-72" />
-					<!-- The one thing picking a town adds to the map: who is holding it and what can
-						be done about that, on the plate below the player. It used to be drawn into the
-						town's own pin — the side standing on the very place it was about — but a pin is
-						a mark on a town and three cards' worth of picture is not: it buried the town it
-						stood on, moved with every zoom, and forced the shape beneath it to go unwashed
-						to make room. Here the map draws every town alike and the panel answers the
-						selection, in the corner it can be read in. -->
-					{#if panelTown}
+					<!-- What can be done about the town being looked at, on the plate below the player:
+						the siege standing and the one control that acts on it. The side it is about is
+						not here — it is standing out on the town's own pin, where it is a picture of who
+						is holding the place put on the place they are holding — and the leader running
+						from that pin to this bar is what says the two are one town. Nothing about the
+						place itself goes in either: the crumb at the end of the bar above already names
+						it, flies its show and carries its colour.
+
+						Up only while there is something to take: a town this player already holds has
+						no bar, and then there is nothing in this corner for the leader to run to. -->
+					{#if townChallenge}
 						<!-- The leader's screen end is this box's centre, so the element itself is what
 							the map is handed (see townTether): this div shrinks to its content — the
-							stack is `items-start` — which makes its box the panel's box. -->
+							stack is `items-start` — which makes its box the bar's box. -->
 						<div bind:this={panelAnchor} class="max-w-full">
-							<!-- Nothing about the place itself goes in: the crumb at the end of the bar
-								above already names it, flies its show and carries its colour, so the panel is
-								the side standing there and what can be done about it. What the town is
-								called still reaches the map, in the tether's colour and in the crumbs. -->
-							<TownPanel
-								team={panelTeam}
-								challenge={townChallenge}
+							<TownChallenge
+								siege={townChallenge.siege}
+								button={townChallenge.button}
+								unlocksAt={townChallenge.unlocksAt}
+								onUnlock={townChallenge.onUnlock}
 								classes="pointer-events-auto w-72"
 							/>
 						</div>
@@ -1920,83 +1927,76 @@
 						the music and the picked town keep the corner they already had.
 						Folded away by default, and folded or not is remembered (see locationPanel).
 						A height it cannot pass, with the table scrolling inside it: this is a corner
-						of the map, not a column, so the plate never grows into the whole of it.
-						Gone entirely, title bar and all, when the town panel above is already saying its
-						leaf fallback (see townPanelSaysIt): an empty body under a heading is still a
-						plate a player opens for nothing. -->
-					{#if showLocationPlate}
-						<CollapsiblePlate
-							title="Location"
-							bind:collapsed={$locationPanelCollapsed}
-							classes="pointer-events-auto w-96 max-w-full"
-							bodyClasses="flex max-h-[50vh] flex-col bg-base-100 text-base-content"
-						>
-							{#if regionRows.length === 0}
-								<!-- A leaf region (a municipality) with no town panel over it saying the same
-									thing: no children to drill into, so instead of an empty table we surface its
-									own top show — the only place the open location's show appears — and say who
-									is holding the place. The side itself is out on the map, standing on the
-									town. This is the fallback the statues make redundant, which is why the whole
-									plate is dropped when they are up (see townPanelSaysIt) — so it is only ever
-									read for a town with no side to field. -->
-								<div class="flex min-h-0 flex-1 flex-col gap-3 p-3">
-									{#if openShow}
-										<div class="flex flex-none items-center gap-3">
-											{#if openShow.posterUrl}
-												<img
-													src={openShow.posterUrl}
-													alt={openShow.name}
-													class="h-16 w-auto flex-none rounded shadow"
-												/>
-											{/if}
-											<div class="min-w-0">
-												<!-- A held town flies its ruling team's show, so the label says so
-													rather than claiming it is the town's most-seen one. -->
-												<p class="text-xs font-bold uppercase tracking-wide opacity-60">
-													{openHolder ? 'Ruling show' : 'Most seen'}
-												</p>
-												<p class="truncate font-semibold">{openShow.name}</p>
-											</div>
+						of the map, not a column, so the plate never grows into the whole of it. -->
+					<CollapsiblePlate
+						title="Location"
+						bind:collapsed={$locationPanelCollapsed}
+						classes="pointer-events-auto w-96 max-w-full"
+						bodyClasses="flex max-h-[50vh] flex-col bg-base-100 text-base-content"
+					>
+						{#if regionRows.length === 0}
+							<!-- A leaf region (a municipality): no children to drill into, so instead of an
+								empty table we surface its own top show — the only place the open location's
+								show appears — and say who is holding the place, which is the one thing about
+								a town nothing else on screen says. The side itself is out on the map,
+								standing on the town. -->
+							<div class="flex min-h-0 flex-1 flex-col gap-3 p-3">
+								{#if openShow}
+									<div class="flex flex-none items-center gap-3">
+										{#if openShow.posterUrl}
+											<img
+												src={openShow.posterUrl}
+												alt={openShow.name}
+												class="h-16 w-auto flex-none rounded shadow"
+											/>
+										{/if}
+										<div class="min-w-0">
+											<!-- A held town flies its ruling team's show, so the label says so
+												rather than claiming it is the town's most-seen one. -->
+											<p class="text-xs font-bold uppercase tracking-wide opacity-60">
+												{openHolder ? 'Ruling show' : 'Most seen'}
+											</p>
+											<p class="truncate font-semibold">{openShow.name}</p>
 										</div>
-									{:else}
-										<p class="flex-none text-center opacity-60">No show here yet.</p>
-									{/if}
+									</div>
+								{:else}
+									<p class="flex-none text-center opacity-60">No show here yet.</p>
+								{/if}
 
-									{#if municipalityTeam.length > 0}
-										<!-- Whoever holds the town. Until a player beats it, that's the town's
-											built-in, seed-rolled "OG" (original) roster — the same for every
-											player, badged so it reads as the house team. Once somebody takes the
-											town it's their frozen winning team instead, and it's their name on
-											the badge.
+								{#if municipalityTeam.length > 0}
+									<!-- Whoever holds the town. Until a player beats it, that's the town's
+										built-in, seed-rolled "OG" (original) roster — the same for every
+										player, badged so it reads as the house team. Once somebody takes the
+										town it's their frozen winning team instead, and it's their name on
+										the badge.
 
-											The team itself is not drawn here any more: it is standing in the town
-											panel higher up this same corner (see panelTown), so this plate names
-											who holds the place and the plate above it shows them holding it. -->
-										<div class="flex flex-none items-center gap-2">
-											{#if openHolder}
-												<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
-												<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
-													{openHolder.holderName}
-												</span>
-											{:else}
-												<span class="badge badge-primary badge-sm font-bold">OG</span>
-												<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
-											{/if}
-											<!-- The siege counter and the challenge button used to sit here; they
-												are in the town panel over the map now (see buildTownChallenge),
-												standing under the very team they are about. What is left is who
-												holds it. -->
-											{#if holdsOpenTown}
-												<span class="badge badge-success badge-sm ml-auto">Yours</span>
-											{/if}
-										</div>
-									{/if}
-								</div>
-							{:else}
-								<RegionTable rows={regionRows} onSelect={select} />
-							{/if}
-						</CollapsiblePlate>
-					{/if}
+										The team itself is not drawn here any more: it is standing on the
+										town's own pin (see statuedTown), so this plate names who holds the
+										place and the map shows them holding it. -->
+									<div class="flex flex-none items-center gap-2">
+										{#if openHolder}
+											<span class="badge badge-secondary badge-sm font-bold">HOLD</span>
+											<span class="truncate text-xs font-bold uppercase tracking-wide opacity-60">
+												{openHolder.holderName}
+											</span>
+										{:else}
+											<span class="badge badge-primary badge-sm font-bold">OG</span>
+											<span class="text-xs font-bold uppercase tracking-wide opacity-60">Team</span>
+										{/if}
+										<!-- The siege counter and the challenge button used to sit here; they
+											are on the plate above this one now (see buildTownChallenge), with a
+											leader running from it to the town they are about. What is left is who
+											holds it. -->
+										{#if holdsOpenTown}
+											<span class="badge badge-success badge-sm ml-auto">Yours</span>
+										{/if}
+									</div>
+								{/if}
+							</div>
+						{:else}
+							<RegionTable rows={regionRows} onSelect={select} />
+						{/if}
+					</CollapsiblePlate>
 				</div>
 
 				<!-- The map's right corner, read down: what the search box at the end of the bar

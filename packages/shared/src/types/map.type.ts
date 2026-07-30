@@ -1,4 +1,5 @@
 import type { PathOptions } from 'leaflet';
+import type { SpawnColor } from './character-spawn.type';
 
 /** A GeoJSON layer drawn on top of the base map, in array order (last = topmost). */
 export interface MapOverlay {
@@ -70,10 +71,10 @@ export interface MapTether {
 }
 
 /**
- * What the map's town panel says about taking the town it is open on: how far the reader
- * has got towards it, and the one control that acts on it. Drawn under the side holding
- * the place, so who is to be beaten and the way to fight them read as one thing in one
- * place.
+ * What the map's corner says about taking the town it is open on: how far the reader has
+ * got towards it, and the one control that acts on it. The side to be beaten is standing
+ * out on that town's own pin, with a leader run from there to this, so the two are read
+ * as one thing about one place without the odds being written over the terrain.
  *
  * Plain data and a callback — which of the button and the countdown is drawn is
  * decided by whoever hands this over, since the rules (one fight per town per day,
@@ -111,8 +112,29 @@ export interface MapMarker {
 	 * in the tile's own colour rather than a baked one. The pin is lettering-only when
 	 * null (no glyph drawn for that show yet), exactly as the panel's tables fall back
 	 * to the show's name alone.
+	 *
+	 * Only reached when the pin has no {@link MapMarker.team}: a region standing the
+	 * side that holds it shows *them* rather than a glyph for the show they belong to,
+	 * their floors carrying that glyph anyway.
 	 */
 	iconSvg: string | null;
+	/**
+	 * The side standing on this region, in the order it is fielded — drawn on the pin
+	 * above its plate, in place of the show's tile, as the very statues the roster and
+	 * the town's own panel draw a team with. One member per statue, in the shape
+	 * `TeamLineup` takes.
+	 *
+	 * Only a municipality has one, and only the picked one: a comarca or a province is
+	 * not a thing anybody holds, and every town wearing its side at once would be a
+	 * terrain of cards with no map left under it. Absent or empty means the same thing.
+	 */
+	team?: {
+		label: string;
+		basePath: string | null;
+		color: SpawnColor;
+		locationName: string | null;
+		showId: number | null;
+	}[];
 	/**
 	 * Classes painted onto the glyph's tile at the left end of the pin's plate — the
 	 * region's own colour, as a fill plus the ink that reads on it. Null leaves the

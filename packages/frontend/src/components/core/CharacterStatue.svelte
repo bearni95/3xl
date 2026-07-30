@@ -21,11 +21,10 @@
 	// colour is the whole of a fighter, so what it grants is read off it here rather
 	// than passed in: no caller has to know the game's rules to draw one.
 	//
-	// This is the only place that picture is built. The sidebar grids the fielded three
-	// onto one row of three, under the player's own row; a map pin carries three
-	// uncaptioned at pin size — the difference between those surfaces is the width they
-	// hand this statue and whether they ask for the caption, never a second drawing of the
-	// same thing.
+	// This is the only place that picture is built. The map's own corner grids the fielded
+	// three onto one row; the picked town's pin stands the three holding it at a fixed
+	// width out on the map — the difference between those surfaces is the width they hand
+	// this statue, never a second drawing of the same thing.
 
 	export let label: string = '';
 	export let basePath: string | null = null;
