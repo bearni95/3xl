@@ -32,14 +32,21 @@
 	// way of leaving it. Only the weight of the name changes — a crumb is the same statement
 	// whether or not it is the one being made.
 	export let current: boolean = false;
+	// Cut the name short with an ellipsis instead of running past whatever holds the crumb.
+	// Only the collapsed bar asks for this, and only for the one step it keeps: a path folded
+	// down to a single crumb has already given that crumb every pixel there is, so if the name
+	// still does not fit there is nothing left to widen and the ellipsis is the honest mark.
+	// A crumb in a path never truncates — see below.
+	export let truncated: boolean = false;
 
 	$: showIcon = showIconName(showId);
 </script>
 
 <!-- Spans throughout, not divs: a crumb above the current one is wrapped in a `<button>`,
 	whose content model is phrasing only. `whitespace-nowrap` rather than the panel's
-	`truncate` — the bar scrolls sideways, so a long name is something to scroll to and not
-	something to cut short. -->
+	`truncate` — a crumb is never given less room than its name asks for: a path too long for
+	the bar is collapsed to this one step (see MapBreadcrumbs) rather than being made to fit
+	by cutting its names short. -->
 <span class="flex items-center gap-2">
 	{#if tileClasses || showIcon}
 		<!-- The tile the town panel and the pins draw, at 32px with a 20px glyph: the same
@@ -60,12 +67,25 @@
 		</span>
 	{/if}
 
-	<span class="flex flex-col text-left leading-tight">
-		<span class={classNames('whitespace-nowrap text-sm', current ? 'font-semibold' : 'font-medium')}>
+	<span class={classNames('flex flex-col text-left leading-tight', { 'min-w-0': truncated })}>
+		<span
+			class={classNames(
+				'text-sm',
+				truncated ? 'truncate' : 'whitespace-nowrap',
+				current ? 'font-semibold' : 'font-medium'
+			)}
+		>
 			{label}
 		</span>
 		{#if showName}
-			<span class="whitespace-nowrap text-xs font-medium text-white/70">{showName}</span>
+			<span
+				class={classNames(
+					'text-xs font-medium text-white/70',
+					truncated ? 'truncate' : 'whitespace-nowrap'
+				)}
+			>
+				{showName}
+			</span>
 		{/if}
 	</span>
 </span>
