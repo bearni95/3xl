@@ -7,9 +7,10 @@
 	// they are about, and they head the corner's stack of plates rather than heading a
 	// column that is about other things.
 	//
-	// Black on white like every other plate at this corner: it stands over satellite
-	// imagery, and lettering has to be read off the plate and not off whatever terrain has
-	// ended up behind it.
+	// The bar wears the panel's own surface rather than the plates' black: the crumbs head
+	// the map the way the panel heads its column, so the two read as one chrome. It is
+	// still a plate and not a caption laid on the imagery — 80% of that surface, so the
+	// terrain shows through without the lettering ever having to be read off it.
 
 	// The path from the top view down to the open region, root first. The last crumb is
 	// where the map is and is not a link; every one before it walks back up to its tier.
@@ -18,11 +19,20 @@
 	export let classes: string = '';
 </script>
 
-<!-- The bar is as wide as the map and the crumbs scroll inside it: a drill path down to a
-	municipality is longer than any width can promise, and a bar that grew with it would
-	push its own end off the map. DaisyUI's `breadcrumbs` brings that scroller with it. -->
-<div class={classNames('rounded-lg bg-black px-3 py-1.5 text-white shadow-xl', classes)}>
-	<div class="breadcrumbs max-w-full py-0 text-sm">
+<!-- The bar is as wide as the map, and it is a row: the crumbs on the left, and at its far
+	end whatever the `end` slot puts there — the one place on the map that is about where the
+	map is looking, so a way of naming a place belongs at the end of the path to one.
+	The crumbs scroll inside their own share of the row: a drill path down to a municipality
+	is longer than any width can promise, and a bar that grew with it would push its own end
+	off the map. DaisyUI's `breadcrumbs` brings that scroller with it, and `min-w-0` is what
+	lets it shrink far enough to start scrolling instead of shoving the slot off the end. -->
+<div
+	class={classNames(
+		'flex items-center gap-3 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl',
+		classes
+	)}
+>
+	<div class="breadcrumbs min-w-0 flex-1 py-0 text-sm">
 		<ul>
 			{#each crumbs as crumb, i}
 				<li>
@@ -37,4 +47,12 @@
 			{/each}
 		</ul>
 	</div>
+
+	<!-- Never squeezed by the path: the crumbs are what gives way, since they can scroll and
+		an input cannot. -->
+	{#if $$slots.end}
+		<div class="flex-none">
+			<slot name="end" />
+		</div>
+	{/if}
 </div>

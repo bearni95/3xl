@@ -682,7 +682,7 @@
 
 	// Free-text search across every location in the whole tree (all tiers), matched
 	// against each region's displayed name (case- and accent-insensitive). While the
-	// box holds text the sidebar shows the matches as cards instead of the drill
+	// box holds text the Location plate shows the matches as cards instead of the drill
 	// table; an empty box falls back to the table for the current view.
 	let searchQuery = '';
 	const foldText = (value: string) =>
@@ -697,6 +697,14 @@
 				.filter((entry) => foldText(restoreCatalanArticle(entry.name)).includes(normalizedQuery))
 				.slice(0, 100)
 		: [];
+
+	// The box is on the breadcrumb bar and the matches are in the Location plate, which
+	// starts folded and is remembered folded — so a query with nothing showing it would be
+	// typing into a void. A query unfolds the plate. Only ever open: clearing the box leaves
+	// it up, because what is under it then is the drill table for wherever the search landed,
+	// which is the next thing being read. `normalizedQuery` is named directly so the
+	// statement re-runs as it is typed.
+	$: if (normalizedQuery) $locationPanelCollapsed = false;
 
 	// Opening a search result reuses the drill logic (URL region param → map
 	// framing + table), then clears the search so the cards give way to the table.
@@ -1880,8 +1888,23 @@
 				its own. -->
 			<div class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex flex-col gap-2">
 				<!-- Where the map is looking. Full width, at the head of everything: a path is
-					read across, and the plates below it are read down. -->
-				<MapBreadcrumbs {crumbs} onSelect={open} classes="pointer-events-auto" />
+					read across, and the plates below it are read down.
+					The location search sits at the bar's far end. It was above the drill table in the
+					Location plate, which is the one place its matches are listed — but that plate
+					starts folded, so the way to look for a town was behind a fold, while the bar
+					naming where the map is was always up. Naming a place and being told where you are
+					are the same subject, so they share the one row; the results still belong to the
+					table's plate, which unfolds itself as soon as there is a query (see
+					locationPanelCollapsed below). -->
+				<MapBreadcrumbs {crumbs} onSelect={open} classes="pointer-events-auto">
+					<input
+						slot="end"
+						type="search"
+						class="input input-bordered input-sm w-40 sm:w-56"
+						placeholder="Search locations…"
+						bind:value={searchQuery}
+					/>
+				</MapBreadcrumbs>
 
 				<!-- The plates, each only as wide as it asks to be — which is what `items-start`
 					is for, the column itself being as wide as the map. -->
@@ -1917,8 +1940,9 @@
 
 					<!-- Where the map is looking, at the foot of the corner: the drill table for the
 						open region — its siblings and its children — or, for a leaf municipality with
-						nothing left to list, that town's show and who is holding it. The search box
-						above it matches every location in the tree.
+						nothing left to list, that town's show and who is holding it — or the matches for
+						whatever the bar's search box holds, which is the one thing here that is not
+						about the open region and is why a query unfolds this plate.
 						It was a tab of the panel beside the map, which made it one of four views
 						competing for that column: a table of place names is read *against* the map,
 						and the panel could only show it by putting away whichever view was forward.
@@ -1934,15 +1958,6 @@
 						classes="pointer-events-auto w-96 max-w-full"
 						bodyClasses="flex max-h-[50vh] flex-col bg-base-100 text-base-content"
 					>
-						<div class="flex-none border-b border-base-300 px-3 py-2">
-							<input
-								type="search"
-								class="input input-bordered input-sm w-full"
-								placeholder="Search locations…"
-								bind:value={searchQuery}
-							/>
-						</div>
-
 						{#if normalizedQuery}
 							<RegionSearchResults results={searchResults} onSelect={openSearchResult} />
 						{:else if regionRows.length === 0}
