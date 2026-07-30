@@ -1806,20 +1806,21 @@
 						{boosterLabel}
 					</button>
 					{#if $profile}
-						<!-- The account's own three, in the same block: what the player came to look at
-							first, and the account's settings last, outlined rather than filled. Each
-							raises a modal mounted at the layout root, so pressing one is the whole of
-							what happens here. -->
+						<!-- The account's own three, in the same block and in the same stock as the two
+							above them: every button here is outlined. A filled one says the block has a
+							first choice in it, and it has not — the five are five views, and which one a
+							player wants is theirs to say. Each raises a modal mounted at the layout
+							root, so pressing one is the whole of what happens here. -->
 						<button
 							type="button"
-							class="btn btn-primary btn-sm join-item"
+							class="btn btn-outline btn-sm join-item"
 							on:click={() => rosterModalOpen.set(true)}
 						>
 							Roster
 						</button>
 						<button
 							type="button"
-							class="btn btn-primary btn-sm join-item"
+							class="btn btn-outline btn-sm join-item"
 							on:click={() => achievementsModalOpen.set(true)}
 						>
 							Achievements
