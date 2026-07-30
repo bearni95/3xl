@@ -23,6 +23,15 @@ export const ACHIEVEMENT_ICON_PATTERN = /^[a-z0-9-]+\/[a-z0-9-]+$/;
 export const ACHIEVEMENT_NAME_MAX_LENGTH = 60;
 export const ACHIEVEMENT_DESCRIPTION_MAX_LENGTH = 240;
 
+/** A variable name, as it is written between braces in the name/description. */
+export const ACHIEVEMENT_VARIABLE_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+/** A formula is one expression, not a program. */
+export const ACHIEVEMENT_FORMULA_MAX_LENGTH = 200;
+
+/** How many variables one badge may declare — enough for a line, not a spreadsheet. */
+export const ACHIEVEMENT_VARIABLES_MAX = 8;
+
 /**
  * Icon folders that are NOT part of the game-icons.net set and so are not
  * offerable as an achievement's glyph. `shows` holds the Noun Project show
@@ -30,16 +39,43 @@ export const ACHIEVEMENT_DESCRIPTION_MAX_LENGTH = 240;
  */
 export const NON_GAME_ICON_FOLDERS: readonly string[] = ['shows'];
 
+/**
+ * One number a badge's wording can quote, computed for whoever is reading it.
+ *
+ * The formula is an arithmetic expression over what the game knows about that
+ * player — their level and the cards they own, the latter countable through
+ * compound filters (`cards(box = white and not color = orange)`). The language,
+ * and the whole of what a formula can reach, is
+ * `@3xl/shared/utils/achievement/formula`.
+ *
+ * A variable belongs to the achievement that declares it and is reachable from
+ * nowhere else, so two badges may both call a number `target` and mean different
+ * things by it. It is quoted by writing its name between braces in the badge's
+ * name or description.
+ */
+export interface AchievementVariable {
+	/** How the badge's text refers to it, written `{name}` there. */
+	name: string;
+	/** The expression that produces it, e.g. `level * 3`. */
+	formula: string;
+}
+
 /** One authored achievement, as stored in `public/achievements.json`. */
 export interface Achievement {
 	/** Stable slug. Primary key of `achievement_templates`. */
 	id: string;
-	/** Display name, e.g. `First blood`. */
+	/** Display name, e.g. `First blood`. May template its own {@link variables}. */
 	name: string;
-	/** One line saying what earns it. */
+	/** One line saying what earns it. May template its own {@link variables}. */
 	description: string;
 	/** Glyph, as `<artist>/<slug>` under /assets/icons — e.g. `lorc/broadsword`. */
 	icon: string;
+	/**
+	 * The badge's own computed numbers, or absent when its wording is fixed text —
+	 * which most badges' is, so the field is optional and is left out of the JSON
+	 * entirely rather than written as an empty array.
+	 */
+	variables?: AchievementVariable[];
 }
 
 /** The whole authored collection — the file's top-level shape. */

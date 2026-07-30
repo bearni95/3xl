@@ -6,10 +6,13 @@
 		ACHIEVEMENT_ID_PATTERN,
 		ACHIEVEMENT_NAME_MAX_LENGTH,
 		ACHIEVEMENT_DESCRIPTION_MAX_LENGTH,
-		type Achievement
+		type Achievement,
+		type AchievementVariable
 	} from '$types/achievement.type';
+	import { normalizeVariables, validateVariables } from '$utils/achievement/variables';
 	import GameIcon from '$components/core/GameIcon.svelte';
 	import IconPickerModal from '$components/core/IconPickerModal.svelte';
+	import AchievementVariablesEditor from '$components/core/AchievementVariablesEditor.svelte';
 
 	// The achievement being edited, or null to author a new one. The parent keys
 	// this component on the id, so switching selection remounts with a fresh draft
@@ -31,11 +34,18 @@
 
 	const isNew = achievement === null;
 
+	/**
+	 * The draft's own shape: an achievement whose `variables` is always a list, so
+	 * the rows below have something to iterate whether or not the badge on disk has
+	 * any. It is dropped again on the way out — see {@link payload}.
+	 */
+	type Draft = Achievement & { variables: AchievementVariable[] };
+
 	// The one document this editor edits. The form and the JSON tab are two views
 	// of it, not two documents: whichever tab is open, Save sends this.
-	let draft: Achievement = achievement
-		? { ...achievement }
-		: { id: '', name: '', description: '', icon: '' };
+	let draft: Draft = achievement
+		? { ...achievement, variables: (achievement.variables ?? []).map((v) => ({ ...v })) }
+		: { id: '', name: '', description: '', icon: '', variables: [] };
 
 	let tab: 'form' | 'json' = 'form';
 	let pickerOpen = false;
@@ -45,8 +55,18 @@
 	let jsonText = serialize(draft);
 	let jsonError = '';
 
-	function serialize(value: Achievement): string {
-		return JSON.stringify(value, null, '\t');
+	/**
+	 * The draft as it is stored and sent: a badge with no variables carries no
+	 * `variables` key at all, so the JSON tab shows the entry the file will hold
+	 * rather than an empty list the file never has.
+	 */
+	function payload(value: Draft): Achievement {
+		const { variables, ...rest } = value;
+		return variables.length > 0 ? { ...rest, variables } : rest;
+	}
+
+	function serialize(value: Draft): string {
+		return JSON.stringify(payload(value), null, '\t');
 	}
 
 	/**
@@ -98,7 +118,10 @@
 			id: String(parsed.id ?? ''),
 			name: String(parsed.name ?? ''),
 			description: String(parsed.description ?? ''),
-			icon: String(parsed.icon ?? '')
+			icon: String(parsed.icon ?? ''),
+			// Narrowed the same way the backend narrows the body, so a hand-typed
+			// document cannot put anything but name/formula pairs in the rows.
+			variables: normalizeVariables(parsed.variables)
 		};
 		if (isNew && draft.id) idTouched = true;
 	}
@@ -109,9 +132,13 @@
 		if (tab === 'json') jsonText = serialize(draft);
 	}
 
+	function changeVariables(event: CustomEvent<{ variables: AchievementVariable[] }>): void {
+		draft = { ...draft, variables: event.detail.variables };
+	}
+
 	function save(): void {
 		if (!canSave) return;
-		dispatch('save', { ...draft });
+		dispatch('save', payload(draft));
 	}
 
 	// Everything the backend will insist on, checked here so the button says so
@@ -124,8 +151,19 @@
 	$: validDescription =
 		draft.description.trim().length > 0 &&
 		draft.description.trim().length <= ACHIEVEMENT_DESCRIPTION_MAX_LENGTH;
+	// The variable rules, from the same module the backend validates with — so a
+	// formula that will not parse, or a `{placeholder}` naming nothing, is reported
+	// here in the words the API would have refused with.
+	$: variableProblems = validateVariables(draft);
 	$: canSave =
-		!saving && !deleting && !jsonError && validId && validName && validDescription && !!draft.icon;
+		!saving &&
+		!deleting &&
+		!jsonError &&
+		validId &&
+		validName &&
+		validDescription &&
+		!!draft.icon &&
+		variableProblems.length === 0;
 </script>
 
 <div class="flex flex-col gap-4">
@@ -216,6 +254,16 @@
 				</label>
 			</div>
 		</div>
+
+		<div class="divider my-0"></div>
+
+		<AchievementVariablesEditor
+			variables={draft.variables}
+			name={draft.name}
+			description={draft.description}
+			problems={variableProblems}
+			on:change={changeVariables}
+		/>
 	{:else}
 		<div class="flex flex-col gap-2">
 			<textarea
@@ -236,6 +284,15 @@
 					<code class="font-mono">public/achievements.json</code>. Saving writes it into the git
 					tree.
 				</p>
+			{/if}
+			<!-- A document can be perfectly good JSON and still declare a formula that
+			     will not parse, which the rows would have said and this tab cannot. -->
+			{#if variableProblems.length > 0}
+				<ul class="text-warning ml-4 list-disc text-xs">
+					{#each variableProblems as problem}
+						<li>{problem.message}</li>
+					{/each}
+				</ul>
 			{/if}
 		</div>
 	{/if}

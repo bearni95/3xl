@@ -175,6 +175,7 @@ What lives here today:
   `mugen-move.type`, `map.type`, `location.type`, `profile.type`, `player-card.type`,
   `tmdb.type`, `navigation.type`.
 - **utils** — `mugen/*` (frame sheets, animation, board engine, hex, PixiJS player),
+  `achievement/*` (the formula language, templating, variable rules),
   `geo/pointInPolygon`, `dice/roll`, `color/compare`, `string/*`, `tmdb/*`
   (client + rate limiter), `routes/get-routes`, `localStorageWritableStore`.
 - **adapters** — `adapter.class`, `tmdb.adapter`, `location.adapter`, `profile.adapter`,
@@ -184,6 +185,32 @@ What lives here today:
 framework-agnostic (types, transformers, pure helpers), goes in `@3xl/shared`. App-only
 UI state and components stay in the app. When you add a type/util/adapter, add it here,
 not in an app.
+
+### Achievement formulas
+
+A badge's wording is authored once and read by every player, so the numbers in it are not
+typed in: an achievement may declare `variables` — a name plus a formula — and quote them
+in its own name and description between braces (`Conquereix {target} municipalitats.`). A
+variable belongs to the achievement that declares it and is reachable from nowhere else,
+so two badges may both call a number `target`.
+
+A formula is arithmetic (`+ - * / % ^`, unary minus, parentheses) over what the game knows
+about the player being rendered for, and *only* that: `level`, and `cards` — every owned
+card, or the ones matching a compound filter written in its parentheses
+(`cards(box = white and not color = orange)`, `cards(color in [red, blue]) / 2`). There are
+no functions to call and no way to name anything outside the evaluation context, which is
+what makes a formula safe to run against whoever turns out to be reading.
+
+- `utils/achievement/formula.ts` — the language: tokenizer, parser, evaluator, and
+  `CARD_FIELDS`, the one table saying which card fields a filter may test and which values
+  each accepts. Every mistake is caught at **parse** time (unknown source or field, a colour
+  that is not a colour, an unclosed paren); evaluation never fails and always yields a finite
+  number, because by then it is going into a line a player is reading.
+- `utils/achievement/template.ts` — the braces: `renderAchievement(achievement, context)` is
+  what a surface calls to get one player's wording.
+- `utils/achievement/variables.ts` — the rules about the *set* (names that collide or shadow
+  a source, placeholders naming nothing), called by both the admin editor and the backend
+  route, so the message the author sees is the message the API would have refused with.
 
 ## Backend API (`@3xl/backend`)
 
@@ -202,7 +229,8 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   the admin `/characters` screen visualises the local↔remote diff and triggers the manual
   sync. `packages/backend/supabase/character_templates.sql` is kept for reference only.
 - `GET/POST /api/achievements` + `DELETE /api/achievements/:id` — read/upsert/retire one
-  achievement in `@3xl/data`'s `public/achievements.json` (glyph + name + description),
+  achievement in `@3xl/data`'s `public/achievements.json` (glyph + name + description, plus
+  any **formula variables** — see below),
   validated against `@3xl/shared/types/achievement.type`. `GET /api/achievements/icons`
   lists the game-icons.net glyphs an achievement may use, read off `@3xl/assets`'
   `public/icons/<artist>/` — the same listing the save validates against, so the admin's
