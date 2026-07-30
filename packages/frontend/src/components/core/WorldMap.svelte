@@ -387,14 +387,18 @@
 
 		// One plate for everything the pin says: the tile at its left end, and to the right
 		// of it the place on top of the show it flies, a line each across the plate's width.
-		// Black, so the lettering is read off the plate and not off whatever terrain the pin
-		// happens to stand on — the three separate chips this replaces each carried their own
-		// card, which put two rounded boxes and a bordered tile on a town where one mark
-		// belongs. The place is the pin's own name and takes the ink; the show is what it
-		// flies and is lettered under it.
+		// The three separate chips this replaces each carried their own card, which put two
+		// rounded boxes and a bordered tile on a town where one mark belongs. The place is the
+		// pin's own name and takes the ink; the show is what it flies and is lettered under it.
+		//
+		// The breadcrumb bar's surface — base-100 at four fifths — and not the flat black these
+		// were printed in: a pin's plate and the bar naming where the map is looking are the one
+		// chrome, and a pin is the thing that bar's path is walked with. Four fifths still keeps
+		// the lettering off the terrain, which is the whole of what the black was for, while
+		// letting the ground the pin stands on read faintly through the mark standing on it.
 		const plate = document.createElement('div');
 		plate.className =
-			'mt-1 flex max-w-[15rem] items-center gap-2 rounded-lg bg-black p-1.5 text-white shadow-lg';
+			'mt-1 flex max-w-[15rem] items-center gap-2 rounded-lg bg-base-100/80 p-1.5 text-white shadow-lg';
 
 		if (tile) plate.appendChild(tile);
 

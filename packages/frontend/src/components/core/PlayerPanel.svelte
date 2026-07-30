@@ -13,10 +13,14 @@
 	// tab was forward; what was the last third of that row — the ways out of the panel — is
 	// the panel's own stack of buttons now.
 	//
-	// It stands opposite the town panel across the top of the map: the place being looked at
-	// on the left under the crumbs, the account looking at it on the right. Black, like every
-	// other plate up there, because it stands over satellite imagery and the lettering has to
-	// be read off the plate rather than off whatever terrain is behind it.
+	// It stands at the foot of the map under the side this account fields: a side and the player
+	// fielding it are one statement, so they are one column at one corner.
+	//
+	// The breadcrumb bar's own surface — base-100 at four fifths — rather than the flat black
+	// the map's plates used to be printed in. It still has to be read over satellite imagery,
+	// which is what the black was for, but a plate on this map is furniture of the same chrome
+	// the bar is: four fifths lets the terrain through enough to say the plate is over the map
+	// without the lettering ever having to be read off it.
 
 	export let profile: Profile;
 	export let classes: string = '';
@@ -35,7 +39,9 @@
 	}
 </script>
 
-<div class={classNames('flex items-center gap-2 rounded-lg bg-black p-2 shadow-xl', classes)}>
+<div
+	class={classNames('flex items-center gap-2 rounded-lg bg-base-100/80 p-2 shadow-xl', classes)}
+>
 	<!-- The picture at the left end, at the size the corner has room for rather than at a
 		share of the plate: the tile in the panel gave it a third of its width because the
 		reading had a third of its own, and a portrait that size on a plate this size would be
