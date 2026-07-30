@@ -705,6 +705,145 @@
 		}
 	}
 
+	// The wheel is driven by hand, in the shape Leaflet drives a pinch: a gesture that moves
+	// the view while it is happening, and a single settle at the end of it. Leaflet's own
+	// wheel handler is off (see scrollWheelZoom below) because on a map zoomed fractionally
+	// it loses most of what the reader pushes into it, in two ways that compound. It maps a
+	// wheel's pixels through a sigmoid onto a zoom, and rounds that UP to the nearest whole
+	// zoom step — except with zoomSnap at 0 there is no step to round to, so what a notch is
+	// worth stays the raw fraction the sigmoid gave: a fraction of a level where a snapped
+	// map moved a whole one. And what survives that is then dropped outright while a zoom
+	// animation is in flight: every 40ms it asks the map to zoom by what has accumulated
+	// since the last ask, each ask starts a 250ms animation, and an ask arriving inside one
+	// is discarded by Leaflet along with the wheel that earned it — so roughly five ticks in
+	// six of a continuous spin go nowhere. Hence the long spinning for a short movement.
+	//
+	// A pinch has neither problem because it is not a series of requests to zoom: it holds a
+	// zoom of its own, moves the map to it every frame with no animation to be swallowed by,
+	// and redraws once when the fingers lift. That is what this is, with the wheel's notches
+	// where the fingers' distance was.
+
+	// What one detent of a wheel reports, in each of the three units a browser may report it
+	// in. The pixel figure is what Chrome, Safari and Edge send per notch; Firefox reports
+	// lines and sends three; pages are the fallback nothing modern uses. A trackpad sends the
+	// same units in small amounts, so a two-finger push is read as the fraction of a notch it
+	// covers and zooms by the fraction of a level that earns.
+	const WHEEL_NOTCH = { 0: 100, 1: 3, 2: 1 } as const;
+	// What a notch is worth. One notch, one zoom level — what a wheel on a whole-numbered map
+	// does, kept here on a map whose zoom is fractional and can therefore rest between two.
+	const ZOOM_PER_NOTCH = 1;
+	// The most a single event may be worth, against a mouse whose driver reports one flick as
+	// hundreds of pixels: the gesture stays fast (the events keep coming) without one of them
+	// crossing the whole scale.
+	const MAX_ZOOM_PER_WHEEL = 2;
+	// How long after the last wheel event the gesture is over and the map redraws at the zoom
+	// it came to rest at. Long enough to bridge the gaps inside one spin, short enough that
+	// the tiles sharpen while the hand is still on the mouse.
+	const WHEEL_SETTLE_MS = 140;
+
+	// Leaflet's pinch handler drives its gesture through these three, so a wheel gesture is
+	// written against the same ones. `_move` puts the map at a centre and a zoom with no
+	// animation and tells the layers it is a pinch, which is what has the tiles scale in
+	// place rather than fetch a fresh set per frame; `_resetView` is the redraw at the end
+	// that does fetch them. `_animatingZoom` is Leaflet's own flag, read only to end an
+	// animation the reader has just overtaken (see below).
+	type GestureMap = L.Map & {
+		_move(center: L.LatLng, zoom: number, data?: { pinch?: boolean; round?: boolean }): void;
+		_resetView(center: L.LatLng, zoom: number): void;
+		_onZoomTransitionEnd(): void;
+		_animatingZoom?: boolean;
+	};
+
+	// The zoom the gesture is heading for, held apart from the map's own so that events
+	// arriving faster than the screen redraws all count: the map is moved once per frame, and
+	// what accumulates between two frames accumulates here rather than being read off a zoom
+	// that has not caught up yet. Null between gestures.
+	let wheelZoom: number | null = null;
+	// The point on the canvas the zoom is anchored to — the place under the pointer stays
+	// under the pointer, so a reader zooms into what they are looking at rather than into the
+	// middle of the map.
+	let wheelAnchor: L.Point | null = null;
+	let wheelFrame = 0;
+	let wheelSettle: ReturnType<typeof setTimeout> | null = null;
+
+	function onWheelZoom(event: WheelEvent) {
+		if (!mapInstance) return;
+		// The page must not scroll and the browser must not zoom under us: over the canvas a
+		// wheel means this and nothing else.
+		event.preventDefault();
+
+		// A sideways push is a wheel event with nothing on the axis that means zoom. Nothing
+		// on this map reads one, so it is refused a gesture rather than given one worth no
+		// zoom, which would still cost the redraw at the end of it.
+		if (!event.deltaY) return;
+
+		const map = mapInstance as GestureMap;
+		// A wheel overtakes whatever the map was doing on its own. A pan or a fly is stopped
+		// outright; a zoom animation cannot be, so it is landed at its destination now —
+		// otherwise it would finish 250ms later by putting the map back where it had been
+		// going, over the top of the gesture the reader has started since.
+		map.stop();
+		if (map._animatingZoom) map._onZoomTransitionEnd();
+
+		const notch = WHEEL_NOTCH[(event.deltaMode as 0 | 1 | 2) ?? 0] ?? WHEEL_NOTCH[0];
+		const step = Math.max(
+			-MAX_ZOOM_PER_WHEEL,
+			Math.min(MAX_ZOOM_PER_WHEEL, (-event.deltaY / notch) * ZOOM_PER_NOTCH)
+		);
+
+		wheelAnchor = map.mouseEventToContainerPoint(event);
+		wheelZoom = Math.max(
+			map.getMinZoom(),
+			Math.min(map.getMaxZoom(), (wheelZoom ?? map.getZoom()) + step)
+		);
+
+		// One move per frame, however many events landed in it.
+		if (!wheelFrame) wheelFrame = requestAnimationFrame(moveWheelZoom);
+		if (wheelSettle) clearTimeout(wheelSettle);
+		wheelSettle = setTimeout(settleWheelZoom, WHEEL_SETTLE_MS);
+	}
+
+	// Put the map at the gesture's zoom, keeping the anchored point where it is. The centre
+	// that does that is the one `setZoomAround` computes: the offset from the middle of the
+	// canvas to the anchor, grown by how much the scale is about to change, taken off the
+	// middle again.
+	function moveWheelZoom() {
+		wheelFrame = 0;
+		if (!mapInstance || wheelZoom === null || !wheelAnchor) return;
+
+		const map = mapInstance as GestureMap;
+		const scale = map.getZoomScale(wheelZoom, map.getZoom());
+		const half = map.getSize().divideBy(2);
+		const offset = wheelAnchor.subtract(half).multiplyBy(1 - 1 / scale);
+		map._move(map.containerPointToLatLng(half.add(offset)), wheelZoom, {
+			pinch: true,
+			round: false
+		});
+	}
+
+	// The gesture is over: redraw at where it stopped. This is the one full re-render of the
+	// whole thing — tiles at the level the map has actually reached instead of the scaled
+	// ones the frames were drawn with — and it fires the moveend the pins and boxes are
+	// re-culled on.
+	function settleWheelZoom() {
+		wheelSettle = null;
+		if (wheelFrame) {
+			cancelAnimationFrame(wheelFrame);
+			moveWheelZoom();
+		}
+		if (!mapInstance || wheelZoom === null) return;
+
+		const map = mapInstance as GestureMap;
+		wheelZoom = null;
+		wheelAnchor = null;
+		// Unless the map has been sent somewhere else in the meantime — a region framed by a
+		// click inside the settle window. That animation ends with a redraw of its own at a
+		// zoom this one knows nothing about, and two redraws is one of them drawing the wrong
+		// place.
+		if (map._animatingZoom) return;
+		map._resetView(map.getCenter(), map.getZoom());
+	}
+
 	onMount(async () => {
 		// Leaflet touches `window` at import time, so it must be loaded
 		// dynamically in the browser — never during SSR.
@@ -726,6 +865,10 @@
 			// children were pinned or it was pinned by itself came down to where that fell
 			// (see the focus effect and levelIndexForView).
 			zoomSnap: 0,
+			// The wheel is handled here instead (see onWheelZoom): Leaflet's own handler and a
+			// zoom with no steps in it are the pair that made a spin of the wheel move the map
+			// by almost nothing.
+			scrollWheelZoom: false,
 			// No +/- zoom buttons — the map is driven by scroll/pinch only.
 			zoomControl: false,
 			// The badge carries the Esri credit the imagery licence requires, so it
@@ -739,6 +882,9 @@
 		// reach a neighbour's pin the pin is the thing that must not be covered — a box
 		// gives up its corner instead.
 		mapInstance.createPane(BOX_PANE).style.zIndex = '590';
+
+		// Not passive: the handler's first act is to refuse the page the scroll.
+		mapContainer.addEventListener('wheel', onWheelZoom, { passive: false });
 
 		// Esri World Imagery: pure satellite tiles, no labels or roads.
 		// Note the {z}/{y}/{x} order — ArcGIS swaps y and x vs the OSM scheme.
@@ -872,6 +1018,9 @@
 	});
 
 	onDestroy(() => {
+		mapContainer?.removeEventListener('wheel', onWheelZoom);
+		if (wheelFrame) cancelAnimationFrame(wheelFrame);
+		if (wheelSettle) clearTimeout(wheelSettle);
 		resizeObserver?.disconnect();
 		unmountPinMounts();
 		unmountBoxMounts();
