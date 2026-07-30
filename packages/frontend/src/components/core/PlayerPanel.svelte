@@ -7,10 +7,11 @@
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 
 	// Who is playing, on a plate at the map's top-right corner: the picture they wear and
-	// the reading beside it — the name, the level, and the experience bar with the figure
-	// written across it. It was the first two thirds of the Profile tab's account row (see
-	// ProfileTile, which is the last third — the ways out of the panel — and nothing else
-	// now), which meant who you are was only on screen while that one tab was forward.
+	// the reading beside it — the name with the level at the end of its row, and the
+	// experience bar with the figure written across it. It was the first two thirds of the
+	// Profile tab's account row, which meant who you are was only on screen while that one
+	// tab was forward; what was the last third of that row — the ways out of the panel — is
+	// the panel's own stack of buttons now.
 	//
 	// It stands opposite the town panel across the top of the map: the place being looked at
 	// on the left under the crumbs, the account looking at it on the right. Black, like every
@@ -78,16 +79,15 @@
 				{$_('profile.levelBadge', { values: { level: progress.level } })}
 			</span>
 		</div>
-		<!-- The bar and the reading of it are one thing, exactly as in the tile: the figure
-			stands in flow with its own padding and the bar is stretched behind it (`inset-0`,
-			with `h-full` because `.progress` brings a height of its own that an over-constrained
-			top/bottom pair would otherwise lose to), so the bar is as tall as the type comes to
-			and the label is centred in it by construction. It spans this level alone, not the
-			totals written across it. -->
-		<!-- The bar is the hover target for the figure written on it (see the label below), which
-			is what the name is for — the figure is the only thing on this plate that comes and
-			goes, so the group is named rather than left as the bare one the avatar beside it
-			already uses for its own ring. -->
+		<!-- The bar and the reading of it are one thing: the figure stands in flow with its own
+			padding and the bar is stretched behind it (`inset-0`, with `h-full` because
+			`.progress` brings a height of its own that an over-constrained top/bottom pair would
+			otherwise lose to), so the bar is as tall as the type comes to and the label is centred
+			in it by construction. It spans this level alone, not the totals written across it.
+			The bar is also the hover target for that figure (see the label below), which is what
+			the group's name is for — the figure is the only thing on this plate that comes and
+			goes, so it is named rather than left as the bare group the avatar beside it already
+			uses for its own ring. -->
 		<div class="group/exp relative w-full">
 			<progress
 				class="progress progress-primary absolute inset-0 h-full w-full"

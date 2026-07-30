@@ -22,6 +22,7 @@
 	import BoosterModal from '$components/core/BoosterModal.svelte';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { achievementsModalOpen } from '$services/achievementsModal';
+	import { settingsModalOpen } from '$services/settingsModal';
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
 	import { boosterModalOpen } from '$services/boosterModal';
@@ -1771,18 +1772,25 @@
 			is `display: contents` — it draws no box at all, so its children go back to being
 			the aside's own flex children and each tab keeps its own scroller. -->
 		<div class="min-h-0 flex-1 overflow-y-auto md:contents">
-			<!-- The header: the two views this column used to hold, now the two buttons that
-				raise them over the map. They are still the head of the panel because that is
-				where they were picked from, and they are buttons rather than tabs because
-				nothing here goes forward or back any more — each opens the whole view and the
-				panel is left as it was underneath.
-				One to a row, like every other button in this column: side by side they were
-				two labels of different lengths splitting the width between them, and one of
-				them grows a counter. Stacked they are each as wide as the panel, so the label
-				is read at the same left edge whatever it says. `join-vertical` is what turns
-				the joined radii and collapsed borders through ninety degrees to match. -->
-			<div class="flex flex-none flex-col gap-3 border-b border-base-300 px-4 py-3">
-				<div class="join join-vertical grid grid-cols-1">
+			<!-- Every way out of this column, and all of them one group: the two views that used
+				to be tabs here (the leaderboard and the window's booster packs) and, for a
+				signed-in account, its three — the player's cards, the badges they can earn, and
+				the account itself. One `join`, turned vertical, so the five are a single block of
+				buttons with nothing between them: no gaps, no rules, no tile behind any of them
+				and no header holding two of them apart. They are the same kind of thing — a press
+				that raises a view over the map — and they were reading as two unrelated sets
+				because of where each of them used to live rather than because of what it does. The
+				join is what says they are one set: only the top and bottom of the block are
+				rounded, and the borders between neighbours collapse into one line.
+				Nothing else is in this column. Who is playing is a plate at the map's top-right
+				corner, the side they field stands at its foot, and where the map is looking is a
+				plate at its own corner, so what is left here is the way in (signing in, below)
+				and the ways on.
+				Its own scroller on the desktop panel; on the mobile panel the whole panel scrolls
+				as one, so the `flex-1` is inert there and the section simply takes the height its
+				contents ask for. -->
+			<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
+				<div class="join join-vertical w-full">
 					<button
 						type="button"
 						class="btn btn-outline btn-sm join-item"
@@ -1790,20 +1798,46 @@
 					>
 						Leaderboard
 					</button>
-					<button type="button" class="btn btn-outline btn-sm join-item" on:click={openBoosters}>
+					<button
+						type="button"
+						class="btn btn-outline btn-sm join-item"
+						on:click={openBoosters}
+					>
 						{boosterLabel}
 					</button>
+					{#if $profile}
+						<!-- The account's own three, in the same block: what the player came to look at
+							first, and the account's settings last, outlined rather than filled. Each
+							raises a modal mounted at the layout root, so pressing one is the whole of
+							what happens here. -->
+						<button
+							type="button"
+							class="btn btn-primary btn-sm join-item"
+							on:click={() => rosterModalOpen.set(true)}
+						>
+							Roster
+						</button>
+						<button
+							type="button"
+							class="btn btn-primary btn-sm join-item"
+							on:click={() => achievementsModalOpen.set(true)}
+						>
+							Achievements
+						</button>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm join-item"
+							on:click={() => settingsModalOpen.set(true)}
+						>
+							Settings
+						</button>
+					{/if}
 				</div>
-			</div>
 
-			<!-- Who is playing, and what to do about it: signed out it is the sign-in panel, so
-				this is the way into the game; signed in it is the account's three buttons. The
-				picture and the reading are a plate at the map's top-right corner and the side they
-				field stands at its foot, so what is left in this column is what has nowhere else to
-				be. Its own scroller on the desktop panel; on the mobile panel the whole panel
-				scrolls as one, so the `flex-1` is inert there and the section simply takes the
-				height its contents ask for. -->
-			<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+				<!-- The way in, under the block and not part of it: signed out this is the email
+					link and the OAuth providers, which is the one thing nothing else on the map works
+					without. Signed in it draws nothing at all — the account's buttons above are what
+					it used to hold. -->
 				<AuthMenu embedded />
 			</div>
 		</div>
@@ -2010,11 +2044,10 @@
 							/>
 						{/if}
 
-						<!-- Who is playing: the picture they wear and the reading beside it. It was the
-							first two thirds of the panel's Profile tab (see PlayerPanel and ProfileTile,
-							which is the last third and nothing else now), which meant who you are was on
-							screen only while that one tab was forward — and it is read against every town on
-							the map, the same way the side at the foot of the map is.
+						<!-- Who is playing: the picture they wear and the reading beside it (see
+							PlayerPanel). It was the first two thirds of the panel's Profile tab, which meant
+							who you are was on screen only while that one tab was forward — and it is read
+							against every town on the map, the same way the side at the foot of the map is.
 							Opposite the town panel across this row: the place being looked at on the left, the
 							account looking at it on the right. `flex-none` so a long name truncates inside the
 							plate rather than the plate growing into the column beside it.

@@ -6,22 +6,17 @@
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { settingsModalOpen } from '$services/settingsModal';
-	import { rosterModalOpen } from '$services/rosterModal';
-	import { achievementsModalOpen } from '$services/achievementsModal';
 	import { AuthStatus, type OAuthProvider } from '$types/profile.type';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
-	import ProfileTile from '$components/core/ProfileTile.svelte';
 	import SocialSignIn from '$components/core/SocialSignIn.svelte';
 
-	// When embedded, the trigger button is dropped and the card renders in flow,
-	// always visible and full-width — it is a section of the map page's right-hand
-	// panel — instead of the hover/click dropdown that hangs off the navbar. Signed in,
-	// that section is the account's ways out of the panel and nothing else: the side they
-	// field used to be a three-column grid under it and stands at the map's own bottom-left
-	// corner now, and who is playing — the picture and the reading — is a plate at its
-	// top-right (see PlayerPanel). What is left in the tab is the sign-in that gets a player
-	// there in the first place, and the three buttons that lead back out of it.
+	// When embedded, the trigger button is dropped and what is left renders in flow, full
+	// width — it is a section of the map page's right-hand panel — instead of the hover/click
+	// dropdown that hangs off the navbar. Embedded, that leaves the sign-in and nothing else:
+	// the account's own buttons are in the panel's one stack of them now, who is playing is a
+	// plate at the map's top-right corner (see PlayerPanel), and the side they field stands at
+	// its foot. So embedded this is the way *in*, and the whole account card when it is not.
 	export let embedded: boolean = false;
 
 	const status = authService.status;
@@ -78,17 +73,6 @@
 		settingsModalOpen.set(true);
 	}
 
-	function openRoster(): void {
-		// Like the settings sheet, the roster is a modal mounted at the layout root — the
-		// glance card only raises it.
-		rosterModalOpen.set(true);
-	}
-
-	function openAchievements(): void {
-		// The badges, on the same sheet as the roster and raised the same way.
-		achievementsModalOpen.set(true);
-	}
-
 	function openAvatarPicker(): void {
 		avatarPickerOpen.set(true);
 	}
@@ -143,11 +127,9 @@
 		)}
 	>
 		<!-- Embedded it is not a card of its own: the panel section it sits in already
-			brings the surface, the rounded corners and the border, so a second box drawn
-			inside it only reads as a seam. No background, no radius, no shadow, no width —
-			and the padding is the host section's. The signed-in contents differ as well:
-			the dropdown is the full card, the panel is the account row and the grid under
-			it. -->
+			brings the surface and the padding, so a second box drawn inside it only reads as a
+			seam. No background, no radius, no shadow, no width. The contents differ as well:
+			the dropdown is the full account card, the panel is the sign-in alone. -->
 		<div class={embedded ? 'w-full' : 'card w-80 bg-base-100 shadow-xl'}>
 			<div class={classNames('gap-4', embedded ? 'flex flex-col' : 'card-body')}>
 				<!-- Contents format i18n messages; wait for the locale to load. -->
@@ -157,18 +139,12 @@
 							<span>{$_('profile.notConfigured')}</span>
 						</div>
 					{:else if $status === AuthStatus.SignedIn && $profile}
-						{#if embedded}
-							<!-- The account's ways out of the panel, three across: the roster, the badges,
-								the account's settings. Who is playing — the picture and the reading — is a
-								plate at the map's top-right corner now (see PlayerPanel), so what is left
-								here is what to do about it. Every one of these buttons raises a modal
-								mounted at the layout root, so the tile only says it was pressed. -->
-							<ProfileTile
-								on:opensettings={openSettings}
-								on:openroster={openRoster}
-								on:openachievements={openAchievements}
-							/>
-						{:else}
+						<!-- Embedded there is nothing to draw for a signed-in account: everything this
+							section used to hold has somewhere better to be — its buttons are in the
+							panel's own stack of them, the picture and the reading are on a plate at the
+							map's top-right corner, and the side they field stands at its foot. The
+							dropdown is still the whole card. -->
+						{#if !embedded}
 							<ProfileCard
 								profile={$profile}
 								{signingOut}
