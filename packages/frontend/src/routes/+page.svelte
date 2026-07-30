@@ -2130,8 +2130,12 @@
 				<!-- The row is given its box rather than positioned itself: it is `w-full` of
 					whatever holds it, and a width handed to it in the same breath would be two
 					width utilities on one element with nothing but stylesheet order to settle
-					which of them wins. -->
-				<div class="absolute bottom-3 left-3 z-[900] w-80 max-w-[calc(100%-1.5rem)]">
+					which of them wins.
+					A flat 400px, which is the width three statues and their captions are read at —
+					a share of the map would set the size of a card by how wide the window is —
+					capped at the viewport so the narrowest phone shrinks them rather than carrying
+					them off the screen. -->
+				<div class="absolute bottom-3 left-3 z-[900] w-[400px] max-w-[100vw]">
 					<TeamLineup members={playerTeamLineup} />
 				</div>
 			{/if}
