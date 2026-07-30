@@ -1798,6 +1798,31 @@
 	// reached is exactly the one an empty position asks to be taken to.
 	$: centrePath = focusedPath(maxLevel, markerLevels, currentCenter, regionNodes);
 
+	// The whole map as one box: the coarsest rung of that ladder, and what a tier asked for
+	// with nothing under the centre falls back to.
+	$: wholeMapBounds = municipalities
+		? boundsForFeatures(municipalities, new Set(fillIndex.keys()))
+		: null;
+
+	// The same ladder as boxes, coarsest first — the whole map, then every region the centre
+	// stands in down to its town. The map turns each into the zoom it stands whole at and rests
+	// the wheel on those and nothing between them, so a spin walks the tiers and stops where
+	// the bar's own positions are pressed for (see zoomToTier, which fits the same boxes).
+	$: zoomStops = ladderBoxes(centrePath, regionGeometry, wholeMapBounds);
+
+	function ladderBoxes(
+		path: RegionNode[],
+		geometry: RegionGeometry,
+		all: LatLngBounds | null
+	): LatLngBounds[] {
+		const boxes: LatLngBounds[] = all ? [all] : [];
+		for (const node of path) {
+			const box = geometry.boxes.get(node.key);
+			if (box) boxes.push(box);
+		}
+		return boxes;
+	}
+
 	// Take the map to the zoom a tier is read at, leaving the centre where it is: press the
 	// comarca position and the bar's comarca position is the one that fills.
 	//
@@ -1823,11 +1848,7 @@
 		// Nothing under the centre at that tier or above it means there is no path under the
 		// centre at all — the polygons are still loading, or the view is out at sea. The whole
 		// map is the box then, which is where a bar with nothing in it belongs.
-		const bounds = container
-			? (regionGeometry.boxes.get(container.key) ?? null)
-			: municipalities
-				? boundsForFeatures(municipalities, new Set(fillIndex.keys()))
-				: null;
+		const bounds = container ? (regionGeometry.boxes.get(container.key) ?? null) : wholeMapBounds;
 		if (!bounds) return;
 		// The bar only follows the zoom while nothing is picked (see openRegion), so a tier
 		// asked for while a region is open hands the view back to the zoom first — otherwise
@@ -1868,6 +1889,7 @@
 			{hiddenLineUrls}
 			{focusBounds}
 			{zoomBounds}
+			{zoomStops}
 			bind:currentZoom
 			bind:activeLevel
 			bind:currentCenter

@@ -28,6 +28,7 @@
 		hiddenLineUrls = new Set<string>(),
 		focusBounds = null,
 		zoomBounds = null,
+		zoomStops = [],
 		currentZoom = $bindable(zoom),
 		activeLevel = $bindable(0),
 		currentCenter = $bindable(center),
@@ -116,6 +117,15 @@
 		 * boundsFitAtZoom). A fresh array re-zooms even to the same box.
 		 */
 		zoomBounds?: [[number, number], [number, number]] | null;
+		/**
+		 * The boxes whose fits are the zooms a wheel comes to rest at, coarsest first — the
+		 * ladder of regions the view is inside, which is the ladder the breadcrumb bar draws.
+		 * A notch of the wheel is one step along it rather than an amount of zoom, so a spin
+		 * settles where a tier stands whole in the canvas and never between two (see
+		 * wheelStopZooms). Read live, so the ladder can be rebuilt as the view moves; empty
+		 * leaves the wheel stepping the map's own whole zoom levels.
+		 */
+		zoomStops?: [[number, number], [number, number]][];
 		/** Live map zoom level, kept in sync with the map (bindable). */
 		currentZoom?: number;
 		/**
@@ -752,20 +762,33 @@
 	// notch moves a zoom the map is *heading for* and each frame takes a share of what is left
 	// of the distance — a glide the length of a wheel animation, except that a notch landing
 	// mid-glide extends the same glide rather than queueing a second one behind it.
+	//
+	// What the notch is heading for is a STOP and not an amount (see zoomStops). The map draws
+	// a tier of the region hierarchy and the bar across the top names where in that hierarchy
+	// the view is, so the zooms worth resting at are the ones where a tier stands whole in the
+	// canvas — the same zooms the bar's own positions are pressed for. A notch is therefore one
+	// step along that ladder rather than a zoom level: the wheel walks the tiers, and a spin
+	// comes to rest on one instead of somewhere in the middle of it. What the pointer does is
+	// unchanged — the place under it is what the gesture holds still.
 
 	// What one detent of a wheel reports, in each of the three units a browser may report it
 	// in. The pixel figure is what Chrome, Safari and Edge send per notch; Firefox reports
 	// lines and sends three; pages are the fallback nothing modern uses. A trackpad sends the
 	// same units in small amounts, so a two-finger push is read as the fraction of a notch it
-	// covers and zooms by the fraction of a level that earns.
+	// covers, and moves the map when those fractions have added up to one.
 	const WHEEL_NOTCH = { 0: 100, 1: 3, 2: 1 } as const;
-	// What a notch is worth. One notch, one zoom level — what a wheel on a whole-numbered map
-	// does, kept here on a map whose zoom is fractional and can therefore rest between two.
-	const ZOOM_PER_NOTCH = 1;
 	// The most a single event may be worth, against a mouse whose driver reports one flick as
 	// hundreds of pixels: the gesture stays fast (the events keep coming) without one of them
-	// crossing the whole scale.
-	const MAX_ZOOM_PER_WHEEL = 2;
+	// crossing the whole ladder.
+	const MAX_NOTCHES_PER_WHEEL = 2;
+	// A pause long enough that the next push is a new gesture, and the part of a notch left
+	// over from the last one is forgotten rather than counting towards it.
+	const WHEEL_GESTURE_GAP = 400;
+	// Near enough to a stop to be standing on it, when working out which one a notch steps
+	// from. Also what keeps two tiers that fit at the same zoom — a tier the place under the
+	// view does not have has its parent's box — from being two stops with nothing between
+	// them, which would be a notch that appeared to do nothing.
+	const STOP_SLACK = 0.05;
 	// The glide: how long the remaining distance takes to halve. Measured in time and not in
 	// frames, so the movement lasts as long on a 120Hz screen as on a 60Hz one. At this figure
 	// a notch is most of the way there in about a sixth of a second — near enough Leaflet's
@@ -807,6 +830,67 @@
 	// When the last frame was drawn, and when the tiles were last re-cut.
 	let wheelLast = 0;
 	let wheelTiles = 0;
+	// The part of a notch pushed but not yet spent. A wheel with detents sends whole notches
+	// and steps a stop each time; a trackpad sends a stream of small fractions, and this is
+	// where they add up until they are worth a step. Cleared when a gesture has been over long
+	// enough that the next push is a new one.
+	let wheelPush = 0;
+	let wheelPushAt = 0;
+
+	// The zooms a gesture may come to rest at, coarsest first: each box that the ladder is made
+	// of, at the zoom it stands whole in the canvas at — computed here rather than handed over
+	// ready-made because the fit depends on the canvas and the projection, which are the map's.
+	// The margin is the framing's own, so a stop is exactly where a click on that region would
+	// have put the map, and the tier drawn there is the tier that region contains.
+	//
+	// Two stops closer together than the slack are one stop: a tier the place under the view
+	// does not have is handed the box of the tier above it, and a notch between two zooms that
+	// are the same zoom is a notch that does nothing. The map's own deepest zoom closes the
+	// ladder, so the imagery can still be read at the detail it holds — past the last tier is
+	// not between two tiers.
+	//
+	// A map given no ladder at all (the polygons never loaded) falls back to its whole zoom
+	// levels, which is a notch a level: the wheel a map without a hierarchy would have had.
+	function wheelStopZooms(map: L.Map): number[] {
+		const min = map.getMinZoom();
+		const max = map.getMaxZoom();
+		const found: number[] = [];
+		if (zoomStops.length) {
+			const padding = focusPadding();
+			for (const box of zoomStops) found.push(map.getBoundsZoom(box, false, padding));
+			found.push(max);
+		} else {
+			for (let zoom = Math.ceil(min); zoom <= max; zoom++) found.push(zoom);
+		}
+
+		const stops: number[] = [];
+		for (const zoom of found.sort((a, b) => a - b)) {
+			const clamped = Math.max(min, Math.min(max, zoom));
+			if (!stops.length || clamped - stops[stops.length - 1] > STOP_SLACK) stops.push(clamped);
+		}
+		return stops;
+	}
+
+	// The stop a number of steps away from a zoom. Counted from where the zoom stands in the
+	// ladder rather than from the nearest stop, so a first notch out of a view that is between
+	// two stops (a click has framed a region, or the ladder has changed under a pan) lands on
+	// the one it is heading towards rather than skipping it.
+	function stopAfter(stops: number[], zoom: number, steps: number): number {
+		if (steps > 0) {
+			const next = stops.findIndex((stop) => stop > zoom + STOP_SLACK);
+			if (next < 0) return stops[stops.length - 1];
+			return stops[Math.min(next + steps - 1, stops.length - 1)];
+		}
+		let previous = -1;
+		for (let i = stops.length - 1; i >= 0; i--) {
+			if (stops[i] < zoom - STOP_SLACK) {
+				previous = i;
+				break;
+			}
+		}
+		if (previous < 0) return stops[0];
+		return stops[Math.max(previous + steps + 1, 0)];
+	}
 
 	function onWheelZoom(event: WheelEvent) {
 		if (!mapInstance) return;
@@ -819,6 +903,23 @@
 		// zoom, which would still cost the redraw at the end of it.
 		if (!event.deltaY) return;
 
+		const now = performance.now();
+		if (now - wheelPushAt > WHEEL_GESTURE_GAP) wheelPush = 0;
+		wheelPushAt = now;
+
+		const notch = WHEEL_NOTCH[(event.deltaMode as 0 | 1 | 2) ?? 0] ?? WHEEL_NOTCH[0];
+		wheelPush += Math.max(
+			-MAX_NOTCHES_PER_WHEEL,
+			Math.min(MAX_NOTCHES_PER_WHEEL, -event.deltaY / notch)
+		);
+
+		// Whole notches only: what is left over is kept for the next push. So a wheel with
+		// detents moves a stop per detent, and a trackpad moves one once it has been pushed
+		// that far — and neither of them can come to rest part of the way between two.
+		const steps = Math.trunc(wheelPush);
+		if (!steps) return;
+		wheelPush -= steps;
+
 		const map = mapInstance as GestureMap;
 		// A wheel overtakes whatever the map was doing on its own. A pan or a fly is stopped
 		// outright; a zoom animation cannot be, so it is landed at its destination now —
@@ -827,21 +928,12 @@
 		map.stop();
 		if (map._animatingZoom) map._onZoomTransitionEnd();
 
-		const notch = WHEEL_NOTCH[(event.deltaMode as 0 | 1 | 2) ?? 0] ?? WHEEL_NOTCH[0];
-		const step = Math.max(
-			-MAX_ZOOM_PER_WHEEL,
-			Math.min(MAX_ZOOM_PER_WHEEL, (-event.deltaY / notch) * ZOOM_PER_NOTCH)
-		);
-
 		wheelAnchor = map.mouseEventToContainerPoint(event);
-		wheelZoom = Math.max(
-			map.getMinZoom(),
-			Math.min(map.getMaxZoom(), (wheelZoom ?? map.getZoom()) + step)
-		);
+		wheelZoom = stopAfter(wheelStopZooms(map), wheelZoom ?? map.getZoom(), steps);
 
 		if (!wheelFrame) {
-			wheelLast = performance.now();
-			wheelTiles = wheelLast;
+			wheelLast = now;
+			wheelTiles = now;
 			wheelFrame = requestAnimationFrame(stepWheelZoom);
 		}
 	}
