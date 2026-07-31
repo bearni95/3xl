@@ -950,7 +950,16 @@ Use `svelte-i18n` for translations:
 ```
 
 Each app has its own translations under `src/services/i18n/locales/` (`en.json`, plus a
-generated `qq.json` pseudo-locale — regenerate the frontend's with `pnpm dev:qq`).
+generated `qq.json` pseudo-locale, every string replaced by `QQQQQ`).
+
+`pnpm dev:qq` is `pnpm dev` — all three servers — with the frontend read in that
+pseudo-locale: it regenerates the frontend's `qq.json` from `en.json` first, then starts
+the same parallel dev run with `PUBLIC_I18N_LOCALE=qq` in the environment.
+`services/i18n/index.ts` reads that var and, when it names a locale it has, registers
+**only** that dictionary and uses it as the fallback too, exporting the choice as
+`pinnedLocale` so `+layout.ts` knows not to adopt the browser's language over it. Which is
+what makes the run a test rather than a preview: any text still on the screen is text that
+never went through i18n, since there is no English left for it to fall back to.
 
 ---
 

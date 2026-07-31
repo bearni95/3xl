@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --port 2000 --strictPort",
-		"dev:qq": "node scripts/generate-qq-locale.js",
+		"generate:qq": "node scripts/generate-qq-locale.js",
 		"build": "vite build",
 		"preview": "vite preview --port 2000 --strictPort",
 		"prepare": "svelte-kit sync || echo ''",

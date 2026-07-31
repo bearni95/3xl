@@ -9,7 +9,7 @@
 		"dev:frontend": "pnpm --filter @3xl/frontend dev",
 		"dev:admin": "pnpm --filter @3xl/admin dev",
 		"dev:backend": "pnpm --filter @3xl/backend dev",
-		"dev:qq": "pnpm --filter @3xl/frontend dev:qq",
+		"dev:qq": "pnpm --filter @3xl/frontend generate:qq && PUBLIC_I18N_LOCALE=qq pnpm --filter @3xl/frontend --filter @3xl/admin --filter @3xl/backend --parallel run dev",
 		"build": "pnpm --filter @3xl/frontend --filter @3xl/admin run build",
 		"preview": "pnpm --filter @3xl/frontend preview",
 		"check": "pnpm --filter @3xl/frontend --filter @3xl/admin --filter @3xl/backend run check",
