@@ -560,8 +560,25 @@
 		return wrap;
 	}
 
-	// The pin wrapper's classes: a bottom-centred column, made clickable when the marker
-	// carries an onClick. The fade for a pin outside the selected area is NOT here: an
+	// The pin wrapper's classes: a column centred on the point in BOTH directions, made
+	// clickable when the marker carries an onClick.
+	//
+	// Centred rather than stood on the point. A pin used to be anchored by its bottom edge
+	// and grow upwards, which is how a pin with a tip works — but this pin has no tip, and
+	// what it carries is not a fixed mark: a plate alone on most towns, and on the picked
+	// one a plate, three statues, a booster box and a siege bar, several hundred pixels of
+	// it. Anchored at the foot, all of that height came off one side, so the more a town had
+	// to say the further from the town its saying it went, and the plate naming the place
+	// ended up nowhere near the place. Centred, the column grows both ways at once and the
+	// point stays in the middle of whatever the town happens to be carrying — so a pin that
+	// gains a side and a box moves half as far, and the ground the mark is about is under
+	// the mark rather than below its bottom edge.
+	//
+	// Which spends the room under the point that the marks hung there (a disc, a box) used
+	// to have to themselves — so those are centred on the point too and share this centre
+	// rather than sitting below it (see discElement and boxElement).
+	//
+	// The fade for a pin outside the selected area is NOT here: an
 	// opacity on the wrapper groups everything under it, and no child can win its way back
 	// to full — which took the plate's lettering down with the tile and left white type at
 	// half strength over the terrain it is meant to be read against. It goes on the tile
@@ -573,7 +590,7 @@
 	// could come out wider than the screen says so in viewport units of its own (the plate's
 	// 15rem never can; the side's 500px can, see markerElement).
 	function classNamesFor(marker: MapMarker): string {
-		let classes = 'flex -translate-x-1/2 -translate-y-full flex-col items-center';
+		let classes = 'flex -translate-x-1/2 -translate-y-1/2 flex-col items-center';
 		if (marker.onClick) classes += ' cursor-pointer';
 		return classes;
 	}
@@ -754,15 +771,17 @@
 	// - `'pin'` — inside the town's own pin, one more thing in a column already centred on
 	//   the point, so it needs only the gap the pin's other parts take. The pin is what
 	//   built it, so the pin's mounts are what unmount it.
-	// - `'point'` — the box layer's own marker, hanging *below* the point rather than
-	//   standing on it: a region pin is anchored by its bottom edge and grows upwards out
-	//   of the point, so everything under the point is free. Both are anchored on the same
-	//   centre, which is what keeps them one object seen as two. This is what the picked
+	// - `'point'` — the box layer's own marker, centred on the point by its own middle, the
+	//   same way a pin is (see classNamesFor) and for the same reason: a mark is about the
+	//   ground under it, and 200px of cover reads as being about the town it is centred on
+	//   rather than the one it hangs off. It is also what keeps the box and the disc one
+	//   object seen at two sizes — both take the point by their centre, so folding a box up
+	//   leaves the mark where the box was rather than moving it. This is what the picked
 	//   town's box does at a tier that gave it no pin to stand in — see rebuildBoxes.
 	function boxElement(box: MapBoosterBox, into: 'pin' | 'point'): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className =
-			'w-[200px] ' + (into === 'pin' ? 'mt-1' : '-translate-x-1/2 translate-y-1');
+			'w-[200px] ' + (into === 'pin' ? 'mt-1' : '-translate-x-1/2 -translate-y-1/2');
 		if (box.onClick) wrap.className += ' cursor-pointer';
 		const mounted = mount(BoosterBox, {
 			target: wrap,
@@ -827,10 +846,17 @@
 	// taking a stand-in mark — the lid's rule, and every other surface that badges a show.
 	// Decorative either way: the mark is what is being looked at, and nothing here is
 	// named in text for it to read twice.
+	//
+	// It takes the point by its own centre, which is the rule every mark on a town now
+	// follows (see classNamesFor). It used to hang just below the point, which was room a
+	// pin left free by growing upwards out of it — now that a pin is centred on its point
+	// too, a disc sitting below one would have the town's own pin lying across its top half.
+	// Concentric instead: the pin and the disc are the same town, and one centre is what
+	// says so.
 	function discElement(box: MapBoosterBox): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className =
-			'flex size-14 -translate-x-1/2 translate-y-1 items-center justify-center rounded-full shadow-md [&>svg]:size-9 ' +
+			'flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full shadow-md [&>svg]:size-9 ' +
 			(box.light ? 'bg-white text-black' : 'bg-black text-white');
 		if (boxAction(box, 'disc')) wrap.className += ' cursor-pointer';
 		wrap.setAttribute('aria-hidden', 'true');
@@ -889,8 +915,9 @@
 
 		// Where the picked town has a pin of its own, that pin carries its box (see
 		// markerElement), so the layer must not stand a second one on the same point. Only
-		// the box is ever pinned: a disc is hung here whether or not a pin stands over its
-		// town, since a pin grows upwards out of the point and the disc hangs below it.
+		// the box is ever pinned: a disc is drawn here whether or not a pin stands on its
+		// town, the two being concentric marks of different sizes (see discElement) rather
+		// than one over and one under the point.
 		const pinned = pinnedIds();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
@@ -1228,10 +1255,12 @@
 		});
 
 		// The pane the festa boxes hang in (see BOX_PANE), made before anything is added to
-		// it. Under the region pins (600) rather than over them: the box is hung clear of
-		// its own town's pin, but a box is 80px tall and the map is dense, so where one does
-		// reach a neighbour's pin the pin is the thing that must not be covered — a box
-		// gives up its corner instead.
+		// it. Under the region pins (600) rather than over them: the map is dense and these
+		// marks are large, so where one reaches a pin the pin is the thing that must not be
+		// covered — a box gives up its corner instead. Now that both a pin and a town's own
+		// mark take the point by their centre, that is no longer only about neighbours: a
+		// town's disc and its pin are concentric, and this is what decides which of the two
+		// is read.
 		mapInstance.createPane(BOX_PANE).style.zIndex = '590';
 
 		// Not passive: the handler's first act is to refuse the page the scroll.
