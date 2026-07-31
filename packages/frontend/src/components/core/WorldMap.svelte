@@ -71,11 +71,12 @@
 		markerLevels?: MapMarker[][] | null;
 		/**
 		 * Booster boxes stood on individual points (the festa-major towns the booster
-		 * window reaches), hung under the same points the region pins stand on — a town
-		 * keeps its pin and gets a box. How one is marked is the reader's pick and not the
-		 * zoom (see markKindForBox): the picked town's box is drawn whole, every other
-		 * town is a disc of the box's own stock. The tier only says whether towns are
-		 * marked at all — every tier but the coarsest (see marksTowns).
+		 * window reaches) — a town keeps its pin and gets a box, drawn as one more block of
+		 * that pin's column where it has one, and on the point itself where the tier gave
+		 * it none. How one is marked is the reader's pick and not the zoom (see
+		 * markKindForBox): the picked town's box is drawn whole, every other town is a disc
+		 * of the box's own stock. The tier only says whether towns are marked at all —
+		 * every tier but the coarsest (see marksTowns).
 		 */
 		boxes?: MapBoosterBox[];
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
@@ -516,26 +517,33 @@
 			wrap.appendChild(frame);
 		}
 
-		// The town's booster box, where the window has one for this place, this is the town
-		// the reader picked, and the tier on screen marks towns at all (see boxForMarker).
-		// It stands INSIDE the pin rather than under the point, above whatever the pin ends
-		// with: a box is what the town is offering and the siege bar is what may be done
-		// about the town, and the offer is read before the demand. Which also keeps one
-		// object one object — the box and the plate naming the place it belongs to are the
-		// same mark on the map, and the reader never has to decide whether the box under
-		// the point belongs to this pin or the next one.
+		// What the town is offering, where the booster window has anything for this place and
+		// the tier on screen marks towns at all (see boxForMarker) — the box on the town the
+		// reader picked, the disc on every other. Either way it stands INSIDE the pin, as one
+		// more block of the column, above whatever the pin ends with: a box is what the town
+		// is offering and the siege bar is what may be done about the town, and the offer is
+		// read before the demand.
 		//
-		// Its click is the box's own (the pack), not the pin's (the region), so the pin's
-		// marker must not see it — the same guard the challenge bar takes, for the same
-		// reason. Every town the reader has NOT picked leaves this alone: its box is a disc,
-		// and a disc is hung on the point by the box layer whether or not the town has a pin
-		// standing over it.
+		// In the pin, and not hung on the point by the box layer. The layer hangs a mark on a
+		// point by its own centre, which is where the pin now stands too (see classNamesFor),
+		// so a town with both had its plate lying across its disc — two marks about one town,
+		// the same size, in the same place, the upper pane deciding which of them a reader
+		// ever saw. Stacked in the column they are the same two marks in the order they are
+		// read in, which is what a column is for. The box layer keeps the towns this tier
+		// gave no pin to (see rebuildBoxes); a town with a pin carries its own mark.
+		//
+		// Its click is the mark's own — the pack behind a box, the town behind a disc (see
+		// boxAction) — and not the pin's (the region), so the pin's marker must not see it:
+		// the same guard the challenge bar takes, for the same reason.
 		const boosterBox = boxForMarker(marker);
 		if (boosterBox) {
-			const holder = boxElement(boosterBox, 'pin');
+			const kind = markKindForBox(boosterBox);
+			const holder =
+				kind === 'box' ? boxElement(boosterBox, 'pin') : discElement(boosterBox, 'pin');
 			Leaf!.DomEvent.disableClickPropagation(holder);
 			Leaf!.DomEvent.disableScrollPropagation(holder);
-			if (boosterBox.onClick) holder.addEventListener('click', () => boosterBox.onClick!());
+			const action = boxAction(boosterBox, kind);
+			if (action) holder.addEventListener('click', () => action());
 			wrap.appendChild(holder);
 		}
 
@@ -575,8 +583,10 @@
 	// the mark rather than below its bottom edge.
 	//
 	// Which spends the room under the point that the marks hung there (a disc, a box) used
-	// to have to themselves — so those are centred on the point too and share this centre
-	// rather than sitting below it (see discElement and boxElement).
+	// to have to themselves. So a town with a pin no longer hangs one: the pin carries its
+	// mark as a block of this column (see markerElement), and only the towns this tier left
+	// unpinned still take the point directly — by their own centre, the same way the pin
+	// does (see discElement and boxElement).
 	//
 	// The fade for a pin outside the selected area is NOT here: an
 	// opacity on the wrapper groups everything under it, and no child can win its way back
@@ -797,16 +807,16 @@
 		return wrap;
 	}
 
-	// The box this pin's town has waiting drawn WHOLE, or null — which asks three things:
-	// that the tier on screen marks towns at all, that the marker's id is a municipality's
-	// (only the town tier's keys are, so no coarser pin can match a box), and that this is
-	// the town the reader picked. Every other town's box is a disc hung on its point by the
-	// box layer, so nothing is lost by the pin declining it. The pin carries it; see
-	// markerElement.
+	// The mark this pin's town has waiting, or null — which asks two things: that the tier
+	// on screen marks towns at all, and that the marker's id is a municipality's (only the
+	// town tier's keys are, so no coarser pin can match a box). Which of the two marks it
+	// comes out as is markKindForBox's to say, not this one's: a pin carries whatever its
+	// town has, whole or folded, and it used to take only the picked town's box because
+	// there was somewhere else for a disc to go. There is not — the point under the pin is
+	// the pin's own middle now (see markerElement).
 	function boxForMarker(marker: MapMarker): MapBoosterBox | null {
 		if (!marksTowns()) return null;
-		const box = boxes.find((entry) => entry.id === marker.id) ?? null;
-		return box?.selected ? box : null;
+		return boxes.find((entry) => entry.id === marker.id) ?? null;
 	}
 
 	// The ids the tier on screen draws a pin for. The picked town's pin carries its own box,
@@ -847,16 +857,22 @@
 	// Decorative either way: the mark is what is being looked at, and nothing here is
 	// named in text for it to read twice.
 	//
-	// It takes the point by its own centre, which is the rule every mark on a town now
-	// follows (see classNamesFor). It used to hang just below the point, which was room a
-	// pin left free by growing upwards out of it — now that a pin is centred on its point
-	// too, a disc sitting below one would have the town's own pin lying across its top half.
-	// Concentric instead: the pin and the disc are the same town, and one centre is what
-	// says so.
-	function discElement(box: MapBoosterBox): HTMLElement {
+	// Where it is drawn places it, exactly as it does the box (see boxElement), and for the
+	// same reason — the two are one mark at two sizes and are placed by one rule:
+	//
+	// - `'pin'` — a block of the town's own pin, under the plate naming the place, needing
+	//   only the gap the pin's other parts take. This is every festa town the tier gives a
+	//   pin to, which is most of them: the disc used to be hung on the point instead, back
+	//   when a pin grew upwards and left that room free. It no longer does (see
+	//   classNamesFor), and a 56px disc centred on the same point as a 56px plate is one
+	//   mark hidden behind another rather than two marks about one town.
+	// - `'point'` — the box layer's own marker, centred on the point by its own middle, for
+	//   the towns this tier drew no pin for at all.
+	function discElement(box: MapBoosterBox, into: 'pin' | 'point'): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className =
-			'flex size-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full shadow-md [&>svg]:size-9 ' +
+			'flex size-14 items-center justify-center rounded-full shadow-md [&>svg]:size-9 ' +
+			(into === 'pin' ? 'mt-1 flex-none ' : '-translate-x-1/2 -translate-y-1/2 ') +
 			(box.light ? 'bg-white text-black' : 'bg-black text-white');
 		if (boxAction(box, 'disc')) wrap.className += ' cursor-pointer';
 		wrap.setAttribute('aria-hidden', 'true');
@@ -913,19 +929,20 @@
 
 		if (!marksTowns()) return;
 
-		// Where the picked town has a pin of its own, that pin carries its box (see
-		// markerElement), so the layer must not stand a second one on the same point. Only
-		// the box is ever pinned: a disc is drawn here whether or not a pin stands on its
-		// town, the two being concentric marks of different sizes (see discElement) rather
-		// than one over and one under the point.
+		// A town with a pin carries its own mark inside it, whichever of the two it is (see
+		// markerElement), so the layer must not put a second one on the same point — which
+		// with both centred on that point is not a mark beside a mark but one on top of the
+		// other. So this draws the towns the tier left unpinned, and only those: at the town
+		// tier that is none of them, and above it, the picked town whose box has no pin to
+		// stand in.
 		const pinned = pinnedIds();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
 		for (const box of boxes) {
+			if (pinned.has(box.id)) continue;
 			const kind = markKindForBox(box);
-			if (kind === 'box' && pinned.has(box.id)) continue;
 			if (!bounds.contains(box.position)) continue;
-			const html = kind === 'box' ? boxElement(box, 'point') : discElement(box);
+			const html = kind === 'box' ? boxElement(box, 'point') : discElement(box, 'point');
 			const icon = Leaf.divIcon({ html, className: '', iconSize: [0, 0] });
 			const badge = Leaf.marker(box.position, { icon, riseOnHover: true, pane: BOX_PANE });
 			// No tooltip: the box already carries the town's name across its foot, and a
@@ -1257,10 +1274,9 @@
 		// The pane the festa boxes hang in (see BOX_PANE), made before anything is added to
 		// it. Under the region pins (600) rather than over them: the map is dense and these
 		// marks are large, so where one reaches a pin the pin is the thing that must not be
-		// covered — a box gives up its corner instead. Now that both a pin and a town's own
-		// mark take the point by their centre, that is no longer only about neighbours: a
-		// town's disc and its pin are concentric, and this is what decides which of the two
-		// is read.
+		// covered — a box gives up its corner instead. Only ever a NEIGHBOUR's pin, mind: a
+		// town's own mark is inside its pin (see markerElement) and nothing here stands on a
+		// point a pin already has.
 		mapInstance.createPane(BOX_PANE).style.zIndex = '590';
 
 		// Not passive: the handler's first act is to refuse the page the scroll.
