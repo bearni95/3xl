@@ -19,7 +19,7 @@ packages/
 ├── backend/   (@3xl/backend)    Express authoring API (port 2002)
 ├── shared/    (@3xl/shared)     framework-agnostic types + utils + adapters (TS source)
 ├── mugen/     (@3xl/mugen)      MUGEN import/assembly scripts (write assets + data)
-├── assets/    (@3xl/assets)     generated sprite frames + manifests + auras (public/)
+├── assets/    (@3xl/assets)     generated sprite frames + manifests + auras + icons/music/font (public/)
 └── data/      (@3xl/data)       character registry module + JSON definitions + movesets + geo
 ```
 
@@ -88,6 +88,17 @@ glob deliberately takes only the show set. The admin's achievement editor is the
 place a game-icons glyph is shown *outside* a canvas — it stays an `<img>` by URL and
 is always given a dark tile to stand on (`GameIcon.svelte`), because the white it
 carries is the canvas's requirement and is not negotiable from a page.
+
+**The typeface.** The game is set in **Determination**, vendored like the icons and the
+songs: `@3xl/assets`' `public/fonts/determination/`, keeping the archive's `readme.txt`
+and `license.txt` beside the file, which is what its CC-BY terms ask of anyone
+redistributing it. The frontend declares it once — an `@font-face` in `css/app.css`
+pointing at `/assets/fonts/…`, and `--font-sans` / `--font-serif` / `--font-mono` in the
+`@theme` block all named after it. Tailwind's preflight resolves `html`'s family through
+`--font-sans`, so every element inherits it and **no component ever names a font**; the
+three tokens rather than one mean a stray `font-mono` cannot land outside the typeface
+either. Nothing is fetched from a font host at run time. Canvas text is the exception
+that CSS cannot reach — a Pixi `TextStyle` names its own `fontFamily` and is unaffected.
 
 **Do not hand-edit generated files** (`registry.generated.ts`, `manifest.json`,
 `mugen-moves.json`, `public/geo/*.json`, `public/icons/shows/*`) or decoded assets —
