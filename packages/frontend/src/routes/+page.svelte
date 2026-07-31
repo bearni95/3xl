@@ -1058,7 +1058,46 @@
 	// The town is the fight's own and never the open region: a battle resumed on the next
 	// visit puts the reader back in front of a fight without the map having opened anything
 	// (see resumeBattle), and it is that town the arena is about.
-	$: spotlitId = fightOpen ? fightLocationId : null;
+	let spotlitId: string | null = null;
+	let spotlightExit: ReturnType<typeof setTimeout> | null = null;
+
+	// How long the arena takes to leave — FullScreenModal's own slide-out (`fly`, 250ms).
+	// Written here as well because a page cannot ask a sheet how long it takes to go; keep
+	// the two in step, and both in step with the blur above.
+	const SHEET_EXIT = 250;
+
+	/**
+	 * Raise the spotlight with the fight, and lower it once the arena has finished leaving.
+	 *
+	 * The delay on the way out is the coordination, not a pause: the map's furniture comes
+	 * back into focus on the sheet's UNMOUNT, which is after its slide-out has played (see
+	 * `$fullScreenModalOpen` and CHROME_BLUR), so a spotlight lowered the moment Close was
+	 * pressed would have the black clearing and the town letting go of its wash while the
+	 * arena was still on its way down — the two halves of one gesture playing a quarter of a
+	 * second apart. Held for that quarter second, everything the map does happens at once:
+	 * the sheet goes, and behind it the black fades out, the wash comes back to where it was
+	 * and the pins sharpen, over the same 250ms.
+	 *
+	 * On the way in there is nothing to hold: raising the sheet and raising the spotlight are
+	 * the same tick.
+	 */
+	function holdSpotlight(open: boolean, townId: string | null): void {
+		if (spotlightExit) {
+			clearTimeout(spotlightExit);
+			spotlightExit = null;
+		}
+		if (open) {
+			spotlitId = townId;
+			return;
+		}
+		if (spotlitId == null) return;
+		spotlightExit = setTimeout(() => {
+			spotlitId = null;
+			spotlightExit = null;
+		}, SHEET_EXIT);
+	}
+
+	$: holdSpotlight(fightOpen, fightLocationId);
 
 	// That town as the shape the map draws it with — the polygon the framing fits and the
 	// mask is cut around. Null until the geometry has landed, which leaves the map as it is

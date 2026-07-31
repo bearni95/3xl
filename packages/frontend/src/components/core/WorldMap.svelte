@@ -491,9 +491,24 @@
 	// one part of it that did not play.
 	const MASK_FADE_MS = 250;
 
-	// What the cover is: black, opaque, and no line at all. A stroke on it would be a border
-	// drawn around the spotlit shape at the very moment the map has done away with borders.
-	const MASK_STYLE = { color: '#000', fillColor: '#000', fillOpacity: 1, stroke: false };
+	// Carried by every polygon on the map: its fill and its stroke are eased over the same
+	// 250ms the furniture blurs over, so a repaint is a change the map is seen making rather
+	// than a different map. That is what a spotlight is drawn out of on both sides — the town
+	// taking its 80% wash and every border going, and both coming back when the fight leaves —
+	// and, being the polygons' own paint and not the spotlight's, it is as true of a tier
+	// giving way to the next as the zoom walks in.
+	//
+	// The two properties are named rather than `transition-all`: a Leaflet path's `d` is
+	// rewritten on every pan and zoom, and a browser that eases `d` (they do) would draw the
+	// whole map a quarter of a second behind the hand moving it.
+	const PATH_CLASSES = 'transition-[fill-opacity,stroke-opacity] duration-[250ms] ease-in-out';
+
+	// What the cover is: black at nine parts in ten, and no line at all. Not the full ten,
+	// so the terrain is still faintly there under it — what is covered is put out of the
+	// reading rather than taken off the map, which is the same thing the blur does to the
+	// furniture. A stroke on it would be a border drawn around the spotlit shape at the very
+	// moment the map has done away with borders.
+	const MASK_STYLE = { color: '#000', fillColor: '#000', fillOpacity: 0.9, stroke: false };
 
 	// The ring the cover starts from: the whole of the projected world, which the renderer
 	// clips to the canvas before it draws it, so the map may be panned anywhere behind the
@@ -2588,7 +2603,13 @@
 			// A `properties.id → layer` lookup for this overlay, populated below when
 			// the overlay has a hoverStyle so pins can highlight their region.
 			const byId = new Map<string, L.Path>();
-			const layerGroup = Leaf!.geoJSON(datasets[index], {
+			// A path's options and a collection's, in one object on purpose: a GeoJSON layer
+			// hands ITS options to every shape it makes, and Leaflet puts `className` on the
+			// path it draws — which is how one class reaches every polygon of every tier (see
+			// PATH_CLASSES), written once here. The types keep the two families apart, since
+			// nothing else is passed down like this.
+			const layerOptions: L.GeoJSONOptions & L.PathOptions = {
+				className: PATH_CLASSES,
 				interactive: overlay.interactive ?? true,
 				// Read the overlay back out of the live prop by its position rather than
 				// closing over the one mounted with, so a repaint picks up the styles the
@@ -2619,7 +2640,8 @@
 
 					layer.on('click', () => overlay.onClick?.(feature));
 				}
-			}).addTo(mapInstance!);
+			};
+			const layerGroup = Leaf!.geoJSON(datasets[index], layerOptions).addTo(mapInstance!);
 			overlayGroups.push(layerGroup);
 			if (overlay.hoverStyle) {
 				hoverLayers.push({ group: layerGroup, hoverStyle: overlay.hoverStyle, byId });
