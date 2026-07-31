@@ -2344,7 +2344,14 @@
 						is the panel's surface at 80%, so terrain reads through the path, and this one is
 						the theme's primary at full strength. A path is a thing being looked through to
 						the map under it; a name is not, and there is nothing behind this plate worth
-						seeing. -->
+						seeing.
+
+						The same badge is the tab's mark (see static/favicon.ico and the link in
+						app.html), and it is drawn differently there on purpose: an icon is a square with
+						room round the word, because that is the box a browser gives it. This is a bar in
+						a row of bars — as tall as the path beside it, as wide as the word makes it, and
+						inset by the row's own `px-3`. Neither shape should be made to answer for the
+						other. -->
 					<div
 						class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
 					>
@@ -2368,68 +2375,6 @@
 							<span class="relative">6xl</span>
 						</span>
 					</div>
-
-					<!-- The same plate again, drawn as one SVG instead of out of boxes — the plate above
-						said a second way, and standing next to it so the two can be read against each
-						other.
-
-						It is inline SVG and not an `<img>`, which is the whole reason it can be the same
-						thing: markup in the document inherits from the document, so `font-display` and
-						`text-2xl` on the root resolve to the very same Bungee at the very same 24px the
-						boxes are set in, and `fill-primary` / `fill-base-100` resolve through the same
-						theme tokens as the `bg-` and `text-` utilities beside them. Nothing here spells a
-						colour or a family; an `<img>` would have had to spell both.
-
-						The plate is a square, and the square is the word plus the padding the boxes give
-						theirs: 78 on a side. "6xl" advances 2125/1000 em in Bungee — 51px at this 24px —
-						and the shadow copy carries it 3px further, so 54 is the width of everything drawn
-						here; 12 either side of that is `px-3`, the same inset the plate beside it sets its
-						word in by, and 54 + 24 is the side. Only the horizontal padding is chosen — a
-						square's other two sides are then whatever is left over, and there is more of it,
-						the word being far wider than it is tall.
-						Which is why this one does not stretch with the row the way the plate beside it does
-						— a square that took the row's height would be as wide as the row is tall, and the
-						bar is not as tall as this word is wide. It sits centred in the row instead.
-
-						The two copies are centred as a pair rather than each on the middle: the word is
-						pulled 1.5px back and the shadow pushed 1.5px on, which is the 3px between them
-						split, so what is centred in the square is the mark and not either copy of it. The
-						radius is still the boxes': `rounded-lg` is 8px, so `rx` is 8.
-
-						`dominant-baseline="central"` is what puts the baseline where the boxes put it —
-						it sets the midpoint between ascender and descender on the centre line, which for
-						Bungee's 1020/-300 is 8.64px above the baseline at this size, exactly the offset a
-						centred `leading-none` line box arrives at. So the two words sit level.
-
-						The shadow is the same copy-then-word, and simpler here: SVG paints in document
-						order, so the offset copy first and the word after it needs no positioning at all.
-						`drop-shadow-xl` stands in for the plate's `shadow-xl` — a filter on the artwork
-						rather than a box shadow, since the rect is not a box, and the nearest of the two
-						the utilities offer. Hidden from a reader, which has been told this word already. -->
-					<svg
-						class="font-display pointer-events-auto size-[78px] flex-none self-center text-2xl drop-shadow-xl"
-						aria-hidden="true"
-					>
-						<rect x="0" y="0" width="100%" height="100%" rx="8" class="fill-primary" />
-						<text
-							x="50%"
-							y="50%"
-							dx="1.5"
-							dy="1.5"
-							text-anchor="middle"
-							dominant-baseline="central"
-							class="fill-base-100">6xl</text
-						>
-						<text
-							x="50%"
-							y="50%"
-							dx="-1.5"
-							dy="-1.5"
-							text-anchor="middle"
-							dominant-baseline="central"
-							class="fill-white">6xl</text
-						>
-					</svg>
 
 					<MapBreadcrumbs
 						{crumbs}
