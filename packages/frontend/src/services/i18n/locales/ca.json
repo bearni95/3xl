@@ -99,7 +99,9 @@
 		"title": "Col·lecció",
 		"close": "Tanca la col·lecció",
 		"loading": "Carregant la col·lecció…",
-		"empty": "Encara no hi ha cap sèrie amb personatges assignats."
+		"empty": "Encara no hi ha cap sèrie amb personatges assignats.",
+		"filterByShow": "Filtra per sèrie",
+		"filterByThisShow": "Filtra per {show}"
 	},
 	"roster": {
 		"title": "Equip",

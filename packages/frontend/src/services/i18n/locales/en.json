@@ -99,7 +99,9 @@
 		"title": "Collection",
 		"close": "Close the collection",
 		"loading": "Loading the collection…",
-		"empty": "No show has characters assigned to it yet."
+		"empty": "No show has characters assigned to it yet.",
+		"filterByShow": "Filter by show",
+		"filterByThisShow": "Filter by {show}"
 	},
 	"roster": {
 		"title": "Team",

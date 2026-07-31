@@ -101,6 +101,30 @@
 		return [...byShow.values()].sort((a, b) => a.name.localeCompare(b.name));
 	})(characterShows);
 
+	// --- The show filter ------------------------------------------------------------------
+	// Which show the grid is narrowed to, or ANY for the whole set. Same gesture as the
+	// roster's own chips: press a show to filter to it, press it again to let go — which is
+	// the only way back to every show, there being no option that says so.
+	const ANY = '' as const;
+	let filterShow: number | typeof ANY = ANY;
+
+	function toggleShowFilter(showId: number): void {
+		filterShow = filterShow === showId ? ANY : showId;
+	}
+
+	/** One show's chip in the column, ringed while it is the one being filtered on. The band
+	 * under it is the statue's — a show's lettering is drawn to sit on something dark, and the
+	 * panel it sits on there is what makes it readable here too. Unringed is the only thing
+	 * that says a chip is not the one picked: a wordmark held at less than full strength is a
+	 * wordmark drawn wrong. */
+	function showChipClasses(showId: number, active: number | typeof ANY): string {
+		return classNames(
+			'flex h-10 flex-none items-center justify-center overflow-hidden rounded-md bg-black/40 px-1 transition',
+			'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+			{ 'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': active === showId }
+		);
+	}
+
 	// Every pair the player holds a copy of, as `character|show`. A card that does not say
 	// which show it came out of — one rolled across all of them — is a copy of that character
 	// and nothing more, so it is recorded under `*` and stands for them wherever they are cast
@@ -120,20 +144,27 @@
 	//
 	// Answered here rather than by a helper the markup calls, because a call in the template
 	// names only the function — the cards arriving after the mount would have changed nothing on
-	// screen. Both the rows and the holdings are named as arguments for the same reason.
+	// screen. The rows, the holdings and the filter are all named as arguments for the same
+	// reason.
+	//
+	// A show picked in the column drops every cell that is not of it, which is also what keeps
+	// the sheet cheap: a filtered album stands up one show's cast rather than the whole set.
 	$: albumCells = ((
 		rows: { id: number; name: string; cast: CharacterOption[] }[],
-		held: Set<string>
+		held: Set<string>,
+		show: number | typeof ANY
 	) =>
-		rows.flatMap((row) =>
-			row.cast.map((character) => ({
-				// A character cast in two shows has a cell in each, so the pair is what keys one.
-				key: `${row.id}|${character.id}`,
-				showId: row.id,
-				character,
-				owned: held.has(`${character.id}|${row.id}`) || held.has(`${character.id}|*`)
-			}))
-		))(showRows, ownedPairs);
+		rows
+			.filter((row) => show === ANY || row.id === show)
+			.flatMap((row) =>
+				row.cast.map((character) => ({
+					// A character cast in two shows has a cell in each, so the pair keys one.
+					key: `${row.id}|${character.id}`,
+					showId: row.id,
+					character,
+					owned: held.has(`${character.id}|${row.id}`) || held.has(`${character.id}|*`)
+				}))
+			))(showRows, ownedPairs, filterShow);
 </script>
 
 <!-- The sheet, the slide, the title bar and Escape are the modal's; the album is what is put
@@ -151,22 +182,35 @@
 				<span class="loading loading-spinner loading-xs"></span>
 				{$_('collection.loading')}
 			</div>
-		{:else if albumCells.length === 0}
+		{:else if showRows.length === 0}
 			<p class="text-sm opacity-60">{$_('collection.empty')}</p>
 		{:else}
-			<!-- The shows down the left, the whole set to the right of them: the column says which
-				shows the game has, and the grid beside it is every card there is, five across. -->
-			<div class="flex min-h-0 flex-1 items-start gap-4">
+			<!-- The shows down the left, the set to the right of them. The row takes the height the
+				sheet leaves and its two halves take that height with it — no `items-start`, which
+				had let each of them stand at whatever its content came to: a grid as tall as its
+				cards has nothing to scroll, and the sheet clipping it is what a player reads as the
+				album simply stopping partway down. -->
+			<div class="flex min-h-0 flex-1 gap-4">
 				<!-- The shows say themselves the way they do in the roster's filter: their own
-					lettering, one to a row, on the band that lettering is drawn to sit on. A show
-					whose logo is not enabled yet falls back to its name, so the column still names
-					it. Its own scroll box, so a long list of shows never takes the sheet's height
-					off the grid it stands beside. -->
-				<div class="flex max-h-full w-24 flex-none flex-col gap-2 overflow-y-auto sm:w-32">
+					lettering, one to a row, on the band that lettering is drawn to sit on, and each
+					of them the way into its own cast — pressed to narrow the grid to that show,
+					pressed again to let go. A show whose logo is not enabled yet falls back to its
+					name, so the column still names it and can still be filtered by. Its own scroll
+					box, so a long list of shows never takes the sheet's height off the grid it
+					stands beside. -->
+				<div
+					class="flex w-24 flex-none flex-col gap-2 overflow-y-auto sm:w-32"
+					role="group"
+					aria-label={$_('collection.filterByShow')}
+				>
 					{#each showRows as show (show.id)}
-						<div
-							class="flex h-10 flex-none items-center justify-center overflow-hidden rounded-md bg-black/40 px-1"
+						<button
+							type="button"
+							class={showChipClasses(show.id, filterShow)}
 							title={show.name}
+							aria-label={$_('collection.filterByThisShow', { values: { show: show.name } })}
+							aria-pressed={filterShow === show.id}
+							on:click={() => toggleShowFilter(show.id)}
 						>
 							{#if $showLogos.get(show.id)}
 								<img
@@ -177,7 +221,7 @@
 							{:else}
 								<span class="truncate text-xs text-white/80">{show.name}</span>
 							{/if}
-						</div>
+						</button>
 					{/each}
 				</div>
 
@@ -185,15 +229,22 @@
 					show's whole cast before the next show's, and a card the player holds no copy of
 					standing at half strength — the cell is there either way, since the album is the
 					set and not the shelf. It is this grid that scrolls, so the column of shows keeps
-					its place beside it. -->
-				<div class={classNames('grid min-h-0 min-w-0 flex-1 content-start gap-2 overflow-y-auto', STATUE_GRID)}>
+					its place beside it.
+					The statues are veiled like every other surface's: the veil is what stands in the
+					card while the frames are on their way, and taking it off left the cell blank
+					until the whole clip had arrived. -->
+				<div
+					class={classNames(
+						'grid min-h-0 min-w-0 flex-1 content-start gap-2 overflow-y-auto',
+						STATUE_GRID
+					)}
+				>
 					{#each albumCells as cell (cell.key)}
 						<div class={classNames({ 'opacity-50': !cell.owned })}>
 							<CharacterStatue
 								label={cell.character.label}
 								basePath={cell.character.basePath}
 								showId={cell.showId}
-								veiled={false}
 							/>
 						</div>
 					{/each}
