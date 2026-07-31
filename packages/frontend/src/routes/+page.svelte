@@ -2380,14 +2380,19 @@
 						theme tokens as the `bg-` and `text-` utilities beside them. Nothing here spells a
 						colour or a family; an `<img>` would have had to spell both.
 
-						The dimensions are the boxes', worked out rather than guessed: `rounded-lg` is
-						8px, so `rx` is 8; `px-3` is the 12 the word starts at; and 75 is that padding
-						either side of the word's own width — "6xl" advances 2125/1000 em in Bungee, which
-						at 24px is exactly 51. Width is the one measurement an SVG cannot take from the
-						text the way a box does, so it is the one number written down, and it is the only
-						thing here that would be wrong if the face were swapped. The height is not written
-						down at all: the wrapper stretches with the row like the plate above it, and the
-						rect fills it.
+						The plate is a square, and the square is the word's own size: 54 on a side. "6xl"
+						advances 2125/1000 em in Bungee — 51px at this 24px — and the shadow copy carries it
+						3px further, so 54 is the width of everything drawn here and the square is that
+						width taken for both sides. Tight, then: the word touches the left and right edges,
+						and what room there is above and below it is only the room a square has to have.
+						Which is why this one does not stretch with the row the way the plate beside it does
+						— a square that took the row's height would be as wide as the row is tall, and the
+						bar is not as tall as this word is wide. It sits centred in the row instead.
+
+						The two copies are centred as a pair rather than each on the middle: the word is
+						pulled 1.5px back and the shadow pushed 1.5px on, which is the 3px between them
+						split, so what is centred in the square is the mark and not either copy of it. The
+						radius is still the boxes': `rounded-lg` is 8px, so `rx` is 8.
 
 						`dominant-baseline="central"` is what puts the baseline where the boxes put it —
 						it sets the midpoint between ascender and descender on the centre line, which for
@@ -2399,13 +2404,30 @@
 						`drop-shadow-xl` stands in for the plate's `shadow-xl` — a filter on the artwork
 						rather than a box shadow, since the rect is not a box, and the nearest of the two
 						the utilities offer. Hidden from a reader, which has been told this word already. -->
-					<div class="pointer-events-auto w-[75px] flex-none self-stretch" aria-hidden="true">
-						<svg class="font-display h-full w-full text-2xl drop-shadow-xl">
-							<rect x="0" y="0" width="100%" height="100%" rx="8" class="fill-primary" />
-							<text x="15" y="50%" dy="3" dominant-baseline="central" class="fill-base-100">6xl</text>
-							<text x="12" y="50%" dominant-baseline="central" class="fill-white">6xl</text>
-						</svg>
-					</div>
+					<svg
+						class="font-display pointer-events-auto size-[54px] flex-none self-center text-2xl drop-shadow-xl"
+						aria-hidden="true"
+					>
+						<rect x="0" y="0" width="100%" height="100%" rx="8" class="fill-primary" />
+						<text
+							x="50%"
+							y="50%"
+							dx="1.5"
+							dy="1.5"
+							text-anchor="middle"
+							dominant-baseline="central"
+							class="fill-base-100">6xl</text
+						>
+						<text
+							x="50%"
+							y="50%"
+							dx="-1.5"
+							dy="-1.5"
+							text-anchor="middle"
+							dominant-baseline="central"
+							class="fill-white">6xl</text
+						>
+					</svg>
 
 					<MapBreadcrumbs
 						{crumbs}
