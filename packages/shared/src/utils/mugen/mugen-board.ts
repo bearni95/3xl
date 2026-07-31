@@ -258,7 +258,7 @@ function crownCorrection(frames: LoadedFrame[], scale: number, flip: boolean): n
 	return (flip ? 1 : -1) * (best.crown.x - axis) * scale;
 }
 
-/** Canvas hex for each combat colour, for tinting callouts and slashes. */
+/** Canvas hex for each combat colour, for tinting callouts, guards and sparks. */
 const COMBAT_COLOR_HEX: Record<string, number> = {
 	red: 0xef4444,
 	blue: 0x3b82f6,
@@ -348,8 +348,32 @@ const GIFT_DOT_RING = 2;
  */
 const ICON_RASTER_PX = 256;
 
-/** Lifetime of a strike slash overlay (ms). */
-const SLASH_MS = 420;
+// --- The sparks that rain over a fighter a blow got through to ---
+// The same particles a guard throws, and deliberately so: what a shield does to a blow and
+// what a blow does to a fighter it gets past are the same event seen from the two ends of
+// it, so they are one thing on the canvas — sparks in the attacker's colour — and what
+// tells them apart is where they are and which way they go. Off a guard they leave the arc
+// and fly back at whoever swung; here nothing turned the blow, so they fall over the
+// fighter that took it.
+//
+// It was two bold strokes crossing at the fighter's middle, an X, which was a mark ABOUT
+// the hit rather than the hit happening: a shape that was never on the board a moment
+// earlier and reads as annotation, drawn at the one instant the picture had least need of
+// being told anything (a fighter is visibly reeling and going down).
+/** How many fall over a struck fighter. */
+const HIT_SPARKS = 90;
+/** How far over its head the shower starts and how deep that band is, as fractions of the
+ * fighter's own height — a band and not a line, so the rain comes down over a stretch of
+ * time rather than as one curtain dropping. */
+const HIT_RAIN_LIFT = 0.25;
+const HIT_RAIN_BAND = 0.5;
+/** How wide the shower is against the fighter's own width. A little over it, so the rain
+ * falls past both shoulders rather than down a line through the middle. */
+const HIT_RAIN_WIDTH = 1.3;
+/** How fast one starts falling, in canvas px per second (gravity takes it from there), and
+ * how far it may drift to either side as it comes down. */
+const HIT_FALL_SPEED = 200;
+const HIT_DRIFT = 120;
 
 /** How far a cell's callout is lifted clear of the heads of whoever is standing in it,
  * in cells. Small: it is meant to sit just over the pair it is about. */
@@ -427,13 +451,6 @@ interface Aura {
 	/** How far into {@link AURA_RISE_MS} the flame is. It only ever counts up, and at
 	 * the end of it the aura is simply burning. */
 	rise: number;
-}
-
-/** A transient slash mark drawn over a struck fighter, in the attacker's colour.
- * It scales in and fades out over {@link SLASH_MS}, then removes itself. */
-interface SlashEffect {
-	graphics: Graphics;
-	elapsed: number;
 }
 
 /**
@@ -735,11 +752,10 @@ export class MugenBoard {
 	// instead of resurrecting a destroyed board.
 	private destroyed = false;
 	private actors: Actor[] = [];
-	/** Transient slash overlays, faded out each tick until they expire. */
-	private slashes: SlashEffect[] = [];
-	/** Sparks in the air off every guard on the board, flown and faded each tick until
-	 * they expire. One heap and not one per guard: a spark belongs to nobody once it has
-	 * been struck (see {@link Spark}). */
+	/** Every spark in the air — thrown off a guard, or raining over a fighter a blow got
+	 * through to — flown and faded each tick until they expire. One heap and not one per
+	 * guard or per hit: a spark belongs to nobody once it has been struck (see
+	 * {@link Spark}). */
 	private sparks: Spark[] = [];
 	/** The dot every one of them is drawn from, built on first use (see {@link sparkArt}). */
 	private sparkContext: GraphicsContext | null = null;
@@ -798,7 +814,7 @@ export class MugenBoard {
 			height,
 			backgroundAlpha: 0,
 			// On, for the drawn shapes: the marks' rounded corners, the guard rings
-			// and the slashes are all geometry with a curve or a diagonal in them, and with
+			// and the sparks are all geometry with a curve or a diagonal in them, and with
 			// this off every one of those edges is a staircase — which the scaling this canvas
 			// then goes through smears into a soft fringe rather than tidying up. It costs the
 			// characters nothing: a sprite is an axis-aligned quad, and how its artwork is
@@ -945,7 +961,6 @@ export class MugenBoard {
 			this.app = null;
 		}
 		this.actors = [];
-		this.slashes = [];
 		this.sparks = [];
 		// The one dot they were all drawn from goes with them — nothing else holds it, and a
 		// board built again builds its own.
@@ -1285,31 +1300,10 @@ export class MugenBoard {
 			this.updateOrders(actor);
 			this.updateLabel(actor);
 		}
-		this.updateSlashes(deltaMs);
 		// After the guards, since this is the tick they were struck on: a spark drawn where
 		// it was struck and moved on the next frame is one frame of a dot sitting on the arc.
 		this.updateSparks(deltaMs);
 	};
-
-	/** Advance every slash overlay: fade it out over its lifetime, then remove. */
-	private updateSlashes(deltaMs: number): void {
-		if (this.slashes.length === 0) return;
-		const remaining: SlashEffect[] = [];
-		for (const slash of this.slashes) {
-			slash.elapsed += deltaMs;
-			const t = slash.elapsed / SLASH_MS;
-			if (t >= 1) {
-				slash.graphics.parent?.removeChild(slash.graphics);
-				slash.graphics.destroy();
-				continue;
-			}
-			// Snap in, then fade: full opacity for the first third, easing to zero.
-			slash.graphics.alpha = t < 0.33 ? 1 : 1 - (t - 0.33) / 0.67;
-			slash.graphics.scale.set(0.85 + t * 0.3);
-			remaining.push(slash);
-		}
-		this.slashes = remaining;
-	}
 
 	/** Loop the actor's aura animation and keep it glued to the actor's feet,
 	 * just behind it in depth order — and, for its first moments, bring it up off
@@ -1889,8 +1883,11 @@ export class MugenBoard {
 		// its top, its foot and the side away from the blow, so the mark read; an arc has
 		// only the side the blow is on, and that is the side the attacker has just walked up
 		// and planted itself on, so the whole of it was under somebody else's sprite. A
-		// shield is between the fighter and what is coming at it either way.
-		ring.graphics.zIndex = actor.y + 5000;
+		// shield is between the fighter and what is coming at it either way. Just over the
+		// order buttons, which stand at 5000 and reach out to about where the arc's own ends
+		// come round to: a guard is something happening, a button is furniture, and the two
+		// left on the same number would have been settled by whichever was added first.
+		ring.graphics.zIndex = actor.y + 6000;
 		// Struck at a rate rather than per frame, so a board running at 120Hz throws the same
 		// sparks as one running at 60, and a frame the browser sat on throws the ones it owes.
 		ring.sinceSpark += deltaMs;
@@ -1938,9 +1935,8 @@ export class MugenBoard {
 			graphics.tint = ring.sparkColor;
 			graphics.x = ring.graphics.x + Math.cos(at) * radius;
 			graphics.y = ring.graphics.y + Math.sin(at) * radius;
-			// Over the fighters and their guards, under the slash a blow that got through
-			// draws: a spark is the blow being turned aside, so nothing it is coming off
-			// should be in front of it.
+			// Over the fighters and their guards: a spark is the blow being turned aside, so
+			// nothing it is coming off should be in front of it.
 			graphics.zIndex = actor.y + 10000;
 			this.app.stage.addChild(graphics);
 			this.sparks.push({
@@ -2112,41 +2108,39 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Flash a slash mark over a struck fighter in the attacker's `color`. Two bold
-	 * crossing strokes are drawn at the actor's mid-body; the effect scales in and
-	 * fades out on its own via the tick loop, so callers fire and forget.
+	 * Rain sparks over a fighter a blow got through to, in the attacker's `color` — the
+	 * same particles a guard throws off, coming down over the one that failed to stop it
+	 * (see {@link HIT_SPARKS} for why they are the same).
+	 *
+	 * They start over its head, across a little more than its own width and over a band of
+	 * heights rather than on one line, so the shower arrives over a stretch of time and not
+	 * as a curtain dropping; each falls, drifts and fades on its own from there
+	 * ({@link updateSparks}), so callers fire and forget exactly as they did with the mark
+	 * this replaced.
 	 */
-	showSlash(id: string, color: string): void {
+	showHit(id: string, color: string): void {
 		const actor = this.findActor(id);
 		if (!actor || !this.app) return;
-		const reach = Math.max(actor.displayWidth, actor.displayHeight) * 0.55;
 		const hex = combatColorHex(color);
-		const graphics = new Graphics();
-		// A slashing "X": two diagonal strokes, a dark backing under a bright core so
-		// the mark reads over any character.
-		const strokes: [number, number][][] = [
-			[
-				[-reach, -reach],
-				[reach, reach]
-			],
-			[
-				[reach, -reach],
-				[-reach, reach]
-			]
-		];
-		for (const [[x1, y1], [x2, y2]] of strokes) {
-			graphics.moveTo(x1, y1).lineTo(x2, y2);
+		const spread = (actor.displayWidth * HIT_RAIN_WIDTH) / 2;
+		// The actor's own y is the line it stands on, so its head is one height above that.
+		const head = actor.y - actor.displayHeight;
+		for (let i = 0; i < HIT_SPARKS; i++) {
+			const graphics = new Graphics(this.sparkArt());
+			graphics.tint = hex;
+			graphics.x = actor.x + (Math.random() * 2 - 1) * spread;
+			graphics.y =
+				head - actor.displayHeight * (HIT_RAIN_LIFT + Math.random() * HIT_RAIN_BAND);
+			// The same place a guard's sparks are drawn at: over every fighter on the board.
+			graphics.zIndex = actor.y + 10000;
+			this.app.stage.addChild(graphics);
+			this.sparks.push({
+				graphics,
+				vx: (Math.random() * 2 - 1) * HIT_DRIFT,
+				vy: HIT_FALL_SPEED * (0.4 + Math.random()),
+				elapsed: 0
+			});
 		}
-		graphics.stroke({ width: 12, color: 0x000000, alpha: 0.6, cap: 'round' });
-		for (const [[x1, y1], [x2, y2]] of strokes) {
-			graphics.moveTo(x1, y1).lineTo(x2, y2);
-		}
-		graphics.stroke({ width: 6, color: hex, cap: 'round' });
-		graphics.x = actor.x;
-		graphics.y = actor.y - actor.displayHeight * 0.5;
-		graphics.zIndex = actor.y + 20000; // above sprites, auras and labels
-		this.app.stage.addChild(graphics);
-		this.slashes.push({ graphics, elapsed: 0 });
 	}
 
 	/** Remove a character's callout, if it has one. */
@@ -2423,7 +2417,7 @@ export class MugenBoard {
 		const reach = actor.displayWidth / 2 + ORDER_GAP + width / 2;
 		strip.container.x = actor.x + (strip.side === 'left' ? -reach : reach);
 		strip.container.y = actor.y;
-		// Above the board and its own fighter, below the callouts and slashes.
+		// Above the board and its own fighter, below the callouts and the sparks.
 		strip.container.zIndex = actor.y + 5000;
 	}
 

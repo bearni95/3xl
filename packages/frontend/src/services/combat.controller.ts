@@ -892,10 +892,12 @@ export class CombatController {
 		} else {
 			target.down = true;
 			this.log.push(`${from} — ${target.name} is down.`);
-			// The slash is drawn in the colour of whoever's blow got through, and is all that
-			// is said about it: the cut, the fighter reeling and then falling out of the lane
+			// Sparks rain over it in the colour of whoever's blow got through, and are all that
+			// is said about it: the shower, the fighter reeling and then falling out of the lane
 			// are the hit — a word over the head of somebody visibly going down added nothing.
-			this.board?.showSlash(target.id, shooter.color);
+			// They are the very sparks a guard throws off, which is the point of them being
+			// sparks: the same blow, seen at the end where nothing turned it aside.
+			this.board?.showHit(target.id, shooter.color);
 			await this.board?.playHurt(target.id);
 			// The blow decided the lane, so the lane is walked out now — and the attacker
 			// stays where that leaves it rather than going home to a cell it has just won

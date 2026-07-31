@@ -118,9 +118,9 @@ function fakeBoard(log: AuraLog) {
 		},
 		clearAura: (id: string) => log.doused.push(id),
 		clearAuras: () => {},
-		// The slash over a fighter a blow got through — and the whole of what is said about
-		// it, since nothing in this fight is put into words on the board.
-		showSlash: () => {},
+		// The sparks raining over a fighter a blow got through — and the whole of what is
+		// said about it, since nothing in this fight is put into words on the board.
+		showHit: () => {},
 		playMove: done,
 		// The guard a braced fighter is stood in, the ring drawn round it as the blow it
 		// answers is thrown, the release of it once that blow is over, and the release of

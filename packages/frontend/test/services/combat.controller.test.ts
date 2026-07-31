@@ -518,7 +518,7 @@ describe('CombatController — what the board is left showing', () => {
 		expect(calls.findIndex((call) => call.method === 'meleeApproach')).toBeLessThan(
 			calls.findIndex((call) => call.method === 'playMove')
 		);
-		expect(calls.some((call) => call.method === 'showSlash')).toBe(false);
+		expect(calls.some((call) => call.method === 'showHit')).toBe(false);
 	});
 
 	it('leaves a covering fighter nobody shot at standing as it was', async () => {
