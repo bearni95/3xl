@@ -98,6 +98,17 @@ export const COMBAT_ACTIONS: CombatAction[] = ['charge', 'defend', 'shoot'];
 export const MAX_CHARGES = 1;
 
 /**
+ * How much heavier an order weighs in a rival's choice for being one its colour grants —
+ * see {@link CombatController.favours}. Double, which reads plainly at the table: over a
+ * fight a red rival fires about twice as often as it covers where it might have done
+ * either, and a blue one covers about twice as often as it fires. It is not so heavy that
+ * a colour becomes a script — the two lightest weights the fight uses (`[9, 7, 4]`) leave
+ * every order well inside reach whichever way it is doubled — because a rival that only
+ * ever did the one thing would be read once and beaten every turn after.
+ */
+export const RIVAL_FAVOUR = 2;
+
+/**
  * Turns before the stand-off is called. Two sides that only ever charge and defend
  * would circle forever, so the fight is decided on fighters left standing once the
  * clock runs out (an even count is a draw).
@@ -1077,6 +1088,14 @@ export class CombatController {
 	 * the charge pays for the gift the same turn), and a rival whose own colour owes it
 	 * a charge is loaded by covering, so it has no reason to stand open to load by hand.
 	 * Reading them is not choosing them — they still arrive off the order, for both sides.
+	 *
+	 * Its colour is also the whole of *how* it fights, and not only of what it is given:
+	 * where the choice is a weighted one, the orders its colour grants are the ones it
+	 * leans on ({@link RIVAL_FAVOUR}). A red rival is the one that fires, a blue one the
+	 * one that covers, a yellow one the one that keeps loading, and a compound leans two
+	 * ways of three — so a line of three colours plays three fights rather than the same
+	 * fight three times. It is a lean and not a rule: every order stays reachable, or a
+	 * blue rival with a charge in hand would never spend it.
 	 */
 	private planRivals(): void {
 		for (const rival of this.rivals()) {
@@ -1094,6 +1113,13 @@ export class CombatController {
 				continue;
 			}
 			const threatened = this.threatens(target);
+			// Every weighted choice below is this fighter's, not the rival side's: the
+			// weights are the same for everybody and its colour tilts them (see above).
+			const leans = (orders: CombatAction[], weights: number[]): CombatAction =>
+				pickWeighted(
+					orders,
+					orders.map((order, i) => weights[i] * this.favours(rival, order))
+				) ?? orders[0];
 			if (rival.charges < 1) {
 				// Covering is the timid choice — except for a fighter its colour still owes a
 				// charge, which is loaded by the turn it covers on. Under threat that beats
@@ -1101,16 +1127,15 @@ export class CombatController {
 				rival.action = threatened
 					? this.owes(rival, 'charge')
 						? 'defend'
-						: (pickWeighted(['charge', 'defend'], [3, 1]) ?? 'charge')
+						: leans(['charge', 'defend'], [3, 1])
 					: 'charge';
 			} else if (!threatened) {
 				rival.action = 'shoot';
 			} else if (rival.charges >= MAX_CHARGES) {
 				// Loading again would spill over the cap, so a full fighter only fires or covers.
-				rival.action = pickWeighted<CombatAction>(['shoot', 'defend'], [9, 7]) ?? 'shoot';
+				rival.action = leans(['shoot', 'defend'], [9, 7]);
 			} else {
-				rival.action =
-					pickWeighted<CombatAction>(['shoot', 'defend', 'charge'], [9, 7, 4]) ?? 'shoot';
+				rival.action = leans(['shoot', 'defend', 'charge'], [9, 7, 4]);
 			}
 		}
 	}
@@ -1296,6 +1321,26 @@ export class CombatController {
 	 */
 	private owes(fighter: Fighter, order: PassiveOrder): boolean {
 		return fighter.passives.includes(order) && !fighter.spent.includes(order);
+	}
+
+	/**
+	 * How hard this fighter's colour leans on `order`, as a multiplier on the weight that
+	 * order carries in a rival's choice ({@link planRivals}): {@link RIVAL_FAVOUR} for one
+	 * of the orders its colour grants, and 1 for anything else. A character's tactics are
+	 * therefore its colour's, the same one thing everything else about it comes from.
+	 *
+	 * With one exception, which is the same rule that governs the gift itself: while its
+	 * colour still *owes* it that order, the lean comes off. A gift is only ever a second
+	 * thing the fighter does, so ordering the very order it is about to be handed is how
+	 * it throws that gift away — a red rival that spends its opening turn shooting has
+	 * fired one shot where it could have fired two. So on the turn a lean would cost the
+	 * most it is not there, and from the turn the gift lapses it is (see
+	 * {@link lapsePassives}). Leaning is a preference, never a rule: the weight is tilted
+	 * and nothing is taken off the table.
+	 */
+	private favours(fighter: Fighter, order: CombatAction): number {
+		if (!fighter.passives.includes(order)) return 1;
+		return this.owes(fighter, order) ? 1 : RIVAL_FAVOUR;
 	}
 
 	/**

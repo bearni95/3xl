@@ -10,6 +10,7 @@ import {
 	type FighterView
 } from '$services/combat.controller';
 import type { CombatColor } from '$types/character-definition.type';
+import type { BattleBoardSnapshot } from '$types/battle.type';
 import type { Cell } from '$utils/mugen/grid';
 import type { MugenBoard } from '$utils/mugen/mugen-board';
 
@@ -259,6 +260,104 @@ describe('CombatController — giving the fight up', () => {
 		// A fight already over stays as it was called.
 		controller.concede();
 		expect(get(controller).outcome).toBe('lose');
+	});
+});
+
+describe('CombatController — the rivals fight the way their colour does', () => {
+	// These pin the rivals' weighted picks; nothing after them should inherit that.
+	afterEach(() => vi.restoreAllMocks());
+
+	/** The rivals' orders, which are public exactly while they are being carried out. */
+	const rivalOrders = (controller: CombatController): (CombatAction | null)[] =>
+		get(controller)
+			.fighters.filter((fighter) => fighter.side === 'error')
+			.map((fighter) => fighter.action);
+
+	const settle = async (controller: CombatController): Promise<void> => {
+		while (get(controller).phase === 'resolving') {
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		}
+	};
+
+	/**
+	 * What three rivals of `rivals` order on a turn where each is loaded, faces somebody
+	 * loaded, and is past its opening gift — the one standing where firing and covering
+	 * are both worth something, so the only thing left to tell the three apart is the
+	 * colour each of them is.
+	 *
+	 * Reached through a saved board rather than by playing two turns out, because the
+	 * fight has to arrive at that standing with all three rivals in the *same* state: a
+	 * red one and a blue one left to open the fight themselves would be somewhere else
+	 * by turn three, and the comparison would be of the turns they had, not of them.
+	 */
+	async function ordersUnderThreat(
+		rivals: CombatColor[],
+		roll: number
+	): Promise<(CombatAction | null)[]> {
+		const lineup = seeds([...rivals, 'yellow', 'yellow', 'yellow']);
+		const opening = new CombatController(lineup).snapshot();
+		const armed: BattleBoardSnapshot = {
+			turn: 2,
+			fighters: opening.fighters.map((fighter) => ({
+				...fighter,
+				charges: 1,
+				// Whatever a fighter's colour granted it, it has had: a gift lasts the opening
+				// turn and this board is past it. `restore` keeps only the ones it carried.
+				spent: ['charge', 'defend', 'shoot'],
+				used: [],
+				action: 'defend'
+			}))
+		};
+		vi.spyOn(Math, 'random').mockReturnValue(roll);
+		const controller = new CombatController(lineup, armed);
+		// A turn everybody covers on: nothing is fired, nobody falls and no charge is spent.
+		// It is played only because the orders for the turn after it are decided as it closes.
+		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'defend');
+		await playTurn(controller);
+		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'defend');
+		// Committing is what makes those orders public — they are secret while being decided.
+		controller.commit();
+		const orders = rivalOrders(controller);
+		await settle(controller);
+		return orders;
+	}
+
+	it('leans on the orders its colour grants, so three colours play three fights', async () => {
+		// One board, one roll, three rivals: red is the one that fires where the other two
+		// cover, because the sword is the order its colour hands out.
+		expect(await ordersUnderThreat(['red', 'yellow', 'blue'], 0.6)).toEqual([
+			'shoot',
+			'defend',
+			'defend'
+		]);
+		// A shorter roll, and yellow — which leans neither way between firing and covering,
+		// since neither is what it grants — fires with the plain weights, while blue has
+		// already been turned off the sword by leaning on the shield.
+		expect(await ordersUnderThreat(['red', 'yellow', 'blue'], 0.5)).toEqual([
+			'shoot',
+			'shoot',
+			'defend'
+		]);
+		// A compound leaning on both of the two orders in front of it is back where it
+		// started, which is right: purple is no keener on the sword than on the shield.
+		expect(await ordersUnderThreat(['purple', 'orange', 'green'], 0.6)).toEqual([
+			'defend',
+			'shoot',
+			'defend'
+		]);
+	});
+
+	it('does not lean on a gift it is still holding', async () => {
+		// The opening turn, and blue's free guard is still in hand. A gift only ever comes
+		// beside the order given, so covering now is how a blue fighter throws it away — the
+		// lean comes off for exactly as long as that is true. At this roll a blue rival that
+		// leaned on the shield would cover; these load, and are guarded for nothing.
+		vi.spyOn(Math, 'random').mockReturnValue(0.7);
+		const controller = new CombatController(seeds(['blue', 'blue', 'blue', 'red', 'red', 'red']));
+		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'charge');
+		controller.commit();
+		expect(rivalOrders(controller)).toEqual(['charge', 'charge', 'charge']);
+		await settle(controller);
 	});
 });
 
