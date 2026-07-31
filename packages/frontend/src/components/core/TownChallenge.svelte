@@ -34,22 +34,23 @@
 		classes
 	)}
 >
-	<!-- The same counter the sidebar's tables carry, in the same terms: wins banked
-		over wins needed, so a town never states the figure two ways. -->
-	<span
-		class="flex flex-none items-center gap-1.5 text-xs tabular-nums"
-		title="Your wins banked / wins needed to take the town"
-	>
-		<span class="font-bold uppercase tracking-wide opacity-60">Siege</span>
-		<span class={siege.wins > 0 ? 'font-semibold' : 'opacity-70'}>
-			{siege.wins}/{siege.required}
-		</span>
-	</span>
+	<!-- The same standing the sidebar's tables count out, drawn rather than said: wins
+		banked against wins needed, as how much of the town has been taken. A bar is read
+		at the distance a pin is looked at from, where two small numbers separated by a
+		slash are not, and it is the row the button is pressed in answer to — so it is
+		the width of the button, filling towards it. The figures themselves stay in the
+		title, for a reader who wants the count and not the picture. -->
+	<progress
+		class="progress progress-primary w-full"
+		value={siege.wins}
+		max={siege.required}
+		title="Your wins banked / wins needed to take the town: {siege.wins}/{siege.required}"
+	></progress>
 
 	{#if button}
 		<button
 			type="button"
-			class="btn btn-primary btn-xl flex-none"
+			class="btn btn-primary btn-lg flex-none"
 			disabled={button.disabled}
 			title={button.title}
 			on:click={button.onClick}
