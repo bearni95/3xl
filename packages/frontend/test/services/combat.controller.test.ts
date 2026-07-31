@@ -438,11 +438,19 @@ describe('CombatController — what the board is left showing', () => {
 		expect(firstBrace).toBeLessThan(firstStrike);
 		expect(firstBrace).toBeLessThan(firstApproach);
 
+		// The ring, though, is not the pose: it comes up once the attacker is over and
+		// throwing, so it reads as the guard answering the blow rather than as something the
+		// fighter has been wearing since the orders were read out.
+		const firstRing = calls.findIndex((call) => call.startsWith('ringHold'));
+		expect(firstRing).toBeGreaterThan(firstApproach);
+		expect(firstRing).toBeLessThan(firstStrike);
+
 		for (const fighter of covering) {
 			// Each of them was stood in its guard, and *stood* in it — not thrown into it and
-			// dropped, which is what playing the pose as a one-shot amounted to — and the
-			// hold carries the fighter's own colour, which is what rings it.
-			expect(calls).toContain(`holdMove:${fighter.id}:${fighter.color}`);
+			// dropped, which is what playing the pose as a one-shot amounted to — and each was
+			// ringed in its own colour when the blow came in.
+			expect(calls).toContain(`holdMove:${fighter.id}`);
+			expect(calls).toContain(`ringHold:${fighter.id}:${fighter.color}`);
 			expect(calls).not.toContain(`playMove:${fighter.id}`);
 		}
 
@@ -531,6 +539,7 @@ describe('CombatController — what the board is left showing', () => {
 		// which is exactly what it did: no pose, no ring, no word. The turn it was covering
 		// in is over and the board never had to say so.
 		expect(calls.some((call) => call.startsWith('holdMove'))).toBe(false);
-		expect(calls.some((call) => call.includes('GUARD'))).toBe(false);
+		expect(calls.some((call) => call.startsWith('ringHold'))).toBe(false);
+		expect(calls.some((call) => call.startsWith('showCallout'))).toBe(false);
 	});
 });

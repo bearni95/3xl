@@ -559,8 +559,14 @@ interface Actor {
 	/**
 	 * The ring drawn around the actor while it holds a {@link stance}, or null. It says
 	 * the stance is *on* — a pose alone is a frame of animation, and a fighter braced
-	 * against a blow looks much like one caught mid-swing — so the two go up and come down
-	 * together (see {@link MugenBoard.holdMove}).
+	 * against a blow looks much like one caught mid-swing.
+	 *
+	 * It is put up **after** the stance rather than with it ({@link MugenBoard.ringHold}),
+	 * because the two say different things: the pose is the fighter's own doing and can
+	 * stand from the moment the order was given, while the ring is the guard *catching*
+	 * something and belongs to the moment there is a blow for it to catch. They come down
+	 * together, though — a stance let out of is a stance nothing can be saying is on
+	 * ({@link MugenBoard.clearHold}).
 	 */
 	ring: Graphics | null;
 	/** Floating callout (what its turn amounted to) above the actor, so a turn every
@@ -1630,25 +1636,42 @@ export class MugenBoard {
 	 * into the held move when that finishes instead of into idle. So a fighter can brace,
 	 * be walked onto ground it has won, and still be braced when it gets there.
 	 *
-	 * Given a `color`, a ring of it is drawn around the character for as long as the stance
-	 * lasts. A held pose on its own is not legible as a state: it is a frame of the
-	 * character's own animation, and braced-against-a-blow looks a good deal like
-	 * caught-mid-swing. The ring is what says the stance is *on*, and it is the fighter's
-	 * own colour because whose stance it is is the other half of that.
+	 * The pose goes up on its own: what says a held pose is a *state* rather than a frame of
+	 * animation is the ring, and the ring is asked for separately ({@link ringHold}) because
+	 * it is answering something and the pose is not.
 	 *
 	 * A move binding no animation (or one that failed to load) clears the hold rather
 	 * than freezing the actor: there is no pose to stand in, so it idles as before — and
-	 * no ring goes up either, since there would be no stance for it to be saying.
+	 * any ring goes with it, since there would be no stance left for it to be saying.
 	 */
-	holdMove(id: string, move: CharacterMove, color?: string): void {
+	holdMove(id: string, move: CharacterMove): void {
 		const actor = this.findActor(id);
 		if (!actor) return;
 		actor.stance = move.source && actor.animations[move.source] ? move.source : null;
 		// Into the pose now, unless something is already playing on the sprite — that
 		// releases into the stance when it ends, so the hold lands either way.
 		if (!actor.oneShot) this.setAnimation(actor, this.standing(actor));
-		this.clearRing(actor);
-		if (actor.stance && color) this.drawRing(actor, color);
+		if (!actor.stance) this.clearRing(actor);
+	}
+
+	/**
+	 * Ring the stance a character is holding, in `color` — the fighter's own, because whose
+	 * guard it is is half of what the ring says.
+	 *
+	 * Kept apart from {@link holdMove} because the two happen at different moments. A guard
+	 * is stood in from the moment it was ordered, but it only *does* anything when a blow
+	 * arrives, so the ring comes up on the blow: the attacker closes in, throws its move, and
+	 * the circle appears around what it is thrown at — read as the guard answering it rather
+	 * than as a decoration the fighter has been wearing since the reveal.
+	 *
+	 * Nothing to ring is nothing done: a character standing in no stance is left alone, and
+	 * one already ringed keeps the ring it has, so a second blow down the same lane does not
+	 * blink it off and on again.
+	 */
+	ringHold(id: string, color: string): void {
+		const actor = this.findActor(id);
+		if (!actor || !actor.stance || actor.ring) return;
+		this.drawRing(actor, color);
 	}
 
 	/** Let a character out of the move it was standing in, back to idle — and out of the

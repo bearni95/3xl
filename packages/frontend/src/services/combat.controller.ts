@@ -828,10 +828,8 @@ export class CombatController {
 		//
 		// It braces because a blow is coming, though — not because it chose to cover. A
 		// covering fighter nobody fires at still shows nothing all turn (see
-		// {@link showOrders}). The pose is held rather than thrown, and ringed in the
-		// fighter's colour so it reads as a stance it is in rather than a frame of its
-		// animation, and both stand for the rest of the turn: the next shot down this lane
-		// meets a fighter still braced.
+		// {@link showOrders}). The pose is held rather than thrown, so it stands for the rest
+		// of the turn: the next shot down this lane meets a fighter still braced.
 		//
 		// A guard is a guard whoever paid for it. The free one blue owes is the same defence
 		// as the ordered one — it turns this very blow aside, at this very moment — so it is
@@ -846,11 +844,20 @@ export class CombatController {
 		const covering = !target.down && target.action === 'defend';
 		const braces = covering || this.passiveReady(target, 'defend');
 		const guard = braces ? findMove(target, 'defend') : null;
-		if (guard) this.board?.holdMove(target.id, guard, target.color);
+		if (guard) this.board?.holdMove(target.id, guard);
 
 		// Close in, then strike: the blow is awaited to its last frame, so what it did is
 		// only said once it has actually been thrown.
 		await this.board?.closeIn(shooter.id, target.id);
+		// The ring goes round the guard here, on the blow, and not when the pose went up:
+		// the stance is the fighter's own doing and has been standing since the orders were
+		// given, but the circle is that stance *catching* something, so it belongs to the
+		// moment there is something to catch. Drawn with the pose, it was a mark the fighter
+		// wore from the reveal onwards, saying a guard was on while nothing was happening to
+		// it — and, on the far line, telling the player what a rival had ordered before a
+		// shot had been thrown. Put up as the attacker's move plays rather than after it,
+		// because a defence that appears once the blow is over is not a defence.
+		if (guard) this.board?.ringHold(target.id, target.color);
 		await this.board?.playMove(shooter.id, this.strikeMove(shooter));
 
 		if (target.down) {
