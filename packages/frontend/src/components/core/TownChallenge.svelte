@@ -34,18 +34,32 @@
 		classes
 	)}
 >
-	<!-- The same standing the sidebar's tables count out, drawn rather than said: wins
-		banked against wins needed, as how much of the town has been taken. A bar is read
-		at the distance a pin is looked at from, where two small numbers separated by a
-		slash are not, and it is the row the button is pressed in answer to — so it is
-		the width of the button, filling towards it. The figures themselves stay in the
-		title, for a reader who wants the count and not the picture. -->
-	<progress
-		class="progress progress-primary w-full"
-		value={siege.wins}
-		max={siege.required}
-		title="Your wins banked / wins needed to take the town: {siege.wins}/{siege.required}"
-	></progress>
+	<!-- The same standing the sidebar's tables count out, drawn and said at once: wins
+		banked against wins needed, as how much of the town has been taken, with the count
+		itself standing in the bar. The picture is what carries at the distance a pin is
+		looked at from and the figures are what a reader checks once they are close, so the
+		bar is tall enough to hold them rather than being a rule with a caption beside it.
+		The two are one object and cannot disagree — the same two numbers fill it and letter
+		it.
+
+		The count is laid over the bar rather than put inside it: a <progress> is a replaced
+		element with no inside to put anything in, and it is what draws the fill (a width
+		measured from `value` and `max`, which is not something a class can say). So the
+		element keeps the drawing and a span over it keeps the lettering, both in the same
+		box. White with a shadow under it, since the type crosses the filled part and the
+		empty part and has to read on both. -->
+	<div class="relative w-full" title="Your wins banked / wins needed to take the town">
+		<progress
+			class="progress progress-primary block h-6 w-full"
+			value={siege.wins}
+			max={siege.required}
+		></progress>
+		<span
+			class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-bold tabular-nums text-white drop-shadow-md"
+		>
+			{siege.wins}/{siege.required}
+		</span>
+	</div>
 
 	{#if button}
 		<button
