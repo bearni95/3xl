@@ -5,15 +5,16 @@
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { spawnYearLabel } from '$utils/spawn/year';
 	import { showIconName } from '$utils/show/show-icon';
-	import { colorPassives, ORDER_ICONS, type PassiveOrder } from '$utils/color/traits';
-	import type { CombatColor } from '$types/character-definition.type';
 	import { SPAWN_FILL_CLASSES } from '$components/core/spawn-colors';
 	import { SpawnBox, type SpawnColor } from '$types/character-spawn.type';
 
 	// One character, as this game draws one: a statue of them — standing on a tilted
-	// floor in their own colour with their show's mark painted on it and the orders that
-	// colour grants them for free painted in its two front corners, and, where there is
+	// floor in their own colour with their show's mark painted on it, and, where there is
 	// room for it, a panel underneath saying their name and the place they were claimed.
+	//
+	// What their colour grants them for free in a fight is not on the card at all: the
+	// colour is on it, and the colour is what says so (see `colorPassives`) — a glyph
+	// repeating it was a second copy of the same fact and is drawn nowhere here.
 	//
 	// It stands on its own: hand it a character from the seed or from Supabase — the
 	// frames folder, a colour, and the two captions — and it assembles the whole
@@ -110,25 +111,12 @@
 	// much of it behind them as in front.
 	const BASELINE = GROUND_DEPTH / 2;
 
-	// Where the orders a colour grants are drawn: the tile's two front corners, one each,
-	// laid down with the floor rather than standing over it — they are painted on the
-	// ground the character stands on, as the show's mark is. They are measured off the cut
-	// and not off the corner, which the cut has taken away: each stands at the foot of its
-	// own diagonal, the tenth mark along the front edge (see GROUND_CUT), so a glyph sits
-	// inside the octagon with the bevelled edge running away behind it instead of crossing
-	// it. Sized as a share of the square, because that is what everything in the picture is
-	// — the panel below is where this card keeps its fixed-size type.
-	const CORNER_GLYPH = 'absolute bottom-0 size-[13cqw]';
-	const CORNER_GLYPH_LEFT = 'left-[10%]';
-	const CORNER_GLYPH_RIGHT = 'right-[10%]';
-
 	// The two stocks, as everything drawn in the box's own colour and everything drawn
 	// against it. The ink is the box: black card is read in black, white card in white.
 	// The bands under the rows are the other one at the very opacities they always
 	// carried — three tenths under the name, a fifth under the place — so a white card
 	// veils its colour with black exactly as heavily as a black card veils it with white,
-	// and the panel keeps the shape it had. The order glyphs ship as white artwork, so
-	// black ink is the one that has to invert them.
+	// and the panel keeps the shape it had.
 	//
 	// Written out as whole classes because Tailwind only emits what it can see spelled
 	// out: neither half of one of these can be built from `box` at runtime.
@@ -140,7 +128,6 @@
 			inkMuted: string;
 			rowName: string;
 			rowPlace: string;
-			invertOrders: boolean;
 		}
 	> = {
 		[SpawnBox.Black]: {
@@ -148,39 +135,20 @@
 			ink: 'text-black',
 			inkMuted: 'text-black/70',
 			rowName: 'bg-white/30',
-			rowPlace: 'bg-white/20',
-			invertOrders: true
+			rowPlace: 'bg-white/20'
 		},
 		[SpawnBox.White]: {
 			glyph: 'text-white/60',
 			ink: 'text-white',
 			inkMuted: 'text-white/70',
 			rowName: 'bg-black/30',
-			rowPlace: 'bg-black/20',
-			invertOrders: false
+			rowPlace: 'bg-black/20'
 		}
 	};
 
 	// Black for anything that arrives without a box, and for anything that arrives with
 	// a word this card has no stock for — a statue is drawn either way.
 	$: stock = STOCK[box] ?? STOCK[SpawnBox.Black];
-
-	const ORDER_LABELS: Record<PassiveOrder, string> = {
-		shoot: 'Attack',
-		defend: 'Defend',
-		charge: 'Charge'
-	};
-
-	// What this character's colour hands them for free in a fight, drawn with the very
-	// glyphs the arena gives those orders — a primary brings one, a compound the two its
-	// components mix (see `colorPassives`). It is the colour that decides, so the row
-	// says what this fighter carries in rather than listing the three orders everybody
-	// has. The colour is a spawn's, whose six names are the combat colours' own.
-	$: passives = colorPassives(color as CombatColor).map((order) => ({
-		order,
-		label: ORDER_LABELS[order],
-		icon: ORDER_ICONS[order]
-	}));
 
 	$: showIcon = showIconName(showId);
 
@@ -228,26 +196,6 @@
 						it takes it from here rather than carrying one of its own. -->
 					<ShowIcon name={showIcon} classes="absolute inset-0 [&>svg]:h-full [&>svg]:w-full" />
 				{/if}
-
-				<!-- What the colour grants, in the floor's two front corners: a primary's single
-					order at the near left, a compound's two one at each end (see `colorPassives`,
-					whose order these keep). They ship as white artwork for the canvases to tint, so
-					a black-card statue inverts them and a white-card one does not — either way a
-					glyph comes out the same ink the panel below is written in. Being inside the
-					tile, they are turned by the same perspective the floor is and cut by the same
-					clip: they lie on the ground rather than standing up off it. -->
-				{#each passives as passive, index (passive.order)}
-					<img
-						src={passive.icon}
-						alt={passive.label}
-						title={passive.label}
-						class={classNames(
-							CORNER_GLYPH,
-							index === 0 ? CORNER_GLYPH_LEFT : CORNER_GLYPH_RIGHT,
-							{ invert: stock.invertOrders }
-						)}
-					/>
-				{/each}
 			</div>
 
 			<!-- The loading veil's squares are painted the character's own colour, the same fill
@@ -271,8 +219,8 @@
 	<!-- Who that is, then where and when they were claimed — on a panel in the same colour
 		the floor is painted, so the card reads as one object in one colour rather than a
 		picture with a caption. What they are from is not said in words on either half: the
-		mark painted across the floor is the whole of it, as the corner glyphs are the whole
-		of what their colour grants them.
+		mark painted across the floor is the whole of it, as the colour is the whole of what
+		they carry into a fight.
 		Either line too long for the card is cut with an ellipsis rather than wrapped: a row
 		of these must keep one height between them, whatever they are called and wherever
 		they were pulled.
