@@ -34,9 +34,9 @@
 	//
 	// Null is a statue of a *character* rather than of a card: the album, where what stands in
 	// a cell is the fighter the game holds and not a copy anybody pulled, so there is no colour
-	// to paint and nothing to say about a box. Such a statue is printed black and lettered
+	// to paint and nothing to say about a box. Such a statue is printed dark grey and lettered
 	// white — see UNPAINTED — which is also what makes an unowned one legible at half strength:
-	// a colour dimmed by half is a different colour, and black is still black.
+	// a colour dimmed by half is a different colour, and grey is only ever more grey.
 	export let color: SpawnColor | null = null;
 	// The booster box this card came out of. It is not another colour on the card — it
 	// is the ink: the show's mark on the floor and everything written on the panel are
@@ -154,11 +154,13 @@
 		}
 	};
 
-	// The stock a statue with no colour is printed on: black card, white lettering, and the
+	// The stock a statue with no colour is printed on: dark grey card, white lettering, and the
 	// bands under the rows the same white kept far lower than the two above spend it — a band
 	// is a veil over a colour there, and here there is no colour under it to let through, only
-	// the black the card is. The show's mark keeps the strength it has on a printed card, since
-	// it is painted on the floor either way.
+	// the grey the card is. Grey rather than black so the card is an object with faces: the
+	// bevel down each side of the panel is the fill under one flat black band, which on black
+	// stock is black on black and no bevel at all. The show's mark keeps the strength it has on
+	// a printed card, since it is painted on the floor either way.
 	const UNPAINTED = {
 		glyph: 'text-white/60',
 		ink: 'text-white',
@@ -171,11 +173,11 @@
 	// a word this card has no stock for — a statue is drawn either way.
 	$: stock = color ? (STOCK[box] ?? STOCK[SpawnBox.Black]) : UNPAINTED;
 
-	// What the card is painted: the colour, or the black an uncoloured statue is printed on.
+	// What the card is painted: the colour, or the dark grey an uncoloured statue is printed on.
 	// One name for the fill because it is the floor, the panel, both bevel faces and the veil
 	// the character arrives behind — the card being one object in one colour is what says the
 	// picture and the reading below it are the same thing.
-	$: fill = color ? SPAWN_FILL_CLASSES[color] : 'bg-black';
+	$: fill = color ? SPAWN_FILL_CLASSES[color] : 'bg-zinc-800';
 
 	$: showIcon = showIconName(showId);
 

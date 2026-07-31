@@ -23,7 +23,7 @@
 	//
 	// The statues are the roster's own component with no colour handed to it: a cell is about
 	// a character and not about a copy, and there is no copy to read a colour off (see
-	// CharacterStatue's `color`). Black card, white lettering — which is also what keeps an
+	// CharacterStatue's `color`). Dark grey card, white lettering — which is also what keeps an
 	// unowned one legible at half strength, a colour dimmed by half being a different colour.
 	//
 	// Like every other full view it is only mounted while it is open, so the show mapping, the
