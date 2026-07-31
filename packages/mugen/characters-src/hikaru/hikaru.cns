@@ -1,0 +1,2461 @@
+
+
+;Hikaru 1 (hammer school-bag)
+
+[Statedef 23000]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = S				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20000				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+;kyosuke call hikaru
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S25,21
+
+[State 21000, VelSet]
+type = VelSet
+trigger1 = AnimElem = 1
+x = 0
+y = 0
+
+
+[State 23000, Helper]
+type = Helper
+trigger1 = time = 1
+trigger1 = NumHelper(23109) !=1
+trigger1 = NumHelper(23000) !=1
+trigger1 = NumHelper(23115) !=1
+helpertype = normal ;player
+name = "Hikaru 1"
+ID = 23000
+stateno = 23113
+pos = -250,0
+postype = p1    ;p2,front,back,left,right
+facing = 1
+keyctrl = 0
+ownpal = 1
+supermove
+pausemove
+
+[State 23000, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;====================================
+; Hikaru 1- Enter - hammer school-bag
+[Statedef 23113]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = N				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20029				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+; hikaru - darling
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 10
+value = S26,11
+
+;land
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 21
+value = S8,1
+
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 1
+x = 4.5
+y = 0
+
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 22
+x = 0
+y = 0
+
+[State 20113, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20105
+time = -1
+;slot = 0
+
+[State 20113, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20104
+time = -1
+;slot = 0
+
+
+[State 20113, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = ,AT
+ignorehitpause = 1
+
+
+[State 56112, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 20114
+ctrl = 0
+
+;====================================
+; Hikaru 1 - Attack -hammer school-bag
+[Statedef 20114]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = N				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20030				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+[State 20114, Width]
+type = Width
+trigger1 = Time = [4,23]
+player = 10,10
+
+; eeehh
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S26,2
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 3
+value = S0,2
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 6
+x = 3
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 7
+x = 3
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 8
+x = 1
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 9
+x = 0
+y = 0
+
+[State 23005, 1]
+type = HitDef
+trigger1 = Time <= 0
+attr = A, SA
+damage = 100, 10
+animtype = Diagup
+guardflag = MA
+hitflag = MAF
+priority = 3, Hit
+pausetime = 10, 10
+sparkno = s9991
+sparkxy = -20,-85
+hitsound = S2, 2
+guardsound = S3, 0
+ground.type = High
+ground.slidetime = 5
+ground.hittime  = 12
+ground.velocity = -5,-4
+airguard.velocity = -3,-2
+air.type = High
+air.velocity = -5,-4
+air.hittime = 12
+air.fall = 1
+fall = 1
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+[State 20114, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20104
+time = -1
+;slot = 0
+
+[State 20114, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = ,AT
+ignorehitpause = 1
+
+[State 20114, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 20115
+ctrl = 0
+
+
+
+;--------------------------------------------------------
+;--------------------------------------------------------
+
+
+;Hikaru 2 - go school-bag
+
+[Statedef 33000]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = S				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20000				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+;kyosuke call hikaru
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S25,21
+
+
+[State 33000, Helper]
+type = Helper
+trigger1 = time = 1
+trigger1 = NumHelper(33109) !=1
+trigger1 = NumHelper(33000) !=1
+trigger1 = NumHelper(33115) !=1
+helpertype = normal ;player
+name = "Hikaru 2"
+ID = 33000
+stateno = 33113
+pos = -250,0
+postype = p1    ;p2,front,back,left,right
+facing = 1
+keyctrl = 0
+ownpal = 1
+supermove
+pausemove
+
+[State 33000, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;====================================
+; Hikaru 2- Enter - go school-bag
+[Statedef 33113]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = N				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20029				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+; hikaru - darling
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 10
+value = S26,11
+
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S8,0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 1
+x = 4.5
+y = 0
+
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 22
+x = 0
+y = 0
+
+
+
+[State 30114, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20104
+time = -1
+;slot = 0
+
+[State 30113, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = ,AT
+ignorehitpause = 1
+
+
+[State 30112, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 30114
+ctrl = 0
+
+;====================================
+; Hikaru 2 - Attack - go school-bag
+[Statedef 30114]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = S				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 30010				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 3
+x = 8
+y = 0
+
+; ah
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S26,0
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 2
+value = S0,1
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 4
+x = 2
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 5
+x = 0
+y = 0
+
+[State 8310, Hit1]
+type = HitDef
+trigger1 = AnimElem = 1
+attr = S, SA 
+damage   = 25,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -25,-68
+
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = High
+ground.slidetime = 5
+ground.hittime  = 12
+ground.velocity = -5,-4
+airguard.velocity = -3,-2
+air.type = High
+air.velocity = -5,-4
+air.hittime = 12
+air.fall = 1
+fall = 1
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+[State 30114, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20104
+time = -1
+;slot = 0
+
+[State 30114, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = ,AT
+ignorehitpause = 1
+
+[State 30114, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 20115
+ctrl = 0
+
+
+;--------------------------------------------------------
+
+
+;Hikaru 3 - hurricane bag
+
+[Statedef 43000]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = S				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20000				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+;kyosuke call hikaru
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S25,21
+
+
+[State 41000, VelSet]
+type = VelSet
+trigger1 = AnimElem = 1
+x = 0
+y = 0
+
+
+[State 43000, Helper]
+type = Helper
+trigger1 = time = 1
+trigger1 = NumHelper(43109) !=1
+trigger1 = NumHelper(43000) !=1
+trigger1 = NumHelper(43115) !=1
+helpertype = normal ;player
+name = "Hikaru 3"
+ID = 43000
+stateno = 43113
+pos = -250,0
+postype = p1    ;p2,front,back,left,right
+facing = 1
+keyctrl = 0
+ownpal = 1
+supermove
+pausemove
+
+[State 43000, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;====================================
+; Hikaru 3- Enter - hurricane bag
+[Statedef 43113]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = N				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20029				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+; hikaru - darling
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 10
+value = S26,11
+
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S8,0
+
+[State 40113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 1
+x = 4.5
+y = 0
+
+
+[State 40113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 22
+x = 0
+y = 0
+
+[State 30114, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20104
+time = -1
+;slot = 0
+
+
+[State 40113, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = ,AT
+ignorehitpause = 1
+
+
+[State 40112, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 40114
+ctrl = 0
+
+;====================================
+; Hikaru 3 - Attack a - hurricane bag
+[Statedef 40114]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = N				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 30130				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+[State 20114, Width]
+type = Width
+trigger1 = Time = [4,23]
+player = 10,10
+
+; ah ah ah
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 2
+value = S26,43
+
+
+[State 701, ]
+type = PlaySnd
+trigger1 = animelem = 2
+value = s0,0
+
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 3
+x = 3
+y = 0
+
+
+
+[State 43005, 1]
+type = HitDef
+trigger1 = Time <= 0
+attr = A, SA
+damage = 120, 10
+animtype = Diagup
+guardflag = MA
+hitflag = MAF
+priority = 3, Hit
+pausetime = 2, 4
+sparkno = s9990
+sparkxy = -20,-85
+hitsound = S2, 0
+guardsound = S3, 0
+ground.type = High
+ground.slidetime = 5
+ground.hittime  = 12
+ground.velocity = -5,-4
+airguard.velocity = -3,-2
+air.type = High
+air.velocity = -5,-4
+air.hittime = 12
+air.fall = 1
+fall = 1
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+[State 40114, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20104
+time = -1
+;slot = 0
+
+[State 40114, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = ,AT
+ignorehitpause = 1
+
+[State 40114, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 40214
+ctrl = 0
+
+;====================================
+; Hikaru 3 - Attack b - hurricane bag
+[Statedef 40214]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = N				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 30230				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+[State 20114, Width]
+type = Width
+trigger1 = Time = [4,23]
+player = 10,10
+
+[State 701, ]
+type = PlaySnd
+trigger1 = animelem = 1
+value = s0,0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 1
+x = 3
+y = 0
+
+
+[State 43005, 1]
+type = HitDef
+trigger1 = Time <= 0
+attr = A, SA
+damage = 120, 10
+animtype = Diagup
+guardflag = MA
+hitflag = MAF
+priority = 3, Hit
+pausetime = 2, 4
+sparkno = s9990
+sparkxy = -20,-85
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = High
+ground.slidetime = 5
+ground.hittime  = 12
+ground.velocity = -5,-4
+airguard.velocity = -3,-2
+air.type = High
+air.velocity = -5,-4
+air.hittime = 12
+air.fall = 1
+fall = 1
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+[State 40114, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20104
+time = -1
+;slot = 0
+
+[State 40114, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = ,AT
+ignorehitpause = 1
+
+[State 40114, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 40314
+ctrl = 0
+
+;====================================
+; Hikaru 3 - Attack c - hurricane bag
+[Statedef 40314]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= A				;Move-type: A-attack, I-idle, H-gethit
+physics = N				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 30330				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+[State 20114, Width]
+type = Width
+trigger1 = Time = [4,23]
+player = 10,10
+
+
+;yieppi
+[State 701, ]
+type = PlaySnd
+trigger1 = animelem = 4
+value = s26, 4
+
+[State 701, ]
+type = PlaySnd
+trigger1 = animelem = 1
+value = s0,0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 1
+x = 3
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 8
+x = 2
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 9
+x = 0
+y = 0
+
+
+[State 43005, 1]
+type = HitDef
+trigger1 = Time <= 0
+attr = A, SA
+damage = 120, 10
+animtype = Diagup
+guardflag = MA
+hitflag = MAF
+priority = 3, Hit
+pausetime = 10, 12
+sparkno = s9991
+sparkxy = -20,-85
+hitsound = S2, 2
+guardsound = S3, 0
+ground.type = High
+ground.slidetime = 5
+ground.hittime  = 12
+ground.velocity = -5,-4
+airguard.velocity = -3,-2
+air.type = High
+air.velocity = -5,-4
+air.hittime = 12
+air.fall = 1
+fall = 1
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+[State 40114, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20104
+time = -1
+;slot = 0
+
+[State 40114, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = ,AT
+ignorehitpause = 1
+
+[State 40114, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 20115
+ctrl = 0
+
+;====================================
+
+;--------------------------------------------------------
+;--------------------------------------------------------
+
+
+; Hikaru 1,2,3 Leaves
+
+[Statedef 20115]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= I				;Move-type: A-attack, I-idle, H-gethit
+physics = S				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20031				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+[State 20115, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = SCA
+ignorehitpause = 1
+
+[State 20115, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20104
+time = -1
+;slot = 0
+
+[State 20115, VelSet]
+type = VelSet
+trigger1 = Time = [0,100]
+x = -7
+y = 0
+
+;--ah ah ah-------------
+[State 701, ]
+type = PlaySnd
+trigger1 = animelem = 1
+value = s26, 43
+;-----------------
+
+
+[State 20115, DestroySelf]
+type = DestroySelf
+trigger1 = time = 150
+
+;--------------------------------------------------------
+
+; Hikaru 1,2,3 - Hit and Leave a
+[Statedef 20104]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= H				;Move-type: A-attack, I-idle, H-gethit
+physics = N				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20032				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+[State 20104, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = SCA
+ignorehitpause = 1
+
+[State 20104, VelSet]
+type = VelSet
+trigger1 = time = [0,23]
+x = -2
+y = 0
+
+[State 20104, VelSet]
+type = VelSet
+trigger1 = time = [24,40]
+x = 0
+y = 0
+
+;-----------------------------
+; get hit
+[State 20104, PlaySnd];KOed
+type = PlaySnd
+trigger1 = animelem = 1
+value = S26,50
+;-----------------------------
+
+[State 40114, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 21115
+ctrl = 0
+
+;====================================
+; Hikaru 1,2,3 - Hit and Leave b
+[Statedef 20105]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= H				;Move-type: A-attack, I-idle, H-gethit
+physics = N				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20032				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+[State 20105, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = SCA
+ignorehitpause = 1
+
+[State 20104, VelSet]
+type = VelSet
+trigger1 = time = [0,23]
+x = -2
+y = 0
+
+[State 20104, VelSet]
+type = VelSet
+trigger1 = time = [24,40]
+x = 0
+y = 0
+
+;-----------------------------
+; get hit
+[State 20104, PlaySnd];KOed
+type = PlaySnd
+trigger1 = animelem = 1
+value = S26,50
+;-----------------------------
+
+[State 40114, 5]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 21115
+ctrl = 0
+
+;-------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
+
+
+
+; Hikaru 1,2,3 Leaves after get hits
+
+[Statedef 21115]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= I				;Move-type: A-attack, I-idle, H-gethit
+physics = S				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 20031				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+[State 20115, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = SCA
+ignorehitpause = 1
+
+[State 20115, HitOverride]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA,NA,SA,HA,NP,SP,HP
+stateno = 20104
+time = -1
+;slot = 0
+
+[State 20115, VelSet]
+type = VelSet
+trigger1 = Time = [0,100]
+x = -7
+y = 0
+
+
+
+[State 20115, DestroySelf]
+type = DestroySelf
+trigger1 = time = 150
+
+;--------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;-------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
+
+;                           Hikaru HYPER !!!!!!
+;				    
+;-------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+
+[Statedef 8200]
+type    = S
+movetype= A
+physics = N
+juggle  = 1
+velset = 0,0
+poweradd = -2000
+anim = 8299
+ctrl = 0
+sprpriority = 2
+
+;madoka call hikaru
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S21,2
+volume=255
+
+[State 0, Super Pause]
+type = superpause
+trigger1=!time
+time = 30
+movetime=30
+anim = -1
+sound = s10,1
+p2defmul = 1
+unhittable=1
+darken = 0
+
+;-------------------
+;-------------------
+[State 33000, superportrait]
+type = Explod
+trigger1 = AnimElem = 1
+anim = 10090
+ID = 10090
+pos = 0,0
+postype = back
+bindtime = 999
+removetime = 40
+supermovetime = 40
+pausemovetime = 40
+sprpriority = -1
+scale = .55,.55
+ownpal = 1
+;------------------------------------
+
+;-------------------
+
+[State 3000, sfondo]
+type = Explod
+trigger1 = AnimElem = 1
+pos = -360,-50
+anim = 10001
+ID = 10001
+postype = right
+sprpriority = -15
+ignorehitpause = 1
+ownpal = 0
+bindtime = -1
+persistent = 0
+removeongethit = 1
+supermove = 1
+removetime = 60
+ontop = 0
+
+;------------------------------------
+
+[State 1100, 2]
+type = helper
+triggerall = numhelper(8302) <= 0
+;trigger1 = AnimElemTime(3) = 3
+trigger1 = Time = 30
+id = 8302
+stateno = 8302
+name = "Hikaru"
+sprpriority = 4
+pos = -320,4
+postype = p1
+helpertype = player;normal
+keyctrl = 0
+ownpal = 1
+persistent = 0
+
+[State 1100, 4]
+type = changestate
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;-------------------------------------------------
+
+;Hikaru INTRO
+[Statedef 8302, Intro]
+type = A
+movetype = I
+physics = N
+velset = 0,0
+anim = 8302
+sprpriority = 3
+
+;I ll do my best
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 8
+value = S26,3
+
+[State 慣性コピペ]
+type = Velset
+trigger1 = Time = 0
+x = 4
+
+[State 慣性コピペ]
+type = Velset
+trigger1 = Time = 30
+x = 0
+
+
+[State 1105, 0]
+type = destroyself
+triggerall = time = 0
+trigger1 = ishelper(8302) = 1 && numhelper(8302) >= 9
+
+
+[State 1105, 2]
+type = ScreenBound
+trigger1 = Time >= 0
+value = 0
+
+
+[State 1105, 4]
+type = assertspecial
+trigger1 = 1
+flag = noshadow
+
+
+[State 1105, 5]
+type = ChangeState
+trigger1 = animtime = 0
+value = 8300
+ctrl = 0
+
+;-------------------------------------------------------------------------------
+;Hikaru Stand
+;-------------------------------------------------------------------------------
+[Statedef 8300, STAND]
+type = S
+movetype = I
+physics = N
+velset = 0,0
+anim = 8300
+sprpriority = 3
+
+
+[State 1106, Hit]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+
+[State 1110, 0]
+type = Varrandom
+trigger1 = time >= 0
+v = 2
+persistent = 30
+
+
+[State 1110, hammer bag]
+type = changestate
+triggerall = (p2statetype!=L) && random <40
+trigger1 = p2bodydist x = [0,40]
+value = 8320
+ctrl = 0
+
+[State 1110, combo hurricane-fallig down]
+type = changestate
+triggerall = (p2statetype!=L) && random <40
+trigger1 = p2bodydist x = [75,225]
+value = 8310
+ctrl = 0
+
+[State 1110, combo go away]
+type = changestate
+triggerall = (p2statetype!=L) && random <40
+trigger1 = p2bodydist x = [-25,25]
+value = 8311
+ctrl = 0
+
+[State 1110, school-bag go]
+type = changestate
+triggerall = (p2statetype!=L) && random <40
+trigger1 = p2bodydist x = [-10,50]
+value = 8315
+ctrl = 0
+
+[State 1110, hurricane]
+type = changestate
+triggerall = (p2statetype!=L) && random <40
+trigger1 = p2bodydist x = [75,130]
+value = 8321
+ctrl = 0
+
+[State 1110, falling down]
+type = changestate
+triggerall = (p2statetype!=L) && random <40
+trigger1 = p2bodydist x = [45,80]
+value = 8322
+ctrl = 0
+
+
+[State 1110, Walk]
+type = changestate
+trigger1 = var(2) >= 200
+trigger1 = P2BodyDist X >= -70
+value = 8305
+ctrl = 0
+
+[State 1110, TURN]
+type = changestate
+trigger1 = P2BodyDist X < -70
+value = 8301
+ctrl = 0
+
+;-----------------------------------------------------------
+;Hikaru Walk
+[Statedef 8305, Walk]
+type = S
+movetype = I
+physics = N
+velset = 2,0
+anim = 8305
+sprpriority = 3
+
+[State 1106, HIT]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+[State 1111, 0]
+type = Varrandom
+trigger1 = time >= 0
+v = 2
+persistent = 20
+
+
+[State 1111, STAND]
+type = changestate
+trigger1 = var(2) >= 200
+value = 8300
+ctrl = 0
+
+[State 1111, TURN]
+type = changestate
+trigger1 = var(2) < 200
+trigger1 = P2BodyDist X < -60
+value = 8301
+ctrl = 0
+
+
+;-----------------------------------------------------------
+;Hikaru TURN
+[Statedef 8301]
+type = S
+movetype = I
+physics = N
+velset = 0,0
+anim = 8301
+sprpriority = 3
+
+[State 1112, 0]
+type = turn
+trigger1 = AnimTime = 0
+
+
+[State 1106, HIT]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+[State 1112, Stand]
+type = changestate
+trigger1 = AnimTime = 0
+value = 8300
+ctrl = 0
+
+;-----------------------------------------------------------
+;Hikaru hammer bag
+[Statedef 8320]
+type = S
+movetype = A
+physics = N
+velset = 0,0
+anim = 8320
+sprpriority = 3
+
+; eeehh
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S26,2
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 2
+value = S0,1
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 6
+x = 3
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 8
+x = 1
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 9
+x = 0
+y = 0
+
+[State 1106, 1]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+[State 230, Hit.D]
+type = HitDef
+trigger1 = !movecontact
+attr = S, NA
+animtype  = Medium
+damage    = 35
+guardflag = MA
+pausetime = 10,10
+sparkxy = -35,-72
+;sparkxy = -20,-85
+
+hitsound = S2, 2
+guardsound = S3, 0
+sparkno = s9991              ;Sound to play on hit
+ground.type = Low
+ground.slidetime = 12
+ground.hittime  = 14
+ground.velocity = -6
+air.velocity = -3,-4
+air.hittime = 5
+
+[State 1125, 5]
+type = changestate
+trigger1 = AnimTime = 0
+value = 8300
+
+
+;-----------------------------------------------------------
+;Hikaru combo hurricane bag part 1 - 3 hits
+[Statedef 8310]
+type    = S
+movetype= A
+physics = N
+juggle  = 0
+velset = 0,0
+poweradd = 0
+anim = 8310
+ctrl = 0
+sprpriority = 2
+
+; ah ah ah
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 2
+value = S26,43
+
+;----------------------
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 =  AnimElem = 1
+value = s0,0
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 =  AnimElem = 6
+value = s0,0
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 =  AnimElem = 11
+value = s0,0
+;-----------------------
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = time = 9
+x = 3
+y = 0
+
+
+[State 8310, Hit1]
+type = HitDef
+trigger1 = AnimElem = 2
+attr = S, SA 
+damage   = 25,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -25,-92
+hitsound = S2, 0
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 7
+attr = S, SA 
+damage   = 30,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -40, -88
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+[State 8310, Hit3]
+type = HitDef
+trigger1 = AnimElem = 12
+attr = S, SA 
+damage   = 30,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9991
+sparkxy =  -35,-72
+hitsound = S2, 2
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+[State 1106, 1]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+[State 1125, 5]
+type = changestate
+trigger1 = AnimTime = 0
+value = 8312
+
+;-----------------------------------------------------------
+;Hikaru combo hurricane bag part 2 - fall bag
+[Statedef 8312]
+type    = S
+movetype= A
+physics = N
+juggle  = 0
+velset = 0,0
+poweradd = 0
+anim = 8312
+ctrl = 0
+sprpriority = 2
+
+;eeehhhh
+[State 701, ]
+type = PlaySnd
+trigger1 = animelem = 1
+value = s26, 2
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 3
+value = S0,1
+
+[State 210, PlaySnd];crush fx
+type = PlaySnd
+trigger1 = animelem = 6
+value = S8200,0
+
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 1
+x = 2
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 5
+x = 1
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 6
+x = 0
+y = 0
+
+
+[State 8310, Hit1]
+type = HitDef
+trigger1 = AnimElem = 1
+attr = S, SA 
+damage   = 25,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -25,-92
+hitsound = S2, 0
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+fall=1
+
+[State 1106, 1]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+
+[State 1125, 5]
+type = changestate
+trigger1 = AnimTime = 0
+value = 8300
+
+
+
+;-----------------------------------------------------------
+;Hikaru combo - go away!!!
+[Statedef 8311]
+type    = S
+movetype= A
+physics = N
+juggle  = 0
+velset = 0,0
+poweradd = 0
+anim = 8311
+ctrl = 0
+sprpriority = 2
+
+;scream
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 1
+value = S26,60
+
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 =  AnimElem = 1
+trigger2 =  AnimElem = 4
+trigger3 =  AnimElem = 8
+trigger4 =  AnimElem = 12
+trigger5 =  AnimElem = 16
+trigger6 =  AnimElem = 20
+trigger7 =  AnimElem = 24
+trigger8 =  AnimElem = 28
+value = s0,0
+
+;-------------------------------
+
+
+[State 8310, Hit1]
+type = HitDef
+trigger1 = AnimElem = 3
+attr = S, SA 
+damage   = 25,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -22,-92
+hitsound = S2, 0
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 6
+attr = S, SA 
+damage   = 10,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -28,-72
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 8
+attr = S, SA 
+damage   = 10,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -24,-52
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 10
+attr = S, SA 
+damage   = 10,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -28,-72
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 12
+attr = S, SA 
+damage   = 10,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -22,-92
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 14
+attr = S, SA 
+damage   = 10,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -28,-72
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 16
+attr = S, SA 
+damage   = 10,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -24,-52
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 18
+attr = S, SA 
+damage   = 10,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -28,-72
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 20
+attr = S, SA 
+damage   = 10,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -22,-92
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 22
+attr = S, SA 
+damage   = 15,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -28,-72
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 24
+attr = S, SA 
+damage   = 15,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -24,-52
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+[State 8310, Hit3]
+type = HitDef
+trigger1 = AnimElem = 26
+attr = S, SA 
+damage   = 20,5
+guardflag = HA
+pausetime = 15,15
+sparkno = s9990
+sparkxy =  -30, -72
+hitsound = S2, 0
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+[State 0, PlaySnd]
+type = PlaySnd
+trigger1 = time = 1
+value = S8300,6
+channel = 10
+
+[State 0, PlaySnd]
+type = PlaySnd
+trigger1 = time = 0
+value = S7400,(random%6)
+
+[State 1106, 1]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+
+[State 1125, 5]
+type = changestate
+trigger1 = AnimTime = 0
+value = 8300
+
+
+;-----------------------------------------------------------
+;Hikaru school bag go!
+[Statedef 8315]
+type = S
+movetype = A
+physics = S
+velset = 0,0
+anim = 8315
+sprpriority = 3
+
+;yes
+[State 701, ]
+type = PlaySnd
+trigger1 = animelem = 1
+value = s26, 5
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 2
+value = S0,1
+
+[State 712]
+type = Velset
+trigger1 = Time = 0
+x = 0
+
+[State 712]
+type = Velset
+trigger1 = Time = 13
+x = 8
+
+[State 712]
+type = Velset
+trigger1 = Time = 26
+x = 0
+
+[State 8310, Hit1]
+type = HitDef
+trigger1 = AnimElem = 1
+attr = S, SA 
+damage   = 25,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -25,-68
+
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = High
+ground.slidetime = 5
+ground.hittime  = 12
+ground.velocity = -5,-4
+airguard.velocity = -3,-2
+air.type = High
+air.velocity = -5,-4
+air.hittime = 12
+air.fall = 1
+fall = 1
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+[State 1106, 1]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+
+[State 1125, 5]
+type = changestate
+trigger1 = AnimTime = 0
+value = 8300
+
+;-----------------------------------------------------------
+;Hikaru hurricane combo
+[Statedef 8321]
+type    = S
+movetype= A
+physics = N
+juggle  = 0
+velset = 0,0
+poweradd = 0
+anim = 8321
+ctrl = 0
+sprpriority = 2
+
+;ah ah ah
+[State 701, ]
+type = PlaySnd
+trigger1 = animelem = 1
+value = s26, 43
+
+;-------------------------
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 =  AnimElem = 2
+value = s0,0
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 =  AnimElem = 7
+value = s0,0
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 =  AnimElem = 12
+value = s0,1
+;-------------------------------------
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 3
+x = 3
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 26
+x = 1
+y = 0
+
+[State 20113, VelSet]
+type = VelSet
+trigger1 = AnimElem = 27
+x = 0
+y = 0
+
+
+[State 8310, Hit1]
+type = HitDef
+trigger1 = AnimElem = 2
+attr = S, SA 
+damage   = 25,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -25,-92
+hitsound = S2, 0
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+
+[State 8310, Hit2]
+type = HitDef
+trigger1 = AnimElem = 7
+attr = S, SA 
+damage   = 30,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9990
+sparkxy =  -40, -88
+hitsound = S2, 1
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+[State 8310, Hit3]
+type = HitDef
+trigger1 = AnimElem = 12
+attr = S, SA 
+damage   = 30,5
+guardflag = HA
+pausetime = 4,8
+sparkno = s9991
+sparkxy =  -35,-72
+hitsound = S2, 2
+guardsound = S3, 0
+ground.type = high
+ground.slidetime = 15
+ground.hittime  = 4
+ground.velocity = 0
+air.velocity = -4,-2.5
+airguard.velocity = -3.4,-2.6
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+[State 1106, 1]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+[State 1125, 5]
+type = changestate
+trigger1 = AnimTime = 0
+value = 8300
+
+;-----------------------------------------------------------
+;Hikaru falling down
+[Statedef 8322]
+type = S
+movetype = A
+physics = N
+velset = 0,0
+anim = 8322
+sprpriority = 3
+
+;scream
+[State 701, ]
+type = PlaySnd
+trigger1 = animelem = 1
+value = s26, 51
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 = animelem = 3
+value = S0,1
+
+[State 712]
+type = Velset
+trigger1 = Time = 0
+x = 5
+
+[State 712]
+type = Velset
+trigger1 = Time = 24
+x = 0
+
+[State 1106, 1]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+[State 0, EnvShake]
+type = EnvShake
+trigger1 =  animelem = 10
+time = 20
+freq = 60
+ampl = -10
+
+
+[State 230, Hit.D]
+type = HitDef
+trigger1 = !movecontact
+attr = S, NA
+animtype  = Medium
+damage    = 35
+guardflag = MA
+pausetime = 10,10
+sparkxy = -5,-72
+sparkxy = -20,-85
+sparkno = s9991                      ;Spark anim no (Def: set above)
+hitsound = S2, 2
+guardsound = S3, 0
+guard.sparkno = 0              ;Sound to play on hit
+ground.type = Low
+ground.slidetime = 12
+ground.hittime  = 14
+ground.velocity = -6
+air.velocity = -3,-4
+air.hittime = 5
+fall=1
+
+fall.envshake.time = 7
+fall.envshake.ampl = -4
+envshake.time = 6
+envshake.freq = 127
+envshake.ampl = -5
+
+[State 1125, 5]
+type = changestate
+trigger1 = AnimTime = 0
+value = 8300
+
+
+
+;-------------------------------------------------------------------------------
+;Hikaru Hit
+;-------------------------------------------------------------------------------
+[Statedef 8335, HIT]
+type    = A
+movetype= H
+physics = N
+velset = 0,0
+
+
+
+[State 210, PlaySnd]
+type = PlaySnd
+trigger1 =  AnimElem = 1
+value = s26,50
+
+
+[State 0, varadd]
+type = varadd
+trigger1 = gethitvar(damage)
+var(18) = gethitvar(damage)
+persistent = 0
+
+[State 1110, DEAD]
+type = changestate
+trigger1 = var(18)>=200
+value = 8336
+ctrl = 0
+
+[State 1106, Hit]
+type = HitOverRide
+trigger1 = 1
+time = -1
+attr = SCA, AA,AP,AT
+slot = 0
+stateno = 8335
+
+[State 1200, 3]
+type = changeanim
+trigger1 = Time = 0
+value = 8335
+
+[State 0, VelSet]
+type = VelSet
+trigger1 = !time
+x = -1-(random/700)
+
+[State 1200, 4]
+type = changestate
+trigger1 = animtime = 0
+value = 8300
+ctrl = 0
+
+
+[State 5000, 5] ;State type gets set to aerial if getting hit up
+type = StateTypeSet
+trigger1 = Time = 0
+trigger1 = GetHitVar(yvel) != 0 || GetHitVar(fall)
+trigger2 = Pos Y != 0
+statetype = a
+
+
+;------------------------------------------------
+;Hikaru lose
+[Statedef 8336]
+type = S
+movetype = H
+physics = N
+velset = 0,0
+anim = 8336
+sprpriority = 2
+
+[State 0, ParentVarAdd]
+type = ParentVarAdd
+trigger1 = anim = 8336
+var(19)=1
+persistent = 0
+
+[State 1300, varadd]
+type = parentvaradd
+trigger1 = time = 0
+v= 57
+value = ifelse(root,var(58)=1, -1, 1)
+
+[State 66015, VelSet]
+type = VelSet
+trigger1 = Time = [0,23]
+x = -2
+y = 0
+
+[State 66015, VelSet]
+type = VelSet
+trigger1 = Time = [24,68]
+x = 0
+y = 0
+
+[State 1300, screenbound]
+type = ScreenBound
+trigger1 = Time >= 0
+value = 0
+
+;kyosuke:hikaru chan
+[State 701, ]
+type = PlaySnd
+trigger1 = time = 0
+value = s25, 20
+
+[State 1200, 4]
+type = changestate
+trigger1 = animtime = 0
+value = 8337
+
+
+
+;====================================
+; Hikaru cry and stay
+[Statedef 8337]
+type    = S				;State-type: S-stand, C-crouch, A-air, L-liedown
+movetype= H				;Move-type: A-attack, I-idle, H-gethit
+physics = N				;Physics: S-stand, C-crouch, A-air
+juggle  = 1				;Number of air juggle points move takes
+;Commonly-used controllers:
+velset = 0,0			;Set velocity (x,y) (Def: no change)
+ctrl = 0				;Set ctrl (Def: no change)
+anim = 8337				;Change animation (Def: no change)
+poweradd = 0			;Power to add (Def: 0)
+sprpriority = 5			;Set layering priority to 2 (in front)
+
+;cry
+[State 701, ]
+type = PlaySnd
+trigger1 = time = 0
+value = s26, 40
+
+[State 66015, NotHitBy]
+type = NotHitBy
+trigger1 = 1
+time = 1
+value = SCA
+ignorehitpause = 1
+
+;====================================
+
+
+

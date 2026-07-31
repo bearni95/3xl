@@ -1,0 +1,1299 @@
+{
+	"name": "Hikaru Hiyama",
+	"commands": [
+		{
+			"name": "CPU0",
+			"input": "U,U,D,D,B,F,B,F,s,s,s"
+		},
+		{
+			"name": "CPU1",
+			"input": "U,U,D,D,B,F,B,F,a,a,s"
+		},
+		{
+			"name": "CPU2",
+			"input": "U,U,D,D,B,F,B,F,b,b,s"
+		},
+		{
+			"name": "CPU3",
+			"input": "U,U,D,D,B,F,B,F,c,c,s"
+		},
+		{
+			"name": "CPU4",
+			"input": "U,U,D,D,B,F,B,F,x,x,s"
+		},
+		{
+			"name": "CPU5",
+			"input": "U,U,D,D,B,F,B,F,y,y,s"
+		},
+		{
+			"name": "CPU6",
+			"input": "U,U,D,D,B,F,B,F,z,z,s"
+		},
+		{
+			"name": "CPU7",
+			"input": "U,U,D,D,B,F,B,F,a,a,a,s"
+		},
+		{
+			"name": "CPU8",
+			"input": "U,U,D,D,B,F,B,F,a,a,a,a,s"
+		},
+		{
+			"name": "CPU9",
+			"input": "U,D,B,F,b,b,s"
+		},
+		{
+			"name": "CPU10",
+			"input": "D,B,F,B,F,b,b,s"
+		},
+		{
+			"name": "CPU11",
+			"input": "U,D,D,B,F,b,b,s"
+		},
+		{
+			"name": "CPU12",
+			"input": "U,U,D,F,B,F,b,s"
+		},
+		{
+			"name": "CPU13",
+			"input": "U,U,D,D,B,F,x,x,s"
+		},
+		{
+			"name": "CPU14",
+			"input": "U,U,D,D,B,F,x,s"
+		},
+		{
+			"name": "CPU15",
+			"input": "D,D,B,F,B,F,x,s"
+		},
+		{
+			"name": "CPU16",
+			"input": "D,D,B,F,B,F,x,x,s"
+		},
+		{
+			"name": "CPU17",
+			"input": "U,U,D,D,B,F,B,F,x,x,s"
+		},
+		{
+			"name": "CPU18",
+			"input": "U,U,D,B,F,B,F,x,s"
+		},
+		{
+			"name": "CPU19",
+			"input": "U,U,B,F,B,F,y,y,s"
+		},
+		{
+			"name": "CPU20",
+			"input": "U,U,D,B,F,B,F,y,y,s"
+		},
+		{
+			"name": "CPU21",
+			"input": "U,U,U,U,B,F,B,F,y,s"
+		},
+		{
+			"name": "CPU22",
+			"input": "U,U,U,U,B,F,B,F,y,y,s"
+		},
+		{
+			"name": "CPU23",
+			"input": "U,U,D,D,U,U,B,F,y,s"
+		},
+		{
+			"name": "CPU24",
+			"input": "U,U,D,D,B,F,U,U,y,s"
+		},
+		{
+			"name": "CPU25",
+			"input": "U,U,U,U,U,U,B,F,y,s"
+		},
+		{
+			"name": "CPU26",
+			"input": "U,U,D,D,U,U,B,F,x,s"
+		},
+		{
+			"name": "CPU27",
+			"input": "U,U,D,D,B,F,D,D,x,s"
+		},
+		{
+			"name": "CPU28",
+			"input": "U,D,B,F,B,F,x,x,x,s"
+		},
+		{
+			"name": "CPU29",
+			"input": "U,D,U,D,U,D,x,x,s"
+		},
+		{
+			"name": "CPU30",
+			"input": "U,D,U,D,U,D,a,s"
+		},
+		{
+			"name": "CPU31",
+			"input": "U,D,U,D,U,D,a,a,a,s"
+		},
+		{
+			"name": "CPU32",
+			"input": "B,F,B,F,B,F,B,F,a,a,s"
+		},
+		{
+			"name": "CPU33",
+			"input": "B,F,B,F,B,F,B,F,a,s"
+		},
+		{
+			"name": "CPU34",
+			"input": "U,U,B,F,B,F,B,F,b,s"
+		},
+		{
+			"name": "CPU35",
+			"input": "B,F,D,D,B,F,B,F,b,s"
+		},
+		{
+			"name": "CPU36",
+			"input": "B,F,D,D,B,F,B,F,b,b,s"
+		},
+		{
+			"name": "CPU37",
+			"input": "U,U,D,D,B,F,D,B,s,s"
+		},
+		{
+			"name": "CPU38",
+			"input": "U,U,D,D,B,F,D,B,s"
+		},
+		{
+			"name": "CPU39",
+			"input": "U,U,D,B,F,D,B,F,s"
+		},
+		{
+			"name": "CPU40",
+			"input": "U,U,D,B,F,D,B,F,a,s"
+		},
+		{
+			"name": "CPU41",
+			"input": "U,U,D,B,F,D,B,F,b,s"
+		},
+		{
+			"name": "CPU42",
+			"input": "U,U,D,B,F,D,B,F,x,s"
+		},
+		{
+			"name": "CPU43",
+			"input": "U,U,D,B,F,D,B,F,y,s"
+		},
+		{
+			"name": "CPU44",
+			"input": "U,U,D,B,F,D,B,F,a,a,s"
+		},
+		{
+			"name": "CPU45",
+			"input": "U,U,D,B,F,D,B,F,b,b,s"
+		},
+		{
+			"name": "CPU46",
+			"input": "U,U,D,B,F,D,B,F,x,x,s"
+		},
+		{
+			"name": "CPU47",
+			"input": "U,U,D,B,F,D,B,F,y,y,s"
+		},
+		{
+			"name": "CPU48",
+			"input": "U,D,B,F,F,B,s,s"
+		},
+		{
+			"name": "CPU49",
+			"input": "U,D,B,F,F,B,a,s"
+		},
+		{
+			"name": "CPU50",
+			"input": "U,D,B,F,F,B,b,s"
+		},
+		{
+			"name": "CPU51",
+			"input": "U,D,B,F,F,B,x,s"
+		},
+		{
+			"name": "CPU52",
+			"input": "U,D,B,F,F,B,y,s"
+		},
+		{
+			"name": "CPU53",
+			"input": "U,D,B,F,F,B,a,a,s"
+		},
+		{
+			"name": "CPU54",
+			"input": "U,D,B,F,F,B,b,b,s"
+		},
+		{
+			"name": "CPU55",
+			"input": "U,D,B,F,F,B,x,x,s"
+		},
+		{
+			"name": "CPU56",
+			"input": "U,D,B,F,F,B,y,y,s"
+		},
+		{
+			"name": "CPU57",
+			"input": "B,F,U,D,F,B,s"
+		},
+		{
+			"name": "CPU58",
+			"input": "B,F,U,D,F,B,x,s"
+		},
+		{
+			"name": "CPU59",
+			"input": "B,F,U,D,F,B,y,s"
+		},
+		{
+			"name": "CPU60",
+			"input": "B,F,U,D,F,B,a,s"
+		},
+		{
+			"name": "CPU61",
+			"input": "B,F,U,D,F,B,b"
+		},
+		{
+			"name": "CPU62",
+			"input": "B,F,D,F,B,U,D,F,B,s"
+		},
+		{
+			"name": "CPU63",
+			"input": "B,F,D,F,B,U,D,F,B,a"
+		},
+		{
+			"name": "CPU64",
+			"input": "B,F,D,F,B,U,D,F,B,b"
+		},
+		{
+			"name": "CPU65",
+			"input": "B,F,D,F,B,U,D,F,B,x"
+		},
+		{
+			"name": "CPU66",
+			"input": "B,F,D,F,B,U,D,F,B,y"
+		},
+		{
+			"name": "CPU67",
+			"input": "U,U,D,D,B,F,B,F,b"
+		},
+		{
+			"name": "CPU68",
+			"input": "U,U,D,D,B,F,B,F,y"
+		},
+		{
+			"name": "CPU69",
+			"input": "U,U,D,D,B,F,B,F,s"
+		},
+		{
+			"name": "CPU70",
+			"input": "U,U,D,D,B,F,B,F,a,s"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "DU",
+			"input": "~D, U"
+		},
+		{
+			"name": "hyper_kyosuke",
+			"input": "~D, DF, F, a+x"
+		},
+		{
+			"name": "hyper_cycle",
+			"input": "~D, DF, F, b+y"
+		},
+		{
+			"name": "mxk",
+			"input": "~D, DF, F, c+z"
+		},
+		{
+			"name": "kcombo",
+			"input": "~D, DF, F, x+y"
+		},
+		{
+			"name": "attack",
+			"input": "~D, DF, F, a+b"
+		},
+		{
+			"name": "air-combo",
+			"input": "~D, DF, F, a+b"
+		},
+		{
+			"name": "hyper_hikaru",
+			"input": "B, DB, D, DF, F, a+b"
+		},
+		{
+			"name": "3K",
+			"input": "a+b+c"
+		},
+		{
+			"name": "hikaru1",
+			"input": "~D, DB, B, a"
+		},
+		{
+			"name": "hikaru2",
+			"input": "~D, DB, B, b"
+		},
+		{
+			"name": "hikaru3",
+			"input": "~D, DB, B, c"
+		},
+		{
+			"name": "knee_att",
+			"input": "~D, DF, F, x"
+		},
+		{
+			"name": "wrench_dash",
+			"input": "~D, DF, F, y"
+		},
+		{
+			"name": "uppercut",
+			"input": "~D, DF, F, z"
+		},
+		{
+			"name": "roll",
+			"input": "~D, DF, F, a"
+		},
+		{
+			"name": "rose",
+			"input": "~D, DF, F, b"
+		},
+		{
+			"name": "cards",
+			"input": "~D, DF, F, c"
+		},
+		{
+			"name": "jumpcards",
+			"input": "~D, DF, F, c"
+		},
+		{
+			"name": "angle_kick1",
+			"input": "~D, DB, B, b"
+		},
+		{
+			"name": "angle_kick2",
+			"input": "~D, DB, B, c"
+		},
+		{
+			"name": "kyosuke_basket",
+			"input": "~B, F, a"
+		},
+		{
+			"name": "kyosuke_music",
+			"input": "~B, F, b"
+		},
+		{
+			"name": "kyosuke_table",
+			"input": "~B, F, c"
+		},
+		{
+			"name": "kyosuke_fall",
+			"input": "~B, F, x"
+		},
+		{
+			"name": "kyosuke_rubber",
+			"input": "~B, F, y"
+		},
+		{
+			"name": "kyosuke_3objects",
+			"input": "~B, F, z"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y+z+a+b+c+s"
+		},
+		{
+			"name": "b+x",
+			"input": "b+x"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "hold c",
+			"input": "/c"
+		},
+		{
+			"name": "hold z",
+			"input": "/z"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "s",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		},
+		{
+			"name": "Press Up",
+			"input": "U"
+		}
+	],
+	"moves": [
+		{
+			"name": "AI Walk Special",
+			"stateNo": 21,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "walk-back"
+		},
+		{
+			"name": "AI Jump",
+			"stateNo": 40,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Run Fwd",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Run Back",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "State 130",
+			"stateNo": 130,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-stand"
+		},
+		{
+			"name": "State 131",
+			"stateNo": 131,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "State 132",
+			"stateNo": 132,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "State 150",
+			"stateNo": 150,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "State 152",
+			"stateNo": 152,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Taunt",
+			"stateNo": 195,
+			"commands": [
+				"s"
+			],
+			"inputs": [
+				"s"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Pugno debole",
+			"stateNo": 200,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "action-200"
+		},
+		{
+			"name": "Pugno medio 2",
+			"stateNo": 201,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Pugno medio",
+			"stateNo": 210,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Pugno forte",
+			"stateNo": 220,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Calcio debole",
+			"stateNo": 230,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Calcio vicino",
+			"stateNo": 231,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Calcio medio",
+			"stateNo": 240,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Calcio forte",
+			"stateNo": 250,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Wall",
+			"stateNo": 255,
+			"commands": [
+				"holdfwd",
+				"holdback"
+			],
+			"inputs": [
+				"/$F",
+				"/$B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Crouching Light Punch",
+			"stateNo": 400,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Crouching Medium Punch",
+			"stateNo": 410,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Crouching Strong Punch",
+			"stateNo": 420,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Crouching Light Kick",
+			"stateNo": 430,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Crouching High Kick",
+			"stateNo": 440,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Crouching High Kick",
+			"stateNo": 450,
+			"commands": [
+				"c",
+				"holddown"
+			],
+			"inputs": [
+				"c",
+				"/$D"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Air Light claw",
+			"stateNo": 600,
+			"commands": [
+				"x",
+				"holdback"
+			],
+			"inputs": [
+				"x",
+				"/$B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Air Light Punch",
+			"stateNo": 605,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Air Medium Punch",
+			"stateNo": 610,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Air Hard Punch",
+			"stateNo": 620,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Air Light Kick",
+			"stateNo": 630,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Air Medium Kick",
+			"stateNo": 640,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Air Hard Kick",
+			"stateNo": 650,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "jumpcards",
+			"stateNo": 670,
+			"commands": [
+				"jumpcards"
+			],
+			"inputs": [
+				"~D, DF, F, c"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Superjump",
+			"stateNo": 700,
+			"commands": [
+				"DU",
+				"3K",
+				"holdup"
+			],
+			"inputs": [
+				"~D, U",
+				"a+b+c",
+				"/$U"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Throw",
+			"stateNo": 800,
+			"commands": [
+				"z",
+				"holdfwd",
+				"holdback"
+			],
+			"inputs": [
+				"z",
+				"/$F",
+				"/$B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "knee attack",
+			"stateNo": 1460,
+			"commands": [
+				"knee_att"
+			],
+			"inputs": [
+				"~D, DF, F, x"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "wrench dash",
+			"stateNo": 1470,
+			"commands": [
+				"wrench_dash"
+			],
+			"inputs": [
+				"~D, DF, F, y"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "uppercut",
+			"stateNo": 1480,
+			"commands": [
+				"uppercut"
+			],
+			"inputs": [
+				"~D, DF, F, z"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "roll",
+			"stateNo": 1535,
+			"commands": [
+				"roll"
+			],
+			"inputs": [
+				"~D, DF, F, a"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "KYOSUKE - table - Johnny",
+			"stateNo": 2200,
+			"commands": [
+				"kyosuke_table"
+			],
+			"inputs": [
+				"~B, F, c"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "KYOSUKE - falling items - Johnny",
+			"stateNo": 2210,
+			"commands": [
+				"kyosuke_music"
+			],
+			"inputs": [
+				"~B, F, b"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "kyosuke_basket",
+			"stateNo": 2220,
+			"commands": [
+				"kyosuke_basket"
+			],
+			"inputs": [
+				"~B, F, a"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "kyosuke_basket",
+			"stateNo": 2400,
+			"commands": [
+				"kyosuke_3objects"
+			],
+			"inputs": [
+				"~B, F, z"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "hikaru hyper",
+			"stateNo": 8200,
+			"commands": [
+				"hyper_hikaru"
+			],
+			"inputs": [
+				"B, DB, D, DF, F, a+b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 8299,
+			"animation": ""
+		},
+		{
+			"name": "KYOSUKE - Johnny",
+			"stateNo": 12200,
+			"commands": [
+				"hyper_cycle"
+			],
+			"inputs": [
+				"~D, DF, F, b+y"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "kyosuke_rubber",
+			"stateNo": 12220,
+			"commands": [
+				"kyosuke_rubber"
+			],
+			"inputs": [
+				"~B, F, y"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "KYOSUKE - Johnny",
+			"stateNo": 12500,
+			"commands": [
+				"hyper_kyosuke"
+			],
+			"inputs": [
+				"~D, DF, F, a+x"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "kyosuke_sofa",
+			"stateNo": 12700,
+			"commands": [
+				"kyosuke_fall"
+			],
+			"inputs": [
+				"~B, F, x"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "angle_kick1",
+			"stateNo": 19500,
+			"commands": [
+				"angle_kick1"
+			],
+			"inputs": [
+				"~D, DB, B, b"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "angle_kick2",
+			"stateNo": 19510,
+			"commands": [
+				"angle_kick2"
+			],
+			"inputs": [
+				"~D, DB, B, c"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "20200",
+			"stateNo": 20200,
+			"commands": [
+				"rose"
+			],
+			"inputs": [
+				"~D, DF, F, b"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "20300",
+			"stateNo": 20300,
+			"commands": [
+				"cards"
+			],
+			"inputs": [
+				"~D, DF, F, c"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "call hikaru 1",
+			"stateNo": 23000,
+			"commands": [
+				"hikaru1"
+			],
+			"inputs": [
+				"~D, DB, B, a"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 20000,
+			"animation": ""
+		},
+		{
+			"name": "hyper attack",
+			"stateNo": 31470,
+			"commands": [
+				"kcombo"
+			],
+			"inputs": [
+				"~D, DF, F, x+y"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "call hikaru 2",
+			"stateNo": 33000,
+			"commands": [
+				"hikaru2"
+			],
+			"inputs": [
+				"~D, DB, B, b"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 20000,
+			"animation": ""
+		},
+		{
+			"name": "speed attack",
+			"stateNo": 33300,
+			"commands": [
+				"attack"
+			],
+			"inputs": [
+				"~D, DF, F, a+b"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "call hikaru 3",
+			"stateNo": 43000,
+			"commands": [
+				"hikaru3"
+			],
+			"inputs": [
+				"~D, DB, B, c"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 20000,
+			"animation": ""
+		},
+		{
+			"name": "jump hyper combo",
+			"stateNo": 43501,
+			"commands": [
+				"air-combo"
+			],
+			"inputs": [
+				"~D, DF, F, a+b"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		},
+		{
+			"name": "Madoka X Kyosuke",
+			"stateNo": 86070,
+			"commands": [
+				"mxk"
+			],
+			"inputs": [
+				"~D, DF, F, c+z"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": ""
+		}
+	]
+}
