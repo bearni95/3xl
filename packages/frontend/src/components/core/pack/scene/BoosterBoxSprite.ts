@@ -120,11 +120,23 @@ const FACE_COVER_SHIFT_RIGHT = 0.14109;
 // up, with the mark at 90% of the picture taking whatever height its own proportions give it.
 const TYPE_SIZE = 0.054;
 const TYPE_LEADING = 1.375; // leading-snug
+// How far a letter may paint outside the box the layout gives it, in ems — the side bearings a
+// bold face overhangs by, which is a property of the face and not of how big the box is drawn.
+// A quarter of an em is past what any of these letters actually take.
+const TYPE_BLEED = 0.25;
 const HEAD_PAD_TOP = 0.02;
 const HEAD_PAD_BOTTOM = 0.09;
 const FOOT_PAD_TOP = 0.09;
 const FOOT_PAD_BOTTOM = 0.02;
 const LOGO_WIDTH = 0.9; // of the front's width
+
+// A guide drawn round the box the place is set in — the front's whole width, and as deep as the
+// type turned out to be. It is not part of the box: it is here to be looked at while the head is
+// being worked on, and it is stroked in a colour nothing on this stock is so it cannot be taken
+// for one of the box's own edges. Drawn with the print, so a box that comes apart takes it along.
+const TYPE_GUIDE = true;
+const TYPE_GUIDE_COLOR = 0xa855f7; // purple-500
+const TYPE_GUIDE_WIDTH = 1;
 
 // The shadow the box casts (drop-shadow-md: 0 3px 3px black at 12%). Cast by what is actually
 // drawn and not by the box's rectangle — the lid has no corners and the front is four fifths of
@@ -685,11 +697,21 @@ export class BoosterBoxSprite extends Container {
 	 * scale is on the Text and not in its font size, so the line breaks that were found stay the
 	 * ones that were found, and the band above it comes out right without being told — a scaled
 	 * Text reports its scaled height, which is what {@link bandHeights} measures.
+	 *
+	 * What it is set down against is not the width it measures but that width plus the bleed, for
+	 * the second way this type can be cut: a letter is not as wide as the room it advances. Bold
+	 * faces paint over the ends of their own boxes, and a text laid out to a width is baked into a
+	 * bitmap exactly that wide, so the overhang is sliced off inside the bitmap before the front's
+	 * crop is reached at all. `padding` is what buys the bitmap room for it — it is not layout, the
+	 * quad being moved back by the same amount, so nothing here shifts — and the fit is then asked
+	 * of the ink rather than of the advance, so the widest letters land inside the front and not on
+	 * its edge.
 	 */
 	private placeType(label: string): Text {
 		const w = this.boxWidth;
 		const size = TYPE_SIZE * w;
 		const room = FRONT_WIDTH * w;
+		const bleed = TYPE_BLEED * size;
 		const type = new Text({
 			text: label,
 			resolution: this.options.app.renderer.resolution,
@@ -700,11 +722,13 @@ export class BoosterBoxSprite extends Container {
 				lineHeight: size * TYPE_LEADING,
 				fill: this.stock.ink,
 				align: 'center',
+				padding: bleed,
 				wordWrap: true,
 				wordWrapWidth: room
 			}
 		});
-		if (type.width > room) type.scale.set(room / type.width);
+		const drawn = type.width + bleed * 2;
+		if (drawn > room) type.scale.set(room / drawn);
 		return type;
 	}
 
@@ -759,6 +783,18 @@ export class BoosterBoxSprite extends Container {
 			type.anchor.set(0.5, 0);
 			type.position.set(frontW / 2, HEAD_PAD_TOP * this.boxWidth);
 			print.addChild(type);
+
+			if (TYPE_GUIDE) {
+				// The room the place was given, not the room it took: the width is the front's own
+				// whatever the name came out as, and only the depth is read off the type.
+				const guide = new Graphics();
+				guide.rect(0, HEAD_PAD_TOP * this.boxWidth, frontW, type.height);
+				// Struck inside the rectangle rather than astride it: the box it is drawing runs to
+				// the front's own edges, and the front is cropped, so a centred line would lose its
+				// outer half down both sides.
+				guide.stroke({ color: TYPE_GUIDE_COLOR, width: TYPE_GUIDE_WIDTH, alignment: 0 });
+				print.addChild(guide);
+			}
 		}
 
 		if (logo && logo.width > 0) {
