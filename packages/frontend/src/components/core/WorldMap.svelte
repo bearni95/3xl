@@ -209,6 +209,9 @@
 	// does with a marker it does in any pane, and that selector names one: in a pane of
 	// its own the component's own widths are simply left standing.
 	const BOX_PANE = 'festaBoxPane';
+	// The pane every leader line is drawn in, below both the marks' panes, so no mark is ever
+	// crossed by another mark's line (see the pane's own note at createPane).
+	const LEADER_PANE = 'pinLeaderPane';
 	// The BoosterBox components standing in that layer, tracked for the same reason the
 	// pins' mounts are: clearing the layer only detaches their DOM, and a box left
 	// mounted holds its poster and its logo for a town no longer on screen.
@@ -374,6 +377,10 @@
 		for (const pane of [
 			mapInstance.getPane('markerPane'),
 			mapInstance.getPane(BOX_PANE),
+			// The lines go with the marks they are about (see LEADER_PANE) — they are drawn in
+			// a pane of their own for the stacking alone, and a line left sharp under a blurred
+			// map would be the one thing still in focus.
+			mapInstance.getPane(LEADER_PANE),
 			// The corner is furniture like the rest and goes under the sheet with it, even
 			// though it is not a pane: it stands outside the map's panes precisely so the map
 			// cannot carry it off (see cornerLayer), which also means nothing else would have
@@ -649,13 +656,9 @@
 		const wrap = document.createElement('div');
 		wrap.className = classNamesFor(marker);
 
-		// The line back to the place, where the crowd turns out to leave the pin nowhere to
-		// stand but beside its point (see placeMarks): it leaves the place and arrives at the
-		// mark, and every pin's does it the same way round, so a reader follows one without
-		// having to work out which end is which. Drawn first so the pin's own blocks paint
-		// over the end of it, and left without geometry — a pin standing on its own point
-		// draws none of it at all (see leaderElement and drawLeader).
-		wrap.appendChild(leaderElement(marker.id, marker.frameClasses ?? null, !!marker.dimmed));
+		// The line back to the place is NOT in here. It stands on the point, in a pane of its
+		// own under every mark on the map (see addLeader), so that a line never crosses a
+		// neighbour's plate on top of it.
 
 		// A square tile in the region's colour carrying the show's glyph, standing at the
 		// left end of the plate below. The glyph is inlined rather than pointed at by an
@@ -833,9 +836,16 @@
 		'mt-1 flex min-w-[200px] max-w-[15rem] flex-col gap-1.5 rounded-lg bg-base-100/80 p-1.5 text-white shadow-lg';
 	const TILE_CLASSES = 'flex size-10 flex-none items-center justify-center rounded-lg';
 
-	// A mark's line back to the place it is about, without its geometry — that is the
-	// placement pass's to give it once it knows whether the mark had to move at all (see
-	// drawLeader), and a mark standing on its own point never draws one.
+	// A mark's line back to the place it is about: its own marker, standing on the point, in
+	// the pane that is under every mark on the map (see LEADER_PANE). It belongs to the point
+	// and not to the mark — which is what lets a line be drawn under a plate it crosses rather
+	// than over it, and is also the truer reading of the thing, a line being about the place
+	// the mark has had to leave.
+	//
+	// Without its geometry: that is the placement pass's to give it once it knows whether the
+	// mark had to move at all (see drawLeader), and a mark standing on its own point never
+	// draws one. It is anchored at the point and swung out towards the mark, `origin-left`
+	// being the point itself.
 	//
 	// It is the region's own colour, taken from the very class the mark's tile is filled with
 	// rather than from a second table of the same six swatches — the line and the tile are the
@@ -844,16 +854,27 @@
 	//
 	// A strip of a div and not an svg: it is a straight line of one colour, which is a box
 	// with a background and a rotation, and a box can be filled with a class while a stroke
-	// cannot. Registered under the mark's id, so the placement pass can find it again.
-	function leaderElement(id: string, frameClasses: string | null, dimmed: boolean): HTMLElement {
+	// cannot. Registered under the mark's id, so the placement pass can find it again, and
+	// never interactive — it is a sign about a mark, and everything that answers a pointer is
+	// in the mark itself.
+	function addLeader(
+		id: string,
+		position: [number, number],
+		frameClasses: string | null,
+		dimmed: boolean,
+		into: L.LayerGroup
+	): L.Marker {
 		const leader = document.createElement('div');
 		leader.className =
-			'pointer-events-none absolute left-0 top-1/2 -mt-px h-0.5 origin-left ' +
+			'pointer-events-none absolute left-0 top-0 -mt-px h-0.5 origin-left ' +
 			(frameClasses ?? 'bg-base-content') +
 			(dimmed ? ' opacity-50' : '');
 		leader.setAttribute('aria-hidden', 'true');
 		pinLeaders.set(id, leader);
-		return leader;
+		const icon = Leaf!.divIcon({ html: leader, className: '', iconSize: [0, 0] });
+		const layer = Leaf!.marker(position, { icon, interactive: false, pane: LEADER_PANE });
+		layer.addTo(into);
+		return layer;
 	}
 
 	// The mark several pins fold into: one pin, printed exactly as any of them, whose tile
@@ -876,18 +897,14 @@
 	// A click unfolds it (see unfold) rather than opening anything, because the mark stands
 	// for several regions and there is no one region a click on it could mean. The hover is
 	// every region's at once — that one CAN be said of all of them, and is (see addGroup).
-	function groupElement(id: string, members: MapMarker[]): HTMLElement {
+	function groupElement(members: MapMarker[]): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className = 'relative flex cursor-pointer flex-col items-center';
 
-		const frameClasses = members.every((member) => member.frameClasses === members[0].frameClasses)
-			? (members[0].frameClasses ?? null)
-			: null;
+		const frameClasses = groupFrameClasses(members);
 		// Faded only when every place under it is outside the open selection: a count with one
 		// relevant town in it is a count the reader is being pointed at.
 		const dimmed = members.every((member) => member.dimmed);
-
-		wrap.appendChild(leaderElement(id, frameClasses, dimmed));
 
 		const plate = document.createElement('div');
 		plate.className = PLATE_CLASSES;
@@ -926,6 +943,16 @@
 		plate.appendChild(head);
 		wrap.appendChild(plate);
 		return wrap;
+	}
+
+	/**
+	 * The colour a count is printed in: the one its members all fly, or none at all where they
+	 * disagree — so a tile never says a colour that half of what it counts does not fly. Asked
+	 * twice (the tile, and the line back to the point), which is why it is not asked inline.
+	 */
+	function groupFrameClasses(members: MapMarker[]): string | null {
+		const first = members[0].frameClasses ?? null;
+		return members.every((member) => (member.frameClasses ?? null) === first) ? first : null;
 	}
 
 	// Open a group: put the map where its places are no longer one mark.
@@ -1148,6 +1175,8 @@
 		position: [number, number];
 		element: HTMLElement;
 		layer: L.Marker;
+		/** Its line back to the point, standing in the pane under every mark (see addLeader). */
+		leader: L.Marker;
 		/** Its claim on the room there is: the lower the rank, the earlier it picks. */
 		rank: number;
 	};
@@ -1180,6 +1209,13 @@
 			position: marker.position,
 			element,
 			layer,
+			leader: addLeader(
+				marker.id,
+				marker.position,
+				marker.frameClasses ?? null,
+				!!marker.dimmed,
+				markerLayer!
+			),
 			rank: marker.team?.length ? RANK_PICKED : RANK_PIN
 		};
 	}
@@ -1191,7 +1227,7 @@
 	 */
 	function addGroup(members: MapMarker[], position: [number, number]): PinMark {
 		const id = `group:${members[0].id}`;
-		const element = groupElement(id, members);
+		const element = groupElement(members);
 		const icon = Leaf!.divIcon({ html: element, className: '', iconSize: [0, 0] });
 		const layer = Leaf!.marker(position, { icon, riseOnHover: true });
 		layer.on('click', () => unfold(members.map((member) => member.position)));
@@ -1201,7 +1237,21 @@
 		layer.on('mouseover', () => highlightRegion(featureIds, true));
 		layer.on('mouseout', () => highlightRegion(featureIds, false));
 		layer.addTo(markerLayer!);
-		return { id, marker: null, position, element, layer, rank: RANK_PIN };
+		return {
+			id,
+			marker: null,
+			position,
+			element,
+			layer,
+			leader: addLeader(
+				id,
+				position,
+				groupFrameClasses(members),
+				members.every((member) => member.dimmed),
+				markerLayer!
+			),
+			rank: RANK_PIN
+		};
 	}
 
 	// What each mark came out as, in pixels, read back off the DOM once it is standing.
@@ -1277,6 +1327,7 @@
 			for (const id of group.ids) {
 				const mark = byId.get(id)!;
 				markerLayer!.removeLayer(mark.layer);
+				markerLayer!.removeLayer(mark.leader);
 				unmountPin(id);
 				pinLeaders.delete(id);
 				foldedIds.add(id);
@@ -1317,15 +1368,21 @@
 		const box = owner ? boxForMarker(owner) : null;
 		if (!owner || !box) return;
 
-		// The line first, so the box's own cover paints over the end of it — and the region's
-		// colour, off the very class the town's pin fills its tile with, for the reason given
-		// at the pin's own leader.
+		// The line, in the region's colour — off the very class the town's pin fills its tile
+		// with, for the reason given at the pin's own leader.
+		//
+		// It goes in the pane every other leader is drawn in and NOT in the corner's layer with
+		// the box it leaves, because it is a line and lines are under the marks: run at the
+		// corner's own height it crossed every plate between the box and the town, on top of
+		// them. Which means it is placed in the map's coordinates rather than the container's,
+		// though both of its ends are read in the container's — see trackCorner, which is what
+		// keeps it pointing at the town as the map slides underneath.
 		cornerLeader = document.createElement('div');
 		cornerLeader.className =
 			'pointer-events-none absolute -mt-px h-0.5 origin-left ' +
 			(owner.frameClasses ?? 'bg-base-content');
 		cornerLeader.setAttribute('aria-hidden', 'true');
-		cornerLayer.appendChild(cornerLeader);
+		mapInstance.getPane(LEADER_PANE)?.appendChild(cornerLeader);
 
 		cornerBox = boxElement(box, 'corner');
 		// The top-right of the room, which is not the top-right of the canvas: the breadcrumb
@@ -1355,7 +1412,8 @@
 	// stops, while this stands still and watches its town slide about under it. A line left
 	// pointing where the town used to be would be the one wrong statement on the canvas.
 	function trackCorner() {
-		if (!mapInstance || !cornerLayer || !cornerBox || !cornerLeader || !cornerAnchor) return;
+		if (!mapInstance || !Leaf || !cornerLayer || !cornerBox || !cornerLeader || !cornerAnchor)
+			return;
 		const at = mapInstance.latLngToContainerPoint(cornerAnchor);
 		// The box's left-middle, in the corner layer's own coordinates. Measured rather than
 		// worked out from the classes that place it: the box is as tall as its cover comes out,
@@ -1366,8 +1424,14 @@
 		const fromY = boxRect.top - layerBox.top + boxRect.height / 2;
 		const dx = at.x - fromX;
 		const dy = at.y - fromY;
-		cornerLeader.style.left = `${fromX}px`;
-		cornerLeader.style.top = `${fromY}px`;
+		// Both ends are read off the container, and the line is drawn in a pane the map moves
+		// (see rebuildCorner), so its start is put back into the pane's own coordinates. Its
+		// length and its angle are the difference between the two ends and need no converting:
+		// the pane is moved, never scaled, except in a zoom animation, which is the one stretch
+		// there is no corner at all (see clearMarkers).
+		const start = mapInstance.containerPointToLayerPoint(Leaf.point(fromX, fromY));
+		cornerLeader.style.left = `${start.x}px`;
+		cornerLeader.style.top = `${start.y}px`;
 		cornerLeader.style.width = `${Math.hypot(dx, dy)}px`;
 		cornerLeader.style.transform = `rotate(${(Math.atan2(dy, dx) * 180) / Math.PI}deg)`;
 	}
@@ -1475,9 +1539,8 @@
 		];
 	}
 
-	// One mark's line, as a length and an angle: the strip is anchored at the mark's
-	// left-middle (see leaderElement) and swung back onto the point, which is the offset read
-	// the other way round.
+	// One mark's line, as a length and an angle: the strip is anchored at the POINT (see
+	// addLeader) and swung out onto the mark's left-middle, which is the offset read straight.
 	//
 	// A mark that never left its point draws no line at all. There is nothing for one to say —
 	// the mark is standing on the place it names — and a stub drawn under every plate on the
@@ -1489,7 +1552,7 @@
 		if (!leader) return;
 		const length = offset.moved ? Math.hypot(offset.dx, offset.dy) : 0;
 		leader.style.width = `${length}px`;
-		leader.style.transform = `rotate(${(Math.atan2(-offset.dy, -offset.dx) * 180) / Math.PI}deg)`;
+		leader.style.transform = `rotate(${(Math.atan2(offset.dy, offset.dx) * 180) / Math.PI}deg)`;
 	}
 
 	// The pins come off the map before it starts to zoom, and are built again where it stops.
@@ -1796,9 +1859,7 @@
 				: kind === 'box'
 					? boxElement(box, 'point')
 					: discElement(box, 'point');
-			// The stock the mark is printed on is the colour its line back is drawn in, exactly
-			// as a pin's line takes its tile's colour: one colour saying one thing.
-			const html = pointMark(id, inner, group.every((member) => member.light));
+			const html = pointMark(inner);
 			const icon = Leaf.divIcon({ html, className: '', iconSize: [0, 0] });
 			const at = folded ? boxGroupPosition(group) : box.position;
 			const badge = Leaf.marker(at, { icon, riseOnHover: true, pane: BOX_PANE });
@@ -1822,6 +1883,15 @@
 				position: at,
 				element: html,
 				layer: badge,
+				// The stock the mark is printed on is the colour its line back is drawn in,
+				// exactly as a pin's line takes its tile's colour: one colour saying one thing.
+				leader: addLeader(
+					id,
+					at,
+					group.every((member) => member.light) ? 'bg-white' : 'bg-black',
+					false,
+					boxLayer!
+				),
 				rank: kind === 'box' && !folded ? RANK_PICKED : RANK_BOX
 			});
 		}
@@ -1830,18 +1900,16 @@
 		placeMarks();
 	}
 
-	// The wrapper every booster mark is hung on its point by: the mark itself, and above it the
-	// line back to the point for the marks that turn out to have to leave it.
+	// The wrapper every booster mark is hung on its point by.
 	//
 	// A booster mark used to place itself, centring on its point with a pair of classes. It
 	// cannot any more: it is dealt its room with the pins now (see placeMarks), so where it
 	// stands is measured per view and applied as a transform, and it needs the same shape every
-	// placed mark has — a box whose LEFT-MIDDLE is what the offset is about, with a line that
-	// leaves the point rightwards and arrives at that corner.
-	function pointMark(id: string, inner: HTMLElement, light: boolean): HTMLElement {
+	// placed mark has — a box whose LEFT-MIDDLE is what the offset is about, which is the corner
+	// its line back arrives at.
+	function pointMark(inner: HTMLElement): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className = 'relative flex flex-col items-center';
-		wrap.appendChild(leaderElement(id, light ? 'bg-white' : 'bg-black', false));
 		wrap.appendChild(inner);
 		return wrap;
 	}
@@ -2231,6 +2299,22 @@
 		// town's own mark is inside its pin (see markerElement) and nothing here stands on a
 		// point a pin already has.
 		mapInstance.createPane(BOX_PANE).style.zIndex = '590';
+
+		// The pane the leader lines are drawn in (see LEADER_PANE), under every mark on the
+		// map — the pins at 600 and the booster marks at 590.
+		//
+		// A line used to be drawn inside the mark it belongs to, which put it in that mark's
+		// place in the stack: a line leaving a northern town crossed the plate of a southern
+		// one and was drawn over it, because Leaflet stacks a marker by its latitude and a
+		// mark is stacked whole. So the lines are taken out of the marks altogether and given
+		// one pane below all of them, where no line can be over anything: a line is the least
+		// of what is drawn here, being only the sign that a mark is beside its place, and it
+		// crosses the terrain rather than the reading matter standing on it.
+		//
+		// A pane rather than a layer of the container, because a line is about a point on the
+		// ground: in a pane it slides with the map exactly as the mark it points at does, and
+		// needs redrawing only where the marks themselves are dealt again.
+		mapInstance.createPane(LEADER_PANE).style.zIndex = '580';
 
 		// Not passive: the handler's first act is to refuse the page the scroll.
 		mapContainer.addEventListener('wheel', onWheelZoom, { passive: false });
