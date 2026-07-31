@@ -2348,7 +2348,25 @@
 					<div
 						class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
 					>
-						<span class="font-display text-2xl leading-none">6xl</span>
+						<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
+							down and right, and the word itself over it. A shadow drawn as a copy rather
+							than as a `text-shadow`, because a shadow the thickness of this face wants to be
+							the face — one solid displaced impression of it, with no blur and no spread,
+							which is what a second copy of the glyphs is and what a shadow utility, spelling
+							a colour and a radius, is not.
+							Both copies are positioned, so the one later in the document paints over the
+							other without a z-index: an absolute box would otherwise sit above in-flow type
+							whatever order it is written in, and sending it under with a negative z-index
+							would send it under the plate's own fill as well, there being no stacking
+							context between them. The copy in flow is the one that gives the box its size;
+							`aria-hidden` on the other, since a reader hearing "6xl 6xl" is being told about
+							a shadow. -->
+						<span class="relative font-display text-2xl leading-none">
+							<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true"
+								>6xl</span
+							>
+							<span class="relative">6xl</span>
+						</span>
 					</div>
 
 					<MapBreadcrumbs
