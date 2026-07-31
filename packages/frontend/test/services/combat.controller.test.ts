@@ -454,7 +454,16 @@ describe('CombatController — what the board is left showing', () => {
 			expect(calls).not.toContain(`playMove:${fighter.id}`);
 		}
 
-		// And let out of it as the next turn's orders are asked for, so nobody is left
+		// And let out of it as the blow it answered ends: the brace and its ring come down at
+		// the moment the attacker turns for home, so the fighter is standing in its idle
+		// again for the walk back rather than frozen mid-block with nothing coming at it.
+		const firstRelease = calls.findIndex((call) => call.startsWith('clearHold:'));
+		const firstHome = calls.findIndex((call) => call.startsWith('returnHome'));
+		expect(firstRelease).toBeGreaterThan(firstStrike);
+		expect(firstRelease).toBeLessThan(firstHome);
+		for (const fighter of covering) expect(calls).toContain(`clearHold:${fighter.id}`);
+
+		// And let out of it again as the next turn's orders are asked for, so nobody is left
 		// braced — or ringed — into a turn they have not been given an order in yet.
 		expect(get(controller).phase).toBe('planning');
 		expect(calls.lastIndexOf('clearHolds')).toBeGreaterThan(

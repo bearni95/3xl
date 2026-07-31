@@ -828,8 +828,10 @@ export class CombatController {
 		//
 		// It braces because a blow is coming, though — not because it chose to cover. A
 		// covering fighter nobody fires at still shows nothing all turn (see
-		// {@link showOrders}). The pose is held rather than thrown, so it stands for the rest
-		// of the turn: the next shot down this lane meets a fighter still braced.
+		// {@link showOrders}). The pose is held rather than thrown, so it stands for as long
+		// as the blow it is answering does, and comes down with it — a guard is a thing being
+		// done to a shot, not a state the fighter wears until the turn is over. The next shot
+		// down this lane braces it again, at that blow's own moment.
 		//
 		// A guard is a guard whoever paid for it. The free one blue owes is the same defence
 		// as the ordered one — it turns this very blow aside, at this very moment — so it is
@@ -889,6 +891,13 @@ export class CombatController {
 			await pause(SHOT_BEAT_MS);
 			return;
 		}
+		// The blow is over, so the guard is over: the fighter comes out of its brace and out
+		// of the ring at the moment the attacker turns for home, and stands in its idle again
+		// while the walk back plays. Held to the end of the turn instead, it was a fighter
+		// frozen mid-block with nothing coming at it any more, wearing a circle that was
+		// answering a shot that had already been turned aside — and the two of them stood
+		// like that through every other lane's attack.
+		this.board?.clearHold(target.id);
 		// Back to its own cell, struck or blocked: the ground a fighter holds is not
 		// changed by having gone out to hit somebody, and the next lane's attack is
 		// played from the line as it stood.

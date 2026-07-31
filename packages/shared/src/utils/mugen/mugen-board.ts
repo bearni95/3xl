@@ -1631,8 +1631,9 @@ export class MugenBoard {
 
 	/**
 	 * Stand a character *in* one of its moves and leave it there — the guard a fighter
-	 * turned a blow aside with holds for the rest of the turn, rather than a brace it
-	 * throws once and drops. The animation loops where every other pose plays out, because
+	 * turned a blow aside with stands for as long as the blow does, rather than being a
+	 * brace it throws once and drops, and is let out of by whoever put it up when the thing
+	 * it was answering is over. The animation loops where every other pose plays out, because
 	 * that is the difference between doing a thing and being in a state: a fighter covering
 	 * is covering until it is told otherwise ({@link clearHold}).
 	 *

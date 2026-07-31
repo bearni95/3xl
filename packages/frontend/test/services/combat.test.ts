@@ -122,12 +122,13 @@ function fakeBoard(log: AuraLog) {
 		// it, since nothing in this fight is put into words on the board.
 		showSlash: () => {},
 		playMove: done,
-		// The guard a braced fighter is stood in for the turn, the ring drawn round it as the
-		// blow it answers is thrown, and the release of every one of them as the next turn is
-		// handed over. The ring is what is logged as bracing: a pose is a frame of animation
-		// until something says it is a state.
+		// The guard a braced fighter is stood in, the ring drawn round it as the blow it
+		// answers is thrown, the release of it once that blow is over, and the release of
+		// every one of them as the next turn is handed over. The ring is what is logged as
+		// bracing: a pose is a frame of animation until something says it is a state.
 		holdMove: () => {},
 		ringHold: (id: string, color: string) => log.braced.push({ id, color }),
+		clearHold: () => {},
 		clearHolds: () => {},
 		playHurt: done,
 		closeIn: done,
