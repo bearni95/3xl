@@ -991,9 +991,14 @@
 						     so a count is a block of the plate rather than something placed on
 						     it. Only the sides are ruled — a line along the top and bottom would
 						     be a line drawn just inside the plate's own edges, which is a border
-						     around the block and not a division of it. -->
+						     around the block and not a division of it.
+						     And the rules belong to the block, not to the cells: two neighbours
+						     each carrying their own side drew two lines where they met, one from
+						     either, so a seam inside the block was twice the weight of the line
+						     down its outer edge. The block wears its two outer sides and one line
+						     between each pair, which is what a shared side is. -->
 						<div
-							class="grid h-full w-24 grid-cols-3"
+							class="grid h-full w-24 grid-cols-3 divide-x divide-white border-x border-white"
 							role="progressbar"
 							aria-label={$_('combat.rivalWins')}
 							aria-valuemin={0}
@@ -1001,19 +1006,14 @@
 							aria-valuenow={state.wins.error}
 						>
 							{#each RIVAL_LANES as lane}
-								<span
-									class={classNames(
-										'border-x border-white',
-										lane <= state.wins.error && 'bg-white'
-									)}
-								></span>
+								<span class={classNames(lane <= state.wins.error && 'bg-white')}></span>
 							{/each}
 						</div>
 						<span class="self-center font-mono text-lg font-bold tabular-nums opacity-70">
 							{$_('combat.turn', { values: { turn: state.turn } })}
 						</span>
 						<div
-							class="grid h-full w-24 grid-cols-3"
+							class="grid h-full w-24 grid-cols-3 divide-x divide-white border-x border-white"
 							role="progressbar"
 							aria-label={$_('combat.yourWins')}
 							aria-valuemin={0}
@@ -1021,9 +1021,7 @@
 							aria-valuenow={state.wins.info}
 						>
 							{#each LANES as lane}
-								<span
-									class={classNames('border-x border-white', lane <= state.wins.info && 'bg-white')}
-								></span>
+								<span class={classNames(lane <= state.wins.info && 'bg-white')}></span>
 							{/each}
 						</div>
 					</div>
