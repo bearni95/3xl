@@ -789,15 +789,17 @@
 
 	// Build a pin's DOM: the one plate that says what the pin is — the tile at its left end,
 	// the place's name and its show's beside it — and, on the picked town, the side holding
-	// it standing under that plate. The wrapper is translated so its bottom centre sits on
+	// it standing over that plate. The wrapper is translated so its bottom centre sits on
 	// the point (the marker itself is zero-sized, see rebuildMarkers), giving a pin that
 	// stands above its region.
 	//
-	// The plate is built the same way whether or not there is a side under it: a pin is the
+	// The plate is built the same way whether or not there is a side over it: a pin is the
 	// map's mark on a place, and the place does not stop being named because somebody is
 	// standing on it. So the statues are added to the pin rather than drawn in place of any
-	// part of it, and they go BELOW the plate — the mark reads first and what is holding the
-	// town stands on the point under it, with the way to fight them last of all.
+	// part of it, and the plate is read UNDER them — the side and the box it came out of are
+	// the picture, and the plate is its caption: what the place is called, who is sitting on
+	// it, how far it has been taken and what may be done about it, all of it about the three
+	// standing above it and none of it worth putting between them and the point.
 	function markerElement(marker: MapMarker): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className = classNamesFor(marker);
@@ -914,12 +916,11 @@
 			plate.appendChild(bar);
 		}
 
-		wrap.appendChild(plate);
-
 		// The side sitting on the region, where there is one: the very statues the roster
 		// draws a team with — floor, character, name, place and all — three across, standing
-		// on the point with the plate above them. Which pins get one is the caller's to say
-		// (today, the picked town alone); every other pin is the plate by itself. It is the
+		// at the head of the column with the plate under them. Which pins get one is the
+		// caller's to say (today, the picked town alone); every other pin is the plate by
+		// itself, which is why the plate is the block that never moves. It is the
 		// same component (see TeamLineup), mounted into the pin's DOM because this is
 		// imperative code rather than a template, and tracked so the next rebuild can unmount
 		// it.
@@ -955,13 +956,18 @@
 			statues = frame;
 		}
 
+		// And the plate under whatever side there was, naming the place the three of them are
+		// standing on. Appended here rather than where it was built, so the order the column is
+		// read in is written down in one place.
+		wrap.appendChild(plate);
+
 		// What the town is offering, where the booster window has anything for this place and
 		// the tier on screen marks towns at all (see boxForMarker) — at whichever of its two
 		// sizes this town calls for (see markKindForBox).
 		//
-		// The DISC is the last block of the column: the plate says what the place is and what
-		// may be done about it, the side under it is who is holding it, and the offer waiting
-		// there is what the column ends on.
+		// The DISC is the last block of the column: the side at the head of it is who is holding
+		// the place, the plate under them says what the place is and what may be done about it,
+		// and the offer waiting there is what the column ends on.
 		//
 		// The BOX — the picked town's, 200px of cover with a wordmark and a place across its
 		// foot — stands BEHIND the side instead, on the middle statue's own centre, and takes no
@@ -979,8 +985,9 @@
 		// deciding which of them a reader ever saw. The box layer keeps the towns this tier gave
 		// no pin to (see rebuildBoxes); a town with a pin carries its own mark.
 		//
-		// A picked town with no side under it — the one case there is nothing to lay the box on
-		// — takes it as a block of the column, which is where it would have stood all along.
+		// A picked town with no side over it — the one case there is nothing to stand the box
+		// behind — takes it as a block of the column, which is where it would have stood all
+		// along.
 		//
 		// Its click is the mark's own — the pack behind a box, the town behind a disc (see
 		// boxAction) — and not the pin's (the region), so the pin's marker must not see it: the
@@ -1009,8 +1016,10 @@
 	// printed on the same stock as the pins it stands for (see groupElement), so it reads
 	// them too.
 	//
-	// The margin is the pin's own and is added here: it is what holds the plate clear of the
-	// point it stands on, which is a thing about being a pin and not about being a plate.
+	// The margin is the pin's own and is added here: it is the gap between the plate and
+	// whatever the column put above it — the side, where there is one, and the point itself
+	// where the plate is the whole of the pin. A thing about being a pin and not about being
+	// a plate, either way.
 	const PIN_PLATE_CLASSES = `mt-1 ${PLATE_CLASSES}`;
 
 	// A mark's line back to the place it is about: its own marker, standing on the point, in
@@ -1810,8 +1819,8 @@
 	// Where it is drawn places it, exactly as it does the box (see boxElement), and for the
 	// same reason — the two are one mark at two sizes and are placed by one rule:
 	//
-	// - `'pin'` — a block of the town's own pin, under the plate naming the place, needing
-	//   only the gap the pin's other parts take. This is every festa town the tier gives a
+	// - `'pin'` — the last block of the town's own pin, under the plate naming the place,
+	//   needing only the gap the pin's other parts take. This is every festa town the tier gives a
 	//   pin to, which is most of them: the disc used to be hung on the point instead, back
 	//   when a pin grew upwards and left that room free. It no longer does (see
 	//   classNamesFor), and a 56px disc centred on the same point as a 56px plate is one
