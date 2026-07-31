@@ -1096,6 +1096,10 @@ export class CombatController {
 	 * ways of three — so a line of three colours plays three fights rather than the same
 	 * fight three times. It is a lean and not a rule: every order stays reachable, or a
 	 * blue rival with a charge in hand would never spend it.
+	 *
+	 * The lean is on for the whole fight and the gift for one turn of it, and neither is
+	 * read off the other: what a colour hands over runs out at the end of the opening
+	 * turn, what a colour *is* does not.
 	 */
 	private planRivals(): void {
 		for (const rival of this.rivals()) {
@@ -1329,18 +1333,20 @@ export class CombatController {
 	 * of the orders its colour grants, and 1 for anything else. A character's tactics are
 	 * therefore its colour's, the same one thing everything else about it comes from.
 	 *
-	 * With one exception, which is the same rule that governs the gift itself: while its
-	 * colour still *owes* it that order, the lean comes off. A gift is only ever a second
-	 * thing the fighter does, so ordering the very order it is about to be handed is how
-	 * it throws that gift away — a red rival that spends its opening turn shooting has
-	 * fired one shot where it could have fired two. So on the turn a lean would cost the
-	 * most it is not there, and from the turn the gift lapses it is (see
-	 * {@link lapsePassives}). Leaning is a preference, never a rule: the weight is tilted
-	 * and nothing is taken off the table.
+	 * Every turn of the fight, the opening one included, and this is deliberately *not*
+	 * tied to whether the gift is still in hand ({@link owes}). The two are different
+	 * things a colour is: the gift is worth one use and lasts the opening turn
+	 * ({@link lapsePassives}), while the lean is what the fighter is *like*, and a
+	 * fighter that fought like somebody else until its gift lapsed would be nobody for
+	 * the turn it is most looked at. It costs something on that turn — a blue rival that
+	 * covers is a blue rival that has thrown its free guard away, since a gift only ever
+	 * comes beside the order given — and that is the price of the colour meaning one
+	 * thing all fight rather than two things in sequence. It stays a lean and never a
+	 * rule: the weight is tilted and nothing is taken off the table, so a colour tends
+	 * towards its own order without ever being made to take it.
 	 */
 	private favours(fighter: Fighter, order: CombatAction): number {
-		if (!fighter.passives.includes(order)) return 1;
-		return this.owes(fighter, order) ? 1 : RIVAL_FAVOUR;
+		return fighter.passives.includes(order) ? RIVAL_FAVOUR : 1;
 	}
 
 	/**

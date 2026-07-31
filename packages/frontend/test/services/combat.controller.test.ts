@@ -347,16 +347,17 @@ describe('CombatController — the rivals fight the way their colour does', () =
 		]);
 	});
 
-	it('does not lean on a gift it is still holding', async () => {
-		// The opening turn, and blue's free guard is still in hand. A gift only ever comes
-		// beside the order given, so covering now is how a blue fighter throws it away — the
-		// lean comes off for exactly as long as that is true. At this roll a blue rival that
-		// leaned on the shield would cover; these load, and are guarded for nothing.
+	it('leans from the opening turn, where the gift is still in hand', async () => {
+		// The lean is what the fighter is like and the gift is one use of one order: they
+		// last different lengths of time and neither is read off the other. So a blue rival
+		// covers on turn one — at this roll a fighter that did not lean would load — even
+		// though covering is exactly how it throws its own free guard away. That is the
+		// price of a colour meaning one thing all fight instead of two things in sequence.
 		vi.spyOn(Math, 'random').mockReturnValue(0.7);
 		const controller = new CombatController(seeds(['blue', 'blue', 'blue', 'red', 'red', 'red']));
 		for (const fighter of playerFighters(controller)) tap(controller, fighter, 'charge');
 		controller.commit();
-		expect(rivalOrders(controller)).toEqual(['charge', 'charge', 'charge']);
+		expect(rivalOrders(controller)).toEqual(['defend', 'defend', 'defend']);
 		await settle(controller);
 	});
 });
