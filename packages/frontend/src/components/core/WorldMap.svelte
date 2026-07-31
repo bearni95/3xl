@@ -938,9 +938,9 @@
 			// viewport units rather than behind a breakpoint for the same reason the statues are
 			// flex-1 of the row — it says the thing itself, and it is inert on any screen with
 			// room for the 500px the side asked for.
-			// `relative` because the picked town's booster box is laid over this row, centred on
-			// it (see below): the side is what the box is dealt out onto, so the row is the box's
-			// containing block.
+			// `relative` because the picked town's booster box stands behind this row, centred on
+			// the statue in the middle of it (see below): the side is what the box is dealt out
+			// onto, so the row is the box's containing block.
 			frame.className = 'relative mt-1 w-[500px] max-w-[100vw] drop-shadow-lg';
 			trackPinMount(
 				marker.id,
@@ -964,10 +964,10 @@
 		// there is what the column ends on.
 		//
 		// The BOX — the picked town's, 200px of cover with a wordmark and a place across its
-		// foot — is laid OVER the side instead, centred on the row of statues, and takes no room
-		// in the column at all. Which is the same reading the box already carried: what is
-		// inside it is cards, and the cards it opens onto are the very statues it is standing
-		// on. Stood in the column it made the one pin the reader had asked to look at the
+		// foot — stands BEHIND the side instead, on the middle statue's own centre, and takes no
+		// room in the column at all. Which is the same reading the box already carried: what is
+		// inside it is cards, and the cards it opens onto are the very statues standing in front
+		// of it. Stood in the column it made the one pin the reader had asked to look at the
 		// tallest thing on the map, and pushed the plate naming the town half a column away from
 		// the town; stood in the canvas's corner it was clear of the map but had to say which
 		// town it was about with a line drawn across it. On the side it is on its own town, at
@@ -1688,11 +1688,9 @@
 	//   gap the pin's other parts take. The pin is what built it, so the pin's mounts are
 	//   what unmount it. The picked town asks for this only where it has no side for the box
 	//   to stand on (see markerElement).
-	// - `'statues'` — over the side standing in that same pin, centred on the row of statues
+	// - `'statues'` — behind the side standing in that same pin, centred on the middle statue
 	//   and out of the column's flow altogether, so the pin comes out exactly as tall as it
-	//   would without it. Also the pin's to unmount, being inside it. Raised above the row it
-	//   covers: the middle statue is lifted over the two beside it (see TeamLineup), and a box
-	//   laid over the row at no height of its own would go under that one cell alone.
+	//   would without it. Also the pin's to unmount, being inside it.
 	// - `'point'` — the box layer's own marker, standing on the point: a mark is about the
 	//   ground under it, and 200px of cover reads as being about the town it is centred on
 	//   rather than the one it hangs off. It is also what keeps the box and the disc one
@@ -1709,10 +1707,25 @@
 			(into === 'pin'
 				? 'mt-1'
 				: into === 'statues'
-					? // Its own middle on the row's middle, out of the column's flow. No shadow of
-						// its own: the row it stands in casts one over everything inside it, this
-						// included, and two of the same shadow is one drawn twice.
-						'absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2'
+					? // Its own middle on the MIDDLE STATUE's, which is not the middle of the row:
+						// the three cells come to 110% of it and the middle pulls 7.5% back over each
+						// of its neighbours, so that cell's centre is 35% + 20% - 7.5% = 47.5% along,
+						// plus the one gap the row was given before it (`gap-1`, see markerElement).
+						// The row's own remainder falls at its far end (see LINEUP_ROW_SPAN), which is
+						// why centring on the box would have stood this a few pixels to the right of
+						// the statue it is meant to be over.
+						//
+						// BEHIND the row, not over it: the side is what the reader is looking at and
+						// the box is what it came out of, so the statues stand in front of their own
+						// packaging. Negative, because a positioned box with no height of its own
+						// paints above in-flow content — and it is contained by the row's own
+						// stacking context (a `drop-shadow` is a filter, and a filter makes one), so
+						// it goes behind the statues and nothing else.
+						//
+						// No shadow of its own either: that same filter casts one over everything
+						// inside the row, this included, and two of the same shadow is one drawn
+						// twice.
+						'absolute left-[calc(47.5%_+_0.25rem)] top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2'
 					: // On a point: placed by the pass that deals every mark its room (see
 						// pointMark and placeMarks), so it says nothing here about where it stands.
 						'');
