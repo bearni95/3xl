@@ -25,6 +25,15 @@
 	// Mirror the characters — true (the default) is the player's own side.
 	export let flipped: boolean = true;
 	export let classes: string = '';
+
+	// The three cells' shares of the row: 30% to each flank and 40% to the middle.
+	// Said as grow factors over a zero basis rather than as percentages, because the
+	// share asked for is of the width *available* — percentages would be of the whole
+	// row, and three of them summing to 100 plus the two gaps between them would
+	// overflow it. Written out as whole classes because Tailwind only emits what it
+	// can see spelled. Any cell past the third (there is no such team) falls back to
+	// a flank's share.
+	const cellShares = ['basis-0 grow-[3]', 'basis-0 grow-[4]', 'basis-0 grow-[3]'];
 </script>
 
 <!-- The row itself is outlined in green and each statue's cell in purple. Outlines
@@ -41,7 +50,10 @@
 			spawnedAt={member.spawnedAt ?? null}
 			showId={member.showId}
 			{flipped}
-			classes="flex-1 outline outline-1 outline-purple-500"
+			classes={classNames(
+				cellShares[index] ?? cellShares[0],
+				'outline outline-1 outline-purple-500'
+			)}
 		/>
 	{/each}
 </div>
