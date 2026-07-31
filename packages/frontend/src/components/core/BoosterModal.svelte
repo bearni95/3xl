@@ -48,7 +48,12 @@
 	}
 </script>
 
-<FullScreenModal title="Booster" closeLabel="Close boosters" on:close={close}>
+<!-- The one sheet in the app that paints no page: the map is behind the boxes rather than
+	behind a grade of base-100. A pack belongs to the town it was claimed on, and it is stood
+	up and sliced open over that town — a page under it, however faint, makes the opening
+	something that happens on a screen instead of on the map. Every other full view is content
+	to be read and keeps its page. -->
+<FullScreenModal title="Booster" closeLabel="Close boosters" transparent on:close={close}>
 	<!-- The sheet is the window on a canvas, and nothing beside it. It was drawn twice — the
 		document's own grid on the left and the canvas on the right, both bound to the one pick —
 		which is one window shown twice on a sheet whose whole point is that a pack opening is
@@ -87,22 +92,23 @@
 			</div>
 		{/if}
 
-		<!-- The window itself, on the plate the grid used to share with it: the padding and the
-			ground are the plate's, so the canvas is handed a box holding boxes and draws no margin
-			of its own. The same three taps as ever — a box is picked out of the window, stood up
-			and sliced open, and the cards it held stand up in its place. Those cards are documents
-			even here: the canvas is transparent and they are laid out behind it, so what comes
-			apart is a canvas and what it uncovers is the page.
+		<!-- The window itself, on the plate the grid used to share with it: the padding is the
+			plate's, so the canvas is handed a box holding boxes and draws no margin of its own. The
+			ground is not — a sheet that paints no page would be paying for it here, where the plate
+			takes everything under the calendar line, so the boxes stand on the map. What is left of
+			the plate is the ground under the two sentences that stand in for a window there is
+			nothing in: those are text to be read, not boxes, and text wants something behind it.
+			The same three taps as ever — a box is picked out of the window, stood up and sliced
+			open, and the cards it held stand up in its place. Those cards are documents even here:
+			the canvas is transparent and they are laid out behind it, so what comes apart is a
+			canvas and what it uncovers is the page.
 
 			The pick is bound to the same id a click on a town's box out on the map sets, so a modal
 			opened on a town opens on that town's box rather than on the window it sits in. -->
 		<div
-			class={classNames(
-				'min-h-0 min-w-0 flex-1 rounded-box p-3',
-				packs.length && !townHasNoPack
-					? 'bg-gradient-to-b from-base-300/80 to-base-200'
-					: 'bg-base-200'
-			)}
+			class={classNames('min-h-0 min-w-0 flex-1 rounded-box p-3', {
+				'bg-base-200': !packs.length || townHasNoPack
+			})}
 		>
 			{#if townHasNoPack}
 				<div class="flex h-full items-center justify-center p-6 text-center">

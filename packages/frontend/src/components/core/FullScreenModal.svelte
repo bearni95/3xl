@@ -19,7 +19,8 @@
 	// last of the content and the view reads as something laid over the map rather
 	// than as another screen. It is the gradient alone that paints it — a background
 	// colour under a stop with alpha in it would show through and make the foot opaque
-	// again, which is the whole of what the grade says.
+	// again, which is the whole of what the grade says. `transparent` takes even that
+	// away — see the prop.
 	//
 	// The slide is a Svelte transition rather than a stylesheet's, since the component
 	// is only ever mounted while it is open (a CSS transition has nothing to animate
@@ -64,6 +65,16 @@
 	 * is, so it is the host that says.
 	 */
 	export let closeDisabled: boolean = false;
+	/**
+	 * Paint no page at all: the sheet keeps its size, its bar and its way out, and the map
+	 * is simply behind the content rather than behind a grade of base-100.
+	 *
+	 * The one sheet that asks for this is the booster window, whose content is a canvas of
+	 * boxes with nothing between them — a pack is stood up and sliced open over the town it
+	 * came from, and a page under it, even a graded one, is a screen the opening happens on
+	 * instead of on the map. Every other full view is content to read and keeps its page.
+	 */
+	export let transparent: boolean = false;
 
 	const dispatch = createEventDispatcher<{ close: void }>();
 
@@ -87,10 +98,10 @@
 	transition:fly={{ y: '100%', duration: 250, opacity: 1 }}
 >
 	<div
-		class={classNames(
-			'flex h-full w-full flex-col overflow-hidden bg-gradient-to-b from-base-100 to-base-100/90',
-			{ 'gap-4 p-6': !bare }
-		)}
+		class={classNames('flex h-full w-full flex-col overflow-hidden', {
+			'bg-gradient-to-b from-base-100 to-base-100/90': !transparent,
+			'gap-4 p-6': !bare
+		})}
 	>
 		{#if !bare}
 			<div class="flex flex-none items-center gap-3">
