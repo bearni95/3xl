@@ -2334,7 +2334,7 @@
 					number is not even constant. -->
 				<div transition:blur={CHROME_BLUR} class="flex items-stretch gap-2">
 					<!-- What it says and what size it is set at are two different things: the word is
-						"6xl" and the type is `xl`, one flat size at every viewport rather than a ramp.
+						"6xl" and the type is `2xl`, one flat size at every viewport rather than a ramp.
 						`items-center` centres it in whatever height the row hands this plate (see above);
 						`leading-none` so what is centred is the type's own height and not a line box built
 						for a paragraph. `font-display` is Bungee, the app's one departure from Genos, and
@@ -2343,7 +2343,7 @@
 					<div
 						class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
 					>
-						<span class="font-display text-xl leading-none">6xl</span>
+						<span class="font-display text-2xl leading-none">6xl</span>
 					</div>
 
 					<MapBreadcrumbs
