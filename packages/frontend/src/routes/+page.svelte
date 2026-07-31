@@ -2129,6 +2129,29 @@
 							bar is the one row that is always up, so what a player reaches for however deep
 							into the map they are is reached for here. -->
 						<div slot="end" class="flex items-center gap-2">
+							<!-- The day's booster allowance, at the head of this end: how many boxes are
+								still there to open over how many the day gives at all. It was only ever
+								inside the Booster button's own label, which is behind the menu — so the one
+								number a player plans a day's play around was a fold and a press away, while
+								the bar it belongs on is up whatever they are doing. The same two numbers in
+								the same order as that label, off the same one read of `boosters_status`.
+								Read and not pressed, so it is deliberately not the outlined square the search
+								and the burger beside it wear: a plain glyph and a line of type, which is what
+								this row gives everything that is only to be looked at. Drawn only once there
+								is an allowance to name — signed out, or the status not yet in, the bar says
+								nothing rather than a nought. `tabular-nums` because the count changes under a
+								fixed row and digits of different widths would shift the search box beside it.
+								The glyph is the vendored game-icons one as an `<img>` by URL, white artwork
+								over terrain, as the search and the burger draw theirs. -->
+							{#if boosters}
+								<div
+									class="flex flex-none items-center gap-1.5 text-sm text-white"
+									title={boosterLabel}
+								>
+									<img src="/assets/icons/quoting/card-pickup.svg" class="size-4" alt="" />
+									<span class="tabular-nums">{boosters.remaining}/{boosters.level}</span>
+								</div>
+							{/if}
 							<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
 							<!-- The three bars, in the same square and the same white as the search button it
 								stands beside and the dots button at the other end of the row: this bar is a line
