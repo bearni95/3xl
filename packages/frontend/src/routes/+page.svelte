@@ -2369,6 +2369,44 @@
 						</span>
 					</div>
 
+					<!-- The same plate again, drawn as one SVG instead of out of boxes — the plate above
+						said a second way, and standing next to it so the two can be read against each
+						other.
+
+						It is inline SVG and not an `<img>`, which is the whole reason it can be the same
+						thing: markup in the document inherits from the document, so `font-display` and
+						`text-2xl` on the root resolve to the very same Bungee at the very same 24px the
+						boxes are set in, and `fill-primary` / `fill-base-100` resolve through the same
+						theme tokens as the `bg-` and `text-` utilities beside them. Nothing here spells a
+						colour or a family; an `<img>` would have had to spell both.
+
+						The dimensions are the boxes', worked out rather than guessed: `rounded-lg` is
+						8px, so `rx` is 8; `px-3` is the 12 the word starts at; and 75 is that padding
+						either side of the word's own width — "6xl" advances 2125/1000 em in Bungee, which
+						at 24px is exactly 51. Width is the one measurement an SVG cannot take from the
+						text the way a box does, so it is the one number written down, and it is the only
+						thing here that would be wrong if the face were swapped. The height is not written
+						down at all: the wrapper stretches with the row like the plate above it, and the
+						rect fills it.
+
+						`dominant-baseline="central"` is what puts the baseline where the boxes put it —
+						it sets the midpoint between ascender and descender on the centre line, which for
+						Bungee's 1020/-300 is 8.64px above the baseline at this size, exactly the offset a
+						centred `leading-none` line box arrives at. So the two words sit level.
+
+						The shadow is the same copy-then-word, and simpler here: SVG paints in document
+						order, so the offset copy first and the word after it needs no positioning at all.
+						`drop-shadow-xl` stands in for the plate's `shadow-xl` — a filter on the artwork
+						rather than a box shadow, since the rect is not a box, and the nearest of the two
+						the utilities offer. Hidden from a reader, which has been told this word already. -->
+					<div class="pointer-events-auto w-[75px] flex-none self-stretch" aria-hidden="true">
+						<svg class="font-display h-full w-full text-2xl drop-shadow-xl">
+							<rect x="0" y="0" width="100%" height="100%" rx="8" class="fill-primary" />
+							<text x="15" y="50%" dy="3" dominant-baseline="central" class="fill-base-100">6xl</text>
+							<text x="12" y="50%" dominant-baseline="central" class="fill-white">6xl</text>
+						</svg>
+					</div>
+
 					<MapBreadcrumbs
 						{crumbs}
 						onSelect={open}
