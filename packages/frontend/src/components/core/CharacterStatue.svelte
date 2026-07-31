@@ -29,7 +29,15 @@
 
 	export let label: string = '';
 	export let basePath: string | null = null;
-	export let color: SpawnColor;
+	// The colour this copy bends — the whole of what one claimed card brings to a fight that
+	// another doesn't, and the whole of what this card is painted in.
+	//
+	// Null is a statue of a *character* rather than of a card: the album, where what stands in
+	// a cell is the fighter the game holds and not a copy anybody pulled, so there is no colour
+	// to paint and nothing to say about a box. Such a statue is printed black and lettered
+	// white — see UNPAINTED — which is also what makes an unowned one legible at half strength:
+	// a colour dimmed by half is a different colour, and black is still black.
+	export let color: SpawnColor | null = null;
 	// The booster box this card came out of. It is not another colour on the card — it
 	// is the ink: the show's mark on the floor and everything written on the panel are
 	// drawn in it, and the bands the rows sit on in the other one. A card that says
@@ -146,9 +154,28 @@
 		}
 	};
 
+	// The stock a statue with no colour is printed on: black card, white lettering, and the
+	// bands under the rows the same white kept far lower than the two above spend it — a band
+	// is a veil over a colour there, and here there is no colour under it to let through, only
+	// the black the card is. The show's mark keeps the strength it has on a printed card, since
+	// it is painted on the floor either way.
+	const UNPAINTED = {
+		glyph: 'text-white/60',
+		ink: 'text-white',
+		inkMuted: 'text-white/70',
+		rowName: 'bg-white/10',
+		rowPlace: 'bg-white/5'
+	};
+
 	// Black for anything that arrives without a box, and for anything that arrives with
 	// a word this card has no stock for — a statue is drawn either way.
-	$: stock = STOCK[box] ?? STOCK[SpawnBox.Black];
+	$: stock = color ? (STOCK[box] ?? STOCK[SpawnBox.Black]) : UNPAINTED;
+
+	// What the card is painted: the colour, or the black an uncoloured statue is printed on.
+	// One name for the fill because it is the floor, the panel, both bevel faces and the veil
+	// the character arrives behind — the card being one object in one colour is what says the
+	// picture and the reading below it are the same thing.
+	$: fill = color ? SPAWN_FILL_CLASSES[color] : 'bg-black';
 
 	$: showIcon = showIconName(showId);
 
@@ -183,13 +210,7 @@
 				it. In the box's own ink, at less than full strength so it reads as painted on
 				the ground and never as loud as whoever is standing on it. -->
 			<div
-				class={classNames(
-					'absolute inset-0',
-					stock.glyph,
-					GROUND,
-					GROUND_CUT,
-					SPAWN_FILL_CLASSES[color]
-				)}
+				class={classNames('absolute inset-0', stock.glyph, GROUND, GROUND_CUT, fill)}
 			>
 				{#if showIcon}
 					<!-- The colour is the tile's to set: the glyph paints in `currentColor`, so
@@ -210,7 +231,7 @@
 				{alwaysReveal}
 				{veiled}
 				baseline={BASELINE}
-				veilFill={SPAWN_FILL_CLASSES[color]}
+				veilFill={fill}
 				on:ready
 			/>
 		</div>
@@ -234,11 +255,7 @@
 		follow. Nothing outlines it: a border would be a line where the two bevel faces meet
 		its sides, holding them a pixel off the block they are faces of. -->
 	<div
-		class={classNames(
-			'relative w-4/5 min-w-0 self-center',
-			stock.ink,
-			SPAWN_FILL_CLASSES[color]
-		)}
+		class={classNames('relative w-4/5 min-w-0 self-center', stock.ink, fill)}
 	>
 		<!-- The bevel's two faces, hung off the panel's sides so they are as tall as it is
 			whatever the rows come to (see BEVEL_FACE). They are the same colour the floor and
@@ -247,13 +264,13 @@
 			one face rather than the three the rows read as. Nothing is written on them, so they
 			are hidden from a screen reader, which is being read the rows themselves. -->
 		<div
-			class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, SPAWN_FILL_CLASSES[color])}
+			class={classNames(BEVEL_FACE, BEVEL_FACE_LEFT, fill)}
 			aria-hidden="true"
 		>
 			<div class="absolute inset-0 bg-black/40"></div>
 		</div>
 		<div
-			class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, SPAWN_FILL_CLASSES[color])}
+			class={classNames(BEVEL_FACE, BEVEL_FACE_RIGHT, fill)}
 			aria-hidden="true"
 		>
 			<div class="absolute inset-0 bg-black/40"></div>

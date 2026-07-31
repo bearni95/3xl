@@ -59,6 +59,9 @@
 			"placeholder": "Cerca llocs…",
 			"empty": "Cap lloc no hi coincideix."
 		},
+		"holder": {
+			"title": "Qui ocupa aquest municipi ara mateix"
+		},
 		"challenge": {
 			"siege": "Victòries acumulades / victòries necessàries per prendre el municipi",
 			"cooldown": "Acaba de lluitar — aquest municipi es torna a obrir quan s'acabi el compte enrere",
@@ -92,9 +95,54 @@
 	"settings": {
 		"title": "Configuració"
 	},
-	"roster": {
+	"collection": {
 		"title": "Col·lecció",
-		"close": "Tanca la col·lecció"
+		"close": "Tanca la col·lecció",
+		"loading": "Carregant la col·lecció…",
+		"empty": "Encara no hi ha cap sèrie amb personatges assignats."
+	},
+	"roster": {
+		"title": "Equip",
+		"close": "Tanca l'equip",
+		"notConfigured": "L'inici de sessió no està disponible — Supabase no està configurat.",
+		"signInBody": "Inicia la sessió per veure els personatges que has reclamat.",
+		"signIn": "Inicia la sessió",
+		"loading": "Carregant el teu equip…",
+		"emptyBody": "Encara no has reclamat cap personatge. Ves al mapa i obre un dels sobres d'avui per fer aparèixer el primer.",
+		"openMap": "Obre el mapa",
+		"previousPage": "Pàgina anterior",
+		"nextPage": "Pàgina següent",
+		"page": "Pàgina {page} / {total}",
+		"savingTeam": "Desant l'equip…",
+		"searchByName": "Cerca per nom",
+		"filterByName": "Filtra per nom",
+		"filterByColor": "Filtra per color",
+		"filterByThisColor": "Filtra pel color {color}",
+		"filterByShow": "Filtra per sèrie",
+		"filterByThisShow": "Filtra per {show}",
+		"clear": "Neteja",
+		"noMatches": "Cap personatge no coincideix amb aquests filtres.",
+		"clearFilters": "Neteja els filtres",
+		"claimedIn": "{name} — on es va reclamar",
+		"addToTeam": "Afegeix {name} a l'equip",
+		"removeFromTeam": "Treu {name} de l'equip",
+		"colors": {
+			"red": "Vermell",
+			"yellow": "Groc",
+			"blue": "Blau",
+			"orange": "Taronja",
+			"green": "Verd",
+			"purple": "Lila"
+		},
+		"recycle": {
+			"hint": "Toca les cartes per seleccionar-les. Cada {size} reciclades et donen una obertura extra avui.",
+			"tallyTitle": "Cartes seleccionades → obertures extres guanyades",
+			"tally": "{selected} seleccionades → {grants, plural, one {# obertura} other {# obertures}}",
+			"cancel": "Cancel·la",
+			"confirm": "Recicla {selected, plural, one {# carta} other {# cartes}}",
+			"done": "Has reciclat {recycled, plural, one {# carta} other {# cartes}} i has guanyat {granted, plural, one {# obertura extra} other {# obertures extres}} per avui.",
+			"failed": "No s'han pogut reciclar aquestes cartes. Torna-ho a provar."
+		}
 	},
 	"achievements": {
 		"title": "Assoliments",
@@ -118,8 +166,8 @@
 		"signInBody": "El teu equip lluita amb els personatges que has reclamat i els colors que els han tocat. Inicia la sessió per triar un equip.",
 		"signIn": "Inicia la sessió",
 		"noTeamTitle": "No hi ha equip per jugar",
-		"noTeamBody": "El teu equip necessita les {size} places plenes amb cartes que hagis reclamat — acaba'l a la teva col·lecció.",
-		"openRoster": "Obre la col·lecció",
+		"noTeamBody": "El teu equip necessita les {size} places plenes amb cartes que hagis reclamat — acaba'l a la pantalla d'equip.",
+		"openRoster": "Obre l'equip",
 		"rivalWins": "Enfrontaments guanyats per l'equip rival",
 		"yourWins": "Enfrontaments guanyats pel teu equip",
 		"turn": "Torn {turn}",

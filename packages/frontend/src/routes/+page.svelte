@@ -20,10 +20,12 @@
 	import CombatArena from '$components/core/CombatArena.svelte';
 	import FullScreenModal from '$components/core/FullScreenModal.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
+	import CollectionModal from '$components/core/CollectionModal.svelte';
 	import AchievementsModal from '$components/core/AchievementsModal.svelte';
 	import LeaderboardModal from '$components/core/LeaderboardModal.svelte';
 	import BoosterModal from '$components/core/BoosterModal.svelte';
 	import { rosterModalOpen } from '$services/rosterModal';
+	import { collectionModalOpen } from '$services/collectionModal';
 	import { achievementsModalOpen } from '$services/achievementsModal';
 	import { settingsModalOpen } from '$services/settingsModal';
 	import { avatarPickerOpen } from '$services/avatarPicker';
@@ -2253,6 +2255,21 @@
 									<img src="/assets/icons/delapouite/pencil.svg" class="size-4" alt="" />
 								</button>
 							{/if}
+							<!-- The album, beside the roster and in the same square: every card the game
+								holds, show by show, with the ones the player has standing at full strength.
+								It is not gated on there being an account the way the roster is — the set is
+								the game's own and is worth reading before anybody holds any of it, which is
+								also what an empty album is for. The book is the vendored game-icons glyph,
+								white artwork over terrain, as the marks either side of it are. -->
+							<button
+								type="button"
+								class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
+								title={$_('collection.title')}
+								aria-label={$_('collection.title')}
+								on:click={() => collectionModalOpen.set(true)}
+							>
+								<img src="/assets/icons/delapouite/book-cover.svg" class="size-4" alt="" />
+							</button>
 							<!-- The three bars, in the same square and the same white as the search button it
 								stands beside and the dots button at the other end of the row: this bar is a line
 								of 32px tiles, so everything on it that is pressed rather than read is given the
@@ -2613,6 +2630,14 @@
 	Profile, and from the arena's "no active team" card, both through `rosterModalOpen`. -->
 {#if $rosterModalOpen}
 	<RosterModal />
+{/if}
+
+<!-- The album, on the same sheet and over the map like the roster. Mounted only while it is
+	open, which is what keeps a cast of forty-odd sprites off every other page: the show
+	mapping, the player's cards and the statues all arrive with the opening. Opened from the
+	book at the far end of the breadcrumb bar, through `collectionModalOpen`. -->
+{#if $collectionModalOpen}
+	<CollectionModal />
 {/if}
 
 <!-- The badges, on the same sheet as the roster and over the map like it. Mounted only

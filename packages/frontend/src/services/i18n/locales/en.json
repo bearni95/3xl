@@ -26,30 +26,164 @@
 	"profile": {
 		"title": "Profile",
 		"continueWith": "Continue with {provider}",
+		"emailLabel": "Email address",
 		"memberSince": "Member since",
 		"signedInWith": "Signed in with",
 		"daysElapsed": "{days, plural, =0 {Today} one {# day} other {# days}}",
 		"levelBadge": "Lv. {level}",
 		"exp": "Experience",
-		"expProgress": "{into} / {span} XP",
+		"expProgress": "{total} / {next} XP",
 		"expMax": "{exp} XP (max)",
 		"signOut": "Sign out",
 		"notConfigured": "Sign-in is unavailable: Supabase is not configured. Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY.",
 		"username": {
-			"title": "Choose a username",
-			"prompt": "Pick a username so others can recognise you. You can change it later from your profile.",
+			"none": "Unnamed player",
+			"taken": "That username is already taken.",
+			"invalid": "Use 3 to 32 characters: letters, digits, spaces and . _ - only.",
 			"label": "Username",
 			"placeholder": "e.g. player_one",
 			"save": "Save username",
-			"later": "Maybe later",
 			"set": "Set username",
 			"edit": "Edit"
 		},
 		"avatar": {
 			"title": "Choose your avatar",
-			"locked": "Collect this character in all six colours to wear its portrait.",
+			"none": "You hold no avatars yet. Every booster pack you open gives you one.",
+			"noShow": "Other",
 			"edit": "Change avatar"
 		}
+	},
+	"map": {
+		"search": {
+			"label": "Search locations",
+			"placeholder": "Search locations…",
+			"empty": "No locations match."
+		},
+		"holder": {
+			"title": "Who occupies this town right now"
+		},
+		"challenge": {
+			"siege": "Your wins banked / wins needed to take the town",
+			"cooldown": "Just fought — this town opens up again when the countdown runs out",
+			"start": "Challenge",
+			"startTitle": "Fight this town for its team",
+			"noTeam": "Your active team needs {size} cards you have claimed",
+			"resume": "Resume battle",
+			"resumeTitle": "You have a battle in progress — go back to it"
+		}
+	},
+	"region": {
+		"type": {
+			"territory": "Territory",
+			"province": "Province",
+			"comarca": "Comarca",
+			"municipality": "Municipality"
+		},
+		"table": {
+			"name": "Name",
+			"type": "Region type",
+			"show": "Top show",
+			"siege": "Siege",
+			"empty": "No sub-regions."
+		}
+	},
+	"menu": {
+		"label": "Menu",
+		"open": "Open menu",
+		"close": "Close menu"
+	},
+	"settings": {
+		"title": "Settings"
+	},
+	"collection": {
+		"title": "Collection",
+		"close": "Close the collection",
+		"loading": "Loading the collection…",
+		"empty": "No show has characters assigned to it yet."
+	},
+	"roster": {
+		"title": "Team",
+		"close": "Close team",
+		"notConfigured": "Sign-in is unavailable — Supabase is not configured.",
+		"signInBody": "Sign in to see the characters you've claimed.",
+		"signIn": "Sign in",
+		"loading": "Loading your team…",
+		"emptyBody": "You haven't claimed any characters yet. Head to the map and open one of today's booster packs to spawn your first one.",
+		"openMap": "Open the map",
+		"previousPage": "Previous page",
+		"nextPage": "Next page",
+		"page": "Page {page} / {total}",
+		"savingTeam": "Saving team…",
+		"searchByName": "Search by name",
+		"filterByName": "Filter by name",
+		"filterByColor": "Filter by colour",
+		"filterByThisColor": "Filter by {color}",
+		"filterByShow": "Filter by show",
+		"filterByThisShow": "Filter by {show}",
+		"clear": "Clear",
+		"noMatches": "No characters match these filters.",
+		"clearFilters": "Clear filters",
+		"claimedIn": "{name} — where it was claimed",
+		"addToTeam": "Add {name} to your team",
+		"removeFromTeam": "Remove {name} from your team",
+		"colors": {
+			"red": "Red",
+			"yellow": "Yellow",
+			"blue": "Blue",
+			"orange": "Orange",
+			"green": "Green",
+			"purple": "Purple"
+		},
+		"recycle": {
+			"hint": "Tap cards to select them. Every {size} recycled grants one extra claim today.",
+			"tallyTitle": "Cards selected → extra claims earned",
+			"tally": "{selected} selected → {grants, plural, one {# claim} other {# claims}}",
+			"cancel": "Cancel",
+			"confirm": "Recycle {selected, plural, one {# card} other {# cards}}",
+			"done": "Recycled {recycled, plural, one {# card} other {# cards}} for {granted, plural, one {# extra claim} other {# extra claims}} today.",
+			"failed": "Could not recycle those cards. Please try again."
+		}
+	},
+	"achievements": {
+		"title": "Achievements",
+		"close": "Close achievements"
+	},
+	"leaderboard": {
+		"title": "Leaderboard",
+		"close": "Close leaderboard"
+	},
+	"booster": {
+		"title": "Booster",
+		"withAllowance": "Booster ({remaining}/{total})",
+		"close": "Close boosters",
+		"open": "Open the pack",
+		"openPack": "Open {town}'s pack",
+		"window": "Festes majors del {from} al {to}"
+	},
+	"combat": {
+		"notConfigured": "Sign-in is unavailable — Supabase is not configured, so no team can be played.",
+		"signInTitle": "Sign in to play",
+		"signInBody": "Your team fights with the characters you've claimed and the colours they rolled. Sign in to pick a team.",
+		"signIn": "Sign in",
+		"noTeamTitle": "No team to field",
+		"noTeamBody": "Your team needs all {size} slots filled with cards you have claimed — finish it on the team screen.",
+		"openRoster": "Open team",
+		"rivalWins": "Encounters won by the rival team",
+		"yourWins": "Encounters won by your team",
+		"turn": "Turn {turn}",
+		"won": "You won the fight",
+		"lost": "You lost the fight",
+		"draw": "The fight was a draw",
+		"encountersWon": "Encounters won",
+		"survivors": "Fighters standing",
+		"expGained": "Experience gained",
+		"concede": "Admit defeat",
+		"reporting": "Reporting the fight",
+		"reportAgain": "Report the fight again",
+		"reportRefused": "The server would not take the result of this fight.",
+		"saving": "Saving turn {turn}",
+		"saveAgain": "Save turn {turn} again",
+		"saveRefused": "This turn could not be saved — the fight is waiting on it."
 	},
 	"errors": {
 		"generic": "An error occurred",
