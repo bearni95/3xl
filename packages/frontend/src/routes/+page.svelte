@@ -2289,7 +2289,7 @@
 							`leading-none` so the line takes the type's height and not a line box built for
 							a paragraph.
 
-							`font-display` is Jacquard 12, the app's one departure from Genos, and it is
+							`font-display` is Bungee, the app's one departure from Genos, and it is
 							the token and not the family that is named here (see the `@theme` block in
 							css/app.css). -->
 						<span slot="start" class="font-display text-xl leading-none">6xl</span>
