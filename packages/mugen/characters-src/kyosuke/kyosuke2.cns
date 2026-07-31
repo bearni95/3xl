@@ -1,0 +1,3216 @@
+
+
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+
+;---------------------- HYPER -- change to Kyosuke--------------------------------------------------------------
+
+;---------------------------------------------------------------------------
+
+
+; Hyper change - reversal
+[Statedef 86070]
+type    = S
+movetype= I
+physics = N
+juggle  = 8
+poweradd= 100
+velset = 0,0
+anim = 86070
+sprpriority = 4
+ctrl = 0
+
+;madoka 
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = s1,2
+
+[State 850, 2]
+type = NotHitBy
+trigger1 = AnimElem = 2,< 0
+value = SCA
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 3
+anim = 790
+postype = p1
+pos = 60,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 3
+anim = 791
+postype = p1
+pos = -60,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+
+[State 15]
+type = ReversalDef
+trigger1 = AnimElem = 3
+attr = S, St
+reversal.attr = sca, na, sa
+numhits = 0
+pausetime = 14,20
+sparkno = s9991
+sparkxy = -30,-18
+hitsound   = S2,1
+;guardsound = S3,0
+p1sprpriority = 1
+p2sprpriority = 3
+p2facing = 1
+p1stateno = 86080
+
+[state 10]
+type = changestate
+trigger1 = animtime = 0
+value = 0
+ctrl = 1
+
+
+;---------------------------------------------------------------------------
+
+;Hyper change
+
+[Statedef 86080]
+type     = S
+physics  = S
+movetype = A
+juggle  = 4
+velset = 0,0
+anim = 86080
+poweradd= 150
+ctrl = 0
+sprpriority = 0
+;facep2 = 1
+
+;madoka scream
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = s1,41
+
+
+
+[State 1000, 1]
+type = Helper
+trigger1 = stateno = 0
+trigger1 = numhelper(83010) = 0
+helpertype = normal
+name = "mxk"
+id = 83010
+postype = p1
+pos = 0, 0
+stateno = 1500
+keyctrl = 0
+ownpal = 1
+
+[State 86081]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = 1480,0
+
+[State 86080]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 86081
+ctrl = 0
+
+;---------------------------------------------------------------------------
+;hyper start change
+[Statedef 86081]
+type    = U
+movetype= A
+physics = N
+juggle  = 1
+;poweradd=
+velset = 0,0
+anim = 86081
+ctrl = 0
+sprpriority = 0
+facep2 = 1
+
+[State 76081]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 3000, superpause]
+type = SuperPause
+trigger1 = AnimElem = 5
+time = 40
+sound = S10,1
+pos = 20,-70
+darken = 1
+poweradd = -2000
+
+
+;-------------------
+; Kasuga
+[State 3000, superportrait]
+type = Explod
+trigger1 = AnimElem = 3
+anim = 8056
+ID = 8056
+pos = 10,0
+postype = back
+bindtime = 999
+removetime = 50
+supermovetime = 50
+pausemovetime = 50
+sprpriority = -1
+;scale = .22,.22
+scale = .44,.44
+ownpal = 1
+
+
+; DCvM hyper portrait/BG
+[State 3000, superportrait]
+type = Explod
+trigger1 = AnimElem = 3
+anim = 8055
+ID = 8055
+pos = 0,-2
+postype = back
+bindtime = 999
+removetime = 50
+supermovetime = 50
+pausemovetime = 50
+sprpriority = -1
+scale = 1,1
+ownpal = 1
+;------------------------------------
+
+[State 1690, sfondo]
+type = Null;Explod
+trigger1 = AnimElem = 3
+pos = -360,-50
+anim = 10001
+ID = 10001
+postype = right
+sprpriority = -15
+ignorehitpause = 1
+ownpal = 0
+bindtime = -1
+persistent = 0
+removeongethit = 1
+supermove = 1
+removetime = 50
+ontop = 0
+;-------------------
+
+[State 76081]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 86081]
+type = Varset
+trigger1 = Time = 0
+var(57) = 1
+
+;teleport start
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 7
+value = s25,60
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 6
+anim = 790
+postype = p1
+pos = 50,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 6
+anim = 791
+postype = p1
+pos = -50,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+
+[State 86081]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86082
+ctrl = 0
+
+
+[State 86081]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;---------------------------------------------------------------------------
+;Hyper change
+[Statedef 86082]
+type    = U
+movetype= A
+physics = N
+juggle  = 1
+;poweradd=
+velset = 0,0
+anim = 86082
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+;------------------------------------
+
+[State 1690, sfondo]
+type = Null;Explod
+trigger1 = AnimElem = 1
+pos = -360,-50
+anim = 8010
+ID = 8010
+postype = right
+sprpriority = -15
+ignorehitpause = 1
+ownpal = 0
+bindtime = -1
+persistent = 0
+removeongethit = 1
+supermove = 1
+removetime = 120
+ontop = 0
+;-------------------
+
+[State 86082]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+
+[State 86082]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+;teleport end
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 2
+value = s25,62
+
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 2
+anim = 790
+postype = p1
+pos = 60,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 2
+anim = 791
+postype = p1
+pos = -60,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+
+[State 86082]
+type = Trans
+trigger1 = Time < 20
+trans = addalpha
+alpha = Time*8,256-Time*8
+
+;go to stance----------------------
+[State 86082]
+type = ChangeState
+trigger1 = Time >= 30 && StateType != A
+value = 86083
+ctrl = 0
+
+
+[State 86082]
+type = ChangeState
+trigger1 = Time >= 30 && StateType = A
+value = 1320
+ctrl = 0
+
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;hyper stance
+[Statedef 86083]
+type    = U
+movetype= A
+physics = N
+juggle  = 1
+;poweradd=
+velset = 0,0
+anim = 86083
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+;---SHIELD------------------------------
+
+
+[State 4121]
+type = PalFx
+trigger1 = Time = [1,50]
+time = 20
+add = 64,32,64
+sinadd = 64,32,64,30
+
+
+;--------------------------------
+
+[State 86083]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 76083]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+; turn-----------------
+[State 86083]
+type = ChangeAnim
+trigger1 = Anim != 86083 && Anim != 86086
+trigger2 = Anim = 86086 && AnimTime = 0
+value = 86083
+
+;back-------------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "holdfwd" || command = "holdback"
+value = 86084
+ctrl = 0
+
+;jump
+[State 1110, 1]
+type = changestate
+trigger1 = command = "holdup"
+trigger1 = command = "holdback"
+trigger2 = command = "holdup"
+trigger2 = command = "holdfwd"
+trigger3 = command = "holdup"
+value = 66040
+ctrl = 0
+
+
+; 1 - k1----basket ball------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "x"
+trigger2 = var(59) && random < 100 && p2bodydist x < 120
+value = 86087
+ctrl = 0
+
+; 2 - k2----3 falling items------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "y"
+trigger2 = var(59) && random < 100 && p2bodydist x < 80
+value = 86088
+ctrl = 0
+
+
+; 3 - k3----3 song instruments------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "z"
+trigger2 = var(59) && random < 300
+value = 86089
+ctrl = 0
+
+
+; 4 - k4----power sphere------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "a"
+trigger2 = var(59) && random < 100 && p2bodydist x < 80
+value = 86090
+ctrl = 0
+
+; 5 - k5----power wave------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "b"
+trigger2 = var(59) && random < 100 && p2bodydist x < 120
+value = 86091
+ctrl = 0
+
+; 6 - k6----telecinetic throw------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "c"
+trigger2 = var(59) && random < 300
+value = 86092
+ctrl = 0
+
+
+
+; stance----------------
+[State 86083]
+type = null;ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+; jump----------------
+[State 86083]
+type = null;ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+; back madoka----------------
+[State 86083]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+;---------------------------------------------------------------------------
+;hyper walk FWD
+[Statedef 86084]
+type    = U
+movetype= A
+physics = N
+juggle  = 1
+;poweradd=
+velset = 0,0
+;anim = 86083
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+[State 4121]
+type = PalFx
+trigger1 = Time = [1,50]
+time = 20
+add = 64,32,64
+sinadd = 64,32,64,30
+
+[State 86084]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+
+[State 86084]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 3084]
+type = PlaySnd
+trigger1 = AnimElem = 5
+value = 52,3
+
+[State 3084]
+type = VelSet
+trigger1 = command = "holdfwd"
+x = 3
+
+[State 3084]
+type = VelSet
+trigger1 = command = "holdback"
+x = -2
+
+; fwd-------------
+[State 86084]
+type = ChangeAnim
+triggerall = vel x > 0
+trigger1 = Anim != 86084 && Anim != 86086
+trigger2 = Anim = 86086 && AnimTime = 0
+value = 86084
+
+; back------------------
+[State 86084]
+type = ChangeAnim
+triggerall = vel x < 0
+trigger1 = Anim != 86085 && Anim != 86086
+trigger2 = Anim = 86086 && AnimTime = 0
+value = 86085
+
+; stance----------------------
+[State 86084]
+type = ChangeState 
+trigger1 = command != "holdfwd" && command != "holdback"
+value = 86083
+ctrl = 0
+
+;jump
+[State 1110, 1]
+type = changestate
+trigger1 = command = "holdup"
+trigger1 = command = "holdback"
+trigger2 = command = "holdup"
+trigger2 = command = "holdfwd"
+trigger3 = command = "holdup"
+value = 66040
+ctrl = 0
+
+
+; 1 - k1----basket ball------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "x"
+trigger2 = var(59) && random < 100 && p2bodydist x < 120
+value = 86087
+ctrl = 0
+
+; 2 - k2----3 falling items------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "y"
+trigger2 = var(59) && random < 100 && p2bodydist x < 80
+value = 86088
+ctrl = 0
+
+
+; 3 - k3----3 song instruments------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "z"
+trigger2 = var(59) && random < 300
+value = 86089
+ctrl = 0
+
+
+; 4 - k4----power sphere------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "a"
+trigger2 = var(59) && random < 100 && p2bodydist x < 80
+value = 86090
+ctrl = 0
+
+; 5 - k5----power wave------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "b"
+trigger2 = var(59) && random < 100 && p2bodydist x < 120
+value = 86091
+ctrl = 0
+
+; 6 - k6----telecinetic throw------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "c"
+trigger2 = var(59) && random < 300
+value = 86092
+ctrl = 0
+
+
+
+; stance--------------------
+[State 86084]
+type = null;ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+
+;jump-----------------------------
+[State 86084]
+type = null;ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+; back madoka------------------------
+[State 86084]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;---------------------------------------------------------------------------
+;turn
+[Statedef 86086]
+type    = U
+movetype= A
+physics = N
+juggle  = 1
+;poweradd=
+velset = 0,0
+;anim = 86086
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+[State 86084]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+
+[State 86084]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 86084]
+type = VelSet
+trigger1 = command = "holdfwd"
+x = 1
+
+[State 86084]
+type = VelSet
+trigger1 = command = "holdback"
+x = -1
+
+; fwd-------------
+[State 86084]
+type = ChangeAnim
+triggerall = vel x > 0
+trigger1 = Anim != 86084 && Anim != 86086
+trigger2 = Anim = 86086 && AnimTime = 0
+value = 86084
+
+; back------------------
+[State 86084]
+type = ChangeAnim
+triggerall = vel x < 0
+trigger1 = Anim != 86085 && Anim != 86086
+trigger2 = Anim = 86086 && AnimTime = 0
+value = 86085
+
+; stance----------------------
+[State 86084]
+type = ChangeState 
+trigger1 = command != "holdfwd" && command != "holdback"
+value = 86083
+ctrl = 0
+
+;jump
+[State 1110, 1]
+type = changestate
+trigger1 = command = "holdup"
+trigger1 = command = "holdback"
+trigger2 = command = "holdup"
+trigger2 = command = "holdfwd"
+trigger3 = command = "holdup"
+value = 66040
+ctrl = 0
+
+
+; 1 - k1----basket ball------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "x"
+trigger2 = var(59) && random < 100 && p2bodydist x < 120
+value = 86087
+ctrl = 0
+
+; 2 - k2----3 falling items------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "y"
+trigger2 = var(59) && random < 100 && p2bodydist x < 80
+value = 86088
+ctrl = 0
+
+
+; 3 - k3----3 song instruments------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "z"
+trigger2 = var(59) && random < 300
+value = 86089
+ctrl = 0
+
+
+; 4 - k4----power sphere------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "a"
+trigger2 = var(59) && random < 100 && p2bodydist x < 80
+value = 86090
+ctrl = 0
+
+; 5 - k5----power wave------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "b"
+trigger2 = var(59) && random < 100 && p2bodydist x < 120
+value = 86091
+ctrl = 0
+
+; 6 - k6----telecinetic throw------------
+[State 86083]
+type = ChangeState 
+trigger1 = !var(59)
+trigger1 = command = "c"
+trigger2 = var(59) && random < 300
+value = 86092
+ctrl = 0
+
+
+; stance--------------------
+[State 76084]
+type = null;ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+
+;jump-----------------------------
+[State 86084]
+type = null;ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+; back madoka------------------------
+[State 86084]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;---------------------------------------------------------------------
+
+
+
+
+
+
+;---------------------------------------------------------------------------
+
+;hyper back madoka
+[Statedef 86098]
+type    = U
+movetype= A
+physics = N
+juggle  = 1
+;poweradd=
+velset = 0,0
+anim = 86098
+ctrl = 0
+sprpriority = 1
+facep2 = 1
+
+;teleport start
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 2
+value = s25,60
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 2
+anim = 790
+postype = p1
+pos = 60,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 2
+anim = 791
+postype = p1
+pos = -60,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+[State 86098]
+type = null;NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86098]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 86098]
+type = Trans
+trigger1 = Time < 20
+trans = addalpha
+alpha = 256-Time*8,Time*8
+
+; go madoka-------------
+[State 86098]
+type = ChangeState
+trigger1 = Time >= 30 && StateType != A
+value = 86099
+ctrl = 0
+
+;jump-------------------
+[State 76098]
+type = ChangeState
+trigger1 = Time >= 30 && StateType = A
+value = 1320
+ctrl = 0
+
+;---------------------------------------------------------------------------
+;hyper finally madoka
+[Statedef 86099]
+type    = U
+movetype= A
+physics = N
+juggle  = 1
+;poweradd=
+velset = 0,0
+anim = 86099
+ctrl = 0
+sprpriority = 0
+facep2 = 1
+;movehitpersist = 1
+;hitcountpersist = 1
+
+;teleport end
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = s25,62
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 1
+anim = 790
+postype = p1
+pos = 60,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 1
+anim = 791
+postype = p1
+pos = -60,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+
+[State 3099]
+type = null;NotHitBy
+trigger1 = 1
+value = SCA
+
+
+[State 3099]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+
+[State 3099]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 0
+ctrl = 1
+
+
+[State 3099]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+
+
+;---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+;------------------------------------------------------------------------------------------------------------
+
+
+; Air Land
+[Statedef 1320]
+type = A
+movetype = I
+physics = N
+anim = 70
+;ctrl = 0
+sprpriority = 0
+;poweradd= 65
+velset = 0,0
+facep2 = 1
+
+
+[State 1320]
+type = null;StateTypeSet
+trigger1 = Pos Y < 0
+statetype = A
+persistent = 0
+
+
+
+[State 1320]
+type = null;ChangeState
+triggerall = var(54)
+trigger1 = AnimTime = 0
+trigger2 = Anim = 70
+value = 1335
+ctrl = 1
+
+[State 1320]
+type = VelAdd
+trigger1 = anim = 70; && !var(54)
+y = 0.4
+
+
+[State 1320]
+type = ChangeState
+trigger1 = Pos Y >= 0
+trigger1 = Vel Y > 0
+value = 52
+ctrl = 0
+
+;---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;---------------------------------------------------------------------
+;1 - kyosuke 1
+
+;kyosuke with basket ball p 1
+
+[Statedef 86087]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+anim = 86087
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+[State 4121]
+type = PalFx
+trigger1 = Time = [1,50]
+time = 20
+add = 64,32,64
+sinadd = 64,32,64,30
+
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = s25,11
+
+
+[state 88110, helper]
+type = helper
+trigger1 = animelemtime(7) = 0
+
+;trigger1 = !numhelper(88201)
+
+ID = 88201
+stateno = 88201
+name = "basketx"
+helpertype = normal
+pos = 0,-114
+postype = p1
+ownpal = 1
+keyctrl = 0
+IgnoreHitPause = 0
+;pausemovetime = ifelse(root,var(40) = 1,99999,0)
+
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+[State 1000, 3]
+type = ChangeState 
+trigger1 = animtime = 0
+value = 86211
+
+;----------------------(use 88201 anim for ball)------------------------------
+
+;kyosuke with basket ball p 2
+
+[Statedef 86211]
+type = S 
+movetype = A 
+physics = N 
+velset = 0,0 
+;anim = 86211
+sprpriority = 3
+
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 1491, Helper]
+type = Helper
+trigger1 = AnimElem = 7
+id = 88201
+stateno = 88201
+sprpriority = 2
+pos = 0,-114
+postype = p1
+helpertype = normal
+keyctrl = 0          
+ownpal = 1
+supermove = 1
+
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 2
+value = s1,116
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+;---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;2 - kyosuke 2-----------------------
+
+;------random combo fall items--------------------------------------------------------------------------------
+
+
+[Statedef 86088]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+anim = 86088
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+[State 4121]
+type = PalFx
+trigger1 = Time = [1,50]
+time = 20
+add = 64,32,64
+sinadd = 64,32,64,30
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 2
+value = s25,33
+
+[State 1200, End]
+type = ChangeState
+trigger1 = time = 0
+value = 56801+random%6
+ctrl = 1
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;---------kyosuke call sofà-1-----------------------------------------------------------------
+
+[Statedef 56801]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 4
+id = 88601
+name = "falldown1"
+pos = 0,-415
+postype = p2
+stateno = 88601
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 5
+id = 88611
+name = "falldown2"
+pos = -80,-415
+postype = p2
+stateno = 88611
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 6
+id = 88621
+name = "falldown3"
+pos = -160,-415
+postype = p2
+stateno = 88621
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+;---------kyosuke call cassa-2-----------------------------------------------------------------
+
+[Statedef 56802]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 4
+id = 88611
+name = "falldown1"
+pos = 0,-415
+postype = p2
+stateno = 88611
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 5
+id = 88621
+name = "falldown2"
+pos = -80,-415
+postype = p2
+stateno = 88621
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 6
+id = 88631
+name = "falldown3"
+pos = 40,-415
+postype = p2
+stateno = 88631
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+;---------kyosuke call plant-3-----------------------------------------------------------------
+
+[Statedef 56803]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 4
+id = 88621
+name = "falldown1"
+pos = 0,-415
+postype = p2
+stateno = 88621
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 5
+id = 88631
+name = "falldown2"
+pos = -60,-415
+postype = p2
+stateno = 88631
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 6
+id = 88641
+name = "falldown3"
+pos = -80,-415
+postype = p2
+stateno = 88641
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+;---------kyosuke call box--4---------------------------------------------------------------
+
+[Statedef 56804]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 4
+id = 88631
+name = "falldown1"
+pos = 0,-415
+postype = p2
+stateno = 88631
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 5
+id = 88641
+name = "falldown2"
+pos = 60,-415
+postype = p2
+stateno = 88641
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 6
+id = 88651
+name = "falldown3"
+pos = -40,-415
+postype = p2
+stateno = 88651
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+
+;---------kyosuke call barile--5----------------------------------------------------------------
+
+[Statedef 56805]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 4
+id = 88641
+name = "falldown1"
+pos = 0,-415
+postype = p2
+stateno = 88641
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 5
+id = 88651
+name = "falldown2"
+pos = 60,-415
+postype = p2
+stateno = 88651
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 6
+id = 88601
+name = "falldown3"
+pos = 120,-415
+postype = p2
+stateno = 88601
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+
+;---------kyosuke call bath-6-----------------------------------------------------------------
+
+[Statedef 56806]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 4
+id = 88651
+name = "falldown1"
+pos = 0,-415
+postype = p2
+stateno = 88651
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 5
+id = 88601
+name = "falldown2"
+pos = -50,-415
+postype = p2
+stateno = 88601
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 6
+id = 88611
+name = "falldown3"
+pos = 50,-415
+postype = p2
+stateno = 88611
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;--------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;--------------------------------------------------------------------------------------
+
+;3 - Kyosuke 3 - music instruments
+
+
+;--------------------------------------------------------------------------------------
+
+[Statedef 86089]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+anim = 86089
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+[State 4121]
+type = PalFx
+trigger1 = Time = [1,50]
+time = 20
+add = 64,32,64
+sinadd = 64,32,64,30
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 2
+value = s25,13
+
+[State 1200, End]
+type = ChangeState
+trigger1 = time = 0
+value = 56901+random%3
+ctrl = 1
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;---------kyosuke call -1-----------------------------------------------------------------
+
+[Statedef 56901]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 5
+id = 88101
+name = "piano1"
+pos = -50,-55
+postype = back
+stateno = 88102
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 4
+id = 88102
+name = "sax1"
+pos = -50,-85
+postype = back
+stateno = 88101
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 6
+id = 88103
+name = "guitar1"
+pos = -50,-115
+postype = back
+stateno = 88103
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+;---------kyosuke call -2-----------------------------------------------------------------
+
+[Statedef 56902]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 5
+id = 78101
+name = "piano2"
+pos = -50,-85
+postype = back
+stateno = 88102
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 4
+id = 78102
+name = "sax2"
+pos = -50,-115
+postype = back
+stateno = 88101
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 6
+id = 78103
+name = "guitar2"
+pos = -50,-55
+postype = back
+stateno = 88103
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+;---------kyosuke call -3-----------------------------------------------------------------
+
+[Statedef 56903]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 5
+id = 79101
+name = "piano3"
+pos = -50,-115
+postype = back
+stateno = 88102
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 4
+id = 79102
+name = "sax3"
+pos = -50,-55
+postype = back
+stateno = 88101
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 6
+id = 79103
+name = "guitar3"
+pos = -50,-85
+postype = back
+stateno = 88103
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+;---------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;---------------------------------------------------------------------
+;4 - kyosuke 4
+
+;kyosuke power p 1
+
+[Statedef 86090]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+anim = 86090
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+;movehitpersist = 1
+;hitcountpersist = 1
+
+[State 4121]
+type = PalFx
+trigger1 = Time = [1,50]
+time = 20
+add = 64,32,64
+sinadd = 64,32,64,30
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 2
+value = s25,31
+
+[State 1200, End]
+type = ChangeState
+trigger1 = time = 0
+value = 80001
+ctrl = 1
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;---------kyosuke power-p2----------------------------------------------------------------
+
+[Statedef 80001]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+;movehitpersist = 1
+;hitcountpersist = 1
+
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 3
+id = 44451
+name = "pow1"
+pos = 55,-55
+postype = p1
+stateno = 44451
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;---------------------------------------------------------------------------
+
+[Statedef 44451]
+type    = A
+movetype= A
+physics = S
+juggle  = 1
+poweradd = 5
+ctrl = 0
+anim = 44451
+velset = 0,0
+sprpriority = 2
+
+
+[State 1495, 1]
+type = PlaySnd
+trigger1 = time = 1
+value = s25, 61
+channel  = -1
+
+[State 1470, VelSet]
+type = VelSet
+trigger1 = time = [0,14]
+x = .1
+y = 0
+
+
+[State 88101]
+type = HitDef
+trigger1 = time = 0
+attr = A, HP                     
+damage = 120                   
+animtype = Light                 
+guardflag = -1
+hitflag = MAFP                    
+priority = 99, Hit                
+pausetime = 1, 25                 
+sparkno = -1
+sparkxy = 0,-65
+hitsound = s2, 2			;Sound to play on hit
+guardsound = s3,0			;Sound to play on guard
+ground.type = low 
+ground.slidetime = 5             
+ground.hittime  = 12               
+ground.velocity = -15,0             
+air.velocity = -15,-3    
+air.type = High                  
+air.hittime = 12
+getpower = 0,0 
+envshake.time =  15 
+envshake.freq = 10     
+envshake.ampl = 5  
+envshake.phase = 5
+
+;-----------------------
+
+[State 1495]
+type = DestroySelf
+trigger1 = Time = 15
+
+
+;--------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;---------------------------------------------------------------------
+;5 - kyosuke 5
+
+;kyosuke power w 1
+
+[Statedef 86091]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+;poweradd=
+velset = 0,0
+anim = 86091
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+;movehitpersist = 1
+;hitcountpersist = 1
+
+[State 4121]
+type = PalFx
+trigger1 = Time = [1,50]
+time = 20
+add = 64,32,64
+sinadd = 64,32,64,30
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 2
+value = s25,33
+
+[State 1200, End]
+type = ChangeState
+trigger1 = time = 0
+value = 80002
+ctrl = 1
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;---------kyosuke power-w2----------------------------------------------------------------
+
+[Statedef 80002]
+type     = S
+physics  = N
+movetype = I
+juggle  = 1
+velset = 0,0
+ctrl = 0
+sprpriority = 11
+facep2 = 1
+;movehitpersist = 1
+;hitcountpersist = 1
+
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 391, 0]
+type = Helper
+trigger1 = AnimElem = 3
+id = 44452
+name = "pwave1"
+pos = 55,0
+postype = p1
+stateno = 44452
+helpertype = normal
+keyctrl = 0
+ownpal = 1
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;---------------------------------------------------------------------------
+
+[Statedef 44452]
+type    = A
+movetype= A
+physics = S
+juggle  = 1
+poweradd = 5
+ctrl = 0
+anim = 44452
+velset = 0,0
+sprpriority = 2
+
+
+[State 1495, 1]
+type = PlaySnd
+trigger1 = time = 1
+value = s25, 61
+channel  = -1
+
+[State 1470, VelSet]
+type = VelSet
+trigger1 = time = [0,35]
+x = 2
+y = 0
+
+
+[State 88101]
+type = HitDef
+trigger1 = time = 0
+attr = A, HP                     
+damage = 120                   
+animtype = Light                 
+guardflag = -1
+hitflag = MAFP                    
+priority = 99, Hit                
+pausetime = 1, 25                 
+sparkno = s9991
+sparkxy = 0,0
+hitsound = s2, 2			;Sound to play on hit
+guardsound = s3,0			;Sound to play on guard
+ground.type = low 
+ground.slidetime = 5             
+ground.hittime  = 12               
+ground.velocity = -10,0             
+air.velocity = -10,-3    
+air.type = High                  
+air.hittime = 12
+getpower = 0,0 
+envshake.time =  15 
+envshake.freq = 10     
+envshake.ampl = 5  
+envshake.phase = 5
+
+;-----------------------
+
+[State 1495]
+type = DestroySelf
+trigger1 = Time = 32
+
+
+;--------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;---------------------------------------------------------------------
+;6 - kyosuke 6
+
+;kyosuke telecinetic throw
+
+[Statedef 86092]
+type    = S
+movetype= A
+physics = S
+velset = 0,0
+anim = 86092
+juggle  = 0
+ctrl = 0
+sprpriority = 0
+
+;kasuga talk
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = s25,10
+
+[State 4121]
+type = PalFx
+trigger1 = Time = [1,50]
+time = 20
+add = 64,32,64
+sinadd = 64,32,64,30
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 1
+anim = 790
+postype = p1
+pos = 60,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+[State 0, ]
+type = explod
+trigger1 = animelem = 1
+anim = 791
+postype = p1
+pos = -60,0
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+;electric
+[State 0, ]
+type = explod
+trigger1 = animelem = 1
+anim = 23120
+postype = p1
+pos = 0,-40
+bindtime = 1
+removetime = -2
+ontop = 1
+ownpal = 1
+removeongethit = 1
+scale=.5,.5
+
+
+[State 800, 2]
+type = HitDef
+trigger1 = Time = 0
+trigger1 = P2BodyDist X < 350
+attr = S, NT
+hitflag = M
+animtype  = Medium
+damage    = 0, 0
+priority  = 2
+guardflag =
+pausetime = 0,0
+sparkno = -1
+guard.sparkno = -1
+sparkxy = -10,-49
+ground.type = Low
+ground.slidetime = 12
+ground.hittime  = 15
+ground.velocity = 0,0
+air.velocity = 0,0
+p2stateno = 71820
+p1stateno = 71805
+numhits = 0
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;--------------------------------------------------------------
+;Throw - 
+[Statedef 71805]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+velset = 0,0
+anim = 71805
+ctrl = 0
+sprpriority = -1
+
+;power
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = s25,61
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 805, 3]
+type = TargetDrop
+trigger1 = AnimTime = 0
+
+[State 805, 4]
+type = HitAdd
+trigger1 = AnimElem = 2
+trigger2 = AnimElem = 4
+trigger3 = AnimElem = 6
+value = 1
+
+[State 805, 7]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 71810
+ctrl = 0
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;-----------------------------------------------------------------------
+;Throw - End
+[Statedef 71810]
+type    = U
+movetype= A
+physics = N
+juggle = 0;  = 3
+poweradd= 60
+ctrl = 0
+velset = 0,0
+anim = 71810
+sprpriority = -1
+facep2 = 1
+
+[State 805, 1]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = s25,60
+
+[State 86088]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+[State 86088]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+[State 100]
+type = Explod
+trigger1 = AnimElem = 3
+pos = 0,0
+anim = 790
+sprpriority = 5
+supermove = 1
+removeongethit = 1
+scale = .9, .9
+
+[State 810]
+type = HitDef
+attr = SA, SA
+trigger1 = hitcount < 1
+trigger1 = moveguarded < 1
+damage = 200,5
+animtype = Medium
+priority  = 5, Hit
+guardflag = HA
+pausetime = 0,0
+sparkxy = -25,-100+floor(P2Dist Y)
+hitsound   = S25,61
+guardsound = S3,0
+sparkno = -1
+ground.type = High
+ground.slidetime = 15
+ground.hittime  = 20
+ground.velocity = 0,-14
+air.velocity = 0,-14
+
+fall = 1
+air.fall = 1
+all.recover = 0
+
+
+[State 810]
+type = VarAdd
+trigger1 = AnimElem = 6, >= 0
+var(9) = 1
+ignorehitpause = 1
+persistent = 0
+
+
+
+; turn-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+;jump-----------
+[State 86088]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+;back madoka------
+[State 3088]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+;-----------------------------------------------------------------------
+;Thow - P2 - get hit
+[Statedef 71820]
+type    = S
+movetype= H
+physics = N
+velset = 0,0
+ctrl = 0
+
+[State 915, 1]
+type = ChangeAnim2
+trigger1 = Time = 0
+value = 71820
+
+[State 820, 2]
+type = LifeAdd
+trigger1 = AnimElem = 2
+trigger2 = AnimElem = 4
+trigger3 = AnimElem = 6
+value = -50
+
+[State 820, 7]
+type = ChangeState
+trigger1 = animtime = 0
+value = 71825
+
+;-----------------------------------------------------------------------
+; Throw - P2 - End
+[Statedef 71825]
+type    = A
+physics = N
+movetype = H
+ctrl = 0
+anim = 71821
+
+[State 820, 3]
+type = LifeAdd
+trigger1 = Time = 1
+value = -19
+
+[State 825, 1]
+type = VelSet
+trigger1 = Time = 0
+x = -.5
+y = -14.5
+
+[State 825, 2]
+type = VelAdd
+trigger1 = Time > 2
+y = 0.45
+
+[State 825, 7]
+type = SelfState
+trigger1 = Vel Y > 0
+trigger1 = Pos Y >= 0
+value = 5100
+
+;-------------------------------------------------------------------------
+;-------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;---------------------------------------------------------------------------
+; Jump Start
+[Statedef 66040]
+type    = S
+physics = S
+anim = 66040
+ctrl = 0
+sprpriority = 1
+
+[State 4121]
+type = PalFx
+trigger1 = Time = [1,50]
+time = 20
+add = 64,32,64
+sinadd = 64,32,64,30
+
+[State 40, 1]
+type = VarSet
+trigger1 = Time = 0
+sysvar(1) = 0
+
+[State 40, 2]
+type = VarSet
+trigger1 = command = "holdfwd"
+sysvar(1) = 1
+
+[State 40, 3]
+type = VarSet
+trigger1 = command = "holdback"
+sysvar(1) = -1
+
+[State 40, 4]
+type = VelSet
+trigger1 = AnimTime = 0
+x = ifelse(sysvar(1)=0, const(velocity.jump.neu.x), ifelse(sysvar(1)=1, const(velocity.jump.fwd.x), const(velocity.jump.back.x)))
+y = const(velocity.jump.y)
+
+[State 40, 5]
+type = VelSet
+trigger1 = AnimTime = 0
+;trigger1 = prevstateno = 100 ;RUN_FWD
+trigger1 = prevstateno = 86084 ;RUN_FWD
+trigger1 = sysvar(1) = 1
+x = const(velocity.runjump.fwd.x)
+
+
+[State 40, 6]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 66050
+ctrl = 0
+
+;---------------------------------------------------------------------------
+; AirJump Start
+[Statedef 66045]
+type    = A
+physics = N
+ctrl = 0
+velset = 0,0
+
+
+[State 45, 1]
+type = ChangeAnim
+trigger1 = SelfAnimExist(66044)
+value = 66044
+
+[State 45, 2]
+type = ChangeAnim
+trigger1 = !SelfAnimExist(66044)
+value = 66041
+
+[State 45, 3]
+type = VarSet
+trigger1 = Time = 0
+sysvar(1) = 0
+
+[State 45, 4]
+type = VarSet
+trigger1 = command = "holdfwd"
+sysvar(1) = 1
+
+[State 45, 5]
+type = VarSet
+trigger1 = command = "holdback"
+sysvar(1) = -1
+
+[State 45, 6]
+type = VelSet
+trigger1 = Time = 2
+x = ifelse(sysvar(1)=0, const(velocity.airjump.neu.x), ifelse(sysvar(1)=1, const(velocity.airjump.fwd.x), const(velocity.airjump.back.x)))
+y = const(velocity.airjump.y)
+
+[State 45, 7]
+type = ChangeState
+trigger1 = Time = 2
+value = 66050
+ctrl = 0
+
+;---------------------------------------------------------------------------
+; Jump Up
+[Statedef 66050]
+type    = A
+physics = N
+
+
+[State 1110, gravity]
+type = Gravity
+trigger1 = 1
+ignorehitpause = 1
+persistent = 1
+
+
+[State 50, 1]
+type = VarSet
+trigger1 = Time = 0
+sysvar(1) = 0
+
+[State 50, 2]
+type = ChangeAnim
+trigger1 = Time = 0
+value = ifelse((vel x)=0, 66041, ifelse((vel x)>0, 66042, 66043))
+
+[State 50, 3]
+type = ChangeAnim
+trigger1 = time = 8;Vel y > -1
+trigger1 = SelfAnimExist(anim + 3)
+persistent = 0
+value = Anim + 3
+
+[State 1050, Changestate]
+type = Changestate
+trigger1 = Vel Y>0
+trigger1 = Pos Y>=0
+value = 66052
+ctrl = 0
+
+
+
+;---------------------------------------------------------------------------
+; Jump Down (empty state for compatibility)
+[Statedef 66051]
+type    = A
+physics = A
+
+[State 51, 1]
+type = Null
+trigger1 = 1
+
+;---------------------------------------------------------------------------
+; Jump Land
+[Statedef 66052]
+type    = S
+physics = S
+ctrl = 0
+anim = 66047
+
+[State 4121]
+type = PalFx
+trigger1 = Time = [1,50]
+time = 20
+add = 64,32,64
+sinadd = 64,32,64,30
+
+[State 86084]
+type = NotHitBy
+trigger1 = 1
+value = SCA
+
+
+[State 86084]
+type = null;ScreenBound
+trigger1 = 1
+value = 0
+movecamera = 0,0
+
+
+[State 52, 1]
+type = VelSet
+trigger1 = Time = 0
+y = 0
+
+
+[State 52, 2]
+type = PosSet
+trigger1 = Time = 0
+y = 0
+
+
+[State 52, 3]
+type = CtrlSet
+trigger1 = Time = 3
+value = 86083
+
+[State 86083]
+type = ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+; stance----------------
+[State 86083]
+type = null;ChangeState
+trigger1 = AnimTime = 0 && StateType != A
+value = 86083
+ctrl = 0
+
+; jump----------------
+[State 86083]
+type = null;ChangeState
+trigger1 = AnimTime = 0 && StateType = A
+value = 1320
+ctrl = 0
+
+; back madoka----------------
+[State 86083]
+type = ChangeState
+trigger1 = !var(57)
+value = 86098
+ctrl = 0
+
+
+
+
+
+;------------------------------------------------------
+
+
+
+
+

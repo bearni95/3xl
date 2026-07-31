@@ -1,0 +1,26 @@
+;--------------------------------------------------------------------------
+; Kimagure Orange Road by Brucewayne74, split into one character per body:
+; the pack draws Madoka, Kyosuke and Hikaru out of a single .sff, one
+; sprite group each. This .def takes Kyosuke Kasuga's.
+;--------------------------------------------------------------------------
+
+[Info]
+name = "Kyosuke Kasuga"
+displayname = "Kyosuke Kasuga"
+author = "Brucewayne74"
+versiondate = 3/25/2010
+mugenversion =
+
+[Files]
+cmd = kyosuke.cmd
+st = kyosuke.cns
+st1 = kyosuke2.cns
+sprite = kyosuke.sff
+anim = kyosuke.air
+pal1 = pals/anime.act
+pal2 = pals/kimagure.act
+pal3 = pals/sailor.act
+pal4 = pals/sailor2.act
+pal5 = pals/kor.act
+pal6 = pals/default.act
+pal7 = pals/creamy.act

@@ -1,0 +1,535 @@
+
+[Statedef 4000]
+type = A
+movetype = I
+;anim = 4000+parent,var(52)
+anim = 4000
+velset = 0,0
+sprpriority = 4
+
+[State 4000, 3]
+type = DestroySelf
+trigger1 = NumHelper(4900) != 0
+
+[State -2,];虫取り用
+type = DisplayToClipboard
+trigger1 = 1
+text = "x=%d,y=%d,z=%d"
+params = var(5),var(6),var(7)
+ignorehitpause = 1
+
+[State 4000, 1]
+type = VarRandom
+trigger1 = 1
+v = 5
+range = 8
+
+[State 4000, 1]
+type = VarRandom
+trigger1 = 1
+v = 6
+range = 8
+
+[State 4000, 1]
+type = VarRandom
+trigger1 = 1
+v = 7
+range = 500
+
+[State 4000, 1]
+type = NotHitBy
+trigger1 = 1
+value = SCA, AA, AP, AT
+time = 1
+
+[State 4000, 2]
+type = ChangeState
+trigger1 = var(7) = 499
+value = 4001
+
+[State 4000, 2]
+type = ChangeState
+trigger1 = var(7) = 498
+value = 4011
+
+[State 4000, 2]
+type = ChangeState
+trigger1 = var(7) = 497
+value = 4012
+
+[State 4000, 1]
+type = posadd
+trigger1 = RootDist X = [-30,30]
+trigger1 = pos y = [-110+parent,var(8),-70+parent,var(8)]
+trigger1 = var(7) = [100,489]
+x = var(5)*ifelse(Random <= 499,1,-1)
+y = var(6)*ifelse(Random <= 499,1,-1)
+
+[State 4000, 1]
+type = posadd
+trigger1 = RootDist X = [-30,30]
+trigger1 = pos y = [-110+parent,var(8),-70+parent,var(8)]
+trigger1 = var(7) = [0,99]
+x = 1*ifelse(Random <= 499,1,-1)
+y = 1*ifelse(Random <= 499,1,-1)
+
+[State 4000, 1]
+type = posadd
+triggerall = var(7) = [100,489]
+trigger1 = pos y <= -110+parent,var(8)
+x = var(5)*ifelse(Random <= 499,1,-1)
+y = var(6)
+
+[State 4000, 1]
+type = posadd
+triggerall = var(7) = [100,489]
+trigger1 = pos y >= -70+parent,var(8)
+x = var(5)*ifelse(Random <= 499,1,-1)
+y = -var(6)
+
+[State 4000, 1]
+type = posadd
+triggerall = var(7) = [100,489]
+trigger1 = RootDist X < -30
+x = -var(5)
+y = var(6)*ifelse(Random <= 499,1,-1)
+
+[State 4000, 1]
+type = posadd
+triggerall = var(7) = [100,489]
+trigger1 = RootDist X > 30
+x = var(5)
+y = var(6)*ifelse(Random <= 499,1,-1)
+
+
+
+
+
+[Statedef 4001]
+type = A
+movetype = I
+;anim = 4000
+sprpriority = 4
+
+[State 4000, 3]
+type = DestroySelf
+trigger1 = NumHelper(4900) != 0
+
+[State 4000, 1]
+type = velset
+trigger1 = time = 0
+x = -3
+
+[State 4000, 1]
+type = veladd
+trigger1 = 1
+x = 0.2
+
+;波っぽい動き
+[State 4000, 1]
+type = velset
+trigger1 = 1
+y = cos(vel x)
+
+[State 4000, 2]
+type = ChangeState
+trigger1 = vel x >= 4
+value = 4003
+
+
+
+[Statedef 4003]
+type = A
+movetype = I
+;anim = 4000
+sprpriority = 4
+
+[State 4000, 3]
+type = DestroySelf
+trigger1 = NumHelper(4900) != 0
+
+[State 4000, 1]
+type = VarRandom
+trigger1 = 1
+v = 7
+range = 99
+
+[State 4000, 1]
+type = veladd
+trigger1 = 1
+x = -0.2
+
+[State 4000, 1]
+type = velset
+trigger1 = 1
+y = -cos(vel x)
+
+[State 4000, 2]
+type = ChangeState
+trigger1 = vel x <= -4
+value = 4000
+
+
+
+
+
+
+
+;楕円に回る
+[Statedef 4011]
+type = A
+movetype = I
+;anim = 4000
+sprpriority = 4
+
+[State 4000, 3]
+type = DestroySelf
+trigger1 = NumHelper(4900) != 0
+
+[State 4000, 1];時計回り
+type = velset
+trigger1 = 1
+x = 6*cos(time*0.3)
+
+[State 4000, 1]
+type = velset
+trigger1 = 1
+y = 2*sin(time*0.3)
+
+[State 4000, 2]
+type = ChangeState
+trigger1 = time = 32 && random >=299
+trigger2 = time = 64
+value = 4000
+
+
+[Statedef 4012]
+type = A
+movetype = I
+;anim = 4000
+sprpriority = 4
+
+[State 4000, 3]
+type = DestroySelf
+trigger1 = NumHelper(4900) != 0
+
+[State 4000, 1];反時計回り
+type = velset
+trigger1 = 1
+x = -6*cos(time*0.2)
+
+[State 4000, 1]
+type = velset
+trigger1 = 1
+y = 2*sin(time*0.2)
+
+[State 4000, 2]
+type = ChangeState
+trigger1 = time = 32 && random >=299
+trigger2 = time = 64
+value = 4000
+
+
+
+
+
+[Statedef 4500]
+type = A
+movetype = I
+anim = 4000
+sprpriority = 4
+
+[State 4000, 3]
+type = DestroySelf
+trigger1 = NumHelper(4900) != 0
+
+[State 4000, 1];時計回り
+type = velset
+trigger1 = 1
+x = 2*cos(time*0.1)
+y = 2*sin(time*0.1)
+
+;---------------------------------------------------------------------------
+;セレクトモード
+[Statedef 4900]
+type = S
+anim = 1
+velset = 0,0
+sprpriority = 5
+ctrl = 0
+
+[State 200, 1]
+type = PlaySnd
+trigger1 = time = 0
+value = 1, 0
+channel = 0
+
+[State 4900, 7]
+type = Varset
+trigger1 = time = 0
+var(48) = root,var(52)
+
+[State 4900, 7]
+type = Varset
+trigger1 = time = 0
+var(49) = root,var(51)+2
+
+[State 4900, 0] 
+type = AssertSpecial
+trigger1  = 1
+flag = nomusic
+
+[State 4900, pause]
+type = Pause
+trigger1   = Time = 2
+time = 999999999999999999
+movetime= 999999999999999999
+
+
+[State 4900, 7]
+type = VarAdd
+trigger1 = command = "holdup"
+trigger1 = var(49) < 8
+V = 49
+Value = 1
+
+[State 4900, 7]
+type = VarAdd
+trigger1 = command = "holddown"
+trigger1 = var(49) > 0
+V = 49
+Value = -1
+
+[State 4900, 7]
+type = VarAdd
+triggerall = var(48) < 7
+trigger1 = command = "holdfwd"&&root,facing = 1
+trigger2 = command = "holdback"&&root,facing = -1
+V = 48
+Value = 1
+
+[State 4900, 7]
+type = VarAdd
+triggerall = var(48) > -1
+trigger1 = command = "holdback"&&root,facing = 1
+trigger2 = command = "holdfwd"&&root,facing = -1
+V = 48
+Value = -1
+
+[State 4900, 7]
+type = Varset
+triggerall = var(48) = 7
+trigger1 = command = "holdfwd"&&root,facing = 1
+trigger2 = command = "holdback"&&root,facing = -1
+V = 48
+Value = 0
+
+[State 4900, 7]
+type = Varset
+triggerall = var(48) = -1
+trigger1 = command = "holdback"&&root,facing = 1
+trigger2 = command = "holdfwd"&&root,facing = -1
+V = 48
+Value = 6
+
+[State -2,];虫取り用
+type = DisplayToClipboard
+trigger1 = 1
+text = "no=%d,chr=%d"
+params = var(49),var(48)
+ignorehitpause = 1
+
+
+
+
+
+[State -2, 0]
+type = Explod
+trigger1 = NumExplod(4900+var(49)) = 0
+anim = 4900+var(49)
+id = 4900+var(49)
+pos =  180,120
+postype = left
+sprpriority = 5
+facing = 1
+bindtime = -1
+ontop = 1
+ownpal = 1
+removetime = -1
+pausemovetime = 99999999999999
+supermovetime = 99999999999999
+supermove = 1
+
+[State -2, 0]
+type = Explod
+trigger1 = NumExplod(4000+var(48)) = 0
+anim = 4000+var(48)
+id = 4000+var(48)
+pos =  180,160
+postype = left
+sprpriority = 5
+facing = 1
+bindtime = -1
+ontop = 1
+ownpal = 1
+removetime = -1
+pausemovetime = 99999999999999
+supermovetime = 99999999999999
+supermove = 1
+
+[State -2, 0]
+type = Explod
+trigger1 = NumExplod(4800) = 0
+anim = 4800
+id = 4800
+pos =  180,160
+postype = left
+sprpriority = 5
+facing = 1
+bindtime = -1
+ontop = 1
+ownpal = 1
+removetime = -1
+pausemovetime = 99999999999999
+supermovetime = 99999999999999
+supermove = 1
+
+;変数使ったらなんか上手くいかなかったので力技。
+;キャー、ハズカシー！　見ないでー！
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(49) != 0
+id = 4900
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(49) != 1
+id = 4901
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(49) != 2
+id = 4902
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(49) != 3
+id = 4903
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(49) != 4
+id = 4904
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(49) != 5
+id = 4905
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(49) != 6
+id = 4906
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(49) != 7
+id = 4907
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(49) != 8
+id = 4908
+
+
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(48) != 0
+id = 4000
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(48) != 1
+id = 4001
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(48) != 2
+id = 4002
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(48) != 3
+id = 4003
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(48) != 4
+id = 4004
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(48) != 5
+id = 4005
+
+[State -2, 0]
+type = RemoveExplod
+trigger1 = var(48) != 6
+id = 4006
+
+
+;[State 4900, 2]
+;type = ChangeState
+;trigger1 = command = "start"
+;value = 4920
+;ctrl = 0
+
+
+
+[Statedef 4920]
+type = S
+anim = 1
+velset = 0,0
+sprpriority = 5
+ctrl = 0
+
+[State 200, 1]
+type = PlaySnd
+trigger1 = time = 0
+value = 40, var(48)
+
+[State 4920, 0]
+type = RemoveExplod
+trigger1 = NumExplod(4900+var(49)) = 1
+id = 4900+var(49)
+
+[State 4920, 0]
+type = RemoveExplod
+trigger1 = NumExplod(4000+var(48)) = 1
+id = 4000+var(48)
+
+[State 4920, 0]
+type = RemoveExplod
+trigger1 = NumExplod(4800) = 1
+id = 4800
+
+[State 4900, pause]
+type = Pause
+trigger1   = Time = 0
+time = 1
+movetime = 1
+
+[State 4900, 7]
+type = ParentVarset
+trigger1 = time = 1
+var(51) = var(49)-2
+
+[State 4900, 7]
+type = ParentVarset
+trigger1 = time = 1
+var(52) = var(48)
+
+[State 4900, 3]
+type = DestroySelf
+trigger1 = time = 10
