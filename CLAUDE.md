@@ -89,10 +89,14 @@ place a game-icons glyph is shown *outside* a canvas — it stays an `<img>` by 
 is always given a dark tile to stand on (`GameIcon.svelte`), because the white it
 carries is the canvas's requirement and is not negotiable from a page.
 
-**The typeface.** The game is set in **Press Start 2P**, fetched from Google Fonts by an
+**The typeface.** The game is set in **Genos**, fetched from Google Fonts by an
 `@import` at the head of `css/app.css` — an import may only precede other rules, which is
-why it sits above Tailwind's own. Unlike the icons and the songs the font is not vendored:
-it is the one asset asked of a third-party host at run time. It is applied once, as
+why it sits above Tailwind's own. The family is taken **whole**
+(`ital,wght@0,100..900;1,100..900`): every weight in both uprights and italics, which
+costs one file per style because Genos is variable, and means a `font-bold` anywhere in
+the app lands on a real weight rather than a synthesised one. Unlike the icons and the
+songs the font is not vendored: it is the one asset asked of a third-party host at run
+time. It is applied once, as
 `--font-sans` / `--font-serif` / `--font-mono` in the `@theme` block, all three named
 after it. Tailwind's preflight resolves `html`'s family through `--font-sans`, so every
 element inherits it and **no component ever names a font**; the three tokens rather than
