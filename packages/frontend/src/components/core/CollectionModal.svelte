@@ -112,14 +112,14 @@
 		filterShow = filterShow === showId ? ANY : showId;
 	}
 
-	/** One show's chip in the column, ringed while it is the one being filtered on. The band
-	 * under it is the statue's — a show's lettering is drawn to sit on something dark, and the
-	 * panel it sits on there is what makes it readable here too. Unringed is the only thing
-	 * that says a chip is not the one picked: a wordmark held at less than full strength is a
-	 * wordmark drawn wrong. */
+	/** One show's chip in the column — its lettering over how much of it has been collected —
+	 * ringed while it is the one being filtered on. Unringed is the only thing that says a chip
+	 * is not the one picked: a wordmark held at less than full strength is a wordmark drawn
+	 * wrong. The ring is on the whole chip rather than on the band inside it, the bar under the
+	 * lettering being part of what is pressed. */
 	function showChipClasses(showId: number, active: number | typeof ANY): string {
 		return classNames(
-			'flex h-10 flex-none items-center justify-center overflow-hidden rounded-md bg-black/40 px-1 transition',
+			'flex w-full flex-none flex-col gap-1 rounded-md p-1 transition',
 			'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
 			{ 'ring-2 ring-base-content ring-offset-1 ring-offset-base-100': active === showId }
 		);
@@ -134,6 +134,23 @@
 		for (const spawn of all) held.add(`${spawn.characterId}|${spawn.showId ?? '*'}`);
 		return held;
 	})($spawns);
+
+	// The shows as the column draws them: each with how much of its cast the player has and how
+	// big that cast is. Counted over the show's own characters rather than over the player's
+	// cards, so a fighter pulled six times is one of them collected and not six — the album is
+	// a set, and the bar under a logo says how much of the set is in.
+	$: showTiles = ((
+		rows: { id: number; name: string; cast: CharacterOption[] }[],
+		held: Set<string>
+	) =>
+		rows.map((row) => ({
+			...row,
+			held: row.cast.filter(
+				(character) =>
+					held.has(`${character.id}|${row.id}`) || held.has(`${character.id}|*`)
+			).length,
+			total: row.cast.length
+		})))(showRows, ownedPairs);
 
 	// The album as it is drawn: one flat run of cells, a show's whole cast before the next
 	// show's, each carrying the one thing the set has to say about it — whether the player
@@ -207,7 +224,7 @@
 					role="group"
 					aria-label={$_('collection.filterByShow')}
 				>
-					{#each showRows as show (show.id)}
+					{#each showTiles as show (show.id)}
 						<button
 							type="button"
 							class={showChipClasses(show.id, filterShow)}
@@ -216,15 +233,46 @@
 							aria-pressed={filterShow === show.id}
 							on:click={() => toggleShowFilter(show.id)}
 						>
-							{#if $showLogos.get(show.id)}
-								<img
-									src={$showLogos.get(show.id)?.url}
-									alt={show.name}
-									class="max-h-full max-w-full object-contain"
-								/>
-							{:else}
-								<span class="truncate text-xs text-white/80">{show.name}</span>
-							{/if}
+							<div
+								class="flex h-10 flex-none items-center justify-center overflow-hidden rounded-md bg-black/40 px-1"
+							>
+								{#if $showLogos.get(show.id)}
+									<img
+										src={$showLogos.get(show.id)?.url}
+										alt={show.name}
+										class="max-h-full max-w-full object-contain"
+									/>
+								{:else}
+									<span class="truncate text-xs text-white/80">{show.name}</span>
+								{/if}
+							</div>
+
+							<!-- How much of this show is in, under its lettering: the bar and the reading
+								of it are one thing, drawn the way the player's own experience bar is (see
+								PlayerPanel) — the figure stands in flow with its own padding and the bar is
+								stretched behind it, so the bar is as tall as the type comes to and the count
+								is centred in it by construction. `h-full` because `.progress` brings a height
+								of its own that an over-constrained top/bottom pair would lose to. The bar is
+								hidden from a screen reader: what it draws is the two numbers, and those are
+								right there as text. -->
+							<div class="relative w-full">
+								<progress
+									class="progress progress-primary absolute inset-0 h-full w-full"
+									value={show.held}
+									max={show.total}
+									aria-hidden="true"
+								></progress>
+								<!-- Over the bar, so it is painted after it, and centred across the width: a
+									figure about the whole bar reads from the middle of it rather than from the
+									end the fill happens to have reached. The tight black shadow is what lets
+									one colour of lettering cross a bar that is two — the fill where the show
+									has been collected, the track where it has not. -->
+								<span
+									class="relative block truncate px-1 text-center font-mono text-[0.65rem] text-white text-shadow-xs text-shadow-black"
+								>
+									{show.held}/{show.total}
+								</span>
+							</div>
 						</button>
 					{/each}
 				</div>
