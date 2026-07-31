@@ -2284,6 +2284,12 @@
 	the map's chrome blurs out and back in (see CHROME_BLUR). A fight is not a page laid over
 	the map like the roster or the leaderboard — it is an event on a town the map is still
 	showing — so the map moves for it and for nothing else.
+	Which is also why this sheet paints no page (`transparent`, as the booster window does): a
+	graded base-100 over the whole viewport is nine tenths opaque, so the map tipping back behind
+	it was a movement nobody could see. The fight is staged on the map instead — the terrain
+	tipped away and its pins blurred off it, the board standing on top. Nothing here needs the
+	page: the canvas is opaque and carries its own border, and every word the arena says is on a
+	card with its own base-100 (the result panel, the sign-in and no-team cards).
 	The sheet's own way out is held shut while a finished fight is on its way to the server:
 	reporting is what ends the battle, so a player let out before it lands would walk away
 	from a fight the server still has open. That is the one thing the sheet cannot know for
@@ -2303,6 +2309,7 @@
 	<FullScreenModal
 		title="Combat"
 		bare
+		transparent
 		tiltsMap
 		closeLabel="Close combat"
 		closeDisabled={fightReporting}
