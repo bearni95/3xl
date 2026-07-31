@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+	import { _ } from 'svelte-i18n';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
 	import { cellScreenY, combatColorHex } from '$utils/mugen/mugen-board';
 	import { ORDER_ICONS } from '$utils/color/traits';
@@ -8,6 +9,7 @@
 		BoardCharacter,
 		BoardGrid,
 		BoardOrder,
+		BoardPassive,
 		MugenBoard as MugenBoardEngine
 	} from '$utils/mugen/mugen-board';
 	import type { Cell } from '$utils/mugen/grid';
@@ -138,9 +140,9 @@
 	}
 
 	// The glyph each order is given — the same three the cards wear in their corners,
-	// and the same three a fighter wears at its own corner for the orders its colour
-	// grants it free (see `traitIcons`), so a charge, a guard and a shot are one
-	// picture each wherever the game speaks of them.
+	// and the same three a fighter wears at its feet for the orders its colour grants it
+	// free (see `traitIcons`), so a charge, a guard and a shot are one picture each
+	// wherever the game speaks of them.
 	const ACTION_ICONS: Record<CombatAction, string> = ORDER_ICONS;
 
 	// The lanes of the fight, 1..n, for the score's rings: one ring per lane, filled once
@@ -411,93 +413,64 @@
 	 *
 	 * There are only three orders and each button is one of them. What a fighter's
 	 * colour adds on top is never tapped for — it is passive, it comes off the back of
-	 * whatever order *was* given, and the corner glyphs are where it is read.
+	 * whatever order *was* given, and the row at the fighter's feet is where it is read.
 	 */
 	function giveOrder(fighterId: string, orderId: string): void {
 		controller?.setAction(fighterId, orderId as CombatAction);
 	}
 
 	/**
-	 * The slot over a fighter's three orders: what its colour is about to do for it, free,
-	 * and then what it did.
+	 * The row at a fighter's feet: everything its colour hands it for free, one mark apiece
+	 * and all of them for the whole fight — so a compound colour wears two and a primary
+	 * one, and the row is the fight's running account of what that colour was worth.
 	 *
 	 * A colour hands a fighter one free order per primary it mixes, on the turn the fight
-	 * opens and only then. So on the opening turn the slot holds that gift, drawn plain like
-	 * an order nobody has chosen — the fighter has it, and whether it comes to anything
-	 * depends on the order it is given beside, since a gift is never the order you chose.
-	 * The moment it does come to something the same button fills with the fighter's colour,
-	 * which is how the rest of this board says a thing happened, and there it stays: a gift
-	 * is worth one use in the whole battle, so this is the fight's record of what a colour
-	 * was worth and not a light that comes on for a turn.
+	 * opens and only then. So a mark opens inside out — a white face carrying the glyph in
+	 * the fighter's colour, which is not an order it can be given but a thing about the
+	 * fighter, and reads as one without having to be read. The moment the gift comes to
+	 * something the mark fills with that colour, which is how the rest of this board says a
+	 * thing happened, and there it stays: a gift is worth one use in the whole battle, so
+	 * this is a record and not a light that comes on for a turn. A gift that ran out having
+	 * done nothing greys instead — it is gone either way, and the difference between the two
+	 * is the whole of what a colour was worth here.
 	 *
-	 * Empty means empty, then, and it says one of two things: a fighter with nothing in hand
-	 * and nothing to its name — every colour grants something, so this is a gift that ran out
-	 * unused at the end of the opening turn — or, past that turn, a colour that did nothing.
-	 * That is also why the slot is a slot and not a button that appears: three columns
-	 * growing a fourth button mid-fight would be three columns changing shape, and the
-	 * emptiness is itself worth reading.
-	 *
-	 * A colour that mixes two primaries has two gifts and there is one slot: it shows the
-	 * first still in hand until one of them fires, and then the one that fired.
-	 *
-	 * It is drawn inside out — a white face carrying the glyph in the fighter's colour —
-	 * because it is not an order and must not read as one: the three under it are things
-	 * the fighter can be told to do, and this is a thing about the fighter. That is also
-	 * the look this slot inherited: a fighter's gifts used to be white coins at its
-	 * shoulder, and the coins are gone because one slot says the same thing in the column
-	 * where the fighter's other three are already being read.
+	 * Every gift is drawn from the start rather than appearing as it fires, and a spent one
+	 * stays drawn rather than coming off, so a fighter's row never changes shape mid-fight
+	 * and the count of what a colour granted can be read off it at any point in the fight.
+	 * This is what the marks used to say from a single slot at the head of the orders, which
+	 * could only ever show one gift at a time, and before that from white coins at the
+	 * fighter's shoulder.
 	 */
-	function passiveSlot(fighter: FighterView): BoardOrder {
-		// What it did, or failing that what it still might: the record outranks the offer,
-		// since a gift that has fired is the thing worth saying about a colour.
-		const done = fighter.used[0];
-		const shown = done ?? fighter.passives.find((order) => !fighter.spent.includes(order));
-		if (!shown) {
-			return {
-				id: 'passive',
-				icon: '',
-				selected: false,
-				disabled: false,
-				readonly: true,
-				empty: true,
-				color: fighter.color
-			};
-		}
-		return {
-			// Named for what is in it, so a slot that empties or changes hands is rebuilt
-			// rather than repainted — an empty slot has no glyph loaded to swap. A gift that
-			// fires having been the one on offer keeps its id and only changes its fill.
-			id: `passive:${shown}`,
-			icon: ACTION_ICONS[shown],
-			// Filled in the fighter's colour once it has fired, like the order it fired
-			// beside: both are things this fighter did, and the colour is how this board says
-			// whose. Until then it is inside out — the fighter has it, it has not used it.
-			selected: Boolean(done),
-			disabled: false,
-			readonly: true,
-			inverted: true,
-			color: fighter.color
-		};
+	function passiveMarks(fighter: FighterView): BoardPassive[] {
+		return fighter.passives.map((order, index) => ({
+			// Named for the gift and its place in the row: a colour's gifts are fixed for the
+			// fight, so this is stable and the row is only ever repainted — but a compound that
+			// mixes the same order twice would otherwise hand two marks the one id.
+			id: `${index}:${order}`,
+			icon: ACTION_ICONS[order],
+			color: fighter.color,
+			taken: fighter.used.includes(order),
+			lapsed: fighter.spent.includes(order)
+		}));
 	}
 
 	/**
-	 * The column beside one of the player's fighters: its colour's slot, and under it the
-	 * three orders it can be given. Every one of the three is always drawn — an order out of
-	 * reach is greyed rather than dropped, so a fighter's column never changes shape under
-	 * the cursor — and all of them lock while a turn is playing out.
+	 * The column beside one of the player's fighters: the three orders it can be given. Every
+	 * one of the three is always drawn — an order out of reach is greyed rather than dropped,
+	 * so a fighter's column never changes shape under the cursor — and all of them lock while
+	 * a turn is playing out. What its colour does for it of its own accord is not in here: it
+	 * is never tapped for, so it is not among the things that can be, and it is read at the
+	 * fighter's feet instead ({@link passiveMarks}).
 	 */
 	function orderButtons(fighter: FighterView, phase: CombatState['phase']): BoardOrder[] {
 		const locked = phase !== 'planning';
-		return [
-			passiveSlot(fighter),
-			...COMBAT_ACTIONS.map((action) => ({
-				id: action,
-				icon: ACTION_ICONS[action],
-				selected: fighter.action === action,
-				disabled: locked || (action === 'shoot' && !fighter.canShoot),
-				color: fighter.color
-			}))
-		];
+		return COMBAT_ACTIONS.map((action) => ({
+			id: action,
+			icon: ACTION_ICONS[action],
+			selected: fighter.action === action,
+			disabled: locked || (action === 'shoot' && !fighter.canShoot),
+			color: fighter.color
+		}));
 	}
 
 	/**
@@ -510,43 +483,47 @@
 	 * it over as the turn is carried out, so the button lights up at the moment the fighter
 	 * acts and stays lit for the rest of the turn.
 	 *
-	 * It lights up in the fighter's own colour, as the player's own column does. And it
-	 * carries the same colour slot over it: what a rival's colour did for it is not a secret
-	 * — it has already happened by the time it is drawn — and it is a thing the player has
-	 * to be able to count, since a gift fired is a gift that will not fire again.
+	 * It lights up in the fighter's own colour, as the player's own column does. And a rival
+	 * wears the same row of gifts at its feet as the player's own fighters do: what a rival's
+	 * colour did for it is not a secret — it has already happened by the time it is drawn —
+	 * and it is a thing the player has to be able to count, since a gift fired is a gift that
+	 * will not fire again.
 	 */
 	function rivalOrderButtons(fighter: FighterView): BoardOrder[] {
-		return [
-			passiveSlot(fighter),
-			...COMBAT_ACTIONS.map((action) => ({
-				id: action,
-				icon: ACTION_ICONS[action],
-				selected: fighter.action === action,
-				disabled: false,
-				readonly: true,
-				color: fighter.color
-			}))
-		];
+		return COMBAT_ACTIONS.map((action) => ({
+			id: action,
+			icon: ACTION_ICONS[action],
+			selected: fighter.action === action,
+			disabled: false,
+			readonly: true,
+			color: fighter.color
+		}));
 	}
 
-	// Push every fighter's orders onto the board whenever the fight moves. Both `state`
-	// and `board` are named so Svelte's legacy reactive tracking sees them as
+	// Push every fighter's orders and gift marks onto the board whenever the fight moves.
+	// Both `state` and `board` are named so Svelte's legacy reactive tracking sees them as
 	// dependencies; the board itself only redraws what actually changed.
 	$: syncOrders(state, board);
 
 	function syncOrders(current: CombatState | null, engine: MugenBoardEngine | null): void {
 		if (!engine || !current) return;
 		for (const fighter of current.fighters) {
-			// Two fighters are asked for nothing more and keep no buttons: one standing on the
-			// white cell it won, which has settled its lane, and one that has been taken down,
-			// which is still on the board — at the back of its own half — and must not go on
-			// wearing a column of orders it can never be given, or be shown one it can never
-			// carry out. An empty list is what clears a strip.
+			// Two fighters are asked for nothing more and keep no marks at all: one standing on
+			// the white cell it won, which has settled its lane, and one that has been taken
+			// down, which is still on the board — at the back of its own half — and must not go
+			// on wearing a column of orders it can never be given, or be shown one it can never
+			// carry out. Its gifts go with them: a fighter out of the fight has no account left
+			// to keep, and its row would only crowd the ground it is standing off to one side
+			// of. An empty list is what clears either.
 			const spent = fighter.down || fighter.holdsGround;
 			if (spent) {
 				engine.setOrders(fighter.id, []);
+				engine.setPassives(fighter.id, []);
 				continue;
 			}
+			// Every fighter still in the fight wears its colour's gifts at its feet, both sides
+			// alike: they are not an input and belong to no half of the board.
+			engine.setPassives(fighter.id, passiveMarks(fighter));
 			// Both sides wear a column; only the player's is a way of giving an order. The
 			// rival's is the same three glyphs read back to the player.
 			//
@@ -700,7 +677,7 @@
 			// The whole refusal to the console — Postgres' code, detail and hint — and its
 			// sentence to the player, as with a refused report.
 			console.error('Battle save refused', error);
-			saveFailure = refusal(error, 'This turn could not be saved — the fight is waiting on it.');
+			saveFailure = refusal(error, $_('combat.saveRefused'));
 		} finally {
 			savingTurn = 0;
 		}
@@ -850,11 +827,13 @@
 	// player's — a fight is always read from their side — so a win is the info colour the
 	// player's own line holds the board in and a loss is the rivals' error colour, the
 	// same two the score above the board is counted in.
-	const OUTCOME_LABELS: Record<CombatOutcome, string> = {
-		win: 'You won the fight',
-		lose: 'You lost the fight',
-		draw: 'The fight was a draw'
-	};
+	// Reactive because it is wording: the line the fight ends on has to follow the language
+	// like any other, and a `const` map would have been read once at module scope.
+	$: OUTCOME_LABELS = {
+		win: $_('combat.won'),
+		lose: $_('combat.lost'),
+		draw: $_('combat.draw')
+	} satisfies Record<CombatOutcome, string>;
 	const OUTCOME_CLASSES: Record<CombatOutcome, string> = {
 		win: 'text-info',
 		lose: 'text-error',
@@ -863,10 +842,7 @@
 
 	// What the server said, as it said it. Supabase hands back a plain object rather
 	// than an Error, so both shapes are read before falling back to a line of our own.
-	function refusal(
-		error: unknown,
-		fallback = 'The server would not take the result of this fight.'
-	): string {
+	function refusal(error: unknown, fallback = $_('combat.reportRefused')): string {
 		const message =
 			error instanceof Error
 				? error.message
@@ -911,20 +887,17 @@
 <div class="flex h-full w-full items-center justify-center">
 	{#if !authService.configured}
 		<div class="alert alert-warning m-6 max-w-md text-sm">
-			<span>Sign-in is unavailable — Supabase is not configured, so no team can be played.</span>
+			<span>{$_('combat.notConfigured')}</span>
 		</div>
 	{:else if $authStatus === AuthStatus.Loading || spawnsPending}
 		<span class="loading loading-spinner loading-md"></span>
 	{:else if $authStatus !== AuthStatus.SignedIn}
 		<div class="card m-6 max-w-md bg-base-100 shadow-xl">
 			<div class="card-body gap-4">
-				<h2 class="card-title">Sign in to play</h2>
-				<p class="text-sm opacity-70">
-					Your team fights with the characters you've claimed and the colours they rolled. Sign in
-					to pick a team.
-				</p>
+				<h2 class="card-title">{$_('combat.signInTitle')}</h2>
+				<p class="text-sm opacity-70">{$_('combat.signInBody')}</p>
 				<button class="btn btn-primary btn-sm w-fit" on:click={() => signInPanelOpen.set(true)}>
-					Sign in
+					{$_('combat.signIn')}
 				</button>
 			</div>
 		</div>
@@ -932,10 +905,9 @@
 		<!-- Signed in, but there's no team ready to field. -->
 		<div class="card m-6 max-w-md bg-base-100 shadow-xl">
 			<div class="card-body gap-4">
-				<h2 class="card-title">No team to field</h2>
+				<h2 class="card-title">{$_('combat.noTeamTitle')}</h2>
 				<p class="text-sm opacity-70">
-					Your team needs all {TEAM_SIZE} slots filled with cards you have claimed — finish it on
-					your roster.
+					{$_('combat.noTeamBody', { values: { size: TEAM_SIZE } })}
 				</p>
 				<!-- The roster is a modal over the map, not a page, so this raises it right
 					over the arena rather than navigating out of the fight. -->
@@ -943,7 +915,7 @@
 					class="btn btn-primary btn-sm w-fit"
 					on:click={() => rosterModalOpen.set(true)}
 				>
-					Open roster
+					{$_('combat.openRoster')}
 				</button>
 			</div>
 		</div>
@@ -994,7 +966,7 @@
 				>
 					<div
 						class="flex flex-row-reverse gap-1.5"
-						aria-label="Encounters won by the rival team"
+						aria-label={$_('combat.rivalWins')}
 					>
 						{#each LANES as lane}
 							<span
@@ -1006,9 +978,9 @@
 						{/each}
 					</div>
 					<span class="font-mono text-sm font-bold tabular-nums opacity-70">
-						Turn {state.turn}
+						{$_('combat.turn', { values: { turn: state.turn } })}
 					</span>
-					<div class="flex gap-1.5" aria-label="Encounters won by your team">
+					<div class="flex gap-1.5" aria-label={$_('combat.yourWins')}>
 						{#each LANES as lane}
 							<span
 								class={classNames(
@@ -1053,9 +1025,9 @@
 								>
 									{#if reporting}
 										<span class="loading loading-spinner loading-xs"></span>
-										Reporting the fight
+										{$_('combat.reporting')}
 									{:else}
-										Report the fight again
+										{$_('combat.reportAgain')}
 									{/if}
 								</button>
 							{:else}
@@ -1070,7 +1042,7 @@
 									<!-- The fight is three duels and this is how they went: the same
 									     count the board has been keeping all along, standing still now. -->
 									<div class="flex items-baseline justify-between gap-4">
-										<dt class="opacity-70">Encounters won</dt>
+										<dt class="opacity-70">{$_('combat.encountersWon')}</dt>
 										<dd class="font-mono font-bold tabular-nums">
 											<span class="text-info">{state.wins.info}</span>
 											<span class="opacity-40">–</span>
@@ -1083,13 +1055,13 @@
 										     decided from how much of the team came through, so the count
 										     and the number it produced are read out together. -->
 										<div class="flex items-baseline justify-between gap-4">
-											<dt class="opacity-70">Fighters standing</dt>
+											<dt class="opacity-70">{$_('combat.survivors')}</dt>
 											<dd class="font-mono font-bold tabular-nums">
 												{reward.survivors} / {reward.fielded}
 											</dd>
 										</div>
 										<div class="flex items-baseline justify-between gap-4">
-											<dt class="opacity-70">Experience gained</dt>
+											<dt class="opacity-70">{$_('combat.expGained')}</dt>
 											<dd class="font-mono font-bold tabular-nums text-success">
 												+{reward.awarded}
 											</dd>
@@ -1104,9 +1076,9 @@
 								>
 									{#if reporting}
 										<span class="loading loading-spinner loading-xs"></span>
-										Reporting the fight
+										{$_('combat.reporting')}
 									{:else}
-										Close
+										{$_('common.close')}
 									{/if}
 								</button>
 							{/if}
@@ -1133,7 +1105,7 @@
 						disabled={state.phase !== 'planning'}
 						on:click={() => controller?.concede()}
 					>
-						Admit defeat
+						{$_('combat.concede')}
 					</button>
 				</div>
 			{/if}
@@ -1162,9 +1134,9 @@
 							>
 								{#if savingTurn}
 									<span class="loading loading-spinner loading-xs"></span>
-									Saving turn {state.turn}
+									{$_('combat.saving', { values: { turn: state.turn } })}
 								{:else}
-									Save turn {state.turn} again
+									{$_('combat.saveAgain', { values: { turn: state.turn } })}
 								{/if}
 							</button>
 						</div>

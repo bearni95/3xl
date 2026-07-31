@@ -18,6 +18,7 @@ import {
 	findClosestApproach,
 	findMeleeMeeting,
 	findPath,
+	HEX_HEIGHT,
 	hexCorners,
 	isBoardCell,
 	LAST_COLUMN,
@@ -272,13 +273,16 @@ export const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color]
 const ORDER_GAP = 8;
 /**
  * How many orders a column is sized to hold. A fighter that can be ordered at all is
- * given all three of them (charge, defend, shoot) and a fourth slot over them for what
- * its colour did of its own accord, so the column is drawn to come to exactly one cell of
- * the grid: it is as tall as the ground its fighter is standing on, which is what keeps
- * it beside that fighter and out of the lane above. A list of some other length keeps
- * this button size and simply runs shorter or longer.
+ * given all three of them (charge, defend, shoot), so the column is drawn to come to
+ * exactly one cell of the grid: it is as tall as the ground its fighter is standing on,
+ * which is what keeps it beside that fighter and out of the lane above. A list of some
+ * other length keeps this button size and simply runs shorter or longer.
+ *
+ * Three, and not the four it was: what a fighter's colour hands it for free used to take
+ * a slot at the head of this column, and is now a row of its own at the fighter's feet
+ * ({@link MugenBoard.setPassives}). The column is orders and nothing else.
  */
-const ORDER_COLUMN_COUNT = 4;
+const ORDER_COLUMN_COUNT = 3;
 /** Gap between buttons in a column, as a fraction of a button's height. */
 const ORDER_SPACING_RATIO = 0.12;
 /** A button's height as a fraction of a cell's side: the count and the gaps above,
@@ -305,7 +309,25 @@ const ORDER_INVERTED_FILL = 0xffffff;
  * there, not enough to read as a button with nothing in it. */
 const ORDER_EMPTY_ALPHA = 0.3;
 
-// --- Trait badges (drawn on the board, at the top-left corner of a fighter) ---
+// --- Passive marks (drawn on the board, at the feet of the fighter they belong to) ---
+/**
+ * How much of the band under a fighter's feet one of its passive marks is drawn at.
+ *
+ * The band is the ground the fighter is standing *on*: a hexagon on end goes on past the
+ * line its feet are planted on ({@link cellFoot}) down to its bottom point, a quarter of
+ * its own height further, and that strip is the only part of a cell nothing else is drawn
+ * in — the sprite ends at the top of it and the cell ends at the foot of it. So the row
+ * belongs to the fighter, sits inside its ground, and covers neither.
+ *
+ * Under one, so the marks stand clear of the foot line above and the cell's own point
+ * below rather than filling the strip edge to edge.
+ */
+const PASSIVE_BAND_FILL = 0.78;
+/** Gap between the marks in a row, as a fraction of one mark's height — the same figure
+ * the column of orders is spaced by, so the two read as the same kind of mark. */
+const PASSIVE_SPACING_RATIO = ORDER_SPACING_RATIO;
+
+// --- Icon rasterisation (every glyph any of the above draws) ---
 /**
  * The square each icon SVG is rasterised into, in px, before anything draws it.
  *
@@ -321,7 +343,7 @@ const ORDER_EMPTY_ALPHA = 0.3;
  * lesson is that the *board* should name the resolution it wants rather than inherit one.)
  *
  * 256 is a generous square for it: the largest anything draws one of these at is about
- * 48px (a trait disc, an order button's glyph), so there is resolution to spare for a
+ * 48px (an order button's glyph, a gift mark's), so there is resolution to spare for a
  * high-dpi screen, and it is a power of two, which is what the mipmap chain that keeps
  * the downscale from shimmering wants. Square, because the artwork is
  * (`viewBox="0 0 512 512"` throughout the set) — and one that is not simply sits centred
@@ -425,16 +447,46 @@ export interface BoardOrder {
 	 * Turn the button inside out: a white face carrying the glyph in {@link color}, rather
 	 * than a dark face carrying a white one.
 	 *
-	 * For a button that is not an order — a mark on the fighter that happens to be shaped
-	 * like one, and has to read as a different kind of thing from the orders it is stacked
-	 * with at a glance and without being read. `selected` still wins, and turning it the
-	 * right way up again is what says the mark has come to something.
+	 * For a mark that is not an order — something about the fighter that happens to be
+	 * drawn in the same shape, and has to read as a different kind of thing from the orders
+	 * at a glance and without being read. `selected` still wins, and turning it the right
+	 * way up again is what says the mark has come to something.
 	 */
 	inverted?: boolean;
 }
 
-/** One drawn order button, kept so its look can be updated without rebuilding it. */
-interface OrderButton {
+/**
+ * One thing a fighter's colour hands it for free, drawn as a mark at its feet. The board
+ * is told what to draw and nothing about what it means: a picture and two states, and
+ * that is all.
+ *
+ * Every gift a colour grants gets one of these for the whole fight — a compound colour's
+ * row is two marks wide — so the row is a fighter's whole account of what its colour was
+ * worth, read left to right, rather than one slot showing whichever of them is currently
+ * worth saying.
+ */
+export interface BoardPassive {
+	/** Which gift this is. The row is rebuilt when these change and repainted when they
+	 * do not, so a gift going off swaps no artwork. */
+	id: string;
+	/** URL of the glyph (an SVG under /assets). The artwork must be white: it is tinted,
+	 * and tinting only ever darkens. */
+	icon: string;
+	/** The fighter's combat colour — what the mark is drawn in, as its aura, its callouts
+	 * and its chosen orders all are. */
+	color: string;
+	/** The gift came to something: the mark fills with {@link color}, which is how the
+	 * rest of this board says a thing happened, and there it stays. */
+	taken: boolean;
+	/** The gift is gone and did nothing — it ran out at the end of the turn it was in hand
+	 * for. Drawn greyed, glyph and all: the fighter had it, and it came to nothing. */
+	lapsed: boolean;
+}
+
+/** One drawn mark — an order button, or one of the passives at a fighter's feet — kept so
+ * its look can be updated without rebuilding it. Both are the same picture in the same
+ * shape, so both are this and both go through one painter. */
+interface BoardMark {
 	id: string;
 	container: Container;
 	face: Graphics;
@@ -449,14 +501,28 @@ interface OrderButton {
 	inverted: boolean;
 }
 
+/** The drawn size of one mark: its face, and the gap to the next one along. */
+interface MarkSize {
+	width: number;
+	height: number;
+	gap: number;
+}
+
 /** Which side of its fighter a column of orders stands on. */
 export type OrderSide = 'left' | 'right';
 
 /** The column of order buttons beside one fighter. */
 interface OrderStrip {
 	container: Container;
-	buttons: OrderButton[];
+	buttons: BoardMark[];
 	side: OrderSide;
+}
+
+/** The row of gift marks at one fighter's feet. It has no side: it is centred on the
+ * fighter, so both halves of the board wear it the same way. */
+interface PassiveRow {
+	container: Container;
+	marks: BoardMark[];
 }
 
 /** A character standing (and, during combat, running) on the board. */
@@ -535,11 +601,13 @@ interface Actor {
 	 * nothing (every rival, and the player's side once the fight is over). */
 	orders: OrderStrip | null;
 	/**
-	 * The glyphs of what this fighter's colour grants it for free, drawn at its
-	 * top-left corner, or null when nothing has been said about it. The glyphs
-	 * themselves are fixed for the fight — a colour cannot change — so it is only ever
-	 * rebuilt when the set does, and otherwise repainted as its gifts are spent.
+	 * The row of marks at this fighter's feet, one per thing its colour grants it for
+	 * free, or null when nothing has been said about it. The glyphs themselves are fixed
+	 * for the fight — a colour cannot change, and neither can what it grants — so the row
+	 * is only ever rebuilt when the fighter's set of gifts changes hands at all, and
+	 * otherwise repainted as those gifts are taken or run out.
 	 */
+	passives: PassiveRow | null;
 	/** Nominal on-screen size (px) of the character at its fit scale, measured
 	 * from its base animation frames; sizes the aura that envelops it. */
 	displayWidth: number;
@@ -697,7 +765,7 @@ export class MugenBoard {
 			width,
 			height,
 			backgroundAlpha: 0,
-			// On, for the drawn shapes: the trait discs, the order buttons' rounded corners
+			// On, for the drawn shapes: the marks' rounded corners, the guard rings
 			// and the slashes are all geometry with a curve or a diagonal in them, and with
 			// this off every one of those edges is a staircase — which the scaling this canvas
 			// then goes through smears into a soft fringe rather than tidying up. It costs the
@@ -1036,6 +1104,7 @@ export class MugenBoard {
 			ring: null,
 			label: null,
 			orders: null,
+			passives: null,
 			// Nominal size: the base cycle's widest and tallest frame at fit scale —
 			// stable across poses, unlike the live sprite whose size tracks the current
 			// frame's texture. Taken over the whole cycle (as the fit is), so an aura or
@@ -1144,6 +1213,7 @@ export class MugenBoard {
 			this.updateAura(actor, deltaMs);
 			this.updateRing(actor);
 			this.updateOrders(actor);
+			this.updatePassives(actor);
 			this.updateLabel(actor);
 		}
 		this.updateSlashes(deltaMs);
@@ -1908,6 +1978,7 @@ export class MugenBoard {
 		const strip = actor.orders;
 		if (!strip) return;
 		strip.side = side;
+		const size = this.orderSize();
 		orders.forEach((order, i) => {
 			const button = strip.buttons[i];
 			if (!button) return;
@@ -1927,7 +1998,7 @@ export class MugenBoard {
 			button.color = color;
 			button.empty = empty;
 			button.inverted = inverted;
-			this.paintOrder(button);
+			this.paintMark(button, size);
 		});
 		this.updateOrders(actor);
 	}
@@ -1937,12 +2008,13 @@ export class MugenBoard {
 		const container = new Container();
 		container.sortableChildren = false;
 		this.app!.stage.addChild(container);
+		const size = this.orderSize();
 
 		const buttons = orders.map((order) => {
 			const face = new Graphics();
 			const glyph = new Sprite();
 			glyph.anchor.set(0.5);
-			const button: OrderButton = {
+			const button: BoardMark = {
 				id: order.id,
 				container: new Container(),
 				face,
@@ -1978,7 +2050,7 @@ export class MugenBoard {
 					this.layOutOrders(actor);
 				});
 			}
-			this.paintOrder(button);
+			this.paintMark(button, size);
 			return button;
 		});
 
@@ -1988,49 +2060,67 @@ export class MugenBoard {
 		return strip;
 	}
 
-	/** Repaint one button for its current state: chosen, plain, out of reach — or an empty
-	 * slot, which is none of those and is drawn as the outline of one. */
-	private paintOrder(button: OrderButton): void {
-		const { width, height } = this.orderSize();
+	/**
+	 * Repaint one mark for its current state: chosen, plain, out of reach — or an empty
+	 * slot, which is none of those and is drawn as the outline of one.
+	 *
+	 * The one painter for everything on this board drawn in this shape — the orders beside a
+	 * fighter and the gifts at its feet — told the size it is drawing at, since that is the
+	 * only thing the two differ in. A second painter is two pictures that can drift apart.
+	 */
+	private paintMark(mark: BoardMark, size: MarkSize): void {
+		const { width, height } = size;
 		const radius = height * ORDER_RADIUS_RATIO;
-		button.face.clear();
+		mark.face.clear();
 
-		if (button.empty) {
+		if (mark.empty) {
 			// Nothing filled: an unfilled rounded rect is a place kept rather than a button
 			// that has lost its picture, which is what a dark face with no glyph on it would
 			// read as beside three that have one.
-			button.face.roundRect(-width / 2, -height / 2, width, height, radius);
-			button.face.stroke({ width: 2, color: 0xffffff, alpha: ORDER_EMPTY_ALPHA });
-			button.glyph.alpha = 0;
+			mark.face.roundRect(-width / 2, -height / 2, width, height, radius);
+			mark.face.stroke({ width: 2, color: 0xffffff, alpha: ORDER_EMPTY_ALPHA });
+			mark.glyph.alpha = 0;
 			return;
 		}
 
 		// The chosen order takes the fighter's own colour, so a fighter's orders read as
 		// belonging to it rather than to some palette of the interface's own.
-		const chosen = combatColorHex(button.color);
+		const chosen = combatColorHex(mark.color);
 		// Inside out until it is chosen: a white face carrying a coloured glyph, which is a
 		// mark on the fighter rather than an order it can be given, and reads as one without
 		// having to be read. Being chosen turns it the right way up — the strongest state a
-		// button in this column has, and the same one the order beside it takes.
-		const invert = button.inverted && !button.selected;
-		const fill = button.disabled
+		// mark has, and the same one a chosen order takes.
+		const invert = mark.inverted && !mark.selected;
+		const fill = mark.disabled
 			? ORDER_DISABLED_FILL
 			: invert
 				? ORDER_INVERTED_FILL
-				: button.selected
+				: mark.selected
 					? chosen
 					: ORDER_IDLE_FILL;
 
-		button.face.roundRect(-width / 2, -height / 2, width, height, radius);
-		button.face.fill({ color: fill });
-		button.face.roundRect(-width / 2, -height / 2, width, height, radius);
-		button.face.stroke({ width: 2, color: 0x000000, alpha: 0.45 });
+		mark.face.roundRect(-width / 2, -height / 2, width, height, radius);
+		mark.face.fill({ color: fill });
+		mark.face.roundRect(-width / 2, -height / 2, width, height, radius);
+		mark.face.stroke({ width: 2, color: 0x000000, alpha: 0.45 });
 
 		// Tint only ever darkens, so the glyph artwork is white and the tint is what
 		// gives it its colour. A disabled glyph fades toward its own background rather
 		// than vanishing, so an order out of reach still reads as an order.
-		button.glyph.tint = invert ? chosen : 0xffffff;
-		button.glyph.alpha = button.disabled ? ORDER_DISABLED_ALPHA : 1;
+		mark.glyph.tint = invert ? chosen : 0xffffff;
+		mark.glyph.alpha = mark.disabled ? ORDER_DISABLED_ALPHA : 1;
+	}
+
+	/**
+	 * Size one mark's glyph to its face, once its artwork has arrived. Square raster in,
+	 * one scale out ({@link ICON_RASTER_PX}), so the picture lands inside the face on every
+	 * side whatever shape the glyph itself is.
+	 */
+	private fitGlyph(mark: BoardMark, height: number): void {
+		const glyph = mark.glyph;
+		if (!glyph.texture || glyph.texture.width <= 0) return;
+		const target = height * ORDER_ICON_RATIO;
+		glyph.scale.set(target / Math.max(glyph.texture.width, glyph.texture.height));
 	}
 
 	/**
@@ -2040,9 +2130,30 @@ export class MugenBoard {
 	 * because one size is what a cell is, so a fighter that walks carries the same column
 	 * of buttons with it.
 	 */
-	private orderSize(): { width: number; height: number; gap: number } {
+	private orderSize(): MarkSize {
 		const height = this.cellWidth() * ORDER_HEIGHT_RATIO;
 		return { width: height * ORDER_WIDTH_RATIO, height, gap: height * ORDER_SPACING_RATIO };
+	}
+
+	/**
+	 * The band a fighter's gifts are drawn in: the strip of its cell below the line it
+	 * stands on, from its feet down to the cell's bottom point — a quarter of the hexagon's
+	 * height ({@link cellFoot}), in the same screen px everything else here is measured in.
+	 * One figure for the board, as a cell is one size everywhere on it.
+	 */
+	private passiveBand(): number {
+		return (this.cellWidth() * HEX_HEIGHT) / 4;
+	}
+
+	/**
+	 * One gift mark's drawn size: as tall as the band under the fighter's feet allows
+	 * ({@link PASSIVE_BAND_FILL}), and the same proportions and spacing an order button
+	 * has, so a gift reads as the same kind of mark as the orders it is being counted
+	 * against and differs from them only in where it stands.
+	 */
+	private passiveSize(): MarkSize {
+		const height = this.passiveBand() * PASSIVE_BAND_FILL;
+		return { width: height * ORDER_WIDTH_RATIO, height, gap: height * PASSIVE_SPACING_RATIO };
 	}
 
 	/**
@@ -2054,19 +2165,16 @@ export class MugenBoard {
 	private layOutOrders(actor: Actor): void {
 		const strip = actor.orders;
 		if (!strip) return;
-		const { height, gap } = this.orderSize();
+		const size = this.orderSize();
+		const { height, gap } = size;
 		const step = height + gap;
 		const column = strip.buttons.length * height + (strip.buttons.length - 1) * gap;
 		const start = -column + height / 2;
 		strip.buttons.forEach((button, i) => {
 			button.container.x = 0;
 			button.container.y = start + i * step;
-			this.paintOrder(button);
-			const glyph = button.glyph;
-			if (glyph.texture && glyph.texture.width > 0) {
-				const target = height * ORDER_ICON_RATIO;
-				glyph.scale.set(target / Math.max(glyph.texture.width, glyph.texture.height));
-			}
+			this.paintMark(button, size);
+			this.fitGlyph(button, height);
 		});
 	}
 
@@ -2093,6 +2201,158 @@ export class MugenBoard {
 		strip.container.destroy({ children: true });
 	}
 
+	// --- Passive marks --------------------------------------------------------
+
+	/**
+	 * Say what a fighter's colour hands it for free, drawn as a row of marks at its feet —
+	 * one per gift, however many that colour comes with, all of them for the whole fight.
+	 *
+	 * They stand where they do because that is the one strip of a cell nothing else uses:
+	 * the sprite is planted on the cell's foot line and the hexagon runs on past it to its
+	 * bottom point, so the row sits under the fighter, inside its own ground, covering
+	 * neither it nor the lane it is fighting in. Centred on the fighter rather than off a
+	 * shoulder, because unlike the orders these are not an input and belong to no side: both
+	 * halves of the board wear them the same way.
+	 *
+	 * The board draws what it is told and knows nothing of what a gift means — a picture, and
+	 * whether it was taken or ran out. Called on every change of the fight's state, so it
+	 * rebuilds only when the *set* changes and otherwise repaints what is already there: a
+	 * row torn down and rebuilt each time would flicker its glyphs while their textures
+	 * reloaded. An empty list clears the row.
+	 */
+	setPassives(actorId: string, passives: BoardPassive[]): void {
+		const actor = this.findActor(actorId);
+		if (!actor || !this.app) return;
+		if (passives.length === 0) {
+			this.clearPassives(actor);
+			return;
+		}
+
+		const sameSet =
+			actor.passives?.marks.length === passives.length &&
+			actor.passives.marks.every((mark, i) => mark.id === passives[i].id);
+		if (!sameSet) {
+			this.clearPassives(actor);
+			actor.passives = this.buildPassives(actor, passives);
+		}
+
+		const row = actor.passives;
+		if (!row) return;
+		const size = this.passiveSize();
+		passives.forEach((passive, i) => {
+			const mark = row.marks[i];
+			if (!mark) return;
+			// A gift that came to something is drawn as this board draws anything that
+			// happened — filled in the fighter's colour — and one that ran out is greyed. Until
+			// it is either of those it is inside out: the fighter has it, and it has not gone
+			// off. Taken outranks lapsed, a gift being spent the moment it does something.
+			const selected = passive.taken;
+			const disabled = !passive.taken && passive.lapsed;
+			if (
+				mark.selected === selected &&
+				mark.disabled === disabled &&
+				mark.color === passive.color
+			)
+				return;
+			mark.selected = selected;
+			mark.disabled = disabled;
+			mark.color = passive.color;
+			this.paintMark(mark, size);
+		});
+		this.updatePassives(actor);
+	}
+
+	/** Build a fighter's row: one mark per gift, glyphs loaded as they arrive. Never an
+	 * input — a gift is a thing about the fighter, not a thing it can be told to do — so no
+	 * mark here takes a pointer. */
+	private buildPassives(actor: Actor, passives: BoardPassive[]): PassiveRow {
+		const container = new Container();
+		container.sortableChildren = false;
+		this.app!.stage.addChild(container);
+		const size = this.passiveSize();
+
+		const marks = passives.map((passive) => {
+			const face = new Graphics();
+			const glyph = new Sprite();
+			glyph.anchor.set(0.5);
+			const mark: BoardMark = {
+				id: passive.id,
+				container: new Container(),
+				face,
+				glyph,
+				selected: passive.taken,
+				disabled: !passive.taken && passive.lapsed,
+				color: passive.color,
+				empty: false,
+				// Inside out: a white face carrying the glyph in the fighter's colour, which is
+				// what lets a colour read against whatever sprite the row is standing under.
+				inverted: true
+			};
+			mark.container.addChild(face, glyph);
+			container.addChild(mark.container);
+
+			void this.loadIcon(passive.icon).then((texture) => {
+				// The row may have been rebuilt (or the board torn down) while loading.
+				if (!texture || glyph.destroyed) return;
+				glyph.texture = texture;
+				this.layOutPassives(actor);
+			});
+			this.paintMark(mark, size);
+			return mark;
+		});
+
+		const row: PassiveRow = { container, marks };
+		actor.passives = row;
+		this.layOutPassives(actor);
+		return row;
+	}
+
+	/**
+	 * Lay the marks out in a row and size their glyphs to fit. Centred on the row's own
+	 * origin — the fighter's feet — so a colour with one gift wears it under the middle of
+	 * the fighter and one with two wears them either side of that middle, rather than the
+	 * row growing off to one side and pulling away from the fighter it belongs to.
+	 */
+	private layOutPassives(actor: Actor): void {
+		const row = actor.passives;
+		if (!row) return;
+		const size = this.passiveSize();
+		const { width, height, gap } = size;
+		const step = width + gap;
+		const span = row.marks.length * width + (row.marks.length - 1) * gap;
+		const start = -span / 2 + width / 2;
+		row.marks.forEach((mark, i) => {
+			mark.container.x = start + i * step;
+			mark.container.y = 0;
+			this.paintMark(mark, size);
+			this.fitGlyph(mark, height);
+		});
+	}
+
+	/**
+	 * Keep a fighter's row planted in the band under its feet as it walks. Centred across
+	 * the band as well as along it, so the marks sit clear of the foot line above them and
+	 * of the cell's bottom point below.
+	 */
+	private updatePassives(actor: Actor): void {
+		const row = actor.passives;
+		if (!row) return;
+		row.container.x = actor.x;
+		row.container.y = actor.y + this.passiveBand() / 2;
+		// Above the board and its own fighter, below the orders, the callouts and the
+		// slashes: what a fighter is must never cover what has just happened to it.
+		row.container.zIndex = actor.y + 4000;
+	}
+
+	/** Take a fighter's row off the board. */
+	private clearPassives(actor: Actor): void {
+		const row = actor.passives;
+		if (!row) return;
+		actor.passives = null;
+		row.container.parent?.removeChild(row.container);
+		row.container.destroy({ children: true });
+	}
+
 	/**
 	 * Load (and cache) one icon glyph, rasterised into a known square at a resolution
 	 * worth looking at. Resolves to null if it cannot be had, so a missing icon costs the
@@ -2105,9 +2365,9 @@ export class MugenBoard {
 	 * off the full-size bitmap picks a sparse scatter of its pixels, which is what makes
 	 * fine artwork crawl and sparkle as the thing it is pinned to moves.
 	 *
-	 * One texture serves every mark that names the same glyph — the trait discs and the
-	 * order buttons both come through here — so it is rasterised for the largest of them
-	 * and each scales the one bitmap down to its own size.
+	 * One texture serves every mark that names the same glyph — the order buttons and the
+	 * gift marks at a fighter's feet both come through here — so it is rasterised for the
+	 * largest of them and each scales the one bitmap down to its own size.
 	 */
 	private async loadIcon(url: string): Promise<Texture | null> {
 		const cached = this.iconTextures.get(url);

@@ -295,8 +295,8 @@ export interface Fighter extends FighterSeed {
 	 * A subset of {@link spent}, and the difference between the two is the difference
 	 * between a gift taken and a gift that merely ran out at the end of the turn it was in
 	 * hand for ({@link CombatController.lapsePassives}). Nothing in the rules reads it — it
-	 * is what the board's fourth slot shows, which is a record of what the fighter's colour
-	 * did for it, and a gift that did nothing is not that.
+	 * is what the row of marks at the fighter's feet shows, which is a record of what its
+	 * colour did for it, and a gift that did nothing is not that.
 	 */
 	used: PassiveOrder[];
 	/** The board cell it is standing on. Its line-up slot's opening ground until the
@@ -323,11 +323,11 @@ export interface FighterView {
 	side: FighterSide;
 	color: CombatColor;
 	/** The free orders its colour granted it, and those of them already had — what the
-	 * board wears at the fighter's corner, and which of them still stand for something. */
+	 * board wears at the fighter's feet, and which of them still stand for something. */
 	passives: PassiveOrder[];
 	spent: PassiveOrder[];
 	/** Those its colour actually carried out for it, never secret and never taken back —
-	 * the board's fourth slot. See {@link Fighter.used}. */
+	 * the filled marks at the fighter's feet. See {@link Fighter.used}. */
 	used: PassiveOrder[];
 	charges: number;
 	maxCharges: number;
@@ -517,8 +517,8 @@ export class CombatController {
 			const spent = entry.spent ?? [];
 			fighter.spent = fighter.passives.filter((order) => spent.includes(order));
 			// A board written before gifts were told apart names none as used, which reads
-			// as a fight whose colours did nothing — the fourth slots come back empty rather
-			// than wrong.
+			// as a fight whose colours did nothing — the marks come back lapsed rather than
+			// wrong.
 			const used = entry.used ?? [];
 			fighter.used = fighter.spent.filter((order) => used.includes(order));
 			fighter.action = entry.action;
@@ -1174,7 +1174,7 @@ export class CombatController {
 			side: fighter.side,
 			color: fighter.color,
 			// What a colour grants, and what of it is gone, are never secret: they are
-			// worn at the fighter's corner all fight long, rivals included.
+			// worn at the fighter's feet all fight long, rivals included.
 			passives: [...fighter.passives],
 			spent: [...fighter.spent],
 			// Never withheld: what a colour did is done, and it is shown as it happens.
@@ -1370,14 +1370,14 @@ export class CombatController {
 	 * fight that is the same state as a gift that merely ran out at the end of the turn it
 	 * was in hand for ({@link lapsePassives}) — both are gone, and that is the point of
 	 * having one call for them. The one thing that tells them apart is what is *shown*:
-	 * the slot over a fighter's orders is a record of what its colour did for it, and a
+	 * the row of marks at a fighter's feet is a record of what its colour did for it, and a
 	 * gift that did nothing has nothing to record.
 	 */
 	private spend(fighter: Fighter, order: PassiveOrder, taken: boolean): void {
 		if (fighter.spent.includes(order)) return;
 		fighter.spent.push(order);
 		if (taken) fighter.used.push(order);
-		// The column beside the fighter is drawn from `passives`, `spent` and `used`, so
+		// The row at the fighter's feet is drawn from `passives`, `spent` and `used`, so
 		// saying the state changed is the whole of telling the board about it.
 		this.emit();
 	}
