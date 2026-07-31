@@ -132,20 +132,6 @@ const FOOT_PAD_TOP = 0.09;
 const FOOT_PAD_BOTTOM = 0.02;
 const LOGO_WIDTH = 0.9; // of the front's width
 
-// Two guides drawn round the head. They are not part of the box: they are here to be looked at
-// while it is being worked on, stroked in colours nothing on this stock is so neither can be taken
-// for one of the box's own edges. Drawn with the print, so a box that comes apart takes them along.
-//
-// Purple is the room the place is *given* — the front's whole width, and as deep as the type turned
-// out to be. Green is what the type says it actually *takes*, its own reported box. They answer the
-// one question the code cannot: green inside purple and letters still cut means the cut is not the
-// front's crop at all; green wider than purple means the type is being drawn bigger than it was
-// measured, and the measuring is what to go after.
-const TYPE_GUIDE = true;
-const TYPE_GUIDE_COLOR = 0xa855f7; // purple-500 — the room
-const TYPE_INK_GUIDE_COLOR = 0x22c55e; // green-500 — what the type takes of it
-const TYPE_GUIDE_WIDTH = 1;
-
 // The shadow the box casts (drop-shadow-md: 0 3px 3px black at 12%). Cast by what is actually
 // drawn and not by the box's rectangle — the lid has no corners and the front is four fifths of
 // the width — so it is the silhouette that is blurred, octagon, wings and all. Absolute pixels,
@@ -805,24 +791,6 @@ export class BoosterBoxSprite extends Container {
 			type.position.set(frontW / 2, type.height / 2);
 			row.addChild(type);
 			print.addChild(row);
-
-			if (TYPE_GUIDE) {
-				// The room the place is given — the front's own width, whatever the name came out as,
-				// and only the depth read off the type. Struck inside the rectangle rather than
-				// astride it: the box runs to the front's edges and the front is cropped, so a
-				// centred line would lose its outer half down both sides.
-				const guide = new Graphics();
-				guide.rect(0, HEAD_PAD_TOP * this.boxWidth, frontW, type.height);
-				guide.stroke({ color: TYPE_GUIDE_COLOR, width: TYPE_GUIDE_WIDTH, alignment: 0 });
-				print.addChild(guide);
-
-				// And the row that holds it, drawn in its own space: the same width, since a row is
-				// the front's, with the type sitting at whatever share of it the head is set at.
-				const ink = new Graphics();
-				ink.rect(0, 0, frontW, type.height);
-				ink.stroke({ color: TYPE_INK_GUIDE_COLOR, width: TYPE_GUIDE_WIDTH, alignment: 0 });
-				row.addChild(ink);
-			}
 		}
 
 		if (logo && logo.width > 0) {
