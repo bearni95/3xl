@@ -9,7 +9,6 @@
 		BoardCharacter,
 		BoardGrid,
 		BoardOrder,
-		BoardPassive,
 		MugenBoard as MugenBoardEngine
 	} from '$utils/mugen/mugen-board';
 	import type { Cell } from '$utils/mugen/grid';
@@ -139,10 +138,9 @@
 		dispatch('close');
 	}
 
-	// The glyph each order is given — the same three the cards wear in their corners,
-	// and the same three a fighter wears at its feet for the orders its colour grants it
-	// free (see `traitIcons`), so a charge, a guard and a shot are one picture each
-	// wherever the game speaks of them.
+	// The glyph each order is given — the same three the cards wear in their corners (see
+	// `traitIcons`), so a charge, a guard and a shot are one picture each wherever the game
+	// speaks of them.
 	const ACTION_ICONS: Record<CombatAction, string> = ORDER_ICONS;
 
 	// The lanes of the fight, 1..n, for the score's rings: one ring per lane, filled once
@@ -413,63 +411,57 @@
 	 *
 	 * There are only three orders and each button is one of them. What a fighter's
 	 * colour adds on top is never tapped for — it is passive, it comes off the back of
-	 * whatever order *was* given, and the row at the fighter's feet is where it is read.
+	 * whatever order *was* given, and the dot in a button's corner is where it is read.
 	 */
 	function giveOrder(fighterId: string, orderId: string): void {
 		controller?.setAction(fighterId, orderId as CombatAction);
 	}
 
 	/**
-	 * The row at a fighter's feet: everything its colour hands it for free, one mark apiece
-	 * and all of them for the whole fight — so a compound colour wears two and a primary
-	 * one, and the row is the fight's running account of what that colour was worth.
+	 * Which of the three orders a fighter's colour hands it free, marked with a dot in that
+	 * order's own corner — and only while the fight is on its opening turn, which is the
+	 * only turn a gift is ever in hand for.
 	 *
-	 * A colour hands a fighter one free order per primary it mixes, on the turn the fight
-	 * opens and only then. So a mark opens inside out — a white face carrying the glyph in
-	 * the fighter's colour, which is not an order it can be given but a thing about the
-	 * fighter, and reads as one without having to be read. The moment the gift comes to
-	 * something the mark fills with that colour, which is how the rest of this board says a
-	 * thing happened, and there it stays: a gift is worth one use in the whole battle, so
-	 * this is a record and not a light that comes on for a turn. A gift that ran out having
-	 * done nothing greys instead — it is gone either way, and the difference between the two
-	 * is the whole of what a colour was worth here.
+	 * A gift *is* one of these three orders, had for nothing, so the place to say a fighter
+	 * has one is the button for that very order: a red fighter's Shoot wears a dot, an
+	 * orange one's Shoot and Charge both do, and reading the column reads what the colour
+	 * is worth without a second thing on the board to look at. And it says it where the
+	 * choice is being made, which is what makes it worth knowing — the gift never comes on
+	 * the order it is given, so a dotted button is the one order that throws its own gift
+	 * away.
 	 *
-	 * Every gift is drawn from the start rather than appearing as it fires, and a spent one
-	 * stays drawn rather than coming off, so a fighter's row never changes shape mid-fight
-	 * and the count of what a colour granted can be read off it at any point in the fight.
-	 * This is what the marks used to say from a single slot at the head of the orders, which
-	 * could only ever show one gift at a time, and before that from white coins at the
-	 * fighter's shoulder.
+	 * The dots come off with the turn. Whatever a colour granted has been taken or has
+	 * lapsed by the end of turn one, so a mark left standing after it would be saying a
+	 * fighter still holds something it cannot use again — the marks at a fighter's feet
+	 * that this replaces kept a spent gift drawn for the rest of the fight, an account of
+	 * the opening that stayed on the board long after the opening was over.
 	 */
-	function passiveMarks(fighter: FighterView): BoardPassive[] {
-		return fighter.passives.map((order, index) => ({
-			// Named for the gift and its place in the row: a colour's gifts are fixed for the
-			// fight, so this is stable and the row is only ever repainted — but a compound that
-			// mixes the same order twice would otherwise hand two marks the one id.
-			id: `${index}:${order}`,
-			icon: ACTION_ICONS[order],
-			color: fighter.color,
-			taken: fighter.used.includes(order),
-			lapsed: fighter.spent.includes(order)
-		}));
+	function giftedOrders(fighter: FighterView, turn: number): Set<CombatAction> {
+		return new Set(turn === 1 ? fighter.passives : []);
 	}
 
 	/**
 	 * The column beside one of the player's fighters: the three orders it can be given. Every
 	 * one of the three is always drawn — an order out of reach is greyed rather than dropped,
 	 * so a fighter's column never changes shape under the cursor — and all of them lock while
-	 * a turn is playing out. What its colour does for it of its own accord is not in here: it
-	 * is never tapped for, so it is not among the things that can be, and it is read at the
-	 * fighter's feet instead ({@link passiveMarks}).
+	 * a turn is playing out. What its colour does for it of its own accord is not a fourth
+	 * button: it is never tapped for, so it is not among the things that can be, and it is
+	 * said as a dot on the order it is a gift of ({@link giftedOrders}).
 	 */
-	function orderButtons(fighter: FighterView, phase: CombatState['phase']): BoardOrder[] {
+	function orderButtons(
+		fighter: FighterView,
+		phase: CombatState['phase'],
+		turn: number
+	): BoardOrder[] {
 		const locked = phase !== 'planning';
+		const gifts = giftedOrders(fighter, turn);
 		return COMBAT_ACTIONS.map((action) => ({
 			id: action,
 			icon: ACTION_ICONS[action],
 			selected: fighter.action === action,
 			disabled: locked || (action === 'shoot' && !fighter.canShoot),
-			color: fighter.color
+			color: fighter.color,
+			gift: gifts.has(action)
 		}));
 	}
 
@@ -484,46 +476,41 @@
 	 * acts and stays lit for the rest of the turn.
 	 *
 	 * It lights up in the fighter's own colour, as the player's own column does. And a rival
-	 * wears the same row of gifts at its feet as the player's own fighters do: what a rival's
-	 * colour did for it is not a secret — it has already happened by the time it is drawn —
-	 * and it is a thing the player has to be able to count, since a gift fired is a gift that
-	 * will not fire again.
+	 * wears its gifts in the same corners the player's own fighters do: what a rival's colour
+	 * hands it is not a secret — it is a thing about the card and not a choice it has made —
+	 * and it is what the player is planning the opening turn against.
 	 */
-	function rivalOrderButtons(fighter: FighterView): BoardOrder[] {
+	function rivalOrderButtons(fighter: FighterView, turn: number): BoardOrder[] {
+		const gifts = giftedOrders(fighter, turn);
 		return COMBAT_ACTIONS.map((action) => ({
 			id: action,
 			icon: ACTION_ICONS[action],
 			selected: fighter.action === action,
 			disabled: false,
 			readonly: true,
-			color: fighter.color
+			color: fighter.color,
+			gift: gifts.has(action)
 		}));
 	}
 
-	// Push every fighter's orders and gift marks onto the board whenever the fight moves.
-	// Both `state` and `board` are named so Svelte's legacy reactive tracking sees them as
-	// dependencies; the board itself only redraws what actually changed.
+	// Push every fighter's orders onto the board whenever the fight moves. Both `state` and
+	// `board` are named so Svelte's legacy reactive tracking sees them as dependencies; the
+	// board itself only redraws what actually changed.
 	$: syncOrders(state, board);
 
 	function syncOrders(current: CombatState | null, engine: MugenBoardEngine | null): void {
 		if (!engine || !current) return;
 		for (const fighter of current.fighters) {
-			// Two fighters are asked for nothing more and keep no marks at all: one standing on
+			// Two fighters are asked for nothing more and keep no column at all: one standing on
 			// the white cell it won, which has settled its lane, and one that has been taken
 			// down, which is still on the board — at the back of its own half — and must not go
 			// on wearing a column of orders it can never be given, or be shown one it can never
-			// carry out. Its gifts go with them: a fighter out of the fight has no account left
-			// to keep, and its row would only crowd the ground it is standing off to one side
-			// of. An empty list is what clears either.
+			// carry out. An empty list is what clears it.
 			const spent = fighter.down || fighter.holdsGround;
 			if (spent) {
 				engine.setOrders(fighter.id, []);
-				engine.setPassives(fighter.id, []);
 				continue;
 			}
-			// Every fighter still in the fight wears its colour's gifts at its feet, both sides
-			// alike: they are not an input and belong to no half of the board.
-			engine.setPassives(fighter.id, passiveMarks(fighter));
 			// Both sides wear a column; only the player's is a way of giving an order. The
 			// rival's is the same three glyphs read back to the player.
 			//
@@ -535,8 +522,8 @@
 			engine.setOrders(
 				fighter.id,
 				fighter.side === 'info'
-					? orderButtons(fighter, current.phase)
-					: rivalOrderButtons(fighter),
+					? orderButtons(fighter, current.phase, current.turn)
+					: rivalOrderButtons(fighter, current.turn),
 				fighter.side === 'info' ? 'right' : 'left'
 			);
 		}

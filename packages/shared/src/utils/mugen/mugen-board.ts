@@ -18,7 +18,6 @@ import {
 	findClosestApproach,
 	findMeleeMeeting,
 	findPath,
-	HEX_HEIGHT,
 	hexCorners,
 	isBoardCell,
 	LAST_COLUMN,
@@ -278,12 +277,12 @@ const ORDER_GAP = 8;
  *
  * Four, because four is what a cell was being split into when this button size was
  * settled: the three orders and, over them, a slot for what the fighter's colour did of
- * its own accord. That slot has since moved to a row of its own at the fighter's feet
- * ({@link MugenBoard.setPassives}) — and a button is the size it is regardless, because
- * how big an order reads on this board is not a thing that ought to change under the
- * player when something *else* moves off the column. So the three of them now come to
- * three quarters of the cell rather than the whole of it, and the quarter they leave at
- * the top is the room the fourth used to take.
+ * its own accord. What a colour grants is said on the orders themselves now — a dot in
+ * the corner of each one it hands over free ({@link BoardOrder.gift}) — and a button is
+ * the size it is regardless, because how big an order reads on this board is not a thing
+ * that ought to change under the player when something *else* moves off the column. So
+ * the three of them come to three quarters of the cell rather than the whole of it, and
+ * the quarter they leave at the top is the room the fourth used to take.
  */
 const ORDER_COLUMN_COUNT = 4;
 /** Gap between buttons in a column, as a fraction of a button's height. */
@@ -312,23 +311,13 @@ const ORDER_INVERTED_FILL = 0xffffff;
  * there, not enough to read as a button with nothing in it. */
 const ORDER_EMPTY_ALPHA = 0.3;
 
-// --- Passive marks (drawn on the board, at the feet of the fighter they belong to) ---
-/**
- * How much of the band under a fighter's feet one of its passive marks is drawn at.
- *
- * The band is the ground the fighter is standing *on*: a hexagon on end goes on past the
- * line its feet are planted on ({@link cellFoot}) down to its bottom point, a quarter of
- * its own height further, and that strip is the only part of a cell nothing else is drawn
- * in — the sprite ends at the top of it and the cell ends at the foot of it. So the row
- * belongs to the fighter, sits inside its ground, and covers neither.
- *
- * Under one, so the marks stand clear of the foot line above and the cell's own point
- * below rather than filling the strip edge to edge.
- */
-const PASSIVE_BAND_FILL = 0.78;
-/** Gap between the marks in a row, as a fraction of one mark's height — the same figure
- * the column of orders is spaced by, so the two read as the same kind of mark. */
-const PASSIVE_SPACING_RATIO = ORDER_SPACING_RATIO;
+// --- The gift dot (drawn in the corner of an order a fighter's colour hands it free) ---
+/** The dot's radius, as a fraction of a button's height. Small: it is a mark *on* a
+ * button, and must never come to read as something the button itself is. */
+const GIFT_DOT_RATIO = 0.16;
+/** How thick the ring round the dot is drawn, in canvas px. The ring is the whole of what
+ * keeps the dot readable on a button filled with the very colour the dot is drawn in. */
+const GIFT_DOT_RING = 2;
 
 // --- Icon rasterisation (every glyph any of the above draws) ---
 /**
@@ -456,39 +445,21 @@ export interface BoardOrder {
 	 * way up again is what says the mark has come to something.
 	 */
 	inverted?: boolean;
+	/**
+	 * Mark this button's corner with a dot in {@link color}: this is an order the fighter's
+	 * colour hands it for free, and not one it has to be given.
+	 *
+	 * It goes *on* the button rather than beside it because a gift is one of these very
+	 * three orders — the same picture, had for nothing — so the thing to say it about is
+	 * that order itself, in the corner of it, and there is nowhere else on the board a
+	 * reader has to look to find out what a colour is worth.
+	 */
+	gift?: boolean;
 }
 
-/**
- * One thing a fighter's colour hands it for free, drawn as a mark at its feet. The board
- * is told what to draw and nothing about what it means: a picture and two states, and
- * that is all.
- *
- * Every gift a colour grants gets one of these for the whole fight — a compound colour's
- * row is two marks wide — so the row is a fighter's whole account of what its colour was
- * worth, read left to right, rather than one slot showing whichever of them is currently
- * worth saying.
- */
-export interface BoardPassive {
-	/** Which gift this is. The row is rebuilt when these change and repainted when they
-	 * do not, so a gift going off swaps no artwork. */
-	id: string;
-	/** URL of the glyph (an SVG under /assets). The artwork must be white: it is tinted,
-	 * and tinting only ever darkens. */
-	icon: string;
-	/** The fighter's combat colour — what the mark is drawn in, as its aura, its callouts
-	 * and its chosen orders all are. */
-	color: string;
-	/** The gift came to something: the mark fills with {@link color}, which is how the
-	 * rest of this board says a thing happened, and there it stays. */
-	taken: boolean;
-	/** The gift is gone and did nothing — it ran out at the end of the turn it was in hand
-	 * for. Drawn greyed, glyph and all: the fighter had it, and it came to nothing. */
-	lapsed: boolean;
-}
-
-/** One drawn mark — an order button, or one of the passives at a fighter's feet — kept so
- * its look can be updated without rebuilding it. Both are the same picture in the same
- * shape, so both are this and both go through one painter. */
+/** One drawn mark — an order button — kept so its look can be updated without rebuilding
+ * it. Everything drawn on this board in this shape is one of these, and goes through one
+ * painter. */
 interface BoardMark {
 	id: string;
 	container: Container;
@@ -502,6 +473,8 @@ interface BoardMark {
 	empty: boolean;
 	/** Drawn inside out: white face, glyph in the fighter's colour. */
 	inverted: boolean;
+	/** Carries a dot in its corner: this order is one the fighter's colour gives free. */
+	gift: boolean;
 }
 
 /** The drawn size of one mark: its face, and the gap to the next one along. */
@@ -519,13 +492,6 @@ interface OrderStrip {
 	container: Container;
 	buttons: BoardMark[];
 	side: OrderSide;
-}
-
-/** The row of gift marks at one fighter's feet. It has no side: it is centred on the
- * fighter, so both halves of the board wear it the same way. */
-interface PassiveRow {
-	container: Container;
-	marks: BoardMark[];
 }
 
 /** A character standing (and, during combat, running) on the board. */
@@ -603,14 +569,6 @@ interface Actor {
 	/** The column of order buttons drawn beside this fighter, or null when it commands
 	 * nothing (every rival, and the player's side once the fight is over). */
 	orders: OrderStrip | null;
-	/**
-	 * The row of marks at this fighter's feet, one per thing its colour grants it for
-	 * free, or null when nothing has been said about it. The glyphs themselves are fixed
-	 * for the fight — a colour cannot change, and neither can what it grants — so the row
-	 * is only ever rebuilt when the fighter's set of gifts changes hands at all, and
-	 * otherwise repainted as those gifts are taken or run out.
-	 */
-	passives: PassiveRow | null;
 	/** Nominal on-screen size (px) of the character at its fit scale, measured
 	 * from its base animation frames; sizes the aura that envelops it. */
 	displayWidth: number;
@@ -1107,7 +1065,6 @@ export class MugenBoard {
 			ring: null,
 			label: null,
 			orders: null,
-			passives: null,
 			// Nominal size: the base cycle's widest and tallest frame at fit scale —
 			// stable across poses, unlike the live sprite whose size tracks the current
 			// frame's texture. Taken over the whole cycle (as the fit is), so an aura or
@@ -1216,7 +1173,6 @@ export class MugenBoard {
 			this.updateAura(actor, deltaMs);
 			this.updateRing(actor);
 			this.updateOrders(actor);
-			this.updatePassives(actor);
 			this.updateLabel(actor);
 		}
 		this.updateSlashes(deltaMs);
@@ -1988,12 +1944,14 @@ export class MugenBoard {
 			const color = order.color;
 			const empty = order.empty ?? false;
 			const inverted = order.inverted ?? false;
+			const gift = order.gift ?? false;
 			if (
 				button.selected === order.selected &&
 				button.disabled === order.disabled &&
 				button.color === color &&
 				button.empty === empty &&
-				button.inverted === inverted
+				button.inverted === inverted &&
+				button.gift === gift
 			)
 				return;
 			button.selected = order.selected;
@@ -2001,6 +1959,7 @@ export class MugenBoard {
 			button.color = color;
 			button.empty = empty;
 			button.inverted = inverted;
+			button.gift = gift;
 			this.paintMark(button, size);
 		});
 		this.updateOrders(actor);
@@ -2026,7 +1985,8 @@ export class MugenBoard {
 				disabled: order.disabled,
 				color: order.color,
 				empty: order.empty ?? false,
-				inverted: order.inverted ?? false
+				inverted: order.inverted ?? false,
+				gift: order.gift ?? false
 			};
 			button.container.addChild(face, glyph);
 			// A reporting button is not an input, and neither is an empty slot: both are left
@@ -2067,9 +2027,8 @@ export class MugenBoard {
 	 * Repaint one mark for its current state: chosen, plain, out of reach — or an empty
 	 * slot, which is none of those and is drawn as the outline of one.
 	 *
-	 * The one painter for everything on this board drawn in this shape — the orders beside a
-	 * fighter and the gifts at its feet — told the size it is drawing at, since that is the
-	 * only thing the two differ in. A second painter is two pictures that can drift apart.
+	 * The one painter for everything on this board drawn in this shape, told the size it is
+	 * drawing at. A second painter is two pictures that can drift apart.
 	 */
 	private paintMark(mark: BoardMark, size: MarkSize): void {
 		const { width, height } = size;
@@ -2112,6 +2071,20 @@ export class MugenBoard {
 		// than vanishing, so an order out of reach still reads as an order.
 		mark.glyph.tint = invert ? chosen : 0xffffff;
 		mark.glyph.alpha = mark.disabled ? ORDER_DISABLED_ALPHA : 1;
+
+		if (!mark.gift) return;
+		// The dot goes in the top-right corner of the face, drawn in the fighter's colour as
+		// everything on this board that says something about one fighter is — and ringed in
+		// white, because a chosen order fills its whole face with that very colour and a bare
+		// dot would disappear into it. Inside the face rather than straddling its corner: a
+		// column stands off a fighter's shoulder, and a mark that overhung would be the one
+		// thing on the button reaching for the sprite beside it.
+		const dot = height * GIFT_DOT_RATIO;
+		const inset = dot + GIFT_DOT_RING;
+		mark.face.circle(width / 2 - inset, -height / 2 + inset, dot);
+		mark.face.fill({ color: chosen });
+		mark.face.circle(width / 2 - inset, -height / 2 + inset, dot);
+		mark.face.stroke({ width: GIFT_DOT_RING, color: 0xffffff });
 	}
 
 	/**
@@ -2136,27 +2109,6 @@ export class MugenBoard {
 	private orderSize(): MarkSize {
 		const height = this.cellWidth() * ORDER_HEIGHT_RATIO;
 		return { width: height * ORDER_WIDTH_RATIO, height, gap: height * ORDER_SPACING_RATIO };
-	}
-
-	/**
-	 * The band a fighter's gifts are drawn in: the strip of its cell below the line it
-	 * stands on, from its feet down to the cell's bottom point — a quarter of the hexagon's
-	 * height ({@link cellFoot}), in the same screen px everything else here is measured in.
-	 * One figure for the board, as a cell is one size everywhere on it.
-	 */
-	private passiveBand(): number {
-		return (this.cellWidth() * HEX_HEIGHT) / 4;
-	}
-
-	/**
-	 * One gift mark's drawn size: as tall as the band under the fighter's feet allows
-	 * ({@link PASSIVE_BAND_FILL}), and the same proportions and spacing an order button
-	 * has, so a gift reads as the same kind of mark as the orders it is being counted
-	 * against and differs from them only in where it stands.
-	 */
-	private passiveSize(): MarkSize {
-		const height = this.passiveBand() * PASSIVE_BAND_FILL;
-		return { width: height * ORDER_WIDTH_RATIO, height, gap: height * PASSIVE_SPACING_RATIO };
 	}
 
 	/**
@@ -2202,158 +2154,6 @@ export class MugenBoard {
 		actor.orders = null;
 		strip.container.parent?.removeChild(strip.container);
 		strip.container.destroy({ children: true });
-	}
-
-	// --- Passive marks --------------------------------------------------------
-
-	/**
-	 * Say what a fighter's colour hands it for free, drawn as a row of marks at its feet —
-	 * one per gift, however many that colour comes with, all of them for the whole fight.
-	 *
-	 * They stand where they do because that is the one strip of a cell nothing else uses:
-	 * the sprite is planted on the cell's foot line and the hexagon runs on past it to its
-	 * bottom point, so the row sits under the fighter, inside its own ground, covering
-	 * neither it nor the lane it is fighting in. Centred on the fighter rather than off a
-	 * shoulder, because unlike the orders these are not an input and belong to no side: both
-	 * halves of the board wear them the same way.
-	 *
-	 * The board draws what it is told and knows nothing of what a gift means — a picture, and
-	 * whether it was taken or ran out. Called on every change of the fight's state, so it
-	 * rebuilds only when the *set* changes and otherwise repaints what is already there: a
-	 * row torn down and rebuilt each time would flicker its glyphs while their textures
-	 * reloaded. An empty list clears the row.
-	 */
-	setPassives(actorId: string, passives: BoardPassive[]): void {
-		const actor = this.findActor(actorId);
-		if (!actor || !this.app) return;
-		if (passives.length === 0) {
-			this.clearPassives(actor);
-			return;
-		}
-
-		const sameSet =
-			actor.passives?.marks.length === passives.length &&
-			actor.passives.marks.every((mark, i) => mark.id === passives[i].id);
-		if (!sameSet) {
-			this.clearPassives(actor);
-			actor.passives = this.buildPassives(actor, passives);
-		}
-
-		const row = actor.passives;
-		if (!row) return;
-		const size = this.passiveSize();
-		passives.forEach((passive, i) => {
-			const mark = row.marks[i];
-			if (!mark) return;
-			// A gift that came to something is drawn as this board draws anything that
-			// happened — filled in the fighter's colour — and one that ran out is greyed. Until
-			// it is either of those it is inside out: the fighter has it, and it has not gone
-			// off. Taken outranks lapsed, a gift being spent the moment it does something.
-			const selected = passive.taken;
-			const disabled = !passive.taken && passive.lapsed;
-			if (
-				mark.selected === selected &&
-				mark.disabled === disabled &&
-				mark.color === passive.color
-			)
-				return;
-			mark.selected = selected;
-			mark.disabled = disabled;
-			mark.color = passive.color;
-			this.paintMark(mark, size);
-		});
-		this.updatePassives(actor);
-	}
-
-	/** Build a fighter's row: one mark per gift, glyphs loaded as they arrive. Never an
-	 * input — a gift is a thing about the fighter, not a thing it can be told to do — so no
-	 * mark here takes a pointer. */
-	private buildPassives(actor: Actor, passives: BoardPassive[]): PassiveRow {
-		const container = new Container();
-		container.sortableChildren = false;
-		this.app!.stage.addChild(container);
-		const size = this.passiveSize();
-
-		const marks = passives.map((passive) => {
-			const face = new Graphics();
-			const glyph = new Sprite();
-			glyph.anchor.set(0.5);
-			const mark: BoardMark = {
-				id: passive.id,
-				container: new Container(),
-				face,
-				glyph,
-				selected: passive.taken,
-				disabled: !passive.taken && passive.lapsed,
-				color: passive.color,
-				empty: false,
-				// Inside out: a white face carrying the glyph in the fighter's colour, which is
-				// what lets a colour read against whatever sprite the row is standing under.
-				inverted: true
-			};
-			mark.container.addChild(face, glyph);
-			container.addChild(mark.container);
-
-			void this.loadIcon(passive.icon).then((texture) => {
-				// The row may have been rebuilt (or the board torn down) while loading.
-				if (!texture || glyph.destroyed) return;
-				glyph.texture = texture;
-				this.layOutPassives(actor);
-			});
-			this.paintMark(mark, size);
-			return mark;
-		});
-
-		const row: PassiveRow = { container, marks };
-		actor.passives = row;
-		this.layOutPassives(actor);
-		return row;
-	}
-
-	/**
-	 * Lay the marks out in a row and size their glyphs to fit. Centred on the row's own
-	 * origin — the fighter's feet — so a colour with one gift wears it under the middle of
-	 * the fighter and one with two wears them either side of that middle, rather than the
-	 * row growing off to one side and pulling away from the fighter it belongs to.
-	 */
-	private layOutPassives(actor: Actor): void {
-		const row = actor.passives;
-		if (!row) return;
-		const size = this.passiveSize();
-		const { width, height, gap } = size;
-		const step = width + gap;
-		const span = row.marks.length * width + (row.marks.length - 1) * gap;
-		const start = -span / 2 + width / 2;
-		row.marks.forEach((mark, i) => {
-			mark.container.x = start + i * step;
-			mark.container.y = 0;
-			this.paintMark(mark, size);
-			this.fitGlyph(mark, height);
-		});
-	}
-
-	/**
-	 * Keep a fighter's row planted in the band under its feet as it walks. Centred across
-	 * the band as well as along it, so the marks sit clear of the foot line above them and
-	 * of the cell's bottom point below.
-	 */
-	private updatePassives(actor: Actor): void {
-		const row = actor.passives;
-		if (!row) return;
-		row.container.x = actor.x;
-		row.container.y = actor.y + this.passiveBand() / 2;
-		// Above the board and its own fighter, below the orders, the callouts and the
-		// slashes: what a fighter is must never cover what has just happened to it.
-		row.container.zIndex = actor.y + 4000;
-	}
-
-	/** Take a fighter's row off the board. */
-	private clearPassives(actor: Actor): void {
-		const row = actor.passives;
-		if (!row) return;
-		actor.passives = null;
-		row.container.parent?.removeChild(row.container);
-		row.container.destroy({ children: true });
 	}
 
 	/**
