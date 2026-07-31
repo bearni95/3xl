@@ -34,6 +34,7 @@
 		focusBounds = null,
 		zoomBounds = null,
 		zoomStops = [],
+		spotlight = null,
 		markersBlurred = false,
 		chromeInsets = {},
 		currentZoom = $bindable(zoom),
@@ -136,6 +137,27 @@
 		 */
 		zoomStops?: [[number, number], [number, number]][];
 		/**
+		 * One shape the map is asked to look at alone — a town a fight is being staged on —
+		 * as its own GeoJSON geometry. Null is the map as it usually stands.
+		 *
+		 * It is a framing and a mask in one gesture, because they are one thing: the shape is
+		 * brought to the middle of the canvas at the zoom it stands whole at, on both axes and
+		 * against the same margin every other framing keeps (see focusPadding), and everything
+		 * outside it is covered by a single black polygon — the world with this shape punched
+		 * out of it (see MASK_PANE and the effect under it). So what is left on screen is the
+		 * one place, painted in whatever the caller paints it, on nothing.
+		 *
+		 * The cover is the map's own and not a caller's paint: it is not a region's colour but
+		 * the map's way of showing one region alone, the same standing the blur has over the
+		 * furniture (see `markersBlurred`) — and it fades in and out over the same 250ms, so a
+		 * spotlight raised with a full view arrives with the rest of that gesture.
+		 *
+		 * What it does NOT do is hide the lines still drawn inside the shape: the black covers
+		 * every border outside it, and the shape's own outline is the caller's to drop
+		 * (`hiddenLineUrls`) if it wants the place read off its fill alone.
+		 */
+		spotlight?: GeoJSON.Geometry | null;
+		/**
 		 * Blur every pin and every box off the map, and bring them back when it goes false.
 		 *
 		 * For a full view raised over the map (see FullScreenModal): the terrain is still the
@@ -214,6 +236,14 @@
 	// The pane every leader line is drawn in, below both the marks' panes, so no mark is ever
 	// crossed by another mark's line (see the pane's own note at createPane).
 	const LEADER_PANE = 'pinLeaderPane';
+	// The pane the spotlight's mask is drawn in (see `spotlight`). Over every polygon —
+	// Leaflet draws those in its own overlay pane at 400, and the mask's whole business is
+	// covering them — and under everything that stands ON the map: the leader lines at 580,
+	// the boxes at 590, the pins at 600. Those are furniture and go out with the sheet the
+	// spotlight is raised for (see `markersBlurred`), so the order between them is never
+	// looked at; the mask sits under them because it is part of the terrain's paint and not
+	// something to draw over a mark.
+	const MASK_PANE = 'spotlightMaskPane';
 	// The BoosterBox components standing in that layer, tracked for the same reason the
 	// pins' mounts are: clearing the layer only detaches their DOM, and a box left
 	// mounted holds its poster and its logo for a town no longer on screen.
@@ -283,6 +313,14 @@
 	let cornerAnchor: [number, number] | null = null;
 	// The BoosterBox mounted into that corner, tracked as every other mount here is.
 	let cornerMounts: Record<string, unknown>[] = [];
+	// The black polygon covering everything outside the spotlit shape, and the timer that
+	// takes it off the map once it has faded out. Plain variables: nothing is drawn from
+	// them, they are what the spotlight effect has already drawn.
+	let maskLayer: L.Polygon | null = null;
+	let maskTimer: ReturnType<typeof setTimeout> | null = null;
+	// Which spotlight the mask on screen is about, counted up on every change, so a fade-in
+	// scheduled for a shape can tell that another one (or none) has been asked for since.
+	let maskGeneration = 0;
 
 	// A feature's base style, plus the highlight merged on when it's the chosen
 	// one and its stroke dropped when its overlay is hidden. Called both at first
@@ -447,6 +485,117 @@
 			animate: true
 		});
 	});
+
+	// How long the mask takes to arrive and to go, matched to the blur the furniture leaves
+	// on (see `markersBlurred`) — one gesture, and a black that cut in at once would be the
+	// one part of it that did not play.
+	const MASK_FADE_MS = 250;
+
+	// What the cover is: black, opaque, and no line at all. A stroke on it would be a border
+	// drawn around the spotlit shape at the very moment the map has done away with borders.
+	const MASK_STYLE = { color: '#000', fillColor: '#000', fillOpacity: 1, stroke: false };
+
+	// The ring the cover starts from: the whole of the projected world, which the renderer
+	// clips to the canvas before it draws it, so the map may be panned anywhere behind the
+	// mask without ever reaching its edge. Latitudes stop at Mercator's own limit, past which
+	// the projection has no point to give.
+	const WORLD_RING: [number, number][] = [
+		[-85, -180],
+		[-85, 180],
+		[85, 180],
+		[85, -180]
+	];
+
+	$effect(() => {
+		// Raise or lower the spotlight (see the prop): frame the shape, and cover the rest of
+		// the map with the world minus that shape.
+		//
+		// Gated on `ready` like the framings above, so a spotlight handed over before the map
+		// mounts is still drawn once there is a map to draw it on.
+		const geometry = spotlight;
+		if (!ready || !mapInstance || !Leaf) return;
+
+		// A shape with no rings to it is no spotlight — the light has nothing to be on, and
+		// leaving the map covered would be blacking it out around nothing.
+		const rings = geometry ? spotlightRings(geometry) : [];
+
+		const pane = mapInstance.getPane(MASK_PANE);
+		if (maskTimer) {
+			clearTimeout(maskTimer);
+			maskTimer = null;
+		}
+		const generation = ++maskGeneration;
+
+		if (!rings.length) {
+			// Fade it out, then take it off — a layer removed on the spot takes its fade with it.
+			pane?.classList.add('opacity-0');
+			maskTimer = setTimeout(() => {
+				maskLayer?.remove();
+				maskLayer = null;
+			}, MASK_FADE_MS);
+			return;
+		}
+
+		maskLayer?.remove();
+		// The world with the shape's every ring cut out of it. One polygon rather than a hole
+		// per ring, because the cover is one thing: Leaflet fills a path even-odd, so a ring
+		// inside the world ring is a hole and a ring inside THAT one is filled again — which
+		// is exactly right for a town that encloses another town's land.
+		maskLayer = Leaf.polygon([WORLD_RING, ...rings], {
+			...MASK_STYLE,
+			pane: MASK_PANE,
+			interactive: false
+		}).addTo(mapInstance);
+		frameSpotlight(rings);
+		// A frame later, so the pane has been drawn hidden once and the class coming off is a
+		// change the browser has something to ease from.
+		requestAnimationFrame(() => {
+			if (generation === maskGeneration) pane?.classList.remove('opacity-0');
+		});
+	});
+
+	/**
+	 * A spotlit geometry's rings as Leaflet takes them — every ring of a Polygon, and every
+	 * ring of every part of a MultiPolygon, since a town with islands is one shape and all of
+	 * it is in the light. Anything that is not a polygon has no area to spotlight.
+	 */
+	function spotlightRings(geometry: GeoJSON.Geometry): L.LatLng[][] {
+		if (geometry.type === 'Polygon') {
+			return Leaf!.GeoJSON.coordsToLatLngs(geometry.coordinates, 1) as L.LatLng[][];
+		}
+		if (geometry.type === 'MultiPolygon') {
+			return geometry.coordinates.flatMap(
+				(part) => Leaf!.GeoJSON.coordsToLatLngs(part, 1) as L.LatLng[][]
+			);
+		}
+		return [];
+	}
+
+	/**
+	 * Put the spotlit shape in the middle of the canvas at the zoom it stands whole at.
+	 *
+	 * Deliberately not `viewForBounds`: that framing is about the marks standing on a region
+	 * and gives up zoom to seat them (see its note), and there are no marks here — the
+	 * furniture is off the map for as long as a spotlight is up. So this is the box and
+	 * nothing else, fitted against the same margin every other framing keeps.
+	 *
+	 * The centre is taken in pixels rather than in degrees: a Mercator box's middle latitude
+	 * is not the middle of the box on screen, and "in the middle" is a statement about the
+	 * screen.
+	 */
+	function frameSpotlight(rings: L.LatLng[][]): void {
+		const bounds = Leaf!.latLngBounds(rings.flat());
+		if (!bounds.isValid()) return;
+		const zoom = mapInstance!.getBoundsZoom(bounds, false, focusPadding());
+		const centre = mapInstance!.unproject(
+			mapInstance!
+				.project(bounds.getNorthWest(), zoom)
+				.add(mapInstance!.project(bounds.getSouthEast(), zoom))
+				.divideBy(2),
+			zoom
+		);
+		mapInstance!.setView(centre, zoom, { animate: true });
+	}
 
 	// The margin kept clear between a region and the edge of the canvas, per side: a share
 	// of the canvas, capped in pixels, so a small map gives up a margin it can afford rather
@@ -2343,6 +2492,19 @@
 		// needs redrawing only where the marks themselves are dealt again.
 		mapInstance.createPane(LEADER_PANE).style.zIndex = '580';
 
+		// The pane the spotlight's cover is drawn in (see MASK_PANE), made before anything is
+		// added to it and made hidden: the mask is faded in by taking that class off, so a
+		// cover that lands with the map already spotlit still arrives rather than appearing.
+		// It catches nothing — the map behind it is dragged and zoomed exactly as if the black
+		// were not there, which it will not be for long.
+		const maskPane = mapInstance.createPane(MASK_PANE);
+		maskPane.style.zIndex = '450';
+		maskPane.style.pointerEvents = 'none';
+		// The duration is written out rather than read off MASK_FADE_MS, as the pins' blur
+		// writes out its own: Tailwind generates the classes it can SEE, and a class built
+		// out of a constant is one it cannot. Keep the two in step.
+		maskPane.classList.add('transition-opacity', 'duration-[250ms]', 'ease-in-out', 'opacity-0');
+
 		// Not passive: the handler's first act is to refuse the page the scroll.
 		mapContainer.addEventListener('wheel', onWheelZoom, { passive: false });
 
@@ -2504,6 +2666,7 @@
 	onDestroy(() => {
 		mapContainer?.removeEventListener('wheel', onWheelZoom);
 		if (wheelFrame) cancelAnimationFrame(wheelFrame);
+		if (maskTimer) clearTimeout(maskTimer);
 		resizeObserver?.disconnect();
 		unmountPinMounts();
 		unmountBoxMounts();
