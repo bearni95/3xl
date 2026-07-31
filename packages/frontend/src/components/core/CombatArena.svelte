@@ -143,18 +143,17 @@
 	// speaks of them.
 	const ACTION_ICONS: Record<CombatAction, string> = ORDER_ICONS;
 
-	// How much of a side's score bar is filled: one class per number of lanes taken, out of
-	// as many as a team has members. A lane is a fighter of each side and the white cell
-	// between them, so the score is drawn from the same count the team is built to and
-	// cannot come to say a fight is longer or shorter than it is.
-	//
-	// A width has to be a class rather than a percentage on the element, so the fractions
-	// are written out — which ties this table to a team of three. Extending the team means
-	// extending it (quarters, fifths); the clamp below only keeps a count that has run past
-	// the end of it drawing a full bar rather than nothing at all.
-	const SCORE_FILL = ['w-0', 'w-1/3', 'w-2/3', 'w-full'];
-	const scoreFill = (wins: number): string =>
-		SCORE_FILL[Math.min(Math.max(wins, 0), TEAM_SIZE)] ?? 'w-full';
+	// The lanes of the fight, 1..n, for the score: one square per lane, filled once that
+	// many have been taken. A lane is a fighter of each side and the white cell between
+	// them, so there are as many of them as a team has members — the score is drawn from
+	// the same count the team is built to, and cannot come to say a fight is longer or
+	// shorter than it is.
+	const LANES = Array.from({ length: TEAM_SIZE }, (_, index) => index + 1);
+
+	// The rivals' half of the score is read the other way round, so its squares are laid
+	// out backwards and its count fills from the right — see the score's own note. The
+	// order is the whole of the difference between the two: same squares, same rule.
+	const RIVAL_LANES = [...LANES].reverse();
 
 	const characterById = new Map(availableCharacters.map((option) => [option.id, option]));
 
@@ -938,20 +937,20 @@
 			{#if state && !state.outcome}
 				<!-- The score, over the top of the board it is a score of.
 				     The fight is three duels, each played for one cell of the white column
-				     down the middle of the board, so the score is drawn as that ground: a
-				     bar a side, filled by the share of the three that side has taken. It
-				     was three rings apiece, one per lane; a bar says the same thing as one
-				     length rather than as a row to be counted, so how close a fight is
-				     reads off it at a glance instead of being totted up. Each side's bar
-				     sits over the half of the board that side holds — the rivals' to the
-				     left, the player's to the right.
+				     down the middle of the board, so the score is drawn as that ground:
+				     three squares a side, one per lane, filled white as that side takes it.
+				     A number said how many; these say which of a known three, and they are
+				     cells of a board rather than a length being filled, which is what the
+				     thing being counted is. Each side's three sit over the half of the board
+				     that side holds — the rivals' to the left, the player's to the right.
 				     Between them, the turn, which is the other thing a fight is counted
 				     in and belongs between the two counts rather than beside one of them.
-				     Both counts grow outwards from that turn, so the rivals' bar fills
-				     right to left: it is the same count read either way round, and the two
-				     then mirror each other across the middle rather than both running left
-				     to right. Both are drawn white — the ground down the middle they are
-				     played for is white, and a count of it says so at a glance.
+				     Both counts grow outwards from that turn, so the rivals' three are laid
+				     out backwards and fill from the right: it is the same count read either
+				     way round, and the two then mirror each other across the middle rather
+				     than both running left to right. Both are drawn white — the ground down
+				     the middle they are played for is white, and a count of it says so at a
+				     glance.
 				     While the fight is running only: a decided one reads its score off the
 				     panel in the middle of the board, and the same score at both ends of
 				     one canvas would be one score too many. -->
@@ -966,30 +965,49 @@
 					     hangs off the canvas's own top edge with nothing between — the board is
 					     the whole view, so a gap there is a strip of board covered by nothing. -->
 					<div
-						class="flex items-center gap-4 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
+						class="flex h-8 items-stretch gap-4 overflow-hidden rounded-lg bg-base-100/80 text-white shadow-xl"
 					>
+						<!-- Each side's count is three squares in a row, and they are square
+						     because they stand for cells of the board: the plate is `h-8` and a
+						     block is three of that across (`w-24`), over three equal columns. So
+						     the plate's own depth is the square's side, and the two figures are
+						     read together — a taller plate wants a wider block. They run the
+						     full depth of it and sit hard against its ends: nothing pads them,
+						     so a count is a block of the plate rather than something placed on
+						     it. -->
 						<div
-							class="flex h-3 w-20 flex-row-reverse overflow-hidden rounded-full border-2 border-white"
+							class="grid h-full w-24 grid-cols-3"
 							role="progressbar"
 							aria-label={$_('combat.rivalWins')}
 							aria-valuemin={0}
 							aria-valuemax={TEAM_SIZE}
 							aria-valuenow={state.wins.error}
 						>
-							<span class={classNames('h-full bg-white', scoreFill(state.wins.error))}></span>
+							{#each RIVAL_LANES as lane}
+								<span
+									class={classNames(
+										'border border-white',
+										lane <= state.wins.error && 'bg-white'
+									)}
+								></span>
+							{/each}
 						</div>
-						<span class="font-mono text-lg font-bold tabular-nums opacity-70">
+						<span class="self-center font-mono text-lg font-bold tabular-nums opacity-70">
 							{$_('combat.turn', { values: { turn: state.turn } })}
 						</span>
 						<div
-							class="flex h-3 w-20 overflow-hidden rounded-full border-2 border-white"
+							class="grid h-full w-24 grid-cols-3"
 							role="progressbar"
 							aria-label={$_('combat.yourWins')}
 							aria-valuemin={0}
 							aria-valuemax={TEAM_SIZE}
 							aria-valuenow={state.wins.info}
 						>
-							<span class={classNames('h-full bg-white', scoreFill(state.wins.info))}></span>
+							{#each LANES as lane}
+								<span
+									class={classNames('border border-white', lane <= state.wins.info && 'bg-white')}
+								></span>
+							{/each}
 						</div>
 					</div>
 				</div>
