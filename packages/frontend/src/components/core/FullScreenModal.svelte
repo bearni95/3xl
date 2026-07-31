@@ -1,7 +1,8 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
+	import { dropSheet, raiseSheet } from '$services/fullScreenModal';
 
 	// The chrome every full-view modal over the map wears: the sheet, the way it
 	// arrives and leaves, its title bar and the two ways out of it. What each one
@@ -77,6 +78,14 @@
 	export let transparent: boolean = false;
 
 	const dispatch = createEventDispatcher<{ close: void }>();
+
+	// Say that a sheet is up for exactly as long as this one is mounted, so the map behind it
+	// can blur its own chrome away (see `$services/fullScreenModal`, and the root page). It is
+	// said from here rather than by each host, because "a full view is over the map" is a fact
+	// about this sheet and not about the five stores that raise one. onDestroy runs after the
+	// slide-out has played, which is when the map is worth reading again.
+	onMount(raiseSheet);
+	onDestroy(dropSheet);
 
 	function close(): void {
 		if (closeDisabled) return;

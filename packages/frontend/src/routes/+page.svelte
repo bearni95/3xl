@@ -1,7 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
-	import { fly } from 'svelte/transition';
+	import { blur, fly } from 'svelte/transition';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { characters } from '@3xl/data';
@@ -27,6 +27,7 @@
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
 	import { boosterModalOpen } from '$services/boosterModal';
+	import { fullScreenModalOpen } from '$services/fullScreenModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { authService } from '$services/auth.service';
@@ -1873,6 +1874,26 @@
 	// region it belongs to, not which one is open — it only brings the shape's own wash
 	// forward (see tierStyle), on top of the framing (focusBounds) and the pins, which
 	// still fade outside it.
+
+	// --- The map's furniture, while a full view is up ------------------------------
+	// A sheet raised over the map covers the viewport, and everything the map draws over its
+	// terrain — the breadcrumb bar, the corner the side and the account stand in, and every pin
+	// and box out there — is furniture nobody is reading for as long as one is. So it goes out
+	// of focus while a sheet is up and comes back when it leaves: the map is still the ground
+	// the sheet is laid on (the sheets are graded rather than opaque, see FullScreenModal), and
+	// a bar of crumbs read sharply through one is chrome competing with the thing it was covered
+	// by. The terrain and the polygons are untouched — what blurs is what stands on them.
+	//
+	// Which sheet is up is nobody's business here: FullScreenModal says so from its own mount
+	// (see `$services/fullScreenModal`), so the map answers a sixth sheet as it answers these
+	// five. The count drops after the sheet's slide-out has played, so the furniture sharpens
+	// behind a view that has already gone rather than under one still on its way down.
+	//
+	// The plates are Svelte's DOM, so they blur as Svelte transitions, out and back in; the pins
+	// are Leaflet's and cannot be (unmounting them is a rebuild of every statue on the map), so
+	// WorldMap blurs their panes to the same 8px over the same 250ms instead. Keep the three in
+	// step — this is one gesture, not three.
+	const CHROME_BLUR = { amount: 8, duration: 250 };
 </script>
 
 <svelte:window on:pointerdown={onWindowPointerDown} on:keydown={onWindowKeydown} />
@@ -1899,6 +1920,7 @@
 			{focusBounds}
 			{zoomBounds}
 			{zoomStops}
+			markersBlurred={$fullScreenModalOpen}
 			bind:currentZoom
 			bind:activeLevel
 			bind:currentCenter
@@ -1932,46 +1954,60 @@
 				and being told where you are are the same subject, so they share the one row; the
 				matches come down at the corner right below the field, on their own plate (see
 				LocationSearchPanel). -->
-			<MapBreadcrumbs {crumbs} onSelect={open} onZoom={zoomToTier} classes="pointer-events-auto">
-				<!-- The far end of the bar: the way to look for a place, and past it the way to
-					everything that is not the map. Both belong at this end for the same reason — the
-					bar is the one row that is always up, so what a player reaches for however deep
-					into the map they are is reached for here. -->
-				<div slot="end" class="flex items-center gap-2">
-					<!-- The radio's play/pause, in the same 32px square and the same white as the
-						search and the burger beside it. The whole radio is in the menu — which
-						station, and what is on it — but stopping the sound is not a thing to open a
-						menu for, and this bar is the one row that is up wherever a player has got to
-						in the map. It is the same button as the plate's and reads the same store, so
-						either one says what the other did. Nothing is drawn here on a map whose
-						music never arrived. -->
-					<MusicToggle
-						classes="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
-						iconClasses="size-4"
-					/>
-					<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
-					<!-- The three bars, in the same square and the same white as the search button it
-						stands beside and the dots button at the other end of the row: this bar is a line
-						of 32px tiles, so everything on it that is pressed rather than read is given the
-						same square, and the white is spelled out because an outlined DaisyUI button
-						letters itself in the theme's periwinkle — a stray colour on a bar that forces
-						white over terrain — and its hover fills the square and takes the rule with it.
-						The glyph is the vendored game-icons one, as an `<img>` by URL: those ship as
-						white artwork for the canvases to tint, which is exactly what a mark on this bar
-						wants (see the icons note in CLAUDE.md), and it is how the search beside it draws
-						its own. -->
-					<button
-						bind:this={menuButtonEl}
-						type="button"
-						class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
-						aria-expanded={menuOpen}
-						aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-						on:click={() => (menuOpen = !menuOpen)}
+			<!-- Out of focus while a full view is up over the map, and back into it when that view
+				goes (see CHROME_BLUR). The wrapper is only what the transition needs — a transition
+				cannot be put on a component — and nothing else: no box of its own and no events, so
+				the bar takes the row exactly as it did. Unmounting the bar is what lets the way out
+				play at all, and costs nothing: what it draws is read off `crumbs` every time. -->
+			{#if !$fullScreenModalOpen}
+				<div transition:blur={CHROME_BLUR}>
+					<MapBreadcrumbs
+						{crumbs}
+						onSelect={open}
+						onZoom={zoomToTier}
+						classes="pointer-events-auto"
 					>
-						<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
-					</button>
+						<!-- The far end of the bar: the way to look for a place, and past it the way to
+							everything that is not the map. Both belong at this end for the same reason — the
+							bar is the one row that is always up, so what a player reaches for however deep
+							into the map they are is reached for here. -->
+						<div slot="end" class="flex items-center gap-2">
+							<!-- The radio's play/pause, in the same 32px square and the same white as the
+								search and the burger beside it. The whole radio is in the menu — which
+								station, and what is on it — but stopping the sound is not a thing to open a
+								menu for, and this bar is the one row that is up wherever a player has got to
+								in the map. It is the same button as the plate's and reads the same store, so
+								either one says what the other did. Nothing is drawn here on a map whose
+								music never arrived. -->
+							<MusicToggle
+								classes="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
+								iconClasses="size-4"
+							/>
+							<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
+							<!-- The three bars, in the same square and the same white as the search button it
+								stands beside and the dots button at the other end of the row: this bar is a line
+								of 32px tiles, so everything on it that is pressed rather than read is given the
+								same square, and the white is spelled out because an outlined DaisyUI button
+								letters itself in the theme's periwinkle — a stray colour on a bar that forces
+								white over terrain — and its hover fills the square and takes the rule with it.
+								The glyph is the vendored game-icons one, as an `<img>` by URL: those ship as
+								white artwork for the canvases to tint, which is exactly what a mark on this bar
+								wants (see the icons note in CLAUDE.md), and it is how the search beside it draws
+								its own. -->
+							<button
+								bind:this={menuButtonEl}
+								type="button"
+								class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
+								aria-expanded={menuOpen}
+								aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+								on:click={() => (menuOpen = !menuOpen)}
+							>
+								<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
+							</button>
+						</div>
+					</MapBreadcrumbs>
 				</div>
-			</MapBreadcrumbs>
+			{/if}
 
 			<!-- The map's right corner, read down: what the search box at the end of the bar
 				above has turned up. It was one end of a row that had the music on the other
@@ -2025,9 +2061,16 @@
 			a strip of map beside them that nothing was ever going to occupy.
 			The plate takes the column's width either way: they are one column at one corner, and a
 			plate narrower than the side above it would read as a second thing that happens to be
-			nearby. Nothing is drawn at all when there is neither to draw. -->
-		{#if playerTeamLineup.length > 0 || $profile}
+			nearby. Nothing is drawn at all when there is neither to draw.
+			And nothing while a full view is up either: the corner blurs out from under the sheet
+			and back in when it goes, the same gesture the breadcrumb bar and the pins make (see
+			CHROME_BLUR). The statues are rebuilt on the way back, which is what they already are
+			every time the map re-frames itself — a character that has been through its veil once
+			never plays it again (see IdleSprite), so what comes back is the picture and not the
+			reveal. -->
+		{#if (playerTeamLineup.length > 0 || $profile) && !$fullScreenModalOpen}
 			<div
+				transition:blur={CHROME_BLUR}
 				class="absolute inset-x-3 bottom-3 z-[900] flex flex-col gap-2 sm:right-auto sm:w-[400px]"
 			>
 				<!-- The three statues and nothing else: no plate under them, no heading over them,

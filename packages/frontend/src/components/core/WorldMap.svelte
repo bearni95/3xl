@@ -29,6 +29,7 @@
 		focusBounds = null,
 		zoomBounds = null,
 		zoomStops = [],
+		markersBlurred = false,
 		currentZoom = $bindable(zoom),
 		activeLevel = $bindable(0),
 		currentCenter = $bindable(center),
@@ -126,6 +127,21 @@
 		 * leaves the wheel stepping the map's own whole zoom levels.
 		 */
 		zoomStops?: [[number, number], [number, number]][];
+		/**
+		 * Blur every pin and every box off the map, and bring them back when it goes false.
+		 *
+		 * For a full view raised over the map (see FullScreenModal): the terrain is still the
+		 * ground the sheet is laid on, but the things standing *on* the terrain are furniture,
+		 * and furniture read through a sheet is furniture nobody is reading. The polygons and
+		 * the tiles are deliberately untouched — what blurs is what the map draws over them.
+		 *
+		 * The pins are Leaflet's DOM and not this component's, so this is the one thing here
+		 * that cannot be a Svelte transition the way the plates over the map are: unmounting
+		 * them is a rebuild of every pin and every statue in it. It is the two panes that blur
+		 * instead, in the same amount and over the same time as those transitions, so the whole
+		 * of what stands over the map goes at once (see BLUR_CLASSES).
+		 */
+		markersBlurred?: boolean;
 		/** Live map zoom level, kept in sync with the map (bindable). */
 		currentZoom?: number;
 		/**
@@ -270,6 +286,27 @@
 		if (ready) {
 			rebuildMarkers();
 			rebuildBoxes();
+		}
+	});
+
+	$effect(() => {
+		// Take the pins and the boxes out of focus while a full view is up over the map, and
+		// bring them back when it goes (see `markersBlurred`). The two panes and nothing else:
+		// the terrain and the region polygons are the ground the sheet is laid on and stay as
+		// they are.
+		//
+		// Classes on Leaflet's own elements rather than a style written on them, because the
+		// blur is a look and looks are Tailwind's here. The transition is added in the same
+		// breath and never taken off: it names `filter` and `opacity` alone, so Leaflet is left
+		// to move its panes by `transform` at its own speed, as a pane the browser is easing
+		// would drag behind every pan.
+		const blurred = markersBlurred;
+		if (!ready || !mapInstance) return;
+		for (const pane of [mapInstance.getPane('markerPane'), mapInstance.getPane(BOX_PANE)]) {
+			if (!pane) continue;
+			pane.classList.add('transition-[filter,opacity]', 'duration-[250ms]', 'ease-in-out');
+			if (blurred) pane.classList.add('blur-sm', 'opacity-0');
+			else pane.classList.remove('blur-sm', 'opacity-0');
 		}
 	});
 
