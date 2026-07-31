@@ -476,12 +476,15 @@
 	// the one whose pins are on screen, so the polygons say in colour what the pins
 	// over them already say.
 	//
-	// The wash sits at half strength, and only the opened region's own shape is taken up
-	// to 90%: a colour is a region's team, and every region on screen flying its colour
-	// at full opacity left the one being looked at indistinguishable from its neighbours.
-	// The boost is by definition confined to the imaged tier — no other tier fills at all —
-	// so picking a comarca brightens nothing while the map is drawing municipalities, and
-	// its own shape lights up as soon as the zoom walks back out to the tier it belongs to.
+	// The wash sits at half strength, and the opened region's own shape is taken down
+	// to 20%: a colour is a region's team, and every region on screen flying its colour
+	// at the same strength left the one being looked at indistinguishable from its
+	// neighbours. It is the thinnest wash on the map rather than the heaviest, so the
+	// satellite reads through the one shape being looked at and what is under it can be
+	// seen. The change is by definition confined to the imaged tier — no other tier fills
+	// at all — so picking a comarca changes nothing while the map is drawing
+	// municipalities, and its own shape clears as soon as the zoom walks back out to the
+	// tier it belongs to.
 	function tierStyle(
 		tier: RegionType,
 		weight: number,
@@ -499,7 +502,7 @@
 				opacity: 1,
 				fill: washes,
 				fillColor: washes ? SPAWN_COLOR_CSS[color!] : lineColor,
-				fillOpacity: isPicked ? 0.9 : 0.5
+				fillOpacity: isPicked ? 0.2 : 0.5
 			};
 		};
 	}
