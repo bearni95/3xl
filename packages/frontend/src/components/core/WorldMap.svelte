@@ -580,8 +580,9 @@
 		}
 
 		// One plate for everything the pin says AND everything it offers: the tile, the place
-		// and the show on its head row, and under them — on the picked town — the siege
-		// standing and the one control that acts on it. The three separate chips this replaces
+		// and the show on its head row, and under them the siege standing — on every pin that
+		// has one — with the one control that acts on it where the caller gave the pin a
+		// control at all (the picked town). The three separate chips this replaces
 		// each carried their own card, which put two rounded boxes and a bordered tile on a
 		// town where one mark belongs. The place is the pin's own name and takes the ink; the
 		// show is what it flies and is lettered under it.

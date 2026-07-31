@@ -75,6 +75,7 @@
 		type RegionShow,
 		type RegionType
 	} from '$utils/geo/region-tree';
+	import { buildRegionSieges, type RegionSiege } from '$utils/geo/region-siege';
 	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
 	import {
 		centroidsByFeatureId,
@@ -1698,6 +1699,15 @@
 		canFieldTeam
 	);
 
+	// The same counter for every region there is, not just the picked town — because every
+	// pin now carries its bar. A siege is a municipality thing, so a grouping's is the sum of
+	// the towns under it: what taking the whole comarca would cost and how far its towns have
+	// got, which is why a parent's bar always agrees with the bars found by drilling into it.
+	//
+	// One post-order pass over the whole tree per change of the holder/siege sets, rather
+	// than a lookup per pin per tier — every tier's pins are drawn from this one map.
+	$: regionSieges = buildRegionSieges(regionNodes, holders, sieges);
+
 	// One pin per region that has a show, dropped at the centre of the region's
 	// bounding box, captioned with the show and tooltipped with the region name;
 	// clicking a pin opens that region. Pins clear of the selection are flagged
@@ -1736,20 +1746,27 @@
 	}
 
 	// Every pin the map draws at one tier. All built the same way but for one thing: the
-	// picked town gets the side holding it standing under its plate, and under them the
-	// siege count and the way to fight them — who is holding this, standing on the very
-	// place they are holding, and what to do about it. All of it is added to that pin and
-	// takes nothing away from it, so the mark on the town is the same mark whichever town
-	// is picked. The statues and the bar are handed in already built (see pinTeam and
-	// townChallenge), since which three they are and what may be done about them are the
-	// page's questions and not the pin's.
+	// picked town gets the side holding it standing under its plate, and the way to fight
+	// them on it — who is holding this, standing on the very place they are holding, and
+	// what to do about it. All of it is added to that pin and takes nothing away from it,
+	// so the mark on the town is the same mark whichever town is picked. The statues and
+	// the control are handed in already built (see pinTeam and townChallenge), since which
+	// three they are and what may be done about them are the page's questions and not the
+	// pin's.
+	//
+	// The siege bar itself is on EVERY pin, picked or not: how far a place has been taken is
+	// something the place says about itself, and reading it on one town at a time made the
+	// standing look like a property of being selected. So the bar comes off `sieges`, which
+	// has a counter for every region (see regionSieges), and the picked town's bar is the
+	// same bar with a control under it.
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
 		relevant: Set<string> | null,
 		statuedTown: string | null,
 		statues: PinTeam,
-		challengeBar: MapChallenge | null
+		challengeBar: MapChallenge | null,
+		sieges: ReadonlyMap<string, RegionSiege>
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
@@ -1766,9 +1783,12 @@
 				// tier above the towns, is its plate by itself. Only a municipality's key is
 				// a municipality id, so the coarser tiers never match.
 				team: node.key === statuedTown ? statues : [],
-				// The siege line and the challenge control go with the statues, on that same
-				// one pin: what is being fought is standing right there.
-				challenge: node.key === statuedTown ? challengeBar : null,
+				// The picked town's bar, control and all, where the page has built one — what
+				// is being fought is standing right there. Every other pin, and the picked one
+				// on a day there is nothing to be done about it (a town already this player's,
+				// which is when buildTownChallenge hands back nothing), gets the standing by
+				// itself: a bar with no button under it.
+				challenge: (node.key === statuedTown ? challengeBar : null) ?? siegeBar(node, sieges),
 				iconSvg: iconMarkup(showIconName(node.show.id)),
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
@@ -1779,6 +1799,19 @@
 			});
 		}
 		return pins;
+	}
+
+	// A pin's siege standing on its own: the counter this region carries, and nothing to
+	// press. Null where there is no counter to draw — a region with no towns under it, and
+	// so nothing to take, which a bar of nought out of nought would say worse than not
+	// drawing one.
+	function siegeBar(
+		node: RegionNode,
+		sieges: ReadonlyMap<string, RegionSiege>
+	): MapChallenge | null {
+		const counter = sieges.get(node.key);
+		if (!counter || counter.required <= 0) return null;
+		return { siege: { wins: counter.wins, required: counter.required }, button: null, unlocksAt: null };
 	}
 
 	// The map's pin renderings as a coarse → fine stack, one per drill level from the
@@ -1793,7 +1826,8 @@
 		relevant: Set<string> | null,
 		statuedTown: string | null,
 		statues: PinTeam,
-		challengeBar: MapChallenge | null
+		challengeBar: MapChallenge | null,
+		sieges: ReadonlyMap<string, RegionSiege>
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
@@ -1804,7 +1838,8 @@
 					relevant,
 					statuedTown,
 					statues,
-					challengeBar
+					challengeBar,
+					sieges
 				)
 			);
 		}
@@ -1818,7 +1853,8 @@
 		relevantKeys,
 		statuedTown,
 		pinTeam,
-		townChallenge
+		townChallenge,
+		regionSieges
 	);
 
 	// The bounding box the map fits when a region is selected: the union of every
