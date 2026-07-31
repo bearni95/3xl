@@ -2230,8 +2230,8 @@
 
 	// What the map may not use, per edge. The map's canvas is the whole page and this column is
 	// drawn over the top of it, so the map has no way of knowing the band is spoken for: told
-	// this, it keeps its pins and the picked town's booster box below the bar instead of dealing
-	// them a place under it. The 12px is the column's own inset from the top (`top-3`), which
+	// this, it keeps its marks below the bar instead of dealing them a place under it. The 12px
+	// is the column's own inset from the top (`top-3`), which
 	// makes this the band from the canvas's edge to the foot of the bar.
 	$: mapChromeInsets = { top: topChromeHeight + 12 };
 </script>

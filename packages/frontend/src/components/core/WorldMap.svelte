@@ -7,8 +7,6 @@
 	import TownHolder from '$components/core/TownHolder.svelte';
 	import { PLATE_CLASSES, TILE_CLASSES } from '$components/core/TownPlate.svelte';
 	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
-	import { iconMarkup } from '$components/core/icon-markup';
-	import { showIconName } from '$utils/show/show-icon';
 	import { levelIndexForView } from '$utils/geo/level-of-detail';
 	import { layoutPins, type PinAnchor, type PinOffset } from '$utils/map/pin-layout';
 	import { groupPins } from '$utils/map/pin-groups';
@@ -180,9 +178,8 @@
 		 * The map cannot see any of it: those are the parent's elements, positioned over the
 		 * same box, and Leaflet's canvas is the whole box either way. So a pin kept "on the
 		 * screen" is kept under the bar unless it is told where the bar is — which is what
-		 * this is for. It bounds the room the pins are dealt (see placeMarks) and where the
-		 * corner's box stands (see rebuildCorner); it moves nothing about the map itself,
-		 * which goes on being the full container.
+		 * this is for. It bounds the room the pins are dealt (see placeMarks); it moves nothing
+		 * about the map itself, which goes on being the full container.
 		 */
 		chromeInsets?: { top?: number; right?: number; bottom?: number; left?: number };
 		/** Live map zoom level, kept in sync with the map (bindable). */
@@ -301,18 +298,6 @@
 	// keeps them off each other is being dealt the room together (see placeMarks).
 	let pinMarks: PinMark[] = [];
 	let boxMarks: PinMark[] = [];
-	// The corner the picked town's booster box stands in: a box of its own, appended to the
-	// Leaflet container but OUTSIDE the map's panes, so the map slides under it and it does
-	// not slide with the map. Everything about the box that is not the box — the cover, its
-	// line back to the town, and the town that line is about — hangs off these three.
-	let cornerLayer: HTMLElement | null = null;
-	let cornerBox: HTMLElement | null = null;
-	let cornerLeader: HTMLElement | null = null;
-	// The town the corner is currently showing, as the point its line is drawn to. Null when
-	// no town's box is in the corner.
-	let cornerAnchor: [number, number] | null = null;
-	// The BoosterBox mounted into that corner, tracked as every other mount here is.
-	let cornerMounts: Record<string, unknown>[] = [];
 	// The black polygon covering everything outside the spotlit shape, and the timer that
 	// takes it off the map once it has faded out. Plain variables: nothing is drawn from
 	// them, they are what the spotlight effect has already drawn.
@@ -420,12 +405,7 @@
 			// The lines go with the marks they are about (see LEADER_PANE) — they are drawn in
 			// a pane of their own for the stacking alone, and a line left sharp under a blurred
 			// map would be the one thing still in focus.
-			mapInstance.getPane(LEADER_PANE),
-			// The corner is furniture like the rest and goes under the sheet with it, even
-			// though it is not a pane: it stands outside the map's panes precisely so the map
-			// cannot carry it off (see cornerLayer), which also means nothing else would have
-			// taken it out of focus.
-			cornerLayer
+			mapInstance.getPane(LEADER_PANE)
 		]) {
 			if (!pane) continue;
 			pane.classList.add('transition-[filter,opacity]', 'duration-[250ms]', 'ease-in-out');
@@ -828,7 +808,7 @@
 
 		// A square tile in the region's colour carrying the show's glyph, standing at the
 		// left end of the plate below. The glyph is inlined rather than pointed at by an
-		// <img> so it inherits the tile's ink (see icon-markup) — which is why the fill and
+		// <img> so it inherits the tile's ink (see inlineIconMarkup) — which is why the fill and
 		// the ink arrive together in `frameClasses`. Sized through a CSS rule, which outranks
 		// the svg's own 1em width/height attributes. Decorative: the show is named in the
 		// line right beside it, so announcing the glyph too would read it twice. A pin with
@@ -943,6 +923,7 @@
 		// same component (see TeamLineup), mounted into the pin's DOM because this is
 		// imperative code rather than a template, and tracked so the next rebuild can unmount
 		// it.
+		let statues: HTMLElement | null = null;
 		if (marker.team?.length) {
 			const frame = document.createElement('div');
 			// A fixed 500px for the side together, shared out by the row. Fixed, so the
@@ -957,7 +938,10 @@
 			// viewport units rather than behind a breakpoint for the same reason the statues are
 			// flex-1 of the row — it says the thing itself, and it is inert on any screen with
 			// room for the 500px the side asked for.
-			frame.className = 'mt-1 w-[500px] max-w-[100vw] drop-shadow-lg';
+			// `relative` because the picked town's booster box is laid over this row, centred on
+			// it (see below): the side is what the box is dealt out onto, so the row is the box's
+			// containing block.
+			frame.className = 'relative mt-1 w-[500px] max-w-[100vw] drop-shadow-lg';
 			trackPinMount(
 				marker.id,
 				mount(TeamLineup, {
@@ -968,42 +952,51 @@
 				})
 			);
 			wrap.appendChild(frame);
+			statues = frame;
 		}
 
 		// What the town is offering, where the booster window has anything for this place and
-		// the tier on screen marks towns at all (see boxForMarker) — the DISC, and only the
-		// disc, as the last block of the column: the plate says what the place is and what may
-		// be done about it, the side under it is who is holding it, and the offer waiting there
-		// is what the column ends on.
+		// the tier on screen marks towns at all (see boxForMarker) — at whichever of its two
+		// sizes this town calls for (see markKindForBox).
 		//
-		// The picked town's box is not here. A disc is a mark the size of the pin's own tile
-		// and belongs in the column with it; the box is 200px of cover with a wordmark and a
-		// place across its foot, and a pin already carrying a plate, three statues and a siege
-		// bar is not a place to hang it — it made the one pin the reader had asked to look at
-		// the tallest thing on the map, and moved the plate naming the town half a column away
-		// from the town. So it goes to the corner instead, whole, with a line back to the same
-		// point this pin is about (see rebuildCorner). The disc stays where it is: it is a mark
-		// about a town among towns, and reading it means reading it beside its neighbours.
+		// The DISC is the last block of the column: the plate says what the place is and what
+		// may be done about it, the side under it is who is holding it, and the offer waiting
+		// there is what the column ends on.
 		//
-		// In the pin, and not hung on the point by the box layer. The layer hangs a mark on a
-		// point by its own centre, so a town with both had its plate lying across its disc —
-		// two marks about one town, the same size, in the same place, the upper pane deciding
-		// which of them a reader ever saw. Stacked in the column they are the same two marks in
-		// the order they are read in, which is what a column is for. The box layer keeps the
-		// towns this tier gave no pin to (see rebuildBoxes); a town with a pin carries its own
-		// mark.
+		// The BOX — the picked town's, 200px of cover with a wordmark and a place across its
+		// foot — is laid OVER the side instead, centred on the row of statues, and takes no room
+		// in the column at all. Which is the same reading the box already carried: what is
+		// inside it is cards, and the cards it opens onto are the very statues it is standing
+		// on. Stood in the column it made the one pin the reader had asked to look at the
+		// tallest thing on the map, and pushed the plate naming the town half a column away from
+		// the town; stood in the canvas's corner it was clear of the map but had to say which
+		// town it was about with a line drawn across it. On the side it is on its own town, at
+		// its own size, and the column is as tall as it was without it.
 		//
-		// Its click is the mark's own — the town behind a disc (see boxAction) — and not the
-		// pin's (the region), so the pin's marker must not see it: the same guard the challenge
-		// bar takes, for the same reason.
+		// In the pin, either way, and not hung on the point by the box layer. The layer hangs a
+		// mark on a point by its own centre, so a town with both had its plate lying across its
+		// disc — two marks about one town, the same size, in the same place, the upper pane
+		// deciding which of them a reader ever saw. The box layer keeps the towns this tier gave
+		// no pin to (see rebuildBoxes); a town with a pin carries its own mark.
+		//
+		// A picked town with no side under it — the one case there is nothing to lay the box on
+		// — takes it as a block of the column, which is where it would have stood all along.
+		//
+		// Its click is the mark's own — the pack behind a box, the town behind a disc (see
+		// boxAction) — and not the pin's (the region), so the pin's marker must not see it: the
+		// same guard the challenge bar takes, for the same reason.
 		const boosterBox = boxForMarker(marker);
-		if (boosterBox && markKindForBox(boosterBox) === 'disc') {
-			const holder = discElement(boosterBox, 'pin');
+		if (boosterBox) {
+			const kind = markKindForBox(boosterBox);
+			const holder =
+				kind === 'disc'
+					? discElement(boosterBox, 'pin')
+					: boxElement(boosterBox, statues ? 'statues' : 'pin');
 			Leaf!.DomEvent.disableClickPropagation(holder);
 			Leaf!.DomEvent.disableScrollPropagation(holder);
-			const action = boxAction(boosterBox, 'disc');
+			const action = boxAction(boosterBox, kind);
 			if (action) holder.addEventListener('click', () => action());
-			wrap.appendChild(holder);
+			(kind === 'box' && statues ? statues : wrap).appendChild(holder);
 		}
 
 		return wrap;
@@ -1344,7 +1337,6 @@
 		// another, and those are built by the pass that runs immediately after this one — so the
 		// room is dealt once, to both families together, by the last of the two (see placeMarks
 		// and rebuildBoxes).
-		rebuildCorner(visible);
 	}
 
 	/**
@@ -1523,114 +1515,6 @@
 		return marks;
 	}
 
-	// The picked town's booster box, stood in the top-right corner of the canvas with a line
-	// back to the town it belongs to.
-	//
-	// It is the pin's mechanism moved one step further. A pin is a mark taken off its point
-	// and given room, with a line saying which point it is still about; this is the same
-	// trade made for the one mark that can never be given enough room on the map — 200px of
-	// cover, wordmark and place, about the town the reader has picked. Rather than look for a
-	// gap for it, it is given the one place on the canvas that is always free and always the
-	// same: a reader who has opened a town knows where its box is without looking for it, and
-	// it does not move while they read it.
-	//
-	// Which is why it is not a Leaflet marker. A marker is drawn in a pane the map slides
-	// under a drag, so a corner marker would leave its corner the moment the map was touched.
-	// This hangs off the Leaflet container itself, outside every pane, so the map moves and
-	// the box does not — and the line, which is the one part that IS about a point on the
-	// ground, is redrawn as the map moves (see trackCorner).
-	function rebuildCorner(visible: MapMarker[]) {
-		clearCorner();
-		if (!mapInstance || !Leaf || !cornerLayer) return;
-
-		// The one town whose mark is the box itself, if it is on screen at all — the picked
-		// one (see markKindForBox). Every other town is a disc, and a disc stays in its pin.
-		const owner = visible.find((marker) => {
-			const box = boxForMarker(marker);
-			return box !== null && markKindForBox(box) === 'box';
-		});
-		const box = owner ? boxForMarker(owner) : null;
-		if (!owner || !box) return;
-
-		// The line, in the region's colour — off the very class the town's pin fills its tile
-		// with, for the reason given at the pin's own leader.
-		//
-		// It goes in the pane every other leader is drawn in and NOT in the corner's layer with
-		// the box it leaves, because it is a line and lines are under the marks: run at the
-		// corner's own height it crossed every plate between the box and the town, on top of
-		// them. Which means it is placed in the map's coordinates rather than the container's,
-		// though both of its ends are read in the container's — see trackCorner, which is what
-		// keeps it pointing at the town as the map slides underneath.
-		cornerLeader = document.createElement('div');
-		cornerLeader.className =
-			'pointer-events-none absolute -mt-px h-0.5 origin-left ' +
-			(owner.frameClasses ?? 'bg-base-content');
-		cornerLeader.setAttribute('aria-hidden', 'true');
-		mapInstance.getPane(LEADER_PANE)?.appendChild(cornerLeader);
-
-		cornerBox = boxElement(box, 'corner');
-		// The top-right of the room, which is not the top-right of the canvas: the breadcrumb
-		// bar is drawn across that corner, and a box put there would be a box under it. Written
-		// as a position and not a class because the bar's height is the bar's own business —
-		// it is measured and handed over (see chromeInsets), and 16px is the gap the corner
-		// keeps from whatever edge it is given.
-		cornerBox.style.top = `${(chromeInsets.top ?? 0) + 16}px`;
-		cornerBox.style.right = `${(chromeInsets.right ?? 0) + 16}px`;
-		Leaf.DomEvent.disableClickPropagation(cornerBox);
-		Leaf.DomEvent.disableScrollPropagation(cornerBox);
-		const action = boxAction(box, 'box');
-		if (action) cornerBox.addEventListener('click', () => action());
-		cornerLayer.appendChild(cornerBox);
-
-		cornerAnchor = owner.position;
-		trackCorner();
-	}
-
-	// Swing the corner's line onto the town. The box does not move, so this is only ever the
-	// line: it is anchored at the box's left-middle — the same corner of a mark every leader
-	// on this map arrives at — and turned and stretched onto wherever the town currently
-	// falls in the container.
-	//
-	// Run on every `move` and not only when the pins are rebuilt, because the box is the one
-	// mark here that outlives a pan: the pins go with the map and are laid out again where it
-	// stops, while this stands still and watches its town slide about under it. A line left
-	// pointing where the town used to be would be the one wrong statement on the canvas.
-	function trackCorner() {
-		if (!mapInstance || !Leaf || !cornerLayer || !cornerBox || !cornerLeader || !cornerAnchor)
-			return;
-		const at = mapInstance.latLngToContainerPoint(cornerAnchor);
-		// The box's left-middle, in the corner layer's own coordinates. Measured rather than
-		// worked out from the classes that place it: the box is as tall as its cover comes out,
-		// which is the picture's business and not this function's.
-		const layerBox = cornerLayer.getBoundingClientRect();
-		const boxRect = cornerBox.getBoundingClientRect();
-		const fromX = boxRect.left - layerBox.left;
-		const fromY = boxRect.top - layerBox.top + boxRect.height / 2;
-		const dx = at.x - fromX;
-		const dy = at.y - fromY;
-		// Both ends are read off the container, and the line is drawn in a pane the map moves
-		// (see rebuildCorner), so its start is put back into the pane's own coordinates. Its
-		// length and its angle are the difference between the two ends and need no converting:
-		// the pane is moved, never scaled, except in a zoom animation, which is the one stretch
-		// there is no corner at all (see clearMarkers).
-		const start = mapInstance.containerPointToLayerPoint(Leaf.point(fromX, fromY));
-		cornerLeader.style.left = `${start.x}px`;
-		cornerLeader.style.top = `${start.y}px`;
-		cornerLeader.style.width = `${Math.hypot(dx, dy)}px`;
-		cornerLeader.style.transform = `rotate(${(Math.atan2(dy, dx) * 180) / Math.PI}deg)`;
-	}
-
-	/** Empty the corner: unmount the cover, drop the line, forget the town. */
-	function clearCorner() {
-		for (const mounted of cornerMounts) void unmount(mounted);
-		cornerMounts = [];
-		cornerBox?.remove();
-		cornerLeader?.remove();
-		cornerBox = null;
-		cornerLeader = null;
-		cornerAnchor = null;
-	}
-
 	// Stand every mark on its point, and move the few that cannot be left there.
 	//
 	// EVERY mark, of both families, in one pass — that is the whole reason this is its own
@@ -1680,10 +1564,11 @@
 			{ width: size.x, height: size.y },
 			// The canvas is the whole container, but the room is not: the bar naming where the
 			// map is looking lies across the top of it, and a pin tucked under that bar is a
-			// pin the map has kept on screen and out of sight (see chromeInsets). Nor is the
-			// corner free — the picked town's booster box stands in it (see rebuildCorner), and
-			// that is a booster mark like any other: it may not be lain under either.
-			{ lead: PIN_LEAD, gap: PIN_GAP, insets: chromeInsets, reserved: cornerRoom() }
+			// pin the map has kept on screen and out of sight (see chromeInsets). Nothing else
+			// is spoken for — the picked town's booster box is inside that town's own pin now
+			// (see markerElement), so it is dealt its room as part of the mark it stands on
+			// rather than as a rectangle the layout has to be told about.
+			{ lead: PIN_LEAD, gap: PIN_GAP, insets: chromeInsets }
 		);
 
 		for (const mark of marks) {
@@ -1701,26 +1586,6 @@
 			mark.element.style.transform = `translate(${offset.dx}px, ${offset.dy}px) translateY(-50%)`;
 			drawLeader(mark.id, offset);
 		}
-	}
-
-	/**
-	 * The room the corner's booster box is standing in, as the placement wants it: measured
-	 * off the box itself rather than worked out from the classes and insets that put it there,
-	 * because its height is its cover's business (see trackCorner) and one measurement cannot
-	 * disagree with itself. Empty when no town's box is in the corner.
-	 */
-	function cornerRoom(): { left: number; top: number; right: number; bottom: number }[] {
-		if (!cornerBox || !cornerLayer) return [];
-		const layerBox = cornerLayer.getBoundingClientRect();
-		const boxRect = cornerBox.getBoundingClientRect();
-		return [
-			{
-				left: boxRect.left - layerBox.left,
-				top: boxRect.top - layerBox.top,
-				right: boxRect.right - layerBox.left,
-				bottom: boxRect.bottom - layerBox.top
-			}
-		];
 	}
 
 	// One mark's line, as a length and an angle: the strip is anchored at the POINT (see
@@ -1766,11 +1631,10 @@
 	// and rebuildMarkers reads it.
 	function clearMarkers() {
 		midZoom = true;
-		// The corner goes with them. Its box is the picked town's, and while the map is
-		// between two tiers there is no telling whether the tier it lands on still marks that
-		// town at all — and its line is drawn to a point in the container, which is the one
-		// thing a zoom animation makes a lie of every frame. It comes back with the pins.
-		clearCorner();
+		// The picked town's box goes with them, being one more thing standing in that town's
+		// pin (see markerElement) — which is the right reading of it: while the map is between
+		// two tiers there is no telling whether the tier it lands on still marks that town at
+		// all. It comes back with the pins.
 		// Forgotten as well as taken off, because the booster marks are laid out against these
 		// (see placeMarks) and a set of pins that is no longer on the map is room nothing is
 		// standing in. A rebuild of the boxes arriving mid-zoom then deals itself the whole
@@ -1822,10 +1686,13 @@
 	//
 	// - `'pin'` — inside the town's own pin, one more thing in a column, so it needs only the
 	//   gap the pin's other parts take. The pin is what built it, so the pin's mounts are
-	//   what unmount it. Nothing asks for a box here any more (see markerElement) — the disc
-	//   is what a pin carries, and the box the pin's town would have carried is in the
-	//   corner — but the placement is kept because which mark goes in a pin is a decision
-	//   about marks and not about this function.
+	//   what unmount it. The picked town asks for this only where it has no side for the box
+	//   to stand on (see markerElement).
+	// - `'statues'` — over the side standing in that same pin, centred on the row of statues
+	//   and out of the column's flow altogether, so the pin comes out exactly as tall as it
+	//   would without it. Also the pin's to unmount, being inside it. Raised above the row it
+	//   covers: the middle statue is lifted over the two beside it (see TeamLineup), and a box
+	//   laid over the row at no height of its own would go under that one cell alone.
 	// - `'point'` — the box layer's own marker, standing on the point: a mark is about the
 	//   ground under it, and 200px of cover reads as being about the town it is centred on
 	//   rather than the one it hangs off. It is also what keeps the box and the disc one
@@ -1835,19 +1702,17 @@
 	//   so a mark with room stands centred on its point and one without is moved off it (see
 	//   pointMark and placeMarks). This is what the picked town's box does at a tier that gave
 	//   it no pin to stand in — see rebuildBoxes.
-	// - `'corner'` — the top-right of the canvas, standing clear of the map altogether (see
-	//   rebuildCorner). Placed by the corner and not by a point, so it takes no transform at
-	//   all: what says which town it is about is the line drawn from it, not where it sits.
-	function boxElement(box: MapBoosterBox, into: 'pin' | 'point' | 'corner'): HTMLElement {
+	function boxElement(box: MapBoosterBox, into: 'pin' | 'point' | 'statues'): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className =
 			'w-[200px] ' +
 			(into === 'pin'
 				? 'mt-1'
-				: into === 'corner'
-					? // Where in the corner is set by the caller, in pixels, since it depends on
-						// what the parent has drawn over that corner (see rebuildCorner).
-						'pointer-events-auto absolute drop-shadow-lg'
+				: into === 'statues'
+					? // Its own middle on the row's middle, out of the column's flow. No shadow of
+						// its own: the row it stands in casts one over everything inside it, this
+						// included, and two of the same shadow is one drawn twice.
+						'absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2'
 					: // On a point: placed by the pass that deals every mark its room (see
 						// pointMark and placeMarks), so it says nothing here about where it stands.
 						'');
@@ -1862,10 +1727,10 @@
 				light: box.light ?? false
 			}
 		});
-		// A box drawn in a pin belongs to that pin's town, which is the pin's own id (see
-		// boxForMarker), so it is that pin's mount to take down.
-		if (into === 'pin') trackPinMount(box.id, mounted);
-		else if (into === 'corner') cornerMounts.push(mounted);
+		// A box drawn in a pin — in its column or over its side, both being the pin's own DOM —
+		// belongs to that pin's town, which is the pin's own id (see boxForMarker), so it is
+		// that pin's mount to take down.
+		if (into === 'pin' || into === 'statues') trackPinMount(box.id, mounted);
 		else boxMounts.push(mounted);
 		return wrap;
 	}
@@ -1922,8 +1787,9 @@
 	// that survives losing the box's body.
 	//
 	// The glyph is inlined rather than pointed at with an <img> so it paints in the disc's
-	// own ink (see icon-markup), and looked up from the same `showId` the box's lid stamps
-	// itself with. A show with no glyph drawn for it leaves the disc bare rather than
+	// own ink (see inlineIconMarkup), and it is the same mark the box's lid stamps itself
+	// with — handed over drawn, since it is authored data the page holds and the map does
+	// not. A show with no glyph picked for it leaves the disc bare rather than
 	// taking a stand-in mark — the lid's rule, and every other surface that badges a show.
 	// Decorative either way: the mark is what is being looked at, and nothing here is
 	// named in text for it to read twice.
@@ -1950,8 +1816,9 @@
 			(box.light ? 'bg-white text-black' : 'bg-black text-white');
 		if (boxAction(box, 'disc')) wrap.className += ' cursor-pointer';
 		wrap.setAttribute('aria-hidden', 'true');
-		const markup = iconMarkup(showIconName(box.showId));
-		if (markup) wrap.innerHTML = markup;
+		// The show's mark arrives drawn, as a pin's does: it is authored data now, so the
+		// page that built this box is the side that has it.
+		if (box.iconSvg) wrap.innerHTML = box.iconSvg;
 		return wrap;
 	}
 
@@ -2548,22 +2415,7 @@
 		// telling Leaflet a zoom has started (see onWheelZoom) — this is for the ones that do.
 		// A pan is not one of them and keeps its pins: a pin carried sideways is still the pin
 		// that view calls for, at the size it was drawn at.
-		// The corner the picked town's box stands in. A child of the Leaflet container and not
-		// of any of its panes: the panes are what the map slides under a drag, and this is the
-		// one mark that must not slide. It covers the canvas but catches nothing — only the
-		// box inside it takes a pointer (see boxElement) — so the terrain under it is dragged,
-		// clicked and zoomed exactly as if it were not there. Above every pane (Leaflet's own
-		// go to 700) and below its controls (which start at 800).
-		cornerLayer = document.createElement('div');
-		cornerLayer.className = 'pointer-events-none absolute inset-0 z-[750]';
-		mapContainer.appendChild(cornerLayer);
-
 		mapInstance.on('zoomstart', clearMarkers);
-		// The box stands still while the map moves under it, so its line has to be redrawn as
-		// the map moves rather than only where it stops — `move` fires throughout a drag and a
-		// zoom animation, which is exactly the stretch over which the town it points at is
-		// somewhere new every frame.
-		mapInstance.on('move', trackCorner);
 		// Re-cull the pins and re-sync the view after any pan or zoom settles. This is the far
 		// end of a zoom as well as of a pan, so it is where the map stops being between two
 		// tiers and may carry pins again.
@@ -2692,9 +2544,6 @@
 		resizeObserver?.disconnect();
 		unmountPinMounts();
 		unmountBoxMounts();
-		clearCorner();
-		cornerLayer?.remove();
-		cornerLayer = null;
 		mapInstance?.remove();
 	});
 </script>
