@@ -9,12 +9,14 @@
  *
  * A box is tapped to stand it up: it lifts out of the scrolling grid into screen space, tweens
  * to the middle at the size the canvas allows, and the rest of the window fades away behind it.
- * Tapping it again stands it back down, as tapping anywhere else does — a standing box is not
- * opened from this canvas at all. Opening is {@link open}, called by a button in the document
- * under it: a box that is tapped to stand up and tapped again to come apart says nothing about
- * which tap does which, and the one irreversible act in this view is the one a player should
- * have to reach for by name. The crumble still starts on the word, so whatever the roll takes is
- * time the crazed box stands there (see BoosterBoxSprite).
+ * That tap is the only one this canvas answers. A box that is standing answers none — not on its
+ * front, not anywhere around it — because both things there are to do with it are named
+ * elsewhere: opening is {@link open}, a button in the document under the canvas, and going back
+ * to the window is {@link setSelected}, the pick the host holds. A box that is tapped to stand up
+ * and tapped again to do something else says nothing about which tap does which, and the one
+ * irreversible act in this view is one a player should have to reach for by name. The crumble
+ * starts on that word, so whatever the roll takes is time the crazed box stands there (see
+ * BoosterBoxSprite).
  *
  * What the box opens *onto* is not drawn here at all. The cards a pack gives are statues, and a
  * statue is a document thing — so the host stands them up in a layer behind this canvas and says
@@ -93,7 +95,9 @@ export interface BoosterBoxGridSceneOptions {
 	/** The squares have started to go, so whatever is behind the canvas may now be seen: it has
 	 * the whole of the dissolve to come up through. */
 	onUncovering?: () => void;
-	/** The last square has gone and the box is out of the way. */
+	/** The last square has gone and the box is out of the way, so what it opened onto is all
+	 * there is left to look at. Nothing more happens on this canvas after it: the host's view has
+	 * said what it was raised to say, and the next click anywhere on it is what closes it. */
 	onOpened?: () => void;
 	/**
 	 * Fires when the canvas lost its GPU context and the browser did not hand one back — the
@@ -112,8 +116,9 @@ interface BoxEntry {
 
 /**
  * What the canvas is doing: showing the window, standing a box up or back down, holding one
- * stood up, and holding one open — from the tap that opens it until the reveal behind the canvas
- * is dismissed, which is the whole of the time this canvas is not the thing being looked at.
+ * stood up, and holding one open — from the word that opens it onwards, which is the whole of the
+ * time this canvas is not the thing being looked at. An opened box is where a canvas stops: what
+ * puts the reveal away is the view above it closing, not anything here.
  */
 type SceneState = 'grid' | 'standing' | 'stood' | 'opening' | 'opened';
 
@@ -602,22 +607,20 @@ export class BoosterBoxGridScene {
 		this.callbacks.onOpen?.(entry.pack);
 	}
 
-	/** A tap, wherever it landed: on a box in the window, on the box standing up, or on neither. */
+	/** A tap, wherever it landed. Only the window answers one: a box in it is stood up, and a
+	 * gutter is nothing.
+	 *
+	 * A box that is already standing answers nothing at all. Everything there is to do with it is
+	 * named elsewhere — the button under the canvas opens it, and the way back to the window is the
+	 * pick the host holds — so a tap on the one thing being looked at is not quietly the way out of
+	 * looking at it. A box coming apart is not to be interrupted either, and a reveal is not this
+	 * canvas's to put away: the pack is open, the cards are standing, and the click that follows
+	 * closes the whole view (see `onOpened`, and the sheet the host draws this on). Which is why
+	 * nothing here answers it — the click is left to reach the sheet. */
 	private onTap(x: number, y: number): void {
-		if (this.state === 'grid') {
-			if (!this.interactive) return;
-			const entry = this.entryAt(x, y);
-			if (entry) this.raise(entry);
-			return;
-		}
-		// A standing box is put back wherever the tap lands, its own front included: the one thing
-		// this view cannot undo is opening, and that is asked for by name under the canvas.
-		if (this.state === 'stood') {
-			void this.lower();
-			return;
-		}
-		// A box coming apart is not to be interrupted; a reveal is dismissed by tapping it away.
-		if (this.state === 'opened') this.dismiss();
+		if (this.state !== 'grid' || !this.interactive) return;
+		const entry = this.entryAt(x, y);
+		if (entry) this.raise(entry);
 	}
 
 	/** The box under a point on the canvas, or null over a gutter. */
@@ -737,15 +740,13 @@ export class BoosterBoxGridScene {
 		return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 	}
 
-	/** The pointer says what a tap would do: a box to stand up, a standing box to put back, a
-	 * reveal to put away. Nothing else on this canvas answers a tap, so nothing else changes the
-	 * cursor — and no tap opens anything any more, so no part of a standing box is singled out. */
+	/** The pointer says what a tap would do, which is only ever one thing: a box in the window to
+	 * stand up. A standing box answers no tap, so it is not offered as something to click, and
+	 * neither is a reveal — the click on one belongs to the whole view rather than to the canvas it
+	 * lands on. */
 	private trackCursor(event: PointerEvent): void {
 		const { x, y } = this.localPoint(event);
-		const over =
-			this.state === 'grid'
-				? this.interactive && this.entryAt(x, y) !== null
-				: this.state === 'stood' || this.state === 'opened';
+		const over = this.state === 'grid' && this.interactive && this.entryAt(x, y) !== null;
 		this.app.canvas.style.cursor = over ? 'pointer' : 'default';
 	}
 
