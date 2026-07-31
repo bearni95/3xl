@@ -263,9 +263,14 @@
 	$effect(() => {
 		// Rebuild the festa boxes whenever the parent swaps them (e.g. a new day's
 		// festa-major towns arrive). Gated on `ready` so a set passed before mount
-		// still applies once the layer exists.
+		// still applies once the layer exists. The pins go with them: at the town tier a
+		// box is drawn inside the pin of the town it belongs to (see markerElement), so a
+		// new day's boxes are a new set of pins as much as a new set of boxes.
 		void boxes;
-		if (ready) rebuildBoxes();
+		if (ready) {
+			rebuildMarkers();
+			rebuildBoxes();
+		}
 	});
 
 	$effect(() => {
@@ -453,10 +458,33 @@
 			wrap.appendChild(frame);
 		}
 
+		// The town's booster box, where the window has one for this place and the tier on
+		// screen is drawing boxes at all (see markKindForLevel). It stands INSIDE the pin
+		// rather than under the point, above whatever the pin ends with: a box is what the
+		// town is offering and the siege bar is what may be done about the town, and the
+		// offer is read before the demand. Which also keeps one object one object — the
+		// box and the plate naming the place it belongs to are the same mark on the map,
+		// and the reader never has to decide whether the box under the point belongs to
+		// this pin or the next one.
+		//
+		// Its click is the box's own (the pack), not the pin's (the region), so the pin's
+		// marker must not see it — the same guard the challenge bar takes, for the same
+		// reason. A tier that folds the box into a disc leaves this alone: a disc marks a
+		// town that has no pin of its own at that tier, and belongs to the box layer.
+		const boosterBox = boxForMarker(marker);
+		if (boosterBox) {
+			const holder = boxElement(boosterBox, 'pin');
+			Leaf!.DomEvent.disableClickPropagation(holder);
+			Leaf!.DomEvent.disableScrollPropagation(holder);
+			if (boosterBox.onClick) holder.addEventListener('click', () => boosterBox.onClick!());
+			wrap.appendChild(holder);
+		}
+
 		// What can be done about the region, right under the side holding it: the siege
 		// standing and the one control that acts on it. Mounted and tracked exactly as the
 		// team is — it runs a clock of its own when it is counting down — and last in the
-		// pin, so the mark reads down as the place, who is on it, and what to do about it.
+		// pin, so the mark reads down as the place, who is on it, what it is offering, and
+		// what to do about it.
 		if (marker.challenge) {
 			const bar = document.createElement('div');
 			bar.className = 'mt-1';
@@ -661,28 +689,51 @@
 	// on a town, so it stays the size it is whatever the map is showing, and it is the
 	// cover a box is read by, at a size the cover can actually be read at.
 	//
-	// It hangs *below* its point rather than standing on it: a region pin is anchored by
-	// its bottom edge and grows upwards out of the point, so everything under the point
-	// is free and a box put there shares the town with its pin instead of covering it.
-	// Both are anchored on the same centre, which is what keeps them one object seen as
-	// two — the pin above the point, the box under it, meeting at the town.
-	function boxElement(box: MapBoosterBox): HTMLElement {
+	// Where it is drawn decides how it is placed and who takes it down again, which is the
+	// whole of what `into` says:
+	//
+	// - `'pin'` — inside the town's own pin, one more thing in a column already centred on
+	//   the point, so it needs only the gap the pin's other parts take. The pin is what
+	//   built it, so the pin's mounts are what unmount it.
+	// - `'point'` — the box layer's own marker, hanging *below* the point rather than
+	//   standing on it: a region pin is anchored by its bottom edge and grows upwards out
+	//   of the point, so everything under the point is free. Both are anchored on the same
+	//   centre, which is what keeps them one object seen as two. This is what a box does at
+	//   a tier whose pins are not towns — see rebuildBoxes.
+	function boxElement(box: MapBoosterBox, into: 'pin' | 'point'): HTMLElement {
 		const wrap = document.createElement('div');
-		wrap.className = 'w-[200px] -translate-x-1/2 translate-y-1';
+		wrap.className =
+			'w-[200px] ' + (into === 'pin' ? 'mt-1' : '-translate-x-1/2 translate-y-1');
 		if (box.onClick) wrap.className += ' cursor-pointer';
-		boxMounts.push(
-			mount(BoosterBox, {
-				target: wrap,
-				props: {
-					coverUrl: box.coverUrl ?? null,
-					logoUrl: box.logoUrl ?? null,
-					showId: box.showId ?? null,
-					locationName: box.locationName ?? null,
-					light: box.light ?? false
-				}
-			})
-		);
+		const mounted = mount(BoosterBox, {
+			target: wrap,
+			props: {
+				coverUrl: box.coverUrl ?? null,
+				logoUrl: box.logoUrl ?? null,
+				showId: box.showId ?? null,
+				locationName: box.locationName ?? null,
+				light: box.light ?? false
+			}
+		});
+		(into === 'pin' ? pinMounts : boxMounts).push(mounted);
 		return wrap;
+	}
+
+	// The box this pin's town has waiting, or null — for a tier that draws boxes at all,
+	// and a marker whose id is a municipality's (only the town tier's keys are, so no
+	// coarser pin can match a box). The pin carries it; see markerElement.
+	function boxForMarker(marker: MapMarker): MapBoosterBox | null {
+		if (markKindForLevel() !== 'box') return null;
+		return boxes.find((box) => box.id === marker.id) ?? null;
+	}
+
+	// The ids the tier on screen draws a pin for. Each of those pins carries its own box,
+	// so the box layer must not stand a second one on the same point — which is all this
+	// is for (see rebuildBoxes). Read off the same stack rebuildMarkers picked from, at the
+	// level it settled on.
+	function pinnedIds(): Set<string> {
+		const levels = markerLevelStack();
+		return new Set((levels[pinLevelIndex] ?? []).map((marker) => marker.id));
 	}
 
 	// The same town above the town tier: a disc of the box's own stock — white card for a
@@ -769,10 +820,16 @@
 		const kind = markKindForLevel();
 		if (!kind) return;
 
+		// At the box tier a town has a pin of its own and that pin carries its box (see
+		// markerElement), so the layer stands one only where nothing pinned it — which is
+		// nothing at all on this map, and every box on one whose pins were never towns.
+		const pinned = kind === 'box' ? pinnedIds() : null;
+
 		const bounds = mapInstance.getBounds().pad(0.25);
 		for (const box of boxes) {
+			if (pinned?.has(box.id)) continue;
 			if (!bounds.contains(box.position)) continue;
-			const html = kind === 'box' ? boxElement(box) : discElement(box);
+			const html = kind === 'box' ? boxElement(box, 'point') : discElement(box);
 			const icon = Leaf.divIcon({ html, className: '', iconSize: [0, 0] });
 			const badge = Leaf.marker(box.position, { icon, riseOnHover: true, pane: BOX_PANE });
 			// No tooltip: the box already carries the town's name across its foot, and a

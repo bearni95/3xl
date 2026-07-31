@@ -145,9 +145,12 @@ export interface MapMarker {
  * window reaches, each carrying the pack the Booster tab has waiting for it. Drawn
  * with the very component that tab's grid draws (BoosterBox), off the same four
  * things, so the box on the town and the box in the panel are one object seen in two
- * places. Independent of the poster/region pins and always drawn (no level-of-detail
- * folding), so a town's box shows at every zoom. Hung under the point its pin stands
- * on, and under the pin layer: a town keeps its pin and gets a box.
+ * places. Where it is drawn follows the pins' own tier: at the tier whose pins are
+ * towns, the town's pin carries its box, above the siege bar and under everything that
+ * names the place — what the town is offering, read before what may be done about it,
+ * and one mark on the map rather than two things sharing a point. Above that tier the
+ * box folds up to a disc (see `onDiscClick`) hung on the point itself, since the town
+ * it belongs to has no pin of its own up there.
  */
 export interface MapBoosterBox {
 	/** Stable id (the municipality feature id), so the layer can diff on rebuild. */
