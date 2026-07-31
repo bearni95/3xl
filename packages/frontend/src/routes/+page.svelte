@@ -2283,20 +2283,16 @@
 						onZoom={zoomToTier}
 						classes="pointer-events-auto"
 					>
-						<!-- The head of the bar, before the path: lettering that climbs with the viewport,
-							from `lg` on a narrow one up to `6xl` on a wide one — the bar's own height
-							follows it, and the map is told (topChromeHeight is measured, not written down).
+						<!-- The head of the bar, before the path. What it says and what size it is set at
+							are two different things: the word is "6xl" and the type is `xl`, one flat size
+							at every viewport rather than a ramp — a bar this row has to stay a bar.
 							`leading-none` so the line takes the type's height and not a line box built for
-							a paragraph. -->
-						<!-- `font-display` is Jacquard 12, the app's one departure from Genos, and it is
+							a paragraph.
+
+							`font-display` is Jacquard 12, the app's one departure from Genos, and it is
 							the token and not the family that is named here (see the `@theme` block in
 							css/app.css). -->
-						<span
-							slot="start"
-							class="font-display text-lg leading-none sm:text-2xl md:text-4xl lg:text-6xl"
-						>
-							6xl
-						</span>
+						<span slot="start" class="font-display text-xl leading-none">6xl</span>
 						<!-- The far end of the bar: the way to look for a place, and past it the way to
 							everything that is not the map. Both belong at this end for the same reason — the
 							bar is the one row that is always up, so what a player reaches for however deep
