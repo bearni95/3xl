@@ -4,6 +4,8 @@
 	import type L from 'leaflet';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import TownChallenge from '$components/core/TownChallenge.svelte';
+	import TownHolder from '$components/core/TownHolder.svelte';
+	import { PLATE_CLASSES, TILE_CLASSES } from '$components/core/TownPlate.svelte';
 	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
 	import { iconMarkup } from '$components/core/icon-markup';
 	import { showIconName } from '$utils/show/show-icon';
@@ -707,7 +709,7 @@
 		// the lettering off the terrain, which is the whole of what the black was for, while
 		// letting the ground the pin stands on read faintly through the mark standing on it.
 		const plate = document.createElement('div');
-		plate.className = PLATE_CLASSES;
+		plate.className = PIN_PLATE_CLASSES;
 
 		// The head row: the tile at the left end, the two lines beside it.
 		const head = document.createElement('div');
@@ -734,6 +736,21 @@
 
 		head.appendChild(lines);
 		plate.appendChild(head);
+
+		// Whose the place is, between what it is called and how far it has been taken —
+		// which is the order the three are read in: the town, its occupant, and what may be
+		// done about them. Only where somebody has actually taken it; a town still on its
+		// seeded house team belongs to no player and the plate says nothing about a holder
+		// rather than saying there is none.
+		//
+		// Mounted rather than built here, exactly as the challenge bar is, because the face
+		// it draws is the player's own avatar and that is a component (a sprite sheet loaded
+		// and cropped), not markup a string can carry.
+		if (marker.holder) {
+			const held = document.createElement('div');
+			trackPinMount(marker.id, mount(TownHolder, { target: held, props: { ...marker.holder } }));
+			plate.appendChild(held);
+		}
 
 		// What can be done about the place, on the plate that names it: the siege standing and
 		// the one control that acts on it, under the head row. Mounted and tracked exactly as
@@ -828,13 +845,16 @@
 		return wrap;
 	}
 
-	// The one plate every pin is printed on, and the tile at the left end of it — named here
-	// because a group is printed on the same stock as the pins it stands for (see
-	// groupElement), and two copies of a class list are how two marks that are meant to be
-	// the same mark come to look like two.
-	const PLATE_CLASSES =
-		'mt-1 flex min-w-[200px] max-w-[15rem] flex-col gap-1.5 rounded-lg bg-base-100/80 p-1.5 text-white shadow-lg';
-	const TILE_CLASSES = 'flex size-10 flex-none items-center justify-center rounded-lg';
+	// The one plate every pin is printed on, and the tile at the left end of it. They live on
+	// TownPlate — the same plate drawn as a component, for the places that are named away
+	// from the map (the arena's card over the board) — because two copies of a class list are
+	// how two marks that are meant to be the same mark come to look like two. A group is
+	// printed on the same stock as the pins it stands for (see groupElement), so it reads
+	// them too.
+	//
+	// The margin is the pin's own and is added here: it is what holds the plate clear of the
+	// point it stands on, which is a thing about being a pin and not about being a plate.
+	const PIN_PLATE_CLASSES = `mt-1 ${PLATE_CLASSES}`;
 
 	// A mark's line back to the place it is about: its own marker, standing on the point, in
 	// the pane that is under every mark on the map (see LEADER_PANE). It belongs to the point
@@ -907,7 +927,7 @@
 		const dimmed = members.every((member) => member.dimmed);
 
 		const plate = document.createElement('div');
-		plate.className = PLATE_CLASSES;
+		plate.className = PIN_PLATE_CLASSES;
 
 		const head = document.createElement('div');
 		head.className = 'flex items-center gap-2';

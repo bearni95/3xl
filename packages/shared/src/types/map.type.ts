@@ -107,6 +107,27 @@ export interface MapMarker {
 		showId: number | null;
 	}[];
 	/**
+	 * Who is holding the place, drawn on the plate under the two lines naming it: the
+	 * face they wear and what they are called. Absent — or null — where nobody has
+	 * taken it, which is a town still on its seeded house team and belongs to no
+	 * player to name.
+	 *
+	 * Only a municipality has one, for the same reason only a municipality has a side
+	 * standing on it: a comarca or a province is not a thing anybody holds.
+	 *
+	 * The avatar is the pair that IS one, the character and the colour together, and
+	 * both null is the initial-letter avatar — drawn off the name, exactly as that
+	 * player's own profile card draws it.
+	 */
+	holder?: {
+		/** What to call them — already worded for a player who never chose a name. */
+		name: string;
+		/** The character half of the avatar they wear, or null for the letter. */
+		characterId: string | null;
+		/** The colour half of that same avatar, or null for the letter. */
+		color: SpawnColor | null;
+	} | null;
+	/**
 	 * The siege standing and the challenge control, drawn on the pin's own plate under
 	 * the lines naming the place and its show — one mark saying what the town is and what
 	 * may be done about it, rather than a second card at the foot of the column.
@@ -143,6 +164,26 @@ export interface MapMarker {
 	dimmed?: boolean;
 	/** Called when the pin is clicked. */
 	onClick?: () => void;
+}
+
+/**
+ * A place as the plate that names it, away from the map: everything a pin's plate prints
+ * about a town — the show's glyph and colour, the place's name and the show it flies,
+ * whoever holds it, how far it has been taken — with nothing about *pinning* it.
+ *
+ * The fields are the marker's own, because it is the marker's plate: a surface drawing this
+ * (the combat arena's card over the board) is showing the very mark the map shows, not a
+ * second wording of one town. What it leaves behind is everything only a pin needs — where
+ * it sits, what it stands for, whether it is dimmed, what a click does — and, in practice,
+ * the challenge's button: a card over a fight already under way has nothing left to start.
+ */
+export interface TownPlateCard {
+	iconSvg: string | null;
+	frameClasses: string | null;
+	title: string;
+	subtitle?: string;
+	holder?: MapMarker['holder'];
+	challenge?: MapChallenge | null;
 }
 
 /**

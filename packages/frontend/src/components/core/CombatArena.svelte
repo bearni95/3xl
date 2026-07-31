@@ -3,6 +3,7 @@
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
+	import TownPlate from '$components/core/TownPlate.svelte';
 	import { cellScreenY, combatColorHex } from '$utils/mugen/mugen-board';
 	import { ORDER_ICONS } from '$utils/color/traits';
 	import type {
@@ -33,6 +34,7 @@
 		TerritoryResult
 	} from '$types/combat.type';
 	import type { BattleBoardSnapshot } from '$types/battle.type';
+	import type { TownPlateCard } from '$types/map.type';
 	import { battleService } from '$services/battle.service';
 	import {
 		COMPOUND_COLORS,
@@ -59,6 +61,16 @@
 	// back from there when the result is reported — so this is only ever used to key
 	// and label the fight on screen.
 	export let ogLocationId: string | null = null;
+	// The town the fight is over, drawn on the very plate its pin carries on the map (see
+	// TownPlate): the place, the show it flies, whoever is sitting on it and how far it has
+	// been taken. Handed over already built, because what a town is called and whose it is
+	// are the map's readings and not this arena's — it is the same card the player pressed to
+	// get here, standing over the board while the board answers it.
+	//
+	// Without the challenge button, and that is the caller's doing too: the button starts a
+	// fight, and a fight is what this is. Null draws no card at all, which is what a match
+	// with no town behind it gets.
+	export let location: TownPlateCard | null = null;
 	// True while a finished fight is on its way to the server. Exported so the sheet this
 	// arena is drawn on can hold its own way out shut for that moment — reporting is what
 	// ends the battle, so a player let out before it lands walks away from a fight the
@@ -925,8 +937,23 @@
 			{#key boardKey}
 				<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
 			{/key}
-			{#if state && !state.outcome}
-				<!-- The score, over the top of the board it is a score of.
+			<!-- The head of the board: what the fight is over, and then how it stands. Both are
+			     read before the board and in that order — the town is the reason there is a fight
+			     at all and the score is what has become of it — so they are stacked at the top
+			     rather than set beside each other, and the card takes the canvas's own top edge
+			     with the score's banner hanging under it.
+			     Neither takes the pointer except where it has to (see the banner's plate): they
+			     are readings laid over the board, and the board underneath is what is played. -->
+			<div class="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center">
+				<!-- The town, on the very plate its pin carries on the map: the same mark, drawn
+				     the same way, showing what was pressed to get here. Only the challenge button
+				     is missing, and the caller is what leaves it out — a fight already under way
+				     has nothing left to start. -->
+				{#if location}
+					<TownPlate {...location} />
+				{/if}
+				{#if state && !state.outcome}
+					<!-- The score, over the top of the board it is a score of.
 				     The fight is three duels, each played for one cell of the white column
 				     down the middle of the board, so the score is drawn as that ground:
 				     three squares a side, one per lane, filled white as that side takes it.
@@ -945,7 +972,7 @@
 				     While the fight is running only: a decided one reads its score off the
 				     panel in the middle of the board, and the same score at both ends of
 				     one canvas would be one score too many. -->
-				<div class="pointer-events-none absolute inset-x-0 top-0 flex justify-center">
+				<div class="flex justify-center">
 					<!-- On the same plate the map's breadcrumb bar stands on: the base colour at
 					     four fifths so the board reads through it, white type and a shadow to lift
 					     it off what it covers. The score and the path are the same kind of thing —
@@ -954,9 +981,7 @@
 					     both ends are joined to a wing (below), and a rounded edge under a flush
 					     one is a notch. It hugs its contents rather than running the width of the
 					     canvas: a band across the top would be a bar of colour over the board,
-					     where a plate is a label on it. And it hangs off the canvas's own top edge
-					     with nothing between — the board is the whole view, so a gap there is a
-					     strip of board covered by nothing. -->
+					     where a plate is a label on it. -->
 					<!-- The plate's two wings: a right triangle at either end, in the plate's own
 					     colour, so what hangs off the top of the board is one shape — a banner —
 					     rather than a box with two marks beside it. Each keeps its square corner
@@ -1069,7 +1094,8 @@
 						aria-hidden="true"
 					></span>
 				</div>
-			{/if}
+				{/if}
+			</div>
 			{#if state?.outcome}
 				<!-- The fight is over, and everything there is left to say about it is said
 				     on one panel in the middle of the board it happened on. The board itself

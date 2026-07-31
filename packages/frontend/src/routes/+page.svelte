@@ -92,7 +92,13 @@
 	import { buildShowStandings } from '$utils/geo/show-standings';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { boosterWindow } from '$utils/festes/booster-window';
-	import type { MapBoosterBox, MapChallenge, MapMarker, MapOverlay } from '$types/map.type';
+	import type {
+		MapBoosterBox,
+		MapChallenge,
+		MapMarker,
+		MapOverlay,
+		TownPlateCard
+	} from '$types/map.type';
 	import type {
 		MunicipalityShow,
 		MunicipalityShowsCollection,
@@ -1874,6 +1880,43 @@
 		};
 	}
 
+	/**
+	 * The card the arena prints over its board: the town being fought for, on the very plate
+	 * its pin carries on the map (see TownPlate). The same glyph, the same colour, the same
+	 * two lines, whoever is sitting on it and how far it has been taken — so what stands over
+	 * the fight is the mark that was pressed to start it, rather than a second wording of one
+	 * town assembled for the arena.
+	 *
+	 * Built from the same readings the pins are (`pinHolder`, `siegeBar`), and off the town's
+	 * own node, so the card cannot say something the map is not saying. The standing comes
+	 * from `siegeBar`, which is the bar with nothing under it: a fight already under way has
+	 * no challenge left to offer, and the button is what would have offered it.
+	 *
+	 * Nothing for a fight over no town — the classic match against a mirror of the player's
+	 * own team — and nothing for a key that is not a municipality's, towns being the only
+	 * thing anybody holds.
+	 */
+	function buildFightPlate(
+		key: string | null,
+		nodes: RegionNode[],
+		sieges: ReadonlyMap<string, RegionSiege>,
+		occupied: ReadonlyMap<string, MunicipalityHolder>
+	): TownPlateCard | null {
+		if (!key) return null;
+		const node = findNode(nodes, key);
+		if (!node || node.type !== 'Municipality' || !node.show) return null;
+		return {
+			iconSvg: iconMarkup(showIconName(node.show.id)),
+			frameClasses: node.color ? pinColorClasses[node.color] : null,
+			title: node.show.name,
+			subtitle: restoreCatalanArticle(node.name),
+			holder: pinHolder(key, occupied),
+			challenge: siegeBar(node, sieges)
+		};
+	}
+
+	$: fightPlate = buildFightPlate(fightLocationId, regionNodes, regionSieges, holders);
+
 	// A pin's siege standing on its own: the counter this region carries, and nothing to
 	// press. Null where there is no counter to draw — a region with no towns under it, and
 	// so nothing to take, which a bar of nought out of nought would say worse than not
@@ -2555,6 +2598,7 @@
 			<CombatArena
 				ogTeam={fightSpawns}
 				ogLocationId={fightLocationId}
+				location={fightPlate}
 				bind:reporting={fightReporting}
 				on:territory={(event) => onTerritory(event.detail)}
 				on:close={onFightClosed}
