@@ -1053,31 +1053,40 @@
 									</span>
 								{/each}
 							</div>
-							<span class="self-center font-mono text-lg font-bold tabular-nums opacity-70">
-								{$_('combat.turn', { values: { turn: state.turn } })}
-							</span>
-							<!-- The way out of a fight, and the only one there is: a battle is ended by a
-							     result, never by walking off, so giving it up reports the loss it is and
-							     closes the arena exactly as being wiped out would. Between turns only —
-							     a turn already being carried out settles itself.
-							     It is kept out of sight until the plate is under the pointer, because it
-							     is the one control here that is not part of playing: a fight is played
-							     with the buttons beside the fighters, and the only thing standing over
-							     the board at all times should be what is true of the fight. Reached for
-							     rather than offered, and reached for where the fight's own state is
-							     read.
-							     Between the turn and the player's count, so the plate grows in the
-							     middle when it appears and each side's count stays at the end it is
-							     read from. Put at one end instead, the whole banner would slide off
-							     centre the moment the pointer touched it. -->
-							<button
-								type="button"
-								class="btn hidden btn-ghost btn-sm self-center text-error group-hover:inline-flex"
-								disabled={state.phase !== 'planning'}
-								on:click={() => controller?.concede()}
-							>
-								{$_('combat.concede')}
-							</button>
+							<!-- The turn, and over it the way out of the fight — one slot in the middle
+							     of the banner holding both, because they are the same place read at two
+							     moments: what the fight is on now, and the one thing that can be done
+							     about the fight as a whole.
+							     The way out is the only one there is: a battle is ended by a result,
+							     never by walking off, so giving it up reports the loss it is and closes
+							     the arena exactly as being wiped out would. Between turns only — a turn
+							     already being carried out settles itself.
+							     Out of sight until the plate is under the pointer, because it is the one
+							     control here that is not part of playing: a fight is played with the
+							     buttons beside the fighters, and what stands over the board at all times
+							     should be what is true of the fight. Reached for rather than offered.
+							     It is laid over the slot rather than put beside the turn, and the slot is
+							     as wide as the wider of the two whichever is showing: a control that took
+							     room of its own pushed both counts outwards the moment the pointer
+							     touched the banner, so the whole thing changed shape under the hand
+							     reaching for it. The turn goes invisible as the button arrives — the
+							     button is see-through, and the two of them stacked would be one line of
+							     type over another. -->
+							<div class="relative flex w-28 items-center justify-center">
+								<span
+									class="font-mono text-lg font-bold tabular-nums opacity-70 group-hover:invisible"
+								>
+									{$_('combat.turn', { values: { turn: state.turn } })}
+								</span>
+								<button
+									type="button"
+									class="btn absolute inset-0 hidden btn-ghost btn-sm text-error group-hover:inline-flex"
+									disabled={state.phase !== 'planning'}
+									on:click={() => controller?.concede()}
+								>
+									{$_('combat.concede')}
+								</button>
+							</div>
 							<div
 								class="grid h-full w-24 grid-cols-3 py-1"
 								role="progressbar"
