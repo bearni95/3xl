@@ -1346,13 +1346,18 @@
 	// claimable pack for is the one case a click has anything to answer for, and the
 	// panel already says it. A festa town whose polygon isn't on the map has no point to
 	// stand on and is skipped. Named deps (`windowFestes`, `todayFesteIds`,
-	// `assignmentsById`, `showEntryById`, `regionGeometry`) so the boxes reprint when any
-	// of them lands.
+	// `assignmentsById`, `showEntryById`, `regionGeometry`, `selected`) so the boxes
+	// reprint when any of them lands — the selection among them, since which town is picked
+	// is what decides whether its box is drawn whole or as its disc.
 	$: festaBoxes = (() => {
 		const centers = regionGeometry.centers;
 		const today = todayFesteIds;
 		const assignments = assignmentsById;
 		const entries = showEntryById;
+		// Which town is being looked at, read off the clicked selection for the same reason
+		// the statues are (see statuedTown): a zoom focus is not a choice of town. Only a
+		// municipality's key is a festa's id, so a key naming a coarser region marks nothing.
+		const picked = selected;
 		const year = new Date().getFullYear();
 		const result: MapBoosterBox[] = [];
 		for (const festa of windowFestes) {
@@ -1372,12 +1377,16 @@
 				showId: show?.id ?? null,
 				locationName: festa.name,
 				light: today.has(festa.id),
+				// The whole box on the picked town alone; every other town of the window is
+				// its disc, at every zoom that marks towns. The map carries days of festes at
+				// once, and a cover on each of them is a wall of covers with no country left
+				// under it — the same reason only the picked town stands its side up.
+				selected: festa.id === picked,
 				onClick: () => openPack(festa.id),
-				// Above the town tier the box is a disc, and a disc is a dot on a place: it
-				// stands where that town's pin would be at a zoom that gave it none, so a
-				// click on it opens the town on the map exactly as a pin would, rather than
-				// raising the pack of a town too small to be named. Zoomed in far enough for
-				// the box itself, the click is the pack's again.
+				// A disc is a dot on a town the reader has not picked, so a click on it opens
+				// that town on the map exactly as its pin would, rather than raising the pack
+				// of a town they were only pointing at — and opening it is what unfolds the
+				// disc into the box, whose click is the pack's.
 				onDiscClick: () => open(festa.id)
 			});
 		}

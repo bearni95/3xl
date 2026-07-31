@@ -72,9 +72,10 @@
 		/**
 		 * Booster boxes stood on individual points (the festa-major towns the booster
 		 * window reaches), hung under the same points the region pins stand on — a town
-		 * keeps its pin and gets a box. How one is marked follows the pin tier on screen
-		 * (see markKindForLevel): the box itself at the finest tier, a disc of the box's
-		 * own stock at the tiers between, and nothing at the coarsest.
+		 * keeps its pin and gets a box. How one is marked is the reader's pick and not the
+		 * zoom (see markKindForBox): the picked town's box is drawn whole, every other
+		 * town is a disc of the box's own stock. The tier only says whether towns are
+		 * marked at all — every tier but the coarsest (see marksTowns).
 		 */
 		boxes?: MapBoosterBox[];
 		/** `properties.id` of the one feature to paint with `highlightStyle`. */
@@ -192,8 +193,8 @@
 	// first rather than leaving it animating for a pin no longer on the map.
 	let pinMounts: Record<string, unknown>[] = [];
 	// The festa-box layer, rebuilt whenever the boxes prop changes. Kept separate from the
-	// region pins — it follows their tier but marks its towns its own way, and at the
-	// coarsest tier not at all (see markKindForLevel) — and drawn under them.
+	// region pins — it marks its towns its own way, and at the coarsest tier not at all
+	// (see marksTowns) — and drawn under them.
 	let boxLayer: L.LayerGroup | null = null;
 	// The boxes are given a Leaflet pane of their own, and not for the stacking. The
 	// marker pane is a place no <img> can be sized in: leaflet.css resets every image in
@@ -209,9 +210,9 @@
 	// pins' mounts are: clearing the layer only detaches their DOM, and a box left
 	// mounted holds its poster and its logo for a town no longer on screen.
 	let boxMounts: Record<string, unknown>[] = [];
-	// Which pin tier is on screen and how many there are — the box layer marks a town by
-	// where the pins have got to (see markKindForLevel), so it needs both the tier and the
-	// two ends of the stack. Set by rebuildMarkers, which is what decides the tier, and
+	// Which pin tier is on screen and how many there are — the box layer marks a town only
+	// where the pins have got fine enough for a town to be read off one (see marksTowns),
+	// so it needs both the tier and the two ends of the stack. Set by rebuildMarkers, which is what decides the tier, and
 	// read by rebuildBoxes, which runs right after it wherever the view changes (the
 	// moveend handler, the resize observer, and the two $effects in that order).
 	//
@@ -515,19 +516,20 @@
 			wrap.appendChild(frame);
 		}
 
-		// The town's booster box, where the window has one for this place and the tier on
-		// screen is drawing boxes at all (see markKindForLevel). It stands INSIDE the pin
-		// rather than under the point, above whatever the pin ends with: a box is what the
-		// town is offering and the siege bar is what may be done about the town, and the
-		// offer is read before the demand. Which also keeps one object one object — the
-		// box and the plate naming the place it belongs to are the same mark on the map,
-		// and the reader never has to decide whether the box under the point belongs to
-		// this pin or the next one.
+		// The town's booster box, where the window has one for this place, this is the town
+		// the reader picked, and the tier on screen marks towns at all (see boxForMarker).
+		// It stands INSIDE the pin rather than under the point, above whatever the pin ends
+		// with: a box is what the town is offering and the siege bar is what may be done
+		// about the town, and the offer is read before the demand. Which also keeps one
+		// object one object — the box and the plate naming the place it belongs to are the
+		// same mark on the map, and the reader never has to decide whether the box under
+		// the point belongs to this pin or the next one.
 		//
 		// Its click is the box's own (the pack), not the pin's (the region), so the pin's
 		// marker must not see it — the same guard the challenge bar takes, for the same
-		// reason. A tier that folds the box into a disc leaves this alone: a disc marks a
-		// town that has no pin of its own at that tier, and belongs to the box layer.
+		// reason. Every town the reader has NOT picked leaves this alone: its box is a disc,
+		// and a disc is hung on the point by the box layer whether or not the town has a pin
+		// standing over it.
 		const boosterBox = boxForMarker(marker);
 		if (boosterBox) {
 			const holder = boxElement(boosterBox, 'pin');
@@ -755,8 +757,8 @@
 	// - `'point'` — the box layer's own marker, hanging *below* the point rather than
 	//   standing on it: a region pin is anchored by its bottom edge and grows upwards out
 	//   of the point, so everything under the point is free. Both are anchored on the same
-	//   centre, which is what keeps them one object seen as two. This is what a box does at
-	//   a tier whose pins are not towns — see rebuildBoxes.
+	//   centre, which is what keeps them one object seen as two. This is what the picked
+	//   town's box does at a tier that gave it no pin to stand in — see rebuildBoxes.
 	function boxElement(box: MapBoosterBox, into: 'pin' | 'point'): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className =
@@ -776,15 +778,19 @@
 		return wrap;
 	}
 
-	// The box this pin's town has waiting, or null — for a tier that draws boxes at all,
-	// and a marker whose id is a municipality's (only the town tier's keys are, so no
-	// coarser pin can match a box). The pin carries it; see markerElement.
+	// The box this pin's town has waiting drawn WHOLE, or null — which asks three things:
+	// that the tier on screen marks towns at all, that the marker's id is a municipality's
+	// (only the town tier's keys are, so no coarser pin can match a box), and that this is
+	// the town the reader picked. Every other town's box is a disc hung on its point by the
+	// box layer, so nothing is lost by the pin declining it. The pin carries it; see
+	// markerElement.
 	function boxForMarker(marker: MapMarker): MapBoosterBox | null {
-		if (markKindForLevel() !== 'box') return null;
-		return boxes.find((box) => box.id === marker.id) ?? null;
+		if (!marksTowns()) return null;
+		const box = boxes.find((entry) => entry.id === marker.id) ?? null;
+		return box?.selected ? box : null;
 	}
 
-	// The ids the tier on screen draws a pin for. Each of those pins carries its own box,
+	// The ids the tier on screen draws a pin for. The picked town's pin carries its own box,
 	// so the box layer must not stand a second one on the same point — which is all this
 	// is for (see rebuildBoxes). Read off the same stack rebuildMarkers picked from, at the
 	// level it settled on.
@@ -793,22 +799,22 @@
 		return new Set((levels[pinLevelIndex] ?? []).map((marker) => marker.id));
 	}
 
-	// The same town above the town tier: a disc of the box's own stock — white card for a
-	// town de festa today, black for the rest of the window — with the show's glyph
-	// printed on it in the ink that stock is read in. Hung on the same point, by the same
-	// centre, so folding up a tier leaves the mark where the box was.
+	// The same town unpicked: a disc of the box's own stock — white card for a town de festa
+	// today, black for the rest of the window — with the show's glyph printed on it in the
+	// ink that stock is read in. Hung on the same point, by the same centre, so folding a box
+	// up leaves the mark where the box was.
 	//
 	// It is the box reduced to the two things that are read at a glance: what it is printed
-	// on and what show is inside it. A box above this tier stands for a whole comarca's
-	// worth of towns at once — its cover, its wordmark and the place across its foot are
-	// reading matter overlapping its neighbours', which is less than one mark that can be
-	// told apart at that distance. So the mark is what gets the room the box's picture and
+	// on and what show is inside it. That is what every town on screen gets, because the map
+	// carries the whole booster window at once — a cover, a wordmark and a place across the
+	// foot, per town, is reading matter overlapping its neighbours', which is less than one
+	// mark that can be told apart. So the mark is what gets the room the box's picture and
 	// its two lines of type had: the glyph is 36px and the disc 56px round it, nine
 	// fourteenths of the diameter, which still leaves a square mark's corners inside the
 	// circle (a side of 36 spans 51 across its diagonal). Well inside the box's own 200px:
 	// the disc is not a badge stuck on the map, it is the same object with one mark on it
 	// instead of four, drawn small enough that neighbouring towns in one comarca are still
-	// separate marks.
+	// separate marks — and picking the town is what unfolds it back into the box.
 	//
 	// And it is a disc, laid flat with no tilt: the box's lid is a square seen in
 	// perspective because it is the top of a solid, and there is no solid here to be the
@@ -833,58 +839,64 @@
 		return wrap;
 	}
 
-	// How a town is marked at the pin tier on screen — the box layer says the same thing the
-	// pins do, at the size that tier has room for:
-	//
-	// - the finest tier, where every town is its own pin, gets the box itself;
-	// - the tiers between get the disc, the same town in the space a smaller mark has;
-	// - the coarsest tier — the whole of the Països Catalans in one view, half a dozen
-	//   territory pins for thousands of towns — gets nothing at all. There is no reading a
-	//   town off a mark at that zoom: the festa towns of a whole territory land in one
-	//   handful of pixels, so the discs merge into a blot over the country that says only
-	//   that somewhere in there are festes, which the map already says with its pins. The
-	//   window's towns are for finding once the reader has picked a corner to look in.
-	//
-	// A stack with nothing to fold (no levels at all, or a single rendering) is at its
-	// finest tier by definition, and so keeps its boxes — the finest test is made first for
-	// exactly that reason, since level 0 is then both ends of the stack at once.
 	// What a click on this mark does, which is not the same question at both sizes: the box
-	// is a cover and answers for the pack behind it, the disc is a dot on a town at a zoom
-	// that gave that town no pin of its own, so it answers for the town. A caller that
-	// names only `onClick` gets it at both sizes.
+	// is a cover and answers for the pack behind it, the disc is a town the reader has not
+	// picked, so it answers for the town — and picking it is what draws its box, so the
+	// smaller mark leads to the bigger one. A caller that names only `onClick` gets it at
+	// both sizes.
 	function boxAction(box: MapBoosterBox, kind: 'box' | 'disc'): (() => void) | null {
 		if (kind === 'disc') return (box.onDiscClick ?? box.onClick) ?? null;
 		return box.onClick ?? null;
 	}
 
-	function markKindForLevel(): 'box' | 'disc' | null {
-		if (pinLevelIndex >= pinLevelCount - 1) return 'box';
-		if (pinLevelIndex === 0) return null;
-		return 'disc';
+	// Whether the tier on screen marks towns at all. Every tier does but the coarsest — the
+	// whole of the Països Catalans in one view, half a dozen territory pins for thousands of
+	// towns — where there is no reading a town off a mark: the festa towns of a whole
+	// territory land in one handful of pixels, so the marks merge into a blot over the
+	// country that says only that somewhere in there are festes, which the map already says
+	// with its pins. The window's towns are for finding once the reader has picked a corner
+	// to look in.
+	//
+	// A stack with nothing to fold (no levels at all, or a single rendering) is at its finest
+	// tier by definition and marks its towns — that test is made first for exactly that
+	// reason, since level 0 is then both ends of the stack at once.
+	function marksTowns(): boolean {
+		if (pinLevelIndex >= pinLevelCount - 1) return true;
+		return pinLevelIndex !== 0;
+	}
+
+	// How a town is marked, which the zoom no longer decides: the town the reader picked is
+	// the box itself, and every other town on screen is the disc. Which is what keeps the map
+	// readable at the tier where every town has a pin — a cover on each of them buried the
+	// terrain — while the one town being looked at still shows what it is offering, whole,
+	// exactly as it did.
+	function markKindForBox(box: MapBoosterBox): 'box' | 'disc' {
+		return box.selected ? 'box' : 'disc';
 	}
 
 	// (Re)build the festa boxes for the current view: unmount the last crop, clear the
 	// layer, and — unless the tier on screen marks no towns at all — keep only the boxes
 	// inside the (padded) viewport and drop a zero-sized divIcon at each, carrying whichever
-	// mark that tier calls for. Runs on every boxes change and whenever the map pans or
-	// zooms, so both the culling and the mark track what's on screen.
+	// mark that town calls for. Runs on every boxes change and whenever the map pans or
+	// zooms, so the culling, the mark and the picked town all track what's on screen.
 	function rebuildBoxes() {
 		if (!mapInstance || !Leaf) return;
 		if (!boxLayer) boxLayer = Leaf.layerGroup().addTo(mapInstance);
 		unmountBoxMounts();
 		boxLayer.clearLayers();
 
-		const kind = markKindForLevel();
-		if (!kind) return;
+		if (!marksTowns()) return;
 
-		// At the box tier a town has a pin of its own and that pin carries its box (see
-		// markerElement), so the layer stands one only where nothing pinned it — which is
-		// nothing at all on this map, and every box on one whose pins were never towns.
-		const pinned = kind === 'box' ? pinnedIds() : null;
+		// Where the picked town has a pin of its own, that pin carries its box (see
+		// markerElement), so the layer must not stand a second one on the same point. Only
+		// the box is ever pinned: a disc is hung here whether or not a pin stands over its
+		// town, since a pin grows upwards out of the point and the disc hangs below it.
+		const pinned = pinnedIds();
 
 		const bounds = mapInstance.getBounds().pad(0.25);
 		for (const box of boxes) {
-			if (pinned?.has(box.id)) continue;
+			const kind = markKindForBox(box);
+			if (kind === 'box' && pinned.has(box.id)) continue;
 			if (!bounds.contains(box.position)) continue;
 			const html = kind === 'box' ? boxElement(box, 'point') : discElement(box);
 			const icon = Leaf.divIcon({ html, className: '', iconSize: [0, 0] });

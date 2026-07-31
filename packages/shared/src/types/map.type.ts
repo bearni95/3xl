@@ -145,12 +145,13 @@ export interface MapMarker {
  * window reaches, each carrying the pack the Booster tab has waiting for it. Drawn
  * with the very component that tab's grid draws (BoosterBox), off the same four
  * things, so the box on the town and the box in the panel are one object seen in two
- * places. Where it is drawn follows the pins' own tier: at the tier whose pins are
- * towns, the town's pin carries its box, above the siege bar and under everything that
- * names the place — what the town is offering, read before what may be done about it,
- * and one mark on the map rather than two things sharing a point. Above that tier the
- * box folds up to a disc (see `onDiscClick`) hung on the point itself, since the town
- * it belongs to has no pin of its own up there.
+ * places.
+ *
+ * How big a mark it gets is the reader's attention and not the zoom: a town the reader
+ * has picked is drawn as the box itself, and every other town — at every tier that marks
+ * towns at all — is the disc that box folds up to (see `selected` and `onDiscClick`). A
+ * map of covers is a terrain of covers with no map left under it, the same reason only
+ * the picked town stands its side up on its pin.
  */
 export interface MapBoosterBox {
 	/** Stable id (the municipality feature id), so the layer can diff on rebuild. */
@@ -174,14 +175,23 @@ export interface MapBoosterBox {
 	 * reaches but whose day is past or still coming.
 	 */
 	light?: boolean;
+	/**
+	 * Whether this is the town the reader has picked. The picked town's box is drawn
+	 * whole — the cover, its wordmark and the place across its foot, inside that town's
+	 * own pin where the tier gives it one; every other town is the disc. Nothing is
+	 * hidden by that: a disc is the same object with one mark on it instead of four, and
+	 * picking the town is what unfolds it.
+	 */
+	selected?: boolean;
 	/** Called when the box is clicked (e.g. open the town's festa booster pack). */
 	onClick?: () => void;
 	/**
-	 * Called when the *disc* is clicked — the mark this box folds up to above the town
-	 * tier. A box is a cover to be read and a click on it is a click on the pack; a disc
-	 * is a dot on a place at a zoom where that place has no pin of its own, and a click
-	 * on it is more readily a click on the town than on what the town has waiting. Falls
-	 * back to `onClick` when a caller wants the same thing at both sizes.
+	 * Called when the *disc* is clicked — the mark an unpicked town's box folds up to. A
+	 * box is a cover to be read and a click on it is a click on the pack; a disc is a dot
+	 * on a place the reader has not picked yet, and a click on it is more readily a click
+	 * on the town than on what the town has waiting — which is also what unfolds it, since
+	 * picking the town is what draws its box. Falls back to `onClick` when a caller wants
+	 * the same thing at both sizes.
 	 */
 	onDiscClick?: () => void;
 }
