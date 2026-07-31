@@ -657,9 +657,9 @@
 	// imperative code, not a template) and tracked, so the next rebuild can take down
 	// the ones that panned off screen.
 	//
-	// The width is fixed at 80px and the box's own 30:37 gives the height: it is a mark
-	// on a town, so it stays the size it is whatever the map is showing, and a box small
-	// enough not to bury the town it stands on is a box read by its cover.
+	// The width is fixed at 200px and the box's own 30:37 gives the height: it is a mark
+	// on a town, so it stays the size it is whatever the map is showing, and it is the
+	// cover a box is read by, at a size the cover can actually be read at.
 	//
 	// It hangs *below* its point rather than standing on it: a region pin is anchored by
 	// its bottom edge and grows upwards out of the point, so everything under the point
@@ -668,7 +668,7 @@
 	// two — the pin above the point, the box under it, meeting at the town.
 	function boxElement(box: MapBoosterBox): HTMLElement {
 		const wrap = document.createElement('div');
-		wrap.className = 'w-20 -translate-x-1/2 translate-y-1';
+		wrap.className = 'w-[200px] -translate-x-1/2 translate-y-1';
 		if (box.onClick) wrap.className += ' cursor-pointer';
 		boxMounts.push(
 			mount(BoosterBox, {
@@ -697,7 +697,7 @@
 	// told apart at that distance. So the mark is what gets the room the box's picture and
 	// its two lines of type had: the glyph is 36px and the disc 56px round it, nine
 	// fourteenths of the diameter, which still leaves a square mark's corners inside the
-	// circle (a side of 36 spans 51 across its diagonal). Two thirds of the box's own 80px:
+	// circle (a side of 36 spans 51 across its diagonal). Well inside the box's own 200px:
 	// the disc is not a badge stuck on the map, it is the same object with one mark on it
 	// instead of four, drawn small enough that neighbouring towns in one comarca are still
 	// separate marks.
