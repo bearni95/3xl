@@ -120,10 +120,6 @@ const FACE_COVER_SHIFT_RIGHT = 0.14109;
 // up, with the mark at 90% of the picture taking whatever height its own proportions give it.
 const TYPE_SIZE = 0.054;
 const TYPE_LEADING = 1.375; // leading-snug
-// How far a letter may paint outside the box the layout gives it, in ems — the side bearings a
-// bold face overhangs by, which is a property of the face and not of how big the box is drawn.
-// A quarter of an em is past what any of these letters actually take.
-const TYPE_BLEED = 0.25;
 const HEAD_PAD_TOP = 0.02;
 const HEAD_PAD_BOTTOM = 0.09;
 const FOOT_PAD_TOP = 0.09;
@@ -697,21 +693,11 @@ export class BoosterBoxSprite extends Container {
 	 * scale is on the Text and not in its font size, so the line breaks that were found stay the
 	 * ones that were found, and the band above it comes out right without being told — a scaled
 	 * Text reports its scaled height, which is what {@link bandHeights} measures.
-	 *
-	 * What it is set down against is not the width it measures but that width plus the bleed, for
-	 * the second way this type can be cut: a letter is not as wide as the room it advances. Bold
-	 * faces paint over the ends of their own boxes, and a text laid out to a width is baked into a
-	 * bitmap exactly that wide, so the overhang is sliced off inside the bitmap before the front's
-	 * crop is reached at all. `padding` is what buys the bitmap room for it — it is not layout, the
-	 * quad being moved back by the same amount, so nothing here shifts — and the fit is then asked
-	 * of the ink rather than of the advance, so the widest letters land inside the front and not on
-	 * its edge.
 	 */
 	private placeType(label: string): Text {
 		const w = this.boxWidth;
 		const size = TYPE_SIZE * w;
 		const room = FRONT_WIDTH * w;
-		const bleed = TYPE_BLEED * size;
 		const type = new Text({
 			text: label,
 			resolution: this.options.app.renderer.resolution,
@@ -722,13 +708,11 @@ export class BoosterBoxSprite extends Container {
 				lineHeight: size * TYPE_LEADING,
 				fill: this.stock.ink,
 				align: 'center',
-				padding: bleed,
 				wordWrap: true,
 				wordWrapWidth: room
 			}
 		});
-		const drawn = type.width + bleed * 2;
-		if (drawn > room) type.scale.set(room / drawn);
+		if (type.width > room) type.scale.set(room / type.width);
 		return type;
 	}
 
