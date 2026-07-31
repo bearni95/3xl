@@ -44,13 +44,21 @@
 		'relative z-10 -mx-[7.5%] shrink-0 grow-0 basis-[40%]',
 		'shrink-0 grow-0 basis-[35%]'
 	];
+
+	// Where each member stands. The team arrives in slot order — the leader first — and the
+	// row's middle is the wider piece lapped over the two beside it, so that is where the
+	// leader goes: the one the row is about stands in front of their side rather than at the
+	// end of it. Only the first two trade places; everyone after keeps the order they came
+	// in, so nothing is ever dropped by being arranged. A side of one has no middle to stand
+	// in and is left where it is.
+	$: lineup = members.length < 2 ? members : [members[1], members[0], ...members.slice(2)];
 </script>
 
 <!-- The row itself is outlined in green and each statue's cell in purple. Outlines
 	rather than borders, so the lines are drawn over the layout instead of taking
 	width out of it and moving the statues they are meant to be measuring. -->
 <div class={classNames('flex w-full outline outline-1 outline-green-500', classes)}>
-	{#each members as member, index (index)}
+	{#each lineup as member, index (index)}
 		<CharacterStatue
 			label={member.label}
 			basePath={member.basePath}
