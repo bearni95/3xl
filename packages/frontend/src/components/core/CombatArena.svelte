@@ -439,6 +439,13 @@
 	 *
 	 * A colour that mixes two primaries has two gifts and there is one slot: it shows the
 	 * first still in hand until one of them fires, and then the one that fired.
+	 *
+	 * It is drawn inside out — a white face carrying the glyph in the fighter's colour —
+	 * because it is not an order and must not read as one: the three under it are things
+	 * the fighter can be told to do, and this is a thing about the fighter. That is also
+	 * the look this slot inherited: a fighter's gifts used to be white coins at its
+	 * shoulder, and the coins are gone because one slot says the same thing in the column
+	 * where the fighter's other three are already being read.
 	 */
 	function passiveSlot(fighter: FighterView): BoardOrder {
 		// What it did, or failing that what it still might: the record outranks the offer,
@@ -464,10 +471,11 @@
 			icon: ACTION_ICONS[shown],
 			// Filled in the fighter's colour once it has fired, like the order it fired
 			// beside: both are things this fighter did, and the colour is how this board says
-			// whose. Until then it is a plain face — the fighter has it, it has not used it.
+			// whose. Until then it is inside out — the fighter has it, it has not used it.
 			selected: Boolean(done),
 			disabled: false,
 			readonly: true,
+			inverted: true,
 			color: fighter.color
 		};
 	}

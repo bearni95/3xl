@@ -19,7 +19,6 @@ import {
 	isBoardCell,
 	MIDDLE_ROW
 } from '$utils/mugen/grid';
-import { ORDER_ICONS } from '$utils/color/traits';
 import type { CombatColor } from '$types/character-definition.type';
 import type { BattleBoardSnapshot, BattleFighterSnapshot } from '$types/battle.type';
 
@@ -95,14 +94,9 @@ interface AuraLog {
 	lit: { id: string; color: string }[];
 	doused: string[];
 	moved: { id: string; cell: Cell }[];
-	/** Every badge the board was asked to draw at a fighter's corner: the glyphs of
-	 * what its colour grants it, whether each has been used up, and the colour they
-	 * were drawn in. Appended to on every change, so the last entry for an id is what
-	 * that fighter's corner currently shows. */
-	badged: { id: string; traits: { icon: string }[]; color: string }[];
 }
 
-const boardLog = (): AuraLog => ({ lit: [], doused: [], moved: [], badged: [] });
+const boardLog = (): AuraLog => ({ lit: [], doused: [], moved: [] });
 
 /**
  * A board that does nothing but remember what it was told. The controller drives the
@@ -120,9 +114,6 @@ function fakeBoard(log: AuraLog) {
 			return done();
 		},
 		clearAura: (id: string) => log.doused.push(id),
-		setTraits: (id: string, traits: { icon: string }[], color: string) => {
-			log.badged.push({ id, traits: traits.map((trait) => ({ ...trait })), color });
-		},
 		clearAuras: () => {},
 		clearCallouts: () => {},
 		showCallout: () => {},
@@ -322,66 +313,6 @@ describe('the stand-off', () => {
 			const state = get(controller);
 			expect(fighterOf(state, 'p0').down).toBe(true);
 			expect(state.outcome).toBe('lose');
-		});
-	});
-
-	describe('the badge a colour wears', () => {
-		/** What a fighter's corner shows now: the last badge the board was given for it. */
-		const badgeOf = (log: AuraLog, id: string) =>
-			[...log.badged].reverse().find((entry) => entry.id === id);
-
-		it("gives every fighter its colour's glyphs, in its own colour", () => {
-			const log = boardLog();
-			const controller = new CombatController([
-				seed('r0', 'error', 'yellow'),
-				seed('p0', 'info', 'blue'),
-				seed('p1', 'info', 'purple')
-			]);
-			controller.attachBoard(fakeBoard(log));
-
-			// One glyph per primary — the very icon that order's button is drawn with —
-			// and a compound carries both of its components', in component order. Nothing
-			// is spent before a turn is played, so every one of them is there.
-			expect(badgeOf(log, 'p0')).toEqual({
-				id: 'p0',
-				traits: [{ icon: ORDER_ICONS.defend }],
-				color: 'blue'
-			});
-			expect(badgeOf(log, 'p1')).toEqual({
-				id: 'p1',
-				traits: [{ icon: ORDER_ICONS.shoot }, { icon: ORDER_ICONS.defend }],
-				color: 'purple'
-			});
-			// The rivals wear theirs too: their orders are the secret, their colour is not.
-			expect(badgeOf(log, 'r0')).toEqual({
-				id: 'r0',
-				traits: [{ icon: ORDER_ICONS.charge }],
-				color: 'yellow'
-			});
-		});
-
-		it('takes a gift off the moment it is taken, and the rest when the turn runs out', async () => {
-			const log = boardLog();
-			const controller = new CombatController([
-				seed('r0', 'error', 'red'), // fires the shot its colour owes it, on turn one
-				seed('p0', 'info', 'green') // the free guard and the free charge
-			]);
-			controller.attachBoard(fakeBoard(log));
-
-			// Told to load: the charge comes off the order, so green's own free charge is not
-			// a second thing it did and is never taken. Its free guard is — the rival's bullet
-			// arrives and the guard turns it aside — and the guard's mark comes off the corner
-			// the moment it does, leaving the charge, which is still in hand.
-			controller.setAction('p0', 'charge');
-			await playTurn(controller);
-			const drawn = log.badged.filter((entry) => entry.id === 'p0').map((entry) => entry.traits);
-			expect(drawn).toContainEqual([{ icon: ORDER_ICONS.charge }]);
-
-			// And by the end of that turn the charge has gone too, unused: a gift lasts the
-			// opening turn, so the corner offers nothing from here — and an empty list is what
-			// takes the badge off the fighter altogether.
-			expect(badgeOf(log, 'p0')?.traits).toEqual([]);
-			expect(fighterOf(get(controller), 'p0').down).toBe(false);
 		});
 	});
 

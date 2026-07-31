@@ -297,31 +297,15 @@ const ORDER_IDLE_FILL = 0x1f2937;
 const ORDER_DISABLED_FILL = 0x374151;
 /** How far the glyph on a disabled button fades toward its background. */
 const ORDER_DISABLED_ALPHA = 0.35;
+/** Face of a button drawn inside out — white, so the glyph on it can carry the fighter's
+ * colour and read against it wherever on the board the fighter walks. A colour drawn
+ * straight over a sprite is a smudge; over white it is a colour. */
+const ORDER_INVERTED_FILL = 0xffffff;
 /** How far an empty slot's outline fades. Enough to hold the place and say a slot is
  * there, not enough to read as a button with nothing in it. */
 const ORDER_EMPTY_ALPHA = 0.3;
 
 // --- Trait badges (drawn on the board, at the top-left corner of a fighter) ---
-/**
- * The white disc one gift is drawn on: 48 canvas px across, whatever it belongs to.
- *
- * A fixed size, not a fraction of the fighter — which is what it used to be, and meant
- * every character wore its gifts at a different size, a wide sprite carrying a bigger
- * coin than a narrow one for no reason a player could read. A badge says the same thing
- * about every fighter, so it is the same mark on all of them.
- *
- * Canvas px: the unit the whole board is laid out in ({@link DEFAULTS.cellSize} and the
- * rest), so a disc is 48 against a cell's 220 — a little under a quarter of a cell —
- * however the finished canvas is then scaled to fit its box.
- */
-const TRAIT_DISC_PX = 48;
-/** The glyph inside that disc, as a fraction of it. Under one, so the corners of a glyph
- * drawn to the edges of its own box (a sword lies across its) still land on white rather
- * than off the rim. */
-const TRAIT_GLYPH_RATIO = 0.8;
-/** Gap between a compound's two discs, as a fraction of one disc. */
-const TRAIT_SPACING_RATIO = 0.2;
-
 /**
  * The square each icon SVG is rasterised into, in px, before anything draws it.
  *
@@ -428,29 +412,25 @@ export interface BoardOrder {
 	 */
 	empty?: boolean;
 	/**
-	 * Combat colour name to fill this button with when it is the chosen one — the
-	 * fighter's own, not its side's. Six fighters carry a column and two colours could
-	 * only say which half of the board an order belonged to, which is the one thing the
-	 * column's own position already says. A fighter's colour is what the rest of its
-	 * marks are drawn in — its aura, its callouts, the coins at its corner — so its
-	 * order is filled in the same, and every mark on the board saying something about
-	 * one fighter says it in one colour.
+	 * The fighter's combat colour, which this button is drawn in: filling it when it is
+	 * the chosen one, and carrying its glyph when it is {@link inverted}. Its own, not its
+	 * side's — six fighters carry a column, and two colours could only say which half of
+	 * the board an order belonged to, which is the one thing the column's own position
+	 * already says. A fighter's colour is what the rest of its marks are drawn in, its aura
+	 * and its callouts, so every mark on the board saying something about one fighter says
+	 * it in one colour.
 	 */
 	color: string;
-}
-
-/**
- * One thing a fighter's colour hands it for free and has not yet handed over, drawn as a
- * glyph at its top-left corner. As with an order, the board is told what to draw and
- * nothing about what it means: a picture, and that is all.
- *
- * A gift that has been had is not one of these. The list is what the fighter still holds,
- * so a spent gift is simply not sent again and its mark comes off.
- */
-export interface BoardTrait {
-	/** URL of the glyph (an SVG under /assets). The artwork must be white: it is
-	 * tinted, and tinting only ever darkens. */
-	icon: string;
+	/**
+	 * Turn the button inside out: a white face carrying the glyph in {@link color}, rather
+	 * than a dark face carrying a white one.
+	 *
+	 * For a button that is not an order — a mark on the fighter that happens to be shaped
+	 * like one, and has to read as a different kind of thing from the orders it is stacked
+	 * with at a glance and without being read. `selected` still wins, and turning it the
+	 * right way up again is what says the mark has come to something.
+	 */
+	inverted?: boolean;
 }
 
 /** One drawn order button, kept so its look can be updated without rebuilding it. */
@@ -465,6 +445,8 @@ interface OrderButton {
 	color: string;
 	/** An outlined place-holder rather than a button. */
 	empty: boolean;
+	/** Drawn inside out: white face, glyph in the fighter's colour. */
+	inverted: boolean;
 }
 
 /** Which side of its fighter a column of orders stands on. */
@@ -476,18 +458,6 @@ interface OrderStrip {
 	buttons: OrderButton[];
 	side: OrderSide;
 }
-
-/** The marks of what one fighter's colour grants it — a white disc with a glyph on
- * it apiece — kept so a gift being spent only repaints them rather than fetching
- * their artwork all over again. */
-interface TraitBadge {
-	container: Container;
-	/** One per gift: the disc and the glyph it carries, faded together. */
-	marks: Container[];
-	/** The icon URLs drawn, in order — what a fresh list is compared against. */
-	icons: string[];
-}
-
 
 /** A character standing (and, during combat, running) on the board. */
 interface Actor {
@@ -570,7 +540,6 @@ interface Actor {
 	 * themselves are fixed for the fight — a colour cannot change — so it is only ever
 	 * rebuilt when the set does, and otherwise repainted as its gifts are spent.
 	 */
-	traits: TraitBadge | null;
 	/** Nominal on-screen size (px) of the character at its fit scale, measured
 	 * from its base animation frames; sizes the aura that envelops it. */
 	displayWidth: number;
@@ -1067,7 +1036,6 @@ export class MugenBoard {
 			ring: null,
 			label: null,
 			orders: null,
-			traits: null,
 			// Nominal size: the base cycle's widest and tallest frame at fit scale —
 			// stable across poses, unlike the live sprite whose size tracks the current
 			// frame's texture. Taken over the whole cycle (as the fit is), so an aura or
@@ -1176,7 +1144,6 @@ export class MugenBoard {
 			this.updateAura(actor, deltaMs);
 			this.updateRing(actor);
 			this.updateOrders(actor);
-			this.updateTraits(actor);
 			this.updateLabel(actor);
 		}
 		this.updateSlashes(deltaMs);
@@ -1946,17 +1913,20 @@ export class MugenBoard {
 			if (!button) return;
 			const color = order.color;
 			const empty = order.empty ?? false;
+			const inverted = order.inverted ?? false;
 			if (
 				button.selected === order.selected &&
 				button.disabled === order.disabled &&
 				button.color === color &&
-				button.empty === empty
+				button.empty === empty &&
+				button.inverted === inverted
 			)
 				return;
 			button.selected = order.selected;
 			button.disabled = order.disabled;
 			button.color = color;
 			button.empty = empty;
+			button.inverted = inverted;
 			this.paintOrder(button);
 		});
 		this.updateOrders(actor);
@@ -1980,7 +1950,8 @@ export class MugenBoard {
 				selected: order.selected,
 				disabled: order.disabled,
 				color: order.color,
-				empty: order.empty ?? false
+				empty: order.empty ?? false,
+				inverted: order.inverted ?? false
 			};
 			button.container.addChild(face, glyph);
 			// A reporting button is not an input, and neither is an empty slot: both are left
@@ -2037,7 +2008,18 @@ export class MugenBoard {
 		// The chosen order takes the fighter's own colour, so a fighter's orders read as
 		// belonging to it rather than to some palette of the interface's own.
 		const chosen = combatColorHex(button.color);
-		const fill = button.disabled ? ORDER_DISABLED_FILL : button.selected ? chosen : ORDER_IDLE_FILL;
+		// Inside out until it is chosen: a white face carrying a coloured glyph, which is a
+		// mark on the fighter rather than an order it can be given, and reads as one without
+		// having to be read. Being chosen turns it the right way up — the strongest state a
+		// button in this column has, and the same one the order beside it takes.
+		const invert = button.inverted && !button.selected;
+		const fill = button.disabled
+			? ORDER_DISABLED_FILL
+			: invert
+				? ORDER_INVERTED_FILL
+				: button.selected
+					? chosen
+					: ORDER_IDLE_FILL;
 
 		button.face.roundRect(-width / 2, -height / 2, width, height, radius);
 		button.face.fill({ color: fill });
@@ -2047,7 +2029,7 @@ export class MugenBoard {
 		// Tint only ever darkens, so the glyph artwork is white and the tint is what
 		// gives it its colour. A disabled glyph fades toward its own background rather
 		// than vanishing, so an order out of reach still reads as an order.
-		button.glyph.tint = 0xffffff;
+		button.glyph.tint = invert ? chosen : 0xffffff;
 		button.glyph.alpha = button.disabled ? ORDER_DISABLED_ALPHA : 1;
 	}
 
@@ -2109,124 +2091,6 @@ export class MugenBoard {
 		actor.orders = null;
 		strip.container.parent?.removeChild(strip.container);
 		strip.container.destroy({ children: true });
-	}
-
-	// --- Trait badges ---------------------------------------------------------
-
-	/**
-	 * Say what a fighter's colour gives it for nothing, drawn as glyphs at its
-	 * top-left corner — the free shot, the free charge, the free guard. The orders
-	 * beside it are what it may be *told* to do; this is what it does without
-	 * being told, so it is drawn off the strip and shaped nothing like it: a round
-	 * white coin apiece rather than a button, carrying the glyph in the fighter's own
-	 * colour, so a glance at the corner says both what the fighter has and what colour
-	 * it is.
-	 *
-	 * The board is handed the glyphs of what the fighter *still has*, exactly as it is
-	 * handed a strip of orders: it draws what it is given and knows nothing of what a
-	 * trait means. Called again as gifts are spent, each time with one fewer, so the badge
-	 * is rebuilt whenever the set changes and left alone when it has not — and a fighter
-	 * that has had everything its colour gives is handed an empty list, which takes the
-	 * badge off altogether. Rebuilding costs no fetch: the glyph textures are kept by URL
-	 * and the marks that remain are drawn again from the same ones.
-	 */
-	setTraits(actorId: string, traits: BoardTrait[], color: string): void {
-		const actor = this.findActor(actorId);
-		if (!actor || !this.app) return;
-		if (traits.length === 0) {
-			this.clearTraits(actor);
-			return;
-		}
-
-		const icons = traits.map((trait) => trait.icon);
-		const sameSet =
-			actor.traits?.icons.length === icons.length &&
-			actor.traits.icons.every((icon, i) => icon === icons[i]);
-		if (!sameSet) {
-			this.clearTraits(actor);
-			actor.traits = this.buildTraits(actor, icons, color);
-		}
-		this.updateTraits(actor);
-	}
-
-	/**
-	 * Build a fighter's badge: one mark per gift, each a white disc with the glyph
-	 * centred on it, artwork loaded as it arrives.
-	 *
-	 * The disc is what makes the mark readable at all. A glyph tinted the fighter's
-	 * own colour is drawn straight over whatever the sprite behind it happens to be —
-	 * a yellow one over a pale character is nothing but a smudge — so it is given a
-	 * white coin to sit on, and the colour then reads against white wherever the
-	 * fighter walks.
-	 */
-	private buildTraits(actor: Actor, icons: string[], color: string): TraitBadge {
-		const container = new Container();
-		this.app!.stage.addChild(container);
-		const tint = combatColorHex(color);
-		// One disc, one size, on every fighter — see TRAIT_DISC_PX. The mark's box *is* the
-		// disc, so the glyph is placed and fitted against the coin it sits on rather than
-		// against a box the coin then overflows.
-		const disc = TRAIT_DISC_PX;
-		const step = disc * (1 + TRAIT_SPACING_RATIO);
-		const glyphBox = disc * TRAIT_GLYPH_RATIO;
-
-		const marks = icons.map((url, index) => {
-			// Laid out rightward from the corner, so a compound's second mark reads left
-			// to right and neither hangs off the fighter into the cell beside it.
-			const mark = new Container();
-			mark.x = index * step;
-
-			const coin = new Graphics();
-			coin.circle(disc / 2, disc / 2, disc / 2);
-			coin.fill({ color: 0xffffff });
-
-			const glyph = new Sprite(Texture.EMPTY);
-			// Centred on the disc, so a glyph wider than it is tall still sits in the
-			// middle of its coin rather than hanging off the top of it.
-			glyph.anchor.set(0.5);
-			glyph.position.set(disc / 2, disc / 2);
-			// Tint only ever darkens, so the artwork is white and the tint is the colour.
-			glyph.tint = tint;
-			mark.addChild(coin, glyph);
-			container.addChild(mark);
-
-			void this.loadIcon(url).then((texture) => {
-				// The badge may have been rebuilt (or the board torn down) while loading.
-				if (!texture || glyph.destroyed) return;
-				glyph.texture = texture;
-				// The raster is square (see ICON_RASTER_PX), so this is one scale for both
-				// axes and the artwork lands inside the rim on every side.
-				glyph.scale.set(glyphBox / Math.max(texture.width, texture.height));
-			});
-			return mark;
-		});
-
-		return { container, marks, icons };
-	}
-
-	/**
-	 * Keep a fighter's badge pinned to its top-left corner as it walks: the corner of
-	 * the box its nominal size describes, which is the character's own full reach
-	 * rather than whatever the frame currently showing happens to measure — so the
-	 * badge holds still while the fighter breathes.
-	 */
-	private updateTraits(actor: Actor): void {
-		const badge = actor.traits;
-		if (!badge) return;
-		badge.container.x = actor.x - actor.displayWidth / 2;
-		badge.container.y = actor.y - actor.displayHeight;
-		// Above the board and its own fighter, below the callouts and the slashes: what
-		// a fighter is must never cover what has just happened to it.
-		badge.container.zIndex = actor.y + 4000;
-	}
-
-	/** Take a fighter's badge off the board. */
-	private clearTraits(actor: Actor): void {
-		const badge = actor.traits;
-		if (!badge) return;
-		actor.traits = null;
-		badge.container.parent?.removeChild(badge.container);
-		badge.container.destroy({ children: true });
 	}
 
 	/**

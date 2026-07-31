@@ -76,7 +76,7 @@ import type { MugenBoard } from '$utils/mugen/mugen-board';
 import { findMove, type CharacterMove, type CombatColor } from '$types/character-definition.type';
 import type { CombatOutcome, CombatReport } from '$types/combat.type';
 import type { BattleBoardSnapshot, BattleFighterSnapshot } from '$types/battle.type';
-import { colorPassives, ORDER_ICONS, type PassiveOrder } from '$utils/color/traits';
+import { colorPassives, type PassiveOrder } from '$utils/color/traits';
 import { pickWeighted } from '$utils/dice/roll';
 
 /** Blue fighters (`info`) are the player's; red (`error`) are the rivals (CPU). */
@@ -549,10 +549,6 @@ export class CombatController {
 			// Every fighter of both lines, the fallen included: they are standing at the back
 			// of their own half rather than gone, so a resumed fight draws all six of them.
 			//
-			// What its colour gives it for nothing, and how much of that it still has.
-			// Every fighter wears it, rivals included: what a rival will *do* is the
-			// guess, but what it is was never a secret.
-			this.showTraits(fighter);
 			// Light the aura of anyone holding a charge, so a fight picked up where it
 			// was left shows who is dangerous before a single order is given. Never on one
 			// that is out of the fight: nothing it is carrying can be fired any more, so a
@@ -1330,7 +1326,8 @@ export class CombatController {
 		if (fighter.spent.includes(order)) return;
 		fighter.spent.push(order);
 		if (taken) fighter.used.push(order);
-		this.showTraits(fighter);
+		// The column beside the fighter is drawn from `passives`, `spent` and `used`, so
+		// saying the state changed is the whole of telling the board about it.
 		this.emit();
 	}
 
@@ -1377,25 +1374,6 @@ export class CombatController {
 	}
 
 	// --- Board ----------------------------------------------------------------
-
-	/**
-	 * Put a fighter's gifts at its corner: the glyph of each order its colour hands over
-	 * and it has not yet had. A gift comes off the moment it is spent rather than staying
-	 * on faded — the corner says what the fighter can still do for free, which is the thing
-	 * being read off it mid-fight, and a mark that has stopped meaning anything is one more
-	 * thing over a board with six fighters on it. What the fighter *is* is not lost with it:
-	 * that is its colour, and the colour is its aura, its callouts and the fill of its
-	 * orders.
-	 */
-	private showTraits(fighter: Fighter): void {
-		this.board?.setTraits(
-			fighter.id,
-			fighter.passives
-				.filter((order) => !fighter.spent.includes(order))
-				.map((order) => ({ icon: ORDER_ICONS[order] })),
-			fighter.color
-		);
-	}
 
 	/** Light (or put out) the aura that says at a glance who is holding a charge. The
 	 * count itself is read off the pips beside each fighter's picker, not the board. */
