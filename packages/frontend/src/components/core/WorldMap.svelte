@@ -199,6 +199,11 @@
 	// Flipped true once the map and overlays are on the map, so the reactive
 	// $effects know the layers exist before they touch them.
 	let ready = $state(false);
+	// Whether the map is in the middle of a zoom — from the moment one starts to the moveend
+	// that ends it. While it is, the map carries no pins at all (see clearMarkers). A plain
+	// variable and not $state: it is read by the code that builds the pins, never by anything
+	// drawn, and an effect woken by it would be the very rebuild it exists to refuse.
+	let midZoom = false;
 
 	// A feature's base style, plus the highlight merged on when it's the chosen
 	// one and its stroke dropped when its overlay is hidden. Called both at first
@@ -557,6 +562,12 @@
 	// culling and the chosen level track what's actually on screen.
 	function rebuildMarkers() {
 		if (!mapInstance || !Leaf) return;
+		// Not while the map is between two tiers (see clearMarkers). The pins are taken off at
+		// the start of a zoom, and everything that would put a set back before the map has
+		// stopped is refused here rather than at each of the several places that ask — the
+		// moveend that ends the zoom is what lifts this, one line before it asks for the set the
+		// new view calls for.
+		if (midZoom) return;
 		if (!markerLayer) markerLayer = Leaf.layerGroup().addTo(mapInstance);
 		unmountPinMounts();
 		markerLayer.clearLayers();
@@ -600,6 +611,31 @@
 			pin.on('mouseout', () => highlightRegion(marker.featureIds, false));
 			pin.addTo(markerLayer!);
 		}
+	}
+
+	// The pins come off the map before it starts to zoom, and are built again where it stops.
+	//
+	// A pin is not drawn in the projection: it is a plate of a fixed size in pixels, standing
+	// on a point, and everything about it that says which tier the map is showing was decided
+	// at the zoom it was built at — which of them are on screen, and which breakdown they are
+	// the pins of. So a zoom in progress carries a set of pins that belongs to the zoom it left
+	// rather than the one it is going to: they slide across the view at a size that no longer
+	// means anything, and the ones that ought to have folded into a coarser mark are still
+	// standing when the map arrives. Taking them off is the honest reading of that — the map is
+	// between two tiers and there is no set of pins for it — and the moveend at the far end
+	// builds the set the new view actually calls for (see rebuildMarkers).
+	//
+	// Which is also why this raises a flag and does not merely empty the layer: the pins are
+	// built from a prop, by an effect, and taking them off is a thing done to the map rather
+	// than to that prop — so the next flush of anything at all put the whole set straight back,
+	// in the same frame, and the layer was full again before it had been seen empty (measured:
+	// 28 marks removed and 28 added in one batch). The flag says what the empty layer means,
+	// and rebuildMarkers reads it.
+	function clearMarkers() {
+		midZoom = true;
+		if (!markerLayer) return;
+		unmountPinMounts();
+		markerLayer.clearLayers();
 	}
 
 	/** Tear down everything mounted into a pin, so no detached timer keeps running. */
@@ -820,6 +856,7 @@
 		_move(center: L.LatLng, zoom: number, data?: { pinch?: boolean; round?: boolean }): void;
 		_resetView(center: L.LatLng, zoom: number): void;
 		_onZoomTransitionEnd(): void;
+		_stop(): void;
 		_animatingZoom?: boolean;
 	};
 
@@ -943,12 +980,23 @@
 		wheelFresh = false;
 		wheelStepAt = now;
 
+		// Before the map has moved a pixel of this step — the gesture's first frame is still an
+		// animation frame away. A step landing mid-glide clears an already empty layer.
+		clearMarkers();
+
 		const map = mapInstance as GestureMap;
 		// A wheel overtakes whatever the map was doing on its own. A pan or a fly is stopped
 		// outright; a zoom animation cannot be, so it is landed at its destination now —
 		// otherwise it would finish 250ms later by putting the map back where it had been
 		// going, over the top of the gesture the reader has started since.
-		map.stop();
+		//
+		// `_stop` and not the public `stop`, which is what Leaflet's own wheel handler calls
+		// here and for the reason found by measuring this: `stop` sets the zoom to the zoom the
+		// map is already at, and a move of no distance still ends — it fires a moveend. Which is
+		// this map's "the view has settled, build the pins for it", one line after the pins were
+		// taken off for the zoom about to start, so the set came straight back and stood through
+		// the whole glide. `_stop` cancels the animations and says nothing.
+		map._stop();
 		if (map._animatingZoom) map._onZoomTransitionEnd();
 
 		wheelAnchor = map.mouseEventToContainerPoint(event);
@@ -1073,8 +1121,17 @@
 			currentCenter = [c.lat, c.lng];
 		};
 		syncView();
-		// Re-cull the pins and re-sync the view after any pan or zoom settles.
+		// The other way a zoom begins: a region framed by a click, or a tier asked for from the
+		// bar. The wheel clears the pins itself, since a gesture moves the map without ever
+		// telling Leaflet a zoom has started (see onWheelZoom) — this is for the ones that do.
+		// A pan is not one of them and keeps its pins: a pin carried sideways is still the pin
+		// that view calls for, at the size it was drawn at.
+		mapInstance.on('zoomstart', clearMarkers);
+		// Re-cull the pins and re-sync the view after any pan or zoom settles. This is the far
+		// end of a zoom as well as of a pan, so it is where the map stops being between two
+		// tiers and may carry pins again.
 		mapInstance.on('moveend zoomend', () => {
+			midZoom = false;
 			syncView();
 			rebuildMarkers();
 			rebuildBoxes();
