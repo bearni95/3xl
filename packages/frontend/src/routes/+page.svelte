@@ -2324,14 +2324,22 @@
 					it. The plate is the crumbs' own, class for class (see MapBreadcrumbs), so the row
 					reads as one chrome standing at one height rather than as a bar with an ornament
 					beside it. It is `flex-none` and the path is what gives way beside it, since a path
-					collapses and a word does not. -->
-				<div transition:blur={CHROME_BLUR} class="flex items-start gap-2">
+					collapses and a word does not.
+
+					`items-stretch` is what makes the two the same height: the crumbs' bar is the taller
+					of them by a good deal — it stands 32px tiles and two lines of type in its steps,
+					where this plate holds one word — and stretching means the word's plate takes
+					whatever height that comes to rather than a number written here that would have to be
+					kept in step with it. Which tier the map is on changes what a crumb draws, so that
+					number is not even constant. -->
+				<div transition:blur={CHROME_BLUR} class="flex items-stretch gap-2">
 					<!-- What it says and what size it is set at are two different things: the word is
 						"6xl" and the type is `xl`, one flat size at every viewport rather than a ramp.
-						`leading-none` so the line takes the type's height and not a line box built for a
-						paragraph, which is what keeps this plate the same height as the crumbs' beside it.
-						`font-display` is Bungee, the app's one departure from Genos, and it is the token
-						and not the family that is named here (see the `@theme` block in css/app.css). -->
+						`items-center` centres it in whatever height the row hands this plate (see above);
+						`leading-none` so what is centred is the type's own height and not a line box built
+						for a paragraph. `font-display` is Bungee, the app's one departure from Genos, and
+						it is the token and not the family that is named here (see the `@theme` block in
+						css/app.css). -->
 					<div
 						class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
 					>
