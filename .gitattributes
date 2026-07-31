@@ -1,0 +1,6 @@
+# MUGEN character archives are third-party input to @3xl/mugen, not our code.
+# Their .cmd/.st/.def files read to GitHub's Linguist as Batchfile, Smalltalk and
+# Module Management System, which put ~45% of the language bar on files nobody here
+# wrote. Vendored keeps them tracked while excluding them from the stats and
+# collapsing them in diffs.
+packages/mugen/characters-src/** linguist-vendored
