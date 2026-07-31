@@ -593,6 +593,11 @@
 		// nothing else could — the plate is the only part of a pin with a width of its own (see
 		// classNamesFor), so a bar inside it is as wide as the name above it.
 		//
+		// Which is why it now has a floor as well as a ceiling: shrink-to-fit alone, a town
+		// with a short name gave the bar under it a stub to draw in and the button beneath a
+		// line to wrap on. 200px is the plate's least width whatever it is carrying, so a
+		// pin's bar and button never come out narrower than they can be read at; the 15rem
+		// cap above it is still what a long name truncates against.
 		// The breadcrumb bar's surface — base-100 at four fifths — and not the flat black these
 		// were printed in: a pin's plate and the bar naming where the map is looking are the one
 		// chrome, and a pin is the thing that bar's path is walked with. Four fifths still keeps
@@ -600,7 +605,7 @@
 		// letting the ground the pin stands on read faintly through the mark standing on it.
 		const plate = document.createElement('div');
 		plate.className =
-			'mt-1 flex max-w-[15rem] flex-col gap-1.5 rounded-lg bg-base-100/80 p-1.5 text-white shadow-lg';
+			'mt-1 flex min-w-[200px] max-w-[15rem] flex-col gap-1.5 rounded-lg bg-base-100/80 p-1.5 text-white shadow-lg';
 
 		// The head row: the tile at the left end, the two lines beside it.
 		const head = document.createElement('div');
