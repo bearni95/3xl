@@ -2380,11 +2380,13 @@
 						theme tokens as the `bg-` and `text-` utilities beside them. Nothing here spells a
 						colour or a family; an `<img>` would have had to spell both.
 
-						The plate is a square, and the square is the word's own size: 54 on a side. "6xl"
-						advances 2125/1000 em in Bungee — 51px at this 24px — and the shadow copy carries it
-						3px further, so 54 is the width of everything drawn here and the square is that
-						width taken for both sides. Tight, then: the word touches the left and right edges,
-						and what room there is above and below it is only the room a square has to have.
+						The plate is a square, and the square is the word plus the padding the boxes give
+						theirs: 78 on a side. "6xl" advances 2125/1000 em in Bungee — 51px at this 24px —
+						and the shadow copy carries it 3px further, so 54 is the width of everything drawn
+						here; 12 either side of that is `px-3`, the same inset the plate beside it sets its
+						word in by, and 54 + 24 is the side. Only the horizontal padding is chosen — a
+						square's other two sides are then whatever is left over, and there is more of it,
+						the word being far wider than it is tall.
 						Which is why this one does not stretch with the row the way the plate beside it does
 						— a square that took the row's height would be as wide as the row is tall, and the
 						bar is not as tall as this word is wide. It sits centred in the row instead.
@@ -2405,7 +2407,7 @@
 						rather than a box shadow, since the rect is not a box, and the nearest of the two
 						the utilities offer. Hidden from a reader, which has been told this word already. -->
 					<svg
-						class="font-display pointer-events-auto size-[54px] flex-none self-center text-2xl drop-shadow-xl"
+						class="font-display pointer-events-auto size-[78px] flex-none self-center text-2xl drop-shadow-xl"
 						aria-hidden="true"
 					>
 						<rect x="0" y="0" width="100%" height="100%" rx="8" class="fill-primary" />
