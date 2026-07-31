@@ -1,4 +1,13 @@
-import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import {
+	Application,
+	Assets,
+	Container,
+	Graphics,
+	GraphicsContext,
+	Sprite,
+	Text,
+	Texture
+} from 'pixi.js';
 import { destroyPixiApp } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
 import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/character-fit';
@@ -366,20 +375,24 @@ const GUARD_ARC_SHARE = 1 / 3;
 // --- The sparks a guard throws off (in the attacker's colour) ---
 /** How often a guard that is up strikes sparks, in ms. */
 const SPARK_EVERY_MS = 26;
-/** How many are struck each time. */
-const SPARK_PER_STRIKE = 2;
-/** How long one lives before it has gone, in ms. */
-const SPARK_LIFE_MS = 380;
+/** How many are struck each time. A shower rather than a handful — a blow coming off a
+ * shield throws a spray, and at two or three a strike it read as a few dots leaving. */
+const SPARK_PER_STRIKE = 20;
+/** How long one lives before it has gone, in ms. Long enough to be watched leaving: a
+ * spark that goes out a hand's breadth from the shield never looks like it was thrown. */
+const SPARK_LIFE_MS = 850;
 /** How fast one leaves the arc, in canvas px per second, and how much of that figure it
  * may be off by either way (0.5 = anywhere from three quarters to five quarters). */
-const SPARK_SPEED = 300;
+const SPARK_SPEED = 480;
 const SPARK_SPEED_SPREAD = 0.5;
 /** How far off the surface it left by a spark may fly, in radians either way. A quarter
  * turn would be a spark running along the shield rather than coming off it. */
 const SPARK_SPREAD = Math.PI / 5;
 /** What pulls one down as it flies, in canvas px per second per second — so a spark
- * arcs over and falls instead of flying off in a straight line for ever. */
-const SPARK_GRAVITY = 460;
+ * arcs over and falls instead of flying off in a straight line for ever. Light against
+ * the speed it leaves at: the throw is what is being watched, and a spark that turned
+ * and dropped in the first third of its life would never get clear of the shield. */
+const SPARK_GRAVITY = 300;
 /** How big one is drawn, in canvas px. */
 const SPARK_SIZE = 4;
 
@@ -728,6 +741,8 @@ export class MugenBoard {
 	 * they expire. One heap and not one per guard: a spark belongs to nobody once it has
 	 * been struck (see {@link Spark}). */
 	private sparks: Spark[] = [];
+	/** The dot every one of them is drawn from, built on first use (see {@link sparkArt}). */
+	private sparkContext: GraphicsContext | null = null;
 	/** Callouts pinned to a cell rather than to a fighter (see {@link showCellCallout}).
 	 * A fighter's own is held on the actor, which is what takes it down; these have
 	 * nobody, so the board keeps them until the turn's callouts are cleared. */
@@ -932,6 +947,10 @@ export class MugenBoard {
 		this.actors = [];
 		this.slashes = [];
 		this.sparks = [];
+		// The one dot they were all drawn from goes with them — nothing else holds it, and a
+		// board built again builds its own.
+		this.sparkContext?.destroy();
+		this.sparkContext = null;
 		this.cellPaint.clear();
 	}
 
@@ -1787,8 +1806,8 @@ export class MugenBoard {
 	 *
 	 * Sized off the actor's nominal box, which is its full reach over the whole animation
 	 * cycle rather than the frame currently showing, so the ring holds still while the
-	 * fighter breathes inside it. Behind the character and above the board: a fighter
-	 * stands in its own guard, not behind it.
+	 * fighter breathes inside it. Over both fighters, for the reason the placing itself
+	 * gives (see {@link updateRing}).
 	 *
 	 * A third of that circle is what is drawn (see {@link GUARD_ARC_SHARE}), swung round to
 	 * face `from` — the fighter throwing the blow, which by this moment has walked up and is
@@ -1865,7 +1884,13 @@ export class MugenBoard {
 		// Around the middle of the character, not its feet: the actor's own y is the foot
 		// line it stands on, and a circle centred there would be a ring around its ankles.
 		ring.graphics.y = actor.y - actor.displayHeight / 2;
-		ring.graphics.zIndex = actor.y - 0.25;
+		// In front of both fighters, which a full circle never had to be. Drawn behind them
+		// — a fighter standing *in* its guard rather than behind it — a circle still showed
+		// its top, its foot and the side away from the blow, so the mark read; an arc has
+		// only the side the blow is on, and that is the side the attacker has just walked up
+		// and planted itself on, so the whole of it was under somebody else's sprite. A
+		// shield is between the fighter and what is coming at it either way.
+		ring.graphics.zIndex = actor.y + 5000;
 		// Struck at a rate rather than per frame, so a board running at 120Hz throws the same
 		// sparks as one running at 60, and a frame the browser sat on throws the ones it owes.
 		ring.sinceSpark += deltaMs;
@@ -1873,6 +1898,17 @@ export class MugenBoard {
 			ring.sinceSpark -= SPARK_EVERY_MS;
 			this.strikeSparks(actor, ring);
 		}
+	}
+
+	/**
+	 * The one piece of artwork every spark is drawn from: a white dot, made on the first
+	 * strike of the fight and kept. White because a spark's colour is a tint over it, and a
+	 * tint only ever darkens — white artwork is what makes any colour reachable, the same
+	 * reason the canvas's glyphs are vendored white.
+	 */
+	private sparkArt(): GraphicsContext {
+		this.sparkContext ??= new GraphicsContext().circle(0, 0, SPARK_SIZE).fill({ color: 0xffffff });
+		return this.sparkContext;
 	}
 
 	/**
@@ -1893,8 +1929,13 @@ export class MugenBoard {
 			const at = ring.facing + (Math.random() * 2 - 1) * half;
 			const away = at + (Math.random() * 2 - 1) * SPARK_SPREAD;
 			const speed = SPARK_SPEED * (1 + (Math.random() * 2 - 1) * (SPARK_SPEED_SPREAD / 2));
-			const graphics = new Graphics();
-			graphics.circle(0, 0, SPARK_SIZE).fill({ color: ring.sparkColor });
+			// One dot's geometry, drawn once and shared by every spark there will ever be, with
+			// the colour put on as a tint (see sparkArt). A shower is hundreds of these in the
+			// air at once, and hundreds of Graphics each carrying their own copy of the same
+			// circle is hundreds of things for the renderer to keep apart rather than one thing
+			// drawn many times.
+			const graphics = new Graphics(this.sparkArt());
+			graphics.tint = ring.sparkColor;
 			graphics.x = ring.graphics.x + Math.cos(at) * radius;
 			graphics.y = ring.graphics.y + Math.sin(at) * radius;
 			// Over the fighters and their guards, under the slash a blow that got through
