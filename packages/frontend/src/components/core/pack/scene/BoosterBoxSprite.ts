@@ -780,28 +780,33 @@ export class BoosterBoxSprite extends Container {
 		print.addChild(this.makeGrounds(frontW, frontH, bands));
 
 		if (type) {
+			// The place is a row and not a word: a container the width of the front, as deep as the
+			// type in it, with the name centred across it. The type is set to a share of that width
+			// (see {@link placeType}) and the rest is the row's — so what a long name and a short one
+			// have in common is the band they are set in, and only the letters differ.
+			const row = new Container();
+			row.position.set(0, HEAD_PAD_TOP * this.boxWidth);
 			type.anchor.set(0.5, 0);
-			type.position.set(frontW / 2, HEAD_PAD_TOP * this.boxWidth);
-			print.addChild(type);
+			type.position.set(frontW / 2, 0);
+			row.addChild(type);
+			print.addChild(row);
 
 			if (TYPE_GUIDE) {
-				// The room the place was given, not the room it took: the width is the front's own
-				// whatever the name came out as, and only the depth is read off the type.
+				// The room the place is given — the front's own width, whatever the name came out as,
+				// and only the depth read off the type. Struck inside the rectangle rather than
+				// astride it: the box runs to the front's edges and the front is cropped, so a
+				// centred line would lose its outer half down both sides.
 				const guide = new Graphics();
 				guide.rect(0, HEAD_PAD_TOP * this.boxWidth, frontW, type.height);
-				// Struck inside the rectangle rather than astride it: the box it is drawing runs to
-				// the front's own edges, and the front is cropped, so a centred line would lose its
-				// outer half down both sides.
 				guide.stroke({ color: TYPE_GUIDE_COLOR, width: TYPE_GUIDE_WIDTH, alignment: 0 });
 				print.addChild(guide);
 
-				// And the box the type reports for itself, where it says it is: read off the Text
-				// after it has been laid out, placed and scaled, so it is the width the layout
-				// believes is on the front — which is the number every decision here is made from.
+				// And the row that holds it, drawn in its own space: the same width, since a row is
+				// the front's, with the type sitting at whatever share of it the head is set at.
 				const ink = new Graphics();
-				ink.rect(type.x - type.width / 2, type.y, type.width, type.height);
+				ink.rect(0, 0, frontW, type.height);
 				ink.stroke({ color: TYPE_INK_GUIDE_COLOR, width: TYPE_GUIDE_WIDTH, alignment: 0 });
-				print.addChild(ink);
+				row.addChild(ink);
 			}
 		}
 
