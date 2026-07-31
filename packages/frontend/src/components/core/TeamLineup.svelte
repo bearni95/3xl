@@ -54,10 +54,7 @@
 	$: lineup = members.length < 2 ? members : [members[1], members[0], ...members.slice(2)];
 </script>
 
-<!-- The row itself is outlined in green and each statue's cell in purple. Outlines
-	rather than borders, so the lines are drawn over the layout instead of taking
-	width out of it and moving the statues they are meant to be measuring. -->
-<div class={classNames('flex w-full outline outline-1 outline-green-500', classes)}>
+<div class={classNames('flex w-full', classes)}>
 	{#each lineup as member, index (index)}
 		<CharacterStatue
 			label={member.label}
@@ -68,10 +65,7 @@
 			spawnedAt={member.spawnedAt ?? null}
 			showId={member.showId}
 			{flipped}
-			classes={classNames(
-				cellShares[index] ?? cellShares[0],
-				'outline outline-1 outline-purple-500'
-			)}
+			classes={cellShares[index] ?? cellShares[0]}
 		/>
 	{/each}
 </div>
