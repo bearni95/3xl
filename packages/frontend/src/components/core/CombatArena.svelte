@@ -989,7 +989,9 @@
 						     read together — a taller plate wants a wider block. They run the
 						     full depth of it and sit hard against its ends: nothing pads them,
 						     so a count is a block of the plate rather than something placed on
-						     it. -->
+						     it. Only the sides are ruled — a line along the top and bottom would
+						     be a line drawn just inside the plate's own edges, which is a border
+						     around the block and not a division of it. -->
 						<div
 							class="grid h-full w-24 grid-cols-3"
 							role="progressbar"
@@ -1001,7 +1003,7 @@
 							{#each RIVAL_LANES as lane}
 								<span
 									class={classNames(
-										'border border-white',
+										'border-x border-white',
 										lane <= state.wins.error && 'bg-white'
 									)}
 								></span>
@@ -1020,7 +1022,7 @@
 						>
 							{#each LANES as lane}
 								<span
-									class={classNames('border border-white', lane <= state.wins.info && 'bg-white')}
+									class={classNames('border-x border-white', lane <= state.wins.info && 'bg-white')}
 								></span>
 							{/each}
 						</div>
