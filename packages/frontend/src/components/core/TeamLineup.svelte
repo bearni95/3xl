@@ -1,5 +1,6 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import { createEventDispatcher } from 'svelte';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import { SpawnBox, type SpawnColor } from '$types/character-spawn.type';
 
@@ -24,7 +25,21 @@
 	}[] = [];
 	// Mirror the characters — true (the default) is the player's own side.
 	export let flipped: boolean = true;
+	// Passed straight through to every statue: veil each character even where the session
+	// has already watched it arrive. The row has no opinion on whether a reveal is worth
+	// spending — the surface standing it up does. The map's corner spends none (a side that
+	// re-frames itself as the map moves would flicker); the roster spends one on every card,
+	// being the place a player comes to look at them.
+	export let alwaysReveal: boolean = false;
+	// Whether a member can be pressed. False wherever the row is a picture of a side — the
+	// map's corner, a town's pin — since a button around a statue would offer a press that
+	// does nothing. True on the roster, where pressing a member is how it comes off the
+	// team; it is dispatched as `select` with the member's own index, which is the index it
+	// arrived at and not the place the row stood it in.
+	export let selectable: boolean = false;
 	export let classes: string = '';
+
+	const dispatch = createEventDispatcher<{ select: { index: number } }>();
 
 	// The three cells: 35% of the row to each flank and 40% to the middle, which is
 	// pulled 7.5% over each of the two beside it. Said as widths — a basis that neither
@@ -51,21 +66,45 @@
 	// end of it. Only the first two trade places; everyone after keeps the order they came
 	// in, so nothing is ever dropped by being arranged. A side of one has no middle to stand
 	// in and is left where it is.
-	$: lineup = members.length < 2 ? members : [members[1], members[0], ...members.slice(2)];
+	// Each carries the index it arrived at, so what a press says is which member was
+	// pressed rather than which cell it happened to be standing in.
+	$: standing = members.map((member, index) => ({ member, index }));
+	$: lineup =
+		standing.length < 2 ? standing : [standing[1], standing[0], ...standing.slice(2)];
 </script>
 
 <div class={classNames('flex w-full', classes)}>
-	{#each lineup as member, index (index)}
-		<CharacterStatue
-			label={member.label}
-			basePath={member.basePath}
-			color={member.color}
-			box={member.box ?? SpawnBox.Black}
-			locationName={member.locationName}
-			spawnedAt={member.spawnedAt ?? null}
-			showId={member.showId}
-			{flipped}
-			classes={cellShares[index] ?? cellShares[0]}
-		/>
+	<!-- The statue is the same picture on either surface, so it is written once and the
+		cell's share of the row goes to whichever element is standing it up: the statue
+		itself where the row is a picture of a side, and the button around it where a press
+		means something. A row that is only looked at gets no button at all rather than a
+		dead one — the map's corner and a town's pin are exactly the markup they always
+		were. -->
+	{#each lineup as { member, index }, cell (index)}
+		{@const statue = {
+			label: member.label,
+			basePath: member.basePath,
+			color: member.color,
+			box: member.box ?? SpawnBox.Black,
+			locationName: member.locationName,
+			spawnedAt: member.spawnedAt ?? null,
+			showId: member.showId,
+			flipped,
+			alwaysReveal
+		}}
+		{#if selectable}
+			<button
+				type="button"
+				class={classNames(
+					'min-w-0 rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+					cellShares[cell] ?? cellShares[0]
+				)}
+				on:click={() => dispatch('select', { index })}
+			>
+				<CharacterStatue {...statue} classes="w-full" />
+			</button>
+		{:else}
+			<CharacterStatue {...statue} classes={cellShares[cell] ?? cellShares[0]} />
+		{/if}
 	{/each}
 </div>

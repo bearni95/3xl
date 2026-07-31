@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
+	import { _ } from 'svelte-i18n';
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
@@ -14,6 +15,7 @@
 	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
+	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import FullScreenModal from '$components/core/FullScreenModal.svelte';
 	import { SPAWN_FILL_CLASSES, SPAWN_SQUARE_GLYPHS } from '$components/core/spawn-colors';
 
@@ -566,20 +568,25 @@
 		selectableIds
 	);
 
-	// The line-up as that row: one cell per slot in slot order, carrying the card standing
-	// in it and the statue of that card, or nothing at all where the slot is empty. The
-	// place names and the show assignment are threaded in for the same reason the grid's
+	// The line-up as the row the map's corner draws: the cards that are actually fielded, in
+	// slot order, each as the statue that stands for it. An empty slot is not a member and
+	// is simply not there — the row is the side, not the shape of a side, which is the one
+	// thing it stopped saying when it stopped being a grid of three cells.
+	// The place names and the show assignment are threaded in for the same reason the grid's
 	// are — the statues re-derive as those load rather than standing on stale captions.
-	$: partyCells = ((
+	// The card each member stands for is kept beside it, since a press on the row names the
+	// member and the team is toggled by the card's id.
+	$: partyLineup = ((
 		names: Map<string, string> | null,
 		shows: Map<string, { id: number; name: string }[]>,
 		cards: (CharacterSpawn | null)[]
 	) =>
-		cards.map((spawn, slot) => ({
-			slot,
-			spawn,
-			statue: spawn ? toStatue(spawn, names, shows) : null
-		})))(municipalityNames, characterShows, $teamCards);
+		cards.flatMap((spawn) =>
+			spawn ? [{ spawn, statue: toStatue(spawn, names, shows) }] : []
+		))(municipalityNames, characterShows, $teamCards);
+
+	// What the row itself is handed: the statues alone, in the same order.
+	$: partyMembers = partyLineup.map((entry) => entry.statue);
 
 	// Tapping a statue puts the copy it is showing on the team or takes it off (into the
 	// first free slot, or out of the one it holds). It is the statue that acts and the
@@ -620,7 +627,7 @@
 <!-- The sheet, the slide, the title bar and Escape are the modal's; everything below is
 	the roster. The toolbar and the recycle bar take what they need of that column and the
 	grid gets the rest, which is what its scroll box is sized from. -->
-<FullScreenModal title="Roster" closeLabel="Close roster" on:close={close}>
+<FullScreenModal title={$_('roster.title')} closeLabel={$_('roster.close')} on:close={close}>
 	{#if $status === AuthStatus.SignedIn && $spawns.length > 0}
 		{#if recycleMode}
 			<!-- Recycle bar: tap cards to select them, then trade each full group of
@@ -795,55 +802,32 @@
 			<div
 				class="grid min-h-0 min-w-0 flex-1 grid-cols-1 grid-rows-[auto_minmax(0,1fr)] gap-3 lg:grid-cols-7 lg:grid-rows-none"
 			>
-				<!-- The line-up and the filters, three across: the line-up first, one row of
-				     three with a column to a slot, and the filter card under it over all three of
-				     those columns. The team is what this side of the view is for and the filters
-				     are what the other side is read with, so the three slots meet the eye at the
-				     top of the column and the card that narrows the roster sits below them, next
-				     to the cards it narrows. -->
+				<!-- The line-up and the filters, three across: the line-up first, over all three
+				     columns because it shares its own width between its members, and the filter
+				     card under it over the same three. The team is what this side of the view is
+				     for and the filters are what the other side is read with, so the side meets
+				     the eye at the top of the column and the card that narrows the roster sits
+				     below it, next to the cards it narrows. -->
 				<div
 					class="grid max-h-[45vh] min-h-0 grid-cols-3 content-start gap-3 overflow-y-auto lg:col-span-3 lg:max-h-none"
 				>
-					<!-- The line-up at the head of the column, a row of three with a cell per slot:
-					     the card standing in it or the empty slot itself. A slot is a place on the team
-					     whether or not there is a card in it, so the empty ones are drawn too —
-					     three cells that say how big a team is and how much of one the player has,
-					     which a row of only the cards fielded could never say. Every filled cell is
-					     bordered in primary and carries a minus button, and taking a card back off
-					     the team is the one thing this grid does. -->
-					{#each partyCells as { slot, spawn, statue } (slot)}
-						{#if spawn && statue}
-							<div class="relative flex flex-col gap-2 rounded-box border-2 border-primary p-1.5">
-								{#if !recycleMode}
-									<button
-										type="button"
-										class="btn btn-circle btn-primary btn-xs absolute right-1 top-1 z-10 text-base leading-none shadow"
-										disabled={$teamSaving}
-										title="Remove {statue.label} from your team"
-										aria-label="Remove {statue.label} from your team"
-										on:click={() => handleTeamButton(spawn)}
-									>
-										−
-									</button>
-								{/if}
-								<CharacterStatue
-									label={statue.label}
-									basePath={statue.basePath}
-									color={statue.color}
-									locationName={statue.locationName}
-									spawnedAt={statue.spawnedAt}
-									showId={statue.showId}
-									alwaysReveal
-								/>
-							</div>
-						{:else}
-							<div
-								class="flex items-center justify-center rounded-box border-2 border-dashed border-base-content/20 p-1.5 text-center text-xs opacity-50"
-							>
-								Empty slot
-							</div>
-						{/if}
-					{/each}
+					<!-- The line-up at the head of the column: the very row the map's corner stands
+					     the side in — TeamLineup, the same component over the same statues — rather
+					     than three cells of this grid drawing the team a second way. So the side a
+					     player arranges here is the side they will see over the map, lapped and
+					     ordered exactly as it will be there, and the two can never drift apart.
+					     It is laid across all three columns because it shares its own width out.
+					     Taking a card back off the team is still the one thing it does, and now it
+					     is the statue that does it: pressing a member unfields it, which is the
+					     gesture the roster's own cards already answer to. Not while recycling,
+					     where a card is about what to trade in. -->
+					<TeamLineup
+						members={partyMembers}
+						alwaysReveal
+						selectable={!recycleMode && !$teamSaving}
+						on:select={(event) => handleTeamButton(partyLineup[event.detail.index].spawn)}
+						classes="col-span-3"
+					/>
 
 					<!-- The filter card, under the line-up and over all three columns. Every control
 					     in it ANDs with the others, and Clear at the foot lets go of all of them at
@@ -948,7 +932,7 @@
 						     it too, so what it marks is this character's whole entry. Every cell
 						     carries it and only a fielded one colours it in, so joining the team
 						     never nudges the grid by two pixels. Nothing in this grid
-						     is fielded while the line-up stands in a grid of its own, so the coloured
+						     is fielded while the line-up stands in a row of its own, so the coloured
 						     border is what a card fielded from a one-grid roster would wear: it costs
 						     nothing to leave standing, and it is the one thing that would have to be
 						     found again if the two ever became one. -->
