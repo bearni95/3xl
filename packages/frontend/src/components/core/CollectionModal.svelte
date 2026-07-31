@@ -152,6 +152,20 @@
 			total: row.cast.length
 		})))(showRows, ownedPairs);
 
+	// The whole album as one figure: every cell there is, and how many of them are in. Cells
+	// rather than characters, so a fighter cast in two shows is two things to collect — which
+	// is what the grid says, and the column beside it is the same set read as one bar. It is
+	// the sum of the shows' own counts and not a second reckoning of the holdings, so the
+	// column and the chips can never disagree about the same cards.
+	$: albumTotals = ((tiles: { held: number; total: number }[]) =>
+		tiles.reduce(
+			(sum, tile) => ({ held: sum.held + tile.held, total: sum.total + tile.total }),
+			{ held: 0, total: 0 }
+		))(showTiles);
+	// How much of the bar is filled. Nothing collected out of nothing is empty rather than
+	// full: an album with no cells in it has not been finished.
+	$: albumPercent = albumTotals.total > 0 ? (albumTotals.held / albumTotals.total) * 100 : 0;
+
 	// The album as it is drawn: one flat run of cells, a show's whole cast before the next
 	// show's, each carrying the one thing the set has to say about it — whether the player
 	// holds it. Flat because the grid is one grid: a row per show gave every show a row of its
@@ -275,6 +289,31 @@
 							</div>
 						</button>
 					{/each}
+				</div>
+
+				<!-- The whole album as one bar, standing between the shows and the set: as tall as
+					the column of shows, since it is that column read all at once, and filling from the
+					bottom up the way a thing being filled does. It says the same as the bars in the
+					chips beside it — how many cells are in out of how many there are — but over every
+					show at once, which is the one figure neither the chips nor the grid can show.
+					No lettering on it: a bar this narrow has nowhere to put two numbers, and they are
+					on the pointer instead (the title) and on a screen reader (the value). It draws
+					itself rather than being a `progress`, that element having no vertical form to
+					take; the fill's height is a runtime figure, so it arrives as a custom property —
+					the one thing a class cannot carry (as IdleSprite's placements do). -->
+				<div
+					class="relative w-3 flex-none overflow-hidden rounded-full bg-base-300"
+					role="progressbar"
+					aria-label={$_('collection.overall')}
+					aria-valuemin={0}
+					aria-valuemax={albumTotals.total}
+					aria-valuenow={albumTotals.held}
+					title="{albumTotals.held}/{albumTotals.total}"
+				>
+					<div
+						class="absolute inset-x-0 bottom-0 h-[var(--collected)] bg-primary transition-[height] duration-300"
+						style:--collected="{albumPercent}%"
+					></div>
 				</div>
 
 				<!-- The set, in one grid five columns wide however many shows it runs through: a

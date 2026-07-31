@@ -101,7 +101,8 @@
 		"loading": "Loading the collection…",
 		"empty": "No show has characters assigned to it yet.",
 		"filterByShow": "Filter by show",
-		"filterByThisShow": "Filter by {show}"
+		"filterByThisShow": "Filter by {show}",
+		"overall": "Progress across the whole collection"
 	},
 	"roster": {
 		"title": "Team",
