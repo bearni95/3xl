@@ -154,6 +154,14 @@
 	// means no region of the tree is open, which is the top view either way.
 	$: selected = topPicked ? null : regionParam;
 
+	// How many times a region has been picked. Nothing reads it for its value: it is what
+	// makes a pick a movement rather than a change of state, since the region asked for may
+	// well be the region already open — the picked town's own crumb asks for exactly that
+	// (see `pressable`), and so does clicking the pin the map is already framed on. The URL
+	// does not change on either, so nothing downstream of it would, and the framing below
+	// takes this instead so that a pick always re-frames.
+	let picks = 0;
+
 	// Point the URL at a region (or clear it), which reactively re-derives every
 	// piece of open/expanded/selected state below. Pushed as history so the back
 	// button walks the drill path; focus and scroll are preserved across the nav.
@@ -162,6 +170,7 @@
 	// a pin click is not a reason to overrule that — the map frames the region either way,
 	// and a picked town says so on its own plate.
 	function open(key: string | null) {
+		picks += 1;
 		const params = new URLSearchParams($page.url.searchParams);
 		if (key) params.set('region', key);
 		else params.delete('region');
@@ -815,7 +824,16 @@
 				key: node.key as string | null,
 				showName: node.show?.name ?? null,
 				showId: node.show?.id ?? null,
-				tileClasses: node.color ? pinColorClasses[node.color] : null
+				tileClasses: node.color ? pinColorClasses[node.color] : null,
+				// The bottom of the ladder is the one step the map is on that is still worth
+				// pressing. Every tier above it either has a step above it to walk back to or an
+				// empty square below it to zoom into; a town has neither — it is the last rung,
+				// so once one is picked the bar has nothing that takes the map back down to it.
+				// And it needs one: a picked town is held by the bar however far the view then
+				// wanders (see displayPath), so the crumb goes on naming a place the map may no
+				// longer be anywhere near. It is pressed for what every other crumb is pressed
+				// for — frame the place it names — which for this tier is the municipality zoom.
+				pressable: tier === 'Municipality'
 			};
 		})
 	];
@@ -1795,13 +1813,26 @@
 	// The top view frames every town there is, because a crumb click frames what the crumb
 	// names and that crumb names the lot of them. Without this the panel would have said the
 	// territories while the map stayed down in the comarca the player was leaving.
-	$: focusBounds = !municipalities
-		? null
-		: topPicked
-			? boundsForFeatures(municipalities, new Set(fillIndex.keys()))
-			: selected
-				? boundsForFeatures(municipalities, municipalityIdsForKey(fillIndex, selected))
-				: null;
+	// A pick is named as a dependency rather than only the region it picked, because the two
+	// are not the same statement: picking the region already open leaves the URL exactly as it
+	// was, so `selected` never dirties and the box would never be rebuilt — which is a press
+	// that does nothing on the one crumb whose whole job is to bring the map back to the place
+	// it names, and on the pin of a town already open.
+	function boundsToFrame(
+		pick: number,
+		features: GeoJSON.FeatureCollection | null,
+		top: boolean,
+		key: string | null,
+		index: Parameters<typeof municipalityIdsForKey>[0]
+	): LatLngBounds | null {
+		void pick;
+		if (!features) return null;
+		if (top) return boundsForFeatures(features, new Set(index.keys()));
+		if (key) return boundsForFeatures(features, municipalityIdsForKey(index, key));
+		return null;
+	}
+
+	$: focusBounds = boundsToFrame(picks, municipalities, topPicked, selected, fillIndex);
 
 	// The box the map is zoomed to fit without being moved to — what an empty position on the
 	// breadcrumb ladder asks for. Set on the press and never cleared: a fresh array is what the

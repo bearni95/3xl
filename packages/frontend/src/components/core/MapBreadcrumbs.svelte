@@ -60,6 +60,15 @@
 		empty?: boolean;
 		/** The tier that position stands for — what the empty square is labelled by. */
 		tier?: string;
+		/**
+		 * The step the map is on, and still a way of going somewhere: pressed for `onSelect`
+		 * like every step above it, rather than being the inert end of the path. For the crumb
+		 * whose place the map can be moved off while the bar goes on naming it — a picked town,
+		 * which the bar holds however far the view then wanders — so pressing it is the way
+		 * back to the place it names. The caller says which crumb that is; only the last one
+		 * is ever asked.
+		 */
+		pressable?: boolean;
 	}[] = [];
 	export let onSelect: (key: string | null) => void;
 	// What an empty position does: the tier it stands for, handed back for the caller to zoom
@@ -231,16 +240,34 @@
 						an ellipsis if even that is not enough: there is no longer path to fold away, so
 						the alternative is a name running out under the search box beside it. The whole
 						of it is a press away, in the column. -->
-					<div aria-current="page" class="min-w-0 flex-1">
-						<MapBreadcrumb
-							label={lastCrumb?.label ?? ''}
-							showName={lastCrumb?.showName ?? null}
-							showId={lastCrumb?.showId ?? null}
-							tileClasses={lastCrumb?.tileClasses ?? null}
-							current
-							truncated
-						/>
-					</div>
+					{#if lastCrumb?.pressable}
+						<button
+							type="button"
+							aria-current="page"
+							class="-mx-1 min-w-0 flex-1 rounded-md px-1 py-0.5 text-left hover:bg-white/10"
+							on:click={() => pick(lastCrumb?.key ?? null)}
+						>
+							<MapBreadcrumb
+								label={lastCrumb.label}
+								showName={lastCrumb.showName ?? null}
+								showId={lastCrumb.showId ?? null}
+								tileClasses={lastCrumb.tileClasses ?? null}
+								current
+								truncated
+							/>
+						</button>
+					{:else}
+						<div aria-current="page" class="min-w-0 flex-1">
+							<MapBreadcrumb
+								label={lastCrumb?.label ?? ''}
+								showName={lastCrumb?.showName ?? null}
+								showId={lastCrumb?.showId ?? null}
+								tileClasses={lastCrumb?.tileClasses ?? null}
+								current
+								truncated
+							/>
+						</div>
+					{/if}
 				</div>
 			{:else}
 				<div class="breadcrumbs py-0 text-sm">
@@ -259,6 +286,26 @@
 										on:click={() => zoomTo(crumb.tier ?? '')}
 									>
 										<MapGlyph />
+									</button>
+								{:else if crumb === lastCrumb && crumb.pressable}
+									<!-- The step the map is on, pressed like the steps above it: the view can be
+										taken off the place while the bar goes on naming it, so there is somewhere
+										for it to go after all — back to what it names. It keeps `aria-current`,
+										since it is still where you are, and it answers the pointer the way the
+										crumbs above it do. -->
+									<button
+										type="button"
+										aria-current="page"
+										class="-mx-1 rounded-md px-1 py-0.5 hover:bg-white/10 hover:no-underline"
+										on:click={() => pick(crumb.key)}
+									>
+										<MapBreadcrumb
+											label={crumb.label}
+											showName={crumb.showName ?? null}
+											showId={crumb.showId ?? null}
+											tileClasses={crumb.tileClasses ?? null}
+											current
+										/>
 									</button>
 								{:else if crumb === lastCrumb}
 									<!-- The step the map is on. `aria-current` and not a control: it is where you
@@ -333,6 +380,21 @@
 						on:click={() => zoomTo(crumb.tier ?? '')}
 					>
 						<span class={squareClasses}><MapGlyph /></span>
+					</button>
+				{:else if crumb === lastCrumb && crumb.pressable}
+					<button
+						type="button"
+						aria-current="page"
+						class="rounded-md px-2 py-1 text-left hover:bg-white/10"
+						on:click={() => pick(crumb.key)}
+					>
+						<MapBreadcrumb
+							label={crumb.label}
+							showName={crumb.showName ?? null}
+							showId={crumb.showId ?? null}
+							tileClasses={crumb.tileClasses ?? null}
+							current
+						/>
 					</button>
 				{:else if crumb === lastCrumb}
 					<span aria-current="page" class="rounded-md px-2 py-1">
