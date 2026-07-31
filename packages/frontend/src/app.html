@@ -3,6 +3,20 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!--
+			The badge that heads the map, as the tab's mark. Both files are in static/ and
+			are the same drawing: favicon.svg is the vector it was made from (glyphs as
+			outlines, since a favicon inherits neither the stylesheet nor the webfont), and
+			favicon.ico is that rasterised at 16/32/48/64/128/256 with everything outside
+			the rounded square transparent.
+
+			`%sveltekit.assets%` rather than a bare `/favicon.ico`: it resolves to whatever
+			`paths.base` is, so the link is right at the site root — which is where the
+			custom domain in static/CNAME puts this build on GitHub Pages — and stays right
+			if it is ever served from a subpath instead. adapter-static copies static/ into
+			dist/ as it is, and the Pages workflow uploads that folder whole.
+		-->
+		<link rel="icon" href="%sveltekit.assets%/favicon.ico" sizes="any" />
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
