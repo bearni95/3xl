@@ -669,11 +669,27 @@ export class BoosterBoxSprite extends Container {
 	}
 
 	/** The place, set as the front sets it: centred, bold, wrapped inside the band's padding, in
-	 * whichever of the two the card is not. */
+	 * whichever of the two the card is not — and set down to fit if the wrapping could not do it.
+	 *
+	 * Wrapping only breaks where there is somewhere to break. A place written as one long token,
+	 * or one the gazetteer spells with non-breaking spaces, is laid out in a single line wider
+	 * than the band however narrow the band is told to be — and the front is masked (the crop the
+	 * crumble needs), so what hangs over the sides is not overhanging, it is *gone*: the town's
+	 * name and the year after it sliced off at the picture's edge. The document's box has the same
+	 * head, but nothing there clips, so the same name merely hangs out over the bevel and is still
+	 * read. That is why one crops and the other does not.
+	 *
+	 * So the type is measured once it has been laid out and set down to whatever fraction makes it
+	 * fit. A caption a hair smaller is a caption; a caption cut off before the year is not. The
+	 * scale is on the Text and not in its font size, so the line breaks that were found stay the
+	 * ones that were found, and the band above it comes out right without being told — a scaled
+	 * Text reports its scaled height, which is what {@link bandHeights} measures.
+	 */
 	private placeType(label: string): Text {
 		const w = this.boxWidth;
 		const size = TYPE_SIZE * w;
-		return new Text({
+		const room = FRONT_WIDTH * w - HEAD_PAD_X * 2 * w;
+		const type = new Text({
 			text: label,
 			resolution: this.options.app.renderer.resolution,
 			style: {
@@ -684,9 +700,11 @@ export class BoosterBoxSprite extends Container {
 				fill: this.stock.ink,
 				align: 'center',
 				wordWrap: true,
-				wordWrapWidth: FRONT_WIDTH * w - HEAD_PAD_X * 2 * w
+				wordWrapWidth: room
 			}
 		});
+		if (type.width > room) type.scale.set(room / type.width);
+		return type;
 	}
 
 	/**
