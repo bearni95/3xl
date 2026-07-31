@@ -859,7 +859,13 @@ export class CombatController {
 		// it — and, on the far line, telling the player what a rival had ordered before a
 		// shot had been thrown. Put up as the attacker's move plays rather than after it,
 		// because a defence that appears once the blow is over is not a defence.
-		if (guard) this.board?.ringHold(target.id, target.color);
+		//
+		// The shooter goes with it because a guard is held at somebody: the mark is a third of
+		// a circle facing whoever is swinging, and the sparks coming off it are struck in that
+		// fighter's colour — a spark belongs to the blow that made it, not to the shield.
+		if (guard) {
+			this.board?.ringHold(target.id, target.color, { id: shooter.id, color: shooter.color });
+		}
 		await this.board?.playMove(shooter.id, this.strikeMove(shooter));
 
 		if (target.down) {

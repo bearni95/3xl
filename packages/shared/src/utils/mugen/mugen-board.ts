@@ -352,6 +352,36 @@ const CELL_CALLOUT_GAP = 0.08;
 const GUARD_RING_RATIO = 1.08;
 /** How thick the ring is drawn, in canvas px — read against a cell's 220. */
 const GUARD_RING_WIDTH = 5;
+/**
+ * How much of the circle a guard actually is: a third of it, centred on the blow.
+ *
+ * A guard is held up *at* something. Drawn all the way round, it was a bubble the fighter
+ * was inside — which says the same thing about the side nothing is coming from as about
+ * the side a blow is arriving on, and a shield held behind your back is not a shield. The
+ * third that is drawn is the third the attacker is standing in front of, so the mark says
+ * both that the fighter is covering and which way it is covering.
+ */
+const GUARD_ARC_SHARE = 1 / 3;
+
+// --- The sparks a guard throws off (in the attacker's colour) ---
+/** How often a guard that is up strikes sparks, in ms. */
+const SPARK_EVERY_MS = 26;
+/** How many are struck each time. */
+const SPARK_PER_STRIKE = 2;
+/** How long one lives before it has gone, in ms. */
+const SPARK_LIFE_MS = 380;
+/** How fast one leaves the arc, in canvas px per second, and how much of that figure it
+ * may be off by either way (0.5 = anywhere from three quarters to five quarters). */
+const SPARK_SPEED = 300;
+const SPARK_SPEED_SPREAD = 0.5;
+/** How far off the surface it left by a spark may fly, in radians either way. A quarter
+ * turn would be a spark running along the shield rather than coming off it. */
+const SPARK_SPREAD = Math.PI / 5;
+/** What pulls one down as it flies, in canvas px per second per second — so a spark
+ * arcs over and falls instead of flying off in a straight line for ever. */
+const SPARK_GRAVITY = 460;
+/** How big one is drawn, in canvas px. */
+const SPARK_SIZE = 4;
 
 interface Point {
 	x: number;
@@ -390,6 +420,40 @@ interface Aura {
  * It scales in and fades out over {@link SLASH_MS}, then removes itself. */
 interface SlashEffect {
 	graphics: Graphics;
+	elapsed: number;
+}
+
+/**
+ * The guard drawn round a fighter turning a blow aside: the arc itself, the way it is
+ * pointing, and what is needed to go on striking sparks off it.
+ *
+ * Which way it points is settled once, when the guard goes up, and never re-read: the
+ * attacker has already walked up by then and stands there for as long as the blow lasts,
+ * and a mark that swung about as two fighters shifted would be a thing being aimed rather
+ * than a thing being held.
+ */
+interface GuardRing {
+	graphics: Graphics;
+	/** Screen angle from the middle of the fighter to the middle of the attacker, in
+	 * radians — the direction the arc is centred on and the sparks come off. */
+	facing: number;
+	/** The attacker's colour: a spark is struck off the guard by the blow, so it belongs
+	 * to whoever threw the blow and not to whoever is holding the shield. */
+	sparkColor: number;
+	/** ms since the last sparks were struck (see {@link SPARK_EVERY_MS}). */
+	sinceSpark: number;
+}
+
+/**
+ * One spark thrown off a guard. It owns nothing and is owned by nothing: struck from a
+ * point on the arc, it flies, falls, fades and is gone — and it outlives the guard it came
+ * off, because a spark already in the air is not part of the mark that made it.
+ */
+interface Spark {
+	graphics: Graphics;
+	/** Canvas px per second, on each axis; the vertical one is pulled on as it flies. */
+	vx: number;
+	vy: number;
 	elapsed: number;
 }
 
@@ -563,8 +627,12 @@ interface Actor {
 	 * something and belongs to the moment there is a blow for it to catch. They come down
 	 * together, though — a stance let out of is a stance nothing can be saying is on
 	 * ({@link MugenBoard.clearHold}).
+	 *
+	 * A third of a circle rather than a circle, facing whoever is swinging (see
+	 * {@link GUARD_ARC_SHARE}), and throwing sparks in that fighter's colour for as long as
+	 * it is up.
 	 */
-	ring: Graphics | null;
+	ring: GuardRing | null;
 	/** Floating callout (what its turn amounted to) above the actor, so a turn every
 	 * fighter acts in at once can be read one fighter at a time. Null when clear. */
 	label: Text | null;
@@ -656,6 +724,10 @@ export class MugenBoard {
 	private actors: Actor[] = [];
 	/** Transient slash overlays, faded out each tick until they expire. */
 	private slashes: SlashEffect[] = [];
+	/** Sparks in the air off every guard on the board, flown and faded each tick until
+	 * they expire. One heap and not one per guard: a spark belongs to nobody once it has
+	 * been struck (see {@link Spark}). */
+	private sparks: Spark[] = [];
 	/** Callouts pinned to a cell rather than to a fighter (see {@link showCellCallout}).
 	 * A fighter's own is held on the actor, which is what takes it down; these have
 	 * nobody, so the board keeps them until the turn's callouts are cleared. */
@@ -859,6 +931,7 @@ export class MugenBoard {
 		}
 		this.actors = [];
 		this.slashes = [];
+		this.sparks = [];
 		this.cellPaint.clear();
 	}
 
@@ -1189,11 +1262,14 @@ export class MugenBoard {
 			actor.sprite.zIndex = actor.y;
 			this.applyFrame(actor);
 			this.updateAura(actor, deltaMs);
-			this.updateRing(actor);
+			this.updateRing(actor, deltaMs);
 			this.updateOrders(actor);
 			this.updateLabel(actor);
 		}
 		this.updateSlashes(deltaMs);
+		// After the guards, since this is the tick they were struck on: a spark drawn where
+		// it was struck and moved on the next frame is one frame of a dot sitting on the arc.
+		this.updateSparks(deltaMs);
 	};
 
 	/** Advance every slash overlay: fade it out over its lifetime, then remove. */
@@ -1682,10 +1758,10 @@ export class MugenBoard {
 	 * one already ringed keeps the ring it has, so a second blow down the same lane does not
 	 * blink it off and on again.
 	 */
-	ringHold(id: string, color: string): void {
+	ringHold(id: string, color: string, from: { id: string; color: string }): void {
 		const actor = this.findActor(id);
 		if (!actor || !actor.stance || actor.ring) return;
-		this.drawRing(actor, color);
+		this.drawRing(actor, color, from);
 	}
 
 	/** Let a character out of the move it was standing in, back to idle — and out of the
@@ -1713,34 +1789,160 @@ export class MugenBoard {
 	 * cycle rather than the frame currently showing, so the ring holds still while the
 	 * fighter breathes inside it. Behind the character and above the board: a fighter
 	 * stands in its own guard, not behind it.
+	 *
+	 * A third of that circle is what is drawn (see {@link GUARD_ARC_SHARE}), swung round to
+	 * face `from` — the fighter throwing the blow, which by this moment has walked up and is
+	 * standing there.
 	 */
-	private drawRing(actor: Actor, color: string): void {
+	private drawRing(actor: Actor, color: string, from: { id: string; color: string }): void {
 		if (!this.app) return;
-		const radius = (Math.max(actor.displayWidth, actor.displayHeight) / 2) * GUARD_RING_RATIO;
+		const radius = this.ringRadius(actor);
+		const facing = this.angleTo(actor, from.id);
+		// Half the arc's sweep either side of that: a third of a full turn is 2π/3, so half
+		// of it is π/3 — which is what `Math.PI * GUARD_ARC_SHARE` comes to.
+		const half = Math.PI * GUARD_ARC_SHARE;
 		const ring = new Graphics();
-		ring.circle(0, 0, radius);
-		ring.stroke({ color: combatColorHex(color), width: GUARD_RING_WIDTH, alpha: 0.9 });
+		// Moved to the arc's first corner before it is swept, so the path starts on the arc
+		// rather than wherever an empty path is taken to begin.
+		ring.moveTo(Math.cos(facing - half) * radius, Math.sin(facing - half) * radius);
+		ring.arc(0, 0, radius, facing - half, facing + half);
+		// Round ends, which is a question a circle never had to answer: an arc has two of
+		// them, and cut square they read as a piece broken off a ring rather than as a
+		// shield being held up.
+		ring.stroke({
+			color: combatColorHex(color),
+			width: GUARD_RING_WIDTH,
+			alpha: 0.9,
+			cap: 'round'
+		});
 		this.app.stage.addChild(ring);
-		actor.ring = ring;
-		this.updateRing(actor);
+		actor.ring = {
+			graphics: ring,
+			facing,
+			sparkColor: combatColorHex(from.color),
+			// Struck on the first tick rather than a frame-and-a-bit later: the guard is
+			// answering a blow that is landing now.
+			sinceSpark: SPARK_EVERY_MS
+		};
+		this.updateRing(actor, 0);
 	}
 
-	/** Keep a stance ring centred on the character it belongs to as it walks. */
-	private updateRing(actor: Actor): void {
+	/**
+	 * How far out a fighter's guard stands. One figure off the nominal box, so the arc and
+	 * the points the sparks are struck from are measured the same way and a spark can never
+	 * leave from a hair off the line it is coming off.
+	 */
+	private ringRadius(actor: Actor): number {
+		return (Math.max(actor.displayWidth, actor.displayHeight) / 2) * GUARD_RING_RATIO;
+	}
+
+	/**
+	 * The screen angle from the middle of `actor` to the middle of the character called
+	 * `otherId` — middles rather than feet, because that is where a guard is centred and a
+	 * blow is aimed.
+	 *
+	 * A fighter that cannot be found leaves the guard facing across the board: a red actor
+	 * stands in the left half and a blue one in the right (see {@link drawBoard}), so facing
+	 * away from your own half is facing whoever is coming. That is the fallback and not the
+	 * rule — with both of them on the board the angle is the real one, which is what lets a
+	 * guard read correctly against an attacker a row up or down.
+	 */
+	private angleTo(actor: Actor, otherId: string): number {
+		const other = this.findActor(otherId);
+		if (!other) return actor.side === 'red' ? 0 : Math.PI;
+		return Math.atan2(
+			other.y - other.displayHeight / 2 - (actor.y - actor.displayHeight / 2),
+			other.x - actor.x
+		);
+	}
+
+	/** Keep a stance ring centred on the character it belongs to as it walks, and go on
+	 * striking sparks off it for as long as it is up. */
+	private updateRing(actor: Actor, deltaMs: number): void {
 		const ring = actor.ring;
 		if (!ring) return;
-		ring.x = actor.x;
+		ring.graphics.x = actor.x;
 		// Around the middle of the character, not its feet: the actor's own y is the foot
 		// line it stands on, and a circle centred there would be a ring around its ankles.
-		ring.y = actor.y - actor.displayHeight / 2;
-		ring.zIndex = actor.y - 0.25;
+		ring.graphics.y = actor.y - actor.displayHeight / 2;
+		ring.graphics.zIndex = actor.y - 0.25;
+		// Struck at a rate rather than per frame, so a board running at 120Hz throws the same
+		// sparks as one running at 60, and a frame the browser sat on throws the ones it owes.
+		ring.sinceSpark += deltaMs;
+		while (ring.sinceSpark >= SPARK_EVERY_MS) {
+			ring.sinceSpark -= SPARK_EVERY_MS;
+			this.strikeSparks(actor, ring);
+		}
 	}
 
-	/** Take a character's stance ring off the board. */
+	/**
+	 * Strike a few sparks off a guard: each one leaves a point somewhere along the arc,
+	 * flying off the surface it left — outward, which on the third of the circle facing the
+	 * attacker is back the way the blow came — and is left to fall and fade on its own
+	 * ({@link updateSparks}).
+	 *
+	 * Everything about one is drawn out of the same two numbers the arc is: where on the
+	 * sweep it comes off, and which way "off" is there. So the sparks cannot drift away from
+	 * the mark they belong to however the fighter is standing.
+	 */
+	private strikeSparks(actor: Actor, ring: GuardRing): void {
+		if (!this.app) return;
+		const radius = this.ringRadius(actor);
+		const half = Math.PI * GUARD_ARC_SHARE;
+		for (let i = 0; i < SPARK_PER_STRIKE; i++) {
+			const at = ring.facing + (Math.random() * 2 - 1) * half;
+			const away = at + (Math.random() * 2 - 1) * SPARK_SPREAD;
+			const speed = SPARK_SPEED * (1 + (Math.random() * 2 - 1) * (SPARK_SPEED_SPREAD / 2));
+			const graphics = new Graphics();
+			graphics.circle(0, 0, SPARK_SIZE).fill({ color: ring.sparkColor });
+			graphics.x = ring.graphics.x + Math.cos(at) * radius;
+			graphics.y = ring.graphics.y + Math.sin(at) * radius;
+			// Over the fighters and their guards, under the slash a blow that got through
+			// draws: a spark is the blow being turned aside, so nothing it is coming off
+			// should be in front of it.
+			graphics.zIndex = actor.y + 10000;
+			this.app.stage.addChild(graphics);
+			this.sparks.push({
+				graphics,
+				vx: Math.cos(away) * speed,
+				vy: Math.sin(away) * speed,
+				elapsed: 0
+			});
+		}
+	}
+
+	/** Fly every spark on: pulled down as it goes, shrinking and fading over its life, and
+	 * taken off the board at the end of it. */
+	private updateSparks(deltaMs: number): void {
+		if (this.sparks.length === 0) return;
+		const seconds = deltaMs / 1000;
+		const remaining: Spark[] = [];
+		for (const spark of this.sparks) {
+			spark.elapsed += deltaMs;
+			const t = spark.elapsed / SPARK_LIFE_MS;
+			if (t >= 1) {
+				spark.graphics.parent?.removeChild(spark.graphics);
+				spark.graphics.destroy();
+				continue;
+			}
+			spark.vy += SPARK_GRAVITY * seconds;
+			spark.graphics.x += spark.vx * seconds;
+			spark.graphics.y += spark.vy * seconds;
+			// Bright the whole way and then gone would be a dot switching off; it goes out
+			// instead, and gets smaller as it cools.
+			spark.graphics.alpha = 1 - t * t;
+			spark.graphics.scale.set(1 - t * 0.5);
+			remaining.push(spark);
+		}
+		this.sparks = remaining;
+	}
+
+	/** Take a character's stance ring off the board. Whatever sparks it has already struck
+	 * are left in the air to fall on their own — they came off it, they are not part of it. */
 	private clearRing(actor: Actor): void {
 		if (!actor.ring) return;
-		actor.ring.parent?.removeChild(actor.ring);
-		actor.ring.destroy();
+		actor.ring.graphics.parent?.removeChild(actor.ring.graphics);
+		actor.ring.graphics.destroy();
 		actor.ring = null;
 	}
 
