@@ -708,6 +708,14 @@ export class BoosterBoxSprite extends Container {
 	 * The band above comes out right without being told: a trimmed, scaled Text reports the ink's
 	 * own height, which is what {@link bandHeights} measures, so the fade is as deep as the letters
 	 * are and not as deep as a line box they sit loose inside.
+	 *
+	 * `padding` is what the trim is read inside. A text is painted into a bitmap cut to the width
+	 * the advances added up to, so a letter leaning past its own box is sliced off there — inside
+	 * the type, before anything on this box gets the chance to crop it, which is why the name was
+	 * still coming up short however wide the room round it was made. The padding is the bitmap's
+	 * margin and nothing else, and with the trim reading the box back off the ink it costs the
+	 * layout exactly nothing, so it is given a whole em: enough that no face reaches the edge, and
+	 * free whether or not it is needed.
 	 */
 	private placeType(label: string): Text {
 		const w = this.boxWidth;
@@ -723,6 +731,7 @@ export class BoosterBoxSprite extends Container {
 				lineHeight: size * TYPE_LEADING,
 				fill: this.stock.ink,
 				align: 'center',
+				padding: size,
 				trim: true,
 				wordWrap: true,
 				wordWrapWidth: room
