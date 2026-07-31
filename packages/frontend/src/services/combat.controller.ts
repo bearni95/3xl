@@ -294,9 +294,10 @@ export interface Fighter extends FighterSeed {
 	 *
 	 * A subset of {@link spent}, and the difference between the two is the difference
 	 * between a gift taken and a gift that merely ran out at the end of the turn it was in
-	 * hand for ({@link CombatController.lapsePassives}). Nothing in the rules reads it — it
-	 * is what the row of marks at the fighter's feet shows, which is a record of what its
-	 * colour did for it, and a gift that did nothing is not that.
+	 * hand for ({@link CombatController.lapsePassives}). Nothing in the rules reads it and
+	 * nothing on the board draws it: it is the fight's own record of what a colour was
+	 * worth, kept because a gift that fired and one that came to nothing are not the same
+	 * thing to have happened, whatever the rules make of them afterwards.
 	 */
 	used: PassiveOrder[];
 	/** The board cell it is standing on. Its line-up slot's opening ground until the
@@ -322,12 +323,13 @@ export interface FighterView {
 	name: string;
 	side: FighterSide;
 	color: CombatColor;
-	/** The free orders its colour granted it, and those of them already had — what the
-	 * board wears at the fighter's feet, and which of them still stand for something. */
+	/** The free orders its colour granted it — which the board marks with a dot in each of
+	 * those orders' own corners, for the opening turn they are in hand for — and those of
+	 * them already had. */
 	passives: PassiveOrder[];
 	spent: PassiveOrder[];
-	/** Those its colour actually carried out for it, never secret and never taken back —
-	 * the filled marks at the fighter's feet. See {@link Fighter.used}. */
+	/** Those its colour actually carried out for it, never secret and never taken back.
+	 * See {@link Fighter.used}. */
 	used: PassiveOrder[];
 	charges: number;
 	maxCharges: number;
@@ -837,8 +839,20 @@ export class CombatController {
 		// fighter's colour so it reads as a stance it is in rather than a frame of its
 		// animation, and both stand for the rest of the turn: the next shot down this lane
 		// meets a fighter still braced.
+		//
+		// A guard is a guard whoever paid for it. The free one blue owes is the same defence
+		// as the ordered one — it turns this very blow aside, at this very moment — so it is
+		// shown as one: the fighter braces, and the only difference is which word goes over
+		// its head afterwards. Standing still through a shot it turned aside was the one
+		// defence in this fight that was never drawn, which read as a bullet simply missing.
+		//
+		// Both are settled before the blow is thrown, so both go up before it: whether the
+		// gift answers is decided by what the fighter was given and what it is still owed,
+		// and neither of those moves while the attacker walks over. What it costs is decided
+		// afterwards — a gift is spent when it does something, and this one does.
 		const covering = !target.down && target.action === 'defend';
-		const guard = covering ? findMove(target, 'defend') : null;
+		const braces = covering || this.passiveReady(target, 'defend');
+		const guard = braces ? findMove(target, 'defend') : null;
 		if (guard) this.board?.holdMove(target.id, guard, target.color);
 
 		// Close in, then strike: the blow is awaited to its last frame, so what it did is
@@ -855,7 +869,8 @@ export class CombatController {
 		} else if (this.passiveReady(target, 'defend')) {
 			// Blue's free guard. It is only had on a turn the fighter wasn't covering
 			// anyway (the branch above), and only spent on a shot it actually turns
-			// aside — a quiet turn costs it nothing.
+			// aside — a quiet turn costs it nothing. The brace is already up, for the
+			// same reason an ordered one is: it went up when this blow was thrown.
 			this.spend(target, 'defend', true);
 			this.log.push(`${from} at ${target.name} — turned aside by its free guard.`);
 			this.board?.showCallout(target.id, 'GUARD', target.color);
@@ -1362,23 +1377,24 @@ export class CombatController {
 	}
 
 	/**
-	 * Mark a gift as had — it is worth the one use — and take the glyph that stood for it
-	 * off the fighter's corner, so a corner never offers what the fighter no longer holds.
+	 * Mark a gift as had — it is worth the one use, and this is what takes it out of the
+	 * fighter's hand.
 	 *
 	 * `taken` says whether the gift *did* something: a free shot that was fired, a guard
 	 * that turned a bullet aside, a charge that went into the bank. To every rule in this
 	 * fight that is the same state as a gift that merely ran out at the end of the turn it
 	 * was in hand for ({@link lapsePassives}) — both are gone, and that is the point of
-	 * having one call for them. The one thing that tells them apart is what is *shown*:
-	 * the row of marks at a fighter's feet is a record of what its colour did for it, and a
-	 * gift that did nothing has nothing to record.
+	 * having one call for them. What tells them apart is kept for the fight's own record
+	 * and shown nowhere: a gift is drawn for the turn it is in hand, not for what became
+	 * of it.
 	 */
 	private spend(fighter: Fighter, order: PassiveOrder, taken: boolean): void {
 		if (fighter.spent.includes(order)) return;
 		fighter.spent.push(order);
 		if (taken) fighter.used.push(order);
-		// The row at the fighter's feet is drawn from `passives`, `spent` and `used`, so
-		// saying the state changed is the whole of telling the board about it.
+		// Every rule that reads a gift reads these two lists — what a rival counts as a
+		// threat, and what is still owed when the next blow comes down the lane — so saying
+		// the state changed is the whole of telling the fight about it.
 		this.emit();
 	}
 

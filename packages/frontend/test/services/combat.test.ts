@@ -94,9 +94,12 @@ interface AuraLog {
 	lit: { id: string; color: string }[];
 	doused: string[];
 	moved: { id: string; cell: Cell }[];
+	/** The defensive pose a fighter was stood in as a blow came at it, whoever paid for
+	 * the guard that answers it — the one thing on the board that says a shot was met. */
+	braced: { id: string; color: string }[];
 }
 
-const boardLog = (): AuraLog => ({ lit: [], doused: [], moved: [] });
+const boardLog = (): AuraLog => ({ lit: [], doused: [], moved: [], braced: [] });
 
 /**
  * A board that does nothing but remember what it was told. The controller drives the
@@ -121,9 +124,9 @@ function fakeBoard(log: AuraLog) {
 		showCellCallout: () => {},
 		showSlash: () => {},
 		playMove: done,
-		// The guard a covering fighter is stood in for the turn, and the release of every
+		// The guard a braced fighter is stood in for the turn, and the release of every
 		// one of them as the next turn is handed over.
-		holdMove: () => {},
+		holdMove: (id: string, _move: unknown, color: string) => log.braced.push({ id, color }),
 		clearHolds: () => {},
 		playHurt: done,
 		closeIn: done,
@@ -319,9 +322,9 @@ describe('the stand-off', () => {
 	describe('what a colour turned out to be worth', () => {
 		/**
 		 * A gift that did something and a gift that merely ran out are the same state to
-		 * every rule of the fight — both are gone — and are told apart for one purpose: the
-		 * slot over a fighter's orders records what its colour did for it, and a gift that
-		 * did nothing has nothing to record.
+		 * every rule of the fight — both are gone — and are told apart anyway, so the fight
+		 * keeps an account of what a colour was actually worth in it rather than only of
+		 * what it was handed.
 		 */
 		it('separates a gift that fired from one that ran out unused', async () => {
 			const controller = new CombatController([
@@ -571,6 +574,32 @@ describe('the stand-off', () => {
 			// So ordering the thing your colour owes you is not keeping it back — it is
 			// throwing it away: it was never taken and it does not last the turn.
 			expect(fighterOf(state, 'p0').spent).toEqual(['defend']);
+		});
+
+		it('braces the fighter it answers for, exactly as an ordered guard does', async () => {
+			const log = boardLog();
+			const controller = new CombatController([
+				// Red, so a bullet arrives on the opening turn — the one turn the gift is in
+				// hand for. Blue is given something other than cover, which is the only way the
+				// free guard is the thing that answers the shot.
+				seed('r0', 'error', 'red'),
+				seed('p0', 'info', 'blue', {
+					moves: [{ name: 'Guard', type: 'defend', source: 'defend-anim' }]
+				})
+			]);
+			controller.attachBoard(fakeBoard(log));
+			controller.setAction('p0', 'charge');
+			await playTurn(controller);
+
+			const state = get(controller);
+			// The gift did the stopping...
+			expect(fighterOf(state, 'p0').used).toEqual(['defend']);
+			expect(fighterOf(state, 'p0').down).toBe(false);
+			// ...and it was *shown* doing it. A guard is a guard whoever paid for it: the pose
+			// goes up in the fighter's own colour as the blow comes in, the same one an
+			// ordered cover is stood in. Left out, the free guard was the one defence in this
+			// fight nothing was drawn for, and the shot it turned aside read as a miss.
+			expect(log.braced).toContainEqual({ id: 'p0', color: 'blue' });
 		});
 
 		it('is worth one use in the whole battle', async () => {
