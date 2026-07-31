@@ -45,10 +45,11 @@
 	// Which is why the square carries a map: there is no place to name and no show to fly, so
 	// what it holds is the thing it is about, and an empty square lettered nothing at all read
 	// as a crumb that had failed to load rather than as a rung still to be walked to.
-	// So every tier below the view is reachable from the row rather than only the ones already
-	// walked into — but only ever one of them at a time: a run of empty positions is drawn as
-	// the first of them alone (see `rungs`), since the rung after next cannot be walked to
-	// before the next one is.
+	// So the tier below the view is reachable from the row rather than only the ones already
+	// walked into — that tier and no other: the row is the path walked so far plus a single
+	// square for the rung after it (see `rungs`), since the rung after next cannot be walked to
+	// before the next one is, and a tier this place skips is a gap in the path rather than a
+	// step in it.
 	export let crumbs: {
 		label: string;
 		key: string | null;
@@ -124,15 +125,17 @@
 	// that says where you are. The squares it drops are in the column the dots button opens.
 	$: lastCrumb = [...crumbs].reverse().find((crumb) => !crumb.empty);
 
-	// The ladder as it is drawn: every step that names a place, and of a run of empty positions
-	// only the first. Two squares side by side are two ways of pressing the same idea — go on
-	// down — and the finer of them takes the map to a zoom it cannot read anything at yet, since
-	// the tier before it has not been walked into either. So a run collapses to the rung that is
-	// actually next, and the row keeps its length only for as long as the ladder is being walked
-	// rather than padding its tail with squares. An empty position with a place after it is not a
-	// run and is kept: it is a tier this place skips (Andorra and l'Alguer have no comarca), and
-	// dropping it would slide the steps under it up into the wrong rungs.
-	$: rungs = crumbs.filter((crumb, index) => !crumb.empty || !crumbs[index - 1]?.empty);
+	// The ladder as it is drawn: every step that names a place, and exactly one square — the
+	// position straight after the last of those, when there is one. An empty position is only
+	// ever worth drawing as the next rung down: two of them side by side are two ways of
+	// pressing the same idea, and the finer takes the map to a zoom nothing has been walked
+	// into yet, while one sandwiched between two named places is a tier this place does not
+	// have (Andorra and l'Alguer have no comarca) — a gap in the path rather than a step in
+	// it, and a square standing for a tier that will never hold anything here is a rung
+	// offering to take the map somewhere it has already gone past. So the row is the path
+	// walked so far plus the one rung after it, and nothing else.
+	$: lastFilled = crumbs.reduce((last, crumb, index) => (crumb.empty ? last : index), -1);
+	$: rungs = crumbs.filter((crumb, index) => !crumb.empty || index === lastFilled + 1);
 
 	function pick(key: string | null) {
 		expanded = false;
