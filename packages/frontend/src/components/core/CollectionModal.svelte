@@ -161,6 +161,10 @@
 					// A character cast in two shows has a cell in each, so the pair keys one.
 					key: `${row.id}|${character.id}`,
 					showId: row.id,
+					// The show's name in words, for the row under the character's own: a cell has
+					// no town and no year to say there, and the mark on its floor is the same fact
+					// for a reader who already knows the mark.
+					showName: row.name,
 					character,
 					owned: held.has(`${character.id}|${row.id}`) || held.has(`${character.id}|*`)
 				}))
@@ -245,6 +249,7 @@
 								label={cell.character.label}
 								basePath={cell.character.basePath}
 								showId={cell.showId}
+								subtitle={cell.showName}
 							/>
 						</div>
 					{/each}

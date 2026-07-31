@@ -51,6 +51,14 @@
 	// two-digit apostrophe year beside the place — 2026 reads '26 — since the panel has
 	// room for a mark, not a date. Null leaves the place standing on its own.
 	export let spawnedAt: string | number | Date | null = null;
+	// What the second row says instead of a claim place, for a statue that is not of a copy:
+	// the album's, where the cell is a character and there is no town and no year to name. It
+	// says the show they are cast in there — the same fact the glyph on the floor carries, in
+	// the one place on the card a reader who does not know the mark can read it — and takes
+	// the row over, since a card with nothing claimed has no season to be from either. Given
+	// rather than read off `showId`: the names live with the logos, which a statue has no
+	// business fetching.
+	export let subtitle: string | null = null;
 	// The TMDB id of the character's show — the one the admin `/characters` screen
 	// assigns it. Its glyph is painted across the floor. Null, or a show with no glyph
 	// drawn for it yet, leaves the floor bare rather than badging it with a stand-in.
@@ -189,6 +197,12 @@
 
 	// The year the copy was minted, as the cards and the booster pack already say it.
 	$: year = spawnYearLabel(spawnedAt);
+
+	// What the second row actually carries. A subtitle takes the whole of it — it is what a
+	// card with nothing claimed says in place of a claim, so there is no place beside it and no
+	// season it could be from. Otherwise the row is the two it has always been.
+	$: caption = subtitle ?? place;
+	$: mark = subtitle ? null : year;
 </script>
 
 <!-- The card declares itself a container so the bevel's faces can be sized off its width:
@@ -296,10 +310,12 @@
 		>
 			{label}
 		</div>
-		{#if place || year}
+		{#if caption || mark}
 			<!-- The place and the year it was minted share the row: the town gives way first,
 				cut with an ellipsis, while the year keeps its two characters whatever the card's
-				width — a mark of which season a copy is from is no use half-shown. -->
+				width — a mark of which season a copy is from is no use half-shown. A card with
+				nothing claimed says its show along this row instead, and says it alone (see
+				`caption`). -->
 			<div
 				class={classNames(
 					'flex items-baseline justify-center gap-1 px-1 py-0.5 text-xs',
@@ -307,11 +323,11 @@
 					stock.inkMuted
 				)}
 			>
-				{#if place}
-					<span class="truncate" title={place}>{place}</span>
+				{#if caption}
+					<span class="truncate" title={caption}>{caption}</span>
 				{/if}
-				{#if year}
-					<span class="flex-none tabular-nums">{year}</span>
+				{#if mark}
+					<span class="flex-none tabular-nums">{mark}</span>
 				{/if}
 			</div>
 		{/if}
