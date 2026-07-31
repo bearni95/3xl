@@ -718,7 +718,7 @@
 		wrap.className =
 			'flex size-14 -translate-x-1/2 translate-y-1 items-center justify-center rounded-full shadow-md [&>svg]:size-9 ' +
 			(box.light ? 'bg-white text-black' : 'bg-black text-white');
-		if (box.onClick) wrap.className += ' cursor-pointer';
+		if (boxAction(box, 'disc')) wrap.className += ' cursor-pointer';
 		wrap.setAttribute('aria-hidden', 'true');
 		const markup = iconMarkup(showIconName(box.showId));
 		if (markup) wrap.innerHTML = markup;
@@ -740,6 +740,15 @@
 	// A stack with nothing to fold (no levels at all, or a single rendering) is at its
 	// finest tier by definition, and so keeps its boxes — the finest test is made first for
 	// exactly that reason, since level 0 is then both ends of the stack at once.
+	// What a click on this mark does, which is not the same question at both sizes: the box
+	// is a cover and answers for the pack behind it, the disc is a dot on a town at a zoom
+	// that gave that town no pin of its own, so it answers for the town. A caller that
+	// names only `onClick` gets it at both sizes.
+	function boxAction(box: MapBoosterBox, kind: 'box' | 'disc'): (() => void) | null {
+		if (kind === 'disc') return (box.onDiscClick ?? box.onClick) ?? null;
+		return box.onClick ?? null;
+	}
+
 	function markKindForLevel(): 'box' | 'disc' | null {
 		if (pinLevelIndex >= pinLevelCount - 1) return 'box';
 		if (pinLevelIndex === 0) return null;
@@ -769,7 +778,8 @@
 			// No tooltip: the box already carries the town's name across its foot, and a
 			// hover label over a map this dense is a second thing to read where there was
 			// one to look at.
-			if (box.onClick) badge.on('click', () => box.onClick!());
+			const action = boxAction(box, kind);
+			if (action) badge.on('click', () => action());
 			badge.addTo(boxLayer!);
 		}
 	}

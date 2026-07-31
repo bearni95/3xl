@@ -1351,7 +1351,13 @@
 				showId: show?.id ?? null,
 				locationName: festa.name,
 				light: today.has(festa.id),
-				onClick: () => openPack(festa.id)
+				onClick: () => openPack(festa.id),
+				// Above the town tier the box is a disc, and a disc is a dot on a place: it
+				// stands where that town's pin would be at a zoom that gave it none, so a
+				// click on it opens the town on the map exactly as a pin would, rather than
+				// raising the pack of a town too small to be named. Zoomed in far enough for
+				// the box itself, the click is the pack's again.
+				onDiscClick: () => open(festa.id)
 			});
 		}
 		return result;

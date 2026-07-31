@@ -51,8 +51,8 @@ export interface MapLine {
  * read as one thing standing on one town.
  *
  * Plain data and a callback — which of the button and the countdown is drawn is
- * decided by whoever hands this over, since the rules (one fight per town per day,
- * one battle at a time, a full team to field) are theirs and not the map's.
+ * decided by whoever hands this over, since the rules (a town cooling down after a
+ * fight, one battle at a time, a full team to field) are theirs and not the map's.
  */
 export interface MapChallenge {
 	/** Wins banked against the wins needed to take the region. */
@@ -173,6 +173,14 @@ export interface MapBoosterBox {
 	light?: boolean;
 	/** Called when the box is clicked (e.g. open the town's festa booster pack). */
 	onClick?: () => void;
+	/**
+	 * Called when the *disc* is clicked — the mark this box folds up to above the town
+	 * tier. A box is a cover to be read and a click on it is a click on the pack; a disc
+	 * is a dot on a place at a zoom where that place has no pin of its own, and a click
+	 * on it is more readily a click on the town than on what the town has waiting. Falls
+	 * back to `onClick` when a caller wants the same thing at both sizes.
+	 */
+	onDiscClick?: () => void;
 }
 
 /** A standalone circular region drawn on the map, independent of any GeoJSON. */
