@@ -348,32 +348,21 @@ const GIFT_DOT_RING = 2;
  */
 const ICON_RASTER_PX = 256;
 
-// --- The sparks that rain over a fighter a blow got through to ---
-// The same particles a guard throws, and deliberately so: what a shield does to a blow and
-// what a blow does to a fighter it gets past are the same event seen from the two ends of
-// it, so they are one thing on the canvas — sparks in the attacker's colour — and what
-// tells them apart is where they are and which way they go. Off a guard they leave the arc
-// and fly back at whoever swung; here nothing turned the blow, so they fall over the
-// fighter that took it.
+// --- The sparks a blow that got through throws ---
+// The same spray a guard throws, with the sign flipped, and that is the whole difference
+// between the two: they leave the same struck side of the same fighter, in the same
+// attacker's colour, at the same speeds. A guard turned the blow around, so its sparks come
+// back off the shield at whoever swung; nothing turned this one, so its sparks carry on the
+// way the blow was going — through the fighter that took it and out the far side.
 //
 // It was two bold strokes crossing at the fighter's middle, an X, which was a mark ABOUT
 // the hit rather than the hit happening: a shape that was never on the board a moment
 // earlier and reads as annotation, drawn at the one instant the picture had least need of
 // being told anything (a fighter is visibly reeling and going down).
-/** How many fall over a struck fighter. */
+/** How many are thrown, in the one burst. A blow landing is a moment and not a state, so
+ * where a guard strikes a few every tick for as long as it is up, this is all of them at
+ * once — about what a guard throws over the length of a strike. */
 const HIT_SPARKS = 90;
-/** How far over its head the shower starts and how deep that band is, as fractions of the
- * fighter's own height — a band and not a line, so the rain comes down over a stretch of
- * time rather than as one curtain dropping. */
-const HIT_RAIN_LIFT = 0.25;
-const HIT_RAIN_BAND = 0.5;
-/** How wide the shower is against the fighter's own width. A little over it, so the rain
- * falls past both shoulders rather than down a line through the middle. */
-const HIT_RAIN_WIDTH = 1.3;
-/** How fast one starts falling, in canvas px per second (gravity takes it from there), and
- * how far it may drift to either side as it comes down. */
-const HIT_FALL_SPEED = 200;
-const HIT_DRIFT = 120;
 
 /** How far a cell's callout is lifted clear of the heads of whoever is standing in it,
  * in cells. Small: it is meant to sit just over the pair it is about. */
@@ -1893,7 +1882,7 @@ export class MugenBoard {
 		ring.sinceSpark += deltaMs;
 		while (ring.sinceSpark >= SPARK_EVERY_MS) {
 			ring.sinceSpark -= SPARK_EVERY_MS;
-			this.strikeSparks(actor, ring);
+			this.spraySparks(actor, ring.facing, ring.sparkColor, SPARK_PER_STRIKE, 'off');
 		}
 	}
 
@@ -1909,22 +1898,37 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Strike a few sparks off a guard: each one leaves a point somewhere along the arc,
-	 * flying off the surface it left — outward, which on the third of the circle facing the
-	 * attacker is back the way the blow came — and is left to fall and fade on its own
-	 * ({@link updateSparks}).
+	 * Throw sparks off a fighter: `count` of them, each leaving a point somewhere along the
+	 * third of the circle that faces `facing` — the side a blow arrives on — and left to
+	 * fly, fall and fade on its own ({@link updateSparks}).
+	 *
+	 * `sense` is the whole difference between the two things this board throws sparks for.
+	 * `off` sends each one back out the way it came, which is what a guard does to a blow:
+	 * the shield turned it, so the sparks return to whoever swung. `through` sends them the
+	 * way the blow was going instead — out of the far side of a fighter that failed to turn
+	 * it. Same points, same colour, same speeds; the sign is the event.
 	 *
 	 * Everything about one is drawn out of the same two numbers the arc is: where on the
-	 * sweep it comes off, and which way "off" is there. So the sparks cannot drift away from
-	 * the mark they belong to however the fighter is standing.
+	 * sweep it comes off, and which way it is pointing. So the sparks cannot drift away from
+	 * the fighter they belong to however it happens to be standing.
 	 */
-	private strikeSparks(actor: Actor, ring: GuardRing): void {
+	private spraySparks(
+		actor: Actor,
+		facing: number,
+		color: number,
+		count: number,
+		sense: 'off' | 'through'
+	): void {
 		if (!this.app) return;
 		const radius = this.ringRadius(actor);
 		const half = Math.PI * GUARD_ARC_SHARE;
-		for (let i = 0; i < SPARK_PER_STRIKE; i++) {
-			const at = ring.facing + (Math.random() * 2 - 1) * half;
-			const away = at + (Math.random() * 2 - 1) * SPARK_SPREAD;
+		// Where the spray is centred, from the middle of the fighter: the actor's own y is
+		// the line it stands on, so the middle of it is half a height up.
+		const midX = actor.x;
+		const midY = actor.y - actor.displayHeight / 2;
+		for (let i = 0; i < count; i++) {
+			const at = facing + (Math.random() * 2 - 1) * half;
+			const flight = (sense === 'off' ? at : at + Math.PI) + (Math.random() * 2 - 1) * SPARK_SPREAD;
 			const speed = SPARK_SPEED * (1 + (Math.random() * 2 - 1) * (SPARK_SPEED_SPREAD / 2));
 			// One dot's geometry, drawn once and shared by every spark there will ever be, with
 			// the colour put on as a tint (see sparkArt). A shower is hundreds of these in the
@@ -1932,17 +1936,17 @@ export class MugenBoard {
 			// circle is hundreds of things for the renderer to keep apart rather than one thing
 			// drawn many times.
 			const graphics = new Graphics(this.sparkArt());
-			graphics.tint = ring.sparkColor;
-			graphics.x = ring.graphics.x + Math.cos(at) * radius;
-			graphics.y = ring.graphics.y + Math.sin(at) * radius;
-			// Over the fighters and their guards: a spark is the blow being turned aside, so
-			// nothing it is coming off should be in front of it.
+			graphics.tint = color;
+			graphics.x = midX + Math.cos(at) * radius;
+			graphics.y = midY + Math.sin(at) * radius;
+			// Over the fighters and their guards: a spark is what the blow did, so nothing it
+			// came off should be in front of it.
 			graphics.zIndex = actor.y + 10000;
 			this.app.stage.addChild(graphics);
 			this.sparks.push({
 				graphics,
-				vx: Math.cos(away) * speed,
-				vy: Math.sin(away) * speed,
+				vx: Math.cos(flight) * speed,
+				vy: Math.sin(flight) * speed,
 				elapsed: 0
 			});
 		}
@@ -2108,39 +2112,26 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Rain sparks over a fighter a blow got through to, in the attacker's `color` — the
-	 * same particles a guard throws off, coming down over the one that failed to stop it
-	 * (see {@link HIT_SPARKS} for why they are the same).
+	 * Throw sparks off a fighter a blow got through to, in `from`'s colour — the same spray
+	 * a guard throws, sent on through instead of back (see {@link HIT_SPARKS}).
 	 *
-	 * They start over its head, across a little more than its own width and over a band of
-	 * heights rather than on one line, so the shower arrives over a stretch of time and not
-	 * as a curtain dropping; each falls, drifts and fades on its own from there
+	 * The blow is coming from the same place either way, so the spray is aimed the same way
+	 * it is for a guard: off the side of the struck fighter that `from` is standing on. What
+	 * differs is where it goes — away from the attacker rather than back at it, because
+	 * nothing here turned the blow around. One burst, then each spark is on its own
 	 * ({@link updateSparks}), so callers fire and forget exactly as they did with the mark
 	 * this replaced.
 	 */
-	showHit(id: string, color: string): void {
+	showHit(id: string, from: { id: string; color: string }): void {
 		const actor = this.findActor(id);
-		if (!actor || !this.app) return;
-		const hex = combatColorHex(color);
-		const spread = (actor.displayWidth * HIT_RAIN_WIDTH) / 2;
-		// The actor's own y is the line it stands on, so its head is one height above that.
-		const head = actor.y - actor.displayHeight;
-		for (let i = 0; i < HIT_SPARKS; i++) {
-			const graphics = new Graphics(this.sparkArt());
-			graphics.tint = hex;
-			graphics.x = actor.x + (Math.random() * 2 - 1) * spread;
-			graphics.y =
-				head - actor.displayHeight * (HIT_RAIN_LIFT + Math.random() * HIT_RAIN_BAND);
-			// The same place a guard's sparks are drawn at: over every fighter on the board.
-			graphics.zIndex = actor.y + 10000;
-			this.app.stage.addChild(graphics);
-			this.sparks.push({
-				graphics,
-				vx: (Math.random() * 2 - 1) * HIT_DRIFT,
-				vy: HIT_FALL_SPEED * (0.4 + Math.random()),
-				elapsed: 0
-			});
-		}
+		if (!actor) return;
+		this.spraySparks(
+			actor,
+			this.angleTo(actor, from.id),
+			combatColorHex(from.color),
+			HIT_SPARKS,
+			'through'
+		);
 	}
 
 	/** Remove a character's callout, if it has one. */

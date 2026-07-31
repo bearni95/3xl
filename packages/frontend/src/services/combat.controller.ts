@@ -892,12 +892,14 @@ export class CombatController {
 		} else {
 			target.down = true;
 			this.log.push(`${from} — ${target.name} is down.`);
-			// Sparks rain over it in the colour of whoever's blow got through, and are all that
-			// is said about it: the shower, the fighter reeling and then falling out of the lane
+			// Sparks come off it in the colour of whoever's blow got through, and are all that
+			// is said about it: the spray, the fighter reeling and then falling out of the lane
 			// are the hit — a word over the head of somebody visibly going down added nothing.
 			// They are the very sparks a guard throws off, which is the point of them being
-			// sparks: the same blow, seen at the end where nothing turned it aside.
-			this.board?.showHit(target.id, shooter.color);
+			// sparks: the same blow, seen where nothing turned it aside — so they carry on
+			// through the fighter instead of coming back at the one who threw it. Hence the
+			// shooter, which is what says which way "through" is.
+			this.board?.showHit(target.id, { id: shooter.id, color: shooter.color });
 			await this.board?.playHurt(target.id);
 			// The blow decided the lane, so the lane is walked out now — and the attacker
 			// stays where that leaves it rather than going home to a cell it has just won
