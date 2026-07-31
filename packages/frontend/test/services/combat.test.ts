@@ -118,9 +118,11 @@ function fakeBoard(log: AuraLog) {
 		},
 		clearAura: (id: string) => log.doused.push(id),
 		clearAuras: () => {},
-		// The sparks raining over a fighter a blow got through — and the whole of what is
-		// said about it, since nothing in this fight is put into words on the board.
+		// The sparks a blow throws: through a fighter it got past, and back off one whose
+		// blow was stopped by another blow — the whole of what is said about either, since
+		// nothing in this fight is put into words on the board.
 		showHit: () => {},
+		showParry: () => {},
 		playMove: done,
 		// The guard a braced fighter is stood in, the ring drawn round it as the blow it
 		// answers is thrown, the release of it once that blow is over, and the release of

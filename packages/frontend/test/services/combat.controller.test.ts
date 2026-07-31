@@ -519,6 +519,18 @@ describe('CombatController — what the board is left showing', () => {
 			calls.findIndex((call) => call.method === 'playMove')
 		);
 		expect(calls.some((call) => call.method === 'showHit')).toBe(false);
+
+		// What IS shown is the pair of sprays: a blow stopped by another blow gets nowhere,
+		// exactly as one a shield turned does, so each of the two is drawn as a rival that had
+		// blocked would have been — two bursts a lane, each carrying the colour of whoever
+		// threw the blow it is about, which is what sends a fighter's own colour back at it.
+		const parried = calls.filter((call) => call.method === 'showParry');
+		expect(parried).toHaveLength(RIVAL_CELLS.length * 2);
+		// And thrown as the blows are, not after them: a spray that arrived once both had
+		// swung and stopped would be saying so about something already over.
+		expect(calls.findIndex((call) => call.method === 'showParry')).toBeLessThan(
+			calls.findIndex((call) => call.method === 'playMove')
+		);
 	});
 
 	it('leaves a covering fighter nobody shot at standing as it was', async () => {

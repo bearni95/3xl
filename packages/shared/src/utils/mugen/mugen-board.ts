@@ -2134,6 +2134,33 @@ export class MugenBoard {
 		);
 	}
 
+	/**
+	 * Throw one burst off a fighter as if it had turned `from`'s blow aside: the guard's own
+	 * spray, in `from`'s colour, coming back off the side `from` is standing on — with no
+	 * guard up and none asked for.
+	 *
+	 * What it is for is a blow stopped by another blow. Two fighters that went at each other
+	 * at once have both their blows come to nothing, which is the same thing happening to
+	 * each of them as happens to a fighter whose blow a shield turned — so it is drawn the
+	 * same way, twice, once for each blow (see the controller's exchange). Each fighter ends
+	 * up watching its own colour come back at it, which is what a blow stopped by something
+	 * looks like from the end that threw it.
+	 *
+	 * One burst rather than the guard's tick-by-tick spray, because there is no guard to be
+	 * up for a stretch of time: two blows meet at a moment and are done.
+	 */
+	showParry(id: string, from: { id: string; color: string }): void {
+		const actor = this.findActor(id);
+		if (!actor) return;
+		this.spraySparks(
+			actor,
+			this.angleTo(actor, from.id),
+			combatColorHex(from.color),
+			HIT_SPARKS,
+			'off'
+		);
+	}
+
 	/** Remove a character's callout, if it has one. */
 	clearCallout(id: string): void {
 		const actor = this.findActor(id);

@@ -792,6 +792,18 @@ export class CombatController {
 		// Nothing is said over it. The two of them walking out to the same spot and striking
 		// together, with neither going down afterwards, is a collision already told in full;
 		// a word printed over the ground only lettered what the picture had just shown.
+		// Sparks off both of them as the blows meet, each fighter's own colour coming back at
+		// it. A blow stopped by another blow is the same thing, to the one who threw it, as a
+		// blow a shield turned: it got nowhere, and what says so on this board is the spray
+		// coming back the way it went out. So each of the two is drawn exactly as a rival
+		// that had blocked would have been — which is what puts each fighter's colour on the
+		// sparks flying at that same fighter.
+		//
+		// Thrown with the strikes rather than after them: the blows cancel at the moment they
+		// are thrown, and sparks that arrived once both had swung and stopped would be saying
+		// so about something already over.
+		this.board?.showParry(two.shooter.id, { id: one.shooter.id, color: one.shooter.color });
+		this.board?.showParry(one.shooter.id, { id: two.shooter.id, color: two.shooter.color });
 		await Promise.all([
 			this.board?.playMove(one.shooter.id, this.strikeMove(one.shooter)),
 			this.board?.playMove(two.shooter.id, this.strikeMove(two.shooter))
