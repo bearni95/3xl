@@ -42,10 +42,13 @@ import type { MusicTrack, MusicCollection } from '$types/music.type';
  * are remembered in localStorage across a reload: which station they are on, and
  * whether they had it on at all. Neither is a position — there is nothing to resume,
  * because the station kept playing while the page was gone — so what is restored is a
- * station tuned in where it now is, and a play that the browser may still refuse: a
- * reload is not a gesture, and an autoplay policy is not something to argue with. A
- * refusal leaves the plate showing Play, and does not unremember anything, so the
- * setting is still there for the next load and for the first click.
+ * station tuned in where it now is, and a play the browser is asked for twice. Once on
+ * the spot, which it may refuse, since a reload is not a gesture and an autoplay policy
+ * is not something to argue with; and then at the listener's first click or key on the
+ * page, whatever that press was actually for, which is a gesture and is allowed. So a
+ * radio left on comes back on, at the moment the listener touches anything — and until
+ * they do, the plate honestly says Play. A refusal is never written back as their having
+ * turned it off, because they did not.
  *
  * The store says only what a surface has to draw: which song is on, whether it is
  * running, and the stations there are to choose between.
@@ -162,6 +165,13 @@ class MusicService {
 	 * turning it back on would be a play button that could not be pressed off.
 	 */
 	private resumed = false;
+
+	/**
+	 * How to stand down the wait for the listener's first gesture, or null when nothing
+	 * is waiting on one. Holding the disarm rather than a flag is what keeps the
+	 * listeners from outliving what they were for (see {@link awaitGesture}).
+	 */
+	private awaiting: (() => void) | null = null;
 
 	/**
 	 * The listener's two choices, written only where they make one — never from a
@@ -385,7 +395,9 @@ class MusicService {
 	 * Turn the radio back on if that is how it was left, once there is a station to
 	 * turn it on to. A reload is not a gesture, so the browser may refuse — that is
 	 * reported as not playing and is not written down as the listener having turned it
-	 * off, since they did not.
+	 * off, since they did not. What is asked for instead is the listener's next
+	 * gesture, whatever it turns out to be (see {@link awaitGesture}): the policy is
+	 * about gestures and not about this radio, so the first one there is will do.
 	 */
 	private resume(): void {
 		if (this.resumed) return;
@@ -393,6 +405,58 @@ class MusicService {
 		if (!get(this.memory).on || !this.element()) return;
 		this.wanted = true;
 		this.tune();
+		this.awaitGesture();
+	}
+
+	/**
+	 * Turn the radio on at the listener's first gesture on the page — armed when a
+	 * remembered "on" is restored, and the whole of what makes that memory worth
+	 * keeping: an autoplay policy refuses a play that no gesture asked for, so a radio
+	 * left on came back silent every time and the setting was a note nobody could act
+	 * on. Any gesture carries the permission; it does not have to be about the music.
+	 *
+	 * Armed whether or not the restore was refused, because at that moment nobody knows
+	 * yet — `play()` answers a turn later. A radio that is already on simply disarms
+	 * this at the first click without doing anything.
+	 *
+	 * `click` and `keyup` and not the presses under them: they are the *end* of an
+	 * interaction, by which time whatever the listener was pressing has already been
+	 * handled. That matters because the first click of a visit is quite likely to be on
+	 * the play button itself — and a radio turned on underneath that press would be
+	 * turned off again by the press, which would read as a play button that does not
+	 * work. For the same reason the decision is taken a task later than the event, so a
+	 * keyboard press whose click comes after the keyup is handled before it: whatever
+	 * that gesture did to the radio has happened by then, and this stands down if the
+	 * radio is already on. A gesture's permission outlives the task it arrived in, so
+	 * playing from there is still playing from a gesture.
+	 *
+	 * A pan or a wheel over the map is not one of these, and deliberately: neither
+	 * counts as a gesture for the policy either, so a play from one would be refused —
+	 * the listener has to have touched something.
+	 */
+	private awaitGesture(): void {
+		if (!browser || this.awaiting) return;
+
+		const act = () => {
+			// The gesture may have been the listener turning the radio on themselves, or
+			// they may have turned it off since the page loaded. Only a radio still
+			// remembered as on, and not already on, is started here.
+			if (!get(this.memory).on || this.wanted) return;
+			this.wanted = true;
+			this.tune();
+		};
+
+		const onGesture = () => {
+			this.awaiting?.();
+			setTimeout(act, 0);
+		};
+
+		const events = ['click', 'keyup'] as const;
+		for (const event of events) window.addEventListener(event, onGesture, { passive: true });
+		this.awaiting = () => {
+			this.awaiting = null;
+			for (const event of events) window.removeEventListener(event, onGesture);
+		};
 	}
 
 	/**

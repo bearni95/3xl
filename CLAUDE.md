@@ -143,18 +143,23 @@ they run end to end from that day's midnight and start again when they run out, 
 playing is whichever song the clock lands in, at the second it lands on
 (`utils/music/station`). So two players hear the same bar of the same song without anything
 being stored, sent or agreed on, and a listener who pauses rejoins where the station has got
-to rather than resuming. The plate's two controls are play/pause and the **dial** — a select
-naming the stations, which *is* the plate's second line, since that line was already naming
-the show and a radio says its station once. There is no skip: a radio has no next song. The
-play/pause is `MusicToggle.svelte`, and it stands twice: on the plate, and on the breadcrumb
-bar over the map, which is the one row that is always up — stopping the sound is not worth
-opening a menu for, while choosing a station is. Both copies are the same component over the
-same store, and the bar's is what asks for the collection at all, since the plate is mounted
-only while the drawer is open. Both
+to rather than resuming. The radio's two controls are play/pause (`MusicToggle.svelte`) and
+the **dial** (`StationDial.svelte`) — a select naming the stations, which *is* the second
+line, since that line was already naming the show and a radio says its station once. There is
+no skip: a radio has no next song. The whole radio stands twice: as the plate at the foot of
+the menu, and as a card at the far end of the breadcrumb bar (`MusicCrumb.svelte`), which is
+the one row that is always up. That card is drawn as a `MapBreadcrumb` — a song over its
+station is the same object as a place over the show it flies, and the bar has one way of
+saying that — which is also why the crumb's second line can be given from outside. Both
+copies are the same components over the same store, and the bar's is what asks for the
+collection at all, since the plate is mounted only while the drawer is open. Both
 of the listener's choices — which station, and whether it was left on — are remembered in
-localStorage (`music-player`) and restored on the next visit; the play is restored as an
-attempt, because a reload is not a gesture and the browser may refuse it, and a refusal is
-not written back as the listener having turned it off. The lengths that clock is
+localStorage (`music-player`) and restored on the next visit. The play is asked for twice:
+on the spot, which the browser may refuse since a reload is not a gesture, and then at the
+listener's first `click` or `keyup` anywhere on the page, whatever that press was for — a
+gesture is a gesture, and that one is allowed. So a radio left on comes back on the moment
+its listener touches anything, and until then the plate honestly says Play. A refusal is
+never written back as their having turned it off. The lengths that clock is
 built out of are the files' and nobody authors them: they are read off audio elements that
 load metadata and nothing else, one per song, which is why a station that has not been
 measured yet (or holds a file that will not decode) falls back to playing its day order from

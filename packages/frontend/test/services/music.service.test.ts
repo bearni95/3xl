@@ -370,6 +370,71 @@ describe('the radio', () => {
 		expect(get(allowed.state).playing).toBe(true);
 	});
 
+	it('comes back on at the first gesture when the autoplay was refused', async () => {
+		const first = await tunedIn();
+		first.toggle();
+		await settle();
+
+		// A reload where nothing may play without a gesture — which is every reload, in
+		// every browser that has an autoplay policy. The restore is refused and the radio
+		// reads as off.
+		FakeAudio.refuse = true;
+		const reloaded = await tunedIn();
+		await settle();
+		expect(get(reloaded.state).playing).toBe(false);
+
+		// The listener clicks something — anything at all, about anything at all. That is
+		// a gesture, so the play the reload could not have is allowed now, and the radio
+		// they left on is back.
+		FakeAudio.refuse = false;
+		window.dispatchEvent(new Event('click'));
+		await settle();
+		expect(get(reloaded.state).playing).toBe(true);
+		// And on the second and a half of the song the station has got to by then, not on
+		// the one it was playing when the page was left: a gesture is a way in, not a
+		// rewind.
+		expect(get(reloaded.state).track).toEqual(order(11)[2]);
+	});
+
+	it('does not turn itself on at a gesture when it was left off', async () => {
+		const first = await tunedIn();
+		first.toggle();
+		await settle();
+		first.toggle();
+
+		const reloaded = await tunedIn();
+		await settle();
+		window.dispatchEvent(new Event('click'));
+		await settle();
+		expect(get(reloaded.state).playing).toBe(false);
+	});
+
+	it('leaves the press that turned it on to speak for itself', async () => {
+		const first = await tunedIn();
+		first.toggle();
+		await settle();
+
+		// The refused reload, and then a click that *is* the play button: the button's own
+		// handler turns the radio on, and the wait for a gesture must not act on the same
+		// press — a radio turned on under it would be turned off by it.
+		FakeAudio.refuse = true;
+		const reloaded = await tunedIn();
+		await settle();
+
+		FakeAudio.refuse = false;
+		reloaded.toggle();
+		window.dispatchEvent(new Event('click'));
+		await settle();
+		expect(get(reloaded.state).playing).toBe(true);
+
+		// And the press after it still turns it off, which is the whole of what was at
+		// risk: a play button that could not be pressed off.
+		reloaded.toggle();
+		window.dispatchEvent(new Event('click'));
+		await settle();
+		expect(get(reloaded.state).playing).toBe(false);
+	});
+
 	it('plays the day order from the top when a length never arrives', async () => {
 		// A file that will not decode leaves the station unplaceable — every song after
 		// an unknown length is at an unknown time. It still plays, in the day's order;
