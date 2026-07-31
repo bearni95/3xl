@@ -161,7 +161,16 @@
 	//
 	// The face's skew is on the face, and a child is transformed with its parent, so the strip
 	// shears with the bevel by the same 47.83° its top edge does.
-	const FACE_COVER = 'absolute top-0 left-0 h-full w-[80cqw] max-w-none origin-left object-cover';
+	//
+	// The width is marked important for where this box is drawn rather than for what it is: a box
+	// stood on a town is mounted inside the town's own pin, and a pin lives in Leaflet's marker
+	// pane, which its stylesheet reserves for map imagery — `.leaflet-container
+	// .leaflet-marker-pane img { width: auto }`, two classes and an element against a utility's
+	// one, so every width given to an image in there is quietly overruled and the picture falls
+	// back to its own. That is the same reason `max-w-none` is here. Every image on this box that
+	// is told a width says so the same way; nothing else about the box needs it, geometry in cqw
+	// being no business of a stylesheet written for tiles.
+	const FACE_COVER = 'absolute top-0 left-0 h-full w-[80cqw]! max-w-none origin-left object-cover';
 	const FACE_COVER_LEFT = '[transform:translateX(4.703cqw)_scaleX(-0.17636)]';
 	const FACE_COVER_RIGHT = '[transform:translateX(14.109cqw)_scaleX(-0.17636)]';
 
@@ -489,7 +498,7 @@
 						<img
 							src={coverUrl}
 							alt=""
-							class={classNames('h-full w-full bg-gradient-to-b object-cover', skin.front)}
+							class={classNames('h-full w-full! bg-gradient-to-b object-cover', skin.front)}
 						/>
 					{:else}
 						<div class={classNames('h-full w-full bg-gradient-to-b', skin.front)}></div>
@@ -614,7 +623,7 @@
 			<img
 				src={logoUrl}
 				alt=""
-				class={classNames('w-[90%] object-contain', { invisible: !printed })}
+				class={classNames('w-[90%]! object-contain', { invisible: !printed })}
 			/>
 		</div>
 	{/if}
