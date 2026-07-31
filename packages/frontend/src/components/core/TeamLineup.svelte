@@ -26,22 +26,23 @@
 	export let flipped: boolean = true;
 	export let classes: string = '';
 
-	// The three cells' shares of the row: 30% to each flank and 50% to the middle, which
-	// is 110% of a row — and the middle gives the extra tenth back as 5% of negative
-	// margin on each of its sides, so the three still fill the row exactly and the leader
-	// stands over the two beside them rather than between them.
-	// Said as grow factors over a zero basis rather than as percentages, so the three
-	// divide whatever width the row turns out to have; the negative margins are counted
-	// as free space to hand out, which is what makes 3:5:3 of 110% come to 30/50/30.
+	// The three cells: 35% of the row to each flank and 40% to the middle, which is
+	// pulled 7.5% over each of the two beside it. Said as widths — a basis that neither
+	// grows nor shrinks — rather than as shares of what is left, so each cell measures
+	// exactly the figure it was given whatever the row turns out to be. Shares were how
+	// this read while the three of them and the margins happened to come to a whole row;
+	// these do not (110% of basis less the 15% the middle pulls back is 95%), so the row
+	// carries 5% of empty at its far end, and a share would have quietly handed that out
+	// again and made every cell wider than it says.
 	// The middle is raised because overlapping is a question of paint order otherwise,
 	// and paint order runs one way: it would cover the flank before it and be covered by
 	// the flank after it, which is an overlap on one side only.
 	// Written out as whole classes because Tailwind only emits what it can see spelled.
-	// Any cell past the third (there is no such team) falls back to a flank's share.
+	// Any cell past the third (there is no such team) falls back to a flank's width.
 	const cellShares = [
-		'basis-0 grow-[3]',
-		'relative z-10 -mx-[5%] basis-0 grow-[5]',
-		'basis-0 grow-[3]'
+		'shrink-0 grow-0 basis-[35%]',
+		'relative z-10 -mx-[7.5%] shrink-0 grow-0 basis-[40%]',
+		'shrink-0 grow-0 basis-[35%]'
 	];
 </script>
 
