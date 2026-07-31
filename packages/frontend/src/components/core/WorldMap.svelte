@@ -31,7 +31,6 @@
 		zoomBounds = null,
 		zoomStops = [],
 		markersBlurred = false,
-		tilted = false,
 		currentZoom = $bindable(zoom),
 		activeLevel = $bindable(0),
 		currentCenter = $bindable(center),
@@ -146,24 +145,6 @@
 		 * of what stands over the map goes at once (see BLUR_CLASSES).
 		 */
 		markersBlurred?: boolean;
-		/**
-		 * Lean the whole map away from the reader, and bring it back level when it goes false.
-		 *
-		 * The map itself and nothing over it: the plates are the caller's own elements beside
-		 * this one, so what tips is the terrain, the polygons and the pins standing on it — the
-		 * board — while the chrome stays square to the reader.
-		 *
-		 * The depth is on the caller's box (see the root page's `perspective-*`), because a
-		 * perspective is read from the parent and this component is only the thing being turned.
-		 * Which also means the caller's box must clip: a tipped board reaches past the bottom of
-		 * a viewport it exactly filled.
-		 *
-		 * Leaflet projects a pointer from the container's own rectangle and knows nothing of a
-		 * transform on it, so while this is true the map's clicks and drags land somewhere other
-		 * than under the pointer. Nothing asks it to tilt except with a full view covering the
-		 * whole viewport, which is what makes that safe.
-		 */
-		tilted?: boolean;
 		/** Live map zoom level, kept in sync with the map (bindable). */
 		currentZoom?: number;
 		/**
@@ -242,6 +223,11 @@
 	// variable and not $state: it is read by the code that builds the pins, never by anything
 	// drawn, and an effect woken by it would be the very rebuild it exists to refuse.
 	let midZoom = false;
+	// Each drawn pin's rendered size in pixels, keyed by marker id, written by rebuildMarkers
+	// off the pins it has just put on the map and read by the framing (see viewForBounds).
+	// A plain variable for the same reason `midZoom` is one: nothing is drawn from it, and an
+	// effect woken by it would be woken by the very rebuild that fills it.
+	let pinExtents = new Map<string, L.Point>();
 
 	// A feature's base style, plus the highlight merged on when it's the chosen
 	// one and its stroke dropped when its overlay is hidden. Called both at first
@@ -357,17 +343,26 @@
 		// is stepped now and nothing needs to be — the zoom is fractional (see zoomSnap), so
 		// the framing lands exactly on the fit rather than up to a doubling short of it, and
 		// exactly on the fit is the side of the threshold the children are drawn on.
-		const target = mapInstance.getBoundsZoom(focusBounds, false, focusPadding());
-		const centre = focusBoundsCentre(focusBounds);
-		mapInstance.setView(centre, target, { animate: true });
+		//
+		// What is actually framed, though, is the pins and not the box (see viewForBounds):
+		// what a reader is brought to a place to look at is the marks the map makes on it,
+		// and those are the thing that has to come out whole on the canvas.
+		const view = viewForBounds(focusBounds);
+		mapInstance.setView(view.centre, view.zoom, { animate: true });
 	});
 
 	$effect(() => {
-		// Zoom to fit a box without going to it. The zoom is computed exactly as the framing
-		// above computes its own, against the same margin, so a caller asking for the zoom at
-		// which a region stands whole gets the zoom that region would have been framed at —
-		// and, since the level-of-detail rule measures a region's size and not its place (see
-		// boundsFitAtZoom), the tier the map draws lands where the caller asked for it.
+		// Zoom to fit a box without going to it. The zoom is the region's own fit, against the
+		// same margin the framing starts from, so a caller asking for the zoom at which a
+		// region stands whole gets it — and, since the level-of-detail rule measures a region's
+		// size and not its place (see boundsFitAtZoom), the tier the map draws lands where the
+		// caller asked for it.
+		//
+		// Where the framing goes on to fit the pins as well (see viewForBounds), this stops at
+		// the region: fitting pins is fitting them around a centre, and this is the one request
+		// that deliberately leaves the centre alone. So a rung pressed on the ladder can land a
+		// tenth of a level tighter than pressing the pin would have — the same tier, the same
+		// place, read at the region's own fit rather than at its marks'.
 		void ready;
 		if (!zoomBounds || !mapInstance) return;
 		mapInstance.setZoom(mapInstance.getBoundsZoom(zoomBounds, false, focusPadding()), {
@@ -410,6 +405,143 @@
 	): [number, number] {
 		const [[south, west], [north, east]] = bounds;
 		return [(south + north) / 2, (west + east) / 2];
+	}
+
+	// The most zoom a framing will give up to get its pins whole: one level, which halves how
+	// far apart they land on the canvas. Bounded, rather than searched down to the map's own
+	// floor, for two reasons. A pin that cannot be seated at any zoom — a picked town's column
+	// is taller than a short window whatever the map does — would pull the view out to nothing
+	// for no gain. And the tier the map draws is decided by what fits the canvas (see
+	// levelForView), so a framing free to fly far enough out would fold the very pins it was
+	// framing back into their parents. A level is far more than the overhang of a plate and
+	// well short of the gap between one tier and the next.
+	const PIN_FIT_BACKOFF = 1;
+
+	// What a pin nobody has measured is taken to be: its plate, at the widest a plate goes
+	// (`max-w-[15rem]`) and the height one comes out at (a `size-10` tile in `p-1.5`, under the
+	// `mt-1` it hangs by). Every pin has a plate and most pins are nothing else, so a framing
+	// that reaches a region whose pins are not on screen to be read is out by whatever statues
+	// and a booster box would have added, rather than out by a whole pin.
+	const PIN_PLATE_EXTENT: [number, number] = [240, 56];
+
+	// The zoom and centre a framing settles on: the highest zoom at which every pin this view
+	// is about to draw for the region stands whole on the canvas, centred on what those pins
+	// cover rather than on the box around the region.
+	//
+	// The box is what used to be framed, and a box is not what is being looked at. A pin is
+	// drawn in pixels and not in the projection — it is the same size whatever the map does
+	// (see clearMarkers) — and the picked town's is some 700px of plate, statues, booster box
+	// and siege bar centred on the town's point. Framing the polygon put the middle of the
+	// polygon on the middle of the canvas, which is not even where the pin stands (a pin takes
+	// the region's own centroid, not the centre of the box around it), and then zoomed until
+	// the town filled the canvas — at which point the mark standing on the town hung off the
+	// top of the screen and the bottom. So the pins are measured as they are drawn (see
+	// rebuildMarkers), their boxes are what the canvas is fitted to, and the centre is the
+	// middle of what they cover.
+	//
+	// Giving up zoom only helps a region that draws SEVERAL pins: it brings their points
+	// together while each keeps its size. So that is the only case it happens in — a region
+	// whose pins already fit is framed at the zoom it asked for, and a pin that fits at no
+	// zoom is centred and left to clip equally at both ends, no zoom having been able to
+	// help it.
+	function viewForBounds(bounds: [[number, number], [number, number]]): {
+		centre: [number, number];
+		zoom: number;
+	} {
+		const fitZoom = mapInstance!.getBoundsZoom(bounds, false, focusPadding());
+		const centre = focusBoundsCentre(bounds);
+		const levels = markerLevelStack();
+		// The tier this framing is about to draw, asked exactly as the map will ask it on
+		// arrival (see levelForView): the children of the coarsest region that fits. Asked at
+		// the zoom the region itself called for, since that is the zoom the answer is about —
+		// the search below only ever gives zoom up, and giving zoom up makes more regions fit
+		// rather than fewer, which is what PIN_FIT_BACKOFF is bounded for.
+		const tier = levels.length
+			? levelIndexForView(levels, centre, (box) => boundsFitAtZoom(box, fitZoom))
+			: 0;
+		const pins = (levels[tier] ?? []).filter((marker) => withinBounds(marker.position, bounds));
+		if (!pins.length) return { centre, zoom: fitZoom };
+
+		const floor = Math.max(fitZoom - PIN_FIT_BACKOFF, mapInstance!.getMinZoom());
+		let zoom = fitZoom;
+		// The pins' spread grows with the zoom while their own sizes do not, so "do they fit"
+		// is answered no above some zoom and yes below it, and a few halvings between the two
+		// ends land on it to a thousandth of a level — closer than a view can be looked at.
+		// Only worth asking when the two ends disagree: fitting at the top means there is
+		// nothing to gain, and fitting at neither end means there is nothing to gain either,
+		// so the framing keeps the zoom the region asked for rather than pulling out for a pin
+		// no zoom can seat.
+		if (!pinsFitAtZoom(pins, fitZoom) && pinsFitAtZoom(pins, floor)) {
+			let low = floor;
+			let high = fitZoom;
+			for (let step = 0; step < 10; step++) {
+				const mid = (low + high) / 2;
+				if (pinsFitAtZoom(pins, mid)) low = mid;
+				else high = mid;
+			}
+			zoom = low;
+		}
+		return { centre: pinsCentre(pins, zoom), zoom };
+	}
+
+	// The pixel box these pins stand inside at a zoom: each one's point projected, then grown
+	// by half its rendered size in every direction — a pin is centred on its point (see
+	// classNamesFor), so it reaches as far above the point as below it.
+	function pinsPixelBox(
+		pins: MapMarker[],
+		zoom: number
+	): { minX: number; minY: number; maxX: number; maxY: number } {
+		let minX = Infinity;
+		let minY = Infinity;
+		let maxX = -Infinity;
+		let maxY = -Infinity;
+		for (const pin of pins) {
+			const at = mapInstance!.project(pin.position, zoom);
+			const extent = pinExtents.get(pin.id);
+			const halfX = (extent ? extent.x : PIN_PLATE_EXTENT[0]) / 2;
+			const halfY = (extent ? extent.y : PIN_PLATE_EXTENT[1]) / 2;
+			minX = Math.min(minX, at.x - halfX);
+			maxX = Math.max(maxX, at.x + halfX);
+			minY = Math.min(minY, at.y - halfY);
+			maxY = Math.max(maxY, at.y + halfY);
+		}
+		return { minX, minY, maxX, maxY };
+	}
+
+	// Whether that box stands inside the canvas, against the same margin and the same pixel of
+	// slack a region's own box is measured with (see boundsFitAtZoom) — one rule for what
+	// "fits" means, whether the thing being fitted is a region or the marks standing on it.
+	function pinsFitAtZoom(pins: MapMarker[], zoom: number): boolean {
+		const { minX, minY, maxX, maxY } = pinsPixelBox(pins, zoom);
+		const size = mapInstance!.getSize();
+		const margin = focusMargin();
+		return (
+			maxX - minX <= size.x - 2 * margin.x + FIT_TOLERANCE &&
+			maxY - minY <= size.y - 2 * margin.y + FIT_TOLERANCE
+		);
+	}
+
+	// The place to put on the middle of the canvas: the middle of what the pins cover, read
+	// back out of the projection. For the one pin a municipality draws this is exactly its
+	// point, so the column standing on it is centred — which is the whole of what a town
+	// framing was getting wrong.
+	function pinsCentre(pins: MapMarker[], zoom: number): [number, number] {
+		const { minX, minY, maxX, maxY } = pinsPixelBox(pins, zoom);
+		const middle = mapInstance!.unproject(
+			Leaf!.point((minX + maxX) / 2, (minY + maxY) / 2),
+			zoom
+		);
+		return [middle.lat, middle.lng];
+	}
+
+	/** Whether a point stands inside a `[[south, west], [north, east]]` box. */
+	function withinBounds(
+		position: [number, number],
+		bounds: [[number, number], [number, number]]
+	): boolean {
+		const [[south, west], [north, east]] = bounds;
+		const [lat, lng] = position;
+		return lat >= south && lat <= north && lng >= west && lng <= east;
 	}
 
 	// Build a pin's DOM: the one plate that says what the pin is — the tile at its left end,
@@ -706,6 +838,17 @@
 
 		const visible = chosen.filter((marker) => bounds.contains(marker.position));
 
+		// What each pin came out as, in pixels, read back off the DOM once it is standing.
+		// Nothing about a pin's size can be worked out from the data behind it — a plate is
+		// as wide as the place's name up to its cap, and a picked town's column is as tall as
+		// three statues, a booster box and a siege bar happened to come out — so the pin
+		// itself is the only honest source, and the framing needs it to put a whole pin on
+		// the canvas (see viewForBounds). Cleared and refilled with the crop, so a town that
+		// has just been folded back into a plate is never remembered at the height it stood
+		// while it was the picked one.
+		pinExtents = new Map();
+		const drawn: [string, HTMLElement][] = [];
+
 		// No pin outlives its tier, the picked town's included: it carries the side holding
 		// it and the way to fight them, and a mark that size cannot be left standing over a
 		// view of provinces where the town it belongs to is no longer drawn. Zooming out
@@ -724,6 +867,27 @@
 			pin.on('mouseover', () => highlightRegion(marker.featureIds, true));
 			pin.on('mouseout', () => highlightRegion(marker.featureIds, false));
 			pin.addTo(markerLayer!);
+			drawn.push([marker.id, element]);
+		}
+
+		// Measured in one pass at the end and not inside the loop: asking an element for its
+		// offsetWidth makes the browser settle the layout it is holding, so a read per pin
+		// settles the whole crop once per pin. `offsetWidth`/`offsetHeight` are the untransformed
+		// box, which is what is wanted — a pin is moved onto its point by a transform (see
+		// classNamesFor) and its size is not what that transform changes.
+		//
+		// The height is the wrapper's, the width is its widest block's. The wrapper stands in a
+		// marker box of no size at all (`iconSize: [0, 0]`, which is what lets a pin be centred
+		// on a point rather than filling anything), so its own width resolves to that nothing
+		// and every block in it overflows on purpose — the column measures 0 across while
+		// carrying 500px of statues. Its height is honest, being the content's own. So the
+		// width is read off the blocks that actually draw.
+		for (const [id, element] of drawn) {
+			let width = element.offsetWidth;
+			for (const block of element.children) {
+				width = Math.max(width, (block as HTMLElement).offsetWidth);
+			}
+			pinExtents.set(id, Leaf.point(width, element.offsetHeight));
 		}
 	}
 
@@ -1434,19 +1598,13 @@
 
 <!-- bg-transparent! overrides Leaflet's default grey container fill, so the page
 	background (not a grey block) is what shows while the satellite tiles stream in.
-	The tilt is a CSS transition and not a Svelte one, because this element is never
-	unmounted — the map outlives everything raised over it — and it is timed to the same
-	250ms the chrome blurs over (see `tilted`, and the root page's CHROME_BLUR), so the
-	board tipping and its furniture going out of focus are one movement. `transition-transform`
-	names the transform alone: nothing else about this box is animated, and Leaflet's own
-	panes move by transforms of their own inside it, which this does not reach. -->
+	Nothing transforms this box. A CSS transform on the Leaflet container leaves the map
+	drawn as its polygons on the page's background — the imagery goes and does not come
+	back — so the board is never tipped, leaned or scaled: what a full view over the map
+	moves is the map's furniture (see `markersBlurred`), never the map. -->
 <div
 	bind:this={mapContainer}
-	class={classNames(
-		'bg-transparent! transition-transform duration-[250ms] ease-in-out',
-		{ 'rotate-x-12': tilted },
-		classes
-	)}
+	class={`bg-transparent! ${classes}`}
 	role="application"
 	aria-label="World map"
 ></div>
