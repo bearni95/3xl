@@ -126,12 +126,18 @@ const FOOT_PAD_TOP = 0.09;
 const FOOT_PAD_BOTTOM = 0.02;
 const LOGO_WIDTH = 0.9; // of the front's width
 
-// A guide drawn round the box the place is set in — the front's whole width, and as deep as the
-// type turned out to be. It is not part of the box: it is here to be looked at while the head is
-// being worked on, and it is stroked in a colour nothing on this stock is so it cannot be taken
-// for one of the box's own edges. Drawn with the print, so a box that comes apart takes it along.
+// Two guides drawn round the head. They are not part of the box: they are here to be looked at
+// while it is being worked on, stroked in colours nothing on this stock is so neither can be taken
+// for one of the box's own edges. Drawn with the print, so a box that comes apart takes them along.
+//
+// Purple is the room the place is *given* — the front's whole width, and as deep as the type turned
+// out to be. Green is what the type says it actually *takes*, its own reported box. They answer the
+// one question the code cannot: green inside purple and letters still cut means the cut is not the
+// front's crop at all; green wider than purple means the type is being drawn bigger than it was
+// measured, and the measuring is what to go after.
 const TYPE_GUIDE = true;
-const TYPE_GUIDE_COLOR = 0xa855f7; // purple-500
+const TYPE_GUIDE_COLOR = 0xa855f7; // purple-500 — the room
+const TYPE_INK_GUIDE_COLOR = 0x22c55e; // green-500 — what the type takes of it
 const TYPE_GUIDE_WIDTH = 1;
 
 // The shadow the box casts (drop-shadow-md: 0 3px 3px black at 12%). Cast by what is actually
@@ -778,6 +784,14 @@ export class BoosterBoxSprite extends Container {
 				// outer half down both sides.
 				guide.stroke({ color: TYPE_GUIDE_COLOR, width: TYPE_GUIDE_WIDTH, alignment: 0 });
 				print.addChild(guide);
+
+				// And the box the type reports for itself, where it says it is: read off the Text
+				// after it has been laid out, placed and scaled, so it is the width the layout
+				// believes is on the front — which is the number every decision here is made from.
+				const ink = new Graphics();
+				ink.rect(type.x - type.width / 2, type.y, type.width, type.height);
+				ink.stroke({ color: TYPE_INK_GUIDE_COLOR, width: TYPE_GUIDE_WIDTH, alignment: 0 });
+				print.addChild(ink);
 			}
 		}
 
