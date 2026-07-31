@@ -10,6 +10,13 @@
    means the page draws in the fallback and re-flows into Genos when it lands,
    rather than holding text blank while the file is on the wire. */
 @import url('https://fonts.googleapis.com/css2?family=Genos:ital,wght@0,100..900;1,100..900&display=swap');
+/* Jacquard 12 — the second face, and the only one: the word at the head of the
+   breadcrumb bar and nothing else (see the `--font-display` token below). It is
+   asked for with no axes at all because it has none — a static face in one
+   weight, 400 — so there is no range here to take whole the way Genos's is.
+   Imported beside it, above Tailwind, for the same reason: an import may only
+   precede other rules. */
+@import url('https://fonts.googleapis.com/css2?family=Jacquard+12&display=swap');
 @import 'tailwindcss';
 
 /* Synthwave is the game's one theme, and it is customised rather than used as
@@ -62,6 +69,15 @@
 	--font-sans: 'Genos', system-ui, sans-serif;
 	--font-serif: 'Genos', system-ui, sans-serif;
 	--font-mono: 'Genos', ui-monospace, monospace;
+
+	/* The one place the app is set in something other than Genos, and a token
+	   rather than a family named in a component: Tailwind v4 turns a `--font-*`
+	   entry into a `font-*` utility, so the word at the head of the breadcrumb bar
+	   asks for `font-display` and still names no typeface. The three tokens above
+	   are all pointed at Genos precisely so a stray `font-mono` cannot land
+	   outside it; this is the deliberate exception, which is why it is a fourth
+	   name and not one of those three re-pointed. */
+	--font-display: 'Jacquard 12', system-ui, sans-serif;
 
 	--animate-marquee: marquee 12s linear infinite;
 

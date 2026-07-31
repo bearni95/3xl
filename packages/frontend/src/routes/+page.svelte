@@ -2288,7 +2288,13 @@
 							follows it, and the map is told (topChromeHeight is measured, not written down).
 							`leading-none` so the line takes the type's height and not a line box built for
 							a paragraph. -->
-						<span slot="start" class="text-lg leading-none sm:text-2xl md:text-4xl lg:text-6xl">
+						<!-- `font-display` is Jacquard 12, the app's one departure from Genos, and it is
+							the token and not the family that is named here (see the `@theme` block in
+							css/app.css). -->
+						<span
+							slot="start"
+							class="font-display text-lg leading-none sm:text-2xl md:text-4xl lg:text-6xl"
+						>
 							6xl
 						</span>
 						<!-- The far end of the bar: the way to look for a place, and past it the way to
