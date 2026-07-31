@@ -980,18 +980,19 @@
 						     block is three of that across (`w-24`), over three equal columns, so
 						     the plate's own depth sets the cell's width and the two figures are
 						     read together — a taller plate wants a wider block.
-						     The block is inset a little top and bottom, which shortens the rules
-						     with it: they are lines drawn on the plate rather than the plate's own
-						     edges, and a line that runs into the edge it is drawn inside reads as
-						     that edge coming loose. Only the sides are ruled, for the same reason —
-						     a line across the top and bottom would be a border round the block
-						     rather than a division of it — and they are drawn at half strength,
-						     since what they do is separate three cells, not draw three boxes.
-						     The rules belong to the block and not to its cells: two neighbours each
-						     carrying their own side drew two lines where they met, one from either,
-						     so every seam was twice the weight of the outer edge. The block wears
-						     its two outer sides and one line between each pair, which is what a
-						     shared side is.
+						     The block is inset a little top and bottom, and **every** line is inset
+						     with it — the two down its outer edges as much as the two between its
+						     cells. They are lines drawn on the plate rather than the plate's own
+						     edges, and one that runs into the edge it is drawn inside reads as that
+						     edge coming loose; drawn as the block's own border they cleared the
+						     padding, since a border sits outside it, and the outer pair stood a
+						     head taller than the inner pair. So all four are the cells' own: each
+						     cell rules its left side and the last one its right, which draws every
+						     shared side exactly once and stops every line where the padding does.
+						     Only the sides are ruled, for the same reason as ever — a line across
+						     the top and bottom would be a border round the block rather than a
+						     division of it — and they are drawn at half strength, since what they
+						     do is separate three cells, not draw three boxes.
 						     A lane taken is a disc in its cell rather than the cell painted in: the
 						     ground a lane is played for is one white cell of the middle column, and
 						     a mark set in a cell reads as something standing on that ground where a
@@ -999,7 +1000,7 @@
 						     always drawn and simply carries no colour until the lane is won, so the
 						     three cells hold their spacing whatever the score is. -->
 						<div
-							class="grid h-full w-24 grid-cols-3 divide-x divide-white/50 border-x border-white/50 py-1"
+							class="grid h-full w-24 grid-cols-3 py-1"
 							role="progressbar"
 							aria-label={$_('combat.rivalWins')}
 							aria-valuemin={0}
@@ -1007,7 +1008,9 @@
 							aria-valuenow={state.wins.error}
 						>
 							{#each RIVAL_LANES as lane}
-								<span class="flex items-center justify-center">
+								<span
+									class="flex items-center justify-center border-l border-white/50 last:border-r"
+								>
 									<span
 										class={classNames(
 											'size-4 rounded-full',
@@ -1043,7 +1046,7 @@
 							{$_('combat.concede')}
 						</button>
 						<div
-							class="grid h-full w-24 grid-cols-3 divide-x divide-white/50 border-x border-white/50 py-1"
+							class="grid h-full w-24 grid-cols-3 py-1"
 							role="progressbar"
 							aria-label={$_('combat.yourWins')}
 							aria-valuemin={0}
@@ -1051,7 +1054,9 @@
 							aria-valuenow={state.wins.info}
 						>
 							{#each LANES as lane}
-								<span class="flex items-center justify-center">
+								<span
+									class="flex items-center justify-center border-l border-white/50 last:border-r"
+								>
 									<span
 										class={classNames('size-4 rounded-full', lane <= state.wins.info && 'bg-white')}
 									></span>
