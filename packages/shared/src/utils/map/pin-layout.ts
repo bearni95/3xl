@@ -3,15 +3,23 @@
 // A pin marks a point, but a pin is not a point: it is a plate a couple of hundred
 // pixels across, and towns crowd. Drawn on their points, the pins of a comarca pile
 // into one unreadable heap and the reader is left with whichever the paint order put
-// on top. So the point and the mark are separated: the point stays exactly where it
-// is, and the mark is moved off it until it has room, with a line drawn back to say
-// which point it is still about (the line is the map's to draw — this only says where
-// the mark ended up).
+// on top.
 //
-// A mark always stands to the RIGHT of its point, and is looked for as near to it as
-// it can be had: the tries are sorted by how far they are from the place, so a pin
-// takes the nearest free room there is and the line back is the shortest one that
-// could have been drawn. Rightwards is not an optimisation but the one rule that makes
+// A mark therefore stands ON its point — centred on it, as a mark about a place should
+// be — for as long as it has the room to, and that is what most marks do: the crowding
+// is answered first by folding the pins that would have collided into one pin that says
+// how many it stands for (see pin-groups), so what reaches this pass is a set of marks
+// that mostly fits. What is left over is what folding could not help — two marks of
+// different kinds on one point, and the one mark that is never folded — and only those
+// are moved: the point stays exactly where it is, and the mark is moved off it until it
+// has room, with a line drawn back to say which point it is still about (the line is the
+// map's to draw — this only says where the mark ended up, and whether it was moved at
+// all, since a mark standing on its own point has nothing to explain).
+//
+// A mark that has to move always moves to the RIGHT of its point, and is looked for as
+// near to it as it can be had: the tries are sorted by how far they are from the place,
+// so a pin takes the nearest free room there is and the line back is the shortest one
+// that could have been drawn. Rightwards is not an optimisation but the one rule that makes
 // the drawing readable — every leader line leaves its point the same way and meets its
 // plate at the same corner, so a reader who has followed one has followed all of them.
 //
@@ -47,6 +55,12 @@ export interface PinOffset {
 	dx: number;
 	/** The pin's middle, below its point. */
 	dy: number;
+	/**
+	 * Whether the pin had to leave its point. False means it is standing on it, centred,
+	 * and there is nothing for a leader line to say; true means the mark is beside its
+	 * place and the line back is what keeps its meaning.
+	 */
+	moved: boolean;
 }
 
 export interface PinLayoutOptions {
@@ -70,9 +84,17 @@ export interface PinLayoutOptions {
 	 * pixels, measured from the viewport's own edge inwards.
 	 */
 	insets?: { top?: number; right?: number; bottom?: number; left?: number };
+	/**
+	 * Room already taken by something that is not a pin, in container pixels — a mark drawn
+	 * over the canvas rather than on a point, which no pin may be dealt the room of. An inset
+	 * cannot say this: a box in a corner would have to be written as a whole band across the
+	 * top or a whole column down the side, and the pins would give up the rest of that band
+	 * for nothing. Treated exactly as a pin already placed there, because that is what it is.
+	 */
+	reserved?: readonly { left: number; top: number; right: number; bottom: number }[];
 }
 
-const DEFAULTS: Omit<Required<PinLayoutOptions>, 'insets'> = {
+const DEFAULTS: Omit<Required<PinLayoutOptions>, 'insets' | 'reserved'> = {
 	lead: 16,
 	gap: 4,
 	step: 8,
@@ -115,20 +137,32 @@ export function layoutPins(
 	// whatever chrome the caller says is standing over it.
 	const room = roomIn(viewport, settings.margin, settings.insets);
 	const placed = new PlacedIndex(settings.gap);
+	// Whatever is standing over the canvas goes in first, so every pin sees it as room taken.
+	for (const rect of options.reserved ?? []) placed.add(rect);
 	const offsets = new Map<string, PinOffset>();
 
 	for (const pin of pins) {
 		let chosen: PinOffset | null = null;
-		for (const offset of tries(pin, room, settings)) {
-			const rect = rectFor(pin, offset);
-			if (!withinRoom(rect, pin, room)) continue;
-			if (placed.hits(rect)) continue;
-			chosen = offset;
-			break;
+		// Its own point first, and on its own terms: a mark centred on the place it is about,
+		// with no line to draw and nothing to explain. Only a mark that cannot be read there —
+		// because another is already standing there, or because the point is too near an edge
+		// for the plate to fit around it — goes looking sideways.
+		const home = homeOffset(pin);
+		const homeRect = rectFor(pin, home);
+		if (withinRoom(homeRect, pin, room) && !placed.hits(homeRect)) chosen = home;
+
+		if (!chosen) {
+			for (const offset of tries(pin, room, settings)) {
+				const rect = rectFor(pin, offset);
+				if (!withinRoom(rect, pin, room)) continue;
+				if (placed.hits(rect)) continue;
+				chosen = offset;
+				break;
+			}
 		}
 		// Nothing clear anywhere it looked: it stands where it asked to, pulled into the
 		// room there is, and takes whatever overlap comes with that.
-		if (!chosen) chosen = { dx: horizontalFit(pin, settings.lead, room), dy: 0 };
+		if (!chosen) chosen = { dx: horizontalFit(pin, settings.lead, room), dy: 0, moved: true };
 		offsets.set(pin.id, chosen);
 		placed.add(rectFor(pin, chosen));
 	}
@@ -155,7 +189,7 @@ export function layoutPins(
 function* tries(
 	pin: PinAnchor,
 	room: Rect,
-	settings: Omit<Required<PinLayoutOptions>, 'insets'>
+	settings: Omit<Required<PinLayoutOptions>, 'insets' | 'reserved'>
 ): Generator<PinOffset> {
 	const { lead, gap, step, spread, columns } = settings;
 	const ladders = Array.from({ length: columns }, (_, column) => ({
@@ -181,9 +215,18 @@ function* tries(
 		}
 		if (nearest < 0) return;
 		const ladder = ladders[nearest];
-		yield { dx: ladder.dx, dy: rungOffset(ladder.rung, step) };
+		yield { dx: ladder.dx, dy: rungOffset(ladder.rung, step), moved: true };
 		ladder.rung++;
 	}
+}
+
+/**
+ * Where a mark stands when nothing is in its way: centred on its own point, which is where
+ * a mark about a place belongs and is the one position that needs no explaining. Given as an
+ * offset to the pin's left-middle like every other, so the caller has one thing to apply.
+ */
+function homeOffset(pin: PinAnchor): PinOffset {
+	return { dx: -pin.width / 2, dy: 0, moved: false };
 }
 
 /**

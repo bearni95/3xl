@@ -19,10 +19,19 @@ function overlap(a: ReturnType<typeof boxOf>, b: ReturnType<typeof boxOf>): bool
 }
 
 describe('layoutPins', () => {
-	it('leaves a lone pin beside its point, at the lead it asked for', () => {
+	it('stands a lone pin on its own point, with nothing to explain', () => {
 		const one = pin('a', 400, 400);
 		const offsets = layoutPins([one], VIEWPORT, { lead: 16 });
-		expect(offsets.get('a')).toEqual({ dx: 16, dy: 0 });
+		// Centred on the point: the left edge is half a plate to the left of it.
+		expect(offsets.get('a')).toEqual({ dx: -100, dy: 0, moved: false });
+	});
+
+	it('moves the pin it cannot leave on its point, and says so', () => {
+		const first = pin('first', 400, 400);
+		const second = pin('second', 400, 400);
+		const offsets = layoutPins([first, second], VIEWPORT);
+		expect(offsets.get('first')!.moved).toBe(false);
+		expect(offsets.get('second')!.moved).toBe(true);
 	});
 
 	it('places every pin it is given', () => {
@@ -54,17 +63,36 @@ describe('layoutPins', () => {
 		}
 	});
 
-	it('gives the first pin offered its preferred place, and moves the ones after it', () => {
+	it('gives the first pin offered its point, and moves the ones after it', () => {
 		const first = pin('first', 400, 400);
 		const second = pin('second', 400, 400);
 		const offsets = layoutPins([first, second], VIEWPORT, { lead: 16 });
-		expect(offsets.get('first')).toEqual({ dx: 16, dy: 0 });
+		expect(offsets.get('first')).toEqual({ dx: -100, dy: 0, moved: false });
 		expect(offsets.get('second')!.dy).not.toBe(0);
+	});
+
+	it('moves a pin it must move to the right of its point, as every other', () => {
+		const first = pin('first', 400, 400);
+		const second = pin('second', 400, 400);
+		const offsets = layoutPins([first, second], VIEWPORT, { lead: 16 });
+		expect(offsets.get('second')!.dx).toBe(16);
 	});
 
 	it('settles the same view the same way twice', () => {
 		const pins = Array.from({ length: 15 }, (_, i) => pin(`p${i}`, 300, 380 + i * 4));
 		expect(layoutPins(pins, VIEWPORT)).toEqual(layoutPins(pins, VIEWPORT));
+	});
+
+	it('keeps a pin standing on a free point clear of the placed ones', () => {
+		// A plate's width apart on the same line: both stand on their own points, and neither
+		// has to be moved for it.
+		const pins = [pin('a', 300, 400), pin('b', 600, 400)];
+		const offsets = layoutPins(pins, VIEWPORT);
+		expect(offsets.get('a')!.moved).toBe(false);
+		expect(offsets.get('b')!.moved).toBe(false);
+		expect(overlap(boxOf(pins[0], offsets.get('a')!), boxOf(pins[1], offsets.get('b')!))).toBe(
+			false
+		);
 	});
 
 	it('pulls a pin near the right edge back onto the canvas', () => {
@@ -96,6 +124,17 @@ describe('layoutPins', () => {
 		const offsets = layoutPins([edge], VIEWPORT, { insets: { right: 240 }, margin: 4 });
 		const box = boxOf(edge, offsets.get('edge')!);
 		expect(box.right).toBeLessThanOrEqual(VIEWPORT.width - 240 - 4);
+	});
+
+	it('keeps a pin out of room something else is standing in', () => {
+		// A booster box in the top-right corner: the pin whose point is under it has to come
+		// out from under it, not merely stay on the canvas.
+		const corner = { left: 700, top: 40, right: 900, bottom: 290 };
+		const under = pin('under', 780, 150);
+		const offsets = layoutPins([under], VIEWPORT, { reserved: [corner] });
+		const box = boxOf(under, offsets.get('under')!);
+		expect(overlap(box, corner)).toBe(false);
+		expect(offsets.get('under')!.moved).toBe(true);
 	});
 
 	it('ignores chrome that claims more room than there is', () => {

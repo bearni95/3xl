@@ -9,6 +9,7 @@
 	import { showIconName } from '$utils/show/show-icon';
 	import { levelIndexForView } from '$utils/geo/level-of-detail';
 	import { layoutPins, type PinAnchor, type PinOffset } from '$utils/map/pin-layout';
+	import { groupPins } from '$utils/map/pin-groups';
 	import type { MapBoosterBox, MapCircle, MapLine, MapMarker, MapOverlay } from '$types/map.type';
 
 	let {
@@ -155,7 +156,7 @@
 		 * The map cannot see any of it: those are the parent's elements, positioned over the
 		 * same box, and Leaflet's canvas is the whole box either way. So a pin kept "on the
 		 * screen" is kept under the bar unless it is told where the bar is — which is what
-		 * this is for. It bounds the room the pins are dealt (see placePins) and where the
+		 * this is for. It bounds the room the pins are dealt (see placeMarks) and where the
 		 * corner's box stands (see rebuildCorner); it moves nothing about the map itself,
 		 * which goes on being the full container.
 		 */
@@ -188,7 +189,12 @@
 	// except for this one thing: clearing the layer only detaches a mounted component, and
 	// a statue runs a frame timer of its own, so every rebuild unmounts the previous crop
 	// first rather than leaving it animating for a pin no longer on the map.
-	let pinMounts: Record<string, unknown>[] = [];
+	//
+	// Kept per pin rather than in one heap, because a pin can now be taken off the map
+	// without the rest going with it: a crop is drawn and measured, and the pins that turn
+	// out to be one pin are folded into it (see rebuildMarkers). What is folded away has to
+	// take its own clock with it, and only a bucket per pin can say which mounts those were.
+	let pinMounts = new Map<string, Record<string, unknown>[]>();
 	// The festa-box layer, rebuilt whenever the boxes prop changes. Kept separate from the
 	// region pins — it marks its towns its own way, and at the coarsest tier not at all
 	// (see marksTowns) — and drawn under them.
@@ -243,10 +249,23 @@
 	// A plain variable for the same reason `midZoom` is one: nothing is drawn from it, and an
 	// effect woken by it would be woken by the very rebuild that fills it.
 	let pinExtents = new Map<string, L.Point>();
-	// Each drawn pin's leader line, keyed by marker id — the strip built with the pin and
-	// given its length and its angle once the placement pass knows where the pin ended up.
+	// Each drawn mark's leader line, keyed by its id — the strip built with the mark and
+	// given its length and its angle once the placement pass knows where it ended up.
 	// Filled and cleared with `pinExtents`, and a plain variable for the same reason.
 	let pinLeaders = new Map<string, HTMLElement>();
+	// The pins that were folded into a count on this rebuild (see foldPins), so the towns
+	// among them are not treated as pinned: a town whose pin has gone into a group has no pin
+	// to carry its booster mark, and the box layer is what marks it instead (see pinnedIds).
+	// A plain variable for the same reason `pinExtents` is one — it is filled by the very
+	// rebuild an effect woken by it would run again.
+	let foldedIds = new Set<string>();
+	// Everything standing on the map right now, in the two families it is drawn in: the region
+	// pins and the booster marks. Held rather than placed as each is built, because where a
+	// mark may stand is a question about ALL of them — a disc and a plate are different kinds
+	// of mark and are never folded into one another (see foldPins), so the only thing that
+	// keeps them off each other is being dealt the room together (see placeMarks).
+	let pinMarks: PinMark[] = [];
+	let boxMarks: PinMark[] = [];
 	// The corner the picked town's booster box stands in: a box of its own, appended to the
 	// Leaflet container but OUTSIDE the map's panes, so the map slides under it and it does
 	// not slide with the map. Everything about the box that is not the box — the cover, its
@@ -316,7 +335,14 @@
 		// row when a search is being typed into it, and the pins under where it now reaches
 		// have to be dealt again (see chromeInsets).
 		void chromeInsets;
-		if (ready) rebuildMarkers();
+		// The boxes go with them, because which towns the pins fold into counts is settled by
+		// this pass and read by that one: a town whose pin has just been folded away is a town
+		// the box layer has to mark itself (see pinnedIds), and a box layer left standing from
+		// the previous crop would be marking the wrong towns until the map was next moved.
+		if (ready) {
+			rebuildMarkers();
+			rebuildBoxes();
+		}
 	});
 
 	$effect(() => {
@@ -467,11 +493,18 @@
 	// and a booster box would have added, rather than out by a whole pin.
 	const PIN_PLATE_EXTENT: [number, number] = [240, 56];
 
-	// The gap a pin asks for between its point and its left edge — short enough that the mark
-	// reads as belonging to the place, long enough that the line between them is a line and
-	// not a nick. Named here rather than left to the layout's own default because the framing
-	// has to reckon with the same reach (see pinsPixelBox and placePins).
+	// The gap a moved pin asks for between its point and its left edge — short enough that the
+	// mark reads as belonging to the place, long enough that the line between them is a line
+	// and not a nick. Named here rather than left to the layout's own default because the
+	// framing has to reckon with the same reach (see pinsPixelBox and placeMarks).
 	const PIN_LEAD = 16;
+
+	// The clear space demanded between two marks, which is one number for two questions: how
+	// near two pins may stand before they are one pin (see foldPins), and how near the layout
+	// may place two marks that were not folded (see placeMarks). Two numbers there would be a
+	// crowd folded by one rule and laid out by another, which is a pair of pins left touching
+	// because each pass thought the other had dealt with them.
+	const PIN_GAP = 4;
 
 	// The zoom and centre a framing settles on: the highest zoom at which every pin this view
 	// is about to draw for the region stands whole on the canvas, centred on what those pins
@@ -534,17 +567,16 @@
 	}
 
 	// The pixel box these pins stand inside at a zoom: each one's point projected, then grown
-	// by the reach of the mark standing beside it — rightwards by its lead and its width,
-	// and half its height each way, since a pin hangs off the right of its point and is
-	// centred on its line (see classNamesFor).
+	// by the mark standing on it — half its width each way and half its height each way, a
+	// mark being centred on the point it is about (see classNamesFor).
 	//
-	// Asked of the pin where it ASKED to stand, not where the crowd put it. The framing is a
+	// Asked of the pin where it MEANS to stand, not where the crowd put it. The framing is a
 	// question about a view that does not exist yet — a zoom being weighed up, at which the
-	// pins have not been laid out and could not be without drawing them — and the offsets are
-	// answers about the view on screen now. The lead is the part of the reach that is the same
-	// in every view, which makes it the honest part to reckon a hypothetical with; a pin
-	// shuffled up or down from there is the map making room in the box this measures, not
-	// leaving it.
+	// pins have neither been folded nor laid out and could not be without drawing them — and
+	// the offsets are answers about the view on screen now. The point is the part that is the
+	// same in every view, which makes it the honest part to reckon a hypothetical with; a pin
+	// moved off it, or folded into a count with its neighbours, is the map making room inside
+	// the box this measures rather than leaving it.
 	function pinsPixelBox(
 		pins: MapMarker[],
 		zoom: number
@@ -556,10 +588,10 @@
 		for (const pin of pins) {
 			const at = mapInstance!.project(pin.position, zoom);
 			const extent = pinExtents.get(pin.id);
-			const width = extent ? extent.x : PIN_PLATE_EXTENT[0];
+			const halfX = (extent ? extent.x : PIN_PLATE_EXTENT[0]) / 2;
 			const halfY = (extent ? extent.y : PIN_PLATE_EXTENT[1]) / 2;
-			minX = Math.min(minX, at.x);
-			maxX = Math.max(maxX, at.x + PIN_LEAD + width);
+			minX = Math.min(minX, at.x - halfX);
+			maxX = Math.max(maxX, at.x + halfX);
 			minY = Math.min(minY, at.y - halfY);
 			maxY = Math.max(maxY, at.y + halfY);
 		}
@@ -580,9 +612,9 @@
 	}
 
 	// The place to put on the middle of the canvas: the middle of what the pins cover, read
-	// back out of the projection. For the one pin a municipality draws this is its point plus
-	// the reach of the mark beside it, so the mark is what ends up centred rather than the
-	// point it hangs off — which is the whole of what a town framing was getting wrong.
+	// back out of the projection — the marks standing on the points and not the points alone,
+	// so what is centred is what is being looked at. For the one pin a municipality draws that
+	// comes back to its own point, the mark being centred on it.
 	function pinsCentre(pins: MapMarker[], zoom: number): [number, number] {
 		const { minX, minY, maxX, maxY } = pinsPixelBox(pins, zoom);
 		const middle = mapInstance!.unproject(
@@ -617,32 +649,13 @@
 		const wrap = document.createElement('div');
 		wrap.className = classNamesFor(marker);
 
-		// The line back to the place. A pin no longer stands on its point — it is moved off
-		// it until it has room to be read (see placePins) — so something has to say which
-		// point it is still about, and a line from the point to the pin's left-middle is that
-		// something: it leaves the place and arrives at the mark, and every pin's does it the
-		// same way round, so a reader follows one without having to work out which end is
-		// which.
-		//
-		// It is the region's own colour, taken from the very class the pin's tile is filled
-		// with rather than from a second table of the same six swatches — the line and the
-		// tile are the one colour saying the one thing, and a copy is how two of them come to
-		// disagree. A pin clear of the selection fades its line with its tile, for the reason
-		// given below.
-		//
-		// A strip of a div and not an svg: it is a straight line of one colour, which is a box
-		// with a background and a rotation, and a box can be filled with a class while a
-		// stroke cannot. Drawn first so the pin's own blocks paint over the end of it, and
-		// left without geometry until the placement pass knows where the pin ended up (see
-		// drawLeader).
-		const leader = document.createElement('div');
-		leader.className =
-			'pointer-events-none absolute left-0 top-1/2 -mt-px h-0.5 origin-left ' +
-			(marker.frameClasses ?? 'bg-base-content') +
-			(marker.dimmed ? ' opacity-50' : '');
-		leader.setAttribute('aria-hidden', 'true');
-		pinLeaders.set(marker.id, leader);
-		wrap.appendChild(leader);
+		// The line back to the place, where the crowd turns out to leave the pin nowhere to
+		// stand but beside its point (see placeMarks): it leaves the place and arrives at the
+		// mark, and every pin's does it the same way round, so a reader follows one without
+		// having to work out which end is which. Drawn first so the pin's own blocks paint
+		// over the end of it, and left without geometry — a pin standing on its own point
+		// draws none of it at all (see leaderElement and drawLeader).
+		wrap.appendChild(leaderElement(marker.id, marker.frameClasses ?? null, !!marker.dimmed));
 
 		// A square tile in the region's colour carrying the show's glyph, standing at the
 		// left end of the plate below. The glyph is inlined rather than pointed at by an
@@ -655,7 +668,8 @@
 		if (marker.iconSvg || marker.frameClasses) {
 			tile = document.createElement('div');
 			tile.className =
-				'flex size-10 flex-none items-center justify-center rounded-lg [&>svg]:size-7 ' +
+				TILE_CLASSES +
+				' [&>svg]:size-7 ' +
 				(marker.frameClasses ?? 'bg-base-100 text-base-content') +
 				// A pin clear of the selection recedes by its colour, not by its lettering:
 				// the fade is on the tile alone (see classNamesFor).
@@ -690,8 +704,7 @@
 		// the lettering off the terrain, which is the whole of what the black was for, while
 		// letting the ground the pin stands on read faintly through the mark standing on it.
 		const plate = document.createElement('div');
-		plate.className =
-			'mt-1 flex min-w-[200px] max-w-[15rem] flex-col gap-1.5 rounded-lg bg-base-100/80 p-1.5 text-white shadow-lg';
+		plate.className = PLATE_CLASSES;
 
 		// The head row: the tile at the left end, the two lines beside it.
 		const head = document.createElement('div');
@@ -730,7 +743,10 @@
 			// saying "this DOM is a widget, not terrain".
 			Leaf!.DomEvent.disableClickPropagation(bar);
 			Leaf!.DomEvent.disableScrollPropagation(bar);
-			pinMounts.push(mount(TownChallenge, { target: bar, props: { ...marker.challenge } }));
+			trackPinMount(
+				marker.id,
+				mount(TownChallenge, { target: bar, props: { ...marker.challenge } })
+			);
 			plate.appendChild(bar);
 		}
 
@@ -758,7 +774,8 @@
 			// flex-1 of the row — it says the thing itself, and it is inert on any screen with
 			// room for the 500px the side asked for.
 			frame.className = 'mt-1 w-[500px] max-w-[100vw] drop-shadow-lg';
-			pinMounts.push(
+			trackPinMount(
+				marker.id,
 				mount(TeamLineup, {
 					target: frame,
 					// A town's team is somebody else's side, so it faces the viewer
@@ -808,17 +825,146 @@
 		return wrap;
 	}
 
-	// The pin wrapper's classes: a column standing to the RIGHT of its point and centred on
-	// its line, made clickable when the marker carries an onClick.
+	// The one plate every pin is printed on, and the tile at the left end of it — named here
+	// because a group is printed on the same stock as the pins it stands for (see
+	// groupElement), and two copies of a class list are how two marks that are meant to be
+	// the same mark come to look like two.
+	const PLATE_CLASSES =
+		'mt-1 flex min-w-[200px] max-w-[15rem] flex-col gap-1.5 rounded-lg bg-base-100/80 p-1.5 text-white shadow-lg';
+	const TILE_CLASSES = 'flex size-10 flex-none items-center justify-center rounded-lg';
+
+	// A mark's line back to the place it is about, without its geometry — that is the
+	// placement pass's to give it once it knows whether the mark had to move at all (see
+	// drawLeader), and a mark standing on its own point never draws one.
 	//
-	// It used to be centred on the point in both directions, and before that anchored by its
-	// bottom edge as a pin with a tip is. Neither survives a map that will not let its marks
-	// overlap: a pin is now moved off its point until it has room (see placePins), so where
-	// it stands is not something a class can say — the offset is measured in pixels, per pin,
-	// per view, and is applied as an inline transform by that pass. What is left here is the
-	// part that never varies, which is how the offset is to be read: the pin's LEFT-MIDDLE is
-	// the end of it, so the leader line always leaves the point rightwards and always arrives
-	// at the same corner of the mark.
+	// It is the region's own colour, taken from the very class the mark's tile is filled with
+	// rather than from a second table of the same six swatches — the line and the tile are the
+	// one colour saying the one thing, and a copy is how two of them come to disagree. A mark
+	// clear of the selection fades its line with its tile.
+	//
+	// A strip of a div and not an svg: it is a straight line of one colour, which is a box
+	// with a background and a rotation, and a box can be filled with a class while a stroke
+	// cannot. Registered under the mark's id, so the placement pass can find it again.
+	function leaderElement(id: string, frameClasses: string | null, dimmed: boolean): HTMLElement {
+		const leader = document.createElement('div');
+		leader.className =
+			'pointer-events-none absolute left-0 top-1/2 -mt-px h-0.5 origin-left ' +
+			(frameClasses ?? 'bg-base-content') +
+			(dimmed ? ' opacity-50' : '');
+		leader.setAttribute('aria-hidden', 'true');
+		pinLeaders.set(id, leader);
+		return leader;
+	}
+
+	// The mark several pins fold into: one pin, printed exactly as any of them, whose tile
+	// carries the number of places it stands for instead of a show's glyph.
+	//
+	// Styled as an individual pin on purpose, and that is the whole of the idea: a reader who
+	// has learnt to read one plate can read this one, and what it says differently is one
+	// number in the place where a mark's meaning already sits. It is not a badge stuck on the
+	// map or a cluster bubble of another kind — a crowd of towns is still a mark on a place,
+	// and the only honest thing it cannot say is which of the towns is which.
+	//
+	// What it does say is who is under it: the places it covers, named in the line the place's
+	// name is always in, truncated by the same plate. And the show, on the line the show is
+	// always on, when every place under it flies the same one — where they do not, that line
+	// is left off rather than one of them being made to speak for the rest. The colour is
+	// carried the same way: the shared one where the group has one, the neutral surface where
+	// its members disagree, so a tile never says a colour that half of what it counts does not
+	// fly.
+	//
+	// A click unfolds it (see unfold) rather than opening anything, because the mark stands
+	// for several regions and there is no one region a click on it could mean. The hover is
+	// every region's at once — that one CAN be said of all of them, and is (see addGroup).
+	function groupElement(id: string, members: MapMarker[]): HTMLElement {
+		const wrap = document.createElement('div');
+		wrap.className = 'relative flex cursor-pointer flex-col items-center';
+
+		const frameClasses = members.every((member) => member.frameClasses === members[0].frameClasses)
+			? (members[0].frameClasses ?? null)
+			: null;
+		// Faded only when every place under it is outside the open selection: a count with one
+		// relevant town in it is a count the reader is being pointed at.
+		const dimmed = members.every((member) => member.dimmed);
+
+		wrap.appendChild(leaderElement(id, frameClasses, dimmed));
+
+		const plate = document.createElement('div');
+		plate.className = PLATE_CLASSES;
+
+		const head = document.createElement('div');
+		head.className = 'flex items-center gap-2';
+
+		// The count, in the tile the glyph would have been in — the size a mark's meaning is
+		// read at on every other pin. Not hidden from a screen reader the way a pin's glyph is:
+		// the glyph repeats the show named beside it, while this number is said nowhere else.
+		const tile = document.createElement('div');
+		tile.className =
+			TILE_CLASSES +
+			' text-lg font-bold ' +
+			(frameClasses ?? 'bg-base-100 text-base-content') +
+			(dimmed ? ' opacity-50' : '');
+		tile.textContent = String(members.length);
+		head.appendChild(tile);
+
+		const lines = document.createElement('div');
+		lines.className = 'flex min-w-0 flex-col text-left leading-tight';
+
+		const places = document.createElement('span');
+		places.textContent = members.map((member) => member.subtitle ?? member.title).join(', ');
+		places.className = 'truncate text-xs font-semibold';
+		lines.appendChild(places);
+
+		if (members.every((member) => member.title === members[0].title)) {
+			const caption = document.createElement('span');
+			caption.textContent = members[0].title;
+			caption.className = 'truncate text-xs font-medium text-white/70';
+			lines.appendChild(caption);
+		}
+
+		head.appendChild(lines);
+		plate.appendChild(head);
+		wrap.appendChild(plate);
+		return wrap;
+	}
+
+	// Open a group: put the map where its places are no longer one mark.
+	//
+	// A count is a mark saying there is something folded here to go and look at, so a click on
+	// it has to be the going and looking — there is no one region it could open, and leaving it
+	// inert would take the pins it stands for out of the reader's reach altogether.
+	//
+	// It steps IN rather than jumping to whatever zoom would separate the places outright: two
+	// towns on all but the same point would send the map to its deepest zoom in one press,
+	// past every tier between here and there, and a reader who wanted a closer look would have
+	// lost where they were. A step or two of zoom towards the group, centred on it, unfolds
+	// most groups at once and the rest on a second press.
+	function unfold(positions: [number, number][]) {
+		if (!mapInstance || !Leaf || !positions.length) return;
+		const bounds = Leaf.latLngBounds(positions.map(([lat, lng]) => Leaf!.latLng(lat, lng)));
+		const zoom = mapInstance.getZoom();
+		const wanted = mapInstance.getBoundsZoom(bounds, false, focusPadding());
+		mapInstance.setView(
+			bounds.getCenter(),
+			Math.min(Math.max(wanted, zoom + 1), zoom + UNFOLD_MAX_STEP, mapInstance.getMaxZoom())
+		);
+	}
+
+	// The most zoom one press on a count may spend. Two levels quarters the ground the canvas
+	// covers, which is enough to pull all but the tightest groups apart, and is short of the
+	// gap between two tiers of the hierarchy — so unfolding a group shows the group, rather
+	// than dropping the reader into a breakdown they did not ask for.
+	const UNFOLD_MAX_STEP = 2;
+
+	// The pin wrapper's classes: a column, made clickable when the marker carries an onClick.
+	//
+	// Where it stands is not something a class can say. A pin is centred on its point when it
+	// has the room to be and moved off it when it has not (see placeMarks), so the offset is
+	// measured in pixels, per pin, per view, and applied as an inline transform by that pass.
+	// What is left here is the part that never varies, which is how the offset is to be read:
+	// the pin's LEFT-MIDDLE is the end of it, so a leader line — on the pins that end up
+	// needing one — always leaves the point rightwards and always arrives at the same corner
+	// of the mark.
 	//
 	// `relative` is for that line, which hangs off this box (see markerElement).
 	//
@@ -931,7 +1077,7 @@
 		// a quarter of a viewport's grace, because a mark standing on a point just off the edge
 		// still had half a plate showing and dropping it left a visible gap. It cannot have it
 		// any more: a pin is now pulled inside the canvas rather than allowed to hang off it
-		// (see placePins), so a point beyond the edge would be given a mark within it — a town
+		// (see placeMarks), so a point beyond the edge would be given a mark within it — a town
 		// nobody is looking at, standing in the room of one they are, with a leader line
 		// running off the screen to say where it really is. What is not in view is not marked,
 		// and the pins that ARE in view get the room that saves.
@@ -953,63 +1099,193 @@
 			for (const id of marker.featureIds ?? []) regionByFeatureId.set(id, marker.featureIds!);
 		}
 
-		const visible = chosen.filter((marker) => bounds.contains(marker.position));
+		// The order everything after this reads the pins in, and it is one order for one
+		// reason: the picked town comes first. It is the pin carrying the side holding it,
+		// its siege and the way to fight them — several hundred pixels of mark the reader
+		// asked for by name — so it is never folded into a count of towns (see foldPins) and
+		// never shuffled aside for a plate naming a village (see placeMarks). Everything after
+		// it keeps the order the tier was built in, so the same view always settles the same
+		// way rather than wandering between rebuilds.
+		const visible = chosen
+			.filter((marker) => bounds.contains(marker.position))
+			.sort((a, b) => (b.team?.length ? 1 : 0) - (a.team?.length ? 1 : 0));
 
-		// What each pin came out as, in pixels, read back off the DOM once it is standing.
-		// Nothing about a pin's size can be worked out from the data behind it — a plate is
-		// as wide as the place's name up to its cap, and a picked town's column is as tall as
-		// three statues, a booster box and a siege bar happened to come out — so the pin
-		// itself is the only honest source, and the framing needs it to put a whole pin on
-		// the canvas (see viewForBounds). Cleared and refilled with the crop, so a town that
-		// has just been folded back into a plate is never remembered at the height it stood
-		// while it was the picked one.
 		pinExtents = new Map();
 		pinLeaders = new Map();
-		const drawn: [MapMarker, HTMLElement][] = [];
+		foldedIds = new Set();
 
 		// No pin outlives its tier, the picked town's included: it carries the side holding
 		// it and the way to fight them, and a mark that size cannot be left standing over a
 		// view of provinces where the town it belongs to is no longer drawn. Zooming out
 		// folds a town into its comarca and takes everything hung on it away together.
-		for (const marker of visible) {
-			const element = markerElement(marker);
-			const icon = Leaf.divIcon({
-				html: element,
-				className: '',
-				iconSize: [0, 0]
-			});
-			const pin = Leaf.marker(marker.position, { icon, riseOnHover: true });
-			if (marker.onClick) pin.on('click', () => marker.onClick!());
-			// Hovering the pin highlights its whole region's fill, just like hovering
-			// the polygons; leaving it resets them to their base style.
-			pin.on('mouseover', () => highlightRegion(marker.featureIds, true));
-			pin.on('mouseout', () => highlightRegion(marker.featureIds, false));
-			pin.addTo(markerLayer!);
-			drawn.push([marker, element]);
-		}
+		const drawn = visible.map((marker) => addPin(marker));
 
-		// Measured in one pass at the end and not inside the loop: asking an element for its
-		// offsetWidth makes the browser settle the layout it is holding, so a read per pin
-		// settles the whole crop once per pin. `offsetWidth`/`offsetHeight` are the untransformed
-		// box, which is what is wanted — a pin is moved off its point by a transform (see
-		// placePins) and its size is not what that transform changes.
-		//
-		// The height is the wrapper's, the width is its widest block's. The wrapper stands in a
-		// marker box of no size at all (`iconSize: [0, 0]`, which is what lets a pin be placed
-		// against a point rather than filling anything), so its own width resolves to that
-		// nothing and every block in it overflows on purpose — the column measures 0 across
-		// while carrying 500px of statues. Its height is honest, being the content's own. So
-		// the width is read off the blocks that actually draw.
-		for (const [marker, element] of drawn) {
-			let width = element.offsetWidth;
-			for (const block of element.children) {
+		// Every pin is drawn and measured before any of them is folded, because how much room
+		// a pin takes is not a thing the data behind it can be asked: a plate is as wide as
+		// the place's name up to its cap, and a picked town's column is as tall as three
+		// statues, a siege bar and a booster box happened to come out. Which two pins are one
+		// pin is a question about those boxes, so the boxes have to exist first — the crop is
+		// put on the map, read, and then the marks that will not fit beside one another are
+		// taken off again and replaced by the one mark that stands for them.
+		pinMarks = foldPins(drawn, measurePins(drawn));
+
+		// Not placed here. Where these may stand depends on the booster marks as much as on one
+		// another, and those are built by the pass that runs immediately after this one — so the
+		// room is dealt once, to both families together, by the last of the two (see placeMarks
+		// and rebuildBoxes).
+		rebuildCorner(visible);
+	}
+
+	/**
+	 * One mark on the pin layer: the region it is about (null once it is a count standing for
+	 * several), where it stands, and the two handles the passes after it need — the DOM to
+	 * move, and the Leaflet marker to take off the map again if it turns out to be part of a
+	 * group.
+	 */
+	type PinMark = {
+		id: string;
+		marker: MapMarker | null;
+		position: [number, number];
+		element: HTMLElement;
+		layer: L.Marker;
+		/** Its claim on the room there is: the lower the rank, the earlier it picks. */
+		rank: number;
+	};
+
+	// What a mark's claim on the canvas is worth, and there are only three kinds of claim.
+	// The reader's own pick comes first — the town they opened, whether it is standing as a
+	// pin with its side on it or as the booster box the coarser tiers draw it as — since it is
+	// the one mark on screen that was asked for by name. Then the pins, which are the map's
+	// naming of the places under them. Then the booster marks, which are what a place has on
+	// offer: a smaller mark, about something the place is carrying rather than about the place,
+	// and so the one to give way when a disc and a plate want the same corner.
+	const RANK_PICKED = 0;
+	const RANK_PIN = 1;
+	const RANK_BOX = 2;
+
+	/** Draw one region's pin on the map, as its own mark. */
+	function addPin(marker: MapMarker): PinMark {
+		const element = markerElement(marker);
+		const icon = Leaf!.divIcon({ html: element, className: '', iconSize: [0, 0] });
+		const layer = Leaf!.marker(marker.position, { icon, riseOnHover: true });
+		if (marker.onClick) layer.on('click', () => marker.onClick!());
+		// Hovering the pin highlights its whole region's fill, just like hovering
+		// the polygons; leaving it resets them to their base style.
+		layer.on('mouseover', () => highlightRegion(marker.featureIds, true));
+		layer.on('mouseout', () => highlightRegion(marker.featureIds, false));
+		layer.addTo(markerLayer!);
+		return {
+			id: marker.id,
+			marker,
+			position: marker.position,
+			element,
+			layer,
+			rank: marker.team?.length ? RANK_PICKED : RANK_PIN
+		};
+	}
+
+	/**
+	 * Draw one count in place of the pins it stands for: the same plate every other pin is
+	 * printed on, at the middle of their points, hovering the whole of what it covers and
+	 * unfolding it on a click (see groupElement).
+	 */
+	function addGroup(members: MapMarker[], position: [number, number]): PinMark {
+		const id = `group:${members[0].id}`;
+		const element = groupElement(id, members);
+		const icon = Leaf!.divIcon({ html: element, className: '', iconSize: [0, 0] });
+		const layer = Leaf!.marker(position, { icon, riseOnHover: true });
+		layer.on('click', () => unfold(members.map((member) => member.position)));
+		// A group lights every region under it, exactly as each of its pins lit its own: the
+		// mark is about all of them, so pointing at it says so on the terrain too.
+		const featureIds = members.flatMap((member) => member.featureIds ?? []);
+		layer.on('mouseover', () => highlightRegion(featureIds, true));
+		layer.on('mouseout', () => highlightRegion(featureIds, false));
+		layer.addTo(markerLayer!);
+		return { id, marker: null, position, element, layer, rank: RANK_PIN };
+	}
+
+	// What each mark came out as, in pixels, read back off the DOM once it is standing.
+	//
+	// Measured in one pass and not inside the loop that built them: asking an element for its
+	// offsetWidth makes the browser settle the layout it is holding, so a read per pin as it
+	// is added settles the whole crop once per pin. `offsetWidth`/`offsetHeight` are the
+	// untransformed box, which is what is wanted — a pin is moved off its point by a transform
+	// (see placeMarks) and its size is not what that transform changes.
+	//
+	// The height is the wrapper's, the width is its widest block's. The wrapper stands in a
+	// marker box of no size at all (`iconSize: [0, 0]`, which is what lets a pin be placed
+	// against a point rather than filling anything), so its own width resolves to that
+	// nothing and every block in it overflows on purpose — the column measures 0 across
+	// while carrying 500px of statues. Its height is honest, being the content's own. So
+	// the width is read off the blocks that actually draw.
+	function measurePins(marks: readonly PinMark[]): Map<string, L.Point> {
+		const extents = new Map<string, L.Point>();
+		for (const mark of marks) {
+			let width = mark.element.offsetWidth;
+			for (const block of mark.element.children) {
 				width = Math.max(width, (block as HTMLElement).offsetWidth);
 			}
-			pinExtents.set(marker.id, Leaf.point(width, element.offsetHeight));
+			extents.set(mark.id, Leaf!.point(width, mark.element.offsetHeight));
 		}
+		return extents;
+	}
 
-		placePins(drawn);
-		rebuildCorner(visible);
+	// Fold the pins that cannot all be drawn into the one pin that stands for them.
+	//
+	// A comarca of villages is more plates than the canvas has room for, and the map used to
+	// answer that by moving every one of them off its point until it had room, with a line
+	// drawn back to say which point it was still about. That kept every town named, at the
+	// price of the map: a screen of plates joined to the terrain by lines, in which nothing
+	// could be seen but the marks. So the crowding is answered first by drawing FEWER marks —
+	// the pins that would have stood on one another become a single pin, printed exactly as
+	// one of them and saying how many places it is about (see groupElement) — and only what
+	// folding cannot help is moved aside afterwards.
+	//
+	// Which marks may be folded together is a question about their KIND, and that is why this
+	// runs over the region pins alone: the booster marks hung on towns are their own family
+	// and are folded among themselves (see rebuildBoxes), because a mark saying "4" that
+	// turned out to mean two towns and two boxes is a count of nothing. The picked town is a
+	// kind of one — it is offered ungroupable, so it neither joins a count nor swallows its
+	// neighbours, which are left to be moved off it in the old way.
+	function foldPins(drawn: readonly PinMark[], extents: Map<string, L.Point>): PinMark[] {
+		const byId = new Map(drawn.map((mark) => [mark.id, mark]));
+		const groups = groupPins(
+			drawn.map((mark) => {
+				const at = mapInstance!.latLngToContainerPoint(mark.position);
+				const extent = extents.get(mark.id);
+				return {
+					id: mark.id,
+					x: at.x,
+					y: at.y,
+					width: extent ? extent.x : PIN_PLATE_EXTENT[0],
+					height: extent ? extent.y : PIN_PLATE_EXTENT[1],
+					groupable: !mark.marker?.team?.length
+				};
+			}),
+			{ gap: PIN_GAP }
+		);
+
+		const marks: PinMark[] = [];
+		for (const group of groups) {
+			if (group.ids.length === 1) {
+				marks.push(byId.get(group.ids[0])!);
+				continue;
+			}
+			// The members come off the map, clock and all, and the count goes on in their
+			// place — at the middle of the points it stands for, which is where the group
+			// worked out that one mark of that size would fit.
+			for (const id of group.ids) {
+				const mark = byId.get(id)!;
+				markerLayer!.removeLayer(mark.layer);
+				unmountPin(id);
+				pinLeaders.delete(id);
+				foldedIds.add(id);
+			}
+			const at = mapInstance!.containerPointToLatLng(Leaf!.point(group.x, group.y));
+			const members = group.ids.map((id) => byId.get(id)!.marker!);
+			marks.push(addGroup(members, [at.lat, at.lng]));
+		}
+		return marks;
 	}
 
 	// The picked town's booster box, stood in the top-right corner of the canvas with a line
@@ -1107,41 +1383,48 @@
 		cornerAnchor = null;
 	}
 
-	// Move the pins off one another, and draw each one's line back to its place.
+	// Stand every mark on its point, and move the few that cannot be left there.
 	//
-	// A pin marks a point but is not one: it is a plate a couple of hundred pixels across,
-	// and towns crowd. Left standing on their points, the pins of a comarca pile into a heap
-	// whose top mark is whichever the paint order happened to raise, and every mark under it
-	// is a town the map has silently stopped naming. So the point and the mark are separated
-	// — the point does not move, the mark is moved until it has room — and the line drawn
-	// between them is what keeps the mark's meaning: the place is still said, it is simply
-	// said beside itself.
+	// EVERY mark, of both families, in one pass — that is the whole reason this is its own
+	// function rather than the tail of the pin rebuild. Folding answers the crowding within a
+	// family (see foldPins and foldBoxes) and cannot answer it between two: a booster disc and
+	// a region's plate are different kinds of mark and a count that mixed them would be a count
+	// of nothing, so if they were also dealt their room separately there would be nothing at
+	// all keeping a disc from lying under a plate. Laid out together, a mark of either family
+	// sees a mark of the other exactly as it sees one of its own: room already taken.
 	//
-	// Which way a pin is moved is the layout's to answer (see pin-layout) and it is answered
-	// the same way for every pin, because a reader who has worked out one leader line has to
+	// What arrives here mostly has the room it needs, folding having already taken the heaps
+	// out, and a mark with room stands centred on the place it is about with nothing to
+	// explain. What is left over — a disc under a plate, the picked town's column, which is
+	// never folded and is too big to share a point with anything — is moved off its point
+	// until it has room, with a line back to say which point it is still about.
+	//
+	// Which way a mark is moved is the layout's to answer (see pin-layout) and it is answered
+	// the same way for every mark, because a reader who has worked out one leader line has to
 	// have worked out all of them. This pass only supplies what the layout cannot know
-	// without a DOM: where each point falls in the container right now, how big each pin came
+	// without a DOM: where each point falls in the container right now, how big each mark came
 	// out, and how much canvas there is to move about in.
 	//
-	// The order pins are offered in is the order they get their pick of the room, so the
-	// picked town goes first: it is the one carrying the side holding it, its booster box and
-	// the way to fight them, several hundred pixels of mark the reader asked for by name, and
-	// it should not be the one shuffled aside for a plate naming a village. Everything after
-	// it keeps the order the tier was built in, so the same view always settles the same way
-	// rather than wandering between rebuilds.
-	function placePins(drawn: [MapMarker, HTMLElement][]) {
+	// The order marks are offered in is the order they get their pick of the room: by rank
+	// first (see RANK_PICKED), and within a rank the order they were built in, which is the
+	// order their tier was built in — so the same view always settles the same way rather than
+	// wandering between rebuilds.
+	function placeMarks() {
 		if (!mapInstance || !Leaf) return;
 		const size = mapInstance.getSize();
-		const ordered = [...drawn].sort(
-			(a, b) => (b[0].team?.length ? 1 : 0) - (a[0].team?.length ? 1 : 0)
-		);
+		// Stable, so a rank is a tie-break and never a reshuffle of what is inside it.
+		const marks = [...pinMarks, ...boxMarks].sort((a, b) => a.rank - b.rank);
+
+		// This is the reading the rest of the map works from too: the framing puts these boxes
+		// whole on the canvas (see viewForBounds).
+		pinExtents = measurePins(marks);
 
 		const anchors: PinAnchor[] = [];
-		for (const [marker] of ordered) {
-			const extent = pinExtents.get(marker.id);
+		for (const mark of marks) {
+			const extent = pinExtents.get(mark.id);
 			if (!extent) continue;
-			const at = mapInstance.latLngToContainerPoint(marker.position);
-			anchors.push({ id: marker.id, x: at.x, y: at.y, width: extent.x, height: extent.y });
+			const at = mapInstance.latLngToContainerPoint(mark.position);
+			anchors.push({ id: mark.id, x: at.x, y: at.y, width: extent.x, height: extent.y });
 		}
 
 		const offsets = layoutPins(
@@ -1149,37 +1432,62 @@
 			{ width: size.x, height: size.y },
 			// The canvas is the whole container, but the room is not: the bar naming where the
 			// map is looking lies across the top of it, and a pin tucked under that bar is a
-			// pin the map has kept on screen and out of sight (see chromeInsets).
-			{ lead: PIN_LEAD, insets: chromeInsets }
+			// pin the map has kept on screen and out of sight (see chromeInsets). Nor is the
+			// corner free — the picked town's booster box stands in it (see rebuildCorner), and
+			// that is a booster mark like any other: it may not be lain under either.
+			{ lead: PIN_LEAD, gap: PIN_GAP, insets: chromeInsets, reserved: cornerRoom() }
 		);
 
-		for (const [marker, element] of drawn) {
-			const extent = pinExtents.get(marker.id);
-			const offset = offsets.get(marker.id);
+		for (const mark of marks) {
+			const extent = pinExtents.get(mark.id);
+			const offset = offsets.get(mark.id);
 			if (!extent || !offset) continue;
 			// The measured width, given back to the box it was measured off. Until now the
 			// column has been a box of no width with everything in it overflowing equally to
-			// both sides, which is what centred it on the point; a pin that stands beside its
-			// point instead needs a real left edge, both to be moved by an honest amount and
-			// to be the thing the leader line arrives at.
-			element.style.width = `${extent.x}px`;
-			// The offset is to the pin's left-MIDDLE, so the box is dropped by half its own
+			// both sides; a mark placed by an offset needs a real left edge, both to be moved
+			// by an honest amount and to be the thing a leader line arrives at.
+			mark.element.style.width = `${extent.x}px`;
+			// The offset is to the mark's left-MIDDLE, so the box is dropped by half its own
 			// height after being moved — one transform, since two translations compose
 			// whichever way round they are read.
-			element.style.transform = `translate(${offset.dx}px, ${offset.dy}px) translateY(-50%)`;
-			drawLeader(marker.id, offset);
+			mark.element.style.transform = `translate(${offset.dx}px, ${offset.dy}px) translateY(-50%)`;
+			drawLeader(mark.id, offset);
 		}
 	}
 
-	// One pin's line, as a length and an angle: the strip is anchored at the pin's left-middle
-	// (see markerElement) and swung back onto the point, which is the offset read the other
-	// way round. A pin that ended up where it asked to be still draws its short stub — the
-	// mark stands beside its place either way, and a line that came and went with the crowd
-	// would be a thing the reader had to notice the absence of.
+	/**
+	 * The room the corner's booster box is standing in, as the placement wants it: measured
+	 * off the box itself rather than worked out from the classes and insets that put it there,
+	 * because its height is its cover's business (see trackCorner) and one measurement cannot
+	 * disagree with itself. Empty when no town's box is in the corner.
+	 */
+	function cornerRoom(): { left: number; top: number; right: number; bottom: number }[] {
+		if (!cornerBox || !cornerLayer) return [];
+		const layerBox = cornerLayer.getBoundingClientRect();
+		const boxRect = cornerBox.getBoundingClientRect();
+		return [
+			{
+				left: boxRect.left - layerBox.left,
+				top: boxRect.top - layerBox.top,
+				right: boxRect.right - layerBox.left,
+				bottom: boxRect.bottom - layerBox.top
+			}
+		];
+	}
+
+	// One mark's line, as a length and an angle: the strip is anchored at the mark's
+	// left-middle (see leaderElement) and swung back onto the point, which is the offset read
+	// the other way round.
+	//
+	// A mark that never left its point draws no line at all. There is nothing for one to say —
+	// the mark is standing on the place it names — and a stub drawn under every plate on the
+	// map would be a mark of its own, saying "moved" where nothing has moved. So the line is
+	// exactly the sign that a mark is beside its place rather than on it, which is the only
+	// thing it was ever for.
 	function drawLeader(id: string, offset: PinOffset) {
 		const leader = pinLeaders.get(id);
 		if (!leader) return;
-		const length = Math.hypot(offset.dx, offset.dy);
+		const length = offset.moved ? Math.hypot(offset.dx, offset.dy) : 0;
 		leader.style.width = `${length}px`;
 		leader.style.transform = `rotate(${(Math.atan2(-offset.dy, -offset.dx) * 180) / Math.PI}deg)`;
 	}
@@ -1209,15 +1517,33 @@
 		// town at all — and its line is drawn to a point in the container, which is the one
 		// thing a zoom animation makes a lie of every frame. It comes back with the pins.
 		clearCorner();
+		// Forgotten as well as taken off, because the booster marks are laid out against these
+		// (see placeMarks) and a set of pins that is no longer on the map is room nothing is
+		// standing in. A rebuild of the boxes arriving mid-zoom then deals itself the whole
+		// canvas, which is the truth of it while there are no pins.
+		pinMarks = [];
 		if (!markerLayer) return;
 		unmountPinMounts();
 		markerLayer.clearLayers();
 	}
 
-	/** Tear down everything mounted into a pin, so no detached timer keeps running. */
+	/** Tear down everything mounted into every pin, so no detached timer keeps running. */
 	function unmountPinMounts() {
-		for (const mounted of pinMounts) void unmount(mounted);
-		pinMounts = [];
+		for (const id of [...pinMounts.keys()]) unmountPin(id);
+		pinMounts = new Map();
+	}
+
+	/** The same for one pin alone — the pin that has just been folded into a group. */
+	function unmountPin(id: string) {
+		for (const mounted of pinMounts.get(id) ?? []) void unmount(mounted);
+		pinMounts.delete(id);
+	}
+
+	/** Remember a component mounted into a pin's DOM, so that pin can take it down again. */
+	function trackPinMount(id: string, mounted: Record<string, unknown>) {
+		const bucket = pinMounts.get(id);
+		if (bucket) bucket.push(mounted);
+		else pinMounts.set(id, [mounted]);
 	}
 
 	/** The same, for the boxes: a box no longer on screen must not keep its images. */
@@ -1246,13 +1572,15 @@
 	//   is what a pin carries, and the box the pin's town would have carried is in the
 	//   corner — but the placement is kept because which mark goes in a pin is a decision
 	//   about marks and not about this function.
-	// - `'point'` — the box layer's own marker, centred on the point by its own middle: a
-	//   mark is about the ground under it, and 200px of cover reads as being about the town
-	//   it is centred on rather than the one it hangs off. It is also what keeps the box and
-	//   the disc one object seen at two sizes — both take the point by their centre, so
-	//   folding a box up leaves the mark where the box was rather than moving it. This is
-	//   what the picked town's box does at a tier that gave it no pin to stand in — see
-	//   rebuildBoxes.
+	// - `'point'` — the box layer's own marker, standing on the point: a mark is about the
+	//   ground under it, and 200px of cover reads as being about the town it is centred on
+	//   rather than the one it hangs off. It is also what keeps the box and the disc one
+	//   object seen at two sizes — both take the point the same way, so folding a box up
+	//   leaves the mark where the box was rather than moving it. Where exactly it ends up is
+	//   the placement's to say and not this function's: it is dealt its room with the pins,
+	//   so a mark with room stands centred on its point and one without is moved off it (see
+	//   pointMark and placeMarks). This is what the picked town's box does at a tier that gave
+	//   it no pin to stand in — see rebuildBoxes.
 	// - `'corner'` — the top-right of the canvas, standing clear of the map altogether (see
 	//   rebuildCorner). Placed by the corner and not by a point, so it takes no transform at
 	//   all: what says which town it is about is the line drawn from it, not where it sits.
@@ -1266,7 +1594,9 @@
 					? // Where in the corner is set by the caller, in pixels, since it depends on
 						// what the parent has drawn over that corner (see rebuildCorner).
 						'pointer-events-auto absolute drop-shadow-lg'
-					: '-translate-x-1/2 -translate-y-1/2');
+					: // On a point: placed by the pass that deals every mark its room (see
+						// pointMark and placeMarks), so it says nothing here about where it stands.
+						'');
 		if (box.onClick) wrap.className += ' cursor-pointer';
 		const mounted = mount(BoosterBox, {
 			target: wrap,
@@ -1278,7 +1608,9 @@
 				light: box.light ?? false
 			}
 		});
-		if (into === 'pin') pinMounts.push(mounted);
+		// A box drawn in a pin belongs to that pin's town, which is the pin's own id (see
+		// boxForMarker), so it is that pin's mount to take down.
+		if (into === 'pin') trackPinMount(box.id, mounted);
 		else if (into === 'corner') cornerMounts.push(mounted);
 		else boxMounts.push(mounted);
 		return wrap;
@@ -1300,9 +1632,17 @@
 	// so the box layer must not stand a second one on the same point — which is all this
 	// is for (see rebuildBoxes). Read off the same stack rebuildMarkers picked from, at the
 	// level it settled on.
+	//
+	// Less the pins that were folded into a count on this rebuild (see foldPins): a town whose
+	// pin has gone into a group has no pin left to carry its mark, and the group's plate counts
+	// places and says nothing about packs. So the box layer takes those towns back — where they
+	// crowd, they fold into a count of their own, which is the same reading at the same size as
+	// the pins' (see foldBoxes).
 	function pinnedIds(): Set<string> {
 		const levels = markerLevelStack();
-		return new Set((levels[pinLevelIndex] ?? []).map((marker) => marker.id));
+		const ids = new Set((levels[pinLevelIndex] ?? []).map((marker) => marker.id));
+		for (const id of foldedIds) ids.delete(id);
+		return ids;
 	}
 
 	// The same town unpicked: a disc of the box's own stock — white card for a town de festa
@@ -1343,13 +1683,16 @@
 	//   when a pin grew upwards and left that room free. It no longer does (see
 	//   classNamesFor), and a 56px disc centred on the same point as a 56px plate is one
 	//   mark hidden behind another rather than two marks about one town.
-	// - `'point'` — the box layer's own marker, centred on the point by its own middle, for
-	//   the towns this tier drew no pin for at all.
+	// - `'point'` — the box layer's own marker, standing on the point, for the towns this tier
+	//   drew no pin for at all — moved off it only where a pin or another mark is already
+	//   standing there (see pointMark and placeMarks).
 	function discElement(box: MapBoosterBox, into: 'pin' | 'point'): HTMLElement {
 		const wrap = document.createElement('div');
 		wrap.className =
 			'flex size-14 items-center justify-center rounded-full shadow-md [&>svg]:size-9 ' +
-			(into === 'pin' ? 'mt-1 flex-none ' : '-translate-x-1/2 -translate-y-1/2 ') +
+			// In a pin it is one more block of the column; on a point it is placed by the pass
+			// that deals every mark its room (see pointMark and placeMarks).
+			(into === 'pin' ? 'mt-1 flex-none ' : '') +
 			(box.light ? 'bg-white text-black' : 'bg-black text-white');
 		if (boxAction(box, 'disc')) wrap.className += ' cursor-pointer';
 		wrap.setAttribute('aria-hidden', 'true');
@@ -1393,18 +1736,29 @@
 		return box.selected ? 'box' : 'disc';
 	}
 
-	// (Re)build the festa boxes for the current view: unmount the last crop, clear the
-	// layer, and — unless the tier on screen marks no towns at all — keep only the boxes
-	// inside the (padded) viewport and drop a zero-sized divIcon at each, carrying whichever
-	// mark that town calls for. Runs on every boxes change and whenever the map pans or
-	// zooms, so the culling, the mark and the picked town all track what's on screen.
+	// (Re)build the festa boxes for the current view: unmount the last crop, clear the layer,
+	// and — unless the tier on screen marks no towns at all — keep only the boxes inside the
+	// viewport, fold the ones that would have stood on one another, and drop a zero-sized
+	// divIcon at each, carrying whichever mark that town calls for. Runs on every boxes change
+	// and whenever the map pans or zooms, so the culling, the mark and the picked town all
+	// track what's on screen.
+	//
+	// It is also the pass that deals BOTH families their room, being the second of the two to
+	// run: the pins are built and folded first and left standing where they asked to be, and
+	// the placement at the end of this sees every mark on the map at once (see placeMarks).
 	function rebuildBoxes() {
 		if (!mapInstance || !Leaf) return;
 		if (!boxLayer) boxLayer = Leaf.layerGroup().addTo(mapInstance);
 		unmountBoxMounts();
 		boxLayer.clearLayers();
+		boxMarks = [];
 
-		if (!marksTowns()) return;
+		// A tier that marks no towns still deals the pins their room: this pass is the last of
+		// the two and the placement is its to run either way (see placeMarks).
+		if (!marksTowns()) {
+			placeMarks();
+			return;
+		}
 
 		// A town with a pin carries its own mark inside it, whichever of the two it is (see
 		// markerElement), so the layer must not put a second one on the same point — which
@@ -1414,21 +1768,143 @@
 		// stand in.
 		const pinned = pinnedIds();
 
-		const bounds = mapInstance.getBounds().pad(0.25);
-		for (const box of boxes) {
-			if (pinned.has(box.id)) continue;
+		// Exactly what is on screen, with no ring of slack around it — the same cull the pins
+		// take, and now for the same reason: a booster mark is dealt its room by the placement
+		// too (see placeMarks), which pulls a mark inside the canvas rather than letting it hang
+		// off the edge. A point beyond the edge would be given a mark within it, standing in the
+		// room of a town the reader IS looking at.
+		const bounds = mapInstance.getBounds();
+		// The picked town first, for the reason its pin goes first: its mark is the box itself,
+		// 200px of cover the reader asked for by name, and it is not folded into a count of
+		// discs (see foldBoxes).
+		const drawable = boxes
+			.filter((box) => !pinned.has(box.id) && bounds.contains(box.position))
+			.sort(
+				(a, b) => (markKindForBox(b) === 'box' ? 1 : 0) - (markKindForBox(a) === 'box' ? 1 : 0)
+			);
+
+		for (const group of foldBoxes(drawable)) {
+			const [box] = group;
 			const kind = markKindForBox(box);
-			if (!bounds.contains(box.position)) continue;
-			const html = kind === 'box' ? boxElement(box, 'point') : discElement(box, 'point');
+			const folded = group.length > 1;
+			// Namespaced, because a town's disc and that town's pin would otherwise be one id
+			// in the placement's book — and the two are two marks that must be kept off each
+			// other, which is the one thing a shared id makes impossible.
+			const id = `box:${box.id}`;
+			const inner = folded
+				? discGroupElement(group)
+				: kind === 'box'
+					? boxElement(box, 'point')
+					: discElement(box, 'point');
+			// The stock the mark is printed on is the colour its line back is drawn in, exactly
+			// as a pin's line takes its tile's colour: one colour saying one thing.
+			const html = pointMark(id, inner, group.every((member) => member.light));
 			const icon = Leaf.divIcon({ html, className: '', iconSize: [0, 0] });
-			const badge = Leaf.marker(box.position, { icon, riseOnHover: true, pane: BOX_PANE });
+			const at = folded ? boxGroupPosition(group) : box.position;
+			const badge = Leaf.marker(at, { icon, riseOnHover: true, pane: BOX_PANE });
 			// No tooltip: the box already carries the town's name across its foot, and a
 			// hover label over a map this dense is a second thing to read where there was
 			// one to look at.
-			const action = boxAction(box, kind);
-			if (action) badge.on('click', () => action());
+			//
+			// A count of towns answers for none of them, so a click on one opens no pack: it
+			// unfolds, exactly as a count of pins does, and the marks it comes apart into are
+			// the ones that answer.
+			if (folded) {
+				badge.on('click', () => unfold(group.map((member) => member.position)));
+			} else {
+				const action = boxAction(box, kind);
+				if (action) badge.on('click', () => action());
+			}
 			badge.addTo(boxLayer!);
+			boxMarks.push({
+				id,
+				marker: null,
+				position: at,
+				element: html,
+				layer: badge,
+				rank: kind === 'box' && !folded ? RANK_PICKED : RANK_BOX
+			});
 		}
+
+		// Both families are built; now they are dealt the room between them.
+		placeMarks();
+	}
+
+	// The wrapper every booster mark is hung on its point by: the mark itself, and above it the
+	// line back to the point for the marks that turn out to have to leave it.
+	//
+	// A booster mark used to place itself, centring on its point with a pair of classes. It
+	// cannot any more: it is dealt its room with the pins now (see placeMarks), so where it
+	// stands is measured per view and applied as a transform, and it needs the same shape every
+	// placed mark has — a box whose LEFT-MIDDLE is what the offset is about, with a line that
+	// leaves the point rightwards and arrives at that corner.
+	function pointMark(id: string, inner: HTMLElement, light: boolean): HTMLElement {
+		const wrap = document.createElement('div');
+		wrap.className = 'relative flex flex-col items-center';
+		wrap.appendChild(leaderElement(id, light ? 'bg-white' : 'bg-black', false));
+		wrap.appendChild(inner);
+		return wrap;
+	}
+
+	// A disc is 56px across (`size-14`), which is what makes two towns a few pixels apart two
+	// marks lying on each other rather than two marks. Named as a number because this is the
+	// one place the class's size has to be reckoned with rather than applied.
+	const DISC_EXTENT = 56;
+
+	// Which booster marks are one booster mark: the same folding the pins get (see foldPins),
+	// over the other family of marks this map draws.
+	//
+	// They are folded among THEMSELVES and never with the pins, which is the whole reason the
+	// two passes are two: a plate saying "4" that turned out to mean two towns and two boxes
+	// would be a count of nothing. A disc says a town has a pack waiting; a count of discs says
+	// how many towns thereabouts have one, which is the same statement about a crowd.
+	//
+	// Sizes are known here without measuring — a disc is a disc — so this needs no drawn crop
+	// to work from, unlike the pins, whose plates are as wide as the names on them.
+	function foldBoxes(drawable: readonly MapBoosterBox[]): MapBoosterBox[][] {
+		const byId = new Map(drawable.map((box) => [box.id, box]));
+		return groupPins(
+			drawable.map((box) => {
+				const at = mapInstance!.latLngToContainerPoint(box.position);
+				return {
+					id: box.id,
+					x: at.x,
+					y: at.y,
+					width: DISC_EXTENT,
+					height: DISC_EXTENT,
+					groupable: markKindForBox(box) === 'disc'
+				};
+			}),
+			{ gap: PIN_GAP }
+		).map((group) => group.ids.map((id) => byId.get(id)!));
+	}
+
+	/** Where a folded crop of booster marks stands: the middle of the towns it is about. */
+	function boxGroupPosition(group: readonly MapBoosterBox[]): [number, number] {
+		const lat = group.reduce((sum, box) => sum + box.position[0], 0) / group.length;
+		const lng = group.reduce((sum, box) => sum + box.position[1], 0) / group.length;
+		return [lat, lng];
+	}
+
+	// The mark several discs fold into: the same disc, of the same stock, carrying the number
+	// of towns it stands for where a disc carries its show's glyph.
+	//
+	// The stock is white only where every town under it is de festa today — a disc's colour is
+	// a statement about the day, and a white one over a crop that is mostly not would be that
+	// statement made falsely. Where they disagree the count is printed on black, which is the
+	// stock the window's other towns are already read on.
+	function discGroupElement(group: readonly MapBoosterBox[]): HTMLElement {
+		const light = group.every((box) => box.light);
+		const wrap = document.createElement('div');
+		wrap.className =
+			'flex size-14 cursor-pointer items-center justify-center rounded-full ' +
+			'text-lg font-bold shadow-md ' +
+			(light ? 'bg-white text-black' : 'bg-black text-white');
+		wrap.textContent = String(group.length);
+		// Decorative, as every mark in this family is: a bare number read out of the map has
+		// no meaning to give, and what the marks are about is said in the panel's own lists.
+		wrap.setAttribute('aria-hidden', 'true');
+		return wrap;
 	}
 
 	// The wheel is driven by hand, in the shape Leaflet drives a pinch: a gesture that moves
