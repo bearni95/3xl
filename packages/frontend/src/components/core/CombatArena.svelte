@@ -975,23 +975,31 @@
 					<div
 						class="group pointer-events-auto flex h-8 items-stretch gap-4 bg-base-100/80 text-white shadow-xl"
 					>
-						<!-- Each side's count is three squares in a row, and they are square
-						     because they stand for cells of the board: the plate is `h-8` and a
-						     block is three of that across (`w-24`), over three equal columns. So
-						     the plate's own depth is the square's side, and the two figures are
-						     read together — a taller plate wants a wider block. They run the
-						     full depth of it and sit hard against its ends: nothing pads them,
-						     so a count is a block of the plate rather than something placed on
-						     it. Only the sides are ruled — a line along the top and bottom would
-						     be a line drawn just inside the plate's own edges, which is a border
-						     around the block and not a division of it.
-						     And the rules belong to the block, not to the cells: two neighbours
-						     each carrying their own side drew two lines where they met, one from
-						     either, so a seam inside the block was twice the weight of the line
-						     down its outer edge. The block wears its two outer sides and one line
-						     between each pair, which is what a shared side is. -->
+						<!-- Each side's count is three cells in a row, laid out as cells of the
+						     board because that is what is being counted: the plate is `h-8` and a
+						     block is three of that across (`w-24`), over three equal columns, so
+						     the plate's own depth sets the cell's width and the two figures are
+						     read together — a taller plate wants a wider block.
+						     The block is inset a little top and bottom, which shortens the rules
+						     with it: they are lines drawn on the plate rather than the plate's own
+						     edges, and a line that runs into the edge it is drawn inside reads as
+						     that edge coming loose. Only the sides are ruled, for the same reason —
+						     a line across the top and bottom would be a border round the block
+						     rather than a division of it — and they are drawn at half strength,
+						     since what they do is separate three cells, not draw three boxes.
+						     The rules belong to the block and not to its cells: two neighbours each
+						     carrying their own side drew two lines where they met, one from either,
+						     so every seam was twice the weight of the outer edge. The block wears
+						     its two outer sides and one line between each pair, which is what a
+						     shared side is.
+						     A lane taken is a disc in its cell rather than the cell painted in: the
+						     ground a lane is played for is one white cell of the middle column, and
+						     a mark set in a cell reads as something standing on that ground where a
+						     filled cell reads as the ground itself having changed. The disc is
+						     always drawn and simply carries no colour until the lane is won, so the
+						     three cells hold their spacing whatever the score is. -->
 						<div
-							class="grid h-full w-24 grid-cols-3 divide-x divide-white border-x border-white"
+							class="grid h-full w-24 grid-cols-3 divide-x divide-white/50 border-x border-white/50 py-1"
 							role="progressbar"
 							aria-label={$_('combat.rivalWins')}
 							aria-valuemin={0}
@@ -999,7 +1007,14 @@
 							aria-valuenow={state.wins.error}
 						>
 							{#each RIVAL_LANES as lane}
-								<span class={classNames(lane <= state.wins.error && 'bg-white')}></span>
+								<span class="flex items-center justify-center">
+									<span
+										class={classNames(
+											'size-4 rounded-full',
+											lane <= state.wins.error && 'bg-white'
+										)}
+									></span>
+								</span>
 							{/each}
 						</div>
 						<span class="self-center font-mono text-lg font-bold tabular-nums opacity-70">
@@ -1028,7 +1043,7 @@
 							{$_('combat.concede')}
 						</button>
 						<div
-							class="grid h-full w-24 grid-cols-3 divide-x divide-white border-x border-white"
+							class="grid h-full w-24 grid-cols-3 divide-x divide-white/50 border-x border-white/50 py-1"
 							role="progressbar"
 							aria-label={$_('combat.yourWins')}
 							aria-valuemin={0}
@@ -1036,7 +1051,11 @@
 							aria-valuenow={state.wins.info}
 						>
 							{#each LANES as lane}
-								<span class={classNames(lane <= state.wins.info && 'bg-white')}></span>
+								<span class="flex items-center justify-center">
+									<span
+										class={classNames('size-4 rounded-full', lane <= state.wins.info && 'bg-white')}
+									></span>
+								</span>
 							{/each}
 						</div>
 					</div>
