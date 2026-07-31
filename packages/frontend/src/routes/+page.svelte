@@ -1992,6 +1992,17 @@
 	// drives it: that flag goes false the moment the ✕ is pressed, a quarter of a second before
 	// the sheet has finished leaving and before anything else here has moved.
 	const CHROME_BLUR = { amount: 8, duration: 250 };
+
+	// How tall the column across the top of the map is right now — the breadcrumb bar, plus the
+	// search results when there are any — measured off the element itself.
+	let topChromeHeight = 0;
+
+	// What the map may not use, per edge. The map's canvas is the whole page and this column is
+	// drawn over the top of it, so the map has no way of knowing the band is spoken for: told
+	// this, it keeps its pins and the picked town's booster box below the bar instead of dealing
+	// them a place under it. The 12px is the column's own inset from the top (`top-3`), which
+	// makes this the band from the canvas's edge to the foot of the bar.
+	$: mapChromeInsets = { top: topChromeHeight + 12 };
 </script>
 
 <svelte:window on:pointerdown={onWindowPointerDown} on:keydown={onWindowKeydown} />
@@ -2023,6 +2034,7 @@
 			{zoomBounds}
 			{zoomStops}
 			markersBlurred={$fullScreenModalOpen}
+			chromeInsets={mapChromeInsets}
 			tilted={$mapTilted}
 			bind:currentZoom
 			bind:activeLevel
@@ -2050,7 +2062,17 @@
 			it the plates do not themselves cover. Inset on all three sides it touches, so
 			the bar is as wide as the map less its margins and nothing needs a max-width of
 			its own. -->
-		<div class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex flex-col gap-2">
+		<!-- Measured, because the map has to be told: this column is the parent's and is drawn
+			over the same box the canvas fills, so nothing on the map can see it. Its height plus
+			the 12px it is inset by is the band across the top of the canvas that is spoken for,
+			and the map keeps its pins and its corner box out of it (see chromeInsets). It is
+			read live rather than written down as a number because the column grows and shrinks
+			— the search results come down under the bar on their own plate, and the whole thing
+			goes while a full view is up. -->
+		<div
+			bind:clientHeight={topChromeHeight}
+			class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex flex-col gap-2"
+		>
 			<!-- Where the map is looking. Full width, at the head of everything: a path is
 				read across, and the plates below it are read down.
 				The location search sits at the bar's far end, as the looking glass that stands for

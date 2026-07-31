@@ -62,9 +62,17 @@ export interface PinLayoutOptions {
 	columns?: number;
 	/** Keep-out from the viewport's edges. */
 	margin?: number;
+	/**
+	 * Room the viewport has but the pins may not use: whatever is drawn over the canvas
+	 * and is not a pin. A viewport is not the same thing as the room in it — the map
+	 * carries a breadcrumb bar across its top and plates in its corners, and a pin
+	 * "kept on screen" under one of them is a pin nobody can read. Given per edge, in
+	 * pixels, measured from the viewport's own edge inwards.
+	 */
+	insets?: { top?: number; right?: number; bottom?: number; left?: number };
 }
 
-const DEFAULTS: Required<PinLayoutOptions> = {
+const DEFAULTS: Omit<Required<PinLayoutOptions>, 'insets'> = {
 	lead: 16,
 	gap: 4,
 	step: 8,
@@ -72,6 +80,14 @@ const DEFAULTS: Required<PinLayoutOptions> = {
 	columns: 4,
 	margin: 4
 };
+
+/** The four edges as plain numbers, so the rest of the file need not ask twice. */
+interface Insets {
+	top: number;
+	right: number;
+	bottom: number;
+	left: number;
+}
 
 interface Rect {
 	left: number;
@@ -95,22 +111,24 @@ export function layoutPins(
 	options: PinLayoutOptions = {}
 ): Map<string, PinOffset> {
 	const settings = { ...DEFAULTS, ...options };
-	const { margin } = settings;
+	// The room the pins actually have: the viewport, less the keep-out at its edges, less
+	// whatever chrome the caller says is standing over it.
+	const room = roomIn(viewport, settings.margin, settings.insets);
 	const placed = new PlacedIndex(settings.gap);
 	const offsets = new Map<string, PinOffset>();
 
 	for (const pin of pins) {
 		let chosen: PinOffset | null = null;
-		for (const offset of tries(pin, viewport, settings)) {
+		for (const offset of tries(pin, room, settings)) {
 			const rect = rectFor(pin, offset);
-			if (!withinViewport(rect, pin, viewport, margin)) continue;
+			if (!withinRoom(rect, pin, room)) continue;
 			if (placed.hits(rect)) continue;
 			chosen = offset;
 			break;
 		}
-		// Nothing clear anywhere it looked: it stands where it asked to, pulled onto the
-		// screen, and takes whatever overlap comes with that.
-		if (!chosen) chosen = { dx: horizontalFit(pin, settings.lead, viewport, margin), dy: 0 };
+		// Nothing clear anywhere it looked: it stands where it asked to, pulled into the
+		// room there is, and takes whatever overlap comes with that.
+		if (!chosen) chosen = { dx: horizontalFit(pin, settings.lead, room), dy: 0 };
 		offsets.set(pin.id, chosen);
 		placed.add(rectFor(pin, chosen));
 	}
@@ -136,12 +154,12 @@ export function layoutPins(
  */
 function* tries(
 	pin: PinAnchor,
-	viewport: { width: number; height: number },
-	settings: Required<PinLayoutOptions>
+	room: Rect,
+	settings: Omit<Required<PinLayoutOptions>, 'insets'>
 ): Generator<PinOffset> {
-	const { lead, gap, step, spread, columns, margin } = settings;
+	const { lead, gap, step, spread, columns } = settings;
 	const ladders = Array.from({ length: columns }, (_, column) => ({
-		dx: horizontalFit(pin, lead + column * (pin.width + gap), viewport, margin),
+		dx: horizontalFit(pin, lead + column * (pin.width + gap), room),
 		rung: 0
 	}));
 
@@ -181,19 +199,36 @@ function rungOffset(rung: number, step: number): number {
 
 /**
  * How far right of its point the pin may stand: the reach it asked for, less whatever
- * the right edge of the screen takes back. A pin wider than the viewport keeps its
- * reach — there is no offset that fits it, and pulling it left only moves which end is
- * cut off.
+ * the right edge of the room takes back. A pin wider than the room keeps its reach —
+ * there is no offset that fits it, and pulling it left only moves which end is cut off.
  */
-function horizontalFit(
-	pin: PinAnchor,
-	reach: number,
+function horizontalFit(pin: PinAnchor, reach: number, room: Rect): number {
+	const spare = room.right - pin.width - pin.x;
+	if (spare >= reach) return reach;
+	return Math.max(spare, room.left - pin.x);
+}
+
+/**
+ * The part of the viewport a pin may stand in: inside the margin, and inside whatever
+ * the caller says is drawn over the canvas. Chrome that claims more than the viewport
+ * has is ignored on that axis rather than collapsing the room to nothing — a pin has to
+ * go somewhere, and behind the bar is better than off the map.
+ */
+function roomIn(
 	viewport: { width: number; height: number },
-	margin: number
-): number {
-	const room = viewport.width - margin - pin.width - pin.x;
-	if (room >= reach) return reach;
-	return Math.max(room, margin - pin.x);
+	margin: number,
+	insets: PinLayoutOptions['insets']
+): Rect {
+	const left = margin + (insets?.left ?? 0);
+	const top = margin + (insets?.top ?? 0);
+	const right = viewport.width - margin - (insets?.right ?? 0);
+	const bottom = viewport.height - margin - (insets?.bottom ?? 0);
+	return {
+		left: right > left ? left : margin,
+		top: bottom > top ? top : margin,
+		right: right > left ? right : viewport.width - margin,
+		bottom: bottom > top ? bottom : viewport.height - margin
+	};
 }
 
 /** The box a pin occupies at an offset: its left-middle sits at the point plus it. */
@@ -204,21 +239,16 @@ function rectFor(pin: PinAnchor, offset: PinOffset): Rect {
 }
 
 /**
- * Whether the box stands clear of the viewport's edges. A pin bigger than the screen
- * in one direction is not asked about that direction: it fails every offset there, and
- * the question is only ever used to reject one offset in favour of another.
+ * Whether the box stands inside the room there is. A pin bigger than that room in one
+ * direction is not asked about that direction: it fails every offset there, and the
+ * question is only ever used to reject one offset in favour of another.
  */
-function withinViewport(
-	rect: Rect,
-	pin: PinAnchor,
-	viewport: { width: number; height: number },
-	margin: number
-): boolean {
-	if (pin.height + 2 * margin <= viewport.height) {
-		if (rect.top < margin || rect.bottom > viewport.height - margin) return false;
+function withinRoom(rect: Rect, pin: PinAnchor, room: Rect): boolean {
+	if (pin.height <= room.bottom - room.top) {
+		if (rect.top < room.top || rect.bottom > room.bottom) return false;
 	}
-	if (pin.width + 2 * margin <= viewport.width) {
-		if (rect.left < margin || rect.right > viewport.width - margin) return false;
+	if (pin.width <= room.right - room.left) {
+		if (rect.left < room.left || rect.right > room.right) return false;
 	}
 	return true;
 }

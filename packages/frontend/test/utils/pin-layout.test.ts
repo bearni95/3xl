@@ -83,6 +83,27 @@ describe('layoutPins', () => {
 		expect(box.top).toBeGreaterThanOrEqual(4);
 	});
 
+	it('keeps a pin out of the band the chrome has taken', () => {
+		// A point under the breadcrumb bar: the mark has to come out below it.
+		const under = pin('under', 400, 30);
+		const offsets = layoutPins([under], VIEWPORT, { insets: { top: 80 } });
+		const box = boxOf(under, offsets.get('under')!);
+		expect(box.top).toBeGreaterThanOrEqual(80);
+	});
+
+	it('keeps a pin clear of a right-hand inset', () => {
+		const edge = pin('edge', 700, 400);
+		const offsets = layoutPins([edge], VIEWPORT, { insets: { right: 240 }, margin: 4 });
+		const box = boxOf(edge, offsets.get('edge')!);
+		expect(box.right).toBeLessThanOrEqual(VIEWPORT.width - 240 - 4);
+	});
+
+	it('ignores chrome that claims more room than there is', () => {
+		const one = pin('a', 400, 400);
+		const offsets = layoutPins([one], VIEWPORT, { insets: { top: 900, bottom: 900 } });
+		expect(offsets.get('a')).toBeDefined();
+	});
+
 	it('does not refuse a pin taller than the viewport a place to stand', () => {
 		const tall = pin('tall', 400, 400, 200, 900);
 		const offsets = layoutPins([tall], { width: 1000, height: 800 });
