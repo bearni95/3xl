@@ -75,11 +75,11 @@ const INUYASHA_CAST = [
 	'seshomaru'
 ];
 
-// The Bo-bobo cast, drawn small for the same reason and given the same 1.4. Their
-// sheets are smaller still than the InuYasha ones — the tallest of them stands under
-// Chopper, who is the roster's smallest character — so the correction lifts them
-// towards the rest without pretending to stand them level with it, and there is no
-// clearance to check them against the way there is for InuYasha.
+// The Bo-bobo cast, drawn small for the same reason but by more of it: their sheets are
+// smaller still than the InuYasha ones — the tallest of them stands under Chopper, who is
+// the roster's smallest character — so the 1.4 that answers InuYasha left them short and
+// they carry half again of it, 2.1. There is no clearance to check them against the way
+// there is for InuYasha: even drawn up they are a small cast, which is what they look like.
 const BOBOBO_CAST = [
 	'beauty',
 	'bobobo',
@@ -167,13 +167,14 @@ describe('authored render scales', () => {
 		}
 	});
 
-	it('corrects the two small casts by the same amount', () => {
-		// One complaint, one figure: whatever the InuYasha cast is drawn up by, the Bo-bobo
-		// cast is drawn up by too, so neither can be retuned without the other being noticed.
-		const scales = new Set(
-			[...INUYASHA_CAST, ...BOBOBO_CAST].map((id) => readRenderScale(definitionOf(id)))
-		);
-		expect([...scales]).toEqual([1.4]);
+	it('corrects each small cast by one figure, and Bo-bobo by the larger', () => {
+		// A cast drawn small is drawn small by one amount, so a cast is corrected by one
+		// number rather than by eleven measurements — and the two casts are not the same
+		// number, Bo-bobo's sheets being the smaller of the two.
+		const scalesOf = (cast: string[]) =>
+			new Set(cast.map((id) => readRenderScale(definitionOf(id))));
+		expect([...scalesOf(INUYASHA_CAST)]).toEqual([1.4]);
+		expect([...scalesOf(BOBOBO_CAST)]).toEqual([2.1]);
 	});
 
 	it('stands the InuYasha cast well clear of the smallest characters', () => {
