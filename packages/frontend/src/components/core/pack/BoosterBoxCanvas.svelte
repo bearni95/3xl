@@ -1,7 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher, onDestroy } from 'svelte';
-	import TeamLineup from '$components/core/TeamLineup.svelte';
+	import TeamLineup, { LINEUP_ROW_SPAN } from '$components/core/TeamLineup.svelte';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import { BoosterBoxGridScene } from './scene/BoosterBoxGridScene';
 	import type { OpenerPack } from './scene/opener-view.type';
@@ -25,7 +25,7 @@
 	export let packs: OpenerPack[] = [];
 	// How many boxes a row holds. The host's call, as it is for the document grid — unlike how
 	// the cards stand once a box is open, which is not: they come out of the box, so their row is
-	// the box's to say (see REVEAL_ROW and `opening`).
+	// the box's to say (see REVEAL_ROW and `front`).
 	export let columns: number = 4;
 	// The box standing up, by pack id, or null for the window. Bindable, and bound to the same
 	// thing the document grid's is: a click on a town's box out on the map picks a pack, and both
@@ -55,11 +55,18 @@
 	let pulls: ClaimPull[] | null = null;
 	let avatar: Avatar | null = null;
 	let uncovering = false;
-	// How wide the box that is standing has its mouth: the back end of its tilted top, in canvas
-	// pixels, said by the scene and said again whenever the box is re-fitted. It is what the cards
-	// are laid out in — they came out of that opening — so they stand centred in it rather than
-	// filling a canvas the box is only a part of. Null while no box is up.
-	let opening: number | null = null;
+	// How wide the standing box's front is drawn — the face and the bevel face either side of it,
+	// in canvas pixels, said by the scene and said again whenever the box is re-fitted. It is what
+	// the cards are laid out in: they stand where the box's picture was, edge to edge with it,
+	// rather than filling a canvas the box is only a part of. Null while no box is up.
+	let front: number | null = null;
+
+	// The box the rows are handed, which is wider than the front by exactly the 5% a row leaves
+	// spare (see LINEUP_ROW_SPAN): the row centres itself in it, so what is drawn spans the front
+	// and nothing else has to know how a row shares its width out. It was the mouth of the box
+	// before — the hole the cards notionally came out of — which is a good deal narrower than the
+	// picture they were standing under, so a card never lined up with the box it came from.
+	$: rowWidth = front === null ? null : front / LINEUP_ROW_SPAN;
 
 	// Which cards have their picture up, held as a set of spawn ids rather than counted, so a
 	// statue that says it twice cannot count as two and let the box go early.
@@ -72,9 +79,9 @@
 
 	// What a box opens onto stands in the very row the map's corner and the roster stand a side
 	// in (see TeamLineup): three to a row, the middle one wider and lapped over the two beside
-	// it. Three, and not the caller's to change — the cards are laid out in the mouth of the
-	// box, which is nothing like as wide as the canvas (see `opening`), and five across that
-	// would be five slivers. So a pull of five is two rows: three, then the two that are left
+	// it. Three, and not the caller's to change — the cards are laid out across the box's front,
+	// which is nothing like as wide as the canvas (see `front`), and five across that would be
+	// five slivers. So a pull of five is two rows: three, then the two that are left
 	// with the avatar the box dealt standing between them, in the cell the row keeps for the
 	// one it is about. A face is not a card, and that is the one place in the row it can stand
 	// without reading as one.
@@ -129,7 +136,7 @@
 				dispatch('back');
 			},
 			onOpen: (pack) => void open(pack),
-			onOpening: (width) => (opening = width),
+			onFront: (width) => (front = width),
 			onUncovering: () => (uncovering = true),
 			onContextLost: () => {
 				scene?.destroy();
@@ -220,12 +227,16 @@
 				)}
 			>
 				{#if pulls.length}
-					<!-- Laid out in the mouth of the box and not across the canvas: as wide as the back
-						end of the box's tilted top, centred where the box stands — which is the middle,
-						always, the scene fitting a stood box to the canvas about its centre. The width
-						is a measured length, so it comes through as a custom property; no class can
-						carry a number only known at runtime. Until the scene has said one — which
-						cannot happen before a box is standing — the layer's own width stands in. -->
+					<!-- Laid out across the box's front and not across the canvas: the cards stand where
+						the picture was, edge to edge with it, centred where the box stands — which is the
+						middle, always, the scene fitting a stood box to the canvas about its centre. So a
+						row of three ends exactly where the poster over it ended, and the lid, being the
+						full width of the box, is the one part that stands proud of them. What the box is
+						handed is a little wider than that: a row draws 95% of its own width and centres
+						itself in it (see LINEUP_ROW_SPAN), so the drawn ends land on the front's. The
+						width is a measured length, so it comes through as a custom property; no class can
+						carry a number only known at runtime. Until the scene has said one — which cannot
+						happen before a box is standing — the layer's own width stands in. -->
 					<!-- The cards are bare, and not behind a veil of their own: the box dissolving over
 						them is the reveal, and a sprite veil under that would spend a character's one
 						reveal on a sweep held behind something opaque. What each says instead is when its
@@ -234,13 +245,14 @@
 					<div
 						class={classNames(
 							'mx-auto flex flex-col gap-2',
-							opening ? 'w-[var(--opening)]' : 'w-full'
+							rowWidth ? 'w-[var(--row-width)]' : 'w-full'
 						)}
-						style:--opening={opening ? `${opening}px` : null}
+						style:--row-width={rowWidth ? `${rowWidth}px` : null}
 					>
 						<TeamLineup
 							members={revealTop.map(toMember)}
 							veiled={false}
+							classes="justify-center"
 							on:ready={(event) => rowStatueUp(revealTop, event.detail.index)}
 						/>
 						{#if revealRest.length || avatar}
@@ -252,6 +264,7 @@
 								<TeamLineup
 									members={revealRest.map(toMember)}
 									veiled={false}
+									classes="justify-center"
 									on:ready={(event) => rowStatueUp(revealRest, event.detail.index)}
 								>
 									<!-- The avatar the box dealt: the same component the player's own row
@@ -271,6 +284,7 @@
 								<TeamLineup
 									members={revealRest.map(toMember)}
 									veiled={false}
+									classes="justify-center"
 									on:ready={(event) => rowStatueUp(revealRest, event.detail.index)}
 								/>
 							{/if}

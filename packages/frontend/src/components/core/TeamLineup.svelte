@@ -1,3 +1,16 @@
+<script context="module" lang="ts">
+	// What share of its own width a full row covers. The three cells come to 110% of it and the
+	// middle pulls 15% of that back over the two beside it, so 95% is drawn and 5% is spare (see
+	// `cellShares`, which says why the shares are not simply made to add up).
+	//
+	// Exported because a surface that has to line this row up with something else cannot work it
+	// out from outside — a booster box's front, which the cards it opens onto stand edge to edge
+	// with. Such a surface asks for 1/0.95 of the width it wants covered and centres the row in
+	// it (`classes="justify-center"`), which puts the drawn ends exactly on the ends it is
+	// matching. Everything else hands the row a width and lets the 5% fall where it falls.
+	export const LINEUP_ROW_SPAN = 0.95;
+</script>
+
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';

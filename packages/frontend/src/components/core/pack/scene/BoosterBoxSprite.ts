@@ -918,9 +918,7 @@ export class BoosterBoxSprite extends Container {
  * turned about and the top edge of the front.
  *
  * In module scope because it is a fact about the shape and not about any one box: it is what
- * lays the lid down, what stamps the mark on it, what the lid's grain is mapped through, and
- * what {@link lidBackWidth} is read off — and that last one is asked by a surface that has no box
- * to ask.
+ * lays the lid down, what stamps the mark on it, and what the lid's grain is mapped through.
  */
 function projectLid(u: number, v: number, width: number): { x: number; y: number } {
 	const above = 1 - v; // how far back from the axis, in widths
@@ -932,19 +930,18 @@ function projectLid(u: number, v: number, width: number): { x: number; y: number
 }
 
 /**
- * How wide the back end of a box's tilted top is drawn — the flat run along the far edge of the
- * lid, between the two corners the cut takes off it. Two things narrow it: the perspective, which
- * draws the back edge at 66% of the front's width, and the cut, which takes a tenth off each end
- * of that edge. Both are read off the same figures the lid itself is drawn from rather than
- * quoted, so a change to either follows through.
+ * How wide a box's front is drawn, all told: the face at four fifths of the width plus the bevel
+ * face the corner cut opened down each side of it. Read off the same figures the front and its
+ * faces are drawn from rather than quoted, so a change to either follows through.
  *
- * It is the width of the opening, which is why anything standing where the box was is asked to
- * be it: what comes out of a box comes out of the hole in its top, not out of its footprint.
+ * It is the picture the box *is* — the poster, the wordmark and the town's name are all on it,
+ * and the lid, being the full width of the box, is the one part that stands proud of it either
+ * side. So anything standing where the box was is asked to be exactly this wide: what a box
+ * opens onto takes the place of its front, and a card the width of the hole in its top would be
+ * a card that never lined up with the thing it came out of.
  */
-export function lidBackWidth(boxWidth: number): number {
-	const [left] = LID_CUT[0];
-	const [right] = LID_CUT[1];
-	return projectLid(right, 0, boxWidth).x - projectLid(left, 0, boxWidth).x;
+export function frontWidth(boxWidth: number): number {
+	return (FRONT_WIDTH + 2 * BEVEL_WIDTH) * boxWidth;
 }
 
 /** A picture covering a box: scaled to the larger of the two fits, centred, and cropped to the

@@ -25,7 +25,7 @@
 
 import { Application, Container } from 'pixi.js';
 import { destroyPixiApp } from '$utils/pixi/release-context';
-import { BoosterBoxSprite, lidBackWidth } from './BoosterBoxSprite';
+import { BoosterBoxSprite, frontWidth } from './BoosterBoxSprite';
 import type { OpenerPack } from './opener-view.type';
 
 /** Gutter between cells and between the two grids: `gap-3`, the document's own. */
@@ -73,13 +73,13 @@ export interface BoosterBoxGridSceneOptions {
 	 */
 	onOpen?: (pack: OpenerPack) => void;
 	/**
-	 * How wide the opening is, in canvas pixels: the back end of the stood-up box's tilted top
-	 * (see {@link lidBackWidth}), which is what the host lays its reveal out in — the cards come
-	 * out of the hole in the box's top, not out of its footprint. Null when no box is standing.
-	 * Said again whenever the box is re-fitted, so a canvas that changes size takes the reveal
-	 * with it.
+	 * How wide the stood-up box's front is drawn, in canvas pixels — the face and the bevel face
+	 * either side of it (see {@link frontWidth}) — which is what the host lays its reveal out in:
+	 * the cards stand where the box's picture was, edge to edge with it. Null when no box is
+	 * standing. Said again whenever the box is re-fitted, so a canvas that changes size takes the
+	 * reveal with it.
 	 */
-	onOpening?: (width: number | null) => void;
+	onFront?: (width: number | null) => void;
 	/** The squares have started to go, so whatever is behind the canvas may now be seen: it has
 	 * the whole of the dissolve to come up through. */
 	onUncovering?: () => void;
@@ -420,7 +420,7 @@ export class BoosterBoxGridScene {
 				sprite.position.set(to.x, to.y);
 				sprite.scale.set(to.scale);
 				sprite.drawnAt(to.scale);
-				this.reportOpening();
+				this.reportFront();
 			}
 			return;
 		}
@@ -481,7 +481,7 @@ export class BoosterBoxGridScene {
 			entry.sprite.scale.set(to.scale);
 			this.layer.alpha = RESTING_ALPHA;
 			this.state = 'stood';
-			this.reportOpening();
+			this.reportFront();
 			return;
 		}
 
@@ -493,15 +493,15 @@ export class BoosterBoxGridScene {
 		}).then(() => {
 			if (this.state !== 'standing') return;
 			this.state = 'stood';
-			this.reportOpening();
+			this.reportFront();
 		});
 	}
 
-	/** Hand the host the width of the opening — the back end of the stood box's top, at the size
-	 * it is standing (see {@link lidBackWidth}) — or nothing at all when no box is up. */
-	private reportOpening(): void {
+	/** Hand the host the width of the stood box's front, at the size it is standing (see
+	 * {@link frontWidth}) — or nothing at all when no box is up. */
+	private reportFront(): void {
 		const sprite = this.stood?.sprite;
-		this.callbacks.onOpening?.(sprite ? lidBackWidth(this.builtWidth * sprite.scale.x) : null);
+		this.callbacks.onFront?.(sprite ? frontWidth(this.builtWidth * sprite.scale.x) : null);
 	}
 
 	/** Back into its cell, and the window back with it. `quiet` is for a box being swapped for
@@ -529,7 +529,7 @@ export class BoosterBoxGridScene {
 		this.layer.alpha = 1;
 		this.stood = null;
 		this.state = 'grid';
-		this.reportOpening();
+		this.reportFront();
 		if (quiet) return;
 		this.wanted = null;
 		this.callbacks.onBack?.();
@@ -546,7 +546,7 @@ export class BoosterBoxGridScene {
 		this.state = 'grid';
 		this.stood = null;
 		this.wanted = null;
-		this.reportOpening();
+		this.reportFront();
 		this.callbacks.onBack?.();
 		void this.build();
 	}
