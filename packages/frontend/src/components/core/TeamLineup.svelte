@@ -27,19 +27,17 @@
 	export let classes: string = '';
 
 	// The three cells' shares of the row: 30% to each flank and 40% to the middle.
-	// Said as grow factors over a zero basis rather than as percentages, because the
-	// share asked for is of the width *available* — percentages would be of the whole
-	// row, and three of them summing to 100 plus the two gaps between them would
-	// overflow it. Written out as whole classes because Tailwind only emits what it
-	// can see spelled. Any cell past the third (there is no such team) falls back to
-	// a flank's share.
+	// Said as grow factors over a zero basis rather than as percentages, so the three
+	// divide whatever width the row turns out to have and always add up to exactly it.
+	// Written out as whole classes because Tailwind only emits what it can see spelled.
+	// Any cell past the third (there is no such team) falls back to a flank's share.
 	const cellShares = ['basis-0 grow-[3]', 'basis-0 grow-[4]', 'basis-0 grow-[3]'];
 </script>
 
 <!-- The row itself is outlined in green and each statue's cell in purple. Outlines
 	rather than borders, so the lines are drawn over the layout instead of taking
 	width out of it and moving the statues they are meant to be measuring. -->
-<div class={classNames('flex w-full gap-2 outline outline-1 outline-green-500', classes)}>
+<div class={classNames('flex w-full outline outline-1 outline-green-500', classes)}>
 	{#each members as member, index (index)}
 		<CharacterStatue
 			label={member.label}
