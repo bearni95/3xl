@@ -137,26 +137,19 @@ const MAX_CANVAS_HEIGHT = '100dvh';
  * this height rather than standing out of its cell. */
 const CHAR_HEIGHT_RATIO = 1.3;
 
-/**
- * The room the canvas keeps above the grid, in cell widths: **a whole cell of it**,
- * empty, on top of everything else drawn.
- *
- * A character plants its feet on its cell's foot line and stands taller than the cell
- * ({@link CHAR_HEIGHT_RATIO}), so everybody on the top row is partly above the grid to
- * begin with — but the exact amount is not something this can be worked out from. A
- * character's own `renderScale` rides along on the fit, so one drawn small in its source
- * sheet is scaled up past that cap; a pose is not the height of the cycle it belongs to;
- * an aura is drawn to envelop the whole sprite; and a callout floats clear above the
- * fighter's head. Only the first of those is even known when the canvas is sized, and
- * every one of them reaches up out of the top row.
- *
- * So the room is not calculated, it is reserved: a full cell width, which is more than a
- * row's own step down the board and more than any of them needs, and is the one
- * measurement on this board that is guaranteed to be enough.
- * Everything else is pushed down by it, and {@link MugenBoard.fitToContent} is careful
- * not to crop it back off.
- */
-const HEAD_ROOM = 1;
+// --- The room over the fighters' heads ---------------------------------------
+// A character plants its feet on its cell's foot line and stands taller than the cell
+// ({@link CHAR_HEIGHT_RATIO}), so a fighter on the topmost lane reaches up out of the row
+// it stands on — and the things that reach highest are not even drawn when the canvas is
+// sized: a pose is not the height of the cycle it belongs to, an aura envelops the whole
+// sprite, and a character's own `renderScale` rides along on the fit.
+//
+// The board keeps a row above the lanes for exactly that (`grid.ts`'s FIRST_LANE_ROW),
+// so the room is hexagons rather than empty canvas: a fighter on the top lane rises into
+// ground that is part of the board and is drawn like the rest of it. A strip of blank
+// canvas reserved over the grid did the same job invisibly, and cost the same height —
+// but the canvas is scaled to fit its box, so that strip was board the fight did not get,
+// spent on nothing anybody could see.
 
 // --- The coordinate gutter (a chessboard's letters and numbers) ---------------
 // A cell is still named the way a chess square is — its column's letter and its row's
@@ -588,63 +581,49 @@ interface Actor {
 	stepDir: number;
 }
 
-/** A rectangle in stage coordinates — the shape `Container.getBounds()` returns, cut
- * down to the four numbers {@link contentCrop} reads off it. */
-export interface ContentBounds {
-	minX: number;
-	minY: number;
-	maxX: number;
-	maxY: number;
+/** The hexagons' own four edges in stage coordinates — the rectangle the drawn grid
+ * occupies, which is the whole of what {@link contentCrop} is given. */
+export interface GridSpan {
+	left: number;
+	right: number;
+	top: number;
+	bottom: number;
 }
-
-/** Breathing room kept on every side of the drawn board, so nothing sits hard against
- * the canvas edge — and so the small per-frame wobble in the bounds as animations play
- * has somewhere to go. */
-const CROP_MARGIN = 8;
 
 /**
  * The canvas the board is drawn on: where to put the stage's origin, and how big to make
- * the framebuffer. The two axes are answered by different things.
+ * the framebuffer. **It is the grid and nothing else, on both axes** — the hexagons' own
+ * edges, no margin, nothing reserved beside them or over them. The board runs corner to
+ * corner of its canvas.
  *
- * **Across, it is the grid and nothing else.** `gridSpan` is the hexagons' own left and
- * right edges, and the canvas is cut to exactly that — no margin, nothing reserved. The
- * canvas is scaled to fit its box, so every pixel of canvas that is not board is scale
- * the board does not get: a strip kept clear down one side is the whole grid drawn
- * smaller for it. Fitting the width to the *drawn* bounds instead would hand that strip
- * to whichever fighter happens to be standing furthest out on the frame the crop is taken
- * from, which is both wasteful and arbitrary. So the hexagons run edge to edge and the
- * width of the canvas says the width of the board.
+ * The canvas is scaled to fit its box, so every pixel of canvas that is not board is scale
+ * the board does not get: a strip kept clear down one side, or a band left empty above the
+ * top row, is the whole grid drawn smaller for it. Anything a fighter needs room for is
+ * therefore given as *board* — the row above the lanes, which is hexagons and is drawn —
+ * rather than as canvas held back for it.
+ *
+ * Cutting to what is *drawn* instead would hand that room to whichever fighter happens to
+ * be standing furthest out on the frame the crop is taken in, which is both wasteful and
+ * arbitrary: the same board would be a different size depending on who was mid-swing when
+ * it was measured. The grid's edges are geometry and are the same every frame.
  *
  * What that costs is real and is the trade being made: a sprite wider than its cell on an
- * outer column, and the order strip hung off a fighter in one, are clipped at the canvas
- * edge rather than given room beside the board.
- *
- * **Down, it is the drawn bounds, centred.** The empty row above the grid
- * ({@link HEAD_ROOM}) is room for the auras, poses and callouts that reach up out of the
- * top row and are not drawn when this is taken, so the top is pinned at the layout's own
- * zero rather than cropped to whatever happens to be standing there — and the same depth
- * is then given back underneath, so the board sits in the middle of its canvas instead of
- * riding high in it. The pin is a floor and never a lid: anything drawn higher still
- * grows the crop.
+ * outer column, the order strip hung off a fighter in one, and anything reaching above the
+ * board's own top row are clipped at the canvas edge rather than given room outside it.
  */
-export function contentCrop(
-	bounds: ContentBounds,
-	gridSpan: { left: number; right: number },
-	{ margin = CROP_MARGIN }: { margin?: number } = {}
-): { left: number; top: number; width: number; height: number } {
-	const centerY = (bounds.minY + bounds.maxY) / 2;
-	// Half-extent: the furthest either side has to reach from the board's own middle.
-	const halfHeight = Math.max(
-		centerY - Math.min(0, bounds.minY - margin),
-		bounds.maxY + margin - centerY
-	);
-	const left = Math.floor(gridSpan.left);
-	const top = Math.floor(centerY - halfHeight);
+export function contentCrop(span: GridSpan): {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+} {
+	const left = Math.floor(span.left);
+	const top = Math.floor(span.top);
 	return {
 		left,
 		top,
-		width: Math.ceil(gridSpan.right) - left,
-		height: Math.ceil(centerY + halfHeight) - top
+		width: Math.ceil(span.right) - left,
+		height: Math.ceil(span.bottom) - top
 	};
 }
 
@@ -694,20 +673,19 @@ export class MugenBoard {
 	 * Total canvas size: the grid's own extent at `cellSize` px to the cell width
 	 * ({@link BOARD_WIDTH}, {@link BOARD_HEIGHT} — which is why neither figure is simply
 	 * the count of columns or rows: the offset rows hang half a cell out to the right,
-	 * and the rows interlock rather than stack), plus the padding around it and the empty
-	 * cell kept above it for everything that reaches up out of the top row
-	 * ({@link HEAD_ROOM}).
+	 * and the rows interlock rather than stack), plus the padding around it.
 	 *
 	 * This is the size the board is *laid out* at, not the size it is seen at: the canvas
-	 * is cropped to what is actually drawn once the characters are standing on it
-	 * ({@link MugenBoard.fitToContent}) and then scaled to fit its box, so what these
-	 * figures decide between them is the board's proportions and its resolution.
+	 * is cropped to the grid once everything is on it ({@link MugenBoard.fitToContent}) and
+	 * then scaled to fit its box, so what these figures decide between them is the board's
+	 * proportions and its resolution. The padding is room to draw in during the layout, and
+	 * the crop takes it back off — nothing is reserved around the finished board.
 	 */
 	get dimensions(): { width: number; height: number } {
 		const { cellSize, padding } = this.options;
 		return {
 			width: padding * 2 + cellSize * BOARD_WIDTH,
-			height: padding * 2 + cellSize * (BOARD_HEIGHT + HEAD_ROOM)
+			height: padding * 2 + cellSize * BOARD_HEIGHT
 		};
 	}
 
@@ -716,12 +694,9 @@ export class MugenBoard {
 		return this.options.padding;
 	}
 
-	/** Screen y of the grid's top edge: the padding, plus the empty room kept above it —
-	 * which is what pushes every cell and every character down by a cell width from where
-	 * they would otherwise be drawn. */
+	/** Screen y of the grid's top edge. */
 	private get gridTop(): number {
-		const { cellSize, padding } = this.options;
-		return padding + cellSize * HEAD_ROOM;
+		return this.options.padding;
 	}
 
 	/** Boot Pixi inside `container`, draw the grids and start the game loop. */
@@ -800,11 +775,10 @@ export class MugenBoard {
 		// down in the meantime, and destroy() has already freed the app.
 		if (this.destroyed) return;
 
-		// Crop the view to what's actually drawn: the board ends up centred in the canvas
-		// with the height it needs and no more — the grid's own, plus the room the
-		// characters standing on its rows need above it. Cell positions are absolute px off
-		// the grid's origin, so this only translates the stage and resizes the framebuffer;
-		// nothing moves.
+		// Crop the view to the grid: the canvas becomes the hexagons' own rectangle, so the
+		// board fills it corner to corner and there is no canvas outside the board. Cell
+		// positions are absolute px off the grid's origin, so this only translates the stage
+		// and resizes the framebuffer; nothing moves.
 		this.fitToContent();
 
 		// And only now is any of it shown. A Pixi application renders every frame from the
@@ -825,21 +799,26 @@ export class MugenBoard {
 	}
 
 	/**
-	 * Cut the canvas to the board: the hexagons' own span across, and the height they and
-	 * the characters standing on them need. The stage is offset so the board lands inside
-	 * it; the grid's own coordinates are untouched, so no cell shifts.
+	 * Cut the canvas to the board: the hexagons' own rectangle, corner to corner. The stage
+	 * is offset so the grid's top-left lands on the canvas's; the grid's own coordinates are
+	 * untouched, so no cell shifts.
 	 *
-	 * The grid's edges are geometry rather than a measurement — the first and last column's
-	 * outer sides at the size a cell is drawn — so the width does not depend on the frame
-	 * the crop happens to be taken in, and is the same board however the fighters in it are
-	 * standing. Everything else about the crop, and what running the hexagons to the canvas
-	 * edge costs, is on {@link contentCrop}.
+	 * All four edges are geometry rather than a measurement — the outer sides of the first
+	 * and last columns, and the top and bottom points of the first and last rows, at the size
+	 * a cell is drawn — so the crop does not depend on the frame it happens to be taken in,
+	 * and is the same board however the fighters standing on it are posed. Nothing is read
+	 * off what is drawn. What running the hexagons to every canvas edge costs is on
+	 * {@link contentCrop}.
 	 */
 	private fitToContent(): void {
 		if (!this.app) return;
-		const { left, top, width, height } = contentCrop(this.app.stage.getBounds(), {
-			left: this.project(0, 0).x,
-			right: this.project(BOARD_WIDTH, 0).x
+		const topLeft = this.project(0, 0);
+		const bottomRight = this.project(BOARD_WIDTH, BOARD_HEIGHT);
+		const { left, top, width, height } = contentCrop({
+			left: topLeft.x,
+			right: bottomRight.x,
+			top: topLeft.y,
+			bottom: bottomRight.y
 		});
 		this.app.stage.position.set(-left, -top);
 		this.app.renderer.resize(width, height);
