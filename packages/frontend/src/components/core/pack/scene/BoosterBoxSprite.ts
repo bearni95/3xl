@@ -114,11 +114,12 @@ const FACE_COVER_SHIFT_RIGHT = 0.14109;
 // What is written over the picture, sized off the whole box rather than off the front, so
 // neither the type nor either fade changed size when the front drew in to four fifths. The head
 // band is as tall as its padding plus the type in it; the fade wants more room than the type
-// does, which is the bottom padding. The foot band is the same the other way up, with the mark
-// at 90% of the picture taking whatever height its own proportions give it.
+// does, which is the bottom padding. There is no padding across it: the place is given the
+// front's whole width to be set in, so a long name breaks or is set down against the picture's
+// own edges rather than against a margin inside them. The foot band is the same the other way
+// up, with the mark at 90% of the picture taking whatever height its own proportions give it.
 const TYPE_SIZE = 0.054;
 const TYPE_LEADING = 1.375; // leading-snug
-const HEAD_PAD_X = 0.03;
 const HEAD_PAD_TOP = 0.02;
 const HEAD_PAD_BOTTOM = 0.09;
 const FOOT_PAD_TOP = 0.09;
@@ -668,7 +669,7 @@ export class BoosterBoxSprite extends Container {
 			.join(' ');
 	}
 
-	/** The place, set as the front sets it: centred, bold, wrapped inside the band's padding, in
+	/** The place, set as the front sets it: centred, bold, wrapped to the front's whole width, in
 	 * whichever of the two the card is not — and set down to fit if the wrapping could not do it.
 	 *
 	 * Wrapping only breaks where there is somewhere to break. A place written as one long token,
@@ -688,7 +689,7 @@ export class BoosterBoxSprite extends Container {
 	private placeType(label: string): Text {
 		const w = this.boxWidth;
 		const size = TYPE_SIZE * w;
-		const room = FRONT_WIDTH * w - HEAD_PAD_X * 2 * w;
+		const room = FRONT_WIDTH * w;
 		const type = new Text({
 			text: label,
 			resolution: this.options.app.renderer.resolution,
