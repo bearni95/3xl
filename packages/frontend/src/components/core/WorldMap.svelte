@@ -1,4 +1,5 @@
 <script lang="ts">
+	import classNames from 'classnames';
 	import { mount, onMount, onDestroy, unmount } from 'svelte';
 	import type L from 'leaflet';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
@@ -30,6 +31,7 @@
 		zoomBounds = null,
 		zoomStops = [],
 		markersBlurred = false,
+		tilted = false,
 		currentZoom = $bindable(zoom),
 		activeLevel = $bindable(0),
 		currentCenter = $bindable(center),
@@ -142,6 +144,24 @@
 		 * of what stands over the map goes at once (see BLUR_CLASSES).
 		 */
 		markersBlurred?: boolean;
+		/**
+		 * Lean the whole map away from the reader, and bring it back level when it goes false.
+		 *
+		 * The map itself and nothing over it: the plates are the caller's own elements beside
+		 * this one, so what tips is the terrain, the polygons and the pins standing on it — the
+		 * board — while the chrome stays square to the reader.
+		 *
+		 * The depth is on the caller's box (see the root page's `perspective-*`), because a
+		 * perspective is read from the parent and this component is only the thing being turned.
+		 * Which also means the caller's box must clip: a tipped board reaches past the bottom of
+		 * a viewport it exactly filled.
+		 *
+		 * Leaflet projects a pointer from the container's own rectangle and knows nothing of a
+		 * transform on it, so while this is true the map's clicks and drags land somewhere other
+		 * than under the pointer. Nothing asks it to tilt except with a full view covering the
+		 * whole viewport, which is what makes that safe.
+		 */
+		tilted?: boolean;
 		/** Live map zoom level, kept in sync with the map (bindable). */
 		currentZoom?: number;
 		/**
@@ -1356,10 +1376,20 @@
 </script>
 
 <!-- bg-transparent! overrides Leaflet's default grey container fill, so the page
-	background (not a grey block) is what shows while the satellite tiles stream in. -->
+	background (not a grey block) is what shows while the satellite tiles stream in.
+	The tilt is a CSS transition and not a Svelte one, because this element is never
+	unmounted — the map outlives everything raised over it — and it is timed to the same
+	250ms the chrome blurs over (see `tilted`, and the root page's CHROME_BLUR), so the
+	board tipping and its furniture going out of focus are one movement. `transition-transform`
+	names the transform alone: nothing else about this box is animated, and Leaflet's own
+	panes move by transforms of their own inside it, which this does not reach. -->
 <div
 	bind:this={mapContainer}
-	class={`bg-transparent! ${classes}`}
+	class={classNames(
+		'bg-transparent! transition-transform duration-[250ms] ease-in-out',
+		{ 'rotate-x-12': tilted },
+		classes
+	)}
 	role="application"
 	aria-label="World map"
 ></div>

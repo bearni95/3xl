@@ -1,6 +1,6 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { dropSheet, raiseSheet } from '$services/fullScreenModal';
 
@@ -76,16 +76,40 @@
 	 * instead of on the map. Every other full view is content to read and keeps its page.
 	 */
 	export let transparent: boolean = false;
+	/**
+	 * Lean the map back while this sheet is up, on top of the blur every sheet gets.
+	 *
+	 * The one sheet that asks for it is the combat arena: a fight is the only full view here
+	 * that is not a reading of the map but an event happening *on* it, over a town the map is
+	 * still showing, so the map gives ground for it — it tips away as the arena comes up and
+	 * comes back level as the arena leaves. A leaderboard or a roster is a page laid over the
+	 * map and asks the map for nothing.
+	 *
+	 * Said as a prop rather than read off the arena, so it starts and ends on this sheet's own
+	 * mount and unmount — which is what the blur is timed off — and the map makes one movement
+	 * instead of two that nearly line up (see `$services/fullScreenModal`, and WorldMap's
+	 * `tilted`).
+	 */
+	export let tiltsMap: boolean = false;
 
 	const dispatch = createEventDispatcher<{ close: void }>();
 
 	// Say that a sheet is up for exactly as long as this one is mounted, so the map behind it
 	// can blur its own chrome away (see `$services/fullScreenModal`, and the root page). It is
 	// said from here rather than by each host, because "a full view is over the map" is a fact
-	// about this sheet and not about the five stores that raise one. onDestroy runs after the
+	// about this sheet and not about the five stores that raise one. The unmount runs after the
 	// slide-out has played, which is when the map is worth reading again.
-	onMount(raiseSheet);
-	onDestroy(dropSheet);
+	//
+	// Raised and dropped with the same value, captured once: `tiltsMap` is what the sheet was
+	// mounted as and a host that changed it mid-fight would otherwise leave the tilt count one
+	// off for the rest of the session. The pair is onMount's own teardown rather than a separate
+	// onDestroy, so a drop can never happen without its raise (onDestroy alone runs on the
+	// server, where nothing was ever mounted).
+	const tilt = tiltsMap;
+	onMount(() => {
+		raiseSheet(tilt);
+		return () => dropSheet(tilt);
+	});
 
 	function close(): void {
 		if (closeDisabled) return;

@@ -1,6 +1,7 @@
 import { readonly, writable } from 'svelte/store';
 
-// Whether any full-view sheet is up over the map, and how many.
+// Whether any full-view sheet is up over the map, how many, and whether any of them is one
+// the map leans back for.
 //
 // FullScreenModal is the one full-view surface this app has, and everything drawn on it
 // covers the whole viewport — so while one is up, the map's own chrome is not being read.
@@ -18,20 +19,40 @@ import { readonly, writable } from 'svelte/store';
 // played: the map comes back into focus behind a sheet that has already left, rather than
 // sharpening under one still on its way down.
 let raised = 0;
+// The same count, over the sheets that asked the map to tilt as well (see FullScreenModal's
+// `tiltsMap` — today that is the combat arena and nothing else). Kept apart from `raised`
+// rather than derived from it, because the two questions have different answers whenever a
+// tilting sheet and a plain one are up together.
+let tilting = 0;
 
 const open = writable(false);
+const tilted = writable(false);
 
-/** A sheet has been mounted. Returns nothing; pair it with `dropSheet` on unmount. */
-export function raiseSheet(): void {
+/**
+ * A sheet has been mounted. `tilt` is that sheet's `tiltsMap`; pair it with the identical
+ * argument to `dropSheet`, or the counts come apart.
+ */
+export function raiseSheet(tilt: boolean = false): void {
 	raised += 1;
 	open.set(true);
+	if (tilt) {
+		tilting += 1;
+		tilted.set(true);
+	}
 }
 
 /** A sheet has been unmounted (after its outro). */
-export function dropSheet(): void {
+export function dropSheet(tilt: boolean = false): void {
 	raised = Math.max(0, raised - 1);
 	open.set(raised > 0);
+	if (tilt) {
+		tilting = Math.max(0, tilting - 1);
+		tilted.set(tilting > 0);
+	}
 }
 
 /** Whether a full-view sheet is currently up over the map. */
 export const fullScreenModalOpen = readonly(open);
+
+/** Whether one of the sheets currently up is one the map leans back for. */
+export const mapTilted = readonly(tilted);

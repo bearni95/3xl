@@ -27,7 +27,7 @@
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
 	import { boosterModalOpen } from '$services/boosterModal';
-	import { fullScreenModalOpen } from '$services/fullScreenModal';
+	import { fullScreenModalOpen, mapTilted } from '$services/fullScreenModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { authService } from '$services/auth.service';
@@ -1893,6 +1893,14 @@
 	// are Leaflet's and cannot be (unmounting them is a rebuild of every statue on the map), so
 	// WorldMap blurs their panes to the same 8px over the same 250ms instead. Keep the three in
 	// step — this is one gesture, not three.
+	//
+	// One sheet asks for more than the blur: the arena leans the map back for as long as a fight
+	// is on (`tiltsMap`, and WorldMap's `tilted`). It is the same 250ms and it starts on the same
+	// event — the sheet's own mount — because a fight is the one full view here that is not a
+	// reading of the map but something happening on it, and the board giving ground while its
+	// chrome goes out of focus has to be the one movement. `fightOpen` is deliberately not what
+	// drives it: that flag goes false the moment the ✕ is pressed, a quarter of a second before
+	// the sheet has finished leaving and before anything else here has moved.
 	const CHROME_BLUR = { amount: 8, duration: 250 };
 </script>
 
@@ -1906,8 +1914,12 @@
 <!-- The map, the whole viewport of it. Nothing sizes it any more — raising a view over it
 	or summoning the menu leaves its box alone, so the map is never re-framed by anything but
 	a pan, a zoom or a region being opened. `relative` is what the plates over its corners and
-	the menu's own edge are positioned against. -->
-<div class="relative flex h-screen min-w-0 flex-col">
+	the menu's own edge are positioned against.
+	The depth the map is tipped in is this box's (see WorldMap's `tilted`): a perspective is read
+	off the parent of the thing being turned, and it costs nothing while nothing is turning. The
+	clip goes with it — a board leaned back reaches past the bottom of a viewport it exactly
+	filled, and the page is not a thing that scrolls. -->
+<div class="relative flex h-screen min-w-0 flex-col overflow-hidden perspective-[1200px]">
 	{#if ready}
 		<WorldMap
 			center={[41.8, 1.7]}
@@ -1921,6 +1933,7 @@
 			{zoomBounds}
 			{zoomStops}
 			markersBlurred={$fullScreenModalOpen}
+			tilted={$mapTilted}
 			bind:currentZoom
 			bind:activeLevel
 			bind:currentCenter
@@ -2259,6 +2272,11 @@
 	key and label the fight: which town a battle is over and which generation of its
 	team it is against are the server's record, kept on the battle itself, so the fight
 	that is reported is the fight that was opened.
+	It is also the one sheet the map gives ground for: `tiltsMap` leans the board away as the
+	arena comes up and brings it back level as the arena leaves, over the same quarter second
+	the map's chrome blurs out and back in (see CHROME_BLUR). A fight is not a page laid over
+	the map like the roster or the leaderboard — it is an event on a town the map is still
+	showing — so the map moves for it and for nothing else.
 	The sheet's own way out is held shut while a finished fight is on its way to the server:
 	reporting is what ends the battle, so a player let out before it lands would walk away
 	from a fight the server still has open. That is the one thing the sheet cannot know for
@@ -2278,6 +2296,7 @@
 	<FullScreenModal
 		title="Combat"
 		bare
+		tiltsMap
 		closeLabel="Close combat"
 		closeDisabled={fightReporting}
 		on:close={onFightClosed}
