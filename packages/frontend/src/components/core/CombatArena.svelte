@@ -978,22 +978,29 @@
 				     A number said how many; these say which of a known three, so a fight
 				     that is one duel from over looks like it. Each side's rings sit over
 				     the half of the board that side holds — the rivals' to the left, the
-				     player's to the right — and are drawn in that side's own colour, the
-				     one its fighters hold the ground in.
+				     player's to the right.
 				     Between them, the turn, which is the other thing a fight is counted
 				     in and belongs between the two counts rather than beside one of them.
+				     Both counts fill outwards from that turn, so the rivals' row is laid
+				     out backwards: it is the same count read either way round, and the two
+				     then mirror each other across the middle rather than both running left
+				     to right. Both are drawn white — the ground down the middle they are
+				     played for is white, and a count of it says so at a glance.
 				     While the fight is running only: a decided one reads its score off the
 				     panel in the middle of the board, and the same score at both ends of
 				     one canvas would be one score too many. -->
 				<div
 					class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center gap-4 p-3"
 				>
-					<div class="flex gap-1.5" aria-label="Encounters won by the rival team">
+					<div
+						class="flex flex-row-reverse gap-1.5"
+						aria-label="Encounters won by the rival team"
+					>
 						{#each LANES as lane}
 							<span
 								class={classNames(
-									'h-3 w-3 rounded-full border-2 border-error',
-									lane <= state.wins.error && 'bg-error'
+									'h-3 w-3 rounded-full border-2 border-white',
+									lane <= state.wins.error && 'bg-white'
 								)}
 							></span>
 						{/each}
@@ -1005,8 +1012,8 @@
 						{#each LANES as lane}
 							<span
 								class={classNames(
-									'h-3 w-3 rounded-full border-2 border-info',
-									lane <= state.wins.info && 'bg-info'
+									'h-3 w-3 rounded-full border-2 border-white',
+									lane <= state.wins.info && 'bg-white'
 								)}
 							></span>
 						{/each}
