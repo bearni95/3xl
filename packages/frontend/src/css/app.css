@@ -76,6 +76,25 @@
 }
 
 /* ============================================
+   LEAFLET TYPOGRAPHY
+   ============================================
+   The one thing on the page the font tokens above cannot reach on their own.
+   leaflet.css sets a family of its own on `.leaflet-container` (Helvetica Neue,
+   Arial, …), and every pin, tooltip and popup is a descendant of it, so the map
+   went on lettering its own marks in Helvetica while the rest of the app changed
+   typeface — a pin's plate names a town in Tailwind classes and never names a
+   font, so what it was inheriting was Leaflet's, not the document's.
+
+   `inherit` rather than the family by name: the map is then set in whatever it
+   is standing in, so there is still exactly one place the typeface is chosen.
+   `!important` for the same load-order reason as the block below — leaflet.css
+   lands after this file, and at equal specificity the later rule wins. Only the
+   family is taken back; Leaflet's own sizing is left alone. */
+.leaflet-container {
+	font-family: inherit !important;
+}
+
+/* ============================================
    LEAFLET Z-INDEX FLATTENING
    ============================================
    Leaflet's CSS is imported dynamically (`await import('leaflet/dist/leaflet.css')`
