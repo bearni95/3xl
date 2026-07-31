@@ -7,8 +7,11 @@
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { settingsModalOpen } from '$services/settingsModal';
 	import { AuthStatus, type OAuthProvider } from '$types/profile.type';
+	import { CONSENT_DOCUMENTS, LEGAL_VERSIONS } from '$types/legal.type';
+	import { legalService } from '$services/legal.service';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
+	import LegalConsent from '$components/core/LegalConsent.svelte';
 	import SocialSignIn from '$components/core/SocialSignIn.svelte';
 
 	// When embedded, the trigger button is dropped and what is left renders in flow, full
@@ -26,7 +29,20 @@
 	let redirectingTo: OAuthProvider | null = null;
 	let errorMessage: string | null = null;
 
-	onMount(() => authService.init());
+	// The gate in front of the provider button. Both have to be ticked before there is
+	// anything to press, and `consentAsked` is what makes the reason visible: a button
+	// that is simply dead says nothing about why.
+	let ageConfirmed = false;
+	let documentsAccepted = false;
+	let consentAsked = false;
+	$: consented = ageConfirmed && documentsAccepted;
+
+	onMount(() => {
+		authService.init();
+		// So the acceptance ticked here is flushed to the ledger the moment the session
+		// lands on the way back (see legal.service).
+		legalService.init();
+	});
 
 	// Both stand on the chosen name alone: an account nobody has named yet reads as
 	// a question mark and as "Unnamed player", never as its email address.
@@ -39,8 +55,19 @@
 		event: CustomEvent<{ provider: OAuthProvider }>
 	): Promise<void> {
 		if (redirectingTo) return;
+		consentAsked = true;
+		if (!consented) return;
 		errorMessage = null;
 		redirectingTo = event.detail.provider;
+		// Held in the browser because this tab is about to be gone: the boxes are ticked
+		// by somebody the game has no id for yet, and the ledger cannot record an
+		// acceptance for an account that does not exist. It is picked back up and
+		// written the instant a session lands.
+		legalService.hold({
+			versions: Object.fromEntries(CONSENT_DOCUMENTS.map((id) => [id, LEGAL_VERSIONS[id]])),
+			ageConfirmed,
+			at: new Date().toISOString()
+		});
 		try {
 			// On success the browser leaves for the provider's consent screen, so the
 			// spinner stays up until the page is gone. Only a failure lands here.
@@ -154,6 +181,16 @@
 							/>
 						{/if}
 					{:else}
+						<!-- The gate above the button, not beside it: the two boxes are read before
+							the way in is offered, and the button below is held shut until they are
+							ticked. The button is still pressable while they are not — it is what
+							makes the reason appear — it simply does not leave the page. -->
+						<LegalConsent
+							bind:ageConfirmed
+							bind:accepted={documentsAccepted}
+							showRequired={consentAsked}
+							disabled={redirectingTo !== null}
+						/>
 						<SocialSignIn pending={redirectingTo} on:signin={handleProviderSignIn} />
 					{/if}
 

@@ -1,0 +1,534 @@
+{
+	"common": {
+		"welcome": "Us donem la benvinguda",
+		"hello": "Hola",
+		"goodbye": "Adéu",
+		"yes": "Sí",
+		"no": "No",
+		"ok": "D'acord",
+		"cancel": "Cancel·la",
+		"save": "Desa",
+		"delete": "Elimina",
+		"edit": "Edita",
+		"close": "Tanca",
+		"back": "Enrere",
+		"next": "Següent",
+		"previous": "Anterior",
+		"submit": "Envia",
+		"search": "Cerca",
+		"loading": "S'està carregant…"
+	},
+	"navigation": {
+		"home": "Inici",
+		"about": "Quant a",
+		"contact": "Contacte"
+	},
+	"profile": {
+		"title": "Perfil",
+		"continueWith": "Continua amb {provider}",
+		"emailLabel": "Email",
+		"memberSince": "Membre des de",
+		"signedInWith": "Sessió iniciada amb",
+		"daysElapsed": "{days, plural, =0 {Avui} one {# dia} other {# dies}}",
+		"levelBadge": "Niv. {level}",
+		"exp": "Experiència",
+		"expProgress": "{total} / {next} XP",
+		"expMax": "{exp} XP (màx.)",
+		"signOut": "Tanca la sessió",
+		"notConfigured": "L'inici de sessió no està disponible: Supabase no està configurat. Defineix PUBLIC_SUPABASE_URL i PUBLIC_SUPABASE_ANON_KEY.",
+		"username": {
+			"none": "Sense nom",
+			"taken": "Aquest nom d'usuari ja està agafat.",
+			"invalid": "Utilitza entre 3 i 32 caràcters: només lletres, xifres, espais i . _ -",
+			"label": "Nom d'usuari",
+			"placeholder": "p. ex. jugador_u",
+			"save": "Desa el nom",
+			"set": "Tria un nom",
+			"edit": "Edita"
+		},
+		"avatar": {
+			"title": "Tria el teu avatar",
+			"none": "Encara no tens cap avatar. Cada sobre que obres te'n dóna un.",
+			"noShow": "Altres",
+			"edit": "Canvia l'avatar"
+		}
+	},
+	"map": {
+		"search": {
+			"label": "Cerca llocs",
+			"placeholder": "Cerca llocs…",
+			"empty": "Cap lloc no hi coincideix."
+		},
+		"challenge": {
+			"siege": "Victòries acumulades / victòries necessàries per prendre el municipi",
+			"cooldown": "Acaba de lluitar — aquest municipi es torna a obrir quan s'acabi el compte enrere",
+			"start": "Desafiar",
+			"startTitle": "Lluita per l'equip d'aquest municipi",
+			"noTeam": "El teu equip actiu necessita {size} cartes que hagis reclamat",
+			"resume": "Torna a la batalla",
+			"resumeTitle": "Tens una batalla en curs — torna-hi"
+		}
+	},
+	"region": {
+		"type": {
+			"territory": "Territori",
+			"province": "Província",
+			"comarca": "Comarca",
+			"municipality": "Municipi"
+		},
+		"table": {
+			"name": "Nom",
+			"type": "Tipus de regió",
+			"show": "Sèrie principal",
+			"siege": "Setge",
+			"empty": "Cap subregió."
+		}
+	},
+	"menu": {
+		"label": "Menú",
+		"open": "Obre el menú",
+		"close": "Tanca el menú"
+	},
+	"settings": {
+		"title": "Configuració"
+	},
+	"roster": {
+		"title": "Col·lecció",
+		"close": "Tanca la col·lecció"
+	},
+	"achievements": {
+		"title": "Assoliments",
+		"close": "Tanca els assoliments"
+	},
+	"leaderboard": {
+		"title": "Classificació",
+		"close": "Tanca la classificació"
+	},
+	"booster": {
+		"title": "Sobres",
+		"withAllowance": "Sobres ({remaining}/{total})",
+		"close": "Tanca els sobres",
+		"window": "Festes majors del {from} al {to}"
+	},
+	"combat": {
+		"notConfigured": "L'inici de sessió no està disponible — Supabase no està configurat, així que no es pot jugar cap equip.",
+		"signInTitle": "Inicia la sessió per jugar",
+		"signInBody": "El teu equip lluita amb els personatges que has reclamat i els colors que els han tocat. Inicia la sessió per triar un equip.",
+		"signIn": "Inicia la sessió",
+		"noTeamTitle": "No hi ha equip per jugar",
+		"noTeamBody": "El teu equip necessita les {size} places plenes amb cartes que hagis reclamat — acaba'l a la teva col·lecció.",
+		"openRoster": "Obre la col·lecció",
+		"rivalWins": "Enfrontaments guanyats per l'equip rival",
+		"yourWins": "Enfrontaments guanyats pel teu equip",
+		"turn": "Torn {turn}",
+		"won": "Has guanyat el combat",
+		"lost": "Has perdut el combat",
+		"draw": "El combat ha quedat en taules",
+		"encountersWon": "Enfrontaments guanyats",
+		"survivors": "Lluitadors drets",
+		"expGained": "Experiència guanyada",
+		"concede": "Rendeix-te",
+		"reporting": "S'està informant del combat",
+		"reportAgain": "Torna a informar del combat",
+		"reportRefused": "El servidor no ha acceptat el resultat d'aquest combat.",
+		"saving": "S'està desant el torn {turn}",
+		"saveAgain": "Torna a desar el torn {turn}",
+		"saveRefused": "Aquest torn no s'ha pogut desar — el combat hi està esperant."
+	},
+	"legal": {
+		"title": "Informació legal",
+		"close": "Tanca la informació legal",
+		"updated": "Versió {version}",
+		"publisher": {
+			"heading": "Qui publica el joc",
+			"nameLabel": "Responsable",
+			"name": "PENDENT — nom i cognoms o raó social de qui publica el joc",
+			"addressLabel": "Adreça",
+			"address": "PENDENT — adreça postal completa",
+			"taxIdLabel": "NIF",
+			"taxId": "PENDENT — NIF o CIF",
+			"emailLabel": "Correu de contacte",
+			"email": "bernatcanal@gmail.com",
+			"note": "Aquestes dades identifiquen qui respon del joc i de les teves dades. Són exigides per l'article 10 de la Llei 34/2002 de serveis de la societat de la informació i pels articles 13 i 14 del Reglament General de Protecció de Dades."
+		},
+		"consent": {
+			"heading": "Abans d'entrar",
+			"intro": "Per crear un compte cal que acceptis les condicions i que confirmis que tens l'edat mínima. Ho desem amb la versió del document que has llegit i la data.",
+			"age": "Confirmo que tinc {age} anys o més.",
+			"ageHint": "El joc no està adreçat a menors de {age} anys i no s'hi poden obrir comptes.",
+			"accept": "He llegit i accepto les Condicions del servei i la Política de privadesa.",
+			"readTerms": "Llegeix les Condicions del servei",
+			"readPrivacy": "Llegeix la Política de privadesa",
+			"required": "Cal marcar les dues caselles per continuar."
+		},
+		"update": {
+			"title": "Hem canviat les condicions",
+			"intro": "Hi ha documents que han canviat des de l'última vegada que els vas acceptar. Llegeix-los i accepta'ls per continuar jugant.",
+			"changed": "Documents que han canviat",
+			"accept": "Els accepto",
+			"saving": "S'està desant",
+			"failed": "No s'ha pogut desar l'acceptació. Torna-ho a provar.",
+			"signOut": "Tanca la sessió"
+		},
+		"account": {
+			"heading": "Les teves dades i els teus drets",
+			"intro": "Pots endur-te tot el que el joc guarda sobre tu, o esborrar-ho tot per sempre. Són drets teus (articles 15, 17 i 20 del RGPD, i els drets equivalents de les lleis de privadesa dels estats dels EUA) i s'exerceixen des d'aquí, sense haver de demanar res a ningú.",
+			"export": "Descarrega les meves dades",
+			"exportHint": "Un fitxer JSON amb el teu compte, les teves cartes, els teus combats, els municipis que ocupes i les acceptacions que has fet.",
+			"exporting": "S'està preparant",
+			"exportFailed": "No s'han pogut preparar les dades. Torna-ho a provar.",
+			"delete": "Esborra el meu compte",
+			"deleteHint": "Esborra el compte i tot el que hi ha lligat: cartes, avatars, assoliments, combats, sobres i municipis. No es pot desfer.",
+			"deleteConfirmTitle": "Segur que vols esborrar el compte?",
+			"deleteConfirmBody": "S'esborrarà tot i no hi ha manera de recuperar-ho. Els municipis que ocupes quedaran lliures. Escriu {word} per confirmar.",
+			"deleteConfirmWord": "ESBORRA",
+			"deleteConfirm": "Esborra-ho tot",
+			"deleting": "S'està esborrant",
+			"deleteFailed": "No s'ha pogut esborrar el compte. Torna-ho a provar o escriu-nos.",
+			"acceptedHeading": "Què has acceptat",
+			"acceptedRow": "{document} · versió {version} · {date}",
+			"acceptedEmpty": "Encara no hi ha cap acceptació registrada."
+		},
+		"documents": {
+			"terms": {
+				"title": "Condicions del servei",
+				"summary": "El tracte entre tu i el joc: qui hi pot jugar, què s'hi pot fer i de què respon cadascú.",
+				"sections": [
+					{
+						"heading": "1. Què és això i qui ho publica",
+						"body": [
+							"Aquest és un joc de navegador gratuït, ambientat als Països Catalans, fet com a projecte d'afeccionats i sense ànim de lucre. No es ven res, no s'hi pot pagar res i no hi ha cap subscripció.",
+							"El publica el responsable identificat a l'inici d'aquesta pàgina, que és amb qui contractes en acceptar aquestes condicions i a qui pots escriure per qualsevol cosa que hi digui.",
+							"Aquestes condicions, juntament amb la Política de privadesa, la Política de galetes i emmagatzematge local i els Crèdits i atribucions, són el conjunt del que regeix l'ús del joc."
+						]
+					},
+					{
+						"heading": "2. Acceptació i canvis",
+						"body": [
+							"En marcar la casella d'acceptació abans d'iniciar la sessió acceptes aquestes condicions en la versió que hi havia a la pantalla. Desem quina versió era i quan la vas acceptar.",
+							"Podem canviar aquestes condicions: per adaptar-les a la llei, perquè el joc canvia, o per aclarir-les. Quan el canvi sigui de fons, la versió del document canvia i se't tornarà a demanar que l'acceptis la propera vegada que entris. Fins que no l'acceptis no podràs continuar jugant, i sempre pots optar per no acceptar-les i esborrar el compte.",
+							"Els canvis no tenen efecte retroactiu: el que va passar abans d'un canvi es jutja amb la versió que hi havia llavors."
+						]
+					},
+					{
+						"heading": "3. Qui hi pot jugar",
+						"body": [
+							"Cal tenir 16 anys o més. No és una xifra treta d'aquest joc: és el llindar més alt que permet l'article 8 del RGPD per als serveis de la societat de la informació, i queda molt per sobre dels 13 anys que marca la COPPA als Estats Units. Demanar el més estricte és el que permet tenir una sola porta per a tothom.",
+							"En marcar la casella corresponent declares que tens aquesta edat. No ho podem comprovar, i per tant no ho comprovem: el que fa aquesta declaració és deixar clar que un compte d'una persona menor de 16 anys incompleix les condicions i no és una cosa que el joc hagi convidat a fer.",
+							"Si ets mare, pare o tutor i creus que un menor de 16 anys ha obert un compte, escriu-nos i l'esborrarem juntament amb tot el que hi hagi lligat, sense demanar res a canvi.",
+							"Cada persona pot tenir un sol compte. No es pot compartir, cedir ni vendre un compte, ni jugar amb el compte d'una altra persona.",
+							"Si en el teu país l'ús d'aquest servei no és legal, no l'usis. El joc s'adreça a les persones residents als Països Catalans i, en general, a la Unió Europea i als Estats Units; no el dirigim a cap territori on calgui una llicència o una autorització per oferir-lo."
+						]
+					},
+					{
+						"heading": "4. El teu compte",
+						"body": [
+							"S'entra amb un compte de Google. No guardem ni veiem la teva contrasenya de Google en cap moment: qui t'autentica és Google i el que ens n'arriba és la teva adreça de correu i l'identificador del compte.",
+							"Ets responsable del que es faci des del teu compte. Si creus que algú altre hi té accés, tanca la sessió i canvia la seguretat del teu compte de Google.",
+							"El nom d'usuari que tries és públic: apareix a la classificació i sobre els municipis que ocupes, i el pot veure qualsevol persona que entri al joc, tingui compte o no. Tria'n un que t'estigui bé fer públic. Podem canviar o buidar un nom d'usuari que insulti, suplanti una altra persona, sigui il·legal o s'usi per fer publicitat."
+						]
+					},
+					{
+						"heading": "5. Com s'hi juga i què no s'hi val",
+						"body": [
+							"No es poden fer servir bots, macros, scripts, clients modificats ni cap altre automatisme per jugar-hi o per obrir sobres.",
+							"No es poden cridar directament les funcions del servidor fora del joc, ni intentar guanyar experiència, cartes, sobres, assoliments o municipis per cap altra via que jugant.",
+							"No es pot buscar, aprofitar ni difondre cap error del joc que doni avantatge. Si en trobes un, escriu-nos: t'ho agrairem.",
+							"No es pot obstaculitzar el servei ni el joc d'altres persones: ni sobrecarregant el servidor, ni raspant dades de manera massiva, ni assetjant altres jugadors pel nom d'usuari o per cap altre mitjà.",
+							"No es pot fer enginyeria inversa del joc per burlar-ne les regles ni les mesures de seguretat, més enllà del que permeti la llei de manera imperativa."
+						]
+					},
+					{
+						"heading": "6. Cartes, sobres i objectes virtuals",
+						"body": [
+							"Les cartes, els avatars, els sobres, l'experiència, els nivells, els assoliments i els municipis són elements del joc i prou. No són teus en el sentit de la propietat: el que tens és una llicència personal, revocable i intransferible per fer-los servir dins del joc.",
+							"No tenen cap valor econòmic, no es poden convertir en diners ni en cap altre bé, i no es poden vendre, intercanviar ni cedir fora del joc. Qualsevol intenció de fer-ho és un incompliment d'aquestes condicions.",
+							"No s'hi pot pagar. No hi ha compres, ni monedes, ni caixes de pagament: els sobres s'obtenen jugant i no hi ha cap manera de comprar-ne. Per tant no hi ha cap aposta ni cap joc d'atzar amb premi: no s'hi arrisca res que tingui valor econòmic i no s'hi pot guanyar res que en tingui.",
+							"Podem canviar el funcionament del joc, reequilibrar-lo, retirar personatges, reiniciar municipis o reiniciar temporades senceres. No hi ha cap dret adquirit sobre res del que hi tinguis, i aquests canvis no donen dret a cap compensació, perquè no hi ha hagut cap pagament."
+						]
+					},
+					{
+						"heading": "7. Propietat intel·lectual",
+						"body": [
+							"El codi del joc, el disseny de la interfície, les regles i els textos originals són de qui publica el joc.",
+							"Els personatges, els sprites, els noms, les imatges de sèries i la música són de qui en tingui els drets, i s'usen aquí en un projecte d'afeccionats, gratuït i sense ànim de lucre, amb finalitat cultural i d'homenatge. Aquest joc no està afiliat, patrocinat, avalat ni autoritzat per cap dels titulars d'aquests drets, ni per cap cadena de televisió, editorial o estudi.",
+							"Els crèdits complets — quines icones, quines dades geogràfiques, quina tipografia i quin programari lliure hi ha al darrere, i amb quina llicència — són al document de Crèdits i atribucions.",
+							"Si ets titular de drets i creus que aquí hi ha material teu que no hi hauria de ser, la secció següent explica com fer-ho saber. Ho tractarem de pressa i sense discutir-ho."
+						]
+					},
+					{
+						"heading": "8. Reclamacions de drets d'autor i altres continguts il·lícits",
+						"body": [
+							"Per reclamar la retirada d'un contingut, escriu al correu de contacte indicant: qui ets i com contactar-te; quin contingut concret reclames i on és al joc; en què es basa el teu dret; una declaració que creus de bona fe que aquell ús no està autoritzat; i una declaració que la informació que dones és certa.",
+							"Aquest és alhora el procediment de notificació de la secció 512 de la Digital Millennium Copyright Act dels Estats Units i el mecanisme de notificació i acció de l'article 16 del Reglament (UE) 2022/2065 de serveis digitals. Rebràs acusament de rebuda i se't dirà què s'ha decidit i per què.",
+							"Si has estat afectat per una retirada que consideres errònia, ens ho pots dir pel mateix camí i ho revisarem.",
+							"Els comptes que reincideixin en la infracció de drets de tercers seran cancel·lats."
+						]
+					},
+					{
+						"heading": "9. Disponibilitat del servei",
+						"body": [
+							"El joc s'ofereix tal com és i tal com està disponible. És gratuït i el manté qui el publica en el temps que hi pot dedicar: no hi ha cap compromís de disponibilitat, ni de conservació de partides, ni de terminis de resposta.",
+							"Podem modificar-lo, interrompre'l temporalment o deixar-lo definitivament. Si el deixem definitivament, ho anunciarem amb una antelació raonable dins del mateix joc perquè puguis descarregar-te les teves dades abans que s'esborrin."
+						]
+					},
+					{
+						"heading": "10. Suspensió i cancel·lació",
+						"body": [
+							"Podem suspendre o cancel·lar un compte que incompleixi aquestes condicions, amb avís previ sempre que sigui possible i immediatament quan hi hagi un risc per al servei o per a altres jugadors. Si això et passa i creus que és un error, escriu-nos i t'ho revisarem.",
+							"Tu pots marxar quan vulguis: a la configuració del compte hi ha el botó per esborrar-lo, i esborra de debò tot el que el joc en guarda."
+						]
+					},
+					{
+						"heading": "11. Garanties i responsabilitat",
+						"body": [
+							"Com que el servei és gratuït i s'ofereix tal com és, no donem cap garantia que funcioni sense errors ni interrupcions, ni que les dades del joc siguin exactes o completes.",
+							"En la mesura que ho permeti la llei, no responem dels danys indirectes, de la pèrdua de dades del joc, del temps invertit ni del lucre cessant.",
+							"Res d'aquest apartat exclou ni limita la nostra responsabilitat en els casos en què la llei no ho permet: dol, negligència greu, danys a la vida o a la integritat física de les persones, ni els drets imperatius que et reconegui la normativa de consum del teu país de residència. Si ets consumidor, aquests drets es mantenen intactes tot i el que digui aquest document."
+						]
+					},
+					{
+						"heading": "12. Llei aplicable i on es resolen els conflictes",
+						"body": [
+							"Aquestes condicions es regeixen per la llei espanyola i, en el que sigui aplicable, pel dret civil català.",
+							"Si ets consumidor amb residència a la Unió Europea, aquesta elecció no et pot privar de la protecció que et donin les normes imperatives del teu país de residència, i sempre pots demandar i ser demandat davant dels tribunals del lloc on visquis.",
+							"La plataforma europea de resolució de litigis en línia va deixar de funcionar el juliol de 2025, de manera que no hi ha cap enllaç a donar-hi. Abans d'anar enlloc, però, escriu-nos: la majoria de les coses es resolen amb un correu."
+						]
+					},
+					{
+						"heading": "13. Altres qüestions",
+						"body": [
+							"Si un tribunal declara nul·la alguna clàusula d'aquestes condicions, la resta continua sent vàlida.",
+							"El fet de no exigir en un moment donat el compliment d'una clàusula no vol dir que hi renunciem.",
+							"No pots cedir la teva posició en aquest acord a ningú. Nosaltres només podríem fer-ho si el joc canviés de mans, i llavors t'ho diríem abans i podries esborrar el compte si no t'estigués bé.",
+							"Aquest document està escrit en català, que és la llengua del joc. Qualsevol traducció que en fem és de cortesia i, en cas de discrepància, preval el text català."
+						]
+					}
+				]
+			},
+			"privacy": {
+				"title": "Política de privadesa",
+				"summary": "Quines dades teves tracta el joc, per què, amb quina base legal, qui més les veu i què hi pots fer.",
+				"sections": [
+					{
+						"heading": "1. Qui respon de les teves dades",
+						"body": [
+							"El responsable del tractament és la persona identificada a l'inici d'aquesta pàgina, i el correu que hi consta és el canal per a tot el que digui aquest document.",
+							"No hi ha delegat de protecció de dades i no cal que n'hi hagi: el joc no fa observació sistemàtica a gran escala de les persones ni tracta categories especials de dades, que són els supòsits de l'article 37 del RGPD."
+						]
+					},
+					{
+						"heading": "2. Quines dades tractem",
+						"body": [
+							"Del teu compte de Google, quan hi inicies la sessió: l'adreça de correu electrònic, l'identificador del compte i el nom que Google publica al teu perfil. No rebem ni la contrasenya ni els contactes ni res més del teu compte de Google.",
+							"Del joc, a mesura que hi jugues: el nom d'usuari que tries, l'experiència i el nivell, l'avatar que portes, les cartes que t'han tocat, els sobres que has obert, els assoliments completats, els combats jugats amb el seu resultat i els municipis que ocupes o assetges.",
+							"De les acceptacions legals: quin document has acceptat, en quina versió, quan, i si vas declarar tenir l'edat mínima.",
+							"No tractem dades de categories especials, no fem perfils de tu, no prenem decisions automatitzades amb efectes jurídics sobre tu i no tenim analítica ni publicitat de cap mena. No et demanem la data de naixement, només que confirmis un llindar.",
+							"No desem la teva adreça IP en cap base de dades nostra. Els proveïdors que fan funcionar el joc en registren de manera temporal als seus registres tècnics, com fa qualsevol servidor d'internet; ho expliquem a l'apartat 5."
+						]
+					},
+					{
+						"heading": "3. Per a què les tractem i amb quina base legal",
+						"body": [
+							"Per donar-te el joc: crear i mantenir el compte, guardar la teva partida, repartir sobres, resoldre combats i mostrar la classificació. Base legal: l'execució del contracte que acceptes amb les condicions del servei (article 6.1.b del RGPD). Sense aquestes dades no hi ha partida a guardar.",
+							"Per publicar el teu nom d'usuari al mapa i a la classificació: també execució del contracte, perquè ocupar municipis a la vista de tothom és literalment el joc. Si no vols aparèixer-hi, pots deixar el compte sense nom d'usuari o esborrar-lo.",
+							"Per guardar les acceptacions legals i la declaració d'edat: compliment d'una obligació legal (article 6.1.c) i interès legítim a poder demostrar que vam informar i que ens van acceptar (articles 5.2 i 7.1).",
+							"Per protegir el joc de trampes, abusos i atacs: interès legítim (article 6.1.f) a que el joc sigui jugable i el servei segur. Hem valorat que aquest interès no passa per sobre dels teus drets, perquè les dades implicades són les mateixes de la partida i no se'n dedueix res de la teva vida privada.",
+							"No demanem el teu consentiment com a base legal per a res del que hi ha aquí, i per tant no hi ha res que hagis de retirar: el que et demanem és que acceptis un contracte i que confirmis una edat, que no és el mateix."
+						]
+					},
+					{
+						"heading": "4. Què veuen els altres jugadors",
+						"body": [
+							"És públic dins del joc, per a qualsevol visitant tingui compte o no: el teu nom d'usuari, el nivell, la posició a la classificació, els municipis que ocupes i l'equip amb què els defenses.",
+							"No és públic mai: la teva adreça de correu, la data en què vas crear el compte, l'historial de combats, els sobres oberts, els assoliments i les acceptacions legals. Aquestes dades només les veus tu, perquè la base de dades les té tancades per files i cada compte només arriba a les seves.",
+							"Si prefereixes no aparèixer enlloc, no posis nom d'usuari: un compte sense nom no surt ni a la classificació ni sobre els municipis."
+						]
+					},
+					{
+						"heading": "5. Qui més hi intervé",
+						"body": [
+							"Supabase Inc. (Estats Units, amb infraestructura també a la Unió Europea) allotja la base de dades i el sistema d'inici de sessió. És encarregat del tractament i actua només segons les nostres instruccions.",
+							"Google Ireland Limited i Google LLC, per l'inici de sessió amb Google. Quan hi entres, Google sap que has entrat en aquest joc. El que Google faci amb això es regeix per la seva pròpia política de privadesa, i en aquest punt Google és responsable pel seu compte i no encarregat nostre.",
+							"Google, un segon cop i sense que hi hagi cap compte pel mig: la tipografia del joc, Genos, es carrega des dels servidors de Google Fonts cada vegada que s'obre la pàgina, i això li comunica la teva adreça IP i el navegador que fas servir. Passa a tothom qui entri, tingui compte o no. Ho diem clarament perquè és un tercer que hi intervé, i perquè els tribunals europeus ho han considerat una comunicació de dades i no un detall tècnic. Es pot evitar bloquejant les peticions a fonts.googleapis.com al navegador; la lletra canviarà i el joc funcionarà igual.",
+							"Esri Inc., que serveix les imatges de satèl·lit del mapa. Carregar el mapa demana aquestes imatges als seus servidors i, per tant, li comunica la teva adreça IP.",
+							"Qui allotja el web del joc, que en registra els accessos als seus registres tècnics durant un temps limitat i per motius de seguretat i de manteniment.",
+							"No venem, no lloguem ni cedim les teves dades a ningú per a finalitats comercials ni publicitàries. Només les comunicaríem a una autoritat si una llei o una resolució judicial ens hi obligués."
+						]
+					},
+					{
+						"heading": "6. Transferències fora de la Unió Europea",
+						"body": [
+							"Els proveïdors esmentats són o poden ser dels Estats Units, de manera que hi pot haver transferència internacional de dades.",
+							"Aquestes transferències s'emparen en la decisió d'adequació del Marc de privadesa de dades UE-EUA quan el proveïdor hi està certificat, i en les clàusules contractuals tipus de la Comissió Europea quan no ho està.",
+							"Pots demanar-nos còpia de les garanties aplicables escrivint al correu de contacte."
+						]
+					},
+					{
+						"heading": "7. Quant de temps les guardem",
+						"body": [
+							"Les dades del compte i de la partida, mentre el compte existeixi.",
+							"Quan esborres el compte, s'esborra tot: el perfil, les cartes, els avatars, els assoliments, els combats, els sobres, els municipis que ocupessis i el registre d'acceptacions. No en guardem cap còpia ni cap versió anonimitzada, i els municipis que tinguessis queden lliures per a qui els vulgui.",
+							"No hi ha cap termini legal de conservació que ens obligui a guardar res teu: no cobrem res, no emetem factures i no hi ha comptabilitat associada a la teva partida.",
+							"Les còpies de seguretat del proveïdor poden trigar uns dies a reciclar-se; passat aquest termini no en queda res enlloc."
+						]
+					},
+					{
+						"heading": "8. Els teus drets",
+						"body": [
+							"Tens dret a accedir a les teves dades, a rectificar-les, a suprimir-les, a limitar-ne el tractament, a oposar-t'hi i a la portabilitat, tal com diuen els articles 15 a 22 del RGPD.",
+							"Els dos que més s'usen els tens a la configuració del compte i no cal demanar-los a ningú: el botó de descàrrega et dona un fitxer JSON amb tot el que guardem de tu, en un format que qualsevol programa pot llegir, i el botó d'esborrar el compte executa la supressió a l'instant.",
+							"Per a la resta, o si prefereixes fer-ho per escrit, escriu al correu de contacte. Respondrem en el termini d'un mes, ampliable a dos si la petició és complexa, i t'ho direm si passa. No cobrem res per exercir cap d'aquests drets.",
+							"Si consideres que no t'hem atès bé, pots reclamar davant l'Agència Espanyola de Protecció de Dades (www.aepd.es). Si vius en un altre estat de la Unió Europea, pots fer-ho davant l'autoritat de control del teu país."
+						]
+					},
+					{
+						"heading": "9. Menors d'edat",
+						"body": [
+							"El joc no s'adreça a persones menors de 16 anys i no s'hi poden obrir comptes. No recollim conscientment dades de menors de 16 anys.",
+							"Si descobrim que un compte és d'una persona menor de 16 anys, l'esborrarem juntament amb totes les seves dades.",
+							"Si ets mare, pare o tutor i creus que un menor ha obert un compte, escriu-nos al correu de contacte i ho farem sense demanar-te cap justificació."
+						]
+					},
+					{
+						"heading": "10. Si vius als Estats Units",
+						"body": [
+							"Aquest apartat és per a les persones residents als Estats Units, i s'aplica a tots els estats independentment que la llei de cadascun ens obligui o no: hem preferit donar els mateixos drets a tothom que haver de decidir a qui li toquen.",
+							"Categories d'informació personal que recollim, en els termes de la CCPA de Califòrnia: identificadors (adreça de correu, identificador de compte, nom d'usuari), informació comercial no n'hi ha, i activitat a internet limitada a l'ús que fas del joc. No recollim informació de geolocalització precisa, ni dades biomètriques, ni informació personal sensible.",
+							"No venem ni compartim informació personal, en el sentit que la CCPA dona a aquests dos verbs, i no ho hem fet mai. No fem publicitat comportamental entre contextos. Per això no hi ha cap enllaç de Do Not Sell or Share My Personal Information: no hi hauria res per desactivar.",
+							"Tens dret a saber quina informació tenim de tu i a obtenir-ne còpia, a corregir-la, a esborrar-la i a no patir cap tracte pitjor per haver exercit aquests drets. Els dos primers els tens al botó de descàrrega de la configuració i el tercer al d'esborrar el compte; per als altres, escriu-nos.",
+							"Pots designar un agent autoritzat perquè exerceixi aquests drets per tu; li demanarem una prova que l'has autoritzat.",
+							"Si vius a Virgínia, Colorado, Connecticut, Utah, Texas o qualsevol altre estat amb una llei de privadesa pròpia, tens a més el dret a recórrer una decisió nostra que et denegui una petició: respon al mateix correu dient que hi vols recórrer i t'ho revisarà una persona diferent.",
+							"No processem informació personal per a publicitat dirigida, per a la venda, ni per a l'elaboració de perfils amb efectes jurídics o similarment significatius, de manera que no hi ha cap dret d'exclusió d'aquestes activitats a exercir."
+						]
+					},
+					{
+						"heading": "11. Seguretat",
+						"body": [
+							"El trànsit va xifrat, la base de dades té la seguretat a nivell de fila activada — cada compte només arriba a les seves pròpies files — i les operacions que reparteixen premis o canvien el mapa s'executen al servidor i mai al navegador, precisament perquè no depenguin de la bona fe de qui juga.",
+							"Cap sistema no és infal·lible. Si hi hagués una violació de seguretat que suposés un risc alt per als teus drets, t'ho comunicaríem i ho notificaríem a l'autoritat de control dins del termini de 72 hores que marca l'article 33 del RGPD."
+						]
+					},
+					{
+						"heading": "12. Canvis en aquesta política",
+						"body": [
+							"Quan canviï de fons, canviarà la versió que consta a la capçalera i se't tornarà a demanar que la llegeixis i que la donis per llegida abans de continuar jugant.",
+							"Les correccions de redacció o d'ortografia no canvien la versió ni et molestaran amb cap avís."
+						]
+					}
+				]
+			},
+			"cookies": {
+				"title": "Galetes i emmagatzematge local",
+				"summary": "Què desa el joc al teu navegador, per què no et demanem permís per fer-ho i com esborrar-ho.",
+				"sections": [
+					{
+						"heading": "1. No fem seguiment de ningú",
+						"body": [
+							"Aquest joc no té analítica, ni publicitat, ni píxels de xarxes socials, ni galetes de tercers, ni cap identificador que serveixi per perseguir-te d'una pàgina a una altra. No en té poc: no en té gens.",
+							"Tot el que es desa al teu navegador és el que fa falta perquè el joc funcioni o perquè recordi una preferència que has triat tu."
+						]
+					},
+					{
+						"heading": "2. Què hi ha desat, exactament",
+						"body": [
+							"La sessió d'inici de sessió (claus que comencen per sb-, gestionades per Supabase): et manté connectat entre visites. Sense això hauries d'iniciar la sessió a cada pantalla. S'esborra en tancar la sessió.",
+							"music-player: quina emissora escoltaves i si la ràdio estava engegada. És una preferència teva i es queda fins que la canviïs.",
+							"legal-consent-pending: guarda momentàniament les caselles que has marcat mentre ets a la pantalla de Google, perquè en tornar es pugui registrar l'acceptació. S'esborra tot just en registrar-la.",
+							"Claus que comencen per array-service: i object-service:, que guarden l'estat local del joc, com ara la vista del mapa on eres.",
+							"Tot això és emmagatzematge local del navegador, no galetes enviades al servidor a cada petició. No hi ha res que viatgi sol."
+						]
+					},
+					{
+						"heading": "3. Per què no et demanem permís",
+						"body": [
+							"L'article 5.3 de la Directiva 2002/58/CE i l'article 22.2 de la Llei 34/2002 espanyola eximeixen del consentiment l'emmagatzematge estrictament necessari per prestar un servei que la persona ha demanat expressament.",
+							"Tot el que hi ha a la llista de dalt hi encaixa: la sessió és el servei, i la preferència de ràdio i la vista del mapa són coses que has triat tu i que serveixen per tornar-te-les tal com les vas deixar. No hi ha res per mesurar, ni per anunciar, ni per vendre.",
+							"Per això no hi ha cap finestra de galetes: una finestra que demana permís per a una cosa que no en necessita només ensenya la gent a fer clic sense llegir."
+						]
+					},
+					{
+						"heading": "4. Peticions a tercers en carregar la pàgina",
+						"body": [
+							"Dues coses que el joc demana fora, i que impliquen que la teva adreça IP arribi a un tercer encara que no tinguis compte.",
+							"La tipografia Genos es carrega des de Google Fonts. Ho pots evitar bloquejant fonts.googleapis.com i fonts.gstatic.com; el joc funciona igual amb una altra lletra.",
+							"Les imatges de satèl·lit del mapa venen dels servidors d'Esri. Sense elles el mapa es veu sense fons, però les regions i les partides continuen funcionant.",
+							"Ni l'una ni l'altra desa res al teu navegador per compte nostre, i cap de les dues té a veure amb el teu compte ni amb la teva partida."
+						]
+					},
+					{
+						"heading": "5. Com esborrar-ho",
+						"body": [
+							"Tancar la sessió esborra la sessió desada.",
+							"Esborrar les dades del lloc des de la configuració del navegador ho treu tot, incloent-hi les preferències. El joc tornarà a començar de zero pel que fa a l'aparença; la teva partida és al servidor i no es perd.",
+							"Navegar en finestra privada fa que res d'això sobrevisqui en tancar-la."
+						]
+					}
+				]
+			},
+			"attributions": {
+				"title": "Crèdits i atribucions",
+				"summary": "De qui és tot el que has vist i has sentit aquí, i amb quina llicència s'hi fa servir.",
+				"sections": [
+					{
+						"heading": "1. Personatges, sprites i sèries",
+						"body": [
+							"Els personatges provenen d'arxius de MUGEN, un motor de lluita per a afeccionats, i els sprites són obra de les persones que els van crear per a aquella comunitat.",
+							"Els personatges, els noms, les imatges i les sèries que hi apareixen són propietat dels seus titulars respectius. Aquest és un projecte d'afeccionats, gratuït i sense ànim de lucre, i no està afiliat, patrocinat ni avalat per cap d'ells ni per cap cadena, editorial o estudi.",
+							"Si ets titular d'algun d'aquests drets i vols que en retirem l'ús, escriu al correu de contacte: el procediment és a l'apartat 8 de les Condicions del servei i el resoldrem de pressa."
+						]
+					},
+					{
+						"heading": "2. Dades de sèries",
+						"body": [
+							"Els títols i les sinopsis de les sèries provenen de TMDB.",
+							"Aquest producte fa servir l'API de TMDB però no està avalat ni certificat per TMDB."
+						]
+					},
+					{
+						"heading": "3. Icones",
+						"body": [
+							"Les icones del joc són de game-icons.net i s'usen sota la llicència Creative Commons Reconeixement 3.0. L'autoria de cada icona consta al fitxer de llicència que acompanya la col·lecció dins del joc.",
+							"Les icones que identifiquen cada sèrie provenen de The Noun Project, amb el crèdit de cada autor recollit al fitxer de llicència de la seva carpeta."
+						]
+					},
+					{
+						"heading": "4. Música",
+						"body": [
+							"Les sintonies són les de les sèries que representen i pertanyen als seus titulars. S'hi inclouen per acompanyar un projecte d'afeccionats sense ànim de lucre i sense cap explotació comercial.",
+							"Val el mateix que a l'apartat 1: si en tens els drets i no vols que hi siguin, escriu-nos i les traiem."
+						]
+					},
+					{
+						"heading": "5. Tipografia",
+						"body": [
+							"El joc està compost en Genos, distribuïda per Google Fonts sota la SIL Open Font License 1.1."
+						]
+					},
+					{
+						"heading": "6. Dades geogràfiques",
+						"body": [
+							"Els límits municipals provenen de la capa LAU 2024 d'Eurostat GISCO. © EuroGeographics per als límits administratius.",
+							"L'adscripció de cada municipi a la seva comarca s'ha construït a partir de Wikidata (llicència CC0), d'una capa derivada de GADM per al País Valencià i de la divisió comarcal de les Illes Balears.",
+							"Les imatges de satèl·lit del mapa són d'Esri: Esri, Maxar, Earthstar Geographics i la comunitat d'usuaris de SIG."
+						]
+					},
+					{
+						"heading": "7. Programari lliure",
+						"body": [
+							"El joc està construït amb SvelteKit, PixiJS, Leaflet, Tailwind CSS i DaisyUI, entre altres projectes de programari lliure, cadascun amb la seva pròpia llicència.",
+							"Gràcies a tothom qui els manté."
+						]
+					}
+				]
+			}
+		}
+	},
+	"errors": {
+		"generic": "S'ha produït un error",
+		"notFound": "No s'ha trobat",
+		"unauthorized": "No autoritzat",
+		"forbidden": "Prohibit",
+		"serverError": "Error del servidor"
+	}
+}

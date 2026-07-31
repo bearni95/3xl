@@ -2,9 +2,40 @@ import { writable, type Readable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { profileAdapter } from '$adapters/classes/profile.adapter';
 import { AuthStatus, type OAuthProvider, type Profile } from '$types/profile.type';
+import type { SpawnColor } from '$types/character-spawn.type';
 import type { CombatReport, CombatReward } from '$types/combat.type';
 import { MIN_LEVEL } from '$utils/progression/level';
 import { getSupabaseClient, isSupabaseConfigured } from '$services/supabase.client';
+
+/** Why `set_player_username` turned a name down, in terms a screen can word. */
+export type UsernameRejection = 'taken' | 'invalid';
+
+/**
+ * A username the server refused. Carries the reason rather than the server's
+ * sentence so the modal can say it in the player's own language.
+ */
+export class UsernameRejected extends Error {
+	constructor(
+		readonly reason: UsernameRejection,
+		message: string
+	) {
+		super(message);
+		this.name = 'UsernameRejected';
+	}
+}
+
+/**
+ * Read a Postgres error from `set_player_username` as a rejection reason. The RPC
+ * raises with the SQLSTATE that says which: `23505` (unique_violation) for a name
+ * someone else holds, `22023` (invalid_parameter_value) for one that breaks the
+ * length or character rules. Anything else is a real failure and passes through.
+ */
+function usernameError(error: { code?: string; message?: string }): Error {
+	const message = error.message ?? 'Failed to set username';
+	if (error.code === '23505') return new UsernameRejected('taken', message);
+	if (error.code === '22023') return new UsernameRejected('invalid', message);
+	return new Error(message);
+}
 
 /**
  * Client-side authentication state for the SPA, backed by Supabase magic-link
@@ -14,6 +45,7 @@ import { getSupabaseClient, isSupabaseConfigured } from '$services/supabase.clie
 class AuthService {
 	private statusStore = writable<AuthStatus>(AuthStatus.Loading);
 	private profileStore = writable<Profile | null>(null);
+	private loadedStore = writable(false);
 	private initialised = false;
 
 	/** Current lifecycle state (loading / signed-out / signed-in). */
@@ -24,6 +56,17 @@ class AuthService {
 	/** The signed-in account, or `null` when signed out. */
 	get profile(): Readable<Profile | null> {
 		return this.profileStore;
+	}
+
+	/**
+	 * Whether the `player_profiles` row behind the current session has been fetched
+	 * — the username, the experience and the avatar all come from it, so until this
+	 * is true the profile on screen reads as nameless at exp 0 simply because
+	 * nothing has arrived yet. Anything that acts on the *absence* of a username
+	 * (the first-sign-in prompt) has to wait for it, or it fires at every visitor.
+	 */
+	get loaded(): Readable<boolean> {
+		return this.loadedStore;
 	}
 
 	/** Whether Supabase credentials are present in the environment. */
@@ -54,25 +97,31 @@ class AuthService {
 	/** Push a Supabase user (or its absence) into the stores. */
 	private apply(user: Parameters<typeof profileAdapter.fromSupabaseUser>[0] | null): void {
 		if (user) {
+			this.loadedStore.set(false);
 			this.profileStore.set(profileAdapter.fromSupabaseUser(user));
 			this.statusStore.set(AuthStatus.SignedIn);
-			// Experience and the chosen avatar live in a separate table; fetch them and
-			// fold them in. Fire and forget — the profile renders immediately at exp 0
-			// on the letter avatar, and updates on load.
+			// The username, the experience and the chosen avatar all live in a separate
+			// table; fetch them and fold them in. Fire and forget — the profile renders
+			// immediately, nameless and at exp 0 on the letter avatar, and updates on load.
 			void this.loadPlayerProfile();
 		} else {
 			this.profileStore.set(null);
 			this.statusStore.set(AuthStatus.SignedOut);
+			this.loadedStore.set(false);
 		}
 	}
 
 	/**
-	 * Load the signed-in player's `player_profiles` row from Supabase — their
-	 * experience total and their chosen avatar character — and merge it into the
-	 * profile store (recomputing the level). A player with no row yet reads as 0
-	 * exp and no avatar; the row is created lazily on their first exp gain or
-	 * avatar pick. No-ops when signed out or Supabase is unconfigured; failures are
-	 * swallowed so a missing table never breaks sign-in.
+	 * Load the signed-in player's `player_profiles` row from Supabase — the username
+	 * they chose, their experience total and their avatar character — and merge it
+	 * into the profile store (recomputing the level). A player with no row yet reads
+	 * as nameless at 0 exp with no avatar; the row is created lazily the first time
+	 * they name themselves, gain experience or pick a portrait. No-ops when signed
+	 * out or Supabase is unconfigured; failures are swallowed so a missing table
+	 * never breaks sign-in.
+	 *
+	 * This is the one place a username is read, and the column is the one place it is
+	 * stored — a name on screen is therefore always a name this player typed.
 	 */
 	private async loadPlayerProfile(): Promise<void> {
 		if (!isSupabaseConfigured()) return;
@@ -80,13 +129,21 @@ class AuthService {
 			const supabase = getSupabaseClient();
 			const { data, error } = await supabase
 				.from('player_profiles')
-				.select('exp, avatar_character_id')
+				.select('username, exp, avatar_character_id, avatar_color')
 				.maybeSingle();
 			if (error) throw error;
+			this.mergeUsername((data?.username as string | null) ?? null);
 			this.mergeExp(Number(data?.exp ?? 0));
-			this.mergeAvatar((data?.avatar_character_id as string | null) ?? null);
+			this.mergeAvatar(
+				(data?.avatar_character_id as string | null) ?? null,
+				(data?.avatar_color as SpawnColor | null) ?? null
+			);
 		} catch (error) {
 			console.warn('Failed to load player profile', error);
+		} finally {
+			// Loaded either way: a failed read is as settled as an empty one, and the
+			// prompt that waits on this must not hang on a missing table.
+			this.loadedStore.set(true);
 		}
 	}
 
@@ -101,6 +158,13 @@ class AuthService {
 		await this.loadPlayerProfile();
 	}
 
+	/** Overlay the stored username onto the current profile. */
+	private mergeUsername(username: string | null): void {
+		this.profileStore.update((profile) =>
+			profile ? profileAdapter.withUsername(profile, username) : profile
+		);
+	}
+
 	/** Overlay an experience total onto the current profile, recomputing its level. */
 	private mergeExp(exp: number): void {
 		this.profileStore.update((profile) =>
@@ -108,29 +172,35 @@ class AuthService {
 		);
 	}
 
-	/** Overlay the chosen avatar character onto the current profile. */
-	private mergeAvatar(characterId: string | null): void {
+	/** Overlay the worn avatar — both halves of it — onto the current profile. */
+	private mergeAvatar(characterId: string | null, color: SpawnColor | null): void {
 		this.profileStore.update((profile) =>
-			profile ? profileAdapter.withAvatar(profile, characterId) : profile
+			profile ? profileAdapter.withAvatar(profile, characterId, color) : profile
 		);
 	}
 
 	/**
-	 * Wear `characterId`'s portrait as the profile picture (null clears it back to
-	 * the initial-letter avatar). Goes through the `set_player_avatar` RPC rather
-	 * than a table write: `player_profiles` takes no client writes at all, so the
-	 * same row's experience stays out of the browser's reach. The RPC also rejects
-	 * ids that name no character template. Throws on failure so the caller can
-	 * report it; the store is only updated once Supabase has stored the choice.
+	 * Wear the avatar showing `characterId` in `color` (nulls clear it back to the
+	 * initial-letter avatar). Both halves travel together because an avatar is the
+	 * pair, not the character.
+	 *
+	 * Goes through the `set_player_avatar` RPC rather than a table write:
+	 * `player_profiles` takes no client writes at all, so the same row's experience
+	 * stays out of the browser's reach. The RPC is also what decides whether the
+	 * player may wear it — the pair has to be one they actually hold in
+	 * `player_avatars`, which only a booster box can put there. Throws on failure so
+	 * the caller can report it; the store is only updated once Supabase has stored
+	 * the choice.
 	 */
-	async setAvatar(characterId: string | null): Promise<void> {
+	async setAvatar(characterId: string | null, color: SpawnColor | null): Promise<void> {
 		if (!isSupabaseConfigured()) return;
 		const supabase = getSupabaseClient();
 		const { error } = await supabase.rpc('set_player_avatar', {
-			p_character_id: characterId
+			p_character_id: characterId,
+			p_color: color
 		});
 		if (error) throw error;
-		this.mergeAvatar(characterId);
+		this.mergeAvatar(characterId, color);
 	}
 
 	/**
@@ -217,17 +287,78 @@ class AuthService {
 	}
 
 	/**
-	 * Set (or change) the signed-in account's username. Persists it to Supabase
-	 * user metadata and immediately mirrors the updated user into the stores.
+	 * Set, change, or clear the signed-in account's username — the only way one is
+	 * ever written.
+	 *
+	 * It goes through the `set_player_username` RPC rather than a table write or a
+	 * `updateUser` call on the auth user's metadata. Two reasons, both structural.
+	 * A username has to be **unique**, and uniqueness cannot be established by a
+	 * client that (under RLS) can only see its own row. And auth metadata is exactly
+	 * where a name nobody typed would come from: Google and Discord write their
+	 * `full_name` there on every sign-in, and any holder of the anon key can write
+	 * it themselves. The RPC validates the name, enforces the uniqueness, and stores
+	 * it in the single column that the app reads back.
+	 *
+	 * Blank (or whitespace) clears it back to nameless, which is a perfectly good
+	 * state for an account to sit in. Throws {@link UsernameRejected} when the name
+	 * is taken or malformed, so the caller can say which.
 	 */
 	async updateUsername(username: string): Promise<void> {
 		const trimmed = username.trim();
 		const supabase = getSupabaseClient();
-		const { data, error } = await supabase.auth.updateUser({
-			data: { full_name: trimmed, name: trimmed }
+		const { data, error } = await supabase.rpc('set_player_username', {
+			p_username: trimmed || null
 		});
+		if (error) throw usernameError(error);
+		this.mergeUsername((data as string | null) ?? null);
+	}
+
+	/**
+	 * Everything the game holds about the signed-in player, as one JSON document —
+	 * the right of access and the right to portability answered together (GDPR
+	 * arts. 15 and 20, and the "right to know" every US state privacy law has a
+	 * version of).
+	 *
+	 * It goes through the `export_player_data` RPC rather than a dozen selects from
+	 * here, and not for convenience: several of those tables are unreadable under RLS
+	 * or only reachable through a view, and the account's own identity — the address
+	 * it signs in with, when it was created — lives in `auth.users`, which no client
+	 * role may read at all. A right of access has to answer for the *whole* of what
+	 * is held, and what is held is a fact about the schema.
+	 *
+	 * Returns `null` when signed out or unconfigured; throws when the read fails, so
+	 * the sheet can say the download did not happen rather than hand over a file that
+	 * is missing half the answer.
+	 */
+	async exportAccountData(): Promise<unknown | null> {
+		if (!isSupabaseConfigured()) return null;
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase.rpc('export_player_data');
 		if (error) throw error;
-		this.apply(data.user ?? null);
+		return data ?? null;
+	}
+
+	/**
+	 * Erase the account and everything hanging off it — GDPR art. 17, and the
+	 * deletion right of the US state laws.
+	 *
+	 * The `delete_player_account` RPC takes no argument: it deletes the caller and
+	 * only the caller, and the cascade from `auth.users` takes the profile, the
+	 * cards, the avatars, the badges, the fights, the boosters, the open battle, the
+	 * towns held and the acceptance ledger with it. It is a real delete rather than a
+	 * flag — nothing here is under a retention duty, because nothing is ever paid for
+	 * — so there is nothing left to restore afterwards and nothing to warn about
+	 * except that.
+	 *
+	 * The session is ended locally straight after: the account it authenticated is
+	 * gone, and a browser still holding its token would spend the next minute getting
+	 * errors from every read on the page.
+	 */
+	async deleteAccount(): Promise<void> {
+		const supabase = getSupabaseClient();
+		const { error } = await supabase.rpc('delete_player_account');
+		if (error) throw error;
+		await supabase.auth.signOut();
 	}
 
 	/** End the current session. */

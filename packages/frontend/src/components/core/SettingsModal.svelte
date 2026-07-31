@@ -7,6 +7,7 @@
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { AuthStatus } from '$types/profile.type';
 	import ProfileCard from '$components/core/ProfileCard.svelte';
+	import AccountDataRights from '$components/core/AccountDataRights.svelte';
 
 	// The account's settings: the picture it wears, the name it goes by, the details of
 	// how it signs in, and the way out of it. What the account has *earned* is not here —
@@ -156,6 +157,17 @@
 					{/if}
 				</form>
 			</ProfileCard>
+
+			<!-- The data rights, under the account they are about: the copy of everything
+				held, the record of what has been accepted, and the way out for good.
+				Only when the player opened this sheet themselves. It comes up by itself
+				for an account with no name yet, and that opening is one question — what
+				do you want to be called — with the caret already in the field; putting
+				"delete your account" under somebody's first minute answers a question
+				nobody asked. -->
+			{#if $settingsModalOpen}
+				<AccountDataRights classes="mt-4" />
+			{/if}
 
 			{#if errorMessage}
 				<div class="alert alert-error mt-4">

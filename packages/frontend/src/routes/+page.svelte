@@ -1,6 +1,8 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
+	import type { Readable } from 'svelte/store';
+	import { _ } from 'svelte-i18n';
 	import { blur, fly } from 'svelte/transition';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -27,7 +29,9 @@
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
 	import { boosterModalOpen } from '$services/boosterModal';
-	import { fullScreenModalOpen, mapTilted } from '$services/fullScreenModal';
+	import { openLegalDocument } from '$services/legalModal';
+	import { LegalDocumentId } from '$types/legal.type';
+	import { fullScreenModalOpen } from '$services/fullScreenModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { musicService } from '$services/music.service';
@@ -97,6 +101,9 @@
 	} from '$types/show.type';
 	import { festesService, catalanTodayIso } from '$services/festes.service';
 	import type { FestaLocationRow } from '$types/festivity.type';
+
+	/** svelte-i18n's message formatter, read off the store whose value it is. */
+	type Translate = typeof _ extends Readable<infer T> ? T : never;
 
 	// The municipality polygons, feeding the region tree and the map framing.
 	let municipalities: GeoJSON.FeatureCollection | null = null;
@@ -371,7 +378,11 @@
 	// open over the daily cap, "Booster (2/3)" — which is where that counter lives, the account
 	// card having no row for it. Plain "Booster" until there is an allowance to name: signed
 	// out, or the status not yet in.
-	$: boosterLabel = boosters ? `Booster (${boosters.remaining}/${boosters.level})` : 'Booster';
+	$: boosterLabel = boosters
+		? $_('booster.withAllowance', {
+				values: { remaining: boosters.remaining, total: boosters.level }
+			})
+		: $_('booster.title');
 
 	// How many municipalities each show flies, and its share of them all. Tallied
 	// over `showsById`, which is already the seeded assignment with every held
@@ -1433,16 +1444,22 @@
 	const todayIso = catalanTodayIso();
 	const packWindow = boosterWindow(todayIso);
 
-	// The window written out in Catalan, both ends of it. Formatted at midday UTC so
-	// neither date can slip onto its neighbour, and with a CSS-capitalised first letter
-	// — Catalan month names come out lowercase.
+	// The window written out, both ends of it. The dates stay Catalan whatever the
+	// sentence around them is set in — a festa major is dated by the Catalan calendar
+	// the map is about, not by the reader's locale — and are formatted at midday UTC so
+	// neither can slip onto its neighbour, with a CSS-capitalised first letter since
+	// Catalan month names come out lowercase.
 	const packDateFormat = new Intl.DateTimeFormat('ca-ES', {
 		day: 'numeric',
 		month: 'long',
 		timeZone: 'UTC'
 	});
 	const formatPackDate = (iso: string): string => packDateFormat.format(new Date(`${iso}T12:00:00Z`));
-	const packWindowLabel = `Festes majors del ${formatPackDate(packWindow.from)} al ${formatPackDate(packWindow.to)}`;
+	// Re-derived rather than fixed at load, so the sentence follows the language while the
+	// two dates it is built from never move.
+	$: packWindowLabel = $_('booster.window', {
+		values: { from: formatPackDate(packWindow.from), to: formatPackDate(packWindow.to) }
+	});
 
 	// What the hidden claim panel reports back about opening a pack: the player's
 	// remaining daily allowance, and why the last roll was refused (empty when it
@@ -1627,6 +1644,14 @@
 	// Null hides the bar entirely: no town selected, or one this player already holds —
 	// there is nothing to take from yourself, which is exactly when the sidebar says
 	// "Yours" instead.
+	//
+	// The wording is chosen here because the choice of control is: which of the three
+	// things a pin can say is the same decision as which state the town is in, and that
+	// is this page's to make. So the formatter is threaded in as an argument rather than
+	// read off the closure — the statement below has to name it to re-derive when the
+	// language changes, and a call this function made on its own would not be seen.
+	// (svelte-i18n exports no name for the formatter's type, so it is read off the store
+	// it is the value of, which cannot drift from it.)
 	function buildTownChallenge(
 		town: string | null,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
@@ -1635,7 +1660,8 @@
 		player: Profile | null,
 		battle: OpenBattle | null,
 		starting: boolean,
-		canField: boolean
+		canField: boolean,
+		t: Translate
 	): MapChallenge | null {
 		if (!town) return null;
 		const holder = occupied.get(town) ?? null;
@@ -1651,8 +1677,8 @@
 			return {
 				siege,
 				button: {
-					label: 'Resume battle',
-					title: 'You have a battle in progress — go back to it',
+					label: t('map.challenge.resume'),
+					title: t('map.challenge.resumeTitle'),
 					disabled: false,
 					onClick: resumeBattle
 				},
@@ -1677,10 +1703,10 @@
 		return {
 			siege,
 			button: {
-				label: 'Challenge',
+				label: t('map.challenge.start'),
 				title: canField
-					? 'Fight this town for its team'
-					: `Your active team needs ${TEAM_SIZE} cards you have claimed`,
+					? t('map.challenge.startTitle')
+					: t('map.challenge.noTeam', { values: { size: TEAM_SIZE } }),
 				disabled: starting || !canField,
 				onClick: () => void challenge()
 			},
@@ -1696,7 +1722,8 @@
 		$profile,
 		$openBattle,
 		challengeStarting,
-		canFieldTeam
+		canFieldTeam,
+		$_
 	);
 
 	// The same counter for every region there is, not just the picked town — because every
@@ -1754,11 +1781,18 @@
 	// three they are and what may be done about them are the page's questions and not the
 	// pin's.
 	//
-	// The siege bar itself is on EVERY pin, picked or not: how far a place has been taken is
-	// something the place says about itself, and reading it on one town at a time made the
-	// standing look like a property of being selected. So the bar comes off `sieges`, which
-	// has a counter for every region (see regionSieges), and the picked town's bar is the
-	// same bar with a control under it.
+	// The siege bar is on every MUNICIPALITY pin, picked or not: how far a place has been
+	// taken is something the place says about itself, and reading it on one town at a time
+	// made the standing look like a property of being selected. So the bar comes off
+	// `sieges`, which has a counter for every region (see regionSieges), and the picked
+	// town's bar is the same bar with a control under it.
+	//
+	// And on a municipality alone, because a town is the only thing anybody takes. A comarca
+	// or a province is not held by a player — what it has is towns under it, some of them
+	// taken and some not — so a bar across a comarca's pin was a progress towards nothing,
+	// read at a tier where nothing can be fought for. The coarser tiers say what they are and
+	// what they fly, and the standing appears when the map has got down to a place that has
+	// one.
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
@@ -1784,11 +1818,14 @@
 				// a municipality id, so the coarser tiers never match.
 				team: node.key === statuedTown ? statues : [],
 				// The picked town's bar, control and all, where the page has built one — what
-				// is being fought is standing right there. Every other pin, and the picked one
+				// is being fought is standing right there. Every other TOWN, and the picked one
 				// on a day there is nothing to be done about it (a town already this player's,
 				// which is when buildTownChallenge hands back nothing), gets the standing by
-				// itself: a bar with no button under it.
-				challenge: (node.key === statuedTown ? challengeBar : null) ?? siegeBar(node, sieges),
+				// itself: a bar with no button under it. A pin above the towns gets neither.
+				challenge:
+					node.type === 'Municipality'
+						? ((node.key === statuedTown ? challengeBar : null) ?? siegeBar(node, sieges))
+						: null,
 				iconSvg: iconMarkup(showIconName(node.show.id)),
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
@@ -1984,13 +2021,10 @@
 	// WorldMap blurs their panes to the same 8px over the same 250ms instead. Keep the three in
 	// step — this is one gesture, not three.
 	//
-	// One sheet asks for more than the blur: the arena leans the map back for as long as a fight
-	// is on (`tiltsMap`, and WorldMap's `tilted`). It is the same 250ms and it starts on the same
-	// event — the sheet's own mount — because a fight is the one full view here that is not a
-	// reading of the map but something happening on it, and the board giving ground while its
-	// chrome goes out of focus has to be the one movement. `fightOpen` is deliberately not what
-	// drives it: that flag goes false the moment the ✕ is pressed, a quarter of a second before
-	// the sheet has finished leaving and before anything else here has moved.
+	// And the blur is the whole of it: no sheet moves the map itself. The arena leaned it back
+	// for the length of a fight, which left the terrain undrawn behind it — a CSS transform on
+	// the Leaflet container costs the map its imagery (see WorldMap's container comment) — so
+	// what a full view moves is what stands on the map, never the map.
 	const CHROME_BLUR = { amount: 8, duration: 250 };
 
 	// How tall the column across the top of the map is right now — the breadcrumb bar, plus the
@@ -2015,12 +2049,8 @@
 <!-- The map, the whole viewport of it. Nothing sizes it any more — raising a view over it
 	or summoning the menu leaves its box alone, so the map is never re-framed by anything but
 	a pan, a zoom or a region being opened. `relative` is what the plates over its corners and
-	the menu's own edge are positioned against.
-	The depth the map is tipped in is this box's (see WorldMap's `tilted`): a perspective is read
-	off the parent of the thing being turned, and it costs nothing while nothing is turning. The
-	clip goes with it — a board leaned back reaches past the bottom of a viewport it exactly
-	filled, and the page is not a thing that scrolls. -->
-<div class="relative flex h-screen min-w-0 flex-col overflow-hidden perspective-[1200px]">
+	the menu's own edge are positioned against. -->
+<div class="relative flex h-screen min-w-0 flex-col">
 	{#if ready}
 		<WorldMap
 			center={[41.8, 1.7]}
@@ -2035,7 +2065,6 @@
 			{zoomStops}
 			markersBlurred={$fullScreenModalOpen}
 			chromeInsets={mapChromeInsets}
-			tilted={$mapTilted}
 			bind:currentZoom
 			bind:activeLevel
 			bind:currentCenter
@@ -2116,7 +2145,7 @@
 								type="button"
 								class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
 								aria-expanded={menuOpen}
-								aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+								aria-label={menuOpen ? $_('menu.close') : $_('menu.open')}
 								on:click={() => (menuOpen = !menuOpen)}
 							>
 								<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
@@ -2277,7 +2306,7 @@
 {#if menuOpen}
 	<aside
 		bind:this={menuEl}
-		aria-label="Menu"
+		aria-label={$_('menu.label')}
 		transition:fly={{ x: '100%', duration: 200, opacity: 1 }}
 		class="fixed inset-y-0 right-0 z-[1000] flex w-80 max-w-[85vw] flex-col gap-4 overflow-y-auto border-l border-base-300 bg-gradient-to-b from-base-100 to-base-100/90 p-4 shadow-2xl"
 	>
@@ -2291,7 +2320,7 @@
 			<button
 				type="button"
 				class="btn btn-circle btn-ghost btn-sm"
-				aria-label="Close menu"
+				aria-label={$_('menu.close')}
 				on:click={() => (menuOpen = false)}
 			>
 				✕
@@ -2321,7 +2350,7 @@
 				class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
 				on:click={() => pickFromMenu(() => leaderboardModalOpen.set(true))}
 			>
-				Leaderboard
+				{$_('leaderboard.title')}
 			</button>
 			<button
 				type="button"
@@ -2338,23 +2367,36 @@
 					class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
 					on:click={() => pickFromMenu(() => rosterModalOpen.set(true))}
 				>
-					Roster
+					{$_('roster.title')}
 				</button>
 				<button
 					type="button"
 					class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
 					on:click={() => pickFromMenu(() => achievementsModalOpen.set(true))}
 				>
-					Achievements
+					{$_('achievements.title')}
 				</button>
 				<button
 					type="button"
 					class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
 					on:click={() => pickFromMenu(() => settingsModalOpen.set(true))}
 				>
-					Settings
+					{$_('settings.title')}
 				</button>
 			{/if}
+			<!-- The documents, at the foot of the block and in it: they raise the same kind of
+				full-view sheet the five above do, so they are the same kind of press. Outside the
+				`{#if}` because they are the one view here that has nothing to do with having an
+				account — a visitor who has not signed in is precisely the reader who needs to
+				know what signing in would mean. It opens on the terms; the sheet's own tabs are
+				how the other three are reached. -->
+			<button
+				type="button"
+				class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
+				on:click={() => pickFromMenu(() => openLegalDocument(LegalDocumentId.Terms))}
+			>
+				{$_('legal.title')}
+			</button>
 		</div>
 
 		<!-- The way in, under the block and not part of it: signed out this is the email link and
@@ -2396,17 +2438,12 @@
 	key and label the fight: which town a battle is over and which generation of its
 	team it is against are the server's record, kept on the battle itself, so the fight
 	that is reported is the fight that was opened.
-	It is also the one sheet the map gives ground for: `tiltsMap` leans the board away as the
-	arena comes up and brings it back level as the arena leaves, over the same quarter second
-	the map's chrome blurs out and back in (see CHROME_BLUR). A fight is not a page laid over
-	the map like the roster or the leaderboard — it is an event on a town the map is still
-	showing — so the map moves for it and for nothing else.
-	Which is also why this sheet paints no page (`transparent`, as the booster window does): a
-	graded base-100 over the whole viewport is nine tenths opaque, so the map tipping back behind
-	it was a movement nobody could see. The fight is staged on the map instead — the terrain
-	tipped away and its pins blurred off it, the board standing on top. Nothing here needs the
-	page: the canvas is opaque and carries its own border, and every word the arena says is on a
-	card with its own base-100 (the result panel, the sign-in and no-team cards).
+	This sheet paints no page (`transparent`, as the booster window does): a fight is not a page
+	laid over the map like the roster or the leaderboard — it is an event on a town the map is
+	still showing — so it is staged on the map, the terrain live under it with its pins blurred
+	off it and the board standing on top. Nothing here needs the page: the canvas is opaque and
+	carries its own border, and every word the arena says is on a card with its own base-100
+	(the result panel, the sign-in and no-team cards).
 	The sheet's own way out is held shut while a finished fight is on its way to the server:
 	reporting is what ends the battle, so a player let out before it lands would walk away
 	from a fight the server still has open. That is the one thing the sheet cannot know for
@@ -2427,7 +2464,6 @@
 		title="Combat"
 		bare
 		transparent
-		tiltsMap
 		closeLabel="Close combat"
 		closeDisabled={fightReporting}
 		on:close={onFightClosed}

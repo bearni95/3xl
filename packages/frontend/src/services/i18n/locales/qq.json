@@ -26,6 +26,7 @@
 	"profile": {
 		"title": "QQQQQ",
 		"continueWith": "QQQQQ",
+		"emailLabel": "QQQQQ",
 		"memberSince": "QQQQQ",
 		"signedInWith": "QQQQQ",
 		"daysElapsed": "QQQQQ",
@@ -36,19 +37,491 @@
 		"signOut": "QQQQQ",
 		"notConfigured": "QQQQQ",
 		"username": {
-			"title": "QQQQQ",
-			"prompt": "QQQQQ",
+			"none": "QQQQQ",
+			"taken": "QQQQQ",
+			"invalid": "QQQQQ",
 			"label": "QQQQQ",
 			"placeholder": "QQQQQ",
 			"save": "QQQQQ",
-			"later": "QQQQQ",
 			"set": "QQQQQ",
 			"edit": "QQQQQ"
 		},
 		"avatar": {
 			"title": "QQQQQ",
-			"locked": "QQQQQ",
+			"none": "QQQQQ",
+			"noShow": "QQQQQ",
 			"edit": "QQQQQ"
+		}
+	},
+	"map": {
+		"search": {
+			"label": "QQQQQ",
+			"placeholder": "QQQQQ",
+			"empty": "QQQQQ"
+		},
+		"challenge": {
+			"siege": "QQQQQ",
+			"cooldown": "QQQQQ",
+			"start": "QQQQQ",
+			"startTitle": "QQQQQ",
+			"noTeam": "QQQQQ",
+			"resume": "QQQQQ",
+			"resumeTitle": "QQQQQ"
+		}
+	},
+	"region": {
+		"type": {
+			"territory": "QQQQQ",
+			"province": "QQQQQ",
+			"comarca": "QQQQQ",
+			"municipality": "QQQQQ"
+		},
+		"table": {
+			"name": "QQQQQ",
+			"type": "QQQQQ",
+			"show": "QQQQQ",
+			"siege": "QQQQQ",
+			"empty": "QQQQQ"
+		}
+	},
+	"menu": {
+		"label": "QQQQQ",
+		"open": "QQQQQ",
+		"close": "QQQQQ"
+	},
+	"settings": {
+		"title": "QQQQQ"
+	},
+	"roster": {
+		"title": "QQQQQ",
+		"close": "QQQQQ"
+	},
+	"achievements": {
+		"title": "QQQQQ",
+		"close": "QQQQQ"
+	},
+	"leaderboard": {
+		"title": "QQQQQ",
+		"close": "QQQQQ"
+	},
+	"booster": {
+		"title": "QQQQQ",
+		"withAllowance": "QQQQQ",
+		"close": "QQQQQ",
+		"window": "QQQQQ"
+	},
+	"combat": {
+		"notConfigured": "QQQQQ",
+		"signInTitle": "QQQQQ",
+		"signInBody": "QQQQQ",
+		"signIn": "QQQQQ",
+		"noTeamTitle": "QQQQQ",
+		"noTeamBody": "QQQQQ",
+		"openRoster": "QQQQQ",
+		"rivalWins": "QQQQQ",
+		"yourWins": "QQQQQ",
+		"turn": "QQQQQ",
+		"won": "QQQQQ",
+		"lost": "QQQQQ",
+		"draw": "QQQQQ",
+		"encountersWon": "QQQQQ",
+		"survivors": "QQQQQ",
+		"expGained": "QQQQQ",
+		"concede": "QQQQQ",
+		"reporting": "QQQQQ",
+		"reportAgain": "QQQQQ",
+		"reportRefused": "QQQQQ",
+		"saving": "QQQQQ",
+		"saveAgain": "QQQQQ",
+		"saveRefused": "QQQQQ"
+	},
+	"legal": {
+		"title": "QQQQQ",
+		"close": "QQQQQ",
+		"updated": "QQQQQ",
+		"publisher": {
+			"heading": "QQQQQ",
+			"nameLabel": "QQQQQ",
+			"name": "QQQQQ",
+			"addressLabel": "QQQQQ",
+			"address": "QQQQQ",
+			"taxIdLabel": "QQQQQ",
+			"taxId": "QQQQQ",
+			"emailLabel": "QQQQQ",
+			"email": "QQQQQ",
+			"note": "QQQQQ"
+		},
+		"consent": {
+			"heading": "QQQQQ",
+			"intro": "QQQQQ",
+			"age": "QQQQQ",
+			"ageHint": "QQQQQ",
+			"accept": "QQQQQ",
+			"readTerms": "QQQQQ",
+			"readPrivacy": "QQQQQ",
+			"required": "QQQQQ"
+		},
+		"update": {
+			"title": "QQQQQ",
+			"intro": "QQQQQ",
+			"changed": "QQQQQ",
+			"accept": "QQQQQ",
+			"saving": "QQQQQ",
+			"failed": "QQQQQ",
+			"signOut": "QQQQQ"
+		},
+		"account": {
+			"heading": "QQQQQ",
+			"intro": "QQQQQ",
+			"export": "QQQQQ",
+			"exportHint": "QQQQQ",
+			"exporting": "QQQQQ",
+			"exportFailed": "QQQQQ",
+			"delete": "QQQQQ",
+			"deleteHint": "QQQQQ",
+			"deleteConfirmTitle": "QQQQQ",
+			"deleteConfirmBody": "QQQQQ",
+			"deleteConfirmWord": "QQQQQ",
+			"deleteConfirm": "QQQQQ",
+			"deleting": "QQQQQ",
+			"deleteFailed": "QQQQQ",
+			"acceptedHeading": "QQQQQ",
+			"acceptedRow": "QQQQQ",
+			"acceptedEmpty": "QQQQQ"
+		},
+		"documents": {
+			"terms": {
+				"title": "QQQQQ",
+				"summary": "QQQQQ",
+				"sections": [
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					}
+				]
+			},
+			"privacy": {
+				"title": "QQQQQ",
+				"summary": "QQQQQ",
+				"sections": [
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ"
+						]
+					}
+				]
+			},
+			"cookies": {
+				"title": "QQQQQ",
+				"summary": "QQQQQ",
+				"sections": [
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					}
+				]
+			},
+			"attributions": {
+				"title": "QQQQQ",
+				"summary": "QQQQQ",
+				"sections": [
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ",
+							"QQQQQ"
+						]
+					},
+					{
+						"heading": "QQQQQ",
+						"body": [
+							"QQQQQ",
+							"QQQQQ"
+						]
+					}
+				]
+			}
 		}
 	},
 	"errors": {

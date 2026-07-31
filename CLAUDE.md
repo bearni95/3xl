@@ -454,6 +454,63 @@ identities that share a *verified* email onto one user, so a player who signs in
 different route keeps the same account. Google and Discord supply a name in
 `user_metadata`, so those accounts skip the username prompt that email sign-ups get.
 
+### The legal documents, the gate, and the data rights
+
+The game is played from the Països Catalans, the rest of the EU and the US, so it stands
+under the GDPR, the ePrivacy rules, the Spanish LSSI, COPPA and the US state privacy laws
+at once. Four documents answer all of them, and they are **content in the one catalogue**
+like every other word the player reads: `legal.documents.<id>` in `ca.json` — the terms,
+the privacy notice, the storage note and the credits. They are read through svelte-i18n's
+`json` store rather than `_`, because a document is a *shape* (headings with paragraphs
+under them) and because `_` is ICU: a stray brace in a clause would change what a player
+was shown, and legal text is the one text that must arrive exactly as written.
+
+What is *not* in the catalogue is the part code has to agree on: the ids, and the version
+each document stands at (`@3xl/shared/types/legal.type.ts`). **Bump `LEGAL_VERSIONS` when
+a document changes in substance** — a new purpose for data, a new restriction, a new
+recipient; not a typo. Bumping it puts every existing player back through the gate on
+their next visit, which is the whole point of versioning an acceptance.
+
+- **The gate** (`LegalConsent.svelte`, above the Google button in `AuthMenu`) is two
+  unticked boxes: an age attestation and acceptance of the terms with the privacy notice
+  named alongside. Sixteen, because it is the strictest floor GDPR art. 8 lets a member
+  state set and it clears COPPA's thirteen — one gate rather than one per country. The
+  privacy notice is *notice*, not the lawful basis: the basis for running the game on
+  someone's data is the contract (art. 6(1)(b)), which is why nothing here is a consent
+  that could later be withdrawn.
+- **An acceptance is made before there is an account to hang it on** — sign-in leaves for
+  Google's consent screen — so it is held in localStorage (`legal-consent-pending`) across
+  the round trip and flushed by `legal.service.ts` the instant a session lands.
+- **The record is in Postgres**, never in the browser: `legal_acceptances` keyed
+  `(user_id, document, version)`, written only by the security-definer
+  `record_legal_acceptance` RPC. Every version ever accepted is kept, because the question
+  that gets asked is what they agreed to *at the time*. Nothing else about the moment is
+  stored — no IP, no user agent — since what has to be provable is which text was on
+  screen and when.
+- **`LegalGate.svelte`** (mounted at the layout root) compares the ledger against
+  `LEGAL_VERSIONS` at every visit and stops a player whose acceptance is behind. Accept or
+  sign out; there is no "later", or the version would mean nothing.
+- **The data rights are buttons, not letters** (`AccountDataRights.svelte`, on the settings
+  sheet): `export_player_data()` returns everything held about the caller as one JSON
+  document (arts. 15 and 20, and the US "right to know"), and `delete_player_account()`
+  erases the account, the whole cascade under it and the ledger with it (art. 17). Both
+  are RPCs because `auth.users` and several tables are unreachable from a client, and a
+  right of access has to answer for the whole of what is held.
+- The schema is `packages/backend/supabase/legal_acceptances.sql`, mirrored into
+  `ensureTables()` like the rest. A parity test holds its `check (document in (…))`
+  constraint to `LEGAL_DOCUMENTS`, since a document the RPC refuses is a gate nobody gets
+  through.
+
+**Before the game is published**, fill in `legal.publisher` in `ca.json` — the name,
+postal address and tax id of whoever publishes it. They are shipped as `PENDENT —`
+placeholders, and both the LSSI (art. 10) and the GDPR (arts. 13–14) require the real
+thing.
+
+There is deliberately **no cookie banner**. Nothing is stored for measurement or
+advertising; the session, the radio preference and the held acceptance are all either
+strictly necessary or user-requested, which is the ePrivacy art. 5(3) / LSSI art. 22.2
+exemption. Adding anything analytical changes that answer.
+
 ---
 
 ## Git & commits
@@ -953,17 +1010,28 @@ Use `svelte-i18n` for translations:
 <h1>{$_('common.welcome')}</h1><p>{$_('errors.notFound')}</p>
 ```
 
-Each app has its own translations under `src/services/i18n/locales/` (`en.json`, plus a
-generated `qq.json` pseudo-locale, every string replaced by `QQQQQ`).
+Each app keeps its own translations under `src/services/i18n/locales/`.
 
-`pnpm dev:qq` is `pnpm dev` — all three servers — with the frontend read in that
-pseudo-locale: it regenerates the frontend's `qq.json` from `en.json` first, then starts
-the same parallel dev run with `PUBLIC_I18N_LOCALE=qq` in the environment.
-`services/i18n/index.ts` reads that var and, when it names a locale it has, registers
-**only** that dictionary and uses it as the fallback too, exporting the choice as
-`pinnedLocale` so `+layout.ts` knows not to adopt the browser's language over it. Which is
-what makes the run a test rather than a preview: any text still on the screen is text that
-never went through i18n, since there is no English left for it to fall back to.
+**The frontend speaks one language: Catalan.** `ca.json` is its catalogue rather than a
+translation of one — the game is set in the Països Catalans and there is nothing for a
+second language to be a fallback *from*. So `services/i18n/index.ts` registers exactly one
+dictionary, uses it as its own `fallbackLocale`, and **never asks the browser**: a reader's
+`Accept-Language` says nothing about this game, and adopting it would have meant every
+string the catalogue is missing quietly resolving somewhere else. `+layout.ts` only waits
+for that dictionary to load; it chooses nothing. (`en.json` is still on disk as the
+reference the Catalan was written from, but nothing registers or reads it.)
+
+The one thing that moves the locale is `PUBLIC_I18N_LOCALE`, and the one thing that sets it
+is **`pnpm dev:qq`** — `pnpm dev`, all three servers, with the frontend read in the
+pseudo-locale `qq.json` (every string replaced by `QQQQQ`, regenerated from `ca.json` by
+`scripts/generate-qq-locale.js` before the servers start; only its key set matters, which
+is why it must be generated from the catalogue the app actually registers). Under the pin
+that dictionary is registered *alone* and is its own fallback too, which is what makes the
+run a test rather than a preview: any text still legible on screen is text that never went
+through i18n, because there is no other language left for it to fall back to.
+
+This is the frontend's arrangement only — the admin still registers `en` and reads the
+browser, as an authoring tool for one author reasonably does.
 
 ---
 

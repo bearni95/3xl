@@ -46,10 +46,14 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // per-player experience total behind the profile card's level) is provisioned
 // here too, along with `combat_results` and the `award_combat_exp` RPC — the
 // single path that mutates it, since experience is earned by winning fights and
-// nothing else (the old client-driven `add_player_exp` is dropped). Finally,
+// nothing else (the old client-driven `add_player_exp` is dropped).
+// `player_avatars` (the portraits a player owns — a character *and* a colour per
+// row, dealt one per booster pack and no other way) sits beside it, readable only
+// by its owner and writable by nobody, with `player_profiles.avatar_character_id`
+// / `avatar_color` naming which of them is worn. Finally,
 // `booster_claims` (the per-pack rate-limit ledger) plus the `claim_booster`
-// security-definer RPC — the only path that inserts spawns now — enforce the
-// daily booster limit (= player level, capped at 20, resetting at midnight
+// security-definer RPC — the only path that inserts spawns or grants an avatar now
+// — enforce the daily booster limit (= player level, capped at 20, resetting at midnight
 // Europe/Madrid) and the "only towns de festa inside the booster window" rule
 // server-side; the client insert policy on `character_spawns` is dropped so the
 // rules cannot be bypassed. It reads `festivities` (provisioned lazily by
@@ -57,12 +61,12 @@ const SHOWS_PATH = fileURLToPath(new URL('../../../data/public/shows.json', impo
 // each town on the map, and how far each challenger has got towards taking it)
 // round it off — world-readable but written only by award_combat_exp, which
 // settles territory in the same transaction as the experience award. Alongside
-// them, `municipality_challenges` plus the `start_battle` RPC hold the other
-// daily rule: a player may challenge each town once per day, resetting at midnight
-// Europe/Madrid like the booster allowance — claimed when the arena opens, settled
-// by award_combat_exp, which refuses a second settled report against the same town
-// on the same day and hands the day back to everyone whose fight was still open
-// when the town changed hands. All DDL is idempotent.
+// them, `municipality_challenges` plus the `start_battle` RPC hold the pacing rule:
+// a town a player has just fought is shut to them for an hour (challenge_cooldown()),
+// timed from the report rather than from when the arena opened — claimed when the
+// fight starts, given its deadline by award_combat_exp, which excuses that hour for
+// everyone whose fight was still open when the town changed hands. All DDL is
+// idempotent.
 let ensured: Promise<void> | null = null;
 /**
  * Provision the whole authoring/gameplay schema (tables, RLS, RPCs) idempotently,
@@ -282,16 +286,51 @@ export function ensureTables(): Promise<void> {
 						created_at timestamptz not null default now(),
 						updated_at timestamptz not null default now()
 					);
-				-- The character whose portrait the player uses as their profile picture,
-				-- chosen from the avatar picker on the map panel's account card. Purely
-				-- cosmetic, and the only part of this row a player sets themselves —
-				-- through set_player_avatar below, since the table takes no client
-				-- writes at all. Null (the default) leaves them on the initial-letter
-				-- avatar. Which portrait each character shows is not stored here: it is
-				-- the definition's own face, authored in the admin /characters/faces
-				-- screen, so re-picking it there moves every player's avatar with it.
+				-- The avatar the player wears, as the two halves that name one: the
+				-- character whose portrait it is, and the colour it is printed in.
+				-- Purely cosmetic, and the only part of this row a player sets
+				-- themselves — through set_player_avatar below, since the table takes no
+				-- client writes at all. Both null (the default) leaves them on the
+				-- initial-letter avatar; the pair is only ever set or cleared together,
+				-- because an avatar IS the pair (see player_avatars just below). Which
+				-- portrait each character shows is not stored here: it is the
+				-- definition's own face, authored in the admin /characters/faces screen,
+				-- so re-cropping it there moves every player's avatar with it.
 				alter table player_profiles add column if not exists avatar_character_id text
 					references character_templates (id) on delete set null;
+				alter table player_profiles add column if not exists avatar_color text;
+				-- Avatars worn under the retired rule (own the character in all six card
+				-- colours) carry no colour, and a portrait without one is no longer an
+				-- avatar. There is nothing to infer — the old choice never named a colour
+				-- — so these go back to the letter avatar and the boxes deal them a real
+				-- one.
+				update player_profiles set avatar_character_id = null
+					where avatar_character_id is not null and avatar_color is null;
+				-- The avatars a player owns: one row per portrait held, and what a
+				-- portrait IS, is the pair it carries — the character it shows and the
+				-- colour it is printed in. An avatar is an item now rather than a
+				-- permission: booster boxes deal them (one per pack, see claim_booster
+				-- below), and that is the only way one comes to exist, which is why this
+				-- table has no client write policy at all. RLS lets a player read their
+				-- own. Unique on (player, character, colour): a box that deals a pair
+				-- already held hands the held row back rather than minting a second.
+				create table if not exists player_avatars (
+						id uuid primary key default gen_random_uuid(),
+						user_id uuid not null references auth.users (id) on delete cascade,
+						character_id text not null references character_templates (id) on delete cascade,
+						color text not null,
+						show_id bigint references show_templates (id) on delete set null,
+						location_id text,
+						granted_at timestamptz not null default now()
+					);
+				create unique index if not exists player_avatars_owned_key
+					on player_avatars (user_id, character_id, color);
+				create index if not exists player_avatars_user_idx
+					on player_avatars (user_id, granted_at desc);
+				alter table player_avatars enable row level security;
+				drop policy if exists player_avatars_select_own on player_avatars;
+				create policy player_avatars_select_own on player_avatars
+						for select using (auth.uid() = user_id);
 				-- The player's chosen name, and the only place in the schema one is stored.
 				-- Never derived: not from the full_name Google and Discord stamp onto the
 				-- auth user, not from the address a magic link went to. Null means
@@ -315,47 +354,54 @@ export function ensureTables(): Promise<void> {
 				drop policy if exists player_profiles_select_own on player_profiles;
 				create policy player_profiles_select_own on player_profiles
 						for select using (auth.uid() = user_id);
-				-- Set (or clear, with null) the caller's avatar character. security
-				-- definer because player_profiles has no client write policy — this
-				-- writes exactly one cosmetic column and can never touch exp. The id
-				-- must be a known character template, so a crafted call can't store an
-				-- arbitrary string, and the caller must have *earned* the portrait: they
-				-- need a card of that character in each of the six spawn colours (see
-				-- SpawnColor in @3xl/shared). That check lives here rather than in the
-				-- browser, so a crafted call cannot wear an uncollected face.
-				create or replace function set_player_avatar(p_character_id text)
+				-- Wear one of the caller's own avatars, named by the pair that IS one: a
+				-- character and a colour (nulls clear back to the letter avatar).
+				-- security definer because player_profiles has no client write policy —
+				-- this writes exactly two cosmetic columns and can never touch exp. The
+				-- rule it enforces is ownership, and it is the rule: the caller must hold
+				-- a player_avatars row for that exact pair, which only a booster box can
+				-- have put there. The picker only shows what is held, but this is what
+				-- decides, so a crafted call cannot wear a portrait nobody dealt it.
+				-- The one-argument version enforced the retired six-colours rule and is
+				-- dropped: a call with no colour predates avatars being items, and there
+				-- is no colour to guess for it.
+				drop function if exists set_player_avatar(text);
+				create or replace function set_player_avatar(p_character_id text, p_color text)
 				returns text language plpgsql security definer set search_path = public as $set_player_avatar$
 				declare
 						v_uid uuid := auth.uid();
-						v_colors int;
 				begin
 						if v_uid is null then
 								raise exception 'You must be signed in to choose an avatar.';
 						end if;
-						if p_character_id is not null and not exists (
-								select 1 from character_templates t where t.id = p_character_id
+						-- Either half missing means the letter avatar, and neither is stored.
+						if p_character_id is null or p_color is null then
+								insert into player_profiles (user_id, avatar_character_id, avatar_color)
+										values (v_uid, null, null)
+										on conflict (user_id) do update
+												set avatar_character_id = null,
+														avatar_color = null,
+														updated_at = now();
+								return null;
+						end if;
+						if not exists (
+								select 1 from player_avatars a
+								where a.user_id = v_uid
+									and a.character_id = p_character_id
+									and a.color = p_color
 						) then
-								raise exception 'Unknown character: %', p_character_id;
+								raise exception 'You do not hold that avatar. Open booster packs to be dealt one.';
 						end if;
-						if p_character_id is not null then
-								select count(distinct cs.color) into v_colors
-								from character_spawns cs
-								where cs.user_id = v_uid
-									and cs.character_id = p_character_id
-									and cs.color in ('red', 'yellow', 'blue', 'orange', 'green', 'purple');
-								if v_colors < 6 then
-										raise exception 'Collect this character in all six colours to wear its portrait.';
-								end if;
-						end if;
-						insert into player_profiles (user_id, avatar_character_id)
-								values (v_uid, p_character_id)
+						insert into player_profiles (user_id, avatar_character_id, avatar_color)
+								values (v_uid, p_character_id, p_color)
 								on conflict (user_id) do update
 										set avatar_character_id = excluded.avatar_character_id,
+												avatar_color = excluded.avatar_color,
 												updated_at = now();
 						return p_character_id;
 				end;
 				$set_player_avatar$;
-				grant execute on function set_player_avatar(text) to authenticated;
+				grant execute on function set_player_avatar(text, text) to authenticated;
 				-- Set, change, or clear (with null or blank) the caller's username.
 				-- security definer for the same reasons as the avatar — the table takes
 				-- no client writes, and this touches one column and can never reach exp
@@ -489,7 +535,13 @@ export function ensureTables(): Promise<void> {
 					--     day, the day resetting at midnight Europe/Madrid.
 					-- It then rolls 5 cards from the show's assigned, template-backed roster
 					-- (weighted by rarity), each taking one of the three colours its box
-					-- holds, and returns the inserted spawns.
+					-- holds, plus ONE avatar drawn from those same two possibilities — a
+					-- character on this show, in one of this box's colours — and returns
+					-- both, in one jsonb object: { "spawns": [...], "avatar": {...} }.
+					-- Two shapes, so one object rather than a row set; the function is
+					-- dropped first because Postgres will not replace a return type in
+					-- place. An avatar the player already holds is not dealt twice — the
+					-- insert hands the held row back, so the pack still shows what it gave.
 					--
 					-- Which box that is, it decides itself from the same festivities rows the
 					-- window check reads: a town celebrating TODAY deals white boxes, holding
@@ -505,8 +557,33 @@ export function ensureTables(): Promise<void> {
 					-- A per-user advisory lock serialises
 					-- concurrent opens so the limit can't be raced. security definer: it
 					-- inserts despite character_spawns now having no client insert policy.
+					-- Weighted pick out of a pool: the ids, their weights, the weights'
+					-- sum, one id back. Its own function because claim_booster draws from
+					-- the same pool twice — once per card and once for the avatar — and
+					-- two copies of a draw are two things to keep in step.
+					create or replace function pick_weighted(
+							p_ids text[],
+							p_weights numeric[],
+							p_total numeric
+					)
+					returns text language plpgsql volatile set search_path = public as $pick_weighted$
+					declare
+							v_roll numeric := random() * p_total;
+							j int;
+					begin
+							for j in 1..array_length(p_ids, 1) loop
+									v_roll := v_roll - p_weights[j];
+									if v_roll < 0 then
+											return p_ids[j];
+									end if;
+							end loop;
+							-- Floating-point slack at the top of the range: the last id answers.
+							return p_ids[array_length(p_ids, 1)];
+					end;
+					$pick_weighted$;
+					drop function if exists claim_booster(bigint, text);
 					create or replace function claim_booster(p_show_id bigint, p_location_id text)
-					returns setof character_spawns
+					returns jsonb
 					language plpgsql security definer set search_path = public as $claim_booster$
 					declare
 							v_uid uuid := auth.uid();
@@ -525,14 +602,14 @@ export function ensureTables(): Promise<void> {
 							v_rarities int[];
 							v_weights numeric[];
 							v_total numeric;
-							v_roll numeric;
 							v_pick text;
 							v_color text;
 							v_box text;
 							v_colors text[];
 							v_row character_spawns%rowtype;
+							v_avatar player_avatars%rowtype;
+							v_spawns jsonb := '[]'::jsonb;
 							i int;
-							j int;
 					begin
 							if v_uid is null then
 									raise exception 'You must be signed in to open a booster.';
@@ -601,24 +678,29 @@ export function ensureTables(): Promise<void> {
 							insert into booster_claims (user_id, show_id, location_id)
 									values (v_uid, p_show_id, p_location_id);
 							for i in 1..v_size loop
-									-- Weighted-by-rarity pick (cumulative, matches weightedRarityIndex).
-									v_roll := random() * v_total;
-									v_pick := v_ids[array_length(v_ids, 1)];
-									for j in 1..array_length(v_ids, 1) loop
-											v_roll := v_roll - v_weights[j];
-											if v_roll < 0 then
-													v_pick := v_ids[j];
-													exit;
-											end if;
-									end loop;
-									-- Colour: one of the box's three, each equally likely.
+									-- Weighted-by-rarity pick (matches weightedRarityIndex), then a
+									-- colour: one of the box's three, each equally likely.
+									v_pick := pick_weighted(v_ids, v_weights, v_total);
 									v_color := v_colors[1 + floor(random() * array_length(v_colors, 1))];
 									insert into character_spawns (user_id, character_id, show_id, location_id, color, box)
 											values (v_uid, v_pick, p_show_id, p_location_id, v_color, v_box)
 											returning * into v_row;
-									return next v_row;
+									v_spawns := v_spawns || to_jsonb(v_row);
 							end loop;
-							return;
+							-- The pack's avatar: one portrait, drawn exactly as a card is — the
+							-- same rarity-weighted pool, the same three colours — because what a
+							-- box can deal is what a box can deal, whichever kind of thing comes
+							-- out of it. A pair already held is not a second item: the conflict
+							-- clause touches nothing and hands the held row back, so the pack
+							-- still has an avatar to show.
+							v_pick := pick_weighted(v_ids, v_weights, v_total);
+							v_color := v_colors[1 + floor(random() * array_length(v_colors, 1))];
+							insert into player_avatars (user_id, character_id, color, show_id, location_id)
+									values (v_uid, v_pick, v_color, p_show_id, p_location_id)
+									on conflict (user_id, character_id, color) do update
+											set granted_at = player_avatars.granted_at
+									returning * into v_avatar;
+							return jsonb_build_object('spawns', v_spawns, 'avatar', to_jsonb(v_avatar));
 					end;
 					$claim_booster$;
 					grant execute on function claim_booster(bigint, text) to authenticated;
@@ -835,41 +917,101 @@ export function ensureTables(): Promise<void> {
 					drop policy if exists municipality_sieges_select_own on municipality_sieges;
 					create policy municipality_sieges_select_own on municipality_sieges
 							for select using (auth.uid() = user_id);
-					-- One challenge per player per town per Catalan day: the pacing behind the
-					-- siege bar. Taking a town needs turnover + 1 wins, which only means
-					-- something if the same town can't be refought until they land — so a row
-					-- here IS the limit, and its mere existence for today's date closes the
-					-- town off until midnight Europe/Madrid, whatever the fight's outcome was
-					-- or whether it was ever finished. The day is spent when the arena opens
-					-- (start_battle below), not when the fight is reported: a fight
-					-- abandoned halfway still used it up, which is exactly what stops a
-					-- player restarting a fight that was going badly. The one exception is a
-					-- slot voided by somebody else taking the town mid-fight — see voided_at.
-					-- No client write path; start_battle and award_combat_exp are the only
-					-- writers, and a player reads only their own rows.
+					-- How long a town stays shut to the player who just fought it. One
+					-- number in one place: start_battle refuses against the deadline this
+					-- produced and the browser draws its countdown off that same deadline,
+					-- so an hour is never written down anywhere else, on either side.
+					create or replace function challenge_cooldown()
+					returns interval language sql immutable set search_path = public
+						as $challenge_cooldown$ select interval '1 hour'; $challenge_cooldown$;
+					grant execute on function challenge_cooldown() to authenticated;
+					-- One challenge per player per town — their current fight over it, or the
+					-- last one they finished — and the cooldown it left behind: the pacing
+					-- behind the siege bar. Taking a town needs turnover + 1 wins, which only
+					-- means something if the same town can't be refought until they land, so
+					-- finishing a fight shuts that town to that player until available_at,
+					-- whatever the outcome was. The clock runs from the REPORT (award_combat_exp
+					-- below), not from when the arena opened: a fight is not a wait, and a
+					-- fight abandoned halfway starts no cooldown at all — the open battle is
+					-- what holds that player, and it has to be reported before anything else
+					-- can be fought. The one exception is a slot voided by somebody else
+					-- taking the town mid-fight, which settles with no cooldown — see
+					-- voided_at. No client write path; start_battle and award_combat_exp are
+					-- the only writers, and a player reads only their own rows.
 					create table if not exists municipality_challenges (
 							user_id uuid not null references auth.users (id) on delete cascade,
 							location_id text not null,
-							challenge_date date not null
-								default (now() at time zone 'Europe/Madrid')::date,
 							started_at timestamptz not null default now(),
-							-- When the fight was reported, or null while it is still open. The day
-							-- is spent either way; this only tells award_combat_exp whether a
-							-- report against this slot is the first one.
+							-- When the fight was reported, or null while it is still open.
+							-- Settling is what starts the cooldown, so this and available_at are
+							-- written together and mean nothing apart.
 							settled_at timestamptz,
+							-- When the town opens up again: the settle plus challenge_cooldown().
+							-- Null while the fight is still open, and on a voided slot.
+							available_at timestamptz,
 							-- When this slot was handed back because the town changed hands while
-							-- the fight was still open: paid for, never really fought. A voided
-							-- slot stops blocking and start_battle revives it in place. Kept
-							-- rather than deleted so the late report of that fight settles this
-							-- row instead of claiming a fresh day.
+							-- the fight was still open: fought for nothing. A voided slot settles
+							-- with no cooldown. Kept rather than deleted so the late report of
+							-- that fight settles this row instead of opening a fresh one that
+							-- would carry the hour it was excused.
 							voided_at timestamptz,
-							primary key (user_id, location_id, challenge_date)
+							primary key (user_id, location_id)
 						);
 					alter table municipality_challenges add column if not exists voided_at timestamptz;
+					alter table municipality_challenges add column if not exists available_at timestamptz;
+					-- The ledger was once keyed by the Catalan day, and the existence of
+					-- today's row was the limit. A cooldown is not a day: collapse each
+					-- (player, town) to its most recent row and re-key onto the pair. The
+					-- survivors keep a null available_at, which reads as a wait already over.
+					do $municipality_challenges_rekey$
+					begin
+						if exists (
+							select 1 from information_schema.columns
+							where table_schema = 'public'
+								and table_name = 'municipality_challenges'
+								and column_name = 'challenge_date'
+						) then
+							delete from municipality_challenges older
+								using municipality_challenges newer
+								where older.user_id = newer.user_id
+									and older.location_id = newer.location_id
+									-- ctid breaks a tie on the timestamp, so exactly one row of
+									-- each pair survives however the old rows are stamped.
+									and (older.started_at, older.ctid) < (newer.started_at, newer.ctid);
+							alter table municipality_challenges
+								drop constraint if exists municipality_challenges_pkey;
+							alter table municipality_challenges drop column challenge_date;
+							alter table municipality_challenges add primary key (user_id, location_id);
+						end if;
+					end
+					$municipality_challenges_rekey$;
+					-- Capturing a town voids every open challenge on it: the one read that
+					-- goes by town rather than by player, which the player-led primary key
+					-- is no help for. Matches municipality_sieges, walked the same way at
+					-- the same moment.
+					create index if not exists municipality_challenges_location_idx
+						on municipality_challenges (location_id);
 					alter table municipality_challenges enable row level security;
 					drop policy if exists municipality_challenges_select_own on municipality_challenges;
 					create policy municipality_challenges_select_own on municipality_challenges
 							for select using (auth.uid() = user_id);
+					-- What the map reads: only the challenges still closing a town off. A
+					-- player collects a row per town they have ever fought and at most a
+					-- handful are ever running, and — the point of it — the SERVER decides
+					-- which those are. A browser filtering on its own clock could talk itself
+					-- into offering a fight the RPC would refuse. security_invoker so the
+					-- table's own RLS applies: their own rows and nobody else's.
+					create or replace view municipality_challenges_open
+						with (security_invoker = true) as
+						select c.user_id, c.location_id, c.started_at, c.settled_at,
+								c.available_at
+						from municipality_challenges c
+						where c.voided_at is null
+							and (c.settled_at is null or c.available_at > now());
+					-- anon too, and it gives nothing away: the base table's RLS runs as the
+					-- caller, so a signed-out reader selects zero rows. The map asks before
+					-- it knows whether anybody is signed in, and empty is the true answer.
+					grant select on municipality_challenges_open to anon, authenticated;
 					-- The open battle: the one fight a player may have running at a time. A
 					-- fight is not the browser's — picking one on the map opens a row here,
 					-- each closed turn writes the board back to it, and reporting the result
@@ -877,7 +1019,8 @@ export function ensureTables(): Promise<void> {
 					-- one open battle, ever. Closing the arena, reloading or moving to
 					-- another device neither loses the fight nor gets out of it, which is
 					-- what stops a player walking away from one that is going badly (the
-					-- daily challenge only ever stopped them refighting the same town).
+					-- cooldown only ever stops them refighting the same town, and is only
+					-- started by reporting the fight in the first place).
 					-- The row is also the server's record of WHAT is being fought — town,
 					-- turnover, rival line-up — all fixed at open and read from here by
 					-- award_combat_exp rather than believed from the report. Only the board
@@ -885,8 +1028,6 @@ export function ensureTables(): Promise<void> {
 					create table if not exists battles (
 							user_id uuid primary key references auth.users (id) on delete cascade,
 							location_id text not null,
-							challenge_date date not null
-								default (now() at time zone 'Europe/Madrid')::date,
 							-- The generation of the team being fought, so a fight that outlived a
 							-- capture is recognisable as stale.
 							turnover integer not null default 0,
@@ -903,6 +1044,10 @@ export function ensureTables(): Promise<void> {
 						);
 					-- Battles opened before the team was proved simply carry none.
 					alter table battles add column if not exists team jsonb not null default '[]'::jsonb;
+					-- A battle used to record the Catalan day whose challenge it spent, back
+					-- when a challenge was a day. There is no day to record now: the challenge
+					-- it belongs to is the one (user_id, location_id) row this one already names.
+					alter table battles drop column if exists challenge_date;
 					alter table battles enable row level security;
 					-- Read your own and nothing else. Deliberately no write policy at all: a
 					-- client that could delete this row could walk out of a losing fight.
@@ -910,12 +1055,15 @@ export function ensureTables(): Promise<void> {
 					create policy battles_select_own on battles
 							for select using (auth.uid() = user_id);
 					-- Open a battle over a town, called when the arena opens. Replaces
-					-- start_challenge: it spends the town's challenge for the Catalan day
-					-- (reviving a slot voided by somebody taking the town mid-fight) AND opens
-					-- the battle in the same transaction, so the day is never spent on a fight
-					-- that failed to start, and never spent without a battle answering for it.
-					-- Refuses a town the caller holds, and refuses outright when they already
-					-- have a battle open — that one has to be finished first. The OUT names
+					-- start_challenge: it claims the town's challenge AND opens the battle in
+					-- the same transaction, so no town is shut by a fight that failed to
+					-- start, and no challenge exists without a battle answering for it.
+					-- Refuses a town still cooling down from this caller's last fight over it,
+					-- a town the caller holds, and refuses outright when they already have a
+					-- battle open — that one has to be finished first. An unsettled slot with
+					-- no battle behind it is a fight that went missing, and is taken over
+					-- rather than left shutting the town on a report that can never come.
+					-- The OUT names
 					-- deliberately avoid the table's columns.
 					--
 					-- The line-up is no longer the caller's to name: it is read here off the
@@ -941,16 +1089,15 @@ export function ensureTables(): Promise<void> {
 					)
 					returns table (
 						town_id text,
-						challenge_day date,
 						opened_at timestamptz,
 						fielded_team jsonb
 					)
 					language plpgsql security definer set search_path = public as $start_battle$
 					declare
 						v_uid uuid := auth.uid();
-						v_today date := (now() at time zone 'Europe/Madrid')::date;
 						v_holder uuid;
 						v_started timestamptz;
+						v_available timestamptz;
 						v_open text;
 						v_team jsonb;
 						v_fielded int;
@@ -987,22 +1134,30 @@ export function ensureTables(): Promise<void> {
 						if v_holder is not null and v_holder = v_uid then
 							raise exception 'You already hold this town — you cannot challenge your own team.';
 						end if;
-						insert into municipality_challenges (user_id, location_id, challenge_date)
-							values (v_uid, p_location_id, v_today)
-							on conflict (user_id, location_id, challenge_date) do update
-								set started_at = now(), settled_at = null, voided_at = null
-								where municipality_challenges.voided_at is not null
-							returning municipality_challenges.started_at into v_started;
-						if v_started is null then
-							raise exception 'You have already challenged this town today. New challenges at midnight.';
+						-- The wait this caller is under on this town, if any. A slot the server
+						-- voided carries none: the town was taken out from under that fight,
+						-- which is not something its challenger is made to wait for.
+						select c.available_at into v_available from municipality_challenges c
+							where c.user_id = v_uid and c.location_id = p_location_id;
+						if v_available is not null and v_available > now() then
+							raise exception 'You have just fought this town. It opens up again at %.',
+								to_char(v_available at time zone 'Europe/Madrid', 'HH24:MI');
 						end if;
+						-- Claim the town's challenge. One row per (player, town), rewritten each
+						-- time they come back: this fight is the one that counts now, and the
+						-- cooldown it will leave is set when it is reported, not here.
+						insert into municipality_challenges (user_id, location_id)
+							values (v_uid, p_location_id)
+							on conflict (user_id, location_id) do update
+								set started_at = now(), settled_at = null, available_at = null,
+									voided_at = null
+							returning municipality_challenges.started_at into v_started;
 						insert into battles
-							(user_id, location_id, challenge_date, turnover, rivals, team, board)
-							values (v_uid, p_location_id, v_today,
+							(user_id, location_id, turnover, rivals, team, board)
+							values (v_uid, p_location_id,
 								greatest(0, coalesce(p_turnover, 0)),
 								coalesce(p_rivals, '[]'::jsonb), v_team, null);
 						town_id := p_location_id;
-						challenge_day := v_today;
 						opened_at := v_started;
 						fielded_team := v_team;
 						return next;
@@ -1010,8 +1165,8 @@ export function ensureTables(): Promise<void> {
 					$start_battle$;
 					grant execute on function start_battle(text, int, jsonb) to authenticated;
 					-- The pre-battle RPC is dropped rather than left standing: a client that
-					-- could still claim a day's challenge without opening a battle would have a
-					-- way to spend the day with nothing holding it to the fight.
+					-- could still claim a town's challenge without opening a battle would have
+					-- a way to shut the town with nothing holding it to the fight.
 					drop function if exists start_challenge(text);
 					-- Write the board back, called as each turn closes — the only mutable part
 					-- of a battle and the only thing the browser authors. Always an UPDATE of
@@ -1108,7 +1263,6 @@ export function ensureTables(): Promise<void> {
 					language plpgsql security definer set search_path = public as $award_combat_exp$
 					declare
 							v_uid uuid := auth.uid();
-							v_today date := (now() at time zone 'Europe/Madrid')::date;
 							v_challenge timestamptz;
 							v_reported int;
 							v_distinct int;
@@ -1239,30 +1393,32 @@ export function ensureTables(): Promise<void> {
 								if v_holder is not null and v_holder = v_uid and p_outcome = 'win' then
 									raise exception 'You already hold this town — you cannot challenge your own team.';
 								end if;
-								-- One challenge per town per Catalan day. The slot is normally already
-								-- open (start_battle claimed it when the battle opened) and settling
-								-- it here closes it; a report against a slot already settled is a
-								-- second fight against the same town today, so it is rejected outright,
-								-- rolling back the experience with it. There is no longer a way to
-								-- arrive with no slot at all: the battle being reported could not have
-								-- been opened without one. A slot voided below (the town changed hands
-								-- mid-fight) settles here like any other — the fight happened and is
-								-- paid for — but keeps its voided_at, which carries the refund past
-								-- this report.
-								insert into municipality_challenges
-									(user_id, location_id, challenge_date, settled_at)
-									values (v_uid, v_location, v_today, now())
-									on conflict (user_id, location_id, challenge_date) do update
-										set settled_at = now()
-										where municipality_challenges.settled_at is null
+								-- The town's cooldown starts here. The slot was claimed by
+								-- start_battle when the battle opened, and settling it is what
+								-- shuts the town for the next hour — measured from now, the end of
+								-- the fight, so time spent playing it is not also spent waiting.
+								-- There is no way to arrive with no slot at all: the battle being
+								-- reported could not have been opened without one. A slot voided
+								-- below (the town changed hands mid-fight) settles like any other
+								-- — the fight happened and is paid for — but takes no cooldown.
+								update municipality_challenges
+									set settled_at = now(),
+										available_at = case
+											when voided_at is null then now() + challenge_cooldown()
+											else null
+										end
+									where user_id = v_uid
+										and location_id = v_location
+										and settled_at is null
 									returning municipality_challenges.settled_at into v_challenge;
-								-- Again the win only: a second win against the same town today
-								-- would be a second payout of a level's worth, while a second
-								-- loss pays what the first did — a hundredth of a span, off a
-								-- battle that had to be opened to be reported at all, which is
-								-- not worth stranding anybody in a fight over.
+								-- Nothing to settle means an earlier report closed this slot: a
+								-- second fight over the town inside its cooldown. The win only —
+								-- that would be a second payout of a level's worth, while a second
+								-- loss pays what the first did, a hundredth of a span off a battle
+								-- that had to be opened to be reported at all, which is not worth
+								-- stranding anybody in a fight over.
 								if v_challenge is null and p_outcome = 'win' then
-									raise exception 'You have already challenged this town today. New challenges at midnight.';
+									raise exception 'You have just fought this town. Wait for it to open up again.';
 								end if;
 								-- No row at all means the town is still on its seeded OG team: turnover 0.
 								v_turnover := coalesce(v_turnover, 0);
@@ -1321,17 +1477,16 @@ export function ensureTables(): Promise<void> {
 										delete from municipality_sieges where location_id = v_location;
 										-- And every fight still open against the old one: those challengers
 										-- are beating a team that no longer sits here and their report will
-										-- be refused as stale, so the day they spent on this town is handed
-										-- back rather than burnt on a fight this capture took away. Marked,
-										-- not deleted — their late report settles this row (paid for, no
-										-- ground banked) and the voided flag it keeps is what lets them come
-										-- straight back at the new occupant today. Slots already settled are
-										-- left alone: those were spent on a real fight against the team that
-										-- was sitting here at the time.
+										-- be refused as stale, so this town takes no hour off them for a
+										-- fight this capture took away. Marked, not deleted — their late
+										-- report settles this row (paid for, no ground banked) and the
+										-- voided flag it keeps is what makes that settle carry no cooldown,
+										-- so they may come straight back at the new occupant. Slots already
+										-- settled are left alone: those are cooldowns earned on a real
+										-- fight against the team that was sitting here at the time.
 										update municipality_challenges
 											set voided_at = now()
 											where location_id = v_location
-												and challenge_date = v_today
 												and settled_at is null
 												and voided_at is null
 												and user_id <> v_uid;
@@ -1368,7 +1523,166 @@ export function ensureTables(): Promise<void> {
 							return next;
 					end;
 					$award_combat_exp$;
-					grant execute on function award_combat_exp(text, jsonb) to authenticated`
+					grant execute on function award_combat_exp(text, jsonb) to authenticated;
+					-- The acceptance ledger: which legal document, at which version, was agreed to
+					-- by whom and when. Server-side because an acceptance held in the player's own
+					-- browser demonstrates nothing — GDPR art. 5(2) puts the burden of showing it on
+					-- the controller, and the controller is not the device. Every acceptance is kept
+					-- rather than only the latest: the question that gets asked is "what did they
+					-- agree to at the time", and only a row per version answers it. Nothing else
+					-- about the moment is recorded — no IP, no user agent — because what has to be
+					-- provable is which text was on screen and when, and collecting more than that
+					-- for the record is exactly the failure art. 5(1)(c) names.
+					-- See ../../supabase/legal_acceptances.sql for the annotated original.
+					create table if not exists legal_acceptances (
+							user_id uuid not null references auth.users (id) on delete cascade,
+							document text not null check (document in ('terms', 'privacy', 'cookies', 'attributions')),
+							version text not null check (char_length(version) between 1 and 32),
+							-- The age attestation, made in the same act as the acceptance and so
+							-- recorded on it: sixteen, the strictest floor GDPR art. 8 lets a member
+							-- state set, and well over COPPA's thirteen.
+							age_confirmed boolean not null default false,
+							accepted_at timestamptz not null default now(),
+							primary key (user_id, document, version)
+						);
+					create index if not exists legal_acceptances_user_idx
+						on legal_acceptances (user_id, accepted_at desc);
+					alter table legal_acceptances enable row level security;
+					-- Read your own; write none. The only writer is the RPC below, so the ledger
+					-- cannot be back-dated by the account it is evidence about.
+					drop policy if exists legal_acceptances_select_own on legal_acceptances;
+					create policy legal_acceptances_select_own on legal_acceptances
+							for select using (auth.uid() = user_id);
+					-- Record acceptance of a whole set of documents at named versions, as one call,
+					-- because that is how they are ticked: the gate asks for the terms and the
+					-- privacy notice together and either both land or neither does.
+					create or replace function record_legal_acceptance(
+						p_documents jsonb,
+						p_age_confirmed boolean default false
+					)
+					returns setof legal_acceptances
+					language plpgsql security definer set search_path = public as $record_legal_acceptance$
+					declare
+						v_uid uuid := auth.uid();
+						v_doc text;
+						v_version text;
+					begin
+						if v_uid is null then
+							raise exception 'You must be signed in to record an acceptance.';
+						end if;
+						if p_documents is null or jsonb_typeof(p_documents) <> 'object' then
+							raise exception 'A set of documents and versions is required.' using errcode = '22023';
+						end if;
+						for v_doc, v_version in select key, value #>> '{}' from jsonb_each(p_documents) loop
+							if v_doc not in ('terms', 'privacy', 'cookies', 'attributions') then
+								raise exception 'Unknown document: %', v_doc using errcode = '22023';
+							end if;
+							if v_version is null or btrim(v_version) = '' then
+								raise exception 'A version is required for %', v_doc using errcode = '22023';
+							end if;
+							insert into legal_acceptances (user_id, document, version, age_confirmed)
+								values (v_uid, v_doc, btrim(v_version), coalesce(p_age_confirmed, false))
+								on conflict (user_id, document, version) do update
+									set age_confirmed = legal_acceptances.age_confirmed
+										or coalesce(excluded.age_confirmed, false);
+						end loop;
+						return query
+							select * from legal_acceptances a
+							where a.user_id = v_uid
+							order by a.accepted_at;
+					end;
+					$record_legal_acceptance$;
+					grant execute on function record_legal_acceptance(jsonb, boolean) to authenticated;
+					-- Everything the game holds about the caller, in one document: GDPR art. 15 (a
+					-- copy) and art. 20 (machine-readable) answered together, and the CCPA right to
+					-- know with them. A function rather than a dozen client-side selects because
+					-- several of these tables are unreadable under RLS, and because a right of
+					-- access has to answer for the whole of what is held — which is a fact about the
+					-- schema. Other players are deliberately absent: a town names its previous
+					-- holder, but that is not the caller's personal data.
+					create or replace function export_player_data()
+					returns jsonb
+					language plpgsql security definer set search_path = public as $export_player_data$
+					declare
+						v_uid uuid := auth.uid();
+						v_out jsonb;
+					begin
+						if v_uid is null then
+							raise exception 'You must be signed in to export your data.';
+						end if;
+						select jsonb_build_object(
+							'exported_at', now(),
+							'account', (
+								select jsonb_build_object(
+									'id', u.id,
+									'email', u.email,
+									'created_at', u.created_at,
+									'last_sign_in_at', u.last_sign_in_at,
+									'providers', u.raw_app_meta_data -> 'providers'
+								)
+								from auth.users u where u.id = v_uid
+							),
+							'profile', (select to_jsonb(p) from player_profiles p where p.user_id = v_uid),
+							'legal_acceptances', coalesce((
+								select jsonb_agg(to_jsonb(a) order by a.accepted_at)
+								from legal_acceptances a where a.user_id = v_uid), '[]'::jsonb),
+							'cards', coalesce((
+								select jsonb_agg(to_jsonb(s) order by s.id)
+								from character_spawns s where s.user_id = v_uid), '[]'::jsonb),
+							'avatars', coalesce((
+								select jsonb_agg(to_jsonb(av) order by av.granted_at)
+								from player_avatars av where av.user_id = v_uid), '[]'::jsonb),
+							'achievements', coalesce((
+								select jsonb_agg(to_jsonb(pa) order by pa.day)
+								from player_achievements pa where pa.user_id = v_uid), '[]'::jsonb),
+							'achievement_day_levels', coalesce((
+								select jsonb_agg(to_jsonb(dl) order by dl.day)
+								from achievement_day_levels dl where dl.user_id = v_uid), '[]'::jsonb),
+							'booster_claims', coalesce((
+								select jsonb_agg(to_jsonb(bc) order by bc.claimed_at)
+								from booster_claims bc where bc.user_id = v_uid), '[]'::jsonb),
+							'booster_grants', coalesce((
+								select jsonb_agg(to_jsonb(bg) order by bg.grant_date)
+								from booster_grants bg where bg.user_id = v_uid), '[]'::jsonb),
+							'combat_results', coalesce((
+								select jsonb_agg(to_jsonb(cr) order by cr.fought_at)
+								from combat_results cr where cr.user_id = v_uid), '[]'::jsonb),
+							'battle', (select to_jsonb(b) from battles b where b.user_id = v_uid),
+							'towns_held', coalesce((
+								select jsonb_agg(to_jsonb(h) order by h.taken_at)
+								from municipality_holders h where h.user_id = v_uid), '[]'::jsonb),
+							'sieges', coalesce((
+								select jsonb_agg(to_jsonb(si))
+								from municipality_sieges si where si.user_id = v_uid), '[]'::jsonb),
+							'challenges', coalesce((
+								select jsonb_agg(to_jsonb(ch) order by ch.started_at)
+								from municipality_challenges ch where ch.user_id = v_uid), '[]'::jsonb)
+						) into v_out;
+						return v_out;
+					end;
+					$export_player_data$;
+					grant execute on function export_player_data() to authenticated;
+					-- Erase the account and everything hanging off it (GDPR art. 17, and the
+					-- deletion right every US state privacy law has a version of). One delete: every
+					-- player-owned table here cascades off auth.users, towns held included — an
+					-- erased account cannot go on occupying a municipality, and the town becomes
+					-- unheld for the next challenger. A real delete rather than a flag: nothing here
+					-- is under a retention duty, since no payments are taken and there is no invoice
+					-- to keep. Takes no argument, so there is no account but the caller's it could
+					-- be pointed at.
+					create or replace function delete_player_account()
+					returns void
+					language plpgsql security definer set search_path = public as $delete_player_account$
+					declare
+						v_uid uuid := auth.uid();
+					begin
+						if v_uid is null then
+							raise exception 'You must be signed in to delete your account.';
+						end if;
+						delete from auth.users where id = v_uid;
+					end;
+					$delete_player_account$;
+					grant execute on function delete_player_account() to authenticated`
 			)
 			.then(() => undefined)
 			.catch((error: unknown) => {
