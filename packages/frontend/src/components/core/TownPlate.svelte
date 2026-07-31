@@ -7,8 +7,17 @@
 	//
 	// No margin of its own: a pin holds this clear of the point it stands on and adds that
 	// itself, and a plate drawn anywhere else is placed by whatever it is placed in.
-	export const PLATE_CLASSES =
-		'flex min-w-[200px] max-w-[15rem] flex-col gap-1.5 rounded-lg bg-base-100/80 p-1.5 text-white shadow-lg';
+	//
+	// A plate standing on a point has to settle its own width, and rounds its corners because
+	// it is a card dropped on terrain. One laid into a column of things is neither: it takes
+	// the width of what it is stacked with and squares its corners against them, since a
+	// rounded edge above a flush one is a notch. Same surface, same padding, same everything
+	// else — which is why the two are written as one list and a variation on it, rather than
+	// as one list overridden from outside: two utilities for one property leave which of them
+	// wins to the order they happen to come out in the stylesheet.
+	const PLATE_SURFACE = 'flex flex-col gap-1.5 bg-base-100/80 p-1.5 text-white shadow-lg';
+	export const PLATE_CLASSES = `${PLATE_SURFACE} min-w-[200px] max-w-[15rem] rounded-lg`;
+	export const PLATE_FLUSH_CLASSES = `${PLATE_SURFACE} w-full`;
 	export const TILE_CLASSES = 'flex size-10 flex-none items-center justify-center rounded-lg';
 </script>
 
@@ -43,10 +52,13 @@
 	export let subtitle: string | undefined = undefined;
 	export let holder: MapMarker['holder'] = null;
 	export let challenge: MapChallenge | null = null;
+	// Laid into a column rather than dropped on a point: the plate takes its container's
+	// width instead of finding its own, and squares its corners (see the class lists above).
+	export let flush: boolean = false;
 	export let classes: string = '';
 </script>
 
-<div class={classNames(PLATE_CLASSES, classes)}>
+<div class={classNames(flush ? PLATE_FLUSH_CLASSES : PLATE_CLASSES, classes)}>
 	<!-- The head row: the tile at the left end, the two lines beside it. `min-w-0` is what
 		lets a line longer than the plate's own width truncate rather than push the plate
 		wider — a flex item's floor is its content otherwise. The tile is decorative: the show

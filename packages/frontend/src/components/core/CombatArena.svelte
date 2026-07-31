@@ -943,158 +943,167 @@
 			     rather than set beside each other, and the card takes the canvas's own top edge
 			     with the score's banner hanging under it.
 			     Neither takes the pointer except where it has to (see the banner's plate): they
-			     are readings laid over the board, and the board underneath is what is played. -->
-			<div class="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center">
-				<!-- The town, on the very plate its pin carries on the map: the same mark, drawn
-				     the same way, showing what was pressed to get here. Only the challenge button
-				     is missing, and the caller is what leaves it out — a fight already under way
-				     has nothing left to start. -->
-				{#if location}
-					<TownPlate {...location} />
-				{/if}
-				{#if state && !state.outcome}
+			     are readings laid over the board, and the board underneath is what is played.
+			     The column is only as wide as the widest thing in it — the banner, in practice —
+			     and everything in it is stretched to that, so the head of the board is one block
+			     of chrome and not two objects that happen to be stacked. Centred by the row it
+			     sits in rather than by centring its own contents, which is what leaves the
+			     stretching to it. -->
+			<div class="pointer-events-none absolute inset-x-0 top-0 flex justify-center">
+				<div class="flex flex-col">
+					<!-- The town, on the very plate its pin carries on the map: the same mark, drawn
+					     the same way, showing what was pressed to get here. Only the challenge button
+					     is missing, and the caller is what leaves it out — a fight already under way
+					     has nothing left to start.
+					     Flush: laid into this column it takes the column's width and squares its
+					     corners, where a pin's plate settles its own width and rounds them. -->
+					{#if location}
+						<TownPlate {...location} flush />
+					{/if}
+					{#if state && !state.outcome}
 					<!-- The score, over the top of the board it is a score of.
-				     The fight is three duels, each played for one cell of the white column
-				     down the middle of the board, so the score is drawn as that ground:
-				     three squares a side, one per lane, filled white as that side takes it.
-				     A number said how many; these say which of a known three, and they are
-				     cells of a board rather than a length being filled, which is what the
-				     thing being counted is. Each side's three sit over the half of the board
-				     that side holds — the rivals' to the left, the player's to the right.
-				     Between them, the turn, which is the other thing a fight is counted
-				     in and belongs between the two counts rather than beside one of them.
-				     Both counts grow outwards from that turn, so the rivals' three are laid
-				     out backwards and fill from the right: it is the same count read either
-				     way round, and the two then mirror each other across the middle rather
-				     than both running left to right. Both are drawn white — the ground down
-				     the middle they are played for is white, and a count of it says so at a
-				     glance.
-				     While the fight is running only: a decided one reads its score off the
-				     panel in the middle of the board, and the same score at both ends of
-				     one canvas would be one score too many. -->
-				<div class="flex justify-center">
-					<!-- On the same plate the map's breadcrumb bar stands on: the base colour at
-					     four fifths so the board reads through it, white type and a shadow to lift
-					     it off what it covers. The score and the path are the same kind of thing —
-					     a line of state laid over a picture that fills the view — so they are drawn
-					     as one thing and not two. Its corners are the one thing not carried over:
-					     both ends are joined to a wing (below), and a rounded edge under a flush
-					     one is a notch. It hugs its contents rather than running the width of the
-					     canvas: a band across the top would be a bar of colour over the board,
-					     where a plate is a label on it. -->
-					<!-- The plate's two wings: a right triangle at either end, in the plate's own
-					     colour, so what hangs off the top of the board is one shape — a banner —
-					     rather than a box with two marks beside it. Each keeps its square corner
-					     against the count nearest it and slopes away from there, the rivals'
-					     square corner at the top right and the player's at the top left, so the
-					     two lean outwards from the turn exactly as the counts do.
-					     Drawn as a border rather than as a shape, which is what a triangle is in
-					     CSS: a box with no size at all, one side of it coloured and the side it
-					     leans on transparent, so the coloured side is cut off at 45°. Both legs
-					     are the plate's own height, which is what makes the other two angles 45
-					     apiece and butts the wing flush against the plate's full depth. -->
-					<span
-						class="h-0 w-0 border-t-[2rem] border-l-[2rem] border-t-base-100/80 border-l-transparent"
-						aria-hidden="true"
-					></span>
-					<div
-						class="group pointer-events-auto flex h-8 items-stretch gap-4 bg-base-100/80 text-white shadow-xl"
-					>
-						<!-- Each side's count is three cells in a row, laid out as cells of the
-						     board because that is what is being counted: the plate is `h-8` and a
-						     block is three of that across (`w-24`), over three equal columns, so
-						     the plate's own depth sets the cell's width and the two figures are
-						     read together — a taller plate wants a wider block.
-						     The block is inset a little top and bottom, and **every** line is inset
-						     with it — the two down its outer edges as much as the two between its
-						     cells. They are lines drawn on the plate rather than the plate's own
-						     edges, and one that runs into the edge it is drawn inside reads as that
-						     edge coming loose; drawn as the block's own border they cleared the
-						     padding, since a border sits outside it, and the outer pair stood a
-						     head taller than the inner pair. So all four are the cells' own: each
-						     cell rules its left side and the last one its right, which draws every
-						     shared side exactly once and stops every line where the padding does.
-						     Only the sides are ruled, for the same reason as ever — a line across
-						     the top and bottom would be a border round the block rather than a
-						     division of it — and they are drawn at half strength, since what they
-						     do is separate three cells, not draw three boxes.
-						     A lane taken is a disc in its cell rather than the cell painted in: the
-						     ground a lane is played for is one white cell of the middle column, and
-						     a mark set in a cell reads as something standing on that ground where a
-						     filled cell reads as the ground itself having changed. The disc is
-						     always drawn and simply carries no colour until the lane is won, so the
-						     three cells hold their spacing whatever the score is. -->
+					     The fight is three duels, each played for one cell of the white column
+					     down the middle of the board, so the score is drawn as that ground:
+					     three squares a side, one per lane, filled white as that side takes it.
+					     A number said how many; these say which of a known three, and they are
+					     cells of a board rather than a length being filled, which is what the
+					     thing being counted is. Each side's three sit over the half of the board
+					     that side holds — the rivals' to the left, the player's to the right.
+					     Between them, the turn, which is the other thing a fight is counted
+					     in and belongs between the two counts rather than beside one of them.
+					     Both counts grow outwards from that turn, so the rivals' three are laid
+					     out backwards and fill from the right: it is the same count read either
+					     way round, and the two then mirror each other across the middle rather
+					     than both running left to right. Both are drawn white — the ground down
+					     the middle they are played for is white, and a count of it says so at a
+					     glance.
+					     While the fight is running only: a decided one reads its score off the
+					     panel in the middle of the board, and the same score at both ends of
+					     one canvas would be one score too many. -->
+					<div class="flex justify-center">
+						<!-- On the same plate the map's breadcrumb bar stands on: the base colour at
+						     four fifths so the board reads through it, white type and a shadow to lift
+						     it off what it covers. The score and the path are the same kind of thing —
+						     a line of state laid over a picture that fills the view — so they are drawn
+						     as one thing and not two. Its corners are the one thing not carried over:
+						     both ends are joined to a wing (below), and a rounded edge under a flush
+						     one is a notch. It hugs its contents rather than running the width of the
+						     canvas: a band across the top would be a bar of colour over the board,
+						     where a plate is a label on it. -->
+						<!-- The plate's two wings: a right triangle at either end, in the plate's own
+						     colour, so what hangs off the top of the board is one shape — a banner —
+						     rather than a box with two marks beside it. Each keeps its square corner
+						     against the count nearest it and slopes away from there, the rivals'
+						     square corner at the top right and the player's at the top left, so the
+						     two lean outwards from the turn exactly as the counts do.
+						     Drawn as a border rather than as a shape, which is what a triangle is in
+						     CSS: a box with no size at all, one side of it coloured and the side it
+						     leans on transparent, so the coloured side is cut off at 45°. Both legs
+						     are the plate's own height, which is what makes the other two angles 45
+						     apiece and butts the wing flush against the plate's full depth. -->
+						<span
+							class="h-0 w-0 border-t-[2rem] border-l-[2rem] border-t-base-100/80 border-l-transparent"
+							aria-hidden="true"
+						></span>
 						<div
-							class="grid h-full w-24 grid-cols-3 py-1"
-							role="progressbar"
-							aria-label={$_('combat.rivalWins')}
-							aria-valuemin={0}
-							aria-valuemax={TEAM_SIZE}
-							aria-valuenow={state.wins.error}
+							class="group pointer-events-auto flex h-8 items-stretch gap-4 bg-base-100/80 text-white shadow-xl"
 						>
-							{#each RIVAL_LANES as lane}
-								<span
-									class="flex items-center justify-center border-l border-white/50 last:border-r"
-								>
+							<!-- Each side's count is three cells in a row, laid out as cells of the
+							     board because that is what is being counted: the plate is `h-8` and a
+							     block is three of that across (`w-24`), over three equal columns, so
+							     the plate's own depth sets the cell's width and the two figures are
+							     read together — a taller plate wants a wider block.
+							     The block is inset a little top and bottom, and **every** line is inset
+							     with it — the two down its outer edges as much as the two between its
+							     cells. They are lines drawn on the plate rather than the plate's own
+							     edges, and one that runs into the edge it is drawn inside reads as that
+							     edge coming loose; drawn as the block's own border they cleared the
+							     padding, since a border sits outside it, and the outer pair stood a
+							     head taller than the inner pair. So all four are the cells' own: each
+							     cell rules its left side and the last one its right, which draws every
+							     shared side exactly once and stops every line where the padding does.
+							     Only the sides are ruled, for the same reason as ever — a line across
+							     the top and bottom would be a border round the block rather than a
+							     division of it — and they are drawn at half strength, since what they
+							     do is separate three cells, not draw three boxes.
+							     A lane taken is a disc in its cell rather than the cell painted in: the
+							     ground a lane is played for is one white cell of the middle column, and
+							     a mark set in a cell reads as something standing on that ground where a
+							     filled cell reads as the ground itself having changed. The disc is
+							     always drawn and simply carries no colour until the lane is won, so the
+							     three cells hold their spacing whatever the score is. -->
+							<div
+								class="grid h-full w-24 grid-cols-3 py-1"
+								role="progressbar"
+								aria-label={$_('combat.rivalWins')}
+								aria-valuemin={0}
+								aria-valuemax={TEAM_SIZE}
+								aria-valuenow={state.wins.error}
+							>
+								{#each RIVAL_LANES as lane}
 									<span
-										class={classNames(
-											'size-4 rounded-full',
-											lane <= state.wins.error && 'bg-white'
-										)}
-									></span>
-								</span>
-							{/each}
-						</div>
-						<span class="self-center font-mono text-lg font-bold tabular-nums opacity-70">
-							{$_('combat.turn', { values: { turn: state.turn } })}
-						</span>
-						<!-- The way out of a fight, and the only one there is: a battle is ended by a
-						     result, never by walking off, so giving it up reports the loss it is and
-						     closes the arena exactly as being wiped out would. Between turns only —
-						     a turn already being carried out settles itself.
-						     It is kept out of sight until the plate is under the pointer, because it
-						     is the one control here that is not part of playing: a fight is played
-						     with the buttons beside the fighters, and the only thing standing over
-						     the board at all times should be what is true of the fight. Reached for
-						     rather than offered, and reached for where the fight's own state is
-						     read.
-						     Between the turn and the player's count, so the plate grows in the
-						     middle when it appears and each side's count stays at the end it is
-						     read from. Put at one end instead, the whole banner would slide off
-						     centre the moment the pointer touched it. -->
-						<button
-							type="button"
-							class="btn hidden btn-ghost btn-sm self-center text-error group-hover:inline-flex"
-							disabled={state.phase !== 'planning'}
-							on:click={() => controller?.concede()}
-						>
-							{$_('combat.concede')}
-						</button>
-						<div
-							class="grid h-full w-24 grid-cols-3 py-1"
-							role="progressbar"
-							aria-label={$_('combat.yourWins')}
-							aria-valuemin={0}
-							aria-valuemax={TEAM_SIZE}
-							aria-valuenow={state.wins.info}
-						>
-							{#each LANES as lane}
-								<span
-									class="flex items-center justify-center border-l border-white/50 last:border-r"
-								>
+										class="flex items-center justify-center border-l border-white/50 last:border-r"
+									>
+										<span
+											class={classNames(
+												'size-4 rounded-full',
+												lane <= state.wins.error && 'bg-white'
+											)}
+										></span>
+									</span>
+								{/each}
+							</div>
+							<span class="self-center font-mono text-lg font-bold tabular-nums opacity-70">
+								{$_('combat.turn', { values: { turn: state.turn } })}
+							</span>
+							<!-- The way out of a fight, and the only one there is: a battle is ended by a
+							     result, never by walking off, so giving it up reports the loss it is and
+							     closes the arena exactly as being wiped out would. Between turns only —
+							     a turn already being carried out settles itself.
+							     It is kept out of sight until the plate is under the pointer, because it
+							     is the one control here that is not part of playing: a fight is played
+							     with the buttons beside the fighters, and the only thing standing over
+							     the board at all times should be what is true of the fight. Reached for
+							     rather than offered, and reached for where the fight's own state is
+							     read.
+							     Between the turn and the player's count, so the plate grows in the
+							     middle when it appears and each side's count stays at the end it is
+							     read from. Put at one end instead, the whole banner would slide off
+							     centre the moment the pointer touched it. -->
+							<button
+								type="button"
+								class="btn hidden btn-ghost btn-sm self-center text-error group-hover:inline-flex"
+								disabled={state.phase !== 'planning'}
+								on:click={() => controller?.concede()}
+							>
+								{$_('combat.concede')}
+							</button>
+							<div
+								class="grid h-full w-24 grid-cols-3 py-1"
+								role="progressbar"
+								aria-label={$_('combat.yourWins')}
+								aria-valuemin={0}
+								aria-valuemax={TEAM_SIZE}
+								aria-valuenow={state.wins.info}
+							>
+								{#each LANES as lane}
 									<span
-										class={classNames('size-4 rounded-full', lane <= state.wins.info && 'bg-white')}
-									></span>
-								</span>
-							{/each}
+										class="flex items-center justify-center border-l border-white/50 last:border-r"
+									>
+										<span
+											class={classNames('size-4 rounded-full', lane <= state.wins.info && 'bg-white')}
+										></span>
+									</span>
+								{/each}
+							</div>
 						</div>
+						<span
+							class="h-0 w-0 border-t-[2rem] border-r-[2rem] border-t-base-100/80 border-r-transparent"
+							aria-hidden="true"
+						></span>
 					</div>
-					<span
-						class="h-0 w-0 border-t-[2rem] border-r-[2rem] border-t-base-100/80 border-r-transparent"
-						aria-hidden="true"
-					></span>
+					{/if}
 				</div>
-				{/if}
 			</div>
 			{#if state?.outcome}
 				<!-- The fight is over, and everything there is left to say about it is said
