@@ -59,7 +59,7 @@
 	} from '$utils/spawn/municipality-team';
 	import { REGION_COLOR_CSS } from '$utils/color/region-color';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
-	import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
+	import { teamShowId, showIdsByCharacter, holderShowIds } from '$utils/spawn/team-show';
 	import { showPosterUrl, showPosterUrlForSeed } from '$utils/geo/municipality-show';
 	import { showLogoUrl } from '$utils/show/show-logo';
 	import { showIconName } from '$utils/show/show-icon';
@@ -579,9 +579,11 @@
 
 	// --- Which show a town flies -------------------------------------------------
 	// A town starts on the show the build baked onto it, but once a player takes it
-	// the town flies the ruling team's show instead: the pins, the sidebar and every
-	// coarser region's plurality tally all read from the single map below, so a
-	// conquest re-labels the town everywhere the map names a show at once.
+	// the town flies the ruling team's show instead: the pins, the sidebar, the
+	// festa booster boxes and every coarser region's plurality tally all read from
+	// the single map below, so a conquest re-labels the town everywhere the map names
+	// a show at once — and re-stocks its boxes with it, the pack being a booster of
+	// whatever show the town flies today.
 
 	// Every authored show by id (name + poster), read from /data/shows.json — the
 	// same source the baked assignment posters come from, so an overridden town's pin
@@ -612,13 +614,9 @@
 		saved: ReadonlyMap<number, RegionShow>
 	): Map<string, RegionShow> {
 		const ruling = new Map<string, RegionShow>();
-		for (const holder of occupied.values()) {
-			const showId = teamShowId(
-				holder.team.map((member) => member.characterId),
-				byCharacter
-			);
-			const show = showId == null ? null : saved.get(showId);
-			if (show) ruling.set(holder.locationId, show);
+		for (const [locationId, showId] of holderShowIds(occupied.values(), byCharacter)) {
+			const show = saved.get(showId);
+			if (show) ruling.set(locationId, show);
 		}
 		return ruling;
 	}
@@ -1358,20 +1356,22 @@
 	// window. Clicking it loads that town's festa booster pack into the side panel and
 	// flips the panel to its Booster tab, so the pack replaces the tables.
 	//
-	// Printed from the two public datasets the map already holds (the baked
-	// municipality→show assignment and the authored show collection) rather than from
-	// the panel's packs, which are a signed-in player's claimable set: a town de festa is
-	// de festa for a visitor too, and the box is what says so. A town the player has no
-	// claimable pack for is the one case a click has anything to answer for, and the
-	// panel already says it. A festa town whose polygon isn't on the map has no point to
-	// stand on and is skipped. Named deps (`windowFestes`, `todayFesteIds`,
-	// `assignmentsById`, `showEntryById`, `regionGeometry`, `selected`) so the boxes
-	// reprint when any of them lands — the selection among them, since which town is picked
-	// is what decides whether its box is drawn whole or as its disc.
+	// Printed from what the map already holds (the show each town flies — the baked
+	// assignment as overridden by whoever holds the town — and the authored show
+	// collection) rather than from the panel's packs, which are a signed-in player's
+	// claimable set: a town de festa is de festa for a visitor too, and the box is what
+	// says so. A town the player has no claimable pack for is the one case a click has
+	// anything to answer for, and the panel already says it. A festa town whose polygon
+	// isn't on the map has no point to stand on and is skipped. Named deps
+	// (`windowFestes`, `todayFesteIds`, `showsById`, `showEntryById`, `regionGeometry`,
+	// `selected`) so the boxes reprint when any of them lands — `showsById` among them,
+	// so a town that changes hands re-covers its box with the conqueror's show without a
+	// reload, and the selection too, since which town is picked is what decides whether
+	// its box is drawn whole or as its disc.
 	$: festaBoxes = (() => {
 		const centers = regionGeometry.centers;
 		const today = todayFesteIds;
-		const assignments = assignmentsById;
+		const townShows = showsById;
 		const entries = showEntryById;
 		// Which town is being looked at, read off the clicked selection for the same reason
 		// the statues are (see statuedTown): a zoom focus is not a choice of town. Only a
@@ -1382,11 +1382,12 @@
 		for (const festa of windowFestes) {
 			const center = centers.get(festa.id);
 			if (!center) continue;
-			// The show the build assigned the town, and out of its authored entry the two
-			// pictures the box carries. The cover is seeded with the same string the pack's
-			// is (place|year), so a town's box on the map and in the panel are the same
-			// copy of the same show rather than two draws from its enabled posters.
-			const show = assignments.get(festa.id)?.show ?? null;
+			// The show the town flies — its conqueror's, or the build's seed while nobody
+			// holds it — and out of its authored entry the two pictures the box carries.
+			// The cover is seeded with the same string the pack's is (place|year), so a
+			// town's box on the map and in the panel are the same copy of the same show
+			// rather than two draws from its enabled posters.
+			const show = townShows.get(festa.id) ?? null;
 			const entry = show ? (entries.get(show.id) ?? null) : null;
 			result.push({
 				id: festa.id,
@@ -1793,6 +1794,12 @@
 	// read at a tier where nothing can be fought for. The coarser tiers say what they are and
 	// what they fly, and the standing appears when the map has got down to a place that has
 	// one.
+	//
+	// Who holds the town is on every municipality pin for the same reason and with the same
+	// bounds: being occupied is a fact about the place, not about its being picked, and a
+	// place only a town can be. It is read off `holders` — the occupant's live name and worn
+	// avatar, joined on in Supabase — so a town nobody has taken yet says nothing about a
+	// holder, its seeded house team being no player's.
 	function buildMarkers(
 		nodes: RegionNode[],
 		geometry: RegionGeometry,
@@ -1800,7 +1807,8 @@
 		statuedTown: string | null,
 		statues: PinTeam,
 		challengeBar: MapChallenge | null,
-		sieges: ReadonlyMap<string, RegionSiege>
+		sieges: ReadonlyMap<string, RegionSiege>,
+		occupied: ReadonlyMap<string, MunicipalityHolder>
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
@@ -1826,6 +1834,10 @@
 					node.type === 'Municipality'
 						? ((node.key === statuedTown ? challengeBar : null) ?? siegeBar(node, sieges))
 						: null,
+				// Whoever is sitting on this town, on the plate that names it. Only a
+				// municipality's key is a municipality id, so the coarser tiers never match
+				// and are never asked.
+				holder: node.type === 'Municipality' ? pinHolder(node.key, occupied) : null,
 				iconSvg: iconMarkup(showIconName(node.show.id)),
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
@@ -1836,6 +1848,30 @@
 			});
 		}
 		return pins;
+	}
+
+	/**
+	 * What a town's pin says about its occupant: what to call them and the avatar they
+	 * are wearing. Null for a town nobody has taken — there is no player to name, and a
+	 * seeded house team is not somebody's.
+	 *
+	 * Both are the holder's *current* ones, joined onto the holder row in Supabase
+	 * rather than frozen onto the town when it was won (see municipality_holders.sql),
+	 * so renaming yourself or changing your face changes every town you hold. The
+	 * avatar's two halves travel together because an avatar is the pair; both null is
+	 * the initial-letter avatar, which the pin draws off the name.
+	 */
+	function pinHolder(
+		key: string,
+		occupied: ReadonlyMap<string, MunicipalityHolder>
+	): MapMarker['holder'] {
+		const holder = occupied.get(key);
+		if (!holder) return null;
+		return {
+			name: holder.holderName,
+			characterId: holder.avatarCharacterId,
+			color: holder.avatarColor
+		};
 	}
 
 	// A pin's siege standing on its own: the counter this region carries, and nothing to
@@ -1864,7 +1900,8 @@
 		statuedTown: string | null,
 		statues: PinTeam,
 		challengeBar: MapChallenge | null,
-		sieges: ReadonlyMap<string, RegionSiege>
+		sieges: ReadonlyMap<string, RegionSiege>,
+		occupied: ReadonlyMap<string, MunicipalityHolder>
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
@@ -1876,7 +1913,8 @@
 					statuedTown,
 					statues,
 					challengeBar,
-					sieges
+					sieges,
+					occupied
 				)
 			);
 		}
@@ -1891,7 +1929,8 @@
 		statuedTown,
 		pinTeam,
 		townChallenge,
-		regionSieges
+		regionSieges,
+		holders
 	);
 
 	// The bounding box the map fits when a region is selected: the union of every
@@ -2153,6 +2192,24 @@
 								</div>
 							{/if}
 							<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
+							<!-- The roster, at the end of the bar rather than a fold and a press inside the
+								menu: arranging the side is what a player does between one thing on this map and
+								the next, and the bar is the one row that is always up. The same tile the search
+								and the burger wear, and the same white, so the row stays a line of pressed
+								squares that happen to do different things. Only while there is an account to
+								have cards under — the menu's own entry is gated the same way, a roster with
+								nobody's cards in it being nothing to open. -->
+							{#if $profile}
+								<button
+									type="button"
+									class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
+									title={$_('roster.title')}
+									aria-label={$_('roster.title')}
+									on:click={() => rosterModalOpen.set(true)}
+								>
+									<img src="/assets/icons/delapouite/pencil.svg" class="size-4" alt="" />
+								</button>
+							{/if}
 							<!-- The three bars, in the same square and the same white as the search button it
 								stands beside and the dots button at the other end of the row: this bar is a line
 								of 32px tiles, so everything on it that is pressed rather than read is given the
