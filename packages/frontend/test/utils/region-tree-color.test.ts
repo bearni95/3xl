@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildRegionTree, type RegionShow } from '$utils/geo/region-tree';
 import { SpawnColor } from '$types/character-spawn.type';
+import { ArtificialColor, type RegionColor } from '$types/region-color.type';
 
 // One territory with a single province (so the province tier is flattened away)
 // holding two comarques: three towns in the first, one in the second — enough for
@@ -22,7 +23,7 @@ const municipalities: GeoJSON.FeatureCollection = {
 
 const show = (id: number, name: string): RegionShow => ({ id, name, posterUrl: null });
 
-function tree(colors: Map<string, SpawnColor>, shows?: Map<string, RegionShow>) {
+function tree(colors: Map<string, RegionColor>, shows?: Map<string, RegionShow>) {
 	return buildRegionTree(municipalities, shows, colors);
 }
 
@@ -68,6 +69,22 @@ describe('buildRegionTree colours', () => {
 		// One each, so the tie is broken by the colour itself — never by which town
 		// happened to be walked first.
 		expect(catalunya.color).toBe(SpawnColor.Green);
+	});
+
+	it('counts the unheld grey like any other colour, so a region reads as taken or not', () => {
+		const [catalunya] = tree(
+			new Map([
+				['ES_08019', ArtificialColor.Gray],
+				['ES_08073', ArtificialColor.Gray],
+				['ES_08187', SpawnColor.Red],
+				['ES_17079', SpawnColor.Blue]
+			])
+		);
+		const barcelones = catalunya.comarques.find((comarca) => comarca.name === 'Barcelonès')!;
+		// Two of the three towns are nobody's, so the comarca is still nobody's — one
+		// conquest inside it does not colour the whole of it.
+		expect(barcelones.color).toBe(ArtificialColor.Gray);
+		expect(catalunya.color).toBe(ArtificialColor.Gray);
 	});
 
 	it('leaves every tier colourless when nothing is known yet', () => {

@@ -15,7 +15,7 @@
  */
 
 import type { RegionSiege } from './region-siege';
-import type { SpawnColor } from '../../types/character-spawn.type';
+import type { RegionColor } from '../../types/region-color.type';
 
 /** The trimmed show shape shown against a region (matches MunicipalityShow.show). */
 export interface RegionShow {
@@ -30,8 +30,12 @@ export interface RegionMunicipality {
 	name: string;
 	/** The seeded show assigned to this municipality, when a lookup is given. */
 	show?: RegionShow;
-	/** The colour the municipality's team flies, when a lookup is given. */
-	color?: SpawnColor;
+	/**
+	 * The colour the municipality flies, when a lookup is given: its holder's lead
+	 * colour, or the map's own grey while nobody has taken it (see
+	 * `types/region-color.type`).
+	 */
+	color?: RegionColor;
 }
 
 /** A green comarca grouping the municipalities within it. */
@@ -43,7 +47,7 @@ export interface RegionComarca {
 	/** The most common show among this comarca's municipalities (simple count). */
 	show?: RegionShow;
 	/** The most common colour among this comarca's municipalities (simple count). */
-	color?: SpawnColor;
+	color?: RegionColor;
 }
 
 /** A yellow province: its comarques plus any comarca-less municipalities. */
@@ -58,7 +62,7 @@ export interface RegionProvince {
 	/** The most common show across every municipality in the province. */
 	show?: RegionShow;
 	/** The most common colour across every municipality in the province. */
-	color?: SpawnColor;
+	color?: RegionColor;
 }
 
 /**
@@ -80,7 +84,7 @@ export interface RegionTerritory {
 	/** The most common show across every municipality in the territory. */
 	show?: RegionShow;
 	/** The most common colour across every municipality in the territory. */
-	color?: SpawnColor;
+	color?: RegionColor;
 }
 
 /**
@@ -108,7 +112,7 @@ export interface RegionNode {
 	name: string;
 	type: RegionType;
 	show?: RegionShow;
-	color?: SpawnColor;
+	color?: RegionColor;
 	children: RegionNode[];
 }
 
@@ -180,7 +184,7 @@ export function buildRegionNodes(territories: RegionTerritory[]): RegionNode[] {
  */
 export function everyTownPlurality(nodes: RegionNode[]): {
 	show?: RegionShow;
-	color?: SpawnColor;
+	color?: RegionColor;
 } {
 	const towns: RegionNode[] = [];
 	const walk = (node: RegionNode) => {
@@ -404,14 +408,14 @@ function majorityShow(municipis: { show?: RegionShow }[]): RegionShow | undefine
  * shows, so a region's colour and its show are read off the same towns the same
  * way. Municipalities with no colour (nothing rolled for them yet) are ignored.
  */
-function majorityColor(municipis: { color?: SpawnColor }[]): SpawnColor | undefined {
-	const tally = new Map<SpawnColor, number>();
+function majorityColor(municipis: { color?: RegionColor }[]): RegionColor | undefined {
+	const tally = new Map<RegionColor, number>();
 	for (const municipality of municipis) {
 		if (!municipality.color) continue;
 		tally.set(municipality.color, (tally.get(municipality.color) ?? 0) + 1);
 	}
 
-	let best: { color: SpawnColor; count: number } | undefined;
+	let best: { color: RegionColor; count: number } | undefined;
 	for (const [color, count] of tally) {
 		if (!best || count > best.count || (count === best.count && color < best.color)) {
 			best = { color, count };
@@ -448,7 +452,7 @@ interface RawProvince {
 export function buildRegionTree(
 	municipalities: GeoJSON.FeatureCollection | null | undefined,
 	shows?: Map<string, RegionShow>,
-	colors?: Map<string, SpawnColor>
+	colors?: Map<string, RegionColor>
 ): RegionTerritory[] {
 	if (!municipalities) return [];
 

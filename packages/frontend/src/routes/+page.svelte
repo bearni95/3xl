@@ -52,7 +52,7 @@
 		ogTeamSpawns,
 		type TeamMemberRoll
 	} from '$utils/spawn/municipality-team';
-	import { SPAWN_COLOR_CSS } from '$utils/spawn/color';
+	import { REGION_COLOR_CSS } from '$utils/color/region-color';
 	import { coordinateSeed } from '$utils/geo/municipality-show';
 	import { teamShowId, showIdsByCharacter } from '$utils/spawn/team-show';
 	import { showPosterUrl, showPosterUrlForSeed } from '$utils/geo/municipality-show';
@@ -60,6 +60,7 @@
 	import { showIconName } from '$utils/show/show-icon';
 	import { iconMarkup } from '$components/core/icon-markup';
 	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
+	import { ArtificialColor, type RegionColor } from '$types/region-color.type';
 	import {
 		buildRegionTree,
 		buildFillIndex,
@@ -402,7 +403,7 @@
 	// by its feature id, and every grouping by its NAME — the geo layers carry codes
 	// of their own (`AT08`, `IT_alguer`) that the tree's slugged ids don't match,
 	// while comarca, province and territory names are each unique across the map.
-	type RegionColors = Record<RegionType, Map<string, SpawnColor>>;
+	type RegionColors = Record<RegionType, Map<string, RegionColor>>;
 
 	function buildRegionColors(nodes: RegionNode[]): RegionColors {
 		const colors: RegionColors = {
@@ -442,7 +443,7 @@
 		tier: RegionType,
 		feature: GeoJSON.Feature | undefined,
 		colors: RegionColors
-	): SpawnColor | null {
+	): RegionColor | null {
 		const props = feature?.properties;
 		if (!props) return null;
 		const key = featureKey(tier, feature)!;
@@ -502,7 +503,7 @@
 				weight,
 				opacity: 1,
 				fill: washes,
-				fillColor: washes ? SPAWN_COLOR_CSS[color!] : lineColor,
+				fillColor: washes ? REGION_COLOR_CSS[color!] : lineColor,
 				fillOpacity: isPicked ? 0.2 : 0.5
 			};
 		};
@@ -614,17 +615,24 @@
 	$: showsById = buildTownShows(assignmentsById, rulingShowById);
 
 	// --- Which colour a town flies -----------------------------------------------
-	// The same compounding as the show above, one field over: a town's colour is its
-	// team's LEAD's colour, exactly as its show is its lead's show — the seeded OG
-	// roll's lead for a town nobody has taken, the winning team's lead once one has.
+	// Not the same compounding as the show above: a colour on this map is a claim,
+	// so only a town somebody actually holds carries one — its holder's team's LEAD's
+	// colour, exactly as a held town's show is its ruling lead's show. A town still
+	// on the team its own seed rolled is nobody's, and flies the map's own grey (see
+	// `types/region-color.type`) whatever colour that seeded lead happens to have
+	// bent. So the map before the first conquest is grey entire, and any colour on it
+	// is somebody's doing.
+	//
 	// Fed into the region tree beside the shows, so a comarca, a province and a
 	// territory each take the plurality colour of the towns beneath them just as they
-	// take their plurality show, and a conquest re-colours every tier above it.
+	// take their plurality show — which now reads as how much of a region has been
+	// taken, and by whom — and a conquest re-colours every tier above it.
 
 	// Municipality id → the GPS seed its team is rolled from — the very seed that
 	// assigned its show. Hashing it walks every vertex of the polygon, so it is done
-	// once off the geometry and kept: the colours below re-derive as towns change
-	// hands without touching the shapes again.
+	// once off the geometry and kept: the teams below re-derive as towns change
+	// hands without touching the shapes again. It is also the list of every town on
+	// the map, which is what the colours are painted over.
 	function buildMunicipalitySeeds(
 		collection: GeoJSON.FeatureCollection | null
 	): Map<string, number> {
@@ -639,27 +647,21 @@
 
 	$: municipalitySeeds = buildMunicipalitySeeds(municipalities);
 
-	// Municipality id → the colour it flies. Every town gets its seeded team's lead
-	// colour, overridden by the lead of whoever holds it — the same seed/override
-	// pair buildTownShows draws the shows from. A town whose show has no roster
-	// loaded yet (the assignment comes from Supabase) simply has no colour, and its
-	// pin stays neutral rather than guessing one.
+	// Municipality id → the colour it flies. Grey for every town on the map, and the
+	// lead colour of whoever holds it wherever one does — which is why this asks the
+	// seeds for its towns rather than the show assignments: grey is a fact about
+	// occupancy and not about a roster, so a town whose show has not landed yet is
+	// still an unheld town and still says so.
+	//
+	// A holder with an empty team keeps its grey rather than falling to no colour at
+	// all: the row would be one the RPC could not have written, and a town on the map
+	// with nothing painted on it would read as a hole in the map instead.
 	function buildTownColors(
 		seeds: ReadonlyMap<string, number>,
-		shows: ReadonlyMap<string, RegionShow>,
-		pools: ReadonlyMap<number, string[]>,
 		occupied: ReadonlyMap<string, MunicipalityHolder>
-	): Map<string, SpawnColor> {
-		const colors = new Map<string, SpawnColor>();
-		for (const [id, show] of shows) {
-			const seed = seeds.get(id);
-			if (seed == null) continue;
-			// Only the lead is wanted, and the roll shuffles the whole pool before it
-			// takes any member, so asking for a team of one lands on the very same lead
-			// (character, colour and stat) as the full TEAM_SIZE roll the panel draws.
-			const lead = buildMunicipalityTeam(seed, pools.get(show.id) ?? [], 1)[0];
-			if (lead) colors.set(id, lead.color);
-		}
+	): Map<string, RegionColor> {
+		const colors = new Map<string, RegionColor>();
+		for (const id of seeds.keys()) colors.set(id, ArtificialColor.Gray);
 		for (const holder of occupied.values()) {
 			const lead = holder.team[0];
 			if (lead) colors.set(holder.locationId, lead.color);
@@ -667,7 +669,7 @@
 		return colors;
 	}
 
-	$: colorsById = buildTownColors(municipalitySeeds, showsById, showCharacterIds, holders);
+	$: colorsById = buildTownColors(municipalitySeeds, holders);
 
 	// The red → yellow → green → blue region hierarchy (territory → province →
 	// comarca → municipality) mirrored from the map's divisions, for the tree.
@@ -1477,15 +1479,20 @@
 
 	// A pin frame's fill per region colour: the same six swatches the cards, the
 	// avatar rings and the combat buttons paint with, each with the ink that reads
-	// on it — yellow is the one light enough to want black. Written out in full
-	// because Tailwind only emits classes it can see spelled in the source.
-	const pinColorClasses: Record<SpawnColor, string> = {
+	// on it — yellow is the one light enough to want black — plus the grey a place
+	// nobody holds is painted in, which is no card's colour and is spelled at the
+	// same 500 weight as the rest so an unheld tile sits at the same depth as a held
+	// one. Written out in full because Tailwind only emits classes it can see spelled
+	// in the source — and this is also where `--color-gray-500` gets emitted at all,
+	// which the polygon wash reads through REGION_COLOR_CSS.
+	const pinColorClasses: Record<RegionColor, string> = {
 		[SpawnColor.Red]: 'bg-red-500 text-white',
 		[SpawnColor.Yellow]: 'bg-yellow-400 text-black',
 		[SpawnColor.Blue]: 'bg-blue-500 text-white',
 		[SpawnColor.Orange]: 'bg-orange-500 text-white',
 		[SpawnColor.Green]: 'bg-green-500 text-white',
-		[SpawnColor.Purple]: 'bg-purple-500 text-white'
+		[SpawnColor.Purple]: 'bg-purple-500 text-white',
+		[ArtificialColor.Gray]: 'bg-gray-500 text-white'
 	};
 
 	// The side sitting on each town, by municipality id: whoever holds it, else the
