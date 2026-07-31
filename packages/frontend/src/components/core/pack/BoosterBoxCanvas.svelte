@@ -1,7 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher, onDestroy } from 'svelte';
-	import CharacterStatue from '$components/core/CharacterStatue.svelte';
+	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import { BoosterBoxGridScene } from './scene/BoosterBoxGridScene';
 	import type { OpenerPack } from './scene/opener-view.type';
@@ -25,7 +25,7 @@
 	export let packs: OpenerPack[] = [];
 	// How many boxes a row holds. The host's call, as it is for the document grid — unlike how
 	// the cards stand once a box is open, which is not: they come out of the box, so their row is
-	// the box's to say (see REVEAL_COLUMNS and `opening`).
+	// the box's to say (see REVEAL_ROW and `opening`).
 	export let columns: number = 4;
 	// The box standing up, by pack id, or null for the window. Bindable, and bound to the same
 	// thing the document grid's is: a click on a town's box out on the map picks a pack, and both
@@ -54,7 +54,6 @@
 	// they that decide when the box may go.
 	let pulls: ClaimPull[] | null = null;
 	let avatar: Avatar | null = null;
-	let avatarIsNew = false;
 	let uncovering = false;
 	// How wide the box that is standing has its mouth: the back end of its tilted top, in canvas
 	// pixels, said by the scene and said again whenever the box is re-fitted. It is what the cards
@@ -71,16 +70,36 @@
 	const STATUES_WAIT = 4000;
 	let statuesTimer: ReturnType<typeof setTimeout> | null = null;
 
-	// How many cards a row of the reveal holds. Three, and not the caller's to change: what a box
-	// opens onto is laid out in the mouth of the box, which is nothing like as wide as the canvas
-	// (see `opening`), and five across that would be five slivers.
-	const REVEAL_COLUMNS = 'grid-cols-3';
+	// What a box opens onto stands in the very row the map's corner and the roster stand a side
+	// in (see TeamLineup): three to a row, the middle one wider and lapped over the two beside
+	// it. Three, and not the caller's to change — the cards are laid out in the mouth of the
+	// box, which is nothing like as wide as the canvas (see `opening`), and five across that
+	// would be five slivers. So a pull of five is two rows: three, then the two that are left
+	// with the avatar the box dealt standing between them, in the cell the row keeps for the
+	// one it is about. A face is not a card, and that is the one place in the row it can stand
+	// without reading as one.
+	const REVEAL_ROW = 3;
+	$: revealTop = pulls ? pulls.slice(0, REVEAL_ROW) : [];
+	$: revealRest = pulls ? pulls.slice(REVEAL_ROW) : [];
 
-	// A cell of the reveal, ringed in the primary when the card is one the collection did not
-	// hold. A border either way and never none, so a row with one repeat in it does not sit a
-	// hair out of line with the rest.
-	const cellClasses = (isNew: boolean): string =>
-		classNames('flex rounded-md border-2', isNew ? 'border-primary' : 'border-transparent');
+	/** One pull as the row draws a member: the card itself, minus everything only the claim
+	 * cared about. */
+	const toMember = (pull: ClaimPull) => ({
+		label: pull.label,
+		basePath: pull.basePath,
+		color: pull.color,
+		box: pull.spawn.box,
+		locationName: pull.locationName,
+		spawnedAt: pull.spawnedAt,
+		showId: pull.spawn.showId
+	});
+
+	/** A row says which of its members has its picture up, counting from its own end; the
+	 * row's own cards are what turn that back into the spawn the box is waiting on. */
+	function rowStatueUp(row: ClaimPull[], index: number): void {
+		const pull = row[index];
+		if (pull) statueUp(pull.spawn.id);
+	}
 
 	// The window is assembled after mount (the claim panel loads the day's festes), so push
 	// changes into the live scene rather than waiting for a remount.
@@ -135,7 +154,6 @@
 			const opened = await pack.claim();
 			pulls = opened.pulls;
 			avatar = opened.avatar;
-			avatarIsNew = opened.avatarIsNew;
 			dispatch('openComplete', opened.pulls.length);
 			// An empty pull is ready at once — there is nothing to stand up, and the box comes
 			// apart onto the panel that says so. Otherwise the cap starts with the cards: what it
@@ -175,7 +193,6 @@
 		forgetStatues();
 		pulls = null;
 		avatar = null;
-		avatarIsNew = false;
 		uncovering = false;
 	}
 
@@ -209,48 +226,54 @@
 						is a measured length, so it comes through as a custom property; no class can
 						carry a number only known at runtime. Until the scene has said one — which
 						cannot happen before a box is standing — the layer's own width stands in. -->
+					<!-- The cards are bare, and not behind a veil of their own: the box dissolving over
+						them is the reveal, and a sprite veil under that would spend a character's one
+						reveal on a sweep held behind something opaque. What each says instead is when its
+						picture is up, which is what the box is waiting to hear — the row forwards it with
+						the place in that row it was said of, and the row's own cards name the spawn. -->
 					<div
 						class={classNames(
-							'mx-auto grid gap-2',
-							REVEAL_COLUMNS,
+							'mx-auto flex flex-col gap-2',
 							opening ? 'w-[var(--opening)]' : 'w-full'
 						)}
 						style:--opening={opening ? `${opening}px` : null}
 					>
-						{#each pulls as pull (pull.spawn.id)}
-							<div class={cellClasses(pull.isNew)}>
-								<!-- Bare, and not behind a veil of its own: the box dissolving over it is the
-									reveal, and a sprite veil under that would spend a character's one reveal on a
-									sweep held behind something opaque. What it says instead is when its picture
-									is up, which is what the box is waiting to hear. -->
-								<CharacterStatue
-									label={pull.label}
-									basePath={pull.basePath}
-									color={pull.color}
-									box={pull.spawn.box}
-									locationName={pull.locationName}
-									spawnedAt={pull.spawnedAt}
-									showId={pull.spawn.showId}
+						<TeamLineup
+							members={revealTop.map(toMember)}
+							veiled={false}
+							on:ready={(event) => rowStatueUp(revealTop, event.detail.index)}
+						/>
+						{#if revealRest.length || avatar}
+							<!-- The second row, and the avatar in the middle of it. The same component
+								either way: with a face to stand there it is handed one, and with none — a
+								box that dealt no avatar — the two cards left simply take the front of the
+								row, as any short side does. -->
+							{#if avatar}
+								<TeamLineup
+									members={revealRest.map(toMember)}
 									veiled={false}
-									classes="w-full min-w-0"
-									on:ready={() => statueUp(pull.spawn.id)}
+									on:ready={(event) => rowStatueUp(revealRest, event.detail.index)}
+								>
+									<!-- The avatar the box dealt: the same component the player's own row
+										wears, in the colour it was dealt in, because what is shown is the very
+										thing that will be standing there once it is picked — not a picture of
+										it. Unnamed, and no card's panel under it: a statue says which character
+										it is because a card is a character, and an avatar is a face. -->
+									<PlayerAvatar
+										slot="middle"
+										characterId={avatar.characterId}
+										color={avatar.color}
+										size="w-full"
+										classes="w-full"
+									/>
+								</TeamLineup>
+							{:else}
+								<TeamLineup
+									members={revealRest.map(toMember)}
+									veiled={false}
+									on:ready={(event) => rowStatueUp(revealRest, event.detail.index)}
 								/>
-							</div>
-						{/each}
-
-						{#if avatar}
-							<div class={cellClasses(avatarIsNew)}>
-								<!-- The avatar the box dealt, in the cell after the last card: the same
-									component the player's own row wears, in the colour it was dealt in, because
-									what is shown is the very thing that will be standing there once it is
-									picked. -->
-								<PlayerAvatar
-									characterId={avatar.characterId}
-									color={avatar.color}
-									size="w-full"
-									classes="w-full"
-								/>
-							</div>
+							{/if}
 						{/if}
 					</div>
 				{:else}

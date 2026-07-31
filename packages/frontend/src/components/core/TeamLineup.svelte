@@ -37,9 +37,23 @@
 	// team; it is dispatched as `select` with the member's own index, which is the index it
 	// arrived at and not the place the row stood it in.
 	export let selectable: boolean = false;
+	// Passed straight through as well: whether a character arrives behind a veil at all.
+	// False for a surface that uncovers the row itself — a booster box dissolves over its
+	// cards, and a veil under that would spend a character's one reveal behind something
+	// opaque. Such a surface waits instead on `ready`, which each statue says when its
+	// picture is up and this row forwards with the member it was said of.
+	export let veiled: boolean = true;
 	export let classes: string = '';
 
-	const dispatch = createEventDispatcher<{ select: { index: number } }>();
+	const dispatch = createEventDispatcher<{
+		select: { index: number };
+		ready: { index: number };
+	}>();
+
+	// Whether something other than a member is standing in the middle of the row. The one
+	// thing that is ever put there is a face — the avatar a booster box deals, which comes
+	// out of the same box as the cards either side of it and is not one of them.
+	$: hasMiddle = Boolean($$slots.middle);
 
 	// The three cells: 35% of the row to each flank and 40% to the middle, which is
 	// pulled 7.5% over each of the two beside it. Said as widths — a basis that neither
@@ -71,6 +85,18 @@
 	$: standing = members.map((member, index) => ({ member, index }));
 	$: lineup =
 		standing.length < 2 ? standing : [standing[1], standing[0], ...standing.slice(2)];
+
+	// The cells the row actually stands, in the order they are drawn. With something else in
+	// the middle the members do not trade places: the swap exists to bring the leader into
+	// that cell, and the cell is taken — so they simply fill the places either side of it in
+	// the order they arrived, and the first of them keeps the front of the row.
+	$: cells = hasMiddle
+		? [
+				...standing.slice(0, 1).map((entry) => ({ middle: false as const, ...entry })),
+				{ middle: true as const },
+				...standing.slice(1).map((entry) => ({ middle: false as const, ...entry }))
+			]
+		: lineup.map((entry) => ({ middle: false as const, ...entry }));
 </script>
 
 <div class={classNames('flex w-full', classes)}>
@@ -80,31 +106,51 @@
 		means something. A row that is only looked at gets no button at all rather than a
 		dead one — the map's corner and a town's pin are exactly the markup they always
 		were. -->
-	{#each lineup as { member, index }, cell (index)}
-		{@const statue = {
-			label: member.label,
-			basePath: member.basePath,
-			color: member.color,
-			box: member.box ?? SpawnBox.Black,
-			locationName: member.locationName,
-			spawnedAt: member.spawnedAt ?? null,
-			showId: member.showId,
-			flipped,
-			alwaysReveal
-		}}
-		{#if selectable}
-			<button
-				type="button"
-				class={classNames(
-					'min-w-0 rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-					cellShares[cell] ?? cellShares[0]
-				)}
-				on:click={() => dispatch('select', { index })}
-			>
-				<CharacterStatue {...statue} classes="w-full" />
-			</button>
+	{#each cells as cell, place (place)}
+		{#if cell.middle}
+			<!-- Whatever was handed to the middle, in the cell the leader would have stood in and
+				at the same share of the row: raised over the two beside it, lapped over both. It is
+				centred down the cell because it is not a statue and has no ground to stand on — a
+				face is a square, and a square as wide as this cell is nothing like as tall as the
+				card either side of it. -->
+			<div class={classNames('flex min-w-0 items-center', cellShares[place] ?? cellShares[0])}>
+				<slot name="middle" />
+			</div>
 		{:else}
-			<CharacterStatue {...statue} classes={cellShares[cell] ?? cellShares[0]} />
+			{@const statue = {
+				label: cell.member.label,
+				basePath: cell.member.basePath,
+				color: cell.member.color,
+				box: cell.member.box ?? SpawnBox.Black,
+				locationName: cell.member.locationName,
+				spawnedAt: cell.member.spawnedAt ?? null,
+				showId: cell.member.showId,
+				flipped,
+				alwaysReveal,
+				veiled
+			}}
+			{#if selectable}
+				<button
+					type="button"
+					class={classNames(
+						'min-w-0 rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+						cellShares[place] ?? cellShares[0]
+					)}
+					on:click={() => dispatch('select', { index: cell.index })}
+				>
+					<CharacterStatue
+						{...statue}
+						classes="w-full"
+						on:ready={() => dispatch('ready', { index: cell.index })}
+					/>
+				</button>
+			{:else}
+				<CharacterStatue
+					{...statue}
+					classes={cellShares[place] ?? cellShares[0]}
+					on:ready={() => dispatch('ready', { index: cell.index })}
+				/>
+			{/if}
 		{/if}
 	{/each}
 </div>
