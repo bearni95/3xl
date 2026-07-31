@@ -84,10 +84,10 @@ export interface MugenBoardOptions {
 }
 
 const DEFAULTS = {
-	// A cell's width in canvas px. Five columns of it is very nearly the whole board's
-	// width, so this is what decides the canvas's resolution: enough that the arena —
-	// which scales the canvas to fit the viewport (see MAX_CANVAS_HEIGHT) — is always
-	// scaling it *down* rather than up, which is what keeps the pixel art crisp.
+	// A cell's width in canvas px. Six columns of it is the whole board's width, so this is
+	// what decides the canvas's resolution: enough that the board — which is sized to the
+	// viewport it is drawn in ({@link VIEWPORT_WIDTH}) — is nearly always being scaled
+	// *down* rather than up, which is what keeps the pixel art crisp.
 	cellSize: 220,
 	padding: 40,
 	centerColor: 0xffffff // white
@@ -111,24 +111,27 @@ const DEFAULTS = {
 const GRID_LINE = 0x000000;
 
 /**
- * The most of the viewport the canvas may take, across and down.
+ * The viewport the canvas is sized against, across and down.
  *
- * The board is a wide field — five columns by three rows — but the characters standing on
- * it are taller than their cells, so a canvas scaled to its container's *width*, which is
- * all `max-width` can do, can still run off the bottom of the screen. Both axes are capped
- * instead: a canvas has an intrinsic size, so one given two maxima and no size of its own
- * shrinks to fit inside both while keeping its aspect ratio, and comes out at whichever of
- * the two is the tighter. That is what puts the whole board on screen however the window
- * is shaped, and it is why neither dimension is ever asserted here.
+ * The board takes the whole of whichever of the two runs out first and its aspect ratio
+ * decides the other, so it is as big as it can be drawn without any of it going off screen:
+ * `width: min(100vw, 100dvh × aspect)`, with the height left to follow. There is nothing to
+ * leave room for — the board is the whole view, drawn on a sheet that takes the viewport and
+ * keeps nothing back, and the score, the way out and whatever the fight has to say are drawn
+ * *over* it rather than around it.
  *
- * Both are the whole viewport, because the board is the whole view: it is drawn on a sheet
- * that takes the viewport and keeps nothing back, and there is nothing above or below it
- * to leave room for — the score, the way out and whatever the fight has to say are drawn
- * over the board rather than around it. `dvh` rather than `vh` so a phone's collapsing
- * address bar moves the cap with it instead of leaving the foot of the board under it.
+ * A pair of maxima with no size asserted is not the same thing and was the bug: a canvas has
+ * an intrinsic size, so it shrinks to fit inside two caps but never grows to reach either.
+ * A framebuffer smaller than the screen was then drawn at its own pixel size with a band of
+ * room all round it, which is board nobody gets. The size is stated instead, and stated only
+ * once the crop has settled the framebuffer, since the crop is what the aspect ratio is read
+ * off ({@link MugenBoard.sizeToViewport}).
+ *
+ * `dvh` rather than `vh` so a phone's collapsing address bar moves the measure with it
+ * instead of leaving the foot of the board under it.
  */
-const MAX_CANVAS_WIDTH = '100vw';
-const MAX_CANVAS_HEIGHT = '100dvh';
+const VIEWPORT_WIDTH = '100vw';
+const VIEWPORT_HEIGHT = '100dvh';
 
 /** On-screen height of a reference-height ({@link REFERENCE_SOURCE_HEIGHT}) character
  * as a multiple of a cell's width — the height of the box every character is fitted
@@ -731,16 +734,11 @@ export class MugenBoard {
 		app.stage.sortableChildren = true;
 		// Order buttons live on the board, so the stage has to be hit-tested for taps.
 		app.stage.eventMode = 'static';
-		// Render as a block so the canvas doesn't reserve inline-baseline descender
-		// space below it, and let it scale down responsively while keeping its
-		// aspect ratio rather than forcing its full pixel size. Neither dimension is
-		// asserted, so the two maxima decide the size between them and the whole board
-		// stays on screen (see MAX_CANVAS_WIDTH / MAX_CANVAS_HEIGHT).
+		// Render as a block so the canvas doesn't reserve inline-baseline descender space
+		// below it. Its size is stated once the crop has settled the framebuffer
+		// ({@link sizeToViewport}) — until then it is laid out at its own pixel size, and
+		// it is hidden throughout anyway.
 		app.canvas.style.display = 'block';
-		app.canvas.style.maxWidth = MAX_CANVAS_WIDTH;
-		app.canvas.style.maxHeight = MAX_CANVAS_HEIGHT;
-		app.canvas.style.width = 'auto';
-		app.canvas.style.height = 'auto';
 		// Held back until the board is assembled — see the reveal at the end of this method.
 		app.canvas.style.visibility = 'hidden';
 		container.appendChild(app.canvas);
@@ -780,6 +778,9 @@ export class MugenBoard {
 		// positions are absolute px off the grid's origin, so this only translates the stage
 		// and resizes the framebuffer; nothing moves.
 		this.fitToContent();
+		// And now that the framebuffer is the board's own rectangle, the element is sized off
+		// it: as big as the viewport can carry, on whichever axis runs out first.
+		this.sizeToViewport();
 
 		// And only now is any of it shown. A Pixi application renders every frame from the
 		// moment it is created, so a canvas in the document is a live picture of a board
@@ -822,6 +823,31 @@ export class MugenBoard {
 		});
 		this.app.stage.position.set(-left, -top);
 		this.app.renderer.resize(width, height);
+	}
+
+	/**
+	 * Size the canvas *element* against the viewport: it takes the whole of whichever axis
+	 * runs out first, and its own aspect ratio decides the other. So the board is drawn as
+	 * large as it can be with none of it off screen, and there is never a band of room
+	 * around it — a canvas that does not fill the axis it is limited by is board given away.
+	 *
+	 * The width is the one figure stated, in CSS rather than in pixels, so it is re-measured
+	 * by the browser as the window is resized or a phone is turned: `min(viewport width,
+	 * viewport height × the board's aspect)`. The height is left to follow from the canvas's
+	 * intrinsic ratio, which keeps the picture square with its framebuffer — the hexagons are
+	 * never stretched, only scaled.
+	 *
+	 * Read off the framebuffer as it stands, so it has to be called after the crop
+	 * ({@link fitToContent}) and again whenever that changes: the aspect ratio is the crop's,
+	 * not the layout's.
+	 */
+	private sizeToViewport(): void {
+		if (!this.app) return;
+		const { width, height } = this.app.renderer;
+		if (!width || !height) return;
+		const aspect = width / height;
+		this.app.canvas.style.width = `min(${VIEWPORT_WIDTH}, calc(${VIEWPORT_HEIGHT} * ${aspect}))`;
+		this.app.canvas.style.height = 'auto';
 	}
 
 	/** Tear everything down. Safe to call more than once. */
