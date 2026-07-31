@@ -4,7 +4,8 @@
 	import ShowIcon from '$components/core/ShowIcon.svelte';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
 	import { spawnYearLabel } from '$utils/spawn/year';
-	import { showIconName } from '$utils/show/show-icon';
+	import { forShow } from '$utils/show/show-icon';
+	import { showGlyphs } from '$services/shows.service';
 	import { SPAWN_FILL_CLASSES } from '$components/core/spawn-colors';
 	import { SpawnBox, type SpawnColor } from '$types/character-spawn.type';
 
@@ -187,7 +188,7 @@
 	// picture and the reading below it are the same thing.
 	$: fill = color ? SPAWN_FILL_CLASSES[color] : 'bg-zinc-800';
 
-	$: showIcon = showIconName(showId);
+	$: showIcon = forShow($showGlyphs, showId);
 
 	// The gazetteer files the towns come from park the article after a comma to sort by
 	// — "Vall de Boí, la" — so the statue puts it back at the front before saying it.
@@ -231,7 +232,7 @@
 				{#if showIcon}
 					<!-- The colour is the tile's to set: the glyph paints in `currentColor`, so
 						it takes it from here rather than carrying one of its own. -->
-					<ShowIcon name={showIcon} classes="absolute inset-0 [&>svg]:h-full [&>svg]:w-full" />
+					<ShowIcon markup={showIcon} classes="absolute inset-0 [&>svg]:h-full [&>svg]:w-full" />
 				{/if}
 			</div>
 

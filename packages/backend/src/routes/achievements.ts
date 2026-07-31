@@ -1,13 +1,10 @@
 import { Router } from 'express';
-import { readFile, writeFile, readdir, access } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
 	ACHIEVEMENT_ID_PATTERN,
-	ACHIEVEMENT_ICON_PATTERN,
 	ACHIEVEMENT_NAME_MAX_LENGTH,
 	ACHIEVEMENT_DESCRIPTION_MAX_LENGTH,
-	NON_GAME_ICON_FOLDERS,
 	type Achievement,
 	type AchievementsCollection
 } from '@3xl/shared/types/achievement.type';
@@ -16,6 +13,7 @@ import {
 	validateVariables
 } from '@3xl/shared/utils/achievement/variables';
 import { asyncHandler, httpError } from '../http-error';
+import { iconExists, listIcons } from '../icons';
 
 /**
  * Read/write API for the achievement collection stored as JSON in the @3xl/data
@@ -44,12 +42,12 @@ import { asyncHandler, httpError } from '../http-error';
  * badge — happens in ./achievement-templates, on sync.
  */
 
-// packages/backend/src/routes → packages/data / packages/assets. Resolved from
-// this file's location so the process cwd doesn't matter.
+// packages/backend/src/routes → packages/data. Resolved from this file's location
+// so the process cwd doesn't matter. The glyphs themselves are read by ../icons,
+// which the `/shows` route reads the same set through.
 const ACHIEVEMENTS_PATH = fileURLToPath(
 	new URL('../../../data/public/achievements.json', import.meta.url)
 );
-const ICONS_DIR = fileURLToPath(new URL('../../../assets/public/icons', import.meta.url));
 
 const EMPTY: AchievementsCollection = { achievements: [] };
 
@@ -67,45 +65,6 @@ async function readCollection(): Promise<AchievementsCollection> {
 /** Pretty-print with tabs + trailing newline to match the checked-in JSON style. */
 async function writeCollection(collection: AchievementsCollection): Promise<void> {
 	await writeFile(ACHIEVEMENTS_PATH, JSON.stringify(collection, null, '\t') + '\n', 'utf-8');
-}
-
-/**
- * Every game-icons.net glyph in @3xl/assets, as `<artist>/<slug>`, sorted. The
- * `shows` folder is left out: those are Noun Project glyphs that each stand for
- * one show, so offering them here would put a show's mark on a badge.
- */
-export async function listGameIcons(): Promise<string[]> {
-	const names: string[] = [];
-	let folders: string[];
-	try {
-		folders = (await readdir(ICONS_DIR, { withFileTypes: true }))
-			.filter((entry) => entry.isDirectory() && !NON_GAME_ICON_FOLDERS.includes(entry.name))
-			.map((entry) => entry.name);
-	} catch {
-		return names;
-	}
-	for (const folder of folders) {
-		const files = await readdir(resolve(ICONS_DIR, folder));
-		for (const file of files) {
-			if (file.endsWith('.svg')) names.push(`${folder}/${file.slice(0, -4)}`);
-		}
-	}
-	return names.sort();
-}
-
-/** Whether `<folder>/<slug>` names a glyph that is actually on disk and offerable. */
-async function iconExists(icon: string): Promise<boolean> {
-	// The pattern already bars dots and extra separators, so this cannot escape
-	// ICONS_DIR; the folder check keeps the show set out.
-	if (!ACHIEVEMENT_ICON_PATTERN.test(icon)) return false;
-	const [folder, slug] = icon.split('/');
-	if (NON_GAME_ICON_FOLDERS.includes(folder)) return false;
-	try {
-		await access(resolve(ICONS_DIR, folder, `${slug}.svg`));
-		return true;
-	} catch {
-		return false;
-	}
 }
 
 /**
@@ -137,7 +96,8 @@ async function validate(body: unknown): Promise<Achievement> {
 	}
 
 	const icon = typeof draft.icon === 'string' ? draft.icon.trim() : '';
-	if (!(await iconExists(icon))) {
+	// Without the show set: those glyphs each stand for a show, and a badge is not one.
+	if (!(await iconExists(icon, false))) {
 		httpError(400, `Unknown icon "${icon}" — pick one of the game-icons in @3xl/assets`);
 	}
 
@@ -171,7 +131,7 @@ export const achievementsRouter = Router();
 achievementsRouter.get(
 	'/icons',
 	asyncHandler(async (_req, res) => {
-		res.json({ icons: await listGameIcons() });
+		res.json({ icons: await listIcons(false) });
 	})
 );
 

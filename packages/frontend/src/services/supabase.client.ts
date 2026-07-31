@@ -34,7 +34,16 @@ export function getSupabaseClient(): SupabaseClient {
 			auth: {
 				persistSession: true,
 				autoRefreshToken: true,
-				// Complete the magic-link flow when the user returns to the app.
+				// Come back from the provider holding a one-time code rather than the
+				// tokens themselves. The library's default is the implicit flow, which
+				// returns the access *and refresh* tokens in the URL fragment: a
+				// long-lived credential written into somewhere it can be read from --
+				// the address bar, and every extension with sight of a tab -- and only
+				// scrubbed a moment later, once the page has already had it. Under PKCE
+				// what lands in the URL is a code that is worthless without the verifier
+				// held in this browser, so intercepting the redirect buys nothing.
+				flowType: 'pkce',
+				// Complete that exchange when the user returns to the app.
 				detectSessionInUrl: true
 			}
 		});

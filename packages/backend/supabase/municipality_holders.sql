@@ -33,9 +33,6 @@ create table if not exists public.municipality_holders (
 	-- The town, as its geojson feature id (e.g. ES_08028).
 	location_id text primary key,
 	user_id uuid not null references auth.users (id) on delete cascade,
-	-- Display name resolved server-side when the town was taken, so the map never
-	-- has to read auth.users from the browser.
-	holder_name text,
 	-- The winning team frozen as [{"character_id": text, "color": text}, …] in
 	-- fielded order. A flat copy, not `character_spawns` references: those rows are
 	-- RLS-scoped to their owner, so no other player could read them — and the
@@ -48,11 +45,38 @@ create table if not exists public.municipality_holders (
 	taken_at timestamptz not null default now()
 );
 
+-- The holder's name is NOT kept here. It used to be copied in when the town was
+-- taken, which made this a second place a username lived: it went stale the moment
+-- the holder renamed themselves, and being written by a trigger-like copy it was
+-- also where a name nobody typed could arrive. A username has one home,
+-- `player_profiles.username`, and the map reads it live through the view below.
+alter table public.municipality_holders drop column if exists holder_name;
+
 alter table public.municipality_holders enable row level security;
 
 drop policy if exists municipality_holders_select_all on public.municipality_holders;
 create policy municipality_holders_select_all on public.municipality_holders
 	for select using (true);
+
+-- What the map actually selects: every taken town with its holder's current name
+-- and the avatar they are wearing joined on. `holder_name` is null for a holder who
+-- has not named themselves, and the frontend words that itself (see
+-- territory.adapter) — the absence is never filled in with their email or anything
+-- else about their sign-in.
+--
+-- The avatar comes over as the pair that IS one — the character and the colour
+-- together (see player_profiles.sql) — so the face on a town's pin is the very face
+-- that player's profile card wears, and half of it says nothing on its own. Both
+-- null is the initial-letter avatar every account starts on, which the pin draws off
+-- the name it already has.
+create or replace view public.municipality_holders_public
+	with (security_invoker = false) as
+	select h.location_id, h.user_id, n.username as holder_name, h.team, h.turnover, h.taken_at,
+		n.avatar_character_id, n.avatar_color
+	from public.municipality_holders h
+	left join public.player_profiles n on n.user_id = h.user_id;
+
+grant select on public.municipality_holders_public to anon, authenticated;
 
 -- One challenger's progress against one town's sitting team. `turnover` is the
 -- holder generation the wins count against; when the town flips, the rows are

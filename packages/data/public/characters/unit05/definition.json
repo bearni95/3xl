@@ -1,0 +1,51 @@
+{
+	"id": "unit05",
+	"label": "EVA-05",
+	"basePath": "/assets/unit05/frames",
+	"animations": {
+		"idle": {
+			"source": "idle",
+			"loop": true
+		},
+		"hurt": {
+			"source": "action-5000",
+			"loop": false
+		}
+	},
+	"directions": {
+		"move-left": {
+			"source": "walk-back",
+			"loop": true
+		},
+		"move-right": {
+			"source": "walk",
+			"loop": true
+		}
+	},
+	"moves": [
+		{
+			"name": "Melee",
+			"type": "melee",
+			"source": "action-200"
+		},
+		{
+			"name": "Ranged",
+			"type": "ranged",
+			"source": "action-1028",
+			"projectile": {
+				"source": "",
+				"loop": true
+			}
+		},
+		{
+			"name": "Defend",
+			"type": "defend",
+			"source": "guard-stand"
+		}
+	],
+	"stats": {
+		"atk": 5,
+		"def": 5,
+		"hp": 5
+	}
+}

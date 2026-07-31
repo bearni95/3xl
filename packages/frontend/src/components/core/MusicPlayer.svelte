@@ -5,7 +5,8 @@
 	import ShowIcon from '$components/core/ShowIcon.svelte';
 	import StationDial from '$components/core/StationDial.svelte';
 	import { musicService } from '$services/music.service';
-	import { showIconName } from '$utils/show/show-icon';
+	import { forShow } from '$utils/show/show-icon';
+	import { showGlyphs } from '$services/shows.service';
 
 	// The radio, whole: one plate in the burger menu with the three things a listener
 	// needs — what is on air, a play/pause, and the dial that picks the station.
@@ -50,7 +51,7 @@
 	const music = musicService.state;
 
 	$: state = $music;
-	$: showIcon = showIconName(state.track?.showId ?? null);
+	$: showIcon = forShow($showGlyphs, state.track?.showId);
 </script>
 
 {#if state.track}
@@ -67,7 +68,7 @@
 				class="flex size-10 flex-none items-center justify-center rounded-lg bg-base-200 text-base-content"
 				aria-hidden="true"
 			>
-				<ShowIcon name={showIcon} classes="[&>svg]:size-7" />
+				<ShowIcon markup={showIcon} classes="[&>svg]:size-7" />
 			</div>
 		{/if}
 

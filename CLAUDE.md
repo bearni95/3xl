@@ -53,23 +53,47 @@ municipality at build time from Wikidata (Catalunya / Catalunya Nord), a GADM-de
 layer (País Valencià), and the comarques de les illes Balears (Illes Balears); Andorra and
 l'Alguer have no comarca tier. See the script header for the full sourcing notes.
 
+**Which show a town flies** is not authored and is not baked: it is
+`seededShowId(coordinateSeed(polygon), pool)` (`@3xl/shared/utils/geo/municipality-show.ts`),
+computed in the browser by the map (`+page.svelte`'s `buildSeededShows`) and handed from
+there to the booster panel, so one town has one show wherever it is drawn. The **pool** is
+every show with at least one renderable character cast in it — the Supabase `show_characters`
+assignment the album and the claim roll already read, narrowed to the local registry — in
+**id** order, never name order, since a name is translated data that a TMDB refresh can
+change under it. So a show enters the map by being given its first character in the admin
+and leaves it by losing its last; nothing has to be re-run, and a town whose polygon does not
+move keeps its show as long as the pool does not change. A town somebody **holds** flies its
+holder's lead's show instead, which overrides the seed everywhere the map, the pins and the
+boxes name a show.
+
 **Data flow — show icons:** `@3xl/assets`' `generate-show-icons.js` takes the Noun
 Project SVGs dropped at the repo root, strips the attribution `<text>` baked into every
 download, crops the viewBox to the artwork, and re-emits it at `width`/`height` `1em`
 with `fill="currentColor"`, into `public/icons/shows/<slug>.svg` — then deletes the root
 original (it is a move) and records the stripped credit in that folder's `license.txt`.
-Which show gets which glyph is the hand-maintained `showIconName` map in
-`@3xl/shared/utils/show/show-icon.ts`, keyed by TMDB show id.
+
+Which show gets which glyph is **authored, not coded**: it is `icon` on that show's own
+entry in `shows.json` (`<folder>/<slug>`, e.g. `shows/straw-hat` or
+`delapouite/pirate-hat`), picked in the admin `/shows` screen from the whole vendored set
+and held to `GET /api/shows/icons` on save. It was a hand-kept table in
+`@3xl/shared/utils/show/show-icon.ts` until then, which is why exactly three shows had a
+mark; that file now only turns the collection into a lookup (`showIconsByShow`). A show
+with no icon picked is named without one — there is deliberately no placeholder glyph.
 
 **Icons.** Where an icon is *drawn* decides how it is stored, and the two are not
 interchangeable:
 
-- **Into the document** — the show glyphs above. Inlined into the bundle by
-  `icon-markup.ts` (`import.meta.glob` + `?raw`), keyed `<folder>/<slug>`
-  (`shows/straw-hat`), and rendered by `ShowIcon.svelte`. An `<img>` is an opaque
-  document whose artwork cannot inherit anything from the page, so inlining is what
-  lets `fill="currentColor"` resolve against the surrounding text — colour *and* size
-  follow whatever the glyph sits in.
+- **Into the document** — a show's glyph, wherever the game names a show in a line of
+  text, rendered by `ShowIcon.svelte`. An `<img>` is an opaque document whose artwork
+  cannot inherit anything from the page, so the markup is *inlined* — which is what lets
+  `fill="currentColor"` resolve against the surrounding text, colour *and* size following
+  whatever the glyph sits in. Since the pairing is authored, the markup cannot be globbed
+  into the bundle: `shows.service.ts` fetches each picked glyph by URL, runs it through
+  `@3xl/shared/utils/icon/inline-svg.ts` — the baked white becomes `currentColor`, the
+  artwork's own size becomes `1em`, idempotently, so either vendored set may be picked —
+  and publishes them as the `showGlyphs` store, keyed by TMDB show id. Subscribing to that
+  store is what starts the load, so no surface has to remember to ask for the collection
+  first.
 - **Into a canvas** — the game-icons.net artwork under `public/icons/<artist>/`:
   the combat orders' glyphs go into a Pixi texture, which is not a place a stylesheet
   reaches, so these are fetched by URL and carry a baked **white** fill, which the
@@ -83,11 +107,12 @@ interchangeable:
   path would have to come out first). Attribution for the set is
   `public/icons/license.txt`; keep it with the folders.
 
-Inlining a canvas glyph would put white on white, which is why `icon-markup.ts`'s
-glob deliberately takes only the show set. The admin's achievement editor is the one
-place a game-icons glyph is shown *outside* a canvas — it stays an `<img>` by URL and
-is always given a dark tile to stand on (`GameIcon.svelte`), because the white it
-carries is the canvas's requirement and is not negotiable from a page.
+Inlining a canvas glyph *untouched* would put white on white, which is why nothing
+reaches the document except through `inlineIconMarkup`. The admin's two pickers are the
+one place a glyph is shown outside both a canvas and that rewrite — they stay `<img>`s by
+URL (`GameIcon.svelte`), so the tile under one is picked from the folder it came out of:
+dark for the game-icons white, light for a `shows/` mark, whose `currentColor` resolves
+to black inside an `<img>`.
 
 **The typeface.** The game is set in **Genos**, fetched from Google Fonts by an
 `@import` at the head of `css/app.css` — an import may only precede other rules, which is
@@ -403,9 +428,12 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   `packages/backend/supabase/achievement_templates.sql` — the one file in that folder that is
   not reference-only.
 - `GET/POST /api/shows` + `POST /api/shows/refresh` — read/upsert the saved-show collection in
-  `@3xl/data`'s `public/shows.json` (a show, every image TMDB holds for it, and the author's
-  enabled selection per section), and re-read every saved show's **title and description** from
-  TMDB. The game is Catalan, so a saved show's text is Catalan text: `TMDB_LANGUAGE`
+  `@3xl/data`'s `public/shows.json` (a show, every image TMDB holds for it, the author's
+  enabled selection per section, and the **glyph** that stands for the show), and re-read
+  every saved show's **title and description** from TMDB. `GET /api/shows/icons` lists what
+  that glyph may be — the same `src/icons.ts` listing the achievements pick from, plus the
+  `shows` folder those Noun Project marks live in — and a save is held to it, so the picker
+  can never offer one the API would refuse. The game is Catalan, so a saved show's text is Catalan text: `TMDB_LANGUAGE`
   (`@3xl/shared/types/tmdb.type`, `ca-ES` — the only Catalan variant TMDB has) goes on every
   text-bearing call. TMDB answers a field it has no Catalan text for with an empty string rather
   than falling back itself, and a Catalan title with no Catalan overview is common, so each
@@ -414,9 +442,9 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   matched by id. The refresh moves **only the text** — images, the enabled selection, votes and
   the proxied URLs are language-independent or hand-curated — and is the one call here that is
   deliberately *not* disk-cached, its whole point being to ask again. A show's name is therefore
-  translated data: things that select shows key on the TMDB id instead (`showIconName`,
-  `generate-shows.js`'s allowlist), and `show_templates` in Supabase needs a re-sync after a
-  refresh to carry the new names.
+  translated data: things that select or order shows key on the TMDB id instead (a show's
+  authored icon, the map's seeded-show pool — see above), and `show_templates` in Supabase
+  needs a re-sync after a refresh to carry the new names.
 - `/api/tmdb/*` — proxy for the admin `/shows` screen. Keeps the TMDB key server-side and
   **disk-caches** every search response, image-list, and image binary under
   `packages/backend/.cache/` (git-ignored) so TMDB is never queried twice for the same thing.

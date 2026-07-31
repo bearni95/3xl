@@ -1,0 +1,48 @@
+; ADD004 BASIC PIEs ReBuilded DEF (12/20/2021)
+;==============================================
+; This file is Made by PIE.
+; there is a backup of this file in the same folder, named "<samename>.a4bk".
+; to Restore, use assist tool, or delete this file, then remove ".a4bk" from the neme of backup.
+;==============================================
+
+;------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------
+;Eva-01 By TonyADV
+;------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------
+;----------------------------------
+;----------------------------------
+;Eva-01 Definition file by TonyADV
+;----------------------------------
+;----------------------------------
+; Player information
+[Info]
+name = "EVA-01"        
+displayname = "EVA-01" 
+versiondate = 21,03,2006     
+mugenversion = 1.0
+author = "TonyADV"; edited by TheWhiteDevil27         
+pal.defaults = 1,2,3   
+; Files for the player
+[Files]
+cmd     = 	01.cmd   
+cns=add004basic.reb1
+st=add004basic.reb1
+stcommon=common1.cns
+sprite  = 	01.sff   
+anim    = 	01.air   
+sound   = 	01.snd  
+pal1 = 	01z.act		
+pal2 = 	01a.act		
+pal3 = 	01b.act	
+pal4 = K15_Custom1.act
+pal5 = K15_Custom2.act
+pal6 = K15_Custom3.act
+pal7 = K15_Custom4.act
+pal8 = K15_Custom5.act	
+pal9 = K15_Custom6.act
+pal10 = MVC-ish.act
+pal11 = 01d.act
+[Arcade]
+;intro.storyboard  = INTRO01.def
+;ending.storyboard = END01.def

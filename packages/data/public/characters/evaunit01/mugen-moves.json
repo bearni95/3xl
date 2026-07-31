@@ -1,0 +1,1267 @@
+{
+	"name": "EVA-01",
+	"commands": [
+		{
+			"name": "AI1",
+			"input": "a, a, a"
+		},
+		{
+			"name": "AI2",
+			"input": "b, b, b"
+		},
+		{
+			"name": "AI3",
+			"input": "c, c, c"
+		},
+		{
+			"name": "AI4",
+			"input": "x, x, x"
+		},
+		{
+			"name": "AI5",
+			"input": "y, y, y"
+		},
+		{
+			"name": "AI6",
+			"input": "z, z, z"
+		},
+		{
+			"name": "AI7",
+			"input": "a, b, c"
+		},
+		{
+			"name": "AI8",
+			"input": "a, c, b"
+		},
+		{
+			"name": "AI9",
+			"input": "b, a, c"
+		},
+		{
+			"name": "AI10",
+			"input": "b, c, a"
+		},
+		{
+			"name": "AI11",
+			"input": "c, b, a"
+		},
+		{
+			"name": "AI12",
+			"input": "c, a, b"
+		},
+		{
+			"name": "AI13",
+			"input": "x, y, z"
+		},
+		{
+			"name": "AI14",
+			"input": "x, z, y"
+		},
+		{
+			"name": "AI15",
+			"input": "y, z, x"
+		},
+		{
+			"name": "AI16",
+			"input": "y, x, z"
+		},
+		{
+			"name": "AI17",
+			"input": "z, y, x"
+		},
+		{
+			"name": "AI18",
+			"input": "z, x, y"
+		},
+		{
+			"name": "AI19",
+			"input": "a, b, a"
+		},
+		{
+			"name": "AI20",
+			"input": "a, c, a"
+		},
+		{
+			"name": "AI21",
+			"input": "b, a, b"
+		},
+		{
+			"name": "AI22",
+			"input": "b, c, b"
+		},
+		{
+			"name": "AI23",
+			"input": "c, a, c"
+		},
+		{
+			"name": "AI24",
+			"input": "c, b, c"
+		},
+		{
+			"name": "AI25",
+			"input": "x, y, x"
+		},
+		{
+			"name": "AI26",
+			"input": "x, z, x"
+		},
+		{
+			"name": "AI27",
+			"input": "y, x, y"
+		},
+		{
+			"name": "AI28",
+			"input": "y, z, y"
+		},
+		{
+			"name": "AI29",
+			"input": "z, x, z"
+		},
+		{
+			"name": "AI30",
+			"input": "z, y, z"
+		},
+		{
+			"name": "Awakening",
+			"input": "x+y+z"
+		},
+		{
+			"name": "Knife",
+			"input": "a+x"
+		},
+		{
+			"name": "Laser",
+			"input": "b+y"
+		},
+		{
+			"name": "Cannon",
+			"input": "c+z"
+		},
+		{
+			"name": "Cassius",
+			"input": "a+b+c"
+		},
+		{
+			"name": "ATField",
+			"input": "~B, a"
+		},
+		{
+			"name": "Gomitata",
+			"input": "~F, a"
+		},
+		{
+			"name": "Pistola",
+			"input": "~F, b"
+		},
+		{
+			"name": "Mitra",
+			"input": "~F, c"
+		},
+		{
+			"name": "Uppercut",
+			"input": "~DF,a"
+		},
+		{
+			"name": "Super Calcio",
+			"input": "~DF,x"
+		},
+		{
+			"name": "charge",
+			"input": "/s"
+		},
+		{
+			"name": "charge 1",
+			"input": "/s"
+		},
+		{
+			"name": "auto-berserk",
+			"input": "~DF,s"
+		},
+		{
+			"name": "FF",
+			"input": "F, F"
+		},
+		{
+			"name": "BB",
+			"input": "B, B"
+		},
+		{
+			"name": "recovery",
+			"input": "x+y"
+		},
+		{
+			"name": "down_a",
+			"input": "/$D,a"
+		},
+		{
+			"name": "down_b",
+			"input": "/$D,b"
+		},
+		{
+			"name": "a",
+			"input": "a"
+		},
+		{
+			"name": "b",
+			"input": "b"
+		},
+		{
+			"name": "c",
+			"input": "c"
+		},
+		{
+			"name": "x",
+			"input": "x"
+		},
+		{
+			"name": "y",
+			"input": "y"
+		},
+		{
+			"name": "z",
+			"input": "z"
+		},
+		{
+			"name": "start",
+			"input": "s"
+		},
+		{
+			"name": "holdfwd",
+			"input": "/$F"
+		},
+		{
+			"name": "holdback",
+			"input": "/$B"
+		},
+		{
+			"name": "holdup",
+			"input": "/$U"
+		},
+		{
+			"name": "holddown",
+			"input": "/$D"
+		}
+	],
+	"moves": [
+		{
+			"name": "FF",
+			"stateNo": 100,
+			"commands": [
+				"FF"
+			],
+			"inputs": [
+				"F, F"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "BB",
+			"stateNo": 105,
+			"commands": [
+				"BB"
+			],
+			"inputs": [
+				"B, B"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 105,
+			"animation": "run-back"
+		},
+		{
+			"name": "State 130",
+			"stateNo": 130,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-stand"
+		},
+		{
+			"name": "State 131",
+			"stateNo": 131,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-crouch"
+		},
+		{
+			"name": "State 132",
+			"stateNo": 132,
+			"commands": [],
+			"inputs": [],
+			"movetype": "",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-air"
+		},
+		{
+			"name": "State 150",
+			"stateNo": 150,
+			"commands": [],
+			"inputs": [],
+			"movetype": "H",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-stand-hit"
+		},
+		{
+			"name": "State 152",
+			"stateNo": 152,
+			"commands": [],
+			"inputs": [],
+			"movetype": "H",
+			"damage": null,
+			"anim": null,
+			"animation": "guard-crouch-hit"
+		},
+		{
+			"name": "a",
+			"stateNo": 200,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "a",
+			"stateNo": 202,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 200,
+			"animation": "action-200"
+		},
+		{
+			"name": "b",
+			"stateNo": 210,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 201,
+			"animation": "action-201"
+		},
+		{
+			"name": "b",
+			"stateNo": 212,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 205,
+			"animation": "action-205"
+		},
+		{
+			"name": "c",
+			"stateNo": 220,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 204,
+			"animation": "action-204"
+		},
+		{
+			"name": "c",
+			"stateNo": 222,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 206,
+			"animation": "action-206"
+		},
+		{
+			"name": "x",
+			"stateNo": 230,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 207,
+			"animation": "action-207"
+		},
+		{
+			"name": "x",
+			"stateNo": 232,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 207,
+			"animation": "action-207"
+		},
+		{
+			"name": "y",
+			"stateNo": 240,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 209,
+			"animation": "action-209"
+		},
+		{
+			"name": "y",
+			"stateNo": 242,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 209,
+			"animation": "action-209"
+		},
+		{
+			"name": "y",
+			"stateNo": 245,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 208,
+			"animation": "action-208"
+		},
+		{
+			"name": "y",
+			"stateNo": 247,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 208,
+			"animation": "action-208"
+		},
+		{
+			"name": "z",
+			"stateNo": 250,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "z",
+			"stateNo": 252,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 65,
+			"anim": 210,
+			"animation": "action-210"
+		},
+		{
+			"name": "a",
+			"stateNo": 400,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 20,
+			"anim": 211,
+			"animation": "action-211"
+		},
+		{
+			"name": "a",
+			"stateNo": 402,
+			"commands": [
+				"a",
+				"holddown"
+			],
+			"inputs": [
+				"a",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 211,
+			"animation": "action-211"
+		},
+		{
+			"name": "b",
+			"stateNo": 410,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 2112,
+			"animation": "action-2112"
+		},
+		{
+			"name": "b",
+			"stateNo": 412,
+			"commands": [
+				"b",
+				"holddown"
+			],
+			"inputs": [
+				"b",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 2112,
+			"animation": "action-2112"
+		},
+		{
+			"name": "c",
+			"stateNo": 420,
+			"commands": [
+				"c",
+				"holddown"
+			],
+			"inputs": [
+				"c",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 212,
+			"animation": "action-212"
+		},
+		{
+			"name": "c",
+			"stateNo": 422,
+			"commands": [
+				"c",
+				"holddown"
+			],
+			"inputs": [
+				"c",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 65,
+			"anim": 212,
+			"animation": "action-212"
+		},
+		{
+			"name": "x",
+			"stateNo": 430,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 30,
+			"anim": 213,
+			"animation": "action-213"
+		},
+		{
+			"name": "x",
+			"stateNo": 432,
+			"commands": [
+				"x",
+				"holddown"
+			],
+			"inputs": [
+				"x",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 213,
+			"animation": "action-213"
+		},
+		{
+			"name": "y",
+			"stateNo": 440,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 214,
+			"animation": "action-214"
+		},
+		{
+			"name": "y",
+			"stateNo": 442,
+			"commands": [
+				"y",
+				"holddown"
+			],
+			"inputs": [
+				"y",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 214,
+			"animation": "action-214"
+		},
+		{
+			"name": "z",
+			"stateNo": 450,
+			"commands": [
+				"z",
+				"holddown"
+			],
+			"inputs": [
+				"z",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 214,
+			"animation": "action-214"
+		},
+		{
+			"name": "z",
+			"stateNo": 452,
+			"commands": [
+				"z",
+				"holddown"
+			],
+			"inputs": [
+				"z",
+				"/$D"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 214,
+			"animation": "action-214"
+		},
+		{
+			"name": "a",
+			"stateNo": 600,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 215,
+			"animation": "action-215"
+		},
+		{
+			"name": "a",
+			"stateNo": 602,
+			"commands": [
+				"a"
+			],
+			"inputs": [
+				"a"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 215,
+			"animation": "action-215"
+		},
+		{
+			"name": "b",
+			"stateNo": 610,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 215,
+			"animation": "action-215"
+		},
+		{
+			"name": "b",
+			"stateNo": 612,
+			"commands": [
+				"b"
+			],
+			"inputs": [
+				"b"
+			],
+			"movetype": "A",
+			"damage": 55,
+			"anim": 215,
+			"animation": "action-215"
+		},
+		{
+			"name": "c",
+			"stateNo": 620,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 216,
+			"animation": "action-216"
+		},
+		{
+			"name": "c",
+			"stateNo": 622,
+			"commands": [
+				"c"
+			],
+			"inputs": [
+				"c"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 216,
+			"animation": "action-216"
+		},
+		{
+			"name": "x",
+			"stateNo": 630,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 217,
+			"animation": "action-217"
+		},
+		{
+			"name": "x",
+			"stateNo": 632,
+			"commands": [
+				"x"
+			],
+			"inputs": [
+				"x"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 217,
+			"animation": "action-217"
+		},
+		{
+			"name": "y",
+			"stateNo": 640,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 35,
+			"anim": 217,
+			"animation": "action-217"
+		},
+		{
+			"name": "y",
+			"stateNo": 642,
+			"commands": [
+				"y"
+			],
+			"inputs": [
+				"y"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 217,
+			"animation": "action-217"
+		},
+		{
+			"name": "z",
+			"stateNo": 650,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 218,
+			"animation": "action-218"
+		},
+		{
+			"name": "z",
+			"stateNo": 652,
+			"commands": [
+				"z"
+			],
+			"inputs": [
+				"z"
+			],
+			"movetype": "A",
+			"damage": 60,
+			"anim": 218,
+			"animation": "action-218"
+		},
+		{
+			"name": "c",
+			"stateNo": 800,
+			"commands": [
+				"c",
+				"holdfwd"
+			],
+			"inputs": [
+				"c",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 350,
+			"animation": "action-350"
+		},
+		{
+			"name": "c",
+			"stateNo": 822,
+			"commands": [
+				"c",
+				"holdfwd"
+			],
+			"inputs": [
+				"c",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 350,
+			"animation": "action-350"
+		},
+		{
+			"name": "z",
+			"stateNo": 825,
+			"commands": [
+				"z",
+				"holdfwd"
+			],
+			"inputs": [
+				"z",
+				"/$F"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 650,
+			"animation": "action-650"
+		},
+		{
+			"name": "charge",
+			"stateNo": 900,
+			"commands": [
+				"charge",
+				"charge 1"
+			],
+			"inputs": [
+				"/s",
+				"/s"
+			],
+			"movetype": "I",
+			"damage": null,
+			"anim": 900,
+			"animation": "action-900"
+		},
+		{
+			"name": "Pistola",
+			"stateNo": 1000,
+			"commands": [
+				"Pistola"
+			],
+			"inputs": [
+				"~F, b"
+			],
+			"movetype": "A",
+			"damage": 15,
+			"anim": 300,
+			"animation": "action-300"
+		},
+		{
+			"name": "Mitra",
+			"stateNo": 1010,
+			"commands": [
+				"Mitra"
+			],
+			"inputs": [
+				"~F, c"
+			],
+			"movetype": "A",
+			"damage": 10,
+			"anim": 301,
+			"animation": "action-301"
+		},
+		{
+			"name": "Uppercut",
+			"stateNo": 1020,
+			"commands": [
+				"Uppercut"
+			],
+			"inputs": [
+				"~DF,a"
+			],
+			"movetype": "A",
+			"damage": 75,
+			"anim": 304,
+			"animation": "action-304"
+		},
+		{
+			"name": "Uppercut",
+			"stateNo": 1022,
+			"commands": [
+				"Uppercut"
+			],
+			"inputs": [
+				"~DF,a"
+			],
+			"movetype": "A",
+			"damage": 100,
+			"anim": 304,
+			"animation": "action-304"
+		},
+		{
+			"name": "Gomitata",
+			"stateNo": 1030,
+			"commands": [
+				"Gomitata"
+			],
+			"inputs": [
+				"~F, a"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 202,
+			"animation": "action-202"
+		},
+		{
+			"name": "Gomitata",
+			"stateNo": 1032,
+			"commands": [
+				"Gomitata"
+			],
+			"inputs": [
+				"~F, a"
+			],
+			"movetype": "A",
+			"damage": 120,
+			"anim": 203,
+			"animation": "action-203"
+		},
+		{
+			"name": "Super Calcio",
+			"stateNo": 1050,
+			"commands": [
+				"Super Calcio"
+			],
+			"inputs": [
+				"~DF,x"
+			],
+			"movetype": "A",
+			"damage": 45,
+			"anim": 308,
+			"animation": "action-308"
+		},
+		{
+			"name": "Super Calcio",
+			"stateNo": 1052,
+			"commands": [
+				"Super Calcio"
+			],
+			"inputs": [
+				"~DF,x"
+			],
+			"movetype": "A",
+			"damage": 80,
+			"anim": 308,
+			"animation": "action-308"
+		},
+		{
+			"name": "ATField",
+			"stateNo": 1080,
+			"commands": [
+				"ATField"
+			],
+			"inputs": [
+				"~B, a"
+			],
+			"movetype": "A",
+			"damage": 1,
+			"anim": 0,
+			"animation": "idle"
+		},
+		{
+			"name": "ATField",
+			"stateNo": 1082,
+			"commands": [
+				"ATField"
+			],
+			"inputs": [
+				"~B, a"
+			],
+			"movetype": "A",
+			"damage": 1,
+			"anim": 1082,
+			"animation": "action-1082"
+		},
+		{
+			"name": "Pistola",
+			"stateNo": 1090,
+			"commands": [
+				"Pistola"
+			],
+			"inputs": [
+				"~F, b"
+			],
+			"movetype": "A",
+			"damage": 2,
+			"anim": 203,
+			"animation": "action-203"
+		},
+		{
+			"name": "Mitra",
+			"stateNo": 1091,
+			"commands": [
+				"Mitra"
+			],
+			"inputs": [
+				"~F, c"
+			],
+			"movetype": "A",
+			"damage": 3,
+			"anim": 203,
+			"animation": "action-203"
+		},
+		{
+			"name": "Knife",
+			"stateNo": 3000,
+			"commands": [
+				"Knife"
+			],
+			"inputs": [
+				"a+x"
+			],
+			"movetype": "A",
+			"damage": 25,
+			"anim": 302,
+			"animation": "action-302"
+		},
+		{
+			"name": "Laser",
+			"stateNo": 3005,
+			"commands": [
+				"Laser"
+			],
+			"inputs": [
+				"b+y"
+			],
+			"movetype": "A",
+			"damage": 8,
+			"anim": 310,
+			"animation": "action-310"
+		},
+		{
+			"name": "Cannon",
+			"stateNo": 3010,
+			"commands": [
+				"Cannon"
+			],
+			"inputs": [
+				"c+z"
+			],
+			"movetype": "A",
+			"damage": 6,
+			"anim": 305,
+			"animation": "action-305"
+		},
+		{
+			"name": "Cannon",
+			"stateNo": 3015,
+			"commands": [
+				"Cannon"
+			],
+			"inputs": [
+				"c+z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 100,
+			"animation": "run"
+		},
+		{
+			"name": "Cassius",
+			"stateNo": 3030,
+			"commands": [
+				"Cassius"
+			],
+			"inputs": [
+				"a+b+c"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 317,
+			"animation": "action-317"
+		},
+		{
+			"name": "Awakening",
+			"stateNo": 3035,
+			"commands": [
+				"Awakening"
+			],
+			"inputs": [
+				"x+y+z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 320,
+			"animation": "action-320"
+		},
+		{
+			"name": "Cassius",
+			"stateNo": 3036,
+			"commands": [
+				"Cassius"
+			],
+			"inputs": [
+				"a+b+c"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 317,
+			"animation": "action-317"
+		},
+		{
+			"name": "Awakening",
+			"stateNo": 3039,
+			"commands": [
+				"Awakening"
+			],
+			"inputs": [
+				"x+y+z"
+			],
+			"movetype": "A",
+			"damage": null,
+			"anim": 320,
+			"animation": "action-320"
+		},
+		{
+			"name": "Laser",
+			"stateNo": 3040,
+			"commands": [
+				"Laser"
+			],
+			"inputs": [
+				"b+y"
+			],
+			"movetype": "A",
+			"damage": 50,
+			"anim": 322,
+			"animation": "action-322"
+		},
+		{
+			"name": "Knife",
+			"stateNo": 3060,
+			"commands": [
+				"Knife"
+			],
+			"inputs": [
+				"a+x"
+			],
+			"movetype": "A",
+			"damage": 40,
+			"anim": 315,
+			"animation": "action-315"
+		},
+		{
+			"name": "auto-berserk",
+			"stateNo": 8887,
+			"commands": [
+				"auto-berserk"
+			],
+			"inputs": [
+				"~DF,s"
+			],
+			"movetype": "",
+			"damage": null,
+			"anim": 318,
+			"animation": "action-318"
+		}
+	]
+}

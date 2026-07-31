@@ -749,9 +749,11 @@ export class ClaimPackGridScene {
 
 		this.state = 'revealing';
 		// Roll the booster against Supabase now, while the sliced-but-closed pack still
-		// covers the reveal. A failure reveals no cards.
+		// covers the reveal. A failure reveals no cards. The avatar the roll also deals
+		// is dropped here — this canvas reveals cards, and the document grid
+		// (PackGrid.svelte) is what shows a pack's avatar.
 		try {
-			this.pulls = this.activeClaim ? await this.activeClaim() : [];
+			this.pulls = this.activeClaim ? (await this.activeClaim()).pulls : [];
 		} catch {
 			this.pulls = [];
 		}

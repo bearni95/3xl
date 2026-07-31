@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { territoryAdapter } from '$adapters/classes/territory.adapter';
 import {
+	challengeAvailableAt,
+	challengeCoolingDown,
 	requiredWins,
 	siegeProgress,
+	type MunicipalityChallenge,
 	type MunicipalityHolder,
 	type MunicipalityHolderRow,
 	type MunicipalitySiege
@@ -19,6 +22,8 @@ const row = (overrides: Partial<MunicipalityHolderRow> = {}): MunicipalityHolder
 	],
 	turnover: 2,
 	taken_at: '2026-07-27T10:00:00.000Z',
+	avatar_character_id: 'nami',
+	avatar_color: 'blue',
 	...overrides
 });
 
@@ -29,6 +34,8 @@ describe('territoryAdapter.fromHolderRow', () => {
 			locationId: 'ES_08028',
 			userId: 'user-1',
 			holderName: 'Bernat',
+			avatarCharacterId: 'nami',
+			avatarColor: SpawnColor.Blue,
 			team: [
 				{ characterId: 'luffy', color: SpawnColor.Purple, locationId: 'ES_08019' },
 				{ characterId: 'zoro', color: SpawnColor.Red, locationId: 'ES_17079' }
@@ -36,6 +43,29 @@ describe('territoryAdapter.fromHolderRow', () => {
 			turnover: 2,
 			takenAt: '2026-07-27T10:00:00.000Z'
 		});
+	});
+
+	it('reads the worn avatar as the pair it is, or not at all', () => {
+		// Half an avatar is none: a character with no colour beside it, or a colour
+		// that is not one of the six, leaves the holder on their letter — the same
+		// reading the profile adapter gives the very same two columns.
+		const bare = territoryAdapter.fromHolderRow(
+			row({ avatar_character_id: null, avatar_color: null })
+		);
+		expect(bare.avatarCharacterId).toBeNull();
+		expect(bare.avatarColor).toBeNull();
+
+		const halved = territoryAdapter.fromHolderRow(row({ avatar_color: null }));
+		expect(halved.avatarCharacterId).toBeNull();
+		expect(halved.avatarColor).toBeNull();
+
+		const nonsense = territoryAdapter.fromHolderRow(row({ avatar_color: 'chartreuse' }));
+		expect(nonsense.avatarCharacterId).toBeNull();
+		expect(nonsense.avatarColor).toBeNull();
+
+		const colourless = territoryAdapter.fromHolderRow(row({ avatar_character_id: '  ' }));
+		expect(colourless.avatarCharacterId).toBeNull();
+		expect(colourless.avatarColor).toBeNull();
 	});
 
 	it('names an account that never set a username', () => {
@@ -148,6 +178,8 @@ describe('siegeProgress', () => {
 		locationId: 'ES_08028',
 		userId: 'user-1',
 		holderName: 'Bernat',
+		avatarCharacterId: null,
+		avatarColor: null,
 		team: [],
 		turnover,
 		takenAt: '2026-07-27T10:00:00.000Z'
@@ -200,31 +232,70 @@ describe('siegeProgress', () => {
 });
 
 describe('territoryAdapter.fromChallengeRow', () => {
-	it('maps a spent challenge row into the internal model', () => {
+	it('maps a settled challenge row into the internal model', () => {
 		expect(
 			territoryAdapter.fromChallengeRow({
 				location_id: 'ES_08028',
-				challenge_date: '2026-07-28',
 				started_at: '2026-07-28T09:30:00.000Z',
-				settled_at: '2026-07-28T09:41:00.000Z'
+				settled_at: '2026-07-28T09:41:00.000Z',
+				available_at: '2026-07-28T10:41:00.000Z'
 			})
 		).toEqual({
 			locationId: 'ES_08028',
-			date: '2026-07-28',
 			startedAt: '2026-07-28T09:30:00.000Z',
-			settledAt: '2026-07-28T09:41:00.000Z'
+			settledAt: '2026-07-28T09:41:00.000Z',
+			availableAt: '2026-07-28T10:41:00.000Z'
 		});
 	});
 
-	it('reads a challenge started but never reported as unsettled', () => {
+	it('reads a challenge started but never reported as unsettled, with no deadline', () => {
 		const challenge = territoryAdapter.fromChallengeRow({
 			location_id: 'ES_17999',
-			challenge_date: '2026-07-28',
 			started_at: '2026-07-28T09:30:00.000Z',
-			settled_at: null
+			settled_at: null,
+			available_at: null
 		});
-		// The day is spent either way — an open slot still closes the town off.
+		// The wait is measured from the end of the fight, and this one has not ended.
 		expect(challenge.settledAt).toBeNull();
-		expect(challenge.date).toBe('2026-07-28');
+		expect(challenge.availableAt).toBeNull();
+	});
+});
+
+describe('challengeAvailableAt / challengeCoolingDown', () => {
+	const challenge = (availableAt: string | null): MunicipalityChallenge => ({
+		locationId: 'ES_08028',
+		startedAt: '2026-07-28T09:30:00.000Z',
+		settledAt: availableAt ? '2026-07-28T09:41:00.000Z' : null,
+		availableAt
+	});
+
+	const now = Date.parse('2026-07-28T10:00:00.000Z');
+
+	it('reads the deadline the server set as epoch ms', () => {
+		expect(challengeAvailableAt(challenge('2026-07-28T10:41:00.000Z'))).toBe(
+			Date.parse('2026-07-28T10:41:00.000Z')
+		);
+	});
+
+	it('has no deadline for a fight still open, or for no challenge at all', () => {
+		expect(challengeAvailableAt(challenge(null))).toBeNull();
+		expect(challengeAvailableAt(null)).toBeNull();
+		expect(challengeAvailableAt(undefined)).toBeNull();
+	});
+
+	it('cools down only while the deadline is still ahead', () => {
+		expect(challengeCoolingDown(challenge('2026-07-28T10:41:00.000Z'), now)).toBe(true);
+		expect(challengeCoolingDown(challenge('2026-07-28T09:59:00.000Z'), now)).toBe(false);
+		// The instant it comes due the town is open again, not a second later.
+		expect(challengeCoolingDown(challenge('2026-07-28T10:00:00.000Z'), now)).toBe(false);
+	});
+
+	it('does not close a town off for a fight that is still open', () => {
+		// The open battle is what holds that player; this town is not also shut.
+		expect(challengeCoolingDown(challenge(null), now)).toBe(false);
+	});
+
+	it('ignores a deadline that is not a date', () => {
+		expect(challengeCoolingDown(challenge('whenever'), now)).toBe(false);
 	});
 });

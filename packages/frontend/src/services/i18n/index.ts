@@ -1,36 +1,38 @@
-import { register, init, getLocaleFromNavigator } from 'svelte-i18n';
+import { register, init } from 'svelte-i18n';
 import { env } from '$env/dynamic/public';
 
+/**
+ * Every dictionary this app ships. English is not among them: the game is Catalan and
+ * `ca.json` is its catalogue, not a translation of one. `qq` is the pseudo-locale — every
+ * string replaced by `QQQQQ`, generated from `ca.json` so its keys are exactly the ones
+ * the app can ask for.
+ */
 const dictionaries = {
-	en: () => import('./locales/en.json'),
+	ca: () => import('./locales/ca.json'),
 	qq: () => import('./locales/qq.json')
 } as const;
 
 type Locale = keyof typeof dictionaries;
 
+/** The language the game is in. */
+const DEFAULT_LOCALE: Locale = 'ca';
+
 /**
- * The one locale the app speaks, or null when it speaks all of them.
+ * The one locale this run speaks. The browser is never asked: a player's Accept-Language
+ * says nothing about a game set in the Països Catalans, and adopting it would have meant
+ * every string the catalogue is missing quietly resolving somewhere else.
  *
- * `pnpm dev:qq` sets PUBLIC_I18N_LOCALE=qq, which is what makes the pseudo-locale
- * a *test*: it is the only dictionary registered and also the fallback, so a
- * string that was never put through i18n shows up as itself instead of hiding
- * behind an English one the browser would otherwise have been given. Unset — every
- * other run, dev or build — leaves the normal set registered and the browser
- * choosing.
+ * `pnpm dev:qq` sets PUBLIC_I18N_LOCALE=qq, which is the only thing that moves it — and
+ * the pseudo-locale is registered *alone* and is its own fallback, so a string that was
+ * never put through i18n shows up as itself instead of hiding behind a Catalan one.
  */
-export const pinnedLocale: Locale | null =
+export const activeLocale: Locale =
 	env.PUBLIC_I18N_LOCALE && env.PUBLIC_I18N_LOCALE in dictionaries
 		? (env.PUBLIC_I18N_LOCALE as Locale)
-		: null;
+		: DEFAULT_LOCALE;
 
-for (const [name, load] of Object.entries(dictionaries)) {
-	if (!pinnedLocale || name === pinnedLocale) register(name, load);
-}
+register(activeLocale, dictionaries[activeLocale]);
 
-// Initialize i18n. Fall back to 'en' when there is no navigator (SSR/prerender),
-// so the active locale is never null — otherwise the first component to format a
-// message throws "Cannot format a message without first setting the initial locale".
-init({
-	fallbackLocale: pinnedLocale ?? 'en',
-	initialLocale: pinnedLocale ?? getLocaleFromNavigator() ?? 'en'
-});
+// Both ends are the same locale because there is only one. A fallback naming another
+// language would be a second language, which is what this app does not have.
+init({ fallbackLocale: activeLocale, initialLocale: activeLocale });

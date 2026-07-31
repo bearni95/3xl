@@ -1,0 +1,36 @@
+;------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------
+;Eva-04 By TonyADV
+;------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------
+;----------------------------------
+;----------------------------------
+;Eva-04 Definition file by TonyADV
+;----------------------------------
+;----------------------------------
+
+; Player information
+[Info]
+name = "EVA-04"        
+displayname = "EVA-04" 
+versiondate = 21,03,2006    
+mugenversion = 04,14,2001 
+author = "TonyADV"         
+pal.defaults = 1,2,3  
+
+; Files for the player
+[Files]
+cmd     = 	 04.cmd   
+cns     = 	 04.cns   
+st      = 	 04.cns
+stcommon =  Basic.cns
+sprite  = 	 04.sff   
+anim    = 	 04.air   
+sound   = 	 04.snd  
+pal1 = 	 04b.act		
+pal2 = 	 04c.act		
+pal3 = 	 04a.act		
+
+[Arcade]
+intro.storyboard  = INTRO04.def
+ending.storyboard = END04.def

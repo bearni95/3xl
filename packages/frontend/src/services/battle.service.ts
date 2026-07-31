@@ -4,13 +4,12 @@ import { battleAdapter } from '$adapters/classes/battle.adapter';
 import type { BattleBoardSnapshot, OpenBattle, OpenBattleRow } from '$types/battle.type';
 import type { TeamMemberRoll } from '$utils/spawn/municipality-team';
 import type { MunicipalityChallenge } from '$types/territory.type';
-import { catalanDayIso } from '$utils/festes/catalan-day';
 
 /**
  * The player's open battle: the one fight they may have running at a time.
  *
- * A fight lives in Supabase, not in this tab. {@link start} opens it (spending the
- * town's challenge for the day in the same transaction), {@link save} writes the
+ * A fight lives in Supabase, not in this tab. {@link start} opens it (claiming the
+ * town's challenge in the same transaction), {@link save} writes the
  * board back as each turn closes, and reporting the result through
  * `authService.reportCombat` is what clears it. So {@link open} is the answer to
  * "is this player in a fight, and which one" — asked once on load, which is how
@@ -18,8 +17,9 @@ import { catalanDayIso } from '$utils/festes/catalan-day';
  * another device.
  *
  * The rules are the server's, as everywhere else here: this asks to start a battle
- * and is refused if the player already has one, if the town has been fought today,
- * or if they hold it themselves. Nothing in this file decides any of that.
+ * and is refused if the player already has one, if the town is still cooling down
+ * from their last fight over it, or if they hold it themselves. Nothing in this
+ * file decides any of that.
  *
  * Everything degrades to "no battle" when Supabase is unconfigured, so auth-less
  * local dev still fights — it simply has nowhere to keep the fight, and closing the
@@ -61,11 +61,11 @@ class BattleService {
 	 * three that were sitting there when it started. The player's own line-up is not
 	 * passed at all — `start_battle` reads it off the team slots on their own cards
 	 * and hands it back, so the fight is fought with the team the account holds rather
-	 * than with anything this browser believes about it. The day's challenge is spent
-	 * in the same transaction, so a refusal (an unfinished team, already fought today,
-	 * a battle already open, the caller holds the town) costs nothing.
+	 * than with anything this browser believes about it. The town's challenge is
+	 * claimed in the same transaction, so a refusal (an unfinished team, a town still
+	 * cooling down, a battle already open, the caller holds the town) costs nothing.
 	 *
-	 * Returns the challenge slot that was spent, so the map can close that town's
+	 * Returns the challenge slot that was opened, so the map can close that town's
 	 * button without a reload — or null when Supabase is unconfigured.
 	 */
 	async start(
@@ -96,12 +96,14 @@ class BattleService {
 			startedAt: String(row?.opened_at ?? new Date().toISOString())
 		});
 		// The RPC's OUT names deliberately differ from the challenge table's columns, so
-		// the slot it spent is assembled by hand rather than through the row adapter.
+		// the slot it opened is assembled by hand rather than through the row adapter.
+		// It carries no cooldown and cannot: the wait is measured from the end of this
+		// fight, which has not been fought yet.
 		return {
 			locationId,
-			date: String(row?.challenge_day ?? catalanDayIso()),
 			startedAt: String(row?.opened_at ?? new Date().toISOString()),
-			settledAt: null
+			settledAt: null,
+			availableAt: null
 		};
 	}
 

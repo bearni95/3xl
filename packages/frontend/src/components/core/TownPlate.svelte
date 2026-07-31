@@ -42,7 +42,7 @@
 	// under way is not a fight to be started.
 
 	// The show's glyph, inlined so it paints in the tile's own ink rather than a baked
-	// colour (see icon-markup). Null is lettering alone: with no colour either, no tile.
+	// colour (see inlineIconMarkup). Null is lettering alone: with no colour either, no tile.
 	export let iconSvg: string | null = null;
 	// The region's colour as a fill plus the ink that reads on it.
 	export let frameClasses: string | null = null;

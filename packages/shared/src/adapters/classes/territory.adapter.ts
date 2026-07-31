@@ -14,7 +14,7 @@ import type { TeamMemberRoll } from '../../utils/spawn/municipality-team';
 
 /**
  * Transforms `municipality_holders` / `municipality_sieges` /
- * `municipality_challenges` rows between Supabase's snake_case shape and the
+ * `municipality_challenges_open` rows between Supabase's snake_case shape and the
  * internal territory models.
  *
  * The holder's team travels as a `jsonb` array rather than as rows, so it arrives
@@ -28,11 +28,22 @@ export class TerritoryAdapter extends AdapterClass {
 
 	/** Transform a raw `municipality_holders` row into the internal model. */
 	fromHolderRow(row: MunicipalityHolderRow): MunicipalityHolder {
+		// The avatar is the pair or it is nothing, exactly as the profile adapter reads
+		// the same two columns: half an avatar is not a lesser one, so a character with
+		// no colour beside it leaves the holder on their letter.
+		const avatarCharacterId =
+			typeof row.avatar_character_id === 'string' && row.avatar_character_id.trim()
+				? row.avatar_character_id
+				: null;
+		const avatarColor =
+			avatarCharacterId && isSpawnColor(row.avatar_color) ? row.avatar_color : null;
 		return {
 			locationId: row.location_id,
 			userId: row.user_id,
 			// An account that never set a username still has to be nameable on the map.
 			holderName: row.holder_name?.trim() || 'Un jugador',
+			avatarCharacterId: avatarColor ? avatarCharacterId : null,
+			avatarColor,
 			team: this.teamFromJson(row.team),
 			turnover: Math.max(0, Math.trunc(Number(row.turnover ?? 0)) || 0),
 			takenAt: row.taken_at
@@ -49,13 +60,15 @@ export class TerritoryAdapter extends AdapterClass {
 		};
 	}
 
-	/** Transform a raw `municipality_challenges` row into the internal model. */
+	/** Transform a raw `municipality_challenges_open` row into the internal model. */
 	fromChallengeRow(row: MunicipalityChallengeRow): MunicipalityChallenge {
 		return {
 			locationId: row.location_id,
-			date: row.challenge_date,
 			startedAt: row.started_at,
-			settledAt: row.settled_at ?? null
+			settledAt: row.settled_at ?? null,
+			// The cooldown's deadline, or null while the fight is still open — the wait
+			// only starts once there is a finished fight to measure it from.
+			availableAt: row.available_at ?? null
 		};
 	}
 

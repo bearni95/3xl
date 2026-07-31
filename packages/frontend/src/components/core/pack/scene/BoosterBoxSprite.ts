@@ -37,7 +37,6 @@ import {
 import { SpawnBox } from '$types/character-spawn.type';
 import { textureCache } from '$utils/card/texture-cache';
 import restoreCatalanArticle from '$utils/string/restore-catalan-article';
-import { showIconName } from '$utils/show/show-icon';
 import { spawnYearLabel } from '$utils/spawn/year';
 import { PACK_STOCK_TONES, type PackStockTones } from '../box-stock';
 import { showGlyphTexture } from './show-glyph-texture';
@@ -274,7 +273,7 @@ export class BoosterBoxSprite extends Container {
 		const [cover, logo, glyph] = await Promise.all([
 			textureCache.poster(this.options.coverUrl),
 			textureCache.icon(this.options.logoUrl),
-			showGlyphTexture(showIconName(this.options.showId), this.stock.ink)
+			showGlyphTexture(this.options.showId, this.stock.ink)
 		]);
 		if (this.destroyed) return;
 		this.build(cover, logo, glyph);

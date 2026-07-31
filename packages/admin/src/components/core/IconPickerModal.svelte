@@ -4,8 +4,11 @@
 	import capitalize from '$utils/string/capitalize';
 	import GameIcon from '$components/core/GameIcon.svelte';
 
-	// Every pickable glyph, as `<artist>/<slug>`, from GET /api/achievements/icons
-	// — the same directory listing the save validates against.
+	// Every pickable glyph, as `<folder>/<slug>`, from GET /api/achievements/icons or
+	// GET /api/shows/icons — the same directory listing the matching save validates
+	// against, which is what keeps this from offering one the API would refuse. Which
+	// of the two sets it is depends on what is being badged: a show may also take the
+	// per-show `shows` marks, a badge may not.
 	export let icons: string[] = [];
 	export let selected: string = '';
 	export let open: boolean = false;
@@ -58,7 +61,7 @@
 				<div>
 					<h3 class="font-semibold">Choose an icon</h3>
 					<p class="text-base-content/60 text-xs">
-						The game-icons.net artwork already in <code class="font-mono">@3xl/assets</code>
+						The artwork already vendored in <code class="font-mono">@3xl/assets</code>
 						({icons.length} available). Drop an SVG into
 						<code class="font-mono">public/icons/&lt;artist&gt;/</code> to add one.
 					</p>

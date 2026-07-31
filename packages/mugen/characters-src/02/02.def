@@ -1,0 +1,7 @@
+[Info]
+name = "02"
+author = "Unknown"
+
+[Files]
+sprite = 17.sff
+anim = 17.air

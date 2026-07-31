@@ -1,6 +1,6 @@
 {
 	"id": "eb-trunks",
-	"label": "Trunks SSJ",
+	"label": "Trunks",
 	"basePath": "/assets/eb-trunks/frames",
 	"animations": {
 		"idle": {

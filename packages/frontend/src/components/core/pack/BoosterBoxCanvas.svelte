@@ -42,6 +42,7 @@
 		select: OpenerPack;
 		back: void;
 		openComplete: number;
+		opened: void;
 	}>();
 
 	let host: HTMLDivElement;
@@ -153,6 +154,9 @@
 			onOpenable: (pack) => (openable = pack),
 			onFront: (width) => (front = width),
 			onUncovering: () => (uncovering = true),
+			// The box has gone and the cards it held are standing there: this canvas has nothing
+			// further to do or to answer, and what happens next is the host's whole view's to decide.
+			onOpened: () => dispatch('opened'),
 			onContextLost: () => {
 				scene?.destroy();
 				scene = null;
@@ -238,8 +242,8 @@
 					second the squares take to dissolve rather than when they have gone, so the crumble
 					hands the cards over as it goes instead of ending on a space that then fills itself in.
 
-					Nothing here answers a pointer: the canvas is over it and takes every tap, and a tap is
-					what puts the reveal away. -->
+					Nothing here answers a pointer, and neither does the canvas over it once the box has
+					gone: the click on an open pack belongs to the whole view, which closes on it. -->
 				<div
 					class={classNames(
 						'pointer-events-none absolute inset-0 z-0 flex items-center overflow-y-auto p-2 transition-opacity duration-1000',

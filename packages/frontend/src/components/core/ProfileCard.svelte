@@ -64,7 +64,11 @@
 			aria-label={$_('profile.avatar.edit')}
 			on:click={handleEditAvatar}
 		>
-			<PlayerAvatar characterId={profile.avatarCharacterId} {initial} />
+			<PlayerAvatar
+				characterId={profile.avatarCharacterId}
+				color={profile.avatarColor}
+				{initial}
+			/>
 		</button>
 		<!-- Beside the avatar: the name. Nothing about the account's progress is on this
 			card — the level and the experience bar are read off the player's row in the map

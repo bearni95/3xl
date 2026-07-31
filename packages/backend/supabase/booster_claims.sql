@@ -136,7 +136,10 @@ end;
 $$;
 
 -- Open a booster pack for the caller, enforced entirely server-side (see header).
--- Rolls 5 cards from the show's assigned, template-backed roster — weighted by
+-- Rolls 5 cards from the town's show — which is the caller's `p_show_id` only while
+-- nobody holds the town; once a player has taken it the town deals ITS occupier's
+-- team's show, read off `municipality_holders` here (see below) — from that show's
+-- assigned, template-backed roster, weighted by
 -- rarity (each higher tier 2x rarer), each card taking one of the three colours
 -- its box holds — plus ONE avatar (see player_avatars.sql), drawn from those same
 -- two possibilities: a character on this show, in one of this box's colours. It
@@ -190,6 +193,9 @@ declare
 	v_color text;
 	v_box text;
 	v_colors text[];
+	v_lead text;
+	v_ruling_show bigint;
+	v_show_id bigint;
 	v_row public.character_spawns%rowtype;
 	v_avatar public.player_avatars%rowtype;
 	v_spawns jsonb := '[]'::jsonb;
@@ -240,13 +246,45 @@ begin
 		raise exception 'Daily booster limit reached: % of % packs opened today. More unlock at midnight.', v_used, v_cap;
 	end if;
 
+	-- Which show this town's boxes deal.
+	--
+	-- A town nobody has taken deals the show its own geometry seeds it with (see
+	-- @3xl/shared's utils/geo/municipality-show.ts) — an answer worked out from the
+	-- polygons, which exist only in the browser, so that one arrives as p_show_id
+	-- and is taken as given. A town
+	-- somebody HOLDS deals its occupier's show instead: the sitting team's lead's,
+	-- exactly as the map labels the town — and it is read here rather than accepted
+	-- from the caller, because which show a conquered town deals is a consequence of
+	-- the conquest and not a choice the browser gets to make. It follows the town
+	-- automatically: the holder row is rewritten the moment the town changes hands,
+	-- and the next pack opened there is already the new show's.
+	--
+	-- A lead on several shows resolves to the alphabetically first, the same tie the
+	-- browser breaks (showIdsByCharacter in @3xl/shared utils/spawn/team-show.ts
+	-- walks the shows in name order), so the cover on the box and the pool behind it
+	-- name one show. A holder whose lead is on no show leaves the box as the caller
+	-- found it, which is the seeded show the map still draws it with.
+	v_show_id := p_show_id;
+	select h.team->0->>'character_id' into v_lead
+		from public.municipality_holders h
+		where h.location_id = p_location_id;
+	if v_lead is not null then
+		select sc.show_id into v_ruling_show
+			from public.show_characters sc
+			join public.show_templates st on st.id = sc.show_id
+			where sc.character_id = v_lead
+			order by st.name, sc.show_id
+			limit 1;
+		v_show_id := coalesce(v_ruling_show, v_show_id);
+	end if;
+
 	-- Roll pool: characters assigned to the show (any show when null) that exist
 	-- as templates, with their rarity tiers.
 	with pool as (
 		select distinct ct.id as id, coalesce(ct.rarity, 0) as rarity
 		from public.show_characters sc
 		join public.character_templates ct on ct.id = sc.character_id
-		where p_show_id is null or sc.show_id = p_show_id
+		where v_show_id is null or sc.show_id = v_show_id
 	)
 	select array_agg(id order by id), array_agg(rarity order by id)
 		into v_ids, v_rarities
@@ -266,7 +304,7 @@ begin
 
 	-- Record the pack in the rate-limit ledger, then roll its cards.
 	insert into public.booster_claims (user_id, show_id, location_id)
-		values (v_uid, p_show_id, p_location_id);
+		values (v_uid, v_show_id, p_location_id);
 
 	for i in 1..v_size loop
 		-- Weighted-by-rarity character pick, then a colour: one of the box's three,
@@ -275,7 +313,7 @@ begin
 		v_color := v_colors[1 + floor(random() * array_length(v_colors, 1))];
 
 		insert into public.character_spawns (user_id, character_id, show_id, location_id, color, box)
-			values (v_uid, v_pick, p_show_id, p_location_id, v_color, v_box)
+			values (v_uid, v_pick, v_show_id, p_location_id, v_color, v_box)
 			returning * into v_row;
 		v_spawns := v_spawns || to_jsonb(v_row);
 	end loop;
@@ -288,7 +326,7 @@ begin
 	v_pick := public.pick_weighted(v_ids, v_weights, v_total);
 	v_color := v_colors[1 + floor(random() * array_length(v_colors, 1))];
 	insert into public.player_avatars (user_id, character_id, color, show_id, location_id)
-		values (v_uid, v_pick, v_color, p_show_id, p_location_id)
+		values (v_uid, v_pick, v_color, v_show_id, p_location_id)
 		on conflict (user_id, character_id, color) do update
 			set granted_at = player_avatars.granted_at
 		returning * into v_avatar;

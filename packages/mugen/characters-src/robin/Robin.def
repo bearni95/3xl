@@ -1,0 +1,34 @@
+﻿; ---- Created by Uno Tag Team Patcher ---- ;
+
+
+
+
+
+[Info]
+name ="RobinMVC"
+displayname ="Nico Robin"
+versiondate =01,01,2010
+mugenversion =1.0
+author ="Kenshiro99"
+pal.defaults =1,2,3,4,5,6,7,8,9,10,11,12
+
+[Files]
+sprite =robin.sff
+anim =robin.air
+sound =robin.snd
+cmd =Robin_unotag\robin.cmd
+cns =Robin_unotag\robin.cns
+stcommon =common1.cns
+st =Robin_unotag\robin.cns
+pal1=robin01.act
+pal2=robin02.act
+pal3=robin03.act
+pal4=robin04.act
+pal5=robin05.act
+pal6=robin06.act
+st1=VS_Engine.cns
+st9=Robin_unotag\tag_system.cns
+
+[Arcade]
+intro.storyboard = 
+ending.storyboard = 

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
-	import { showIconName } from '$utils/show/show-icon';
+	import { forShow } from '$utils/show/show-icon';
+	import { showGlyphs } from '$services/shows.service';
 
 	// One step of the map's breadcrumb path, drawn the way the town panel draws the town it
 	// is open on: the show's glyph on a tile in the place's own colour, and beside it the
@@ -46,7 +47,7 @@
 	// A crumb in a path never truncates — see below.
 	export let truncated: boolean = false;
 
-	$: showIcon = showIconName(showId);
+	$: showIcon = forShow($showGlyphs, showId);
 </script>
 
 <!-- Spans throughout, not divs: a crumb above the current one is wrapped in a `<button>`,
@@ -69,7 +70,7 @@
 			aria-hidden="true"
 		>
 			{#if showIcon}
-				<ShowIcon name={showIcon} classes="[&>svg]:size-5" />
+				<ShowIcon markup={showIcon} classes="[&>svg]:size-5" />
 			{/if}
 		</span>
 	{/if}

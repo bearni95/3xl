@@ -10,7 +10,9 @@ import type {
 import { TMDB_FALLBACK_LANGUAGE } from '@3xl/shared/types/tmdb.type';
 import { fetchTvTranslated } from '@3xl/shared/utils/tmdb/client';
 import { tmdbAdapter } from '@3xl/shared/adapters/classes/tmdb.adapter';
+import { SHOW_ICON_PATTERN } from '@3xl/shared/types/show.type';
 import { asyncHandler, httpError } from '../http-error';
+import { iconExists, listIcons } from '../icons';
 
 /**
  * Read/write API for the saved-show collection stored as JSON in the @3xl/data
@@ -20,6 +22,13 @@ import { asyncHandler, httpError } from '../http-error';
  *
  * Mirrors ./characters: same "author writes into @3xl/data's public dir" model,
  * but a single collection file rather than one folder per id.
+ *
+ * A saved show also carries the **glyph** that stands for it wherever the game names
+ * it in a line of text (`ShowEntry.icon`). It used to be a hand-kept table in the
+ * frontend, which meant a show got a mark only if somebody edited TypeScript for it;
+ * it is authored here now, out of the same picker the achievements use — `GET /icons`
+ * lists what may be picked, and a save is held to that same listing, so the picker can
+ * never offer a glyph this would then refuse.
  *
  * `POST /refresh` re-reads every saved show's *text* from TMDB in Catalan (see
  * TMDB_LANGUAGE) and rewrites it in place. Shows saved before the search asked
@@ -55,7 +64,7 @@ async function writeCollection(collection: ShowsCollection): Promise<void> {
  * the JSON matches exactly what the page displayed — we only assert the shape
  * enough to keep a malformed body out of the git tree, not reshape its fields.
  */
-function validateEntry(body: unknown): ShowEntry {
+async function validateEntry(body: unknown): Promise<ShowEntry> {
 	const entry = body as Partial<ShowEntry>;
 	if (!entry || typeof entry !== 'object') httpError(400, 'Body must be an object');
 	const { show, images } = entry;
@@ -90,10 +99,37 @@ function validateEntry(body: unknown): ShowEntry {
 		if (kept.length > 0) enabledImages[kind] = kept;
 	}
 
-	return Object.keys(enabledImages).length > 0 ? { show, images, enabledImages } : { show, images };
+	// The show's glyph, held to the artwork actually on disk — the show folder included,
+	// since those Noun Project marks are exactly what a show is badged with. An absent or
+	// empty icon is a show nobody has picked one for, which is a state a show is allowed
+	// to be in: it is then named without a mark, as every unbadged show always has been.
+	const rawIcon = typeof entry.icon === 'string' ? entry.icon.trim() : '';
+	if (rawIcon && !SHOW_ICON_PATTERN.test(rawIcon)) {
+		httpError(400, `Invalid icon "${rawIcon}" — expected <folder>/<slug>`);
+	}
+	if (rawIcon && !(await iconExists(rawIcon, true))) {
+		httpError(400, `Unknown icon "${rawIcon}" — pick one of the glyphs in @3xl/assets`);
+	}
+
+	const validated: ShowEntry = { show, images };
+	if (Object.keys(enabledImages).length > 0) validated.enabledImages = enabledImages;
+	if (rawIcon) validated.icon = rawIcon;
+	return validated;
 }
 
 export const showsRouter = Router();
+
+// GET /api/shows/icons — the glyphs a show may be badged with, for the admin's picker.
+// The same listing the save above validates against, and the same one the achievement
+// editor picks from — plus the `shows` folder, whose marks stand for shows and nothing
+// else. The artwork itself is not served from here: each app already mounts @3xl/assets'
+// public/ at /assets, so a name from this list is an <img src> away.
+showsRouter.get(
+	'/icons',
+	asyncHandler(async (_req, res) => {
+		res.json({ icons: await listIcons(true) });
+	})
+);
 
 // GET /api/shows — the whole saved-show collection.
 showsRouter.get(
@@ -108,7 +144,7 @@ showsRouter.get(
 showsRouter.post(
 	'/',
 	asyncHandler(async (req, res) => {
-		const entry = validateEntry(req.body);
+		const entry = await validateEntry(req.body);
 		const collection = await readCollection();
 		const index = collection.shows.findIndex((s) => s.show.id === entry.show.id);
 		if (index >= 0) collection.shows[index] = entry;

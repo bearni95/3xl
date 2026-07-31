@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { _ } from 'svelte-i18n';
 	import FullScreenModal from '$components/core/FullScreenModal.svelte';
 	import ShowStandingsTable from '$components/core/ShowStandingsTable.svelte';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
@@ -23,7 +24,11 @@
 	}
 </script>
 
-<FullScreenModal title="Leaderboard" closeLabel="Close leaderboard" on:close={close}>
+<FullScreenModal
+	title={$_('leaderboard.title')}
+	closeLabel={$_('leaderboard.close')}
+	on:close={close}
+>
 	<!-- The table scrolls inside the sheet rather than the sheet scrolling: the title bar
 		stays put and the head of the table pins under it (`table-pin-rows`), so the columns
 		are still named however far down the list a show sits. -->

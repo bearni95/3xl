@@ -84,7 +84,7 @@ export interface MapMarker {
 	/**
 	 * Raw SVG markup drawn on the pin's tile — the show's glyph, inlined so it paints
 	 * in the tile's own colour rather than a baked one. The pin is lettering-only when
-	 * null (no glyph drawn for that show yet), exactly as the panel's tables fall back
+	 * null (no glyph picked for that show), exactly as the panel's tables fall back
 	 * to the show's name alone.
 	 */
 	iconSvg: string | null;
@@ -209,10 +209,17 @@ export interface MapBoosterBox {
 	/** The show's wordmark across the head of the cover, or null when it has none. */
 	logoUrl?: string | null;
 	/**
-	 * TMDB id of the assigned show, which the glyph stamped on the box's lid is looked up
-	 * by — the same mark this map already pins the show with.
+	 * TMDB id of the assigned show, which the box's whole rendering — cover, wordmark and
+	 * lid — is drawn for.
 	 */
 	showId?: number | null;
+	/**
+	 * The show's glyph as inline-ready SVG markup, stamped on the disc this box folds up
+	 * to — the same mark this map pins the show with, and the same one the box's own lid
+	 * takes. Handed over drawn rather than looked up here for the reason a pin's is
+	 * (see `MapMarker.iconSvg`): the mark is authored, so it arrives with the data.
+	 */
+	iconSvg?: string | null;
 	/** The town the box belongs to, said across the foot of the cover. */
 	locationName?: string | null;
 	/**

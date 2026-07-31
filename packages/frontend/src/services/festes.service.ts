@@ -11,7 +11,8 @@ import { boosterWindow } from '$utils/festes/booster-window';
  *
  * Talks to Postgres directly from the browser with the anon key (RLS-gated), the
  * same pure-SPA pattern as {@link spawnService}. Only the location entity is read
- * back; the (location → show) assignment stays a separate baked dataset.
+ * back; which show a location flies is worked out from its own geometry and the
+ * holders (see `utils/geo/municipality-show.ts`), never stored beside it.
  */
 
 /** The nested row shape `festivities → festa_locations` selects resolve to. */

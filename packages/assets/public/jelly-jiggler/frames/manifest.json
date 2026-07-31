@@ -8,27 +8,11 @@
       "loop": true,
       "frames": [
         {
-          "file": "spr_0_1.png",
-          "width": 31,
-          "height": 28,
-          "anchorX": 23,
-          "anchorY": 2,
-          "duration": 200
-        },
-        {
           "file": "spr_0_2.png",
           "width": 37,
           "height": 44,
           "anchorX": 15,
           "anchorY": 41,
-          "duration": 200
-        },
-        {
-          "file": "spr_0_1.png",
-          "width": 31,
-          "height": 28,
-          "anchorX": 23,
-          "anchorY": 2,
           "duration": 200
         }
       ]

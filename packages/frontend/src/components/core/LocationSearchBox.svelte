@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { tick } from 'svelte';
+	import { _ } from 'svelte-i18n';
 
 	// The way to look for a place, at the far end of the breadcrumb bar. It is a mark until it
 	// is asked for: a field wide enough to type a town into is the widest thing on that row and
@@ -57,7 +58,7 @@
 		bind:this={inputEl}
 		type="search"
 		class={classNames('input input-bordered input-sm w-40 sm:w-56', classes)}
-		placeholder="Search locations…"
+		placeholder={$_('map.search.placeholder')}
 		bind:value
 		on:blur={handleBlur}
 		on:keydown={handleKeydown}
@@ -69,7 +70,7 @@
 			'btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white',
 			classes
 		)}
-		aria-label="Search locations"
+		aria-label={$_('map.search.label')}
 		on:click={reveal}
 	>
 		<img src="/assets/icons/lorc/magnifying-glass.svg" class="size-4" alt="" />

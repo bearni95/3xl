@@ -8,11 +8,12 @@
 -- there, on the turn it was left on, and it is the only one that can be played
 -- until it is finished.
 --
--- That is what the once-a-day challenge limit rests on. Spending the day when the
--- arena opens (municipality_challenges.sql) stops a player refighting a town they
--- have already been to; this stops them walking out of the fight in front of them.
--- Without it the limit only ever cost somebody a town, never the fight they were
--- losing.
+-- That is what the challenge cooldown rests on. The hour a finished fight puts on
+-- a town (municipality_challenges.sql) stops a player refighting one they have
+-- just been to; this stops them walking out of the fight in front of them. Without
+-- it the cooldown would only ever cost somebody a town, never the fight they were
+-- losing — and a fight abandoned would never be reported, which is the only thing
+-- that starts a cooldown at all.
 --
 -- The row is equally the server's own record of WHAT is being fought, and this is
 -- what the client no longer gets to say. The town, the turnover of the team sitting
@@ -39,9 +40,6 @@ create table if not exists public.battles (
 	user_id uuid primary key references auth.users (id) on delete cascade,
 	-- The town being fought over, as its geojson feature id (e.g. ES_08028).
 	location_id text not null,
-	-- The Catalan day whose challenge on that town this battle spent, so the two
-	-- ledgers can be read against each other.
-	challenge_date date not null default (now() at time zone 'Europe/Madrid')::date,
 	-- The town's turnover when the battle opened: the generation of the team being
 	-- fought. What makes a fight that outlived a capture recognisable as stale.
 	turnover integer not null default 0,
@@ -68,6 +66,12 @@ create table if not exists public.battles (
 -- the column simply arrives empty on them.
 alter table public.battles add column if not exists team jsonb not null default '[]'::jsonb;
 
+-- A battle used to record the Catalan day whose challenge it spent, back when a
+-- challenge was a day. It is a cooldown now and there is no day to record: the
+-- challenge it belongs to is the one row (user_id, location_id) in
+-- municipality_challenges, which is reached by the pair this row already carries.
+alter table public.battles drop column if exists challenge_date;
+
 alter table public.battles enable row level security;
 
 -- A player reads their own open battle and nothing else. There is deliberately no
@@ -79,9 +83,16 @@ create policy battles_select_own on public.battles
 	for select using (auth.uid() = user_id);
 
 -- Open a battle over a town, called when the arena opens. Replaces the old
--- start_challenge: it does everything that did — spend the town's challenge for the
--- Catalan day, refuse a town the caller already holds — and opens the battle in the
--- same transaction, so the day is never spent on a fight that failed to start.
+-- start_challenge: it does everything that did — claim the town's challenge, refuse
+-- a town the caller already holds — and opens the battle in the same transaction,
+-- so a town is never shut by a fight that failed to start.
+--
+-- Refuses a town that is still cooling down from this caller's last fight over it
+-- (municipality_challenges.sql). Note what is NOT refused: a challenge row left
+-- open by a fight that no longer exists. The open battle is what blocks while a
+-- fight is being played, and it is checked below — an unsettled row with no battle
+-- behind it is a fight that went missing, so it is taken over rather than left
+-- shutting the town on a fight nobody can report.
 --
 -- Refuses outright when the caller already has a battle open. That is the rule: a
 -- fight in progress must be finished (reported) before another can be started, and
@@ -95,8 +106,8 @@ create policy battles_select_own on public.battles
 -- on the caller's own cards (see character_spawns.sql), so a fight is opened with
 -- the team the ACCOUNT holds rather than with whatever list a browser arrived
 -- carrying — one that could name cards claimed by another account or recycled
--- since. Three slots have to be filled or no battle is opened and no day is spent,
--- which is the same rule `award_combat_exp` applies to a winning report, kept in
+-- since. Three slots have to be filled or no battle is opened and no town is
+-- claimed, which is the same rule `award_combat_exp` applies to a winning report, kept in
 -- the only place it does the player any good: a fight that could never have been
 -- reported is a fight that was never started, rather than one discovered to be
 -- worthless after it was won. The line-up is returned as well as stored, so the
@@ -117,16 +128,15 @@ create or replace function public.start_battle(
 )
 returns table (
 	town_id text,
-	challenge_day date,
 	opened_at timestamptz,
 	fielded_team jsonb
 )
 language plpgsql security definer set search_path = public as $$
 declare
 	v_uid uuid := auth.uid();
-	v_today date := (now() at time zone 'Europe/Madrid')::date;
 	v_holder uuid;
 	v_started timestamptz;
+	v_available timestamptz;
 	v_open text;
 	v_team jsonb;
 	v_fielded int;
@@ -169,25 +179,32 @@ begin
 		raise exception 'You already hold this town — you cannot challenge your own team.';
 	end if;
 
-	-- Spend the day's challenge on this town, reviving a slot that was handed back
-	-- because the town changed hands mid-fight (see municipality_challenges.sql).
-	insert into public.municipality_challenges (user_id, location_id, challenge_date)
-		values (v_uid, p_location_id, v_today)
-		on conflict (user_id, location_id, challenge_date) do update
-			set started_at = now(), settled_at = null, voided_at = null
-			where municipality_challenges.voided_at is not null
-		returning municipality_challenges.started_at into v_started;
-	if v_started is null then
-		raise exception 'You have already challenged this town today. New challenges at midnight.';
+	-- The wait this caller is under on this town, if any. A slot the server voided
+	-- carries none — the town was taken out from under that fight, which is not
+	-- something its challenger is made to wait for (see municipality_challenges.sql).
+	select c.available_at into v_available from public.municipality_challenges c
+		where c.user_id = v_uid and c.location_id = p_location_id;
+	if v_available is not null and v_available > now() then
+		raise exception 'You have just fought this town. It opens up again at %.',
+			to_char(v_available at time zone 'Europe/Madrid', 'HH24:MI');
 	end if;
 
+	-- Claim the town's challenge. One row per (player, town), rewritten each time
+	-- they come back to it: this fight is the one that counts now, and the cooldown
+	-- it will leave is set when it is reported, not here.
+	insert into public.municipality_challenges (user_id, location_id)
+		values (v_uid, p_location_id)
+		on conflict (user_id, location_id) do update
+			set started_at = now(), settled_at = null, available_at = null,
+				voided_at = null
+		returning municipality_challenges.started_at into v_started;
+
 	insert into public.battles
-		(user_id, location_id, challenge_date, turnover, rivals, team, board)
-		values (v_uid, p_location_id, v_today, greatest(0, coalesce(p_turnover, 0)),
+		(user_id, location_id, turnover, rivals, team, board)
+		values (v_uid, p_location_id, greatest(0, coalesce(p_turnover, 0)),
 			coalesce(p_rivals, '[]'::jsonb), v_team, null);
 
 	town_id := p_location_id;
-	challenge_day := v_today;
 	opened_at := v_started;
 	fielded_team := v_team;
 	return next;
@@ -197,8 +214,8 @@ $$;
 grant execute on function public.start_battle(text, int, jsonb) to authenticated;
 
 -- The pre-battle RPC, dropped rather than left standing: a client that could still
--- claim a day's challenge without opening a battle would have a way to spend the
--- day and then never be held to the fight.
+-- claim a town's challenge without opening a battle would have a way to shut the
+-- town and then never be held to the fight.
 drop function if exists public.start_challenge(text);
 
 -- Write the board back, called as each turn closes. The only mutable part of a

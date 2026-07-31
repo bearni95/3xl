@@ -29,15 +29,6 @@
 			"source": "action-200"
 		},
 		{
-			"name": "Ranged",
-			"type": "ranged",
-			"source": "action-1000",
-			"projectile": {
-				"source": "",
-				"loop": true
-			}
-		},
-		{
 			"name": "Defend",
 			"type": "defend",
 			"source": "guard-stand"
@@ -47,5 +38,6 @@
 		"atk": 5,
 		"def": 5,
 		"hp": 5
-	}
+	},
+	"color": "purple"
 }

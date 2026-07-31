@@ -31,10 +31,12 @@ export interface FestaLocationRow {
 }
 
 /**
- * One celebrating municipality, paired with the series the map assigns it —
- * `show` is undefined when the town has no seeded show (so it offers no booster).
- * Composed by the claim screen from the festes fetch and the municipality→show
- * assignment, and shared so the festes list and the pack grid agree on the shape.
+ * One celebrating municipality, paired with the series it flies — the show the
+ * town's own geometry seeds it with, or its occupier's team's show wherever a
+ * player has taken it, so a conquest re-stocks the town's boxes. `show` is
+ * undefined when the town has no show at all (so it offers no booster). Composed
+ * by the claim screen from the festes fetch, the seeded assignment and the holders, and
+ * shared so the festes list and the pack grid agree on the shape.
  */
 export interface FestaShowPair {
 	festa: FestaLocationRow;

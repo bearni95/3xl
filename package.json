@@ -20,7 +20,6 @@
 		"generate:sprites": "pnpm --filter @3xl/mugen generate:sprites",
 		"generate:auras": "pnpm --filter @3xl/mugen generate:auras",
 		"generate:geo": "pnpm --filter @3xl/data generate:geo",
-		"generate:shows": "pnpm --filter @3xl/data generate:shows",
 		"generate:festes": "pnpm --filter @3xl/data generate:festes",
 		"generate:show-icons": "pnpm --filter @3xl/assets generate:show-icons",
 		"clean": "pnpm -r clean"

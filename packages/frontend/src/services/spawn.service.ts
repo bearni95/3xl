@@ -2,12 +2,14 @@ import { writable, type Readable } from 'svelte/store';
 import { characters } from '@3xl/data';
 import { getSupabaseClient } from '$services/supabase.client';
 import { spawnAdapter } from '$adapters/classes/spawn.adapter';
+import { playerAvatarAdapter } from '$adapters/classes/player-avatar.adapter';
 import { DEFAULT_RARITY } from '$types/character-template.type';
 import type {
 	CharacterSpawn,
 	CharacterSpawnRow,
 	ClaimableShow
 } from '$types/character-spawn.type';
+import type { PlayerAvatar, PlayerAvatarRow } from '$types/player-avatar.type';
 
 /** How many cards a single booster pack contains. Mirrors `claim_booster`'s roll count. */
 export const BOOSTER_SIZE = 5;
@@ -24,6 +26,21 @@ export interface RecycleResult {
 	recycled: number;
 	/** Extra daily claims granted (`floor(recycled / RECYCLE_GROUP_SIZE)`). */
 	granted: number;
+}
+
+/**
+ * Everything one opened booster box gave: its {@link BOOSTER_SIZE} cards, and the
+ * single avatar that came with them.
+ *
+ * The avatar is `null` only when the server could not deal one at all (an old
+ * deployment of the RPC); a box that opens deals one, and one the player already
+ * holds comes back as the row they hold rather than as nothing.
+ */
+export interface BoosterOpening {
+	/** The cards the pack rolled, in pull order. */
+	spawns: CharacterSpawn[];
+	/** The avatar the pack granted — a character on its show, in one of its colours. */
+	avatar: PlayerAvatar | null;
 }
 
 /**
@@ -195,15 +212,19 @@ class SpawnService {
 	 *     the day resetting at midnight Europe/Madrid.
 	 *
 	 * The RPC rolls {@link BOOSTER_SIZE} cards — each weighted by rarity (every
-	 * higher tier 2× rarer), plus a colour out of the three its box holds — and
-	 * returns the inserted spawns. Which box that is, the server decides for itself
-	 * from the town's festivity dates: white (purple/green/orange) for a festa on
-	 * the day, black (red/blue/yellow) for one past or still coming, stamped on
-	 * every card it inserts. On a rejected
-	 * claim it throws with a message describing why (limit reached, wrong day, …).
-	 * The new spawns are prepended to the store and returned in pull order.
+	 * higher tier 2× rarer), plus a colour out of the three its box holds — and one
+	 * **avatar**, drawn from those same two possibilities: a character on the box's
+	 * show, in one of the box's three colours. Which box that is, the server decides
+	 * for itself from the town's festivity dates: white (purple/green/orange) for a
+	 * festa on the day, black (red/blue/yellow) for one past or still coming, stamped
+	 * on every card it inserts. On a rejected claim it throws with a message
+	 * describing why (limit reached, wrong day, …).
+	 *
+	 * The new spawns are prepended to the store and returned in pull order; the
+	 * avatar is handed back rather than stored here — {@link avatarService} owns
+	 * that collection, and the caller that shows the open is the one that tells it.
 	 */
-	async claimBooster(showId: number | null, locationId: string): Promise<CharacterSpawn[]> {
+	async claimBooster(showId: number | null, locationId: string): Promise<BoosterOpening> {
 		if (!locationId) {
 			throw new Error('Claim your location before spawning a character.');
 		}
@@ -214,9 +235,17 @@ class SpawnService {
 		});
 		if (error) throw error;
 
-		const spawns = (data as CharacterSpawnRow[]).map((row) => spawnAdapter.fromRow(row));
+		// One pack is one object, not a row set: the cards and the avatar are two
+		// different shapes, so the RPC answers in jsonb and this reads both halves out
+		// of it. An answer missing either half is an old deployment of the RPC, which
+		// reads as no cards / no avatar rather than as a crash.
+		const payload = (data ?? {}) as { spawns?: CharacterSpawnRow[]; avatar?: PlayerAvatarRow };
+		const spawns = (payload.spawns ?? []).map((row) => spawnAdapter.fromRow(row));
 		this.spawnsStore.update((current) => [...spawns, ...current]);
-		return spawns;
+		return {
+			spawns,
+			avatar: payload.avatar ? playerAvatarAdapter.fromRow(payload.avatar) : null
+		};
 	}
 
 	/**

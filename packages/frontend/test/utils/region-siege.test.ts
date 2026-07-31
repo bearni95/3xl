@@ -31,7 +31,16 @@ const nodes: RegionNode[] = [
 ];
 
 function holder(locationId: string, turnover: number): MunicipalityHolder {
-	return { locationId, userId: 'u1', holderName: 'Someone', team: [], turnover, takenAt: '2026-01-01' };
+	return {
+		locationId,
+		userId: 'u1',
+		holderName: 'Someone',
+		avatarCharacterId: null,
+		avatarColor: null,
+		team: [],
+		turnover,
+		takenAt: '2026-01-01'
+	};
 }
 
 function siege(locationId: string, wins: number, turnover: number): MunicipalitySiege {

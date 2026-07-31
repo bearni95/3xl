@@ -2,9 +2,11 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher, onDestroy } from 'svelte';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
+	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import BoosterBox from './BoosterBox.svelte';
 	import type { OpenerPack } from './scene/opener-view.type';
 	import type { ClaimPull } from './scene/pull.type';
+	import type { PlayerAvatar as Avatar } from '$types/player-avatar.type';
 
 	// The booster window's packs, in the document rather than on a canvas, on three
 	// states that are the same three taps they have always been:
@@ -42,6 +44,10 @@
 	// whenever a different pack comes forward, so a pack never opens onto the last
 	// one's cards.
 	let pulls: ClaimPull[] | null = null;
+	// The avatar that box dealt, shown in the cell after its cards, and whether it is
+	// one the player did not already hold. Dropped with them, and for the same reason.
+	let avatar: Avatar | null = null;
+	let avatarIsNew = false;
 	// True while the roll is in flight — the pack is already tapped, and a second tap
 	// must not fire a second claim.
 	let opening = false;
@@ -81,6 +87,8 @@
 	$: if (selected !== shown) {
 		shown = selected;
 		pulls = null;
+		avatar = null;
+		avatarIsNew = false;
 		opening = false;
 		unsealing = false;
 		uncovering = false;
@@ -110,9 +118,15 @@
 	// a flex line — a host that mounted it without a definite height would find the whole panel
 	// collapse to nothing rather than merely mis-centre.
 	const BOX_RATIO = 37 / 30;
+	// What share of the box's width its front takes, all told: the face at four fifths
+	// plus the bevel face either side of it (see BEVEL_FACE in BoosterBox). It is the
+	// front that is fitted to this space, not the box — so the box itself is wider than
+	// the space by exactly this, and the same figure appears in the height the box is
+	// handed below.
+	const FRONT_SHARE = 0.89406;
 	let bodyWidth = 0;
 	let bodyHeight = 0;
-	$: boxWidth = Math.min(bodyWidth, bodyHeight / BOX_RATIO);
+	$: boxWidth = Math.min(bodyWidth / FRONT_SHARE, bodyHeight / BOX_RATIO);
 	$: frontDrop = boxWidth / 12;
 
 	/** One statue's picture is up. */
@@ -152,6 +166,21 @@
 	const columnClass = (count: number): string =>
 		COLUMN_CLASSES[Math.min(5, Math.max(1, Math.round(count)))];
 
+	// One revealed cell, marked or not. What a pack *added* is not something a player
+	// can read off the cards themselves — five statues look the same whether they are
+	// the first of their kind or the fifth — so the ones that are new to the collection
+	// are ringed in the primary and the rest are ringed in nothing.
+	//
+	// A border either way, and never none: the two states must not differ by a couple of
+	// pixels of box, or a row with one repeat in it would sit a hair out of line with the
+	// rest. The transparent one holds the same space and shows what is behind it.
+	//
+	// `flex` rather than a plain block, so the avatar in the last cell is handed the
+	// row's height to centre a square in — see PlayerAvatar, which centres what it is
+	// given but cannot invent a height to centre it in.
+	const cellClasses = (isNew: boolean): string =>
+		classNames('flex rounded-md border-2', isNew ? 'border-primary' : 'border-transparent');
+
 	function pick(pack: OpenerPack): void {
 		selected = pack.id;
 		dispatch('select', pack);
@@ -178,11 +207,14 @@
 		unsealed = false;
 		forgetStatues();
 		try {
-			const cards = await pack.claim();
+			const opened = await pack.claim();
 			// Another pack came forward while the roll was in flight — its cards are
 			// not this one's to show.
 			if (shown !== id) return;
+			const cards = opened.pulls;
 			pulls = cards;
+			avatar = opened.avatar;
+			avatarIsNew = opened.avatarIsNew;
 			dispatch('openComplete', cards.length);
 			// The cards go up behind the box from here, and the box waits on them. Start the cap
 			// with them: what it guards against is a picture that never arrives, which cannot
@@ -200,6 +232,8 @@
 				// that opened onto nothing at all never opened. Why is the host's to say, as every
 				// other refusal is.
 				if (!pulls) {
+					avatar = null;
+					avatarIsNew = false;
 					unsealing = false;
 					uncovering = false;
 					unsealed = false;
@@ -280,23 +314,45 @@
 						>
 							<div class={classNames('grid w-full gap-2', columnClass(revealColumns))}>
 								{#each pulls as pull (pull.spawn.id)}
-									<!-- Bare, and not behind a veil of its own: the box dissolving over it is the
-										reveal, and a sprite veil under that would spend a character's one reveal on
-										a sweep held behind something opaque (see IdleSprite's `veiled`). What it
-										says instead is when its picture is up, which is what the box is waiting to
-										hear. -->
-									<CharacterStatue
-										label={pull.label}
-										basePath={pull.basePath}
-										color={pull.color}
-										box={pull.spawn.box}
-										locationName={pull.locationName}
-										spawnedAt={pull.spawnedAt}
-										showId={pull.spawn.showId}
-										veiled={false}
-										on:ready={() => statueUp(pull.spawn.id)}
-									/>
+									<div class={cellClasses(pull.isNew)}>
+										<!-- Bare, and not behind a veil of its own: the box dissolving over it is the
+											reveal, and a sprite veil under that would spend a character's one reveal on
+											a sweep held behind something opaque (see IdleSprite's `veiled`). What it
+											says instead is when its picture is up, which is what the box is waiting to
+											hear. -->
+										<CharacterStatue
+											label={pull.label}
+											basePath={pull.basePath}
+											color={pull.color}
+											box={pull.spawn.box}
+											locationName={pull.locationName}
+											spawnedAt={pull.spawnedAt}
+											showId={pull.spawn.showId}
+											veiled={false}
+											classes="w-full min-w-0"
+											on:ready={() => statueUp(pull.spawn.id)}
+										/>
+									</div>
 								{/each}
+
+								{#if avatar}
+									<div class={cellClasses(avatarIsNew)}>
+										<!-- The avatar the box dealt, in the cell after the last card. It is the
+											same component the player's own row wears (see ProfileTile), in the
+											colour it was dealt in, because what is shown is the very thing that
+											will be standing there once it is picked — not a picture of it. It
+											fills its cell, so it is as wide as a card and reads as one of the
+											things the box gave rather than as a note about them. Unnamed: a
+											statue says which character it is because a card is a character, and
+											an avatar is a face. -->
+										<PlayerAvatar
+											characterId={avatar.characterId}
+											color={avatar.color}
+											size="w-full"
+											classes="w-full"
+										/>
+									</div>
+								{/if}
 							</div>
 						</div>
 					</div>
@@ -336,9 +392,21 @@
 					>
 						<!-- Stood up, the pack fills whichever of the two the box runs out of first: as
 							tall as the space allows, unless the width allows less, in which case it is as
-							tall as this width earns it at the box's own 30:37 (1.23333 of a width). The
-							ratio is the box's, so this only says which measurement decides — and it has to
-							be said as a height, since that is the one the box does not work out for itself.
+							tall as this width earns it. The ratio is the box's, so this only says which
+							measurement decides — and it has to be said as a height, since that is the one
+							the box does not work out for itself.
+
+							What the width is measured against is the *front*, in its totality: the face and
+							the two bevel faces the corner cuts opened down its sides, which together are
+							89.406% of the box (a face four fifths of the width, plus 4.703% either side —
+							see BEVEL_FACE). So the box is drawn 1/0.89406 of this container, and its front
+							spans the container edge to edge; the lid, being the full width of the box, is
+							the one part that runs past — 5.9% of the container each side, which is a
+							sidebar's own padding and no more. Fitting the *box* to the container is what
+							used to be asked for (a bare 1.23333 of the width), and it left the poster
+							standing inside two gutters a tenth of the panel wide apiece. The height factor
+							is the two together: 30:37 of a width, 1.23333, over that 0.89406.
+
 							`items-center` on the button matters as much as the cap: a flex item is stretched
 							to its line by default, and a stretched height beats a height read off the
 							aspect, which is what left the box a tall thin slab of the panel's full height
@@ -357,7 +425,7 @@
 							light={selectedPack.today}
 							opening={unsealing}
 							ready={cardsUp}
-							classes="h-[min(100%,100cqw*1.23333)]"
+							classes="h-[min(100%,100cqw*1.37948)]"
 							on:uncovering={() => (uncovering = true)}
 							on:opened={() => (unsealed = true)}
 						/>

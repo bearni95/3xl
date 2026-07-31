@@ -2,6 +2,8 @@
 	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import ShowImageGrid from '$components/core/ShowImageGrid.svelte';
+	import GameIcon from '$components/core/GameIcon.svelte';
+	import IconPickerModal from '$components/core/IconPickerModal.svelte';
 	import ShowTemplateSync from '$components/core/ShowTemplateSync.svelte';
 	import ShowCharacterAssignments from '$components/core/ShowCharacterAssignments.svelte';
 	import type {
@@ -36,9 +38,18 @@
 	// Which saved cards have their images expanded. Saved shows carry their images
 	// already, so this is a pure show/hide — no fetch, unlike the search tab.
 	let expandedSaved: Record<number, boolean> = {};
-	// Per-show state for persisting an enabled-images change.
+	// Per-show state for persisting an enabled-images or icon change.
 	let savingEnabled: Record<number, boolean> = {};
 	let enabledError: Record<number, string> = {};
+
+	// The glyph a show may be badged with, and the picker that chooses it. The whole
+	// vendored set — the game-icons.net artwork plus the per-show Noun Project marks —
+	// read from the API rather than listed here, so what the picker offers is what the
+	// save accepts. Which show's picker is up is the id in `iconPickerShowId`; null is
+	// closed.
+	let icons: string[] = [];
+	let iconPickerShowId: number | null = null;
+	$: iconPickerEntry = savedShows.find((entry) => entry.show.id === iconPickerShowId) ?? null;
 
 	// Catalan re-query state. The backend asks TMDB for every saved show's title
 	// and description again and rewrites shows.json, so the whole collection comes
@@ -78,8 +89,29 @@
 			: [...current, filePath];
 		if (next.length > 0) enabledImages[kind] = next;
 		else delete enabledImages[kind];
-		const updated: ShowEntry = { ...entry, enabledImages };
+		await saveEntry({ ...entry, enabledImages });
+	}
 
+	// Set (or clear) the glyph the game badges this show with, and persist it the same
+	// way an enabled image is persisted — it is one more thing chosen about a show on
+	// this screen, not a different kind of edit. Clearing drops the field entirely, which
+	// is the state a show that has never been given a mark is in: named without one.
+	async function setShowIcon(showId: number, icon: string) {
+		const entry = savedShows.find((candidate) => candidate.show.id === showId);
+		if (!entry) return;
+		iconPickerShowId = null;
+
+		const updated: ShowEntry = { ...entry };
+		if (icon) updated.icon = icon;
+		else delete updated.icon;
+		await saveEntry(updated);
+	}
+
+	// Write one entry back to shows.json and adopt the collection it answers with. The
+	// endpoint returns the whole thing, sanitised, so what the page holds after a save is
+	// what is on disk rather than what it hoped to write.
+	async function saveEntry(updated: ShowEntry) {
+		const showId = updated.show.id;
 		savingEnabled = { ...savingEnabled, [showId]: true };
 		enabledError = { ...enabledError, [showId]: '' };
 		try {
@@ -92,8 +124,6 @@
 				const body = await res.json().catch(() => ({ message: res.statusText }));
 				throw new Error(body.message ?? `Failed to save (${res.status})`);
 			}
-			// The endpoint returns the whole collection; refresh from it so the saved
-			// list stays the source of truth after the sanitised write.
 			const data = (await res.json()) as ShowsCollection;
 			savedShows = data.shows;
 			savedShowIds = new Set(data.shows.map((candidate) => candidate.show.id));
@@ -108,8 +138,22 @@
 	}
 
 	// Load the saved-show collection up front: it's the default tab, and it also
-	// drives the "already added" state of the search results.
-	onMount(loadSavedShows);
+	// drives the "already added" state of the search results. The pickable glyphs come
+	// with it, since every saved card carries the control that picks one.
+	onMount(() => {
+		void loadSavedShows();
+		void loadIcons();
+	});
+
+	async function loadIcons() {
+		try {
+			const res = await fetch(`${API_BASE}/api/shows/icons`);
+			if (res.ok) icons = ((await res.json()) as { icons: string[] }).icons;
+		} catch {
+			// A picker with nothing in it says so on its own; the rest of the screen is
+			// none of this request's business.
+		}
+	}
 
 	async function loadSavedShows() {
 		savedLoading = true;
@@ -548,6 +592,43 @@
 											{/if}
 										</div>
 									{/each}
+
+									<!-- The show's mark: the one glyph that stands for it wherever the game
+									     names it in a line of text — both panel tables, the map's pins and
+									     breadcrumbs, the radio's plate, a booster box's lid, the floor its
+									     statues stand on. One tile rather than a grid, because a show has one
+									     mark; it sits with the enabled images because it is the same kind of
+									     choice, made about the same show, on the same panel. -->
+									<div class="flex flex-col gap-1">
+										<span class="text-base-content/60 text-xs font-semibold uppercase">
+											Icon
+											{#if entry.icon}
+												<span class="text-base-content/40 font-normal normal-case">
+													· {entry.icon}
+												</span>
+											{/if}
+										</span>
+										<div class="flex items-center gap-2">
+											<button
+												type="button"
+												class="cursor-pointer"
+												on:click={() => (iconPickerShowId = show.id)}
+												title={entry.icon ? 'Click to change the icon' : 'Click to pick an icon'}
+											>
+												<GameIcon name={entry.icon ?? ''} size="size-20" />
+											</button>
+											{#if entry.icon}
+												<button
+													type="button"
+													class="btn btn-ghost btn-xs"
+													on:click={() => setShowIcon(show.id, '')}
+												>
+													Clear
+												</button>
+											{/if}
+										</div>
+									</div>
+
 									<div class="flex min-h-5 items-center gap-2 text-xs">
 										{#if savingEnabled[show.id]}
 											<span class="loading loading-spinner loading-xs"></span>
@@ -802,3 +883,16 @@
 		></button>
 	</div>
 {/if}
+
+<!-- The glyph picker, raised by the icon tile on a saved show's panel. The same modal
+	the achievement editor picks a badge's icon with, over the same vendored artwork —
+	one picker, because the question is the same one: which of the glyphs already in the
+	repo does this stand for. Mounted once at the page root rather than per card, so the
+	sheet is never trapped inside a card's own stacking context. -->
+<IconPickerModal
+	{icons}
+	selected={iconPickerEntry?.icon ?? ''}
+	open={iconPickerEntry != null}
+	on:select={(e) => iconPickerShowId != null && setShowIcon(iconPickerShowId, e.detail.icon)}
+	on:close={() => (iconPickerShowId = null)}
+/>

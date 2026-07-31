@@ -10,7 +10,8 @@
 	// and BoosterBoxSprite for the canvas side).
 	import { PACK_STOCK } from './box-stock';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
-	import { showIconName } from '$utils/show/show-icon';
+	import { forShow } from '$utils/show/show-icon';
+	import { showGlyphs } from '$services/shows.service';
 	import { spawnYearLabel } from '$utils/spawn/year';
 
 	// One unopened booster box, drawn in the document: a lid seen from above with its four
@@ -207,8 +208,8 @@
 
 	// The glyph the lid is stamped with: the show's own, the very mark the map pins that show
 	// with and the statue paints across the floor its characters stand on. Null for a show
-	// with none drawn yet, which leaves the lid bare.
-	$: showIcon = showIconName(showId);
+	// with none picked, which leaves the lid bare.
+	$: showIcon = forShow($showGlyphs, showId);
 
 	// Coming apart, which is the one thing this box does rather than merely shows. Every surface
 	// of it breaks into a grid of squares and the squares dissolve, each grid starting at the
@@ -395,7 +396,7 @@
 					it and does not run into the corners the cut takes off. Four fifths of both sides
 					and not of the width alone: a mark squashed one way is a different mark. -->
 				<ShowIcon
-					name={showIcon}
+					markup={showIcon}
 					classes="absolute inset-0 justify-center [&>svg]:h-[80%] [&>svg]:w-[80%]"
 				/>
 			{/if}

@@ -31,8 +31,8 @@ export interface MusicTrack {
 	/** The song's own title, as it is lettered in the player. */
 	title: string;
 	/**
-	 * TMDB show id, the same key `shows.json`, the municipality assignment and
-	 * `showIconName` all use — so the track can be badged with the show's glyph and
+	 * TMDB show id, the same key `shows.json`, the municipality assignment and the
+	 * show-glyph lookup all use — so the track can be badged with the show's glyph and
 	 * named by the show the player already sees on the map. Null for a song linked to
 	 * no show, which is lettered by title alone.
 	 */

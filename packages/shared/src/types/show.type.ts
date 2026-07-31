@@ -23,7 +23,25 @@ export interface ShowEntry {
 	 * first enabled entry for the kind.
 	 */
 	enabledImages?: Partial<Record<TMDBImageKind, string[]>>;
+	/**
+	 * The glyph that stands for the show wherever it is named in a line of text —
+	 * the panel's tables, the map's pins, a booster box's lid, the statue's floor —
+	 * as `<folder>/<slug>` under `@3xl/assets`' `public/icons/` (e.g.
+	 * `delapouite/pirate-hat`, `shows/straw-hat`). Chosen in the admin `/shows`
+	 * screen from the same picker the achievements use, and absent for a show
+	 * nobody has picked one for: an unbadged show renders by name alone, since a
+	 * stand-in glyph would read as a fact about the show while its absence reads
+	 * as nothing at all.
+	 */
+	icon?: string;
 }
+
+/**
+ * What a show's `icon` may look like: `<folder>/<slug>`, both lowercase. The same
+ * shape an achievement's glyph takes, and for the same reason — it is a path into
+ * `public/icons/`, and the pattern is what keeps it from being one out of it.
+ */
+export const SHOW_ICON_PATTERN = /^[a-z0-9-]+\/[a-z0-9-]+$/;
 
 /** Shape of `public/shows.json` — the whole saved-show collection. */
 export interface ShowsCollection {
@@ -54,33 +72,3 @@ export interface ShowRefreshResult {
 	failed: { id: number; name: string; message: string }[];
 }
 
-/**
- * One municipality's baked show assignment, as written by @3xl/data's
- * `generate:shows` into `public/municipality-shows.json`. The pick is a pure
- * function of the municipality's GPS geometry (see the script), precomputed at
- * build time so the frontend map reads the finished assignment from the server.
- */
-export interface MunicipalityShow {
-	/** Municipality feature id, matching `properties.id` in the geo layers. */
-	id: string;
-	name: string;
-	comarca: string | null;
-	prov: string | null;
-	territory: string | null;
-	/** Barcelona and its immediate neighbours — the subset the map renders. */
-	neighbourOfCenter: boolean;
-	/** The assigned show, trimmed to what the map and sidebar need. */
-	show: {
-		id: number;
-		name: string;
-		posterUrl: string | null;
-	};
-}
-
-/** Shape of `public/municipality-shows.json` — the whole baked assignment. */
-export interface MunicipalityShowsCollection {
-	generatedAt: string;
-	/** The municipality whose neighbourhood is flagged for rendering. */
-	center: string;
-	assignments: MunicipalityShow[];
-}

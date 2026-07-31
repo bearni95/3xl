@@ -12,4 +12,12 @@ import type { CharacterSpawn } from '$types/character-spawn.type';
 export interface ClaimPull extends CardModel {
 	/** The persisted spawn this card represents. */
 	spawn: CharacterSpawn;
+	/**
+	 * Whether this card is one the player did not already hold — the character, in
+	 * that colour, from that town (see `ownedSpawnKeys` in @3xl/shared), read against
+	 * their collection as it stood *before* the pack was opened. The reveal marks
+	 * these, so what a pack actually added is visible at a glance rather than having
+	 * to be worked out against the roster.
+	 */
+	isNew: boolean;
 }

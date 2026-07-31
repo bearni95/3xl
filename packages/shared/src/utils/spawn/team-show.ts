@@ -23,11 +23,52 @@ export function teamShowId(
 	return showIdsByCharacter.get(lead)?.[0] ?? null;
 }
 
+/** A town's sitting team as a holder row carries it: the lead first. */
+export interface HeldTown {
+	/** The town, as its geojson feature id. */
+	locationId: string;
+	/** The occupying team in fielded order — only the first member is read. */
+	team: readonly { characterId: string }[];
+}
+
+/**
+ * Municipality id → the show its occupying team flies, for every town somebody
+ * holds: the sitting lead's show, by {@link teamShowId}.
+ *
+ * This is what makes a conquest re-label a town — the show on its pin, and the
+ * show its booster boxes deal. A town nobody holds is absent, and so is one whose
+ * lead belongs to no show: both fall back to the show the town's own geometry
+ * seeds it with (see utils/geo/municipality-show.ts), which is the only show a
+ * town has until it is first taken.
+ *
+ * Recomputed from the holders as they stand, never stored: taking a town rewrites
+ * its holder row, and the next read of this is already the new show.
+ */
+export function holderShowIds(
+	holders: Iterable<HeldTown>,
+	showIdsByCharacter: ReadonlyMap<string, number[]>
+): Map<string, number> {
+	const byLocation = new Map<string, number>();
+	for (const holder of holders) {
+		const showId = teamShowId(
+			holder.team.map((member) => member.characterId),
+			showIdsByCharacter
+		);
+		if (showId != null) byLocation.set(holder.locationId, showId);
+	}
+	return byLocation;
+}
+
 /**
  * Reverse a show → character-ids assignment into character id → the shows it
  * belongs to, the direction {@link teamShowId} reads it in. Each character's show
  * list keeps the order the shows were walked in, so a character in several shows
  * resolves to the same one every time.
+ *
+ * The apps walk the shows in name order (`spawnService.loadShows` sorts them), so
+ * a character on several shows answers with the alphabetically first — the same
+ * order `claim_booster` breaks the tie in, which is what keeps the box a town's
+ * pin shows and the pool the server rolls from the same show.
  */
 export function showIdsByCharacter(
 	charactersByShow: ReadonlyMap<number, string[]>

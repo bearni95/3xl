@@ -1,3 +1,4 @@
+import type { SpawnColor } from './character-spawn.type';
 import type { ID } from './core.type';
 
 /** Authentication lifecycle state for the current visitor. */
@@ -41,13 +42,18 @@ export interface Profile {
 	id: ID;
 	email: string;
 	/**
-	 * The username the account chose, or `null` when it has never been set.
-	 * A fresh account starts with `null`; the app prompts for one on first
-	 * sign-in and via the profile card.
+	 * The username the player typed, or `null` when they never have — which is a
+	 * resting state, not a gap for the app to fill in. It is stored in exactly one
+	 * place, `player_profiles.username`, unique across the game and writable only
+	 * through the `set_player_username` RPC; nothing about how the account signs in
+	 * (the name Google or Discord supplies, the email address) is ever written to it
+	 * or shown in its place. Clearing it returns the account to nameless.
+	 *
+	 * This is the only name a Profile carries — where a screen needs something to
+	 * print for a nameless account, that placeholder is the screen's own wording and
+	 * is never stored.
 	 */
 	username: string | null;
-	/** Display name — the chosen {@link username}, falling back to the email local-part. */
-	displayName: string;
 	/** ISO timestamp the account was created, if known. */
 	createdAt: string | null;
 	/** ISO timestamp of the most recent sign-in, if known. */
@@ -71,11 +77,21 @@ export interface Profile {
 	 */
 	level: number;
 	/**
-	 * The character whose portrait the player wears as their profile picture, from
-	 * the Supabase `player_profiles` table, or `null` for the initial-letter
-	 * avatar every account starts on. Only the character is stored: which portrait
-	 * it shows is the definition's own face, authored in the admin, so the avatar
-	 * follows whatever is picked there. Set through the `set_player_avatar` RPC.
+	 * The character half of the avatar the player wears, from the Supabase
+	 * `player_profiles` table, or `null` for the initial-letter avatar every
+	 * account starts on. Always read with {@link avatarColor}: an avatar is a
+	 * (character, colour) pair the player owns — a `player_avatars` row — and one
+	 * half of it names nothing on its own.
+	 *
+	 * The artwork is not stored: it is the definition's own face, authored in the
+	 * admin, so the avatar follows whatever is cropped there. Set through the
+	 * `set_player_avatar` RPC, which refuses a pair the caller does not own.
 	 */
 	avatarCharacterId: string | null;
+	/**
+	 * The colour half of the worn avatar — the colour the portrait is printed in,
+	 * and what the picture stands on. `null` alongside a null
+	 * {@link avatarCharacterId}; the two are only ever set and cleared together.
+	 */
+	avatarColor: SpawnColor | null;
 }

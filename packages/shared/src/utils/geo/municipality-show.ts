@@ -1,11 +1,11 @@
 // Deterministically assign a saved TV show to a municipality from its shape.
 //
 // Each municipality is assigned a show, and the map pins each region's plurality
-// show at its centre. The assignment is a pure function of the municipality's
-// *full GPS coordinates*: the same polygon always yields the same show (stable
-// across reloads and machines, no storage needed), while neighbouring
-// municipalities land on independent shows — so each region's most common show
-// is a stable, deterministic pick.
+// show at its centre. The assignment is a pure function of two things: the
+// municipality's *full GPS coordinates* — the same polygon always yields the same
+// index (stable across reloads and machines, no storage needed), while
+// neighbouring municipalities land on independent ones — and the pool that index
+// is taken out of, which is every show with a cast to draw.
 
 import type { ShowEntry } from '../../types/show.type';
 import { fnv1a } from '../string/hash';
@@ -94,17 +94,36 @@ export function immediateNeighbourhood(
 }
 
 /**
- * Pick one show for a municipality feature from the saved-show collection,
- * seeded by the feature's geometry. Returns null when the feature has no
- * geometry or the collection is empty.
+ * The pool a town's show is drawn from: every show that has at least one
+ * renderable character cast in it, which is the same set the album is built out
+ * of and the same one a booster can actually be rolled from. Handed the show →
+ * character-ids assignment the app reads from Supabase (`show_characters`,
+ * already narrowed to characters the local registry can draw); a show with an
+ * empty cast is left out, since a town flying it would deal a pack with nothing
+ * in it and field a house team of nobody.
+ *
+ * Sorted by **id**, never by name: a saved show's name is TMDB's Catalan title
+ * and the admin's re-query can change it, which would silently re-shuffle every
+ * town on the map. An id is the one thing about a show no translation touches, so
+ * the pool's order — and with it every town's pick — moves only when a show gains
+ * or loses its first character.
  */
-export function showForMunicipality(
-	feature: GeoJSON.Feature,
-	shows: readonly ShowEntry[]
-): ShowEntry | null {
-	if (shows.length === 0) return null;
-	const seed = coordinateSeed(feature.geometry);
-	return shows[seed % shows.length];
+export function seededShowPool(pools: ReadonlyMap<number, readonly string[]>): number[] {
+	const ids: number[] = [];
+	for (const [id, cast] of pools) {
+		if (cast.length > 0) ids.push(id);
+	}
+	return ids.sort((a, b) => a - b);
+}
+
+/**
+ * The show a town flies before anybody takes it: the pool entry its GPS seed
+ * lands on. Null for an empty pool — a map read before Supabase answers, which
+ * leaves every town simply unshown rather than all on one show.
+ */
+export function seededShowId(seed: number, pool: readonly number[]): number | null {
+	if (pool.length === 0) return null;
+	return pool[seed % pool.length];
 }
 
 /**

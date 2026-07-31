@@ -17,7 +17,7 @@
 import type { RegionSiege } from './region-siege';
 import type { RegionColor } from '../../types/region-color.type';
 
-/** The trimmed show shape shown against a region (matches MunicipalityShow.show). */
+/** The trimmed show shape shown against a region: what a pin is lettered with. */
 export interface RegionShow {
 	id: number;
 	name: string;

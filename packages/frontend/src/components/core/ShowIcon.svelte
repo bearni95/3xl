@@ -1,14 +1,17 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import { iconMarkup } from '$components/core/icon-markup';
 
-	// The icon's name as `showIconName` gives it, e.g. "shows/bow-and-arrow".
-	export let name: string;
+	// The glyph as inline-ready markup, which is how `showGlyphs` hands it over. The
+	// artwork has to be part of *this* document rather than pointed at with an <img>:
+	// an <img> is an opaque document, so its artwork cannot inherit anything from the
+	// page and always paints in its own baked colour. These have to take the colour of
+	// the line they sit in — the show name beside them in both panel tables, the pin
+	// frame on the map, the label of the button they fill — which is what the
+	// `fill="currentColor"` the service rewrites in resolves against once inline.
+	export let markup: string | null = null;
 	export let classes: string = '';
 
-	$: markup = iconMarkup(name);
-
-	// The glyph is sized in `em` by the generator, so by default it tracks the font
+	// The glyph is sized in `em` by the service, so by default it tracks the font
 	// size of whatever it sits in; a caller that wants a fixed size overrides the
 	// svg's own width/height through `classes` (e.g. `[&>svg]:size-6`), which wins
 	// because a CSS rule outranks a presentation attribute. `text-current` keeps it

@@ -1,7 +1,7 @@
 // The map's show leaderboard: how much of the country each TV show flies.
 //
-// Every municipality flies exactly one show — the one the build baked onto it,
-// or, once a player has taken the town, the one its ruling team belongs to (the
+// Every municipality flies exactly one show — the one its own geometry seeds it
+// with, or, once a player has taken the town, its ruling team's show (the
 // map resolves that override before calling in here). Tallying that single map is
 // therefore the whole leaderboard: a show's standing is the number of towns
 // currently flying it, and its share of every town that flies anything.

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
+	import { _ } from 'svelte-i18n';
 	import FullScreenModal from '$components/core/FullScreenModal.svelte';
 	import BoosterBoxCanvas from '$components/core/pack/BoosterBoxCanvas.svelte';
 	import { boosterModalOpen } from '$services/boosterModal';
@@ -43,6 +44,13 @@
 		openComplete: number;
 	}>();
 
+	// True from the moment a box has finished coming apart. The window was raised to open a pack;
+	// once one is open and its cards are standing there, the sheet has said everything it was
+	// raised to say, so the whole of it becomes the way out and the next click anywhere on it
+	// closes — by the slide it would have left by from the ✕ or from Escape. It is never put back:
+	// a pack is opened once, and what follows a pack being opened is leaving.
+	let revealed = false;
+
 	function close(): void {
 		boosterModalOpen.set(false);
 	}
@@ -53,7 +61,13 @@
 	up and sliced open over that town — a page under it, however faint, makes the opening
 	something that happens on a screen instead of on the map. Every other full view is content
 	to be read and keeps its page. -->
-<FullScreenModal title="Booster" closeLabel="Close boosters" transparent on:close={close}>
+<FullScreenModal
+	title={$_('booster.title')}
+	closeLabel={$_('booster.close')}
+	transparent
+	closeOnClick={revealed}
+	on:close={close}
+>
 	<!-- The sheet is the window on a canvas, and nothing beside it. It was drawn twice — the
 		document's own grid on the left and the canvas on the right, both bound to the one pick —
 		which is one window shown twice on a sheet whose whole point is that a pack opening is
@@ -125,6 +139,7 @@
 					classes={classNames({ 'opacity-50': allowanceSpent })}
 					on:select={() => dispatch('select')}
 					on:back={() => dispatch('back')}
+					on:opened={() => (revealed = true)}
 					on:openComplete={(event) => dispatch('openComplete', event.detail)}
 				/>
 			{:else}

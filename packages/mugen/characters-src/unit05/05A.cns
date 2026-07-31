@@ -1,0 +1,657 @@
+;------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------
+;Eva-05 By TonyADV
+;------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------
+;----------------------------------
+;----------------------------------
+;Eva-05 Constant File By TONYADV
+;----------------------------------
+;----------------------------------
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;volo Start
+[Statedef 6999]
+type = A
+movetype = I
+physics = A
+ctrl = 0
+anim = 2001
+
+[State 7000, UpBorder]
+type = PosSet
+trigger1 = Pos Y < -180
+y = -180
+
+[State 7000, DownBorder]
+type = PosSet
+trigger1 = Pos Y > 1
+y = 0
+
+[state 7000]
+type = varset
+trigger1 = Time = 0
+var(1) = 1
+
+[State 6999, NoHit]
+type = NotHitBy
+trigger1 = Time = 0
+time = 40
+value = SCA
+
+[State 6999, afterimage]
+type = AfterImage
+trigger1 = Time = 0
+time = 30
+FrameGap = 4
+length = 20
+PalBright = 10,10,10
+PalContrast = 128,128,128
+PalAdd      =   0,  0,  0
+PalMul      =  1,1,1
+trans = Add1
+
+[State 3030]
+type = PlaySnd
+trigger1 = time = 5
+value = 2, 1
+
+[State 3030]
+type = PlaySnd
+trigger1 = AnimElem = 5
+value = 0, 0
+
+[State 6999, Velset]
+type = VelSet
+trigger1 = Time = 0
+y = -1
+
+[State 6999]
+type = VelAdd
+trigger1 = Time = 0
+y = -10
+
+[State 6999]
+type = ChangeState
+Trigger1 = AnimTime = 0
+value = 7000
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;volo end
+[Statedef 7001]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 0
+ctrl = 0
+velset = 0,0
+anim = 2002
+sprpriority = 2
+
+[State 7000, UpBorder]
+type = PosSet
+trigger1 = Pos Y < -180
+y = -180
+
+[State 3750, 32]
+type = HitOverride
+trigger1 = time = 0
+time = 1
+attr = SCA,AA,AT,AP,NT,ST,HT,NA,SA,HA,NP,SP,HP
+stateno = 7001
+
+[state 7000]
+type = varset
+trigger1 = Time = 0
+var(1) = 0
+
+[State 99, Turn]
+type = Turn
+trigger1 = P2Dist X < 0
+
+[State 3030, NoHit]
+type = NotHitBy
+trigger1 = time = 0
+time = 50
+value = SCA
+
+[State 3030]
+type = PlaySnd
+trigger1 = AnimElem = 3
+value = 0, 0
+
+[State 99, Velset]
+type = VelSet
+trigger1 = time = 0
+x = 0
+y = -5
+
+[State 99, Velset]
+type = VelSet
+trigger1 = time > 5
+y = 5
+
+[State 99]
+type = ChangeState
+trigger1 = AnimTime = 0
+trigger2 = pos y >= 0
+value = 50
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;volo Stand
+[Statedef 7000]
+type = S
+movetype = I
+physics = N
+ctrl = 0
+velset = 0,0
+anim = 2000
+
+[State 3030]
+type = PlaySnd
+trigger1 = AnimElem = 3
+value = 0, 0
+
+[State 7000, Turn]
+type = Turn
+Trigger1 = P2Dist X < 0
+
+[State 7000]
+type = VelSet
+Trigger1 = command != "holddown"
+Trigger2 = command != "holdup"
+Trigger3 = command != "holdfwd"
+Trigger4 = command != "holdback"
+y = 0
+x = 0
+
+[State 7000]
+type = VelSet
+Trigger1 = command = "holddown"
+y = 2
+
+[State 7000]
+type = VelSet
+Trigger1 = command = "holdup"
+y = -2.3
+
+[State 7000]
+type = VelSet
+Trigger1 = command = "holdfwd"
+x = 2.3
+
+[State 7000]
+type = VelSet
+Trigger1 = command = "holdback"
+x = -2.3
+
+[State 7000, UpBorder]
+type = PosSet
+trigger1 = Pos Y < -180
+y = -180
+
+[State 7000, DownBorder]
+type = PosSet
+trigger1 = Pos Y > 1
+y = 0
+
+;---------------------------------
+;---------------------------------
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "Volo"
+value = 7001
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "FF"
+value = 7005
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "BB"
+value = 7006
+ctrl = 1
+
+;---------------------------------
+;---------------------------------
+
+[State 7000]
+type = ChangeState
+triggerall = power >= 1000
+trigger1 = Command = "SPresa"
+value = 7031
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+triggerall = power >= 1000
+trigger1 = Command = "Ronginus"
+value = 7030
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+triggerall = power >= 1000
+trigger1 = Command = "Air Ronginus"
+value = 7030
+ctrl = 1
+
+;---------------------------------
+;---------------------------------
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "ATField"
+value = 7020
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "ATKField1"
+value = 7021
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "ATKField2"
+value = 7022
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "ATKField3"
+value = 7023
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "Uppercut"
+value = 7025
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "Gomitata"
+value = 7024
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "Gomitata2"
+value = 7024
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "Stand Uppercut"
+value = 7024
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "Fly Kick"
+value = 7026
+ctrl = 1
+
+;---------------------------------
+;---------------------------------
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "a"
+value = 7010
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "b"
+value = 7011
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "c"
+value = 7012
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+triggerAll = P2bodydist X <= 50
+trigger1 = Command = "x"
+value = 7013
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "x"
+value = 7016
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "y"
+value = 7014
+ctrl = 1
+
+[State 7000]
+type = ChangeState
+trigger1 = Command = "z"
+value = 7015
+ctrl = 1
+
+;---------------------------------
+;---------------------------------
+
+[State 7000, Hit]
+type = HitOverride
+trigger1 = time = 0
+time = -1
+attr = SCA,AA,AT,AP,NT,ST,HT,NA,SA,HA,NP,SP,HP
+stateno = 7060
+
+[State 7000, guard]
+type = ChangeState
+triggerall = P2MoveType = A
+triggerall = P2BodyDist X < 60
+trigger1 = Command = "holdback"
+value = 7050
+
+[State 7000, WinLose]
+type = ChangeState
+Trigger1 = Win
+Trigger2 = Lose
+value = 7001
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;Run FW
+[Statedef 7005]
+type    = S
+physics = S
+anim = 2003
+sprpriority = 1
+ctrl = 0
+
+[State 3030]
+type = PlaySnd
+trigger1 = time = 0
+value = 2, 1
+
+[State 3030]
+type = PlaySnd
+trigger1 = AnimElem = 5
+value = 0, 1
+
+[State 100, POLVERE]
+type = Explod
+trigger1 = AnimElem = 1
+pos = 25,1
+anim = 402
+sprpriority = 2
+supermove = 1
+removeongethit = 1
+
+[State 100, afterimage]
+type = AfterImage
+trigger1 = time = 0
+time = 25
+FrameGap = 2
+length = 20
+PalBright = 10,10,10
+PalContrast = 128,128,128
+PalAdd      =   0,  0,  0
+PalMul      =  1,1,1
+trans = Add1
+
+[State 100, 1]
+type = VelSet
+trigger1 = time >= 4
+x = 8
+
+[State 7000, Hit]
+type = HitOverride
+trigger1 = time = 0
+time = -1
+attr = SCA,AA,AT,AP,NT,ST,HT,NA,SA,HA,NP,SP,HP
+stateno = 7060
+
+[State 7000, UpBorder]
+type = PosSet
+trigger1 = Pos Y < -180
+y = -180
+
+[State 7000, DownBorder]
+type = PosSet
+trigger1 = Pos Y > 1
+y = 0
+
+[State 100, 4]
+type = ChangeState
+trigger1 = time = 35
+value = 7000
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+; RUN_BACK
+[Statedef 7006]
+type    = S
+physics = S
+anim = 2004
+sprpriority = 1
+ctrl = 0
+
+[State 105 ,snd]
+type = PlaySnd
+trigger1 = time = 0
+value = 2, 2
+
+[State 3030]
+type = PlaySnd
+trigger1 = AnimElem = 4
+value = 0, 1
+
+[State 105, afterimage]
+type = AfterImage
+trigger1 = time = 1
+time = 16
+length = 20
+PalBright = 10,10,10
+PalContrast = 128,128,128
+PalAdd      =   0,  0,  0
+PalMul      =  1,1,1
+trans = Add1
+
+[State 105, POLVERE]
+type = Explod
+trigger1 = time = 0
+pos = -20,5
+anim = 403
+sprpriority = 2
+supermove = 1
+scale = .6,.6
+removeongethit = 1
+
+[State 100, 1]
+type = VelSet
+trigger1 = time >= 4
+x = -6
+
+[State 7000, Hit]
+type = HitOverride
+trigger1 = time = 0
+time = -1
+attr = SCA,AA,AT,AP,NT,ST,HT,NA,SA,HA,NP,SP,HP
+stateno = 7060
+
+[State 7000, UpBorder]
+type = PosSet
+trigger1 = Pos Y < -180
+y = -180
+
+[State 7000, DownBorder]
+type = PosSet
+trigger1 = Pos Y > 1
+y = 0
+
+[State 100, 4]
+type = ChangeState
+trigger1 = time = 28
+value = 7000
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+
+; GUARD (start)
+[Statedef 7050]
+type = U    
+physics = U 
+
+[State 130, 1]
+type = ChangeAnim
+trigger1 = Anim != 2020
+value = 2020
+
+[State 99, NoHit]
+type = NotHitBy
+trigger1 = Time = 0
+time = 25
+value = SCA,AA,AT,AP,NT,ST,HT,NA,SA,HA,NP,SP,HP
+
+[State 1000, rev]
+type = ReversalDef
+trigger1 = Time = 0
+reversal.attr = SCA,AA,AT,AP,NT,ST,HT,NA,SA,HA,NP,SP,HP
+guard.sparkno = 40
+sparkno = 40
+pausetime = 6,15
+p1stateno = 7051
+
+[State 7050]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 7000
+ctrl = 1
+
+[Statedef 7051]
+type    = S
+movetype= A
+physics = S
+velset = -6,0
+anim = 2023
+ctrl = 0
+
+[State 1001,nohit ]
+type = NotHitBy
+trigger1 = time = 0
+value = SCA,AA,AT,AP,NT,ST,HT,NA,SA,HA,NP,SP,HP
+time = 20
+
+[State 150,ATFIELD]
+type = PlaySnd
+trigger1 = time = 0
+value = 7, 0
+
+[State 150, ATFIELD]
+type = Explod
+trigger1 = time = 0
+anim = 430
+ID = 430
+pos = 23,-10
+postype = p1
+sprpriority = 5
+ignorehitpause = 1
+ownpal = 1
+bindtime = -1
+persistent = 0
+removeongethit = 1
+supermove = 1
+removetime = 20
+
+[State 1000, 6]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 7000
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+
+;Colpito (hit)
+[Statedef 7060]
+type    = S
+movetype= H
+physics = N
+velset = -2,0
+anim = 2021
+ctrl = 0
+sprpriority = 2
+
+[State 1001,nohit ]
+type = NotHitBy
+trigger1 = time = 0
+value = SCA,AA,AT,AP,NT,ST,HT,NA,SA,HA,NP,SP,HP
+time = 22
+
+[State 99, Brilla]
+type = PalFX
+trigger1 = time = 0
+time = 10
+add = 0,0,0
+sinadd = 100,100,100,3
+
+[State 99, VarSnd]
+type = PlaySnd
+triggerall = random < 250
+trigger1 = Time = 0
+value = 11,0
+
+;[State 88877, toggleng]
+;type = LifeAdd   
+;trigger1 = time = 0
+;value = -30
+
+[State 7000, WinLose]
+type = ChangeState
+Trigger1 = life <= 0
+value = 5020
+
+[State 1000, 8]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 7000
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------

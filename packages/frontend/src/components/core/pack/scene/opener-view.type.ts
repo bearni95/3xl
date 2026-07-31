@@ -1,4 +1,31 @@
+import type { PlayerAvatar } from '$types/player-avatar.type';
 import type { ClaimPull } from './pull.type';
+
+/**
+ * What one open gave, as the reveal needs it: the cards, and the avatar the box
+ * dealt alongside them. Two shapes rather than one list, because they are two
+ * different things — five cards a player can field, and one portrait they can
+ * wear — and the reveal shows them as such.
+ */
+export interface ClaimResult {
+	/** The cards the pack rolled, in pull order. Empty when the roll was refused. */
+	pulls: ClaimPull[];
+	/**
+	 * The avatar the box granted: a character on its show, in one of the three
+	 * colours it deals. Null when the roll was refused — a pack that never opened
+	 * gives nothing — or when it may already be held (the server hands back the row
+	 * either way, so the reveal shows the same portrait for both).
+	 */
+	avatar: PlayerAvatar | null;
+	/**
+	 * Whether that avatar is one the player did not already hold — its character in
+	 * its colour, read against their collection as it stood *before* the pack was
+	 * opened. False for a pack that gave nothing, and false for a portrait the box
+	 * dealt a second time, which is the one thing the row coming back either way
+	 * cannot say on its own.
+	 */
+	avatarIsNew: boolean;
+}
 
 /**
  * One booster pack in the today's-festes grid the claim canvas lays out: the show
@@ -29,17 +56,18 @@ export interface OpenerPack {
 	/** Pack label — the show name shown under the grid pack / in the header. */
 	label: string;
 	/**
-	 * TMDB id of the show inside, which is what a glyph for it is looked up by
-	 * (`showIconName`) — the same mark the map pins that show with and the statue paints
-	 * across its floor. The box paints it on its lid.
+	 * TMDB id of the show inside, which is what a glyph for it is looked up by (the show's
+	 * own `icon`, authored in the admin) — the same mark the map pins that show with and the
+	 * statue paints across its floor. The box paints it on its lid.
 	 */
 	showId: number;
 	/**
-	 * Rolls this pack's booster against Supabase and returns the cards to reveal.
-	 * The grid scene calls it when the player slices the selected pack open — so the
-	 * spawn is persisted at open time. Rejections/empties reveal no cards.
+	 * Rolls this pack's booster against Supabase and returns what to reveal — the
+	 * cards, and the avatar it dealt. The grid calls it when the player slices the
+	 * selected pack open, so both are persisted at open time. Rejections/empties
+	 * reveal nothing.
 	 */
-	claim: () => Promise<ClaimPull[]>;
+	claim: () => Promise<ClaimResult>;
 }
 
 /**
@@ -56,11 +84,11 @@ export interface OpenerView {
 	/** Full name of the place the pack belongs to, drawn across its bottom. */
 	locationName: string | null;
 	/**
-	 * Rolls the booster against Supabase and returns the cards to reveal. The canvas
+	 * Rolls the booster against Supabase and returns what to reveal. The canvas
 	 * calls this when the player slices the pack open — so the spawn is persisted at
-	 * open time, not when the pack was selected. Rejections/empties reveal no cards.
+	 * open time, not when the pack was selected. Rejections/empties reveal nothing.
 	 */
-	claim: () => Promise<ClaimPull[]>;
+	claim: () => Promise<ClaimResult>;
 	/** Bumped on every open so the canvas remounts with a fresh pack. */
 	openSession: number;
 	/** True while the parent is rolling the next claim. */

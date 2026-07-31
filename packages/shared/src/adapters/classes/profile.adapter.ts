@@ -1,6 +1,8 @@
 import { AdapterClass } from './adapter.class';
+import type { SpawnColor } from '../../types/character-spawn.type';
 import { OAUTH_PROVIDERS, OAuthProvider, type Profile } from '../../types/profile.type';
 import { levelForExp } from '../../utils/progression/level';
+import { isSpawnColor } from '../../utils/spawn/color';
 
 /**
  * Minimal structural shape of a Supabase auth user. Declared here (rather than
@@ -12,11 +14,10 @@ export interface SupabaseUserLike {
 	email?: string | null;
 	created_at?: string | null;
 	last_sign_in_at?: string | null;
-	user_metadata?: {
-		full_name?: string | null;
-		name?: string | null;
-		[key: string]: unknown;
-	} | null;
+	// `user_metadata` is deliberately absent: it is where Google and Discord stamp
+	// the `full_name` / `name` they hold for the account, and where any client
+	// holding the anon key can write whatever it likes through `updateUser`. Neither
+	// is a username, so this adapter is not given the means to read one from there.
 	/** One entry per linked identity — `email` for the magic link, `google`/`discord` for OAuth. */
 	identities?: ReadonlyArray<{ provider?: string | null }> | null;
 	app_metadata?: {
@@ -34,30 +35,28 @@ export class ProfileAdapter extends AdapterClass {
 	/**
 	 * Transform a Supabase auth user into the internal {@link Profile} model.
 	 *
-	 * Experience and the chosen avatar live in a separate `player_profiles` table,
-	 * not on the auth user, so neither is available here — `exp` defaults to 0
-	 * (level 1) and the avatar to none. The auth service overlays both via
+	 * The username, the experience and the chosen avatar all live in a separate
+	 * `player_profiles` row, not on the auth user, so none of them is available
+	 * here — the account reads as nameless, at exp 0 (level 1), on the letter
+	 * avatar. The auth service overlays all three via {@link withUsername} /
 	 * {@link withExp} / {@link withAvatar} once it has fetched the row.
+	 *
+	 * A signed-in user is therefore *only* an id, an address and how they got here.
+	 * That is the point: there is nothing on this object a name could be quietly
+	 * derived from, so no sign-in method can hand an account a name it never chose.
 	 */
 	fromSupabaseUser(user: SupabaseUserLike): Profile {
-		const email = user.email ?? '';
-		// The chosen username, or null when the account has never set one. Unlike
-		// the display name, this is not backfilled from the email — an empty
-		// username is what triggers the first-login prompt.
-		const rawName = (user.user_metadata?.full_name ?? user.user_metadata?.name ?? '')?.trim();
-		const username = rawName || null;
-
 		return {
 			id: user.id,
-			email,
-			username,
-			displayName: username || email.split('@')[0] || 'Account',
+			email: user.email ?? '',
+			username: null,
 			createdAt: user.created_at ?? null,
 			lastSignInAt: user.last_sign_in_at ?? null,
 			providers: this.socialProviders(user),
 			exp: 0,
 			level: levelForExp(0),
-			avatarCharacterId: null
+			avatarCharacterId: null,
+			avatarColor: null
 		};
 	}
 
@@ -83,6 +82,20 @@ export class ProfileAdapter extends AdapterClass {
 	}
 
 	/**
+	 * Return a copy of `profile` wearing the username stored for it, or nameless
+	 * when the stored value is null/blank. Used by the auth service to fold in
+	 * `player_profiles.username`, and again after the player sets or clears it.
+	 *
+	 * This is the *only* way a Profile ever acquires a name, and its one caller
+	 * passes it nothing but that column — which in turn is written only by the
+	 * `set_player_username` RPC.
+	 */
+	withUsername(profile: Profile, username: string | null): Profile {
+		const name = typeof username === 'string' ? username.trim() : '';
+		return { ...profile, username: name || null };
+	}
+
+	/**
 	 * Return a copy of `profile` with its experience set to `exp` and its level
 	 * recomputed from it. Used by the auth service to fold the loaded (or freshly
 	 * incremented) `player_profiles` total into the profile view model.
@@ -93,14 +106,26 @@ export class ProfileAdapter extends AdapterClass {
 	}
 
 	/**
-	 * Return a copy of `profile` wearing `characterId`'s portrait, or the
-	 * initial-letter avatar when it is null/blank. Used by the auth service to
-	 * fold in the stored `player_profiles.avatar_character_id`, and again after
-	 * the player picks a new one.
+	 * Return a copy of `profile` wearing the avatar `characterId` shows in `color`,
+	 * or the initial-letter avatar when either half is missing. Used by the auth
+	 * service to fold in the stored `player_profiles.avatar_character_id` /
+	 * `avatar_color`, and again after the player picks another.
+	 *
+	 * The two halves are set and cleared together on purpose: an avatar *is* the
+	 * pair (see `player-avatar.type`), so half of one is not a lesser avatar, it is
+	 * none.
+	 * A character with no colour — every avatar worn before they became items — is
+	 * therefore read as no avatar at all, which is exactly what the database now
+	 * says about it.
 	 */
-	withAvatar(profile: Profile, characterId: string | null): Profile {
+	withAvatar(profile: Profile, characterId: string | null, color: SpawnColor | null): Profile {
 		const id = typeof characterId === 'string' && characterId.trim() ? characterId : null;
-		return { ...profile, avatarCharacterId: id };
+		const worn = id && isSpawnColor(color) ? color : null;
+		return {
+			...profile,
+			avatarCharacterId: worn ? id : null,
+			avatarColor: worn
+		};
 	}
 }
 

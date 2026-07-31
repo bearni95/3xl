@@ -1,0 +1,1224 @@
+;------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------
+;Eva-02 By TonyADV
+;------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------
+;---------------------------------------------
+;---------------------------------------------
+;Eva-02 Constant File (kaworu cns) By TONYADV
+;---------------------------------------------
+;---------------------------------------------
+
+;---------------------------------------------
+;intro
+;---------------------------------------------
+
+[Statedef 8000]
+type = S
+movetype = I
+physics = S
+anim = 710
+velset = 0,0
+ctrl = 0
+poweradd = 0
+sprpriority = 4            
+
+;-------------------------------------------
+;Hit
+[State 8000]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA, NT, ST, HT, NA, SA, HA,NP,SP,HP
+stateno = 8010
+time = -1
+
+;win
+[State 8000]
+type = changestate
+trigger1 = root, stateno = 180
+trigger2 = root, stateno = 181
+trigger3 = root, stateno = 182
+trigger4 = root, stateno = 183
+trigger5 = root, stateno = 184
+value = 8011 
+
+;death
+[State 8000]
+type = changestate
+trigger1 = root, life <= 0
+value = 8012
+;-------------------------------------------
+
+[State ChangeState]
+type = ChangeState
+Trigger1 = AnimTime = 0   
+value = 8001
+
+;---------------------------------------------
+;Stand
+;---------------------------------------------
+[Statedef 8001]
+type = S
+movetype = I
+physics = S
+anim = 711
+velset = 0,0
+ctrl = 0
+poweradd = 0
+sprpriority = 4            
+
+[State 8001, Turn]
+type = Turn
+trigger1 = P2Dist X < 0
+
+[State 8001]
+type = velset
+trigger1 = Time >= 0
+x = 4*((Parentdist x - -30)/(abs(Parentdist x - -30) + abs(Parentdist y - 0) + 0.0000001))
+y = 4*((Parentdist y - 50)/(abs(Parentdist x - 0) + abs(Parentdist y - 50) + 0.0000001))
+
+;-------------------------------------------
+;special
+[State 8001]
+type = changestate
+trigger1 = root, stateno = 3010
+value = 8007
+
+;Hit
+[State 8001]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA, NT, ST, HT, NA, SA, HA,NP,SP,HP
+stateno = 8010
+time = -1
+
+;win
+[State 8001]
+type = changestate
+trigger1 = root, stateno = 180
+trigger2 = root, stateno = 181
+trigger3 = root, stateno = 182
+trigger4 = root, stateno = 183
+trigger5 = root, stateno = 184
+value = 8011 
+
+;death
+[State 8001]
+type = changestate
+trigger1 = root, life <= 0
+value = 8012
+;-------------------------------------------
+
+[State 8001]
+type = ChangeState
+trigger1 = root, p2life > 0
+trigger1 = P2bodydist X <= 50    
+value = 8005
+
+;---------------------------------------------
+;return stand
+;---------------------------------------------
+[Statedef 8002]
+type = S
+movetype = I
+physics = S
+anim = 712
+velset = 0,0
+ctrl = 0
+poweradd = 0
+sprpriority = 4            
+
+;-------------------------------------------
+;special
+[State 8002]
+type = changestate
+trigger1 = root, stateno = 3010
+value = 8007
+
+;Hit
+[State 8002]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA, NT, ST, HT, NA, SA, HA,NP,SP,HP
+stateno = 8010
+time = -1
+
+;win
+[State 8002]
+type = changestate
+trigger1 = root, stateno = 180
+trigger2 = root, stateno = 181
+trigger3 = root, stateno = 182
+trigger4 = root, stateno = 183
+trigger5 = root, stateno = 184
+value = 8011 
+
+;death
+[State 8002]
+type = changestate
+trigger1 = root, life <= 0
+value = 8012
+;-------------------------------------------
+
+[State 8002]
+type = velset
+trigger1 = Time >= 0
+x = 4*((Parentdist x - -30)/(abs(Parentdist x - -30) + abs(Parentdist y - 0) + 0.0000001))
+y = 4*((Parentdist y - 50)/(abs(Parentdist x - 0) + abs(Parentdist y - 50) + 0.0000001))
+
+[State 8002]
+type = ChangeState
+Trigger1 = AnimTime = 0
+value = 8001
+
+;---------------------------------------------
+;attack1
+;---------------------------------------------
+[Statedef 8005]
+type    = A
+movetype= A
+physics = N
+juggle  = 4
+poweradd= 100
+anim = 717
+ctrl = 0
+sprpriority = 4
+
+[State 8005]
+type = PlaySnd
+trigger1 = time = 0
+value = 7,0
+volume = -65
+
+[State 8005]
+type = PalFX
+trigger1 = AnimElem = 1
+time = 45
+add = 40,0,0
+sinadd = 100,100,100,3
+
+[State 8005] 
+type = HitDef
+trigger1 = AnimElem = 1
+trigger2 = AnimElem = 2
+trigger3 = AnimElem = 3
+trigger4 = AnimElem = 4
+attr = S, SA
+animtype  = Hard
+damage    = 10
+priority  = 5
+guardflag = MA
+pausetime = 15,15
+sparkno = s412                     
+sparkxy = 0,-20
+hitsound   = S4,0
+guardsound = S6,0
+ground.type = Low
+ground.slidetime = 12
+ground.hittime  = 15
+ground.velocity = -5
+air.velocity = -5,-2
+Palfx.time          = 10
+Palfx.add           = 220,150,0
+Palfx.sinadd        = -112,-122,-112,3
+envshake.time =  10 
+envshake.freq = 10     
+envshake.ampl = 5  
+envshake.phase = 5
+
+[State 8005, atfield]
+type = Explod
+trigger1 = time = 0
+anim = 430
+ID = 430
+pos = 10, 18
+sprpriority = 6
+ignorehitpause = 1
+ownpal = 1
+bindtime = -1
+persistent = 0
+removeongethit = 1
+supermove = 1
+removetime = 45
+scale = .5,.5
+
+[State 8005, afterimage]
+type = AfterImage
+trigger1 = AnimElem = 1
+time = 35
+palfx = 0,0,190
+trans = Add1
+
+[State 8005]
+type = velset
+Trigger1 = Time = 0
+x = 1*((p2dist x - 0)/(abs(p2dist x - 0) + abs(p2dist y - 0) + 0.0000001))
+y = 0*((p2dist y - 0)/(abs(p2dist x - 0) + abs(p2dist y - 0) + 0.0000001))
+
+
+;-------------------------------------------
+;special
+[State 8005]
+type = changestate
+trigger1 = root, stateno = 3010
+value = 8007
+
+;Hit
+[State 8005]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA, NT, ST, HT, NA, SA, HA,NP,SP,HP
+stateno = 8010
+time = -1
+
+;win
+[State 8005]
+type = changestate
+trigger1 = root, stateno = 180
+trigger2 = root, stateno = 181
+trigger3 = root, stateno = 182
+trigger4 = root, stateno = 183
+trigger5 = root, stateno = 184
+value = 8011 
+
+;death
+[State 8005]
+type = changestate
+trigger1 = root, life <= 0
+value = 8012
+;-------------------------------------------
+
+[State 8005]
+type = Changestate
+Trigger1 = movecontact = 1
+Trigger2 = AnimTime = 0
+value = 8002
+
+
+;---------------------------------------------
+;hit
+;---------------------------------------------
+[Statedef 8010]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 0
+velset = 0,0
+anim = 713
+ctrl = 0
+sprpriority = 4
+
+;-----------------------------
+[State 8010, VarSnd]
+type = VarRandom
+trigger1 = Time = 0
+v = 6
+range = 1,2
+
+[State 8010, VarSnd]
+type = PlaySnd
+triggerall = random < 250
+trigger1 = Var(6) = 1
+value = 10,8
+
+[State 8010, VarSnd]
+type = PlaySnd
+trigger1 = AnimElem = 2
+trigger1 = Var(6) = 2
+value = 10,5
+
+;-----------------------------
+
+[State 8010, Brilla]
+type = PalFX
+trigger1 = Time = 1
+time = 10
+add = 0,0,0
+sinadd = 100,100,100,3
+
+[State 8010]
+type = velset
+trigger1 = Time = 1
+y = -1
+x = -10
+
+;-------------------------------------------
+;special
+[State 8010]
+type = changestate
+trigger1 = root, stateno = 3010
+value = 8007
+
+;Hit
+[State 8010]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA, NT, ST, HT, NA, SA, HA,NP,SP,HP
+stateno = 8010
+time = -1
+
+;win
+[State 8010]
+type = changestate
+trigger1 = root, stateno = 180
+trigger2 = root, stateno = 181
+trigger3 = root, stateno = 182
+trigger4 = root, stateno = 183
+trigger5 = root, stateno = 184
+value = 8011 
+
+;death
+[State 8010]
+type = changestate
+trigger1 = root, life <= 0
+value = 8012
+;-------------------------------------------
+
+[State 8010]
+type = ChangeState
+Trigger1 = AnimTime = 0
+value = 8002
+
+
+;---------------------------------------------
+;morte
+;---------------------------------------------
+[Statedef 8012]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 0
+velset = 0,0
+anim = 714
+ctrl = 0
+sprpriority = 6
+
+[State 8007]
+type = PlaySnd
+trigger1 = time = 2
+value = 10,5
+
+[State 8012, NoHit]
+type = NotHitBy
+trigger1 = Time = 0
+time = -1
+value = SCA
+
+[State 8012, Brilla]
+type = PalFX
+trigger1 = Time = 1
+time = 25
+add = 0,0,0
+sinadd = 100,100,100,3
+
+[State 8012]
+type = velset
+trigger1 = Time = 1
+y = 3
+x = -2
+
+[State 8012]
+type = Velset
+trigger1 = Pos Y >= 0
+y = 0
+x = 0
+
+[State 8012]
+type = destroyself
+trigger1 = AnimTime = 0
+
+
+;---------------------------------------------
+;win
+;---------------------------------------------
+[Statedef 8011]
+type = S
+movetype = I
+physics = S
+anim = 710
+velset = 0,0
+ctrl = 0
+poweradd = 0
+sprpriority = 4            
+
+[State 8011, NoHit]
+type = NotHitBy
+trigger1 = Time = 0
+time = -1
+value = SCA
+
+[State 8011]
+type = velset
+trigger1 = Time >= 0
+x = 4*((Parentdist x + 14)/(abs(Parentdist x - 0) + abs(Parentdist y + 14) + 0.0000001))
+y = 4*((Parentdist y - 35)/(abs(Parentdist x - 0) + abs(Parentdist y - 35) + 0.0000001))
+
+[State 8011]
+type = ChangeState
+trigger1 = time = -1
+value = 8000
+
+
+
+;---------------------------------------------
+;---------------------------------------------
+;---------------------------------------------
+;---------------------------------------------
+
+
+;---------------------------------------------
+;special attack1
+;---------------------------------------------
+[Statedef 8007]
+type    = A
+movetype= A
+physics = N
+juggle  = 4
+poweradd= 100
+anim = 711
+ctrl = 0
+sprpriority = 4
+
+[State 8007]
+type = PlaySnd
+trigger1 = time = 0
+value = 10,2
+
+[State 8007]
+type = PlaySnd
+trigger1 = time = 0
+value = 4,0
+
+[State 8007]
+type = PlaySnd
+trigger1 = time = 0
+value = 0,2
+
+[State 8007, Brilla]
+type = PalFX
+trigger1 = Time = 1
+time = 80
+add = 0,0,50
+sinadd = 80,80,80,3
+
+[State 8007, afterimage]
+type = AfterImage
+trigger1 = Time = 0
+time = 80
+palfx = 0,0,190
+trans = Add1
+
+[State 8007, Spause]
+type = Superpause
+trigger1 = Time = 0
+anim = 100
+pos = 8,-5
+Time = 10
+movetime = 0
+darken = 1
+
+[State 8007]
+type = velset
+Trigger1 = Time = 0
+x = 10*((p2dist x - 0)/(abs(p2dist x - 0) + abs(p2dist y - 0) + 0.0000001))
+y = 8*((p2dist y - 0)/(abs(p2dist x - 0) + abs(p2dist y - 0) + 0.0000001))
+
+;-------------------------------------------
+;Hit
+[State 8007, NoHit]
+type = NotHitBy
+trigger1 = Time = 80
+time = 5
+value = SCA
+
+;win
+[State 8007]
+type = changestate
+trigger1 = root, stateno = 180
+trigger2 = root, stateno = 181
+trigger3 = root, stateno = 182
+trigger4 = root, stateno = 183
+trigger5 = root, stateno = 184
+value = 8011 
+
+;death
+[State 8007]
+type = changestate
+trigger1 = root, life <= 0
+value = 8012
+;-------------------------------------------
+
+[State 8007]
+type = ChangeState
+trigger1 = P2Dist X <= 80
+value = 8008
+ctrl = 1
+
+[State 8007]
+type = ChangeState
+trigger1 = time = 80
+value = 8002
+ctrl = 1
+
+;---------------------------------------------
+[Statedef 8008]
+type    = A
+movetype= A
+physics = N
+juggle  = 4
+poweradd= 100
+anim = 712
+ctrl = 0
+sprpriority = 4
+
+[State 8008, Velset]
+type = VelSet
+trigger1 = time = 0
+x = 0
+
+[State 8008, Velset]
+type = VelSet
+trigger1 = time = 10
+y = -.4
+
+[State 8008, Velset]
+type = VelSet
+trigger1 = AnimElem = 1
+trigger2 = AnimElem = 5
+x = 8
+
+[State 8008, Velset]
+type = VelSet
+trigger1 = AnimElem = 3
+trigger2 = AnimElem = 7
+x = -5
+
+[State 8008, Velset]
+type = VelSet
+trigger1 = AnimElem = 2
+trigger2 = AnimElem = 4
+trigger3 = AnimElem = 6
+trigger4 = AnimElem = 8
+x = 0
+
+[State 8008] 
+type = HitDef
+trigger1 = AnimElem = 1
+trigger2 = AnimElem = 2
+trigger3 = AnimElem = 3
+trigger4 = AnimElem = 4
+trigger5 = AnimElem = 5
+trigger6 = AnimElem = 6
+trigger7 = AnimElem = 7
+trigger8 = AnimElem = 8
+attr = S, HA
+animtype  = Hard
+damage    = 25
+priority  = 5
+guardflag = MA
+pausetime = 0,12
+sparkno = s410                     
+sparkxy = 0,-20
+hitsound   = S1,1
+guardsound = S6,0
+ground.type = Low
+ground.slidetime = 12
+ground.hittime  = 15
+ground.velocity = 0
+air.velocity = 0
+envshake.time =  10 
+envshake.freq = 10     
+envshake.ampl = 5  
+envshake.phase = 5
+Palfx.time          = 20
+Palfx.add           = -122,-30,82
+Palfx.mul           = 256,256,256
+Palfx.sinadd        = -112,-122,-112,3
+Palfx.invertall     = 1
+
+;-------------------------------------------
+;Hit
+[State 8008]
+type = HitOverride
+trigger1 = Time = 0
+attr = SCA, NT, ST, HT, NA, SA, HA,NP,SP,HP
+stateno = 8010
+time = -1
+
+;win
+[State 8008]
+type = changestate
+trigger1 = root, stateno = 180
+trigger2 = root, stateno = 181
+trigger3 = root, stateno = 182
+trigger4 = root, stateno = 183
+trigger5 = root, stateno = 184
+value = 8011 
+
+;death
+[State 8008]
+type = changestate
+trigger1 = root, life <= 0
+value = 8012
+;-------------------------------------------
+
+[State 8008, Brilla]
+type = PalFX
+trigger1 = Time = 0
+time = 200
+add = 0,0,50
+sinadd = 80,80,80,3
+
+[State 8008, afterimage]
+type = AfterImage
+trigger1 = Time = 0
+time = 200
+palfx = 0,0,190
+trans = Add1
+
+[State 8008, lampi]
+type = BGPalfx
+trigger1 = time = 0
+ignorehitpause = 1
+time = 200
+sinadd = 90,90,90,8
+add = 5,5,5
+invertall = 0
+
+;fatality
+[state 8008, white fadeout]
+type = BGPalFx
+trigger1 = p2life = 0
+add = 255,255,255
+sinadd = 300,300,300,60
+time= 40
+ignorehitpause = 1
+persistent= 0
+
+[State 8008]
+type = Changestate
+Trigger1 = Time = 200
+value = 8002
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+
+
+;Kaworu special
+[Statedef 3010]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= -1000
+ctrl = 0
+velset = 0,0
+anim = 0
+sprpriority = -1
+
+[State 3010]
+type = ChangeState
+trigger1 = Time = 1
+value = 0
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;super presa
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;corsa
+[Statedef 3005]
+type    = S                      
+movetype= A                      
+physics = S                      
+juggle  = 1                      
+velset = 0,0                     
+ctrl = 0                        
+anim = 100                       
+poweradd = -1000                  
+sprpriority = 1 
+
+[State 3005, SuperPause]
+type = SuperPause
+trigger1 = Time = 0
+time = 12
+movetime = 0
+pos = 30,-60
+anim = 102
+darken = 1
+
+[State 3005]
+type = PlaySnd
+trigger1 = Time = 0
+value = 4, 0
+
+[State 3005, NoHit]
+type = NotHitBy
+trigger1 = Time = 0
+time = 65
+value = SCA
+
+[State 3005, POLVERE]
+type = Explod
+trigger1 = AnimElem = 1
+pos = 25,1
+anim = 402
+sprpriority = 2
+supermove = 0
+scale = .6,.6
+removeongethit = 1
+
+[State 3005, POLVERE]
+type = Explod
+trigger1 = AnimElem = 3
+trigger2 = AnimElem = 7
+pos = 25,1
+anim = 400
+sprpriority = 2
+supermove = 1
+removeongethit = 1
+
+[State 3005]
+type = PlaySnd
+trigger1 = Animelem = 1
+value = 2, 1
+
+[State 3005]
+type = PlaySnd
+trigger1 = Animelem = 3
+trigger2 = Animelem = 7
+value = 7, 3
+
+[State 3005]
+type = VelSet
+trigger1 = 1
+x = 9
+
+[State 3005]
+type = ChangeState
+trigger1 = P2Dist X <= 80
+value = 3006
+ctrl = 1
+
+[State 3005, afterimage]
+type = AfterImage
+trigger1 = time = 0
+time = 70
+FrameGap = 2
+length = 20
+PalBright = 10,10,10
+PalContrast = 128,128,128
+PalAdd      =   0,  0,  0
+PalMul      =  1,1,1
+trans = Add1
+
+[State 3005, Velset]
+type = VelSet
+trigger1 = time = 69
+x = 0
+
+[State 3005]
+type = ChangeState
+trigger1 = time = 70
+value = 0
+ctrl = 1
+
+;------------------------------
+;presa 2
+[Statedef 3006]
+type    = S
+movetype= A
+physics = S
+juggle  = 0
+velset = 12,0
+ctrl = 0
+anim = 650
+sprpriority = 2
+poweradd = 50
+
+[State 3006]
+type = PlaySnd
+trigger1 = animelem = 1
+value = 10, 8
+
+[State 3006, NoHit]
+type = NotHitBy
+trigger1 = Time = 0
+time = 50
+value = SCA
+
+[State 3006]
+type = HitDef
+Trigger1 = Time = 0
+attr = S, NT          
+hitflag = M-          
+priority = 1, Miss   
+sparkno = -1          
+sprpriority = 1     
+p1stateno = 3007     
+p2stateno = 3105      
+hitsound   = s2,0
+guardsound = -1
+fall = 1              
+
+[State 3006]
+type = ChangeState
+Trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;-------------------------
+[Statedef 3007]
+type    = S                      
+movetype= A                      
+physics = S                      
+juggle  = 1                      
+velset = 0,0                     
+ctrl = 0                        
+anim = 651                       
+poweradd = 100                  
+sprpriority = 2 
+
+[State 3007, Velset]
+type = PosAdd
+trigger1 = Time = 0
+x = 50
+
+[State 3007, NoHit]
+type = NotHitBy
+trigger1 = Time = 0
+time = 100
+value = SCA
+
+[State 3007, Darken]
+type = BGPalfx
+trigger1 = time = 0
+ignorehitpause = 1
+time = 160
+mul = 90,90,90
+add = 5,5,5
+invertall = 0
+
+[State 3007, Polvere]
+type = Explod
+trigger1 = AnimElem = 3
+pos = 0,5
+anim = 400
+ID = 400
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+scale = .8,.8
+
+[state 3007, fatality]
+type = BGPalFx
+trigger1 = p2life = 0
+add = 255,255,255
+sinadd = 300,300,300,60
+time= 40
+ignorehitpause = 1
+persistent= 0
+
+[State 3007]
+type = PlaySnd
+trigger1 = animelem = 4
+trigger2 = animelem = 6
+trigger3 = animelem = 8
+trigger4 = animelem = 10
+trigger5 = animelem = 12
+trigger6 = animelem = 14
+value = 1, 1
+
+[State 3007]
+type = TargetLifeAdd
+trigger1 = animelem = 4
+trigger2 = animelem = 6
+trigger3 = animelem = 8
+trigger4 = animelem = 10
+trigger5 = animelem = 12
+trigger6 = animelem = 14
+value = -30
+
+[State 3007, envshake]
+type = EnvShake
+trigger1 = animelem = 3
+trigger2 = animelem = 6
+trigger3 = animelem = 8
+trigger4 = animelem = 10
+trigger5 = animelem = 12
+trigger6 = animelem = 14
+time = 10
+
+[State 3007, Spark]
+type = Explod
+trigger1 = animelem = 4
+trigger2 = animelem = 8
+trigger3 = animelem = 12
+pos = 50,-10
+anim = 412
+ID = 412
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+
+[State 3007, Spark]
+type = Explod
+trigger1 = animelem = 6
+trigger2 = animelem = 10
+trigger3 = animelem = 14
+pos = 45,1
+anim = 412
+ID = 412
+sprpriority = 2
+ownpal = 1
+removeongethit = 1
+
+[State 3007, Polvere]
+type = Explod
+trigger1 = animelem = 4
+trigger2 = animelem = 6
+trigger3 = animelem = 8
+trigger4 = animelem = 10
+trigger5 = animelem = 12
+trigger6 = animelem = 14
+pos = 10,2
+anim = 405
+ID = 405
+sprpriority = -2
+ownpal = 1
+removeongethit = 1
+scale = 1.1,1.1
+
+[State 3007, Polvere]
+type = Explod
+trigger1 = animelem = 5
+trigger2 = animelem = 7
+trigger3 = animelem = 9
+trigger4 = animelem = 11
+trigger5 = animelem = 13
+trigger6 = animelem = 15
+pos = 10,4
+anim = 405
+ID = 405
+sprpriority = -1
+ownpal = 1
+removeongethit = 1
+scale = 1.5,1.5
+
+[State 3007,ChangeState]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 3008
+ctrl = 1
+
+;-------------------------
+[Statedef 3008]
+type    = S                      
+movetype= A                      
+physics = S                      
+juggle  = 1                      
+velset = 0,0                     
+ctrl = 0                        
+anim = 653                       
+poweradd = 100                  
+sprpriority = 2 
+
+[State 3008, Polvere]
+type = Explod
+trigger1 = animelem = 3
+pos = 10,2
+anim = 405
+ID = 405
+sprpriority = -2
+ownpal = 1
+removeongethit = 1
+scale = 1.8,1.8
+
+[State 3008, Polvere]
+type = Explod
+trigger1 = animelem = 4
+pos = 10,4
+anim = 405
+ID = 405
+sprpriority = -1
+ownpal = 1
+removeongethit = 1
+scale = 3, 3
+
+[State 3008, Spark]
+type = Explod
+trigger1 = animelem = 3
+pos = 45,-4
+anim = 413
+ID = 413
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+
+[State 3008, Spark]
+type = Explod
+trigger1 = animelem = 4
+pos = 45,-30
+anim = 604
+ID = 604
+sprpriority = 4
+ownpal = 1
+removeongethit = 1
+scale = 1.5, 1.5
+
+[State 3008, envshake]
+type = EnvShake
+trigger1 = AnimElem = 4
+time = 50
+
+[State 3008]
+type = TargetLifeAdd
+trigger1 = animelem = 4
+value = -100
+
+[State 3008, lampi]
+type = BGPalfx
+trigger1 = animelem = 4
+ignorehitpause = 1
+time = 40
+sinadd = 90,90,90,8
+add = 5,5,5
+invertall = 0
+
+[State 3008]
+type = PlaySnd
+trigger1 = animelem = 2
+value = 7, 3
+
+[State 3008]
+type = PlaySnd
+trigger1 = animelem = 4
+value = 7, 4
+
+[state 3008, white fadeout]
+type = BGPalFx
+trigger1 = p2life = 0
+add = 255,255,255
+sinadd = 300,300,300,60
+time= 40
+ignorehitpause = 1
+persistent= 0
+
+[State 3008,ChangeState]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 105
+ctrl = 1
+
+;-------------------------
+;pl2state
+[Statedef 3105]
+type = A
+movetype = H
+physics = N
+ctrl = 0
+velset = 0, 0
+
+[State 827, NoHit]
+type = NotHitBy
+trigger1 = Time = 0
+time = 140
+value = SCA
+
+[State 3105]
+type = Changeanim2
+trigger1 = Time = 0
+value = 9100
+
+[State 3105]
+type = ChangeState
+trigger1 = time = 15
+value = 3106
+
+[Statedef 3106]
+type = L
+movetype = H
+physics = N
+
+[State 3106]
+type = Changeanim2
+trigger1 = Time = 0
+value = 652
+
+[State 3106]
+type = PosSet
+trigger1 = Time = 0
+y = 0
+
+[State 3106]
+type = VelSet
+trigger1 = Time = 0
+y = 0
+
+[State 3106]
+type = VelSet
+trigger1 = Time = 11
+x = 0
+
+[State 3106]
+type = VelMul
+trigger1 = Time = 0
+x = 0.75
+
+[State 3106]
+type = ChangeState
+trigger1 = time = 90
+value = 3107
+
+[Statedef 3107]
+type = L
+movetype = H
+physics = N
+
+[State 3107]
+type = Changeanim2
+trigger1 = Time = 0
+value = 654
+
+[State 3107, PosSet]
+type = PosSet
+trigger1 = Time = 28
+y = -10
+
+[State 3107]
+type = VelSet
+trigger1 = Time = 29
+y = -50
+
+[State 3107]
+type = ChangeState
+trigger1 = time = 30
+value = 7002
+
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+
+

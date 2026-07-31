@@ -6,7 +6,8 @@
 	import ShowIcon from '$components/core/ShowIcon.svelte';
 	import StationDial from '$components/core/StationDial.svelte';
 	import { musicService } from '$services/music.service';
-	import { showIconName } from '$utils/show/show-icon';
+	import { forShow } from '$utils/show/show-icon';
+	import { showGlyphs } from '$services/shows.service';
 
 	// The radio at the foot of the map: what is on air, the dial it is on, and the
 	// play/pause — the whole plate from the burger menu, standing beside the account that
@@ -52,7 +53,7 @@
 	const music = musicService.state;
 
 	$: state = $music;
-	$: showIcon = showIconName(state.track?.showId ?? null);
+	$: showIcon = forShow($showGlyphs, state.track?.showId);
 </script>
 
 {#if state.track}
@@ -70,7 +71,7 @@
 				class="flex size-8 flex-none items-center justify-center rounded-md bg-white/10"
 				aria-hidden="true"
 			>
-				<ShowIcon name={showIcon} classes="[&>svg]:size-5" />
+				<ShowIcon markup={showIcon} classes="[&>svg]:size-5" />
 			</span>
 		{/if}
 

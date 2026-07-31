@@ -74,8 +74,7 @@
 	 * canvas of boxes with nothing between them — a pack is stood up and sliced open over the
 	 * town it came from, and a page under it, even a graded one, is a screen the opening happens
 	 * on instead of on the map. And the combat arena, which is a fight over a town the map is
-	 * still showing, and which leans the map back to say so (`tiltsMap`) — a movement there is
-	 * no point making behind a page nine tenths opaque.
+	 * still showing rather than a page laid over it.
 	 *
 	 * Every other full view is content to read and keeps its page. What a sheet gives up with
 	 * it is the ground under its own words: a transparent sheet's content must carry its own
@@ -83,20 +82,19 @@
 	 */
 	export let transparent: boolean = false;
 	/**
-	 * Lean the map back while this sheet is up, on top of the blur every sheet gets.
+	 * Make the whole sheet a way out: a click anywhere on it closes, and leaves by the same
+	 * slide the ✕ and Escape leave by.
 	 *
-	 * The one sheet that asks for it is the combat arena: a fight is the only full view here
-	 * that is not a reading of the map but an event happening *on* it, over a town the map is
-	 * still showing, so the map gives ground for it — it tips away as the arena comes up and
-	 * comes back level as the arena leaves. A leaderboard or a roster is a page laid over the
-	 * map and asks the map for nothing.
+	 * For a view that has finished saying what it was raised to say and has nothing left to do —
+	 * the booster window once a pack has come apart and its cards are standing there. The player
+	 * has looked; the next thing they do, wherever they do it, is done with it. It is the host
+	 * that knows when a sheet has reached that point, so it is the host that says, and it is off
+	 * until they do: a sheet that closed on any click would be a sheet nothing inside could be
+	 * touched on.
 	 *
-	 * Said as a prop rather than read off the arena, so it starts and ends on this sheet's own
-	 * mount and unmount — which is what the blur is timed off — and the map makes one movement
-	 * instead of two that nearly line up (see `$services/fullScreenModal`, and WorldMap's
-	 * `tilted`).
+	 * `closeDisabled` still wins, as it does over both other ways out.
 	 */
-	export let tiltsMap: boolean = false;
+	export let closeOnClick: boolean = false;
 
 	const dispatch = createEventDispatcher<{ close: void }>();
 
@@ -106,15 +104,12 @@
 	// about this sheet and not about the five stores that raise one. The unmount runs after the
 	// slide-out has played, which is when the map is worth reading again.
 	//
-	// Raised and dropped with the same value, captured once: `tiltsMap` is what the sheet was
-	// mounted as and a host that changed it mid-fight would otherwise leave the tilt count one
-	// off for the rest of the session. The pair is onMount's own teardown rather than a separate
-	// onDestroy, so a drop can never happen without its raise (onDestroy alone runs on the
-	// server, where nothing was ever mounted).
-	const tilt = tiltsMap;
+	// The pair is onMount's own teardown rather than a separate onDestroy, so a drop can never
+	// happen without its raise (onDestroy alone runs on the server, where nothing was ever
+	// mounted).
 	onMount(() => {
-		raiseSheet(tilt);
-		return () => dropSheet(tilt);
+		raiseSheet();
+		return () => dropSheet();
 	});
 
 	function close(): void {
@@ -125,16 +120,27 @@
 	function onKeydown(event: KeyboardEvent): void {
 		if (event.key === 'Escape') close();
 	}
+
+	// A click on the sheet, when the host has made the sheet a way out. It sits on the whole of it
+	// rather than on the content, so the bar, the margin and whatever is drawn in the middle all
+	// close alike — there is no part of a sheet that is done with that is not done with. The ✕
+	// underneath it closes twice, which is once.
+	function onSheetClick(): void {
+		if (closeOnClick) close();
+	}
 </script>
 
 <svelte:window on:keydown={onKeydown} />
 
+<!-- svelte-ignore a11y-click-events-have-key-events -->
 <div
 	class="fixed inset-0 z-[1300]"
 	role="dialog"
 	aria-modal="true"
 	aria-label={title}
+	tabindex="-1"
 	transition:fly={{ y: '100%', duration: 250, opacity: 1 }}
+	on:click={onSheetClick}
 >
 	<div
 		class={classNames('flex h-full w-full flex-col overflow-hidden', {

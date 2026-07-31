@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher, onMount } from 'svelte';
+	import { _ } from 'svelte-i18n';
 	import { authService } from '$services/auth.service';
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { achievementsModalOpen } from '$services/achievementsModal';
@@ -296,7 +297,11 @@
 	$: midnight = nextCatalanMidnight().getTime();
 </script>
 
-<FullScreenModal title="Achievements" closeLabel="Close achievements" on:close={close}>
+<FullScreenModal
+	title={$_('achievements.title')}
+	closeLabel={$_('achievements.close')}
+	on:close={close}
+>
 	<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
 		{#if !authService.configured}
 			<div class="alert alert-warning text-sm">

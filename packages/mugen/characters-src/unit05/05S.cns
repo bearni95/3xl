@@ -1,0 +1,795 @@
+;------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------
+;Eva-05 By TonyADV
+;------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------
+;----------------------------------
+;----------------------------------
+;Eva-05 Constant File By TONYADV
+;----------------------------------
+;----------------------------------
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;Super Calcio in salto (AIR)
+[Statedef 1050]
+type    = A
+movetype= A
+physics = A
+juggle  = 4
+poweradd= 100
+ctrl = 0
+anim = 308
+sprpriority = 2
+
+[State 1050, Velset]
+type = VelSet
+trigger1 = time = 0
+y = -5
+
+[State 1050, Velset]
+type = VelSet
+trigger1 = AnimElem = 2
+x = 10
+y = 10
+
+[State 1050]
+type = PlaySnd
+trigger1 = AnimElem = 2
+value = 2, 0
+
+[State 1050, scia]
+type = Explod
+trigger1 = AnimElem = 2
+anim = 4044
+ID = 4044
+pos = 15,-70
+postype = p1
+sprpriority = 5
+ignorehitpause = 1
+ownpal = 1
+bindtime = -1
+persistent = 0
+removeongethit = 1
+supermove = 1
+
+[State 1050]
+type = HitDef
+trigger1 = Time = 0
+attr = A, SA
+damage    = 75
+guardflag = HA
+priority = 4
+pausetime = 12,12
+sparkno = s411
+sparkxy = -10,-50
+hitsound   = S1,2
+guardsound = S6,0
+animtype = Med
+ground.type = High
+ground.slidetime = 17
+ground.hittime  = 17
+ground.velocity = -5
+air.velocity = -5
+envshake.time =  30
+envshake.freq = 15   
+envshake.ampl = 5  
+envshake.phase = 5
+Fall = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;Gomitata
+[Statedef 1030]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 120
+ctrl = 0
+velset = 0,0
+anim = 202
+sprpriority = -1
+
+[State 1030, Velset]
+type = VelSet
+trigger1 = AnimElem = 3
+x = 8
+
+[State 1030, Polvere]
+type = Explod
+trigger1 = AnimElem = 3
+pos = 40,5
+anim = 402
+ID = 402
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+scale = .8,.8
+
+[State 1030, Polvere]
+type = Explod
+trigger1 = AnimElem = 4
+pos = 60,5
+anim = 400
+ID = 400
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+
+[State 1030]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = 0, 2
+
+[State 1032]
+type = HitDef
+trigger1 = time = 0
+attr = S, SA
+animtype  = Medium
+damage    = 70
+guardflag = MA
+pausetime = 2,9
+sparkno = s411
+sparkxy = -10,-75
+hitsound   = S1,2
+guardsound = S6,1
+ground.type = High
+ground.slidetime = 12
+ground.hittime  = 15
+ground.velocity = -15,-5
+air.velocity = -15,-5
+envshake.time =  50 
+envshake.freq = 15     
+envshake.ampl = 5  
+envshake.phase = 5
+p2stateno = 1025
+Fall = 1
+
+[State 1030]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;Gomitata
+[Statedef 1032]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 180
+ctrl = 0
+velset = 0,0
+anim = 203
+sprpriority = -1
+
+[State 1032, Velset]
+type = VelSet
+trigger1 = AnimElem = 3
+x = 10
+
+[State 1032, Polvere]
+type = Explod
+trigger1 = AnimElem = 3
+pos = 40,5
+anim = 402
+ID = 402
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+scale = .8,.8
+
+[State 1032, Polvere]
+type = Explod
+trigger1 = AnimElem = 4
+pos = 60,5
+anim = 400
+ID = 400
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+
+[State 1032]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = 0, 2
+
+[State 1032]
+type = HitDef
+trigger1 = time = 0
+attr = S, SA
+animtype  = Medium
+damage    = 85
+guardflag = MA
+pausetime = 2,9
+sparkno = s411
+sparkxy = -10,-75
+hitsound   = S1,2
+guardsound = S6,1
+ground.type = High
+ground.slidetime = 12
+ground.hittime  = 15
+ground.velocity = -15,-5
+air.velocity = -15,-5
+envshake.time =  50 
+envshake.freq = 15     
+envshake.ampl = 5  
+envshake.phase = 5
+p2stateno = 1025
+Fall = 1
+
+[State 1032]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+
+;stand uppercut
+[Statedef 1031]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 150
+ctrl = 0
+velset = 0,0
+anim = 205
+sprpriority = -1
+
+[State 212]
+type = PlaySnd
+trigger1 = Time = 5
+value = 0, 1
+
+[State 212, Polvere]
+type = Explod
+trigger1 = AnimElem = 2
+pos = 33,5
+anim = 400
+ID = 400
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+scale = .6,.6
+
+[State 212] 
+type = HitDef
+trigger1 = Time = 0
+attr = S, SA
+animtype  = Up               
+damage    = 80
+getpower  = 0
+priority  = 5
+guardflag = MA
+pausetime = 20,30
+sparkno = s411
+sparkxy = -10,-80
+hitsound   = S1,1
+guardsound = S6,1
+ground.type = Low
+ground.slidetime = 30
+ground.hittime  = 30
+ground.velocity = -1.3,-16
+air.velocity = -1.3,-16
+guard.velocity = -11
+airguard.velocity = -4.5,-5
+envshake.time = 25           
+envshake.ampl = 7
+envshake.freq = 176
+p2facing = 1                 
+fall = 1
+fall.recover = 0             
+fall.damage = 10             
+fall.envshake.ampl = 6       
+fall.envshake.freq = 178
+fall.envshake.time = 15
+mindist = 50,-100            
+maxdist = 100,-10           
+yaccel = .8 
+
+[State 212]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 0
+ctrl = 1
+
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;Uppercut
+[Statedef 1020]
+type = S
+movetype = A
+physics = S
+anim = 304
+juggle = 5
+velset = 0,0
+ctrl = 0
+poweradd= 120
+
+[State 1020]
+type = PlaySnd
+trigger1 = time = 0
+value = 2,0
+
+[State 1020]
+type = PlaySnd
+trigger1 = time = 20
+value = 2,1
+
+[State 1020, POLVERE]
+type = Explod
+trigger1 = time = 0
+pos = 30,5
+anim = 402
+sprpriority = 5
+supermove = 1
+removeongethit = 1
+ownpal = 1
+
+[State 1020]
+type = VelSet
+trigger1 = AnimElem = 3
+y = -5
+
+[State 1020]
+type = VelAdd
+trigger1 = AnimElem = 7
+y = 0.45
+
+[State 1020, Brilla]
+type = PalFX
+trigger1 = AnimElem = 3
+time = 25
+add = 0,0,50
+sinadd = 100,100,100,3
+
+[State 1020, scia]
+type = Explod
+trigger1 = AnimElem = 3
+anim = 426
+ID = 426
+pos = 0,-100
+postype = p1
+sprpriority = 5
+ignorehitpause = 1
+ownpal = 1
+bindtime = -1
+persistent = 0
+removeongethit = 1
+supermove = 0
+
+[State 99, NoHit]
+type = NotHitBy
+trigger1 = Time = 0
+time = 50
+value = SCA
+
+[State 1020]
+type = HitDef
+trigger1 = time = 0
+priority = 4
+attr = S, SA
+damage = 80
+getpower = 20
+givepower = 10
+animtype = hard
+guardflag = MA
+sparkno = s411
+sparkxy = -10,-80
+hitsound =   S1,3
+guardsound = S6,0
+pausetime = 12,12
+ground.hittime = 19
+ground.type = high
+ground.slidetime = 9
+ground.velocity = -1,-15
+air.velocity = -1,-15
+fall = 1
+Palfx.time          = 65
+Palfx.add           = -122,-30,82
+Palfx.mul           = 256,256,256
+Palfx.sinadd        = -112,-122,-112,3
+Palfx.invertall     = 1
+envshake.time =  35 
+envshake.freq = 10     
+envshake.ampl = 5  
+envshake.phase = 5
+
+[State 1020]
+type = ChangeState
+trigger1 = AnimTime = 0
+value = 50
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;ATField
+[Statedef 1080]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 150
+ctrl = 0
+velset = 0,0
+anim = 0
+sprpriority = -1
+
+[State 1080]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = 7,0
+
+[State 1080, Polvere]
+type = Explod
+trigger1 = AnimElem = 1
+pos = 0,1
+anim = 405
+ID = 405
+sprpriority = -1
+ownpal = 1
+removeongethit = 1
+scale = 1.4,1.4
+removetime = 105
+
+[State 1080, Polvere]
+type = Explod
+trigger1 = AnimElem = 1
+pos = 0,1
+anim = 405
+ID = 405
+sprpriority = -1
+ownpal = 1
+removeongethit = 1
+scale = 1.8,1.8
+removetime = 105
+
+[State 1080, Brilla]
+type = PalFX
+trigger1 = AnimElem = 1
+time = 105
+add = 50,0,0
+sinadd = 100,100,100,3
+
+[State 1080, Fireball]
+type = Projectile
+trigger1 = AnimElem = 1
+projremovetime = 105
+projhits = 100
+projanim = 430
+offset = 25, 0
+sparkno = s413
+sparkxy = 60,-80
+velocity = 0
+attr = S, SP
+damage    = 1
+animtype = Heavy
+guardflag = MA
+pausetime = 0
+hitsound   = S4,0
+guardsound = S6,0
+ground.type = High
+ground.slidetime = 14
+ground.hittime  = 16
+air.animtype = Back
+ground.velocity = -1
+air.velocity = -1
+air.juggle = 3
+Palfx.time          = 10
+Palfx.add           = 220,150,0
+Palfx.sinadd        = -112,-122,-112,3
+envshake.time =  10 
+envshake.freq = 10     
+envshake.ampl = 5  
+envshake.phase = 5
+projscale = 1.2,1.2
+
+[State 1080]
+type = ChangeState
+trigger1 = animTime = 0
+value = 0
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;ATField
+[Statedef 1090]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 150
+ctrl = 0
+velset = 0,0
+anim = 203
+sprpriority = -1
+
+[State 1080]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = 0,0
+
+[State 1080, Polvere]
+type = Explod
+trigger1 = AnimElem = 4
+pos = 21,0
+anim = 405
+ID = 405
+sprpriority = -1
+ownpal = 1
+removeongethit = 1
+scale = 1.4,1.4
+
+[State 1080]
+type = PlaySnd
+trigger1 = AnimElem = 4
+value = 7,0
+
+[State 1080, Polvere]
+type = Explod
+trigger1 = AnimElem = 4
+pos = 40,1
+anim = 401
+ID = 401
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+
+[State 1080, Brilla]
+type = PalFX
+trigger1 = AnimElem = 4
+time = 10
+add = 50,0,0
+sinadd = 100,100,100,3
+
+[State 1080, Fireball]
+type = Projectile
+trigger1 = AnimElem = 4
+projremovetime = 20
+projhits = 20
+projanim = 431
+offset = 100, -75
+sparkno = s413
+sparkxy = 60,0
+velocity = .2
+attr = S, SP
+damage    = 2
+animtype = Heavy
+guardflag = MA
+pausetime = 0
+hitsound   = S4,0
+guardsound = S6,0
+ground.type = High
+ground.slidetime = 14
+ground.hittime  = 16
+air.animtype = Back
+ground.velocity = -1
+air.velocity = -1
+air.juggle = 3
+Palfx.time          = 10
+Palfx.add           = 220,150,0
+Palfx.sinadd        = -112,-122,-112,3
+envshake.time =  10 
+envshake.freq = 10     
+envshake.ampl = 5  
+envshake.phase = 5
+
+[State 1080]
+type = ChangeState
+trigger1 = animTime = 0
+value = 0
+ctrl = 1
+
+;-----------------------------------
+[Statedef 1091]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 150
+ctrl = 0
+velset = 0,0
+anim = 203
+sprpriority = -1
+
+[State 1080]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = 0,0
+
+[State 1080, Polvere]
+type = Explod
+trigger1 = AnimElem = 4
+pos = 21,0
+anim = 405
+ID = 405
+sprpriority = -1
+ownpal = 1
+removeongethit = 1
+scale = 1.4,1.4
+
+[State 1080]
+type = PlaySnd
+trigger1 = AnimElem = 4
+value = 7,0
+
+[State 1080, Polvere]
+type = Explod
+trigger1 = AnimElem = 4
+pos = 40,1
+anim = 401
+ID = 401
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+
+[State 1080, Brilla]
+type = PalFX
+trigger1 = AnimElem = 4
+time = 10
+add = 50,0,0
+sinadd = 100,100,100,3
+
+[State 1080, Fireball]
+type = Projectile
+trigger1 = AnimElem = 4
+projremovetime = 20
+projhits = 20
+projanim = 431
+offset = 100, -75
+sparkno = s413
+sparkxy = 60,0
+velocity = .2
+attr = S, SP
+damage    = 3
+animtype = Heavy
+guardflag = MA
+pausetime = 0
+hitsound   = S4,0
+guardsound = S6,0
+ground.type = High
+ground.slidetime = 14
+ground.hittime  = 16
+air.animtype = Back
+ground.velocity = -1
+air.velocity = -1
+air.juggle = 3
+Palfx.time          = 10
+Palfx.add           = 220,150,0
+Palfx.sinadd        = -112,-122,-112,3
+envshake.time =  10 
+envshake.freq = 10     
+envshake.ampl = 5  
+envshake.phase = 5
+projscale = 1.1,1
+
+[State 1080]
+type = ChangeState
+trigger1 = animTime = 0
+value = 0
+ctrl = 1
+
+;-----------------------------------
+[Statedef 1092]
+type    = S
+movetype= A
+physics = S
+juggle  = 4
+poweradd= 150
+ctrl = 0
+velset = 0,0
+anim = 203
+sprpriority = -1
+
+[State 1080]
+type = PlaySnd
+trigger1 = AnimElem = 1
+value = 0,0
+
+[State 1080, Polvere]
+type = Explod
+trigger1 = AnimElem = 4
+pos = 21,0
+anim = 405
+ID = 405
+sprpriority = -1
+ownpal = 1
+removeongethit = 1
+scale = 1.4,1.4
+
+[State 1080]
+type = PlaySnd
+trigger1 = AnimElem = 4
+value = 7,0
+
+[State 1080, Polvere]
+type = Explod
+trigger1 = AnimElem = 4
+pos = 40,1
+anim = 401
+ID = 401
+sprpriority = 5
+ownpal = 1
+removeongethit = 1
+
+[State 1080, Brilla]
+type = PalFX
+trigger1 = AnimElem = 4
+time = 10
+add = 50,0,0
+sinadd = 100,100,100,3
+
+[State 1080, Fireball]
+type = Projectile
+trigger1 = AnimElem = 4
+projremovetime = 20
+projhits = 20
+projanim = 431
+offset = 100, -75
+sparkno = s413
+sparkxy = 60,0
+velocity = .2
+attr = S, SP
+damage    = 3
+animtype = Heavy
+guardflag = MA
+pausetime = 0
+hitsound   = S4,0
+guardsound = S6,0
+ground.type = High
+ground.slidetime = 14
+ground.hittime  = 16
+air.animtype = Back
+ground.velocity = -1
+air.velocity = -1
+air.juggle = 3
+Palfx.time          = 10
+Palfx.add           = 220,150,0
+Palfx.sinadd        = -112,-122,-112,3
+envshake.time =  10 
+envshake.freq = 10     
+envshake.ampl = 5  
+envshake.phase = 5
+projscale = 1.2,1
+
+[State 1080]
+type = ChangeState
+trigger1 = animTime = 0
+value = 0
+ctrl = 1
+
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------
+;---------------------------------------------------------------------------

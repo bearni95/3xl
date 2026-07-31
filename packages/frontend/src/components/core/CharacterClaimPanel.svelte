@@ -2,20 +2,25 @@
 	import { onMount } from 'svelte';
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
+	import { avatarService } from '$services/avatar.service';
 	import { signInPanelOpen } from '$services/signInPanel';
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
+	import { territoryService } from '$services/territory.service';
 	import { errorMessage } from '$utils/error/error-message';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
+	import { avatarKey } from '$utils/spawn/avatar';
+	import { ownedAvatarKeys, ownedSpawnKeys, spawnKey } from '$utils/spawn/owned';
 	import { AuthStatus } from '$types/profile.type';
 	import type { CharacterSpawn, ClaimableShow } from '$types/character-spawn.type';
 	import type { GeoRegion } from '$types/location.type';
-	import type { MunicipalityShowsCollection, ShowEntry, ShowsCollection } from '$types/show.type';
-	import { showPosterUrlForSeed } from '$utils/geo/municipality-show';
+	import type { ShowEntry, ShowsCollection } from '$types/show.type';
+	import { showPosterUrl, showPosterUrlForSeed } from '$utils/geo/municipality-show';
+	import { holderShowIds, showIdsByCharacter } from '$utils/spawn/team-show';
 	import { showLogoUrl } from '$utils/show/show-logo';
 	import { festesService } from '$services/festes.service';
 	import type { RegionShow } from '$utils/geo/region-tree';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
-	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
+	import type { ClaimResult, OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import type { FestaLocationRow, FestaShowPair } from '$types/festivity.type';
 
 	// The window's booster packs, assembled from the festes in range and surfaced to the
@@ -23,11 +28,20 @@
 	// Each carries its own poster cover and the roll it fires when sliced open.
 	export let packs: OpenerPack[] = [];
 
-	// The window's (festa, show) pairs — every town celebrating its festa major from
-	// three days back through four days ahead (the same range `claim_booster` accepts),
-	// each paired with the series the map assigns it. Loaded on mount; the pack grid
-	// renders one booster per pair that has a show this player can claim.
-	let festaPairs: FestaShowPair[] = [];
+	// The window's celebrating towns — every one holding its festa major from three days
+	// back through four days ahead (the same range `claim_booster` accepts). Loaded on
+	// mount; each is paired with a show below, and the pack grid renders one booster per
+	// pair whose show this player can claim.
+	let windowFestes: FestaLocationRow[] = [];
+
+	// Municipality id → the show its own geometry seeds it with, handed down by the map
+	// (see `+page.svelte`'s `buildSeededShows`) rather than worked out again here: the
+	// pool it is drawn from is every show with a cast, which is a Supabase read the map
+	// already makes, and a box has to be printed with the show the pin beside it says.
+	// It is what a town flies until somebody takes it (see `buildFestaPairs`), not
+	// necessarily what it flies today. Empty until the map's own loads land, which
+	// leaves the grid without packs rather than with wrong ones.
+	export let seededShowById: ReadonlyMap<string, RegionShow> = new Map();
 
 	// Which of those towns are celebrating *today*, by feature id. Read as its own day
 	// rather than taken off the window: the window keeps a town's earliest claimable day, so
@@ -38,6 +52,14 @@
 
 	const status = authService.status;
 	const profile = authService.profile;
+	// The player's collection, subscribed rather than fetched per open: a pack marks
+	// what it gave as new or not against what was already held, and the answer has to
+	// be read off the moment before the roll (see makeClaim).
+	const spawns = spawnService.spawns;
+	const avatars = avatarService.avatars;
+	// Who holds which town — read, never loaded here (the map owns that call): it is
+	// what decides the show a town's boxes are printed from, once it has been taken.
+	const holders = territoryService.holders;
 
 	let shows: ClaimableShow[] = [];
 	let loadingShows = false;
@@ -86,31 +108,21 @@
 	});
 
 	// Load the window's celebrating municipalities (from Supabase, via the festes
-	// service), today's alone, and the map's municipality→show assignment (a baked
-	// dataset), then pair each town with its assigned show. All three are fetched once;
-	// failures leave the grid empty, and a failed today-read leaves every box on the dark
-	// stock rather than blanking the grid — the packs are all still claimable.
+	// service) and today's alone. Both are fetched once; failures leave the grid empty,
+	// and a failed today-read leaves every box on the dark stock rather than blanking
+	// the grid — the packs are all still claimable. Pairing each town with the show it
+	// actually flies is left to the reactive derivation below, since that answer moves
+	// as towns change hands.
 	async function loadWindowFestes() {
-		const [festesResult, todayResult, showsResult] = await Promise.allSettled([
+		const [festesResult, todayResult] = await Promise.allSettled([
 			festesService.loadFestesForWindow(),
-			festesService.loadTodayFestes(),
-			fetch('/data/municipality-shows.json').then(
-				(response) => response.json() as Promise<MunicipalityShowsCollection>
-			)
+			festesService.loadTodayFestes()
 		]);
 
-		let locations: FestaLocationRow[] = [];
-		let showByMunicipality = new Map<string, RegionShow>();
-		if (festesResult.status === 'fulfilled') locations = festesResult.value;
+		if (festesResult.status === 'fulfilled') windowFestes = festesResult.value;
 		if (todayResult.status === 'fulfilled') {
 			todayIds = new Set(todayResult.value.map((festa) => festa.id));
 		}
-		if (showsResult.status === 'fulfilled') {
-			showByMunicipality = new Map(
-				showsResult.value.assignments.map((assignment) => [assignment.id, assignment.show])
-			);
-		}
-		festaPairs = locations.map((festa) => ({ festa, show: showByMunicipality.get(festa.id) }));
 	}
 
 	// Load the saved-show collection (public JSON) and index each entry by show id
@@ -154,6 +166,21 @@
 			loadingShows = false;
 		}
 		void refreshBoostersStatus();
+		void loadCollection();
+	}
+
+	// What the player already holds — their cards and their avatars — which is the
+	// whole of what "new" is read against when a pack opens (see makeClaim). Loaded
+	// here rather than left to whichever surface happens to want it: this panel is the
+	// one that opens packs, and a collection that had not arrived would mark every
+	// card in the pack as new. Failures are swallowed and leave the stores as they
+	// were; the marking is a reading of the reveal, not a rule, and a pack still opens.
+	async function loadCollection(): Promise<void> {
+		if (!currentUserId) return;
+		await Promise.allSettled([
+			spawnService.loadSpawns(currentUserId),
+			avatarService.load(currentUserId)
+		]);
 	}
 
 	// The player's daily booster allowance (level = cap, and how many remain today),
@@ -187,41 +214,109 @@
 	}
 
 	// Build the roll one grid pack fires when the player slices it open — a closure
-	// bound to its show + place. The Supabase roll persists the spawn at open time
-	// (not when the pack is picked) and returns the cards to reveal ([] on failure,
-	// which reveals nothing). Every limit (daily allowance, festa major inside the
-	// booster window) is enforced server-side by the claim_booster RPC. Opening a pack earns no
-	// experience — that comes from winning fights only (see award_combat_exp).
-	function makeClaim(show: ClaimableShow, claimRegion: GeoRegion): () => Promise<ClaimPull[]> {
+	// bound to its show + place. The Supabase roll persists what it gives at open time
+	// (not when the pack is picked) and returns it to reveal — the cards, and the one
+	// avatar the box dealt (nothing at all on failure, which reveals nothing). Every
+	// limit (daily allowance, festa major inside the booster window) is enforced
+	// server-side by the claim_booster RPC. Opening a pack earns no experience — that
+	// comes from winning fights only (see award_combat_exp).
+	function makeClaim(show: ClaimableShow, claimRegion: GeoRegion): () => Promise<ClaimResult> {
 		return async () => {
-			if (!currentUserId || !claimRegion.id) return [];
+			const nothing: ClaimResult = { pulls: [], avatar: null, avatarIsNew: false };
+			if (!currentUserId || !claimRegion.id) return nothing;
 			// Client-side echo of the server rule: no allowance left, reveal nothing.
 			if (boosters && boosters.remaining <= 0) {
 				claimError = `You've opened all ${boosters.level} of today's booster packs. More unlock at midnight.`;
-				return [];
+				return nothing;
 			}
 			claimingId = show.id;
 			claimError = '';
+
+			// What the player held a moment ago, frozen before the roll — the whole of what
+			// "new" is read against. It has to be taken here and not after: the claim folds
+			// its own cards into the collection the instant it answers, and a set read then
+			// would find every card in the pack already owned, by itself. Two cards of the
+			// same thing in one pack are therefore both new, which is the truth about the
+			// pack rather than about the second card.
+			const heldCards = ownedSpawnKeys($spawns);
+			const heldAvatars = ownedAvatarKeys($avatars);
+
 			try {
-				const spawns = await spawnService.claimBooster(show.id, claimRegion.id);
+				const opening = await spawnService.claimBooster(show.id, claimRegion.id);
 				// Refresh the daily allowance: this pack counts against it.
 				void refreshBoostersStatus();
+
+				// The avatar joins the player's collection here rather than in the spawn
+				// service: the avatars are that service's, and this is the one place a new
+				// one arrives outside a fresh load. A repeat replaces the row it already
+				// held, so the collection does not grow on a colour already owned.
+				if (opening.avatar) avatarService.remember(opening.avatar);
 
 				// Capture the place and resolve each portrait so the revealed cards carry
 				// the character's face and the town it was claimed in.
 				lastLocationName = claimRegion.municipality ?? '';
-				return await Promise.all(spawns.map((spawn) => buildPull(spawn, show.name)));
+				return {
+					pulls: await Promise.all(
+						opening.spawns.map((spawn) => buildPull(spawn, show.name, heldCards))
+					),
+					avatar: opening.avatar,
+					avatarIsNew: opening.avatar
+						? !heldAvatars.has(avatarKey(opening.avatar.characterId, opening.avatar.color))
+						: false
+				};
 			} catch (error) {
 				claimError = errorMessage(error);
-				return [];
+				return nothing;
 			} finally {
 				claimingId = null;
 			}
 		};
 	}
 
+	// --- Which show a town's boxes deal ------------------------------------------
+	// The same answer the map paints its pins with (see `+page.svelte`'s "Which show a
+	// town flies"), asked here for the boxes: a town deals boosters of the show it
+	// flies, which is the build's seed until somebody takes the town and its
+	// conqueror's from then on. Derived rather than stored, so a siege re-stocks the
+	// town's boxes the moment the holders reload — nothing is re-fetched and no
+	// assignment is written anywhere.
+
+	// character id → the shows it belongs to, reversed out of the claimable pool this
+	// panel already loads (the same `show_characters` assignment the map reads).
+	$: showsByCharacter = showIdsByCharacter(
+		new Map(shows.map((show) => [show.id, show.characterIds]))
+	);
+
+	// Municipality id → the show its occupying team flies: the sitting lead's show, for
+	// every town somebody holds. The holders are the map's own load — this panel is
+	// mounted inside it and shares the store rather than fetching them a second time —
+	// so the derivation re-runs as the map reloads territory after a fight.
+	$: rulingShowIds = holderShowIds($holders.values(), showsByCharacter);
+
+	// The window's (festa, show) pairs: the seeded show per town, overridden by the
+	// ruling one wherever a player holds it. A ruling show absent from the authored
+	// collection cannot be drawn as a box, so that town keeps its seeded show rather
+	// than dropping out of the grid — the same fallback the map's pins make.
+	function buildFestaPairs(
+		festes: FestaLocationRow[],
+		seeded: ReadonlyMap<string, RegionShow>,
+		ruling: ReadonlyMap<string, number>,
+		saved: ReadonlyMap<number, ShowEntry>
+	): FestaShowPair[] {
+		return festes.map((festa) => {
+			const rulingId = ruling.get(festa.id);
+			const entry = rulingId == null ? undefined : saved.get(rulingId);
+			const flown: RegionShow | undefined = entry
+				? { id: entry.show.id, name: entry.show.name, posterUrl: showPosterUrl(entry) }
+				: undefined;
+			return { festa, show: flown ?? seeded.get(festa.id) };
+		});
+	}
+
+	$: festaPairs = buildFestaPairs(windowFestes, seededShowById, rulingShowIds, showEntryById);
+
 	// Assemble the window's grid packs from the festes in range: one booster per
-	// celebrating town whose assigned show this player can claim. Each pack carries its
+	// celebrating town whose show this player can claim. Each pack carries its
 	// poster cover and a roll bound to that show + place. Empty when signed out or
 	// before the show pool loads. Kept as a pure function of its inputs so the reactive
 	// block below re-runs when any of them change.
@@ -260,8 +355,14 @@
 	}
 
 	// Assemble the display card for one claimed spawn: label + face from the local
-	// registry, colour off the spawn.
-	async function buildPull(spawn: CharacterSpawn, showName: string | null): Promise<ClaimPull> {
+	// registry, colour off the spawn, and whether it is one the player did not already
+	// hold — `heldCards` being their collection as it stood before this pack (see
+	// makeClaim), so the answer is about the pack and not about itself.
+	async function buildPull(
+		spawn: CharacterSpawn,
+		showName: string | null,
+		heldCards: ReadonlySet<string>
+	): Promise<ClaimPull> {
 		const basePath = charactersById.get(spawn.characterId)?.basePath ?? null;
 		const faceUrl = basePath
 			? await resolveCharacterFaceUrl(spawn.characterId, basePath)
@@ -275,7 +376,8 @@
 			rarity: rarityByCharacter.get(spawn.characterId) ?? null,
 			showName,
 			locationName: lastLocationName || null,
-			spawnedAt: spawn.createdAt
+			spawnedAt: spawn.createdAt,
+			isNew: !heldCards.has(spawnKey(spawn.characterId, spawn.color, spawn.locationId))
 		};
 	}
 
