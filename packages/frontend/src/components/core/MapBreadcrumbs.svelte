@@ -45,8 +45,10 @@
 	// Which is why the square carries a map: there is no place to name and no show to fly, so
 	// what it holds is the thing it is about, and an empty square lettered nothing at all read
 	// as a crumb that had failed to load rather than as a rung still to be walked to.
-	// So the row keeps its length as the map drills, and every tier is reachable from it
-	// rather than only the ones already walked into.
+	// So every tier below the view is reachable from the row rather than only the ones already
+	// walked into — but only ever one of them at a time: a run of empty positions is drawn as
+	// the first of them alone (see `rungs`), since the rung after next cannot be walked to
+	// before the next one is.
 	export let crumbs: {
 		label: string;
 		key: string | null;
@@ -122,6 +124,16 @@
 	// that says where you are. The squares it drops are in the column the dots button opens.
 	$: lastCrumb = [...crumbs].reverse().find((crumb) => !crumb.empty);
 
+	// The ladder as it is drawn: every step that names a place, and of a run of empty positions
+	// only the first. Two squares side by side are two ways of pressing the same idea — go on
+	// down — and the finer of them takes the map to a zoom it cannot read anything at yet, since
+	// the tier before it has not been walked into either. So a run collapses to the rung that is
+	// actually next, and the row keeps its length only for as long as the ladder is being walked
+	// rather than padding its tail with squares. An empty position with a place after it is not a
+	// run and is kept: it is a tier this place skips (Andorra and l'Alguer have no comarca), and
+	// dropping it would slide the steps under it up into the wrong rungs.
+	$: rungs = crumbs.filter((crumb, index) => !crumb.empty || !crumbs[index - 1]?.empty);
+
 	function pick(key: string | null) {
 		expanded = false;
 		onSelect(key);
@@ -168,7 +180,7 @@
 				aria-hidden="true"
 			>
 				<ul>
-					{#each crumbs as crumb}
+					{#each rungs as crumb}
 						<li>
 							{#if crumb.empty}
 								<span class={squareClasses}><MapGlyph /></span>
@@ -230,7 +242,7 @@
 			{:else}
 				<div class="breadcrumbs py-0 text-sm">
 					<ul>
-						{#each crumbs as crumb}
+						{#each rungs as crumb}
 							<li>
 								{#if crumb.empty}
 									<!-- A position with no region in it — a tier this place does not have, or one
@@ -307,7 +319,7 @@
 			transition:slide={{ duration: 200 }}
 			class="absolute left-0 top-full z-10 mt-2 flex w-max max-w-full flex-col gap-0.5 overflow-hidden rounded-lg bg-base-100 p-2 text-white shadow-xl"
 		>
-			{#each crumbs as crumb}
+			{#each rungs as crumb}
 				{#if crumb.empty}
 					<!-- An empty position keeps its line down the column too — the ladder is the same
 						ladder read the other way round — and the square is what it is in the row. -->
