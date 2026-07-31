@@ -1,21 +1,10 @@
+/* Press Start 2P — the game's one typeface, taken from Google Fonts. The
+   `@import` has to be the first statement in the file: CSS only lets an import
+   precede other rules, so it goes above Tailwind's own. `display=swap` means the
+   page draws in the fallback and re-flows into Press Start 2P when it lands,
+   rather than holding text blank while the file is on the wire. */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 @import 'tailwindcss';
-
-/* Determination — the game's one typeface, vendored rather than fetched: the
-   file lives with the rest of the art in @3xl/assets (`public/fonts/`, served at
-   /assets like every icon and song), keeping its readme and licence beside it,
-   which is both what its CC-BY terms ask for on redistribution and how the
-   game-icons set is already kept. Nothing is asked of a third-party host at run
-   time, so the page needs no network but its own to be set correctly.
-
-   `swap` draws the page in the fallback and re-flows into Determination when the
-   file lands, rather than holding text blank while it is on the wire. */
-@font-face {
-	font-family: 'Determination';
-	src: url('/assets/fonts/determination/determination.ttf') format('truetype');
-	font-weight: normal;
-	font-style: normal;
-	font-display: swap;
-}
 
 /* Synthwave is the game's one theme, and it is customised rather than used as
    shipped: `themes: false` stops DaisyUI emitting any of its built-ins, and the
@@ -44,7 +33,7 @@
 /* One typeface for the whole app, said once. Tailwind's preflight puts
    `--default-font-family` (which falls back to `--font-sans`) on `html`, so
    setting the token here — rather than a `font-family` rule on `body` — is what
-   makes every element inherit Determination without a single component naming a
+   makes every element inherit Press Start 2P without a single component naming a
    font. The other two families are pointed at it as well, so a `font-mono` or
    `font-serif` utility written anywhere cannot land outside the typeface; the
    stacks after each one are only what shows while the file is still loading.
@@ -64,9 +53,9 @@
    Twelve seconds is the whole cycle rather than a speed, so a longer title
    travels faster; a title only slightly over the box would otherwise crawl. */
 @theme {
-	--font-sans: 'Determination', system-ui, sans-serif;
-	--font-serif: 'Determination', system-ui, sans-serif;
-	--font-mono: 'Determination', ui-monospace, monospace;
+	--font-sans: 'Press Start 2P', system-ui, sans-serif;
+	--font-serif: 'Press Start 2P', system-ui, sans-serif;
+	--font-mono: 'Press Start 2P', ui-monospace, monospace;
 
 	--animate-marquee: marquee 12s linear infinite;
 
