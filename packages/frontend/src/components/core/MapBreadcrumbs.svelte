@@ -3,6 +3,7 @@
 	import { afterUpdate, onDestroy } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import MapBreadcrumb from '$components/core/MapBreadcrumb.svelte';
+	import MapGlyph from '$components/core/MapGlyph.svelte';
 
 	// Where the map is looking, as a bar across the top of the map itself rather than a line
 	// in the panel beside it. What the crumbs name is the view — the region the map is
@@ -41,6 +42,9 @@
 	// in it is drawn as an outlined square where the crumb would have been — the same square
 	// the buttons at either end of this bar are drawn in — and it is pressed for the one thing
 	// a tier with no place in it can still say: take the map to the zoom that tier is read at.
+	// Which is why the square carries a map: there is no place to name and no show to fly, so
+	// what it holds is the thing it is about, and an empty square lettered nothing at all read
+	// as a crumb that had failed to load rather than as a rung still to be walked to.
 	// So the row keeps its length as the map drills, and every tier is reachable from it
 	// rather than only the ones already walked into.
 	export let crumbs: {
@@ -167,7 +171,7 @@
 					{#each crumbs as crumb}
 						<li>
 							{#if crumb.empty}
-								<span class={squareClasses}></span>
+								<span class={squareClasses}><MapGlyph /></span>
 							{:else}
 								<MapBreadcrumb
 									label={crumb.label}
@@ -238,7 +242,9 @@
 										title={crumb.tier ?? ''}
 										aria-label={crumb.tier ? `Zoom to ${crumb.tier}` : 'Zoom to this tier'}
 										on:click={() => zoomTo(crumb.tier ?? '')}
-									></button>
+									>
+										<MapGlyph />
+									</button>
 								{:else if crumb === lastCrumb}
 									<!-- The step the map is on. `aria-current` and not a control: it is where you
 										already are, so there is nowhere for it to go — which is also why it undoes
@@ -311,7 +317,7 @@
 						aria-label={crumb.tier ? `Zoom to ${crumb.tier}` : 'Zoom to this tier'}
 						on:click={() => zoomTo(crumb.tier ?? '')}
 					>
-						<span class={squareClasses}></span>
+						<span class={squareClasses}><MapGlyph /></span>
 					</button>
 				{:else if crumb === lastCrumb}
 					<span aria-current="page" class="rounded-md px-2 py-1">
