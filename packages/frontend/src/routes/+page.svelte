@@ -2340,8 +2340,15 @@
 						for a paragraph. `font-display` is Bungee, the app's one departure from Genos, and
 						it is the token and not the family that is named here (see the `@theme` block in
 						css/app.css). -->
+					<!-- The plate itself is where the two bars stop being the same chrome: the crumbs'
+						is the panel's surface at 80%, so terrain reads through the path, and this one is
+						the theme's primary at full strength. A path is a thing being looked through to
+						the map under it; a name is not, and there is nothing behind this plate worth
+						seeing. The 5px rule down its leading edge is that same surface said as a line —
+						what the bar beside it is made of, standing where the two would otherwise run
+						together. -->
 					<div
-						class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
+						class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg border-l-[5px] border-base-100 bg-primary px-3 py-1.5 text-white shadow-xl"
 					>
 						<span class="font-display text-2xl leading-none">6xl</span>
 					</div>
