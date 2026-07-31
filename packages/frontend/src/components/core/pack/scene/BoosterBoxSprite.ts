@@ -120,8 +120,11 @@ const FACE_COVER_SHIFT_RIGHT = 0.14109;
 //
 // The type size is therefore where a name *starts* and not where it ends up — what it decides is
 // how many lines a long name breaks into on the way (see {@link BoosterBoxSprite.placeType}), the
-// row being taken to the front's width after that whatever size it was laid out at.
+// row being taken to a share of the front's width after that whatever size it was laid out at.
+// That share is what sets how big the type reads: a whole one would run edge to edge with the
+// picture, and the head is set at half of it.
 const TYPE_SIZE = 0.054;
+const TYPE_ROW_WIDTH = 0.5; // of the front's width
 const TYPE_LEADING = 1.375; // leading-snug
 const HEAD_PAD_TOP = 0.02;
 const HEAD_PAD_BOTTOM = 0.09;
@@ -686,8 +689,8 @@ export class BoosterBoxSprite extends Container {
 			.join(' ');
 	}
 
-	/** The place, set to the width of the front: centred, bold, in whichever of the two the card is
-	 * not, and taken to the picture's own width whatever name it turned out to be.
+	/** The place, set to a share of the front's width: centred, bold, in whichever of the two the
+	 * card is not, and the same size on every box whatever name it turned out to be.
 	 *
 	 * `trim` is what makes that possible, and it is the whole of this. A text's box is normally the
 	 * sum of its letters' advances — the room the font says to step on by — and what is painted is
@@ -695,12 +698,12 @@ export class BoosterBoxSprite extends Container {
 	 * the two and every fit worked out from the number was short by however much. Trimmed, the box
 	 * is read back off the pixels instead, so what the Text reports is what it draws, to the letter.
 	 *
-	 * Then the fit is one line: take that box to the room. Up for a short place, down for a long
-	 * one, uniformly — a caption stretched to a width is a different caption — so the row across
-	 * the head is the width of the poster under it on every box, and nothing can hang over the
-	 * front's edges for its crop to slice off. `TYPE_SIZE` is therefore where a name starts and not
-	 * where it ends up; what it still decides is where a long one breaks, wrapping happening at
-	 * that same width before any of this is measured.
+	 * Then the fit is one line: take that box to `TYPE_ROW_WIDTH` of the room. Up for a short place,
+	 * down for a long one, uniformly — a caption stretched to a width is a different caption — so
+	 * the row across the head is the same width on every box and well inside the front's edges,
+	 * with nothing left over for its crop to slice off. `TYPE_SIZE` is therefore where a name starts
+	 * and not where it ends up; what it still decides is where a long one breaks, wrapping happening
+	 * at the room's full width before any of this is measured.
 	 *
 	 * The band above comes out right without being told: a trimmed, scaled Text reports the ink's
 	 * own height, which is what {@link bandHeights} measures, so the fade is as deep as the letters
@@ -725,7 +728,7 @@ export class BoosterBoxSprite extends Container {
 				wordWrapWidth: room
 			}
 		});
-		if (type.width > 0) type.scale.set(room / type.width);
+		if (type.width > 0) type.scale.set((TYPE_ROW_WIDTH * room) / type.width);
 		return type;
 	}
 
