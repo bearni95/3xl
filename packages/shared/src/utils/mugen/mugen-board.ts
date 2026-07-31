@@ -364,6 +364,11 @@ const ICON_RASTER_PX = 256;
  * once — about what a guard throws over the length of a strike. */
 const HIT_SPARKS = 90;
 
+/** What a fighter that has been taken down is drawn at as it falls back, and for the rest
+ * of the fight. Barely off full: it is out of the game and not off the board, and the mark
+ * that says so is the ground it retracts to. */
+const DEFEATED_ALPHA = 0.9;
+
 /** How far a cell's callout is lifted clear of the heads of whoever is standing in it,
  * in cells. Small: it is meant to sit just over the pair it is about. */
 const CELL_CALLOUT_GAP = 0.08;
@@ -1649,6 +1654,21 @@ export class MugenBoard {
 		await this.walkCells(actor, path.slice(1), this.standPoint(actor, cell.q, cell.r));
 		actor.homeColumn = cell.q;
 		actor.homeRow = cell.r;
+	}
+
+	/**
+	 * Draw a fighter as beaten: its sprite carries {@link DEFEATED_ALPHA} from here on.
+	 *
+	 * Said of the fighter and not of the walk, so it is put on as the retreat begins and
+	 * never taken off — a fighter that has been taken down is out of the fight for the rest
+	 * of it, and comes back at the same weight it went off at. It is the sprite alone: the
+	 * aura went out with the blow, and the fighter's own orders came off it, so what is left
+	 * to fade is the character.
+	 */
+	fadeDefeated(id: string): void {
+		const actor = this.findActor(id);
+		if (!actor) return;
+		actor.sprite.alpha = DEFEATED_ALPHA;
 	}
 
 	/**

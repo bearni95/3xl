@@ -964,8 +964,13 @@ export class CombatController {
 	 */
 	private async settleLane(winner: Fighter, loser: Fighter): Promise<void> {
 		// Out of the fight, so nothing is loading: the aura goes out with the fighter,
-		// whatever it was still carrying when the blow landed.
+		// whatever it was still carrying when the blow landed. And the fighter itself is drawn
+		// back a little from here on, as it retracts and for the rest of the fight: the cell
+		// it withdraws to already says it is beaten, but only to a reader who knows which
+		// column that is, and a fighter still drawn at full weight on ground it does not hold
+		// reads as one that is merely standing somewhere else.
 		this.dropAura(loser);
+		this.board?.fadeDefeated(loser.id);
 		const row = loser.cell?.r ?? winner.cell?.r;
 		if (row === undefined) return;
 		const ground: Cell = { q: WON_COLUMN, r: row };

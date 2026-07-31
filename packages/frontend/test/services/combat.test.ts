@@ -133,6 +133,8 @@ function fakeBoard(log: AuraLog) {
 		clearHold: () => {},
 		clearHolds: () => {},
 		playHurt: done,
+		// The fighter drawn back a little as it falls back beaten.
+		fadeDefeated: () => {},
 		closeIn: done,
 		meleeApproach: done,
 		returnHome: done,
