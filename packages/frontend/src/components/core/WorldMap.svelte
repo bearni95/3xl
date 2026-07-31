@@ -1547,10 +1547,17 @@
 	// map would be a mark of its own, saying "moved" where nothing has moved. So the line is
 	// exactly the sign that a mark is beside its place rather than on it, which is the only
 	// thing it was ever for.
+	//
+	// Nor does a mark whose line could not be run to it without crossing another mark — the
+	// layout says so, having looked for room the line could reach (see PinOffset.leader). A
+	// strip passing beneath two plates on its way is read as a line between those plates, not
+	// as one pointing past them at a place, and the commonest case of it is the worst: a mark
+	// pushed aside by the very plate covering its point, whose line would appear from under
+	// that plate saying the plate is where it came from.
 	function drawLeader(id: string, offset: PinOffset) {
 		const leader = pinLeaders.get(id);
 		if (!leader) return;
-		const length = offset.moved ? Math.hypot(offset.dx, offset.dy) : 0;
+		const length = offset.leader ? Math.hypot(offset.dx, offset.dy) : 0;
 		leader.style.width = `${length}px`;
 		leader.style.transform = `rotate(${(Math.atan2(offset.dy, offset.dx) * 180) / Math.PI}deg)`;
 	}

@@ -18,12 +18,30 @@ function overlap(a: ReturnType<typeof boxOf>, b: ReturnType<typeof boxOf>): bool
 	return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 }
 
+/**
+ * Whether a leader line touches a box, reckoned here rather than imported: the layout's own
+ * answer is what is under test, so a test that asked it would only agree with itself. Walks
+ * the line in short steps and asks whether any of them is inside the box.
+ */
+function segmentHitsRect(
+	line: { x1: number; y1: number; x2: number; y2: number },
+	rect: ReturnType<typeof boxOf>
+): boolean {
+	const steps = 200;
+	for (let i = 0; i <= steps; i++) {
+		const x = line.x1 + ((line.x2 - line.x1) * i) / steps;
+		const y = line.y1 + ((line.y2 - line.y1) * i) / steps;
+		if (x > rect.left && x < rect.right && y > rect.top && y < rect.bottom) return true;
+	}
+	return false;
+}
+
 describe('layoutPins', () => {
 	it('stands a lone pin on its own point, with nothing to explain', () => {
 		const one = pin('a', 400, 400);
 		const offsets = layoutPins([one], VIEWPORT, { lead: 16 });
 		// Centred on the point: the left edge is half a plate to the left of it.
-		expect(offsets.get('a')).toEqual({ dx: -100, dy: 0, moved: false });
+		expect(offsets.get('a')).toEqual({ dx: -100, dy: 0, moved: false, leader: false });
 	});
 
 	it('moves the pin it cannot leave on its point, and says so', () => {
@@ -67,7 +85,7 @@ describe('layoutPins', () => {
 		const first = pin('first', 400, 400);
 		const second = pin('second', 400, 400);
 		const offsets = layoutPins([first, second], VIEWPORT, { lead: 16 });
-		expect(offsets.get('first')).toEqual({ dx: -100, dy: 0, moved: false });
+		expect(offsets.get('first')).toEqual({ dx: -100, dy: 0, moved: false, leader: false });
 		expect(offsets.get('second')!.dy).not.toBe(0);
 	});
 
@@ -147,6 +165,35 @@ describe('layoutPins', () => {
 		const tall = pin('tall', 400, 400, 200, 900);
 		const offsets = layoutPins([tall], { width: 1000, height: 800 });
 		expect(offsets.get('tall')).toBeDefined();
+	});
+
+	it('runs a moved pin its line without crossing anything already placed', () => {
+		// A plate on its point, and a small mark whose own point is just clear of it: the
+		// small one has to move, and where it ends up its line must not cross the plate.
+		const plate = pin('plate', 400, 400);
+		const disc = pin('disc', 520, 400, 56, 56);
+		const offsets = layoutPins([plate, disc], VIEWPORT);
+		const placed = boxOf(plate, offsets.get('plate')!);
+		const at = offsets.get('disc')!;
+		expect(at.leader).toBe(true);
+		expect(segmentHitsRect({ x1: disc.x, y1: disc.y, x2: disc.x + at.dx, y2: disc.y + at.dy }, placed)).toBe(
+			false
+		);
+	});
+
+	it('draws no line for a mark whose point is under another mark', () => {
+		// The count-disc case: its point is beneath the plate that pushed it aside, so every
+		// line back to it would leave from under that plate.
+		const plate = pin('plate', 400, 400);
+		const disc = pin('disc', 400, 400, 56, 56);
+		const offsets = layoutPins([plate, disc], VIEWPORT);
+		expect(offsets.get('disc')!.moved).toBe(true);
+		expect(offsets.get('disc')!.leader).toBe(false);
+	});
+
+	it('never draws a line for a mark standing on its point', () => {
+		const offsets = layoutPins([pin('a', 400, 400)], VIEWPORT);
+		expect(offsets.get('a')!.leader).toBe(false);
 	});
 
 	it('respects the gap asked for between two pins', () => {

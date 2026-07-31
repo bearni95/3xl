@@ -58,9 +58,18 @@ export interface PinOffset {
 	/**
 	 * Whether the pin had to leave its point. False means it is standing on it, centred,
 	 * and there is nothing for a leader line to say; true means the mark is beside its
-	 * place and the line back is what keeps its meaning.
+	 * place.
 	 */
 	moved: boolean;
+	/**
+	 * Whether to draw the line back to the point. A mark standing on its point never has one;
+	 * a mark that moved has one whenever a line can be run to it without touching another
+	 * mark, which is what the moving is looked for (see pick). Where the crowd leaves no such
+	 * route — most of all where the point itself is already covered — the mark is placed
+	 * anyway and left unexplained, because a strip that crosses two plates on its way says
+	 * something about them and not about the place it came from.
+	 */
+	leader: boolean;
 }
 
 export interface PinLayoutOptions {
@@ -141,33 +150,78 @@ export function layoutPins(
 	for (const rect of options.reserved ?? []) placed.add(rect);
 	const offsets = new Map<string, PinOffset>();
 
+	// The lines already drawn. A mark may not be put down on one either: a plate laid across
+	// the middle of a line breaks it into two strips pointing at nothing, which is the same
+	// wrong reading from the other side.
+	const lines: Segment[] = [];
+
 	for (const pin of pins) {
 		let chosen: PinOffset | null = null;
 		// Its own point first, and on its own terms: a mark centred on the place it is about,
 		// with no line to draw and nothing to explain. Only a mark that cannot be read there —
 		// because another is already standing there, or because the point is too near an edge
 		// for the plate to fit around it — goes looking sideways.
+		//
+		// A line already drawn is NOT among the things that move a mark off its own point:
+		// standing on the place is worth more than a line's being whole, and a mark pushed
+		// aside by a line would then need a line of its own to explain the push.
 		const home = homeOffset(pin);
 		const homeRect = rectFor(pin, home);
 		if (withinRoom(homeRect, pin, room) && !placed.hits(homeRect)) chosen = home;
 
+		// Whether a line back to this point could be drawn at all. It could not if the point is
+		// already under something: every line from it would leave from beneath that mark, and a
+		// strip appearing out of the side of a plate says the plate is what it is about. The
+		// mark still moves — it has to be readable somewhere — it simply goes unexplained,
+		// which is the honest end of it, the place being covered by the very mark that would
+		// have had to be crossed to say so.
+		const reachable = !chosen && !placed.covers(pin.x, pin.y);
+
+		if (!chosen) chosen = pick(pin, room, settings, placed, lines, reachable);
+		// Nothing clear anywhere it looked, even once the lines were disregarded: it stands
+		// where it asked to, pulled into the room there is, and takes whatever overlap comes
+		// with that — and says nothing about it, a line through a heap being one more thing in
+		// the heap.
 		if (!chosen) {
-			for (const offset of tries(pin, room, settings)) {
-				const rect = rectFor(pin, offset);
-				if (!withinRoom(rect, pin, room)) continue;
-				if (placed.hits(rect)) continue;
-				chosen = offset;
-				break;
-			}
+			chosen = { dx: horizontalFit(pin, settings.lead, room), dy: 0, moved: true, leader: false };
 		}
-		// Nothing clear anywhere it looked: it stands where it asked to, pulled into the
-		// room there is, and takes whatever overlap comes with that.
-		if (!chosen) chosen = { dx: horizontalFit(pin, settings.lead, room), dy: 0, moved: true };
 		offsets.set(pin.id, chosen);
 		placed.add(rectFor(pin, chosen));
+		if (chosen.leader) lines.push(segmentFor(pin, chosen));
 	}
 
 	return offsets;
+}
+
+/**
+ * The nearest place this mark can be moved to, looked for twice: once on the terms that keep
+ * every line clear of every mark, and — only if that found nothing — again with the lines
+ * disregarded, in which case the mark takes the room but draws no line to it. A crowd dense
+ * enough to leave no clear route is a crowd where one more strip crossing two plates helps
+ * nobody, and the mark being readable at all is what matters by then.
+ */
+function pick(
+	pin: PinAnchor,
+	room: Rect,
+	settings: Omit<Required<PinLayoutOptions>, 'insets' | 'reserved'>,
+	placed: PlacedIndex,
+	lines: readonly Segment[],
+	reachable: boolean
+): PinOffset | null {
+	for (const clear of reachable ? [true, false] : [false]) {
+		for (const offset of tries(pin, room, settings)) {
+			const rect = rectFor(pin, offset);
+			if (!withinRoom(rect, pin, room)) continue;
+			if (placed.hits(rect)) continue;
+			if (clear) {
+				const line = segmentFor(pin, offset);
+				if (placed.crossed(line)) continue;
+				if (lines.some((other) => segmentHitsRect(other, rect))) continue;
+			}
+			return { ...offset, leader: clear };
+		}
+	}
+	return null;
 }
 
 /**
@@ -215,7 +269,7 @@ function* tries(
 		}
 		if (nearest < 0) return;
 		const ladder = ladders[nearest];
-		yield { dx: ladder.dx, dy: rungOffset(ladder.rung, step), moved: true };
+		yield { dx: ladder.dx, dy: rungOffset(ladder.rung, step), moved: true, leader: true };
 		ladder.rung++;
 	}
 }
@@ -226,7 +280,59 @@ function* tries(
  * offset to the pin's left-middle like every other, so the caller has one thing to apply.
  */
 function homeOffset(pin: PinAnchor): PinOffset {
-	return { dx: -pin.width / 2, dy: 0, moved: false };
+	return { dx: -pin.width / 2, dy: 0, moved: false, leader: false };
+}
+
+/** A leader line, as the two ends it runs between: the point, and the mark's left-middle. */
+interface Segment {
+	x1: number;
+	y1: number;
+	x2: number;
+	y2: number;
+}
+
+/** The line this offset would need: from the point to where the mark's left edge lands. */
+function segmentFor(pin: PinAnchor, offset: { dx: number; dy: number }): Segment {
+	return { x1: pin.x, y1: pin.y, x2: pin.x + offset.dx, y2: pin.y + offset.dy };
+}
+
+/**
+ * Whether a line touches a box at all. Asked of a line and the marks it would have to pass to
+ * get where it is going, so "touches" is everything: an end inside the box, or any part of the
+ * run crossing an edge of it.
+ */
+function segmentHitsRect(line: Segment, rect: Rect): boolean {
+	// Nowhere near it: the cheap answer, and the one nearly every ask gets.
+	if (Math.max(line.x1, line.x2) <= rect.left) return false;
+	if (Math.min(line.x1, line.x2) >= rect.right) return false;
+	if (Math.max(line.y1, line.y2) <= rect.top) return false;
+	if (Math.min(line.y1, line.y2) >= rect.bottom) return false;
+	if (within(line.x1, line.y1, rect) || within(line.x2, line.y2, rect)) return true;
+	return (
+		crosses(line, rect.left, rect.top, rect.right, rect.top) ||
+		crosses(line, rect.right, rect.top, rect.right, rect.bottom) ||
+		crosses(line, rect.right, rect.bottom, rect.left, rect.bottom) ||
+		crosses(line, rect.left, rect.bottom, rect.left, rect.top)
+	);
+}
+
+/** Whether a point stands inside a box. Its edges count as outside: touching is not crossing. */
+function within(x: number, y: number, rect: Rect): boolean {
+	return x > rect.left && x < rect.right && y > rect.top && y < rect.bottom;
+}
+
+/** Whether a line and one edge of a box cross, by the sides each end of one falls on. */
+function crosses(line: Segment, x1: number, y1: number, x2: number, y2: number): boolean {
+	const a = side(line.x1, line.y1, line.x2, line.y2, x1, y1);
+	const b = side(line.x1, line.y1, line.x2, line.y2, x2, y2);
+	const c = side(x1, y1, x2, y2, line.x1, line.y1);
+	const d = side(x1, y1, x2, y2, line.x2, line.y2);
+	return a * b < 0 && c * d < 0;
+}
+
+/** Which side of the line through the first two points the third falls on. */
+function side(x1: number, y1: number, x2: number, y2: number, px: number, py: number): number {
+	return (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1);
 }
 
 /**
@@ -324,15 +430,49 @@ class PlacedIndex {
 			right: rect.right + this.gap,
 			bottom: rect.bottom + this.gap
 		};
+		for (const other of this.near(grown)) {
+			if (overlaps(grown, other)) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Whether a point is under something already placed — asked of a mark's own point, to
+	 * know whether a line back to it could be seen leaving it at all. No gap: what matters
+	 * here is being covered, not being crowded.
+	 */
+	covers(x: number, y: number): boolean {
+		const at = { left: x, top: y, right: x, bottom: y };
+		for (const other of this.near(at)) {
+			if (within(x, y, other)) return true;
+		}
+		return false;
+	}
+
+	/** Whether a line would have to pass through anything already placed to get where it goes. */
+	crossed(line: Segment): boolean {
+		const box = {
+			left: Math.min(line.x1, line.x2),
+			top: Math.min(line.y1, line.y2),
+			right: Math.max(line.x1, line.x2),
+			bottom: Math.max(line.y1, line.y2)
+		};
+		for (const other of this.near(box)) {
+			if (segmentHitsRect(line, other)) return true;
+		}
+		return false;
+	}
+
+	/** Everything placed in the buckets this box touches: a superset, each of them once. */
+	private *near(box: Rect): Generator<Rect> {
 		const seen = new Set<Rect>();
-		for (const key of this.keysFor(grown)) {
+		for (const key of this.keysFor(box)) {
 			for (const other of this.cells.get(key) ?? []) {
 				if (seen.has(other)) continue;
 				seen.add(other);
-				if (overlaps(grown, other)) return true;
+				yield other;
 			}
 		}
-		return false;
 	}
 
 	private *keysFor(rect: Rect): Generator<string> {
