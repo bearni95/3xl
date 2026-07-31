@@ -12,6 +12,7 @@ import {
 	cellSide,
 	columnLabel,
 	FIRST_COLUMN,
+	FIRST_LANE_ROW,
 	FIRST_ROW,
 	findMeleeMeeting,
 	findPath,
@@ -27,30 +28,37 @@ import {
 } from '$utils/mugen/grid';
 
 describe('board cells', () => {
-	it('is three rows of five, with a sixth cell on the middle one', () => {
-		expect(BOARD_ROWS).toBe(3);
+	it('is four rows of five, with a sixth cell on the offset ones', () => {
+		// Three lanes and the row of ground above them, which is board like any other.
+		expect(BOARD_ROWS).toBe(4);
+		expect(FIRST_ROW).toBe(FIRST_LANE_ROW - 1);
+		// The middle lane is the middle of what is fought over, not of the board.
 		expect(MIDDLE_ROW).toBe(1);
-		// The widest row spans every column; the two level rows are a column shorter.
+		// The widest rows span every column; the level rows are a column shorter.
 		expect(BOARD_COLUMNS).toBe(6);
-		expect(boardCells()).toHaveLength(5 + 6 + 5);
-		for (let r = 0; r < BOARD_ROWS; r++) {
-			expect(boardCells().filter((cell) => cell.r === r)).toHaveLength(r === MIDDLE_ROW ? 6 : 5);
+		expect(boardCells()).toHaveLength(6 + 5 + 6 + 5);
+		for (let r = FIRST_ROW; r <= LAST_ROW; r++) {
+			// The rows alternate, so they alternate upward from the first lane too: a row
+			// laid the same way round as the one under it would stack instead of nesting.
+			const offset = Math.abs(r - FIRST_LANE_ROW) % 2 === 1;
+			expect(boardCells().filter((cell) => cell.r === r)).toHaveLength(offset ? 6 : 5);
 		}
 	});
 
-	it('gives the outermost column to the middle row alone', () => {
-		// The cell added to make the field's outline symmetric — and the only one of its
-		// column, since the rows either side of the middle are staggered the other way.
+	it('gives the outermost column to the offset rows alone', () => {
+		// The cell that makes the field's outline symmetric, on every row staggered that
+		// way — the middle lane, and the row of ground above the lanes.
 		expect(isBoardCell(FIRST_COLUMN, MIDDLE_ROW)).toBe(true);
-		expect(isBoardCell(FIRST_COLUMN, 0)).toBe(false);
+		expect(isBoardCell(FIRST_COLUMN, FIRST_ROW)).toBe(true);
+		expect(isBoardCell(FIRST_COLUMN, FIRST_LANE_ROW)).toBe(false);
 		expect(isBoardCell(FIRST_COLUMN, LAST_ROW)).toBe(false);
 	});
 
 	it('excludes everything off the field', () => {
 		expect(isBoardCell(3, 0)).toBe(false); // no such column
-		expect(isBoardCell(-4, 1)).toBe(false); // nor here — nothing is deeper than a2
+		expect(isBoardCell(-4, 1)).toBe(false); // nor here — nothing is deeper than a3
 		expect(isBoardCell(0, 3)).toBe(false); // below the bottom row
-		expect(isBoardCell(0, -1)).toBe(false); // above the top row
+		expect(isBoardCell(0, FIRST_ROW - 1)).toBe(false); // above the top row
 	});
 
 	it('includes representative interior cells', () => {
@@ -68,12 +76,12 @@ describe('board cells', () => {
 		expect(cellSide(2)).toBe('blue');
 	});
 
-	it('runs every lane the full width, the extra cell aside', () => {
+	it('runs every row the full width, the extra cell aside', () => {
 		const cells = boardCells();
 		for (const cell of cells) expect(isBoardCell(cell.q, cell.r)).toBe(true);
-		// Every row is a lane, so no column that runs the board's depth may be missing
-		// one: leaving out the odd column, each row holds the same five cells.
-		for (let r = 0; r < BOARD_ROWS; r++) {
+		// No column that runs the board's depth may be missing a row: leaving out the odd
+		// column, every row holds the same five cells.
+		for (let r = FIRST_ROW; r <= LAST_ROW; r++) {
 			const lane = cells.filter((cell) => cell.r === r && cell.q > FIRST_COLUMN);
 			expect(lane).toHaveLength(BOARD_COLUMNS - 1);
 		}
@@ -87,11 +95,13 @@ describe('cell names', () => {
 		expect(columnLabel(FIRST_COLUMN)).toBe('a');
 		expect(columnLabel(0)).toBe('d');
 		expect(columnLabel(LAST_COLUMN)).toBe('f');
-		// Rows read downward, so the top one is 1 and the numbering follows the rows.
-		expect(rowLabel(0)).toBe('1');
+		// Rows read downward, so the top one is 1 and the numbering follows the rows —
+		// the row above the lanes included, which is what makes the first lane row 2.
+		expect(rowLabel(FIRST_ROW)).toBe('1');
+		expect(rowLabel(FIRST_LANE_ROW)).toBe('2');
 		expect(rowLabel(LAST_ROW)).toBe(String(BOARD_ROWS));
-		// The odd cell is the middle row's alone, so `a` names one cell and it is a2.
-		expect(`${columnLabel(FIRST_COLUMN)}${rowLabel(MIDDLE_ROW)}`).toBe('a2');
+		// `a` names the cells of the offset rows: the middle lane's is a3.
+		expect(`${columnLabel(FIRST_COLUMN)}${rowLabel(MIDDLE_ROW)}`).toBe('a3');
 	});
 
 	it('names every cell, and no two the same', () => {
@@ -131,6 +141,23 @@ describe('adjacency and pathfinding', () => {
 		expect(neighbors(0, 1)).toContainEqual({ q: 0, r: 2 });
 		expect(neighbors(0, 1)).toContainEqual({ q: 1, r: 2 });
 		expect(neighbors(0, 1)).not.toContainEqual({ q: -1, r: 2 });
+	});
+
+	it('nests the row above the lanes into the first one, and measures it like any other', () => {
+		// The top row is offset, so it overhangs the columns to its right: the two cells it
+		// meets on the lane below are its own column and the next one along.
+		expect(neighbors(0, FIRST_ROW)).toContainEqual({ q: 0, r: FIRST_LANE_ROW });
+		expect(neighbors(0, FIRST_ROW)).toContainEqual({ q: 1, r: FIRST_LANE_ROW });
+		expect(neighbors(0, FIRST_ROW)).not.toContainEqual({ q: -1, r: FIRST_LANE_ROW });
+		// And the arithmetic that undoes the stagger holds above the lanes as well as below
+		// them: every neighbour of a cell up there is one side away, counted negative rows
+		// and all.
+		for (const nb of neighbors(0, FIRST_ROW)) {
+			expect(cellDistance({ q: 0, r: FIRST_ROW }, nb)).toBe(1);
+		}
+		// It is walkable ground, so it is on the paths that cross it — two rows down from
+		// the top row is two steps, exactly as two rows down from anywhere else.
+		expect(cellDistance({ q: 0, r: FIRST_ROW }, { q: 0, r: FIRST_LANE_ROW + 1 })).toBe(2);
 	});
 
 	it('measures a walk in sides crossed, not in rows plus columns', () => {

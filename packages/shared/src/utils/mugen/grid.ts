@@ -20,28 +20,33 @@
  * {@link neighbors} and {@link cellDistance} are the only two places in the codebase
  * that know it, and everything else goes on asking them.
  *
- * Three rows, of five cells each save the middle one, which has six. Staggered rows of
- * equal length leave a field that is notched on one side and bulges on the other — the
- * middle row here reaching half a cell further right than the two around it, and
- * starting half a cell further in on the left — which is a lopsided thing to lay a duel
- * out on. The sixth cell fills that notch: `q = FIRST_COLUMN` exists on the offset rows
- * alone, and with it the field's outline is symmetric left to right, the middle row
- * overhanging by the same half cell at both ends.
+ * Rows of five cells each, save the offset ones, which have six. Staggered rows of
+ * equal length leave a field that is notched on one side and bulges on the other — an
+ * offset row reaching half a cell further right than the rows around it, and starting
+ * half a cell further in on the left — which is a lopsided thing to lay a duel out on.
+ * The sixth cell fills that notch: `q = FIRST_COLUMN` exists on the offset rows alone,
+ * and with it the field's outline is symmetric left to right, those rows overhanging by
+ * the same half cell at both ends.
  *
- * That leaves the *colours* one cell out of true, which is the price and is worth
- * stating plainly: the extra cell is on the left, so it is red's, and red holds seven
- * cells to blue's six. It is the far back corner of the middle lane — behind the column
- * a beaten fighter retracts to, which stays `FIRST_COLUMN + 1` because that is the
- * outermost column running the board's whole depth — so nothing about the fight begins
- * or ends there. It is ground red may walk on and blue may not, and the two lines'
- * openings, retreats and the white ground between them are all untouched by it.
+ * That leaves the *colours* out of true, which is the price and is worth stating plainly:
+ * the extra cells are on the left, so they are red's, and red holds two more of the board
+ * than blue does. On the lanes it is one cell, the far back corner of the middle lane —
+ * behind the column a beaten fighter retracts to, which stays `FIRST_COLUMN + 1` because
+ * that is the outermost column running the board's whole depth — so nothing about the
+ * fight begins or ends there. It is ground red may walk on and blue may not, and the two
+ * lines' openings, retreats and the white ground between them are all untouched by it.
  *
  * Cells left of centre are the red half, right the blue half, the shared white one at
  * q = 0. Every column but the sixth runs the full depth of the board, so a row is a
  * **lane**: the two fighters holding the same row face each other across it, and the
- * ground between them is the white cell they are playing for. Three rows is three lanes,
- * which is a side's whole line — so every row of the board is fought over and none of it
- * is ground nobody stands on (see the combat controller's opening cells).
+ * ground between them is the white cell they are playing for.
+ *
+ * **Three of the rows are lanes and one is not.** A side is three fighters, so three rows
+ * are a whole line and every one of them is fought over ({@link FIRST_LANE_ROW} down to
+ * {@link LAST_ROW}, and the combat controller's opening cells). The row above them
+ * ({@link FIRST_ROW}) is board and nothing else: real ground, drawn and walkable and part
+ * of every distance measured across the field, but no line opens on it and no lane is
+ * played over it.
  */
 
 /** A cell coordinate: column across, row down. */
@@ -60,17 +65,35 @@ export type CellSide = 'red' | 'purple' | 'blue';
  */
 export const FIRST_COLUMN = -3;
 export const LAST_COLUMN = 2;
-/** The board's rows — a lane apiece, counted downward from the top of the screen. */
-export const FIRST_ROW = 0;
+/**
+ * The board's rows, counted downward from the top of the screen. The top one is ground
+ * above the fight (see the module note); the lanes run from {@link FIRST_LANE_ROW} to
+ * {@link LAST_ROW}, a lane apiece.
+ */
+export const FIRST_ROW = -1;
 export const LAST_ROW = 2;
+
+/**
+ * The first row a fight is played on. The rows above it are board — walked over, measured
+ * across, drawn like any other — but no line opens on them.
+ *
+ * It is also what the stagger is counted from ({@link isOffsetRow}) rather than the
+ * board's top edge, so a row added above the lanes leaves the lanes' own geometry exactly
+ * as it was: which of them steps out, which holds the sixth cell, and where each of them
+ * lands on screen relative to the others. Anchored to the top edge instead, adding a row
+ * would have flipped every lane's stagger — and the openings are written against that
+ * stagger (see the controller's `RIVAL_CELLS`).
+ */
+export const FIRST_LANE_ROW = 0;
 
 /** The board's extent in cells, which is what sizes the drawn grid: the columns its
  * widest row spans, and the rows. Not every column holds a cell on every row. */
 export const BOARD_COLUMNS = LAST_COLUMN - FIRST_COLUMN + 1;
 export const BOARD_ROWS = LAST_ROW - FIRST_ROW + 1;
 
-/** The board's middle row: the lane halfway down it. */
-export const MIDDLE_ROW = Math.floor((FIRST_ROW + LAST_ROW) / 2);
+/** The middle lane: the one halfway down the rows that are fought over, which is not the
+ * middle of the board — the board has a row above them. */
+export const MIDDLE_ROW = Math.floor((FIRST_LANE_ROW + LAST_ROW) / 2);
 
 /**
  * What a column is called, the way a chess file is: a letter, counted from `a` at the
@@ -85,18 +108,20 @@ export const columnLabel = (q: number): string => String.fromCharCode(97 + (q - 
  * What a row is called: a number, counted from 1 at the top row. Chess numbers its
  * ranks up from the bottom because the bottom is white's own end; here the two sides
  * are the left and right halves and no row belongs to either, so the numbering follows
- * the board's own rows instead and runs the way they are read — row `r` is row
- * `r + 1`, and the letter/number pair never disagrees with the coordinate behind it.
+ * the board's own rows instead and runs the way they are read — counted off whichever row
+ * is topmost, so the name says how far down the board a cell is and not which lane it is
+ * on, and the letter/number pair never disagrees with the coordinate behind it.
  */
 export const rowLabel = (r: number): string => String(r - FIRST_ROW + 1);
 
 /**
  * Whether a row is one of the offset ones — the rows shoved half a cell to the right so
- * they nest into the slants of the rows either side. Counted off the board's own first
- * row rather than off zero, so it is the board's middle row that steps out however the
- * rows happen to be numbered.
+ * they nest into the slants of the rows either side. Counted off the first lane rather
+ * than off the board's top edge (see {@link FIRST_LANE_ROW}), so the lanes keep their own
+ * stagger whatever is drawn above them; rows above the first lane alternate upward from
+ * it, because two rows the same way round would stack instead of nesting.
  */
-const isOffsetRow = (r: number): boolean => Math.abs(r - FIRST_ROW) % 2 === 1;
+const isOffsetRow = (r: number): boolean => Math.abs(r - FIRST_LANE_ROW) % 2 === 1;
 
 /**
  * The six neighbours of a hexagon, as the offset coordinates reach them: the two
@@ -138,16 +163,19 @@ const NEIGHBOR_DELTAS: Record<'level' | 'offset', Cell[]> = {
  */
 function cube(cell: Cell): { x: number; y: number; z: number } {
 	const offset = isOffsetRow(cell.r) ? 1 : 0;
-	const x = cell.q - (cell.r - FIRST_ROW - offset) / 2;
-	const z = cell.r - FIRST_ROW;
-	return { x, y: -x - z, z };
+	// Measured from the same row the stagger is counted from, since it is the stagger this
+	// is undoing: a row above that one counts negative and converts by the same arithmetic.
+	const row = cell.r - FIRST_LANE_ROW;
+	const x = cell.q - (row - offset) / 2;
+	return { x, y: -x - row, z: row };
 }
 
 /**
- * Whether [q, r] is a real, occupiable board cell. Every column runs every row except
- * the outermost, which the level rows have no cell in: the field is a rectangle of five
- * columns with the offset rows reaching one cell further out on the left, and that reach
- * is the only thing keeping its two ends the same shape.
+ * Whether [q, r] is a real, occupiable board cell — every row of the board, the one above
+ * the lanes included. Every column runs every row except the outermost, which the level
+ * rows have no cell in: the field is a rectangle of five columns with the offset rows
+ * reaching one cell further out on the left, and that reach is the only thing keeping its
+ * two ends the same shape.
  */
 export function isBoardCell(q: number, r: number): boolean {
 	if (r < FIRST_ROW || r > LAST_ROW || q > LAST_COLUMN) return false;
