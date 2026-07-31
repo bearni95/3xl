@@ -60,12 +60,12 @@
 		type TeamMemberRoll
 	} from '$utils/spawn/municipality-team';
 	import { REGION_COLOR_CSS } from '$utils/color/region-color';
-	import { coordinateSeed } from '$utils/geo/municipality-show';
+	import { coordinateSeed, seededShowId, seededShowPool } from '$utils/geo/municipality-show';
 	import { teamShowId, showIdsByCharacter, holderShowIds } from '$utils/spawn/team-show';
 	import { showPosterUrl, showPosterUrlForSeed } from '$utils/geo/municipality-show';
 	import { showLogoUrl } from '$utils/show/show-logo';
-	import { showIconName } from '$utils/show/show-icon';
-	import { iconMarkup } from '$components/core/icon-markup';
+	import { forShow } from '$utils/show/show-icon';
+	import { showGlyphs } from '$services/shows.service';
 	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 	import { ArtificialColor, type RegionColor } from '$types/region-color.type';
 	import {
@@ -101,24 +101,17 @@
 		MapOverlay,
 		TownPlateCard
 	} from '$types/map.type';
-	import type {
-		MunicipalityShow,
-		MunicipalityShowsCollection,
-		ShowEntry,
-		ShowsCollection
-	} from '$types/show.type';
+	import type { ShowEntry, ShowsCollection } from '$types/show.type';
 	import { festesService, catalanTodayIso } from '$services/festes.service';
 	import type { FestaLocationRow } from '$types/festivity.type';
 
 	/** svelte-i18n's message formatter, read off the store whose value it is. */
 	type Translate = typeof _ extends Readable<infer T> ? T : never;
 
-	// The municipality polygons, feeding the region tree and the map framing.
+	// The municipality polygons, feeding the region tree and the map framing — and,
+	// through each polygon's own GPS seed, the show every town flies (see
+	// `buildTownShows`).
 	let municipalities: GeoJSON.FeatureCollection | null = null;
-	// The baked municipality→show assignment, keyed by municipality id. Built
-	// once from municipality-shows.json; every polygon's poster and every sidebar
-	// row read from it.
-	let assignmentsById = new Map<string, MunicipalityShow>();
 	// Held until the fetches settle so the map renders against the loaded data.
 	let ready = false;
 	// The municipalities the map stands a booster box on, read from Supabase — the
@@ -196,15 +189,12 @@
 	}
 
 	onMount(async () => {
-		// Load the polygons (for the region tree + framing) and the baked show
-		// assignment (for the poster fill + sidebar) in parallel; both are
-		// optional, so settle each independently and always flip `ready` so the
-		// map renders regardless.
-		const [municipisResult, showsResult, savedShowsResult] = await Promise.allSettled([
+		// Load the polygons (for the region tree, the framing and every town's own
+		// seed) and the saved shows (for the name and poster a seeded show is drawn
+		// with) in parallel; both are optional, so settle each independently and always
+		// flip `ready` so the map renders regardless.
+		const [municipisResult, savedShowsResult] = await Promise.allSettled([
 			fetch('/data/geo/municipis.json').then((response) => response.json()),
-			fetch('/data/municipality-shows.json').then(
-				(response) => response.json() as Promise<MunicipalityShowsCollection>
-			),
 			fetch('/data/shows.json').then((response) => response.json() as Promise<ShowsCollection>)
 		]);
 
@@ -212,16 +202,10 @@
 			// The region tree simply stays empty if the polygons fail to load.
 			municipalities = municipisResult.value;
 		}
-		if (showsResult.status === 'fulfilled') {
-			// Municipalities fall back to their flat fill if the assignment fails.
-			assignmentsById = new Map(
-				showsResult.value.assignments.map((assignment) => [assignment.id, assignment])
-			);
-		}
 		if (savedShowsResult.status === 'fulfilled') {
-			// Every authored show, so a ruling team's show id resolves to a name and a
-			// poster even for shows no municipality was seeded with. Failing to load it
-			// simply leaves every town on its seeded show.
+			// Every authored show, so both a seeded and a ruling show id resolve to a name
+			// and a poster. Failing to load it leaves every town unshown — a pin falls back
+			// to its plain fill rather than to a wrong show.
 			savedShowById = new Map(
 				(savedShowsResult.value.shows ?? []).map((entry) => [
 					entry.show.id,
@@ -238,6 +222,19 @@
 		}
 		ready = true;
 
+		// The show → renderable-character assignment, read once from Supabase. It is what
+		// says which shows the game has anything to deal at all, so it is both the pool
+		// every town's show is seeded out of (see `buildTownShows`) and the roster a town's
+		// house team is rolled from. Read-only: nothing is written back. Read first of the
+		// Supabase loads for that reason — the pins are lettered off it — and if it is
+		// unconfigured or unreadable the map simply stands with no show on any town.
+		try {
+			const claimable = await spawnService.loadShows();
+			showCharacterIds = new Map(claimable.map((show) => [show.id, show.characterIds]));
+		} catch {
+			showCharacterIds = new Map();
+		}
+
 		// The festa-major towns the boxes stand on, loaded after the map is ready so a
 		// slow (or unconfigured) Supabase never blocks the map: the boxes simply pop in
 		// once they arrive. The window read is what puts a box on the map at all and the
@@ -251,17 +248,6 @@
 		if (windowResult.status === 'fulfilled') windowFestes = windowResult.value;
 		if (todayResult.status === 'fulfilled') {
 			todayFesteIds = new Set(todayResult.value.map((festa) => festa.id));
-		}
-
-		// The show → renderable-character assignment, read once from Supabase so a
-		// selected municipality can preview its top show's team client-side. Read-only:
-		// nothing is written back. Stays empty (team preview hidden) if Supabase is
-		// unconfigured or unreadable.
-		try {
-			const claimable = await spawnService.loadShows();
-			showCharacterIds = new Map(claimable.map((show) => [show.id, show.characterIds]));
-		} catch {
-			showCharacterIds = new Map();
 		}
 
 		// Who actually occupies each town, plus this player's own siege progress.
@@ -523,24 +509,33 @@
 	// at all — so picking a comarca changes nothing while the map is drawing
 	// municipalities, and its own shape clears as soon as the zoom walks back out to the
 	// tier it belongs to.
+	//
+	// The spotlit town is the one exception to both halves of that, and for one reason: it is
+	// the only shape on the map (see `spotlitId`). It washes whatever tier the map thinks it
+	// is imaging, since the map has been taken to it and there is nothing else left drawn to
+	// bury; and it washes at 80% rather than at the 20% a picked shape reads the satellite
+	// through, since it stands on black and is the whole of what is being looked at.
 	function tierStyle(
 		tier: RegionType,
 		weight: number,
 		colors: RegionColors,
 		imaged: number,
-		picked: { tier: RegionType; key: string } | null
+		picked: { tier: RegionType; key: string } | null,
+		spotlit: string | null
 	) {
 		return (feature?: GeoJSON.Feature) => {
 			const color = featureColor(tier, feature, colors);
-			const washes = color != null && tierRank[tier] === imaged;
-			const isPicked = picked?.tier === tier && picked.key === featureKey(tier, feature);
+			const key = featureKey(tier, feature);
+			const isSpotlit = spotlit != null && tier === 'Municipality' && key === spotlit;
+			const washes = color != null && (isSpotlit || tierRank[tier] === imaged);
+			const isPicked = picked?.tier === tier && picked.key === key;
 			return {
 				color: lineColor,
 				weight,
 				opacity: 1,
 				fill: washes,
 				fillColor: washes ? REGION_COLOR_CSS[color!] : lineColor,
-				fillOpacity: isPicked ? 0.2 : 0.5
+				fillOpacity: isSpotlit ? 0.8 : isPicked ? 0.2 : 0.5
 			};
 		};
 	}
@@ -565,37 +560,37 @@
 	$: overlays = [
 		{
 			url: '/data/geo/municipis.json',
-			style: tierStyle('Municipality', 1, regionColors, hiddenRank, pickedFeature),
+			style: tierStyle('Municipality', 1, regionColors, hiddenRank, pickedFeature, spotlitId),
 			interactive: false
 		},
 		{
 			url: '/data/geo/comarques.json',
-			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank, pickedFeature),
+			style: tierStyle('Comarca', 1.5, regionColors, hiddenRank, pickedFeature, spotlitId),
 			interactive: false
 		},
 		{
 			url: '/data/geo/provincies.json',
-			style: tierStyle('Province', 2, regionColors, hiddenRank, pickedFeature),
+			style: tierStyle('Province', 2, regionColors, hiddenRank, pickedFeature, spotlitId),
 			interactive: false
 		},
 		{
-			url: '/data/geo/territoris.json',
-			style: tierStyle('Territory', 3, regionColors, hiddenRank, pickedFeature),
+			url: territoryLines,
+			style: tierStyle('Territory', 3, regionColors, hiddenRank, pickedFeature, spotlitId),
 			interactive: false
 		}
 	] satisfies MapOverlay[];
 
 	// --- Which show a town flies -------------------------------------------------
-	// A town starts on the show the build baked onto it, but once a player takes it
+	// A town starts on the show its own geometry seeds it with, but once a player takes it
 	// the town flies the ruling team's show instead: the pins, the sidebar, the
 	// festa booster boxes and every coarser region's plurality tally all read from
 	// the single map below, so a conquest re-labels the town everywhere the map names
 	// a show at once — and re-stocks its boxes with it, the pack being a booster of
 	// whatever show the town flies today.
 
-	// Every authored show by id (name + poster), read from /data/shows.json — the
-	// same source the baked assignment posters come from, so an overridden town's pin
-	// draws exactly like a seeded one. Empty until the fetch lands.
+	// Every authored show by id (name + poster), read from /data/shows.json — the one
+	// source a show's lettering comes from, seeded or ruling, so an overridden town's
+	// pin draws exactly like an untaken one. Empty until the fetch lands.
 	let savedShowById = new Map<number, RegionShow>();
 
 	// The same collection kept whole, by show id: what a booster box is printed from
@@ -631,22 +626,71 @@
 
 	$: rulingShowById = buildRulingShows(holders, showsByCharacter, savedShowById);
 
-	// Municipality id → the show it flies: the baked seed for every town (the full
-	// assignment, not just the rendered neighbourhood), overridden by the ruling
-	// team's show wherever a player holds the town. This feeds the region tree, so
-	// the override rides all the way up — a comarca or province tallies its
-	// plurality over the shows its towns actually fly today.
-	function buildTownShows(
-		assignments: ReadonlyMap<string, MunicipalityShow>,
-		ruling: ReadonlyMap<string, RegionShow>
+	// Municipality id → the GPS seed its show and its team are both drawn from.
+	// Hashing it walks every vertex of the polygon, so it is done once off the
+	// geometry and kept: everything below re-derives as shows are assigned and towns
+	// change hands without touching the shapes again. It is also the list of every
+	// town on the map, which is what the shows and the colours are painted over.
+	function buildMunicipalitySeeds(
+		collection: GeoJSON.FeatureCollection | null
+	): Map<string, number> {
+		const seeds = new Map<string, number>();
+		if (!collection) return seeds;
+		for (const feature of collection.features) {
+			const id = String(feature.properties?.id ?? '');
+			if (id) seeds.set(id, coordinateSeed(feature.geometry));
+		}
+		return seeds;
+	}
+
+	$: municipalitySeeds = buildMunicipalitySeeds(municipalities);
+
+	// The shows a town can be seeded with: every one that has a cast, in id order —
+	// the same set the album lists and the only set a booster can be rolled from, so
+	// a show the admin assigns its first character to is on the map from the next
+	// visit, and one whose last character goes is off it. Nothing here is authored:
+	// which shows the map flies is a consequence of which shows have fighters.
+	$: seedableShowIds = seededShowPool(showCharacterIds);
+
+	// Municipality id → the show its own seed picks out of that pool, for every town
+	// on the map: what a town flies until somebody takes it. A town whose seeded show
+	// is not in the saved collection is left out rather than lettered wrong — as is
+	// every town, before the pool lands.
+	//
+	// Handed to the panel that deals the boosters as well as used here: which show a
+	// town's packs are printed from is this same question, and for a town nobody
+	// holds it is the one thing `claim_booster` takes on trust from the browser (see
+	// its "Which show this town's boxes deal"), so there is one place it is decided.
+	function buildSeededShows(
+		seeds: ReadonlyMap<string, number>,
+		pool: readonly number[],
+		saved: ReadonlyMap<number, RegionShow>
 	): Map<string, RegionShow> {
 		const shows = new Map<string, RegionShow>();
-		for (const [id, assignment] of assignments) shows.set(id, assignment.show);
+		for (const [id, seed] of seeds) {
+			const showId = seededShowId(seed, pool);
+			const show = showId == null ? undefined : saved.get(showId);
+			if (show) shows.set(id, show);
+		}
+		return shows;
+	}
+
+	$: seededShowById = buildSeededShows(municipalitySeeds, seedableShowIds, savedShowById);
+
+	// Municipality id → the show it flies today: the seeded one, overridden by the
+	// ruling team's wherever a player holds the town. This feeds the region tree, so
+	// the override rides all the way up — a comarca or province tallies its plurality
+	// over the shows its towns actually fly today.
+	function buildTownShows(
+		seeded: ReadonlyMap<string, RegionShow>,
+		ruling: ReadonlyMap<string, RegionShow>
+	): Map<string, RegionShow> {
+		const shows = new Map<string, RegionShow>(seeded);
 		for (const [id, show] of ruling) shows.set(id, show);
 		return shows;
 	}
 
-	$: showsById = buildTownShows(assignmentsById, rulingShowById);
+	$: showsById = buildTownShows(seededShowById, rulingShowById);
 
 	// --- Which colour a town flies -----------------------------------------------
 	// Not the same compounding as the show above: a colour on this map is a claim,
@@ -662,28 +706,9 @@
 	// take their plurality show — which now reads as how much of a region has been
 	// taken, and by whom — and a conquest re-colours every tier above it.
 
-	// Municipality id → the GPS seed its team is rolled from — the very seed that
-	// assigned its show. Hashing it walks every vertex of the polygon, so it is done
-	// once off the geometry and kept: the teams below re-derive as towns change
-	// hands without touching the shapes again. It is also the list of every town on
-	// the map, which is what the colours are painted over.
-	function buildMunicipalitySeeds(
-		collection: GeoJSON.FeatureCollection | null
-	): Map<string, number> {
-		const seeds = new Map<string, number>();
-		if (!collection) return seeds;
-		for (const feature of collection.features) {
-			const id = String(feature.properties?.id ?? '');
-			if (id) seeds.set(id, coordinateSeed(feature.geometry));
-		}
-		return seeds;
-	}
-
-	$: municipalitySeeds = buildMunicipalitySeeds(municipalities);
-
 	// Municipality id → the colour it flies. Grey for every town on the map, and the
 	// lead colour of whoever holds it wherever one does — which is why this asks the
-	// seeds for its towns rather than the show assignments: grey is a fact about
+	// seeds for its towns rather than the shows they fly: grey is a fact about
 	// occupancy and not about a roster, so a town whose show has not landed yet is
 	// still an unheld town and still says so.
 	//
@@ -1017,6 +1042,33 @@
 	// moment the sheet must not let go of it: the report is what ends the battle.
 	let fightReporting = false;
 
+	// --- The town a fight is staged on, alone on the map ---------------------------
+	// The arena is the one full view that is ABOUT a place: the roster, the badges, the
+	// leaderboard and the boosters are pages laid over the map, and a fight is an event on a
+	// town the map is still showing (which is why that sheet paints no page of its own). So
+	// while it is up, the map is the one town — brought to the middle of the canvas at the
+	// zoom it stands whole at, washed at 80% instead of the 20% a picked town reads the
+	// satellite through, and everything else covered in black with no border left anywhere
+	// (see `spotlight` in WorldMap, tierStyle and hiddenLineUrls).
+	//
+	// It is keyed off the fight and not off `$fullScreenModalOpen`: every other sheet leaves
+	// the map exactly as the reader left it, and blacking out the map under the roster would
+	// be covering the terrain that sheet is laid on for no reason.
+	//
+	// The town is the fight's own and never the open region: a battle resumed on the next
+	// visit puts the reader back in front of a fight without the map having opened anything
+	// (see resumeBattle), and it is that town the arena is about.
+	$: spotlitId = fightOpen ? fightLocationId : null;
+
+	// That town as the shape the map draws it with — the polygon the framing fits and the
+	// mask is cut around. Null until the geometry has landed, which leaves the map as it is
+	// rather than blacking it out around nothing.
+	$: spotlight =
+		spotlitId && municipalities
+			? (municipalities.features.find((feature) => String(feature.properties?.id) === spotlitId)
+					?.geometry ?? null)
+			: null;
+
 	// True while the day's challenge is being claimed off the server, so a double
 	// click can't fire two `start_battle` calls (the second of which the server
 	// would refuse anyway).
@@ -1153,6 +1205,11 @@
 	// find the municipalities under a region and frame or pin it.
 	$: fillIndex = buildFillIndex(regionTree);
 
+	// The outermost outline of the lot — the one line overlay the tier rule never hides
+	// (rank 0), and so the one that has to be named where every line is to go (see the
+	// spotlight below).
+	const territoryLines = '/data/geo/territoris.json';
+
 	// The line overlays that subdivide a region, each with its own tier rank. The
 	// territory outline (rank 0) is never hidden, so it isn't listed.
 	const lineTiers: [string, number][] = [
@@ -1191,8 +1248,16 @@
 	// Hide the stroke of every line overlay finer than that tier, so only the tier on
 	// screen (and everything coarser) keeps its borders — the finer divisions inside
 	// would just clutter the pinned regions.
+	//
+	// A spotlit town takes every line off the map instead, its own included (see `spotlitId`).
+	// The black already covers every border outside it, and the one border left inside it is
+	// the town's own — a white line drawn along the edge of the only shape there is, which is
+	// a second statement of what the black is already saying. What is left is the wash on
+	// nothing.
 	$: hiddenLineUrls = new Set(
-		lineTiers.filter(([, rank]) => rank > hiddenRank).map(([url]) => url)
+		spotlitId
+			? [territoryLines, ...lineTiers.map(([url]) => url)]
+			: lineTiers.filter(([, rank]) => rank > hiddenRank).map(([url]) => url)
 	);
 
 	// The frontier of the WHOLE forest at a given depth: every node reached at
@@ -1364,15 +1429,15 @@
 	// window. Clicking it loads that town's festa booster pack into the side panel and
 	// flips the panel to its Booster tab, so the pack replaces the tables.
 	//
-	// Printed from what the map already holds (the show each town flies — the baked
-	// assignment as overridden by whoever holds the town — and the authored show
+	// Printed from what the map already holds (the show each town flies — its seeded
+	// one as overridden by whoever holds the town — and the authored show
 	// collection) rather than from the panel's packs, which are a signed-in player's
 	// claimable set: a town de festa is de festa for a visitor too, and the box is what
 	// says so. A town the player has no claimable pack for is the one case a click has
 	// anything to answer for, and the panel already says it. A festa town whose polygon
 	// isn't on the map has no point to stand on and is skipped. Named deps
 	// (`windowFestes`, `todayFesteIds`, `showsById`, `showEntryById`, `regionGeometry`,
-	// `selected`) so the boxes reprint when any of them lands — `showsById` among them,
+	// `selected`, `$showGlyphs`) so the boxes reprint when any of them lands — `showsById` among them,
 	// so a town that changes hands re-covers its box with the conqueror's show without a
 	// reload, and the selection too, since which town is picked is what decides whether
 	// its box is drawn whole or as its disc.
@@ -1403,6 +1468,10 @@
 				coverUrl: entry ? showPosterUrlForSeed(entry, `${festa.name}|${year}`) : null,
 				logoUrl: entry ? showLogoUrl(entry) : null,
 				showId: show?.id ?? null,
+				// The mark the disc is stamped with, since a disc is this box with one mark on
+				// it instead of four. Drawn here rather than in the map, which has no reason to
+				// know what a show looks like.
+				iconSvg: forShow($showGlyphs, show?.id),
 				locationName: festa.name,
 				light: today.has(festa.id),
 				// The whole box on the picked town alone; every other town of the window is
@@ -1816,7 +1885,8 @@
 		statues: PinTeam,
 		challengeBar: MapChallenge | null,
 		sieges: ReadonlyMap<string, RegionSiege>,
-		occupied: ReadonlyMap<string, MunicipalityHolder>
+		occupied: ReadonlyMap<string, MunicipalityHolder>,
+		glyphs: ReadonlyMap<number, string>
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
@@ -1846,7 +1916,7 @@
 				// municipality's key is a municipality id, so the coarser tiers never match
 				// and are never asked.
 				holder: node.type === 'Municipality' ? pinHolder(node.key, occupied) : null,
-				iconSvg: iconMarkup(showIconName(node.show.id)),
+				iconSvg: forShow(glyphs, node.show.id),
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
 				subtitle: restoreCatalanArticle(node.name),
@@ -1902,13 +1972,14 @@
 		key: string | null,
 		nodes: RegionNode[],
 		sieges: ReadonlyMap<string, RegionSiege>,
-		occupied: ReadonlyMap<string, MunicipalityHolder>
+		occupied: ReadonlyMap<string, MunicipalityHolder>,
+		glyphs: ReadonlyMap<number, string>
 	): TownPlateCard | null {
 		if (!key) return null;
 		const node = findNode(nodes, key);
 		if (!node || node.type !== 'Municipality' || !node.show) return null;
 		return {
-			iconSvg: iconMarkup(showIconName(node.show.id)),
+			iconSvg: forShow(glyphs, node.show.id),
 			frameClasses: node.color ? pinColorClasses[node.color] : null,
 			title: node.show.name,
 			subtitle: restoreCatalanArticle(node.name),
@@ -1917,7 +1988,7 @@
 		};
 	}
 
-	$: fightPlate = buildFightPlate(fightLocationId, regionNodes, regionSieges, holders);
+	$: fightPlate = buildFightPlate(fightLocationId, regionNodes, regionSieges, holders, $showGlyphs);
 
 	// A pin's siege standing on its own: the counter this region carries, and nothing to
 	// press. Null where there is no counter to draw — a region with no towns under it, and
@@ -1946,7 +2017,8 @@
 		statues: PinTeam,
 		challengeBar: MapChallenge | null,
 		sieges: ReadonlyMap<string, RegionSiege>,
-		occupied: ReadonlyMap<string, MunicipalityHolder>
+		occupied: ReadonlyMap<string, MunicipalityHolder>,
+		glyphs: ReadonlyMap<number, string>
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
@@ -1959,7 +2031,8 @@
 					statues,
 					challengeBar,
 					sieges,
-					occupied
+					occupied,
+					glyphs
 				)
 			);
 		}
@@ -1975,7 +2048,8 @@
 		pinTeam,
 		townChallenge,
 		regionSieges,
-		holders
+		holders,
+		$showGlyphs
 	);
 
 	// The bounding box the map fits when a region is selected: the union of every
@@ -2147,6 +2221,7 @@
 			{focusBounds}
 			{zoomBounds}
 			{zoomStops}
+			{spotlight}
 			markersBlurred={$fullScreenModalOpen}
 			chromeInsets={mapChromeInsets}
 			bind:currentZoom
@@ -2208,6 +2283,14 @@
 						onZoom={zoomToTier}
 						classes="pointer-events-auto"
 					>
+						<!-- The head of the bar, before the path: lettering that climbs with the viewport,
+							from `lg` on a narrow one up to `6xl` on a wide one — the bar's own height
+							follows it, and the map is told (topChromeHeight is measured, not written down).
+							`leading-none` so the line takes the type's height and not a line box built for
+							a paragraph. -->
+						<span slot="start" class="text-lg leading-none sm:text-2xl md:text-4xl lg:text-6xl">
+							6xl
+						</span>
 						<!-- The far end of the bar: the way to look for a place, and past it the way to
 							everything that is not the map. Both belong at this end for the same reason — the
 							bar is the one row that is always up, so what a player reaches for however deep
@@ -2563,7 +2646,12 @@
 	roll was refused. Without those a spent allowance (or any other `claim_booster`
 	refusal) reads as a pack that opens onto nothing at all. -->
 <div class="hidden" aria-hidden="true">
-	<CharacterClaimPanel bind:packs={claimPacks} bind:claimError bind:boosters />
+	<CharacterClaimPanel
+		{seededShowById}
+		bind:packs={claimPacks}
+		bind:claimError
+		bind:boosters
+	/>
 </div>
 
 <!-- Challenge → the board's combat arena, on the same full-view sheet the roster, the
