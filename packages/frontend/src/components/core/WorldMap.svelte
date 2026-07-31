@@ -579,11 +579,19 @@
 			if (marker.iconSvg) tile.innerHTML = marker.iconSvg;
 		}
 
-		// One plate for everything the pin says: the tile at its left end, and to the right
-		// of it the place on top of the show it flies, a line each across the plate's width.
-		// The three separate chips this replaces each carried their own card, which put two
-		// rounded boxes and a bordered tile on a town where one mark belongs. The place is the
-		// pin's own name and takes the ink; the show is what it flies and is lettered under it.
+		// One plate for everything the pin says AND everything it offers: the tile, the place
+		// and the show on its head row, and under them — on the picked town — the siege
+		// standing and the one control that acts on it. The three separate chips this replaces
+		// each carried their own card, which put two rounded boxes and a bordered tile on a
+		// town where one mark belongs. The place is the pin's own name and takes the ink; the
+		// show is what it flies and is lettered under it.
+		//
+		// The siege is in here rather than in a card of its own at the foot of the column for
+		// the same reason: what a town is called, whose colour it flies and how far it has been
+		// taken are one reading about one place, and printing them on two surfaces made the bar
+		// look like a second mark about a second thing. It also settles the bar's width, which
+		// nothing else could — the plate is the only part of a pin with a width of its own (see
+		// classNamesFor), so a bar inside it is as wide as the name above it.
 		//
 		// The breadcrumb bar's surface — base-100 at four fifths — and not the flat black these
 		// were printed in: a pin's plate and the bar naming where the map is looking are the one
@@ -592,9 +600,13 @@
 		// letting the ground the pin stands on read faintly through the mark standing on it.
 		const plate = document.createElement('div');
 		plate.className =
-			'mt-1 flex max-w-[15rem] items-center gap-2 rounded-lg bg-base-100/80 p-1.5 text-white shadow-lg';
+			'mt-1 flex max-w-[15rem] flex-col gap-1.5 rounded-lg bg-base-100/80 p-1.5 text-white shadow-lg';
 
-		if (tile) plate.appendChild(tile);
+		// The head row: the tile at the left end, the two lines beside it.
+		const head = document.createElement('div');
+		head.className = 'flex items-center gap-2';
+
+		if (tile) head.appendChild(tile);
 
 		// `min-w-0` is what lets a line longer than the plate's own width truncate rather
 		// than push the plate wider: a flex item's floor is its content otherwise.
@@ -613,7 +625,24 @@
 		caption.className = 'truncate text-xs font-medium text-white/70';
 		lines.appendChild(caption);
 
-		plate.appendChild(lines);
+		head.appendChild(lines);
+		plate.appendChild(head);
+
+		// What can be done about the place, on the plate that names it: the siege standing and
+		// the one control that acts on it, under the head row. Mounted and tracked exactly as
+		// the team is — it runs a clock of its own when it is counting down.
+		if (marker.challenge) {
+			const bar = document.createElement('div');
+			// The controls are the pin's, not the map's: without this a click on the button
+			// would go on up to the marker (re-opening the region, re-framing the view under
+			// the reader) and a drag begun on it would pan the map. Leaflet's own way of
+			// saying "this DOM is a widget, not terrain".
+			Leaf!.DomEvent.disableClickPropagation(bar);
+			Leaf!.DomEvent.disableScrollPropagation(bar);
+			pinMounts.push(mount(TownChallenge, { target: bar, props: { ...marker.challenge } }));
+			plate.appendChild(bar);
+		}
+
 		wrap.appendChild(plate);
 
 		// The side sitting on the region, where there is one: the very statues the roster
@@ -651,10 +680,10 @@
 
 		// What the town is offering, where the booster window has anything for this place and
 		// the tier on screen marks towns at all (see boxForMarker) — the box on the town the
-		// reader picked, the disc on every other. Either way it stands INSIDE the pin, as one
-		// more block of the column, above whatever the pin ends with: a box is what the town
-		// is offering and the siege bar is what may be done about the town, and the offer is
-		// read before the demand.
+		// reader picked, the disc on every other. Either way it stands INSIDE the pin, as the
+		// last block of the column: the plate says what the place is and what may be done
+		// about it, the side under it is who is holding it, and the offer waiting there is
+		// what the column ends on.
 		//
 		// In the pin, and not hung on the point by the box layer. The layer hangs a mark on a
 		// point by its own centre, which is where the pin now stands too (see classNamesFor),
@@ -677,24 +706,6 @@
 			const action = boxAction(boosterBox, kind);
 			if (action) holder.addEventListener('click', () => action());
 			wrap.appendChild(holder);
-		}
-
-		// What can be done about the region, right under the side holding it: the siege
-		// standing and the one control that acts on it. Mounted and tracked exactly as the
-		// team is — it runs a clock of its own when it is counting down — and last in the
-		// pin, so the mark reads down as the place, who is on it, what it is offering, and
-		// what to do about it.
-		if (marker.challenge) {
-			const bar = document.createElement('div');
-			bar.className = 'mt-1';
-			// The controls are the pin's, not the map's: without this a click on the button
-			// would go on up to the marker (re-opening the region, re-framing the view under
-			// the reader) and a drag begun on it would pan the map. Leaflet's own way of
-			// saying "this DOM is a widget, not terrain".
-			Leaf!.DomEvent.disableClickPropagation(bar);
-			Leaf!.DomEvent.disableScrollPropagation(bar);
-			pinMounts.push(mount(TownChallenge, { target: bar, props: { ...marker.challenge } }));
-			wrap.appendChild(bar);
 		}
 
 		return wrap;

@@ -1,16 +1,19 @@
 <script lang="ts">
 	import classNames from 'classnames';
+	import { _ } from 'svelte-i18n';
 	import Countdown from '$components/core/Countdown.svelte';
 	import type { MapChallenge } from '$types/map.type';
 
-	// The block a pin carries at its foot, under the statues holding the town: how far this
-	// player has got towards taking the place, and the one control that acts on it, stacked
-	// — the standing on its own row, the control under it, so the reading and the doing are
-	// not competing for one line. It
-	// stands on the map rather than in a panel, so it carries the same chrome the pin's own
-	// plate does — enough of a surface to be read over satellite imagery, and little enough
-	// to see the ground through — the picture above it needing no such thing, a character
-	// being their own silhouette while text is not.
+	// The lower half of a pin's plate, under the line naming the place: how far this player
+	// has got towards taking it, and the one control that acts on it, stacked — the standing
+	// on its own row, the control under it, so the reading and the doing are not competing
+	// for one line.
+	//
+	// It carries no surface of its own. It used to stand apart at the foot of the pin and so
+	// had to letter itself onto something readable over satellite imagery; on the plate it is
+	// already on that surface, and giving it a second one would have printed a card inside a
+	// card and read as a second mark about a second thing. Its width is the plate's for the
+	// same reason.
 	//
 	// It decides nothing: which of the button and the countdown it draws is handed to
 	// it, since the rules behind that (a town cooling down after a fight, one battle at
@@ -30,7 +33,7 @@
 
 <div
 	class={classNames(
-		'flex flex-col items-center justify-center gap-2 rounded-lg bg-base-100/80 px-2 py-1.5 text-white shadow-lg',
+		'flex flex-col items-center justify-center gap-1.5',
 		classes
 	)}
 >
@@ -48,7 +51,7 @@
 		element keeps the drawing and a span over it keeps the lettering, both in the same
 		box. White with a shadow under it, since the type crosses the filled part and the
 		empty part and has to read on both. -->
-	<div class="relative w-full" title="Your wins banked / wins needed to take the town">
+	<div class="relative w-full" title={$_('map.challenge.siege')}>
 		<progress
 			class="progress progress-primary block h-6 w-full"
 			value={siege.wins}
@@ -74,7 +77,7 @@
 	{:else if unlocksAt}
 		<Countdown
 			until={unlocksAt}
-			title="Just fought — this town opens up again when the countdown runs out"
+			title={$_('map.challenge.cooldown')}
 			classes="badge badge-ghost badge-sm flex-none font-semibold"
 			on:elapsed={() => onUnlock?.()}
 		/>

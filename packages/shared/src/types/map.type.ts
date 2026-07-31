@@ -107,9 +107,11 @@ export interface MapMarker {
 		showId: number | null;
 	}[];
 	/**
-	 * The siege standing and the challenge control, drawn at the foot of the pin under
-	 * the team. Absent leaves the pin a picture with nothing to act on — which is every
-	 * pin but the one the reader has picked, and that one too once they hold the place.
+	 * The siege standing and the challenge control, drawn on the pin's own plate under
+	 * the lines naming the place and its show — one mark saying what the town is and what
+	 * may be done about it, rather than a second card at the foot of the column. Absent
+	 * leaves the pin a picture with nothing to act on — which is every pin but the one
+	 * the reader has picked, and that one too once they hold the place.
 	 */
 	challenge?: MapChallenge | null;
 	/**
