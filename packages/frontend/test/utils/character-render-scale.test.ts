@@ -75,12 +75,31 @@ const INUYASHA_CAST = [
 	'seshomaru'
 ];
 
-// Everyone who carries a correction at all. The InuYasha cast has one because their
-// whole sheet is drawn small; Frieza has one for himself — his sprite is 118 px against
-// Trunks' 136, so his pixels alone put him a head under a character he is meant to stand
-// level with. Anything outside this list is drawn exactly as its pixels are, which the
-// last check in this file holds.
-const CORRECTED = [...INUYASHA_CAST, 'frieza'];
+// The Bo-bobo cast, drawn small for the same reason and given the same 1.4. Their
+// sheets are smaller still than the InuYasha ones — the tallest of them stands under
+// Chopper, who is the roster's smallest character — so the correction lifts them
+// towards the rest without pretending to stand them level with it, and there is no
+// clearance to check them against the way there is for InuYasha.
+const BOBOBO_CAST = [
+	'beauty',
+	'bobobo',
+	'captain-battleship',
+	'denbo',
+	'dengaku-man',
+	'halekulani',
+	'hatenko',
+	'jelly-jiggler',
+	'service-man',
+	'softon',
+	'torpedo-girl'
+];
+
+// Everyone who carries a correction at all. The InuYasha and Bo-bobo casts have one
+// because their whole sheet is drawn small; Frieza has one for himself — his sprite is
+// 118 px against Trunks' 136, so his pixels alone put him a head under a character he is
+// meant to stand level with. Anything outside this list is drawn exactly as its pixels
+// are, which the last check in this file holds.
+const CORRECTED = [...INUYASHA_CAST, ...BOBOBO_CAST, 'frieza'];
 
 describe('characterIdFromFramesPath', () => {
 	it('reads the character id out of a served frames folder', () => {
@@ -140,6 +159,21 @@ describe('authored render scales', () => {
 		for (const id of INUYASHA_CAST) {
 			expect(definitionOf(id).renderScale, id).toBeGreaterThan(1);
 		}
+	});
+
+	it('draws up every Bo-bobo character', () => {
+		for (const id of BOBOBO_CAST) {
+			expect(definitionOf(id).renderScale, id).toBeGreaterThan(1);
+		}
+	});
+
+	it('corrects the two small casts by the same amount', () => {
+		// One complaint, one figure: whatever the InuYasha cast is drawn up by, the Bo-bobo
+		// cast is drawn up by too, so neither can be retuned without the other being noticed.
+		const scales = new Set(
+			[...INUYASHA_CAST, ...BOBOBO_CAST].map((id) => readRenderScale(definitionOf(id)))
+		);
+		expect([...scales]).toEqual([1.4]);
 	});
 
 	it('stands the InuYasha cast well clear of the smallest characters', () => {
