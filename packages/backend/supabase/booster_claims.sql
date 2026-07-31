@@ -23,6 +23,8 @@
 -- live in the database, not the client: `character_spawns` has no insert policy
 -- (see character_spawns.sql), so the ONLY way to create spawns is the
 -- `claim_booster` security-definer RPC here, which applies both rules atomically.
+-- The same is true of `player_avatars` (see player_avatars.sql): a pack grants one
+-- avatar alongside its five cards, and that grant is the only way an avatar exists.
 --
 -- @3xl/backend provisions all of this automatically alongside the other tables
 -- (see ../src/routes/show-templates.ts), so you normally do NOT need to run this
@@ -50,8 +52,14 @@ alter table public.booster_claims enable row level security;
 -- booster cap for one Europe/Madrid date. Written only by the admin /api/users
 -- route (see ../src/routes/users.ts); claim_booster / boosters_status add the sum
 -- of today's grants on top of the level cap. Rows are only ever summed for
--- today's date, so a grant lapses at Catalan midnight. No RLS/select policy — the
--- anon key never reads it; the security-definer RPCs below do.
+-- today's date, so a grant lapses at Catalan midnight. RLS on and no policy at
+-- all, which is how a table is made unreachable from the anon key: leaving RLS
+-- *off* would not have hidden it but published it, with every verb, since
+-- Supabase's default privileges grant anon and authenticated everything on a
+-- table in an exposed schema. This is the one ledger that adds straight to a
+-- player's daily cap, so a row a browser could write itself is an unbounded
+-- supply of packs. The security-definer RPCs below read and write it past RLS;
+-- the admin route does so as the owning role, which RLS does not apply to.
 create table if not exists public.booster_grants (
 	id uuid primary key default gen_random_uuid(),
 	user_id uuid not null references auth.users (id) on delete cascade,
@@ -62,6 +70,8 @@ create table if not exists public.booster_grants (
 
 create index if not exists booster_grants_user_day_idx
 	on public.booster_grants (user_id, grant_date);
+
+alter table public.booster_grants enable row level security;
 
 drop policy if exists booster_claims_select_own on public.booster_claims;
 create policy booster_claims_select_own on public.booster_claims
@@ -96,10 +106,48 @@ returns int language sql immutable set search_path = public as $$
 	end;
 $$;
 
+-- Weighted pick out of a pool: `p_ids` with `p_weights` summing to `p_total`, one
+-- id back, the cumulative walk. Its own function because claim_booster draws from
+-- the same pool twice — once per card, and once for the avatar — and two copies of
+-- a draw are two things to keep in step.
+create or replace function public.pick_weighted(
+	p_ids text[],
+	p_weights numeric[],
+	p_total numeric
+)
+returns text
+language plpgsql
+volatile
+set search_path = public
+as $$
+declare
+	v_roll numeric := random() * p_total;
+	j int;
+begin
+	for j in 1..array_length(p_ids, 1) loop
+		v_roll := v_roll - p_weights[j];
+		if v_roll < 0 then
+			return p_ids[j];
+		end if;
+	end loop;
+	-- Floating-point slack at the very top of the range: the last id is the answer.
+	return p_ids[array_length(p_ids, 1)];
+end;
+$$;
+
 -- Open a booster pack for the caller, enforced entirely server-side (see header).
 -- Rolls 5 cards from the show's assigned, template-backed roster — weighted by
 -- rarity (each higher tier 2x rarer), each card taking one of the three colours
--- its box holds — and returns the inserted spawns.
+-- its box holds — plus ONE avatar (see player_avatars.sql), drawn from those same
+-- two possibilities: a character on this show, in one of this box's colours. It
+-- returns both.
+--
+-- Both halves come back in one jsonb object rather than as a row set, because they
+-- are two shapes: `{ "spawns": [...], "avatar": {...} }`. (This is why the function
+-- is dropped and recreated below — Postgres will not replace a function's return
+-- type in place.) An avatar the player already holds is not dealt twice: the insert
+-- hands the held row back, so the collection never carries the same portrait twice
+-- and the pack still shows what it gave.
 --
 -- Which box that is, this decides for itself, from the same `festivities` rows the
 -- window check above reads: a town celebrating TODAY deals white boxes, which hold
@@ -116,8 +164,10 @@ $$;
 -- A per-user advisory lock serialises
 -- concurrent opens so the daily limit can't be raced. security definer: it
 -- inserts despite character_spawns having no client insert policy.
+drop function if exists public.claim_booster(bigint, text);
+
 create or replace function public.claim_booster(p_show_id bigint, p_location_id text)
-returns setof public.character_spawns
+returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
 	v_uid uuid := auth.uid();
@@ -136,14 +186,14 @@ declare
 	v_rarities int[];
 	v_weights numeric[];
 	v_total numeric;
-	v_roll numeric;
 	v_pick text;
 	v_color text;
 	v_box text;
 	v_colors text[];
 	v_row public.character_spawns%rowtype;
+	v_avatar public.player_avatars%rowtype;
+	v_spawns jsonb := '[]'::jsonb;
 	i int;
-	j int;
 begin
 	if v_uid is null then
 		raise exception 'You must be signed in to open a booster.';
@@ -219,27 +269,31 @@ begin
 		values (v_uid, p_show_id, p_location_id);
 
 	for i in 1..v_size loop
-		-- Weighted-by-rarity character pick (cumulative).
-		v_roll := random() * v_total;
-		v_pick := v_ids[array_length(v_ids, 1)];
-		for j in 1..array_length(v_ids, 1) loop
-			v_roll := v_roll - v_weights[j];
-			if v_roll < 0 then
-				v_pick := v_ids[j];
-				exit;
-			end if;
-		end loop;
-
-		-- Colour: one of the box's three, each equally likely.
+		-- Weighted-by-rarity character pick, then a colour: one of the box's three,
+		-- each equally likely.
+		v_pick := public.pick_weighted(v_ids, v_weights, v_total);
 		v_color := v_colors[1 + floor(random() * array_length(v_colors, 1))];
 
 		insert into public.character_spawns (user_id, character_id, show_id, location_id, color, box)
 			values (v_uid, v_pick, p_show_id, p_location_id, v_color, v_box)
 			returning * into v_row;
-		return next v_row;
+		v_spawns := v_spawns || to_jsonb(v_row);
 	end loop;
 
-	return;
+	-- The pack's avatar: one portrait, drawn exactly as a card is — the same
+	-- rarity-weighted pool, the same three colours — because what a box can deal is
+	-- what a box can deal, whichever kind of thing comes out of it. A pair the player
+	-- already holds is not a second item: the conflict clause touches nothing and
+	-- hands back the row they hold, so the pack still has an avatar to show.
+	v_pick := public.pick_weighted(v_ids, v_weights, v_total);
+	v_color := v_colors[1 + floor(random() * array_length(v_colors, 1))];
+	insert into public.player_avatars (user_id, character_id, color, show_id, location_id)
+		values (v_uid, v_pick, v_color, p_show_id, p_location_id)
+		on conflict (user_id, character_id, color) do update
+			set granted_at = player_avatars.granted_at
+		returning * into v_avatar;
+
+	return jsonb_build_object('spawns', v_spawns, 'avatar', to_jsonb(v_avatar));
 end;
 $$;
 

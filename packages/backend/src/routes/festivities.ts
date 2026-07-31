@@ -61,7 +61,23 @@ function ensureTables(): Promise<void> {
 					unique (location_id, date)
 				);
 				create index if not exists festivities_date_idx on festivities (date);
-				create index if not exists festivities_location_idx on festivities (location_id)`
+				create index if not exists festivities_location_idx on festivities (location_id);
+				-- The calendar is read by everyone and written by the admin sync alone.
+				-- RLS has to be on for the second half of that to be true: without it
+				-- Supabase's default privileges hand the anon key every verb, and a town's
+				-- festa major is not decorative -- claim_booster asks this table whether
+				-- today is p_location_id's festa and deals the white box if it is, so a
+				-- player who could insert a row here would declare a holiday over their
+				-- own town and pull the rare box on every claim. The sync writes past
+				-- these policies because the backend connects as the owning role.
+				alter table festa_locations enable row level security;
+				drop policy if exists festa_locations_select_all on festa_locations;
+				create policy festa_locations_select_all on festa_locations
+					for select using (true);
+				alter table festivities enable row level security;
+				drop policy if exists festivities_select_all on festivities;
+				create policy festivities_select_all on festivities
+					for select using (true)`
 			)
 			.then(() => undefined)
 			.catch((error: unknown) => {

@@ -94,6 +94,26 @@ export function ensureTables(): Promise<void> {
 					character_id text not null references character_templates (id) on delete cascade,
 					primary key (show_id, character_id)
 				);
+				-- The three reference tables above are world-readable and client-writable
+				-- by nobody. A table in an exposed schema with RLS *off* is not a private
+				-- table: Supabase's default privileges grant anon and authenticated every
+				-- verb on it, so RLS being off is what would let any browser rewrite the
+				-- draw pool -- retier a character, or assign one to a show it is not in --
+				-- and claim_booster reads exactly these rows to build the pool it rolls
+				-- from. The admin sync keeps writing because the backend connects as the
+				-- owning role, and an owner is not subject to RLS.
+				alter table character_templates enable row level security;
+				drop policy if exists character_templates_select_all on character_templates;
+				create policy character_templates_select_all on character_templates
+					for select using (true);
+				alter table show_templates enable row level security;
+				drop policy if exists show_templates_select_all on show_templates;
+				create policy show_templates_select_all on show_templates
+					for select using (true);
+				alter table show_characters enable row level security;
+				drop policy if exists show_characters_select_all on show_characters;
+				create policy show_characters_select_all on show_characters
+					for select using (true);
 				create table if not exists character_spawns (
 						id uuid primary key default gen_random_uuid(),
 						user_id uuid not null references auth.users (id) on delete cascade,
@@ -476,8 +496,13 @@ export function ensureTables(): Promise<void> {
 						-- player's booster cap for one Europe/Madrid date, written only by the
 						-- admin /api/users route (see ./users.ts). claim_booster / boosters_status
 						-- add today's grants on top of the level cap; rows lapse at Catalan
-						-- midnight (they are only ever summed for today's date). No RLS/select
-						-- policy — the anon key never reads this; the security-definer RPCs do.
+						-- midnight (they are only ever summed for today's date). RLS on and no
+						-- policy at all, which is how a table is made unreachable from the anon
+						-- key: leaving RLS *off* would not have hidden it but published it,
+						-- with every verb, and this is the one ledger that adds straight to a
+						-- player's daily cap -- a row a browser could write itself is an
+						-- unbounded supply of packs. The security-definer RPCs read and write
+						-- it past RLS; the admin route does so as the owning role.
 						create table if not exists booster_grants (
 								id uuid primary key default gen_random_uuid(),
 								user_id uuid not null references auth.users (id) on delete cascade,
@@ -487,6 +512,7 @@ export function ensureTables(): Promise<void> {
 							);
 						create index if not exists booster_grants_user_day_idx
 							on booster_grants (user_id, grant_date);
+						alter table booster_grants enable row level security;
 					alter table booster_claims enable row level security;
 					drop policy if exists booster_claims_select_own on booster_claims;
 					create policy booster_claims_select_own on booster_claims

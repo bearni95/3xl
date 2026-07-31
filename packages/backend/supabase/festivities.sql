@@ -35,3 +35,21 @@ create table if not exists public.festivities (
 
 create index if not exists festivities_date_idx on public.festivities (date);
 create index if not exists festivities_location_idx on public.festivities (location_id);
+
+-- Read by everyone, written by the admin sync alone. RLS has to be on for the
+-- second half of that to be true: without it Supabase's default privileges hand
+-- the anon key every verb on both tables. A town's festa major is not
+-- decorative -- claim_booster asks `festivities` whether today is the claimed
+-- town's festa and deals the white (rare) box if it is -- so a player able to
+-- insert here would declare a holiday over their own town and pull the rare box
+-- every time. The sync keeps writing because the backend connects as the owning
+-- role, and an owner is not subject to RLS.
+alter table public.festa_locations enable row level security;
+drop policy if exists festa_locations_select_all on public.festa_locations;
+create policy festa_locations_select_all on public.festa_locations
+	for select using (true);
+
+alter table public.festivities enable row level security;
+drop policy if exists festivities_select_all on public.festivities;
+create policy festivities_select_all on public.festivities
+	for select using (true);

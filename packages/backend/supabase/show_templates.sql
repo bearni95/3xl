@@ -25,3 +25,20 @@ create table if not exists public.show_characters (
 	character_id text not null references public.character_templates (id) on delete cascade,
 	primary key (show_id, character_id)
 );
+
+-- Both world-readable, client-writable by nobody. RLS off would not have made
+-- these private but public with every verb -- Supabase's default privileges
+-- grant anon and authenticated everything on a table in an exposed schema --
+-- and the join below IS the booster draw pool: claim_booster rolls over the
+-- characters assigned to the claimed show, so a client able to insert here
+-- would choose what it pulls. The admin sync writes as the owning role, which
+-- RLS does not apply to.
+alter table public.show_templates enable row level security;
+drop policy if exists show_templates_select_all on public.show_templates;
+create policy show_templates_select_all on public.show_templates
+	for select using (true);
+
+alter table public.show_characters enable row level security;
+drop policy if exists show_characters_select_all on public.show_characters;
+create policy show_characters_select_all on public.show_characters
+	for select using (true);

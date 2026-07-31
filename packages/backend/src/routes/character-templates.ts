@@ -41,7 +41,15 @@ function ensureTable(): Promise<void> {
 				-- so rows that predate the column (and every freshly synced row) get the
 				-- common tier automatically; the local→remote sync never writes it.
 				alter table character_templates
-					add column if not exists rarity integer not null default 0`
+					add column if not exists rarity integer not null default 0;
+				-- Same guard as the other provisioner of this table (see
+				-- show-templates.ts): world-readable, and writable by no client. The
+				-- rarity column above is a draw weight claim_booster rolls against, so
+				-- an anon key that could update it could retier itself a legendary.
+				alter table character_templates enable row level security;
+				drop policy if exists character_templates_select_all on character_templates;
+				create policy character_templates_select_all on character_templates
+					for select using (true)`
 			)
 			.then(() => undefined)
 			.catch((error: unknown) => {
