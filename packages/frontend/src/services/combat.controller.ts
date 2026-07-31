@@ -781,16 +781,9 @@ export class CombatController {
 		// Out to the middle together — neither is walked onto the other, because neither
 		// of them got there first — and then both strike at the one moment.
 		await this.board?.meleeApproach(one.shooter.id, two.shooter.id);
-		// One word, over the ground they meet on, at the moment they meet on it.
-		//
-		// A clash is a single event and it is nobody's: two blows arrive together and cancel,
-		// and neither fighter did it. Said over each of their heads it was two announcements
-		// of one thing, each of them reading as that fighter's own doing — and said before
-		// the approach, it announced the collision while they were still walking towards each
-		// other. So it goes where the collision is, on the white column their lane is played
-		// over, as the blows land.
-		const lane = one.shooter.cell?.r ?? two.shooter.cell?.r;
-		if (lane !== undefined) this.board?.showCellCallout({ q: WON_COLUMN, r: lane }, 'CLASH');
+		// Nothing is said over it. The two of them walking out to the same spot and striking
+		// together, with neither going down afterwards, is a collision already told in full;
+		// a word printed over the ground only lettered what the picture had just shown.
 		await Promise.all([
 			this.board?.playMove(one.shooter.id, this.strikeMove(one.shooter)),
 			this.board?.playMove(two.shooter.id, this.strikeMove(two.shooter))
@@ -806,10 +799,10 @@ export class CombatController {
 	/**
 	 * One attack, played out on its own, in the order the thing itself happens: the fighter
 	 * opposite braces if that is what it chose, the attacker walks out of its cell up to it,
-	 * strikes it where it stands, and what the blow amounted to is said before the attacker
-	 * walks back and the next attack is thrown. A target already struck earlier in the
-	 * volley takes this one too — it just changes nothing, because it was already going
-	 * down.
+	 * strikes it where it stands, and what the blow amounted to is shown — the brace holding,
+	 * or the slash and the fall — before the attacker walks back and the next attack is
+	 * thrown. A target already struck earlier in the volley takes this one too — it just
+	 * changes nothing, because it was already going down.
 	 *
 	 * A blow that lands settles the lane *here*, before the next attack is thrown: the
 	 * two of them walk their result out where they are standing (see {@link settleLane}),
@@ -842,9 +835,9 @@ export class CombatController {
 		//
 		// A guard is a guard whoever paid for it. The free one blue owes is the same defence
 		// as the ordered one — it turns this very blow aside, at this very moment — so it is
-		// shown as one: the fighter braces, and the only difference is which word goes over
-		// its head afterwards. Standing still through a shot it turned aside was the one
-		// defence in this fight that was never drawn, which read as a bullet simply missing.
+		// shown as one: the fighter braces, and nothing on the board tells the two apart,
+		// only the log. Standing still through a shot it turned aside was the one defence in
+		// this fight that was never drawn, which read as a bullet simply missing.
 		//
 		// Both are settled before the blow is thrown, so both go up before it: whether the
 		// gift answers is decided by what the fighter was given and what it is still owed,
@@ -863,9 +856,9 @@ export class CombatController {
 		if (target.down) {
 			this.log.push(`${from} — ${target.name} was already falling.`);
 		} else if (covering) {
-			// The brace is already up; this is what it amounted to.
+			// The brace is already up, and it is the whole of what the board says: a fighter
+			// stood in its guard with the blow coming off it is the block, drawn.
 			this.log.push(`${from} at ${target.name}, who blocked it.`);
-			this.board?.showCallout(target.id, 'BLOCK', target.color);
 		} else if (this.passiveReady(target, 'defend')) {
 			// Blue's free guard. It is only had on a turn the fighter wasn't covering
 			// anyway (the branch above), and only spent on a shot it actually turns
@@ -873,13 +866,13 @@ export class CombatController {
 			// same reason an ordered one is: it went up when this blow was thrown.
 			this.spend(target, 'defend', true);
 			this.log.push(`${from} at ${target.name} — turned aside by its free guard.`);
-			this.board?.showCallout(target.id, 'GUARD', target.color);
 		} else {
 			target.down = true;
 			this.log.push(`${from} — ${target.name} is down.`);
-			// The slash is drawn in the colour of whoever's blow got through.
+			// The slash is drawn in the colour of whoever's blow got through, and is all that
+			// is said about it: the cut, the fighter reeling and then falling out of the lane
+			// are the hit — a word over the head of somebody visibly going down added nothing.
 			this.board?.showSlash(target.id, shooter.color);
-			this.board?.showCallout(target.id, 'HIT!', shooter.color);
 			await this.board?.playHurt(target.id);
 			// The blow decided the lane, so the lane is walked out now — and the attacker
 			// stays where that leaves it rather than going home to a cell it has just won
@@ -964,15 +957,17 @@ export class CombatController {
 	 * its head said the first of those in words that were gone by the next turn, over a
 	 * fighter that was going to go on burning either way.
 	 *
-	 * Which is also why nothing announces a guard. A callout over a covering fighter's head
-	 * gave the whole thing away at the reveal, before any of the shooting: the lane's own
-	 * rival is deciding nothing at that point, but the *player* reads it, and a turn where
-	 * the answer is on screen before the question is played out is a turn already over.
-	 * What a guard did is said when it does it — `BLOCK`, on the blow it turned aside.
+	 * Which is also why nothing announces a guard — and nothing announces anything else
+	 * either. **No word is printed over a fighter anywhere in this fight.** A callout at the
+	 * reveal gave the whole turn away before any of the shooting: the lane's own rival is
+	 * deciding nothing at that point, but the *player* reads it, and a turn where the answer
+	 * is on screen before the question is played out is a turn already over. And a callout
+	 * after the fact only lettered a picture that had just been drawn — a brace the blow came
+	 * off, two blows meeting in the middle of a lane, a fighter cut and falling. The board
+	 * shows what happened; the log is where it is put into words.
 	 *
-	 * Nothing is cleared here: the callouts of the turn just played, and any guard held
-	 * through the rest of it, are taken down when the next turn is handed over (see
-	 * {@link finishTurn}).
+	 * Nothing is cleared here: any guard held through the rest of the turn is taken down when
+	 * the next one is handed over (see {@link finishTurn}).
 	 */
 	private showOrders(acting: Fighter[]): void {
 		for (const fighter of acting) {
@@ -1058,13 +1053,10 @@ export class CombatController {
 		this.lapsePassives();
 
 		this.turn += 1;
-		// What the last turn said — BLOCK, CLASH, HIT! — belonged to that turn. The orders
-		// are being asked for again, so it comes off the board with them: the words never
-		// outlive the turn whose pickers are locked. Any guard braced during it, and the ring
-		// around it, come down for the same reason and at the same moment: a fighter covers
-		// for the turn it was told to cover in, and a new turn is asking it what to do next —
-		// so standing there braced into it would be showing an order nobody has given yet.
-		this.board?.clearCallouts();
+		// Any guard braced during the turn just played, and the ring around it, come down as
+		// the pickers are handed back: a fighter covers for the turn it was told to cover in,
+		// and a new turn is asking it what to do next — so standing there braced into it would
+		// be showing an order nobody has given yet.
 		this.board?.clearHolds();
 		for (const fighter of this.fighters) fighter.action = null;
 		this.planRivals();

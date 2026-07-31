@@ -118,10 +118,8 @@ function fakeBoard(log: AuraLog) {
 		},
 		clearAura: (id: string) => log.doused.push(id),
 		clearAuras: () => {},
-		clearCallouts: () => {},
-		showCallout: () => {},
-		// The one callout that belongs to a cell rather than to a fighter: a lane's clash.
-		showCellCallout: () => {},
+		// The slash over a fighter a blow got through — and the whole of what is said about
+		// it, since nothing in this fight is put into words on the board.
 		showSlash: () => {},
 		playMove: done,
 		// The guard a braced fighter is stood in for the turn, and the release of every

@@ -3,7 +3,6 @@ import { get } from 'svelte/store';
 import {
 	CombatController,
 	RIVAL_CELLS,
-	WON_COLUMN,
 	type CombatAction,
 	type CombatState,
 	type FighterSeed,
@@ -11,7 +10,6 @@ import {
 } from '$services/combat.controller';
 import type { CombatColor } from '$types/character-definition.type';
 import type { BattleBoardSnapshot } from '$types/battle.type';
-import type { Cell } from '$utils/mugen/grid';
 import type { MugenBoard } from '$utils/mugen/mugen-board';
 
 /** Three a side, in line-up order: the first three colours are the rivals', the
@@ -366,12 +364,12 @@ describe('CombatController — what the board is left showing', () => {
 	// One of these pins the rivals' weighted picks; nothing after it should inherit that.
 	afterEach(() => vi.restoreAllMocks());
 
-	it('takes the turn’s callouts down as the next turn is handed over', async () => {
+	it('prints no word over the board, whatever the turn amounted to', async () => {
 		const { calls, board } = recordingBoard();
 		// Red rivals against blue players: each rival banks a charge on turn one and fires
 		// the shot its colour owes it out of that charge, and each blue fighter's own free
-		// guard turns the bullet aside — which is a thing the board says a word about
-		// (`GUARD`), where a turn of quiet loading is not.
+		// guard turns the bullet aside. A guard doing its work, and a shot that gets through
+		// one, are the two loudest things this fight has — and neither is lettered.
 		const controller = new CombatController(
 			seeds(['red', 'red', 'red', 'blue', 'blue', 'blue'])
 		);
@@ -383,14 +381,13 @@ describe('CombatController — what the board is left showing', () => {
 			await new Promise((resolve) => setTimeout(resolve, 20));
 		}
 
-		// The words went up while the turn played out...
-		expect(calls.some((call) => call.startsWith('showCallout'))).toBe(true);
-		// ...and came down before the pickers were handed back, so nothing said about
-		// the turn just played is still on the board while the next one is being given.
+		// The turn played out in pictures alone: the brace, the walk, the blow, the slash.
 		expect(get(controller).phase).toBe('planning');
-		expect(calls.lastIndexOf('clearCallouts')).toBeGreaterThan(
-			calls.findLastIndex((call) => call.startsWith('showCallout'))
-		);
+		expect(calls.some((call) => call.startsWith('showCallout'))).toBe(false);
+		expect(calls.some((call) => call.startsWith('showCellCallout'))).toBe(false);
+		// And it did play out — a board that was never driven would pass the above for the
+		// wrong reason.
+		expect(calls.some((call) => call.startsWith('closeIn'))).toBe(true);
 	});
 
 	it('braces a covering fighter before the blow, not after it', async () => {
@@ -425,9 +422,10 @@ describe('CombatController — what the board is left showing', () => {
 		for (const fighter of covering) tap(controller, fighter, 'defend');
 		await playTurn(controller);
 
-		// Nothing announced the guard. A word over a covering fighter's head at the reveal
-		// answers the turn before it is played out.
-		expect(calls.some((call) => call.includes('GUARD'))).toBe(false);
+		// Nothing announced the guard, before the blow or after it: a word at the reveal
+		// answers the turn before it is played out, and one afterwards only letters a brace
+		// the blow has visibly come off.
+		expect(calls.some((call) => call.startsWith('showCallout'))).toBe(false);
 
 		// The guard is up before the attacker has switched into its attack pose — before it
 		// has even set off — so the blow is thrown at a fighter already braced. Played the
@@ -446,8 +444,6 @@ describe('CombatController — what the board is left showing', () => {
 			// hold carries the fighter's own colour, which is what rings it.
 			expect(calls).toContain(`holdMove:${fighter.id}:${fighter.color}`);
 			expect(calls).not.toContain(`playMove:${fighter.id}`);
-			// It blocked, and that is what is said about it.
-			expect(calls).toContain(`showCallout:${fighter.id}:BLOCK:${fighter.color}`);
 		}
 
 		// And let out of it as the next turn's orders are asked for, so nobody is left
@@ -458,7 +454,7 @@ describe('CombatController — what the board is left showing', () => {
 		);
 	});
 
-	it('says a clash once, over the ground it happens on, as the blows land', async () => {
+	it('plays a clash as the meeting itself, with nothing said over it', async () => {
 		// The rivals' choices are weighted picks, so they are pinned: with random at zero a
 		// rival holding a charge and facing somebody who holds one fires. Both lines fire
 		// across every lane, which is three clashes.
@@ -488,27 +484,21 @@ describe('CombatController — what the board is left showing', () => {
 		calls.length = 0;
 		await playTurn(controller);
 
-		// One callout per lane, and it is the lane's own ground it is drawn over — not a word
-		// apiece over two fighters, each claiming a collision neither of them owns.
-		const clashes = calls.filter((call) => call.method === 'showCellCallout');
-		expect(clashes).toHaveLength(RIVAL_CELLS.length);
-		expect(clashes.map((clash) => clash.args[1])).toEqual(clashes.map(() => 'CLASH'));
-		expect(clashes.map((clash) => (clash.args[0] as Cell).q)).toEqual(clashes.map(() => WON_COLUMN));
-		// One per lane, each on its own row.
-		expect(new Set(clashes.map((clash) => (clash.args[0] as Cell).r)).size).toBe(clashes.length);
-		// And nothing said CLASH over a fighter.
-		expect(calls.some((call) => call.method === 'showCallout' && call.args[1] === 'CLASH')).toBe(
-			false
-		);
+		// Nothing is lettered — neither over the ground the pair meet on nor over either of
+		// their heads. The picture is the whole account: they walk out together and strike
+		// together, and nobody goes down.
+		expect(calls.some((call) => call.method === 'showCellCallout')).toBe(false);
+		expect(calls.some((call) => call.method === 'showCallout')).toBe(false);
 
-		// Said as the blows land: after the pair have walked out to meet each other, and not
-		// before they set off — the word is the collision, so it cannot precede the meeting.
-		const met = calls.findIndex((call) => call.method === 'meleeApproach');
-		const said = calls.findIndex((call) => call.method === 'showCellCallout');
-		const struck = calls.findIndex((call) => call.method === 'playMove');
-		expect(met).toBeGreaterThan(-1);
-		expect(said).toBeGreaterThan(met);
-		expect(said).toBeLessThan(struck);
+		// One lane at a time, and each of them played as a meeting: the pair walk out to each
+		// other first and only then throw, which is what a clash looks like without a word on
+		// it. Three lanes, so three meetings, and no blow got through any of them.
+		const met = calls.filter((call) => call.method === 'meleeApproach');
+		expect(met).toHaveLength(RIVAL_CELLS.length);
+		expect(calls.findIndex((call) => call.method === 'meleeApproach')).toBeLessThan(
+			calls.findIndex((call) => call.method === 'playMove')
+		);
+		expect(calls.some((call) => call.method === 'showSlash')).toBe(false);
 	});
 
 	it('leaves a covering fighter nobody shot at standing as it was', async () => {
