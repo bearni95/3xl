@@ -795,8 +795,14 @@ export class BoosterBoxSprite extends Container {
 			// have in common is the band they are set in, and only the letters differ.
 			const row = new Container();
 			row.position.set(0, HEAD_PAD_TOP * this.boxWidth);
-			type.anchor.set(0.5, 0);
-			type.position.set(frontW / 2, 0);
+			// Hung by its middle on both axes, and placed at the row's. A padded text's bitmap is
+			// bigger than the ink read out of it by that padding all round, and what pins the two
+			// together is the anchor: at a half the extra falls equally either side and cancels, at
+			// nought it all falls on one side and the letters sit that much off. Across, this was
+			// already so; down, it was not, which is what carried the place up over the top of the
+			// front.
+			type.anchor.set(0.5, 0.5);
+			type.position.set(frontW / 2, type.height / 2);
 			row.addChild(type);
 			print.addChild(row);
 
