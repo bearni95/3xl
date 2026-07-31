@@ -912,27 +912,18 @@
 			</div>
 		</div>
 	{:else}
-		<!-- The board, and nothing round it. No card, no body, no column: the arena is one
-		     drawing and every box round a drawing is scale taken off it, since the canvas is
-		     fitted to the room it is given. What used to stand under the board stands on it
-		     now — the score at its head, the way out at its foot, and whatever the fight has
-		     to say in the middle.
+		<!-- The board, and nothing round it. No card, no body, no column, and no border: the
+		     arena is one drawing and every box round a drawing is scale taken off it, since the
+		     canvas is fitted to the room it is given. What used to stand under the board stands
+		     on it now — the score at its head, the way out reached for on that same plate, and
+		     whatever the fight has to say in the middle.
 		     This box hugs the canvas rather than filling the sheet: it is a flex item and the
 		     canvas is its only child in flow, so it is exactly the canvas on both axes, which
 		     is what makes `inset-0` on the three overlays mean the board's own edges and not
 		     the viewport's. -->
 		<div class="relative">
 			{#key boardKey}
-				<!-- The border goes on the canvas rather than on the host: the host is
-				     full-width and centres a canvas that is narrower than it, so a border
-				     there would be drawn round the room around the board instead of round
-				     the board. Pixi owns the canvas element, so it is reached as the
-				     wrapper's child. -->
-				<MugenBoard
-					{grids}
-					classes="[&>canvas]:border-4 [&>canvas]:border-yellow-400"
-					on:ready={(event) => onBoardReady(event.detail)}
-				/>
+				<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
 			{/key}
 			{#if state && !state.outcome}
 				<!-- The score, over the top of the board it is a score of.
@@ -981,7 +972,9 @@
 						class="h-0 w-0 border-t-[2rem] border-l-[2rem] border-t-base-100/80 border-l-transparent"
 						aria-hidden="true"
 					></span>
-					<div class="flex h-8 items-stretch gap-4 bg-base-100/80 text-white shadow-xl">
+					<div
+						class="group pointer-events-auto flex h-8 items-stretch gap-4 bg-base-100/80 text-white shadow-xl"
+					>
 						<!-- Each side's count is three squares in a row, and they are square
 						     because they stand for cells of the board: the plate is `h-8` and a
 						     block is three of that across (`w-24`), over three equal columns. So
@@ -1012,6 +1005,28 @@
 						<span class="self-center font-mono text-lg font-bold tabular-nums opacity-70">
 							{$_('combat.turn', { values: { turn: state.turn } })}
 						</span>
+						<!-- The way out of a fight, and the only one there is: a battle is ended by a
+						     result, never by walking off, so giving it up reports the loss it is and
+						     closes the arena exactly as being wiped out would. Between turns only —
+						     a turn already being carried out settles itself.
+						     It is kept out of sight until the plate is under the pointer, because it
+						     is the one control here that is not part of playing: a fight is played
+						     with the buttons beside the fighters, and the only thing standing over
+						     the board at all times should be what is true of the fight. Reached for
+						     rather than offered, and reached for where the fight's own state is
+						     read.
+						     Between the turn and the player's count, so the plate grows in the
+						     middle when it appears and each side's count stays at the end it is
+						     read from. Put at one end instead, the whole banner would slide off
+						     centre the moment the pointer touched it. -->
+						<button
+							type="button"
+							class="btn hidden btn-ghost btn-sm self-center text-error group-hover:inline-flex"
+							disabled={state.phase !== 'planning'}
+							on:click={() => controller?.concede()}
+						>
+							{$_('combat.concede')}
+						</button>
 						<div
 							class="grid h-full w-24 grid-cols-3 divide-x divide-white border-x border-white"
 							role="progressbar"
@@ -1123,29 +1138,6 @@
 							{/if}
 						</div>
 					</div>
-				</div>
-			{/if}
-			{#if state && !state.outcome}
-				<!-- The way out of a fight, and the only one there is: a battle is ended by
-				     a result, never by walking off, so giving it up reports the loss it is
-				     and closes the arena exactly as being wiped out would. Between turns only
-				     — a turn already being carried out settles itself.
-				     At the foot of the board, opposite the score at its head, so the two things
-				     that are true of the fight as a whole stand on the fight as a whole and the
-				     column beside a fighter is left to say what is true of that fighter. Ghost
-				     rather than a button with a fill: it is the one control here that is not
-				     part of playing, and it is standing on the board. -->
-				<div
-					class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center p-3"
-				>
-					<button
-						type="button"
-						class="btn pointer-events-auto btn-ghost btn-sm text-error"
-						disabled={state.phase !== 'planning'}
-						on:click={() => controller?.concede()}
-					>
-						{$_('combat.concede')}
-					</button>
 				</div>
 			{/if}
 			{#if state && !state.outcome && saveFailure}
