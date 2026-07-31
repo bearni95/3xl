@@ -7,13 +7,23 @@ the same reason the MUGEN sprite archives are.
 - bola-de-drac-*.mp3 — Bola de drac Z's openings, endings and insert songs, 18 of them.
   Named as the files came, which is the series' Catalan name without the Z; they are
   authored against the Bola de Drac Z show, the one the songs went out with.
+- kimagure-orange-road-*.mp3 — Kimagure Orange Road's openings, endings and insert songs,
+  16 of them, in 12 songs: three are here in both their broadcast cut and Charm's,
+  "Daydream" only in Charm's, and "Jenina" only in Charm's, sung twice over by two of
+  their singers.
+- bobobo-*.mp3 — Bo-bobo's opening and the two Denbo-chan songs, 3 of them. Named as the
+  files came, which is the series' name written solid — without the circumflex the files
+  carry or the hyphen the show's own name has.
 
 Most are the versions broadcast on Televisió de Catalunya. The rest say in the file name
 what else they are, because a dub or a cover is not the take that went out on TV3:
 
 - `-tvv` — Televisió Valenciana's own Catalan dub, a different recording of the same song
   (15 of the One Piece set, 5 of Bola de drac's). Titled "(TVV)".
-- `-charm` — Charm, a fan group; three of the InuYasha endings. Titled "(Charm)".
+- `-charm` — Charm, a fan group: three of the InuYasha endings and six of the Kimagure
+  Orange Road set. Titled "(Charm)", with the singer named after it where the same song
+  is here sung by two of theirs (`-charm-lydia-cuestas` / `-charm-marta-mateo` for
+  "Jenina", titled "(Charm, Lydia Cuestas)" and "(Charm, Marta Mateo)").
 - `-cover-fatima-ayats` — a cover of "Before dawn". Titled "(còver)".
 - `-hanzo-nimas` — Hanzo Nimas' Catalan take on "We gotta power", the only cut of that
   song here. Titled "(Hanzo Nimas)".
@@ -22,7 +32,17 @@ Where the same song was captured in more than one cut the file name says which: 
 `-restaurada` for the raw rip and the restored pass of InuYasha's "Come", `-1r` and `-2n`
 for the two editions of "Angelus ~Anjerasu~", `-mugiwara-version` and `-10-years-version`
 for the two mixes of "We are", and `-cd-3xl-manga` / `-cd-clubifaximatic` for the two CD
-pressings of "Cha-la, head cha-la" beside its broadcast rip.
+pressings of "Cha-la, head cha-la" beside its broadcast rip. The Kimagure Orange Road
+set says it the same way: `-tvc` for the take that went out on TV3 and `-charm` for
+Charm's, three songs being here in both.
+
+Two of that set arrived as something other than an mp3 and were made into one, since a
+file in this folder is an mp3 by the rule that lists it. Charm's "Natsu no miraaju" was
+an ID3-tagged RIFF wrapper around MPEG Layer 3 audio, so the wrapper was taken off and
+the audio copied out untouched — the same bytes, in the container they were always in.
+Charm's "Choose me" was AAC in an .m4a and had to be re-encoded (LAME, 160 kbps, the
+rate the rest of the Charm cuts carry); it is the one song here that is not the audio as
+it came.
 
 The InuYasha and One Piece sets came off the Wayback Machine's captures of amiboshi.cat,
 which is gone —
@@ -35,7 +55,12 @@ pull's copies were byte-identical, so they kept the names they already had. The 
 drac set was dropped at the repo root and curated in by hand, but it carries that same
 site's filenames, so it is named by the same rule the script applies: the song, then the
 parentheticals that say which cut it is, minus "català" and the site's own revision
-marker.
+marker. The Kimagure Orange Road and Bo-bobo sets were dropped in by hand the same way
+and named by that same rule, except that these carry ID3 titles and those are what the
+song is taken to be called where a file name spells it differently ("Majikaru gaaru",
+"Night of summerside"). Bo-bobo's opening is the one file of the lot that came with no
+tags at all, under a name saying only that it was the opening: it is the Catalan cut of
+"Wild challenger", the song the series opened on.
 
 What each of these is — its title, and the show it opens — is not recorded here: it
 is authored per file into @3xl/data's public/music.json on the admin /music screen,
