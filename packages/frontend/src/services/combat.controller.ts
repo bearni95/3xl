@@ -65,10 +65,10 @@
  * winning it. Otherwise it is called the moment every encounter is settled, at
  * {@link MAX_TURNS} at the latest, and whenever the player gives it up
  * ({@link CombatController.concede}). Fighting is the game's only
- * source of experience: {@link CombatController.report} then summarises the player's
- * side for the `award_combat_exp` RPC, which pays out a share of the player's current
- * level — all of it for a flawless win, a hundredth of it for a loss, nothing for a
- * draw. The amount is the server's, always; nothing here names one.
+ * source of experience: {@link CombatController.report} then summarises the fight for
+ * the `award_combat_exp` RPC, which pays out a share of the player's current level for
+ * a win — all of it for a flawless one — ten a fallen rival for a loss, and nothing at
+ * all for a draw. The amount is the server's, always; nothing here names one.
  */
 import { writable } from 'svelte/store';
 import { type Cell, cellSide, isBoardCell } from '$utils/mugen/grid';
@@ -536,13 +536,19 @@ export class CombatController {
 	}
 
 	/**
-	 * The finished game as an experience claim: the outcome plus every fighter the
-	 * player fielded, each simply standing or down. There is no health in this game —
-	 * one hit takes anybody down — so the share of the level the RPC pays out is the
-	 * share of the team still on its feet, counted from these flags. Only the player's
-	 * side is reported — the rivals earn nothing — and only once the game is actually
-	 * over, so a fight abandoned mid-turn yields `null` and pays out nothing. The
-	 * server re-derives the award from this; nothing here decides an amount.
+	 * The finished game as an experience claim: the outcome, every fighter the player
+	 * fielded — each simply standing or down — and how many of the rivals went down.
+	 * There is no health in this game — one hit takes anybody down — so the share of
+	 * the level the RPC pays out for a win is the share of the team still on its feet,
+	 * counted from these flags. The rival count is the other half of it: a **loss** is
+	 * paid ten a fallen rival and nothing else, so a fight lost having taken two of
+	 * them with it is still worth something. The rivals themselves are not listed —
+	 * they are the town's garrison, not cards this player owns, so there is nothing
+	 * about them to name beyond the count.
+	 *
+	 * Only once the game is actually over, so a fight abandoned mid-turn yields `null`
+	 * and pays out nothing. The server re-derives the award from this; nothing here
+	 * decides an amount.
 	 */
 	report(): CombatReport | null {
 		if (this.phase !== 'done' || !this.outcome) return null;
@@ -551,7 +557,8 @@ export class CombatController {
 			fighters: this.players().map((fighter) => ({
 				spawnId: fighter.spawnId,
 				down: fighter.down
-			}))
+			})),
+			rivalsDefeated: this.rivals().filter((fighter) => fighter.down).length
 		};
 	}
 
@@ -587,10 +594,11 @@ export class CombatController {
 	 * A fight cannot be walked out of — the battle is the server's and it is only ended
 	 * by a result being reported (see `battle.service`) — so conceding is how a player
 	 * gets out of one they do not want to play: it ends here exactly as being wiped out
-	 * would, and is reported as the loss it is, which banks no ground and earns the
-	 * hundredth of a level's span every loss earns. Nobody is knocked down for it: the
-	 * fighters are left standing as they stood, since that is what actually happened, and
-	 * a loss pays the same either way — the consolation does not read the team.
+	 * would, and is reported as the loss it is, which banks no ground and earns what
+	 * every loss earns — ten for each rival already down when it was given up, which is
+	 * why conceding a fight half fought is worth more than conceding one on turn one.
+	 * Nobody is knocked down for it, on either side: everyone is left standing as they
+	 * stood, since that is what actually happened.
 	 *
 	 * Only between turns. Mid-volley the turn is still being carried out and would
 	 * settle the fight itself the moment it finished, over the top of this.

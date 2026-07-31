@@ -9,12 +9,12 @@
  * reads a player's stored `exp` from Supabase and derives everything else here.
  *
  * Experience is earned in exactly one way: fighting ({@link combatExpAward}) — a win
- * for what it was worth, a loss for a hundredth of that. Claiming cards awards
- * nothing. The authority for an award is the `award_combat_exp` Postgres RPC —
+ * for what it was worth, a loss for what it took down on its way out. Claiming cards
+ * awards nothing. The authority for an award is the `award_combat_exp` Postgres RPC —
  * {@link combatExpAward} mirrors its arithmetic so the UI can show the same number,
  * and the two must be kept in sync.
  */
-import type { CombatOutcome } from '../../types/combat.type';
+import { COMBAT_TEAM_SIZE, type CombatOutcome } from '../../types/combat.type';
 
 /**
  * Cumulative experience required to reach each level, D&D 5e (PHB, "Beyond 1st
@@ -85,24 +85,28 @@ export function levelSpanExp(level: number): number {
 }
 
 /**
- * What a lost fight pays, as a fraction of the most that same fight could ever have
- * paid — the whole of {@link levelSpanExp}, which is what a flawless win earns. One
- * per cent: a fight lost is still a fight fought, and this is the smallest thing that
- * is not nothing.
+ * What a lost fight pays for each rival it took down with it. A flat amount rather
+ * than a share of anything: a loss is no longer measured against what winning would
+ * have been worth, it is measured by what the losing side actually did — so it is the
+ * same ten at level 1 and at level 19, and a fight lost having felled nobody pays
+ * nothing at all.
  */
-export const LOSS_CONSOLATION_SHARE = 0.01;
+export const LOSS_EXP_PER_RIVAL = 10;
 
 /** A finished fight, reduced to what decides its experience award. */
 export interface CombatExpInput {
 	/** The player's accumulated experience *before* the fight — fixes the level at stake. */
 	exp: number;
-	/** How it ended. A win is paid for the team it was won with, a loss a flat
-	 * hundredth of that fight's ceiling, a draw nothing. */
+	/** How it ended. A win is paid for the team it was won with, a loss for the rivals
+	 * it took down, a draw nothing. */
 	outcome: CombatOutcome;
 	/** Fighters the player's team ended the fight still standing. */
 	survivors: number;
 	/** Fighters the player's team fielded. */
 	fielded: number;
+	/** Rivals taken down over the whole fight — what a loss is paid for, at
+	 * {@link LOSS_EXP_PER_RIVAL} apiece. Read on a loss and nowhere else. */
+	rivalsDefeated?: number;
 }
 
 /**
@@ -113,21 +117,37 @@ export interface CombatExpInput {
  * taken down — earns the level's entire span, taking the player from the base of their
  * level to the next one, while a win with one of three left earns a third of it.
  *
- * A **loss** earns {@link LOSS_CONSOLATION_SHARE} of that ceiling — a hundredth of the
- * whole span, flat, and it does not read the team: how badly a loss went is not what a
- * consolation is for. A **draw** earns nothing, and so does anybody at
- * {@link MAX_LEVEL}, whose span is zero.
+ * A **loss** earns {@link LOSS_EXP_PER_RIVAL} for each rival it took down — nothing to
+ * do with the level, the span or the player's own casualties: what is paid for is the
+ * damage done on the way out, so a loss that felled two of the three is worth twice a
+ * loss that felled one, and a whitewash is worth nothing. The count is capped at
+ * {@link COMBAT_TEAM_SIZE}, a side never fielding more than that. A **draw** earns
+ * nothing.
+ *
+ * A **win** earns nothing at {@link MAX_LEVEL}, whose span is zero; a loss still pays
+ * there, being no longer measured against a span at all — experience past the cap
+ * simply does not raise a level that has nowhere left to go.
  *
  * Rounded to whole experience, and never negative.
  *
  * Mirrors the `award_combat_exp` RPC, which is the authority — this exists so the
  * UI can preview and explain the same number.
  */
-export function combatExpAward({ exp, outcome, survivors, fielded }: CombatExpInput): number {
+export function combatExpAward({
+	exp,
+	outcome,
+	survivors,
+	fielded,
+	rivalsDefeated = 0
+}: CombatExpInput): number {
+	if (outcome === 'lose') {
+		if (!Number.isFinite(rivalsDefeated)) return 0;
+		const felled = Math.min(Math.max(Math.trunc(rivalsDefeated), 0), COMBAT_TEAM_SIZE);
+		return felled * LOSS_EXP_PER_RIVAL;
+	}
+	if (outcome !== 'win') return 0;
 	const span = levelSpanExp(levelForExp(exp));
 	if (span <= 0) return 0;
-	if (outcome === 'lose') return Math.round(span * LOSS_CONSOLATION_SHARE);
-	if (outcome !== 'win') return 0;
 	if (!Number.isFinite(fielded) || fielded <= 0) return 0;
 	const left = Number.isFinite(survivors) ? Math.min(Math.max(survivors, 0), fielded) : 0;
 	return Math.round((span * left) / fielded);
@@ -167,7 +187,13 @@ export interface LevelProgress {
 	expIntoLevel: number;
 	/** Experience the current level spans (next threshold − start), or `null` at the cap. */
 	expForLevelSpan: number | null;
-	/** Fraction through the current level, 0..1. Always 1 at the cap. */
+	/**
+	 * Fraction through the current level — {@link expIntoLevel} over
+	 * {@link expForLevelSpan}, 0..1, always 1 at the cap. What a progression bar is
+	 * drawn from: it measures the level the player is climbing, so it empties on
+	 * every level-up and fills again over that level's own span, rather than
+	 * carrying earlier levels' experience along as a head start.
+	 */
 	fraction: number;
 	/** Whether the player has reached the maximum level. */
 	atMax: boolean;

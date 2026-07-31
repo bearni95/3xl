@@ -9,7 +9,9 @@
  * every spawn in it belongs to the caller and counts the survivors itself — a team
  * is at most {@link COMBAT_TEAM_SIZE} fighters, so an inflated report buys nothing
  * — then computes the award from the player's *stored* experience. The browser
- * never states an amount.
+ * never states an amount. A **loss** is paid for the rivals it took down instead, and
+ * that count is bounded the same way: against the rival line-up the server froze on
+ * the battle, so the most it can claim is the team it was actually fielded against.
  *
  * The same RPC also settles **territory** in the same transaction: a fight picked
  * on the map names the town it was fought over, and a win banks one siege win
@@ -51,8 +53,22 @@ export interface CombatFighterReport {
  */
 export interface CombatReport {
 	outcome: CombatOutcome;
-	/** The player's side only — the rivals earn nothing and are not reported. */
+	/** The player's side only — the rivals are not fielded from anything the player
+	 * owns, so there is nothing about them to name here beyond the count below. */
 	fighters: CombatFighterReport[];
+	/**
+	 * How many of the rival line-up were taken down, which is the whole of what a
+	 * **loss** is paid for: `LOSS_EXP_PER_RIVAL` apiece (see
+	 * `utils/progression/level`). A win ignores it — it is paid for the team that came
+	 * through, as it always was.
+	 *
+	 * It is a count and not a line-up because there is nothing to check a line-up
+	 * against: the rivals are the town's garrison, not the caller's cards. What the
+	 * server does instead is bound it — to the size of the rival line-up it froze on
+	 * the battle when the fight was opened, and to {@link COMBAT_TEAM_SIZE} — so the
+	 * most a report can talk itself into is one full team's worth.
+	 */
+	rivalsDefeated: number;
 }
 
 /**
@@ -81,9 +97,9 @@ export interface TerritoryResult {
 
 /**
  * What `award_combat_exp` gives back: the experience it decided to award — a win's
- * share of the level's span, a hundredth of that span for a loss, nothing for a draw —
- * plus the state that produced it, so the endgame screen can show the player exactly
- * how the number was reached.
+ * share of the level's span, ten a rival felled for a loss, nothing for a draw — plus
+ * the state that produced it, so the endgame screen can show the player exactly how
+ * the number was reached.
  */
 export interface CombatReward {
 	/** Experience actually added to the player's total. */
@@ -98,6 +114,9 @@ export interface CombatReward {
 	survivors: number;
 	/** Fighters the team fielded, as the server counted them. */
 	fielded: number;
+	/** Rivals taken down, as the server *bounded* the reported count — what a loss was
+	 * paid for. Zero on a win or a draw, neither of which reads it. */
+	rivalsDefeated: number;
 	/** What the fight did to the town it was fought over, or null when no town was
 	 * at stake (a report with no `locationId`, or one the server credited nothing for). */
 	territory: TerritoryResult | null;

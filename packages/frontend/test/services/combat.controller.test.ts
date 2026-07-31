@@ -236,6 +236,9 @@ describe('CombatController — giving the fight up', () => {
 			{ spawnId: '1', down: false },
 			{ spawnId: '2', down: false }
 		]);
+		// Nobody was knocked down on the other side either, so a fight given up on turn
+		// one is worth nothing: a loss is paid for the rivals it felled on the way out.
+		expect(report?.rivalsDefeated).toBe(0);
 	});
 
 	it('is only taken between turns, and only once', async () => {

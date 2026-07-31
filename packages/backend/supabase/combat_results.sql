@@ -5,10 +5,14 @@
 -- `award_combat_exp` security-definer RPC below, which decides the award itself:
 --
 --   * A draw earns nothing at all.
---   * A loss earns **1% of the most that fight could ever have paid** — a hundredth
---     of the level's full span, flat, whatever became of the team. Turning up and
---     losing is worth a hundredth of turning up and winning it untouched, which is
---     the smallest thing that is not nothing.
+--   * A loss earns **10 experience for each rival it took down** — nothing else. Not a
+--     share of anything and not measured against what winning would have paid: what a
+--     loss is paid for is the damage done on the way out, so a fight lost two lanes to
+--     one is worth twice a fight lost having felled a single rival, and a whitewash is
+--     worth nothing at all. It reads neither the level nor the player's own casualties,
+--     which is why it is the same ten at level 1 and at level 19 — and why it is still
+--     paid at level 20, where a win's span is zero. (Experience past the cap raises no
+--     level; there is nowhere left for it to go.)
 --   * A win earns a share of the player's *current level's full span* — the
 --     experience between the threshold where that level begins and the one where
 --     the next begins (300 at level 1, 600 at level 2, 1800 at level 3, …). The
@@ -29,6 +33,12 @@
 --     of them the caller's, each named once. A fighter is standing or it is down —
 --     there is no health in this game — so the only thing the client states about
 --     one is that flag, and the ratio it can inflate is bounded by the team size.
+--   * The rivals felled are a number, not a line-up: they are the town's garrison
+--     rather than cards the caller owns, so there is nothing to check them against.
+--     What bounds them instead is the rival line-up the battle was opened with, which
+--     is the server's own (battles.rivals) — and 3 on top of that. So the most a
+--     report can talk itself into is one team's worth, 30 experience, off a battle
+--     that had to be opened and a town's hour that had to be spent.
 --   * The amount is never sent by the client: it is derived here from the
 --     player's *stored* experience, which the client cannot write (player_profiles
 --     has no insert/update policy and there is no longer an add_player_exp RPC).
@@ -42,25 +52,24 @@
 -- town's sitting team, and enough of them flip the town to the winner. See
 -- municipality_holders.sql for the tables and the rules.
 --
--- Every one of those bounds is on the WIN. A loss banks nothing and takes nothing,
--- and the consolation it does pay is a hundredth of what the same fight would have
--- paid won — off a report that says nothing about the team, against a battle that had
--- to be opened (and a town's challenge for the day spent) before it could be reported
--- at all. There is nothing in that worth lying for while the win it is a hundredth of
--- sits next to it, so a loss is always accepted, and all else it does is close the
+-- Every one of those bounds is on the WIN. A loss banks nothing and takes nothing, and
+-- what it does pay is capped at one team's worth — off a report that says nothing about
+-- the team, against a battle that had to be opened (and a town's challenge spent) before
+-- it could be reported at all. There is nothing in thirty experience worth lying for
+-- while the level's worth a win pays sits next to it, so a loss is always accepted,
+-- whatever it names, and all else it does is close the
 -- battle. That is what makes conceding a fight possible at all, and what stops a
 -- battle that can never be won — a team that has since been recycled, a town taken in
 -- the meantime — from becoming a fight its owner can never get out of. Opening one is
 -- where a team is proved instead (`start_battle` in battles.sql), which is the only
 -- place the answer is any use to the player.
 --
--- Territory is also where the once-a-day challenge limit is enforced: settling a
--- fight spends that town's challenge for the Catalan day, and a second *win*
--- reported against a town already settled today is rejected outright — experience
--- and all.
--- Taking a town is likewise what hands that day back to everyone still fighting
--- for the generation it ended, whose fights it just made unwinnable. See
--- municipality_challenges.sql.
+-- Territory is also where the challenge cooldown is *set*: settling a fight is
+-- what shuts that town to its challenger for the next hour, timed from this
+-- report rather than from when the fight opened, so a long fight is never also a
+-- longer wait. Taking a town is likewise what excuses that hour for everyone
+-- still fighting for the generation it ended, whose fights it just made
+-- unwinnable. See municipality_challenges.sql.
 --
 -- @3xl/backend provisions all of this automatically alongside the other tables
 -- (see ../src/routes/show-templates.ts), so you normally do NOT need to run this
@@ -78,11 +87,14 @@ create table if not exists public.combat_results (
 	-- Fighters left standing at the end / fielded at the start, as counted here.
 	survivors integer not null,
 	fielded integer not null,
+	-- Rivals taken down, as bounded here — what a loss was paid for. 0 on a win or a
+	-- draw, neither of which reads it.
+	rivals_defeated integer not null default 0,
 	-- The level whose span was at stake, and the span itself.
 	level integer not null,
 	level_span bigint not null,
-	-- Experience actually awarded: a win's share of the span, a loss's
-	-- hundredth of it, 0 for a draw.
+	-- Experience actually awarded: a win's share of the span, ten a fallen rival for
+	-- a loss, 0 for a draw.
 	exp_awarded bigint not null,
 	fought_at timestamptz not null default now()
 );
@@ -96,6 +108,12 @@ alter table public.combat_results add column if not exists survivors integer not
 alter table public.combat_results add column if not exists fielded integer not null default 0;
 alter table public.combat_results drop column if exists hp_left;
 alter table public.combat_results drop column if exists hp_max;
+
+-- Fights recorded while a loss was paid a hundredth of the level's span carry no rival
+-- count, and read as 0 — which is what they were paid on, since the number played no
+-- part in the award they actually got.
+alter table public.combat_results
+	add column if not exists rivals_defeated integer not null default 0;
 
 create index if not exists combat_results_user_day_idx
 	on public.combat_results (user_id, fought_at);
@@ -148,7 +166,9 @@ $$;
 
 -- Award experience for one finished fight (see the header for the rules and the
 -- trust model). `p_fighters` is the player's side only, as a JSON array of
--- {"spawn_id": uuid, "down": boolean}. Returns what was awarded and the state that
+-- {"spawn_id": uuid, "down": boolean}; `p_rivals_defeated` is how many of the other
+-- side went down, which is the whole of what a loss is paid for and is ignored
+-- entirely by a win. Returns what was awarded and the state that
 -- produced it, so the endgame screen can explain the number. security definer: it
 -- writes player_profiles and combat_results, neither of which the anon key may
 -- write.
@@ -166,22 +186,23 @@ $$;
 -- challenger. A fight against a generation that has since been superseded banks
 -- nothing and comes back flagged `town_stale`. A town the caller already holds
 -- cannot be fought for at all — the report is rejected outright, experience
--- included. So is a town the caller has already had a fight settled against today.
+-- included. Reporting is also what starts the town's cooldown for this player.
 -- See municipality_holders.sql and municipality_challenges.sql.
 --
 -- (The OUT parameter names deliberately avoid the column names used in the body —
 -- plpgsql would otherwise have to disambiguate them against the query.)
 
--- Both earlier signatures are dropped rather than replaced. Leaving either in place
--- would give PostgREST overloads to choose between and make every
--- rpc('award_combat_exp') call ambiguous — and the four-argument one is precisely
--- the version that let the client name its own town and turnover.
+-- Every earlier signature is dropped rather than replaced. Leaving one in place would
+-- give PostgREST overloads to choose between and make every rpc('award_combat_exp')
+-- call ambiguous — and the four-argument one is precisely the version that let the
+-- client name its own town and turnover.
 drop function if exists public.award_combat_exp(text, jsonb);
 drop function if exists public.award_combat_exp(text, jsonb, text, int);
 
 create or replace function public.award_combat_exp(
 	p_outcome text,
-	p_fighters jsonb
+	p_fighters jsonb,
+	p_rivals_defeated int default 0
 )
 returns table (
 	awarded_exp bigint,
@@ -190,6 +211,9 @@ returns table (
 	span_exp bigint,
 	team_survivors int,
 	team_fielded int,
+	-- The rivals felled as this bounded them, which is what a loss was actually paid
+	-- for — the report's own number is not echoed back.
+	rivals_felled int,
 	-- Territory, read off the battle that was being fought. The town is returned
 	-- rather than echoed back from the report, because the report no longer names
 	-- one: this is the browser learning which town it just fought over.
@@ -203,7 +227,6 @@ returns table (
 language plpgsql security definer set search_path = public as $$
 declare
 	v_uid uuid := auth.uid();
-	v_today date := (now() at time zone 'Europe/Madrid')::date;
 	v_challenge timestamptz;
 	v_reported int;
 	v_distinct int;
@@ -212,6 +235,9 @@ declare
 	v_level int;
 	v_span bigint;
 	v_standing int;
+	-- The rival line-up the battle was opened with, and the felled count bounded by it.
+	v_rivals jsonb;
+	v_felled int;
 	v_award bigint;
 	v_total bigint;
 	v_holder uuid;
@@ -243,11 +269,30 @@ begin
 	-- *what* was fought comes from here rather than from the report, and a report
 	-- with no battle behind it is not a fight that happened — it is a claim about
 	-- one, which is the whole thing this row exists to make impossible.
-	select b.location_id, b.turnover into v_location, v_fought
+	select b.location_id, b.turnover, b.rivals into v_location, v_fought, v_rivals
 		from public.battles b where b.user_id = v_uid;
 	if v_location is null then
 		raise exception 'You have no battle in progress to report.';
 	end if;
+
+	-- How many rivals the report may claim to have felled: the line-up this battle was
+	-- opened against, which is the server's own, and never more than a team. A battle
+	-- opened before line-ups were frozen carries none, and falls back to the team size
+	-- rather than paying its loss nothing.
+	v_felled := least(
+		greatest(coalesce(p_rivals_defeated, 0), 0),
+		least(
+			coalesce(
+				nullif(
+					case when jsonb_typeof(v_rivals) = 'array'
+						then jsonb_array_length(v_rivals) else 0 end,
+					0
+				),
+				3
+			),
+			3
+		)
+	);
 
 	-- The reported team, bounded against what the caller actually owns. A fighter is
 	-- standing or it is down, so the survivors are simply counted over the fighters
@@ -272,9 +317,10 @@ begin
 	-- The report is bounded where it can buy something worth lying for, and only there.
 	-- A win pays a level's worth of experience and banks ground, so it has to name a
 	-- real team: at most three fighters, each of them the caller's own, each named once.
-	-- A loss banks nothing, takes nothing, and pays only the consolation below — a
-	-- hundredth of a span, off a team it says nothing about — so it is always taken,
-	-- whatever it names. Refusing one would not protect anything;
+	-- A loss banks nothing, takes nothing, and pays only for the rivals it felled —
+	-- thirty at the very most, off a count already bounded by the line-up the server
+	-- itself froze — so it is always taken, whatever it names.
+	-- Refusing one would not protect anything;
 	-- it would strand a player in a fight they have already given up, which is exactly
 	-- what happens to a battle opened before start_battle proved the team.
 	if p_outcome = 'win' then
@@ -299,22 +345,29 @@ begin
 	v_span := public.level_span_exp(v_level);
 
 	-- A win earns the level's whole span, scaled by the share of the team still
-	-- standing. A loss earns a hundredth of the most that same fight could ever have
-	-- paid — which is that whole span, the flawless win — so a fight lost is still a
-	-- fight fought. It does not read the team: how badly it went is not what a
-	-- consolation is for. A draw earns nothing, as it always did, and so does a
-	-- level-20 player, whose span is zero and who is done earning either way.
+	-- standing; a level-20 winner earns nothing, the span being zero. A loss earns ten
+	-- for each rival it took down and nothing else — it reads neither the level nor the
+	-- player's own casualties, so it is worth the same at every level (level 20
+	-- included, where the experience raises nothing but is still paid for the work) and
+	-- worth nothing at all when the fight was lost without felling anybody. A draw
+	-- earns nothing, as it always did.
 	if p_outcome = 'win' and v_span > 0 and v_owned > 0 then
 		v_award := round(v_span::numeric * v_standing::numeric / v_owned::numeric);
 	elsif p_outcome = 'lose' then
-		v_award := round(v_span::numeric * 0.01);
+		v_award := v_felled * 10;
 	else
 		v_award := 0;
 	end if;
 
+	-- Only a loss was paid for the rivals, so only a loss records them: on a win or a
+	-- draw the count played no part in the number beside it and is filed as 0.
+	if p_outcome <> 'lose' then
+		v_felled := 0;
+	end if;
+
 	insert into public.combat_results
-		(user_id, outcome, survivors, fielded, level, level_span, exp_awarded)
-		values (v_uid, p_outcome, v_standing, v_owned, v_level, v_span, v_award);
+		(user_id, outcome, survivors, fielded, rivals_defeated, level, level_span, exp_awarded)
+		values (v_uid, p_outcome, v_standing, v_owned, v_felled, v_level, v_span, v_award);
 
 	if v_award > 0 then
 		insert into public.player_profiles (user_id, exp)
@@ -344,34 +397,36 @@ begin
 			raise exception 'You already hold this town — you cannot challenge your own team.';
 		end if;
 
-		-- One challenge per town per Catalan day (see municipality_challenges.sql).
-		-- The slot was opened by start_battle along with the battle itself, and
-		-- settling it here closes it. A report against a slot that is already settled
-		-- is a second fight against the same town today: reject it outright, rolling
-		-- back the experience with it, exactly as a fight against one's own town is.
-		-- (The insert's do-nothing branch is what catches that; there is no longer a
-		-- way to arrive here with no slot at all, since the battle this report is
-		-- being made against could not have been opened without one.)
+		-- The town's cooldown starts here (see municipality_challenges.sql). The slot
+		-- was opened by start_battle along with the battle itself, and settling it is
+		-- what shuts the town for the next hour — measured from now, the end of the
+		-- fight, so the time spent playing it is not also spent waiting. There is no
+		-- way to arrive here with no slot at all: the battle this report is being made
+		-- against could not have been opened without one.
 		--
 		-- A slot voided below (the town changed hands while this fight was open)
-		-- settles here like any other — the fight did happen and is paid for — but
-		-- keeps its voided_at, which is what carries the refund past this report:
-		-- start_battle still revives it, so this fight cost its challenger no day.
-		-- Settling it is also what bounds the refund, since the revived slot is a
-		-- normal one and a stale report cannot be replayed against a settled slot.
-		insert into public.municipality_challenges
-			(user_id, location_id, challenge_date, settled_at)
-			values (v_uid, v_location, v_today, now())
-			on conflict (user_id, location_id, challenge_date) do update
-				set settled_at = now()
-				where municipality_challenges.settled_at is null
+		-- settles like any other — the fight did happen and is paid for — but takes no
+		-- cooldown: that fight was against a team that no longer sits there and its
+		-- challenger is not made to wait for it. Settling is also what bounds the
+		-- excuse, since a stale report cannot be replayed against a settled slot.
+		update public.municipality_challenges
+			set settled_at = now(),
+				available_at = case
+					when voided_at is null then now() + public.challenge_cooldown()
+					else null
+				end
+			where user_id = v_uid
+				and location_id = v_location
+				and settled_at is null
 			returning municipality_challenges.settled_at into v_challenge;
-		-- Again, only a win is refused for it: a second *win* against the same town
-		-- today would be a second payout of a level's worth, while a second loss pays
-		-- what the first one did — a hundredth of a span, off a battle that had to be
-		-- opened to be reported at all, which is not worth stranding anybody over.
+		-- Nothing to settle means this town's slot was closed by an earlier report,
+		-- which is a second fight over the same town inside its cooldown. Only a win
+		-- is refused for it — that would be a second payout of a level's worth, while
+		-- a second loss pays what the first one did, ten a fallen rival off a
+		-- battle that had to be opened to be reported at all, which is not worth
+		-- stranding anybody over.
 		if v_challenge is null and p_outcome = 'win' then
-			raise exception 'You have already challenged this town today. New challenges at midnight.';
+			raise exception 'You have just fought this town. Wait for it to open up again.';
 		end if;
 
 		-- No row at all means the town is still on its seeded OG team: turnover 0.
@@ -443,21 +498,19 @@ begin
 
 				-- It voids every fight still open against the old generation too. Those
 				-- challengers started against a team that no longer sits here and their
-				-- report, whenever it lands, will be refused as stale — so the day they
-				-- spent on this town is handed back rather than burnt on a fight this
-				-- capture took away from them. The slot is marked, not deleted: their
-				-- late report still settles this row (paying its experience and banking
-				-- no ground, exactly as any stale report does), and because the row stays
-				-- voided it goes on not blocking, so they may come back at the new
-				-- occupant today. start_battle revives it in place.
+				-- report, whenever it lands, will be refused as stale — so this town
+				-- takes no hour off them for a fight this capture took away. The slot is
+				-- marked, not deleted: their late report still settles this row (paying
+				-- its experience and banking no ground, exactly as any stale report
+				-- does), and the voided flag is what makes that settle carry no cooldown,
+				-- so they may come straight back at the new occupant.
 				--
-				-- Only slots that were still open are given back — a challenger who
-				-- already fought and reported here today spent their day on a real fight
+				-- Only slots that were still open are excused — a challenger who already
+				-- fought and reported here is inside a cooldown earned on a real fight
 				-- against the team that was sitting here at the time.
 				update public.municipality_challenges
 					set voided_at = now()
 					where location_id = v_location
-						and challenge_date = v_today
 						and settled_at is null
 						and voided_at is null
 						and user_id <> v_uid;
@@ -495,8 +548,9 @@ begin
 	span_exp := v_span;
 	team_survivors := v_standing;
 	team_fielded := v_owned;
+	rivals_felled := v_felled;
 	return next;
 end;
 $$;
 
-grant execute on function public.award_combat_exp(text, jsonb) to authenticated;
+grant execute on function public.award_combat_exp(text, jsonb, int) to authenticated;

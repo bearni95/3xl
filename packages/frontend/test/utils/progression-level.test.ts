@@ -8,7 +8,7 @@ import {
 	levelProgress,
 	levelSpanExp,
 	combatExpAward,
-	LOSS_CONSOLATION_SHARE
+	LOSS_EXP_PER_RIVAL
 } from '$utils/progression/level';
 
 describe('D&D experience-to-level', () => {
@@ -65,6 +65,17 @@ describe('level progress', () => {
 		expect(p.expIntoLevel).toBe(0);
 	});
 
+	it('empties the fraction on the experience that reached the level', () => {
+		// Exactly the level-2 threshold: level 2 is reached and none of its own 600 is
+		// earned yet, so the bar starts from nothing again rather than carrying the 300
+		// that got there. The card prints that 300 as its total beside the empty bar.
+		const p = levelProgress(300);
+		expect(p.level).toBe(2);
+		expect(p.exp).toBe(300);
+		expect(p.expIntoLevel).toBe(0);
+		expect(p.fraction).toBe(0);
+	});
+
 	it('is full and capped at the maximum level', () => {
 		const p = levelProgress(400_000);
 		expect(p.level).toBe(MAX_LEVEL);
@@ -111,27 +122,50 @@ describe('combat experience award', () => {
 		expect(combatExpAward({ exp: 0, outcome: 'win', survivors: 0, fielded: 3 })).toBe(0);
 	});
 
-	it('pays a loss a hundredth of what that fight could ever have paid', () => {
-		// The ceiling is the whole span — the flawless win — so a loss at level 1 is 1% of
-		// 300, and at level 3 (900..2700) 1% of that level's own 1800.
-		expect(combatExpAward({ exp: 0, outcome: 'lose', survivors: 3, fielded: 3 })).toBe(3);
-		expect(combatExpAward({ exp: 1000, outcome: 'lose', survivors: 3, fielded: 3 })).toBe(18);
-		expect(LOSS_CONSOLATION_SHARE).toBe(0.01);
+	it('pays a loss ten for each rival it took down with it', () => {
+		expect(LOSS_EXP_PER_RIVAL).toBe(10);
+		const lost = (rivalsDefeated: number) =>
+			combatExpAward({ exp: 0, outcome: 'lose', survivors: 0, fielded: 3, rivalsDefeated });
+		// A whitewash is worth nothing; two lanes taken on the way out is worth twice one.
+		expect(lost(0)).toBe(0);
+		expect(lost(1)).toBe(10);
+		expect(lost(2)).toBe(20);
+		expect(lost(3)).toBe(30);
+		// Not naming a count at all reads as none felled.
+		expect(combatExpAward({ exp: 0, outcome: 'lose', survivors: 0, fielded: 3 })).toBe(0);
 	});
 
-	it('pays a loss the same whatever became of the team', () => {
-		// A consolation is for having turned up, so it does not read the survivors: wiped
-		// out or barely scratched, a loss is a loss.
-		const wiped = combatExpAward({ exp: 0, outcome: 'lose', survivors: 0, fielded: 3 });
-		expect(wiped).toBe(3);
-		expect(combatExpAward({ exp: 0, outcome: 'lose', survivors: 3, fielded: 3 })).toBe(wiped);
-		// And it needs no team at all to be worked out.
-		expect(combatExpAward({ exp: 0, outcome: 'lose', survivors: 0, fielded: 0 })).toBe(wiped);
+	it('pays a loss the same at every level, and whatever became of the team', () => {
+		// It is a flat amount rather than a share of anything, so the level it was lost
+		// at makes no difference to it...
+		const felled = { outcome: 'lose', survivors: 0, fielded: 3, rivalsDefeated: 2 } as const;
+		expect(combatExpAward({ exp: 0, ...felled })).toBe(20);
+		expect(combatExpAward({ exp: 1000, ...felled })).toBe(20);
+		// ...and neither does what happened to the player's own side, wiped out or
+		// barely scratched. It needs no team at all to be worked out.
+		expect(combatExpAward({ exp: 0, ...felled, survivors: 3 })).toBe(20);
+		expect(combatExpAward({ exp: 0, ...felled, fielded: 0 })).toBe(20);
 	});
 
-	it('pays nothing at the level cap, however it ended', () => {
+	it('pays no win at the level cap, and a loss its rivals even there', () => {
+		// The win is a share of a span that is zero at level 20. The loss is measured
+		// against no span at all, so it is still paid for the work — into a total that
+		// has no level left to raise.
 		expect(combatExpAward({ exp: 400_000, outcome: 'win', survivors: 3, fielded: 3 })).toBe(0);
-		expect(combatExpAward({ exp: 400_000, outcome: 'lose', survivors: 3, fielded: 3 })).toBe(0);
+		expect(
+			combatExpAward({ exp: 400_000, outcome: 'lose', survivors: 3, fielded: 3, rivalsDefeated: 3 })
+		).toBe(30);
+	});
+
+	it('never pays a loss more than one full rival team', () => {
+		// The count is the browser's; the amount is not. A report claiming a hundred
+		// felled buys the same three as a full sweep — the server bounds it too.
+		expect(
+			combatExpAward({ exp: 0, outcome: 'lose', survivors: 0, fielded: 3, rivalsDefeated: 100 })
+		).toBe(30);
+		expect(
+			combatExpAward({ exp: 0, outcome: 'lose', survivors: 0, fielded: 3, rivalsDefeated: -5 })
+		).toBe(0);
 	});
 
 	it('never exceeds the span or goes negative on an absurd count', () => {

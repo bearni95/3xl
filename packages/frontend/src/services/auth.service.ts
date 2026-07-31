@@ -207,13 +207,15 @@ class AuthService {
 	 * Report a finished fight and collect whatever experience it earned — the only
 	 * way a player gains experience.
 	 *
-	 * The browser states *what happened* (the outcome, and which of its fighters were
-	 * left standing), never how much that is worth: the `award_combat_exp` RPC checks
-	 * every fighter belongs to the caller, counts the survivors itself, and computes
-	 * the award from the player's stored experience — a win pays out the player's
-	 * current level's whole span scaled by the share of the team still up, a loss or
-	 * draw pays nothing. The authoritative new total (and the level it implies) is
-	 * mirrored into the profile store. Returns `null` when signed out / unconfigured.
+	 * The browser states *what happened* (the outcome, which of its fighters were left
+	 * standing, and how many rivals it felled), never how much that is worth: the
+	 * `award_combat_exp` RPC checks every fighter belongs to the caller, counts the
+	 * survivors itself, bounds the rival count against the line-up it froze on the
+	 * battle, and computes the award from the player's stored experience — a win pays
+	 * out the player's current level's whole span scaled by the share of the team still
+	 * up, a loss ten for each rival it took down with it, a draw nothing. The
+	 * authoritative new total (and the level it implies) is mirrored into the profile
+	 * store. Returns `null` when signed out / unconfigured.
 	 *
 	 * Which town the fight was over, and which generation of its team was beaten, are
 	 * *not* sent: they are read off the player's open battle, which the server opened
@@ -233,7 +235,10 @@ class AuthService {
 			p_fighters: report.fighters.map((fighter) => ({
 				spawn_id: fighter.spawnId,
 				down: fighter.down
-			}))
+			})),
+			// What a loss is paid for. The server caps it at the rival line-up it is
+			// holding, so this is a count being reported and not an amount being claimed.
+			p_rivals_defeated: Math.max(0, Math.trunc(report.rivalsDefeated) || 0)
 		});
 		if (error) throw error;
 
@@ -246,6 +251,9 @@ class AuthService {
 			span: Number(row.span_exp ?? 0),
 			survivors: Number(row.team_survivors ?? 0),
 			fielded: Number(row.team_fielded ?? 0),
+			// The count as the server bounded it, not as this tab reported it. (Its OUT
+			// name avoids the column the RPC writes it to, as the rest of them do.)
+			rivalsDefeated: Number(row.rivals_felled ?? 0),
 			// Which town this was, and what the fight did to it, both as the server has
 			// them — the report itself no longer names a town.
 			territory:

@@ -1380,6 +1380,28 @@ describe('the stand-off', () => {
 			const p1 = report.fighters.find((f) => f.spawnId === 'p1')!;
 			expect(p0).toEqual({ spawnId: 'p0', down: true });
 			expect(p1).toEqual({ spawnId: 'p1', down: false });
+			// The rivals are not listed — they are not this player's cards — but they are
+			// counted, because a loss is paid ten for each of them that went down. This one
+			// took none with it.
+			expect(report.rivalsDefeated).toBe(0);
+		});
+
+		it('counts the rivals that went down, which is what a loss is paid for', async () => {
+			const controller = new CombatController([
+				// The lane of "takes down a fighter caught reloading": red spends its free
+				// shot on blue's free guard, and is caught empty on the turn after.
+				seed('r0', 'error', 'red'),
+				seed('p0', 'info', 'blue')
+			]);
+			await openWithCharges(controller);
+			controller.setAction('p0', 'shoot');
+			await playTurn(controller);
+
+			const report = controller.report()!;
+			expect(report.fighters).toEqual([{ spawnId: 'p0', down: false }]);
+			// One rival, and it is down: the count is of the other side's fallen, whoever
+			// the fight ended up going to.
+			expect(report.rivalsDefeated).toBe(1);
 		});
 	});
 });

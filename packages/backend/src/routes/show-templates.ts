@@ -559,7 +559,10 @@ export function ensureTables(): Promise<void> {
 					--     sync's lower bound in ./festivities.ts;
 					--   * the player may open at most (their level, capped at 20) packs per
 					--     day, the day resetting at midnight Europe/Madrid.
-					-- It then rolls 5 cards from the show's assigned, template-backed roster
+					-- It then rolls 5 cards from the town's show — the caller's p_show_id
+					-- only while nobody holds the town, its occupier's team's show once
+					-- somebody does (read off municipality_holders below) — from that
+					-- show's assigned, template-backed roster
 					-- (weighted by rarity), each taking one of the three colours its box
 					-- holds, plus ONE avatar drawn from those same two possibilities — a
 					-- character on this show, in one of this box's colours — and returns
@@ -632,6 +635,9 @@ export function ensureTables(): Promise<void> {
 							v_color text;
 							v_box text;
 							v_colors text[];
+							v_lead text;
+							v_ruling_show bigint;
+							v_show_id bigint;
 							v_row character_spawns%rowtype;
 							v_avatar player_avatars%rowtype;
 							v_spawns jsonb := '[]'::jsonb;
@@ -678,13 +684,40 @@ export function ensureTables(): Promise<void> {
 							if v_used >= v_cap then
 									raise exception 'Daily booster limit reached: % of % packs opened today. More unlock at midnight.', v_used, v_cap;
 							end if;
+							-- Which show this town's boxes deal. A town nobody has taken deals
+							-- the show its own geometry seeds it with — an answer the browser
+							-- works out from the polygons, which live only there, so that one
+							-- arrives as p_show_id and is taken as given. A town somebody HOLDS deals its occupier's
+							-- show instead: the sitting team's lead's, exactly as the map
+							-- labels the town, read here rather than accepted from the caller
+							-- because which show a conquered town deals is a consequence of the
+							-- conquest and not the browser's to choose. It follows the town by
+							-- itself: the holder row is rewritten the moment the town changes
+							-- hands, and the next pack opened there is already the new show's.
+							-- A lead on several shows resolves to the alphabetically first, the
+							-- same tie the browser breaks (showIdsByCharacter in @3xl/shared
+							-- utils/spawn/team-show.ts walks the shows in name order); a lead on
+							-- no show at all leaves the box as the caller found it.
+							v_show_id := p_show_id;
+							select h.team->0->>'character_id' into v_lead
+									from municipality_holders h
+									where h.location_id = p_location_id;
+							if v_lead is not null then
+									select sc.show_id into v_ruling_show
+											from show_characters sc
+											join show_templates st on st.id = sc.show_id
+											where sc.character_id = v_lead
+											order by st.name, sc.show_id
+											limit 1;
+									v_show_id := coalesce(v_ruling_show, v_show_id);
+							end if;
 							-- Roll pool: characters assigned to the show (any show when null) that
 							-- exist as templates, with their rarity tiers.
 							with pool as (
 									select distinct ct.id as id, coalesce(ct.rarity, 0) as rarity
 									from show_characters sc
 									join character_templates ct on ct.id = sc.character_id
-									where p_show_id is null or sc.show_id = p_show_id
+									where v_show_id is null or sc.show_id = v_show_id
 							)
 							select array_agg(id order by id), array_agg(rarity order by id)
 									into v_ids, v_rarities
@@ -702,14 +735,14 @@ export function ensureTables(): Promise<void> {
 							) s;
 							-- Record the pack in the rate-limit ledger, then roll its cards.
 							insert into booster_claims (user_id, show_id, location_id)
-									values (v_uid, p_show_id, p_location_id);
+									values (v_uid, v_show_id, p_location_id);
 							for i in 1..v_size loop
 									-- Weighted-by-rarity pick (matches weightedRarityIndex), then a
 									-- colour: one of the box's three, each equally likely.
 									v_pick := pick_weighted(v_ids, v_weights, v_total);
 									v_color := v_colors[1 + floor(random() * array_length(v_colors, 1))];
 									insert into character_spawns (user_id, character_id, show_id, location_id, color, box)
-											values (v_uid, v_pick, p_show_id, p_location_id, v_color, v_box)
+											values (v_uid, v_pick, v_show_id, p_location_id, v_color, v_box)
 											returning * into v_row;
 									v_spawns := v_spawns || to_jsonb(v_row);
 							end loop;
@@ -722,7 +755,7 @@ export function ensureTables(): Promise<void> {
 							v_pick := pick_weighted(v_ids, v_weights, v_total);
 							v_color := v_colors[1 + floor(random() * array_length(v_colors, 1))];
 							insert into player_avatars (user_id, character_id, color, show_id, location_id)
-									values (v_uid, v_pick, v_color, p_show_id, p_location_id)
+									values (v_uid, v_pick, v_color, v_show_id, p_location_id)
 									on conflict (user_id, character_id, color) do update
 											set granted_at = player_avatars.granted_at
 									returning * into v_avatar;
@@ -800,7 +833,7 @@ export function ensureTables(): Promise<void> {
 					grant execute on function recycle_spawns(uuid[]) to authenticated;
 					-- Combat rewards: the ONLY way a player earns experience. Claiming cards,
 					-- opening packs and recycling award nothing at all — fighting does, a win
-						-- for what it was worth and a loss for a hundredth of that.
+						-- for what it was worth and a loss for the rivals it took down with it.
 					-- One row per finished fight, written solely by award_combat_exp below: the
 					-- audit trail behind every experience gain. RLS lets a player read only their
 					-- own fights; there is no client write path.
@@ -811,11 +844,14 @@ export function ensureTables(): Promise<void> {
 							-- Fighters left standing at the end / fielded at the start, as counted here.
 							survivors integer not null default 0,
 							fielded integer not null default 0,
+							-- Rivals taken down, as bounded here — what a loss was paid for. 0 on a
+							-- win or a draw, neither of which reads it.
+							rivals_defeated integer not null default 0,
 							-- The level whose span was at stake, and the span itself.
 							level integer not null,
 							level_span bigint not null,
-							-- Experience actually awarded: a win's share of the span, a loss's hundredth
-							-- of it, 0 for a draw.
+							-- Experience actually awarded: a win's share of the span, ten a fallen
+							-- rival for a loss, 0 for a draw.
 							exp_awarded bigint not null,
 							fought_at timestamptz not null default now()
 						);
@@ -827,6 +863,10 @@ export function ensureTables(): Promise<void> {
 					alter table combat_results add column if not exists fielded integer not null default 0;
 					alter table combat_results drop column if exists hp_left;
 					alter table combat_results drop column if exists hp_max;
+					-- Fights recorded while a loss was paid a hundredth of the level's span
+					-- carry no rival count and read as 0, which is what they were paid on.
+					alter table combat_results
+						add column if not exists rivals_defeated integer not null default 0;
 					create index if not exists combat_results_user_day_idx
 						on combat_results (user_id, fought_at);
 					alter table combat_results enable row level security;
@@ -914,12 +954,17 @@ export function ensureTables(): Promise<void> {
 					create policy municipality_holders_select_all on municipality_holders
 							for select using (true);
 					-- What the map selects: every taken town with its holder's current name
-					-- joined on. Null for a holder who has not named themselves, which the
+					-- and the avatar they are wearing joined on. Null for a holder who has
+					-- not named themselves or is still on the letter avatar, which the
 					-- frontend words itself rather than filling in from their sign-in.
+					-- The avatar travels as the pair that IS one (see player_profiles), so
+					-- the pin draws the same face the profile card does, and a player who
+					-- changes either is changed on every town they hold.
 					create or replace view municipality_holders_public
 						with (security_invoker = false) as
 						select h.location_id, h.user_id, n.username as holder_name,
-								h.team, h.turnover, h.taken_at
+								h.team, h.turnover, h.taken_at,
+								n.avatar_character_id, n.avatar_color
 						from municipality_holders h
 						left join player_profiles n on n.user_id = h.user_id;
 					grant select on municipality_holders_public to anon, authenticated;
@@ -1222,7 +1267,7 @@ export function ensureTables(): Promise<void> {
 					end;
 					$save_battle$;
 					grant execute on function save_battle(jsonb) to authenticated;
-					-- Both earlier signatures are dropped rather than replaced: leaving either
+					-- Every earlier signature is dropped rather than replaced: leaving one
 					-- in place would give PostgREST overloads to choose between and make every
 					-- rpc('award_combat_exp') call ambiguous — and the four-argument one is
 					-- exactly the version that let the client name its own town and turnover.
@@ -1230,10 +1275,11 @@ export function ensureTables(): Promise<void> {
 					drop function if exists award_combat_exp(text, jsonb, text, int);
 					-- Award experience for one finished fight:
 					--   * a draw earns nothing;
-						--   * a loss earns 1% of the most that fight could ever have paid — a
-						--     hundredth of the level's full span, flat, whatever became of the
-						--     team: turning up and losing is worth a hundredth of turning up and
-						--     winning it untouched, which is the smallest thing that is not nothing;
+						--   * a loss earns 10 for each rival it took down and nothing else: not a
+						--     share of anything, and measured by the damage done on the way out
+						--     rather than against what winning would have paid — so it is the same
+						--     ten at every level (20 included, where a win's span is 0), twice as
+						--     much for two rivals as for one, and nothing at all for a whitewash;
 					--   * a win earns a share of the player's CURRENT level's full span (see
 					--     level_span_exp), scaled linearly by how much of their team is left
 					--     standing: survivors / fielded. A flawless win — nobody taken down —
@@ -1244,7 +1290,11 @@ export function ensureTables(): Promise<void> {
 					-- counted here rather than read from the report (at most 3, each named once),
 					-- and the amount itself is never sent by the client — it is derived here from
 					-- the player's stored experience. p_fighters is the player's side only, as
-					-- [{"spawn_id": uuid, "down": boolean}]. The OUT names
+					-- [{"spawn_id": uuid, "down": boolean}]; p_rivals_defeated is how many of the
+					-- other side went down — a count and not a line-up, the rivals being the
+					-- town's garrison rather than the caller's cards, bounded here against the
+					-- line-up the battle was opened with (and 3 on top of that), so the most a
+					-- loss can talk itself into is one team's worth. The OUT names
 					-- deliberately avoid the column names used in the body. security definer: it
 					-- writes player_profiles and combat_results, neither client-writable.
 					--
@@ -1268,7 +1318,8 @@ export function ensureTables(): Promise<void> {
 					-- the occupancy change are all decided here.
 					create or replace function award_combat_exp(
 							p_outcome text,
-							p_fighters jsonb
+							p_fighters jsonb,
+							p_rivals_defeated int default 0
 						)
 					returns table (
 							awarded_exp bigint,
@@ -1277,6 +1328,9 @@ export function ensureTables(): Promise<void> {
 							span_exp bigint,
 							team_survivors int,
 							team_fielded int,
+							-- The rivals felled as this bounded them, which is what a loss was
+							-- actually paid for — the report's own number is not echoed back.
+							rivals_felled int,
 							-- The town is returned rather than echoed from the report, which no
 							-- longer names one.
 							town_id text,
@@ -1297,6 +1351,10 @@ export function ensureTables(): Promise<void> {
 							v_level int;
 							v_span bigint;
 							v_standing int;
+							-- The rival line-up the battle was opened with, and the felled count
+							-- bounded by it.
+							v_rivals jsonb;
+							v_felled int;
 							v_award bigint;
 							v_total bigint;
 							v_holder uuid;
@@ -1325,11 +1383,30 @@ export function ensureTables(): Promise<void> {
 							-- The fight has to be one the server opened. Everything about WHAT was
 							-- fought comes from here, not from the report; a report with no battle
 							-- behind it is not a fight that happened but a claim about one.
-							select b.location_id, b.turnover into v_location, v_fought
+							select b.location_id, b.turnover, b.rivals
+								into v_location, v_fought, v_rivals
 								from battles b where b.user_id = v_uid;
 							if v_location is null then
 								raise exception 'You have no battle in progress to report.';
 							end if;
+							-- How many rivals the report may claim: the line-up this battle was
+							-- opened against, which is the server's own, and never more than a
+							-- team. A battle carrying none falls back to the team size rather
+							-- than paying its loss nothing.
+							v_felled := least(
+								greatest(coalesce(p_rivals_defeated, 0), 0),
+								least(
+									coalesce(
+										nullif(
+											case when jsonb_typeof(v_rivals) = 'array'
+												then jsonb_array_length(v_rivals) else 0 end,
+											0
+										),
+										3
+									),
+									3
+								)
+							);
 							-- The reported team, bounded against what the caller actually owns. A fighter
 							-- is standing or it is down, so the survivors are simply counted over the
 							-- fighters that turned out to be the caller's own.
@@ -1352,9 +1429,9 @@ export function ensureTables(): Promise<void> {
 							-- The report is bounded where it can buy something worth lying for,
 							-- and only there. A win pays a level's worth of experience and banks
 							-- ground, so it has to name a real team. A loss banks nothing, takes
-							-- nothing and pays only the consolation below — a hundredth of what
-							-- the same fight would have paid won, off a team it says nothing
-							-- about — so it is always taken, whatever it names. Refusing one
+							-- nothing and pays only for the rivals it felled — thirty at the
+							-- very most, off a count already bounded by the line-up the server
+							-- froze — so it is always taken, whatever it names. Refusing one
 							-- protects nothing and strands the player in a fight they have
 							-- already given up.
 							if p_outcome = 'win' then
@@ -1377,22 +1454,27 @@ export function ensureTables(): Promise<void> {
 							v_level := level_for_exp(v_exp);
 							v_span := level_span_exp(v_level);
 							-- A win earns the level's whole span, scaled by the share of the team
-							-- left standing. A loss earns a hundredth of the most that same fight
-							-- could ever have paid — which is that whole span, the flawless win —
-							-- so a fight lost is still a fight fought. It does not read the team:
-							-- how badly it went is not what a consolation is for. A draw earns
-							-- nothing, as it always did, and so does a level-20 player, whose span
-							-- is zero and who is done earning either way.
+							-- left standing, and nothing at level 20, whose span is zero. A loss
+							-- earns ten for each rival it took down and nothing else: it reads
+							-- neither the level nor the player's own casualties, so it is worth
+							-- the same at every level and worth nothing when nobody was felled.
+							-- A draw earns nothing, as it always did.
 							if p_outcome = 'win' and v_span > 0 and v_owned > 0 then
 								v_award := round(v_span::numeric * v_standing::numeric / v_owned::numeric);
 							elsif p_outcome = 'lose' then
-								v_award := round(v_span::numeric * 0.01);
+								v_award := v_felled * 10;
 							else
 								v_award := 0;
 							end if;
+							-- Only a loss was paid for the rivals, so only a loss records them.
+							if p_outcome <> 'lose' then
+								v_felled := 0;
+							end if;
 							insert into combat_results
-								(user_id, outcome, survivors, fielded, level, level_span, exp_awarded)
-								values (v_uid, p_outcome, v_standing, v_owned, v_level, v_span, v_award);
+								(user_id, outcome, survivors, fielded, rivals_defeated,
+									level, level_span, exp_awarded)
+								values (v_uid, p_outcome, v_standing, v_owned, v_felled,
+									v_level, v_span, v_award);
 							if v_award > 0 then
 								insert into player_profiles (user_id, exp)
 									values (v_uid, v_award)
@@ -1440,7 +1522,7 @@ export function ensureTables(): Promise<void> {
 								-- Nothing to settle means an earlier report closed this slot: a
 								-- second fight over the town inside its cooldown. The win only —
 								-- that would be a second payout of a level's worth, while a second
-								-- loss pays what the first did, a hundredth of a span off a battle
+								-- loss pays what the first did, ten a fallen rival off a battle
 								-- that had to be opened to be reported at all, which is not worth
 								-- stranding anybody in a fight over.
 								if v_challenge is null and p_outcome = 'win' then
@@ -1546,10 +1628,11 @@ export function ensureTables(): Promise<void> {
 							span_exp := v_span;
 							team_survivors := v_standing;
 							team_fielded := v_owned;
+							rivals_felled := v_felled;
 							return next;
 					end;
 					$award_combat_exp$;
-					grant execute on function award_combat_exp(text, jsonb) to authenticated;
+					grant execute on function award_combat_exp(text, jsonb, int) to authenticated;
 					-- The acceptance ledger: which legal document, at which version, was agreed to
 					-- by whom and when. Server-side because an acceptance held in the player's own
 					-- browser demonstrates nothing — GDPR art. 5(2) puts the burden of showing it on
