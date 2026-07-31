@@ -272,17 +272,20 @@ export const combatColorHex = (color: string): number => COMBAT_COLOR_HEX[color]
  * buttons, whichever shoulder that column is standing off. */
 const ORDER_GAP = 8;
 /**
- * How many orders a column is sized to hold. A fighter that can be ordered at all is
- * given all three of them (charge, defend, shoot), so the column is drawn to come to
- * exactly one cell of the grid: it is as tall as the ground its fighter is standing on,
- * which is what keeps it beside that fighter and out of the lane above. A list of some
- * other length keeps this button size and simply runs shorter or longer.
+ * What a button in a column is *sized* by: a cell split this many ways. Not how many a
+ * column holds — a fighter is given the three orders there are (charge, defend, shoot),
+ * and the column runs as long as the list it is handed.
  *
- * Three, and not the four it was: what a fighter's colour hands it for free used to take
- * a slot at the head of this column, and is now a row of its own at the fighter's feet
- * ({@link MugenBoard.setPassives}). The column is orders and nothing else.
+ * Four, because four is what a cell was being split into when this button size was
+ * settled: the three orders and, over them, a slot for what the fighter's colour did of
+ * its own accord. That slot has since moved to a row of its own at the fighter's feet
+ * ({@link MugenBoard.setPassives}) — and a button is the size it is regardless, because
+ * how big an order reads on this board is not a thing that ought to change under the
+ * player when something *else* moves off the column. So the three of them now come to
+ * three quarters of the cell rather than the whole of it, and the quarter they leave at
+ * the top is the room the fourth used to take.
  */
-const ORDER_COLUMN_COUNT = 3;
+const ORDER_COLUMN_COUNT = 4;
 /** Gap between buttons in a column, as a fraction of a button's height. */
 const ORDER_SPACING_RATIO = 0.12;
 /** A button's height as a fraction of a cell's side: the count and the gaps above,
@@ -1945,8 +1948,8 @@ export class MugenBoard {
 	/**
 	 * Give a fighter the orders it can be given, drawn as a column of buttons immediately
 	 * beside the character they belong to — where the association is unambiguous — the
-	 * three of them together coming to the height of the cell it is standing on
-	 * ({@link ORDER_HEIGHT_RATIO}).
+	 * three of them together standing up from its feet through three quarters of the cell
+	 * it is standing on ({@link ORDER_COLUMN_COUNT}).
 	 *
 	 * `side` says which of its shoulders the column stands off, and is the caller's to
 	 * decide because it is about the fight and not about the board: the two teams stand on
@@ -2125,10 +2128,10 @@ export class MugenBoard {
 
 	/**
 	 * A button's drawn size: a cell's side split {@link ORDER_COLUMN_COUNT} ways with the
-	 * gaps taken out of it, and as wide as that height allows — so the column of orders
-	 * comes to exactly the cell it is stacked alongside. One size for every fighter,
+	 * gaps taken out of it, and as wide as that height allows. One size for every fighter,
 	 * because one size is what a cell is, so a fighter that walks carries the same column
-	 * of buttons with it.
+	 * of buttons with it — and one size for the whole fight, whatever else comes and goes
+	 * from the column.
 	 */
 	private orderSize(): MarkSize {
 		const height = this.cellWidth() * ORDER_HEIGHT_RATIO;
