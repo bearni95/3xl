@@ -955,18 +955,33 @@
 				     panel in the middle of the board, and the same score at both ends of
 				     one canvas would be one score too many. -->
 				<div class="pointer-events-none absolute inset-x-0 top-0 flex justify-center">
-					<!-- On the same plate the map's breadcrumb bar stands on: rounded, the base
-					     colour at four fifths so the board reads through it, white type and a
-					     shadow to lift it off what it covers. The score and the path are the same
-					     kind of thing — a line of state laid over a picture that fills the view —
-					     so they are drawn as one thing and not two. It hugs its contents rather
-					     than running the width of the canvas: a band across the top would be a
-					     bar of colour over the board, where a plate is a label on it. And it
-					     hangs off the canvas's own top edge with nothing between — the board is
-					     the whole view, so a gap there is a strip of board covered by nothing. -->
-					<div
-						class="flex h-8 items-stretch gap-4 overflow-hidden rounded-lg bg-base-100/80 text-white shadow-xl"
-					>
+					<!-- On the same plate the map's breadcrumb bar stands on: the base colour at
+					     four fifths so the board reads through it, white type and a shadow to lift
+					     it off what it covers. The score and the path are the same kind of thing —
+					     a line of state laid over a picture that fills the view — so they are drawn
+					     as one thing and not two. Its corners are the one thing not carried over:
+					     both ends are joined to a wing (below), and a rounded edge under a flush
+					     one is a notch. It hugs its contents rather than running the width of the
+					     canvas: a band across the top would be a bar of colour over the board,
+					     where a plate is a label on it. And it hangs off the canvas's own top edge
+					     with nothing between — the board is the whole view, so a gap there is a
+					     strip of board covered by nothing. -->
+					<!-- The plate's two wings: a right triangle at either end, in the plate's own
+					     colour, so what hangs off the top of the board is one shape — a banner —
+					     rather than a box with two marks beside it. Each keeps its square corner
+					     against the count nearest it and slopes away from there, the rivals'
+					     square corner at the top right and the player's at the top left, so the
+					     two lean outwards from the turn exactly as the counts do.
+					     Drawn as a border rather than as a shape, which is what a triangle is in
+					     CSS: a box with no size at all, one side of it coloured and the side it
+					     leans on transparent, so the coloured side is cut off at 45°. Both legs
+					     are the plate's own height, which is what makes the other two angles 45
+					     apiece and butts the wing flush against the plate's full depth. -->
+					<span
+						class="h-0 w-0 border-t-[2rem] border-l-[2rem] border-t-base-100/80 border-l-transparent"
+						aria-hidden="true"
+					></span>
+					<div class="flex h-8 items-stretch gap-4 bg-base-100/80 text-white shadow-xl">
 						<!-- Each side's count is three squares in a row, and they are square
 						     because they stand for cells of the board: the plate is `h-8` and a
 						     block is three of that across (`w-24`), over three equal columns. So
@@ -1010,6 +1025,10 @@
 							{/each}
 						</div>
 					</div>
+					<span
+						class="h-0 w-0 border-t-[2rem] border-r-[2rem] border-t-base-100/80 border-r-transparent"
+						aria-hidden="true"
+					></span>
 				</div>
 			{/if}
 			{#if state?.outcome}
