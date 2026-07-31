@@ -17,12 +17,12 @@
 	// map is on is inert text and every step above it is a button back to its tier, and
 	// neither wants its own copy of a tile, a glyph and two lines.
 	//
-	// It is also what the radio on the far end of that bar is drawn as (see MusicCrumb): a
-	// song over the station it is playing on is the same object as a place over the show it
-	// flies — a tile, a name, and what the name belongs to — and the bar has one way of
-	// saying that. The station is a dial rather than a word, which is the only reason the
-	// second line can be given from outside (see the slot below); everything else is this
-	// component's, so the two ends of the bar cannot drift apart.
+	// The radio on the far end of that bar was drawn as one of these for a while (see
+	// MusicCard, which is at the foot of the map now): a song over the station it plays on
+	// is the same object as a place over the show it flies. The second line is still the
+	// slot that made that possible — the station is a dial rather than a word — and it is
+	// kept because a crumb's own line is still the one thing about it that can be something
+	// other than a name to be read.
 
 	// The place, with its article already restored by the caller.
 	export let label: string = '';

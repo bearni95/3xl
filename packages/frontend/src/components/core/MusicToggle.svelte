@@ -4,8 +4,8 @@
 
 	// The radio's play/pause, on its own, because there are two places that need one and
 	// they have to be the same button: the plate in the menu, where the whole radio is,
-	// and the bar over the map, which is the one row that is always up. Turning the
-	// sound off is not worth opening a menu for.
+	// and the card at the foot of the map, which is up whether or not a menu is. Turning
+	// the sound off is not worth opening a menu for.
 	//
 	// It says what the element is really doing rather than what it was last told to do,
 	// and it says it in both places at once, because both read the one service store —
@@ -14,8 +14,9 @@
 	// It draws nothing until there is a song, like the plate: a map whose music never
 	// arrived is a map with no music control on it, not one with a dead button.
 	//
-	// Shape is the caller's: this is a square on the bar over the terrain and a ghost
-	// circle on the plate, and neither of those is a fact about a play button.
+	// Shape is the caller's: a ghost circle on both plates today, in the menu's ink on one
+	// and in white over the terrain on the other, and none of that is a fact about a play
+	// button.
 
 	/** The button's own classes — its shape and colour belong to where it stands. */
 	export let classes: string = '';

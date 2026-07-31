@@ -13,8 +13,8 @@
 	// not — a select with one option is an affordance that lies about what it can do.
 	//
 	// Split out because both surfaces that draw the radio are the same statement about the
-	// same store: the plate in the burger menu (MusicPlayer) and the crumb on the bar over
-	// the map (MusicCrumb). Only the ink differs, and ink belongs to where a thing stands,
+	// same store: the plate in the burger menu (MusicPlayer) and the card at the foot of
+	// the map (MusicCard). Only the ink differs, and ink belongs to where a thing stands,
 	// so that is the caller's.
 
 	/** The line's ink and size — whatever the surface holding it letters its second line in. */

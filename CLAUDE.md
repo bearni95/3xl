@@ -147,12 +147,14 @@ to rather than resuming. The radio's two controls are play/pause (`MusicToggle.s
 the **dial** (`StationDial.svelte`) — a select naming the stations, which *is* the second
 line, since that line was already naming the show and a radio says its station once. There is
 no skip: a radio has no next song. The whole radio stands twice: as the plate at the foot of
-the menu, and as a card at the far end of the breadcrumb bar (`MusicCrumb.svelte`), which is
-the one row that is always up. That card is drawn as a `MapBreadcrumb` — a song over its
-station is the same object as a place over the show it flies, and the bar has one way of
-saying that — which is also why the crumb's second line can be given from outside. Both
-copies are the same components over the same store, and the bar's is what asks for the
-collection at all, since the plate is mounted only while the drawer is open. Both
+the menu, and as a card at the foot of the map (`MusicCard.svelte`), the left half of the
+account row in that corner — the player's plate is the right half. It stood at the far end
+of the breadcrumb bar before that, drawn as a `MapBreadcrumb`, and took room a path needs.
+A song's title there is a **banner** rather than a truncation (`MarqueeText.svelte`, whose
+keyframes are the one piece of CSS in `css/app.css` a component could not spell as a class):
+it scrolls end to end, and only when the line is wider than the box measures. Both
+copies of the radio are the same components over the same store, and the map's is what asks
+for the collection at all, since the plate is mounted only while the drawer is open. Both
 of the listener's choices — which station, and whether it was left on — are remembered in
 localStorage (`music-player`) and restored on the next visit. The play is asked for twice:
 on the spot, which the browser may refuse since a reload is not a gesture, and then at the

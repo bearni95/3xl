@@ -12,8 +12,8 @@
 	//
 	// It stood in the map's top-left corner, which is a corner of the map: a plate that
 	// is always up is a plate that is always in the way, and the one thing on it a
-	// player reaches for often is the pause — which is on the bar over the map now (see
-	// MusicToggle), where it costs nothing. What is left here is what is only wanted
+	// player reaches for often is the pause — which is at the foot of the map now, on
+	// the radio card beside the account (see MusicCard). What is left here is what is only wanted
 	// when it is wanted: which station, and what is on it. The menu is where everything
 	// that is not the map already lives.
 	//
@@ -26,7 +26,7 @@
 	// The dial is the second line rather than a control beside it, because that line
 	// was already naming the show: on a radio the station's name and the way to change
 	// it are one thing, and the plate has no room to say it twice (see StationDial,
-	// which is that line here and on the bar's own card too — see MusicCrumb).
+	// which is that line here and on the map's own card too — see MusicCard).
 	//
 	// It is a base-100 plate with a border, not the black one it was over the terrain:
 	// black was for being read off satellite imagery, and inside the menu there is no
