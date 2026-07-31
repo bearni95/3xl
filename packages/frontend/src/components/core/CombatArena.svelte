@@ -955,31 +955,40 @@
 				     While the fight is running only: a decided one reads its score off the
 				     panel in the middle of the board, and the same score at both ends of
 				     one canvas would be one score too many. -->
-				<div
-					class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center gap-4 p-3"
-				>
+				<div class="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
+					<!-- On the same plate the map's breadcrumb bar stands on: rounded, the base
+					     colour at four fifths so the board reads through it, white type and a
+					     shadow to lift it off what it covers. The score and the path are the same
+					     kind of thing — a line of state laid over a picture that fills the view —
+					     so they are drawn as one thing and not two. It hugs its contents rather
+					     than running the width of the canvas: a band across the top would be a
+					     bar of colour over the board, where a plate is a label on it. -->
 					<div
-						class="flex h-3 w-20 flex-row-reverse overflow-hidden rounded-full border-2 border-white"
-						role="progressbar"
-						aria-label={$_('combat.rivalWins')}
-						aria-valuemin={0}
-						aria-valuemax={TEAM_SIZE}
-						aria-valuenow={state.wins.error}
+						class="flex items-center gap-4 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
 					>
-						<span class={classNames('h-full bg-white', scoreFill(state.wins.error))}></span>
-					</div>
-					<span class="font-mono text-sm font-bold tabular-nums opacity-70">
-						{$_('combat.turn', { values: { turn: state.turn } })}
-					</span>
-					<div
-						class="flex h-3 w-20 overflow-hidden rounded-full border-2 border-white"
-						role="progressbar"
-						aria-label={$_('combat.yourWins')}
-						aria-valuemin={0}
-						aria-valuemax={TEAM_SIZE}
-						aria-valuenow={state.wins.info}
-					>
-						<span class={classNames('h-full bg-white', scoreFill(state.wins.info))}></span>
+						<div
+							class="flex h-3 w-20 flex-row-reverse overflow-hidden rounded-full border-2 border-white"
+							role="progressbar"
+							aria-label={$_('combat.rivalWins')}
+							aria-valuemin={0}
+							aria-valuemax={TEAM_SIZE}
+							aria-valuenow={state.wins.error}
+						>
+							<span class={classNames('h-full bg-white', scoreFill(state.wins.error))}></span>
+						</div>
+						<span class="font-mono text-sm font-bold tabular-nums opacity-70">
+							{$_('combat.turn', { values: { turn: state.turn } })}
+						</span>
+						<div
+							class="flex h-3 w-20 overflow-hidden rounded-full border-2 border-white"
+							role="progressbar"
+							aria-label={$_('combat.yourWins')}
+							aria-valuemin={0}
+							aria-valuemax={TEAM_SIZE}
+							aria-valuenow={state.wins.info}
+						>
+							<span class={classNames('h-full bg-white', scoreFill(state.wins.info))}></span>
+						</div>
 					</div>
 				</div>
 			{/if}
