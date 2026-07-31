@@ -168,7 +168,7 @@
 			const detail = record.message ?? record.hint ?? record.details;
 			if (typeof detail === 'string' && detail) return detail;
 		}
-		return 'Could not recycle those cards. Please try again.';
+		return $_('roster.recycle.failed');
 	}
 
 	async function confirmRecycle(): Promise<void> {
@@ -177,7 +177,7 @@
 		recycleNotice = '';
 		try {
 			const { recycled, granted } = await spawnService.recycleSpawns([...selectedForRecycle]);
-			recycleNotice = `Recycled ${recycled} card${recycled === 1 ? '' : 's'} for ${granted} extra claim${granted === 1 ? '' : 's'} today.`;
+			recycleNotice = $_('roster.recycle.done', { values: { recycled, granted } });
 			recycleMode = false;
 			selectedForRecycle = new Set();
 		} catch (err) {
@@ -636,14 +636,16 @@
 				class="flex flex-none flex-wrap items-center gap-3 rounded-box bg-warning/10 p-4 text-sm"
 			>
 				<span class="font-medium">
-					Tap cards to select them. Every {RECYCLE_GROUP_SIZE} recycled grants one extra claim today.
+					{$_('roster.recycle.hint', { values: { size: RECYCLE_GROUP_SIZE } })}
 				</span>
-				<span class="badge badge-warning" title="Cards selected → extra claims earned">
-					{recycleSelectedCount} selected → {recycleGrant} claim{recycleGrant === 1 ? '' : 's'}
+				<span class="badge badge-warning" title={$_('roster.recycle.tallyTitle')}>
+					{$_('roster.recycle.tally', {
+						values: { selected: recycleSelectedCount, grants: recycleGrant }
+					})}
 				</span>
 				<div class="ml-auto flex items-center gap-3">
 					<button class="btn btn-ghost btn-sm" on:click={cancelRecycle} disabled={recycling}>
-						Cancel
+						{$_('roster.recycle.cancel')}
 					</button>
 					<button
 						class="btn btn-warning btn-sm"
@@ -653,7 +655,7 @@
 						{#if recycling}
 							<span class="loading loading-spinner loading-xs"></span>
 						{/if}
-						Recycle {recycleSelectedCount} card{recycleSelectedCount === 1 ? '' : 's'}
+						{$_('roster.recycle.confirm', { values: { selected: recycleSelectedCount } })}
 					</button>
 				</div>
 			</div>
@@ -673,7 +675,7 @@
 	<div class="flex min-h-0 flex-1 flex-col">
 		{#if !authService.configured}
 			<div class="alert alert-warning text-sm">
-				<span>Sign-in is unavailable — Supabase is not configured.</span>
+				<span>{$_('roster.notConfigured')}</span>
 			</div>
 		{:else if $status === AuthStatus.Loading}
 			<div class="flex justify-center py-12">
@@ -682,7 +684,7 @@
 		{:else if $status !== AuthStatus.SignedIn}
 			<div class="card max-w-md bg-base-200">
 				<div class="card-body gap-4">
-					<p class="text-sm opacity-70">Sign in to see the characters you've claimed.</p>
+					<p class="text-sm opacity-70">{$_('roster.signInBody')}</p>
 					<!-- The sign-in card is in the map's own panel, behind this modal, so the
 					     prompt hands the screen back to it rather than stacking another one. -->
 					<button
@@ -692,7 +694,7 @@
 							signInPanelOpen.set(true);
 						}}
 					>
-						Sign in
+						{$_('roster.signIn')}
 					</button>
 				</div>
 			</div>
@@ -701,16 +703,15 @@
 		{:else if loading}
 			<div class="flex items-center gap-2 text-sm opacity-70">
 				<span class="loading loading-spinner loading-xs"></span>
-				Loading your roster…
+				{$_('roster.loading')}
 			</div>
 		{:else if $spawns.length === 0}
 			<div class="card max-w-md bg-base-200">
 				<div class="card-body gap-4">
-					<p class="text-sm opacity-70">
-						You haven't claimed any characters yet. Head to the map and open one of today's
-						booster packs to spawn your first one.
-					</p>
-					<button class="btn btn-primary btn-sm w-fit" on:click={close}>Open the map</button>
+					<p class="text-sm opacity-70">{$_('roster.emptyBody')}</p>
+					<button class="btn btn-primary btn-sm w-fit" on:click={close}>
+						{$_('roster.openMap')}
+					</button>
 				</div>
 			</div>
 		{:else}
@@ -725,18 +726,18 @@
 							class="btn join-item btn-sm"
 							disabled={page === 0}
 							on:click={() => goToPage(page - 1)}
-							aria-label="Previous page"
+							aria-label={$_('roster.previousPage')}
 						>
 							‹
 						</button>
 						<span class="btn no-animation join-item pointer-events-none btn-sm font-normal">
-							Page {page + 1} / {pageCount}
+							{$_('roster.page', { values: { page: page + 1, total: pageCount } })}
 						</span>
 						<button
 							class="btn join-item btn-sm"
 							disabled={page >= pageCount - 1}
 							on:click={() => goToPage(page + 1)}
-							aria-label="Next page"
+							aria-label={$_('roster.nextPage')}
 						>
 							›
 						</button>
@@ -745,7 +746,7 @@
 				{#if $teamSaving}
 					<span class="flex items-center gap-2 text-xs opacity-60">
 						<span class="loading loading-spinner loading-xs"></span>
-						Saving team…
+						{$_('roster.savingTeam')}
 					</span>
 				{/if}
 			</div>
@@ -844,8 +845,8 @@
 						<input
 							type="search"
 							class="input input-sm input-bordered w-full"
-							placeholder="Search by name"
-							aria-label="Filter by name"
+							placeholder={$_('roster.searchByName')}
+							aria-label={$_('roster.filterByName')}
 							bind:value={filterName}
 						/>
 
@@ -860,13 +861,19 @@
 							     square saying red is quicker to read than the word and needs no
 							     translating. Not a <label>, since there is no one control here to
 							     label — a group of six buttons, each pressed or not. -->
-							<div class="grid grid-cols-3 gap-1" role="group" aria-label="Filter by colour">
+							<div
+								class="grid grid-cols-3 gap-1"
+								role="group"
+								aria-label={$_('roster.filterByColor')}
+							>
 								{#each COLOR_OPTIONS as color (color)}
 									<button
 										type="button"
 										class={colorSquareClasses(color, filterColor)}
-										title={color}
-										aria-label="Filter by {color}"
+										title={$_(`roster.colors.${color}`)}
+										aria-label={$_('roster.filterByThisColor', {
+											values: { color: $_(`roster.colors.${color}`) }
+										})}
 										aria-pressed={filterColor === color}
 										on:click={() => toggleColorFilter(color)}
 									></button>
@@ -881,13 +888,19 @@
 							     roster holds cards from more than nothing, which leaves the colours the
 							     first of the pair's two columns and nothing in the second. -->
 							{#if showFilterOptions.length > 0}
-								<div class="flex flex-col gap-1" role="group" aria-label="Filter by show">
+								<div
+									class="flex flex-col gap-1"
+									role="group"
+									aria-label={$_('roster.filterByShow')}
+								>
 									{#each showFilterOptions as show (show.id)}
 										<button
 											type="button"
 											class={showChipClasses(show.id, filterShow)}
 											title={show.name}
-											aria-label="Filter by {show.name}"
+											aria-label={$_('roster.filterByThisShow', {
+												values: { show: show.name }
+											})}
 											aria-pressed={filterShow === show.id}
 											on:click={() => toggleShowFilter(show.id)}
 										>
@@ -910,8 +923,12 @@
 						     what the card is, and the way out of them is read after them rather than
 						     before there is anything to get out of. Disabled while no filter is
 						     narrowing anything, so it is only a button when it has something to do. -->
-						<button class="btn btn-ghost btn-sm w-full" disabled={!filtersActive} on:click={resetFilters}>
-							Clear
+						<button
+							class="btn btn-ghost btn-sm w-full"
+							disabled={!filtersActive}
+							on:click={resetFilters}
+						>
+							{$_('roster.clear')}
 						</button>
 					</div>
 
@@ -964,7 +981,7 @@
 							<div class="absolute inset-x-1 top-1 z-10 flex items-center gap-1">
 								<select
 									class="select select-xs min-w-0 max-w-[8rem] flex-initial shadow"
-									aria-label="{statue.label} — where it was claimed"
+									aria-label={$_('roster.claimedIn', { values: { name: statue.label } })}
 									value={placeValue}
 									on:change={(event) => showCopy(group.characterId, event.currentTarget.value)}
 								>
@@ -989,12 +1006,12 @@
 											fielded ? 'btn-primary' : 'btn-neutral'
 										)}
 										disabled={$teamSaving || (!fielded && teamFilledCount >= TEAM_SIZE)}
-										title={fielded
-											? `Remove ${statue.label} from your team`
-											: `Add ${statue.label} to your team`}
-										aria-label={fielded
-											? `Remove ${statue.label} from your team`
-											: `Add ${statue.label} to your team`}
+										title={$_(fielded ? 'roster.removeFromTeam' : 'roster.addToTeam', {
+											values: { name: statue.label }
+										})}
+										aria-label={$_(fielded ? 'roster.removeFromTeam' : 'roster.addToTeam', {
+											values: { name: statue.label }
+										})}
 										on:click={() => handleTeamButton(copy)}
 									>
 										{fielded ? '−' : '+'}
@@ -1035,8 +1052,10 @@
 					<div
 						class="col-span-3 flex flex-col items-center justify-center gap-3 py-12 text-center lg:col-span-4"
 					>
-						<p class="text-sm opacity-60">No characters match these filters.</p>
-						<button class="btn btn-outline btn-sm" on:click={resetFilters}>Clear filters</button>
+						<p class="text-sm opacity-60">{$_('roster.noMatches')}</p>
+						<button class="btn btn-outline btn-sm" on:click={resetFilters}>
+							{$_('roster.clearFilters')}
+						</button>
 					</div>
 				{/if}
 				</div>
