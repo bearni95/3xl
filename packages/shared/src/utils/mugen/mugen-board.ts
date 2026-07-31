@@ -920,6 +920,13 @@ export class MugenBoard {
 	 * Only the fills are coloured: every line of the grid is drawn in {@link GRID_LINE},
 	 * so the lattice reads as one board rather than as two colours meeting, and a cell's
 	 * side is said by the ground inside it alone.
+	 *
+	 * Both are drawn in nothing at present — the ground at alpha 0 and the line with it — so
+	 * the field is unmarked and what stands on the canvas is the fighters and the marks made
+	 * about them (a claimed cell's overlay, the guard rings, the orders) on whatever is
+	 * behind it. The pass itself stays, laying the same hexagons off the same outline: which
+	 * cell is whose is still the thing being drawn, and the board comes back by way of those
+	 * two alphas rather than by writing this again.
 	 */
 	private drawBoard(leftColor: number, rightColor: number, centerColor: number): void {
 		if (!this.app) return;
@@ -931,8 +938,8 @@ export class MugenBoard {
 			const color = side === 'red' ? leftColor : side === 'blue' ? rightColor : centerColor;
 
 			graphics.poly(this.cellOutline(q, r));
-			graphics.fill({ color, alpha: 0.08 });
-			graphics.stroke({ width: 2, color: GRID_LINE, alpha: 0.9 });
+			graphics.fill({ color, alpha: 0 });
+			graphics.stroke({ width: 2, color: GRID_LINE, alpha: 0 });
 		}
 		this.app.stage.addChild(graphics);
 	}
@@ -1505,7 +1512,8 @@ export class MugenBoard {
 		const color = side === 'red' ? this.options.grids[0].color : this.options.grids[1].color;
 		const graphics = new Graphics();
 		graphics.poly(this.cellOutline(cell.q, cell.r));
-		// Stronger fill than the base grid's 0.08 so the takeover reads clearly.
+		// The one cell on the board that is painted at all: the grid under it is drawn in
+		// nothing (see drawBoard), so a takeover is the whole of what a cell's ground says.
 		graphics.fill({ color, alpha: 0.35 });
 		graphics.stroke({ width: 2, color, alpha: 1 });
 		graphics.zIndex = 0.5; // above the base grid (0), below the actors
