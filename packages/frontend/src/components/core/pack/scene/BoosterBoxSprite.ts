@@ -686,23 +686,25 @@ export class BoosterBoxSprite extends Container {
 			.join(' ');
 	}
 
-	/** The place, set as wide as the front: centred, bold, in whichever of the two the card is not,
-	 * and taken to the picture's own width whatever name it turned out to be.
+	/** The place, set to the width of the front: centred, bold, in whichever of the two the card is
+	 * not, and taken to the picture's own width whatever name it turned out to be.
 	 *
-	 * Set *to* the width and not merely inside it. `TYPE_SIZE` is where the type starts and not
-	 * where it ends up: the name is laid out at that size, measured, and then taken to exactly the
-	 * room — up for a short place, down for a long one — so the row across the head is the width of
-	 * the poster under it on every box, and no name is left sitting in the middle of a band it does
-	 * not fill. It also settles the way this type used to be lost. The front is masked (the crop the
-	 * crumble needs), so anything hanging over the sides was not overhanging, it was *gone*: the
-	 * town's name and the year after it sliced off at the picture's edge. A row taken to the front's
-	 * width cannot hang over it.
+	 * `trim` is what makes that possible, and it is the whole of this. A text's box is normally the
+	 * sum of its letters' advances — the room the font says to step on by — and what is painted is
+	 * not that: bold letters lean out over the ends of their own boxes, so the ink is the wider of
+	 * the two and every fit worked out from the number was short by however much. Trimmed, the box
+	 * is read back off the pixels instead, so what the Text reports is what it draws, to the letter.
 	 *
-	 * Wrapping still happens first, at that same width, so a name with somewhere to break breaks
-	 * before it is measured and the block that is taken to the width is the block that was found.
-	 * The scale is on the Text and not in its font size, so those line breaks stay the ones that
-	 * were found, and the band above it comes out right without being told — a scaled Text reports
-	 * its scaled height, which is what {@link bandHeights} measures.
+	 * Then the fit is one line: take that box to the room. Up for a short place, down for a long
+	 * one, uniformly — a caption stretched to a width is a different caption — so the row across
+	 * the head is the width of the poster under it on every box, and nothing can hang over the
+	 * front's edges for its crop to slice off. `TYPE_SIZE` is therefore where a name starts and not
+	 * where it ends up; what it still decides is where a long one breaks, wrapping happening at
+	 * that same width before any of this is measured.
+	 *
+	 * The band above comes out right without being told: a trimmed, scaled Text reports the ink's
+	 * own height, which is what {@link bandHeights} measures, so the fade is as deep as the letters
+	 * are and not as deep as a line box they sit loose inside.
 	 */
 	private placeType(label: string): Text {
 		const w = this.boxWidth;
@@ -718,12 +720,11 @@ export class BoosterBoxSprite extends Container {
 				lineHeight: size * TYPE_LEADING,
 				fill: this.stock.ink,
 				align: 'center',
+				trim: true,
 				wordWrap: true,
 				wordWrapWidth: room
 			}
 		});
-		// Uniformly, the one figure across both axes: a caption stretched to a width is a different
-		// caption. The width is what is asked for, and the height is whatever that costs.
 		if (type.width > 0) type.scale.set(room / type.width);
 		return type;
 	}
