@@ -9,7 +9,7 @@
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import MusicPlayer from '$components/core/MusicPlayer.svelte';
-	import MusicToggle from '$components/core/MusicToggle.svelte';
+	import MusicCrumb from '$components/core/MusicCrumb.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
 	import LocationSearchPanel from '$components/core/LocationSearchPanel.svelte';
@@ -1989,9 +1989,11 @@
 
 		<!-- Everything the map draws over its top edge, in one absolutely positioned column: the
 			breadcrumb bar across the top, and under it the search results when there are any.
-			The music player stood under it too, in the left corner, and is in the menu now —
-			what a player reaches for often is its pause, and that is on the bar itself (see
-			MusicToggle). (The player's own side is over the map too, at the foot of it — three
+			The music player stood under it too, in the left corner: a plate that is always up
+			is a plate that is always in the way, so the radio is on the bar's own row now, as
+			one of its cards (see MusicCrumb), and the plate in the menu is the same radio said
+			again where a menu can say it. (The player's own side is over the map too, at the
+			foot of it — three
 			statues on nothing, positioned on their own rather than as a row of this column,
 			since they are at the other corner; see below.) The bar is in the column
 			rather than over it, so it pushes the plates down by taking its own row instead
@@ -2032,17 +2034,14 @@
 							bar is the one row that is always up, so what a player reaches for however deep
 							into the map they are is reached for here. -->
 						<div slot="end" class="flex items-center gap-2">
-							<!-- The radio's play/pause, in the same 32px square and the same white as the
-								search and the burger beside it. The whole radio is in the menu — which
-								station, and what is on it — but stopping the sound is not a thing to open a
-								menu for, and this bar is the one row that is up wherever a player has got to
-								in the map. It is the same button as the plate's and reads the same store, so
-								either one says what the other did. Nothing is drawn here on a map whose
-								music never arrived. -->
-							<MusicToggle
-								classes="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
-								iconClasses="size-4"
-							/>
+							<!-- The radio, whole: what is on air, the dial it is tuned by and the play/pause,
+								as one more of the cards this bar is a row of (see MusicCrumb). It was the
+								play/pause on its own, in the same square as the search and the burger, with the
+								rest of the radio behind the menu — but a song over its station is the same
+								object as a place over the show it flies, and the bar already letters that at
+								its other end, so there was a card to be made of it and no room to be found for
+								one. Nothing is drawn here on a map whose music never arrived. -->
+							<MusicCrumb />
 							<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
 							<!-- The three bars, in the same square and the same white as the search button it
 								stands beside and the dots button at the other end of the row: this bar is a line

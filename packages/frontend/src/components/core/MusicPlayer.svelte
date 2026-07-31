@@ -3,8 +3,8 @@
 	import { onMount } from 'svelte';
 	import MusicToggle from '$components/core/MusicToggle.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
+	import StationDial from '$components/core/StationDial.svelte';
 	import { musicService } from '$services/music.service';
-	import { showLogos, loadShowLogos } from '$services/shows.service';
 	import { showIconName } from '$utils/show/show-icon';
 
 	// The radio, whole: one plate in the burger menu with the three things a listener
@@ -25,9 +25,8 @@
 	//
 	// The dial is the second line rather than a control beside it, because that line
 	// was already naming the show: on a radio the station's name and the way to change
-	// it are one thing, and the plate has no room to say it twice. It is the select
-	// itself when there is a choice to make and the plain line when there is not — a
-	// select with one option is an affordance that lies about what it can do.
+	// it are one thing, and the plate has no room to say it twice (see StationDial,
+	// which is that line here and on the bar's own card too — see MusicCrumb).
 	//
 	// It is a base-100 plate with a border, not the black one it was over the terrain:
 	// black was for being read off satellite imagery, and inside the menu there is no
@@ -41,40 +40,17 @@
 
 	export let classes: string = '';
 
-	// The two reads the plate is drawn from: the songs (@3xl/data's music.json, by way
-	// of the service) and the shows, for the names on the dial — the same baked
-	// shows.json the statues read, so this is a no-op on a page that has already asked
-	// for it. The music read is asked for again here because the menu is a place that
-	// can be opened before anything else has; it is one shared fetch either way. A
-	// failed read leaves no song loaded, and the plate is then not drawn at all rather
-	// than standing there empty.
-	onMount(() => {
-		void musicService.load().catch(() => undefined);
-		void loadShowLogos();
-	});
+	// The songs (@3xl/data's music.json, by way of the service). Asked for here because
+	// the menu is a place that can be opened before anything else has; it is one shared
+	// fetch either way. A failed read leaves no song loaded, and the plate is then not
+	// drawn at all rather than standing there empty. The shows the dial is named from are
+	// its own read now (see StationDial).
+	onMount(() => void musicService.load().catch(() => undefined));
 
 	const music = musicService.state;
 
-	/** A station's value in the select: an id, and the one word that is not an id. */
-	const NO_SHOW = 'none';
-
-	function stationKey(showId: number | null): string {
-		return showId === null ? NO_SHOW : String(showId);
-	}
-
 	$: state = $music;
 	$: showIcon = showIconName(state.track?.showId ?? null);
-	// The stations to choose between, named from the same baked shows.json the statues
-	// read. The songs that open no show are the dash the town panel leaves for anything
-	// unnameable; a show that file has nothing for is lettered by its id instead, since
-	// two stations reading the same dash would be a dial that cannot be turned by
-	// looking at it.
-	$: stations = state.stations.map((showId) => ({
-		showId,
-		key: stationKey(showId),
-		name: showId === null ? '—' : ($showLogos.get(showId)?.name ?? `#${showId}`)
-	}));
-	$: tunedName = stations.find((station) => station.showId === state.station)?.name ?? '—';
 </script>
 
 {#if state.track}
@@ -98,26 +74,7 @@
 		<!-- `min-w-0` is what lets a long title truncate instead of widening the plate. -->
 		<div class="flex min-w-0 flex-1 flex-col text-left leading-tight">
 			<span class="truncate text-sm font-semibold">{state.track.title}</span>
-			{#if stations.length > 1}
-				<!-- The dial: stripped of the select's own box so it reads as the line it
-					replaced, and left with the caret, which is the only thing that says it can
-					be opened. -->
-				<select
-					class="select select-ghost h-5 min-h-0 w-full max-w-full truncate rounded-none border-0 bg-transparent p-0 pe-5 text-xs font-medium text-base-content/70 focus:outline-none"
-					aria-label="Station"
-					value={stationKey(state.station)}
-					on:change={(event) =>
-						musicService.tuneTo(
-							event.currentTarget.value === NO_SHOW ? null : Number(event.currentTarget.value)
-						)}
-				>
-					{#each stations as station (station.key)}
-						<option value={station.key}>{station.name}</option>
-					{/each}
-				</select>
-			{:else}
-				<span class="truncate text-xs font-medium text-base-content/70">{tunedName}</span>
-			{/if}
+			<StationDial classes="text-xs font-medium text-base-content/70" />
 		</div>
 
 		<!-- The same button as the one on the bar over the map, and the same store behind

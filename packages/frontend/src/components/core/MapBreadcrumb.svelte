@@ -16,6 +16,13 @@
 	// Split out of MapBreadcrumbs because a crumb has two states and one body: the step the
 	// map is on is inert text and every step above it is a button back to its tier, and
 	// neither wants its own copy of a tile, a glyph and two lines.
+	//
+	// It is also what the radio on the far end of that bar is drawn as (see MusicCrumb): a
+	// song over the station it is playing on is the same object as a place over the show it
+	// flies — a tile, a name, and what the name belongs to — and the bar has one way of
+	// saying that. The station is a dial rather than a word, which is the only reason the
+	// second line can be given from outside (see the slot below); everything else is this
+	// component's, so the two ends of the bar cannot drift apart.
 
 	// The place, with its article already restored by the caller.
 	export let label: string = '';
@@ -77,7 +84,16 @@
 		>
 			{label}
 		</span>
-		{#if showName}
+		<!-- The second line, given from outside when it is something other than a name to be
+			read: the radio's is the dial it is tuned by, since a station says its own name and
+			the way to change it in one place (see StationDial). Phrasing content only, like
+			everything else in here — a crumb in the path is wrapped in a button — and the ink
+			and size are the slot's own, since what stands here is no longer this component's
+			line. Nothing in the slot means the crumb letters what it flies, as every step of
+			the path does. -->
+		{#if $$slots.default}
+			<slot />
+		{:else if showName}
 			<span
 				class={classNames(
 					'text-xs font-medium text-white/70',
