@@ -114,10 +114,13 @@ const FACE_COVER_SHIFT_RIGHT = 0.14109;
 // What is written over the picture, sized off the whole box rather than off the front, so
 // neither the type nor either fade changed size when the front drew in to four fifths. The head
 // band is as tall as its padding plus the type in it; the fade wants more room than the type
-// does, which is the bottom padding. There is no padding across it: the place is given the
-// front's whole width to be set in, so a long name breaks or is set down against the picture's
-// own edges rather than against a margin inside them. The foot band is the same the other way
-// up, with the mark at 90% of the picture taking whatever height its own proportions give it.
+// does, which is the bottom padding. There is no padding across it: the place is set to the
+// front's whole width, edge to edge with the picture under it. The foot band is the same the other
+// way up, with the mark at 90% of the picture taking whatever height its own proportions give it.
+//
+// The type size is therefore where a name *starts* and not where it ends up — what it decides is
+// how many lines a long name breaks into on the way (see {@link BoosterBoxSprite.placeType}), the
+// row being taken to the front's width after that whatever size it was laid out at.
 const TYPE_SIZE = 0.054;
 const TYPE_LEADING = 1.375; // leading-snug
 const HEAD_PAD_TOP = 0.02;
@@ -683,22 +686,23 @@ export class BoosterBoxSprite extends Container {
 			.join(' ');
 	}
 
-	/** The place, set as the front sets it: centred, bold, wrapped to the front's whole width, in
-	 * whichever of the two the card is not — and set down to fit if the wrapping could not do it.
+	/** The place, set as wide as the front: centred, bold, in whichever of the two the card is not,
+	 * and taken to the picture's own width whatever name it turned out to be.
 	 *
-	 * Wrapping only breaks where there is somewhere to break. A place written as one long token,
-	 * or one the gazetteer spells with non-breaking spaces, is laid out in a single line wider
-	 * than the band however narrow the band is told to be — and the front is masked (the crop the
-	 * crumble needs), so what hangs over the sides is not overhanging, it is *gone*: the town's
-	 * name and the year after it sliced off at the picture's edge. The document's box has the same
-	 * head, but nothing there clips, so the same name merely hangs out over the bevel and is still
-	 * read. That is why one crops and the other does not.
+	 * Set *to* the width and not merely inside it. `TYPE_SIZE` is where the type starts and not
+	 * where it ends up: the name is laid out at that size, measured, and then taken to exactly the
+	 * room — up for a short place, down for a long one — so the row across the head is the width of
+	 * the poster under it on every box, and no name is left sitting in the middle of a band it does
+	 * not fill. It also settles the way this type used to be lost. The front is masked (the crop the
+	 * crumble needs), so anything hanging over the sides was not overhanging, it was *gone*: the
+	 * town's name and the year after it sliced off at the picture's edge. A row taken to the front's
+	 * width cannot hang over it.
 	 *
-	 * So the type is measured once it has been laid out and set down to whatever fraction makes it
-	 * fit. A caption a hair smaller is a caption; a caption cut off before the year is not. The
-	 * scale is on the Text and not in its font size, so the line breaks that were found stay the
-	 * ones that were found, and the band above it comes out right without being told — a scaled
-	 * Text reports its scaled height, which is what {@link bandHeights} measures.
+	 * Wrapping still happens first, at that same width, so a name with somewhere to break breaks
+	 * before it is measured and the block that is taken to the width is the block that was found.
+	 * The scale is on the Text and not in its font size, so those line breaks stay the ones that
+	 * were found, and the band above it comes out right without being told — a scaled Text reports
+	 * its scaled height, which is what {@link bandHeights} measures.
 	 */
 	private placeType(label: string): Text {
 		const w = this.boxWidth;
@@ -718,7 +722,9 @@ export class BoosterBoxSprite extends Container {
 				wordWrapWidth: room
 			}
 		});
-		if (type.width > room) type.scale.set(room / type.width);
+		// Uniformly, the one figure across both axes: a caption stretched to a width is a different
+		// caption. The width is what is asked for, and the height is whatever that costs.
+		if (type.width > 0) type.scale.set(room / type.width);
 		return type;
 	}
 
