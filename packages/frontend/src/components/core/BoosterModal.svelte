@@ -98,8 +98,8 @@
 			takes everything under the calendar line, so the boxes stand on the map. What is left of
 			the plate is the ground under the two sentences that stand in for a window there is
 			nothing in: those are text to be read, not boxes, and text wants something behind it.
-			The same three taps as ever — a box is picked out of the window, stood up and sliced
-			open, and the cards it held stand up in its place. Those cards are documents even here:
+			A box is picked out of the window and stood up by tapping it, the button under the canvas
+			slices it open, and the cards it held stand up in its place. Those cards are documents even here:
 			the canvas is transparent and they are laid out behind it, so what comes apart is a
 			canvas and what it uncovers is the page.
 

@@ -9,9 +9,12 @@
  *
  * A box is tapped to stand it up: it lifts out of the scrolling grid into screen space, tweens
  * to the middle at the size the canvas allows, and the rest of the window fades away behind it.
- * Tapped again it opens — the tap is what opens it, so the crumble starts on the tap and
- * whatever the roll takes is time the crazed box stands there (see BoosterBoxSprite). Tapping
- * anywhere else stands it back down.
+ * Tapping it again stands it back down, as tapping anywhere else does — a standing box is not
+ * opened from this canvas at all. Opening is {@link open}, called by a button in the document
+ * under it: a box that is tapped to stand up and tapped again to come apart says nothing about
+ * which tap does which, and the one irreversible act in this view is the one a player should
+ * have to reach for by name. The crumble still starts on the word, so whatever the roll takes is
+ * time the crazed box stands there (see BoosterBoxSprite).
  *
  * What the box opens *onto* is not drawn here at all. The cards a pack gives are statues, and a
  * statue is a document thing — so the host stands them up in a layer behind this canvas and says
@@ -66,12 +69,19 @@ export interface BoosterBoxGridSceneOptions {
 	/** The stood-up box went back down, or the reveal it left was dismissed. */
 	onBack?: () => void;
 	/**
-	 * The stood-up box was tapped open. The host is what rolls the pack and stands up what it
+	 * The stood-up box was opened. The host is what rolls the pack and stands up what it
 	 * gives — the cards are documents, not sprites — and says so with {@link uncover}; the box
 	 * holds itself crazed until it does. A roll that gives nothing at all should say
 	 * {@link seal} instead, which puts the box back together.
 	 */
 	onOpen?: (pack: OpenerPack) => void;
+	/**
+	 * Which box is standing and ready to be sliced open, or null when none is. The tap that used
+	 * to open a standing box is a button in the document now (see {@link open}), and a button has
+	 * to know whether there is anything to act on — which is the one thing about this canvas the
+	 * host cannot work out for itself, the pick landing well before the box has finished standing.
+	 */
+	onOpenable?: (pack: OpenerPack | null) => void;
 	/**
 	 * How wide the stood-up box's front is drawn, in canvas pixels — the face and the bevel face
 	 * either side of it (see {@link frontWidth}) — which is what the host lays its reveal out in:
@@ -181,6 +191,9 @@ export class BoosterBoxGridScene {
 	setPacks(packs: OpenerPack[], columns: number, interactive = true): void {
 		const cols = Math.max(1, Math.round(columns));
 		this.interactive = interactive;
+		// The allowance can run out while a box is standing, which takes the button under the canvas
+		// with it — there is nothing left for it to open.
+		this.reportOpenable();
 		if (packs === this.packs && cols === this.columns) return;
 		this.packs = packs;
 		this.columns = cols;
@@ -196,12 +209,20 @@ export class BoosterBoxGridScene {
 		this.stood?.sprite.uncover();
 	}
 
+	/** Slice the standing box open — the button under the canvas, since this canvas no longer
+	 * opens anything on a tap. Nothing happens without a box standing, which is what
+	 * {@link BoosterBoxGridSceneOptions.onOpenable} tells the button. */
+	open(): void {
+		this.openStood();
+	}
+
 	/** The roll gave nothing at all, so the box never opened: it is whole again and still standing.
 	 * Why is the host's to say, as every other refusal is. */
 	seal(): void {
 		if (this.state !== 'opening') return;
 		this.stood?.sprite.close();
 		this.state = 'stood';
+		this.reportOpenable();
 	}
 
 	/** Stand the box back down and give the window back — the way out of both a stood-up box and
@@ -329,6 +350,7 @@ export class BoosterBoxGridScene {
 		// no window to have come out of, and the first frame this canvas ever draws is the one it
 		// is meant to be showing.
 		this.applySelection(true);
+		this.reportOpenable();
 	}
 
 	/**
@@ -482,6 +504,7 @@ export class BoosterBoxGridScene {
 			this.layer.alpha = RESTING_ALPHA;
 			this.state = 'stood';
 			this.reportFront();
+			this.reportOpenable();
 			return;
 		}
 
@@ -494,6 +517,7 @@ export class BoosterBoxGridScene {
 			if (this.state !== 'standing') return;
 			this.state = 'stood';
 			this.reportFront();
+			this.reportOpenable();
 		});
 	}
 
@@ -502,6 +526,14 @@ export class BoosterBoxGridScene {
 	private reportFront(): void {
 		const sprite = this.stood?.sprite;
 		this.callbacks.onFront?.(sprite ? frontWidth(this.builtWidth * sprite.scale.x) : null);
+	}
+
+	/** Whether there is a box for the document's button to open: one that has finished standing
+	 * up, on a canvas that is taking picks at all. A box mid-tween is not one, nor is one already
+	 * coming apart. */
+	private reportOpenable(): void {
+		const pack = this.state === 'stood' && this.interactive ? (this.stood?.pack ?? null) : null;
+		this.callbacks.onOpenable?.(pack);
 	}
 
 	/** Back into its cell, and the window back with it. `quiet` is for a box being swapped for
@@ -530,6 +562,7 @@ export class BoosterBoxGridScene {
 		this.stood = null;
 		this.state = 'grid';
 		this.reportFront();
+		this.reportOpenable();
 		if (quiet) return;
 		this.wanted = null;
 		this.callbacks.onBack?.();
@@ -547,16 +580,18 @@ export class BoosterBoxGridScene {
 		this.stood = null;
 		this.wanted = null;
 		this.reportFront();
+		this.reportOpenable();
 		this.callbacks.onBack?.();
 		void this.build();
 	}
 
-	/** Slice the standing box open. The tap is the opening, so the box crazes from here and the
+	/** Slice the standing box open. The word is the opening, so the box crazes from here and the
 	 * host is left to roll the pack and stand up what it gives (see `onOpen`). */
 	private openStood(): void {
 		const entry = this.stood;
-		if (!entry || !this.interactive || entry.sprite.opening) return;
+		if (this.state !== 'stood' || !entry || !this.interactive || entry.sprite.opening) return;
 		this.state = 'opening';
+		this.reportOpenable();
 		entry.sprite.open({
 			onUncovering: () => this.callbacks.onUncovering?.(),
 			onOpened: () => {
@@ -575,9 +610,10 @@ export class BoosterBoxGridScene {
 			if (entry) this.raise(entry);
 			return;
 		}
+		// A standing box is put back wherever the tap lands, its own front included: the one thing
+		// this view cannot undo is opening, and that is asked for by name under the canvas.
 		if (this.state === 'stood') {
-			if (this.isOnStood(x, y)) this.openStood();
-			else void this.lower();
+			void this.lower();
 			return;
 		}
 		// A box coming apart is not to be interrupted; a reveal is dismissed by tapping it away.
@@ -599,15 +635,6 @@ export class BoosterBoxGridScene {
 					worldY <= entry.y + boxHeight
 			) ?? null
 		);
-	}
-
-	/** Whether a point is on the box that is standing up. */
-	private isOnStood(x: number, y: number): boolean {
-		const sprite = this.stood?.sprite;
-		if (!sprite) return false;
-		const width = this.builtWidth * sprite.scale.x;
-		const height = BoosterBoxSprite.heightFor(this.builtWidth) * sprite.scale.y;
-		return x >= sprite.x && x <= sprite.x + width && y >= sprite.y && y <= sprite.y + height;
 	}
 
 	/** A move from 0 to 1 over `duration`, eased out — the one shape every tween here takes. */
@@ -710,16 +737,15 @@ export class BoosterBoxGridScene {
 		return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 	}
 
-	/** The pointer says what a tap would do: a box to stand up, a box to open, a reveal to put
-	 * away. Nothing else on this canvas answers a tap, so nothing else changes the cursor. */
+	/** The pointer says what a tap would do: a box to stand up, a standing box to put back, a
+	 * reveal to put away. Nothing else on this canvas answers a tap, so nothing else changes the
+	 * cursor — and no tap opens anything any more, so no part of a standing box is singled out. */
 	private trackCursor(event: PointerEvent): void {
 		const { x, y } = this.localPoint(event);
 		const over =
 			this.state === 'grid'
 				? this.interactive && this.entryAt(x, y) !== null
-				: this.state === 'stood'
-					? this.interactive && this.isOnStood(x, y)
-					: this.state === 'opened';
+				: this.state === 'stood' || this.state === 'opened';
 		this.app.canvas.style.cursor = over ? 'pointer' : 'default';
 	}
 

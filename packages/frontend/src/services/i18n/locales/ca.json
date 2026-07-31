@@ -108,6 +108,8 @@
 		"title": "Sobres",
 		"withAllowance": "Sobres ({remaining}/{total})",
 		"close": "Tanca els sobres",
+		"open": "Obre el sobre",
+		"openPack": "Obre el sobre de {town}",
 		"window": "Festes majors del {from} al {to}"
 	},
 	"combat": {
