@@ -180,15 +180,6 @@
 	<div
 		class="flex items-center gap-3 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
 	>
-		<!-- The head of the bar, before the path: whatever the caller stands there. Never
-			squeezed by the crumbs, like the `end` slot at the other end — the path is what
-			gives way, since it collapses and a word does not. -->
-		{#if $$slots.start}
-			<div class="flex-none">
-				<slot name="start" />
-			</div>
-		{/if}
-
 		<!-- `min-w-0` is what lets this share shrink to whatever the `end` slot leaves it,
 			which is the width the path is measured against. -->
 		<div bind:this={trackEl} class="relative min-w-0 flex-1">

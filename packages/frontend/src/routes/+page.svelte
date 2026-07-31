@@ -2310,28 +2310,40 @@
 				matches come down at the corner right below the field, on their own plate (see
 				LocationSearchPanel). -->
 			<!-- Out of focus while a full view is up over the map, and back into it when that view
-				goes (see CHROME_BLUR). The wrapper is only what the transition needs — a transition
-				cannot be put on a component — and nothing else: no box of its own and no events, so
-				the bar takes the row exactly as it did. Unmounting the bar is what lets the way out
-				play at all, and costs nothing: what it draws is read off `crumbs` every time. -->
+				goes (see CHROME_BLUR). The wrapper is what the transition needs — a transition cannot
+				be put on a component — and now also the row the two bars stand in, so both go and come
+				back as one thing rather than blurring apart. No events of its own: each bar takes the
+				pointer back for itself. Unmounting them is what lets the way out play at all, and
+				costs nothing: what the crumbs draw is read off `crumbs` every time. -->
 			{#if !$fullScreenModalOpen}
-				<div transition:blur={CHROME_BLUR}>
+				<!-- The top row of the map's chrome: two bars side by side, the word first and the
+					path after it. It was one bar with the word standing inside it, which made the game's
+					name a step of the path — the first thing on a row whose whole subject is where the
+					map is looking, and lettered in a face nothing else on it is. It is its own plate
+					now, so the two plates say two things: this is the game, and this is where you are in
+					it. The plate is the crumbs' own, class for class (see MapBreadcrumbs), so the row
+					reads as one chrome standing at one height rather than as a bar with an ornament
+					beside it. It is `flex-none` and the path is what gives way beside it, since a path
+					collapses and a word does not. -->
+				<div transition:blur={CHROME_BLUR} class="flex items-start gap-2">
+					<!-- What it says and what size it is set at are two different things: the word is
+						"6xl" and the type is `xl`, one flat size at every viewport rather than a ramp.
+						`leading-none` so the line takes the type's height and not a line box built for a
+						paragraph, which is what keeps this plate the same height as the crumbs' beside it.
+						`font-display` is Bungee, the app's one departure from Genos, and it is the token
+						and not the family that is named here (see the `@theme` block in css/app.css). -->
+					<div
+						class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
+					>
+						<span class="font-display text-xl leading-none">6xl</span>
+					</div>
+
 					<MapBreadcrumbs
 						{crumbs}
 						onSelect={open}
 						onZoom={zoomToTier}
-						classes="pointer-events-auto"
+						classes="pointer-events-auto min-w-0 flex-1"
 					>
-						<!-- The head of the bar, before the path. What it says and what size it is set at
-							are two different things: the word is "6xl" and the type is `xl`, one flat size
-							at every viewport rather than a ramp — a bar this row has to stay a bar.
-							`leading-none` so the line takes the type's height and not a line box built for
-							a paragraph.
-
-							`font-display` is Bungee, the app's one departure from Genos, and it is
-							the token and not the family that is named here (see the `@theme` block in
-							css/app.css). -->
-						<span slot="start" class="font-display text-xl leading-none">6xl</span>
 						<!-- The far end of the bar: the way to look for a place, and past it the way to
 							everything that is not the map. Both belong at this end for the same reason — the
 							bar is the one row that is always up, so what a player reaches for however deep
