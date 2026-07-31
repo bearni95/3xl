@@ -1,3 +1,9 @@
+/* VT323 — the game's one typeface, taken from Google Fonts. The `@import` has to
+   be the first statement in the file: CSS only lets an import precede other
+   rules, so it goes above Tailwind's own. `display=swap` means the page draws in
+   the fallback and re-flows into VT323 when it lands, rather than holding text
+   blank while the file is on the wire. */
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 @import 'tailwindcss';
 
 /* Synthwave is the game's one theme, and it is customised rather than used as
@@ -22,6 +28,44 @@
 	color-scheme: dark;
 	--color-primary: oklch(79.5% 0.184 86.047);
 	--color-primary-content: oklch(28.6% 0.066 53.813);
+}
+
+/* The banner that carries a line too long for the box holding it (see
+   MarqueeText.svelte): the track it runs on holds the line twice, each copy
+   padded on its trailing edge, so half the track is exactly one copy plus the
+   gap after it — which is why the shift is -50% and why the loop has no seam,
+   whatever the line says.
+
+   It is here rather than in a component because this project writes no CSS in
+   components at all: a keyframe is the one piece of a Tailwind utility that
+   cannot be spelled as a class. Declared inside `@theme` so Tailwind v4 emits
+   the keyframes with the `--animate-*` token that names them, which is what
+   makes `animate-marquee` a class the scanner knows about.
+
+   Twelve seconds is the whole cycle rather than a speed, so a longer title
+   travels faster; a title only slightly over the box would otherwise crawl. */
+/* One typeface for the whole app, said once. Tailwind's preflight puts
+   `--default-font-family` (which falls back to `--font-sans`) on `html`, so
+   setting the token here — rather than a `font-family` rule on `body` — is what
+   makes every element inherit VT323 without a single component naming a font.
+   The other two families are pointed at it as well, so a `font-mono` or
+   `font-serif` utility written anywhere cannot land outside the typeface; the
+   stacks after it are only what shows while the file is still loading. */
+@theme {
+	--font-sans: 'VT323', 'Courier New', monospace;
+	--font-serif: 'VT323', 'Courier New', monospace;
+	--font-mono: 'VT323', 'Courier New', monospace;
+
+	--animate-marquee: marquee 12s linear infinite;
+
+	@keyframes marquee {
+		from {
+			transform: translateX(0);
+		}
+		to {
+			transform: translateX(-50%);
+		}
+	}
 }
 
 /* ============================================
