@@ -27,7 +27,10 @@
 	export let classes: string = '';
 </script>
 
-<div class={classNames('flex w-full gap-2', classes)}>
+<!-- The row itself is outlined in green and each statue's cell in purple. Outlines
+	rather than borders, so the lines are drawn over the layout instead of taking
+	width out of it and moving the statues they are meant to be measuring. -->
+<div class={classNames('flex w-full gap-2 outline outline-1 outline-green-500', classes)}>
 	{#each members as member, index (index)}
 		<CharacterStatue
 			label={member.label}
@@ -38,7 +41,7 @@
 			spawnedAt={member.spawnedAt ?? null}
 			showId={member.showId}
 			{flipped}
-			classes="flex-1"
+			classes="flex-1 outline outline-1 outline-purple-500"
 		/>
 	{/each}
 </div>
