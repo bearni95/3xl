@@ -1167,6 +1167,15 @@
 	// FullScreenModal has no `open` prop.
 	let menuOpen = false;
 
+	// The other menu on this chrome is not a variable at all: the views the badge at the head of
+	// the top row drops are up while the pointer is on the badge and down when it is not, which
+	// is a rule about the pointer and is written where rules about the pointer are written (see
+	// the `group-hover` column in the markup). The two views it holds — the player's cards and
+	// the album — were two squares out at the far end of the breadcrumb bar, each a glyph and
+	// nothing else, so a row that is already a line of pressed squares was carrying two more
+	// that had to be recognised by their artwork alone. Under the badge they are rows with
+	// their names on them, and the bar keeps the marks that are about the map.
+
 	// The menu's own box and the button that summons it, so a press anywhere else can close
 	// it: the menu stands over the map, so a press outside it is a press on something it is
 	// covering rather than a press on the menu. The button is excluded because it would
@@ -2419,28 +2428,91 @@
 						a row of bars — as tall as the path beside it, as wide as the word makes it, and
 						inset by the row's own `px-3`. Neither shape should be made to answer for the
 						other. -->
-					<div
-						class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
-					>
-						<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
-							down and right, and the word itself over it. A shadow drawn as a copy rather
-							than as a `text-shadow`, because a shadow the thickness of this face wants to be
-							the face — one solid displaced impression of it, with no blur and no spread,
-							which is what a second copy of the glyphs is and what a shadow utility, spelling
-							a colour and a radius, is not.
-							Both copies are positioned, so the one later in the document paints over the
-							other without a z-index: an absolute box would otherwise sit above in-flow type
-							whatever order it is written in, and sending it under with a negative z-index
-							would send it under the plate's own fill as well, there being no stacking
-							context between them. The copy in flow is the one that gives the box its size;
-							`aria-hidden` on the other, since a reader hearing "6xl 6xl" is being told about
-							a shadow. -->
-						<span class="relative font-display text-2xl leading-none">
-							<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true"
-								>6xl</span
+					<!-- The badge is also the tab the views drop from, so it is wrapped in the box the
+						pointer is asked about: `relative`, because the column hangs off it, and the wrapper
+						is what the row stretches rather than the plate — hence the plate's `h-full` below,
+						which is how it goes on being as tall as the path beside it.
+						The whole gesture is the pointer being on the tab, so the whole of it is `group` and
+						`group-hover` and there is no state anywhere: nothing is pressed to open it and
+						nothing is pressed to put it away, so nothing has to be remembered about it either —
+						and a menu that is only ever up while the pointer is on it cannot be left standing by
+						a press that landed somewhere else. The column is a descendant of this box, and
+						`:hover` holds for an ancestor of what the pointer is on however the boxes are
+						placed, so crossing from the plate down into the column is not a leave. The gap
+						between the two is padding on the column's own wrapper for that same reason, and not
+						a margin, which would have been a strip of nothing in between. -->
+					<div class="group pointer-events-auto relative flex-none">
+						<div
+							class="flex h-full items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
+						>
+							<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
+								down and right, and the word itself over it. A shadow drawn as a copy rather
+								than as a `text-shadow`, because a shadow the thickness of this face wants to be
+								the face — one solid displaced impression of it, with no blur and no spread,
+								which is what a second copy of the glyphs is and what a shadow utility, spelling
+								a colour and a radius, is not.
+								Both copies are positioned, so the one later in the document paints over the
+								other without a z-index: an absolute box would otherwise sit above in-flow type
+								whatever order it is written in, and sending it under with a negative z-index
+								would send it under the plate's own fill as well, there being no stacking
+								context between them. The copy in flow is the one that gives the box its size;
+								`aria-hidden` on the other, since a reader hearing "6xl 6xl" is being told about
+								a shadow. -->
+							<span class="relative font-display text-2xl leading-none">
+								<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true"
+									>6xl</span
+								>
+								<span class="relative">6xl</span>
+							</span>
+						</div>
+
+						<!-- The views, down a column under the badge: a row each, the glyph that stood for
+							the whole thing out on the bar and, beside it, the name of what it opens. Which is
+							the point of moving them — a square holding a pencil is a mark somebody has to
+							recognise, and a row saying Equip is a row that says what it is.
+							The outer box is what the pointer crosses on its way down (`pt-2`, see the tab
+							above) and what is shown and hidden; the plate is the inner one, and it is the
+							crumbs' dropped path class for class — the same surface at full strength, the same
+							rounding, the same shadow — since a column dropped from this row is the same
+							object wherever on the row it is dropped from. `w-max` so it is as wide as the
+							longest name and no wider: the badge it hangs off is narrower than either of them.
+							`hidden` and not an opacity, so the rows are out of the document while the pointer
+							is elsewhere and cannot be tabbed into behind a column nobody can see. -->
+						<div
+							class="absolute left-0 top-full z-10 hidden w-max max-w-[70vw] pt-2 group-hover:block"
+						>
+							<div
+								class="flex flex-col gap-0.5 overflow-hidden rounded-lg bg-base-100 p-2 text-white shadow-xl"
 							>
-							<span class="relative">6xl</span>
-						</span>
+								<!-- The player's cards. Only while there is an account to have any under, as
+									the drawer's own entry is: a roster with nobody's cards in it is nothing to
+									open. -->
+								{#if $profile}
+									<button
+										type="button"
+										class="flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10"
+										on:click={() => rosterModalOpen.set(true)}
+									>
+										<img src="/assets/icons/delapouite/pencil.svg" class="size-4 flex-none" alt="" />
+										<span class="whitespace-nowrap">{$_('roster.title')}</span>
+									</button>
+								{/if}
+								<!-- The album, and not gated the way the roster is: the set is the game's own
+									and is worth reading before anybody holds any of it. -->
+								<button
+									type="button"
+									class="flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10"
+									on:click={() => collectionModalOpen.set(true)}
+								>
+									<img
+										src="/assets/icons/delapouite/book-cover.svg"
+										class="size-4 flex-none"
+										alt=""
+									/>
+									<span class="whitespace-nowrap">{$_('collection.title')}</span>
+								</button>
+							</div>
+						</div>
 					</div>
 
 					<MapBreadcrumbs
@@ -2478,39 +2550,11 @@
 								</div>
 							{/if}
 							<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
-							<!-- The roster, at the end of the bar rather than a fold and a press inside the
-								menu: arranging the side is what a player does between one thing on this map and
-								the next, and the bar is the one row that is always up. The same tile the search
-								and the burger wear, and the same white, so the row stays a line of pressed
-								squares that happen to do different things. Only while there is an account to
-								have cards under — the menu's own entry is gated the same way, a roster with
-								nobody's cards in it being nothing to open. -->
-							{#if $profile}
-								<button
-									type="button"
-									class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
-									title={$_('roster.title')}
-									aria-label={$_('roster.title')}
-									on:click={() => rosterModalOpen.set(true)}
-								>
-									<img src="/assets/icons/delapouite/pencil.svg" class="size-4" alt="" />
-								</button>
-							{/if}
-							<!-- The album, beside the roster and in the same square: every card the game
-								holds, show by show, with the ones the player has standing at full strength.
-								It is not gated on there being an account the way the roster is — the set is
-								the game's own and is worth reading before anybody holds any of it, which is
-								also what an empty album is for. The book is the vendored game-icons glyph,
-								white artwork over terrain, as the marks either side of it are. -->
-							<button
-								type="button"
-								class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
-								title={$_('collection.title')}
-								aria-label={$_('collection.title')}
-								on:click={() => collectionModalOpen.set(true)}
-							>
-								<img src="/assets/icons/delapouite/book-cover.svg" class="size-4" alt="" />
-							</button>
+							<!-- The roster and the album stood here, two more squares in this line: a pencil
+								and a book, each of them a glyph and nothing else on a row where a glyph in a
+								square already means the thing beside it. They are rows under the badge at the
+								head of this row now, with their names on them (see the views menu above). What
+								is left on this end is what is about the map itself. -->
 							<!-- The three bars, in the same square and the same white as the search button it
 								stands beside and the dots button at the other end of the row: this bar is a line
 								of 32px tiles, so everything on it that is pressed rather than read is given the
@@ -2892,7 +2936,8 @@
 <!-- The album, on the same sheet and over the map like the roster. Mounted only while it is
 	open, which is what keeps a cast of forty-odd sprites off every other page: the show
 	mapping, the player's cards and the statues all arrive with the opening. Opened from the
-	book at the far end of the breadcrumb bar, through `collectionModalOpen`. -->
+	book in the views the badge at the head of the top row drops, through
+	`collectionModalOpen`. -->
 {#if $collectionModalOpen}
 	<CollectionModal />
 {/if}
