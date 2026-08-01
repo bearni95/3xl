@@ -2,8 +2,10 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
+	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import MugenBoard from '$components/core/MugenBoard.svelte';
 	import TownPlate from '$components/core/TownPlate.svelte';
+	import { SPAWN_FILL_CLASSES } from '$components/core/spawn-colors';
 	import { cellScreenY, combatColorHex } from '$utils/mugen/mugen-board';
 	import { ORDER_ICONS } from '$utils/color/traits';
 	import type {
@@ -50,7 +52,7 @@
 	import { spawnService } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE } from '$services/team.service';
 	import { AuthStatus } from '$types/profile.type';
-	import type { CharacterSpawn } from '$types/character-spawn.type';
+	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 
 	// The opponent's team when this is a challenge: synthetic OG spawns (see
 	// `ogTeamSpawns`). When a full team (TEAM_SIZE) is supplied the red (CPU) side
@@ -544,6 +546,56 @@
 				fighter.side === 'info' ? 'right' : 'left'
 			);
 		}
+	}
+
+	/**
+	 * The player's own line, as rows of a list: who each fighter is, and the column of orders
+	 * the board hangs beside it — the very same list, off the very same call, so the two are
+	 * one set of buttons drawn twice and cannot come to disagree about what may be pressed.
+	 *
+	 * It is what the phone is given instead of aiming at the board (see the markup). Only the
+	 * player's own fighters are in it: a rival's column is a reading rather than an input, and
+	 * a reading belongs where the fighter it is about is standing.
+	 *
+	 * A fighter that is out of the turn — down, or holding the ground its lane was played for
+	 * — is left with no orders at all, exactly as the board clears its column: it keeps its
+	 * row, because it is still one of the player's three, and there is nothing left to ask of
+	 * it. Every name is spelled out so Svelte's legacy reactive tracking sees `state` and
+	 * `badges` both.
+	 */
+	$: orderRows = state ? playerRows(state, badges) : [];
+
+	function playerRows(
+		current: CombatState,
+		roster: Badge[]
+	): { fighter: FighterView; basePath: string | null; orders: BoardOrder[] }[] {
+		const art = new Map(roster.map((badge) => [badge.id, badge.basePath]));
+		return current.fighters
+			.filter((fighter) => fighter.side === 'info')
+			.map((fighter) => ({
+				fighter,
+				basePath: art.get(fighter.id) ?? null,
+				orders:
+					fighter.down || fighter.holdsGround
+						? []
+						: orderButtons(fighter, current.phase, current.turn)
+			}));
+	}
+
+	// What each of the three orders is called, for a button that is otherwise a picture. The
+	// board never needs them — a glyph on a canvas has nobody to say itself to — so they are
+	// the one part of an order that only the document asks for.
+	$: ORDER_LABELS = {
+		charge: $_('combat.orders.charge'),
+		defend: $_('combat.orders.defend'),
+		shoot: $_('combat.orders.shoot')
+	} satisfies Record<CombatAction, string>;
+
+	// The player's six colours as fills, for the one button that is drawn in the fighter's own
+	// colour: the chosen order. Every other state is the dark tile below, which is what white
+	// artwork needs under it (see GameIcon, and the icon note in CLAUDE.md).
+	function orderFill(order: BoardOrder): string {
+		return order.selected ? SPAWN_FILL_CLASSES[order.color as SpawnColor] : 'bg-neutral';
 	}
 
 	// The line-up the controller will be seeded with, as identities alone: both sides in
@@ -1100,6 +1152,64 @@
 					</div>
 				{/if}
 			</div>
+			<!-- The player's line as a list, under the board, on a phone and nowhere else.
+			     The orders are drawn beside their fighters on the board, which is the right place
+			     for them on a screen the board is large on: the button is next to the thing it is
+			     an order to, and a column read down the board's own edge is the whole team's plan.
+			     On a phone the same three buttons are a fraction of the canvas — the board there is
+			     limited by the width and the columns are drawn at whatever scale is left over — so
+			     they are also the one part of the picture that has to be hit rather than looked at.
+			     Here they are the document's own: a row per fighter, the fighter drawn at the head
+			     of it so the row says who it is ordering, and three buttons big enough for a thumb.
+			     Nothing about the fight is decided here that is not decided there. The rows carry
+			     the very list the board is handed (`orderRows`), press the very handler a tap on
+			     the canvas presses, and a fighter with nothing left to be asked keeps its row and
+			     loses its buttons exactly as its column is cleared. So the board is still the
+			     fight; this is a second way of reaching the same three orders, and both are live at
+			     once — an order given on either is drawn on both.
+			     On its own fill, because the sheet is transparent and the map is what is behind it
+			     (see the modal's `transparent`). -->
+			{#if orderRows.length > 0}
+				<div class="flex w-full flex-col gap-2 p-3 sm:hidden">
+					{#each orderRows as row (row.fighter.id)}
+						<div class="flex items-center gap-3 rounded-box bg-base-100/80 p-2 shadow-xl">
+							<!-- Who the row is about, told the way the fight tells it: the character
+							     standing there, idling, as they are on the board. No veil — the reveal
+							     is a thing a card does when a player first meets it, and by here they
+							     are three fighters in a battle already under way. -->
+							<div class="h-16 w-16 flex-none">
+								<IdleSprite basePath={row.basePath} label={row.fighter.name} veiled={false} />
+							</div>
+							<!-- The three, at the far end of the row so every row's buttons stand in one
+							     column under the thumb, whatever the fighters beside them are called.
+							     A plain button rather than a `btn`: the glyphs are the canvas's own white
+							     artwork, so what they need is a dark tile under them in *every* state
+							     (see GameIcon), and daisyUI repaints a disabled button's face. So the
+							     tile stays and the states are said over it — the chosen order in the
+							     fighter's own colour, the rest dark, and one out of reach faded rather
+							     than dropped, as the board's own column greys it. -->
+							<div class="ml-auto flex flex-none gap-2">
+								{#each row.orders as order (order.id)}
+									<button
+										type="button"
+										class={classNames(
+											'flex size-12 items-center justify-center rounded-box',
+											orderFill(order),
+											{ 'opacity-40': order.disabled }
+										)}
+										disabled={order.disabled}
+										aria-label={ORDER_LABELS[order.id as CombatAction]}
+										aria-pressed={order.selected}
+										on:click={() => giveOrder(row.fighter.id, order.id)}
+									>
+										<img src={order.icon} alt="" class="size-7" />
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
 			<!-- The head of the fight: what it is over, and then how it stands. Both are read
 			     before the board and in that order — the town is the reason there is a fight at all
 			     and the score is what has become of it — so they are stacked at the top rather than
