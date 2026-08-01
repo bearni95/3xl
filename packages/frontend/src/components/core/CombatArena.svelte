@@ -988,10 +988,15 @@
 		     middle of it (`sm:` and up: `absolute`, and this centring the canvas alone). On a
 		     phone the board is limited by the width instead — it comes out a wide, shallow
 		     thing with a deep band of nothing above and below it — so the head is left in the
-		     flow at the top of the column and the board is set immediately under it, which is
-		     room that was going spare and a head that is no longer standing over the fighters
-		     on a screen too narrow to spare the room. -->
-		<div class="relative flex h-full w-full flex-col items-center justify-start sm:justify-center">
+		     flow, and with it the orders, and the three of them are spread down the whole
+		     height of the view: the head at the top, the fighters' rows at the foot under the
+		     thumb that presses them, and the board in what is left between the two. Whatever
+		     room the screen turns out to have goes into the two gaps rather than into a band
+		     under everything, and each of the three keeps the end of the view it belongs to on
+		     a tall phone and a short one alike. -->
+		<div
+			class="relative flex h-full w-full flex-col items-center justify-between sm:justify-center"
+		>
 			<!-- The board, and nothing round it. No card, no body, no column, and no border: the
 			     arena is one drawing and every box round a drawing is scale taken off it, since the
 			     canvas is fitted to the room it is given. What used to stand under the board stands
@@ -1168,48 +1173,50 @@
 			     fight; this is a second way of reaching the same three orders, and both are live at
 			     once — an order given on either is drawn on both.
 			     On its own fill, because the sheet is transparent and the map is what is behind it
-			     (see the modal's `transparent`). -->
-			{#if orderRows.length > 0}
-				<div class="flex w-full flex-col gap-2 p-3 sm:hidden">
-					{#each orderRows as row (row.fighter.id)}
-						<div class="flex items-center gap-3 rounded-box bg-base-100/80 p-2 shadow-xl">
-							<!-- Who the row is about, told the way the fight tells it: the character
-							     standing there, idling, as they are on the board. No veil — the reveal
-							     is a thing a card does when a player first meets it, and by here they
-							     are three fighters in a battle already under way. -->
-							<div class="h-16 w-16 flex-none">
-								<IdleSprite basePath={row.basePath} label={row.fighter.name} veiled={false} />
-							</div>
-							<!-- The three, at the far end of the row so every row's buttons stand in one
-							     column under the thumb, whatever the fighters beside them are called.
-							     A plain button rather than a `btn`: the glyphs are the canvas's own white
-							     artwork, so what they need is a dark tile under them in *every* state
-							     (see GameIcon), and daisyUI repaints a disabled button's face. So the
-							     tile stays and the states are said over it — the chosen order in the
-							     fighter's own colour, the rest dark, and one out of reach faded rather
-							     than dropped, as the board's own column greys it. -->
-							<div class="ml-auto flex flex-none gap-2">
-								{#each row.orders as order (order.id)}
-									<button
-										type="button"
-										class={classNames(
-											'flex size-12 items-center justify-center rounded-box',
-											orderFill(order),
-											{ 'opacity-40': order.disabled }
-										)}
-										disabled={order.disabled}
-										aria-label={ORDER_LABELS[order.id as CombatAction]}
-										aria-pressed={order.selected}
-										on:click={() => giveOrder(row.fighter.id, order.id)}
-									>
-										<img src={order.icon} alt="" class="size-7" />
-									</button>
-								{/each}
-							</div>
+			     (see the modal's `transparent`).
+			     Drawn whether there are rows in it yet or not: it is the foot of a column spread
+			     end to end (above), so a block that arrived with the fight would have let the board
+			     settle at the bottom of the view first and then jump up as the orders came in. An
+			     empty one holds the place they are coming to. -->
+			<div class="flex w-full flex-col gap-2 p-3 sm:hidden">
+				{#each orderRows as row (row.fighter.id)}
+					<div class="flex items-center gap-3 rounded-box bg-base-100/80 p-2 shadow-xl">
+						<!-- Who the row is about, told the way the fight tells it: the character
+						     standing there, idling, as they are on the board. No veil — the reveal
+						     is a thing a card does when a player first meets it, and by here they
+						     are three fighters in a battle already under way. -->
+						<div class="h-16 w-16 flex-none">
+							<IdleSprite basePath={row.basePath} label={row.fighter.name} veiled={false} />
 						</div>
-					{/each}
-				</div>
-			{/if}
+						<!-- The three, at the far end of the row so every row's buttons stand in one
+						     column under the thumb, whatever the fighters beside them are called.
+						     A plain button rather than a `btn`: the glyphs are the canvas's own white
+						     artwork, so what they need is a dark tile under them in *every* state
+						     (see GameIcon), and daisyUI repaints a disabled button's face. So the
+						     tile stays and the states are said over it — the chosen order in the
+						     fighter's own colour, the rest dark, and one out of reach faded rather
+						     than dropped, as the board's own column greys it. -->
+						<div class="ml-auto flex flex-none gap-2">
+							{#each row.orders as order (order.id)}
+								<button
+									type="button"
+									class={classNames(
+										'flex size-12 items-center justify-center rounded-box',
+										orderFill(order),
+										{ 'opacity-40': order.disabled }
+									)}
+									disabled={order.disabled}
+									aria-label={ORDER_LABELS[order.id as CombatAction]}
+									aria-pressed={order.selected}
+									on:click={() => giveOrder(row.fighter.id, order.id)}
+								>
+									<img src={order.icon} alt="" class="size-7" />
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/each}
+			</div>
 			<!-- The head of the fight: what it is over, and then how it stands. Both are read
 			     before the board and in that order — the town is the reason there is a fight at all
 			     and the score is what has become of it — so they are stacked at the top rather than
