@@ -953,7 +953,23 @@
 			     is at the top of the view and hangs off the sheet instead (below). -->
 			<div class="relative">
 				{#key boardKey}
-					<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
+					<!-- On a phone the board runs off both sides of the view: the outermost column at
+					     either edge is cut down the middle and the board is drawn a fifth larger for
+					     it (`--board-bleed`, which the canvas spends on its width and only where the
+					     width is what limits it). A narrow view limits the board by its width, so the
+					     fight was being drawn small between two deep bands of nothing, and the ground
+					     it was being kept whole for is the two columns no lane is ever played across.
+					     What it costs is symmetric — half a column at each edge, the white column
+					     still down the middle of the screen — and it is off from `sm:` up, where the
+					     height is the measure that binds and there is no spare band to spend.
+					     Overflowing rather than clipped here: this box is the canvas, so the canvas
+					     hangs off it, is centred on the sheet by the column above, and is cut by the
+					     modal's own edges. -->
+					<MugenBoard
+						{grids}
+						classes="[--board-bleed:1] sm:[--board-bleed:0]"
+						on:ready={(event) => onBoardReady(event.detail)}
+					/>
 				{/key}
 				{#if state?.outcome}
 					<!-- The fight is over, and everything there is left to say about it is said

@@ -142,6 +142,35 @@ const GRID_LINE = 0x000000;
 const VIEWPORT_WIDTH = '100vw';
 const VIEWPORT_HEIGHT = '100dvh';
 
+/**
+ * How far the board is allowed to run off the sides of the view, as a custom property the
+ * host sets on (or above) the canvas: `0` — the default — is the whole board on screen,
+ * `1` is the outer column cut in half at each edge.
+ *
+ * It buys scale with room that is going spare. A board sized to a *narrow* view is limited
+ * by the width, so it comes out shallow with a deep band of empty view above and below it
+ * and the fighters drawn small in the middle — while the two outermost columns are the only
+ * ground on the board no lane is ever played across (the level rows have no cell in them at
+ * all, so the far red column holds two hexagons and the far blue one none). Pushing exactly
+ * one column's width off the view, half at either edge, is therefore a fifth more board
+ * everywhere it counts at the cost of the ground that counts least, and it stays symmetric —
+ * the white column is still the middle of the screen.
+ *
+ * A property rather than a prop because *when* to spend it is a question about the screen and
+ * not about the board: the host says it in a media query like any other piece of layout (the
+ * combat arena: on, below `sm:`, off above it), and the canvas re-reads it on the same resize
+ * that re-measures the viewport, without this class hearing about any of it.
+ *
+ * Which is why the switch is a multiplier on the width term alone, and why only its two ends
+ * are exact: a board limited by the *height* has no spare band to spend and is left as it is,
+ * whatever the property says.
+ */
+const BLEED_PROPERTY = '--board-bleed';
+
+/** The width term's multiplier at full bleed: the board over what is left of it once a whole
+ * column has gone off the view, which is what makes the visible board fill the width. */
+const BLEED_SCALE = BOARD_WIDTH / (BOARD_WIDTH - 1);
+
 /** On-screen height of a reference-height ({@link REFERENCE_SOURCE_HEIGHT}) character
  * as a multiple of a cell's width — the height of the box every character is fitted
  * into. Every other character scales by the same source→screen ratio, so shorter/taller
@@ -934,6 +963,13 @@ export class MugenBoard {
 	 * intrinsic ratio, which keeps the picture square with its framebuffer — the hexagons are
 	 * never stretched, only scaled.
 	 *
+	 * The width term carries the host's bleed ({@link BLEED_PROPERTY}), which is the one thing
+	 * here a host has any say in: at full bleed the board is drawn a column wider than the view
+	 * and hangs half a column off either edge. It rides on the width alone, so it is spent only
+	 * where there is a spare band to spend — a board limited by the height ignores it — and it
+	 * is read as a CSS property rather than passed in, so the media query that decides it is
+	 * the host's and this stays a measure.
+	 *
 	 * Read off the framebuffer as it stands, so it has to be called after the crop
 	 * ({@link fitToContent}) and again whenever that changes: the aspect ratio is the crop's,
 	 * not the layout's.
@@ -943,7 +979,10 @@ export class MugenBoard {
 		const { width, height } = this.app.renderer;
 		if (!width || !height) return;
 		const aspect = width / height;
-		this.app.canvas.style.width = `min(${VIEWPORT_WIDTH}, calc(${VIEWPORT_HEIGHT} * ${aspect}))`;
+		// 1 with no bleed asked for, BLEED_SCALE at full bleed, and the property's own default
+		// is what makes a host that has never heard of it get the whole board.
+		const spill = `calc(1 + var(${BLEED_PROPERTY}, 0) * ${BLEED_SCALE - 1})`;
+		this.app.canvas.style.width = `min(calc(${VIEWPORT_WIDTH} * ${spill}), calc(${VIEWPORT_HEIGHT} * ${aspect}))`;
 		this.app.canvas.style.height = 'auto';
 	}
 
