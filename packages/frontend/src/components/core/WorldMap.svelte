@@ -2539,7 +2539,11 @@
 						}
 					}
 
-					layer.on('click', () => overlay.onClick?.(feature));
+					// The live overlay's handler, read at press time by position, for the reason its
+					// style is (see above): a caller that rebuilds its overlays hands over a fresh
+					// closure each repaint, and a click bound to the one this layer was mounted with
+					// would be answering with whatever the map knew when it loaded.
+					layer.on('click', () => (overlays[index] ?? overlay).onClick?.(feature));
 				}
 			};
 			const layerGroup = Leaf!.geoJSON(datasets[index], layerOptions).addTo(mapInstance!);

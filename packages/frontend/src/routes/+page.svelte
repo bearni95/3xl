@@ -560,10 +560,15 @@
 			return {
 				color: lineColor,
 				weight,
-				opacity: 1,
-				fill: washes,
+				// The town shapes always fill, because they are what takes the map's clicks (see
+				// the overlays below) and a path is only hit where it is painted: `fill: false`
+				// renders `fill="none"`, and no pointer ever reaches the inside of that. So a town
+				// that is not washing fills at nothing instead, which draws exactly what no fill
+				// drew and is still there to be clicked. Every coarser tier keeps the old answer —
+				// it has no click to catch, and a fill it does not need would bury the tiers under it.
+				fill: washes || tier === 'Municipality',
 				fillColor: washes ? REGION_COLOR_CSS[color!] : lineColor,
-				fillOpacity: isSpotlit ? 0.8 : isPicked ? 0.2 : 0.5
+				fillOpacity: washes ? (isSpotlit ? 0.8 : isPicked ? 0.2 : 0.5) : 0
 			};
 		};
 	}
@@ -579,8 +584,18 @@
 	// coloured on the map exactly as it is on its pin, and never twice.
 	// Every other tier is line-only, so the satellite basemap keeps reading through
 	// them, and `hiddenLineUrls` still drops the lines of the tiers finer than the
-	// imaged one. All decorative: the wash is not something to click or hover, so no
-	// layer captures pointer events and the pins and boxes own every click.
+	// imaged one.
+	//
+	// The land itself is clickable, and a click on it does what the pin standing over that
+	// spot does (see openFeature): pointing at a region and pressing its plate are the same
+	// gesture, and the plate is a couple of hundred pixels of the several thousand the region
+	// covers. The TOWN layer is the one that catches it, and it is the only interactive layer
+	// on the map, for two reasons: the towns tessellate the whole of the Països Catalans, so
+	// every point on land is inside exactly one of their shapes; and the layers stack
+	// coarsest-on-top, so a territory that captured pointer events would swallow every click
+	// meant for anything inside it. What the click is resolved to is not the town, though — it
+	// is whichever pin is drawn over it, so a press on the same field opens Catalunya at the top
+	// view and the village at the bottom one.
 	//
 	// Rebuilt (a fresh array) whenever a region changes colour, the map images another
 	// tier, or another region is opened — that is what repaints the layers, which are
@@ -589,7 +604,7 @@
 		{
 			url: '/data/geo/municipis.json',
 			style: tierStyle('Municipality', 1, regionColors, hiddenRank, pickedFeature, spotlitId),
-			interactive: false
+			onClick: openFeature
 		},
 		{
 			url: '/data/geo/comarques.json',
@@ -2166,6 +2181,35 @@
 		$showGlyphs,
 		soleTown
 	);
+
+	// Every town's feature id → the pin standing over that town on the tier the map is
+	// drawing right now. A pin carries the municipality ids of everything under it
+	// (`featureIds`), so this is the same lookup the map builds to light a whole region when
+	// one of its towns is pointed at, read off the level the map says it has settled on
+	// (`activeLevel`, mirrored here as effectiveDepth).
+	//
+	// Hidden pins are in it like any other: a town left unmarked on a narrow view (see
+	// soleTown) still has its pin, still belongs to the tier, and there is simply no plate
+	// drawn for it — so its land opens it exactly as the plate would have.
+	$: pinByFeatureId = ((pins: MapMarker[]) => {
+		const byFeature = new Map<string, MapMarker>();
+		for (const pin of pins) {
+			for (const id of pin.featureIds ?? []) byFeature.set(id, pin);
+		}
+		return byFeature;
+	})(markerLevels[effectiveDepth] ?? []);
+
+	// What a click on the land does: whatever the pin over it does. Not a handler of its own
+	// that happens to agree with the pin's — the pin's very own, called off the marker, so the
+	// two can never be taught different things about what opening a region means.
+	//
+	// A shape whose pin is not on the map answers nothing: at a tier the town is not pinned at,
+	// the pin over it is its comarca's or its territory's, and that is the one that is called.
+	function openFeature(feature?: GeoJSON.Feature) {
+		const id = featureKey('Municipality', feature);
+		if (!id) return;
+		pinByFeatureId.get(id)?.onClick?.();
+	}
 
 	// The bounding box the map fits when a region is selected: the union of every
 	// municipality polygon under the selected key. A fresh array each time (even
