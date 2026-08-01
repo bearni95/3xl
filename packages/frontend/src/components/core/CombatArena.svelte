@@ -887,11 +887,9 @@
 <!-- The arena is the sheet: it takes the whole of it and centres one thing in it. That one
      thing is the board while there is a fight to draw, and a card saying why there is not
      otherwise — those carry their own margin, since a card wants to stand off the edge of a
-     screen and a board does not.
-     Positioned, because the head of the fight is hung off *this* box and not off the canvas:
-     the sheet is bare, so this is the viewport, and what the fight is over belongs at the top
-     of the screen rather than at the top of a drawing floating in the middle of it. -->
-<div class="relative flex h-full w-full items-center justify-center">
+     screen and a board does not. A fight is the one of those with two things to place, so it
+     brings its own box and lays itself out inside it (below). -->
+<div class="flex h-full w-full items-center justify-center">
 	{#if !authService.configured}
 		<div class="alert alert-warning m-6 max-w-md text-sm">
 			<span>{$_('combat.notConfigured')}</span>
@@ -927,330 +925,354 @@
 			</div>
 		</div>
 	{:else}
-		<!-- The board, and nothing round it. No card, no body, no column, and no border: the
-		     arena is one drawing and every box round a drawing is scale taken off it, since the
-		     canvas is fitted to the room it is given. What used to stand under the board stands
-		     on it now — the score at its head, the way out reached for on that same plate, and
-		     whatever the fight has to say in the middle.
-		     This box hugs the canvas rather than filling the sheet: it is a flex item and the
-		     canvas is its only child in flow, so it is exactly the canvas on both axes, which
-		     is what makes `inset-0` on the two overlays inside it mean the board's own edges
-		     and not the viewport's. That is the whole of what belongs in here: a panel in the
-		     middle of the fight is in the middle of the *board*, where the head of the fight
-		     is at the top of the view and hangs off the sheet instead (below). -->
-		<div class="relative">
-			{#key boardKey}
-				<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
-			{/key}
-			{#if state?.outcome}
-				<!-- The fight is over, and everything there is left to say about it is said
-				     on one panel in the middle of the board it happened on. The board itself
-				     stands exactly as it finished underneath — every fighter where the last
-				     blow left it, the ground each side took still held — so the result is
-				     read against the thing it is a result of rather than under it, where a
-				     tall board pushed it off the bottom of the sheet.
+		<!-- The fight: the head of it and the board it is played on, and the whole of the sheet
+		     to put the two in (the modal is bare, so this box is the viewport). The head is
+		     hung off *this* and never off the canvas — what the fight is over belongs at the top
+		     of the screen, not at the top of a drawing floating in the middle of it.
+		     How the two are arranged is the only thing that changes with the screen, and it
+		     changes because the room does. On a wide one the board is drawn as large as the
+		     viewport allows and there is nothing left over, so the head is lifted out of the
+		     flow and laid on the board's top edge, the board keeping the whole box and the
+		     middle of it (`sm:` and up: `absolute`, and this centring the canvas alone). On a
+		     phone the board is limited by the width instead — it comes out a wide, shallow
+		     thing with a deep band of nothing above and below it — so the head is left in the
+		     flow at the top of the column and the board is set immediately under it, which is
+		     room that was going spare and a head that is no longer standing over the fighters
+		     on a screen too narrow to spare the room. -->
+		<div class="relative flex h-full w-full flex-col items-center justify-start sm:justify-center">
+			<!-- The board, and nothing round it. No card, no body, no column, and no border: the
+			     arena is one drawing and every box round a drawing is scale taken off it, since the
+			     canvas is fitted to the room it is given. What used to stand under the board stands
+			     on it now — the score at its head, the way out reached for on that same plate, and
+			     whatever the fight has to say in the middle.
+			     This box hugs the canvas rather than filling the sheet: it is a flex item and the
+			     canvas is its only child in flow, so it is exactly the canvas on both axes, which
+			     is what makes `inset-0` on the two overlays inside it mean the board's own edges
+			     and not the viewport's. That is the whole of what belongs in here: a panel in the
+			     middle of the fight is in the middle of the *board*, where the head of the fight
+			     is at the top of the view and hangs off the sheet instead (below). -->
+			<div class="relative">
+				{#key boardKey}
+					<MugenBoard {grids} on:ready={(event) => onBoardReady(event.detail)} />
+				{/key}
+				{#if state?.outcome}
+					<!-- The fight is over, and everything there is left to say about it is said
+					     on one panel in the middle of the board it happened on. The board itself
+					     stands exactly as it finished underneath — every fighter where the last
+					     blow left it, the ground each side took still held — so the result is
+					     read against the thing it is a result of rather than under it, where a
+					     tall board pushed it off the bottom of the sheet.
 
-				     Laid over the canvas rather than in the column with it, so it takes no
-				     room and nothing below shifts when it arrives. The sheet takes no
-				     pointer of its own — only the panel does — so it covers the board
-				     without swallowing anything the board still answers. -->
-				<div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
-					<div
-						class="pointer-events-auto card w-full max-w-xs border border-base-300 bg-base-100/95 shadow-2xl"
-					>
-						<div class="card-body items-center gap-3 p-5">
-							{#if reportFailure}
-								<!-- Played out, and the server would not take it. The refusal is
-								     given in the server's own words — the battle is still open, so
-								     this is the fight the player is in, not one they have lost track
-								     of — and the offer is to report it again, not to leave. -->
-								<div class="alert alert-error text-sm" role="alert">
-									<span>{reportFailure}</span>
+					     Laid over the canvas rather than in the column with it, so it takes no
+					     room and nothing below shifts when it arrives. The sheet takes no
+					     pointer of its own — only the panel does — so it covers the board
+					     without swallowing anything the board still answers. -->
+					<div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+						<div
+							class="pointer-events-auto card w-full max-w-xs border border-base-300 bg-base-100/95 shadow-2xl"
+						>
+							<div class="card-body items-center gap-3 p-5">
+								{#if reportFailure}
+									<!-- Played out, and the server would not take it. The refusal is
+									     given in the server's own words — the battle is still open, so
+									     this is the fight the player is in, not one they have lost track
+									     of — and the offer is to report it again, not to leave. -->
+									<div class="alert alert-error text-sm" role="alert">
+										<span>{reportFailure}</span>
+									</div>
+									<button
+										type="button"
+										class="btn btn-primary btn-block"
+										disabled={reporting}
+										on:click={retryReport}
+									>
+										{#if reporting}
+											<span class="loading loading-spinner loading-xs"></span>
+											{$_('combat.reporting')}
+										{:else}
+											{$_('combat.reportAgain')}
+										{/if}
+									</button>
+								{:else}
+									<!-- Nothing is dismissed for the player: the arena is left when they
+									     say so. Reporting is what ends the battle server-side, so Close
+									     waits on it — leaving first would walk out of a fight the server
+									     still has open. -->
+									<p class={classNames('text-lg font-bold', OUTCOME_CLASSES[state.outcome])}>
+										{OUTCOME_LABELS[state.outcome]}
+									</p>
+									<dl class="flex w-full flex-col gap-1 text-sm">
+										<!-- The fight is three duels and this is how they went: the same
+										     count the board has been keeping all along, standing still now. -->
+										<div class="flex items-baseline justify-between gap-4">
+											<dt class="opacity-70">{$_('combat.encountersWon')}</dt>
+											<dd class="font-mono font-bold tabular-nums">
+												<span class="text-info">{state.wins.info}</span>
+												<span class="opacity-40">–</span>
+												<span class="text-error">{state.wins.error}</span>
+											</dd>
+										</div>
+										{#if reward}
+											<!-- Both figures are the server's own count of the team it paid
+											     for, not this tab's: the award is a share of the level's span
+											     decided from how much of the team came through, so the count
+											     and the number it produced are read out together. -->
+											<div class="flex items-baseline justify-between gap-4">
+												<dt class="opacity-70">{$_('combat.survivors')}</dt>
+												<dd class="font-mono font-bold tabular-nums">
+													{reward.survivors} / {reward.fielded}
+												</dd>
+											</div>
+											<div class="flex items-baseline justify-between gap-4">
+												<dt class="opacity-70">{$_('combat.expGained')}</dt>
+												<dd class="font-mono font-bold tabular-nums text-success">
+													+{reward.awarded}
+												</dd>
+											</div>
+										{/if}
+									</dl>
+									<button
+										type="button"
+										class="btn btn-primary btn-block"
+										disabled={reporting}
+										on:click={close}
+									>
+										{#if reporting}
+											<span class="loading loading-spinner loading-xs"></span>
+											{$_('combat.reporting')}
+										{:else}
+											{$_('common.close')}
+										{/if}
+									</button>
+								{/if}
+							</div>
+						</div>
+					</div>
+				{/if}
+				{#if state && !state.outcome && saveFailure}
+					<!-- The turn was played out and the server would not take it. The fight holds
+					     here rather than playing on over a turn nothing has recorded: everything
+					     after it would be built on a board that was never written, and gone the
+					     moment this page is reloaded.
+					     On the board like the rest of it, and in the middle like the end of the
+					     fight, which it cannot be up at the same time as: both are the fight stopped
+					     on something the player has to answer, and the middle of the board is where
+					     this arena puts a thing that is waiting on an answer. -->
+					<div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+						<div
+							class="pointer-events-auto card w-full max-w-xs border border-base-300 bg-base-100/95 shadow-2xl"
+						>
+							<div class="card-body items-center gap-3 p-5">
+								<div class="alert alert-warning text-sm" role="alert">
+									<span>{saveFailure}</span>
 								</div>
 								<button
 									type="button"
 									class="btn btn-primary btn-block"
-									disabled={reporting}
-									on:click={retryReport}
+									disabled={savingTurn !== 0}
+									on:click={retrySave}
 								>
-									{#if reporting}
+									{#if savingTurn}
 										<span class="loading loading-spinner loading-xs"></span>
-										{$_('combat.reporting')}
+										{$_('combat.saving', { values: { turn: state.turn } })}
 									{:else}
-										{$_('combat.reportAgain')}
+										{$_('combat.saveAgain', { values: { turn: state.turn } })}
 									{/if}
 								</button>
-							{:else}
-								<!-- Nothing is dismissed for the player: the arena is left when they
-								     say so. Reporting is what ends the battle server-side, so Close
-								     waits on it — leaving first would walk out of a fight the server
-								     still has open. -->
-								<p class={classNames('text-lg font-bold', OUTCOME_CLASSES[state.outcome])}>
-									{OUTCOME_LABELS[state.outcome]}
-								</p>
-								<dl class="flex w-full flex-col gap-1 text-sm">
-									<!-- The fight is three duels and this is how they went: the same
-									     count the board has been keeping all along, standing still now. -->
-									<div class="flex items-baseline justify-between gap-4">
-										<dt class="opacity-70">{$_('combat.encountersWon')}</dt>
-										<dd class="font-mono font-bold tabular-nums">
-											<span class="text-info">{state.wins.info}</span>
-											<span class="opacity-40">–</span>
-											<span class="text-error">{state.wins.error}</span>
-										</dd>
-									</div>
-									{#if reward}
-										<!-- Both figures are the server's own count of the team it paid
-										     for, not this tab's: the award is a share of the level's span
-										     decided from how much of the team came through, so the count
-										     and the number it produced are read out together. -->
-										<div class="flex items-baseline justify-between gap-4">
-											<dt class="opacity-70">{$_('combat.survivors')}</dt>
-											<dd class="font-mono font-bold tabular-nums">
-												{reward.survivors} / {reward.fielded}
-											</dd>
-										</div>
-										<div class="flex items-baseline justify-between gap-4">
-											<dt class="opacity-70">{$_('combat.expGained')}</dt>
-											<dd class="font-mono font-bold tabular-nums text-success">
-												+{reward.awarded}
-											</dd>
-										</div>
-									{/if}
-								</dl>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+			<!-- The head of the fight: what it is over, and then how it stands. Both are read
+			     before the board and in that order — the town is the reason there is a fight at all
+			     and the score is what has become of it — so they are stacked at the top rather than
+			     set beside each other, with the score's banner hanging under the card.
+			     Hung off the sheet and not off the canvas, which is why it is not in the box above:
+			     the board is centred in the viewport and is only as tall as it is, so a head taking
+			     the canvas's own top edge floated somewhere down the middle of the screen with a
+			     band of live map above it. The top of the fight is the top of the view.
+			     From `sm:` up it is laid *on* the board's top edge — the board has the whole box and
+			     is drawn as large as the viewport allows, so anything the head took would come off
+			     the fight — and it is written after the board so that it stands over it: both are
+			     positioned and neither carries a layer of its own, so it is the order they are
+			     written in that decides. On a phone it stays in the flow instead, and `order-first`
+			     is what puts it back at the head of the column it is written at the foot of. The
+			     board follows it there rather than under it, out of the room a width-limited canvas
+			     leaves standing empty.
+			     Neither takes the pointer except where it has to (see the banner's plate): they are
+			     readings laid over the board, and the board underneath is what is played.
+			     The column is only as wide as the widest thing in it — the banner, in practice — and
+			     everything in it is stretched to that, so the head is one block of chrome and not two
+			     objects that happen to be stacked. Centred by the row it sits in rather than by
+			     centring its own contents, which is what leaves the stretching to it. -->
+			<div
+				class="pointer-events-none order-first flex w-full justify-center sm:absolute sm:inset-x-0 sm:top-0 sm:w-auto"
+			>
+				<div class="flex flex-col">
+					<!-- The town, on the very plate its pin carries on the map: the same mark, drawn
+					     the same way, showing what was pressed to get here. Only the challenge button
+					     is missing, and the caller is what leaves it out — a fight already under way
+					     has nothing left to start.
+					     Flush: laid into this column it takes the column's width and squares its
+					     corners, where a pin's plate settles its own width and rounds them. -->
+					{#if location}
+						<TownPlate {...location} flush />
+					{/if}
+					{#if state && !state.outcome}
+					<!-- The score, at the head of the fight it is a score of, under the town being
+					     fought over.
+					     The fight is three duels, each played for one cell of the white column
+					     down the middle of the board, so the score is drawn as that ground:
+					     three squares a side, one per lane, filled white as that side takes it.
+					     A number said how many; these say which of a known three, and they are
+					     cells of a board rather than a length being filled, which is what the
+					     thing being counted is. Each side's three sit over the half of the board
+					     that side holds — the rivals' to the left, the player's to the right.
+					     Between them, the turn, which is the other thing a fight is counted
+					     in and belongs between the two counts rather than beside one of them.
+					     Both counts grow outwards from that turn, so the rivals' three are laid
+					     out backwards and fill from the right: it is the same count read either
+					     way round, and the two then mirror each other across the middle rather
+					     than both running left to right. Both are drawn white — the ground down
+					     the middle they are played for is white, and a count of it says so at a
+					     glance.
+					     While the fight is running only: a decided one reads its score off the
+					     panel in the middle of the board, and the same score at both ends of
+					     one canvas would be one score too many. -->
+					<div class="flex justify-center">
+						<!-- On the same plate the map's breadcrumb bar stands on: the base colour at
+						     four fifths so the board reads through it, white type and a shadow to lift
+						     it off what it covers. The score and the path are the same kind of thing —
+						     a line of state laid over a picture that fills the view — so they are drawn
+						     as one thing and not two. Its corners are the one thing not carried over:
+						     both ends are joined to a wing (below), and a rounded edge under a flush
+						     one is a notch. It hugs its contents rather than running the width of the
+						     canvas: a band across the top would be a bar of colour over the board,
+						     where a plate is a label on it. -->
+						<!-- The plate's two wings: a right triangle at either end, in the plate's own
+						     colour, so what hangs off the top of the board is one shape — a banner —
+						     rather than a box with two marks beside it. Each keeps its square corner
+						     against the count nearest it and slopes away from there, the rivals'
+						     square corner at the top right and the player's at the top left, so the
+						     two lean outwards from the turn exactly as the counts do.
+						     Drawn as a border rather than as a shape, which is what a triangle is in
+						     CSS: a box with no size at all, one side of it coloured and the side it
+						     leans on transparent, so the coloured side is cut off at 45°. Both legs
+						     are the plate's own height, which is what makes the other two angles 45
+						     apiece and butts the wing flush against the plate's full depth. -->
+						<span
+							class="h-0 w-0 border-t-[2rem] border-l-[2rem] border-t-base-100/80 border-l-transparent"
+							aria-hidden="true"
+						></span>
+						<div
+							class="group pointer-events-auto flex h-8 items-stretch gap-4 bg-base-100/80 text-white shadow-xl"
+						>
+							<!-- Each side's count is three cells in a row, laid out as cells of the
+							     board because that is what is being counted: the plate is `h-8` and a
+							     block is three of that across (`w-24`), over three equal columns, so
+							     the plate's own depth sets the cell's width and the two figures are
+							     read together — a taller plate wants a wider block.
+							     The block is inset a little top and bottom, and **every** line is inset
+							     with it — the two down its outer edges as much as the two between its
+							     cells. They are lines drawn on the plate rather than the plate's own
+							     edges, and one that runs into the edge it is drawn inside reads as that
+							     edge coming loose; drawn as the block's own border they cleared the
+							     padding, since a border sits outside it, and the outer pair stood a
+							     head taller than the inner pair. So all four are the cells' own: each
+							     cell rules its left side and the last one its right, which draws every
+							     shared side exactly once and stops every line where the padding does.
+							     Only the sides are ruled, for the same reason as ever — a line across
+							     the top and bottom would be a border round the block rather than a
+							     division of it — and they are drawn at half strength, since what they
+							     do is separate three cells, not draw three boxes.
+							     A lane taken is a disc in its cell rather than the cell painted in: the
+							     ground a lane is played for is one white cell of the middle column, and
+							     a mark set in a cell reads as something standing on that ground where a
+							     filled cell reads as the ground itself having changed. The disc is
+							     always drawn and simply carries no colour until the lane is won, so the
+							     three cells hold their spacing whatever the score is. -->
+							<div
+								class="grid h-full w-24 grid-cols-3 py-1"
+								role="progressbar"
+								aria-label={$_('combat.rivalWins')}
+								aria-valuemin={0}
+								aria-valuemax={TEAM_SIZE}
+								aria-valuenow={state.wins.error}
+							>
+								{#each RIVAL_LANES as lane}
+									<span
+										class="flex items-center justify-center border-l border-white/50 last:border-r"
+									>
+										<span
+											class={classNames(
+												'size-4 rounded-full',
+												lane <= state.wins.error && 'bg-white'
+											)}
+										></span>
+									</span>
+								{/each}
+							</div>
+							<!-- The turn, and over it the way out of the fight — one slot in the middle
+							     of the banner holding both, because they are the same place read at two
+							     moments: what the fight is on now, and the one thing that can be done
+							     about the fight as a whole.
+							     The way out is the only one there is: a battle is ended by a result,
+							     never by walking off, so giving it up reports the loss it is and closes
+							     the arena exactly as being wiped out would. Between turns only — a turn
+							     already being carried out settles itself.
+							     Out of sight until the plate is under the pointer, because it is the one
+							     control here that is not part of playing: a fight is played with the
+							     buttons beside the fighters, and what stands over the board at all times
+							     should be what is true of the fight. Reached for rather than offered.
+							     It is laid over the slot rather than put beside the turn, and the slot is
+							     as wide as the wider of the two whichever is showing: a control that took
+							     room of its own pushed both counts outwards the moment the pointer
+							     touched the banner, so the whole thing changed shape under the hand
+							     reaching for it. The turn goes invisible as the button arrives — the
+							     button is see-through, and the two of them stacked would be one line of
+							     type over another. -->
+							<div class="relative flex w-28 items-center justify-center">
+								<span
+									class="font-mono text-lg font-bold tabular-nums opacity-70 group-hover:invisible"
+								>
+									{$_('combat.turn', { values: { turn: state.turn } })}
+								</span>
 								<button
 									type="button"
-									class="btn btn-primary btn-block"
-									disabled={reporting}
-									on:click={close}
+									class="btn absolute inset-0 hidden btn-ghost btn-sm text-error group-hover:inline-flex"
+									disabled={state.phase !== 'planning'}
+									on:click={() => controller?.concede()}
 								>
-									{#if reporting}
-										<span class="loading loading-spinner loading-xs"></span>
-										{$_('combat.reporting')}
-									{:else}
-										{$_('common.close')}
-									{/if}
+									{$_('combat.concede')}
 								</button>
-							{/if}
-						</div>
-					</div>
-				</div>
-			{/if}
-			{#if state && !state.outcome && saveFailure}
-				<!-- The turn was played out and the server would not take it. The fight holds
-				     here rather than playing on over a turn nothing has recorded: everything
-				     after it would be built on a board that was never written, and gone the
-				     moment this page is reloaded.
-				     On the board like the rest of it, and in the middle like the end of the
-				     fight, which it cannot be up at the same time as: both are the fight stopped
-				     on something the player has to answer, and the middle of the board is where
-				     this arena puts a thing that is waiting on an answer. -->
-				<div class="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
-					<div
-						class="pointer-events-auto card w-full max-w-xs border border-base-300 bg-base-100/95 shadow-2xl"
-					>
-						<div class="card-body items-center gap-3 p-5">
-							<div class="alert alert-warning text-sm" role="alert">
-								<span>{saveFailure}</span>
 							</div>
-							<button
-								type="button"
-								class="btn btn-primary btn-block"
-								disabled={savingTurn !== 0}
-								on:click={retrySave}
+							<div
+								class="grid h-full w-24 grid-cols-3 py-1"
+								role="progressbar"
+								aria-label={$_('combat.yourWins')}
+								aria-valuemin={0}
+								aria-valuemax={TEAM_SIZE}
+								aria-valuenow={state.wins.info}
 							>
-								{#if savingTurn}
-									<span class="loading loading-spinner loading-xs"></span>
-									{$_('combat.saving', { values: { turn: state.turn } })}
-								{:else}
-									{$_('combat.saveAgain', { values: { turn: state.turn } })}
-								{/if}
-							</button>
-						</div>
-					</div>
-				</div>
-			{/if}
-		</div>
-		<!-- The head of the fight: what it is over, and then how it stands. Both are read
-		     before the board and in that order — the town is the reason there is a fight at all
-		     and the score is what has become of it — so they are stacked at the top rather than
-		     set beside each other, with the score's banner hanging under the card.
-		     Hung off the sheet and not off the canvas, which is why it is not in the box above:
-		     the board is centred in the viewport and is only as tall as it is, so a head taking
-		     the canvas's own top edge floated somewhere down the middle of the screen with a
-		     band of live map above it. The top of the fight is the top of the view.
-		     Drawn after the board so it stands over it: both are positioned and neither carries
-		     a layer of its own, so it is the order they are written in that decides.
-		     Neither takes the pointer except where it has to (see the banner's plate): they are
-		     readings laid over the board, and the board underneath is what is played.
-		     The column is only as wide as the widest thing in it — the banner, in practice — and
-		     everything in it is stretched to that, so the head is one block of chrome and not two
-		     objects that happen to be stacked. Centred by the row it sits in rather than by
-		     centring its own contents, which is what leaves the stretching to it. -->
-		<div class="pointer-events-none absolute inset-x-0 top-0 flex justify-center">
-			<div class="flex flex-col">
-				<!-- The town, on the very plate its pin carries on the map: the same mark, drawn
-				     the same way, showing what was pressed to get here. Only the challenge button
-				     is missing, and the caller is what leaves it out — a fight already under way
-				     has nothing left to start.
-				     Flush: laid into this column it takes the column's width and squares its
-				     corners, where a pin's plate settles its own width and rounds them. -->
-				{#if location}
-					<TownPlate {...location} flush />
-				{/if}
-				{#if state && !state.outcome}
-				<!-- The score, at the head of the fight it is a score of, under the town being
-				     fought over.
-				     The fight is three duels, each played for one cell of the white column
-				     down the middle of the board, so the score is drawn as that ground:
-				     three squares a side, one per lane, filled white as that side takes it.
-				     A number said how many; these say which of a known three, and they are
-				     cells of a board rather than a length being filled, which is what the
-				     thing being counted is. Each side's three sit over the half of the board
-				     that side holds — the rivals' to the left, the player's to the right.
-				     Between them, the turn, which is the other thing a fight is counted
-				     in and belongs between the two counts rather than beside one of them.
-				     Both counts grow outwards from that turn, so the rivals' three are laid
-				     out backwards and fill from the right: it is the same count read either
-				     way round, and the two then mirror each other across the middle rather
-				     than both running left to right. Both are drawn white — the ground down
-				     the middle they are played for is white, and a count of it says so at a
-				     glance.
-				     While the fight is running only: a decided one reads its score off the
-				     panel in the middle of the board, and the same score at both ends of
-				     one canvas would be one score too many. -->
-				<div class="flex justify-center">
-					<!-- On the same plate the map's breadcrumb bar stands on: the base colour at
-					     four fifths so the board reads through it, white type and a shadow to lift
-					     it off what it covers. The score and the path are the same kind of thing —
-					     a line of state laid over a picture that fills the view — so they are drawn
-					     as one thing and not two. Its corners are the one thing not carried over:
-					     both ends are joined to a wing (below), and a rounded edge under a flush
-					     one is a notch. It hugs its contents rather than running the width of the
-					     canvas: a band across the top would be a bar of colour over the board,
-					     where a plate is a label on it. -->
-					<!-- The plate's two wings: a right triangle at either end, in the plate's own
-					     colour, so what hangs off the top of the board is one shape — a banner —
-					     rather than a box with two marks beside it. Each keeps its square corner
-					     against the count nearest it and slopes away from there, the rivals'
-					     square corner at the top right and the player's at the top left, so the
-					     two lean outwards from the turn exactly as the counts do.
-					     Drawn as a border rather than as a shape, which is what a triangle is in
-					     CSS: a box with no size at all, one side of it coloured and the side it
-					     leans on transparent, so the coloured side is cut off at 45°. Both legs
-					     are the plate's own height, which is what makes the other two angles 45
-					     apiece and butts the wing flush against the plate's full depth. -->
-					<span
-						class="h-0 w-0 border-t-[2rem] border-l-[2rem] border-t-base-100/80 border-l-transparent"
-						aria-hidden="true"
-					></span>
-					<div
-						class="group pointer-events-auto flex h-8 items-stretch gap-4 bg-base-100/80 text-white shadow-xl"
-					>
-						<!-- Each side's count is three cells in a row, laid out as cells of the
-						     board because that is what is being counted: the plate is `h-8` and a
-						     block is three of that across (`w-24`), over three equal columns, so
-						     the plate's own depth sets the cell's width and the two figures are
-						     read together — a taller plate wants a wider block.
-						     The block is inset a little top and bottom, and **every** line is inset
-						     with it — the two down its outer edges as much as the two between its
-						     cells. They are lines drawn on the plate rather than the plate's own
-						     edges, and one that runs into the edge it is drawn inside reads as that
-						     edge coming loose; drawn as the block's own border they cleared the
-						     padding, since a border sits outside it, and the outer pair stood a
-						     head taller than the inner pair. So all four are the cells' own: each
-						     cell rules its left side and the last one its right, which draws every
-						     shared side exactly once and stops every line where the padding does.
-						     Only the sides are ruled, for the same reason as ever — a line across
-						     the top and bottom would be a border round the block rather than a
-						     division of it — and they are drawn at half strength, since what they
-						     do is separate three cells, not draw three boxes.
-						     A lane taken is a disc in its cell rather than the cell painted in: the
-						     ground a lane is played for is one white cell of the middle column, and
-						     a mark set in a cell reads as something standing on that ground where a
-						     filled cell reads as the ground itself having changed. The disc is
-						     always drawn and simply carries no colour until the lane is won, so the
-						     three cells hold their spacing whatever the score is. -->
-						<div
-							class="grid h-full w-24 grid-cols-3 py-1"
-							role="progressbar"
-							aria-label={$_('combat.rivalWins')}
-							aria-valuemin={0}
-							aria-valuemax={TEAM_SIZE}
-							aria-valuenow={state.wins.error}
-						>
-							{#each RIVAL_LANES as lane}
-								<span
-									class="flex items-center justify-center border-l border-white/50 last:border-r"
-								>
+								{#each LANES as lane}
 									<span
-										class={classNames(
-											'size-4 rounded-full',
-											lane <= state.wins.error && 'bg-white'
-										)}
-									></span>
-								</span>
-							{/each}
+										class="flex items-center justify-center border-l border-white/50 last:border-r"
+									>
+										<span
+											class={classNames('size-4 rounded-full', lane <= state.wins.info && 'bg-white')}
+										></span>
+									</span>
+								{/each}
+							</div>
 						</div>
-						<!-- The turn, and over it the way out of the fight — one slot in the middle
-						     of the banner holding both, because they are the same place read at two
-						     moments: what the fight is on now, and the one thing that can be done
-						     about the fight as a whole.
-						     The way out is the only one there is: a battle is ended by a result,
-						     never by walking off, so giving it up reports the loss it is and closes
-						     the arena exactly as being wiped out would. Between turns only — a turn
-						     already being carried out settles itself.
-						     Out of sight until the plate is under the pointer, because it is the one
-						     control here that is not part of playing: a fight is played with the
-						     buttons beside the fighters, and what stands over the board at all times
-						     should be what is true of the fight. Reached for rather than offered.
-						     It is laid over the slot rather than put beside the turn, and the slot is
-						     as wide as the wider of the two whichever is showing: a control that took
-						     room of its own pushed both counts outwards the moment the pointer
-						     touched the banner, so the whole thing changed shape under the hand
-						     reaching for it. The turn goes invisible as the button arrives — the
-						     button is see-through, and the two of them stacked would be one line of
-						     type over another. -->
-						<div class="relative flex w-28 items-center justify-center">
-							<span
-								class="font-mono text-lg font-bold tabular-nums opacity-70 group-hover:invisible"
-							>
-								{$_('combat.turn', { values: { turn: state.turn } })}
-							</span>
-							<button
-								type="button"
-								class="btn absolute inset-0 hidden btn-ghost btn-sm text-error group-hover:inline-flex"
-								disabled={state.phase !== 'planning'}
-								on:click={() => controller?.concede()}
-							>
-								{$_('combat.concede')}
-							</button>
-						</div>
-						<div
-							class="grid h-full w-24 grid-cols-3 py-1"
-							role="progressbar"
-							aria-label={$_('combat.yourWins')}
-							aria-valuemin={0}
-							aria-valuemax={TEAM_SIZE}
-							aria-valuenow={state.wins.info}
-						>
-							{#each LANES as lane}
-								<span
-									class="flex items-center justify-center border-l border-white/50 last:border-r"
-								>
-									<span
-										class={classNames('size-4 rounded-full', lane <= state.wins.info && 'bg-white')}
-									></span>
-								</span>
-							{/each}
-						</div>
+						<span
+							class="h-0 w-0 border-t-[2rem] border-r-[2rem] border-t-base-100/80 border-r-transparent"
+							aria-hidden="true"
+						></span>
 					</div>
-					<span
-						class="h-0 w-0 border-t-[2rem] border-r-[2rem] border-t-base-100/80 border-r-transparent"
-						aria-hidden="true"
-					></span>
+					{/if}
 				</div>
-				{/if}
 			</div>
 		</div>
 	{/if}
