@@ -1216,6 +1216,28 @@
 						</div>
 					</div>
 				{/each}
+				<!-- Giving up, which on a phone exists nowhere else. On the banner it is reached
+				     for — hidden under the turn until the pointer is on the plate — and a phone has
+				     no pointer to put there, so that control was simply unreachable on a touch
+				     screen: the one thing a player can do about the fight as a whole could not be
+				     done. It is written out here instead, the last row of the column that is this
+				     screen's way of playing, under the orders because it is what is left when none
+				     of them is worth giving.
+				     The same button in every other respect — it reports the loss it is and closes
+				     the arena exactly as being wiped out would, and it is offered between turns
+				     only, a turn already being carried out settling itself. Off once the fight is
+				     decided: there is nothing left to give up, and the result panel's Close is the
+				     way out of a fight that is over. -->
+				{#if state && !state.outcome}
+					<button
+						type="button"
+						class="btn w-full border-0 bg-base-100/80 text-error shadow-xl"
+						disabled={state.phase !== 'planning'}
+						on:click={() => controller?.concede()}
+					>
+						{$_('combat.concede')}
+					</button>
+				{/if}
 			</div>
 			<!-- The head of the fight: what it is over, and then how it stands. Both are read
 			     before the board and in that order — the town is the reason there is a fight at all
@@ -1357,16 +1379,23 @@
 							     touched the banner, so the whole thing changed shape under the hand
 							     reaching for it. The turn goes invisible as the button arrives — the
 							     button is see-through, and the two of them stacked would be one line of
-							     type over another. -->
+							     type over another.
+							     Reaching for it is a thing a pointer does, so this is the pointer's copy
+							     and it is scoped to `sm:` outright: below that the slot is the turn and
+							     nothing else — a touch screen has no hover to hide a control behind, and
+							     the emulated one a tap leaves behind would swap the turn for a button and
+							     leave it swapped. The phone is given the same control as a row of its
+							     own, at the foot of the orders (above), where it can be seen to be
+							     there. -->
 							<div class="relative flex w-28 items-center justify-center">
 								<span
-									class="font-mono text-lg font-bold tabular-nums opacity-70 group-hover:invisible"
+									class="font-mono text-lg font-bold tabular-nums opacity-70 sm:group-hover:invisible"
 								>
 									{$_('combat.turn', { values: { turn: state.turn } })}
 								</span>
 								<button
 									type="button"
-									class="btn absolute inset-0 hidden btn-ghost btn-sm text-error group-hover:inline-flex"
+									class="btn absolute inset-0 hidden btn-ghost btn-sm text-error sm:group-hover:inline-flex"
 									disabled={state.phase !== 'planning'}
 									on:click={() => controller?.concede()}
 								>
