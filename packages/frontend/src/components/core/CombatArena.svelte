@@ -1306,19 +1306,14 @@
 							     block is three of that across (`w-24`), over three equal columns, so
 							     the plate's own depth sets the cell's width and the two figures are
 							     read together — a taller plate wants a wider block.
-							     The block is inset a little top and bottom, and **every** line is inset
-							     with it — the two down its outer edges as much as the two between its
-							     cells. They are lines drawn on the plate rather than the plate's own
-							     edges, and one that runs into the edge it is drawn inside reads as that
-							     edge coming loose; drawn as the block's own border they cleared the
-							     padding, since a border sits outside it, and the outer pair stood a
-							     head taller than the inner pair. So all four are the cells' own: each
-							     cell rules its left side and the last one its right, which draws every
-							     shared side exactly once and stops every line where the padding does.
-							     Only the sides are ruled, for the same reason as ever — a line across
-							     the top and bottom would be a border round the block rather than a
-							     division of it — and they are drawn at half strength, since what they
-							     do is separate three cells, not draw three boxes.
+							     Nothing is ruled between them. The cells were divided by a line down each
+							     of their sides, and what the lines were dividing is three discs in a row
+							     with a plate's own width of air around them — a thing already read as
+							     three from across the room, since a count of three is what a disc apart
+							     from another disc says. So the rules were drawing a grid over a figure
+							     that did not need one, and the busiest mark on the banner was the one
+							     carrying the least. The grid still sets the spacing; it simply is not
+							     drawn any more.
 							     A lane taken is a disc in its cell rather than the cell painted in: the
 							     ground a lane is played for is one white cell of the middle column, and
 							     a mark set in a cell reads as something standing on that ground where a
@@ -1334,9 +1329,7 @@
 								aria-valuenow={state.wins.error}
 							>
 								{#each RIVAL_LANES as lane}
-									<span
-										class="flex items-center justify-center border-l border-white/50 last:border-r"
-									>
+									<span class="flex items-center justify-center">
 										<span
 											class={classNames(
 												'size-4 rounded-full',
@@ -1389,9 +1382,7 @@
 								aria-valuenow={state.wins.info}
 							>
 								{#each LANES as lane}
-									<span
-										class="flex items-center justify-center border-l border-white/50 last:border-r"
-									>
+									<span class="flex items-center justify-center">
 										<span
 											class={classNames('size-4 rounded-full', lane <= state.wins.info && 'bg-white')}
 										></span>
