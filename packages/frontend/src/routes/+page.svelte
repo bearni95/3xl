@@ -139,6 +139,16 @@
 	// The map centre WorldMap reports, used to tell which region the view is
 	// focused on so the sidebar and polygons follow what's zoomed into.
 	let currentCenter: [number, number] = [41.8, 1.7];
+	// Tailwind's `sm:`, said the other way round and asked rather than written. A pin is
+	// Leaflet's DOM built in JavaScript and no stylesheet reaches it, so a breakpoint that
+	// decides which pins exist has to be a question this side can put — and the question is
+	// the exact complement of the class, in `rem` and off the same 40, so the pins turn over
+	// on the very width the layout around them does.
+	const WIDE_VIEW_QUERY = '(min-width: 40rem)';
+	// Whether the view is narrower than that. False until the query is read, which is the
+	// safe way round: a wide screen is what the map is drawn as everywhere it has not been
+	// measured, and a narrow one takes its own pins away a frame later.
+	let narrowView = false;
 	// The top view, as a value the `region` param can hold. The view above every territory
 	// is the one step of the drill path with no node behind it, so there is no key for it —
 	// and without one, picking it could only be said by clearing the param, which does not
@@ -187,6 +197,16 @@
 		const query = params.toString();
 		goto(query ? `?${query}` : location.pathname, { keepFocus: true, noScroll: true });
 	}
+
+	// The width, watched rather than read once: a phone turned on its side is the same
+	// visit, and the pins it may then have room for are the ones this puts back.
+	onMount(() => {
+		const wide = window.matchMedia(WIDE_VIEW_QUERY);
+		const read = () => (narrowView = !wide.matches);
+		read();
+		wide.addEventListener('change', read);
+		return () => wide.removeEventListener('change', read);
+	});
 
 	onMount(async () => {
 		// Load the polygons (for the region tree, the framing and every town's own
@@ -1385,6 +1405,29 @@
 			])
 		: null;
 
+	// The picked region when it is a town, and null for anything coarser: only a
+	// municipality's key names one, so a comarca or a province lands the same as nothing
+	// picked. Read off the clicked selection rather than the zoom's focus, for the reason
+	// the statues are (see statuedTown) — the focus is measured from the pins, and pins
+	// that moved with it would be deciding what they are drawn from.
+	$: pickedTown =
+		selected && findNode(regionNodes, selected)?.type === 'Municipality' ? selected : null;
+
+	// The one town the map marks, or null for all of them.
+	//
+	// A narrow view is the width of one plate and a bit: the towns of a comarca drawn on it
+	// are plates elbowing one another out of the way, folding into counts and running their
+	// leader lines across the picture — and the picked town's own pin, the tall one carrying
+	// the side holding it and the way to fight them, is in the middle of that. On the screen
+	// where a reader has asked for one town by name, the rest of the breakdown is what there
+	// is no room for, so it comes off: dimming is the answer where every pin still fits (see
+	// relevantKeys), and this is the answer where none of them do.
+	//
+	// Towns only, and only while one is picked. Nothing else on the map is touched — the
+	// coarser tiers pin their regions as they always did, and a wide view marks every town
+	// whatever is picked.
+	$: soleTown = narrowView ? pickedTown : null;
+
 	// The deepest drill level in the tree (territory = level 0), so the pin stack
 	// can span every level down to the municipalities.
 	$: maxLevel = treeDepth(regionNodes) - 1;
@@ -1939,7 +1982,8 @@
 		challengeBar: MapChallenge | null,
 		sieges: ReadonlyMap<string, RegionSiege>,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
-		glyphs: ReadonlyMap<number, string>
+		glyphs: ReadonlyMap<number, string>,
+		onlyTown: string | null
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
@@ -1975,6 +2019,12 @@
 				subtitle: restoreCatalanArticle(node.name),
 				featureIds: geometry.muniIds.get(node.key) ?? [],
 				dimmed: relevant ? !relevant.has(node.key) : false,
+				// Built like any other and then left off the map, on the view where only one town
+				// is marked (see soleTown): the pin is still the tier's, still measured with it
+				// and still lights its region when its polygons are pointed at — there is simply
+				// no mark drawn for it. Towns only; a comarca's pin is never the thing being
+				// stood down for.
+				hidden: !!onlyTown && node.type === 'Municipality' && node.key !== onlyTown,
 				onClick: () => open(node.key)
 			});
 		}
@@ -2071,7 +2121,8 @@
 		challengeBar: MapChallenge | null,
 		sieges: ReadonlyMap<string, RegionSiege>,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
-		glyphs: ReadonlyMap<number, string>
+		glyphs: ReadonlyMap<number, string>,
+		onlyTown: string | null
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
@@ -2085,7 +2136,8 @@
 					challengeBar,
 					sieges,
 					occupied,
-					glyphs
+					glyphs,
+					onlyTown
 				)
 			);
 		}
@@ -2102,7 +2154,8 @@
 		townChallenge,
 		regionSieges,
 		holders,
-		$showGlyphs
+		$showGlyphs,
+		soleTown
 	);
 
 	// The bounding box the map fits when a region is selected: the union of every

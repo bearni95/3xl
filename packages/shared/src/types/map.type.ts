@@ -162,6 +162,20 @@ export interface MapMarker {
 	 * screen is still legible.
 	 */
 	dimmed?: boolean;
+	/**
+	 * Whether this pin is left off the map altogether — the same tier, the same stack, no
+	 * mark drawn for it. Dimming is the answer where every pin still has room to be read
+	 * (see `dimmed`); this is for the view where it has not, and one place being looked at
+	 * is worth more than the breakdown around it.
+	 *
+	 * A hidden pin stays in the rendering it belongs to rather than being filtered out of
+	 * it, because the stack is read for more than drawing: which tier the view is inside and
+	 * which region it is centred on are measured off these boxes, and a map that took the
+	 * pins away would have moved those readings with them. So it is one field the drawing
+	 * obeys and every measure ignores — and the town's booster mark is taken back by the box
+	 * layer onto its own point, exactly as a pin folded into a group has its taken back.
+	 */
+	hidden?: boolean;
 	/** Called when the pin is clicked. */
 	onClick?: () => void;
 }

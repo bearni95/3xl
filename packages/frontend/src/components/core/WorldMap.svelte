@@ -694,7 +694,12 @@
 		const tier = levels.length
 			? levelIndexForView(levels, centre, (box) => boundsFitAtZoom(box, fitZoom))
 			: 0;
-		const pins = (levels[tier] ?? []).filter((marker) => withinBounds(marker.position, bounds));
+		// The pins this framing will actually draw, so a mark that is left off the map cannot buy
+		// room with zoom the view had (see MapMarker.hidden) — the whole of what a hidden pin
+		// takes is nothing.
+		const pins = (levels[tier] ?? []).filter(
+			(marker) => !marker.hidden && withinBounds(marker.position, bounds)
+		);
 		if (!pins.length) return { centre, zoom: fitZoom };
 
 		const floor = Math.max(fitZoom - PIN_FIT_BACKOFF, mapInstance!.getMinZoom());
@@ -1319,8 +1324,12 @@
 		// never shuffled aside for a plate naming a village (see placeMarks). Everything after
 		// it keeps the order the tier was built in, so the same view always settles the same
 		// way rather than wandering between rebuilds.
+		// A pin the page has asked to be left off is left off here and nowhere earlier (see
+		// MapMarker.hidden): the tier it belongs to is still the tier, still measured for where
+		// the view is and still the set a polygon hover lights its region from — it simply has
+		// no mark drawn for it.
 		const visible = chosen
-			.filter((marker) => bounds.contains(marker.position))
+			.filter((marker) => !marker.hidden && bounds.contains(marker.position))
 			.sort((a, b) => (b.team?.length ? 1 : 0) - (a.team?.length ? 1 : 0));
 
 		pinExtents = new Map();
@@ -1791,9 +1800,15 @@
 	// places and says nothing about packs. So the box layer takes those towns back — where they
 	// crowd, they fold into a count of their own, which is the same reading at the same size as
 	// the pins' (see foldBoxes).
+	//
+	// And less the pins the page asked to be left off the map (see MapMarker.hidden), for the
+	// very same reason: a town that was never drawn has no column for its mark to be a block
+	// of, so the box layer stands it on the point instead.
 	function pinnedIds(): Set<string> {
 		const levels = markerLevelStack();
-		const ids = new Set((levels[pinLevelIndex] ?? []).map((marker) => marker.id));
+		const ids = new Set(
+			(levels[pinLevelIndex] ?? []).filter((marker) => !marker.hidden).map((marker) => marker.id)
+		);
 		for (const id of foldedIds) ids.delete(id);
 		return ids;
 	}
