@@ -7,7 +7,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { characters } from '@3xl/data';
-	import AuthMenu from '$components/core/AuthMenu.svelte';
+	import SignInPanel from '$components/core/SignInPanel.svelte';
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import MusicPlayer from '$components/core/MusicPlayer.svelte';
@@ -52,7 +52,7 @@
 	} from '$types/territory.type';
 	import type { TerritoryResult } from '$types/combat.type';
 	import type { OpenBattle } from '$types/battle.type';
-	import type { Profile } from '$types/profile.type';
+	import { AuthStatus, type Profile } from '$types/profile.type';
 	import { TEAM_SIZE, teamService } from '$services/team.service';
 	import {
 		buildMunicipalityTeam,
@@ -282,6 +282,14 @@
 
 	// The signed-in player, so a town they already hold isn't offered as a target.
 	const profile = authService.profile;
+
+	// Whether the corner at the foot of the map is showing the way in or the account itself
+	// (see SignInPanel, and the column below). Asked of the session's own state rather than
+	// of `profile` being empty, because those are not the same question while the session is
+	// still being restored: a visit with an account on disk has no profile for a moment, and
+	// a door drawn in that moment is a door taken away again.
+	const authStatus = authService.status;
+	$: signedOut = $authStatus === AuthStatus.SignedOut;
 
 	// What the radio has on air. The card at the foot of the map draws itself off the same
 	// store and hides when there is no song (see MusicCard); this read is only so the corner
@@ -1125,8 +1133,14 @@
 	// breadcrumb bar and standing over the map's right edge while it is up. It was a sibling
 	// of the map taking a flat 450px of the row (30vh of the column on a narrow viewport,
 	// with a handle row toggling it to the full screen), which was the shape it needed while
-	// it held tables and a pack opener. It holds five buttons and the sign-in: a column of
-	// that permanently taking an eighth of the window was the map paying rent for a menu.
+	// it held tables and a pack opener. It holds buttons and a radio: a column of that
+	// permanently taking an eighth of the window was the map paying rent for a menu.
+	//
+	// Every one of those buttons raises a view over the map, which is what makes them one
+	// kind of thing and makes a menu the right place for them. The sign-in was in here too
+	// and is not that: it is the door, and the door was behind a mark a visitor had to think
+	// to press. It stands at the foot of the map now, in the account's own corner (see
+	// SignInPanel).
 	//
 	// Mounted only while it is open, so it slides in and out (a CSS transition has nothing to
 	// animate from on a fresh mount) exactly as the full-view sheets do — the same reason
@@ -2240,9 +2254,9 @@
 
 <!-- The map is the whole page now. It used to share the viewport with the column beside it —
 	a flat 450px of the row, or 30vh of the column on a narrow viewport — and everything that
-	column held has since moved onto the map itself or onto a sheet over it, leaving five
-	buttons and a sign-in holding an eighth of the window open. Those are a menu, so they are
-	behind one (see the drawer below the map), and the map has the room back. -->
+	column held has since moved onto the map itself or onto a sheet over it, leaving a handful
+	of buttons holding an eighth of the window open. Those are a menu, so they are behind one
+	(see the drawer below the map), and the map has the room back. -->
 <!-- The map, the whole viewport of it. Nothing sizes it any more — raising a view over it
 	or summoning the menu leaves its box alone, so the map is never re-framed by anything but
 	a pan, a zoom or a region being opened. `relative` is what the plates over its corners and
@@ -2497,7 +2511,11 @@
 		</div>
 		<!-- The foot of the map — its bottom-left corner where there is room for a corner, the
 			whole width of it on a phone (see the widths below) — a column of two: the side this
-			player fields, and under it a row of who is playing and the radio they are playing to.
+			player fields, and under it who is playing and the radio they are playing to. Signed
+			out, the middle of that column is the way in instead (see SignInPanel): the sign-in
+			was in the burger menu, which put the only thing a visitor can do behind the mark they
+			would have had to think to press, while the corner that would have said who they are
+			stood empty. It is one slot with two states now — the account, or how to have one.
 			The two belong together and belong here — a side and the
 			account fielding it are one statement, and it is the statement every town on the map
 			is read against: the three being challenged are on a plate under the breadcrumbs at
@@ -2522,16 +2540,16 @@
 			a strip of map beside them that nothing was ever going to occupy.
 			The account row takes the column's width either way: they are one column at one corner,
 			and a row narrower than the side above it would read as a second thing that happens to
-			be nearby. Nothing is drawn at all when there is none of the three to draw — including
-			for a visitor with no account and no side, who still gets the corner as soon as there
-			is a song, since the radio was on the bar above until now and is nobody's to lose.
+			be nearby. Nothing is drawn at all when there is none of it to draw — which now only
+			happens while the session is still being read, since a visitor it comes back empty for
+			is a visitor who gets the door.
 			And nothing while a full view is up either: the corner blurs out from under the sheet
 			and back in when it goes, the same gesture the breadcrumb bar and the pins make (see
 			CHROME_BLUR). The statues are rebuilt on the way back, which is what they already are
 			every time the map re-frames itself — a character that has been through its veil once
 			never plays it again (see IdleSprite), so what comes back is the picture and not the
 			reveal. -->
-		{#if (playerTeamLineup.length > 0 || $profile || $radio.track) && !$fullScreenModalOpen}
+		{#if (playerTeamLineup.length > 0 || $profile || signedOut || $radio.track) && !$fullScreenModalOpen}
 			<div
 				transition:blur={CHROME_BLUR}
 				class="absolute inset-x-3 bottom-3 z-[900] flex flex-col gap-2 sm:right-auto sm:w-[400px]"
@@ -2552,6 +2570,17 @@
 					<TeamLineup members={playerTeamLineup} />
 				{/if}
 
+				<!-- The way in, standing where the account's plate stands once there is an account.
+					The whole width of the column rather than a half of the row below it: the plate is
+					two lines and a bar and takes a half comfortably, while this is a form — a gate of
+					two boxes, the documents under it and the provider button — and half of 400px is
+					not a width any of that can be read at. So it is its own row, and the radio keeps
+					the one below it (alone there, since there is no plate to share it with while
+					this is up). -->
+				{#if signedOut}
+					<SignInPanel />
+				{/if}
+
 				<!-- The account's row, under the side it fields: the radio on the left and who is
 					playing on the right, as two halves of the one width the column already had —
 					the plate was the whole of this row and is half of it now.
@@ -2563,8 +2592,8 @@
 					arrived would otherwise leave the account's plate at half the width with nothing
 					beside it, which reads as something missing rather than as a row of one.
 					Each half is only drawn when it has something to say — the plate wants a
-					signed-in account (there is no picture, no level and no bar without one, and the
-					way in is the menu's sign-in), the card wants a song — and the plate is placed
+					signed-in account (there is no picture, no level and no bar without one; the way
+					in is the panel above), the card wants a song — and the plate is placed
 					from the end of the grid rather than at column two, so it is the right-hand half
 					when there are two and the whole row when there is one. Counting from the front
 					would ask for a second column the one-column case does not have, and the browser
@@ -2596,8 +2625,10 @@
 <!-- The menu, on the map's right edge and summoned from the far end of the breadcrumb bar.
 	It is the column that used to stand there permanently, and it holds what that column was
 	left holding: the one joined block of buttons — the leaderboard, the window's booster
-	packs and, for a signed-in account, its cards, its badges and its settings — with the
-	sign-in under it.
+	packs and, for a signed-in account, its cards, its badges and its settings — with the radio
+	at its foot. Everything in the block raises a view over the map, which is the one thing
+	this menu is for; the sign-in stood under it and was not that, and is at the foot of the
+	map now, in the account's own corner (see SignInPanel).
 	Mounted only while it is up, so it slides in from the edge it docks to and slides back out
 	the same way; the whole of the way out is a Svelte transition for the reason
 	FullScreenModal's is (nothing to animate from on a fresh mount).
@@ -2712,12 +2743,6 @@
 				{$_('legal.title')}
 			</button>
 		</div>
-
-		<!-- The way in, under the block and not part of it: signed out this is the email link and
-			the OAuth providers, which is the one thing nothing else on the map works without.
-			Signed in it draws nothing at all — the account's buttons above are what it used to
-			hold. -->
-		<AuthMenu embedded />
 
 		<!-- The radio, at the foot of the menu and pushed there by `mt-auto`: it is not a way
 			out of the map like the block above it and not the way in like the sign-in, it is
