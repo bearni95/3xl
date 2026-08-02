@@ -515,6 +515,25 @@
 
 	$: pickedFeature = selectedFeature(selected, regionNodes);
 
+	// Whether the picked shape goes on wearing its wash at a zoom that is no longer drawing its
+	// tier — which is a question with a side to it, because a wash is paint over everything
+	// beneath it.
+	//
+	// Zoomed OUT past the picked shape (its tier finer than the one imaged), there is nothing
+	// under it to bury: only the imaged tier fills, and every tier finer than that is drawn at
+	// no strength at all. So a town picked at the town tier keeps its shape, its coat and its
+	// breath through comarques, províncies and the whole country, which is the one shape on the
+	// map that was asked for by name staying findable at every zoom.
+	//
+	// Zoomed IN past it (a comarca picked while the map draws its towns), it is dropped, and
+	// that is not a limitation: the shape covers the whole of the breakdown the zoom went in to
+	// read, and a coat of paint over it — let alone one swelling to 80% every four seconds —
+	// would be the picked region hiding its own parts. Where the reader is stands in the crumb
+	// bar and in the column; it does not have to be painted over the towns as well.
+	function keptWash(tier: RegionType, imaged: number): boolean {
+		return tierRank[tier] > imaged;
+	}
+
 	// The picked shape, breathing. With no marks left on the map, a wash is all a region has
 	// to say what it is — and every region on the imaged tier is wearing one, so the shape
 	// that was actually asked for looked like its neighbours with a thinner coat of the same
@@ -524,9 +543,11 @@
 	// means nothing on its own — which is what leaves it free to mean this (see
 	// `--animate-region-pulse`).
 	//
-	// Only where there is a wash to pulse: the imaged tier is the only one that fills (see
-	// tierStyle), so a comarca picked while the map is drawing municipalities has nothing
-	// painted to breathe, and gets it back the moment the zoom walks out to its own tier.
+	// Only where there is a wash to pulse, which is the paint's own answer and not a second one:
+	// the picked shape wears its coat on its own tier and goes on wearing it once the zoom has
+	// left that tier behind, and loses it where the map has gone inside it (see keptWash). So a
+	// picked town breathes at every zoom out to the whole country, and a comarca picked while
+	// the map is drawing municipalities has nothing painted to breathe.
 	// And never the town a fight is staged on — that one is being looked at rather than
 	// chosen, and its 80% wash is the whole of what the spotlight is.
 	function buildPulse(
@@ -536,7 +557,7 @@
 		spotlit: string | null
 	): { url: string; key: string; opacity: number } | null {
 		if (!picked || spotlit) return null;
-		if (tierRank[picked.tier] !== imaged) return null;
+		if (tierRank[picked.tier] !== imaged && !keptWash(picked.tier, imaged)) return null;
 		const url = tierLayerUrls.get(tierRank[picked.tier]);
 		// The same fallback the paint takes: where a territory holds a single province, the
 		// province polygon IS the territory and answers to the territory's colour (see
@@ -566,10 +587,16 @@
 	// at the same strength left the one being looked at indistinguishable from its
 	// neighbours. It is the thinnest wash on the map rather than the heaviest, so the
 	// satellite reads through the one shape being looked at and what is under it can be
-	// seen. The change is by definition confined to the imaged tier — no other tier fills
-	// at all — so picking a comarca changes nothing while the map is drawing
-	// municipalities, and its own shape clears as soon as the zoom walks back out to the
-	// tier it belongs to.
+	// seen. Picking a comarca therefore changes nothing while the map is drawing
+	// municipalities: the shape has no coat on at that zoom, and is not given one (see
+	// keptWash).
+	//
+	// The picked shape is also the one shape that washes off its own tier: it keeps its coat
+	// through every zoom OUT from the tier it belongs to, so the place the reader asked for is
+	// still a shape on the terrain when the map has folded up to the whole country. Nothing is
+	// buried by that — the tiers finer than the imaged one are drawn at no strength at all —
+	// and the map draws it over the imaged tier's own wash rather than under it (see the pulse
+	// in WorldMap), a fifth of an alpha beneath a half being a shape saying nothing.
 	//
 	// The spotlit town is the one exception to both halves of that, and for one reason: it is
 	// the only shape on the map (see `spotlitId`). It washes whatever tier the map thinks it
@@ -2218,7 +2245,11 @@
 				featureIds: geometry.muniIds.get(node.key) ?? [],
 				dimmed: relevant ? !relevant.has(node.key) : false,
 				// Built like any other and drawn for one place only: the region that has been
-				// picked. Every other pin is left off the map — the pin is still the tier's,
+				// picked, which is what a caller building that one pin on its own asks for (see
+				// buildPickedMarker) and what a caller building a whole tier never does — a level
+				// of the stack is the model of the breakdown and puts no plate on the terrain at
+				// all, since the one mark drawn has to outlive the level it is a member of.
+				// Every other pin is left off the map — the pin is still the tier's,
 				// still measured for where the view is looking, still what a click on the land
 				// is resolved through and still what lights its region when its polygons are
 				// pointed at; there is simply no plate standing on the terrain for it, because
@@ -2376,7 +2407,58 @@
 		NO_HOLDERS,
 		$showGlyphs,
 		festaBoxById,
-		selected
+		null
+	);
+
+	// The picked place's own pin, built exactly as the tier's are and handed to the map beside
+	// them (see WorldMap's `pickedMarker`), which is what keeps it standing at every zoom.
+	//
+	// Not one of the stack's own any more, and not because the stack could not carry it: it
+	// carried it, in the one level the place is a member of, and lost it the moment the wheel
+	// folded that level up — the mark the reader asked for by name being the first thing the
+	// zoom took away. So the levels are the model of the breakdown, whole and every pin of them
+	// left off the terrain (`pinned` is null above), and the one mark drawn is this, over
+	// whichever level is on screen. It is the same function building both: this one is asked
+	// with the place named as the pinned one, so it comes back the one pin the map draws.
+	//
+	// Nothing about a siege or an occupant here either, for the reason the levels have none:
+	// the plate on the terrain says the show's mark, the place's name and the show's name, and
+	// the column beside the map says the rest.
+	function buildPickedMarker(
+		key: string | null,
+		nodes: RegionNode[],
+		geometry: RegionGeometry,
+		relevant: Set<string> | null,
+		glyphs: ReadonlyMap<number, string>,
+		offers: ReadonlyMap<string, MapBoosterBox>
+	): MapMarker | null {
+		if (!key) return null;
+		const node = findNode(nodes, key);
+		if (!node) return null;
+		return (
+			buildMarkers(
+				[node],
+				geometry,
+				relevant,
+				null,
+				[],
+				null,
+				NO_SIEGES,
+				NO_HOLDERS,
+				glyphs,
+				offers,
+				key
+			)[0] ?? null
+		);
+	}
+
+	$: pickedMarker = buildPickedMarker(
+		selected,
+		regionNodes,
+		regionGeometry,
+		relevantKeys,
+		$showGlyphs,
+		festaBoxById
 	);
 
 	// Every town's feature id → the pin standing over that town on the tier the map is
@@ -2574,6 +2656,7 @@
 				minZoom={7}
 				{overlays}
 				{markerLevels}
+				{pickedMarker}
 				{hiddenLineUrls}
 				{pulse}
 				{focusBounds}
