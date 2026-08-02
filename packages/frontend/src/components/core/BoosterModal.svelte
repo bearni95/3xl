@@ -33,7 +33,12 @@
 	// How many cards the last pack revealed, or null before any has been opened. Zero is a
 	// pack that sliced open onto an empty canvas.
 	export let lastRevealed: number | null = null;
-	// Nothing left to open today: the packs stay on screen but stop being openable.
+	// Nothing left to open today: the packs stay on screen but stop being openable. Which makes
+	// the whole sheet a way out, the same as a pack that has finished coming apart does — the
+	// boxes are a picture of a window that is shut, there is nothing on the sheet left to touch,
+	// and the one thing a player can do about it is come back tomorrow. It still slides back
+	// down rather than fading: nothing was pulled on a town here, so this is a view being
+	// dismissed and not one that finished.
 	export let allowanceSpent: boolean = false;
 	// True when a box was clicked on a town the window holds no pack for — the one thing the
 	// grid cannot say for itself, since it only ever knows the packs it was handed.
@@ -84,7 +89,7 @@
 	closeLabel={$_('booster.close')}
 	transparent
 	bare={alone}
-	closeOnClick={revealed}
+	closeOnClick={revealed || allowanceSpent}
 	fadeOut={revealed}
 	on:close={close}
 >
