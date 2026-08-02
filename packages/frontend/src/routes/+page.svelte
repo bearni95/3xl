@@ -1055,7 +1055,8 @@
 					townChallenge,
 					regionSieges,
 					holders,
-					$showGlyphs
+					$showGlyphs,
+					openNode.key
 				)[0] ?? null)
 			: null;
 
@@ -2098,23 +2099,29 @@
 		return name ? restoreCatalanArticle(name) : standingIn;
 	}
 
-	// Every pin at one tier — built, and none of them drawn (see `hidden` below). The map
-	// carries no marks of its own any more: what a pin said is what the column beside the map
-	// now says, and says of the whole level rather than of the part of it a given zoom happens
-	// to fit. The tiers are still built because everything else about the map is measured
-	// through them — which region the view is focused on, what a click on the land opens, how
-	// a framing is fitted — so a pin is still a model of a place on screen; it simply has no
-	// plate standing on the terrain.
+	// Every pin at one tier — built, and one of them drawn (see `hidden` below). What a pin
+	// said is what the column beside the map now says, and says of the whole level rather
+	// than of the part of it a given zoom happens to fit; the exception is the place that
+	// has been picked, which is worth a mark where it stands. The rest are still built
+	// because everything else about the map is measured through them — which region the view
+	// is focused on, what a click on the land opens, how a framing is fitted — so a pin is a
+	// model of a place on screen whether or not there is a plate on the terrain for it.
 	//
-	// All built the same way but for one thing: the
+	// What a pin carries is what it is handed, which is how one function serves both the
+	// mark on the map and the pin the column stands up (see townPin): the column asks with
+	// the sieges and the holders and the side, and gets the whole plate with everything
+	// under it; the map asks with none of them, and gets the plate alone — the show's mark,
+	// the place's name and the show's name. Neither is a stripped-down version of the other,
+	// and neither had to be told which it was.
+	//
+	// The dressings, for whoever is asking with them: the
 	// picked town gets the side holding it standing under its plate, and the way to fight
 	// them on it — who is holding this, standing on the very place they are holding, and
 	// what to do about it. All of it is added to that pin and takes nothing away from it,
 	// so the mark on the town is the same mark whichever town is picked. The statues and
 	// the control are handed in already built (see pinTeam and townChallenge), since which
 	// three they are and what may be done about them are the page's questions and not the
-	// pin's. It is the picked town's pin the column stands up (see townPin), which is why
-	// those three are still built here and not simply dropped.
+	// pin's.
 	//
 	// The siege bar is on every MUNICIPALITY pin, picked or not: how far a place has been
 	// taken is something the place says about itself, and reading it on one town at a time
@@ -2143,7 +2150,8 @@
 		challengeBar: MapChallenge | null,
 		sieges: ReadonlyMap<string, RegionSiege>,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
-		glyphs: ReadonlyMap<number, string>
+		glyphs: ReadonlyMap<number, string>,
+		pinned: string | null
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
@@ -2179,18 +2187,22 @@
 				subtitle: restoreCatalanArticle(node.name),
 				featureIds: geometry.muniIds.get(node.key) ?? [],
 				dimmed: relevant ? !relevant.has(node.key) : false,
-				// Built like any other and then left off the map — all of them, at every tier.
-				// The map draws no marks: the pin is still the tier's, still measured for where
-				// the view is looking, still what a click on the land is resolved through and
-				// still what lights its region when its polygons are pointed at. There is simply
-				// no plate standing on the terrain, because what a plate said is read in the
-				// column beside the map now, of the whole level at once.
+				// Built like any other and drawn for one place only: the region that has been
+				// picked. Every other pin is left off the map — the pin is still the tier's,
+				// still measured for where the view is looking, still what a click on the land
+				// is resolved through and still what lights its region when its polygons are
+				// pointed at; there is simply no plate standing on the terrain for it, because
+				// what a plate said is read in the column beside the map now, of the whole level
+				// at once. The one exception is the place being looked at, which is worth saying
+				// where it is standing as well as in the column: the shape breathing under it
+				// says which shape, and the plate on it says which place.
 				//
-				// Said here, on the mark itself, rather than by taking the marks away: the tiers
-				// ARE the map's model of what is on screen (see buildMarkerLevels), and a map with
-				// no pins to measure would have no focus, no click resolution and no framing. This
-				// is the one flag that separates the two, and it is what it was built for.
-				hidden: true,
+				// Said here, on the mark itself, rather than by keeping only one marker: the
+				// tiers ARE the map's model of what is on screen (see buildMarkerLevels), and a
+				// map with pins missing would have gaps in its focus, its click resolution and
+				// its framing. This is the one flag that separates being modelled from being
+				// drawn, and it is what it was built for.
+				hidden: node.key !== pinned,
 				onClick: () => open(node.key)
 			});
 		}
@@ -2287,7 +2299,8 @@
 		challengeBar: MapChallenge | null,
 		sieges: ReadonlyMap<string, RegionSiege>,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
-		glyphs: ReadonlyMap<number, string>
+		glyphs: ReadonlyMap<number, string>,
+		pinned: string | null
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
@@ -2301,24 +2314,36 @@
 					challengeBar,
 					sieges,
 					occupied,
-					glyphs
+					glyphs,
+					pinned
 				)
 			);
 		}
 		return levels;
 	}
 
+	// Nothing about a siege and nothing about an occupant: the map's own pins are told the
+	// plate's three facts and no more, so the one that is drawn carries the show's mark, the
+	// place's name and the show's name and stops there. Whose the place is, how far it has
+	// been taken and what may be done about it are read in the column beside the map, where
+	// there is room for them and where they stand for the place that was picked rather than
+	// for whatever the zoom has drifted over. Empty maps rather than a flag, because what a
+	// pin says has always been what it was given.
+	const NO_SIEGES: ReadonlyMap<string, RegionSiege> = new Map();
+	const NO_HOLDERS: ReadonlyMap<string, MunicipalityHolder> = new Map();
+
 	$: markerLevels = buildMarkerLevels(
 		maxLevel,
 		regionNodes,
 		regionGeometry,
 		relevantKeys,
-		statuedTown,
-		pinTeam,
-		townChallenge,
-		regionSieges,
-		holders,
-		$showGlyphs
+		null,
+		[],
+		null,
+		NO_SIEGES,
+		NO_HOLDERS,
+		$showGlyphs,
+		selected
 	);
 
 	// Every town's feature id → the pin standing over that town on the tier the map is
