@@ -2363,404 +2363,410 @@
 	column held has since moved onto the map itself or onto a sheet over it, leaving a handful
 	of buttons holding an eighth of the window open. Those are a menu, so they are behind one
 	(see the drawer below the map), and the map has the room back. -->
-<!-- The map, the whole viewport of it. Nothing sizes it any more — raising a view over it
-	or summoning the menu leaves its box alone, so the map is never re-framed by anything but
-	a pan, a zoom or a region being opened. `relative` is what the plates over its corners and
-	the menu's own edge are positioned against. -->
-<div class="relative flex h-screen min-w-0 flex-col">
-	{#if ready}
-		<WorldMap
-			center={[41.8, 1.7]}
-			zoom={8}
-			minZoom={7}
-			{overlays}
-			{markerLevels}
-			boxes={festaBoxes}
-			{hiddenLineUrls}
-			{focusBounds}
-			{zoomBounds}
-			{zoomStops}
-			{spotlight}
-			markersBlurred={$fullScreenModalOpen}
-			chromeInsets={mapChromeInsets}
-			bind:currentZoom
-			bind:activeLevel
-			bind:currentCenter
-			classes="min-h-0 flex-1"
-		/>
+<!-- The viewport, as a row: the map, and the column beside it. -->
+<div class="flex h-screen">
+	<!-- The map, the rest of the row. Nothing else sizes it — raising a view over it
+		or summoning the menu leaves its box alone, so the map is never re-framed by anything but
+		a pan, a zoom or a region being opened. `relative` is what the plates over its corners and
+		the menu's own edge are positioned against. -->
+	<div class="relative flex min-w-0 flex-1 flex-col">
+		{#if ready}
+			<WorldMap
+				center={[41.8, 1.7]}
+				zoom={8}
+				minZoom={7}
+				{overlays}
+				{markerLevels}
+				boxes={festaBoxes}
+				{hiddenLineUrls}
+				{focusBounds}
+				{zoomBounds}
+				{zoomStops}
+				{spotlight}
+				markersBlurred={$fullScreenModalOpen}
+				chromeInsets={mapChromeInsets}
+				bind:currentZoom
+				bind:activeLevel
+				bind:currentCenter
+				classes="min-h-0 flex-1"
+			/>
 
-		<!-- Everything the map draws over its top edge, in one absolutely positioned column: the
-			breadcrumb bar across the top, and under it the search results when there are any.
-			The music player stood under it too, in the left corner, and then on the bar itself
-			as one of its cards: a bar is a path and a path is read across, so a card at the end
-			of it took room the path needs. The radio is at the foot of the map now, beside the
-			account it is playing for (see MusicCard below), and the plate in the menu is the
-			same radio said again where a menu can say it. (The player's own side is over the map
-			too, at the foot of it — three
-			statues on nothing, positioned on their own rather than as a row of this column,
-			since they are at the other corner; see below.) The bar is in the column
-			rather than over it, so it pushes the plates down by taking its own row instead
-			of by being cleared with an offset nobody would remember to keep in step with it.
-			Absolute inside the map
-			column (which is `relative`), above Leaflet's own panes — its overlays sit at
-			400-600 and its controls at 800, so z-[900] clears them both while staying
-			under the arena's 1200. `pointer-events-none` on the whole column and back on
-			for each plate, so the map is still pannable and zoomable through every part of
-			it the plates do not themselves cover. Inset on all three sides it touches, so
-			the bar is as wide as the map less its margins and nothing needs a max-width of
-			its own. -->
-		<!-- Measured, because the map has to be told: this column is the parent's and is drawn
-			over the same box the canvas fills, so nothing on the map can see it. Its height plus
-			the 12px it is inset by is the band across the top of the canvas that is spoken for,
-			and the map keeps its pins and its corner box out of it (see chromeInsets). It is
-			read live rather than written down as a number because the column grows and shrinks
-			— the search results come down under the bar on their own plate, and the whole thing
-			goes while a full view is up. -->
-		<div
-			bind:clientHeight={topChromeHeight}
-			class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex flex-col gap-2"
-		>
-			<!-- Where the map is looking. Full width, at the head of everything: a path is
-				read across, and the plates below it are read down.
-				The location search sits at the bar's far end, as the looking glass that stands for
-				it until it is pressed (see LocationSearchBox). It was above the drill table in the
-				Location plate — but that plate starts folded, so the way to look for a town was
-				behind a fold, while the bar naming where the map is was always up. Naming a place
-				and being told where you are are the same subject, so they share the one row; the
-				matches come down at the corner right below the field, on their own plate (see
-				LocationSearchPanel). -->
-			<!-- Out of focus while a full view is up over the map, and back into it when that view
-				goes (see CHROME_BLUR). The wrapper is what the transition needs — a transition cannot
-				be put on a component — and now also the row the two bars stand in, so both go and come
-				back as one thing rather than blurring apart. No events of its own: each bar takes the
-				pointer back for itself. Unmounting them is what lets the way out play at all, and
-				costs nothing: what the crumbs draw is read off `crumbs` every time. -->
-			{#if !$fullScreenModalOpen}
-				<!-- The top row of the map's chrome: two bars side by side, the word first and the
-					path after it. It was one bar with the word standing inside it, which made the game's
-					name a step of the path — the first thing on a row whose whole subject is where the
-					map is looking, and lettered in a face nothing else on it is. It is its own plate
-					now, so the two plates say two things: this is the game, and this is where you are in
-					it. The plate is the crumbs' own, class for class (see MapBreadcrumbs), so the row
-					reads as one chrome standing at one height rather than as a bar with an ornament
-					beside it. It is `flex-none` and the path is what gives way beside it, since a path
-					collapses and a word does not.
+			<!-- Everything the map draws over its top edge, in one absolutely positioned column: the
+				breadcrumb bar across the top, and under it the search results when there are any.
+				The music player stood under it too, in the left corner, and then on the bar itself
+				as one of its cards: a bar is a path and a path is read across, so a card at the end
+				of it took room the path needs. The radio is at the foot of the map now, beside the
+				account it is playing for (see MusicCard below), and the plate in the menu is the
+				same radio said again where a menu can say it. (The player's own side is over the map
+				too, at the foot of it — three
+				statues on nothing, positioned on their own rather than as a row of this column,
+				since they are at the other corner; see below.) The bar is in the column
+				rather than over it, so it pushes the plates down by taking its own row instead
+				of by being cleared with an offset nobody would remember to keep in step with it.
+				Absolute inside the map
+				column (which is `relative`), above Leaflet's own panes — its overlays sit at
+				400-600 and its controls at 800, so z-[900] clears them both while staying
+				under the arena's 1200. `pointer-events-none` on the whole column and back on
+				for each plate, so the map is still pannable and zoomable through every part of
+				it the plates do not themselves cover. Inset on all three sides it touches, so
+				the bar is as wide as the map less its margins and nothing needs a max-width of
+				its own. -->
+			<!-- Measured, because the map has to be told: this column is the parent's and is drawn
+				over the same box the canvas fills, so nothing on the map can see it. Its height plus
+				the 12px it is inset by is the band across the top of the canvas that is spoken for,
+				and the map keeps its pins and its corner box out of it (see chromeInsets). It is
+				read live rather than written down as a number because the column grows and shrinks
+				— the search results come down under the bar on their own plate, and the whole thing
+				goes while a full view is up. -->
+			<div
+				bind:clientHeight={topChromeHeight}
+				class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex flex-col gap-2"
+			>
+				<!-- Where the map is looking. Full width, at the head of everything: a path is
+					read across, and the plates below it are read down.
+					The location search sits at the bar's far end, as the looking glass that stands for
+					it until it is pressed (see LocationSearchBox). It was above the drill table in the
+					Location plate — but that plate starts folded, so the way to look for a town was
+					behind a fold, while the bar naming where the map is was always up. Naming a place
+					and being told where you are are the same subject, so they share the one row; the
+					matches come down at the corner right below the field, on their own plate (see
+					LocationSearchPanel). -->
+				<!-- Out of focus while a full view is up over the map, and back into it when that view
+					goes (see CHROME_BLUR). The wrapper is what the transition needs — a transition cannot
+					be put on a component — and now also the row the two bars stand in, so both go and come
+					back as one thing rather than blurring apart. No events of its own: each bar takes the
+					pointer back for itself. Unmounting them is what lets the way out play at all, and
+					costs nothing: what the crumbs draw is read off `crumbs` every time. -->
+				{#if !$fullScreenModalOpen}
+					<!-- The top row of the map's chrome: two bars side by side, the word first and the
+						path after it. It was one bar with the word standing inside it, which made the game's
+						name a step of the path — the first thing on a row whose whole subject is where the
+						map is looking, and lettered in a face nothing else on it is. It is its own plate
+						now, so the two plates say two things: this is the game, and this is where you are in
+						it. The plate is the crumbs' own, class for class (see MapBreadcrumbs), so the row
+						reads as one chrome standing at one height rather than as a bar with an ornament
+						beside it. It is `flex-none` and the path is what gives way beside it, since a path
+						collapses and a word does not.
 
-					`items-stretch` is what makes the two the same height: the crumbs' bar is the taller
-					of them by a good deal — it stands 32px tiles and two lines of type in its steps,
-					where this plate holds one word — and stretching means the word's plate takes
-					whatever height that comes to rather than a number written here that would have to be
-					kept in step with it. Which tier the map is on changes what a crumb draws, so that
-					number is not even constant. -->
-				<div transition:blur={CHROME_BLUR} class="flex items-stretch gap-2">
-					<!-- What it says and what size it is set at are two different things: the word is
-						"6xl" and the type is `2xl`, one flat size at every viewport rather than a ramp.
-						`items-center` centres it in whatever height the row hands this plate (see above);
-						`leading-none` so what is centred is the type's own height and not a line box built
-						for a paragraph. `font-display` is Bungee, the app's one departure from Genos, and
-						it is the token and not the family that is named here (see the `@theme` block in
-						css/app.css). -->
-					<!-- The plate itself is where the two bars stop being the same chrome: the crumbs'
-						is the panel's surface at 80%, so terrain reads through the path, and this one is
-						the theme's primary at full strength. A path is a thing being looked through to
-						the map under it; a name is not, and there is nothing behind this plate worth
-						seeing.
+						`items-stretch` is what makes the two the same height: the crumbs' bar is the taller
+						of them by a good deal — it stands 32px tiles and two lines of type in its steps,
+						where this plate holds one word — and stretching means the word's plate takes
+						whatever height that comes to rather than a number written here that would have to be
+						kept in step with it. Which tier the map is on changes what a crumb draws, so that
+						number is not even constant. -->
+					<div transition:blur={CHROME_BLUR} class="flex items-stretch gap-2">
+						<!-- What it says and what size it is set at are two different things: the word is
+							"6xl" and the type is `2xl`, one flat size at every viewport rather than a ramp.
+							`items-center` centres it in whatever height the row hands this plate (see above);
+							`leading-none` so what is centred is the type's own height and not a line box built
+							for a paragraph. `font-display` is Bungee, the app's one departure from Genos, and
+							it is the token and not the family that is named here (see the `@theme` block in
+							css/app.css). -->
+						<!-- The plate itself is where the two bars stop being the same chrome: the crumbs'
+							is the panel's surface at 80%, so terrain reads through the path, and this one is
+							the theme's primary at full strength. A path is a thing being looked through to
+							the map under it; a name is not, and there is nothing behind this plate worth
+							seeing.
 
-						The same badge is the tab's mark (see static/favicon.ico and the link in
-						app.html), and it is drawn differently there on purpose: an icon is a square with
-						room round the word, because that is the box a browser gives it. This is a bar in
-						a row of bars — as tall as the path beside it, as wide as the word makes it, and
-						inset by the row's own `px-3`. Neither shape should be made to answer for the
-						other. -->
-					<!-- The badge is also the tab the views drop from, so it is wrapped in the box the
-						pointer is asked about: `relative`, because the column hangs off it, and the wrapper
-						is what the row stretches rather than the plate — hence the plate's `h-full` below,
-						which is how it goes on being as tall as the path beside it.
-						The whole gesture is the pointer being on the tab, so the whole of it is `group` and
-						`group-hover` and there is no state anywhere: nothing is pressed to open it and
-						nothing is pressed to put it away, so nothing has to be remembered about it either —
-						and a menu that is only ever up while the pointer is on it cannot be left standing by
-						a press that landed somewhere else. The column is a descendant of this box, and
-						`:hover` holds for an ancestor of what the pointer is on however the boxes are
-						placed, so crossing from the plate down into the column is not a leave. The gap
-						between the two is padding on the column's own wrapper for that same reason, and not
-						a margin, which would have been a strip of nothing in between. -->
-					<div class="group pointer-events-auto relative flex-none">
-						<div
-							class="flex h-full items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
-						>
-							<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
-								down and right, and the word itself over it. A shadow drawn as a copy rather
-								than as a `text-shadow`, because a shadow the thickness of this face wants to be
-								the face — one solid displaced impression of it, with no blur and no spread,
-								which is what a second copy of the glyphs is and what a shadow utility, spelling
-								a colour and a radius, is not.
-								Both copies are positioned, so the one later in the document paints over the
-								other without a z-index: an absolute box would otherwise sit above in-flow type
-								whatever order it is written in, and sending it under with a negative z-index
-								would send it under the plate's own fill as well, there being no stacking
-								context between them. The copy in flow is the one that gives the box its size;
-								`aria-hidden` on the other, since a reader hearing "6xl 6xl" is being told about
-								a shadow. -->
-							<span class="relative font-display text-2xl leading-none">
-								<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true"
-									>6xl</span
-								>
-								<span class="relative">6xl</span>
-							</span>
-						</div>
-
-						<!-- The views, down a column under the badge: a row each, the glyph that stood for
-							the whole thing out on the bar and, beside it, the name of what it opens. Which is
-							the point of moving them — a square holding a pencil is a mark somebody has to
-							recognise, and a row saying Equip is a row that says what it is.
-							The outer box is what the pointer crosses on its way down (`pt-2`, see the tab
-							above) and what is shown and hidden; the plate is the inner one, and it is the
-							crumbs' dropped path class for class — the same surface at full strength, the same
-							rounding, the same shadow — since a column dropped from this row is the same
-							object wherever on the row it is dropped from. `w-max` so it is as wide as the
-							longest name and no wider: the badge it hangs off is narrower than either of them.
-							`hidden` and not an opacity, so the rows are out of the document while the pointer
-							is elsewhere and cannot be tabbed into behind a column nobody can see. -->
-						<div
-							class="absolute left-0 top-full z-10 hidden w-max max-w-[70vw] pt-2 group-hover:block"
-						>
+							The same badge is the tab's mark (see static/favicon.ico and the link in
+							app.html), and it is drawn differently there on purpose: an icon is a square with
+							room round the word, because that is the box a browser gives it. This is a bar in
+							a row of bars — as tall as the path beside it, as wide as the word makes it, and
+							inset by the row's own `px-3`. Neither shape should be made to answer for the
+							other. -->
+						<!-- The badge is also the tab the views drop from, so it is wrapped in the box the
+							pointer is asked about: `relative`, because the column hangs off it, and the wrapper
+							is what the row stretches rather than the plate — hence the plate's `h-full` below,
+							which is how it goes on being as tall as the path beside it.
+							The whole gesture is the pointer being on the tab, so the whole of it is `group` and
+							`group-hover` and there is no state anywhere: nothing is pressed to open it and
+							nothing is pressed to put it away, so nothing has to be remembered about it either —
+							and a menu that is only ever up while the pointer is on it cannot be left standing by
+							a press that landed somewhere else. The column is a descendant of this box, and
+							`:hover` holds for an ancestor of what the pointer is on however the boxes are
+							placed, so crossing from the plate down into the column is not a leave. The gap
+							between the two is padding on the column's own wrapper for that same reason, and not
+							a margin, which would have been a strip of nothing in between. -->
+						<div class="group pointer-events-auto relative flex-none">
 							<div
-								class="flex flex-col gap-0.5 overflow-hidden rounded-lg bg-base-100 p-2 text-white shadow-xl"
+								class="flex h-full items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
 							>
-								<!-- The player's cards. Only while there is an account to have any under, as
-									the drawer's own entry is: a roster with nobody's cards in it is nothing to
-									open. -->
-								{#if $profile}
+								<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
+									down and right, and the word itself over it. A shadow drawn as a copy rather
+									than as a `text-shadow`, because a shadow the thickness of this face wants to be
+									the face — one solid displaced impression of it, with no blur and no spread,
+									which is what a second copy of the glyphs is and what a shadow utility, spelling
+									a colour and a radius, is not.
+									Both copies are positioned, so the one later in the document paints over the
+									other without a z-index: an absolute box would otherwise sit above in-flow type
+									whatever order it is written in, and sending it under with a negative z-index
+									would send it under the plate's own fill as well, there being no stacking
+									context between them. The copy in flow is the one that gives the box its size;
+									`aria-hidden` on the other, since a reader hearing "6xl 6xl" is being told about
+									a shadow. -->
+								<span class="relative font-display text-2xl leading-none">
+									<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true"
+										>6xl</span
+									>
+									<span class="relative">6xl</span>
+								</span>
+							</div>
+
+							<!-- The views, down a column under the badge: a row each, the glyph that stood for
+								the whole thing out on the bar and, beside it, the name of what it opens. Which is
+								the point of moving them — a square holding a pencil is a mark somebody has to
+								recognise, and a row saying Equip is a row that says what it is.
+								The outer box is what the pointer crosses on its way down (`pt-2`, see the tab
+								above) and what is shown and hidden; the plate is the inner one, and it is the
+								crumbs' dropped path class for class — the same surface at full strength, the same
+								rounding, the same shadow — since a column dropped from this row is the same
+								object wherever on the row it is dropped from. `w-max` so it is as wide as the
+								longest name and no wider: the badge it hangs off is narrower than either of them.
+								`hidden` and not an opacity, so the rows are out of the document while the pointer
+								is elsewhere and cannot be tabbed into behind a column nobody can see. -->
+							<div
+								class="absolute left-0 top-full z-10 hidden w-max max-w-[70vw] pt-2 group-hover:block"
+							>
+								<div
+									class="flex flex-col gap-0.5 overflow-hidden rounded-lg bg-base-100 p-2 text-white shadow-xl"
+								>
+									<!-- The player's cards. Only while there is an account to have any under, as
+										the drawer's own entry is: a roster with nobody's cards in it is nothing to
+										open. -->
+									{#if $profile}
+										<button
+											type="button"
+											class="flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10"
+											on:click={() => rosterModalOpen.set(true)}
+										>
+											<img src="/assets/icons/delapouite/pencil.svg" class="size-4 flex-none" alt="" />
+											<span class="whitespace-nowrap">{$_('roster.title')}</span>
+										</button>
+									{/if}
+									<!-- The album, and not gated the way the roster is: the set is the game's own
+										and is worth reading before anybody holds any of it. -->
 									<button
 										type="button"
 										class="flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10"
-										on:click={() => rosterModalOpen.set(true)}
+										on:click={() => collectionModalOpen.set(true)}
 									>
-										<img src="/assets/icons/delapouite/pencil.svg" class="size-4 flex-none" alt="" />
-										<span class="whitespace-nowrap">{$_('roster.title')}</span>
+										<img
+											src="/assets/icons/delapouite/book-cover.svg"
+											class="size-4 flex-none"
+											alt=""
+										/>
+										<span class="whitespace-nowrap">{$_('collection.title')}</span>
 									</button>
-								{/if}
-								<!-- The album, and not gated the way the roster is: the set is the game's own
-									and is worth reading before anybody holds any of it. -->
-								<button
-									type="button"
-									class="flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10"
-									on:click={() => collectionModalOpen.set(true)}
-								>
-									<img
-										src="/assets/icons/delapouite/book-cover.svg"
-										class="size-4 flex-none"
-										alt=""
-									/>
-									<span class="whitespace-nowrap">{$_('collection.title')}</span>
-								</button>
+								</div>
 							</div>
 						</div>
-					</div>
 
-					<MapBreadcrumbs
-						{crumbs}
-						onSelect={open}
-						onZoom={zoomToTier}
-						classes="pointer-events-auto min-w-0 flex-1"
-					>
-						<!-- The far end of the bar: the way to look for a place, and past it the way to
-							everything that is not the map. Both belong at this end for the same reason — the
-							bar is the one row that is always up, so what a player reaches for however deep
-							into the map they are is reached for here. -->
-						<div slot="end" class="flex items-center gap-2">
-							<!-- The day's booster allowance, at the head of this end: how many boxes are
-								still there to open over how many the day gives at all. It was only ever
-								inside the Booster button's own label, which is behind the menu — so the one
-								number a player plans a day's play around was a fold and a press away, while
-								the bar it belongs on is up whatever they are doing. The same two numbers in
-								the same order as that label, off the same one read of `boosters_status`.
-								Read and not pressed, so it is deliberately not the outlined square the search
-								and the burger beside it wear: a plain glyph and a line of type, which is what
-								this row gives everything that is only to be looked at. Drawn only once there
-								is an allowance to name — signed out, or the status not yet in, the bar says
-								nothing rather than a nought. `tabular-nums` because the count changes under a
-								fixed row and digits of different widths would shift the search box beside it.
-								The glyph is the vendored game-icons one as an `<img>` by URL, white artwork
-								over terrain, as the search and the burger draw theirs. -->
-							{#if boosters}
-								<div
-									class="flex flex-none items-center gap-1.5 text-sm text-white"
-									title={boosterLabel}
+						<MapBreadcrumbs
+							{crumbs}
+							onSelect={open}
+							onZoom={zoomToTier}
+							classes="pointer-events-auto min-w-0 flex-1"
+						>
+							<!-- The far end of the bar: the way to look for a place, and past it the way to
+								everything that is not the map. Both belong at this end for the same reason — the
+								bar is the one row that is always up, so what a player reaches for however deep
+								into the map they are is reached for here. -->
+							<div slot="end" class="flex items-center gap-2">
+								<!-- The day's booster allowance, at the head of this end: how many boxes are
+									still there to open over how many the day gives at all. It was only ever
+									inside the Booster button's own label, which is behind the menu — so the one
+									number a player plans a day's play around was a fold and a press away, while
+									the bar it belongs on is up whatever they are doing. The same two numbers in
+									the same order as that label, off the same one read of `boosters_status`.
+									Read and not pressed, so it is deliberately not the outlined square the search
+									and the burger beside it wear: a plain glyph and a line of type, which is what
+									this row gives everything that is only to be looked at. Drawn only once there
+									is an allowance to name — signed out, or the status not yet in, the bar says
+									nothing rather than a nought. `tabular-nums` because the count changes under a
+									fixed row and digits of different widths would shift the search box beside it.
+									The glyph is the vendored game-icons one as an `<img>` by URL, white artwork
+									over terrain, as the search and the burger draw theirs. -->
+								{#if boosters}
+									<div
+										class="flex flex-none items-center gap-1.5 text-sm text-white"
+										title={boosterLabel}
+									>
+										<img src="/assets/icons/quoting/card-pickup.svg" class="size-4" alt="" />
+										<span class="tabular-nums">{boosters.remaining}/{boosters.level}</span>
+									</div>
+								{/if}
+								<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
+								<!-- The roster and the album stood here, two more squares in this line: a pencil
+									and a book, each of them a glyph and nothing else on a row where a glyph in a
+									square already means the thing beside it. They are rows under the badge at the
+									head of this row now, with their names on them (see the views menu above). What
+									is left on this end is what is about the map itself. -->
+								<!-- The three bars, in the same square and the same white as the search button it
+									stands beside and the dots button at the other end of the row: this bar is a line
+									of 32px tiles, so everything on it that is pressed rather than read is given the
+									same square, and the white is spelled out because an outlined DaisyUI button
+									letters itself in the theme's periwinkle — a stray colour on a bar that forces
+									white over terrain — and its hover fills the square and takes the rule with it.
+									The glyph is the vendored game-icons one, as an `<img>` by URL: those ship as
+									white artwork for the canvases to tint, which is exactly what a mark on this bar
+									wants (see the icons note in CLAUDE.md), and it is how the search beside it draws
+									its own. -->
+								<button
+									bind:this={menuButtonEl}
+									type="button"
+									class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
+									aria-expanded={menuOpen}
+									aria-label={menuOpen ? $_('menu.close') : $_('menu.open')}
+									on:click={() => (menuOpen = !menuOpen)}
 								>
-									<img src="/assets/icons/quoting/card-pickup.svg" class="size-4" alt="" />
-									<span class="tabular-nums">{boosters.remaining}/{boosters.level}</span>
-								</div>
-							{/if}
-							<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
-							<!-- The roster and the album stood here, two more squares in this line: a pencil
-								and a book, each of them a glyph and nothing else on a row where a glyph in a
-								square already means the thing beside it. They are rows under the badge at the
-								head of this row now, with their names on them (see the views menu above). What
-								is left on this end is what is about the map itself. -->
-							<!-- The three bars, in the same square and the same white as the search button it
-								stands beside and the dots button at the other end of the row: this bar is a line
-								of 32px tiles, so everything on it that is pressed rather than read is given the
-								same square, and the white is spelled out because an outlined DaisyUI button
-								letters itself in the theme's periwinkle — a stray colour on a bar that forces
-								white over terrain — and its hover fills the square and takes the rule with it.
-								The glyph is the vendored game-icons one, as an `<img>` by URL: those ship as
-								white artwork for the canvases to tint, which is exactly what a mark on this bar
-								wants (see the icons note in CLAUDE.md), and it is how the search beside it draws
-								its own. -->
-							<button
-								bind:this={menuButtonEl}
-								type="button"
-								class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
-								aria-expanded={menuOpen}
-								aria-label={menuOpen ? $_('menu.close') : $_('menu.open')}
-								on:click={() => (menuOpen = !menuOpen)}
-							>
-								<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
-							</button>
-						</div>
-					</MapBreadcrumbs>
-				</div>
-			{/if}
-
-			<!-- The map's right corner, read down: what the search box at the end of the bar
-				above has turned up. It was one end of a row that had the music on the other
-				end; the music is in the menu now (see the drawer below the map) and the left
-				corner with it, so this is a plate under the bar rather than a side of anything.
-				A row of the column above rather than a corner positioned on its own, so the bar
-				pushes it down by taking its own row instead of by an offset nobody would
-				remember to keep in step with it. `items-end` so the plate is only as wide as it
-				asks to be and still keeps the corner's edge. -->
-			<div class="flex min-w-0 flex-col items-end gap-2">
-				<!-- The matches, directly under the field that produced them and the whole of this
-					corner while a search is on: what is asked for at the top right is answered at the
-					top right. The account's plate stood under them here for a while and is at the foot
-					of the map now, under the side it fields.
-					Only ever up for a query — an empty box is the search not happening, and there is no
-					plate for it — and the cross on it ends the search outright rather than folding the
-					plate away from a query still typed in a field still standing open (see closeSearch). -->
-				{#if normalizedQuery}
-					<LocationSearchPanel
-						results={searchResults}
-						onSelect={openSearchResult}
-						onClose={closeSearch}
-						classes="pointer-events-auto w-96 max-w-full"
-					/>
-				{/if}
-			</div>
-		</div>
-		<!-- The foot of the map — its bottom-left corner where there is room for a corner, the
-			whole width of it on a phone (see the widths below) — a column of two: the side this
-			player fields, and under it who is playing and the radio they are playing to. Signed
-			out, the middle of that column is the way in instead (see SignInPanel): the sign-in
-			was in the burger menu, which put the only thing a visitor can do behind the mark they
-			would have had to think to press, while the corner that would have said who they are
-			stood empty. It is one slot with two states now — the account, or how to have one.
-			The two belong together and belong here — a side and the
-			account fielding it are one statement, and it is the statement every town on the map
-			is read against: the three being challenged are on a plate under the breadcrumbs at
-			the top, the three doing the challenging stand at the foot with their player under
-			them, so a fight the Challenge button opens is both sides of it read on the one
-			screen. The account's plate was at the map's top-right, opposite the town panel, which
-			put the player at one corner and the side they field at another with nothing but the
-			reader to say which of them was whose.
-			Anchored at the bottom, so the column grows upwards: what arrives in it — the plate,
-			as an account signs in — pushes the statues up rather than walking the account off the
-			foot of the map. Absolutely positioned rather than a row of the stack under the bar,
-			since it is at the other end of the map from that stack. Same z-[900] as the stack:
-			clear of Leaflet's own panes (overlays 400-600, controls 800) and under the full-view
-			sheets.
-			A flat 400px from `sm` up, which is the width three statues and their captions are read
-			at — a share of the map would set the size of a card by how wide the window is. Below
-			that it is not a corner at all: a phone has no room to keep 400px of statues to one side
-			of the map and nothing worth putting beside them, so the column spans the width the way
-			the breadcrumb bar above it does (`inset-x-3`, the same margins), and the side and the
-			account sit across the foot of the screen as one bottom panel. It was capped at the
-			viewport instead, which kept the statues on screen but left them hugging one edge with
-			a strip of map beside them that nothing was ever going to occupy.
-			The account row takes the column's width either way: they are one column at one corner,
-			and a row narrower than the side above it would read as a second thing that happens to
-			be nearby. Nothing is drawn at all when there is none of it to draw — which now only
-			happens while the session is still being read, since a visitor it comes back empty for
-			is a visitor who gets the door.
-			And nothing while a full view is up either: the corner blurs out from under the sheet
-			and back in when it goes, the same gesture the breadcrumb bar and the pins make (see
-			CHROME_BLUR). The statues are rebuilt on the way back, which is what they already are
-			every time the map re-frames itself — a character that has been through its veil once
-			never plays it again (see IdleSprite), so what comes back is the picture and not the
-			reveal. -->
-		{#if (playerTeamLineup.length > 0 || $profile || signedOut || $radio.track) && !$fullScreenModalOpen}
-			<div
-				transition:blur={CHROME_BLUR}
-				class="absolute inset-x-3 bottom-3 z-[900] flex flex-col gap-2 sm:right-auto sm:w-[400px]"
-			>
-				<!-- The three statues and nothing else: no plate under them, no heading over them,
-					so what stands here is the side itself rather than a panel about it. It can stand
-					bare where the map's other furniture cannot because a statue brings its own ground
-					and its own panel — every word on it is already read off the card's own colour,
-					never off the terrain behind it.
-					The row is given its box by the column rather than positioning itself: it is
-					`w-full` of whatever holds it, and a width handed to it in the same breath would be
-					two width utilities on one element with nothing but stylesheet order to settle
-					which of them wins.
-					Only drawn once there is a side to draw — an account with no card in a team slot
-					leaves the column to its plate alone — and only inside `ready`, so a statue never
-					says Ultramar at a town whose name is still on its way (see claimPlaceFor). -->
-				{#if playerTeamLineup.length > 0}
-					<TeamLineup members={playerTeamLineup} />
+									<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
+								</button>
+							</div>
+						</MapBreadcrumbs>
+					</div>
 				{/if}
 
-				<!-- The way in, standing where the account's plate stands once there is an account.
-					The whole width of the column rather than a half of the row below it: the plate is
-					two lines and a bar and takes a half comfortably, while this is a form — a gate of
-					two boxes, the documents under it and the provider button — and half of 400px is
-					not a width any of that can be read at. So it is its own row, and the radio keeps
-					the one below it (alone there, since there is no plate to share it with while
-					this is up). -->
-				{#if signedOut}
-					<SignInPanel />
-				{/if}
-
-				<!-- The account's row, under the side it fields: the radio on the left and who is
-					playing on the right, as two halves of the one width the column already had —
-					the plate was the whole of this row and is half of it now.
-					They belong on the same row because they are the same kind of statement: things
-					this player has switched on, as against the map, which is what everything at the
-					other corner is about. The radio was on the breadcrumb bar, where it was taking
-					room from a path (see MusicCard, and the column at the top).
-					Two columns only while there is a radio to put in one: a map whose music never
-					arrived would otherwise leave the account's plate at half the width with nothing
-					beside it, which reads as something missing rather than as a row of one.
-					Each half is only drawn when it has something to say — the plate wants a
-					signed-in account (there is no picture, no level and no bar without one; the way
-					in is the panel above), the card wants a song — and the plate is placed
-					from the end of the grid rather than at column two, so it is the right-hand half
-					when there are two and the whole row when there is one. Counting from the front
-					would ask for a second column the one-column case does not have, and the browser
-					would make one.
-					No `pointer-events-auto` on any of it here: that was needed while the plate stood
-					in the column under the bar, which turns its own events off so the map stays
-					pannable through the gaps between its plates. This corner is not that column. -->
-				<div class={classNames('grid gap-2', $radio.track ? 'grid-cols-2' : 'grid-cols-1')}>
-					<MusicCard />
-
-					{#if $profile}
-						<PlayerPanel
-							profile={$profile}
-							on:editavatar={() => avatarPickerOpen.set(true)}
-							classes="col-start-[-2] w-full"
+				<!-- The map's right corner, read down: what the search box at the end of the bar
+					above has turned up. It was one end of a row that had the music on the other
+					end; the music is in the menu now (see the drawer below the map) and the left
+					corner with it, so this is a plate under the bar rather than a side of anything.
+					A row of the column above rather than a corner positioned on its own, so the bar
+					pushes it down by taking its own row instead of by an offset nobody would
+					remember to keep in step with it. `items-end` so the plate is only as wide as it
+					asks to be and still keeps the corner's edge. -->
+				<div class="flex min-w-0 flex-col items-end gap-2">
+					<!-- The matches, directly under the field that produced them and the whole of this
+						corner while a search is on: what is asked for at the top right is answered at the
+						top right. The account's plate stood under them here for a while and is at the foot
+						of the map now, under the side it fields.
+						Only ever up for a query — an empty box is the search not happening, and there is no
+						plate for it — and the cross on it ends the search outright rather than folding the
+						plate away from a query still typed in a field still standing open (see closeSearch). -->
+					{#if normalizedQuery}
+						<LocationSearchPanel
+							results={searchResults}
+							onSelect={openSearchResult}
+							onClose={closeSearch}
+							classes="pointer-events-auto w-96 max-w-full"
 						/>
 					{/if}
 				</div>
 			</div>
-		{/if}
+			<!-- The foot of the map — its bottom-left corner where there is room for a corner, the
+				whole width of it on a phone (see the widths below) — a column of two: the side this
+				player fields, and under it who is playing and the radio they are playing to. Signed
+				out, the middle of that column is the way in instead (see SignInPanel): the sign-in
+				was in the burger menu, which put the only thing a visitor can do behind the mark they
+				would have had to think to press, while the corner that would have said who they are
+				stood empty. It is one slot with two states now — the account, or how to have one.
+				The two belong together and belong here — a side and the
+				account fielding it are one statement, and it is the statement every town on the map
+				is read against: the three being challenged are on a plate under the breadcrumbs at
+				the top, the three doing the challenging stand at the foot with their player under
+				them, so a fight the Challenge button opens is both sides of it read on the one
+				screen. The account's plate was at the map's top-right, opposite the town panel, which
+				put the player at one corner and the side they field at another with nothing but the
+				reader to say which of them was whose.
+				Anchored at the bottom, so the column grows upwards: what arrives in it — the plate,
+				as an account signs in — pushes the statues up rather than walking the account off the
+				foot of the map. Absolutely positioned rather than a row of the stack under the bar,
+				since it is at the other end of the map from that stack. Same z-[900] as the stack:
+				clear of Leaflet's own panes (overlays 400-600, controls 800) and under the full-view
+				sheets.
+				A flat 400px from `sm` up, which is the width three statues and their captions are read
+				at — a share of the map would set the size of a card by how wide the window is. Below
+				that it is not a corner at all: a phone has no room to keep 400px of statues to one side
+				of the map and nothing worth putting beside them, so the column spans the width the way
+				the breadcrumb bar above it does (`inset-x-3`, the same margins), and the side and the
+				account sit across the foot of the screen as one bottom panel. It was capped at the
+				viewport instead, which kept the statues on screen but left them hugging one edge with
+				a strip of map beside them that nothing was ever going to occupy.
+				The account row takes the column's width either way: they are one column at one corner,
+				and a row narrower than the side above it would read as a second thing that happens to
+				be nearby. Nothing is drawn at all when there is none of it to draw — which now only
+				happens while the session is still being read, since a visitor it comes back empty for
+				is a visitor who gets the door.
+				And nothing while a full view is up either: the corner blurs out from under the sheet
+				and back in when it goes, the same gesture the breadcrumb bar and the pins make (see
+				CHROME_BLUR). The statues are rebuilt on the way back, which is what they already are
+				every time the map re-frames itself — a character that has been through its veil once
+				never plays it again (see IdleSprite), so what comes back is the picture and not the
+				reveal. -->
+			{#if (playerTeamLineup.length > 0 || $profile || signedOut || $radio.track) && !$fullScreenModalOpen}
+				<div
+					transition:blur={CHROME_BLUR}
+					class="absolute inset-x-3 bottom-3 z-[900] flex flex-col gap-2 sm:right-auto sm:w-[400px]"
+				>
+					<!-- The three statues and nothing else: no plate under them, no heading over them,
+						so what stands here is the side itself rather than a panel about it. It can stand
+						bare where the map's other furniture cannot because a statue brings its own ground
+						and its own panel — every word on it is already read off the card's own colour,
+						never off the terrain behind it.
+						The row is given its box by the column rather than positioning itself: it is
+						`w-full` of whatever holds it, and a width handed to it in the same breath would be
+						two width utilities on one element with nothing but stylesheet order to settle
+						which of them wins.
+						Only drawn once there is a side to draw — an account with no card in a team slot
+						leaves the column to its plate alone — and only inside `ready`, so a statue never
+						says Ultramar at a town whose name is still on its way (see claimPlaceFor). -->
+					{#if playerTeamLineup.length > 0}
+						<TeamLineup members={playerTeamLineup} />
+					{/if}
 
-	{:else}
-		<div class="flex min-h-0 flex-1 items-center justify-center">
-			<span class="loading loading-spinner loading-lg"></span>
-		</div>
-	{/if}
+					<!-- The way in, standing where the account's plate stands once there is an account.
+						The whole width of the column rather than a half of the row below it: the plate is
+						two lines and a bar and takes a half comfortably, while this is a form — a gate of
+						two boxes, the documents under it and the provider button — and half of 400px is
+						not a width any of that can be read at. So it is its own row, and the radio keeps
+						the one below it (alone there, since there is no plate to share it with while
+						this is up). -->
+					{#if signedOut}
+						<SignInPanel />
+					{/if}
+
+					<!-- The account's row, under the side it fields: the radio on the left and who is
+						playing on the right, as two halves of the one width the column already had —
+						the plate was the whole of this row and is half of it now.
+						They belong on the same row because they are the same kind of statement: things
+						this player has switched on, as against the map, which is what everything at the
+						other corner is about. The radio was on the breadcrumb bar, where it was taking
+						room from a path (see MusicCard, and the column at the top).
+						Two columns only while there is a radio to put in one: a map whose music never
+						arrived would otherwise leave the account's plate at half the width with nothing
+						beside it, which reads as something missing rather than as a row of one.
+						Each half is only drawn when it has something to say — the plate wants a
+						signed-in account (there is no picture, no level and no bar without one; the way
+						in is the panel above), the card wants a song — and the plate is placed
+						from the end of the grid rather than at column two, so it is the right-hand half
+						when there are two and the whole row when there is one. Counting from the front
+						would ask for a second column the one-column case does not have, and the browser
+						would make one.
+						No `pointer-events-auto` on any of it here: that was needed while the plate stood
+						in the column under the bar, which turns its own events off so the map stays
+						pannable through the gaps between its plates. This corner is not that column. -->
+					<div class={classNames('grid gap-2', $radio.track ? 'grid-cols-2' : 'grid-cols-1')}>
+						<MusicCard />
+
+						{#if $profile}
+							<PlayerPanel
+								profile={$profile}
+								on:editavatar={() => avatarPickerOpen.set(true)}
+								classes="col-start-[-2] w-full"
+							/>
+						{/if}
+					</div>
+				</div>
+			{/if}
+
+		{:else}
+			<div class="flex min-h-0 flex-1 items-center justify-center">
+				<span class="loading loading-spinner loading-lg"></span>
+			</div>
+		{/if}
+	</div>
+
+	<!-- The column beside the map. 200px of the row and nothing in it yet. -->
+	<aside class="w-[200px] flex-none bg-base-100"></aside>
 </div>
 
 <!-- The menu, on the map's right edge and summoned from the far end of the breadcrumb bar.
