@@ -1,7 +1,6 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher, onDestroy } from 'svelte';
-	import { _ } from 'svelte-i18n';
 	import TeamLineup, { LINEUP_ROW_SPAN } from '$components/core/TeamLineup.svelte';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import { BoosterBoxGridScene } from './scene/BoosterBoxGridScene';
@@ -11,9 +10,9 @@
 
 	// The booster window's boxes, drawn on a canvas instead of in the document — the same two
 	// grids, the same boxes, the same gutters (see BoosterBoxGridScene, and BoosterBoxSprite for
-	// one box). A box is picked out of the window and stood up by tapping it, and slicing it open
-	// is the button under the canvas: a second tap on the same box is not a thing anybody can be
-	// told apart from the first, and opening a pack is the one act here that cannot be undone.
+	// one box). A box is picked out of the window and stood up by tapping it, and tapped again to
+	// slice it open: the whole of what a box does is one gesture on one object, and the box is
+	// what a player came to touch.
 	//
 	// What it opens onto is *not* on the canvas. A card is a CharacterStatue, which is a document
 	// thing with its own art, its own veil and its own tooltip, and there is no reason to have a
@@ -71,25 +70,12 @@
 	// the cards are laid out in: they stand where the box's picture was, edge to edge with it,
 	// rather than filling a canvas the box is only a part of. Null while no box is up.
 	let front: number | null = null;
-	// The box the button under the canvas would open: one that has finished standing up, on a
-	// canvas that is still taking picks. Null the rest of the time, which is what greys the button
-	// out — it keeps its room either way, since a control that appears when a box stands up would
-	// resize the canvas under the box that had just settled in it.
-	let openable: OpenerPack | null = null;
-
 	// The box the rows are handed, which is wider than the front by exactly the 5% a row leaves
 	// spare (see LINEUP_ROW_SPAN): the row centres itself in it, so what is drawn spans the front
 	// and nothing else has to know how a row shares its width out. It was the mouth of the box
 	// before — the hole the cards notionally came out of — which is a good deal narrower than the
 	// picture they were standing under, so a card never lined up with the box it came from.
 	$: rowWidth = front === null ? null : front / LINEUP_ROW_SPAN;
-
-	// What the button says: the town whose pack is standing, when there is one to name — a button
-	// under a canvas is not beside the thing it acts on, so it names it. A pack whose place has no
-	// name, and the idle button, both fall back to the bare word.
-	$: openLabel = openable?.locationName
-		? $_('booster.openPack', { values: { town: openable.locationName } })
-		: $_('booster.open');
 
 	// Which cards have their picture up, held as a set of spawn ids rather than counted, so a
 	// statue that says it twice cannot count as two and let the box go early.
@@ -159,7 +145,6 @@
 				dispatch('back');
 			},
 			onOpen: (pack) => void open(pack),
-			onOpenable: (pack) => (openable = pack),
 			onFront: (width) => (front = width),
 			onUncovering: () => (uncovering = true),
 			onReady: () => (sceneReady = true),
@@ -169,7 +154,6 @@
 			onContextLost: () => {
 				scene?.destroy();
 				scene = null;
-				openable = null;
 				sceneReady = false;
 				clearReveal();
 				attempt += 1;
@@ -240,10 +224,11 @@
 	});
 </script>
 
-<!-- The canvas, and under it the word that opens what is standing on it. The two are one column:
-	the canvas takes everything the button leaves, and the button's room is always taken, so a box
-	standing up never changes the size of the canvas it settled into. -->
-<div class={classNames('flex h-full w-full flex-col gap-3', classes)}>
+<!-- The canvas, and nothing else: it takes the whole of what it is given. The word that used to
+	stand under it opened the box standing on it, and the box does that itself now — which gives the
+	canvas back the height the control was holding, and leaves the boxes the only thing in the
+	view. -->
+<div class={classNames('flex h-full w-full flex-col', classes)}>
 	{#key attempt}
 		<!-- The canvas's own box, kept whether or not there is a canvas in it yet: the scene
 			measures the element it is given, so it has to have been laid out at its full size
@@ -356,17 +341,4 @@
 			{/if}
 		</div>
 	{/key}
-
-	<!-- The one irreversible act in this view, asked for by name. It says which town's pack it
-		would open, so a button that is nowhere near the box it acts on still names it. Dead until
-		a box has finished standing up: there is nothing to open from the window, from a box that is
-		still on its way to the middle, or from one that has already come apart. -->
-	<button
-		type="button"
-		class="btn btn-primary btn-block flex-none"
-		disabled={!openable}
-		on:click={() => scene?.open()}
-	>
-		{openLabel}
-	</button>
 </div>
