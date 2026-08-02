@@ -2,15 +2,15 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
 	import MapBreadcrumb from '$components/core/MapBreadcrumb.svelte';
-	import ShowShareRow from '$components/core/ShowShareRow.svelte';
+	import ShowShareGrid from '$components/core/ShowShareGrid.svelte';
 
 	// What the open region divides into (see regionLevelNodes), already lettered by the
 	// caller — and already without the head among them, since the caller is what tallies the
 	// shares over exactly these rows: exactly the shape the breadcrumb bar is handed, because
-	// it is drawn by exactly the component that bar draws its steps with. A place on this map is one thing — the
-	// tile in its own colour, its name, and the show it flies — and a column of them is that
-	// bar stood on end, which is what the path already becomes when it is too long for its
-	// row (see the dropped column in MapBreadcrumbs).
+	// it is drawn by exactly the component that bar draws its steps with. A place on this map
+	// is one thing — the tile in its own colour, its name, and the show it flies — and a
+	// column of them is that bar stood on end, which is what the path already becomes when it
+	// is too long for its row (see the dropped column in MapBreadcrumbs).
 	export let rows: {
 		key: string;
 		label: string;
@@ -32,7 +32,7 @@
 		tileClasses: string | null;
 	} | null = null;
 	// How the rows below divide between the shows they fly, tallied over exactly those rows
-	// by the caller (see ShowShareRow). Empty says nothing rather than saying nought.
+	// by the caller (see ShowShareGrid). Empty says nothing rather than saying nought.
 	export let shares: { id: number; name: string; share: number }[] = [];
 	export let classes: string = '';
 
@@ -89,7 +89,7 @@
 			and how much of them each has. It stands under the rule with the rows rather than
 			above it with the head, because it is about them and not about the place they are
 			under. -->
-		<ShowShareRow {shares} />
+		<ShowShareGrid {shares} />
 	{/if}
 
 	{#each rows as row (row.key)}
