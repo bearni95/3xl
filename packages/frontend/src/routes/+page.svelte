@@ -3061,44 +3061,41 @@
 		down and the pins say the places themselves, and neither can be read for what a region
 		is made of. It scrolls on its own, since a comarca of forty towns is a longer column
 		than the window.
-		Out of focus while a full view is up, and back into it when that view goes: this column
-		is the map's furniture like the bar above it and the pins on it, and a list of towns read
-		sharply beside a sheet is chrome competing with the thing it was covered by (see
-		CHROME_BLUR). It blurs where it stands rather than being unmounted the way the plates are,
-		because it is a column of the row and not a plate over the map: taking it out would hand
-		the map its 400px for as long as a sheet was up and re-frame the map behind the sheet,
-		which is the one thing no full view does. So it is classes on the element itself, to the
-		same 8px over the same 250ms the plates and the pins move by — `blur-sm` is that 8px —
-		and `filter,opacity` alone are named, so nothing else about the column is eased. -->
-	<aside
-		class={classNames(
-			'w-[400px] flex-none overflow-y-auto bg-base-100',
-			'transition-[filter,opacity] duration-[250ms] ease-in-out',
-			{ 'blur-sm opacity-0': $fullScreenModalOpen }
-		)}
-	>
-		<RegionSubdivisions
-			rows={subdivisions}
-			current={subdivisionCurrent}
-			shares={subdivisionShares}
-			on:select={(event) => open(event.detail.key)}
-		>
-			<!-- The town's own pin, stood in the column under the row that names it: the side
-				holding it, whose it is, how far it has been taken, the way to fight for it and the
-				pack it has waiting — the same mark the map is drawing on that town at this very
-				moment, from the same data (see townPin). Only a town has one.
-				Unnamed, because the row this hangs under is the town's name: the column's head
-				says the place, its tile and the show it flies, and the plate saying all three
-				again a row later stood between the side on the town and how far it has been
-				taken, reading as a stray row in the middle of the one thing. What the plate is
-				here for is the rest of it (see TownPlate's `named`). -->
-			<svelte:fragment slot="detail">
-				{#if townPin}
-					<TownPin marker={townPin} box={townPin.box ?? null} named={false} classes="py-1" />
-				{/if}
-			</svelte:fragment>
-		</RegionSubdivisions>
-	</aside>
+		Gone while a full view is up, and back when that view goes: this column is the map's
+		furniture like the bar above it and the pins on it, and a list of towns read sharply
+		beside a sheet is chrome competing with the thing it was covered by. It blurs away
+		exactly as the plates do, on the same 8px over the same 250ms (see CHROME_BLUR), and
+		then leaves the row — so the map has the whole width for as long as the sheet is up and
+		takes the 400px back when the column returns. Leaflet is told nothing about it: the map
+		watches its own container and re-projects when it changes size (see WorldMap's
+		ResizeObserver), so the terrain widens under the sheet without anything here asking it
+		to. The column is unmounted rather than merely blurred because a strip of nothing at
+		the side of a full view is the sheet standing on the map, which is what it is. -->
+	{#if !$fullScreenModalOpen}
+		<aside transition:blur={CHROME_BLUR} class="w-[400px] flex-none overflow-y-auto bg-base-100">
+			<RegionSubdivisions
+				rows={subdivisions}
+				current={subdivisionCurrent}
+				shares={subdivisionShares}
+				on:select={(event) => open(event.detail.key)}
+			>
+				<!-- The town's own pin, stood in the column under the row that names it: the side
+					holding it, whose it is, how far it has been taken, the way to fight for it and the
+					pack it has waiting — the same mark the map is drawing on that town at this very
+					moment, from the same data (see townPin). Only a town has one.
+					Unnamed, because the row this hangs under is the town's name: the column's head
+					says the place, its tile and the show it flies, and the plate saying all three
+					again a row later stood between the side on the town and how far it has been
+					taken, reading as a stray row in the middle of the one thing. What the plate is
+					here for is the rest of it (see TownPlate's `named`). -->
+				<svelte:fragment slot="detail">
+					{#if townPin}
+						<TownPin marker={townPin} box={townPin.box ?? null} named={false} classes="py-1" />
+					{/if}
+				</svelte:fragment>
+			</RegionSubdivisions>
+		</aside>
+	{/if}
 </div>
 
 <!-- The menu, on the map's right edge and summoned from the far end of the breadcrumb bar.
