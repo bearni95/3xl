@@ -3103,11 +3103,10 @@
 					again a row later stood between the side on the town and how far it has been
 					taken, reading as a stray row in the middle of the one thing. What the plate is
 					here for is the rest of it (see TownPlate's `named`). -->
-				<!-- The end of that same head row: how far the town has been taken and the way to
-					fight for it, the two of them stacked as TownChallenge already stacks them. The
-					width is said here because it is a fact about this column and not about the
-					standing — the pin on the terrain gives it the width of its own plate — and it is
-					what makes the two a block at the end of a row rather than a band across it. -->
+				<!-- The row under the one that names the town: how far it has been taken and the way
+					to fight for it, the two of them stacked as TownChallenge already stacks them. No
+					width said here any more — the row is the column's own width, which is what makes
+					the bar a band across the head rather than a block hung off the end of a name. -->
 				<svelte:fragment slot="standing">
 					{#if townStanding}
 						<TownChallenge
@@ -3115,7 +3114,6 @@
 							button={townStanding.button}
 							unlocksAt={townStanding.unlocksAt}
 							onUnlock={townStanding.onUnlock}
-							classes="w-40"
 						/>
 					{/if}
 				</svelte:fragment>
