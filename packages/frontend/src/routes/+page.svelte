@@ -142,16 +142,6 @@
 	// The map centre WorldMap reports, used to tell which region the view is
 	// focused on so the sidebar and polygons follow what's zoomed into.
 	let currentCenter: [number, number] = [41.8, 1.7];
-	// Tailwind's `sm:`, said the other way round and asked rather than written. A pin is
-	// Leaflet's DOM built in JavaScript and no stylesheet reaches it, so a breakpoint that
-	// decides which pins exist has to be a question this side can put — and the question is
-	// the exact complement of the class, in `rem` and off the same 40, so the pins turn over
-	// on the very width the layout around them does.
-	const WIDE_VIEW_QUERY = '(min-width: 40rem)';
-	// Whether the view is narrower than that. False until the query is read, which is the
-	// safe way round: a wide screen is what the map is drawn as everywhere it has not been
-	// measured, and a narrow one takes its own pins away a frame later.
-	let narrowView = false;
 	// The top view, as a value the `region` param can hold. The view above every territory
 	// is the one step of the drill path with no node behind it, so there is no key for it —
 	// and without one, picking it could only be said by clearing the param, which does not
@@ -205,16 +195,6 @@
 		const query = params.toString();
 		goto(query ? `?${query}` : location.pathname, { keepFocus: true, noScroll: true });
 	}
-
-	// The width, watched rather than read once: a phone turned on its side is the same
-	// visit, and the pins it may then have room for are the ones this puts back.
-	onMount(() => {
-		const wide = window.matchMedia(WIDE_VIEW_QUERY);
-		const read = () => (narrowView = !wide.matches);
-		read();
-		wide.addEventListener('change', read);
-		return () => wide.removeEventListener('change', read);
-	});
 
 	onMount(async () => {
 		// Load the polygons (for the region tree, the framing and every town's own
@@ -1031,8 +1011,7 @@
 					townChallenge,
 					regionSieges,
 					holders,
-					$showGlyphs,
-					null
+					$showGlyphs
 				)[0] ?? null)
 			: null;
 
@@ -1539,20 +1518,10 @@
 	$: pickedTown =
 		selected && findNode(regionNodes, selected)?.type === 'Municipality' ? selected : null;
 
-	// The one town the map marks, or null for all of them.
-	//
-	// A narrow view is the width of one plate and a bit: the towns of a comarca drawn on it
-	// are plates elbowing one another out of the way, folding into counts and running their
-	// leader lines across the picture — and the picked town's own pin, the tall one carrying
-	// the side holding it and the way to fight them, is in the middle of that. On the screen
-	// where a reader has asked for one town by name, the rest of the breakdown is what there
-	// is no room for, so it comes off: dimming is the answer where every pin still fits (see
-	// relevantKeys), and this is the answer where none of them do.
-	//
-	// Towns only, and only while one is picked. Nothing else on the map is touched — the
-	// coarser tiers pin their regions as they always did, and a wide view marks every town
-	// whatever is picked.
-	$: soleTown = narrowView ? pickedTown : null;
+	// (The map used to mark one town at a time on a narrow view — a phone is the width of one
+	// plate and a bit, and a comarca's towns drawn on it were plates elbowing one another out
+	// of the way. Nothing marks a town now, on any screen, so there is no crowding left to
+	// answer and no rule about it.)
 
 	// The deepest drill level in the tree (territory = level 0), so the pin stack
 	// can span every level down to the municipalities.
@@ -2072,14 +2041,23 @@
 		return name ? restoreCatalanArticle(name) : standingIn;
 	}
 
-	// Every pin the map draws at one tier. All built the same way but for one thing: the
+	// Every pin at one tier — built, and none of them drawn (see `hidden` below). The map
+	// carries no marks of its own any more: what a pin said is what the column beside the map
+	// now says, and says of the whole level rather than of the part of it a given zoom happens
+	// to fit. The tiers are still built because everything else about the map is measured
+	// through them — which region the view is focused on, what a click on the land opens, how
+	// a framing is fitted — so a pin is still a model of a place on screen; it simply has no
+	// plate standing on the terrain.
+	//
+	// All built the same way but for one thing: the
 	// picked town gets the side holding it standing under its plate, and the way to fight
 	// them on it — who is holding this, standing on the very place they are holding, and
 	// what to do about it. All of it is added to that pin and takes nothing away from it,
 	// so the mark on the town is the same mark whichever town is picked. The statues and
 	// the control are handed in already built (see pinTeam and townChallenge), since which
 	// three they are and what may be done about them are the page's questions and not the
-	// pin's.
+	// pin's. It is the picked town's pin the column stands up (see townPin), which is why
+	// those three are still built here and not simply dropped.
 	//
 	// The siege bar is on every MUNICIPALITY pin, picked or not: how far a place has been
 	// taken is something the place says about itself, and reading it on one town at a time
@@ -2108,8 +2086,7 @@
 		challengeBar: MapChallenge | null,
 		sieges: ReadonlyMap<string, RegionSiege>,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
-		glyphs: ReadonlyMap<number, string>,
-		onlyTown: string | null
+		glyphs: ReadonlyMap<number, string>
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
 		for (const node of nodes) {
@@ -2145,12 +2122,18 @@
 				subtitle: restoreCatalanArticle(node.name),
 				featureIds: geometry.muniIds.get(node.key) ?? [],
 				dimmed: relevant ? !relevant.has(node.key) : false,
-				// Built like any other and then left off the map, on the view where only one town
-				// is marked (see soleTown): the pin is still the tier's, still measured with it
-				// and still lights its region when its polygons are pointed at — there is simply
-				// no mark drawn for it. Towns only; a comarca's pin is never the thing being
-				// stood down for.
-				hidden: !!onlyTown && node.type === 'Municipality' && node.key !== onlyTown,
+				// Built like any other and then left off the map — all of them, at every tier.
+				// The map draws no marks: the pin is still the tier's, still measured for where
+				// the view is looking, still what a click on the land is resolved through and
+				// still what lights its region when its polygons are pointed at. There is simply
+				// no plate standing on the terrain, because what a plate said is read in the
+				// column beside the map now, of the whole level at once.
+				//
+				// Said here, on the mark itself, rather than by taking the marks away: the tiers
+				// ARE the map's model of what is on screen (see buildMarkerLevels), and a map with
+				// no pins to measure would have no focus, no click resolution and no framing. This
+				// is the one flag that separates the two, and it is what it was built for.
+				hidden: true,
 				onClick: () => open(node.key)
 			});
 		}
@@ -2247,8 +2230,7 @@
 		challengeBar: MapChallenge | null,
 		sieges: ReadonlyMap<string, RegionSiege>,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
-		glyphs: ReadonlyMap<number, string>,
-		onlyTown: string | null
+		glyphs: ReadonlyMap<number, string>
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
 		for (let d = 0; d <= depth; d++) {
@@ -2262,8 +2244,7 @@
 					challengeBar,
 					sieges,
 					occupied,
-					glyphs,
-					onlyTown
+					glyphs
 				)
 			);
 		}
@@ -2280,8 +2261,7 @@
 		townChallenge,
 		regionSieges,
 		holders,
-		$showGlyphs,
-		soleTown
+		$showGlyphs
 	);
 
 	// Every town's feature id → the pin standing over that town on the tier the map is
@@ -2290,9 +2270,9 @@
 	// one of its towns is pointed at, read off the level the map says it has settled on
 	// (`activeLevel`, mirrored here as effectiveDepth).
 	//
-	// Hidden pins are in it like any other: a town left unmarked on a narrow view (see
-	// soleTown) still has its pin, still belongs to the tier, and there is simply no plate
-	// drawn for it — so its land opens it exactly as the plate would have.
+	// Every pin is hidden now (see buildMarkers), which changes nothing here and is the point:
+	// a pin is the model of a place on screen whether or not a plate is drawn for it, so the
+	// land goes on opening exactly what the plate would have opened.
 	$: pinByFeatureId = ((pins: MapMarker[]) => {
 		const byFeature = new Map<string, MapMarker>();
 		for (const pin of pins) {
