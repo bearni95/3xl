@@ -37,6 +37,11 @@
 		showName: string | null;
 		showId: number | null;
 		tileClasses: string | null;
+		// The box that place has waiting, exactly as a row below carries one and off the same
+		// `MapBoosterBox`: the head is a row like the rest, and a town at the head of the column
+		// is de festa or is not on the same terms as a town listed under it. Only a town ever
+		// has one here either.
+		box?: MapBoosterBox | null;
 	} | null = null;
 	// How the rows below divide between the shows they fly, tallied over exactly those rows
 	// by the caller (see ShowShareGrid). Empty says nothing rather than saying nought.
@@ -69,26 +74,44 @@
 			step it is on — the same `current`, the same `aria-current`, since it is the same
 			statement about the same place. Pressed like any other row: the view can be taken off
 			the place while the column goes on listing it, so there is somewhere for it to go.
-			Filled in the primary rather than left on the surface the rows stand on: a town is
-			read here among its own sisters, and where the head and the rows are the same kind of
-			thing said in the same letters, the position in the column is not enough to say which
-			one the map is on. The fill is the marking, so the ink under it is the fill's own
-			(see the crumb's second line, which takes it from here). -->
-		<button
-			type="button"
-			aria-current="page"
-			class="block w-full rounded-md bg-primary px-2 py-1 text-left text-primary-content hover:bg-primary/90"
-			on:click={() => dispatch('select', { key: current.key })}
-		>
-			<MapBreadcrumb
-				label={current.label}
-				showName={current.showName}
-				showId={current.showId}
-				tileClasses={current.tileClasses}
-				current
-				truncated
-			/>
-		</button>
+			Laid out as a row of the list is and not as a bare button, because it carries what a
+			row carries: the press is the name, and the box beside it stands outside the button,
+			since a button holds phrasing content and a box is a block of planes. -->
+		<div class="flex items-stretch rounded-md hover:bg-white/10">
+			<button
+				type="button"
+				aria-current="page"
+				class="block min-w-0 flex-1 px-2 py-1 text-left"
+				on:click={() => dispatch('select', { key: current.key })}
+			>
+				<MapBreadcrumb
+					label={current.label}
+					showName={current.showName}
+					showId={current.showId}
+					tileClasses={current.tileClasses}
+					current
+					truncated
+				/>
+			</button>
+
+			{#if current.box}
+				<!-- The box the place at the head has waiting, drawn exactly as a row's is and at
+					exactly its size: the same stated width returning the same row height through the
+					box's own ratio (see BOX_WIDTH), so the head and the rows under it line up down the
+					column's far edge. Hidden from a screen reader for the reason a row's is — the box
+					is printed with the town's own name, which the line beside it has just said. -->
+				<div class="flex-none pr-2" aria-hidden="true">
+					<BoosterBox
+						coverUrl={current.box.coverUrl ?? null}
+						logoUrl={current.box.logoUrl ?? null}
+						showId={current.box.showId ?? null}
+						locationName={current.box.locationName ?? null}
+						light={current.box.light ?? false}
+						classes={BOX_WIDTH}
+					/>
+				</div>
+			{/if}
+		</div>
 
 		<!-- How far the place at the head has been taken and the one control that acts on it,
 			directly under the row that names it and across the whole width of the column: the
@@ -141,9 +164,26 @@
 			crumb in it is spans throughout (see MapBreadcrumb), and a box is a block of planes.
 			The row is a plain flex box where there is nothing to stand beside the name, which is
 			every row of every tier above the municipality. -->
-		<div class="flex items-stretch rounded-md hover:bg-white/10">
+		<!-- The one row among the sisters that is the place the map is open on takes the primary
+			fill, so it can be found in the list without being counted along it. Only a town is
+			ever among its own level — every coarser region is listed above what it divides into,
+			never beside it — so this is the town's own row and there is at most one of them.
+			The head above says the same place, but a head is where a reader looks first and not
+			where they look for a town: the list is what is read against, and a place in it that
+			is not marked in it is not in it. The fill is the marking, so the ink over it is the
+			fill's own (see the crumb's second line, which takes it from here) and the box beside
+			it stands on the fill unchanged — a box is printed artwork and not ink. -->
+		<div
+			class={classNames(
+				'flex items-stretch rounded-md',
+				row.key === current?.key
+					? 'bg-primary text-primary-content hover:bg-primary/90'
+					: 'hover:bg-white/10'
+			)}
+		>
 			<button
 				type="button"
+				aria-current={row.key === current?.key ? 'page' : undefined}
 				class="block min-w-0 flex-1 px-2 py-1 text-left"
 				on:click={() => dispatch('select', { key: row.key })}
 			>

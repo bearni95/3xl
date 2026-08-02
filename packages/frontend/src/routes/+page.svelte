@@ -1027,15 +1027,21 @@
 	// The place the column beside the map is about: the region the map is open on, at any
 	// tier. It stands at the head of the column above the level under it, so where you are is
 	// the first thing on the plate rather than something to be found among the places inside
-	// it — and a town, which is one of its own sisters, is taken out of the list below and
-	// stood up here.
+	// it — and a town, which is one of its own sisters, is both stood up here and left where it
+	// falls in the list, marked there (see subdivisionNodes).
+	//
+	// With the box that place has waiting where the window has one for it, off the same
+	// `festaBoxById` a row below and a pin on the terrain are handed: the head is a row of this
+	// column like the rest of them, and a box is part of what a row of it says. Only a
+	// municipality is ever found in there — a festa's id is a municipality feature id — so the
+	// tiers above take nothing, and neither does the top view, whose key is no node's.
 	//
 	// The top view is a place like any other here: it is where the map is when nothing is
 	// open, it is a selection with a key of its own (see TOP_VIEW_KEY), and the bar already
 	// letters it with the plurality of every town on the map. So the column's head is never
 	// empty, whatever the map is looking at.
 	$: subdivisionCurrent = openNode
-		? crumbRow(openNode)
+		? { ...crumbRow(openNode), box: festaBoxById.get(openNode.key) ?? null }
 		: {
 				key: TOP_VIEW_KEY,
 				label: TOP_VIEW_LABEL,
@@ -1046,16 +1052,21 @@
 
 	// What the column lists under it: the level one tier down — the territories at the top
 	// view, and a town's own sisters once the bar has got all the way down (see
-	// regionLevelNodes) — less the head itself, which only a town is ever among. It follows
-	// `openRegion` and not the URL selection alone, so the column walks with the zoom exactly
-	// as the crumbs above the map do.
+	// regionLevelNodes). It follows `openRegion` and not the URL selection alone, so the column
+	// walks with the zoom exactly as the crumbs above the map do.
+	//
+	// The head itself is kept in rather than dropped, which only ever means a town: no coarser
+	// region is among its own subdivisions, so nothing above the municipality is affected. The
+	// level was handed over with the open town taken out of it, on the ground that the head had
+	// already named it — but a town is read here against its sisters, and a list of every town
+	// in the comarca but the one you are standing in is a list with a hole where the reader is.
+	// It is listed where it falls and marked where it falls (see RegionSubdivisions).
 	//
 	// Taken out here rather than in the component because this is the list the shares below
 	// are counted over: what the row says is a share of is exactly what is listed under it,
-	// and two places deciding what "listed" means is how those two come to disagree.
-	$: subdivisionNodes = regionLevelNodes(regionNodes, openRegion).filter(
-		(node) => node.key !== subdivisionCurrent.key
-	);
+	// and two places deciding what "listed" means is how those two come to disagree — which is
+	// why the open town, now that it is listed, is counted in them too.
+	$: subdivisionNodes = regionLevelNodes(regionNodes, openRegion);
 
 	// The path the column beside the map is headed by: the way down to the place the open
 	// region sits *inside*, which is the cut above it and never the open region itself. The
@@ -3149,12 +3160,12 @@
 					{/if}
 				</svelte:fragment>
 
-				<!-- No box handed over, so none is drawn: the town at the head is the town the map
-					is standing on, and its box is already up on the terrain beside this column, at
-					the point it is de festa on. Printing it here as well made one festa two marks,
-					and the one in the column was the one that could not be opened where it stood.
-					The rows below keep theirs — those are towns the map is not on, and the box on
-					such a row is the only place their festa is said. -->
+				<!-- Still no box on the pin here: the town's box is drawn on the head row itself now,
+					beside the name, exactly as it is on every row below (see subdivisionCurrent). It
+					was left off the head altogether for a while, on the ground that the box was
+					already up on the terrain beside this column — but the column is read as a
+					column, and a row that alone among them says nothing about its festa reads as a
+					town that has none. -->
 				<svelte:fragment slot="detail">
 					{#if townDetailPin}
 						<TownPin marker={townDetailPin} named={false} classes="py-1" />
