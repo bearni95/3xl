@@ -100,6 +100,14 @@ export interface BoosterBoxGridSceneOptions {
 	 * said what it was raised to say, and the next click anywhere on it is what closes it. */
 	onOpened?: () => void;
 	/**
+	 * The window is built and on the canvas: the renderer exists, every box's three pictures
+	 * have answered and the grids are laid out, so the next frame is the window itself. Until
+	 * it fires there is nothing on the canvas to look at, which is what the host holds it back
+	 * for — a box's art can take a while to arrive, and an empty canvas standing where a
+	 * window was asked for reads as a window with nothing in it.
+	 */
+	onReady?: () => void;
+	/**
 	 * Fires when the canvas lost its GPU context and the browser did not hand one back — the
 	 * renderer will never draw again, so the host has to rebuild the scene if it wants a canvas.
 	 */
@@ -307,6 +315,11 @@ export class BoosterBoxGridScene {
 
 		this.resizeObserver = new ResizeObserver(() => this.handleResize());
 		this.resizeObserver.observe(this.host);
+
+		// Said last, after the boxes are on the layer and the selection has been applied: what
+		// the host uncovers on hearing it is the window, and a canvas that had still to place a
+		// standing box would be uncovered mid-arrangement.
+		this.callbacks.onReady?.();
 	}
 
 	/**

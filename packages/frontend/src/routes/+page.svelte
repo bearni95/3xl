@@ -37,6 +37,7 @@
 	import { LegalDocumentId } from '$types/legal.type';
 	import { fullScreenModalOpen } from '$services/fullScreenModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
+	import { preloadPackArt } from '$components/core/pack/scene/preload-pack-art';
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { musicService } from '$services/music.service';
 	import { authService } from '$services/auth.service';
@@ -1772,6 +1773,15 @@
 	// window is what `claim_booster` accepts too, so every pack it lays out is a
 	// pack that can actually be opened; nothing here is a preview. The claim panel
 	// mounted at the foot of the page assembles them (`claimPacks`).
+
+	// And their art is fetched the moment they exist, which is while the map is being looked
+	// at rather than when a box is clicked: the canvas that draws them builds every box before
+	// it shows any, so a sheet raised on a cold window stands there empty for as long as the
+	// whole window's posters take (see preloadPackArt). Nothing waits on this and nothing is
+	// told when it finishes — it is a head start, and the canvas asks for the same pictures
+	// whether or not it finds them waiting. `claimPacks` is named directly so a window that
+	// lands late, or changes, is warmed too.
+	$: void preloadPackArt(claimPacks);
 
 	// Today in Catalan time, the same day boundary the server measures the window from.
 	const todayIso = catalanTodayIso();

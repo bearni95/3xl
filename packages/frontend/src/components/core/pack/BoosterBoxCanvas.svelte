@@ -50,6 +50,14 @@
 	// Bumped when the canvas loses its GPU context for good, which remounts the host and builds
 	// the scene again on a fresh one.
 	let attempt = 0;
+	// Whether the scene has anything on it yet. A box is three pictures and the grid shows none
+	// of them until every box has all three, so between this component mounting and that moment
+	// the canvas is a hole the size of the sheet — which is the whole of what this is for: the
+	// canvas is held out of sight until it has something to show, and what stands in its place
+	// meanwhile says the window is coming rather than that it is empty. The art is fetched long
+	// before any of this (see preloadPackArt on the map page), so on a warmed window it is a
+	// frame or two and nobody sees the wait at all; this is what happens when they would have.
+	let sceneReady = false;
 
 	// What the open gave, and whether the box has started to come apart over it. The cards are
 	// stood up the moment the roll answers — behind a box that is still there crazed — so their
@@ -154,6 +162,7 @@
 			onOpenable: (pack) => (openable = pack),
 			onFront: (width) => (front = width),
 			onUncovering: () => (uncovering = true),
+			onReady: () => (sceneReady = true),
 			// The box has gone and the cards it held are standing there: this canvas has nothing
 			// further to do or to answer, and what happens next is the host's whole view's to decide.
 			onOpened: () => dispatch('opened'),
@@ -161,6 +170,7 @@
 				scene?.destroy();
 				scene = null;
 				openable = null;
+				sceneReady = false;
 				clearReveal();
 				attempt += 1;
 			}
@@ -235,93 +245,113 @@
 	standing up never changes the size of the canvas it settled into. -->
 <div class={classNames('flex h-full w-full flex-col gap-3', classes)}>
 	{#key attempt}
-		<div bind:this={host} class="relative min-h-0 w-full flex-1 overflow-hidden">
-			{#if pulls}
-				<!-- What the box gave, under the box: a document layer the canvas is laid over (the scene
-					pins the canvas above this one, and the canvas draws on nothing). It comes up over the
-					second the squares take to dissolve rather than when they have gone, so the crumble
-					hands the cards over as it goes instead of ending on a space that then fills itself in.
+		<!-- The canvas's own box, kept whether or not there is a canvas in it yet: the scene
+			measures the element it is given, so it has to have been laid out at its full size
+			before it can build anything to put in it. -->
+		<div class="relative min-h-0 w-full flex-1">
+			<div
+				bind:this={host}
+				class={classNames(
+					'absolute inset-0 overflow-hidden transition-opacity duration-300',
+					sceneReady ? 'opacity-100' : 'opacity-0'
+				)}
+			>
+				{#if pulls}
+					<!-- What the box gave, under the box: a document layer the canvas is laid over (the scene
+						pins the canvas above this one, and the canvas draws on nothing). It comes up over the
+						second the squares take to dissolve rather than when they have gone, so the crumble
+						hands the cards over as it goes instead of ending on a space that then fills itself in.
 
-					Nothing here answers a pointer, and neither does the canvas over it once the box has
-					gone: the click on an open pack belongs to the whole view, which closes on it. -->
-				<div
-					class={classNames(
-						'pointer-events-none absolute inset-0 z-0 flex items-center overflow-y-auto p-2 transition-opacity duration-1000',
-						uncovering ? 'opacity-100' : 'opacity-0'
-					)}
-				>
-					{#if pulls.length}
-						<!-- Laid out across the box's front and not across the canvas: the cards stand where
-							the picture was, edge to edge with it, centred where the box stands — which is the
-							middle, always, the scene fitting a stood box to the canvas about its centre. So a
-							row of three ends exactly where the poster over it ended, and the lid, being the
-							full width of the box, is the one part that stands proud of them. What the box is
-							handed is a little wider than that: a row draws 95% of its own width and centres
-							itself in it (see LINEUP_ROW_SPAN), so the drawn ends land on the front's. The
-							width is a measured length, so it comes through as a custom property; no class can
-							carry a number only known at runtime. Until the scene has said one — which cannot
-							happen before a box is standing — the layer's own width stands in. -->
-						<!-- The cards are bare, and not behind a veil of their own: the box dissolving over
-							them is the reveal, and a sprite veil under that would spend a character's one
-							reveal on a sweep held behind something opaque. What each says instead is when its
-							picture is up, which is what the box is waiting to hear — the row forwards it with
-							the place in that row it was said of, and the row's own cards name the spawn. -->
-						<div
-							class={classNames(
-								'mx-auto flex flex-col gap-2',
-								rowWidth ? 'w-[var(--row-width)]' : 'w-full'
-							)}
-							style:--row-width={rowWidth ? `${rowWidth}px` : null}
-						>
-							<TeamLineup
-								members={revealTop.map(toMember)}
-								veiled={false}
-								classes="justify-center"
-								on:ready={(event) => rowStatueUp(revealTop, event.detail.index)}
-							/>
-							{#if revealRest.length || avatar}
-								<!-- The second row, and the avatar in the middle of it. The same component
-									either way: with a face to stand there it is handed one, and with none — a
-									box that dealt no avatar — the two cards left simply take the front of the
-									row, as any short side does. -->
-								{#if avatar}
-									<TeamLineup
-										members={revealRest.map(toMember)}
-										veiled={false}
-										classes="justify-center"
-										on:ready={(event) => rowStatueUp(revealRest, event.detail.index)}
-									>
-										<!-- The avatar the box dealt: the same component the player's own row
-											wears, in the colour it was dealt in, because what is shown is the very
-											thing that will be standing there once it is picked — not a picture of
-											it. Unnamed, and no card's panel under it: a statue says which character
-											it is because a card is a character, and an avatar is a face. -->
-										<PlayerAvatar
-											slot="middle"
-											characterId={avatar.characterId}
-											color={avatar.color}
-											size="w-full"
-											classes="w-full"
+						Nothing here answers a pointer, and neither does the canvas over it once the box has
+						gone: the click on an open pack belongs to the whole view, which closes on it. -->
+					<div
+						class={classNames(
+							'pointer-events-none absolute inset-0 z-0 flex items-center overflow-y-auto p-2 transition-opacity duration-1000',
+							uncovering ? 'opacity-100' : 'opacity-0'
+						)}
+					>
+						{#if pulls.length}
+							<!-- Laid out across the box's front and not across the canvas: the cards stand where
+								the picture was, edge to edge with it, centred where the box stands — which is the
+								middle, always, the scene fitting a stood box to the canvas about its centre. So a
+								row of three ends exactly where the poster over it ended, and the lid, being the
+								full width of the box, is the one part that stands proud of them. What the box is
+								handed is a little wider than that: a row draws 95% of its own width and centres
+								itself in it (see LINEUP_ROW_SPAN), so the drawn ends land on the front's. The
+								width is a measured length, so it comes through as a custom property; no class can
+								carry a number only known at runtime. Until the scene has said one — which cannot
+								happen before a box is standing — the layer's own width stands in. -->
+							<!-- The cards are bare, and not behind a veil of their own: the box dissolving over
+								them is the reveal, and a sprite veil under that would spend a character's one
+								reveal on a sweep held behind something opaque. What each says instead is when its
+								picture is up, which is what the box is waiting to hear — the row forwards it with
+								the place in that row it was said of, and the row's own cards name the spawn. -->
+							<div
+								class={classNames(
+									'mx-auto flex flex-col gap-2',
+									rowWidth ? 'w-[var(--row-width)]' : 'w-full'
+								)}
+								style:--row-width={rowWidth ? `${rowWidth}px` : null}
+							>
+								<TeamLineup
+									members={revealTop.map(toMember)}
+									veiled={false}
+									classes="justify-center"
+									on:ready={(event) => rowStatueUp(revealTop, event.detail.index)}
+								/>
+								{#if revealRest.length || avatar}
+									<!-- The second row, and the avatar in the middle of it. The same component
+										either way: with a face to stand there it is handed one, and with none — a
+										box that dealt no avatar — the two cards left simply take the front of the
+										row, as any short side does. -->
+									{#if avatar}
+										<TeamLineup
+											members={revealRest.map(toMember)}
+											veiled={false}
+											classes="justify-center"
+											on:ready={(event) => rowStatueUp(revealRest, event.detail.index)}
+										>
+											<!-- The avatar the box dealt: the same component the player's own row
+												wears, in the colour it was dealt in, because what is shown is the very
+												thing that will be standing there once it is picked — not a picture of
+												it. Unnamed, and no card's panel under it: a statue says which character
+												it is because a card is a character, and an avatar is a face. -->
+											<PlayerAvatar
+												slot="middle"
+												characterId={avatar.characterId}
+												color={avatar.color}
+												size="w-full"
+												classes="w-full"
+											/>
+										</TeamLineup>
+									{:else}
+										<TeamLineup
+											members={revealRest.map(toMember)}
+											veiled={false}
+											classes="justify-center"
+											on:ready={(event) => rowStatueUp(revealRest, event.detail.index)}
 										/>
-									</TeamLineup>
-								{:else}
-									<TeamLineup
-										members={revealRest.map(toMember)}
-										veiled={false}
-										classes="justify-center"
-										on:ready={(event) => rowStatueUp(revealRest, event.detail.index)}
-									/>
+									{/if}
 								{/if}
-							{/if}
-						</div>
-					{:else}
-						<!-- The box sliced open onto nothing. Why is the page's to say — every refusal lands
-							on its claim panel — so this only keeps the box from reading as one that never
-							opened. -->
-						<div class="flex w-full items-center justify-center p-6 text-center">
-							<p class="max-w-xs text-sm opacity-60">El sobre s'ha obert buit.</p>
-						</div>
-					{/if}
+							</div>
+						{:else}
+							<!-- The box sliced open onto nothing. Why is the page's to say — every refusal lands
+								on its claim panel — so this only keeps the box from reading as one that never
+								opened. -->
+							<div class="flex w-full items-center justify-center p-6 text-center">
+								<p class="max-w-xs text-sm opacity-60">El sobre s'ha obert buit.</p>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
+			{#if !sceneReady}
+				<!-- Where the window will be, while it is on its way. Not a page of its own and
+					nothing to read: the sheet paints no ground, the boxes stand on the map, and a
+					sentence here would be a sentence read once and never again. -->
+				<div class="absolute inset-0 flex items-center justify-center">
+					<span class="loading loading-spinner loading-lg opacity-60"></span>
 				</div>
 			{/if}
 		</div>
