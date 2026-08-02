@@ -1,8 +1,10 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
+	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
 	import MapBreadcrumb from '$components/core/MapBreadcrumb.svelte';
 	import ShowShareGrid from '$components/core/ShowShareGrid.svelte';
+	import type { MapBoosterBox } from '$types/map.type';
 
 	// What the open region divides into (see regionLevelNodes), already lettered by the
 	// caller — and already without the head among them, since the caller is what tallies the
@@ -17,6 +19,11 @@
 		showName: string | null;
 		showId: number | null;
 		tileClasses: string | null;
+		// The box that place has waiting, where the window has one for it — the very box the
+		// map is standing on that town at this moment, off the same `MapBoosterBox` a pin is
+		// handed (see TownPin). Only a town ever has one: nothing coarser than a municipality
+		// is de festa. Absent everywhere else, which is every row of every other tier.
+		box?: MapBoosterBox | null;
 	}[] = [];
 	// The place the column is about, at the head of it with a rule under it: where the map is
 	// looking, which is a different kind of thing from the rows below and is what a reader
@@ -93,18 +100,49 @@
 	{/if}
 
 	{#each rows as row (row.key)}
-		<button
-			type="button"
-			class="block w-full rounded-md px-2 py-1 text-left hover:bg-white/10"
-			on:click={() => dispatch('select', { key: row.key })}
-		>
-			<MapBreadcrumb
-				label={row.label}
-				showName={row.showName}
-				showId={row.showId}
-				tileClasses={row.tileClasses}
-				truncated
-			/>
-		</button>
+		<!-- The row is the press, and the box beside it is not: a box here says what that town
+			has waiting, the way the tile says what it flies, and it is the row that is pressed —
+			to the same end, since the pack is reached by opening the town. So the whole row
+			lights on hover while the press itself stays on the name, and the box stands outside
+			the button rather than inside it: a button holds phrasing content, which is why the
+			crumb in it is spans throughout (see MapBreadcrumb), and a box is a block of planes.
+			The row is a plain flex box where there is nothing to stand beside the name, which is
+			every row of every tier above the municipality. -->
+		<div class="flex items-stretch rounded-md hover:bg-white/10">
+			<button
+				type="button"
+				class="block min-w-0 flex-1 px-2 py-1 text-left"
+				on:click={() => dispatch('select', { key: row.key })}
+			>
+				<MapBreadcrumb
+					label={row.label}
+					showName={row.showName}
+					showId={row.showId}
+					tileClasses={row.tileClasses}
+					truncated
+				/>
+			</button>
+
+			{#if row.box}
+				<!-- At the far end of the entry and as tall as the entry is: the strip is stretched
+					to the row's own height by being a flex item of it, and the box stretched to the
+					strip, so the box is handed a height and gives back the width its 30:37 goes with
+					(see BoosterBox — hand it either and it takes the other). Nothing here says how
+					wide it is, which is what keeps a row of them the same shape as the row grows or
+					the name wraps.
+					Hidden from a screen reader: the box is printed with the town's own name, which
+					the row beside it has just said, and it is not a control here. -->
+				<div class="flex flex-none items-stretch py-1 pr-2" aria-hidden="true">
+					<BoosterBox
+						coverUrl={row.box.coverUrl ?? null}
+						logoUrl={row.box.logoUrl ?? null}
+						showId={row.box.showId ?? null}
+						locationName={row.box.locationName ?? null}
+						light={row.box.light ?? false}
+						classes="w-auto self-stretch"
+					/>
+				</div>
+			{/if}
+		</div>
 	{/each}
 </div>

@@ -1047,7 +1047,18 @@
 	// because it is drawn by the same component: a place on this map is its tile, its name
 	// and the show it flies, whether it is being named as a step of the path or as one of
 	// the places the open region is made of.
-	$: subdivisions = subdivisionNodes.map(crumbRow);
+	//
+	// Plus, where the window has one for it, the box that place has waiting — the same
+	// `MapBoosterBox` the map is standing on that town at this moment and the same one its
+	// pin is handed (see festaBoxById), so the column and the terrain print one box per town
+	// rather than two drawn from the same festa. Only a municipality can be found in there:
+	// a festa's id is a municipality feature id, and only a municipality's key is its bare
+	// id, so a row naming a comarca or a province looks nothing up. A town of the window
+	// whose polygon the map has no centre for has no box anywhere, here included.
+	$: subdivisions = subdivisionNodes.map((node) => ({
+		...crumbRow(node),
+		box: festaBoxById.get(node.key) ?? null
+	}));
 
 	// How those places divide between the shows they fly: the same tally the leaderboard is,
 	// run over the listed level instead of over every town on the map (see
