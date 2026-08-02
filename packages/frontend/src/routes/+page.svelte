@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { Readable } from 'svelte/store';
 	import { _ } from 'svelte-i18n';
-	import { blur, fly } from 'svelte/transition';
+	import { blur, slide } from 'svelte/transition';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { characters } from '@3xl/data';
@@ -1409,32 +1409,30 @@
 	$: canFieldTeam = !currentUserId || $teamSpawns.length === TEAM_SIZE;
 
 	// --- The menu ----------------------------------------------------------------
-	// The column beside the map is a burger menu now, summoned from the far end of the
-	// breadcrumb bar and standing over the map's right edge while it is up. It was a sibling
-	// of the map taking a flat 450px of the row (30vh of the column on a narrow viewport,
-	// with a handle row toggling it to the full screen), which was the shape it needed while
-	// it held tables and a pack opener. It holds buttons and a radio: a column of that
-	// permanently taking an eighth of the window was the map paying rent for a menu.
+	// Everything that is not the map is one column dropped from the burger at the far end of
+	// the breadcrumb bar. It has been three things: a sibling of the map taking a flat 450px of
+	// the row (the shape it needed while it held tables and a pack opener), then a full-height
+	// drawer at the map's right edge, and — beside it the whole time — a second menu of two
+	// views the game's badge dropped on hover at the other end of the same bar. One row asking
+	// the same question at both of its ends is one question too many, so the drawer's block of
+	// buttons has moved into the badge's column and the badge is a name again.
 	//
-	// Every one of those buttons raises a view over the map, which is what makes them one
-	// kind of thing and makes a menu the right place for them. The sign-in was in here too
-	// and is not that: it is the door, and the door was behind a mark a visitor had to think
-	// to press. It stands at the foot of the map now, in the account's own corner (see
-	// SignInPanel).
+	// Every row of it raises a view over the map, which is what makes them one kind of thing
+	// and a menu the right place for them. The sign-in was in here too and is not that: it is
+	// the door, and the door was behind a mark a visitor had to think to press. It stands at
+	// the foot of the map now, in the account's own corner (see SignInPanel).
 	//
-	// Mounted only while it is open, so it slides in and out (a CSS transition has nothing to
-	// animate from on a fresh mount) exactly as the full-view sheets do — the same reason
-	// FullScreenModal has no `open` prop.
+	// Mounted only while it is open, so it has something to slide out from (a CSS transition
+	// has nothing to animate from on a fresh mount) exactly as the full-view sheets do — the
+	// same reason FullScreenModal has no `open` prop.
 	let menuOpen = false;
 
-	// The other menu on this chrome is not a variable at all: the views the badge at the head of
-	// the top row drops are up while the pointer is on the badge and down when it is not, which
-	// is a rule about the pointer and is written where rules about the pointer are written (see
-	// the `group-hover` column in the markup). The two views it holds — the player's cards and
-	// the album — were two squares out at the far end of the breadcrumb bar, each a glyph and
-	// nothing else, so a row that is already a line of pressed squares was carrying two more
-	// that had to be recognised by their artwork alone. Under the badge they are rows with
-	// their names on them, and the bar keeps the marks that are about the map.
+	// One row of that column: the glyph the view used to be out on the bar as, and beside it
+	// the name of what it opens. Written once because there are six of them and a row is a row
+	// — the point of the column is that they are all the same kind of press, and six copies of
+	// the same string is six chances for one of them to stop being.
+	const menuRowClasses =
+		'flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10';
 
 	// The menu's own box and the button that summons it, so a press anywhere else can close
 	// it: the menu stands over the map, so a press outside it is a press on something it is
@@ -2845,91 +2843,36 @@
 							a row of bars — as tall as the path beside it, as wide as the word makes it, and
 							inset by the row's own `px-3`. Neither shape should be made to answer for the
 							other. -->
-						<!-- The badge is also the tab the views drop from, so it is wrapped in the box the
-							pointer is asked about: `relative`, because the column hangs off it, and the wrapper
-							is what the row stretches rather than the plate — hence the plate's `h-full` below,
-							which is how it goes on being as tall as the path beside it.
-							The whole gesture is the pointer being on the tab, so the whole of it is `group` and
-							`group-hover` and there is no state anywhere: nothing is pressed to open it and
-							nothing is pressed to put it away, so nothing has to be remembered about it either —
-							and a menu that is only ever up while the pointer is on it cannot be left standing by
-							a press that landed somewhere else. The column is a descendant of this box, and
-							`:hover` holds for an ancestor of what the pointer is on however the boxes are
-							placed, so crossing from the plate down into the column is not a leave. The gap
-							between the two is padding on the column's own wrapper for that same reason, and not
-							a margin, which would have been a strip of nothing in between. -->
-						<div class="group pointer-events-auto relative flex-none">
-							<div
-								class="flex h-full items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
-							>
-								<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
-									down and right, and the word itself over it. A shadow drawn as a copy rather
-									than as a `text-shadow`, because a shadow the thickness of this face wants to be
-									the face — one solid displaced impression of it, with no blur and no spread,
-									which is what a second copy of the glyphs is and what a shadow utility, spelling
-									a colour and a radius, is not.
-									Both copies are positioned, so the one later in the document paints over the
-									other without a z-index: an absolute box would otherwise sit above in-flow type
-									whatever order it is written in, and sending it under with a negative z-index
-									would send it under the plate's own fill as well, there being no stacking
-									context between them. The copy in flow is the one that gives the box its size;
-									`aria-hidden` on the other, since a reader hearing "6xl 6xl" is being told about
-									a shadow. -->
-								<span class="relative font-display text-2xl leading-none">
-									<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true"
-										>6xl</span
-									>
-									<span class="relative">6xl</span>
-								</span>
-							</div>
-
-							<!-- The views, down a column under the badge: a row each, the glyph that stood for
-								the whole thing out on the bar and, beside it, the name of what it opens. Which is
-								the point of moving them — a square holding a pencil is a mark somebody has to
-								recognise, and a row saying Equip is a row that says what it is.
-								The outer box is what the pointer crosses on its way down (`pt-2`, see the tab
-								above) and what is shown and hidden; the plate is the inner one, and it is the
-								crumbs' dropped path class for class — the same surface at full strength, the same
-								rounding, the same shadow — since a column dropped from this row is the same
-								object wherever on the row it is dropped from. `w-max` so it is as wide as the
-								longest name and no wider: the badge it hangs off is narrower than either of them.
-								`hidden` and not an opacity, so the rows are out of the document while the pointer
-								is elsewhere and cannot be tabbed into behind a column nobody can see. -->
-							<div
-								class="absolute left-0 top-full z-10 hidden w-max max-w-[70vw] pt-2 group-hover:block"
-							>
-								<div
-									class="flex flex-col gap-0.5 overflow-hidden rounded-lg bg-base-100 p-2 text-white shadow-xl"
+						<!-- The badge was the tab a column of views dropped from — the player's cards and
+							the album, a row each, up while the pointer was on it. Those rows are the menu the
+							burger drops now, along with everything the drawer at the map's edge used to hold
+							(see the `end` slot below): a game with one set of views wants one way into them,
+							and the mark that says it is a menu is the burger and not the word. So the plate is
+							only the plate again — nothing hangs off it, nothing is asked about the pointer, and
+							the wrapper that used to be both is gone with them. It stretches to the row's height
+							on its own, being a `flex-none` child of an `items-stretch` row. -->
+						<div
+							class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
+						>
+							<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
+								down and right, and the word itself over it. A shadow drawn as a copy rather
+								than as a `text-shadow`, because a shadow the thickness of this face wants to be
+								the face — one solid displaced impression of it, with no blur and no spread,
+								which is what a second copy of the glyphs is and what a shadow utility, spelling
+								a colour and a radius, is not.
+								Both copies are positioned, so the one later in the document paints over the
+								other without a z-index: an absolute box would otherwise sit above in-flow type
+								whatever order it is written in, and sending it under with a negative z-index
+								would send it under the plate's own fill as well, there being no stacking
+								context between them. The copy in flow is the one that gives the box its size;
+								`aria-hidden` on the other, since a reader hearing "6xl 6xl" is being told about
+								a shadow. -->
+							<span class="relative font-display text-2xl leading-none">
+								<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true"
+									>6xl</span
 								>
-									<!-- The player's cards. Only while there is an account to have any under, as
-										the drawer's own entry is: a roster with nobody's cards in it is nothing to
-										open. -->
-									{#if $profile}
-										<button
-											type="button"
-											class="flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10"
-											on:click={() => rosterModalOpen.set(true)}
-										>
-											<img src="/assets/icons/delapouite/pencil.svg" class="size-4 flex-none" alt="" />
-											<span class="whitespace-nowrap">{$_('roster.title')}</span>
-										</button>
-									{/if}
-									<!-- The album, and not gated the way the roster is: the set is the game's own
-										and is worth reading before anybody holds any of it. -->
-									<button
-										type="button"
-										class="flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10"
-										on:click={() => collectionModalOpen.set(true)}
-									>
-										<img
-											src="/assets/icons/delapouite/book-cover.svg"
-											class="size-4 flex-none"
-											alt=""
-										/>
-										<span class="whitespace-nowrap">{$_('collection.title')}</span>
-									</button>
-								</div>
-							</div>
+								<span class="relative">6xl</span>
+							</span>
 						</div>
 
 						<MapBreadcrumbs
@@ -2974,29 +2917,152 @@
 									the corner opposite the one that had asked. -->
 								<!-- The roster and the album stood here, two more squares in this line: a pencil
 									and a book, each of them a glyph and nothing else on a row where a glyph in a
-									square already means the thing beside it. They are rows under the badge at the
-									head of this row now, with their names on them (see the views menu above). What
-									is left on this end is what is about the map itself. -->
-								<!-- The three bars, in the same square and the same white as the search button it
-									stands beside and the dots button at the other end of the row: this bar is a line
-									of 32px tiles, so everything on it that is pressed rather than read is given the
-									same square, and the white is spelled out because an outlined DaisyUI button
-									letters itself in the theme's periwinkle — a stray colour on a bar that forces
-									white over terrain — and its hover fills the square and takes the rule with it.
-									The glyph is the vendored game-icons one, as an `<img>` by URL: those ship as
-									white artwork for the canvases to tint, which is exactly what a mark on this bar
-									wants (see the icons note in CLAUDE.md), and it is how the search beside it draws
-									its own. -->
-								<button
-									bind:this={menuButtonEl}
-									type="button"
-									class="btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
-									aria-expanded={menuOpen}
-									aria-label={menuOpen ? $_('menu.close') : $_('menu.open')}
-									on:click={() => (menuOpen = !menuOpen)}
-								>
-									<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
-								</button>
+									square already means the thing beside it. They are rows of the column this burger
+									drops now, with their names on them. What is left on this end is what is about
+									the map itself.
+									`relative`, because that column hangs off this box: the burger is the one mark on
+									the bar that says "everything else is here", so the everything else comes down
+									from under it. -->
+								<div class="relative flex-none">
+									<!-- The three bars, in the same square and the same white as the dots button at
+										the other end of the row: this bar is a line of 32px tiles, so everything on it
+										that is pressed rather than read is given the same square, and the white is
+										spelled out because an outlined DaisyUI button letters itself in the theme's
+										periwinkle — a stray colour on a bar that forces white over terrain — and its
+										hover fills the square and takes the rule with it.
+										The glyph is the vendored game-icons one, as an `<img>` by URL: those ship as
+										white artwork for the canvases to tint, which is exactly what a mark on this bar
+										wants (see the icons note in CLAUDE.md). -->
+									<button
+										bind:this={menuButtonEl}
+										type="button"
+										class="btn btn-square btn-outline btn-sm border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
+										aria-expanded={menuOpen}
+										aria-label={menuOpen ? $_('menu.close') : $_('menu.open')}
+										on:click={() => (menuOpen = !menuOpen)}
+									>
+										<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
+									</button>
+
+									<!-- Every view this game has, down a column under the burger: a row each, a glyph
+										and beside it the name of what it opens. It is the column the badge at the head
+										of this row used to drop on hover, given the rest of what a full-height drawer
+										at the map's edge used to hold — one menu rather than a hover menu at one end of
+										the bar and a drawer at the other, which was two answers to the same question
+										standing on the same row.
+										The plate is the crumbs' dropped path class for class — the same surface at full
+										strength, the same rounding, the same shadow, the same 200ms slide out from
+										under the bar — since a column dropped from this row is the same object wherever
+										on the row it is dropped from. It comes down from the right edge because that is
+										the edge the burger stands at and a column is read under the mark that dropped
+										it. A width rather than `w-max`: the rows would size themselves to the longest
+										name, but the radio at the foot holds a song title, and a menu as wide as
+										whatever happens to be playing is a menu that changes width on its own.
+										Mounted only while it is up, so it has something to slide from (see
+										FullScreenModal for the same reason); a press outside it, Escape, or picking any
+										of its rows puts it away. -->
+									{#if menuOpen}
+										<div
+											bind:this={menuEl}
+											transition:slide={{ duration: 200 }}
+											class="absolute right-0 top-full z-10 mt-2 flex w-72 max-w-[85vw] flex-col gap-0.5 rounded-lg bg-base-100 p-2 text-white shadow-xl"
+										>
+											<!-- The player's own two first, then the two about the whole map, then the
+												account and the documents: the order is how close a view stands to the
+												player, and nothing separates the groups — they are all one kind of thing,
+												a press that raises a full view over the map, which is what a menu of them
+												should look like. The block of outlined buttons in the drawer said the same
+												with borders; a row with its name and its mark says it with neither.
+												Only while there is an account to have any cards under: a roster with
+												nobody's cards in it, and settings for nobody, are nothing to open. -->
+											{#if $profile}
+												<button
+													type="button"
+													class={menuRowClasses}
+													on:click={() => pickFromMenu(() => rosterModalOpen.set(true))}
+												>
+													<img
+														src="/assets/icons/delapouite/pencil.svg"
+														class="size-4 flex-none"
+														alt=""
+													/>
+													<span class="truncate">{$_('roster.title')}</span>
+												</button>
+											{/if}
+											<!-- The album, and not gated the way the roster is: the set is the game's own
+												and is worth reading before anybody holds any of it. -->
+											<button
+												type="button"
+												class={menuRowClasses}
+												on:click={() => pickFromMenu(() => collectionModalOpen.set(true))}
+											>
+												<img
+													src="/assets/icons/delapouite/book-cover.svg"
+													class="size-4 flex-none"
+													alt=""
+												/>
+												<span class="truncate">{$_('collection.title')}</span>
+											</button>
+											<button
+												type="button"
+												class={menuRowClasses}
+												on:click={() => pickFromMenu(() => leaderboardModalOpen.set(true))}
+											>
+												<img
+													src="/assets/icons/delapouite/podium.svg"
+													class="size-4 flex-none"
+													alt=""
+												/>
+												<span class="truncate">{$_('leaderboard.title')}</span>
+											</button>
+											<!-- The boosters, named with the day's allowance in the label as they always
+												have been. The same glyph the allowance wears out on the bar a few pixels
+												away, because it is the same count said twice: read there, pressed here. -->
+											<button
+												type="button"
+												class={menuRowClasses}
+												on:click={() => pickFromMenu(openBoosters)}
+											>
+												<img
+													src="/assets/icons/quoting/card-pickup.svg"
+													class="size-4 flex-none"
+													alt=""
+												/>
+												<span class="truncate">{boosterLabel}</span>
+											</button>
+											{#if $profile}
+												<button
+													type="button"
+													class={menuRowClasses}
+													on:click={() => pickFromMenu(() => settingsModalOpen.set(true))}
+												>
+													<img src="/assets/icons/lorc/cog.svg" class="size-4 flex-none" alt="" />
+													<span class="truncate">{$_('settings.title')}</span>
+												</button>
+											{/if}
+											<!-- The documents, outside the `{#if}` because they are the one view here with
+												nothing to do with having an account — a visitor who has not signed in is
+												precisely the reader who needs to know what signing in would mean. It opens
+												on the terms; the sheet's own tabs are how the other three are reached. -->
+											<button
+												type="button"
+												class={menuRowClasses}
+												on:click={() => pickFromMenu(() => openLegalDocument(LegalDocumentId.Terms))}
+											>
+												<img src="/assets/icons/lorc/scales.svg" class="size-4 flex-none" alt="" />
+												<span class="truncate">{$_('legal.title')}</span>
+											</button>
+
+											<!-- The radio, at the foot and set apart by the one margin in this column: it
+												is not a way out of the map like the rows above it — it is the one thing
+												here that goes on running whether or not this menu is up — so it is a plate
+												among rows rather than another row. It draws nothing until a song is
+												loaded, which is why there is no rule or heading over it: an empty foot
+												would be a divider with nothing under it. -->
+											<MusicPlayer classes="mt-2 w-full" />
+										</div>
+									{/if}
+								</div>
 							</div>
 						</MapBreadcrumbs>
 					</div>
@@ -3191,131 +3257,10 @@
 	{/if}
 </div>
 
-<!-- The menu, on the map's right edge and summoned from the far end of the breadcrumb bar.
-	It is the column that used to stand there permanently, and it holds what that column was
-	left holding: the one joined block of buttons — the leaderboard, the window's booster
-	packs and, for a signed-in account, its cards, its badges and its settings — with the radio
-	at its foot. Everything in the block raises a view over the map, which is the one thing
-	this menu is for; the sign-in stood under it and was not that, and is at the foot of the
-	map now, in the account's own corner (see SignInPanel).
-	Mounted only while it is up, so it slides in from the edge it docks to and slides back out
-	the same way; the whole of the way out is a Svelte transition for the reason
-	FullScreenModal's is (nothing to animate from on a fresh mount).
-	Its own edge only: no wash over the map behind it, nothing dimmed, because a menu this
-	size covers a strip of the map and the rest is still there to be read — and being read is
-	the reason it is a menu rather than a column. The strip it does cover is not quite covered
-	either, and it is graded exactly as the full-view sheets are (see FullScreenModal): base-100
-	at full strength at the top, nine tenths of it at the foot, so the terrain comes back under
-	the last of the menu and the whole thing reads as something laid over the map rather than as
-	a wall at the side of it. The gradient is the whole of the paint — a background colour under
-	a stop with alpha in it would show through and make the foot opaque again, which is the one
-	thing the grade is saying. What is written on the menu is not left to it: the block of
-	buttons carries its own solid base-100 (see below), so the map comes through beside the
-	labels and never behind them.
-	A press anywhere the menu is not, or Escape, puts it away; so does picking any of its
-	buttons, each of which raises a sheet over the whole map anyway.
-	z-[1000] clears the plates over the map (z-[900]) and stays under the full-view sheets
-	(z-[1300]), which are what its own buttons raise: a sheet is over everything, the menu
-	included. -->
-{#if menuOpen}
-	<aside
-		bind:this={menuEl}
-		aria-label={$_('menu.label')}
-		transition:fly={{ x: '100%', duration: 200, opacity: 1 }}
-		class="fixed inset-y-0 right-0 z-[1000] flex w-80 max-w-[85vw] flex-col gap-4 overflow-y-auto border-l border-base-300 bg-gradient-to-b from-base-100 to-base-100/90 p-4 shadow-2xl"
-	>
-		<!-- The way out, at the top of the menu and at the edge it docks to: the burger that
-			summoned it is a press away on the bar behind it, and a menu whose only dismissal is
-			the mark that opened it asks a player to remember where that was. The same ghost circle
-			and the same ✕ the full-view sheets close with (see FullScreenModal), so closing
-			anything laid over this map is the one gesture wherever it is met. Escape and a press
-			outside still do it too. -->
-		<div class="flex flex-none justify-end">
-			<button
-				type="button"
-				class="btn btn-circle btn-ghost btn-sm"
-				aria-label={$_('menu.close')}
-				on:click={() => (menuOpen = false)}
-			>
-				✕
-			</button>
-		</div>
-
-		<!-- Every way out of the map, and all of them one group: the two views that used to be
-			tabs of the old column (the leaderboard and the window's booster packs) and, for a
-			signed-in account, its three — the player's cards, the badges they can earn, and the
-			account itself. One `join`, turned vertical, so the five are a single block of buttons
-			with nothing between them: no gaps, no rules, no tile behind any of them and no header
-			holding two of them apart. They are the same kind of thing — a press that raises a view
-			over the map — and they were reading as two unrelated sets because of where each of them
-			used to live rather than because of what it does. The join is what says they are one
-			set: only the ends of the block are rounded, and the borders between neighbours collapse
-			into one line.
-			Every one of them is outlined. A filled button would say the block has a first choice in
-			it, and it has not — the five are five views, and which one a player wants is theirs to
-			say. Outlined is not see-through though: each carries a solid base-100 of its own, so
-			the terrain coming through the menu's surface comes through behind the block and never
-			behind a label. The hover fill has to be spelled out beside it, because DaisyUI's own
-			lives in a sublayer that a plain `bg-*` utility outranks whatever the state — set the
-			rest colour and the answer to the pointer goes with it unless it is said too. -->
-		<div class="join join-vertical w-full">
-			<button
-				type="button"
-				class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
-				on:click={() => pickFromMenu(() => leaderboardModalOpen.set(true))}
-			>
-				{$_('leaderboard.title')}
-			</button>
-			<button
-				type="button"
-				class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
-				on:click={() => pickFromMenu(openBoosters)}
-			>
-				{boosterLabel}
-			</button>
-			{#if $profile}
-				<!-- Each of these raises a modal mounted at the layout root, so pressing one is the
-					whole of what happens here. -->
-				<button
-					type="button"
-					class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
-					on:click={() => pickFromMenu(() => rosterModalOpen.set(true))}
-				>
-					{$_('roster.title')}
-				</button>
-				<button
-					type="button"
-					class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
-					on:click={() => pickFromMenu(() => settingsModalOpen.set(true))}
-				>
-					{$_('settings.title')}
-				</button>
-			{/if}
-			<!-- The documents, at the foot of the block and in it: they raise the same kind of
-				full-view sheet the four above do, so they are the same kind of press. Outside the
-				`{#if}` because they are the one view here that has nothing to do with having an
-				account — a visitor who has not signed in is precisely the reader who needs to
-				know what signing in would mean. It opens on the terms; the sheet's own tabs are
-				how the other three are reached. -->
-			<button
-				type="button"
-				class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
-				on:click={() => pickFromMenu(() => openLegalDocument(LegalDocumentId.Terms))}
-			>
-				{$_('legal.title')}
-			</button>
-		</div>
-
-		<!-- The radio, at the foot of the menu and pushed there by `mt-auto`: it is not a way
-			out of the map like the block above it and not the way in like the sign-in, it is
-			the one thing here that is running whether or not this menu is open, so it sits
-			apart from both at the bottom edge. It stood in the map's top-left corner and was
-			always in the way there; the only part of it worth having always up is the pause,
-			and that is on the bar. `flex-none` because the menu is a scrolling column and a
-			plate at the foot of one must not be squeezed by what is above it. -->
-		<MusicPlayer classes="mt-auto w-full flex-none" />
-	</aside>
-{/if}
+<!-- The menu stood here for a while, as a full-height drawer docked to the map's right edge:
+	a block of outlined buttons with the radio under it, summoned by the same burger. It is the
+	column dropped from that burger now (see the `end` slot above), which is where the game's
+	badge was already dropping two of these same views. -->
 
 <!-- Hidden, but mounted: the claim panel, kept alive only
 	to compute the window's booster packs (bind:packs) so a map box click can open the town's
