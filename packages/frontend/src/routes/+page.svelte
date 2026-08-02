@@ -958,6 +958,12 @@
 		tileClasses: node.color ? pinColorClasses[node.color] : null
 	}));
 
+	// Which of those rows is the place being looked at rather than a place under it. Only a
+	// municipality is ever one of them — every coarser tier lists what it divides into, and
+	// is named by the bar over the map instead — so this is null everywhere else, and the
+	// column has nothing at its head.
+	$: subdivisionCurrentKey = openNode?.type === 'Municipality' ? openRegion : null;
+
 	// --- The open municipality's deterministic "house team" ---------------------
 	// A leaf region (a municipality) has no children to drill into; instead of an
 	// empty table the Location plate previews the town's team: three cards rolled
@@ -2791,7 +2797,11 @@
 		is made of. It scrolls on its own, since a comarca of forty towns is a longer column
 		than the window. -->
 	<aside class="w-[400px] flex-none overflow-y-auto bg-base-100">
-		<RegionSubdivisions rows={subdivisions} on:select={(event) => open(event.detail.key)} />
+		<RegionSubdivisions
+			rows={subdivisions}
+			currentKey={subdivisionCurrentKey}
+			on:select={(event) => open(event.detail.key)}
+		/>
 	</aside>
 </div>
 
