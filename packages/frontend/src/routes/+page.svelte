@@ -1610,9 +1610,15 @@
 
 	$: regionGeometry = buildRegionGeometry(municipalities, fillIndex);
 
-	// A booster box stood on every municipality the booster window's festes reach, on
-	// the same point of the town its pin stands on (its own key in the region geometry),
-	// so the box marks the town where the town is drawn. It is the box that town has
+	// The box every municipality the booster window's festes reach has waiting, by town.
+	//
+	// Nothing of this is stood on the map any more: the boxes were marks like the pins, and
+	// the map carries no marks. They are looked up by town now — the open town's own box, in
+	// the column beside the map, under the plate that names it (see townPinBox). The set is
+	// still built whole rather than for the one town, because which show a town's box is
+	// printed from is a question about every town at once (see below).
+	//
+	// It is the box that town has
 	// waiting in the Booster tab, not a marker standing for one: the same component off
 	// the same four things — the assigned show's cover, picked out of the enabled posters
 	// by town and year exactly as the pack picks it, that show's wordmark, the town's own
@@ -1630,8 +1636,7 @@
 	// (`windowFestes`, `todayFesteIds`, `showsById`, `showEntryById`, `regionGeometry`,
 	// `selected`, `$showGlyphs`) so the boxes reprint when any of them lands — `showsById` among them,
 	// so a town that changes hands re-covers its box with the conqueror's show without a
-	// reload, and the selection too, since which town is picked is what decides whether
-	// its box is drawn whole or as its disc.
+	// reload.
 	$: festaBoxes = (() => {
 		const centers = regionGeometry.centers;
 		const today = todayFesteIds;
@@ -2459,7 +2464,6 @@
 				minZoom={7}
 				{overlays}
 				{markerLevels}
-				boxes={festaBoxes}
 				{hiddenLineUrls}
 				{focusBounds}
 				{zoomBounds}
