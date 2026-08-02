@@ -156,6 +156,15 @@
 	$: lastFilled = crumbs.reduce((last, crumb, index) => (crumb.empty ? last : index), -1);
 	$: rungs = crumbs.filter((crumb, index) => !crumb.empty || index === lastFilled + 1);
 
+	// The path as the dropped column reads it: the steps that name a place, and no square. The
+	// square is a rung of the row — it stands where a crumb would have been, so the row keeps
+	// its rhythm as the map drills, and it is pressed to zoom to a tier nothing has been walked
+	// into. A column has no such rhythm to keep, and a line down it holding a mark and no name
+	// is a place the reader is being offered without being told which: the whole point of
+	// dropping the path is reading the names that would not fit. What that square offers is on
+	// the row itself, which is up whenever this column is.
+	$: dropped = rungs.filter((crumb) => !crumb.empty);
+
 	function pick(key: string | null) {
 		expanded = false;
 		onSelect(key);
@@ -371,8 +380,9 @@
 	</div>
 
 	{#if collapsed && expanded}
-		<!-- The whole path, root first, down a single column: what a row could not hold in one
-			line it holds in as many lines as there are steps. It slides out from under the bar
+		<!-- The path root first, down a single column: what a row could not hold in one line it
+			holds in as many lines as there are steps — every step that names a place, and only
+			those (see `dropped`). It slides out from under the bar
 			and stands over the map rather than pushing the plates below it down — the column is
 			the bar being read, not another plate in the stack, and the corner underneath it is
 			where you were before you asked. Its own width, not the bar's: a column of place
@@ -383,19 +393,8 @@
 			transition:slide={{ duration: 200 }}
 			class="absolute left-0 top-full z-10 mt-2 flex w-max max-w-full flex-col gap-0.5 overflow-hidden rounded-lg bg-base-100 p-2 text-white shadow-xl"
 		>
-			{#each rungs as crumb}
-				{#if crumb.empty}
-					<!-- An empty position keeps its line down the column too — the ladder is the same
-						ladder read the other way round — and the square is what it is in the row. -->
-					<button
-						type="button"
-						class="flex items-center rounded-md px-2 py-1 text-left hover:bg-white/10"
-						aria-label={crumb.tier ? `Zoom to ${crumb.tier}` : 'Zoom to this tier'}
-						on:click={() => zoomTo(crumb.tier ?? '')}
-					>
-						<span class={squareClasses}><MapGlyph /></span>
-					</button>
-				{:else if crumb === lastCrumb && crumb.pressable}
+			{#each dropped as crumb}
+				{#if crumb === lastCrumb && crumb.pressable}
 					<button
 						type="button"
 						aria-current="page"
