@@ -17,6 +17,19 @@
 			dist/ as it is, and the Pages workflow uploads that folder whole.
 		-->
 		<link rel="icon" href="%sveltekit.assets%/favicon.ico" sizes="any" />
+		<!--
+			Umami, self-hosted at umami.bearni.io. It is here rather than in a component
+			because it counts visits to the site, not renders of a route: the tag is in
+			the shell adapter-static writes once, so it is on the page before the app
+			mounts and cannot be unmounted by anything the player opens over the map.
+			`defer` keeps it out of the critical path — nothing on screen waits on it,
+			and a host that is down costs the game nothing.
+		-->
+		<script
+			defer
+			src="https://umami.bearni.io/script.js"
+			data-website-id="3ffa72aa-6e9e-49e5-8940-0f53270b3236"
+		></script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
