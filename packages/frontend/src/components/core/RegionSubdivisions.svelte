@@ -2,10 +2,12 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
 	import MapBreadcrumb from '$components/core/MapBreadcrumb.svelte';
+	import ShowShareRow from '$components/core/ShowShareRow.svelte';
 
 	// What the open region divides into (see regionLevelNodes), already lettered by the
-	// caller: exactly the shape the breadcrumb bar is handed, because it is drawn by exactly
-	// the component that bar draws its steps with. A place on this map is one thing — the
+	// caller — and already without the head among them, since the caller is what tallies the
+	// shares over exactly these rows: exactly the shape the breadcrumb bar is handed, because
+	// it is drawn by exactly the component that bar draws its steps with. A place on this map is one thing — the
 	// tile in its own colour, its name, and the show it flies — and a column of them is that
 	// bar stood on end, which is what the path already becomes when it is too long for its
 	// row (see the dropped column in MapBreadcrumbs).
@@ -29,17 +31,14 @@
 		showId: number | null;
 		tileClasses: string | null;
 	} | null = null;
+	// How the rows below divide between the shows they fly, tallied over exactly those rows
+	// by the caller (see ShowShareRow). Empty says nothing rather than saying nought.
+	export let shares: { id: number; name: string; share: number }[] = [];
 	export let classes: string = '';
 
 	// Picking one is picking a region, which is the map's own gesture and not this
 	// column's: the page answers it exactly as it answers a pin or a crumb.
 	const dispatch = createEventDispatcher<{ select: { key: string } }>();
-
-	// The level with the head taken out of it, so a town at the top of its own list of
-	// sisters is not also standing among them. Nothing to take out on any other tier — a
-	// region is never one of the things it divides into — which is why this is a filter and
-	// not a rule about municipalities. `current` is named directly so it re-runs with it.
-	$: rest = current ? rows.filter((row) => row.key !== current?.key) : rows;
 </script>
 
 <!-- White ink, as on the bar: a crumb letters what it flies in white at 70% and is drawn to
@@ -80,12 +79,20 @@
 			it: not more of the level, but the level under it. Drawn only when there is a level
 			to divide off — a rule over nothing would be the column claiming to have more to say
 			than it has. -->
-		{#if rest.length}
+		{#if rows.length}
 			<div class="divider my-0"></div>
 		{/if}
 	{/if}
 
-	{#each rest as row (row.key)}
+	{#if shares.length}
+		<!-- What the list below is made of, before the list itself: the shows those places fly
+			and how much of them each has. It stands under the rule with the rows rather than
+			above it with the head, because it is about them and not about the place they are
+			under. -->
+		<ShowShareRow {shares} />
+	{/if}
+
+	{#each rows as row (row.key)}
 		<button
 			type="button"
 			class="block w-full rounded-md px-2 py-1 text-left hover:bg-white/10"

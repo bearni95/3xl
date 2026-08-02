@@ -946,18 +946,6 @@
 	$: openNode = openRegion ? findNode(regionNodes, openRegion) : null;
 	$: openShow = openNode?.show ?? null;
 
-	// What the column beside the map lists: the level one tier under the region the
-	// breadcrumbs are open on — the territories at the top view, and a town's own sisters
-	// once the bar has got all the way down (see regionLevelNodes). It follows `openRegion`
-	// and not the URL selection alone, so the column walks with the zoom exactly as the
-	// crumbs above the map do.
-	//
-	// Lettered exactly as a crumb is, off the same node fields and into the same shape,
-	// because it is drawn by the same component: a place on this map is its tile, its name
-	// and the show it flies, whether it is being named as a step of the path or as one of
-	// the places the open region is made of.
-	$: subdivisions = regionLevelNodes(regionNodes, openRegion).map(crumbRow);
-
 	/** One region as the bar letters it — the spelling the column's head and its rows share. */
 	function crumbRow(node: RegionNode) {
 		return {
@@ -969,17 +957,59 @@
 		};
 	}
 
-	// The place that column is about: the region the map is open on, at any tier. It stands
-	// at the head of the column above the level under it, so where you are is the first thing
-	// on the plate rather than something to be found among the places inside it — and a town,
-	// which is listed among its own sisters, is taken out of that list and stood up here (see
-	// the component).
+	// The place the column beside the map is about: the region the map is open on, at any
+	// tier. It stands at the head of the column above the level under it, so where you are is
+	// the first thing on the plate rather than something to be found among the places inside
+	// it — and a town, which is one of its own sisters, is taken out of the list below and
+	// stood up here.
 	//
 	// The top view is a place like any other here: it is where the map is when nothing is
 	// open, it is a selection with a key of its own (see TOP_VIEW_KEY), and the bar already
 	// letters it with the plurality of every town on the map. So the column's head is never
 	// empty, whatever the map is looking at.
-	// The pin the map is drawing on that place, where the place is a town — the mark itself and
+	$: subdivisionCurrent = openNode
+		? crumbRow(openNode)
+		: {
+				key: TOP_VIEW_KEY,
+				label: TOP_VIEW_LABEL,
+				showName: mapPlurality.show?.name ?? null,
+				showId: mapPlurality.show?.id ?? null,
+				tileClasses: mapPlurality.color ? pinColorClasses[mapPlurality.color] : null
+			};
+
+	// What the column lists under it: the level one tier down — the territories at the top
+	// view, and a town's own sisters once the bar has got all the way down (see
+	// regionLevelNodes) — less the head itself, which only a town is ever among. It follows
+	// `openRegion` and not the URL selection alone, so the column walks with the zoom exactly
+	// as the crumbs above the map do.
+	//
+	// Taken out here rather than in the component because this is the list the shares below
+	// are counted over: what the row says is a share of is exactly what is listed under it,
+	// and two places deciding what "listed" means is how those two come to disagree.
+	$: subdivisionNodes = regionLevelNodes(regionNodes, openRegion).filter(
+		(node) => node.key !== subdivisionCurrent.key
+	);
+
+	// Lettered exactly as a crumb is, off the same node fields and into the same shape,
+	// because it is drawn by the same component: a place on this map is its tile, its name
+	// and the show it flies, whether it is being named as a step of the path or as one of
+	// the places the open region is made of.
+	$: subdivisions = subdivisionNodes.map(crumbRow);
+
+	// How those places divide between the shows they fly: the same tally the leaderboard is,
+	// run over the listed level instead of over every town on the map (see
+	// buildShowStandings) — biggest share first, and over the places that fly anything at all,
+	// so a region with no show is not counted against the shows that have one.
+	$: subdivisionShares = buildShowStandings(
+		new Map(
+			subdivisionNodes
+				.filter((node) => node.show)
+				.map((node) => [node.key, node.show!] as [string, RegionShow])
+		)
+	).map((standing) => ({ id: standing.id, name: standing.name, share: standing.share }));
+
+	// The pin the map is drawing on the place at the head, where that place is a town — the
+	// mark itself and
 	// not a copy of it: it comes out of `buildMarkers`, the very function the map's pins are
 	// built by, called on the one node with everything that function is given for the whole
 	// tier. So the side standing on the town, its occupant, its standing and the control under
@@ -1009,16 +1039,6 @@
 	// And the booster mark that pin carries, looked up the way the map looks it up (see
 	// boxForMarker): the window's box for that town, or nothing.
 	$: townPinBox = townPin ? (festaBoxes.find((entry) => entry.id === townPin?.id) ?? null) : null;
-
-	$: subdivisionCurrent = openNode
-		? crumbRow(openNode)
-		: {
-				key: TOP_VIEW_KEY,
-				label: TOP_VIEW_LABEL,
-				showName: mapPlurality.show?.name ?? null,
-				showId: mapPlurality.show?.id ?? null,
-				tileClasses: mapPlurality.color ? pinColorClasses[mapPlurality.color] : null
-			};
 
 	// --- The open municipality's deterministic "house team" ---------------------
 	// A leaf region (a municipality) has no children to drill into; instead of an
@@ -2856,6 +2876,7 @@
 		<RegionSubdivisions
 			rows={subdivisions}
 			current={subdivisionCurrent}
+			shares={subdivisionShares}
 			on:select={(event) => open(event.detail.key)}
 		>
 			<!-- The town's own pin, stood in the column under the row that names it: the side
