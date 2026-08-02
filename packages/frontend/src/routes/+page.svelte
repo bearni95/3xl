@@ -9,7 +9,6 @@
 	import SignInPanel from '$components/core/SignInPanel.svelte';
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
-	import MusicPlayer from '$components/core/MusicPlayer.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
 	import TownPin from '$components/core/TownPin.svelte';
@@ -1409,18 +1408,20 @@
 	$: canFieldTeam = !currentUserId || $teamSpawns.length === TEAM_SIZE;
 
 	// --- The menu ----------------------------------------------------------------
-	// Everything that is not the map is one column dropped from the burger at the far end of
-	// the breadcrumb bar. It has been three things: a sibling of the map taking a flat 450px of
+	// The player's own views are one column dropped from the burger at the far end of the
+	// breadcrumb bar. It has been three things: a sibling of the map taking a flat 450px of
 	// the row (the shape it needed while it held tables and a pack opener), then a full-height
 	// drawer at the map's right edge, and — beside it the whole time — a second menu of two
 	// views the game's badge dropped on hover at the other end of the same bar. One row asking
-	// the same question at both of its ends is one question too many, so the drawer's block of
-	// buttons has moved into the badge's column and the badge is a name again.
+	// the same question at both of its ends is one question too many, so the drawer's rows have
+	// moved into the badge's column and the badge is a name again.
 	//
 	// Every row of it raises a view over the map, which is what makes them one kind of thing
-	// and a menu the right place for them. The sign-in was in here too and is not that: it is
-	// the door, and the door was behind a mark a visitor had to think to press. It stands at
-	// the foot of the map now, in the account's own corner (see SignInPanel).
+	// and a menu the right place for them. Three things that used to be in here are not that,
+	// and none of them is in here now: the sign-in, which is the door and is at the foot of the
+	// map in the account's own corner (see SignInPanel); the leaderboard and the booster
+	// window, which are about the map rather than about the player and are read where the map
+	// is; and the radio, which runs whether or not any of this is up.
 	//
 	// Mounted only while it is open, so it has something to slide out from (a CSS transition
 	// has nothing to animate from on a fresh mount) exactly as the full-view sheets do — the
@@ -1428,9 +1429,9 @@
 	let menuOpen = false;
 
 	// One row of that column: the glyph the view used to be out on the bar as, and beside it
-	// the name of what it opens. Written once because there are six of them and a row is a row
-	// — the point of the column is that they are all the same kind of press, and six copies of
-	// the same string is six chances for one of them to stop being.
+	// the name of what it opens. Written once because a row is a row — the point of the column
+	// is that they are all the same kind of press, and a copy of the string per row is a chance
+	// per row for one of them to stop being.
 	const menuRowClasses =
 		'flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10';
 
@@ -1877,18 +1878,18 @@
 		boosterModalOpen.set(true);
 	}
 
-	// Raise the booster modal on the whole window's grid, which is what its own button does:
-	// only a box click on the map narrows it to one town's pack.
-	function openBoosters(): void {
-		showPackGrid();
-		packRaisedOnTown = false;
-		boosterModalOpen.set(true);
-	}
+	// The menu had a row that raised the same sheet on the whole window's grid instead, and it
+	// has not: a pack belongs to a town, and the way to one is the box the map stands on that
+	// town. The window is still all there behind whichever box was clicked — the sheet is
+	// handed every pack in it and walks back out to the grid (see BoosterModal's `back`) — it
+	// is only no longer a thing that can be asked for from a menu.
 
-	// Which of those two raised the sheet that is up. Held rather than read off the pick,
-	// because the pick moves while the sheet is up — a box is stood back down, another is
-	// picked out of the grid — and what the sheet was raised for does not. It is what lets a
-	// sheet raised on one box give itself over to that box (see BoosterModal's `single`).
+	// How the sheet that is up was raised. Held rather than read off the pick, because the pick
+	// moves while the sheet is up — a box is stood back down, another is picked out of the grid
+	// — and what the sheet was raised for does not. It is what lets a sheet raised on one box
+	// give itself over to that box (see BoosterModal's `single`). Only a box raises one now, so
+	// it is set and never unset; it is kept as the thing the modal is told rather than folded
+	// into a `true` written at the call site, since what it says is why the sheet is up.
 	let packRaisedOnTown = false;
 
 	// --- Which packs the booster modal shows --------------------------------------
@@ -1972,14 +1973,6 @@
 			.boostersStatus()
 			.then((status) => (boosters = status))
 			.catch(() => {});
-	}
-
-	// Back to the whole window's grid, from a box-opened town or a picked pack alike.
-	// The grid is in the document, so this is only the state it reads: nothing is
-	// rebuilt, and a pack stood back down leaves the grid exactly as it was.
-	function showPackGrid(): void {
-		clearPackFeedback();
-		packTownId = null;
 	}
 
 	// The pack a map box click stands up, picked out of the window's full set. Null when
@@ -2944,20 +2937,20 @@
 										<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
 									</button>
 
-									<!-- Every view this game has, down a column under the burger: a row each, a glyph
-										and beside it the name of what it opens. It is the column the badge at the head
-										of this row used to drop on hover, given the rest of what a full-height drawer
-										at the map's edge used to hold — one menu rather than a hover menu at one end of
+									<!-- The player's views, down a column under the burger: a row each, a glyph and
+										beside it the name of what it opens. It is the column the badge at the head of
+										this row used to drop on hover, given the account rows a full-height drawer at
+										the map's edge used to hold — one menu rather than a hover menu at one end of
 										the bar and a drawer at the other, which was two answers to the same question
-										standing on the same row.
+										standing on the same row. The drawer's other two, and the radio that stood at
+										its foot, are not here — see the rows themselves.
 										The plate is the crumbs' dropped path class for class — the same surface at full
 										strength, the same rounding, the same shadow, the same 200ms slide out from
 										under the bar — since a column dropped from this row is the same object wherever
 										on the row it is dropped from. It comes down from the right edge because that is
 										the edge the burger stands at and a column is read under the mark that dropped
-										it. A width rather than `w-max`: the rows would size themselves to the longest
-										name, but the radio at the foot holds a song title, and a menu as wide as
-										whatever happens to be playing is a menu that changes width on its own.
+										it. `w-max` so it is as wide as the longest name and no wider: everything in it is
+										a name, and there is nothing left in here whose width this game does not choose.
 										Mounted only while it is up, so it has something to slide from (see
 										FullScreenModal for the same reason); a press outside it, Escape, or picking any
 										of its rows puts it away. -->
@@ -2965,12 +2958,11 @@
 										<div
 											bind:this={menuEl}
 											transition:slide={{ duration: 200 }}
-											class="absolute right-0 top-full z-10 mt-2 flex w-72 max-w-[85vw] flex-col gap-0.5 rounded-lg bg-base-100 p-2 text-white shadow-xl"
+											class="absolute right-0 top-full z-10 mt-2 flex w-max max-w-[70vw] flex-col gap-0.5 rounded-lg bg-base-100 p-2 text-white shadow-xl"
 										>
-											<!-- The player's own two first, then the two about the whole map, then the
-												account and the documents: the order is how close a view stands to the
-												player, and nothing separates the groups — they are all one kind of thing,
-												a press that raises a full view over the map, which is what a menu of them
+											<!-- The player's cards, the set they are drawn from, the account and the
+												documents: nothing separates them — they are all one kind of thing, a
+												press that raises a full view over the map, which is what a menu of them
 												should look like. The block of outlined buttons in the drawer said the same
 												with borders; a row with its name and its mark says it with neither.
 												Only while there is an account to have any cards under: a roster with
@@ -3003,33 +2995,13 @@
 												/>
 												<span class="truncate">{$_('collection.title')}</span>
 											</button>
-											<button
-												type="button"
-												class={menuRowClasses}
-												on:click={() => pickFromMenu(() => leaderboardModalOpen.set(true))}
-											>
-												<img
-													src="/assets/icons/delapouite/podium.svg"
-													class="size-4 flex-none"
-													alt=""
-												/>
-												<span class="truncate">{$_('leaderboard.title')}</span>
-											</button>
-											<!-- The boosters, named with the day's allowance in the label as they always
-												have been. The same glyph the allowance wears out on the bar a few pixels
-												away, because it is the same count said twice: read there, pressed here. -->
-											<button
-												type="button"
-												class={menuRowClasses}
-												on:click={() => pickFromMenu(openBoosters)}
-											>
-												<img
-													src="/assets/icons/quoting/card-pickup.svg"
-													class="size-4 flex-none"
-													alt=""
-												/>
-												<span class="truncate">{boosterLabel}</span>
-											</button>
+											<!-- The leaderboard and the window's boosters were the two rows between here
+												and the account's own: the map's standings, and the grid of every pack the
+												festa window is holding. Both are about the map rather than about the
+												player, and both are already answered where the map itself is read — the
+												standings by the shares row at the head of the column beside it, and a
+												pack by the box the map stands on the town it belongs to, which opens that
+												town's own. What is left in this menu is the player's. -->
 											{#if $profile}
 												<button
 													type="button"
@@ -3052,14 +3024,6 @@
 												<img src="/assets/icons/lorc/scales.svg" class="size-4 flex-none" alt="" />
 												<span class="truncate">{$_('legal.title')}</span>
 											</button>
-
-											<!-- The radio, at the foot and set apart by the one margin in this column: it
-												is not a way out of the map like the rows above it — it is the one thing
-												here that goes on running whether or not this menu is up — so it is a plate
-												among rows rather than another row. It draws nothing until a song is
-												loaded, which is why there is no rule or heading over it: an empty foot
-												would be a divider with nothing under it. -->
-											<MusicPlayer classes="mt-2 w-full" />
 										</div>
 									{/if}
 								</div>
@@ -3354,9 +3318,10 @@
 
 <!-- Every show's standing across the map, on the same sheet. The tally is the map's own —
 	counted over every municipality's current show, seeded or ruling — so it is handed in
-	rather than read again here, and it is as fresh as the map behind it. Opened from the
-	Leaderboard button at the head of the panel; it was a tab of that panel, three columns of
-	table in a 450px column. -->
+	rather than read again here, and it is as fresh as the map behind it. It was a tab of the
+	old side panel, three columns of table in a 450px column, then a button in the menu.
+	Nothing raises it at the moment: the row that did has gone from the menu, and the store is
+	left standing so that whatever raises it next has something to set. -->
 {#if $leaderboardModalOpen}
 	<LeaderboardModal rows={showStandings} />
 {/if}
