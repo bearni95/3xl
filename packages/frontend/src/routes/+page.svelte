@@ -588,8 +588,9 @@
 			const color = featureColor(tier, feature, colors);
 			const key = featureKey(tier, feature);
 			const isSpotlit = spotlit != null && tier === 'Municipality' && key === spotlit;
-			const washes = color != null && (isSpotlit || tierRank[tier] === imaged);
 			const isPicked = picked?.tier === tier && picked.key === key;
+			const washes =
+				color != null && (isSpotlit || tierRank[tier] === imaged || (isPicked && keptWash(tier, imaged)));
 			return {
 				color: lineColor,
 				weight,
@@ -1757,6 +1758,7 @@
 		clearPackFeedback();
 		open(id);
 		packTownId = id;
+		packRaisedOnTown = true;
 		boosterModalOpen.set(true);
 	}
 
@@ -1764,8 +1766,15 @@
 	// only a box click on the map narrows it to one town's pack.
 	function openBoosters(): void {
 		showPackGrid();
+		packRaisedOnTown = false;
 		boosterModalOpen.set(true);
 	}
+
+	// Which of those two raised the sheet that is up. Held rather than read off the pick,
+	// because the pick moves while the sheet is up — a box is stood back down, another is
+	// picked out of the grid — and what the sheet was raised for does not. It is what lets a
+	// sheet raised on one box give itself over to that box (see BoosterModal's `single`).
+	let packRaisedOnTown = false;
 
 	// --- Which packs the booster modal shows --------------------------------------
 	// Every festa major in the booster window — three days back through four days
@@ -3240,6 +3249,7 @@
 		{lastRevealed}
 		{allowanceSpent}
 		{townHasNoPack}
+		single={packRaisedOnTown}
 		on:select={clearPackFeedback}
 		on:back={clearPackFeedback}
 		on:openComplete={(event) => onPackOpened(event.detail)}

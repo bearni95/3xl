@@ -22,6 +22,7 @@
 		lines = [],
 		markers = [],
 		markerLevels = null,
+		pickedMarker = null,
 		boxes = [],
 		highlightId = null,
 		highlightStyle = null,
@@ -73,6 +74,27 @@
 		 * falls back to the previous rendering. Takes precedence over `markers`.
 		 */
 		markerLevels?: MapMarker[][] | null;
+		/**
+		 * One mark drawn at every tier: the place the reader has picked.
+		 *
+		 * A pin in the stack belongs to a tier and goes when that tier does — which is right for
+		 * a mark the map chose to draw, and wrong for the one mark the reader asked for by name.
+		 * A town picked at the town tier used to vanish the moment the wheel folded its comarca
+		 * up, so the one thing on screen that was there by request was the first thing the zoom
+		 * took away.
+		 *
+		 * So it is handed over beside the stack rather than found in it: the levels stay the
+		 * map's model of the breakdown (which tier the view is inside, what a click on the land
+		 * opens, how a framing is fitted — see `hidden`), and this is drawn over whichever of
+		 * them is on screen. It is dealt its room first (see RANK_PICKED) and never folded into
+		 * a count, being about one place and not about a crowd. Culled with the rest when its
+		 * point is off screen — a mark pulled into the canvas for a place outside it would be
+		 * standing in the room of a place that is on it.
+		 *
+		 * Drawn once even where the tier on screen has a pin of its own for that region: the two
+		 * are the same mark, and the one already in the stack is left to draw it.
+		 */
+		pickedMarker?: MapMarker | null;
 		/**
 		 * Booster boxes stood on individual points (the festa-major towns the booster
 		 * window reaches) — a town keeps its pin and gets a box, drawn as one more block of
@@ -375,6 +397,10 @@
 	// The path breathing right now, so it can be put back to a plain shape when the pulse
 	// moves or goes. A plain variable: nothing is drawn from it — it IS what was drawn.
 	let pulsingPath: SVGElement | null = null;
+	// Where that path was standing among its neighbours before it was raised, as the element it
+	// was drawn before — so putting it back is putting it back, and not a guess at an order.
+	// Null means it was the last one drawn, which is what appending it again says.
+	let pulsingPathBefore: ChildNode | null = null;
 
 	$effect(() => {
 		// Move the pulse. A repaint does not carry it: `resetStyle` re-runs a style option,
@@ -390,7 +416,16 @@
 		if (pulsingPath) {
 			pulsingPath.classList.remove(PULSE_CLASS);
 			pulsingPath.style.removeProperty(PULSE_FROM);
+			// Back into the order it came out of, before the class goes: the raising is half of
+			// what was done to this shape (see below) and a shape left on top of its map would
+			// go on covering the tier it belongs under long after it stopped saying anything.
+			// Only against the neighbour it was drawn before if that neighbour is still there;
+			// otherwise back to the end, which is where a shape with nothing after it stood.
+			const parent = pulsingPath.parentNode;
+			const before = pulsingPathBefore?.parentNode === parent ? pulsingPathBefore : null;
+			parent?.insertBefore(pulsingPath, before);
 			pulsingPath = null;
+			pulsingPathBefore = null;
 		}
 		if (!ready || !wanted) return;
 		const index = overlays.findIndex((overlay) => overlay.url === wanted.url);
@@ -408,6 +443,14 @@
 			if (String(props.id ?? '') !== wanted.key && String(props.name ?? '') !== wanted.key) return;
 			const path = (layer as L.Path).getElement() as SVGElement | undefined;
 			if (!path) return;
+			// Over every other shape on the map, and not because it is breathing: the layers are
+			// stacked coarsest-on-top, and the one tier that fills is the one the zoom is imaging
+			// — so a picked town kept washed while the map draws provinces was painted UNDER the
+			// province wash covering it, at a fifth of an alpha, which is a shape saying nothing.
+			// Raised, it is read against whatever it stands on at any zoom. Remembered by the
+			// neighbour it was drawn before, since it goes back there when the pick moves.
+			pulsingPathBefore = path.nextSibling;
+			path.parentNode?.appendChild(path);
 			path.style.setProperty(PULSE_FROM, String(wanted.opacity));
 			path.classList.add(PULSE_CLASS);
 			pulsingPath = path;
@@ -420,6 +463,9 @@
 		// `ready` so a set passed before mount still applies once the layer exists.
 		void markers;
 		void markerLevels;
+		// The mark that stands at every tier goes with them: it is drawn by that same pass, and
+		// naming it here is what makes another place being picked redraw it (see `pickedMarker`).
+		void pickedMarker;
 		// And whenever the room they are dealt changes shape: the bar across the top grows a
 		// row when a search is being typed into it, and the pins under where it now reaches
 		// have to be dealt again (see chromeInsets).
@@ -1397,11 +1443,22 @@
 		pinLeaders = new Map();
 		foldedIds = new Set();
 
-		// No pin outlives its tier, the picked town's included: it carries the side holding
-		// it and the way to fight them, and a mark that size cannot be left standing over a
-		// view of provinces where the town it belongs to is no longer drawn. Zooming out
-		// folds a town into its comarca and takes everything hung on it away together.
+		// No pin outlives its tier: a pin of the stack is the map's naming of a region at the
+		// breakdown it is drawing, so zooming out folds a town into its comarca and takes
+		// everything hung on it away together.
 		const drawn = visible.map((marker) => addPin(marker));
+
+		// And then the one mark that does outlive it (see `pickedMarker`), unless this tier has
+		// already drawn the very region it is about — the picked town at the town tier is one
+		// pin, not two on one point. Ranked as the reader's own pick, which is what buys it the
+		// first of the room and keeps it out of every count.
+		if (
+			pickedMarker &&
+			!drawn.some((mark) => mark.id === pickedMarker!.id) &&
+			bounds.contains(pickedMarker.position)
+		) {
+			drawn.push(addPin(pickedMarker, RANK_PICKED));
+		}
 
 		// Every pin is drawn and measured before any of them is folded, because how much room
 		// a pin takes is not a thing the data behind it can be asked: a plate is as wide as
@@ -1447,8 +1504,15 @@
 	const RANK_PIN = 1;
 	const RANK_BOX = 2;
 
-	/** Draw one region's pin on the map, as its own mark. */
-	function addPin(marker: MapMarker): PinMark {
+	/**
+	 * Draw one region's pin on the map, as its own mark.
+	 *
+	 * Its claim on the room is read off the mark itself — a pin carrying the side standing on
+	 * its region is the picked one — except where the caller has already answered that by
+	 * handing the mark over as the picked one (see `pickedMarker`), which it now may do for a
+	 * plate carrying nothing at all.
+	 */
+	function addPin(marker: MapMarker, rank = marker.team?.length ? RANK_PICKED : RANK_PIN): PinMark {
 		const element = markerElement(marker);
 		const icon = Leaf!.divIcon({ html: element, className: '', iconSize: [0, 0] });
 		const layer = Leaf!.marker(marker.position, { icon, riseOnHover: true });
@@ -1471,7 +1535,7 @@
 				!!marker.dimmed,
 				markerLayer!
 			),
-			rank: marker.team?.length ? RANK_PICKED : RANK_PIN
+			rank
 		};
 	}
 
@@ -1564,7 +1628,10 @@
 					y: at.y,
 					width: extent ? extent.x : PIN_PLATE_EXTENT[0],
 					height: extent ? extent.y : PIN_PLATE_EXTENT[1],
-					groupable: !mark.marker?.team?.length
+					// Read off the claim the mark was given rather than off what it is carrying:
+					// the picked mark is the picked mark whether the caller said so by standing a
+					// side on it or by naming it (see addPin).
+					groupable: mark.rank !== RANK_PICKED
 				};
 			}),
 			{ gap: PIN_GAP }
@@ -1868,12 +1935,16 @@
 	// And less the pins the page asked to be left off the map (see MapMarker.hidden), for the
 	// very same reason: a town that was never drawn has no column for its mark to be a block
 	// of, so the box layer stands it on the point instead.
+	// Plus the mark that stands at every tier (see `pickedMarker`), which is a pin on the map
+	// like any other and carries its own box wherever the zoom is — and is never folded, so it
+	// is never taken back off this set.
 	function pinnedIds(): Set<string> {
 		const levels = markerLevelStack();
 		const ids = new Set(
 			(levels[pinLevelIndex] ?? []).filter((marker) => !marker.hidden).map((marker) => marker.id)
 		);
 		for (const id of foldedIds) ids.delete(id);
+		if (pickedMarker) ids.add(pickedMarker.id);
 		return ids;
 	}
 

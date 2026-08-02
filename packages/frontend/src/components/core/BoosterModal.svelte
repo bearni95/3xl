@@ -1,6 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import { _ } from 'svelte-i18n';
 	import FullScreenModal from '$components/core/FullScreenModal.svelte';
 	import BoosterBoxCanvas from '$components/core/pack/BoosterBoxCanvas.svelte';
@@ -37,6 +38,17 @@
 	// True when a box was clicked on a town the window holds no pack for — the one thing the
 	// grid cannot say for itself, since it only ever knows the packs it was handed.
 	export let townHasNoPack: boolean = false;
+	// Whether the sheet was raised on one town's box rather than on the window: a box clicked
+	// out on the map, which is a player asking for that pack and not for the calendar it sits
+	// in. The host says so, since it is the host that raised it.
+	export let single: boolean = false;
+
+	// The sheet given over to the one box, which is what `single` asks for while that box is
+	// actually the thing on screen. A player who walks back out to the window from here is
+	// looking at the window like anybody else, and gets its name and its ways out back — a
+	// sheet with no ✕ on it is fine for a view that came up on one object and is left by
+	// opening it, and is a trap on a view somebody is browsing.
+	$: alone = single && selected !== null;
 
 	const dispatch = createEventDispatcher<{
 		select: void;
@@ -65,6 +77,7 @@
 	title={$_('booster.title')}
 	closeLabel={$_('booster.close')}
 	transparent
+	bare={alone}
 	closeOnClick={revealed}
 	on:close={close}
 >
@@ -78,13 +91,27 @@
 		What the left column also held, and what is kept above the canvas, is the stretch of
 		calendar on offer and whatever the last roll had to say — neither belongs to a drawing of
 		the window, and the canvas is not where a sentence is read. -->
-	<div class="flex min-h-0 flex-1 flex-col gap-4">
+	<!-- Faded in rather than simply there: the sheet slides up from the bottom edge over a
+		quarter second, and everything it carries arriving whole on the first frame of that made
+		the slide a picture being moved rather than a view opening. It comes up as the sheet
+		settles — the delay is the slide's own length, so the fade starts where it stops — and
+		only on the way in: the way out is the sheet going, and a fade laid over that would be two
+		things leaving at different speeds. -->
+	<div
+		class={classNames('flex min-h-0 flex-1 flex-col gap-4', { 'p-3': alone })}
+		in:fade={{ duration: 250, delay: 250 }}
+	>
 		<!-- The stretch of calendar on offer, both ends of it named. Every pack under it is
 			openable: a festa major runs over its weekend rather than on one evening, so the window
-			reaches three days back and four ahead, and `claim_booster` takes the same range. -->
-		<div class="flex flex-none items-center justify-center">
-			<span class="truncate text-sm font-bold first-letter:uppercase">{windowLabel}</span>
-		</div>
+			reaches three days back and four ahead, and `claim_booster` takes the same range.
+			Not said at all when the sheet was raised on one town's box: what a player asked for
+			there is that pack, and the window it belongs to is the one thing they did not ask
+			about. -->
+		{#if !alone}
+			<div class="flex flex-none items-center justify-center">
+				<span class="truncate text-sm font-bold first-letter:uppercase">{windowLabel}</span>
+			</div>
+		{/if}
 
 		<!-- Why the last roll revealed nothing. `claim_booster` refuses for reasons the player can
 			act on (the allowance is spent, the town's festa is out of the window), and the panel
