@@ -2,8 +2,9 @@
  * TMDB serves every image at a fixed set of widths, and each poster URL carries the
  * one it was built for as a path segment: `…/t/p/w342/<file>.jpg` straight from the
  * CDN, or `…/api/tmdb/image/w342/<file>.jpg` through the dev proxy (which accepts any
- * size token and mirrors the bytes to disk). Rewriting that single segment asks for
- * the same image at another width.
+ * size token and mirrors the bytes to disk) while the author is browsing — a saved show
+ * holds only the former (see ./image-cdn). Rewriting that single segment asks for the
+ * same image at another width.
  *
  * The saved-show collection bakes `thumbnailUrl` at w342 — plenty for the admin's
  * gallery and the map's pins, but a fraction of the size a booster pack draws its

@@ -21,9 +21,11 @@ loadEnv({ path: fileURLToPath(new URL('../../../.env', import.meta.url)) });
 // configurable, so the three dev servers always agree on their ports.
 const PORT = 2002;
 const ADMIN_ORIGIN = 'http://localhost:2001';
-// The player app also reads the TMDB image proxy — its pack-opener canvas loads
-// show posters through Pixi's fetch-based loader, which (unlike a plain <img>) is
-// CORS-gated, so the frontend origin must be allowed too.
+// The player app used to read the TMDB image proxy: its pack-opener canvas loads show
+// posters through Pixi's fetch-based loader, which (unlike a plain <img>) is CORS-gated.
+// A saved show now carries CDN URLs rather than proxied ones (see routes/shows), so it
+// no longer calls here at all — but a dev server that answers the app it is developed
+// alongside costs nothing, and the alternative is a confusing CORS error the day it does.
 const FRONTEND_ORIGIN = 'http://localhost:2000';
 
 const app = express();

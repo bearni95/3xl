@@ -9,6 +9,7 @@ import type {
 } from '@3xl/shared/types/show.type';
 import { TMDB_FALLBACK_LANGUAGE } from '@3xl/shared/types/tmdb.type';
 import { fetchTvTranslated } from '@3xl/shared/utils/tmdb/client';
+import { showEntryOnCdn } from '@3xl/shared/utils/tmdb/image-cdn';
 import { tmdbAdapter } from '@3xl/shared/adapters/classes/tmdb.adapter';
 import { SHOW_ICON_PATTERN } from '@3xl/shared/types/show.type';
 import { asyncHandler, httpError } from '../http-error';
@@ -114,7 +115,13 @@ async function validateEntry(body: unknown): Promise<ShowEntry> {
 	const validated: ShowEntry = { show, images };
 	if (Object.keys(enabledImages).length > 0) validated.enabledImages = enabledImages;
 	if (rawIcon) validated.icon = rawIcon;
-	return validated;
+
+	// The one field the entry is *not* stored verbatim in: the admin displays images
+	// through this server's caching proxy, and this server does not exist outside the
+	// author's machine. What is saved is shipped data, so the URLs are un-proxied back
+	// to the TMDB CDN (see `showEntryOnCdn`) — otherwise every image in the deployed
+	// game asks localhost:2002 for its bytes.
+	return showEntryOnCdn(validated);
 }
 
 export const showsRouter = Router();
@@ -159,7 +166,7 @@ showsRouter.post(
 // TMDB has a Catalan name but no Catalan overview for.
 //
 // Only the text moves. Images, the author's enabled selection, votes and the
-// proxied poster/backdrop URLs are all kept exactly as saved: they are either
+// poster/backdrop URLs are all kept exactly as saved: they are either
 // language-independent or hand-curated, and a re-read of what a show is *called*
 // has no business discarding either.
 //

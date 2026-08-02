@@ -3,9 +3,9 @@
  *
  * Lazily loads the images the pack-opening canvas needs into Pixi textures, keyed
  * by URL and kept alive for the session:
- *  - show posters (the pack cover art — from shows.json, served by the dev TMDB
- *    proxy, so cross-origin and CORS-gated: on failure the pack simply renders
- *    without cover art)
+ *  - show posters (the pack cover art — from shows.json, i.e. straight off the TMDB
+ *    image CDN, so cross-origin and CORS-gated: it answers `access-control-allow-origin: *`,
+ *    and on failure the pack simply renders without cover art)
  *  - character face portraits (the static reveal-card fallback — same-origin
  *    `/assets/*`)
  *  - character idle animations (the revealed card art — the looping `idle` clip

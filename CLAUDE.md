@@ -322,7 +322,7 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   field falls back independently to `TMDB_FALLBACK_LANGUAGE`: a details fetch takes it from the
   `translations` appended to the same payload, a search from one extra search of the same query
   matched by id. The refresh moves **only the text** — images, the enabled selection, votes and
-  the proxied URLs are language-independent or hand-curated — and is the one call here that is
+  the image URLs are language-independent or hand-curated — and is the one call here that is
   deliberately *not* disk-cached, its whole point being to ask again. A show's name is therefore
   translated data: things that select or order shows key on the TMDB id instead (a show's
   authored icon, the map's seeded-show pool — see above), and `show_templates` in Supabase
@@ -331,7 +331,16 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   **disk-caches** every search response, image-list, and image binary under
   `packages/backend/.cache/` (git-ignored) so TMDB is never queried twice for the same thing.
   The cache key includes the language, so a Catalan search never reads an entry written when
-  results came back in English.
+  results came back in English. Every image URL it hands the admin points back at *this*
+  server (`http://localhost:2002/api/tmdb/image/<size>/<file>`), which is what makes the
+  bytes cacheable — and which is exactly what must not be written down, since this server is
+  dev-only and `shows.json` ships into the player's static bundle. So a save is **un-proxied**
+  first (`@3xl/shared/utils/tmdb/image-cdn`, applied in `POST /api/shows`): the collection
+  holds canonical `image.tmdb.org` URLs, which resolve wherever the game is opened, and whose
+  `access-control-allow-origin: *` satisfies the pack-opener's fetch-based Pixi loader as well
+  as a plain `<img>`. The proxy stays in front of the author's browsing only. A test holds the
+  checked-in `shows.json` to that, because a proxied URL in there is a dead image everywhere
+  but the author's machine and nothing at run time would notice.
 
 ## Environment variables
 
