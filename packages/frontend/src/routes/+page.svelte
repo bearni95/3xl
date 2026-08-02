@@ -13,8 +13,6 @@
 	import MusicPlayer from '$components/core/MusicPlayer.svelte';
 	import MusicCard from '$components/core/MusicCard.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
-	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
-	import LocationSearchPanel from '$components/core/LocationSearchPanel.svelte';
 	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
 	import TownPin from '$components/core/TownPin.svelte';
 	import TownChallenge from '$components/core/TownChallenge.svelte';
@@ -878,11 +876,11 @@
 
 	// Free-text search across every location in the whole tree (all tiers), matched
 	// against each region's displayed name (case- and accent-insensitive). While the
-	// box holds text its matches stand as cards on a plate of their own at the map's right
-	// corner (see LocationSearchPanel); an empty box has no plate and nothing to say.
+	// box holds text its matches stand in the column beside the map, in place of the level and
+	// drawn as the level is (see RegionSubdivisions); an empty box has nothing to say.
 	let searchQuery = '';
-	// Whether the box is out or folded to its glyph. Held here rather than inside the box
-	// because the panel of matches can end the search too.
+	// Whether the field is out. Held here rather than inside the column because what is typed in
+	// it is matched here, and the two are the one control.
 	let searchOpen = false;
 	const foldText = (value: string) =>
 		value
@@ -897,21 +895,22 @@
 				.slice(0, 100)
 		: [];
 
-	// Ending the search: what the panel's cross does, and the whole of it — the query goes, and
-	// with it the panel it was filling, and the box folds back to the glyph it came out of.
-	// The plate about the open region is untouched, since the search was never about it.
+	// Ending the search: the query goes, and with it the matches it was filling the column with,
+	// and the field folds back to the glyph it came out of. The head of that column is
+	// untouched, since the search was never about the open region.
 	function closeSearch() {
 		searchQuery = '';
 		searchOpen = false;
 	}
 
-	// Opening a search result reuses the drill logic (URL region param → map
-	// framing + table), then ends the search: the question has been answered by landing
-	// somewhere, so the cards give way to that place's own table rather than to an empty
-	// field still standing open over it.
-	function openSearchResult(entry: { key: string }) {
+	// Picking a place out of the column: the drill, exactly as a pin or a crumb does it — and
+	// then the end of the search, since the question has been answered by landing somewhere and
+	// a column still listing matches would be listing them about a place that is no longer the
+	// one being asked about. Nothing to end when nothing was being searched for, which is what a
+	// press on the level itself is.
+	function openFromColumn(key: string) {
 		closeSearch();
-		open(entry.key);
+		open(key);
 	}
 
 	// The breadcrumb crumbs: a root crumb back to the top view, then one per
@@ -1116,6 +1115,22 @@
 	$: subdivisions = subdivisionNodes.map((node) => ({
 		...crumbRow(node),
 		box: festaBoxById.get(node.key) ?? null
+	}));
+
+	// And the matches lettered exactly the same way, because they are drawn by exactly the same
+	// row: a place turned up by a search is the same place it would have been if the drill had
+	// reached it, and a search that answered in a different hand would be a second way of
+	// saying a town. The tier rides along, since that is what the column groups them under
+	// (see RegionSubdivisions' searchGroups) — and it comes off the flattened entry rather than
+	// being looked back up, as the colour does.
+	$: searchRows = searchResults.map((entry) => ({
+		key: entry.key,
+		type: entry.type,
+		label: restoreCatalanArticle(entry.name),
+		showName: entry.show?.name ?? null,
+		showId: entry.show?.id ?? null,
+		tileClasses: entry.color ? pinColorClasses[entry.color] : null,
+		box: festaBoxById.get(entry.key) ?? null
 	}));
 
 	// How those places divide between the shows they fly: the same tally the leaderboard is,
@@ -2784,15 +2799,15 @@
 				bind:clientHeight={topChromeHeight}
 				class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex flex-col gap-2"
 			>
-				<!-- Where the map is looking. Full width, at the head of everything: a path is
-					read across, and the plates below it are read down.
-					The location search sits at the bar's far end, as the looking glass that stands for
-					it until it is pressed (see LocationSearchBox). It was above the drill table in the
-					Location plate — but that plate starts folded, so the way to look for a town was
-					behind a fold, while the bar naming where the map is was always up. Naming a place
-					and being told where you are are the same subject, so they share the one row; the
-					matches come down at the corner right below the field, on their own plate (see
-					LocationSearchPanel). -->
+				<!-- Where the map is looking, and now the whole of what stands over the terrain. Full
+					width, at the head of everything: a path is read across, and the plates below it are
+					read down.
+					The location search sat at this bar's far end for a while, as a looking glass that
+					unfolded into a field, with its matches on a plate at the corner underneath. Both are
+					in the column beside the map now (see RegionSubdivisions): the glyph is a cell of the
+					shares row and the matches are that column's own rows, because looking for a place is
+					asking for a place on a list and the column is where this map lists places. -->
+
 				<!-- Out of focus while a full view is up over the map, and back into it when that view
 					goes (see CHROME_BLUR). The wrapper is what the transition needs — a transition cannot
 					be put on a component — and now also the row the two bars stand in, so both go and come
@@ -2957,7 +2972,12 @@
 										<span class="tabular-nums">{boosters.remaining}/{boosters.allowance}</span>
 									</div>
 								{/if}
-								<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
+								<!-- The looking glass stood here too, between the allowance and the burger. It
+									is the last cell of the shares grid in the column beside the map now, with its
+									field coming down on the row under it: looking for a place is asking for a place
+									on a list, and the column is where this map lists places — so the answer arrives
+									where every other list of places in this game arrives, instead of on a plate at
+									the corner opposite the one that had asked. -->
 								<!-- The roster and the album stood here, two more squares in this line: a pencil
 									and a book, each of them a glyph and nothing else on a row where a glyph in a
 									square already means the thing beside it. They are rows under the badge at the
@@ -2988,31 +3008,12 @@
 					</div>
 				{/if}
 
-				<!-- The map's right corner, read down: what the search box at the end of the bar
-					above has turned up. It was one end of a row that had the music on the other
-					end; the music is in the menu now (see the drawer below the map) and the left
-					corner with it, so this is a plate under the bar rather than a side of anything.
-					A row of the column above rather than a corner positioned on its own, so the bar
-					pushes it down by taking its own row instead of by an offset nobody would
-					remember to keep in step with it. `items-end` so the plate is only as wide as it
-					asks to be and still keeps the corner's edge. -->
-				<div class="flex min-w-0 flex-col items-end gap-2">
-					<!-- The matches, directly under the field that produced them and the whole of this
-						corner while a search is on: what is asked for at the top right is answered at the
-						top right. The account's plate stood under them here for a while and is at the foot
-						of the map now, under the side it fields.
-						Only ever up for a query — an empty box is the search not happening, and there is no
-						plate for it — and the cross on it ends the search outright rather than folding the
-						plate away from a query still typed in a field still standing open (see closeSearch). -->
-					{#if normalizedQuery}
-						<LocationSearchPanel
-							results={searchResults}
-							onSelect={openSearchResult}
-							onClose={closeSearch}
-							classes="pointer-events-auto w-96 max-w-full"
-						/>
-					{/if}
-				</div>
+				<!-- The map's right corner held the matches for a while, on a plate directly under the
+					field at the end of the bar: what was asked for at the top right, answered at the top
+					right. Both are gone from over the map — the field is a cell of the shares row in the
+					column beside it and the matches are that column's own rows (see RegionSubdivisions),
+					so a search is read where every other list of places in this game is read, and the
+					terrain is left with nothing on it but the path. -->
 			</div>
 			<!-- The foot of the map — its bottom-left corner where there is room for a corner, the
 				whole width of it on a phone (see the widths below) — a column of two: the side this
@@ -3148,7 +3149,10 @@
 				rows={subdivisions}
 				current={subdivisionCurrent}
 				shares={subdivisionShares}
-				on:select={(event) => open(event.detail.key)}
+				{searchRows}
+				bind:searchQuery
+				bind:searchOpen
+				on:select={(event) => openFromColumn(event.detail.key)}
 			>
 				<!-- The town's own pin, stood in the column under the row that names it: the side
 					holding it, whose it is, how far it has been taken, the way to fight for it and the

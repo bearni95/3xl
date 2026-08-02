@@ -198,14 +198,21 @@ export function everyTownPlurality(nodes: RegionNode[]): {
 
 /**
  * One region flattened out of the tree for free-text search: its selection key,
- * name, tier, top show, and the ancestor region names from the top territory
- * down to (but not including) it — shown on the search card for context.
+ * name, tier, top show, the colour it is drawn in, and the ancestor region names
+ * from the top territory down to (but not including) it.
+ *
+ * The colour is here because a match is drawn as the place itself — the same tile,
+ * name and show a crumb or a listed sister gets (see the column beside the map) —
+ * and a place's tile is its colour. Looking it back up by key would mean walking the
+ * tree once per match to recover something the walk that produced the match had in
+ * its hand.
  */
 export interface RegionSearchEntry {
 	key: string;
 	name: string;
 	type: RegionType;
 	show?: RegionShow;
+	color?: RegionColor;
 	path: string[];
 }
 
@@ -222,6 +229,7 @@ export function flattenRegionNodes(nodes: RegionNode[]): RegionSearchEntry[] {
 			name: node.name,
 			type: node.type,
 			show: node.show,
+			color: node.color,
 			path: ancestors
 		});
 		for (const child of node.children) walk(child, [...ancestors, node.name]);

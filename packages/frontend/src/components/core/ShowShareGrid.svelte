@@ -66,4 +66,10 @@
 			<span class="font-medium tabular-nums">{Math.round(entry.share * 100)}%</span>
 		</button>
 	{/each}
+
+	<!-- The last cell of the grid, and the caller's: the way to look for a place that is not on
+		this level at all. It belongs on this row because this row is the one that acts on the
+		list below — these cells narrow it to a show, and that one goes and finds places outside
+		it altogether — and because a cell is the size a mark is read at here. -->
+	<slot name="end" />
 </div>

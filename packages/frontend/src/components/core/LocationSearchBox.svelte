@@ -1,50 +1,39 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import { tick } from 'svelte';
+	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
 
-	// The way to look for a place, at the far end of the breadcrumb bar. It is a mark until it
-	// is asked for: a field wide enough to type a town into is the widest thing on that row and
-	// it was holding that width whether or not anybody was searching — the row it stands in is
-	// about where the map is looking, and the path saying so is the part that gives way when
-	// there is not enough of it. So the field is folded into the one glyph that means it, and
-	// the crumbs get the row back until it is pressed.
+	// The field a place is looked for in, in the column beside the map. It stood at the far end
+	// of the breadcrumb bar, folded into a looking glass because a field wide enough to type a
+	// town into was the widest thing on a row whose subject is where the map is looking. In the
+	// column it is not competing with a path: the looking glass is the last cell of the shares
+	// grid (see RegionSubdivisions), and pressing it brings this field down on the row under it,
+	// where the whole width of the column is a field's to take.
 	//
-	// The glyph is game-icons.net's looking glass, drawn the way the collapsed path's dots
-	// button beside it is drawn: an outlined 32px square, white at 60% brightening to white on
-	// a wash of it, since the bar forces white over terrain and the theme's own outline colours
-	// would read as a stray one. It is an <img> and not inlined markup because these glyphs
-	// carry a baked white fill for the canvas to tint (see CLAUDE.md) — which is exactly the
-	// colour this bar wants anyway.
+	// So this is the field alone now, mounted only while the search is open — which is what
+	// makes the focus a mount and not a `tick` after a state change: the press that opened it
+	// was the start of typing, and the caret is put where that press said it should be.
 
-	/** What is being searched for. Bound: the plate listing the matches is the caller's. */
+	/** What is being searched for. Bound: the list of matches is the caller's. */
 	export let value: string = '';
-	// Whether the field is out. Never true with the button up — the two are the one control in
-	// its two states, not a field that a button opens beside it. Bound out because the plate of
-	// matches has a way out of its own (its cross), and ending the search there has to fold the
-	// field the press was not made on.
-	export let open: boolean = false;
+	// Whether the field is out. The caller raises it (the glyph is theirs); this is how the
+	// field puts itself away — left empty, or dismissed with Escape.
+	export let open: boolean = true;
 	export let classes: string = '';
 
 	let inputEl: HTMLInputElement | null = null;
 
-	async function reveal() {
-		open = true;
-		// The press was the start of typing, so the caret is put where the press said it should
-		// be rather than asking for a second one. `tick` because the field does not exist yet.
-		await tick();
-		inputEl?.focus();
-	}
+	onMount(() => inputEl?.focus());
 
-	// Left empty, it folds itself back up: an empty field is the button with extra width, and
-	// nothing is lost by taking that width back. Left with a query it stays out, because the
-	// matches below are being read against what is typed and there would be no way to see, let
-	// alone edit, what had produced them.
+	// Left empty, it folds itself back up: an empty field is a row of nothing, and the shares it
+	// is standing in front of are worth more than it is. Left with a query it stays out, because
+	// the matches below are being read against what is typed and there would be no way to see,
+	// let alone edit, what had produced them.
 	function handleBlur() {
 		if (!value.trim()) open = false;
 	}
 
-	// Escape is the way back out with a query in hand: it drops the query, which is what folds
+	// Escape is the way back out with a query in hand: it drops the query, which is what takes
 	// the matches away too, and then folds the field.
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key !== 'Escape') return;
@@ -53,26 +42,12 @@
 	}
 </script>
 
-{#if open}
-	<input
-		bind:this={inputEl}
-		type="search"
-		class={classNames('input input-bordered input-sm w-40 sm:w-56', classes)}
-		placeholder={$_('map.search.placeholder')}
-		bind:value
-		on:blur={handleBlur}
-		on:keydown={handleKeydown}
-	/>
-{:else}
-	<button
-		type="button"
-		class={classNames(
-			'btn btn-square btn-outline btn-sm flex-none border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white',
-			classes
-		)}
-		aria-label={$_('map.search.label')}
-		on:click={reveal}
-	>
-		<img src="/assets/icons/lorc/magnifying-glass.svg" class="size-4" alt="" />
-	</button>
-{/if}
+<input
+	bind:this={inputEl}
+	type="search"
+	class={classNames('input input-bordered input-sm w-full', classes)}
+	placeholder={$_('map.search.placeholder')}
+	bind:value
+	on:blur={handleBlur}
+	on:keydown={handleKeydown}
+/>

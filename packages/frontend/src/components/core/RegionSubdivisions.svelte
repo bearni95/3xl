@@ -1,51 +1,56 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
-	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
-	import MapBreadcrumb from '$components/core/MapBreadcrumb.svelte';
+	import { _ } from 'svelte-i18n';
+	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
+	import RegionListRow from '$components/core/RegionListRow.svelte';
 	import ShowShareGrid from '$components/core/ShowShareGrid.svelte';
+	import { REGION_TYPE_KEYS } from '$components/core/region-types';
 	import type { MapBoosterBox } from '$types/map.type';
+	import type { RegionType } from '$utils/geo/region-tree';
 
-	// What the open region divides into (see regionLevelNodes), already lettered by the
-	// caller — and already without the head among them, since the caller is what tallies the
-	// shares over exactly these rows: exactly the shape the breadcrumb bar is handed, because
-	// it is drawn by exactly the component that bar draws its steps with. A place on this map
-	// is one thing — the tile in its own colour, its name, and the show it flies — and a
-	// column of them is that bar stood on end, which is what the path already becomes when it
-	// is too long for its row (see the dropped column in MapBreadcrumbs).
-	export let rows: {
+	// One place as this column draws it: the tile in its own colour, its name, and the show it
+	// flies — the shape the breadcrumb bar is handed, because it is drawn by exactly the
+	// component that bar draws its steps with (see RegionListRow). A column of them is that bar
+	// stood on end, which is what the path already becomes when it is too long for its row (see
+	// the dropped column in MapBreadcrumbs). Plus, where the booster window has one for it, the
+	// box that place has waiting — the very `MapBoosterBox` the map is standing on that town.
+	// Only a town ever has one: nothing coarser than a municipality is de festa.
+	type Row = {
 		key: string;
 		label: string;
 		showName: string | null;
 		showId: number | null;
 		tileClasses: string | null;
-		// The box that place has waiting, where the window has one for it — the very box the
-		// map is standing on that town at this moment, off the same `MapBoosterBox` a pin is
-		// handed (see TownPin). Only a town ever has one: nothing coarser than a municipality
-		// is de festa. Absent everywhere else, which is every row of every other tier.
 		box?: MapBoosterBox | null;
-	}[] = [];
+	};
+
+	// What the open region divides into (see regionLevelNodes), already lettered by the caller —
+	// and already without the head among them, since the caller is what tallies the shares over
+	// exactly these rows.
+	export let rows: Row[] = [];
 	// The place the column is about, at the head of it with a rule under it: where the map is
 	// looking, which is a different kind of thing from the rows below and is what a reader
 	// looks for first. It stands whatever tier that place is — a town, which is one of the
 	// sisters listed under it, and every coarser region, which is not one of its own
 	// subdivisions — so the column always reads the same way round: this place, then the
 	// level under it.
-	export let current: {
-		key: string;
-		label: string;
-		showName: string | null;
-		showId: number | null;
-		tileClasses: string | null;
-		// The box that place has waiting, exactly as a row below carries one and off the same
-		// `MapBoosterBox`: the head is a row like the rest, and a town at the head of the column
-		// is de festa or is not on the same terms as a town listed under it. Only a town ever
-		// has one here either.
-		box?: MapBoosterBox | null;
-	} | null = null;
+	export let current: Row | null = null;
 	// How the rows below divide between the shows they fly, tallied over exactly those rows
-	// by the caller (see ShowShareGrid). Empty says nothing rather than saying nought.
+	// by the caller (see ShowShareGrid). Empty draws the row anyway, since the way to search
+	// is the last cell of it.
 	export let shares: { id: number; name: string; share: number }[] = [];
+	// Every place on the map matching what is typed in the field, lettered exactly as `rows`
+	// are and carrying the tier each one is, which is what they are grouped under. The search
+	// is the caller's — the tree is theirs and so is the matching — and while there is a query
+	// these stand in the column where the level would be: a search is a list of places, and
+	// this column is where this map lists places.
+	export let searchRows: (Row & { type: RegionType })[] = [];
+	// What is being looked for, and whether the field is out. Bound both ways: the glyph on the
+	// shares row raises the field, the field folds itself when it is left empty, and the caller
+	// is what has to know, since the caller is what matches.
+	export let searchQuery: string = '';
+	export let searchOpen: boolean = false;
 	export let classes: string = '';
 
 	// Picking one is picking a region, which is the map's own gesture and not this
@@ -81,6 +86,24 @@
 	// which is the reader's own press read back to them as a fact about the map.
 	$: visibleRows = activeShow === null ? rows : rows.filter((row) => row.showId === activeShow);
 
+	// Whether the column is showing what a search turned up instead of the level: a query, and
+	// not the field being out. An empty field is somebody about to type, and the level is what
+	// they were reading a moment ago.
+	$: searching = searchQuery.trim().length > 0;
+
+	// The tiers a search is grouped under, finest first. A place people look for by name is
+	// nearly always a town — it is the tier there are thousands of and the only one anybody
+	// lives in — so the towns are the answer and everything coarser is context under it. The
+	// same order the drill runs in, read upwards.
+	const SEARCH_TIERS: RegionType[] = ['Municipality', 'Comarca', 'Province', 'Territory'];
+
+	// The matches under their tiers, and only the tiers that caught something: a heading over
+	// nothing is the column saying it has an answer of that kind when it has not.
+	$: searchGroups = SEARCH_TIERS.map((type) => ({
+		type,
+		rows: searchRows.filter((row) => row.type === type)
+	})).filter((group) => group.rows.length > 0);
+
 	// The width of the box a row carries, which is how its height is said: give a box either of
 	// the two and it takes the other (see BoosterBox's 30:37), and the width is the one the
 	// column has to know before it can lay a row out. The 2.5rem in it is how tall an entry
@@ -103,51 +126,16 @@
 			step it is on — the same `current`, the same `aria-current`, since it is the same
 			statement about the same place. Pressed like any other row: the view can be taken off
 			the place while the column goes on listing it, so there is somewhere for it to go.
-			Laid out as a row of the list is and not as a bare button, because it carries what a
-			row carries: the press is the name, and the box beside it stands outside the button,
-			since a button holds phrasing content and a box is a block of planes. -->
-		<div class="flex items-stretch rounded-md hover:bg-white/10">
-			<button
-				type="button"
-				aria-current="page"
-				class="block min-w-0 flex-1 px-2 py-1 text-left"
-				on:click={() => dispatch('select', { key: current.key })}
-			>
-				<MapBreadcrumb
-					label={current.label}
-					showName={current.showName}
-					showId={current.showId}
-					tileClasses={current.tileClasses}
-					current
-					truncated
-				/>
-			</button>
-
-			{#if current.box}
-				<!-- The box the place at the head has waiting, drawn exactly as a row's is and at
-					exactly its size: the same stated width returning the same row height through the
-					box's own ratio (see BOX_WIDTH), so the head and the rows under it line up down the
-					column's far edge.
-					Pressed for the box's own click and not the row's — the town's pack, which is what
-					a click on this same `MapBoosterBox` does wherever it is drawn (see `onClick`). So
-					it is a button beside the name's button rather than a picture inside it, and it
-					takes its accessible name from the one the box is printed with. -->
-				<button
-					type="button"
-					class="flex-none pr-2"
-					on:click={() => current?.box?.onClick?.()}
-				>
-					<BoosterBox
-						coverUrl={current.box.coverUrl ?? null}
-						logoUrl={current.box.logoUrl ?? null}
-						showId={current.box.showId ?? null}
-						locationName={current.box.locationName ?? null}
-						light={current.box.light ?? false}
-						classes={BOX_WIDTH}
-					/>
-				</button>
-			{/if}
-		</div>
+			Drawn by the very component the list below is drawn with, box and all: the head is a
+			row like the rest, and a town at the head of the column is de festa or is not on the
+			same terms as a town listed under it. `current` here is the row being the place the
+			map is on, which is what takes the fill. -->
+		<RegionListRow
+			row={current}
+			current
+			boxWidth={BOX_WIDTH}
+			onSelect={(key) => dispatch('select', { key })}
+		/>
 
 		<!-- Whatever else the place at the head has to say for itself, between its name and the
 			level below it: the caller's, because what a place carries depends on what kind of
@@ -185,89 +173,99 @@
 		The caller's, since which cut that is is the map's business and not this column's. -->
 	<slot name="path" />
 
-	{#if shares.length}
-		<!-- What the list below is made of, before the list itself: the shows those places fly
-			and how much of them each has. It stands under the rule with the rows rather than
-			above it with the head, because it is about them and not about the place they are
-			under. And it is how the list is narrowed to one of them: the row that says what the
-			level is made of is the row that says show me that part of it. -->
-		<!-- It is handed the whole division whatever is picked, and the tally is the caller's
-			over every row: a share is what this level is, not what is left of it after a press. -->
-		<ShowShareGrid
-			{shares}
-			active={activeShow}
-			on:select={(event) => toggleShow(event.detail.id)}
-		/>
+	<!-- What the list below is made of, before the list itself: the shows those places fly and
+		how much of them each has. It stands under the rule with the rows rather than above it
+		with the head, because it is about them and not about the place they are under. And it is
+		how the list is narrowed to one of them: the row that says what the level is made of is
+		the row that says show me that part of it.
+		It is handed the whole division whatever is picked, and the tally is the caller's over
+		every row: a share is what this level is, not what is left of it after a press.
+		Drawn even with nothing to divide, because the way to search is the last cell of it. -->
+	<ShowShareGrid
+		{shares}
+		active={activeShow}
+		on:select={(event: CustomEvent<{ id: number }>) => toggleShow(event.detail.id)}
+	>
+		<!-- The looking glass, as the last cell of that grid. It stood at the far end of the
+			breadcrumb bar over the map, where it had to fold a field away into a glyph to leave the
+			path any room; here the glyph is a cell like the shares beside it and the field comes
+			down on the row under it, with the whole width of the column to be typed in.
+			On the shares row because that row is the one that acts on the list below: the cells
+			beside it narrow the list to a show, and this goes and finds places that are not on this
+			level at all. Lettered like a share cell rather than as an outlined square — a cell is
+			the size a mark is read at in this column, and the square was the bar's answer to a row
+			of 32px tiles. -->
+		<button
+			slot="end"
+			type="button"
+			class="flex items-center justify-center rounded-md p-1 hover:bg-white/10"
+			aria-label={$_('map.search.label')}
+			aria-expanded={searchOpen}
+			on:click={() => (searchOpen = true)}
+		>
+			<img src="/assets/icons/lorc/magnifying-glass.svg" class="w-full" alt="" />
+		</button>
+	</ShowShareGrid>
+
+	{#if searchOpen}
+		<!-- The field itself, on its own row under the glyph that asked for it. It puts itself
+			away when it is left empty and takes the matches with it on Escape (see
+			LocationSearchBox); what it holds is the caller's, since the caller is what matches it
+			against the tree. -->
+		<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} classes="my-1" />
 	{/if}
 
-	{#each visibleRows as row (row.key)}
-		<!-- Two presses on one row: the name, which opens the town, and the box, which opens what
-			the town has waiting. They were one press for a while — the box was a picture and the
-			row was pressed to the same end, the pack being reached by opening the town — but a box
-			is the mark this game asks to be tapped, and a picture of one that answers by drilling
-			the map is not that mark. So the whole row lights on hover, and each half does its own
-			thing. The box stands outside the name's button either way: a button holds phrasing
-			content, which is why the crumb in it is spans throughout (see MapBreadcrumb), and a
-			box is a block of planes. The row is a plain flex box where there is nothing to stand
-			beside the name, which is every row of every tier above the municipality. -->
-		<!-- The one row among the sisters that is the place the map is open on takes the primary
-			fill, so it can be found in the list without being counted along it. Only a town is
-			ever among its own level — every coarser region is listed above what it divides into,
-			never beside it — so this is the town's own row and there is at most one of them.
-			The head above says the same place, but a head is where a reader looks first and not
-			where they look for a town: the list is what is read against, and a place in it that
-			is not marked in it is not in it. The fill is the marking, so the ink over it is the
-			fill's own (see the crumb's second line, which takes it from here) and the box beside
-			it stands on the fill unchanged — a box is printed artwork and not ink. -->
-		<div
-			class={classNames(
-				'flex items-stretch rounded-md',
-				row.key === current?.key
-					? 'bg-primary text-primary-content hover:bg-primary/90'
-					: 'hover:bg-white/10'
-			)}
-		>
-			<button
-				type="button"
-				aria-current={row.key === current?.key ? 'page' : undefined}
-				class="block min-w-0 flex-1 px-2 py-1 text-left"
-				on:click={() => dispatch('select', { key: row.key })}
-			>
-				<MapBreadcrumb
-					label={row.label}
-					showName={row.showName}
-					showId={row.showId}
-					tileClasses={row.tileClasses}
-					truncated
-				/>
-			</button>
-
-			{#if row.box}
-				<!-- At the far end of the entry and as tall as the entry is. The height is the one
-					that is said here, and it is said as a width: a box hands back whichever of the two
-					it is not given (see BoosterBox's 30:37), and it is the width that has to be
-					settled before the row is laid out, since a flex item nobody has given a width is
-					measured by what is inside it — which for a box whose every figure is a share of
-					its own width is not a measurement at all, and came out wider than the column.
-					So the width is stated and the ratio returns the row's height: ROW_HEIGHT is the
-					crumb's own — a 32px tile in a row padded by 4 — which is what makes the box
-					exactly as tall as the entry rather than as tall as it can get away with.
-					Its own press, and not the row's: this is the same `MapBoosterBox` the map is
-					standing on that town, so it does here what it does there — raises that town's
-					pack (see its `onClick`), which opens the town on the way. The row beside it still
-					opens the town alone. It is a button and no longer a picture hidden from a screen
-					reader, and it is named by the name printed on the box itself. -->
-				<button type="button" class="flex-none pr-2" on:click={() => row.box?.onClick?.()}>
-					<BoosterBox
-						coverUrl={row.box.coverUrl ?? null}
-						logoUrl={row.box.logoUrl ?? null}
-						showId={row.box.showId ?? null}
-						locationName={row.box.locationName ?? null}
-						light={row.box.light ?? false}
-						classes={BOX_WIDTH}
-					/>
-				</button>
-			{/if}
-		</div>
-	{/each}
+	{#if searching}
+		<!-- What the search turned up, in place of the level: a search is a list of places, and
+			this column is where this map lists places, so the matches are the very rows the level
+			is drawn with rather than cards on a plate of their own at the other corner of the
+			screen (which is where they used to land — a question asked at the top right, answered
+			at the top left).
+			Under their tiers, finest first: a name typed into this field is nearly always a town's,
+			so the towns are the answer and everything coarser is context under it. Each tier is a
+			fold, open as it arrives — the reader asked for these, so nothing is hidden to begin
+			with — and shut for the ones they are not looking at. `<details>` because that is what a
+			fold is in a document: it remembers its own state, it is keyboard-operable and it needs
+			nothing held here. -->
+		{#each searchGroups as group (group.type)}
+			<details open class="group">
+				<summary
+					class="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold hover:bg-white/10 [&::-webkit-details-marker]:hidden"
+				>
+					<!-- The one mark a fold needs: which way it is facing. Turned by the group's own
+						open state rather than by anything held in the script. -->
+					<span class="text-base leading-none transition-transform group-open:rotate-90">›</span>
+					<span>{$_(REGION_TYPE_KEYS[group.type])}</span>
+					<span class="opacity-60 tabular-nums">{group.rows.length}</span>
+				</summary>
+				<div class="flex flex-col gap-0.5">
+					{#each group.rows as row (row.key)}
+						<RegionListRow
+							{row}
+							current={row.key === current?.key}
+							marked={row.key === current?.key}
+							boxWidth={BOX_WIDTH}
+							onSelect={(key) => dispatch('select', { key })}
+						/>
+					{/each}
+				</div>
+			</details>
+		{:else}
+			<p class="px-2 py-4 text-center text-xs opacity-60">{$_('map.search.empty')}</p>
+		{/each}
+	{:else}
+		<!-- The level itself: every place the open region divides into, or the ones flying the
+			show picked above. The row that is the place the map is open on takes the fill, so it
+			can be found among its sisters without being counted along them — only a town is ever
+			among its own level, so there is at most one of them. -->
+		{#each visibleRows as row (row.key)}
+			<RegionListRow
+				{row}
+				current={row.key === current?.key}
+				marked={row.key === current?.key}
+				boxWidth={BOX_WIDTH}
+				onSelect={(key) => dispatch('select', { key })}
+			/>
+		{/each}
+	{/if}
 </div>
