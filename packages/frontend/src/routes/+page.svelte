@@ -3060,8 +3060,23 @@
 		It is the one place the map says a level as a list — the crumbs above it say the path
 		down and the pins say the places themselves, and neither can be read for what a region
 		is made of. It scrolls on its own, since a comarca of forty towns is a longer column
-		than the window. -->
-	<aside class="w-[400px] flex-none overflow-y-auto bg-base-100">
+		than the window.
+		Out of focus while a full view is up, and back into it when that view goes: this column
+		is the map's furniture like the bar above it and the pins on it, and a list of towns read
+		sharply beside a sheet is chrome competing with the thing it was covered by (see
+		CHROME_BLUR). It blurs where it stands rather than being unmounted the way the plates are,
+		because it is a column of the row and not a plate over the map: taking it out would hand
+		the map its 400px for as long as a sheet was up and re-frame the map behind the sheet,
+		which is the one thing no full view does. So it is classes on the element itself, to the
+		same 8px over the same 250ms the plates and the pins move by — `blur-sm` is that 8px —
+		and `filter,opacity` alone are named, so nothing else about the column is eased. -->
+	<aside
+		class={classNames(
+			'w-[400px] flex-none overflow-y-auto bg-base-100',
+			'transition-[filter,opacity] duration-[250ms] ease-in-out',
+			{ 'blur-sm opacity-0': $fullScreenModalOpen }
+		)}
+	>
 		<RegionSubdivisions
 			rows={subdivisions}
 			current={subdivisionCurrent}
