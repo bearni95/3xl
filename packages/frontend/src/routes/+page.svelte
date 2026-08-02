@@ -945,7 +945,18 @@
 	// once the bar has got all the way down (see regionLevelNodes). It follows `openRegion`
 	// and not the URL selection alone, so the column walks with the zoom exactly as the
 	// crumbs above the map do.
-	$: subdivisions = regionLevelNodes(regionNodes, openRegion);
+	//
+	// Lettered exactly as a crumb is, off the same node fields and into the same shape,
+	// because it is drawn by the same component: a place on this map is its tile, its name
+	// and the show it flies, whether it is being named as a step of the path or as one of
+	// the places the open region is made of.
+	$: subdivisions = regionLevelNodes(regionNodes, openRegion).map((node) => ({
+		key: node.key,
+		label: restoreCatalanArticle(node.name),
+		showName: node.show?.name ?? null,
+		showId: node.show?.id ?? null,
+		tileClasses: node.color ? pinColorClasses[node.color] : null
+	}));
 
 	// --- The open municipality's deterministic "house team" ---------------------
 	// A leaf region (a municipality) has no children to drill into; instead of an
@@ -2780,7 +2791,7 @@
 		is made of. It scrolls on its own, since a comarca of forty towns is a longer column
 		than the window. -->
 	<aside class="w-[400px] flex-none overflow-y-auto bg-base-100">
-		<RegionSubdivisions nodes={subdivisions} on:select={(event) => open(event.detail.key)} />
+		<RegionSubdivisions rows={subdivisions} on:select={(event) => open(event.detail.key)} />
 	</aside>
 </div>
 
