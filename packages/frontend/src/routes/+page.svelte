@@ -3120,14 +3120,15 @@
 					{/if}
 				</svelte:fragment>
 
+				<!-- No box handed over, so none is drawn: the town at the head is the town the map
+					is standing on, and its box is already up on the terrain beside this column, at
+					the point it is de festa on. Printing it here as well made one festa two marks,
+					and the one in the column was the one that could not be opened where it stood.
+					The rows below keep theirs — those are towns the map is not on, and the box on
+					such a row is the only place their festa is said. -->
 				<svelte:fragment slot="detail">
 					{#if townDetailPin}
-						<TownPin
-							marker={townDetailPin}
-							box={townDetailPin.box ?? null}
-							named={false}
-							classes="py-1"
-						/>
+						<TownPin marker={townDetailPin} named={false} classes="py-1" />
 					{/if}
 				</svelte:fragment>
 			</RegionSubdivisions>
