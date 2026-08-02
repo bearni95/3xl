@@ -95,9 +95,15 @@
 		{#if $$slots.default}
 			<slot />
 		{:else if showName}
+			<!-- Faded rather than white at 70%: a crumb is drawn on whatever it is stood on, and
+				the one place that is not the map's own dark surface is the head of the column
+				beside it, which carries the primary fill to say the map is looking at that place.
+				White ink on that fill is not readable, so the second line takes the ink of the
+				first and only steps back from it — which on every dark surface is the very colour
+				it was spelled as. -->
 			<span
 				class={classNames(
-					'text-xs font-medium text-white/70',
+					'text-xs font-medium opacity-70',
 					truncated ? 'truncate' : 'whitespace-nowrap'
 				)}
 			>

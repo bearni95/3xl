@@ -68,11 +68,16 @@
 		<!-- Where the map is, at the head of its own level and lettered as the bar letters the
 			step it is on — the same `current`, the same `aria-current`, since it is the same
 			statement about the same place. Pressed like any other row: the view can be taken off
-			the place while the column goes on listing it, so there is somewhere for it to go. -->
+			the place while the column goes on listing it, so there is somewhere for it to go.
+			Filled in the primary rather than left on the surface the rows stand on: a town is
+			read here among its own sisters, and where the head and the rows are the same kind of
+			thing said in the same letters, the position in the column is not enough to say which
+			one the map is on. The fill is the marking, so the ink under it is the fill's own
+			(see the crumb's second line, which takes it from here). -->
 		<button
 			type="button"
 			aria-current="page"
-			class="block w-full rounded-md px-2 py-1 text-left hover:bg-white/10"
+			class="block w-full rounded-md bg-primary px-2 py-1 text-left text-primary-content hover:bg-primary/90"
 			on:click={() => dispatch('select', { key: current.key })}
 		>
 			<MapBreadcrumb
