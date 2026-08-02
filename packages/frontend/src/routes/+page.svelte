@@ -965,7 +965,7 @@
 	 * with each position filled by whatever step of the path stands at it.
 	 *
 	 * Written as a function because there are two paths now — the one the map is looking down,
-	 * and the one the column beside it lists a level of (see `listingCrumbs`) — and two bars
+	 * and the cut above it that heads the column beside it (see `aboveCrumbs`) — and two bars
 	 * built from two copies of this would be two bars that could come to letter the same place
 	 * differently. The plurality is passed in rather than read off the closure so that a
 	 * statement calling this names it and re-runs when it changes.
@@ -1057,27 +1057,24 @@
 		(node) => node.key !== subdivisionCurrent.key
 	);
 
-	// Whose level that is: the place the listed rows are the inside of. Not always the place
-	// at the head of the column — a town is listed with its own sisters, so what they are all
-	// the inside of is the comarca above it, and everywhere else it is the open region itself.
-	// The top view when there is neither, which is what listing the territories is a listing
-	// of. It is `regionLevelNodes`' own rule read the other way round: that function answers
-	// which places, this answers whose, and they have to be the same answer or the column
-	// would be headed by a place the rows under it are not in.
-	$: listingNode =
-		openNode?.type === 'Municipality'
-			? (nodePath(regionNodes, openNode.key).at(-2) ?? null)
-			: openNode;
+	// The path the column beside the map is headed by: the way down to the place the open
+	// region sits *inside*, which is the cut above it and never the open region itself. The
+	// head row of that column has already named where the map is — a bar under it saying the
+	// same place again is the column saying Catalunya over a list Catalunya heads — so what
+	// the bar is for is the one thing the head cannot say, which is where that place is. Its
+	// last step is therefore the parent: the comarca over a town, the province over a comarca,
+	// and the Països Catalans over a territory, there being nothing above a territory but the
+	// whole of them.
+	//
+	// Empty at the top view, which is the one place with nothing above it at all: the column is
+	// headed by the Països Catalans and there is no superior cut to name. The bar is left off
+	// rather than drawn saying the same thing twice (see the `path` slot).
+	$: abovePath = openNode ? nodePath(regionNodes, openNode.key).slice(0, -1) : null;
 
-	// And the path down to it, as the bar over the map letters its own (see crumbLadder): the
-	// whole way from the Països Catalans to the place whose level is listed below, drawn in the
-	// column by the very component that draws it over the map — so it folds itself down to one
-	// step and a dots button when 400px cannot hold five, which is what that bar does on a
-	// narrow screen.
-	$: listingCrumbs = crumbLadder(
-		listingNode ? nodePath(regionNodes, listingNode.key) : [],
-		mapPlurality
-	);
+	// And that path lettered as the bar over the map letters its own (see crumbLadder), so a
+	// place is the same tile, name and show wherever it is named. A path of no regions is the
+	// root crumb by itself, which is exactly what a territory's superior cut is.
+	$: aboveCrumbs = abovePath ? crumbLadder(abovePath, mapPlurality) : null;
 
 	// Lettered exactly as a crumb is, off the same node fields and into the same shape,
 	// because it is drawn by the same component: a place on this map is its tile, its name
@@ -3164,17 +3161,22 @@
 					{/if}
 				</svelte:fragment>
 
-				<!-- Which place the rest of the column is the inside of, said as the path down to it:
-					the same bar that stands over the map, given the listing location's path rather
-					than the view's (see listingCrumbs). Folded outright and not merely when the room
-					runs out: this bar is a heading over a list of places, and a row of five crumbs
-					standing over a column of places is a second column of places — so it is the dots
-					and the place being listed, at every width. The rest of the path is where the
-					dots always put it, in the column they drop. Pressed for what the bar over the
-					map is pressed for: a step opens its region, an empty rung takes the map to that
-					tier's zoom. -->
+				<!-- Where the place at the head of this column is, said as the path down to what it
+					sits inside: the same bar that stands over the map, given the cut above the open
+					region rather than the path down to it (see abovePath). The head has already named
+					the place, so the badge on this bar is its parent — the Països Catalans over
+					Catalunya, and never Catalunya over itself. Nothing at all at the top view, which
+					is the one place with nothing above it.
+					Folded outright and not merely when the room runs out: this bar is a heading over a
+					list of places, and a row of five crumbs standing over a column of places is a
+					second column of places — so it is the dots and the one badge, at every width. The
+					rest of the path is where the dots always put it, in the column they drop. Pressed
+					for what the bar over the map is pressed for: a step opens its region, an empty
+					rung takes the map to that tier's zoom. -->
 				<svelte:fragment slot="path">
-					<MapBreadcrumbs crumbs={listingCrumbs} onSelect={open} onZoom={zoomToTier} folded />
+					{#if aboveCrumbs}
+						<MapBreadcrumbs crumbs={aboveCrumbs} onSelect={open} onZoom={zoomToTier} folded />
+					{/if}
 				</svelte:fragment>
 			</RegionSubdivisions>
 		</aside>

@@ -111,14 +111,12 @@
 		{/if}
 	{/if}
 
-	<!-- Whose level the rest of the column is, at the head of it: the path down to the place
-		the rows below are the inside of, which is the open region everywhere except on a town —
-		a town is listed among its own sisters, and what they are all the inside of is the region
-		above them. It stands under the rule with the rows and above the shares, because
-		everything below the rule is about that place and this says which place it is.
-		The caller's, and drawn by the caller with the very bar that stands over the map, so a
-		path 400px cannot hold folds itself to one step and a dots button rather than being cut
-		short — see MapBreadcrumbs. -->
+	<!-- Where the place at the head of this column is: the cut it sits inside, which is the one
+		thing about that place its own row cannot say — a row names a place, and naming it twice
+		over is not naming where it is. It stands under the rule with the rows rather than up
+		with the head, because what is under the rule is that place's surroundings: what it is
+		one of, and what it is made of.
+		The caller's, since which cut that is is the map's business and not this column's. -->
 	<slot name="path" />
 
 	{#if shares.length}
