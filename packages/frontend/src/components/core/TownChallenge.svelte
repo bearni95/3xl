@@ -4,10 +4,14 @@
 	import Countdown from '$components/core/Countdown.svelte';
 	import type { MapChallenge } from '$types/map.type';
 
-	// The lower half of a pin's plate, under the line naming the place: how far this player
-	// has got towards taking it, and the one control that acts on it, stacked — the standing
-	// on its own row, the control under it, so the reading and the doing are not competing
-	// for one line.
+	// The lower half of a pin's plate, under the line naming the place: how far this player has
+	// got towards taking it, and the one control that acts on it, across one row of three — the
+	// standing in the first third, the control in the two beside it. They were stacked, on the
+	// reasoning that a reading and a doing should not compete for a line; what that cost is the
+	// height, two full-width bands where the block says one thing about one town, and the two
+	// are not competing so much as answering each other: this is how far you have got, and this
+	// is the way to get further. The wider share goes to the control because a control carries
+	// words and the bar carries two numbers written inside itself.
 	//
 	// It carries no surface of its own. It used to stand apart at the foot of the pin and so
 	// had to letter itself onto something readable over satellite imagery; on the plate it is
@@ -29,14 +33,21 @@
 	// the button can come back without a reload.
 	export let onUnlock: (() => void) | undefined = undefined;
 	export let classes: string = '';
+
+	// Whether there is anything to stand beside the bar. A town cooling down has the countdown
+	// there instead of the button, and a town with neither — the plate over the arena's board,
+	// where a fight already under way is not a fight to be started — has an empty two thirds of
+	// a row, which is why the bar takes the whole of it in that case.
+	$: control = Boolean(button) || Boolean(unlocksAt);
 </script>
 
-<div
-	class={classNames(
-		'flex flex-col items-center justify-center gap-1.5',
-		classes
-	)}
->
+<!-- One row of three. The bar is a picture that fills whatever width it is given and the
+	control is words that need enough of one, so the split is a third to the reading and two
+	thirds to the doing — a ratio rather than two numbers, so the block answers whatever width
+	it is laid in: 400px of a column beside the map, or the 240px of a pin's plate.
+	Centred across the row, since the two are of different heights and neither is the line the
+	other is set on. -->
+<div class={classNames('grid grid-cols-3 items-center gap-1.5', classes)}>
 	<!-- The same standing the sidebar's tables count out, drawn and said at once: wins
 		banked against wins needed, as how much of the town has been taken, with the count
 		itself standing in the bar. The picture is what carries at the distance a pin is
@@ -50,8 +61,15 @@
 		measured from `value` and `max`, which is not something a class can say). So the
 		element keeps the drawing and a span over it keeps the lettering, both in the same
 		box. White with a shadow under it, since the type crosses the filled part and the
-		empty part and has to read on both. -->
-	<div class="relative w-full" title={$_('map.challenge.siege')}>
+		empty part and has to read on both.
+
+		The first third of the row, or the whole of it where there is no control to stand beside
+		it: a bar squeezed into a third with two thirds of nothing after it is a row that has
+		lost something rather than a row of one thing. -->
+	<div
+		class={classNames('relative w-full', control ? 'col-span-1' : 'col-span-3')}
+		title={$_('map.challenge.siege')}
+	>
 		<progress
 			class="progress progress-primary block h-6 w-full"
 			value={siege.wins}
@@ -64,10 +82,11 @@
 		</span>
 	</div>
 
+	<!-- The two thirds beside it, whichever of the two is standing there. -->
 	{#if button}
 		<button
 			type="button"
-			class="btn btn-primary btn-sm w-full flex-none"
+			class="btn btn-primary btn-sm col-span-2 w-full"
 			disabled={button.disabled}
 			title={button.title}
 			on:click={button.onClick}
@@ -78,7 +97,7 @@
 		<Countdown
 			until={unlocksAt}
 			title={$_('map.challenge.cooldown')}
-			classes="badge badge-ghost badge-sm flex-none font-semibold"
+			classes="badge badge-ghost badge-sm col-span-2 font-semibold"
 			on:elapsed={() => onUnlock?.()}
 		/>
 	{/if}

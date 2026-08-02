@@ -149,15 +149,6 @@
 			{/if}
 		</div>
 
-		<!-- How far the place at the head has been taken and the one control that acts on it,
-			directly under the row that names it and across the whole width of the column: the
-			caller's, because only a town has either. A row of its own rather than a block at the
-			end of the name's — the standing is two things stacked, a reading and a doing, and
-			hanging them off the end of a line of type made a column of the row that names the
-			place and left the name set against the middle of it. Here the head reads down
-			instead: this is where you are, and this is what is left to do about it. Empty for
-			every tier that has no such thing to say, which costs the column a row of nothing. -->
-		<slot name="standing" />
 		<!-- Whatever else the place at the head has to say for itself, between its name and the
 			level below it: the caller's, because what a place carries depends on what kind of
 			place it is — a town has a side standing on it, an occupant and a fight to be had,
@@ -165,6 +156,17 @@
 			the rule, so it reads as more about that place and never as the first of its
 			subdivisions. -->
 		<slot name="detail" />
+
+		<!-- How far the place at the head has been taken and the one control that acts on it,
+			across the whole width of the column: the caller's, because only a town has either.
+			Under the side standing on the town rather than over it — the side is who would have
+			to be beaten and the standing is how far beating them has got, so the reading follows
+			what it is a reading of, and the button that starts the fight is the last thing in the
+			block and the thing nearest the list the reader came from. A row of its own rather
+			than a block at the end of the name's, that having made a column of the row that names
+			the place. Empty for every tier with no such thing to say, which costs the column a
+			row of nothing. -->
+		<slot name="standing" />
 
 		<!-- The rule that says the rest of the column is a different thing from the row above
 			it: not more of the level, but the level under it. Drawn only when there is a level
