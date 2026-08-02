@@ -67,7 +67,7 @@
 	{#if button}
 		<button
 			type="button"
-			class="btn btn-primary btn-md w-full flex-none"
+			class="btn btn-primary btn-sm w-full flex-none"
 			disabled={button.disabled}
 			title={button.title}
 			on:click={button.onClick}
