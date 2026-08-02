@@ -52,6 +52,35 @@
 	// column's: the page answers it exactly as it answers a pin or a crumb.
 	const dispatch = createEventDispatcher<{ select: { key: string } }>();
 
+	// The show the list is being read through, picked off the shares above it. Held here and
+	// nowhere else: it changes nothing about the map, nothing about the URL and nothing any
+	// other surface can see — it is this column being read one show at a time, which is a
+	// question about the list and lives with the list.
+	let activeShow: number | null = null;
+
+	// Pressing the picked show again clears it, pressing another turns the list over to that
+	// one. So there is one gesture and it is its own undo, and the reader can never be left
+	// with a filter they have to find the way out of.
+	function toggleShow(id: number) {
+		activeShow = activeShow === id ? null : id;
+	}
+
+	// A filter belongs to the list it was picked over. Walk into another region and the list is
+	// another list — of another level, in another place — so the show goes with the old one
+	// rather than silently hiding most of what has just been opened. `current` is named in the
+	// statement so it re-runs when the column changes place.
+	let filteredFor: string | null = null;
+	$: if ((current?.key ?? null) !== filteredFor) {
+		filteredFor = current?.key ?? null;
+		activeShow = null;
+	}
+
+	// The rows as they are drawn: all of them, or the ones flying the picked show. The shares
+	// above are deliberately left whole — they are the division of the level, and a division
+	// recomputed over a filtered list would say 100% of one show the moment one was picked,
+	// which is the reader's own press read back to them as a fact about the map.
+	$: visibleRows = activeShow === null ? rows : rows.filter((row) => row.showId === activeShow);
+
 	// The width of the box a row carries, which is how its height is said: give a box either of
 	// the two and it takes the other (see BoosterBox's 30:37), and the width is the one the
 	// column has to know before it can lay a row out. The 2.5rem in it is how tall an entry
@@ -158,11 +187,18 @@
 		<!-- What the list below is made of, before the list itself: the shows those places fly
 			and how much of them each has. It stands under the rule with the rows rather than
 			above it with the head, because it is about them and not about the place they are
-			under. -->
-		<ShowShareGrid {shares} />
+			under. And it is how the list is narrowed to one of them: the row that says what the
+			level is made of is the row that says show me that part of it. -->
+		<!-- It is handed the whole division whatever is picked, and the tally is the caller's
+			over every row: a share is what this level is, not what is left of it after a press. -->
+		<ShowShareGrid
+			{shares}
+			active={activeShow}
+			on:select={(event) => toggleShow(event.detail.id)}
+		/>
 	{/if}
 
-	{#each rows as row (row.key)}
+	{#each visibleRows as row (row.key)}
 		<!-- Two presses on one row: the name, which opens the town, and the box, which opens what
 			the town has waiting. They were one press for a while — the box was a picture and the
 			row was pressed to the same end, the pack being reached by opening the town — but a box
