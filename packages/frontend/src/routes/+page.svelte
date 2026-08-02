@@ -858,12 +858,11 @@
 	// region, which is the whole of the Països Catalans.
 	$: openRegion = topPicked ? null : (selected ?? effectiveSelected);
 
-	// The breadcrumb drill path down to (and including) the open region: the URL
-	// path when a region is clicked, else the zoom focus path minus its frontier pin. The
-	// top view is a path of no regions at all, so the bar is the root crumb by itself —
-	// and it stays that way while the map settles, rather than re-growing the focus path
-	// the click was asking to leave.
-	$: displayPath = topPicked ? [] : selected ? openPath : focusPath.slice(0, -1);
+	// The drill path down to (and including) the open region was worked out here — the URL
+	// path when a region is clicked, else the zoom focus path minus its frontier pin — for the
+	// bar of crumbs that stood over the map. There is no such bar: the one path this page
+	// letters is the cut ABOVE the open region, at the head of the column beside the map (see
+	// `abovePath`), and that one is walked off the node rather than off the view.
 
 	// Free-text search across every location in the whole tree (all tiers), matched
 	// against each region's displayed name (case- and accent-insensitive). While the
@@ -904,9 +903,9 @@
 		open(key);
 	}
 
-	// The breadcrumb crumbs: a root crumb back to the top view, then one per
-	// ancestor down to the effective region. The last crumb is the current region
-	// and renders as plain text; the rest link back up to their tier.
+	// The crumbs: a root crumb back to the top view, then one per ancestor down to the region
+	// the bar is about. The last crumb is that region and renders as plain text; the rest link
+	// back up to their tier.
 	//
 	// Every crumb carries what the town panel is given for the town it is open on, because
 	// the bar letters a step the same way that panel letters its town: the show the place
@@ -914,7 +913,7 @@
 	// whatever the map itself says — the ruling team's show on a held town, the seeded
 	// plurality otherwise (see the ruling-show map), and above the municipality the
 	// plurality of the towns underneath. A place cannot fly one show on the map and another
-	// in the bar over it.
+	// in the bar naming it.
 	//
 	// The root crumb is the whole of the Països Catalans, which is the one step of the path
 	// with no region of its own: nothing in the tree stands for the lot of them, so its show
@@ -954,11 +953,14 @@
 	 * A path of nodes as the bar reads it: the root step, then the ladder of the four tiers
 	 * with each position filled by whatever step of the path stands at it.
 	 *
-	 * Written as a function because there are two paths now — the one the map is looking down,
-	 * and the cut above it that heads the column beside it (see `aboveCrumbs`) — and two bars
-	 * built from two copies of this would be two bars that could come to letter the same place
-	 * differently. The plurality is passed in rather than read off the closure so that a
-	 * statement calling this names it and re-runs when it changes.
+	 * Written as a function because there were two paths lettered this way — the one the map was
+	 * looking down, on the bar over the terrain, and the cut above it that heads the column
+	 * beside it (see `aboveCrumbs`) — and two bars built from two copies of this would be two
+	 * bars that could come to letter the same place differently. Only the second is left, and it
+	 * is still written as a function: what the ladder is is a way of lettering a path, and that
+	 * is worth saying once whether one path or two go through it. The plurality is passed in
+	 * rather than read off the closure so that a statement calling this names it and re-runs
+	 * when it changes.
 	 */
 	function crumbLadder(path: RegionNode[], plurality: ReturnType<typeof everyTownPlurality>) {
 		return [
@@ -980,21 +982,20 @@
 					showName: node.show?.name ?? null,
 					showId: node.show?.id ?? null,
 					tileClasses: node.color ? pinColorClasses[node.color] : null,
-					// The bottom of the ladder is the one step the map is on that is still worth
-					// pressing. Every tier above it either has a step above it to walk back to or an
-					// empty square below it to zoom into; a town has neither — it is the last rung,
-					// so once one is picked the bar has nothing that takes the map back down to it.
-					// And it needs one: a picked town is held by the bar however far the view then
-					// wanders (see displayPath), so the crumb goes on naming a place the map may no
-					// longer be anywhere near. It is pressed for what every other crumb is pressed
-					// for — frame the place it names — which for this tier is the municipality zoom.
+					// The bottom of the ladder is the one step still worth pressing. Every tier above
+					// it either has a step above it to walk back to or an empty square below it to
+					// zoom into; a town has neither — it is the last rung, so a bar that named one
+					// would have nothing that takes the map back down to it. It is pressed for what
+					// every other crumb is pressed for — frame the place it names — which for this
+					// tier is the municipality zoom. Nothing reaches it while the only bar left is
+					// the one over the column beside the map, which letters the cut ABOVE the open
+					// region and so never ends on a town; it is kept for the bar that does.
 					pressable: tier === 'Municipality'
 				};
 			})
 		];
 	}
 
-	$: crumbs = crumbLadder(displayPath, mapPlurality);
 
 	// The open location's own node and its plurality ("most seen") show. Surfaced on the
 	// corner's Location plate when the open region is a leaf municipality (the table there
@@ -2606,9 +2607,9 @@
 
 	// The whole ladder of regions the map centre stands in, root down to the town — the finest
 	// pins are the ones that reach every branch, so the path to the one nearest the centre is
-	// the path this view is inside. The crumbs are drawn off `displayPath`, which stops where
-	// the map has drilled to; this goes all the way down, because a tier the bar has not
-	// reached is exactly the one an empty position asks to be taken to.
+	// the path this view is inside. A bar's own crumbs stop where its path stops; this goes all
+	// the way down, because a tier the bar has not reached is exactly the one an empty position
+	// asks to be taken to.
 	$: centrePath = focusedPath(maxLevel, markerLevels, currentCenter, regionNodes);
 
 	// The whole map as one box: the coarsest rung of that ladder, and what a tier asked for
@@ -2784,38 +2785,36 @@
 				bind:clientHeight={topChromeHeight}
 				class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex flex-col gap-2"
 			>
-				<!-- Where the map is looking, and now the whole of what stands over the terrain. Full
-					width, at the head of everything: a path is read across, and the plates below it are
-					read down.
-					The location search sat at this bar's far end for a while, as a looking glass that
-					unfolded into a field, with its matches on a plate at the corner underneath. Both are
-					in the column beside the map now (see RegionSubdivisions): the glyph is a cell of the
-					shares row and the matches are that column's own rows, because looking for a place is
-					asking for a place on a list and the column is where this map lists places. -->
+				<!-- The whole of what stands over the terrain, and it is no longer about where the map
+					is looking: this row said that for a long time, as a bar of crumbs across the top,
+					and the column beside the map says it now — the open place at the head of it and the
+					path to what that place sits inside on the bar under (see the `path` slot below).
+					Two other things left this row the same way and for the same reason: the location
+					search, which was a looking glass at its far end that unfolded into a field with its
+					matches on a plate at the corner underneath, and is a cell of that column's shares
+					row answering in that column's own rows; and the path itself. Looking for a place and
+					naming a place are both asking about a list of places, and the column is where this
+					map lists places.
 
-				<!-- Out of focus while a full view is up over the map, and back into it when that view
+					Out of focus while a full view is up over the map, and back into it when that view
 					goes (see CHROME_BLUR). The wrapper is what the transition needs — a transition cannot
-					be put on a component — and now also the row the two bars stand in, so both go and come
-					back as one thing rather than blurring apart. No events of its own: each bar takes the
-					pointer back for itself. Unmounting them is what lets the way out play at all, and
-					costs nothing: what the crumbs draw is read off `crumbs` every time. -->
+					be put on a component — and also the row the two plates stand in, so both go and come
+					back as one thing rather than blurring apart. No events of its own: each plate takes
+					the pointer back for itself. Unmounting them is what lets the way out play at all, and
+					costs nothing: what they draw is read off the stores every time. -->
 				{#if !$fullScreenModalOpen}
-					<!-- The top row of the map's chrome: two bars side by side, the word first and the
-						path after it. It was one bar with the word standing inside it, which made the game's
-						name a step of the path — the first thing on a row whose whole subject is where the
-						map is looking, and lettered in a face nothing else on it is. It is its own plate
-						now, so the two plates say two things: this is the game, and this is where you are in
-						it. The plate is the crumbs' own, class for class (see MapBreadcrumbs), so the row
-						reads as one chrome standing at one height rather than as a bar with an ornament
-						beside it. It is `flex-none` and the path is what gives way beside it, since a path
-						collapses and a word does not.
+					<!-- The top row of the map's chrome: a plate at each end of it, the word at one and
+						the day's allowance with the menu at the other, and the terrain between them. It was
+						one bar with the word standing inside a path, which made the game's name a step of
+						that path; then two plates with the path filling the middle. The path is in the
+						column beside the map now, so what is left on the row is the two things that are
+						about the game rather than about where in it you are — which is why there is nothing
+						in the middle to look at, and the map is read there instead.
 
-						`items-stretch` is what makes the two the same height: the crumbs' bar is the taller
-						of them by a good deal — it stands 32px tiles and two lines of type in its steps,
-						where this plate holds one word — and stretching means the word's plate takes
-						whatever height that comes to rather than a number written here that would have to be
-						kept in step with it. Which tier the map is on changes what a crumb draws, so that
-						number is not even constant. -->
+						`items-stretch` is what makes the two the same height: the plate at the far end is
+						the taller of them — it stands a 32px button, where this one holds one word — and
+						stretching means the word's plate takes whatever height that comes to rather than a
+						number written here that would have to be kept in step with it. -->
 					<div transition:blur={CHROME_BLUR} class="flex items-stretch gap-2">
 						<!-- What it says and what size it is set at are two different things: the word is
 							"6xl" and the type is `2xl`, one flat size at every viewport rather than a ramp.
@@ -2868,167 +2867,173 @@
 							</span>
 						</div>
 
-						<MapBreadcrumbs
-							{crumbs}
-							onSelect={open}
-							onZoom={zoomToTier}
-							classes="pointer-events-auto min-w-0 flex-1"
+						<!-- The far end of the row: the day's allowance, and past it the way to everything
+							that is not the map. Both stand here for the same reason — this row is the one thing
+							always up over the terrain, so what a player reaches for however deep into the map
+							they are is reached for here.
+							The path stood between this and the badge, as the whole middle of the row: the ladder
+							of four tiers with each position filled by the step of the drill path standing at it,
+							and an outlined square for the rung after the last of them. It is in the column beside
+							the map (see the `path` slot below), which is where this game lists places and where
+							the open one is already named — so the path is read against the list it heads instead
+							of over terrain, and the row over the map is left saying the two things that are not
+							about where the map is looking.
+							It keeps the plate the crumbs wore — the panel's surface at 80%, so the terrain reads
+							through it — because that is what a plate on this map is; `ml-auto` is what holds it at
+							the far end now that there is nothing between it and the badge to give way. -->
+						<div
+							class="pointer-events-auto ml-auto flex flex-none items-center gap-2 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
 						>
-							<!-- The far end of the bar: the way to look for a place, and past it the way to
-								everything that is not the map. Both belong at this end for the same reason — the
-								bar is the one row that is always up, so what a player reaches for however deep
-								into the map they are is reached for here. -->
-							<div slot="end" class="flex items-center gap-2">
-								<!-- The day's booster allowance, at the head of this end: how many boxes are
-									still there to open over how many the day gives at all. It was only ever
-									inside the Booster button's own label, which is behind the menu — so the one
-									number a player plans a day's play around was a fold and a press away, while
-									the bar it belongs on is up whatever they are doing. The same two numbers in
-									the same order as that label, off the same one read of `boosters_status`.
-									Read and not pressed, so it is deliberately not the outlined square the search
-									and the burger beside it wear: a plain glyph and a line of type, which is what
-									this row gives everything that is only to be looked at. Drawn only once there
-									is an allowance to name — signed out, or the status not yet in, the bar says
-									nothing rather than a nought. `tabular-nums` because the count changes under a
-									fixed row and digits of different widths would shift the search box beside it.
-									The glyph is the vendored game-icons one as an `<img>` by URL, white artwork
-									over terrain, as the search and the burger draw theirs. -->
-								{#if boosters}
-									<div
-										class="flex flex-none items-center gap-1.5 text-sm text-white"
-										title={boosterLabel}
-									>
-										<img src="/assets/icons/quoting/card-pickup.svg" class="size-4" alt="" />
-										<span class="tabular-nums">{boosters.remaining}/{boosters.allowance}</span>
-									</div>
-								{/if}
-								<!-- The looking glass stood here too, between the allowance and the burger. It
-									is the last cell of the shares grid in the column beside the map now, with its
-									field coming down on the row under it: looking for a place is asking for a place
-									on a list, and the column is where this map lists places — so the answer arrives
-									where every other list of places in this game arrives, instead of on a plate at
-									the corner opposite the one that had asked. -->
-								<!-- The roster and the album stood here, two more squares in this line: a pencil
-									and a book, each of them a glyph and nothing else on a row where a glyph in a
-									square already means the thing beside it. They are rows of the column this burger
-									drops now, with their names on them. What is left on this end is what is about
-									the map itself.
-									`relative`, because that column hangs off this box: the burger is the one mark on
-									the bar that says "everything else is here", so the everything else comes down
-									from under it. -->
-								<div class="relative flex-none">
-									<!-- The three bars, in the same square and the same white as the dots button at
-										the other end of the row: this bar is a line of 32px tiles, so everything on it
-										that is pressed rather than read is given the same square, and the white is
-										spelled out because an outlined DaisyUI button letters itself in the theme's
-										periwinkle — a stray colour on a bar that forces white over terrain — and its
-										hover fills the square and takes the rule with it.
-										The glyph is the vendored game-icons one, as an `<img>` by URL: those ship as
-										white artwork for the canvases to tint, which is exactly what a mark on this bar
-										wants (see the icons note in CLAUDE.md). -->
-									<button
-										bind:this={menuButtonEl}
-										type="button"
-										class="btn btn-square btn-outline btn-sm border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
-										aria-expanded={menuOpen}
-										aria-label={menuOpen ? $_('menu.close') : $_('menu.open')}
-										on:click={() => (menuOpen = !menuOpen)}
-									>
-										<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
-									</button>
+							<!-- The day's booster allowance, at the head of this end: how many boxes are
+								still there to open over how many the day gives at all. It was only ever
+								inside the Booster button's own label, which is behind the menu — so the one
+								number a player plans a day's play around was a fold and a press away, while
+								the bar it belongs on is up whatever they are doing. The same two numbers in
+								the same order as that label, off the same one read of `boosters_status`.
+								Read and not pressed, so it is deliberately not the outlined square the burger
+								beside it wears: a plain glyph and a line of type, which is what this row gives
+								everything that is only to be looked at. Drawn only once there is an allowance
+								to name — signed out, or the status not yet in, the plate says nothing rather
+								than a nought. `tabular-nums` because the count changes under a fixed row and
+								digits of different widths would shift the burger beside it.
+								The glyph is the vendored game-icons one as an `<img>` by URL, white artwork
+								over terrain, as the burger draws its own. -->
+							{#if boosters}
+								<div
+									class="flex flex-none items-center gap-1.5 text-sm text-white"
+									title={boosterLabel}
+								>
+									<img src="/assets/icons/quoting/card-pickup.svg" class="size-4" alt="" />
+									<span class="tabular-nums">{boosters.remaining}/{boosters.allowance}</span>
+								</div>
+							{/if}
+							<!-- The looking glass stood here too, between the allowance and the burger. It
+								is the last cell of the shares grid in the column beside the map now, with its
+								field coming down on the row under it: looking for a place is asking for a place
+								on a list, and the column is where this map lists places — so the answer arrives
+								where every other list of places in this game arrives, instead of on a plate at
+								the corner opposite the one that had asked. -->
+							<!-- The roster and the album stood here, two more squares in this line: a pencil
+								and a book, each of them a glyph and nothing else on a row where a glyph in a
+								square already means the thing beside it. They are rows of the column this burger
+								drops now, with their names on them. What is left on this end is what is about
+								the map itself.
+								`relative`, because that column hangs off this box: the burger is the one mark on
+								the bar that says "everything else is here", so the everything else comes down
+								from under it. -->
+							<div class="relative flex-none">
+								<!-- The three bars, in the 32px outlined square this game's chrome gives anything
+									pressed rather than read — the same one the crumbs' own dots button and its empty
+									rungs wear over in the column beside the map, so a mark that is pressed looks the
+									same wherever it is met. The white is spelled out because an outlined DaisyUI
+									button letters itself in the theme's periwinkle — a stray colour on a plate that
+									forces white over terrain — and its hover fills the square and takes the rule
+									with it.
+									The glyph is the vendored game-icons one, as an `<img>` by URL: those ship as
+									white artwork for the canvases to tint, which is exactly what a mark on this bar
+									wants (see the icons note in CLAUDE.md). -->
+								<button
+									bind:this={menuButtonEl}
+									type="button"
+									class="btn btn-square btn-outline btn-sm border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
+									aria-expanded={menuOpen}
+									aria-label={menuOpen ? $_('menu.close') : $_('menu.open')}
+									on:click={() => (menuOpen = !menuOpen)}
+								>
+									<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
+								</button>
 
-									<!-- The player's views, down a column under the burger: a row each, a glyph and
-										beside it the name of what it opens. It is the column the badge at the head of
-										this row used to drop on hover, given the account rows a full-height drawer at
-										the map's edge used to hold — one menu rather than a hover menu at one end of
-										the bar and a drawer at the other, which was two answers to the same question
-										standing on the same row. The drawer's other two, and the radio that stood at
-										its foot, are not here — see the rows themselves.
-										The plate is the crumbs' dropped path class for class — the same surface at full
-										strength, the same rounding, the same shadow, the same 200ms slide out from
-										under the bar — since a column dropped from this row is the same object wherever
-										on the row it is dropped from. It comes down from the right edge because that is
-										the edge the burger stands at and a column is read under the mark that dropped
-										it. `w-max` so it is as wide as the longest name and no wider: everything in it is
-										a name, and there is nothing left in here whose width this game does not choose.
-										Mounted only while it is up, so it has something to slide from (see
-										FullScreenModal for the same reason); a press outside it, Escape, or picking any
-										of its rows puts it away. -->
-									{#if menuOpen}
-										<div
-											bind:this={menuEl}
-											transition:slide={{ duration: 200 }}
-											class="absolute right-0 top-full z-10 mt-2 flex w-max max-w-[70vw] flex-col gap-0.5 rounded-lg bg-base-100 p-2 text-white shadow-xl"
-										>
-											<!-- The player's cards, the set they are drawn from, the account and the
-												documents: nothing separates them — they are all one kind of thing, a
-												press that raises a full view over the map, which is what a menu of them
-												should look like. The block of outlined buttons in the drawer said the same
-												with borders; a row with its name and its mark says it with neither.
-												Only while there is an account to have any cards under: a roster with
-												nobody's cards in it, and settings for nobody, are nothing to open. -->
-											{#if $profile}
-												<button
-													type="button"
-													class={menuRowClasses}
-													on:click={() => pickFromMenu(() => rosterModalOpen.set(true))}
-												>
-													<img
-														src="/assets/icons/delapouite/pencil.svg"
-														class="size-4 flex-none"
-														alt=""
-													/>
-													<span class="truncate">{$_('roster.title')}</span>
-												</button>
-											{/if}
-											<!-- The album, and not gated the way the roster is: the set is the game's own
-												and is worth reading before anybody holds any of it. -->
+								<!-- The player's views, down a column under the burger: a row each, a glyph and
+									beside it the name of what it opens. It is the column the badge at the head of
+									this row used to drop on hover, given the account rows a full-height drawer at
+									the map's edge used to hold — one menu rather than a hover menu at one end of
+									the bar and a drawer at the other, which was two answers to the same question
+									standing on the same row. The drawer's other two, and the radio that stood at
+									its foot, are not here — see the rows themselves.
+									The plate is the crumbs' dropped path class for class — the same surface at full
+									strength, the same rounding, the same shadow, the same 200ms slide out from
+									under the bar — since a column dropped from this row is the same object wherever
+									on the row it is dropped from. It comes down from the right edge because that is
+									the edge the burger stands at and a column is read under the mark that dropped
+									it. `w-max` so it is as wide as the longest name and no wider: everything in it is
+									a name, and there is nothing left in here whose width this game does not choose.
+									Mounted only while it is up, so it has something to slide from (see
+									FullScreenModal for the same reason); a press outside it, Escape, or picking any
+									of its rows puts it away. -->
+								{#if menuOpen}
+									<div
+										bind:this={menuEl}
+										transition:slide={{ duration: 200 }}
+										class="absolute right-0 top-full z-10 mt-2 flex w-max max-w-[70vw] flex-col gap-0.5 rounded-lg bg-base-100 p-2 text-white shadow-xl"
+									>
+										<!-- The player's cards, the set they are drawn from, the account and the
+											documents: nothing separates them — they are all one kind of thing, a
+											press that raises a full view over the map, which is what a menu of them
+											should look like. The block of outlined buttons in the drawer said the same
+											with borders; a row with its name and its mark says it with neither.
+											Only while there is an account to have any cards under: a roster with
+											nobody's cards in it, and settings for nobody, are nothing to open. -->
+										{#if $profile}
 											<button
 												type="button"
 												class={menuRowClasses}
-												on:click={() => pickFromMenu(() => collectionModalOpen.set(true))}
+												on:click={() => pickFromMenu(() => rosterModalOpen.set(true))}
 											>
 												<img
-													src="/assets/icons/delapouite/book-cover.svg"
+													src="/assets/icons/delapouite/pencil.svg"
 													class="size-4 flex-none"
 													alt=""
 												/>
-												<span class="truncate">{$_('collection.title')}</span>
+												<span class="truncate">{$_('roster.title')}</span>
 											</button>
-											<!-- The leaderboard and the window's boosters were the two rows between here
-												and the account's own: the map's standings, and the grid of every pack the
-												festa window is holding. Both are about the map rather than about the
-												player, and both are already answered where the map itself is read — the
-												standings by the shares row at the head of the column beside it, and a
-												pack by the box the map stands on the town it belongs to, which opens that
-												town's own. What is left in this menu is the player's. -->
-											{#if $profile}
-												<button
-													type="button"
-													class={menuRowClasses}
-													on:click={() => pickFromMenu(() => settingsModalOpen.set(true))}
-												>
-													<img src="/assets/icons/lorc/cog.svg" class="size-4 flex-none" alt="" />
-													<span class="truncate">{$_('settings.title')}</span>
-												</button>
-											{/if}
-											<!-- The documents, outside the `{#if}` because they are the one view here with
-												nothing to do with having an account — a visitor who has not signed in is
-												precisely the reader who needs to know what signing in would mean. It opens
-												on the terms; the sheet's own tabs are how the other three are reached. -->
+										{/if}
+										<!-- The album, and not gated the way the roster is: the set is the game's own
+											and is worth reading before anybody holds any of it. -->
+										<button
+											type="button"
+											class={menuRowClasses}
+											on:click={() => pickFromMenu(() => collectionModalOpen.set(true))}
+										>
+											<img
+												src="/assets/icons/delapouite/book-cover.svg"
+												class="size-4 flex-none"
+												alt=""
+											/>
+											<span class="truncate">{$_('collection.title')}</span>
+										</button>
+										<!-- The leaderboard and the window's boosters were the two rows between here
+											and the account's own: the map's standings, and the grid of every pack the
+											festa window is holding. Both are about the map rather than about the
+											player, and both are already answered where the map itself is read — the
+											standings by the shares row at the head of the column beside it, and a
+											pack by the box the map stands on the town it belongs to, which opens that
+											town's own. What is left in this menu is the player's. -->
+										{#if $profile}
 											<button
 												type="button"
 												class={menuRowClasses}
-												on:click={() => pickFromMenu(() => openLegalDocument(LegalDocumentId.Terms))}
+												on:click={() => pickFromMenu(() => settingsModalOpen.set(true))}
 											>
-												<img src="/assets/icons/lorc/scales.svg" class="size-4 flex-none" alt="" />
-												<span class="truncate">{$_('legal.title')}</span>
+												<img src="/assets/icons/lorc/cog.svg" class="size-4 flex-none" alt="" />
+												<span class="truncate">{$_('settings.title')}</span>
 											</button>
-										</div>
-									{/if}
-								</div>
+										{/if}
+										<!-- The documents, outside the `{#if}` because they are the one view here with
+											nothing to do with having an account — a visitor who has not signed in is
+											precisely the reader who needs to know what signing in would mean. It opens
+											on the terms; the sheet's own tabs are how the other three are reached. -->
+										<button
+											type="button"
+											class={menuRowClasses}
+											on:click={() => pickFromMenu(() => openLegalDocument(LegalDocumentId.Terms))}
+										>
+											<img src="/assets/icons/lorc/scales.svg" class="size-4 flex-none" alt="" />
+											<span class="truncate">{$_('legal.title')}</span>
+										</button>
+									</div>
+								{/if}
 							</div>
-						</MapBreadcrumbs>
+						</div>
 					</div>
 				{/if}
 
