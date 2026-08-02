@@ -180,14 +180,6 @@ begin
 			select jsonb_agg(to_jsonb(av) order by av.granted_at)
 			from public.player_avatars av where av.user_id = v_uid
 		), '[]'::jsonb),
-		'achievements', coalesce((
-			select jsonb_agg(to_jsonb(pa) order by pa.day)
-			from public.player_achievements pa where pa.user_id = v_uid
-		), '[]'::jsonb),
-		'achievement_day_levels', coalesce((
-			select jsonb_agg(to_jsonb(dl) order by dl.day)
-			from public.achievement_day_levels dl where dl.user_id = v_uid
-		), '[]'::jsonb),
 		'booster_claims', coalesce((
 			select jsonb_agg(to_jsonb(bc) order by bc.claimed_at)
 			from public.booster_claims bc where bc.user_id = v_uid

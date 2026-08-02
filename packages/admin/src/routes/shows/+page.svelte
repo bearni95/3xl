@@ -884,10 +884,9 @@
 	</div>
 {/if}
 
-<!-- The glyph picker, raised by the icon tile on a saved show's panel. The same modal
-	the achievement editor picks a badge's icon with, over the same vendored artwork —
-	one picker, because the question is the same one: which of the glyphs already in the
-	repo does this stand for. Mounted once at the page root rather than per card, so the
+<!-- The glyph picker, raised by the icon tile on a saved show's panel. It runs over the
+	whole vendored artwork, since the question it asks is: which of the glyphs already in
+	the repo does this stand for. Mounted once at the page root rather than per card, so the
 	sheet is never trapped inside a card's own stacking context. -->
 <IconPickerModal
 	{icons}

@@ -147,10 +147,6 @@
 			"failed": "Could not recycle those cards. Please try again."
 		}
 	},
-	"achievements": {
-		"title": "Achievements",
-		"close": "Close achievements"
-	},
 	"leaderboard": {
 		"title": "Leaderboard",
 		"close": "Close leaderboard"

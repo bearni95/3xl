@@ -3,7 +3,7 @@ import { render, fireEvent } from '@testing-library/svelte';
 import FullScreenModal from '$components/core/FullScreenModal.svelte';
 
 /**
- * The sheet the roster and the achievements are both drawn on. What it owns is the
+ * The sheet the roster and the album are both drawn on. What it owns is the
  * surround — the dialog it is, its title, and the two ways out — and every one of
  * those is something a host leans on: the modal never closes itself (the store it
  * would set is the host's), so a ✕ or an Escape that failed to say so would be a
@@ -20,10 +20,10 @@ describe('the full-view modal', () => {
 	it('says so when the ✕ is pressed, by the name the host gave it', async () => {
 		const close = vi.fn();
 		const { getByLabelText } = render(FullScreenModal, {
-			props: { title: 'Achievements', closeLabel: 'Close achievements' },
+			props: { title: 'Collection', closeLabel: 'Close collection' },
 			events: { close }
 		});
-		await fireEvent.click(getByLabelText('Close achievements'));
+		await fireEvent.click(getByLabelText('Close collection'));
 		expect(close).toHaveBeenCalledTimes(1);
 	});
 

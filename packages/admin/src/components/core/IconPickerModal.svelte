@@ -4,11 +4,9 @@
 	import capitalize from '$utils/string/capitalize';
 	import GameIcon from '$components/core/GameIcon.svelte';
 
-	// Every pickable glyph, as `<folder>/<slug>`, from GET /api/achievements/icons or
-	// GET /api/shows/icons — the same directory listing the matching save validates
-	// against, which is what keeps this from offering one the API would refuse. Which
-	// of the two sets it is depends on what is being badged: a show may also take the
-	// per-show `shows` marks, a badge may not.
+	// Every pickable glyph, as `<folder>/<slug>`, from GET /api/shows/icons — the same
+	// directory listing the save validates against, which is what keeps this from
+	// offering one the API would refuse.
 	export let icons: string[] = [];
 	export let selected: string = '';
 	export let open: boolean = false;

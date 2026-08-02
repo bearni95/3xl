@@ -13,9 +13,8 @@
  * So the map has one colour of its own — {@link ArtificialColor}, artificial in
  * the plain sense that no roll can produce it and no card can be it. It is the
  * map speaking about a place rather than reporting somebody's team, and it is
- * reachable from nowhere a card's colour is: `claim_booster` cannot deal it,
- * `randomSpawnColor` cannot land on it, and a card filter written in an
- * achievement formula has no name for it.
+ * reachable from nowhere a card's colour is: `claim_booster` cannot deal it and
+ * `randomSpawnColor` cannot land on it.
  */
 
 import type { SpawnColor } from './character-spawn.type';

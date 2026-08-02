@@ -28,7 +28,7 @@ export interface ShowEntry {
 	 * the panel's tables, the map's pins, a booster box's lid, the statue's floor —
 	 * as `<folder>/<slug>` under `@3xl/assets`' `public/icons/` (e.g.
 	 * `delapouite/pirate-hat`, `shows/straw-hat`). Chosen in the admin `/shows`
-	 * screen from the same picker the achievements use, and absent for a show
+	 * screen out of the whole vendored set, and absent for a show
 	 * nobody has picked one for: an unbadged show renders by name alone, since a
 	 * stand-in glyph would read as a fact about the show while its absence reads
 	 * as nothing at all.
@@ -37,9 +37,9 @@ export interface ShowEntry {
 }
 
 /**
- * What a show's `icon` may look like: `<folder>/<slug>`, both lowercase. The same
- * shape an achievement's glyph takes, and for the same reason — it is a path into
- * `public/icons/`, and the pattern is what keeps it from being one out of it.
+ * What a show's `icon` may look like: `<folder>/<slug>`, both lowercase — it is a
+ * path into `public/icons/`, and the pattern is what keeps it from being one out
+ * of it.
  */
 export const SHOW_ICON_PATTERN = /^[a-z0-9-]+\/[a-z0-9-]+$/;
 

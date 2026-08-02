@@ -149,9 +149,9 @@ class AuthService {
 
 	/**
 	 * Re-read the stored row, for a caller that has just had the server change it
-	 * behind this store's back — claiming an achievement awards experience through an
-	 * RPC of its own (see achievements.service), and the profile card's level and bar
-	 * are read off this profile. One extra read rather than a total handed back from
+	 * behind this store's back — a fight awards experience through an RPC of its own
+	 * (see `award_combat_exp`), and the profile card's level and bar are read off this
+	 * profile. One extra read rather than a total handed back from
 	 * elsewhere: the row is the truth, and it is one query.
 	 */
 	async refreshProfile(): Promise<void> {

@@ -17,13 +17,10 @@ import { asyncHandler, httpError } from '../http-error';
  * `/music` screen calls this to say what each vendored song is called and which show
  * it opens, straight into the git tree.
  *
- * Mirrors ./achievements in every way that matters — one collection file, upserted
- * by key, pretty-printed with tabs — with one difference: an achievement's id is
- * invented by the author, while a track's key is a file somebody dropped into
- * @3xl/assets. So the assets are the list (`GET /files`, read off disk the way
- * ./achievements reads its icons) and the collection only ever answers them: a save
- * for a file that is not there is refused, exactly as a badge naming a glyph that is
- * not there is.
+ * One collection file, upserted by key, pretty-printed with tabs. A track's key is
+ * not invented by the author: it is a file somebody dropped into @3xl/assets. So the
+ * assets are the list (`GET /files`, read off disk) and the collection only ever
+ * answers them — a save for a file that is not there is refused.
  *
  * The show a track is linked to is held to the saved shows in `public/shows.json` —
  * the same collection the admin `/shows` screen writes and the select on the music

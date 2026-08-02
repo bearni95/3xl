@@ -24,12 +24,10 @@
 	import FullScreenModal from '$components/core/FullScreenModal.svelte';
 	import RosterModal from '$components/core/RosterModal.svelte';
 	import CollectionModal from '$components/core/CollectionModal.svelte';
-	import AchievementsModal from '$components/core/AchievementsModal.svelte';
 	import LeaderboardModal from '$components/core/LeaderboardModal.svelte';
 	import BoosterModal from '$components/core/BoosterModal.svelte';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { collectionModalOpen } from '$services/collectionModal';
-	import { achievementsModalOpen } from '$services/achievementsModal';
 	import { settingsModalOpen } from '$services/settingsModal';
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
@@ -392,7 +390,7 @@
 	// out, or the status not yet in.
 	$: boosterLabel = boosters
 		? $_('booster.withAllowance', {
-				values: { remaining: boosters.remaining, total: boosters.level }
+				values: { remaining: boosters.remaining, total: boosters.allowance }
 			})
 		: $_('booster.title');
 
@@ -1940,8 +1938,7 @@
 
 	/**
 	 * Re-read today's booster allowance. Called whenever something has moved it on a row
-	 * this browser cannot write: a pack opened (spending one), or a badge claimed in the
-	 * achievements modal (granting one, and two more for the whole day's set).
+	 * this browser cannot write — a pack opened, which spends one.
 	 */
 	function refreshBoosters(): void {
 		void spawnService
@@ -2935,7 +2932,7 @@
 										title={boosterLabel}
 									>
 										<img src="/assets/icons/quoting/card-pickup.svg" class="size-4" alt="" />
-										<span class="tabular-nums">{boosters.remaining}/{boosters.level}</span>
+										<span class="tabular-nums">{boosters.remaining}/{boosters.allowance}</span>
 									</div>
 								{/if}
 								<LocationSearchBox bind:value={searchQuery} bind:open={searchOpen} />
@@ -3279,20 +3276,13 @@
 				<button
 					type="button"
 					class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
-					on:click={() => pickFromMenu(() => achievementsModalOpen.set(true))}
-				>
-					{$_('achievements.title')}
-				</button>
-				<button
-					type="button"
-					class="btn btn-outline btn-sm join-item bg-base-100 hover:bg-base-200"
 					on:click={() => pickFromMenu(() => settingsModalOpen.set(true))}
 				>
 					{$_('settings.title')}
 				</button>
 			{/if}
 			<!-- The documents, at the foot of the block and in it: they raise the same kind of
-				full-view sheet the five above do, so they are the same kind of press. Outside the
+				full-view sheet the four above do, so they are the same kind of press. Outside the
 				`{#if}` because they are the one view here that has nothing to do with having an
 				account — a visitor who has not signed in is precisely the reader who needs to
 				know what signing in would mean. It opens on the terms; the sheet's own tabs are
@@ -3405,17 +3395,6 @@
 	`collectionModalOpen`. -->
 {#if $collectionModalOpen}
 	<CollectionModal />
-{/if}
-
-<!-- The badges, on the same sheet as the roster and over the map like it. Mounted only
-	while it is open, so the Supabase read that lists them happens on opening rather than
-	on every page load. Opened from the Achievements button beside Roster on the panel's
-	account row, through `achievementsModalOpen`. -->
-{#if $achievementsModalOpen}
-	<!-- A claim in there raises today's booster allowance (a pack per badge completed, two
-	     more for the whole day), so the header's counter is re-read when one lands — the
-	     same reading a pack being opened triggers, since both change the same number. -->
-	<AchievementsModal on:claimed={refreshBoosters} />
 {/if}
 
 <!-- Every show's standing across the map, on the same sheet. The tally is the map's own —

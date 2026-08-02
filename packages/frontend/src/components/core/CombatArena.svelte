@@ -593,7 +593,7 @@
 
 	// The player's six colours as fills, for the one button that is drawn in the fighter's own
 	// colour: the chosen order. Every other state is the dark tile below, which is what white
-	// artwork needs under it (see GameIcon, and the icon note in CLAUDE.md).
+	// artwork needs under it (see the icon note in CLAUDE.md).
 	function orderFill(order: BoardOrder): string {
 		return order.selected ? SPAWN_FILL_CLASSES[order.color as SpawnColor] : 'bg-neutral';
 	}
@@ -1192,7 +1192,7 @@
 						     column under the thumb, whatever the fighters beside them are called.
 						     A plain button rather than a `btn`: the glyphs are the canvas's own white
 						     artwork, so what they need is a dark tile under them in *every* state
-						     (see GameIcon), and daisyUI repaints a disabled button's face. So the
+						     (see the icon note in CLAUDE.md), and daisyUI repaints a disabled button's face. So the
 						     tile stays and the states are said over it — the chosen order in the
 						     fighter's own colour, the rest dark, and one out of reach faded rather
 						     than dropped, as the board's own column greys it. -->

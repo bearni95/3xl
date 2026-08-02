@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import slugify from '$utils/string/slugify';
-import { ACHIEVEMENT_ID_PATTERN } from '$types/achievement.type';
 
 describe('slugify', () => {
 	it('lowercases and joins words with hyphens', () => {
@@ -23,9 +22,9 @@ describe('slugify', () => {
 		expect(slugify(undefined)).toBe('');
 	});
 
-	it('produces ids the achievement id pattern accepts', () => {
+	it('produces lowercase hyphenated ids from any name', () => {
 		for (const name of ['First Blood', "L'Últim cop", 'Won — at last!', '3 in a row']) {
-			expect(ACHIEVEMENT_ID_PATTERN.test(slugify(name))).toBe(true);
+			expect(/^[a-z0-9-]+$/.test(slugify(name))).toBe(true);
 		}
 	});
 });

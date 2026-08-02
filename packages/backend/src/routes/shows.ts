@@ -26,7 +26,7 @@ import { iconExists, listIcons } from '../icons';
  * A saved show also carries the **glyph** that stands for it wherever the game names
  * it in a line of text (`ShowEntry.icon`). It used to be a hand-kept table in the
  * frontend, which meant a show got a mark only if somebody edited TypeScript for it;
- * it is authored here now, out of the same picker the achievements use — `GET /icons`
+ * it is authored here now, out of the whole vendored glyph set — `GET /icons`
  * lists what may be picked, and a save is held to that same listing, so the picker can
  * never offer a glyph this would then refuse.
  *
@@ -107,7 +107,7 @@ async function validateEntry(body: unknown): Promise<ShowEntry> {
 	if (rawIcon && !SHOW_ICON_PATTERN.test(rawIcon)) {
 		httpError(400, `Invalid icon "${rawIcon}" — expected <folder>/<slug>`);
 	}
-	if (rawIcon && !(await iconExists(rawIcon, true))) {
+	if (rawIcon && !(await iconExists(rawIcon))) {
 		httpError(400, `Unknown icon "${rawIcon}" — pick one of the glyphs in @3xl/assets`);
 	}
 
@@ -120,14 +120,14 @@ async function validateEntry(body: unknown): Promise<ShowEntry> {
 export const showsRouter = Router();
 
 // GET /api/shows/icons — the glyphs a show may be badged with, for the admin's picker.
-// The same listing the save above validates against, and the same one the achievement
-// editor picks from — plus the `shows` folder, whose marks stand for shows and nothing
-// else. The artwork itself is not served from here: each app already mounts @3xl/assets'
-// public/ at /assets, so a name from this list is an <img src> away.
+// The same listing the save above validates against: the whole vendored set, the `shows`
+// folder included, whose marks stand for shows and nothing else. The artwork itself is
+// not served from here: each app already mounts @3xl/assets' public/ at /assets, so a
+// name from this list is an <img src> away.
 showsRouter.get(
 	'/icons',
 	asyncHandler(async (_req, res) => {
-		res.json({ icons: await listIcons(true) });
+		res.json({ icons: await listIcons() });
 	})
 );
 

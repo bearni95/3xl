@@ -1,7 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 
-	// The glyph, as `<folder>/<slug>` — the form an achievement and a show both store.
+	// The glyph, as `<folder>/<slug>` — the form a show stores its mark in.
 	// Empty renders the placeholder tile instead, for "no icon chosen yet".
 	export let name: string = '';
 	// The tile's box, as a Tailwind size class the caller picks.

@@ -102,14 +102,14 @@ interchangeable:
   game-icons.net collection is vendored here — ~4,200 glyphs across 36 contributor
   folders, downloaded in the site's `ffffff / transparent` variant, which is why
   nothing had to be stripped: that variant is already white artwork on nothing, the
-  form both the canvas and the achievement picker want. Take the same variant when
+  form both the canvas and the admin's glyph picker want. Take the same variant when
   adding more (the site also offers white-on-an-opaque-black-square, whose background
   path would have to come out first). Attribution for the set is
   `public/icons/license.txt`; keep it with the folders.
 
 Inlining a canvas glyph *untouched* would put white on white, which is why nothing
-reaches the document except through `inlineIconMarkup`. The admin's two pickers are the
-one place a glyph is shown outside both a canvas and that rewrite — they stay `<img>`s by
+reaches the document except through `inlineIconMarkup`. The admin's glyph picker is the
+one place a glyph is shown outside both a canvas and that rewrite — it stays `<img>`s by
 URL (`GameIcon.svelte`), so the tile under one is picked from the folder it came out of:
 dark for the game-icons white, light for a `shows/` mark, whose `currentColor` resolves
 to black inside an `<img>`.
@@ -166,9 +166,9 @@ src/
 Frontend routes: `/` (home), `/map` (Països Catalans map), `/roster` (the player's claimed
 cards). Neither claiming nor combat has a route of its own — the booster packs live on the
 map's right-hand panel (its Booster tab), and `CombatArena` is raised by the Challenge
-button on a municipality. The roster and the achievements have no route either. All of them
+button on a municipality. The roster has no route either. All of them
 are full-view modals over the map, drawn on the shared `FullScreenModal` sheet — the roster
-and the badges raised from the panel's account row, combat from the town — so there is one
+raised from the panel's account row, combat from the town — so there is one
 kind of full-view surface in this app and not one per feature. Everything that is not the map
 is behind the **burger menu** — the `<aside>` drawer summoned from the far end of the
 breadcrumb bar: the block of buttons that raise those sheets, the sign-in, and at its foot
@@ -207,7 +207,7 @@ load metadata and nothing else, one per song, which is why a station that has no
 measured yet (or holds a file that will not decode) falls back to playing its day order from
 the top. The admin `/music` screen's Radio tab is the same three things drawn as a table.
 Admin routes: `/characters` (definition editor),
-`/shows` (TMDB browser), `/achievements` (badge editor + Supabase rule sync) and `/music`
+`/shows` (TMDB browser) and `/music`
 (what each vendored song is called and which show it opens).
 
 **Types, utils, and adapters no longer live in the apps** — they moved to `@3xl/shared`
@@ -257,7 +257,6 @@ What lives here today:
   `tmdb.type`, `navigation.type`.
 - **utils** — `mugen/*` (frame sheets, animation, board engine, square board grid,
   PixiJS player),
-  `achievement/*` (the formula language, templating, variable rules),
   `geo/pointInPolygon`, `dice/roll`, `color/compare`, `string/*`, `tmdb/*`
   (client + rate limiter), `routes/get-routes`, `localStorageWritableStore`.
 - **adapters** — `adapter.class`, `tmdb.adapter`, `location.adapter`, `profile.adapter`,
@@ -267,123 +266,6 @@ What lives here today:
 framework-agnostic (types, transformers, pure helpers), goes in `@3xl/shared`. App-only
 UI state and components stay in the app. When you add a type/util/adapter, add it here,
 not in an app.
-
-### Achievement formulas
-
-A badge's wording is authored once and read by every player, so the numbers in it are not
-typed in: an achievement may declare `variables` — a name plus a formula — and quote them
-in its own name and description between braces (`Conquereix {target} municipalitats.`). A
-variable belongs to the achievement that declares it and is reachable from nowhere else,
-so two badges may both call a number `target`.
-
-A formula is arithmetic (`+ - * / % ^`, unary minus, parentheses) over what the game knows
-about the player being rendered for, and *only* that: `level`; `cards` — every owned
-card, or the ones matching a compound filter written in its parentheses
-(`cards(box = white and not color = orange)`, `cards(color in [red, blue]) / 2`); and
-`towns`, how many municipalities they occupy (one per `municipality_holders` row of theirs —
-a count, not a list, since which comarca a town sits in is map data Postgres does not have
-and Postgres is the side that has to reach the same answer). There are
-no functions to call and no way to name anything outside the evaluation context, which is
-what makes a formula safe to run against whoever turns out to be reading.
-
-The `level` a formula reads is **the day's, not the moment's** — see the pinning below.
-
-- `utils/achievement/formula.ts` — the language: tokenizer, parser, evaluator, and
-  `CARD_FIELDS`, the one table saying which card fields a filter may test and which values
-  each accepts. Every mistake is caught at **parse** time (unknown source or field, a colour
-  that is not a colour, an unclosed paren); evaluation never fails and always yields a finite
-  number, because by then it is going into a line a player is reading.
-The same language writes the other half of a badge: its **requirement**, the condition that
-earns it — two amounts compared (`>= <= > < = !=`), any number of those combined with
-`and`/`or`/`not` and parentheses, and free to quote the badge's own variables by name
-(`cards(color = red) >= target`). A badge with no requirement is set and shown like any
-other — the day's draw is over every badge the game has — and simply cannot be completed by
-anybody until one is written for it; the panel words it "Not available yet".
-
-- `utils/achievement/template.ts` — the braces: `renderAchievement(achievement, context)` is
-  what a surface calls to get one player's wording.
-- `utils/achievement/requirement.ts` — `achievementMet(achievement, context)`: whether a
-  player has earned it. A preview, not the authority (see below).
-- `utils/achievement/progress.ts` — `achievementProgress` / `progressPercent`: how far along
-  an unmet badge is, as the percentage its tile prints. A **reading**, not a rule — it has no
-  PL/pgSQL counterpart, the RPC is told no percentage and computes none — so it is the one
-  place in this language that makes a judgement the language does not: a comparison is the
-  ratio of the two amounts, `and` is the mean of its parts, `or` the best of them. An
-  unearned badge never prints 100.
-- `utils/achievement/daily.ts` — the badges a player is set today: a seed hashed from their
-  id and the Catalan day, and a draw from every badge the game has. Nothing is
-  stored, so there is no table of assignments to seed or to disagree about, and everyone's
-  set changes at midnight Europe/Madrid. **How many** is a setting, not a constant:
-  `achievement_settings.daily_count` (three as provisioned), read by
-  `daily_achievement_count()` in the database and handed to the browser with the pool, so
-  both sides draw the same set. `DAILY_ACHIEVEMENT_COUNT` is only the fallback for a reader
-  that has not got the row yet.
-- `utils/achievement/variables.ts` — the rules about the *set* (names that collide or shadow
-  a source, placeholders naming nothing, a requirement quoting a name nobody declared),
-  called by both the admin editor and the backend
-  route, so the message the author sees is the message the API would have refused with.
-
-### Awarding an achievement — the rule lives in Postgres
-
-Everything above is what the *browser* computes so it can show a badge and grey out one that
-is not ready. None of it awards anything. Awarding is a rule, so it is enforced where a
-browser cannot edit it: `claim_achievements()`, a security-definer RPC that takes **no
-arguments**. It recomputes today's three itself, walks each requirement itself, and decides
-the experience itself; the client submits an intention and nothing else — the same trust
-model as `claim_booster` and `award_combat_exp`.
-
-Which means the formula language has a **second implementation**, in PL/pgSQL, in
-`packages/backend/supabase/achievement_templates.sql` — and two copies of an awarding rule
-that drift apart pay out badges nobody earned. So:
-
-- The **parser** stays in TypeScript and runs once, at sync time: `POST
-  /api/achievement-templates/sync` compiles each requirement into a syntax tree and pushes it
-  (with the source text it came from, and the badge's variables' compiled formulas) into
-  `achievement_templates`. The database evaluates trees; it never parses.
-- The tree is therefore a **wire format** between the two evaluators. Changing a node's shape
-  means changing both, and the parity checks that hold them together are the pinned values in
-  `packages/frontend/test/utils/achievement-daily.test.ts` (the seed and the draw) plus a
-  formula/condition table run against both engines.
-- That .sql file is the one file under `supabase/` that is **not** reference-only: the backend
-  reads it off disk and executes it (`achievement-templates.ts`), so the server's evaluator and
-  the browser's can be read side by side rather than one of them living inside a TypeScript
-  string.
-- Supabase therefore holds a badge's id **and its rule** — never its wording. A rule edited
-  locally leaves the database enforcing the old one until the next sync, which is what the
-  admin's `mismatch` status is for.
-- A completion is a **badge on a day**, not a badge: `player_achievements` is keyed
-  `(user_id, achievement_id, day)`. The same badge drawn again next week is work to do
-  again — claimable again, paying again — and one earned today says nothing about a day it
-  has not been set for, so nothing about a future day can be pre-earned. Only today's set is
-  ever claimable anyway: the RPC recomputes the ids from the date it reads off the clock, so
-  a browser walking to another day has nothing it can submit about it. In the app, "held" is
-  therefore always asked of a day (`heldOn(awards, day)`), never of a badge alone.
-- The award is a third of the span of the level the player is on **at completion time**
-  (`achievementExpAward` mirrors it), re-read per badge inside one claim, and recorded on
-  `player_achievements.exp_awarded`.
-- A completion also pays **booster packs**: one added to today's allowance per badge granted,
-  plus **two** for finishing the whole of the day's set (every one of them completed *today* —
-  a badge carried over from an earlier day does not count towards it). They go into
-  `booster_grants`, the same day-scoped ledger `recycle_spawns` and the admin write and that
-  `claim_booster` / `boosters_status` already add to the level to get the cap, so they lapse
-  at Catalan midnight and nothing else had to be taught about achievements. The two amounts
-  live only in `claim_achievements` and reach the browser as `boosters_granted` /
-  `set_completed` on every row of the claim — the client never names them.
-- The level a **rule** is read at is a different level: the day's pinned one.
-  `achievement_day_levels` holds one row per player per Catalan day, written by
-  `daily_achievement_level()` (security definer, no arguments) on that day's first look and
-  by nothing else, and read by both the browser drawing the targets and
-  `claim_achievements` walking them. Otherwise a target written as `level * 5` got harder
-  while it was being worked on, and the experience a claim paid could raise the bar that
-  same claim was judging against. Only the bar is pinned: `cards` and `towns` stay live, or
-  a badge could not be progressed on the day it was set. What it pins is the level as it
-  stood when the day was first *seen* — nothing runs at midnight Europe/Madrid, so that is
-  the earliest moment there is anything to pin.
-- Anything both sides of the draw have to agree on lives in Supabase for the same reason:
-  the pool (`achievement_templates.requirement`), and how many are drawn
-  (`achievement_settings.daily_count`, moved from the admin through
-  `PUT /api/achievement-templates/settings`). A number written into two languages is one
-  that can be changed in only one of them.
 
 ## Backend API (`@3xl/backend`)
 
@@ -401,13 +283,6 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   (`SUPABASE_DB_KEY`, host derived from `PUBLIC_SUPABASE_URL`) and auto-creates the table;
   the admin `/characters` screen visualises the local↔remote diff and triggers the manual
   sync. `packages/backend/supabase/character_templates.sql` is kept for reference only.
-- `GET/POST /api/achievements` + `DELETE /api/achievements/:id` — read/upsert/retire one
-  achievement in `@3xl/data`'s `public/achievements.json` (glyph + name + description, plus
-  any **formula variables** and its **requirement** — see above),
-  validated against `@3xl/shared/types/achievement.type`. `GET /api/achievements/icons`
-  lists the game-icons.net glyphs an achievement may use, read off `@3xl/assets`'
-  `public/icons/<artist>/` — the same listing the save validates against, so the admin's
-  picker can never offer a glyph the save would refuse.
 - `GET/POST /api/music` + `DELETE /api/music/:file` — read/upsert/retire one song's
   definition in `@3xl/data`'s `public/music.json` (title + the TMDB id of the show it
   opens), validated against `@3xl/shared/types/music.type`. The songs themselves are
@@ -415,24 +290,12 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   `public/music/`, which is the list the admin `/music` screen is built from — a
   definition answers a file, so a save naming a file that is not there is refused, as is
   a link to a show `public/shows.json` does not hold.
-- `GET /api/achievement-templates` + `POST /api/achievement-templates/sync` — mirror the
-  local achievement **ids and compiled rules** into Supabase's `achievement_templates`. A
-  badge's wording lives only in the JSON and can never go stale up there; its requirement
-  *can*, which is why the sync compiles each one (with the TypeScript parser — Postgres
-  evaluates trees, it never parses) and reports an `updated` list beside `added`/`removed`.
-  The table is the FK target of `player_achievements` (who holds what) — world-readable, with
-  no client write policy at all, so the only writer is the security-definer
-  `claim_achievements()` RPC. Retiring a badge locally and syncing deletes the row *and* every
-  award of it (cascade); `GET /api/achievement-templates/holders` reports the per-badge holder
-  count so the admin can see that cost first. Provisions its own schema by **executing**
-  `packages/backend/supabase/achievement_templates.sql` — the one file in that folder that is
-  not reference-only.
 - `GET/POST /api/shows` + `POST /api/shows/refresh` — read/upsert the saved-show collection in
   `@3xl/data`'s `public/shows.json` (a show, every image TMDB holds for it, the author's
   enabled selection per section, and the **glyph** that stands for the show), and re-read
   every saved show's **title and description** from TMDB. `GET /api/shows/icons` lists what
-  that glyph may be — the same `src/icons.ts` listing the achievements pick from, plus the
-  `shows` folder those Noun Project marks live in — and a save is held to it, so the picker
+  that glyph may be — the whole `src/icons.ts` listing, the `shows` folder those Noun
+  Project marks live in included — and a save is held to it, so the picker
   can never offer one the API would refuse. The game is Catalan, so a saved show's text is Catalan text: `TMDB_LANGUAGE`
   (`@3xl/shared/types/tmdb.type`, `ca-ES` — the only Catalan variant TMDB has) goes on every
   text-bearing call. TMDB answers a field it has no Catalan text for with an empty string rather

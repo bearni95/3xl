@@ -147,10 +147,6 @@
 			"failed": "No s'han pogut reciclar aquestes cartes. Torna-ho a provar."
 		}
 	},
-	"achievements": {
-		"title": "Assoliments",
-		"close": "Tanca els assoliments"
-	},
 	"leaderboard": {
 		"title": "Classificació",
 		"close": "Tanca la classificació"
@@ -236,7 +232,7 @@
 			"exporting": "S'està preparant",
 			"exportFailed": "No s'han pogut preparar les dades. Torna-ho a provar.",
 			"delete": "Esborra el meu compte",
-			"deleteHint": "Esborra el compte i tot el que hi ha lligat: cartes, avatars, assoliments, combats, sobres i municipis. No es pot desfer.",
+			"deleteHint": "Esborra el compte i tot el que hi ha lligat: cartes, avatars, combats, sobres i municipis. No es pot desfer.",
 			"deleteConfirmTitle": "Segur que vols esborrar el compte?",
 			"deleteConfirmBody": "S'esborrarà tot i no hi ha manera de recuperar-ho. Els municipis que ocupes quedaran lliures. Escriu {word} per confirmar.",
 			"deleteConfirmWord": "ESBORRA",
@@ -290,7 +286,7 @@
 						"heading": "5. Com s'hi juga i què no s'hi val",
 						"body": [
 							"No es poden fer servir bots, macros, scripts, clients modificats ni cap altre automatisme per jugar-hi o per obrir sobres.",
-							"No es poden cridar directament les funcions del servidor fora del joc, ni intentar guanyar experiència, cartes, sobres, assoliments o municipis per cap altra via que jugant.",
+							"No es poden cridar directament les funcions del servidor fora del joc, ni intentar guanyar experiència, cartes, sobres o municipis per cap altra via que jugant.",
 							"No es pot buscar, aprofitar ni difondre cap error del joc que doni avantatge. Si en trobes un, escriu-nos: t'ho agrairem.",
 							"No es pot obstaculitzar el servei ni el joc d'altres persones: ni sobrecarregant el servidor, ni raspant dades de manera massiva, ni assetjant altres jugadors pel nom d'usuari o per cap altre mitjà.",
 							"No es pot fer enginyeria inversa del joc per burlar-ne les regles ni les mesures de seguretat, més enllà del que permeti la llei de manera imperativa."
@@ -299,7 +295,7 @@
 					{
 						"heading": "6. Cartes, sobres i objectes virtuals",
 						"body": [
-							"Les cartes, els avatars, els sobres, l'experiència, els nivells, els assoliments i els municipis són elements del joc i prou. No són teus en el sentit de la propietat: el que tens és una llicència personal, revocable i intransferible per fer-los servir dins del joc.",
+							"Les cartes, els avatars, els sobres, l'experiència, els nivells i els municipis són elements del joc i prou. No són teus en el sentit de la propietat: el que tens és una llicència personal, revocable i intransferible per fer-los servir dins del joc.",
 							"No tenen cap valor econòmic, no es poden convertir en diners ni en cap altre bé, i no es poden vendre, intercanviar ni cedir fora del joc. Qualsevol intenció de fer-ho és un incompliment d'aquestes condicions.",
 							"No s'hi pot pagar. No hi ha compres, ni monedes, ni caixes de pagament: els sobres s'obtenen jugant i no hi ha cap manera de comprar-ne. Per tant no hi ha cap aposta ni cap joc d'atzar amb premi: no s'hi arrisca res que tingui valor econòmic i no s'hi pot guanyar res que en tingui.",
 							"Podem canviar el funcionament del joc, reequilibrar-lo, retirar personatges, reiniciar municipis o reiniciar temporades senceres. No hi ha cap dret adquirit sobre res del que hi tinguis, i aquests canvis no donen dret a cap compensació, perquè no hi ha hagut cap pagament."
@@ -379,7 +375,7 @@
 						"heading": "2. Quines dades tractem",
 						"body": [
 							"Del teu compte de Google, quan hi inicies la sessió: l'adreça de correu electrònic, l'identificador del compte i el nom que Google publica al teu perfil. No rebem ni la contrasenya ni els contactes ni res més del teu compte de Google.",
-							"Del joc, a mesura que hi jugues: el nom d'usuari que tries, l'experiència i el nivell, l'avatar que portes, les cartes que t'han tocat, els sobres que has obert, els assoliments completats, els combats jugats amb el seu resultat i els municipis que ocupes o assetges.",
+							"Del joc, a mesura que hi jugues: el nom d'usuari que tries, l'experiència i el nivell, l'avatar que portes, les cartes que t'han tocat, els sobres que has obert, els combats jugats amb el seu resultat i els municipis que ocupes o assetges.",
 							"De les acceptacions legals: quin document has acceptat, en quina versió, quan, i si vas declarar tenir l'edat mínima.",
 							"No tractem dades de categories especials, no fem perfils de tu, no prenem decisions automatitzades amb efectes jurídics sobre tu i no tenim analítica ni publicitat de cap mena. No et demanem la data de naixement, només que confirmis un llindar.",
 							"No desem la teva adreça IP en cap base de dades nostra. Els proveïdors que fan funcionar el joc en registren de manera temporal als seus registres tècnics, com fa qualsevol servidor d'internet; ho expliquem a l'apartat 5."
@@ -399,7 +395,7 @@
 						"heading": "4. Què veuen els altres jugadors",
 						"body": [
 							"És públic dins del joc, per a qualsevol visitant tingui compte o no: el teu nom d'usuari, el nivell, la posició a la classificació, els municipis que ocupes i l'equip amb què els defenses.",
-							"No és públic mai: la teva adreça de correu, la data en què vas crear el compte, l'historial de combats, els sobres oberts, els assoliments i les acceptacions legals. Aquestes dades només les veus tu, perquè la base de dades les té tancades per files i cada compte només arriba a les seves.",
+							"No és públic mai: la teva adreça de correu, la data en què vas crear el compte, l'historial de combats, els sobres oberts i les acceptacions legals. Aquestes dades només les veus tu, perquè la base de dades les té tancades per files i cada compte només arriba a les seves.",
 							"Si prefereixes no aparèixer enlloc, no posis nom d'usuari: un compte sense nom no surt ni a la classificació ni sobre els municipis."
 						]
 					},
@@ -426,7 +422,7 @@
 						"heading": "7. Quant de temps les guardem",
 						"body": [
 							"Les dades del compte i de la partida, mentre el compte existeixi.",
-							"Quan esborres el compte, s'esborra tot: el perfil, les cartes, els avatars, els assoliments, els combats, els sobres, els municipis que ocupessis i el registre d'acceptacions. No en guardem cap còpia ni cap versió anonimitzada, i els municipis que tinguessis queden lliures per a qui els vulgui.",
+							"Quan esborres el compte, s'esborra tot: el perfil, les cartes, els avatars, els combats, els sobres, els municipis que ocupessis i el registre d'acceptacions. No en guardem cap còpia ni cap versió anonimitzada, i els municipis que tinguessis queden lliures per a qui els vulgui.",
 							"No hi ha cap termini legal de conservació que ens obligui a guardar res teu: no cobrem res, no emetem factures i no hi ha comptabilitat associada a la teva partida.",
 							"Les còpies de seguretat del proveïdor poden trigar uns dies a reciclar-se; passat aquest termini no en queda res enlloc."
 						]
