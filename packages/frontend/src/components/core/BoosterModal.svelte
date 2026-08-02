@@ -59,8 +59,14 @@
 	// True from the moment a box has finished coming apart. The window was raised to open a pack;
 	// once one is open and its cards are standing there, the sheet has said everything it was
 	// raised to say, so the whole of it becomes the way out and the next click anywhere on it
-	// closes — by the slide it would have left by from the ✕ or from Escape. It is never put back:
-	// a pack is opened once, and what follows a pack being opened is leaving.
+	// closes. It is never put back: a pack is opened once, and what follows a pack being opened
+	// is leaving.
+	//
+	// It is also how the sheet goes. Every other way out of every other sheet is a slide back
+	// down to the edge it came up from, which says where the view went; a pack that has been
+	// opened is cards standing on the town they were pulled on, and posting them off the bottom
+	// of the screen is taking away something still being looked at rather than putting a view
+	// down. So this one fades, and what fades up through it is that town.
 	let revealed = false;
 
 	function close(): void {
@@ -79,6 +85,7 @@
 	transparent
 	bare={alone}
 	closeOnClick={revealed}
+	fadeOut={revealed}
 	on:close={close}
 >
 	<!-- The sheet is the window on a canvas, and nothing beside it. It was drawn twice — the

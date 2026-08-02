@@ -1,7 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher, onMount } from 'svelte';
-	import { fly } from 'svelte/transition';
+	import { fade, fly } from 'svelte/transition';
 	import { dropSheet, raiseSheet } from '$services/fullScreenModal';
 
 	// The chrome every full-view modal over the map wears: the sheet, the way it
@@ -11,7 +11,8 @@
 	//
 	// A modal like this is the whole view rather than a box over the map: it takes
 	// the viewport and slides up from the bottom edge to do it, and slides back down
-	// on the way out. Nothing behind it is dimmed and there is no backdrop to click,
+	// on the way out — or fades, where what it is holding is worth leaving where it is
+	// (see `fadeOut`). Nothing behind it is dimmed and there is no backdrop to click,
 	// because there is nothing of the map left showing to click at — Escape and the ✕
 	// are how it closes.
 	//
@@ -95,6 +96,34 @@
 	 * `closeDisabled` still wins, as it does over both other ways out.
 	 */
 	export let closeOnClick: boolean = false;
+	/**
+	 * Leave by fading rather than by sliding back down.
+	 *
+	 * A sheet slides up from the bottom edge and slides back down because the movement says
+	 * where the view came from and where it has gone — it is the map's own furniture being
+	 * pulled up over it and let down again. That reading holds for a view being dismissed. It
+	 * does not hold for one that has finished: the booster window once a pack has come apart
+	 * and its cards are standing there, where sliding takes the cards somebody is still looking
+	 * at and posts them off the bottom of the screen. Fading leaves them where they are and
+	 * simply stops showing them, and what comes up underneath is the town they were pulled on.
+	 *
+	 * Same length either way, so nothing that was timed against the slide has to be told (see
+	 * the page's SHEET_EXIT, and the blur the map's chrome comes back on).
+	 */
+	export let fadeOut: boolean = false;
+
+	// How long the sheet takes to arrive and to go, whichever way it goes.
+	const SHEET_MS = 250;
+
+	// The way out is chosen when it plays rather than when the sheet is built, which is the whole
+	// point: a sheet is raised long before anybody knows whether it will be dismissed or finished
+	// with. A `transition:` directive is one way for both directions, so the two are written
+	// apart — the way in is always the slide.
+	function leave(node: Element, params: { faded: boolean }) {
+		return params.faded
+			? fade(node, { duration: SHEET_MS })
+			: fly(node, { y: '100%', duration: SHEET_MS, opacity: 1 });
+	}
 
 	const dispatch = createEventDispatcher<{ close: void }>();
 
@@ -139,7 +168,8 @@
 	aria-modal="true"
 	aria-label={title}
 	tabindex="-1"
-	transition:fly={{ y: '100%', duration: 250, opacity: 1 }}
+	in:fly={{ y: '100%', duration: SHEET_MS, opacity: 1 }}
+	out:leave={{ faded: fadeOut }}
 	on:click={onSheetClick}
 >
 	<div
