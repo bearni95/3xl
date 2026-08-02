@@ -3167,16 +3167,17 @@
 					{/if}
 				</svelte:fragment>
 
-				<!-- Which place the rest of the column is the inside of, said as the whole path down
-					to it: the same bar that stands over the map, given the listing location's path
-					rather than the view's (see listingCrumbs). The same component and not a second
-					arrangement of crumbs, so it collapses to one step and a dots button the moment
-					400px cannot hold the path — which on this column is most of them — and the whole
-					way back up is a press away without the names ever being cut short. Pressed for
-					what the bar over the map is pressed for: a step opens its region, an empty rung
-					takes the map to that tier's zoom. -->
+				<!-- Which place the rest of the column is the inside of, said as the path down to it:
+					the same bar that stands over the map, given the listing location's path rather
+					than the view's (see listingCrumbs). Folded outright and not merely when the room
+					runs out: this bar is a heading over a list of places, and a row of five crumbs
+					standing over a column of places is a second column of places — so it is the dots
+					and the place being listed, at every width. The rest of the path is where the
+					dots always put it, in the column they drop. Pressed for what the bar over the
+					map is pressed for: a step opens its region, an empty rung takes the map to that
+					tier's zoom. -->
 				<svelte:fragment slot="path">
-					<MapBreadcrumbs crumbs={listingCrumbs} onSelect={open} onZoom={zoomToTier} />
+					<MapBreadcrumbs crumbs={listingCrumbs} onSelect={open} onZoom={zoomToTier} folded />
 				</svelte:fragment>
 			</RegionSubdivisions>
 		</aside>

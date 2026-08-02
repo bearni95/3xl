@@ -74,6 +74,12 @@
 	// What an empty position does: the tier it stands for, handed back for the caller to zoom
 	// to. Never called for a crumb that names a region — that one is `onSelect`, as before.
 	export let onZoom: (tier: string) => void = () => {};
+	// Folded whatever the room: the bar is the dots button and the step it is on, and never the
+	// path laid out, however much width it is given. For a bar that is not the map's own — the
+	// one in the column beside it, where the path is a heading over a list and not the thing
+	// being read, and where a row of five crumbs would be a second column of places above a
+	// column of places. The whole path is still a press away, in the same dropped column.
+	export let folded: boolean = false;
 	export let classes: string = '';
 
 	// The square an empty position is drawn in, and the two buttons at the ends of this bar
@@ -88,7 +94,9 @@
 	// Whether the whole path fits the share of the row left over after the `end` slot has
 	// taken its width. Measured, not guessed at: how wide a path is depends on how many tiers
 	// deep it goes and on the lengths of names nobody here chooses.
-	let collapsed = false;
+	let overflows = false;
+	// And whether it is drawn folded, which is that or the caller having asked for it outright.
+	$: collapsed = folded || overflows;
 	// Whether the collapsed path has been dropped open. Only ever true while collapsed —
 	// a bar wide enough for the path has nothing to drop.
 	let expanded = false;
@@ -104,9 +112,11 @@
 	let observer: ResizeObserver | null = null;
 
 	function measure() {
+		// Nothing to measure on a bar that is folded whatever the answer would be — the copy it
+		// would have been measured against is not even laid out (see below).
 		if (!probeEl) return;
 		// The scroller's own overflow, a pixel of slack against fractional layout widths.
-		collapsed = probeEl.scrollWidth > probeEl.clientWidth + 1;
+		overflows = probeEl.scrollWidth > probeEl.clientWidth + 1;
 	}
 
 	// The track changing width is the other half of it — the map column resizing, or the
@@ -185,29 +195,33 @@
 		<div bind:this={trackEl} class="relative min-w-0 flex-1">
 			<!-- The path at its natural width, in a scroller stretched to the track: laid out, so
 				it can be measured, and hidden, so it is never read. `invisible` and not `hidden`
-				— a box with no layout has no width to report. -->
-			<div
-				bind:this={probeEl}
-				class="breadcrumbs pointer-events-none invisible absolute inset-0 py-0 text-sm"
-				aria-hidden="true"
-			>
-				<ul>
-					{#each rungs as crumb}
-						<li>
-							{#if crumb.empty}
-								<span class={squareClasses}><MapGlyph /></span>
-							{:else}
-								<MapBreadcrumb
-									label={crumb.label}
-									showName={crumb.showName ?? null}
-									showId={crumb.showId ?? null}
-									tileClasses={crumb.tileClasses ?? null}
-								/>
-							{/if}
-						</li>
-					{/each}
-				</ul>
-			</div>
+				— a box with no layout has no width to report. Not laid out at all for a bar that
+				is folded whichever way the measurement comes out: laying out a path nobody can be
+				shown, on every update, to answer a question already answered. -->
+			{#if !folded}
+				<div
+					bind:this={probeEl}
+					class="breadcrumbs pointer-events-none invisible absolute inset-0 py-0 text-sm"
+					aria-hidden="true"
+				>
+					<ul>
+						{#each rungs as crumb}
+							<li>
+								{#if crumb.empty}
+									<span class={squareClasses}><MapGlyph /></span>
+								{:else}
+									<MapBreadcrumb
+										label={crumb.label}
+										showName={crumb.showName ?? null}
+										showId={crumb.showId ?? null}
+										tileClasses={crumb.tileClasses ?? null}
+									/>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 
 			{#if collapsed}
 				<!-- Collapsed: the button that holds the rest of the path, and then the step the map
