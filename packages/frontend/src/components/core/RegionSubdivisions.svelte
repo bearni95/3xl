@@ -46,6 +46,16 @@
 	// Picking one is picking a region, which is the map's own gesture and not this
 	// column's: the page answers it exactly as it answers a pin or a crumb.
 	const dispatch = createEventDispatcher<{ select: { key: string } }>();
+
+	// The width of the box a row carries, which is how its height is said: give a box either of
+	// the two and it takes the other (see BoosterBox's 30:37), and the width is the one the
+	// column has to know before it can lay a row out. The 2.5rem in it is how tall an entry
+	// stands — the crumb's 32px tile in a row padded by 4 either side, which is the tallest
+	// thing in one; the two lines of type it is set beside come to less. So the calc reads as
+	// the sentence it is: the row's height, at the box's ratio. Written out rather than built
+	// from a constant because Tailwind reads these class names out of the source text, and a
+	// name assembled at run time is a name it never sees.
+	const BOX_WIDTH = 'w-[calc(2.5rem*30/37)]';
 </script>
 
 <!-- White ink, as on the bar: a crumb letters what it flies in white at 70% and is drawn to
@@ -124,22 +134,25 @@
 			</button>
 
 			{#if row.box}
-				<!-- At the far end of the entry and as tall as the entry is: the strip is stretched
-					to the row's own height by being a flex item of it, and the box stretched to the
-					strip, so the box is handed a height and gives back the width its 30:37 goes with
-					(see BoosterBox — hand it either and it takes the other). Nothing here says how
-					wide it is, which is what keeps a row of them the same shape as the row grows or
-					the name wraps.
+				<!-- At the far end of the entry and as tall as the entry is. The height is the one
+					that is said here, and it is said as a width: a box hands back whichever of the two
+					it is not given (see BoosterBox's 30:37), and it is the width that has to be
+					settled before the row is laid out, since a flex item nobody has given a width is
+					measured by what is inside it — which for a box whose every figure is a share of
+					its own width is not a measurement at all, and came out wider than the column.
+					So the width is stated and the ratio returns the row's height: ROW_HEIGHT is the
+					crumb's own — a 32px tile in a row padded by 4 — which is what makes the box
+					exactly as tall as the entry rather than as tall as it can get away with.
 					Hidden from a screen reader: the box is printed with the town's own name, which
 					the row beside it has just said, and it is not a control here. -->
-				<div class="flex flex-none items-stretch py-1 pr-2" aria-hidden="true">
+				<div class="flex-none pr-2" aria-hidden="true">
 					<BoosterBox
 						coverUrl={row.box.coverUrl ?? null}
 						logoUrl={row.box.logoUrl ?? null}
 						showId={row.box.showId ?? null}
 						locationName={row.box.locationName ?? null}
 						light={row.box.light ?? false}
-						classes="w-auto self-stretch"
+						classes={BOX_WIDTH}
 					/>
 				</div>
 			{/if}
