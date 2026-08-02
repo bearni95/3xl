@@ -15,6 +15,7 @@
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
 	import LocationSearchPanel from '$components/core/LocationSearchPanel.svelte';
+	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
@@ -75,6 +76,7 @@
 		flattenRegionNodes,
 		everyTownPlurality,
 		nodePath,
+		regionLevelNodes,
 		municipalityIdsForKey,
 		type FillLevel,
 		type RegionNode,
@@ -937,6 +939,13 @@
 	// instead), and used to pick the roster the town's OG team rolls from.
 	$: openNode = openRegion ? findNode(regionNodes, openRegion) : null;
 	$: openShow = openNode?.show ?? null;
+
+	// What the column beside the map lists: the level one tier under the region the
+	// breadcrumbs are open on — the territories at the top view, and a town's own sisters
+	// once the bar has got all the way down (see regionLevelNodes). It follows `openRegion`
+	// and not the URL selection alone, so the column walks with the zoom exactly as the
+	// crumbs above the map do.
+	$: subdivisions = regionLevelNodes(regionNodes, openRegion);
 
 	// --- The open municipality's deterministic "house team" ---------------------
 	// A leaf region (a municipality) has no children to drill into; instead of an
@@ -2765,8 +2774,14 @@
 		{/if}
 	</div>
 
-	<!-- The column beside the map. 200px of the row and nothing in it yet. -->
-	<aside class="w-[200px] flex-none bg-base-100"></aside>
+	<!-- The column beside the map: 400px of the row, and what the open region divides into.
+		It is the one place the map says a level as a list — the crumbs above it say the path
+		down and the pins say the places themselves, and neither can be read for what a region
+		is made of. It scrolls on its own, since a comarca of forty towns is a longer column
+		than the window. -->
+	<aside class="w-[400px] flex-none overflow-y-auto bg-base-100">
+		<RegionSubdivisions nodes={subdivisions} on:select={(event) => open(event.detail.key)} />
+	</aside>
 </div>
 
 <!-- The menu, on the map's right edge and summoned from the far end of the breadcrumb bar.

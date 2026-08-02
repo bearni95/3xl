@@ -230,6 +230,33 @@ export function flattenRegionNodes(nodes: RegionNode[]): RegionSearchEntry[] {
 	return entries;
 }
 
+/**
+ * The regions listed beside the map for the open one: what it divides into, one
+ * tier down — the top territories when nothing is open at all.
+ *
+ * A municipality divides into nothing, and a column that emptied on the last step
+ * of every drill would be a column that goes blank exactly when a place has been
+ * arrived at. So a town lists its **sisters** instead: the whole level it is one of,
+ * read off its own parent whatever tier that turns out to be — its comarca, or the
+ * province or territory itself where the comarca tier is skipped (Andorra,
+ * l'Alguer, and a territory whose provinces were never split). The open town is one
+ * of them, so walking from sister to sister leaves the list where it stands.
+ *
+ * This is deliberately not {@link regionRowsForSelection}, which is the same
+ * question asked by a table that drills exactly one tier per click and therefore
+ * empties on a leaf.
+ */
+export function regionLevelNodes(nodes: RegionNode[], selected: string | null): RegionNode[] {
+	if (!selected) return nodes;
+	const path = nodePath(nodes, selected);
+	const open = path.at(-1);
+	// A key no node answers to is the top view, as it is everywhere else the tree is
+	// asked about the selection.
+	if (!open) return nodes;
+	if (open.type !== 'Municipality') return open.children;
+	return path.at(-2)?.children ?? nodes;
+}
+
 /** A row the sidebar table renders: one region at the current drill level. */
 export interface RegionRow {
 	key: string;
