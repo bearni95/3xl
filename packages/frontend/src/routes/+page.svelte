@@ -1056,13 +1056,13 @@
 					regionSieges,
 					holders,
 					$showGlyphs,
+					festaBoxById,
 					openNode.key
 				)[0] ?? null)
 			: null;
 
-	// And the booster mark that pin carries, looked up the way the map looks it up (see
-	// boxForMarker): the window's box for that town, or nothing.
-	$: townPinBox = townPin ? (festaBoxes.find((entry) => entry.id === townPin?.id) ?? null) : null;
+	// (What the town has waiting is on the pin itself now, like everything else it carries —
+	// see `box` in buildMarkers.)
 
 	// --- The open municipality's deterministic "house team" ---------------------
 	// A leaf region (a municipality) has no children to drill into; instead of an
@@ -1739,6 +1739,12 @@
 		return result;
 	})();
 
+	// The same crop, asked by town — which is how everything that wants one asks: a pin is
+	// built for a place and wants that place's box, not a list to search. The list itself is
+	// still what they are built as, since which cover a box is printed with is settled over
+	// every town at once.
+	$: festaBoxById = new Map(festaBoxes.map((box) => [box.id, box]));
+
 	// Show a town's pack: open the town on the map, remember which town, and raise the booster
 	// modal, which mounts the opener with that pack already stood up.
 	//
@@ -2151,6 +2157,7 @@
 		sieges: ReadonlyMap<string, RegionSiege>,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
 		glyphs: ReadonlyMap<number, string>,
+		offers: ReadonlyMap<string, MapBoosterBox>,
 		pinned: string | null
 	): MapMarker[] {
 		const pins: MapMarker[] = [];
@@ -2181,6 +2188,10 @@
 				// municipality's key is a municipality id, so the coarser tiers never match
 				// and are never asked.
 				holder: node.type === 'Municipality' ? pinHolder(node.key, occupied) : null,
+				// What the town has waiting, where the booster window reaches it — the same
+				// lookup by the same key, and for the same reason it is the town tier alone: a
+				// festa is a day in a town, and no coarser region has one.
+				box: offers.get(node.key) ?? null,
 				iconSvg: forShow(glyphs, node.show.id),
 				frameClasses: node.color ? pinColorClasses[node.color] : null,
 				title: node.show.name,
@@ -2300,6 +2311,7 @@
 		sieges: ReadonlyMap<string, RegionSiege>,
 		occupied: ReadonlyMap<string, MunicipalityHolder>,
 		glyphs: ReadonlyMap<number, string>,
+		offers: ReadonlyMap<string, MapBoosterBox>,
 		pinned: string | null
 	): MapMarker[][] {
 		const levels: MapMarker[][] = [];
@@ -2315,6 +2327,7 @@
 					sieges,
 					occupied,
 					glyphs,
+					offers,
 					pinned
 				)
 			);
@@ -2343,6 +2356,7 @@
 		NO_SIEGES,
 		NO_HOLDERS,
 		$showGlyphs,
+		festaBoxById,
 		selected
 	);
 
@@ -2947,7 +2961,7 @@
 				moment, from the same data (see townPin). Only a town has one. -->
 			<svelte:fragment slot="detail">
 				{#if townPin}
-					<TownPin marker={townPin} box={townPinBox} classes="py-1" />
+					<TownPin marker={townPin} box={townPin.box ?? null} classes="py-1" />
 				{/if}
 			</svelte:fragment>
 		</RegionSubdivisions>

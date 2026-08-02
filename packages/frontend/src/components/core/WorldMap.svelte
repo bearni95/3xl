@@ -1847,6 +1847,9 @@
 	// there was somewhere else for a disc to go. There is not — the point under the pin is
 	// the pin's own middle now (see markerElement).
 	function boxForMarker(marker: MapMarker): MapBoosterBox | null {
+		// A box the caller hung on the pin itself is this pin's, and asked of nothing else:
+		// naming it was the decision, so there is no tier to qualify and no list to search.
+		if (marker.box) return marker.box;
 		if (!marksTowns()) return null;
 		return boxes.find((entry) => entry.id === marker.id) ?? null;
 	}

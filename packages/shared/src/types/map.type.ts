@@ -139,6 +139,19 @@ export interface MapMarker {
 	 */
 	challenge?: MapChallenge | null;
 	/**
+	 * The booster box this place has waiting, drawn as the last block of the pin's column
+	 * (or behind its side, where it has one). Handed to the pin the way its team and its
+	 * standing are, because whether a place has one to offer is the caller's question:
+	 * which shows a town's packs are printed from and which days the window reaches are
+	 * both things this side has never known.
+	 *
+	 * A map may instead give the whole crop of them to its own box layer (see the `boxes`
+	 * prop), which stands them on their points — the two are answers to different
+	 * questions, one about a mark a pin carries and one about towns with no pin at all.
+	 * A box given here wins for this pin, since the caller has named it.
+	 */
+	box?: MapBoosterBox | null;
+	/**
 	 * Classes painted onto the glyph's tile at the left end of the pin's plate — the
 	 * region's own colour, as a fill plus the ink that reads on it. Null leaves the
 	 * tile on the neutral base surface, which is also what a region with no colour
