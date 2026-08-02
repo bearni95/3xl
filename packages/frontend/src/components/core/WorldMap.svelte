@@ -112,18 +112,18 @@
 		 */
 		hiddenLineUrls?: Set<string>;
 		/**
-		 * The one shape drawn as breathing: the open region's, which pulses between the
-		 * colour it flies and the theme's primary for as long as it is the open one (see
+		 * The one shape drawn as breathing: the open region's, whose wash swells and falls
+		 * back for as long as it is the open one, in the colour it already flies (see
 		 * `--animate-region-pulse`). Which shape, said the way a shape names itself — the
 		 * layer it belongs to, and the value its `properties.id` or `properties.name`
-		 * carries — plus the colour to pulse FROM, since that is the caller's to say: a
-		 * region's colour is the caller's whole business and this side has never known one.
+		 * carries — plus the wash it is painted at, which is where the breath starts and
+		 * returns to and is the caller's, being the caller's own paint.
 		 *
-		 * A CSS animation and not a repaint: a fill Leaflet writes is a presentation
+		 * A CSS animation and not a repaint: the alpha Leaflet writes is a presentation
 		 * attribute, which any rule outranks, so the browser is left to animate one path
 		 * while nothing here runs at all. Null takes the pulse off whatever was pulsing.
 		 */
-		pulse?: { url: string; key: string; color: string } | null;
+		pulse?: { url: string; key: string; opacity: number } | null;
 		/**
 		 * When set, the map animates to frame this `[[south, west], [north, east]]`
 		 * box (e.g. the selected region's polygons). A fresh array reference re-fits
@@ -408,7 +408,7 @@
 			if (String(props.id ?? '') !== wanted.key && String(props.name ?? '') !== wanted.key) return;
 			const path = (layer as L.Path).getElement() as SVGElement | undefined;
 			if (!path) return;
-			path.style.setProperty(PULSE_FROM, wanted.color);
+			path.style.setProperty(PULSE_FROM, String(wanted.opacity));
 			path.classList.add(PULSE_CLASS);
 			pulsingPath = path;
 		});

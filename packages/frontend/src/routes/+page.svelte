@@ -418,6 +418,11 @@
 		else battleService.clear();
 	}
 
+	// What the open region's shape is washed at: the thinnest wash on the map, and the floor
+	// the pulse over it breathes from and back to (see buildPulse). Named because two places
+	// need the same number and one of them is an animation, which cannot ask the other.
+	const PICKED_WASH = 0.2;
+
 	// The colour every division line is drawn in, at every tier. White, and
 	// deliberately not the red the whole map used to be drawn in nor the colour of
 	// the region it encloses: red is one of the six colours a region can fly now, so
@@ -512,9 +517,11 @@
 	// The picked shape, breathing. With no marks left on the map, a wash is all a region has
 	// to say what it is — and every region on the imaged tier is wearing one, so the shape
 	// that was actually asked for looked like its neighbours with a thinner coat of the same
-	// paint. It pulses between the colour it flies and the theme's primary instead, which is
-	// the one colour on this map that belongs to no region and so can never be mistaken for a
-	// second region's claim (see `--animate-region-pulse`).
+	// paint. That coat swells and falls back instead, in the region's own colour throughout:
+	// a colour on this map is a claim, so a shape that changed colour to say it was picked
+	// would be saying the place had changed hands, while how much of that colour there is
+	// means nothing on its own — which is what leaves it free to mean this (see
+	// `--animate-region-pulse`).
 	//
 	// Only where there is a wash to pulse: the imaged tier is the only one that fills (see
 	// tierStyle), so a comarca picked while the map is drawing municipalities has nothing
@@ -526,18 +533,22 @@
 		colors: RegionColors,
 		imaged: number,
 		spotlit: string | null
-	): { url: string; key: string; color: string } | null {
+	): { url: string; key: string; opacity: number } | null {
 		if (!picked || spotlit) return null;
 		if (tierRank[picked.tier] !== imaged) return null;
 		const url = tierLayerUrls.get(tierRank[picked.tier]);
 		// The same fallback the paint takes: where a territory holds a single province, the
 		// province polygon IS the territory and answers to the territory's colour (see
-		// featureColor). A shape with no colour has no wash and nothing to pulse from.
+		// featureColor). A shape with no colour has no wash at all, and so nothing to breathe.
 		const color =
 			colors[picked.tier].get(picked.key) ??
 			(picked.tier === 'Province' ? colors.Territory.get(picked.key) : undefined);
 		if (!url || !color) return null;
-		return { url, key: picked.key, color: REGION_COLOR_CSS[color] };
+		// Where the breath starts and returns to is the wash the paint gave it, named rather
+		// than written out again: the two would otherwise have to be kept in step by hand, and
+		// a pulse that came to rest at a strength the shape is not painted at would jump the
+		// moment it stopped.
+		return { url, key: picked.key, opacity: PICKED_WASH };
 	}
 
 	$: pulse = buildPulse(pickedFeature, regionColors, hiddenRank, spotlitId);
@@ -589,7 +600,7 @@
 				// it has no click to catch, and a fill it does not need would bury the tiers under it.
 				fill: washes || tier === 'Municipality',
 				fillColor: washes ? REGION_COLOR_CSS[color!] : lineColor,
-				fillOpacity: washes ? (isSpotlit ? 0.8 : isPicked ? 0.2 : 0.5) : 0
+				fillOpacity: washes ? (isSpotlit ? 0.8 : isPicked ? PICKED_WASH : 0.5) : 0
 			};
 		};
 	}
