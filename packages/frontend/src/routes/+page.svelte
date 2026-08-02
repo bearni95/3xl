@@ -160,6 +160,11 @@
 	// selection like any other now, and a linkable one. No territory slugifies to this, so
 	// it can never be mistaken for a region in the tree.
 	const TOP_VIEW_KEY = 'paisos-catalans';
+	// What that view is called. Not in the catalogue: it is the name of the place this whole
+	// map is of, which is the same word in the one language the game is written in. It is
+	// said in two places — the head of the crumb bar and the head of the column beside the
+	// map — and they are the same step, so it is written once.
+	const TOP_VIEW_LABEL = 'Països Catalans';
 
 	// What the URL says is open.
 	$: regionParam = $page.url.searchParams.get('region');
@@ -903,7 +908,7 @@
 	$: mapPlurality = everyTownPlurality(regionNodes);
 	$: crumbs = [
 		{
-			label: 'Països Catalans',
+			label: TOP_VIEW_LABEL,
 			key: TOP_VIEW_KEY as string | null,
 			showName: mapPlurality.show?.name ?? null,
 			showId: mapPlurality.show?.id ?? null,
@@ -950,19 +955,38 @@
 	// because it is drawn by the same component: a place on this map is its tile, its name
 	// and the show it flies, whether it is being named as a step of the path or as one of
 	// the places the open region is made of.
-	$: subdivisions = regionLevelNodes(regionNodes, openRegion).map((node) => ({
-		key: node.key,
-		label: restoreCatalanArticle(node.name),
-		showName: node.show?.name ?? null,
-		showId: node.show?.id ?? null,
-		tileClasses: node.color ? pinColorClasses[node.color] : null
-	}));
+	$: subdivisions = regionLevelNodes(regionNodes, openRegion).map(crumbRow);
 
-	// Which of those rows is the place being looked at rather than a place under it. Only a
-	// municipality is ever one of them — every coarser tier lists what it divides into, and
-	// is named by the bar over the map instead — so this is null everywhere else, and the
-	// column has nothing at its head.
-	$: subdivisionCurrentKey = openNode?.type === 'Municipality' ? openRegion : null;
+	/** One region as the bar letters it — the spelling the column's head and its rows share. */
+	function crumbRow(node: RegionNode) {
+		return {
+			key: node.key,
+			label: restoreCatalanArticle(node.name),
+			showName: node.show?.name ?? null,
+			showId: node.show?.id ?? null,
+			tileClasses: node.color ? pinColorClasses[node.color] : null
+		};
+	}
+
+	// The place that column is about: the region the map is open on, at any tier. It stands
+	// at the head of the column above the level under it, so where you are is the first thing
+	// on the plate rather than something to be found among the places inside it — and a town,
+	// which is listed among its own sisters, is taken out of that list and stood up here (see
+	// the component).
+	//
+	// The top view is a place like any other here: it is where the map is when nothing is
+	// open, it is a selection with a key of its own (see TOP_VIEW_KEY), and the bar already
+	// letters it with the plurality of every town on the map. So the column's head is never
+	// empty, whatever the map is looking at.
+	$: subdivisionCurrent = openNode
+		? crumbRow(openNode)
+		: {
+				key: TOP_VIEW_KEY,
+				label: TOP_VIEW_LABEL,
+				showName: mapPlurality.show?.name ?? null,
+				showId: mapPlurality.show?.id ?? null,
+				tileClasses: mapPlurality.color ? pinColorClasses[mapPlurality.color] : null
+			};
 
 	// --- The open municipality's deterministic "house team" ---------------------
 	// A leaf region (a municipality) has no children to drill into; instead of an
@@ -2799,7 +2823,7 @@
 	<aside class="w-[400px] flex-none overflow-y-auto bg-base-100">
 		<RegionSubdivisions
 			rows={subdivisions}
-			currentKey={subdivisionCurrentKey}
+			current={subdivisionCurrent}
 			on:select={(event) => open(event.detail.key)}
 		/>
 	</aside>

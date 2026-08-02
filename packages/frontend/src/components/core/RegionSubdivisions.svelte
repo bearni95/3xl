@@ -16,24 +16,30 @@
 		showId: number | null;
 		tileClasses: string | null;
 	}[] = [];
-	// The row that is the place being looked at rather than a place under it, when one of
-	// them is: a town listing its sisters is one of the sisters, and a name somewhere down a
-	// column of forty is not where a reader looks for where they are. It is lifted to the
-	// head of the column with a rule under it, so the column reads as this place and then
-	// the ones beside it. Null on every other tier, where the rows are what the open region
-	// divides into and the open region itself is named by the bar over the map.
-	export let currentKey: string | null = null;
+	// The place the column is about, at the head of it with a rule under it: where the map is
+	// looking, which is a different kind of thing from the rows below and is what a reader
+	// looks for first. It stands whatever tier that place is — a town, which is one of the
+	// sisters listed under it, and every coarser region, which is not one of its own
+	// subdivisions — so the column always reads the same way round: this place, then the
+	// level under it.
+	export let current: {
+		key: string;
+		label: string;
+		showName: string | null;
+		showId: number | null;
+		tileClasses: string | null;
+	} | null = null;
 	export let classes: string = '';
 
 	// Picking one is picking a region, which is the map's own gesture and not this
 	// column's: the page answers it exactly as it answers a pin or a crumb.
 	const dispatch = createEventDispatcher<{ select: { key: string } }>();
 
-	// The column in the order it is read. `rows` is named directly so the split re-runs as
-	// the level changes; a `currentKey` naming no row leaves the level exactly as it came,
-	// which is what an unheard-of key or a level with nothing lifted out of it should do.
-	$: current = currentKey ? (rows.find((row) => row.key === currentKey) ?? null) : null;
-	$: rest = current ? rows.filter((row) => row.key !== current.key) : rows;
+	// The level with the head taken out of it, so a town at the top of its own list of
+	// sisters is not also standing among them. Nothing to take out on any other tier — a
+	// region is never one of the things it divides into — which is why this is a filter and
+	// not a rule about municipalities. `current` is named directly so it re-runs with it.
+	$: rest = current ? rows.filter((row) => row.key !== current?.key) : rows;
 </script>
 
 <!-- White ink, as on the bar: a crumb letters what it flies in white at 70% and is drawn to
@@ -63,8 +69,12 @@
 			/>
 		</button>
 		<!-- The rule that says the rest of the column is a different thing from the row above
-			it: not more of the level, but the level the row above is one of. -->
-		<div class="divider my-0"></div>
+			it: not more of the level, but the level under it. Drawn only when there is a level
+			to divide off — a rule over nothing would be the column claiming to have more to say
+			than it has. -->
+		{#if rest.length}
+			<div class="divider my-0"></div>
+		{/if}
 	{/if}
 
 	{#each rest as row (row.key)}
