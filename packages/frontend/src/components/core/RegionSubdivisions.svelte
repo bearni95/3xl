@@ -98,9 +98,16 @@
 				<!-- The box the place at the head has waiting, drawn exactly as a row's is and at
 					exactly its size: the same stated width returning the same row height through the
 					box's own ratio (see BOX_WIDTH), so the head and the rows under it line up down the
-					column's far edge. Hidden from a screen reader for the reason a row's is — the box
-					is printed with the town's own name, which the line beside it has just said. -->
-				<div class="flex-none pr-2" aria-hidden="true">
+					column's far edge.
+					Pressed for the box's own click and not the row's — the town's pack, which is what
+					a click on this same `MapBoosterBox` does wherever it is drawn (see `onClick`). So
+					it is a button beside the name's button rather than a picture inside it, and it
+					takes its accessible name from the one the box is printed with. -->
+				<button
+					type="button"
+					class="flex-none pr-2"
+					on:click={() => current?.box?.onClick?.()}
+				>
 					<BoosterBox
 						coverUrl={current.box.coverUrl ?? null}
 						logoUrl={current.box.logoUrl ?? null}
@@ -109,7 +116,7 @@
 						light={current.box.light ?? false}
 						classes={BOX_WIDTH}
 					/>
-				</div>
+				</button>
 			{/if}
 		</div>
 
@@ -156,14 +163,15 @@
 	{/if}
 
 	{#each rows as row (row.key)}
-		<!-- The row is the press, and the box beside it is not: a box here says what that town
-			has waiting, the way the tile says what it flies, and it is the row that is pressed —
-			to the same end, since the pack is reached by opening the town. So the whole row
-			lights on hover while the press itself stays on the name, and the box stands outside
-			the button rather than inside it: a button holds phrasing content, which is why the
-			crumb in it is spans throughout (see MapBreadcrumb), and a box is a block of planes.
-			The row is a plain flex box where there is nothing to stand beside the name, which is
-			every row of every tier above the municipality. -->
+		<!-- Two presses on one row: the name, which opens the town, and the box, which opens what
+			the town has waiting. They were one press for a while — the box was a picture and the
+			row was pressed to the same end, the pack being reached by opening the town — but a box
+			is the mark this game asks to be tapped, and a picture of one that answers by drilling
+			the map is not that mark. So the whole row lights on hover, and each half does its own
+			thing. The box stands outside the name's button either way: a button holds phrasing
+			content, which is why the crumb in it is spans throughout (see MapBreadcrumb), and a
+			box is a block of planes. The row is a plain flex box where there is nothing to stand
+			beside the name, which is every row of every tier above the municipality. -->
 		<!-- The one row among the sisters that is the place the map is open on takes the primary
 			fill, so it can be found in the list without being counted along it. Only a town is
 			ever among its own level — every coarser region is listed above what it divides into,
@@ -206,9 +214,12 @@
 					So the width is stated and the ratio returns the row's height: ROW_HEIGHT is the
 					crumb's own — a 32px tile in a row padded by 4 — which is what makes the box
 					exactly as tall as the entry rather than as tall as it can get away with.
-					Hidden from a screen reader: the box is printed with the town's own name, which
-					the row beside it has just said, and it is not a control here. -->
-				<div class="flex-none pr-2" aria-hidden="true">
+					Its own press, and not the row's: this is the same `MapBoosterBox` the map is
+					standing on that town, so it does here what it does there — raises that town's
+					pack (see its `onClick`), which opens the town on the way. The row beside it still
+					opens the town alone. It is a button and no longer a picture hidden from a screen
+					reader, and it is named by the name printed on the box itself. -->
+				<button type="button" class="flex-none pr-2" on:click={() => row.box?.onClick?.()}>
 					<BoosterBox
 						coverUrl={row.box.coverUrl ?? null}
 						logoUrl={row.box.logoUrl ?? null}
@@ -217,7 +228,7 @@
 						light={row.box.light ?? false}
 						classes={BOX_WIDTH}
 					/>
-				</div>
+				</button>
 			{/if}
 		</div>
 	{/each}
