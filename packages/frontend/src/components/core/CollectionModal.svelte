@@ -8,6 +8,7 @@
 	import { spawnService } from '$services/spawn.service';
 	import { showLogos, loadShowLogos } from '$services/shows.service';
 	import { AuthStatus } from '$types/profile.type';
+	import { DEFAULT_RARITY } from '$types/character-template.type';
 	import type { CharacterSpawn } from '$types/character-spawn.type';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import FullScreenModal from '$components/core/FullScreenModal.svelte';
@@ -52,6 +53,10 @@
 	// character id → the shows it is cast in, which is the assignment the admin `/characters`
 	// screen makes and the same one the roster reads.
 	let characterShows = new Map<string, { id: number; name: string }[]>();
+	// character id → its rarity tier, out of the same `character_templates` the claim reads:
+	// the tier is Supabase's, authored in the admin, and nothing in the local registry carries
+	// it. A character the table has nothing to say about stands at DEFAULT_RARITY.
+	let rarityByCharacter = new Map<string, number>();
 	let loading = true;
 	let error = '';
 
@@ -65,7 +70,14 @@
 		loading = true;
 		error = '';
 		try {
-			characterShows = await spawnService.loadCharacterShows();
+			// Both together: the tiers are what the cast is ordered by, so a set standing
+			// before them has arrived is a set in an order it is about to leave.
+			const [shows, rarities] = await Promise.all([
+				spawnService.loadCharacterShows(),
+				spawnService.loadRarities()
+			]);
+			characterShows = shows;
+			rarityByCharacter = rarities;
 		} catch (err) {
 			error = err instanceof Error ? err.message : String(err);
 		} finally {
@@ -84,9 +96,16 @@
 	}
 
 	// The album's rows: one per show that has a renderable cast, the show's name deciding the
-	// order and each cast in its own alphabetical order — nothing here is claimed, so there is
-	// no claim order for it to be in.
-	$: showRows = ((shows: Map<string, { id: number; name: string }[]>) => {
+	// order and each cast standing rarest first — the run of a show reads as a ladder down from
+	// what is hardest to pull, which is the one thing a set of cards is graded by. Nothing here
+	// is claimed, so there is no claim order for it to be in; two fighters on the same tier are
+	// alphabetical, since a tie has to break somewhere and a name is the only other thing a cell
+	// says. A character the tiers do not name sorts as DEFAULT_RARITY rather than as nothing, so
+	// an album standing before the tiers arrive is the same album re-graded and not re-shuffled.
+	$: showRows = ((
+		shows: Map<string, { id: number; name: string }[]>,
+		rarities: Map<string, number>
+	) => {
 		const byShow = new Map<number, { id: number; name: string; cast: CharacterOption[] }>();
 		for (const [characterId, entries] of shows) {
 			const character = charactersById.get(characterId);
@@ -97,9 +116,14 @@
 				byShow.set(show.id, row);
 			}
 		}
-		for (const row of byShow.values()) row.cast.sort((a, b) => a.label.localeCompare(b.label));
+		const rarityOf = (character: CharacterOption) =>
+			rarities.get(character.id) ?? DEFAULT_RARITY;
+		for (const row of byShow.values())
+			row.cast.sort(
+				(a, b) => rarityOf(b) - rarityOf(a) || a.label.localeCompare(b.label)
+			);
 		return [...byShow.values()].sort((a, b) => a.name.localeCompare(b.name));
-	})(characterShows);
+	})(characterShows, rarityByCharacter);
 
 	// --- The show filter ------------------------------------------------------------------
 	// Which show the grid is narrowed to, or ANY for the whole set. Same gesture as the
