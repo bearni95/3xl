@@ -55,6 +55,12 @@
 	// Laid into a column rather than dropped on a point: the plate takes its container's
 	// width instead of finding its own, and squares its corners (see the class lists above).
 	export let flush: boolean = false;
+	// Whether the plate says the place's own name. A plate dropped on terrain has to — it is
+	// the only thing naming the point it stands on — but one laid into a column that has just
+	// named the place at its head would be saying it twice, and the second saying is the one
+	// that reads as a stray row. What is left is what only the plate says: whose the place is
+	// and how far it has been taken.
+	export let named: boolean = true;
 	export let classes: string = '';
 </script>
 
@@ -63,26 +69,28 @@
 		lets a line longer than the plate's own width truncate rather than push the plate
 		wider — a flex item's floor is its content otherwise. The tile is decorative: the show
 		is named in the line right beside it, so announcing the glyph too would read it twice. -->
-	<div class="flex items-center gap-2">
-		{#if iconSvg || frameClasses}
-			<div
-				class={classNames(
-					TILE_CLASSES,
-					'[&>svg]:size-7',
-					frameClasses ?? 'bg-base-100 text-base-content'
-				)}
-				aria-hidden="true"
-			>
-				{@html iconSvg ?? ''}
-			</div>
-		{/if}
-		<div class="flex min-w-0 flex-col text-left leading-tight">
-			{#if subtitle}
-				<span class="truncate text-xs font-semibold">{subtitle}</span>
+	{#if named}
+		<div class="flex items-center gap-2">
+			{#if iconSvg || frameClasses}
+				<div
+					class={classNames(
+						TILE_CLASSES,
+						'[&>svg]:size-7',
+						frameClasses ?? 'bg-base-100 text-base-content'
+					)}
+					aria-hidden="true"
+				>
+					{@html iconSvg ?? ''}
+				</div>
 			{/if}
-			<span class="truncate text-xs font-medium text-white/70">{title}</span>
+			<div class="flex min-w-0 flex-col text-left leading-tight">
+				{#if subtitle}
+					<span class="truncate text-xs font-semibold">{subtitle}</span>
+				{/if}
+				<span class="truncate text-xs font-medium text-white/70">{title}</span>
+			</div>
 		</div>
-	</div>
+	{/if}
 
 	{#if holder}
 		<TownHolder name={holder.name} characterId={holder.characterId} color={holder.color} />

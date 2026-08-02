@@ -3086,10 +3086,15 @@
 			<!-- The town's own pin, stood in the column under the row that names it: the side
 				holding it, whose it is, how far it has been taken, the way to fight for it and the
 				pack it has waiting — the same mark the map is drawing on that town at this very
-				moment, from the same data (see townPin). Only a town has one. -->
+				moment, from the same data (see townPin). Only a town has one.
+				Unnamed, because the row this hangs under is the town's name: the column's head
+				says the place, its tile and the show it flies, and the plate saying all three
+				again a row later stood between the side on the town and how far it has been
+				taken, reading as a stray row in the middle of the one thing. What the plate is
+				here for is the rest of it (see TownPlate's `named`). -->
 			<svelte:fragment slot="detail">
 				{#if townPin}
-					<TownPin marker={townPin} box={townPin.box ?? null} classes="py-1" />
+					<TownPin marker={townPin} box={townPin.box ?? null} named={false} classes="py-1" />
 				{/if}
 			</svelte:fragment>
 		</RegionSubdivisions>

@@ -22,6 +22,10 @@
 	// the disc: a disc is a dot on a town nobody has picked, and this column is only ever
 	// drawn for the place being looked at (see markKindForBox).
 	export let box: MapBoosterBox | null = null;
+	// Whether the plate names the place (see TownPlate). Handed on rather than decided here:
+	// whether the name has already been said is a fact about wherever this column is stood
+	// up, not about the column.
+	export let named: boolean = true;
 	export let classes: string = '';
 </script>
 
@@ -47,6 +51,7 @@
 		subtitle={marker.subtitle}
 		holder={marker.holder}
 		challenge={marker.challenge}
+		{named}
 		flush
 	/>
 
