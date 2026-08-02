@@ -50,6 +50,14 @@ import type { MusicTrack, MusicCollection } from '$types/music.type';
  * they do, the plate honestly says Play. A refusal is never written back as their having
  * turned it off, because they did not.
  *
+ * The dial is turned by two hands. The listener's, on the select at the foot of the map
+ * and in the menu; and the map's, which while the radio is on tunes it to the show the
+ * place it is open on flies (see {@link MusicService.follow}) — so what is playing is
+ * about where the reader is, and the music moves with them without their asking. A change
+ * of station under a listener is crossfaded rather than cut, since the map moves often and
+ * a cut every time it did would read as the radio breaking. Only the *station* fades: the
+ * songs within one hand over the way a station's do.
+ *
  * The store says only what a surface has to draw: which song is on, whether it is
  * running, and the stations there are to choose between.
  */
@@ -71,6 +79,22 @@ const DRIFT_MS = 1500;
  * on the song that is ending and immediately have to come back.
  */
 const RETUNE_MARGIN_MS = 50;
+
+/**
+ * How long one station takes to become another while the radio is on. A station change
+ * is the one moment this player cuts from one song to a different one, and on a map that
+ * changes station by itself as the reader moves around it (see {@link MusicService.follow})
+ * a cut would read as a fault. Long enough to be heard as a turn of the dial rather than
+ * a glitch, short enough that the two songs are not a mix.
+ */
+const CROSSFADE_MS = 1200;
+
+/**
+ * How often the two volumes are moved during that fade. Below the ~50ms a ramp starts to
+ * be heard stepping, and not so fine that a fade costs more timer wake-ups than it is
+ * worth.
+ */
+const CROSSFADE_STEP_MS = 40;
 
 /** Where the listener's two choices are kept between visits. */
 const MEMORY_KEY = 'music-player';
@@ -148,6 +172,18 @@ class MusicService {
 
 	/** The pending retune at the end of the song on air. */
 	private retuneAt: ReturnType<typeof setTimeout> | null = null;
+
+	/**
+	 * The station being faded out, while one is: the element it is coming out of and the
+	 * ramp moving the two volumes. Null the rest of the time, which is nearly all of it —
+	 * there is one element until a station changes under a listener.
+	 */
+	private fading: {
+		from: HTMLAudioElement;
+		/** Where that element's volume started, so an interrupted fade is not a jump up. */
+		level: number;
+		timer: ReturnType<typeof setInterval>;
+	} | null = null;
 
 	/**
 	 * Whether the listener wants sound. The element is only where it comes out — a
@@ -243,6 +279,10 @@ class MusicService {
 		if (this.wanted && !audio.paused) {
 			this.wanted = false;
 			this.remember({ on: false });
+			// A station on its way out is still sound coming from this radio, so it goes
+			// silent with the one being turned off — otherwise the pause would leave the
+			// last second of the previous station playing on with nothing to answer it.
+			this.settle();
 			audio.pause();
 			return;
 		}
@@ -258,14 +298,49 @@ class MusicService {
 	 * top. A show the collection has no station for is not tuned to.
 	 */
 	tuneTo(showId: number | null): void {
+		this.select(showId, true);
+	}
+
+	/**
+	 * Tune to the show the map is looking at, if the radio is on — the map moving the
+	 * dial rather than the listener. Which show a place flies is the map's own statement
+	 * about it (its town's show, or the plurality of the towns under a region), so a
+	 * reader who drills into a comarca hears what that comarca is mostly made of.
+	 *
+	 * Three things make this the map's move and not the listener's, and each is deliberate:
+	 *
+	 * - **Only while it is on.** A radio that is off has nothing to say about where the
+	 *   map is, and a station silently changing under a paused player would surprise
+	 *   whoever pressed play next with a station they did not leave it on.
+	 * - **Nothing is remembered.** The listener's station is the one they turned the dial
+	 *   to (see {@link remember}); where they happened to have the map when they closed
+	 *   the page is not a choice about music.
+	 * - **`null` is not a station here.** The dial's `null` means the songs that open no
+	 *   show, while a place with no show is a place the map cannot name one for — an
+	 *   unknown, and a radio does not retune on one. Nor does a show with no songs move
+	 *   it: there is no station to go to, so it stays where it is rather than going quiet.
+	 */
+	follow(showId: number | null): void {
+		if (!this.wanted || showId === null) return;
+		this.select(showId, false);
+	}
+
+	/**
+	 * Put the dial on `showId` — the one place a station is chosen, whoever is choosing.
+	 * A station that is not there, and the one already tuned, are both no-ops, so callers
+	 * may say where they want to be as often as they like. The change is crossfaded when
+	 * there is sound to crossfade (see {@link crossfade}); a station changed under a
+	 * radio that is off is simply what it will be playing when it comes back on.
+	 */
+	private select(showId: number | null, remember: boolean): void {
 		const current = this.station();
 		if (!current || current.showId === showId) return;
 		if (!this.stations.some((station) => station.showId === showId)) return;
 
 		this.tuned = showId;
 		this.index = 0;
-		this.remember({ station: showId });
-		this.tune();
+		if (remember) this.remember({ station: showId });
+		this.tune(false, true);
 		this.measure(this.station());
 	}
 
@@ -274,8 +349,13 @@ class MusicService {
 	 * arrange to come back when that song ends. Called on every boundary whether or not
 	 * anyone is listening, so the plate says what is on air rather than what was on air
 	 * when the listener last paused.
+	 *
+	 * `fade` says this is a change of station rather than the clock moving the one that
+	 * is on along: the song a station hands over to its next is a cut because that is what
+	 * a station does, and a song from a different station arriving over the top of it is a
+	 * dial being turned.
 	 */
-	private tune(ended = false): void {
+	private tune(ended = false, fade = false): void {
 		if (this.retuneAt !== null) {
 			clearTimeout(this.retuneAt);
 			this.retuneAt = null;
@@ -301,16 +381,21 @@ class MusicService {
 			// song running out — which is the one moment `ended` is the truth about, so it
 			// is the one place the next song is chosen here rather than read off a clock.
 			const at = Math.min(this.index, order.length - 1);
-			this.air(order, ended ? (at + 1) % order.length : at, 0);
+			this.air(order, ended ? (at + 1) % order.length : at, 0, fade);
 			return;
 		}
 
-		this.air(order, position.index, position.offsetMs);
+		this.air(order, position.index, position.offsetMs, fade);
 		this.retuneAt = setTimeout(() => this.tune(), position.remainingMs + RETUNE_MARGIN_MS);
 	}
 
 	/** Letter one song as being on, and put the element on it at `offsetMs` into it. */
-	private air(order: readonly MusicTrack[], index: number, offsetMs: number): void {
+	private air(
+		order: readonly MusicTrack[],
+		index: number,
+		offsetMs: number,
+		fade = false
+	): void {
 		this.index = index;
 		const track = order[index];
 		this.stateStore.update((state) => ({ ...state, track }));
@@ -321,6 +406,14 @@ class MusicService {
 		if (!audio) return;
 
 		if (this.loadedFile !== track.file) {
+			// A dial turned on a radio that is actually making a sound: the new station
+			// comes up under the old one instead of replacing it on this element. Asked of
+			// the element rather than of `wanted`, because a radio that wants to play but
+			// was refused has nothing to fade out of.
+			if (fade && this.wanted && !audio.paused) {
+				this.crossfade(track.file, offsetMs);
+				return;
+			}
 			this.loadedFile = track.file;
 			audio.src = musicTrackSrc(track.file);
 			this.seek(audio, track.file, offsetMs);
@@ -352,6 +445,66 @@ class MusicService {
 			},
 			{ once: true }
 		);
+	}
+
+	/**
+	 * Bring `file` up at `offsetMs` while the station on air goes down, over
+	 * {@link CROSSFADE_MS}. The new station gets an element of its own — the element is
+	 * where a song comes out, and two songs cannot come out of one — and that element
+	 * becomes the radio's the moment it is made, so everything that reads `this.audio`
+	 * (the drift check, the seek, the pause) is already talking about the station that is
+	 * arriving rather than the one that is leaving.
+	 *
+	 * The outgoing element is only ever *heard* out: it keeps playing its own song into
+	 * the fade, which is what makes this a crossfade and not a fade to silence and back.
+	 * It is then stopped and dropped, and only the arriving one is left.
+	 *
+	 * The ramp is equal-power (`cos`/`sin`) and not linear: two uncorrelated songs at half
+	 * volume each are quieter than either at full, so a linear pair dips audibly in the
+	 * middle — which is the hole in the sound this whole method exists to avoid.
+	 */
+	private crossfade(file: string, offsetMs: number): void {
+		const from = this.audio;
+		if (!from) return;
+
+		// Whatever was still fading out goes now: a reader moving across the map can turn
+		// the dial again before a fade is done, and a third song joining the two would be
+		// a mix. Where the station that stays is *at* is where this fade starts from — it
+		// is only ever below full when it is itself half way in, and starting its ramp
+		// from full would be a jump up before the fall.
+		const level = from.volume;
+		this.settle();
+
+		const to = this.deck(file);
+		this.audio = to;
+		this.loadedFile = file;
+		to.volume = 0;
+		this.seek(to, file, offsetMs);
+		void this.start(to);
+
+		const started = Date.now();
+		const timer = setInterval(() => {
+			const at = Math.min((Date.now() - started) / CROSSFADE_MS, 1);
+			from.volume = level * Math.cos((at * Math.PI) / 2);
+			to.volume = Math.sin((at * Math.PI) / 2);
+			if (at === 1) this.settle();
+		}, CROSSFADE_STEP_MS);
+
+		this.fading = { from, level, timer };
+	}
+
+	/**
+	 * End the fade that is running, if one is: the ramp stops and the station that was
+	 * going out is stopped and let go. Its `pause` is not the radio pausing — the
+	 * element's own listeners speak only for the element that is currently the radio's
+	 * (see {@link deck}) — so nothing here reaches the button.
+	 */
+	private settle(): void {
+		if (!this.fading) return;
+		const { from } = this.fading;
+		clearInterval(this.fading.timer);
+		this.fading = null;
+		from.pause();
 	}
 
 	/**
@@ -532,12 +685,6 @@ class MusicService {
 	 * The audio element, built on first use with the song that is on air. Null on the
 	 * server and before there is anything to play, which is what makes every method
 	 * above safe to call from anywhere.
-	 *
-	 * `playing` is kept from the element's own events rather than from the call that
-	 * asked, so anything that stops it without going through this service — the OS
-	 * media keys, the tab being suspended — is still reflected in what the button
-	 * shows. A song that runs out is not the end of anything: the station is asked
-	 * again, and the answer is the next song at the top of it.
 	 */
 	private element(): HTMLAudioElement | null {
 		if (!browser) return null;
@@ -545,17 +692,39 @@ class MusicService {
 		const track = this.station()?.tracks[this.index];
 		if (!track) return null;
 
-		const audio = new Audio(musicTrackSrc(track.file));
-		audio.preload = 'metadata';
 		this.loadedFile = track.file;
-		audio.addEventListener('play', () =>
-			this.stateStore.update((state) => ({ ...state, playing: true }))
-		);
-		audio.addEventListener('pause', () =>
-			this.stateStore.update((state) => ({ ...state, playing: false }))
-		);
-		audio.addEventListener('ended', () => this.tune(true));
-		this.audio = audio;
+		this.audio = this.deck(track.file);
+		return this.audio;
+	}
+
+	/**
+	 * One element carrying one song. There is a second of these only for as long as a
+	 * crossfade lasts (see {@link crossfade}); the rest of the time the radio is this one
+	 * element, moved from song to song.
+	 *
+	 * `playing` is kept from the element's own events rather than from the call that
+	 * asked, so anything that stops it without going through this service — the OS
+	 * media keys, the tab being suspended — is still reflected in what the button
+	 * shows. A song that runs out is not the end of anything: the station is asked
+	 * again, and the answer is the next song at the top of it.
+	 *
+	 * All three listeners speak only while this element *is* the radio's. An element on
+	 * its way out of a fade is still playing and will still be stopped, and neither of
+	 * those is a statement about the radio: it is the station nobody is listening to any
+	 * more, and the button must go on describing the one they are.
+	 */
+	private deck(file: string): HTMLAudioElement {
+		const audio = new Audio(musicTrackSrc(file));
+		audio.preload = 'metadata';
+		audio.addEventListener('play', () => {
+			if (this.audio === audio) this.stateStore.update((state) => ({ ...state, playing: true }));
+		});
+		audio.addEventListener('pause', () => {
+			if (this.audio === audio) this.stateStore.update((state) => ({ ...state, playing: false }));
+		});
+		audio.addEventListener('ended', () => {
+			if (this.audio === audio) this.tune(true);
+		});
 		return audio;
 	}
 }

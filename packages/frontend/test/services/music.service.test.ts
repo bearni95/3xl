@@ -41,6 +41,9 @@ const COLLECTION: MusicCollection = {
 /** Station 11 runs four minutes end to end, station 22 one. */
 const A_CYCLE_MS = 240_000;
 
+/** How long a change of station takes, mirroring the service's own CROSSFADE_MS. */
+const CROSSFADE_MS = 1200;
+
 /** A fixed instant, two and a half minutes into a UTC day. */
 const DAY = '2026-07-30';
 const CLOCK = utcMidnightMs(DAY) + 150_000;
@@ -65,6 +68,8 @@ class FakeAudio {
 	paused = true;
 	readyState = 0;
 	duration = NaN;
+	/** Where the crossfade puts this element in the mix: 1 for a radio of one station. */
+	volume = 1;
 
 	private source = '';
 	private handlers = new Map<string, Set<() => void>>();
@@ -308,6 +313,155 @@ describe('the radio', () => {
 		service.tuneTo(22);
 		await settle(5_000);
 		expect(get(service.state).track).toEqual(order(22)[1]);
+	});
+
+	it('follows the map onto the station of the place it is open on', async () => {
+		const service = await tunedIn();
+		service.toggle();
+		await settle();
+
+		// The map is opened on a place flying show 22. The listener asked for nothing; the
+		// dial is where they are looking, and the station is joined where its own clock has
+		// got to, exactly as a turn of the dial by hand would be.
+		service.follow(22);
+		await settle(CROSSFADE_MS);
+		expect(get(service.state).station).toBe(22);
+		expect(get(service.state).track).toEqual(order(22)[1]);
+		expect(get(service.state).playing).toBe(true);
+	});
+
+	it('leaves the dial where it is while the radio is off', async () => {
+		// A radio that is off has nothing to say about where the map is, and a station
+		// changing under a paused player would hand whoever presses play next a station
+		// they did not leave it on.
+		const service = await tunedIn();
+		service.follow(22);
+		await settle(CROSSFADE_MS);
+		expect(get(service.state).station).toBe(11);
+	});
+
+	it('stays where it is for a place that names no show, or one with no songs', async () => {
+		const service = await tunedIn();
+		service.toggle();
+		await settle();
+
+		// Null on the dial is the songs that open no show; null from the map is a place it
+		// cannot name a show for, which is not a station to go to. Neither is a show whose
+		// songs this collection does not have.
+		service.follow(null);
+		service.follow(999);
+		await settle(CROSSFADE_MS);
+		expect(get(service.state).station).toBe(11);
+		expect(get(service.state).track).toEqual(order(11)[2]);
+	});
+
+	it('does not write the map down as the listener choosing a station', async () => {
+		const service = await tunedIn();
+		service.toggle();
+		await settle();
+		service.follow(22);
+		await settle(CROSSFADE_MS);
+		expect(get(service.state).station).toBe(22);
+
+		// Where they had the map when they closed the page is not a choice about music, so
+		// the next visit is on the station they were on before any of it — here the first
+		// one, nothing having ever been chosen by hand.
+		const reloaded = await tunedIn();
+		await settle();
+		expect(get(reloaded.state).station).toBe(11);
+	});
+
+	it('crossfades one station into the next instead of cutting', async () => {
+		const service = await tunedIn();
+		service.toggle();
+		await settle();
+		const outgoing = player();
+
+		service.follow(22);
+		await settle();
+		const incoming = player();
+		expect(incoming).not.toBe(outgoing);
+
+		// Half way: both are running, the old one on its own song still and the new one
+		// under it, and neither is at nothing. Equal power, so the pair of them is as loud
+		// in the middle of the fade as either is at the end of it.
+		await vi.advanceTimersByTimeAsync(CROSSFADE_MS / 2);
+		expect(outgoing.paused).toBe(false);
+		expect(outgoing.file).toBe(order(11)[2].file);
+		expect(outgoing.volume).toBeCloseTo(Math.SQRT1_2, 1);
+		expect(incoming.volume).toBeCloseTo(Math.SQRT1_2, 1);
+		// And the radio never stopped playing, whatever the two elements were doing.
+		expect(get(service.state).playing).toBe(true);
+
+		// The end of it: the station that left is stopped and let go, the one that arrived
+		// is the radio, at full — and the button still says the radio is on, because the
+		// element that was paused is not the one anybody is listening to.
+		await vi.advanceTimersByTimeAsync(CROSSFADE_MS);
+		expect(outgoing.paused).toBe(true);
+		expect(incoming.paused).toBe(false);
+		expect(incoming.volume).toBe(1);
+		expect(get(service.state).playing).toBe(true);
+	});
+
+	it('turns the dial again mid-fade without stacking a third song on the two', async () => {
+		const service = await tunedIn();
+		service.toggle();
+		await settle();
+		const first = player();
+
+		service.follow(22);
+		await settle();
+		const second = player();
+		await vi.advanceTimersByTimeAsync(CROSSFADE_MS / 2);
+
+		// The reader moves again before the fade is done. The station that was on its way
+		// out goes now rather than playing on under the third one.
+		service.follow(11);
+		await settle();
+		const third = player();
+		expect(first.paused).toBe(true);
+		expect(third).not.toBe(second);
+
+		await vi.advanceTimersByTimeAsync(CROSSFADE_MS);
+		expect(second.paused).toBe(true);
+		expect(third.volume).toBe(1);
+		expect(get(service.state).station).toBe(11);
+		expect(get(service.state).playing).toBe(true);
+	});
+
+	it('hands one song over to the next within a station without a fade', async () => {
+		// A station moving along is not a change of station: the songs cut, as a station's
+		// do, and it is the one element doing it throughout.
+		const service = await tunedIn();
+		service.toggle();
+		await settle();
+		const element = player();
+		const built = FakeAudio.instances.length;
+
+		await settle(30_000);
+		expect(element.file).toBe(order(11)[3].file);
+		expect(element.volume).toBe(1);
+		expect(FakeAudio.instances.length).toBe(built);
+	});
+
+	it('takes the station on its way out with it when the radio is turned off', async () => {
+		const service = await tunedIn();
+		service.toggle();
+		await settle();
+		const outgoing = player();
+
+		service.follow(22);
+		await settle();
+		const incoming = player();
+		await vi.advanceTimersByTimeAsync(CROSSFADE_MS / 2);
+
+		// Pausing mid-fade has to silence both: the second half of a station nobody is
+		// listening to any more is still sound coming out of this radio.
+		service.toggle();
+		await vi.advanceTimersByTimeAsync(CROSSFADE_MS);
+		expect(outgoing.paused).toBe(true);
+		expect(incoming.paused).toBe(true);
+		expect(get(service.state).playing).toBe(false);
 	});
 
 	it('remembers the station and the play across a reload', async () => {

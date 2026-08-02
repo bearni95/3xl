@@ -1013,6 +1013,20 @@
 	$: openNode = openRegion ? findNode(regionNodes, openRegion) : null;
 	$: openShow = openNode?.show ?? null;
 
+	// The radio follows the map. Which show the place on screen flies is a statement this
+	// page already makes everywhere — on the pin, in the crumb, at the head of the column —
+	// and a station is a show, so the one thing left to do with it is play it: while the
+	// radio is on, the dial goes to whatever the map is open on, and the reader who drills
+	// from a territory into a comarca into a town hears each of them in turn. Crossfaded,
+	// and only while it is on, and never written down as their choice of station — see
+	// musicService.follow, which is where all three of those are decided.
+	//
+	// The whole map is a place like any other here, so the top view tunes to the plurality
+	// of every town on it — the same show its own crumb is lettered with (see crumbLadder).
+	// A show is passed and not a node because that is the whole of what a station is: two
+	// different places flying the same show are not a reason to touch the dial.
+	$: musicService.follow(openShow?.id ?? mapPlurality.show?.id ?? null);
+
 	/** One region as the bar letters it — the spelling the column's head and its rows share. */
 	function crumbRow(node: RegionNode) {
 		return {
