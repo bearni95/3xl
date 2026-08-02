@@ -17,6 +17,7 @@
 	import LocationSearchPanel from '$components/core/LocationSearchPanel.svelte';
 	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
 	import TownPin from '$components/core/TownPin.svelte';
+	import TownChallenge from '$components/core/TownChallenge.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
@@ -1103,6 +1104,20 @@
 
 	// (What the town has waiting is on the pin itself now, like everything else it carries —
 	// see `box` in buildMarkers.)
+
+	// The standing on the picked town, lifted off that very pin and stood at the end of the
+	// row that names it (see RegionSubdivisions' `standing` slot): how far it has been taken
+	// and the control that acts on it, which is what a reader wants beside the name of the
+	// place rather than a block further down the column. Off the pin and not off
+	// `townChallenge`, so the column and the map cannot come to say two things about one town
+	// — the pin is where that decision is already made (see buildMarkers).
+	$: townStanding = townPin?.challenge ?? null;
+
+	// And so the pin below is drawn without it: the same mark, less the block that has gone to
+	// the head. Handed over as the marker it is rather than switched off with a flag, because
+	// what has changed is what this copy of the pin is being told about the town, not what a
+	// pin draws.
+	$: townDetailPin = townPin ? { ...townPin, challenge: null } : null;
 
 	// --- The open municipality's deterministic "house team" ---------------------
 	// A leaf region (a municipality) has no children to drill into; instead of an
@@ -3088,9 +3103,31 @@
 					again a row later stood between the side on the town and how far it has been
 					taken, reading as a stray row in the middle of the one thing. What the plate is
 					here for is the rest of it (see TownPlate's `named`). -->
+				<!-- The end of that same head row: how far the town has been taken and the way to
+					fight for it, the two of them stacked as TownChallenge already stacks them. The
+					width is said here because it is a fact about this column and not about the
+					standing — the pin on the terrain gives it the width of its own plate — and it is
+					what makes the two a block at the end of a row rather than a band across it. -->
+				<svelte:fragment slot="standing">
+					{#if townStanding}
+						<TownChallenge
+							siege={townStanding.siege}
+							button={townStanding.button}
+							unlocksAt={townStanding.unlocksAt}
+							onUnlock={townStanding.onUnlock}
+							classes="w-40"
+						/>
+					{/if}
+				</svelte:fragment>
+
 				<svelte:fragment slot="detail">
-					{#if townPin}
-						<TownPin marker={townPin} box={townPin.box ?? null} named={false} classes="py-1" />
+					{#if townDetailPin}
+						<TownPin
+							marker={townDetailPin}
+							box={townDetailPin.box ?? null}
+							named={false}
+							classes="py-1"
+						/>
 					{/if}
 				</svelte:fragment>
 			</RegionSubdivisions>

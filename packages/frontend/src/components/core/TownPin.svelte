@@ -43,17 +43,22 @@
 	{/if}
 
 	<!-- Flush, because this is a column and not a point: the plate takes the width it is laid
-		in and squares its corners against what it is stacked with (see TownPlate). -->
-	<TownPlate
-		iconSvg={marker.iconSvg ?? null}
-		frameClasses={marker.frameClasses ?? null}
-		title={marker.title}
-		subtitle={marker.subtitle}
-		holder={marker.holder}
-		challenge={marker.challenge}
-		{named}
-		flush
-	/>
+		in and squares its corners against what it is stacked with (see TownPlate).
+		Only where there is anything for it to hold: a plate that is not naming the place and
+		has neither an occupant nor a standing to print is a bare band of surface with nothing
+		written on it, which is a mark about a town that says nothing about the town. -->
+	{#if named || marker.holder || marker.challenge}
+		<TownPlate
+			iconSvg={marker.iconSvg ?? null}
+			frameClasses={marker.frameClasses ?? null}
+			title={marker.title}
+			subtitle={marker.subtitle}
+			holder={marker.holder}
+			challenge={marker.challenge}
+			{named}
+			flush
+		/>
+	{/if}
 
 	{#if box}
 		<!-- What the town is offering, at the box's own 200px — the last block of the column,

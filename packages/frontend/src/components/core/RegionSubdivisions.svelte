@@ -68,22 +68,40 @@
 		<!-- Where the map is, at the head of its own level and lettered as the bar letters the
 			step it is on — the same `current`, the same `aria-current`, since it is the same
 			statement about the same place. Pressed like any other row: the view can be taken off
-			the place while the column goes on listing it, so there is somewhere for it to go. -->
-		<button
-			type="button"
-			aria-current="page"
-			class="block w-full rounded-md px-2 py-1 text-left hover:bg-white/10"
-			on:click={() => dispatch('select', { key: current.key })}
-		>
-			<MapBreadcrumb
-				label={current.label}
-				showName={current.showName}
-				showId={current.showId}
-				tileClasses={current.tileClasses}
-				current
-				truncated
-			/>
-		</button>
+			the place while the column goes on listing it, so there is somewhere for it to go.
+			The press is the name and only the name: what stands at the far end of this row is the
+			caller's standing, which carries a control of its own, and a button inside a button is
+			neither valid nor pressable. So the row is the flex box and the two are its items —
+			the same arrangement a subdivision row and its box are in below, and for the same
+			reason. Centred rather than stretched: the standing is the taller of the two by a
+			good deal, and a name is read against the middle of what it is set beside. -->
+		<div class="flex items-center gap-2">
+			<button
+				type="button"
+				aria-current="page"
+				class="block min-w-0 flex-1 rounded-md px-2 py-1 text-left hover:bg-white/10"
+				on:click={() => dispatch('select', { key: current.key })}
+			>
+				<MapBreadcrumb
+					label={current.label}
+					showName={current.showName}
+					showId={current.showId}
+					tileClasses={current.tileClasses}
+					current
+					truncated
+				/>
+			</button>
+
+			<!-- How far the place at the head has been taken and the one control that acts on it,
+				at the end of the row that names it: the caller's, because only a town has either.
+				It is a column of two — the standing over the control — so it is given the end of
+				this row rather than a row of its own, and the head reads as one statement about
+				one place: this is where you are, and this is what is left to do about it. Empty
+				for every tier that has no such thing to say, which costs the row nothing. -->
+			<div class="flex-none">
+				<slot name="standing" />
+			</div>
+		</div>
 		<!-- Whatever else the place at the head has to say for itself, between its name and the
 			level below it: the caller's, because what a place carries depends on what kind of
 			place it is — a town has a side standing on it, an occupant and a fight to be had,
