@@ -68,6 +68,14 @@
 				truncated
 			/>
 		</button>
+		<!-- Whatever else the place at the head has to say for itself, between its name and the
+			level below it: the caller's, because what a place carries depends on what kind of
+			place it is — a town has a side standing on it, an occupant and a fight to be had,
+			and nothing coarser has any of those. Inside the head's own part of the column, above
+			the rule, so it reads as more about that place and never as the first of its
+			subdivisions. -->
+		<slot name="detail" />
+
 		<!-- The rule that says the rest of the column is a different thing from the row above
 			it: not more of the level, but the level under it. Drawn only when there is a level
 			to divide off — a rule over nothing would be the column claiming to have more to say

@@ -16,6 +16,7 @@
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
 	import LocationSearchPanel from '$components/core/LocationSearchPanel.svelte';
 	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
+	import TownPin from '$components/core/TownPin.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
@@ -978,6 +979,37 @@
 	// open, it is a selection with a key of its own (see TOP_VIEW_KEY), and the bar already
 	// letters it with the plurality of every town on the map. So the column's head is never
 	// empty, whatever the map is looking at.
+	// The pin the map is drawing on that place, where the place is a town — the mark itself and
+	// not a copy of it: it comes out of `buildMarkers`, the very function the map's pins are
+	// built by, called on the one node with everything that function is given for the whole
+	// tier. So the side standing on the town, its occupant, its standing and the control under
+	// it are decided in exactly one place, and the column beside the map cannot come to say
+	// something the mark on the map does not.
+	//
+	// Towns only, because a pin's team, holder and standing are a town's alone (see
+	// buildMarkers) and a coarser region's mark is its plate by itself, which is the crumb row
+	// already standing at the head of the column. And a town with no show has no pin at all —
+	// buildMarkers skips it — so the column says nothing extra about it either.
+	$: townPin =
+		openNode?.type === 'Municipality'
+			? (buildMarkers(
+					[openNode],
+					regionGeometry,
+					null,
+					statuedTown,
+					pinTeam,
+					townChallenge,
+					regionSieges,
+					holders,
+					$showGlyphs,
+					null
+				)[0] ?? null)
+			: null;
+
+	// And the booster mark that pin carries, looked up the way the map looks it up (see
+	// boxForMarker): the window's box for that town, or nothing.
+	$: townPinBox = townPin ? (festaBoxes.find((entry) => entry.id === townPin?.id) ?? null) : null;
+
 	$: subdivisionCurrent = openNode
 		? crumbRow(openNode)
 		: {
@@ -2825,7 +2857,17 @@
 			rows={subdivisions}
 			current={subdivisionCurrent}
 			on:select={(event) => open(event.detail.key)}
-		/>
+		>
+			<!-- The town's own pin, stood in the column under the row that names it: the side
+				holding it, whose it is, how far it has been taken, the way to fight for it and the
+				pack it has waiting — the same mark the map is drawing on that town at this very
+				moment, from the same data (see townPin). Only a town has one. -->
+			<svelte:fragment slot="detail">
+				{#if townPin}
+					<TownPin marker={townPin} box={townPinBox} classes="py-1" />
+				{/if}
+			</svelte:fragment>
+		</RegionSubdivisions>
 	</aside>
 </div>
 
