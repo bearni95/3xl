@@ -5,10 +5,10 @@
 	// horizontally, end to end, for as long as it stands there.
 	//
 	// It is for the one line on screen that cannot be shortened and cannot be given more
-	// room — a song's title on the radio card (see MusicCard), where the card is half of a
-	// two-column row and the title is whatever the record is called. An ellipsis is the
-	// honest mark when a name can be recognised from its head (a town, an account); a song
-	// on a radio is being announced, and half an announcement is not one.
+	// room — a song's title on the radio (see MusicTitle), which stands in a corner of a row
+	// that is already naming a place, and the title is whatever the record is called. An
+	// ellipsis is the honest mark when a name can be recognised from its head (a town, an
+	// account); a song on a radio is being announced, and half an announcement is not one.
 	//
 	// It scrolls only when it has to. A line that fits is drawn still: motion is what says
 	// there is more of it, so a banner that moved anyway would say that about every song.

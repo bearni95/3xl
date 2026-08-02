@@ -44,6 +44,13 @@
 	// which is why the crumb in it is spans throughout (see MapBreadcrumb), and a box is a
 	// block of planes. A row with nothing beside the name is a plain flex box of one item,
 	// which is every row of every tier above the municipality.
+	//
+	// Two more things may stand beside the name, and for the same reason: they are pressed, and
+	// a button does not hold a button. `lead` takes the place of the crumb's own tile — the
+	// caller draws the tile itself, outside the name's press, so something may stand on it —
+	// and `end` is the far end of the row before the box. One row asks for either, the head of
+	// the column, where the radio stands: the play/pause on the tile and the song at the end
+	// (see MusicTile, MusicTitle, and RegionSubdivisions, which puts them there).
 </script>
 
 <div
@@ -52,6 +59,15 @@
 		marked ? 'bg-primary text-primary-content hover:bg-primary/90' : 'hover:bg-white/10'
 	)}
 >
+	{#if $$slots.lead}
+		<!-- Where the crumb's tile would have been, at the same 8px in from the edge and centred
+			on the row's own height — the button's `px-2` after it is the gap the crumb spaced its
+			tile from its name by, so the row reads exactly as it did with the tile inside. -->
+		<span class="flex flex-none items-center ps-2">
+			<slot name="lead" />
+		</span>
+	{/if}
+
 	<button
 		type="button"
 		aria-current={current ? 'page' : undefined}
@@ -64,8 +80,19 @@
 			showId={row.showId}
 			tileClasses={row.tileClasses}
 			truncated
+			tile={!$$slots.lead}
 		/>
 	</button>
+
+	{#if $$slots.end}
+		<!-- No padding of its own: what stands here says how wide it is and what it is spaced
+			from the edge by, since only the thing standing there knows whether it is drawn at all
+			(see MusicTitle) — and a gutter held open for something that is not there would be a
+			row that ends short of its own edge. -->
+		<span class="flex flex-none items-center">
+			<slot name="end" />
+		</span>
+	{/if}
 
 	{#if row.box}
 		<!-- At the far end of the entry and as tall as the entry is. The height is the one that is

@@ -186,13 +186,32 @@ being stored, sent or agreed on, and a listener who pauses rejoins where the sta
 to rather than resuming. The radio's two controls are play/pause (`MusicToggle.svelte`) and
 the **dial** (`StationDial.svelte`) — a select naming the stations, which *is* the second
 line, since that line was already naming the show and a radio says its station once. There is
-no skip: a radio has no next song. The whole radio stands twice: as the plate at the foot of
-the menu, and as a card at the foot of the map (`MusicCard.svelte`), the left half of the
-account row in that corner — the player's plate is the right half. It stood at the far end
-of the breadcrumb bar before that, drawn as a `MapBreadcrumb`, and took room a path needs.
-A song's title there is a **banner** rather than a truncation (`MarqueeText.svelte`, whose
-keyframes are the one piece of CSS in `css/app.css` a component could not spell as a class):
-it scrolls end to end, and only when the line is wider than the box measures. Both
+no skip: a radio has no next song.
+
+**The map turns the dial.** While the radio is on, `musicService.follow` tunes it to the show
+the place the map is open on flies — a town's own show, the plurality of the towns under a
+region, the plurality of the whole map at the top view — so what is playing is about where the
+reader is standing. It only moves a radio that is on, it is never written down as the
+listener's choice of station, and a place that names no show moves nothing. A change of
+station is therefore common and unasked-for, so it is **crossfaded** rather than cut: the
+arriving station gets an audio element of its own and comes up equal-power over 1.2s while the
+leaving one plays its own song out. Only the *station* fades; the songs within one hand over
+the way a station's do. The dial as a *select* survives in one place only — the menu's plate —
+which is where a listener goes to hear something other than where they are.
+
+So the radio stands twice, and only one of them is the whole of it: the plate at the foot of
+the menu, and on the map the head row of the column beside it — the row naming the open place,
+which is the place it is playing for. There it is two marks and no more: the play/pause comes
+up over that row's own show tile under the pointer (`MusicTile.svelte`, over the tile every
+crumb and pin wears, `ShowTile.svelte`), and the song is lettered at the far end of the same
+row (`MusicTitle.svelte`). No glyph and no station name of its own — the row says both
+already. That is why the tile is handed out of the crumb there (`MapBreadcrumb`'s `tile`,
+`RegionListRow`'s `lead`/`end` slots): a button does not stand inside a button. Before that
+the radio was a card at the foot of the map, and before that a `MapBreadcrumb` at the far end
+of the bar, where it took room a path needs. A song's title is a **banner** rather than a
+truncation (`MarqueeText.svelte`, whose keyframes are the one piece of CSS in `css/app.css` a
+component could not spell as a class): it scrolls end to end, and only when the line is wider
+than the box measures. Both
 copies of the radio are the same components over the same store, and the map's is what asks
 for the collection at all, since the plate is mounted only while the drawer is open. Both
 of the listener's choices — which station, and whether it was left on — are remembered in

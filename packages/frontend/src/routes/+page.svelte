@@ -1,5 +1,4 @@
 <script lang="ts">
-	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import type { Readable } from 'svelte/store';
 	import { _ } from 'svelte-i18n';
@@ -11,7 +10,6 @@
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import MusicPlayer from '$components/core/MusicPlayer.svelte';
-	import MusicCard from '$components/core/MusicCard.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
 	import TownPin from '$components/core/TownPin.svelte';
@@ -296,12 +294,6 @@
 	// a door drawn in that moment is a door taken away again.
 	const authStatus = authService.status;
 	$: signedOut = $authStatus === AuthStatus.SignedOut;
-
-	// What the radio has on air. The card at the foot of the map draws itself off the same
-	// store and hides when there is no song (see MusicCard); this read is only so the corner
-	// holding it knows whether there is a second half to its account row, and whether that
-	// corner is worth drawing at all for a visitor with no account and no side.
-	const radio = musicService.state;
 
 	// The fight this player is already in, if any. A battle outlives the arena, the
 	// page and the device it was started on, so it is loaded like any other ledger and
@@ -2770,12 +2762,14 @@
 
 			<!-- Everything the map draws over its top edge, in one absolutely positioned column: the
 				breadcrumb bar across the top, and under it the search results when there are any.
-				The music player stood under it too, in the left corner, and then on the bar itself
-				as one of its cards: a bar is a path and a path is read across, so a card at the end
-				of it took room the path needs. The radio is at the foot of the map now, beside the
-				account it is playing for (see MusicCard below), and the plate in the menu is the
-				same radio said again where a menu can say it. (The player's own side is over the map
-				too, at the foot of it — three
+				The music player stood under it too, in the left corner, then on the bar itself as one
+				of its cards, then at the foot of the map beside the account it plays for: a bar is a
+				path and a path is read across, so a card at the end of it took room the path needs,
+				and a card in the corner was a second place naming a show. The radio is on the head
+				of the column beside the map now — the row that says which place the map is open on,
+				which is the place it is playing for (see RegionSubdivisions) — and the plate in the
+				menu is the same radio said again where a menu can say it. (The player's own side is
+				over the map too, at the foot of it — three
 				statues on nothing, positioned on their own rather than as a row of this column,
 				since they are at the other corner; see below.) The bar is in the column
 				rather than over it, so it pushes the plates down by taking its own row instead
@@ -3055,7 +3049,7 @@
 				every time the map re-frames itself — a character that has been through its veil once
 				never plays it again (see IdleSprite), so what comes back is the picture and not the
 				reveal. -->
-			{#if (playerTeamLineup.length > 0 || $profile || signedOut || $radio.track) && !$fullScreenModalOpen}
+			{#if (playerTeamLineup.length > 0 || $profile || signedOut) && !$fullScreenModalOpen}
 				<div
 					transition:blur={CHROME_BLUR}
 					class="absolute inset-x-3 bottom-3 z-[900] flex flex-col gap-2 sm:right-auto sm:w-[400px]"
@@ -3077,47 +3071,32 @@
 					{/if}
 
 					<!-- The way in, standing where the account's plate stands once there is an account.
-						The whole width of the column rather than a half of the row below it: the plate is
-						two lines and a bar and takes a half comfortably, while this is a form — a gate of
-						two boxes, the documents under it and the provider button — and half of 400px is
-						not a width any of that can be read at. So it is its own row, and the radio keeps
-						the one below it (alone there, since there is no plate to share it with while
-						this is up). -->
+						The whole width of the column, which is what every row of this corner is now the
+						radio has left it: a form — a gate of two boxes, the documents under it and the
+						provider button — could not have been read at half of 400px in any case. -->
 					{#if signedOut}
 						<SignInPanel />
 					{/if}
 
-					<!-- The account's row, under the side it fields: the radio on the left and who is
-						playing on the right, as two halves of the one width the column already had —
-						the plate was the whole of this row and is half of it now.
-						They belong on the same row because they are the same kind of statement: things
-						this player has switched on, as against the map, which is what everything at the
-						other corner is about. The radio was on the breadcrumb bar, where it was taking
-						room from a path (see MusicCard, and the column at the top).
-						Two columns only while there is a radio to put in one: a map whose music never
-						arrived would otherwise leave the account's plate at half the width with nothing
-						beside it, which reads as something missing rather than as a row of one.
-						Each half is only drawn when it has something to say — the plate wants a
-						signed-in account (there is no picture, no level and no bar without one; the way
-						in is the panel above), the card wants a song — and the plate is placed
-						from the end of the grid rather than at column two, so it is the right-hand half
-						when there are two and the whole row when there is one. Counting from the front
-						would ask for a second column the one-column case does not have, and the browser
-						would make one.
-						No `pointer-events-auto` on any of it here: that was needed while the plate stood
-						in the column under the bar, which turns its own events off so the map stays
-						pannable through the gaps between its plates. This corner is not that column. -->
-					<div class={classNames('grid gap-2', $radio.track ? 'grid-cols-2' : 'grid-cols-1')}>
-						<MusicCard />
-
-						{#if $profile}
-							<PlayerPanel
-								profile={$profile}
-								on:editavatar={() => avatarPickerOpen.set(true)}
-								classes="col-start-[-2] w-full"
-							/>
-						{/if}
-					</div>
+					<!-- Who is playing, under the side they field: the last row of this corner, and the
+						whole of it again.
+						It shared this row with the radio for a while, as two halves of the column's one
+						width — both of them being things this player had switched on, as against the map
+						at the other corner. The radio has gone to the head of the column beside the map,
+						where the place it is playing for is already named and already carries the show's
+						tile (see RegionSubdivisions): the radio follows the map now, so a card of its own
+						was saying, in a second corner, what that row says by standing there. What is left
+						is the plate, and a plate is not half of anything.
+						No `pointer-events-auto` on it: that was needed while it stood in the column under
+						the bar, which turns its own events off so the map stays pannable through the gaps
+						between its plates. This corner is not that column. -->
+					{#if $profile}
+						<PlayerPanel
+							profile={$profile}
+							on:editavatar={() => avatarPickerOpen.set(true)}
+							classes="w-full"
+						/>
+					{/if}
 				</div>
 			{/if}
 

@@ -1,8 +1,6 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import ShowIcon from '$components/core/ShowIcon.svelte';
-	import { forShow } from '$utils/show/show-icon';
-	import { showGlyphs } from '$services/shows.service';
+	import ShowTile from '$components/core/ShowTile.svelte';
 
 	// One step of the map's breadcrumb path, drawn the way the town panel draws the town it
 	// is open on: the show's glyph on a tile in the place's own colour, and beside it the
@@ -18,12 +16,13 @@
 	// map is on is inert text and every step above it is a button back to its tier, and
 	// neither wants its own copy of a tile, a glyph and two lines.
 	//
-	// The radio on the far end of that bar was drawn as one of these for a while (see
-	// MusicCard, which is at the foot of the map now): a song over the station it plays on
-	// is the same object as a place over the show it flies. The second line is still the
-	// slot that made that possible — the station is a dial rather than a word — and it is
-	// kept because a crumb's own line is still the one thing about it that can be something
-	// other than a name to be read.
+	// The radio on the far end of that bar was drawn as one of these for a while: a song over
+	// the station it plays on is the same object as a place over the show it flies. The
+	// second line is still the slot that made that possible — the station was a dial rather
+	// than a word — and it is kept because a crumb's own line is still the one thing about it
+	// that can be something other than a name to be read. The radio itself is on the head of
+	// the column beside the map now, where it has no line of its own at all: the place there
+	// already names the show, and a station is a show (see MusicTitle, MusicTile).
 
 	// The place, with its article already restored by the caller.
 	export let label: string = '';
@@ -46,8 +45,11 @@
 	// still does not fit there is nothing left to widen and the ellipsis is the honest mark.
 	// A crumb in a path never truncates — see below.
 	export let truncated: boolean = false;
-
-	$: showIcon = forShow($showGlyphs, showId);
+	// Whether the crumb draws its own tile. The one caller that says no is the head row of the
+	// column beside the map, which stands the tile outside the crumb's button so that the
+	// radio's play/pause can appear on it — and a button inside a button is not markup (see
+	// RegionListRow's `lead`). Everywhere else a crumb is its tile and its two lines.
+	export let tile: boolean = true;
 </script>
 
 <!-- Spans throughout, not divs: a crumb above the current one is wrapped in a `<button>`,
@@ -56,23 +58,11 @@
 	the bar is collapsed to this one step (see MapBreadcrumbs) rather than being made to fit
 	by cutting its names short. -->
 <span class="flex items-center gap-2">
-	{#if tileClasses || showIcon}
-		<!-- The tile the town panel and the pins draw, at 32px with a 20px glyph: the same
-			plate, sized for a line of them. The glyph is sized through ShowIcon rather than from
-			here, since the component wraps the svg in a span of its own that a rule aimed at
-			this span's children would never reach; `currentColor` is what the tile's ink gives
-			it. Decorative — the show is named in the line right beside it. -->
-		<span
-			class={classNames(
-				'flex size-8 flex-none items-center justify-center rounded-md',
-				tileClasses ?? 'bg-base-100 text-base-content'
-			)}
-			aria-hidden="true"
-		>
-			{#if showIcon}
-				<ShowIcon markup={showIcon} classes="[&>svg]:size-5" />
-			{/if}
-		</span>
+	{#if tile}
+		<!-- The tile the town panel and the pins draw, at 32px with a 20px glyph: the same plate,
+			sized for a line of them (see ShowTile). Decorative — the show is named in the line
+			right beside it. -->
+		<ShowTile {showId} {tileClasses} />
 	{/if}
 
 	<span class={classNames('flex flex-col text-left leading-tight', { 'min-w-0': truncated })}>

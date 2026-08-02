@@ -12,10 +12,13 @@
 	// It is the select itself when there is a choice to make and a plain line when there is
 	// not — a select with one option is an affordance that lies about what it can do.
 	//
-	// Split out because both surfaces that draw the radio are the same statement about the
-	// same store: the plate in the burger menu (MusicPlayer) and the card at the foot of
-	// the map (MusicCard). Only the ink differs, and ink belongs to where a thing stands,
-	// so that is the caller's.
+	// Split out when the radio stood in two places and both drew this line off the one store,
+	// the ink being all that differed — which is why the ink is still the caller's. The plate
+	// in the burger menu (MusicPlayer) is the only one that draws it now: the radio's other
+	// standing is on the head of the column beside the map, where the station is not a line at
+	// all but the show that row already names, and the dial is the map itself (see
+	// musicService.follow). So this is where a listener goes to hear something other than
+	// where they are standing.
 
 	/** The line's ink and size — whatever the surface holding it letters its second line in. */
 	export let classes: string = '';

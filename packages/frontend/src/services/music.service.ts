@@ -50,13 +50,13 @@ import type { MusicTrack, MusicCollection } from '$types/music.type';
  * they do, the plate honestly says Play. A refusal is never written back as their having
  * turned it off, because they did not.
  *
- * The dial is turned by two hands. The listener's, on the select at the foot of the map
- * and in the menu; and the map's, which while the radio is on tunes it to the show the
- * place it is open on flies (see {@link MusicService.follow}) — so what is playing is
- * about where the reader is, and the music moves with them without their asking. A change
- * of station under a listener is crossfaded rather than cut, since the map moves often and
- * a cut every time it did would read as the radio breaking. Only the *station* fades: the
- * songs within one hand over the way a station's do.
+ * The dial is turned by two hands. The listener's, on the select in the burger menu, which
+ * is the only place it is a select at all; and the map's, which while the radio is on tunes
+ * it to the show the place it is open on flies (see {@link MusicService.follow}) — so what
+ * is playing is about where the reader is, and the music moves with them without their
+ * asking. A change of station under a listener is crossfaded rather than cut, since the map
+ * moves often and a cut every time it did would read as the radio breaking. Only the
+ * *station* fades: the songs within one hand over the way a station's do.
  *
  * The store says only what a surface has to draw: which song is on, whether it is
  * running, and the stations there are to choose between.
@@ -365,11 +365,7 @@ class MusicService {
 		const order = station?.tracks ?? [];
 		if (order.length === 0) return;
 
-		const position = stationPositionAt(
-			order,
-			this.durations,
-			Date.now() - utcMidnightMs(this.day)
-		);
+		const position = stationPositionAt(order, this.durations, Date.now() - utcMidnightMs(this.day));
 
 		if (!position) {
 			// Not placeable: a length is still on its way, or a file will not decode. The
@@ -390,12 +386,7 @@ class MusicService {
 	}
 
 	/** Letter one song as being on, and put the element on it at `offsetMs` into it. */
-	private air(
-		order: readonly MusicTrack[],
-		index: number,
-		offsetMs: number,
-		fade = false
-	): void {
+	private air(order: readonly MusicTrack[], index: number, offsetMs: number, fade = false): void {
 		this.index = index;
 		const track = order[index];
 		this.stateStore.update((state) => ({ ...state, track }));

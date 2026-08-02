@@ -13,10 +13,15 @@
 	//
 	// It stood in the map's top-left corner, which is a corner of the map: a plate that
 	// is always up is a plate that is always in the way, and the one thing on it a
-	// player reaches for often is the pause — which is at the foot of the map now, on
-	// the radio card beside the account (see MusicCard). What is left here is what is only wanted
-	// when it is wanted: which station, and what is on it. The menu is where everything
-	// that is not the map already lives.
+	// player reaches for often is the pause — which is on the head of the column beside
+	// the map now, on the tile of the place the map is open on (see MusicTile). What is
+	// left here is what is only wanted when it is wanted: which station, and what is on
+	// it. The menu is where everything that is not the map already lives.
+	//
+	// It is also the only place left that offers the dial by hand. The map turns it by
+	// itself as the reader moves (see musicService.follow), which is the whole of what
+	// most listening to this radio is; a listener who wants to hear something other than
+	// where they are standing comes here for it.
 	//
 	// A station is a show, and what is playing on it is decided by the clock rather
 	// than by this plate: the song and the second of it come from musicService, which
@@ -26,8 +31,7 @@
 	//
 	// The dial is the second line rather than a control beside it, because that line
 	// was already naming the show: on a radio the station's name and the way to change
-	// it are one thing, and the plate has no room to say it twice (see StationDial,
-	// which is that line here and on the map's own card too — see MusicCard).
+	// it are one thing, and the plate has no room to say it twice (see StationDial).
 	//
 	// It is a base-100 plate with a border, not the black one it was over the terrain:
 	// black was for being read off satellite imagery, and inside the menu there is no

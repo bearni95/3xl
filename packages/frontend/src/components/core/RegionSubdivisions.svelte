@@ -3,6 +3,8 @@
 	import { createEventDispatcher } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
+	import MusicTile from '$components/core/MusicTile.svelte';
+	import MusicTitle from '$components/core/MusicTitle.svelte';
 	import RegionListRow from '$components/core/RegionListRow.svelte';
 	import ShowShareGrid from '$components/core/ShowShareGrid.svelte';
 	import { REGION_TYPE_KEYS } from '$components/core/region-types';
@@ -129,13 +131,29 @@
 			Drawn by the very component the list below is drawn with, box and all: the head is a
 			row like the rest, and a town at the head of the column is de festa or is not on the
 			same terms as a town listed under it. `current` here is the row being the place the
-			map is on, which is what takes the fill. -->
+			map is on, which is what takes the fill.
+
+			And it is where the radio stands, because the radio is about this row. A station is a
+			show and the map tunes it to the show the open place flies (see musicService.follow),
+			so the tile at the head of this row is already the station: the play/pause comes up on
+			that very tile under the pointer (MusicTile), and the song is lettered at the far end
+			of the same row (MusicTitle). Nothing else of the radio is here — no second glyph, no
+			station named twice — and the tile is handed out of the crumb to make it, since the
+			button that appears on it cannot stand inside the button that opens the place. -->
 		<RegionListRow
 			row={current}
 			current
 			boxWidth={BOX_WIDTH}
 			onSelect={(key) => dispatch('select', { key })}
-		/>
+		>
+			<svelte:fragment slot="lead">
+				<MusicTile showId={current.showId} tileClasses={current.tileClasses} />
+			</svelte:fragment>
+
+			<svelte:fragment slot="end">
+				<MusicTitle />
+			</svelte:fragment>
+		</RegionListRow>
 
 		<!-- Whatever else the place at the head has to say for itself, between its name and the
 			level below it: the caller's, because what a place carries depends on what kind of
