@@ -111,6 +111,16 @@
 		{/if}
 	{/if}
 
+	<!-- Whose level the rest of the column is, at the head of it: the path down to the place
+		the rows below are the inside of, which is the open region everywhere except on a town —
+		a town is listed among its own sisters, and what they are all the inside of is the region
+		above them. It stands under the rule with the rows and above the shares, because
+		everything below the rule is about that place and this says which place it is.
+		The caller's, and drawn by the caller with the very bar that stands over the map, so a
+		path 400px cannot hold folds itself to one step and a dots button rather than being cut
+		short — see MapBreadcrumbs. -->
+	<slot name="path" />
+
 	{#if shares.length}
 		<!-- What the list below is made of, before the list itself: the shows those places fly
 			and how much of them each has. It stands under the rule with the rows rather than

@@ -961,37 +961,52 @@
 	);
 
 	$: mapPlurality = everyTownPlurality(regionNodes);
-	$: crumbs = [
-		{
-			label: TOP_VIEW_LABEL,
-			key: TOP_VIEW_KEY as string | null,
-			showName: mapPlurality.show?.name ?? null,
-			showId: mapPlurality.show?.id ?? null,
-			tileClasses: mapPlurality.color ? pinColorClasses[mapPlurality.color] : null
-		},
-		...TIER_LADDER.map(([tier, word]) => {
-			const node = displayPath.find((step) => step.type === tier);
-			if (!node) {
-				return { label: '', key: null as string | null, empty: true, tier: word };
-			}
-			return {
-				label: restoreCatalanArticle(node.name),
-				key: node.key as string | null,
-				showName: node.show?.name ?? null,
-				showId: node.show?.id ?? null,
-				tileClasses: node.color ? pinColorClasses[node.color] : null,
-				// The bottom of the ladder is the one step the map is on that is still worth
-				// pressing. Every tier above it either has a step above it to walk back to or an
-				// empty square below it to zoom into; a town has neither — it is the last rung,
-				// so once one is picked the bar has nothing that takes the map back down to it.
-				// And it needs one: a picked town is held by the bar however far the view then
-				// wanders (see displayPath), so the crumb goes on naming a place the map may no
-				// longer be anywhere near. It is pressed for what every other crumb is pressed
-				// for — frame the place it names — which for this tier is the municipality zoom.
-				pressable: tier === 'Municipality'
-			};
-		})
-	];
+
+	/**
+	 * A path of nodes as the bar reads it: the root step, then the ladder of the four tiers
+	 * with each position filled by whatever step of the path stands at it.
+	 *
+	 * Written as a function because there are two paths now — the one the map is looking down,
+	 * and the one the column beside it lists a level of (see `listingCrumbs`) — and two bars
+	 * built from two copies of this would be two bars that could come to letter the same place
+	 * differently. The plurality is passed in rather than read off the closure so that a
+	 * statement calling this names it and re-runs when it changes.
+	 */
+	function crumbLadder(path: RegionNode[], plurality: ReturnType<typeof everyTownPlurality>) {
+		return [
+			{
+				label: TOP_VIEW_LABEL,
+				key: TOP_VIEW_KEY as string | null,
+				showName: plurality.show?.name ?? null,
+				showId: plurality.show?.id ?? null,
+				tileClasses: plurality.color ? pinColorClasses[plurality.color] : null
+			},
+			...TIER_LADDER.map(([tier, word]) => {
+				const node = path.find((step) => step.type === tier);
+				if (!node) {
+					return { label: '', key: null as string | null, empty: true, tier: word };
+				}
+				return {
+					label: restoreCatalanArticle(node.name),
+					key: node.key as string | null,
+					showName: node.show?.name ?? null,
+					showId: node.show?.id ?? null,
+					tileClasses: node.color ? pinColorClasses[node.color] : null,
+					// The bottom of the ladder is the one step the map is on that is still worth
+					// pressing. Every tier above it either has a step above it to walk back to or an
+					// empty square below it to zoom into; a town has neither — it is the last rung,
+					// so once one is picked the bar has nothing that takes the map back down to it.
+					// And it needs one: a picked town is held by the bar however far the view then
+					// wanders (see displayPath), so the crumb goes on naming a place the map may no
+					// longer be anywhere near. It is pressed for what every other crumb is pressed
+					// for — frame the place it names — which for this tier is the municipality zoom.
+					pressable: tier === 'Municipality'
+				};
+			})
+		];
+	}
+
+	$: crumbs = crumbLadder(displayPath, mapPlurality);
 
 	// The open location's own node and its plurality ("most seen") show. Surfaced on the
 	// corner's Location plate when the open region is a leaf municipality (the table there
@@ -1042,6 +1057,28 @@
 	// and two places deciding what "listed" means is how those two come to disagree.
 	$: subdivisionNodes = regionLevelNodes(regionNodes, openRegion).filter(
 		(node) => node.key !== subdivisionCurrent.key
+	);
+
+	// Whose level that is: the place the listed rows are the inside of. Not always the place
+	// at the head of the column — a town is listed with its own sisters, so what they are all
+	// the inside of is the comarca above it, and everywhere else it is the open region itself.
+	// The top view when there is neither, which is what listing the territories is a listing
+	// of. It is `regionLevelNodes`' own rule read the other way round: that function answers
+	// which places, this answers whose, and they have to be the same answer or the column
+	// would be headed by a place the rows under it are not in.
+	$: listingNode =
+		openNode?.type === 'Municipality'
+			? (nodePath(regionNodes, openNode.key).at(-2) ?? null)
+			: openNode;
+
+	// And the path down to it, as the bar over the map letters its own (see crumbLadder): the
+	// whole way from the Països Catalans to the place whose level is listed below, drawn in the
+	// column by the very component that draws it over the map — so it folds itself down to one
+	// step and a dots button when 400px cannot hold five, which is what that bar does on a
+	// narrow screen.
+	$: listingCrumbs = crumbLadder(
+		listingNode ? nodePath(regionNodes, listingNode.key) : [],
+		mapPlurality
 	);
 
 	// Lettered exactly as a crumb is, off the same node fields and into the same shape,
@@ -3128,6 +3165,18 @@
 					{#if townDetailPin}
 						<TownPin marker={townDetailPin} named={false} classes="py-1" />
 					{/if}
+				</svelte:fragment>
+
+				<!-- Which place the rest of the column is the inside of, said as the whole path down
+					to it: the same bar that stands over the map, given the listing location's path
+					rather than the view's (see listingCrumbs). The same component and not a second
+					arrangement of crumbs, so it collapses to one step and a dots button the moment
+					400px cannot hold the path — which on this column is most of them — and the whole
+					way back up is a press away without the names ever being cut short. Pressed for
+					what the bar over the map is pressed for: a step opens its region, an empty rung
+					takes the map to that tier's zoom. -->
+				<svelte:fragment slot="path">
+					<MapBreadcrumbs crumbs={listingCrumbs} onSelect={open} onZoom={zoomToTier} />
 				</svelte:fragment>
 			</RegionSubdivisions>
 		</aside>
