@@ -11,13 +11,30 @@
 --      festivity sync's own lower bound (../src/routes/festivities.ts), which must
 --      reach at least as far back or the days behind get pruned before anyone can
 --      claim them.
---   2. A player may open at most (their level, capped at 20, PLUS any admin-granted
---      extra claims for today) packs per day, the day resetting at midnight
---      Europe/Madrid. Level is derived from the player's accumulated experience via
---      the same D&D 5e table the frontend uses (@3xl/shared utils/progression/
---      level.ts → level_for_exp below); grants come from `booster_grants` (written
---      by the admin /api/users route, see ../src/routes/users.ts), summed for
---      today's Catalan date and added on top of the level.
+--   2. A player may open at most their day's ALLOWANCE of packs, the day resetting
+--      at midnight Europe/Madrid. That allowance has three parts, and
+--      `booster_allowance()` below is the one place they are added up:
+--
+--        * the **base**, a step function of the level: `floor(level / 4) + 1`
+--          (`daily_booster_allowance`). One box at levels 1–3, two from 4, six at
+--          the cap. It was the level itself, which made a maxed player's day twenty
+--          boxes and a beginner's one, and put the whole of the game's supply on the
+--          one number that only ever goes up. Level is derived from the player's
+--          accumulated experience via the same D&D 5e table the frontend uses
+--          (@3xl/shared utils/progression/level.ts → level_for_exp below).
+--        * the **signup bonus**, two extra boxes on the day the account was created
+--          and that day only. Derived from `auth.users.created_at` rather than
+--          recorded, so there is nothing to grant twice and nothing to lapse.
+--        * the **grants**, `booster_grants` summed for today's Catalan date. This is
+--          the day's own ledger, and everything a day earns goes into it: a batch
+--          recycled, a level reached, a town taken, a town held against a
+--          challenger, an admin's grant. Rows are only ever summed for today, so
+--          every one of them lapses at Catalan midnight.
+--
+--      The base is the one part mirrored in TypeScript (dailyBoosterAllowance), and
+--      only because the admin's user list derives the same cap in JS. Every grant
+--      amount lives here alone: the browser is told what it was granted and never
+--      names an amount.
 --
 -- Because the frontend talks to Supabase directly with the anon key, these rules
 -- live in the database, not the client: `character_spawns` has no insert policy
@@ -48,11 +65,11 @@ create index if not exists booster_claims_user_day_idx
 
 alter table public.booster_claims enable row level security;
 
--- Admin-granted extra daily claims: an additive, day-scoped bump to a player's
--- booster cap for one Europe/Madrid date. Written only by the admin /api/users
--- route (see ../src/routes/users.ts); claim_booster / boosters_status add the sum
--- of today's grants on top of the level cap. Rows are only ever summed for
--- today's date, so a grant lapses at Catalan midnight. RLS on and no policy at
+-- Extra daily claims: an additive, day-scoped bump to a player's booster cap for
+-- one Europe/Madrid date, and the ledger of everything a day earns.
+-- claim_booster / boosters_status add the sum of today's grants on top of the base
+-- allowance. Rows are only ever summed for today's date, so a grant lapses at
+-- Catalan midnight. RLS on and no policy at
 -- all, which is how a table is made unreachable from the anon key: leaving RLS
 -- *off* would not have hidden it but published it, with every verb, since
 -- Supabase's default privileges grant anon and authenticated everything on a
@@ -68,8 +85,30 @@ create table if not exists public.booster_grants (
 	created_at timestamptz not null default now()
 );
 
+-- Where the row came from, and what it was for. The sum ignores both — a grant is a
+-- grant — so this is an audit trail and an idempotency key, not a rule:
+--   'admin'       the admin /api/users route (see ../src/routes/users.ts)
+--   'recycle'     ten cards traded back (recycle_spawns below)
+--   'level_up'    a level reached, ref = the level (award_combat_exp)
+--   'capture'     a town taken, ref = the location id (award_combat_exp)
+--   'defense'     a town HELD against a challenger, ref = the location id (award_combat_exp)
+-- 'admin' is the default so rows written before this column existed read as what
+-- they were: the only writer there was.
+alter table public.booster_grants add column if not exists reason text not null default 'admin';
+alter table public.booster_grants add column if not exists ref text;
+
 create index if not exists booster_grants_user_day_idx
 	on public.booster_grants (user_id, grant_date);
+
+-- A level is reached once, ever, so the pack it pays is paid once, ever — across
+-- every day and both of the RPCs that award experience. The index is what enforces
+-- that rather than a check any caller has to remember: `grant_boosters` inserts with
+-- `on conflict do nothing`, so a second attempt at the same level grants nothing and
+-- raises nothing. Only 'level_up' is once-only; a town can be taken and held again
+-- and again, and each one is paid.
+create unique index if not exists booster_grants_level_up_idx
+	on public.booster_grants (user_id, ref)
+	where reason = 'level_up';
 
 alter table public.booster_grants enable row level security;
 
@@ -105,6 +144,139 @@ returns int language sql immutable set search_path = public as $$
 		else 1
 	end;
 $$;
+
+-- The boxes a day is worth at a level, before anything the day itself grants:
+-- floor(level / 4) + 1. One at levels 1-3, two from 4, six at the cap. Keep in sync
+-- with dailyBoosterAllowance in @3xl/shared utils/progression/level.ts, which the
+-- admin's user list derives the same cap from.
+create or replace function public.daily_booster_allowance(p_level int)
+returns int language sql immutable set search_path = public as $$
+	select least(greatest(coalesce(p_level, 1), 1), 20) / 4 + 1;
+$$;
+
+-- One player's allowance for today, broken into the three things it is made of (see
+-- the header). The ONE place the cap is added up: claim_booster refuses against this
+-- and boosters_status reports it, so the number a player is shown is the number they
+-- are held to.
+--
+-- security definer because it reads `auth.users` for the account's creation date,
+-- which no client role may select. Execute is revoked from PUBLIC *and from anon and
+-- authenticated by name*, which is the part that matters here: Postgres grants
+-- execute to PUBLIC by default, but Supabase's own default privileges grant it to
+-- those two roles **explicitly**, and an explicit grant survives a revoke from
+-- PUBLIC. Anything not revoked from them by name is callable from a browser holding
+-- the anon key. This one takes a user id that is not the caller's, so left open it
+-- would answer questions about other people's accounts. Its callers are all
+-- security-definer functions of their own, which run as this function's owner and so
+-- are unaffected.
+create or replace function public.booster_allowance(p_uid uuid)
+returns table (base int, signup int, granted int, cap int)
+language plpgsql security definer set search_path = public as $$
+declare
+	-- The account's first day is worth two extra boxes. The game's number, and it
+	-- lives here: the browser is never told an amount, only a total.
+	v_signup_bonus constant int := 2;
+	v_today date := (now() at time zone 'Europe/Madrid')::date;
+	v_exp bigint;
+	v_created date;
+begin
+	if p_uid is null then
+		return;
+	end if;
+	select coalesce(p.exp, 0) into v_exp from public.player_profiles p where p.user_id = p_uid;
+	base := public.daily_booster_allowance(public.level_for_exp(coalesce(v_exp, 0)));
+
+	-- The signup bonus is derived, not recorded: the account's own creation date read
+	-- in Catalan time, compared with today. So it cannot be granted twice, needs
+	-- nothing to expire it, and is simply not there tomorrow.
+	select (u.created_at at time zone 'Europe/Madrid')::date into v_created
+		from auth.users u where u.id = p_uid;
+	signup := case when v_created = v_today then v_signup_bonus else 0 end;
+
+	select coalesce(sum(g.amount), 0)::int into granted from public.booster_grants g
+		where g.user_id = p_uid and g.grant_date = v_today;
+
+	cap := greatest(0, base + signup + granted);
+	return next;
+end;
+$$;
+
+revoke execute on function public.booster_allowance(uuid) from public, anon, authenticated;
+
+-- Add packs to a player's day. The one writer of `booster_grants` inside the
+-- database — every RPC that pays a player in boxes comes through here, so the ledger
+-- has one shape and one place where a reason is spelled.
+--
+-- Returns what it actually granted, which is 0 when a once-only grant ('level_up',
+-- see the unique index above) was already paid: the insert takes the conflict
+-- silently rather than raising, because a level reached twice is not an error worth
+-- rolling a fight back over. Amounts of 0 write nothing at all.
+--
+-- security definer (booster_grants has no client policy) and execute revoked from
+-- PUBLIC, anon and authenticated — all three by name, see `booster_allowance` above
+-- for why PUBLIC alone is not enough. This is the function that has to be shut: a row
+-- here is an extra pack, and a browser that could call it with any user id and any
+-- amount would be an unbounded supply of them.
+create or replace function public.grant_boosters(
+	p_uid uuid,
+	p_amount int,
+	p_reason text,
+	p_ref text default null
+)
+returns int language plpgsql security definer set search_path = public as $$
+declare
+	v_today date := (now() at time zone 'Europe/Madrid')::date;
+	v_written int;
+begin
+	if p_uid is null or coalesce(p_amount, 0) = 0 then
+		return 0;
+	end if;
+	insert into public.booster_grants (user_id, grant_date, amount, reason, ref)
+		values (p_uid, v_today, p_amount, coalesce(p_reason, 'admin'), p_ref)
+		on conflict do nothing;
+	get diagnostics v_written = row_count;
+	return case when v_written > 0 then p_amount else 0 end;
+end;
+$$;
+
+revoke execute on function public.grant_boosters(uuid, int, text, text) from public, anon, authenticated;
+
+-- One extra pack for each level crossed between two experience totals, banked
+-- against the level itself so it is paid once ever (see the unique index above).
+-- Its own function rather than a few lines inside `award_combat_exp` — which is the
+-- only thing that awards experience today — because a level-up is a level-up
+-- whatever caused it: anything that pays experience later pays this too, by calling
+-- one function, and cannot pay it twice for a level already reached.
+--
+-- Returns the total granted. Nothing happens when the totals sit inside one level,
+-- which is what almost every award does.
+create or replace function public.grant_level_up_boosters(
+	p_uid uuid,
+	p_before bigint,
+	p_after bigint
+)
+returns int language plpgsql security definer set search_path = public as $$
+declare
+	-- What one level reached is worth. Here and nowhere else.
+	v_per_level constant int := 1;
+	v_from int := public.level_for_exp(coalesce(p_before, 0));
+	v_to int := public.level_for_exp(coalesce(p_after, 0));
+	v_total int := 0;
+	v_level int;
+begin
+	if p_uid is null or v_to <= v_from then
+		return 0;
+	end if;
+	-- Every level actually reached, not just the last: an award big enough to cross
+	-- two of them pays for both.
+	for v_level in (v_from + 1)..v_to loop
+		v_total := v_total + public.grant_boosters(p_uid, v_per_level, 'level_up', v_level::text);
+	end loop;
+	return v_total;
+end;
+$$;
+
+revoke execute on function public.grant_level_up_boosters(uuid, bigint, bigint) from public, anon, authenticated;
 
 -- Weighted pick out of a pool: `p_ids` with `p_weights` summing to `p_total`, one
 -- id back, the cumulative walk. Its own function because claim_booster draws from
@@ -180,9 +352,6 @@ declare
 	v_days_behind constant int := 3;
 	v_days_ahead constant int := 4;
 	v_size constant int := 5;
-	v_exp bigint;
-	v_level int;
-	v_granted int;
 	v_cap int;
 	v_used int;
 	v_ids text[];
@@ -233,17 +402,15 @@ begin
 		v_colors := array['red', 'blue', 'yellow'];
 	end if;
 
-	-- Daily cap = player level (>=1, capped at 20) plus any admin-granted extra
-	-- claims for today, reset at Catalan midnight.
-	select coalesce(exp, 0) into v_exp from public.player_profiles where user_id = v_uid;
-	v_level := public.level_for_exp(coalesce(v_exp, 0));
-	select coalesce(sum(amount), 0) into v_granted from public.booster_grants
-		where user_id = v_uid and grant_date = v_today;
-	v_cap := v_level + v_granted;
+	-- The day's allowance: the level's base, the signup bonus if this is the account's
+	-- first day, and everything today's grants have added. Worked out by
+	-- `booster_allowance` rather than here, so the cap this refuses against is the
+	-- very number `boosters_status` showed the player.
+	select a.cap into v_cap from public.booster_allowance(v_uid) a;
 	select count(*) into v_used from public.booster_claims
 		where user_id = v_uid and claimed_at >= v_day_start;
-	if v_used >= v_cap then
-		raise exception 'Daily booster limit reached: % of % packs opened today. More unlock at midnight.', v_used, v_cap;
+	if v_used >= coalesce(v_cap, 0) then
+		raise exception 'Daily booster limit reached: % of % packs opened today. More unlock at midnight.', v_used, coalesce(v_cap, 0);
 	end if;
 
 	-- Which show this town's boxes deal.
@@ -337,29 +504,52 @@ $$;
 
 grant execute on function public.claim_booster(bigint, text) to authenticated;
 
--- The caller's daily allowance: their effective cap (level plus any admin grants
--- for today), packs opened since Catalan midnight, and how many remain. Powers the
--- claim UI's limit display, so `level` here is the day's cap, not just the exp level.
+-- The caller's daily allowance: what the day is worth, what it is made of, what has
+-- been spent of it and what is left. Powers the claim UI's limit display and the
+-- count on the map's top bar.
+--
+-- `level` is the player's actual level again, and `allowance` is the day's cap — the
+-- two used to be the same column, back when a day WAS a level. They are not the same
+-- number any more (six boxes at level 20, not twenty), so they are not the same
+-- column: a surface that wants the cap asks for the cap.
+--
+-- Dropped first: this gained columns, and Postgres will not replace a function's
+-- return type in place.
+drop function if exists public.boosters_status();
+
 create or replace function public.boosters_status()
-returns table (level int, used int, remaining int)
+returns table (
+	-- The player's level, from their accumulated experience.
+	level int,
+	-- The day's cap: base + signup + grants, and what claim_booster refuses against.
+	allowance int,
+	-- The three parts of it, so a surface can say where a day's boxes came from.
+	base int,
+	signup int,
+	granted int,
+	-- Packs opened since Catalan midnight, and what is left of the allowance.
+	used int,
+	remaining int
+)
 language plpgsql security definer set search_path = public as $$
 declare
 	v_uid uuid := auth.uid();
 	v_exp bigint;
-	v_granted int;
-	v_today date := (now() at time zone 'Europe/Madrid')::date;
 	v_day_start timestamptz := date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
 begin
 	if v_uid is null then
 		return;
 	end if;
-	select coalesce(exp, 0) into v_exp from public.player_profiles where user_id = v_uid;
-	select coalesce(sum(amount), 0) into v_granted from public.booster_grants
-		where user_id = v_uid and grant_date = v_today;
-	level := public.level_for_exp(coalesce(v_exp, 0)) + v_granted;
+	select coalesce(p.exp, 0) into v_exp from public.player_profiles p where p.user_id = v_uid;
+	level := public.level_for_exp(coalesce(v_exp, 0));
+	-- The same one place claim_booster asks, so what is shown and what is enforced
+	-- cannot come apart.
+	select a.base, a.signup, a.granted, a.cap
+		into base, signup, granted, allowance
+		from public.booster_allowance(v_uid) a;
 	select count(*) into used from public.booster_claims
 		where user_id = v_uid and claimed_at >= v_day_start;
-	remaining := greatest(0, level - used);
+	remaining := greatest(0, coalesce(allowance, 0) - used);
 	return next;
 end;
 $$;
@@ -378,7 +568,6 @@ returns table (recycled int, granted int)
 language plpgsql security definer set search_path = public as $$
 declare
 	v_uid uuid := auth.uid();
-	v_today date := (now() at time zone 'Europe/Madrid')::date;
 	v_count int;
 	v_grant int;
 begin
@@ -402,8 +591,7 @@ begin
 	end if;
 
 	delete from public.character_spawns where user_id = v_uid and id = any(p_spawn_ids);
-	insert into public.booster_grants (user_id, grant_date, amount)
-		values (v_uid, v_today, v_grant);
+	perform public.grant_boosters(v_uid, v_grant, 'recycle');
 
 	recycled := v_count;
 	granted := v_grant;

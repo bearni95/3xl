@@ -154,23 +154,46 @@ export function combatExpAward({
 }
 
 /**
- * Experience for completing one achievement: a third of the level the player is on
- * when they complete it — the gap between the experience their current level began
- * at and the experience the next one begins at, divided by three, rounded down.
- *
- * So it is worth more at every level rather than being a fixed number that stops
- * mattering, and the three badges a day (see `utils/achievement/daily`) come to one
- * level's worth if a player earns all of them. Zero at {@link MAX_LEVEL}, which has
- * no next threshold to reach — as a fight's award is.
- *
- * The level is the one they hold **at completion time**, which is why this takes a
- * level rather than an experience total: `claim_achievements` re-reads it for each
- * badge it grants, so a badge that levels a player up makes the next one worth more
- * in the same claim. That RPC is the authority; this mirrors its arithmetic so the
- * modal can print the number before the claim is made.
+ * How many levels are worth one more booster box a day. The day's base allowance is
+ * a *step* function of the level rather than the level itself: a level was once a
+ * pack, which made a maxed player's day twenty boxes and a beginner's one, and put
+ * the whole of the game's supply on the one number that only ever goes up.
  */
-export function achievementExpAward(level: number): number {
-	return Math.floor(levelSpanExp(level) / 3);
+export const BOOSTER_LEVEL_STEP = 4;
+
+/**
+ * Boxes a day before any level is earned at all — what level 1 opens with, and the
+ * `+ 1` in the allowance below. Nobody's day is ever nought.
+ */
+export const BASE_DAILY_BOOSTERS = 1;
+
+/**
+ * The extra boxes an account is given on the day it is created, on top of its
+ * allowance. Paid for that Catalan day only — it is not a starting balance, it is a
+ * first day worth playing — and derived from the account's own creation date rather
+ * than recorded anywhere, so there is nothing to grant twice and nothing to lapse.
+ */
+export const SIGNUP_BOOSTER_BONUS = 2;
+
+/**
+ * The boxes a player's day is worth at `level`, before anything the day itself
+ * grants: `floor(level / {@link BOOSTER_LEVEL_STEP}) + {@link BASE_DAILY_BOOSTERS}`.
+ * One at levels 1–3, two from 4, and six at the cap — a day that grows with the
+ * player without the level being the whole of what a day is.
+ *
+ * Everything else a day gives is an *event*, banked in `booster_grants` as it
+ * happens and summed on top of this: a recycled batch, a level
+ * reached, a town taken, a town held against a challenger, an admin's grant. Those
+ * amounts are the database's alone and are deliberately not mirrored here — the
+ * browser is told what it was granted and never names an amount. This one is
+ * mirrored because it is not a grant but a shape: `daily_booster_allowance` in
+ * Postgres (booster_claims.sql) is the authority, and the admin's user list derives
+ * the same cap in JS so a row does not depend on that function being deployed yet.
+ */
+export function dailyBoosterAllowance(level: number): number {
+	const known = Number.isFinite(level) ? Math.trunc(level) : MIN_LEVEL;
+	const clamped = Math.min(Math.max(known, MIN_LEVEL), MAX_LEVEL);
+	return Math.floor(clamped / BOOSTER_LEVEL_STEP) + BASE_DAILY_BOOSTERS;
 }
 
 /** A player's level and their progress through it, derived from an experience total. */

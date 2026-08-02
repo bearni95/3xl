@@ -226,7 +226,7 @@
 			if (!currentUserId || !claimRegion.id) return nothing;
 			// Client-side echo of the server rule: no allowance left, reveal nothing.
 			if (boosters && boosters.remaining <= 0) {
-				claimError = `You've opened all ${boosters.level} of today's booster packs. More unlock at midnight.`;
+				claimError = `You've opened all ${boosters.allowance} of today's booster packs. More unlock at midnight.`;
 				return nothing;
 			}
 			claimingId = show.id;

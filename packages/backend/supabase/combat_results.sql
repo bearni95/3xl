@@ -52,6 +52,20 @@
 -- town's sitting team, and enough of them flip the town to the winner. See
 -- municipality_holders.sql for the tables and the rules.
 --
+-- And it is where three of the day's BOOSTER BOXES are earned (see
+-- booster_claims.sql, which holds every amount and the ledger they go into):
+--
+--   * **A level reached** pays one, per level crossed, once ever. It is banked
+--     against the level rather than the fight, so any future path to experience
+--     pays it exactly once too, simply by calling the same function.
+--   * **A town taken** pays one to the taker, every time one falls.
+--   * **A town held** pays one to its HOLDER — the only grant in the game paid to
+--     somebody who is not the caller. A garrison fights on without the player who
+--     left it, so a challenger who reports a loss against a town somebody holds has
+--     just lost to a defence that player never played, and it is worth a box to
+--     them. It is computed here for the same reason everything else is: the
+--     defender has no browser in this transaction to be trusted.
+--
 -- Every one of those bounds is on the WIN. A loss banks nothing and takes nothing, and
 -- what it does pay is capped at one team's worth — off a report that says nothing about
 -- the team, against a battle that had to be opened (and a town's challenge spent) before
@@ -375,6 +389,10 @@ begin
 			on conflict (user_id) do update
 				set exp = player_profiles.exp + v_award, updated_at = now()
 			returning exp into v_total;
+		-- Levelling up pays a booster box, one for each level this fight crossed, into
+		-- today's allowance (see booster_claims.sql). Banked against the level rather
+		-- than the fight, so it is paid once ever however the level was reached.
+		perform public.grant_level_up_boosters(v_uid, v_exp, v_total);
 	else
 		v_total := v_exp;
 	end if;
@@ -436,6 +454,26 @@ begin
 		-- now: if the town has flipped since, what was beaten was not the sitting team
 		-- and the win buys no ground. Both numbers are the server's own.
 		v_stale := coalesce(v_fought, 0) <> v_turnover;
+
+		-- A town that held. The garrison a player leaves behind fights on without them
+		-- — they are not in the room, and may not even be online — so a challenger
+		-- beaten here is a defence its holder never played, and it pays them a booster
+		-- box into whatever Catalan day it lands on (see booster_claims.sql). This is
+		-- the one grant in the game paid to somebody other than the caller, which is
+		-- exactly why it is computed here rather than reported: the defender has no
+		-- browser in this transaction to be trusted.
+		--
+		-- Only a loss. A draw is not a defeat, and a stale fight was against a team that
+		-- no longer sits here — the player who now holds the town did not win that one.
+		-- A holder who fights their own town (a loss, which is allowed) pays themselves
+		-- nothing.
+		if p_outcome = 'lose'
+			and not v_stale
+			and v_holder is not null
+			and v_holder <> v_uid
+		then
+			perform public.grant_boosters(v_holder, 1, 'defense', v_location);
+		end if;
 
 		if p_outcome = 'win' and not v_stale then
 			-- Bank the win. A stored siege from an older generation is not added to —
@@ -514,6 +552,13 @@ begin
 						and settled_at is null
 						and voided_at is null
 						and user_id <> v_uid;
+				-- Taking a town pays a booster box into the taker's day (see
+				-- booster_claims.sql). Repeatable by design, and deliberately so:
+				-- holding ground is the loop the whole game is made of, so a town taken
+				-- again next week is paid again — unlike a level, which is reached once
+				-- ever. The grant is for the Catalan day the capture happened on, and
+				-- lapses with it like every other.
+				perform public.grant_boosters(v_uid, 1, 'capture', v_location);
 				v_captured := true;
 				v_turnover := v_turnover + 1;
 				v_wins := v_required;

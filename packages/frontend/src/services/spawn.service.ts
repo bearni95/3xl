@@ -45,15 +45,31 @@ export interface BoosterOpening {
 
 /**
  * The signed-in player's daily booster allowance, as reported by the
- * `boosters_status` RPC. `remaining` is what's left to open today (the day
- * resetting at midnight Europe/Madrid); `level` is the daily cap.
+ * `boosters_status` RPC — the day resetting at midnight Europe/Madrid.
+ *
+ * {@link level} and {@link allowance} are two different numbers: a day was once
+ * worth a pack per level, and is now `floor(level / 4) + 1` plus whatever the day
+ * itself has granted, so six boxes is what the cap comes to at level 20. Anything
+ * showing "how many today" wants {@link allowance}.
+ *
+ * The three parts it breaks into are the server's own arithmetic, reported rather
+ * than reassembled here — the browser is told what it has and never names an amount.
  */
 export interface BoostersStatus {
-	/** Player level — the number of packs allowed per day (1..20). */
+	/** The player's level, from their accumulated experience (1..20). */
 	level: number;
+	/** The day's cap: {@link base} + {@link signup} + {@link granted}. */
+	allowance: number;
+	/** What the level alone is worth today: `floor(level / 4) + 1`. */
+	base: number;
+	/** Extra boxes for the day the account was created, 0 on every other day. */
+	signup: number;
+	/** Everything today's `booster_grants` have added: levels reached, towns taken,
+	 * towns held, cards recycled, an admin's grant. */
+	granted: number;
 	/** Packs already opened since Catalan midnight. */
 	used: number;
-	/** Packs still openable today (`level - used`, never negative). */
+	/** Packs still openable today (`allowance - used`, never negative). */
 	remaining: number;
 }
 
@@ -208,8 +224,8 @@ class SpawnService {
 	 * the frontend can no longer insert spawns directly:
 	 *
 	 *   - the town must be celebrating a festa major *today* (Europe/Madrid);
-	 *   - the player may open at most (their level, capped at 20) packs per day,
-	 *     the day resetting at midnight Europe/Madrid.
+	 *   - the player may open at most their day's allowance of packs — see
+	 *     {@link BoostersStatus} — the day resetting at midnight Europe/Madrid.
 	 *
 	 * The RPC rolls {@link BOOSTER_SIZE} cards — each weighted by rarity (every
 	 * higher tier 2× rarer), plus a colour out of the three its box holds — and one
@@ -320,8 +336,14 @@ class SpawnService {
 
 	/**
 	 * The signed-in player's daily booster allowance from the `boosters_status`
-	 * RPC: their level (the daily cap), packs opened since Catalan midnight, and
-	 * how many remain. Returns `null` when signed out (the RPC yields no row).
+	 * RPC: their level, the day's cap and the three parts it is made of, packs
+	 * opened since Catalan midnight, and how many remain. Returns `null` when
+	 * signed out (the RPC yields no row).
+	 *
+	 * `allowance` falls back to `level` for a deployment still running the RPC from
+	 * when a day was worth a pack per level and the two were one column — an old
+	 * server then reads as a cap, which is what that column meant, rather than as a
+	 * player whose day is nought.
 	 */
 	async boostersStatus(): Promise<BoostersStatus | null> {
 		const supabase = getSupabaseClient();
@@ -329,10 +351,15 @@ class SpawnService {
 		if (error) throw error;
 		const row = Array.isArray(data) ? data[0] : data;
 		if (!row) return null;
+		const level = Number(row.level ?? 0);
 		return {
-			level: Number(row.level),
-			used: Number(row.used),
-			remaining: Number(row.remaining)
+			level,
+			allowance: Number(row.allowance ?? level),
+			base: Number(row.base ?? 0),
+			signup: Number(row.signup ?? 0),
+			granted: Number(row.granted ?? 0),
+			used: Number(row.used ?? 0),
+			remaining: Number(row.remaining ?? 0)
 		};
 	}
 }

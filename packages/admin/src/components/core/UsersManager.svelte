@@ -93,9 +93,11 @@
 		</div>
 
 		<p class="text-sm opacity-70">
-			Each player's daily booster cap is their level (from experience, capped at 20). Granting adds
-			extra claims <strong>for today only</strong> — they stack on top of the cap and reset at Catalan
-			midnight (Europe/Madrid), exactly as the frontend's booster panel enforces.
+			Each player's daily booster cap is <code>floor(level / 4) + 1</code> boxes, plus two on the day
+			they signed up, plus everything the day has granted them — a level reached, a town taken, a
+			town held against a challenger, cards recycled. Granting adds extra claims
+			<strong>for today only</strong>: they stack on top of the cap and reset at Catalan midnight
+			(Europe/Madrid), exactly as the frontend's booster panel enforces.
 		</p>
 
 		{#if loadError}

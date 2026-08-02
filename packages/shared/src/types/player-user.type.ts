@@ -15,13 +15,26 @@ export interface AdminUser {
 	createdAt: string;
 	/** Accumulated experience total from `player_profiles` (0 when no row yet). */
 	exp: number;
-	/** Level derived from {@link exp} via the D&D 5e table — the base daily cap. */
+	/** Level derived from {@link exp} via the D&D 5e table. */
 	level: number;
-	/** Extra daily claims granted by an admin for today (Europe/Madrid). */
+	/** What the level alone is worth today: `floor(level / 4) + 1` boxes. */
+	baseToday: number;
+	/** Two boxes on the day the account was created, 0 on every other day. */
+	signupToday: number;
+	/**
+	 * Everything today's `booster_grants` have added (Europe/Madrid): levels
+	 * reached, towns taken, towns held against a challenger, cards recycled, and
+	 * an admin's own grants. Only the last of those is written from here.
+	 */
 	grantedToday: number;
 	/** Booster packs the player has already opened today (Europe/Madrid). */
 	usedToday: number;
-	/** Today's effective daily cap: {@link level} + {@link grantedToday}. */
+	/**
+	 * Today's effective daily cap: {@link baseToday} + {@link signupToday} +
+	 * {@link grantedToday}. Mirrors `booster_allowance` in Postgres, which is the
+	 * authority — derived here so a row does not depend on that function being
+	 * deployed yet.
+	 */
 	capToday: number;
 	/** Packs the player may still open today: `max(0, capToday - usedToday)`. */
 	remainingToday: number;

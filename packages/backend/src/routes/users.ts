@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { levelForExp } from '@3xl/shared/utils/progression/level';
+import {
+	SIGNUP_BOOSTER_BONUS,
+	dailyBoosterAllowance,
+	levelForExp
+} from '@3xl/shared/utils/progression/level';
 import type { AdminUser, GrantClaimsResult } from '@3xl/shared/types/player-user.type';
 import { asyncHandler, httpError } from '../http-error';
 import { getPool } from '../db';
@@ -10,12 +14,14 @@ import { ensureTables } from './show-templates';
  * their per-player game state, plus the ability to grant a player extra daily
  * booster claims for the current day.
  *
- * The daily claim limit the frontend's claim panel enforces is a player's level
- * (from accumulated experience) capped at 20, resetting at midnight Europe/Madrid
- * (see ../../supabase/booster_claims.sql and ./show-templates.ts). A grant is an
- * additive, day-scoped bump to that cap: a row in `booster_grants` for today's
- * Catalan date, which `claim_booster` / `boosters_status` add on top of the level.
- * Grants written for one day never carry over — they lapse at Catalan midnight.
+ * The daily claim limit the frontend's claim panel enforces has three parts,
+ * resetting at midnight Europe/Madrid (see ../../supabase/booster_claims.sql and
+ * ./show-templates.ts): a base of `floor(level / 4) + 1` boxes, two more on the day
+ * the account was created, and the sum of today's `booster_grants` rows. A grant is
+ * an additive, day-scoped bump to that cap, and the ledger everything a day earns
+ * goes into — a level reached, a town taken, a town held against a challenger,
+ * cards recycled, and what is written from here. Grants written for one day never
+ * carry over: they lapse at Catalan midnight.
  *
  * Talks to Supabase's Postgres directly via ../db (the DB password), so it can
  * read `auth.users` (which the anon key cannot). Every entry point first runs the
@@ -124,22 +130,37 @@ function toAdminUser(row: {
 	used_today: string;
 }): AdminUser {
 	const exp = Number(row.exp);
-	// Same cap as claim_booster: level from exp, but never above the level-20 tier.
 	const level = Math.min(levelForExp(exp), MAX_DAILY_LEVEL);
+	const createdAt = new Date(row.created_at);
+	// The same three parts booster_allowance adds up, in the same order: what the
+	// level is worth, the account's first day, and today's ledger.
+	const baseToday = dailyBoosterAllowance(level);
+	const signupToday = catalanDate(createdAt) === catalanDate(new Date()) ? SIGNUP_BOOSTER_BONUS : 0;
 	const grantedToday = Number(row.granted_today);
 	const usedToday = Number(row.used_today);
-	const capToday = level + grantedToday;
+	const capToday = baseToday + signupToday + grantedToday;
 	return {
 		id: row.id,
 		email: row.email,
-		createdAt: new Date(row.created_at).toISOString(),
+		createdAt: createdAt.toISOString(),
 		exp,
 		level,
+		baseToday,
+		signupToday,
 		grantedToday,
 		usedToday,
 		capToday,
 		remainingToday: Math.max(0, capToday - usedToday)
 	};
+}
+
+/**
+ * A moment as its Europe/Madrid calendar date (`YYYY-MM-DD`), which is the day the
+ * whole booster ledger is scoped to. Compared as strings rather than reasoned about
+ * as offsets, so the answer is right across both of the year's clock changes.
+ */
+function catalanDate(at: Date): string {
+	return at.toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
 }
 
 export const usersRouter = Router();
