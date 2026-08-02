@@ -29,6 +29,7 @@
 		selectedStyle = null,
 		dimmedIds = new Set<string>(),
 		hiddenLineUrls = new Set<string>(),
+		pulse = null,
 		focusBounds = null,
 		zoomBounds = null,
 		zoomStops = [],
@@ -110,6 +111,19 @@
 		 * changes which tier is imaged.
 		 */
 		hiddenLineUrls?: Set<string>;
+		/**
+		 * The one shape drawn as breathing: the open region's, which pulses between the
+		 * colour it flies and the theme's primary for as long as it is the open one (see
+		 * `--animate-region-pulse`). Which shape, said the way a shape names itself — the
+		 * layer it belongs to, and the value its `properties.id` or `properties.name`
+		 * carries — plus the colour to pulse FROM, since that is the caller's to say: a
+		 * region's colour is the caller's whole business and this side has never known one.
+		 *
+		 * A CSS animation and not a repaint: a fill Leaflet writes is a presentation
+		 * attribute, which any rule outranks, so the browser is left to animate one path
+		 * while nothing here runs at all. Null takes the pulse off whatever was pulsing.
+		 */
+		pulse?: { url: string; key: string; color: string } | null;
 		/**
 		 * When set, the map animates to frame this `[[south, west], [north, east]]`
 		 * box (e.g. the selected region's polygons). A fresh array reference re-fits
@@ -351,6 +365,53 @@
 		void dimmedIds;
 		void hiddenLineUrls;
 		for (const group of overlayGroups) group.resetStyle();
+	});
+
+	// The class the pulse is, and the property it pulses from — one name each, because the
+	// stylesheet and this side both have to spell them and a second spelling is a second
+	// animation nobody asked for (see `--animate-region-pulse` in css/app.css).
+	const PULSE_CLASS = 'animate-region-pulse';
+	const PULSE_FROM = '--region-pulse-from';
+	// The path breathing right now, so it can be put back to a plain shape when the pulse
+	// moves or goes. A plain variable: nothing is drawn from it — it IS what was drawn.
+	let pulsingPath: SVGElement | null = null;
+
+	$effect(() => {
+		// Move the pulse. A repaint does not carry it: `resetStyle` re-runs a style option,
+		// and a class on an element is not one of the things a style option says — so the
+		// class is put on the element here and taken off here, and the shape is found by
+		// walking the layer it belongs to.
+		//
+		// Once per change of the open region, not once per repaint, which is why this is its
+		// own effect and not a line in the one above: the tier the map images changes with
+		// every notch of the wheel, and the shape that is picked does not.
+		const wanted = pulse;
+		void ready;
+		if (pulsingPath) {
+			pulsingPath.classList.remove(PULSE_CLASS);
+			pulsingPath.style.removeProperty(PULSE_FROM);
+			pulsingPath = null;
+		}
+		if (!ready || !wanted) return;
+		const index = overlays.findIndex((overlay) => overlay.url === wanted.url);
+		const group = overlayGroups[index];
+		if (!group) return;
+		group.eachLayer((layer) => {
+			if (pulsingPath) return;
+			const feature = (layer as L.GeoJSON).feature as GeoJSON.Feature | undefined;
+			const props = feature?.properties;
+			if (!props) return;
+			// How a shape names itself is the layer's own business — a town carries an id and
+			// every grouping carries a name (see the caller's featureKey) — so both are asked
+			// of the one value, within the one layer the caller named. Nothing else in that
+			// layer answers to it.
+			if (String(props.id ?? '') !== wanted.key && String(props.name ?? '') !== wanted.key) return;
+			const path = (layer as L.Path).getElement() as SVGElement | undefined;
+			if (!path) return;
+			path.style.setProperty(PULSE_FROM, wanted.color);
+			path.classList.add(PULSE_CLASS);
+			pulsingPath = path;
+		});
 	});
 
 	$effect(() => {

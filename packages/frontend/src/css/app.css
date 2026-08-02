@@ -89,6 +89,37 @@
 			transform: translateX(-50%);
 		}
 	}
+
+	/* The open region's own shape, breathing between the colour it flies and the
+	   theme's primary — the one thing on a map with no marks left on it that says
+	   which shape was picked, the rest of the map being terrain and washes that
+	   look the same whether or not they were chosen.
+
+	   It is here for the reason the marquee is: this project writes no CSS in
+	   components, and a keyframe is the one piece of a Tailwind utility that
+	   cannot be spelled as a class. `fill` and not a background — a polygon is an
+	   SVG path, and the fill Leaflet writes on it as a presentation attribute is
+	   outranked by any CSS rule, which is what lets this animate a shape whose
+	   colour Leaflet believes it is in charge of.
+
+	   Where it pulses FROM is the shape's own, so it cannot be written here: the
+	   custom property is set on the element beside the class (see WorldMap's
+	   `pulse`), and the fallback is the primary at both ends, which is a shape
+	   that simply does not appear to pulse rather than one that flashes to
+	   transparent. Four seconds because it is a state and not an alert: the shape
+	   is picked for as long as the reader is looking at it, and anything quicker
+	   read as something demanding to be dealt with. */
+	--animate-region-pulse: region-pulse 4s ease-in-out infinite;
+
+	@keyframes region-pulse {
+		0%,
+		100% {
+			fill: var(--region-pulse-from, var(--color-primary));
+		}
+		50% {
+			fill: var(--color-primary);
+		}
+	}
 }
 
 /* ============================================

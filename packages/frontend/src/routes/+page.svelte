@@ -509,6 +509,39 @@
 
 	$: pickedFeature = selectedFeature(selected, regionNodes);
 
+	// The picked shape, breathing. With no marks left on the map, a wash is all a region has
+	// to say what it is — and every region on the imaged tier is wearing one, so the shape
+	// that was actually asked for looked like its neighbours with a thinner coat of the same
+	// paint. It pulses between the colour it flies and the theme's primary instead, which is
+	// the one colour on this map that belongs to no region and so can never be mistaken for a
+	// second region's claim (see `--animate-region-pulse`).
+	//
+	// Only where there is a wash to pulse: the imaged tier is the only one that fills (see
+	// tierStyle), so a comarca picked while the map is drawing municipalities has nothing
+	// painted to breathe, and gets it back the moment the zoom walks out to its own tier.
+	// And never the town a fight is staged on — that one is being looked at rather than
+	// chosen, and its 80% wash is the whole of what the spotlight is.
+	function buildPulse(
+		picked: { tier: RegionType; key: string } | null,
+		colors: RegionColors,
+		imaged: number,
+		spotlit: string | null
+	): { url: string; key: string; color: string } | null {
+		if (!picked || spotlit) return null;
+		if (tierRank[picked.tier] !== imaged) return null;
+		const url = tierLayerUrls.get(tierRank[picked.tier]);
+		// The same fallback the paint takes: where a territory holds a single province, the
+		// province polygon IS the territory and answers to the territory's colour (see
+		// featureColor). A shape with no colour has no wash and nothing to pulse from.
+		const color =
+			colors[picked.tier].get(picked.key) ??
+			(picked.tier === 'Province' ? colors.Territory.get(picked.key) : undefined);
+		if (!url || !color) return null;
+		return { url, key: picked.key, color: REGION_COLOR_CSS[color] };
+	}
+
+	$: pulse = buildPulse(pickedFeature, regionColors, hiddenRank, spotlitId);
+
 	// One tier's paint: a solid white line of this tier's weight, plus — on the tier
 	// the map is imaging — a wash of the region's own colour across the shape.
 	// Only that one tier washes: the layers stack coarsest-on-top, so a territory
@@ -1395,6 +1428,14 @@
 		['/data/geo/comarques.json', tierRank.Comarca],
 		['/data/geo/municipis.json', tierRank.Municipality]
 	];
+
+	// Which layer a tier's shapes are drawn in, by that tier's rank — read off the two lists
+	// above rather than written out again, so the pulse below can never be sent looking for
+	// the picked shape in a layer it is not in.
+	const tierLayerUrls = new Map<number, string>([
+		[tierRank.Territory, territoryLines],
+		...lineTiers.map(([url, rank]) => [rank, url] as [number, string])
+	]);
 
 	// Find a region node by its key anywhere in the nested tree.
 	function findNode(nodes: RegionNode[], key: string): RegionNode | null {
@@ -2465,6 +2506,7 @@
 				{overlays}
 				{markerLevels}
 				{hiddenLineUrls}
+				{pulse}
 				{focusBounds}
 				{zoomBounds}
 				{zoomStops}
