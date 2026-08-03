@@ -3128,7 +3128,7 @@
 						which of them wins.
 						Only drawn once there is a side to draw — an account with no card in a team slot
 						leaves the column to its plate alone — and only inside `ready`, so a statue never
-						says Ultramar at a town whose name is still on its way (see claimPlaceFor). -->
+						says Ultramar at a town whose name is still on its way (see claimPlaceName). -->
 					{#if playerTeamLineup.length > 0}
 						<TeamLineup members={playerTeamLineup} />
 					{/if}
