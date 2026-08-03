@@ -558,7 +558,7 @@ function autoBindDefinition(id, manifest, basePath) {
 }
 
 /**
- * Say so when the portrait chosen on the admin's /characters/faces page is not
+ * Say so when the portrait chosen on the admin's character Faces page is not
  * among the ones this decode produced.
  *
  * The choice itself is safe — `face`/`faceCrop` are fields of the definition, and
@@ -577,7 +577,7 @@ function warnDanglingFace(id, defJsonPath, manifest) {
 		const { face } = JSON.parse(readFileSync(defJsonPath, 'utf-8'));
 		if (!face || (manifest.faces ?? []).some((f) => f.file === face)) return;
 		console.warn(
-			`    ⚠ chosen face ${face} is not among this decode's portraits — repick on /characters/faces`
+			`    ⚠ chosen face ${face} is not among this decode's portraits — repick on its Faces page`
 		);
 	} catch {
 		// Not a readable definition; the editor and the write API report on that.

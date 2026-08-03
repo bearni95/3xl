@@ -13,9 +13,8 @@
 	export let classes: string = '';
 
 	// Writes go through @3xl/backend (default :2002), which owns the git tree.
-	// Reads take the static copy the app already serves at /data — the faces page
-	// mounts one card per character, so a same-origin file read keeps the whole
-	// grid off the write API.
+	// Reads take the static copy the app already serves at /data: a plain read of a
+	// file in the tree needn't go through the write API.
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
 
 	let definition: CharacterDefinition | null = null;
@@ -191,28 +190,29 @@
 		}
 	}
 
-	$: cardClasses = classNames(
-		'card flex-row items-center gap-4 bg-base-100 p-3 shadow-md',
-		classes
-	);
+	// The whole card is one character's, on that character's own page, so it lays
+	// itself out down the page rather than as a row in a list.
+	$: cardClasses = classNames('flex flex-col gap-4', classes);
 </script>
 
 <div class={cardClasses}>
-	<div class="flex w-40 shrink-0 flex-col gap-1">
-		<span class="truncate text-sm font-medium" title={character.label}>{character.label}</span>
-		{#if saveError}
-			<span class="text-xs text-error">{saveError}</span>
-		{/if}
-	</div>
+	{#if saveError}
+		<div class="alert alert-error">
+			<span>{saveError}</span>
+		</div>
+	{/if}
 
 	{#if loading}
-		<div class="flex flex-1 items-center gap-2 opacity-70">
+		<div class="flex items-center gap-2 opacity-70">
 			<span class="loading loading-spinner loading-sm"></span>
+			<span>Loading portraits…</span>
 		</div>
 	{:else if loadError}
-		<span class="flex-1 text-xs text-error">{loadError}</span>
+		<div class="alert alert-warning">
+			<span>{loadError}</span>
+		</div>
 	{:else}
-		<div class="flex flex-1 flex-wrap items-end gap-2">
+		<div class="flex flex-wrap items-end gap-2">
 			{#if faces.length === 0}
 				<span class="self-center text-xs opacity-60">No group-9000 portraits</span>
 			{/if}
@@ -267,27 +267,29 @@
 			</label>
 		</div>
 
-		{#if activeFace && cropped}
-			<FaceCropEditor
-				src={`${character.basePath}/${activeFile}`}
-				width={activeFace.width}
-				height={activeFace.height}
-				crop={cropped}
-				on:change={(event) => recrop(event.detail)}
-			/>
-		{/if}
-
-		<button
-			class="btn btn-secondary btn-sm shrink-0"
-			type="button"
-			disabled={!dirty || saving}
-			on:click={save}
-		>
-			{#if saving}
-				<span class="loading loading-spinner loading-xs"></span>
-			{:else}
-				Save
+		<div class="flex flex-wrap items-end gap-4">
+			{#if activeFace && cropped}
+				<FaceCropEditor
+					src={`${character.basePath}/${activeFile}`}
+					width={activeFace.width}
+					height={activeFace.height}
+					crop={cropped}
+					on:change={(event) => recrop(event.detail)}
+				/>
 			{/if}
-		</button>
+
+			<button
+				class="btn btn-secondary btn-sm shrink-0"
+				type="button"
+				disabled={!dirty || saving}
+				on:click={save}
+			>
+				{#if saving}
+					<span class="loading loading-spinner loading-xs"></span>
+				{:else}
+					Save
+				{/if}
+			</button>
+		</div>
 	{/if}
 </div>

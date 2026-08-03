@@ -3,6 +3,8 @@
 	import { onMount } from 'svelte';
 	import MugenAnimationPreview from '$components/core/MugenAnimationPreview.svelte';
 	import RarityBadge from '$components/core/RarityBadge.svelte';
+	import CharacterFace from '$sharedComponents/CharacterFace.svelte';
+	import { characterFace, type CharacterFace as Face } from '$utils/mugen/character-face';
 	import type { CharacterOption } from '@3xl/data';
 	import {
 		LABEL_MAX_LENGTH,
@@ -28,11 +30,12 @@
 	export let rarity: number = DEFAULT_RARITY;
 	export let shows: ShowTemplate[] = [];
 
-	// The four detail views a character is authored through, each its own route
-	// under this dashboard.
+	// The detail views a character is authored through, each its own route under
+	// this dashboard — the same list, in the same order, as that character's tabs.
 	const views = [
 		{ segment: 'definition', label: 'Definition' },
 		{ segment: 'stats', label: 'Stats' },
+		{ segment: 'faces', label: 'Faces' },
 		{ segment: 'frames', label: 'Frames' },
 		{ segment: 'imported', label: 'Imported' }
 	];
@@ -90,6 +93,11 @@
 	let bound: DefinitionAnimation[] | null = null;
 	$: previews = bound ?? IDLE_ONLY;
 
+	// The portrait picked (and framed) on this character's Faces page, drawn by the
+	// very component the game draws a profile picture with — so the square authored
+	// there is judged here as the player will see it, and not as a second guess at it.
+	let face: Face | null = null;
+
 	onMount(async () => {
 		try {
 			const res = await fetch(`/data/characters/${character.id}/definition.json`);
@@ -98,6 +106,14 @@
 		} catch {
 			// A definition that cannot be read costs the row its extra previews, not
 			// the fields it exists to edit.
+		}
+	});
+
+	onMount(async () => {
+		try {
+			face = await characterFace(character.id, character.basePath);
+		} catch {
+			// A character with no readable portrait shows none; the row is unaffected.
 		}
 	});
 
@@ -185,7 +201,14 @@
 
 <tr>
 	<td>
-		<div class="flex flex-wrap gap-2">
+		<!-- Two previews abreast, in columns as wide as a preview is, so the portrait
+		     over them can span both and be exactly the width of what it heads. -->
+		<div class="grid grid-cols-[repeat(2,4rem)] gap-2">
+			{#if face}
+				<div class="col-span-2 aspect-square w-full rounded-md bg-base-300">
+					<CharacterFace {face} alt={`${character.label} portrait`} />
+				</div>
+			{/if}
 			{#each previews as preview (`${preview.label}:${preview.source}`)}
 				<div class="flex w-16 flex-col items-center gap-0.5">
 					<MugenAnimationPreview

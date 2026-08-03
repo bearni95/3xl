@@ -331,7 +331,7 @@ export function ensureTables(): Promise<void> {
 				-- initial-letter avatar; the pair is only ever set or cleared together,
 				-- because an avatar IS the pair (see player_avatars just below). Which
 				-- portrait each character shows is not stored here: it is the
-				-- definition's own face, authored in the admin /characters/faces screen,
+				-- definition's own face, authored on the admin's per-character Faces page,
 				-- so re-cropping it there moves every player's avatar with it.
 				alter table player_profiles add column if not exists avatar_character_id text
 					references character_templates (id) on delete set null;

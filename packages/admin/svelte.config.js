@@ -25,7 +25,11 @@ const config = {
 			// keep the aliases so existing imports resolve unchanged.
 			$utils: '../shared/src/utils/*',
 			$types: '../shared/src/types/*',
-			$adapters: '../shared/src/adapters/*'
+			$adapters: '../shared/src/adapters/*',
+			// The handful of Svelte components both apps draw — kept apart from the
+			// app-local $components so it stays obvious that editing one is editing
+			// what the other app shows too.
+			$sharedComponents: '../shared/src/components/*'
 		}
 	}
 };

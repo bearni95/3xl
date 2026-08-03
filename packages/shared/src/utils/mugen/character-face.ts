@@ -21,7 +21,7 @@ export interface CharacterFace {
 
 /**
  * Resolve the "active face" for a character: the face the definition picked on
- * the admin `/characters/faces` screen (`definition.face`), else the manifest's
+ * the admin `/characters/dashboard/<id>/faces` screen (`definition.face`), else the manifest's
  * default (`manifest.face`), together with the square that screen framed on it
  * (`definition.faceCrop`). Returns null when the character ships no portrait.
  *

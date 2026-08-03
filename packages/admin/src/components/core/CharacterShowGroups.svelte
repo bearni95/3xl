@@ -1,5 +1,4 @@
 <script lang="ts">
-	import classNames from 'classnames';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import CharacterGridCard from '$components/core/CharacterGridCard.svelte';
 	import type { CharacterOption } from '@3xl/data';
@@ -12,17 +11,13 @@
 	// sync-status ownership stay with the parent page.
 	//
 	// The default slot renders one character; leaving it unfilled falls back to
-	// the selectable CharacterGridCard, so pages that only need the grouped grid
-	// (the faces page) can drop their own card in without duplicating it.
+	// the selectable CharacterGridCard, so a page that only needs the grouped grid
+	// can drop its own card in without duplicating it.
 	export let characters: CharacterOption[] = [];
 	export let selectedId: string = '';
 	export let syncStatusById: Map<string, CharacterTemplateStatus> = new Map();
 	// Each character's Supabase rarity, seeding the per-card rarity editor.
 	export let rarityById: Map<string, number> = new Map();
-	// How the groups are laid out: `sections` stacks every show as a titled grid
-	// (the /characters screen); `tabs` shows one show at a time, its characters in
-	// a single column (the /characters/faces screen, where each row is wide).
-	export let variant: 'sections' | 'tabs' = 'sections';
 
 	// Which show each character belongs to lives only in Supabase (the
 	// `show_characters` join), read through @3xl/backend (default :2002) — same
@@ -124,49 +119,18 @@
 		return showGroups;
 	}
 
-	// Tabs variant: which show is open. Falls back to the first group whenever the
-	// current one disappears (including the initial load, when there are none yet).
-	let activeKey = '';
-	$: if (groups.length > 0 && !groups.some((group) => group.key === activeKey)) {
-		activeKey = groups[0].key;
-	}
-
-	// Sections show every group at once; tabs show only the open one.
-	$: visibleGroups = variant === 'tabs' ? groups.filter((g) => g.key === activeKey) : groups;
-
-	// A show's characters: one per row in the tabs variant (each row is wide), a
-	// card grid otherwise.
-	$: listClasses =
-		variant === 'tabs'
-			? 'flex flex-col gap-3'
-			: 'grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5';
+	// A show's characters, as a card grid.
+	const listClasses = 'grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5';
 </script>
 
 {#if loaded && !loadError}
 	<div class="flex flex-col gap-6">
-		{#if variant === 'tabs'}
-			<div role="tablist" class="tabs tabs-boxed flex-wrap">
-				{#each groups as group (group.key)}
-					<button
-						role="tab"
-						class={classNames('tab gap-2', { 'tab-active': group.key === activeKey })}
-						on:click={() => (activeKey = group.key)}
-					>
-						{group.name}
-						<span class="badge badge-neutral badge-sm">{group.characters.length}</span>
-					</button>
-				{/each}
-			</div>
-		{/if}
-
-		{#each visibleGroups as group (group.key)}
+		{#each groups as group (group.key)}
 			<section class="flex flex-col gap-3">
-				{#if variant === 'sections'}
-					<div class="flex items-center gap-2">
-						<h2 class="text-lg font-semibold">{group.name}</h2>
-						<span class="badge badge-neutral badge-sm">{group.characters.length}</span>
-					</div>
-				{/if}
+				<div class="flex items-center gap-2">
+					<h2 class="text-lg font-semibold">{group.name}</h2>
+					<span class="badge badge-neutral badge-sm">{group.characters.length}</span>
+				</div>
 				<div class={listClasses}>
 					{#each group.characters as character (character.id)}
 						<slot {character}>

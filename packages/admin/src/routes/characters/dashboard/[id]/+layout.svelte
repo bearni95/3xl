@@ -14,10 +14,11 @@
 	const id = $derived($page.params.id ?? '');
 	const character = $derived(characters.find((c) => c.id === id));
 
-	// The four views a character is authored through, in the order the tabs read.
+	// The views a character is authored through, in the order the tabs read.
 	const tabs = [
 		{ segment: 'definition', label: 'Definition' },
 		{ segment: 'stats', label: 'Stats' },
+		{ segment: 'faces', label: 'Faces' },
 		{ segment: 'frames', label: 'Frames' },
 		{ segment: 'imported', label: 'Imported' }
 	];

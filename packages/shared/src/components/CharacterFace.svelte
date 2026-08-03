@@ -5,6 +5,11 @@
 
 	// The character's active portrait, as resolved by `characterFace` — always
 	// shown as the square the admin Faces tab frames on it, authored or default.
+	//
+	// This lives in @3xl/shared rather than in either app because the admin has to
+	// draw a portrait exactly as the game does: the Faces tab is where the square is
+	// framed, and the dashboard is where the framing is judged. A second copy would
+	// be a second answer to "what does this character look like".
 	export let face: CharacterFace | null = null;
 	export let alt: string = '';
 	export let classes: string = '';

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { characters } from '@3xl/data';
-	import CharacterFace from '$components/core/CharacterFace.svelte';
+	import CharacterFace from '$sharedComponents/CharacterFace.svelte';
 	import { characterFace, type CharacterFace as Face } from '$utils/mugen/character-face';
 	import { teamColor } from '$services/team.service';
 	import { SpawnColor } from '$types/character-spawn.type';

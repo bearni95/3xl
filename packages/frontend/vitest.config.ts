@@ -27,6 +27,7 @@ export default defineConfig({
 			$adapters: resolve(__dirname, '../shared/src/adapters'),
 			$types: resolve(__dirname, '../shared/src/types'),
 			$utils: resolve(__dirname, '../shared/src/utils'),
+			$sharedComponents: resolve(__dirname, '../shared/src/components'),
 			$app: resolve(__dirname, './test/mocks/$app')
 		}
 	}

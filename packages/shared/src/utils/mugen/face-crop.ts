@@ -2,7 +2,7 @@ import type { FaceCrop } from '$types/character-definition.type';
 
 /**
  * Square framing of a character's face sprite: the region authored in the admin
- * `/characters/faces` screen (`definition.faceCrop`) and rendered by the avatar
+ * `/characters/dashboard/<id>/faces` screen (`definition.faceCrop`) and rendered by the avatar
  * picker and the account card. Coordinates are the face file's own pixels, so
  * every helper here needs the sprite's intrinsic size to stay in bounds.
  */

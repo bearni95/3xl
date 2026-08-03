@@ -65,7 +65,7 @@ still while the legs move), and one `frameMs` covers every frame.
 decoded manifest whole from the raw `.sff`/`.air` (or sheet), so anything the author edited has to live
 outside it. Three things the admin authors per character, and where each survives:
 
-- **The portrait** picked (and cropped) on `/characters/faces` is `face`/`faceCrop` on that
+- **The portrait** picked (and cropped) on `/characters/dashboard/<id>/faces` is `face`/`faceCrop` on that
   character's `definition.json`, and an additive import writes a definition only when there
   isn't one — so the pick is kept as-is. It names a manifest file (`spr_9000_2.png`), so an
   archive re-imported with a different set of group-9000 sprites can leave it pointing at
@@ -281,7 +281,11 @@ built out of are the files' and nobody authors them: they are read off audio ele
 load metadata and nothing else, one per song, which is why a station that has not been
 measured yet (or holds a file that will not decode) falls back to playing its day order from
 the top. The admin `/music` screen's Radio tab is the same three things drawn as a table.
-Admin routes: `/characters` (definition editor),
+Admin routes: `/characters` (definition editor) — whose `/characters/dashboard` lists
+every character in one table, each row headed by the very portrait the game wears and
+leading to that character's own pages (`dashboard/<id>/{definition,stats,faces,frames,imported}`);
+so a character is authored in one place and there are no per-topic screens over the
+whole roster —
 `/shows` (TMDB browser), `/music`
 (what each vendored song is called and which show it opens) and `/posters` — the whole
 roster idling at once on one PixiJS canvas (`@3xl/shared`'s `mugen-poster-grid`), each
@@ -298,15 +302,17 @@ a browser only allows a handful of WebGL contexts and the roster is dozens of ch
 ### Path Aliases
 
 Import aliases are declared identically in each app's `svelte.config.js`. Note that
-`$components`/`$services` stay **local to the app**, while `$utils`/`$types`/`$adapters`
-resolve into the **`@3xl/shared`** package:
+`$components`/`$services` stay **local to the app**, while
+`$utils`/`$types`/`$adapters`/`$sharedComponents` resolve into the **`@3xl/shared`**
+package:
 
 ```typescript
-$components  → src/components/*              (this app)
-$services    → src/services/*                (this app)
-$adapters    → ../shared/src/adapters/*      (@3xl/shared)
-$utils       → ../shared/src/utils/*         (@3xl/shared)
-$types       → ../shared/src/types/*         (@3xl/shared)
+$components       → src/components/*              (this app)
+$services         → src/services/*                (this app)
+$adapters         → ../shared/src/adapters/*      (@3xl/shared)
+$utils            → ../shared/src/utils/*         (@3xl/shared)
+$types            → ../shared/src/types/*         (@3xl/shared)
+$sharedComponents → ../shared/src/components/*    (@3xl/shared)
 ```
 
 So `import { ThemeColors } from '$types/core.type'` and
@@ -321,16 +327,20 @@ The character registry is **not** an alias — import it from the workspace pack
 
 ## Shared package (`@3xl/shared`)
 
-Framework-agnostic code consumed by **all three** runtime packages (`frontend`,
-`admin`, `backend`). It **ships raw TypeScript source** — no build step; consumers
-transpile it (the SvelteKit apps via Vite, the backend via `tsx`). It has three
-subpath exports, which map to the app aliases above:
+Code consumed by more than one runtime package (`frontend`, `admin`, `backend`). It
+**ships raw source** — no build step; consumers transpile it (the SvelteKit apps via
+Vite, the backend via `tsx`). It has four subpath exports, which map to the app
+aliases above:
 
 ```
-@3xl/shared/types/*       → src/types/*.ts        ($types  in the apps)
+@3xl/shared/types/*       → src/types/*.ts         ($types  in the apps)
 @3xl/shared/utils/*       → src/utils/*.ts         ($utils  in the apps)
 @3xl/shared/adapters/*    → src/adapters/*.ts      ($adapters in the apps)
+@3xl/shared/components/*  → src/components/*.svelte ($sharedComponents in the apps)
 ```
+
+Everything but `components/` is framework-agnostic and reachable from the backend
+too.
 
 What lives here today:
 
@@ -343,6 +353,12 @@ What lives here today:
   (client + rate limiter), `routes/get-routes`, `localStorageWritableStore`.
 - **adapters** — `adapter.class`, `tmdb.adapter`, `location.adapter`, `profile.adapter`,
   `route.adapter`.
+- **components** — the Svelte both apps draw, which today is `CharacterFace`: the
+  active portrait framed to the square its Faces page cropped on it. The game wears it
+  as the player's avatar (`PlayerAvatar`) and the admin dashboard heads each character's
+  row with it, and the whole point is that those are the same picture — a copy per app
+  would be a second answer to what a character looks like. App-only UI stays per app;
+  a component earns a place here by being drawn in both.
 
 **Rule of thumb:** anything more than one runtime package needs, or that is pure and
 framework-agnostic (types, transformers, pure helpers), goes in `@3xl/shared`. App-only
