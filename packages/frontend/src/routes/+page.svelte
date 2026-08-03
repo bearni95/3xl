@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { Readable } from 'svelte/store';
 	import { _ } from 'svelte-i18n';
-	import { blur, slide } from 'svelte/transition';
+	import { blur } from 'svelte/transition';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { characters } from '@3xl/data';
@@ -30,8 +30,6 @@
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
 	import { boosterModalOpen } from '$services/boosterModal';
-	import { openLegalDocument } from '$services/legalModal';
-	import { LegalDocumentId } from '$types/legal.type';
 	import { fullScreenModalOpen } from '$services/fullScreenModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { preloadPackArt } from '$components/core/pack/scene/preload-pack-art';
@@ -383,16 +381,6 @@
 	// on its own pin, the side the player fields stands at the foot of the map, and who is
 	// playing is a plate at its top-right. What is left in this column is the way in (signing
 	// in) and the ways out of it.
-
-	// What the Booster button is called: what the window still holds, in parentheses — the
-	// boxes of these eight days this player has not opened over how many the window offers at
-	// all, "Sobres (12/40)". A town deals two boxes a year and neither twice, so this is the
-	// offer on the calendar rather than a balance anybody has: it falls as they are taken and
-	// rises as the window rolls onto new festes. Plain "Sobres" until there are boxes to
-	// count — signed out, or before the window lands.
-	$: boosterLabel = boxesTotal
-		? $_('booster.withBoxes', { values: { remaining: boxesLeft, total: boxesTotal } })
-		: $_('booster.title');
 
 	// How many municipalities each show flies, and its share of them all. Tallied
 	// over `showsById`, which is already the seeded assignment with every held
@@ -1406,61 +1394,19 @@
 	$: canFieldTeam = !currentUserId || $teamSpawns.length === TEAM_SIZE;
 
 	// --- The menu ----------------------------------------------------------------
-	// The player's own views are one column dropped from the burger at the far end of the
-	// breadcrumb bar. It has been three things: a sibling of the map taking a flat 450px of
-	// the row (the shape it needed while it held tables and a pack opener), then a full-height
-	// drawer at the map's right edge, and — beside it the whole time — a second menu of two
-	// views the game's badge dropped on hover at the other end of the same bar. One row asking
-	// the same question at both of its ends is one question too many, so the drawer's rows have
-	// moved into the badge's column and the badge is a name again.
+	// There is none. The player's own views were one column dropped from a burger at the far
+	// end of the breadcrumb bar, and before that a full-height drawer at the map's right edge,
+	// and before that a sibling of the map taking a flat 450px of the row. What emptied it was
+	// each view finding the thing it is about: the roster is the side standing in the map's own
+	// corner, the account is the cog at the end of the plate under it, the standings are the
+	// shares row at the head of the column beside the map, a town's pack is the box drawn on
+	// that town, the search is a cell of that same shares row, and the radio runs wherever it
+	// is turned on. A menu of what is left over is a menu of nothing, so the bar over the
+	// terrain says the game's name and no more.
 	//
-	// Every row of it raises a view over the map, which is what makes them one kind of thing
-	// and a menu the right place for them. Three things that used to be in here are not that,
-	// and none of them is in here now: the sign-in, which is the door and is at the foot of the
-	// map in the account's own corner (see SignInButton); the leaderboard and the booster
-	// window, which are about the map rather than about the player and are read where the map
-	// is; and the radio, which runs whether or not any of this is up.
-	//
-	// Mounted only while it is open, so it has something to slide out from (a CSS transition
-	// has nothing to animate from on a fresh mount) exactly as the full-view sheets do — the
-	// same reason FullScreenModal has no `open` prop.
-	let menuOpen = false;
-
-	// One row of that column: the glyph the view used to be out on the bar as, and beside it
-	// the name of what it opens. Written once because a row is a row — the point of the column
-	// is that they are all the same kind of press, and a copy of the string per row is a chance
-	// per row for one of them to stop being.
-	const menuRowClasses =
-		'flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-white/10';
-
-	// The menu's own box and the button that summons it, so a press anywhere else can close
-	// it: the menu stands over the map, so a press outside it is a press on something it is
-	// covering rather than a press on the menu. The button is excluded because it would
-	// otherwise close on the way down and reopen on the way up, leaving the summon unable to
-	// dismiss what it summoned.
-	let menuEl: HTMLElement | null = null;
-	let menuButtonEl: HTMLElement | null = null;
-
-	function onWindowPointerDown(event: PointerEvent): void {
-		if (!menuOpen) return;
-		const target = event.target as Node;
-		if (menuEl?.contains(target) || menuButtonEl?.contains(target)) return;
-		menuOpen = false;
-	}
-
-	function onWindowKeydown(event: KeyboardEvent): void {
-		if (event.key === 'Escape') menuOpen = false;
-	}
-
-	/**
-	 * Raise one of the menu's views, and put the menu away as it goes: what it raises is a
-	 * full-view sheet over the whole map, so leaving the menu standing behind it would only
-	 * mean finding it still there when the sheet comes down.
-	 */
-	function pickFromMenu(raise: () => void): void {
-		menuOpen = false;
-		raise();
-	}
+	// The sheets themselves are untouched and all still mounted at the foot of this file: each
+	// is raised by its own store, so anything that wants one asks for it by name (see
+	// rosterModal, collectionModal, settingsModal, legalModal).
 
 	// Fight this town: claim its challenge, then snapshot whichever team currently sits
 	// on it — the holder's if a player has taken it, the seeded roll otherwise — into
@@ -1956,14 +1902,6 @@
 	// cards. Shown on the booster sheet, because a pack that opens onto nothing has to
 	// say why.
 	let claimError = '';
-
-	// What the window holds and what is left of it: one box per town on offer, minus the
-	// ones this player has already taken. Counted off the packs themselves — the claim
-	// panel marks each with whether its box is spent (see `claimed-box`) — so the number
-	// on the bar and the boxes on the sheet cannot disagree. Both are 0 signed out, which
-	// is what leaves the bar saying nothing rather than a nought.
-	$: boxesTotal = claimPacks.length;
-	$: boxesLeft = claimPacks.filter((pack) => !pack.claimed).length;
 
 	// How many cards the last pack opened in this panel revealed, or null before any
 	// has been opened. Zero means the pack sliced open onto an empty canvas: the roll
@@ -2741,8 +2679,6 @@
 	$: mapChromeInsets = { top: topChromeHeight + 12 };
 </script>
 
-<svelte:window on:pointerdown={onWindowPointerDown} on:keydown={onWindowKeydown} />
-
 <!-- The map is the whole page now. It used to share the viewport with the column beside it —
 	a flat 450px of the row, or 30vh of the column on a narrow viewport — and everything that
 	column held has since moved onto the map itself or onto a sheet over it, leaving a handful
@@ -2892,164 +2828,14 @@
 							</span>
 						</div>
 
-						<!-- The far end of the row: the day's allowance, and past it the way to everything
-							that is not the map. Both stand here for the same reason — this row is the one thing
-							always up over the terrain, so what a player reaches for however deep into the map
-							they are is reached for here.
-							The path stood between this and the badge, as the whole middle of the row: the ladder
-							of four tiers with each position filled by the step of the drill path standing at it,
-							and an outlined square for the rung after the last of them. It is in the column beside
-							the map (see the `path` slot below), which is where this game lists places and where
-							the open one is already named — so the path is read against the list it heads instead
-							of over terrain, and the row over the map is left saying the two things that are not
-							about where the map is looking.
-							It keeps the plate the crumbs wore — the panel's surface at 80%, so the terrain reads
-							through it — because that is what a plate on this map is; `ml-auto` is what holds it at
-							the far end now that there is nothing between it and the badge to give way. -->
-						<div
-							class="pointer-events-auto ml-auto flex flex-none items-center gap-2 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
-						>
-							<!-- What the booster window still holds, at the head of this end: how many of
-								these eight days' boxes are still there to open over how many the window
-								offers at all. It was only ever inside the Booster button's own label, which
-								is behind the menu — so the one number a player plans their play around was a
-								fold and a press away, while the bar it belongs on is up whatever they are
-								doing. The same two numbers in the same order as that label, off the same
-								packs. Read and not pressed, so it is deliberately not the outlined square
-								the burger beside it wears: a plain glyph and a line of type, which is what
-								this row gives everything that is only to be looked at. Drawn only once there
-								are boxes to count — signed out, or before the window lands, the plate says
-								nothing rather than a nought. `tabular-nums` because the count changes under a
-								fixed row and digits of different widths would shift the burger beside it.
-								The glyph is the vendored game-icons one as an `<img>` by URL, white artwork
-								over terrain, as the burger draws its own. -->
-							{#if boxesTotal}
-								<div
-									class="flex flex-none items-center gap-1.5 text-sm text-white"
-									title={boosterLabel}
-								>
-									<img src="/assets/icons/quoting/card-pickup.svg" class="size-4" alt="" />
-									<span class="tabular-nums">{boxesLeft}/{boxesTotal}</span>
-								</div>
-							{/if}
-							<!-- The looking glass stood here too, between the allowance and the burger. It
-								is the last cell of the shares grid in the column beside the map now, with its
-								field coming down on the row under it: looking for a place is asking for a place
-								on a list, and the column is where this map lists places — so the answer arrives
-								where every other list of places in this game arrives, instead of on a plate at
-								the corner opposite the one that had asked. -->
-							<!-- The roster and the album stood here, two more squares in this line: a pencil
-								and a book, each of them a glyph and nothing else on a row where a glyph in a
-								square already means the thing beside it. They are rows of the column this burger
-								drops now, with their names on them. What is left on this end is what is about
-								the map itself.
-								`relative`, because that column hangs off this box: the burger is the one mark on
-								the bar that says "everything else is here", so the everything else comes down
-								from under it. -->
-							<div class="relative flex-none">
-								<!-- The three bars, in the 32px outlined square this game's chrome gives anything
-									pressed rather than read — the same one the crumbs' own dots button and its empty
-									rungs wear over in the column beside the map, so a mark that is pressed looks the
-									same wherever it is met. The white is spelled out because an outlined DaisyUI
-									button letters itself in the theme's periwinkle — a stray colour on a plate that
-									forces white over terrain — and its hover fills the square and takes the rule
-									with it.
-									The glyph is the vendored game-icons one, as an `<img>` by URL: those ship as
-									white artwork for the canvases to tint, which is exactly what a mark on this bar
-									wants (see the icons note in CLAUDE.md). -->
-								<button
-									bind:this={menuButtonEl}
-									type="button"
-									class="btn btn-square btn-outline btn-sm border-white/60 text-white hover:border-white hover:bg-white/10 hover:text-white"
-									aria-expanded={menuOpen}
-									aria-label={menuOpen ? $_('menu.close') : $_('menu.open')}
-									on:click={() => (menuOpen = !menuOpen)}
-								>
-									<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-4" alt="" />
-								</button>
-
-								<!-- The player's views, down a column under the burger: a row each, a glyph and
-									beside it the name of what it opens. It is the column the badge at the head of
-									this row used to drop on hover, given the account rows a full-height drawer at
-									the map's edge used to hold — one menu rather than a hover menu at one end of
-									the bar and a drawer at the other, which was two answers to the same question
-									standing on the same row. The drawer's other two, and the radio that stood at
-									its foot, are not here — see the rows themselves.
-									The plate is the crumbs' dropped path class for class — the same surface at full
-									strength, the same rounding, the same shadow, the same 200ms slide out from
-									under the bar — since a column dropped from this row is the same object wherever
-									on the row it is dropped from. It comes down from the right edge because that is
-									the edge the burger stands at and a column is read under the mark that dropped
-									it. `w-max` so it is as wide as the longest name and no wider: everything in it is
-									a name, and there is nothing left in here whose width this game does not choose.
-									Mounted only while it is up, so it has something to slide from (see
-									FullScreenModal for the same reason); a press outside it, Escape, or picking any
-									of its rows puts it away. -->
-								{#if menuOpen}
-									<div
-										bind:this={menuEl}
-										transition:slide={{ duration: 200 }}
-										class="absolute right-0 top-full z-10 mt-2 flex w-max max-w-[70vw] flex-col gap-0.5 rounded-lg bg-base-100 p-2 text-white shadow-xl"
-									>
-										<!-- The player's cards, the set they are drawn from and the documents:
-											nothing separates them — they are all one kind of thing, a press that
-											raises a full view over the map, which is what a menu of them should
-											look like. The block of outlined buttons in the drawer said the same
-											with borders; a row with its name and its mark says it with neither.
-											Only while there is an account to have any cards under: a roster with
-											nobody's cards in it is nothing to open. -->
-										{#if $profile}
-											<button
-												type="button"
-												class={menuRowClasses}
-												on:click={() => pickFromMenu(() => rosterModalOpen.set(true))}
-											>
-												<img
-													src="/assets/icons/delapouite/pencil.svg"
-													class="size-4 flex-none"
-													alt=""
-												/>
-												<span class="truncate">{$_('roster.title')}</span>
-											</button>
-										{/if}
-										<!-- The album, and not gated the way the roster is: the set is the game's own
-											and is worth reading before anybody holds any of it. -->
-										<button
-											type="button"
-											class={menuRowClasses}
-											on:click={() => pickFromMenu(() => collectionModalOpen.set(true))}
-										>
-											<img
-												src="/assets/icons/delapouite/book-cover.svg"
-												class="size-4 flex-none"
-												alt=""
-											/>
-											<span class="truncate">{$_('collection.title')}</span>
-										</button>
-										<!-- The leaderboard and the window's boosters were two rows between here and
-											the account's, and the settings a third: the map's standings, the grid of every
-											pack the festa window is holding, and the account itself. The first two are about
-											the map rather than the player and are answered where the map is read — the
-											standings by the shares row at the head of the column beside it, and a pack by the
-											box the map stands on the town it belongs to. The settings are answered by the
-											plate that summarises them, which wears the cog at the end of its own row in the
-											other corner. So what is left in this menu is what is nowhere else. -->
-										<!-- The documents, outside the `{#if}` because they are the one view here with
-											nothing to do with having an account — a visitor who has not signed in is
-											precisely the reader who needs to know what signing in would mean. It opens
-											on the terms; the sheet's own tabs are how the other three are reached. -->
-										<button
-											type="button"
-											class={menuRowClasses}
-											on:click={() => pickFromMenu(() => openLegalDocument(LegalDocumentId.Terms))}
-										>
-											<img src="/assets/icons/lorc/scales.svg" class="size-4 flex-none" alt="" />
-											<span class="truncate">{$_('legal.title')}</span>
-										</button>
-									</div>
-								{/if}
-							</div>
-						</div>
+						<!-- The far end of this row is empty. It carried the day's allowance — how many of
+							the window's boxes were left to open — and past it the burger, which dropped the
+							column of everything that is not the map: the roster, the album and the documents.
+							The roster is the side standing in the map's own corner, pressed (see TeamLineup
+							below), and the account is the cog at the end of the plate under it, so what the
+							burger was still holding a player has where the thing itself is. The plate and the
+							menu under it are gone from over the terrain with it — see the modals at the foot of
+							this file, which are all still mounted and all still raised by their own stores. -->
 					</div>
 				{/if}
 
