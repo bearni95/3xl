@@ -2991,13 +2991,13 @@
 										transition:slide={{ duration: 200 }}
 										class="absolute right-0 top-full z-10 mt-2 flex w-max max-w-[70vw] flex-col gap-0.5 rounded-lg bg-base-100 p-2 text-white shadow-xl"
 									>
-										<!-- The player's cards, the set they are drawn from, the account and the
-											documents: nothing separates them — they are all one kind of thing, a
-											press that raises a full view over the map, which is what a menu of them
-											should look like. The block of outlined buttons in the drawer said the same
+										<!-- The player's cards, the set they are drawn from and the documents:
+											nothing separates them — they are all one kind of thing, a press that
+											raises a full view over the map, which is what a menu of them should
+											look like. The block of outlined buttons in the drawer said the same
 											with borders; a row with its name and its mark says it with neither.
 											Only while there is an account to have any cards under: a roster with
-											nobody's cards in it, and settings for nobody, are nothing to open. -->
+											nobody's cards in it is nothing to open. -->
 										{#if $profile}
 											<button
 												type="button"
@@ -3026,23 +3026,14 @@
 											/>
 											<span class="truncate">{$_('collection.title')}</span>
 										</button>
-										<!-- The leaderboard and the window's boosters were the two rows between here
-											and the account's own: the map's standings, and the grid of every pack the
-											festa window is holding. Both are about the map rather than about the
-											player, and both are already answered where the map itself is read — the
-											standings by the shares row at the head of the column beside it, and a
-											pack by the box the map stands on the town it belongs to, which opens that
-											town's own. What is left in this menu is the player's. -->
-										{#if $profile}
-											<button
-												type="button"
-												class={menuRowClasses}
-												on:click={() => pickFromMenu(() => settingsModalOpen.set(true))}
-											>
-												<img src="/assets/icons/lorc/cog.svg" class="size-4 flex-none" alt="" />
-												<span class="truncate">{$_('settings.title')}</span>
-											</button>
-										{/if}
+										<!-- The leaderboard and the window's boosters were two rows between here and
+											the account's, and the settings a third: the map's standings, the grid of every
+											pack the festa window is holding, and the account itself. The first two are about
+											the map rather than the player and are answered where the map is read — the
+											standings by the shares row at the head of the column beside it, and a pack by the
+											box the map stands on the town it belongs to. The settings are answered by the
+											plate that summarises them, which wears the cog at the end of its own row in the
+											other corner. So what is left in this menu is what is nowhere else. -->
 										<!-- The documents, outside the `{#if}` because they are the one view here with
 											nothing to do with having an account — a visitor who has not signed in is
 											precisely the reader who needs to know what signing in would mean. It opens
@@ -3164,22 +3155,41 @@
 						at the other corner. The radio has gone to the head of the column beside the map,
 						where the place it is playing for is already named and already carries the show's
 						tile (see RegionSubdivisions): the radio follows the map now, so a card of its own
-						was saying, in a second corner, what that row says by standing there. What is left
-						is the plate, and a plate is not half of anything.
+						was saying, in a second corner, what that row says by standing there. What shares
+						the row instead is the one press that belongs to this plate: the cog.
 						No `pointer-events-auto` on it: that was needed while it stood in the column under
 						the bar, which turns its own events off so the map stays pannable through the gaps
 						between its plates. This corner is not that column.
 						The plate is the way into the account as well as the reading of it: the picture
 						opens the picker and the rest of it opens the settings sheet, which is the sheet
-						this plate summarises. That sheet is still a row of the menu, for a player who
-						went looking for it there, but nobody has to go looking any more. -->
+						this plate summarises. -->
 					{#if $profile}
-						<PlayerPanel
-							profile={$profile}
-							on:editavatar={() => avatarPickerOpen.set(true)}
-							on:open={() => settingsModalOpen.set(true)}
-							classes="w-full"
-						/>
+						<div class="flex items-stretch gap-2">
+							<PlayerPanel
+								profile={$profile}
+								on:editavatar={() => avatarPickerOpen.set(true)}
+								on:open={() => settingsModalOpen.set(true)}
+								classes="min-w-0 flex-1"
+							/>
+
+							<!-- The settings, as a mark at the end of the row that summarises them. It was a
+								row of the menu at the other corner of the map, which is where a player had to
+								go looking for the sheet about the account they were already looking at; the
+								menu keeps what is not the account's — the album, and the documents.
+								A square, since it is a glyph and nothing else, and one drawn to the plate's
+								own height: `self-stretch` takes the height the plate sets for the row and
+								`aspect-square` reads the width off it, so the two stay one row however the
+								plate is measured. Same surface as the plate, because it is the same corner's
+								furniture and not a control laid over it. -->
+							<button
+								type="button"
+								class="flex aspect-square flex-none cursor-pointer items-center justify-center rounded-lg bg-base-100/80 shadow-xl hover:bg-base-100"
+								aria-label={$_('settings.title')}
+								on:click={() => settingsModalOpen.set(true)}
+							>
+								<img src="/assets/icons/lorc/cog.svg" class="size-6" alt="" />
+							</button>
+						</div>
 					{/if}
 				</div>
 			{/if}
