@@ -5,7 +5,8 @@
 	"type": "module",
 	"description": "Import and assembly scripts for MUGEN characters. Writes into @3xl/assets and @3xl/data.",
 	"exports": {
-		"./registry": "./registry.js"
+		"./registry": "./registry.js",
+		"./frame-edits": "./frame-edits.js"
 	},
 	"scripts": {
 		"import:mugen": "node import-mugen.js",

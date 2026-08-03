@@ -38,6 +38,28 @@ Both SvelteKit apps build to a **static SPA** (`@sveltejs/adapter-static`,
 inputs (`characters-src/<id>/`) and *writes into* `@3xl/assets` (`public/<id>/frames/`,
 `public/auras/`) and `@3xl/data` (`registry.generated.ts`, plus each character's
 `public/characters/<id>/definition.json` and `public/characters/<id>/mugen-moves.json`).
+**What an import must not undo.** A re-import — additive mode included — rebuilds every
+decoded manifest whole from the raw `.sff`/`.air`, so anything the author edited has to live
+outside it. Two things the admin authors per character, and where each survives:
+
+- **The portrait** picked (and cropped) on `/characters/faces` is `face`/`faceCrop` on that
+  character's `definition.json`, and an additive import writes a definition only when there
+  isn't one — so the pick is kept as-is. It names a manifest file (`spr_9000_2.png`), so an
+  archive re-imported with a different set of group-9000 sprites can leave it pointing at
+  nothing; the importer says so and changes nothing, since which face a character wears is
+  the author's call.
+- **The frames deleted** on `/characters/dashboard/<id>/frames` are *not* kept in the manifest
+  they were deleted from — that file is generated. Each deletion is recorded in
+  `public/characters/<id>/frame-edits.json` (authored data, beside the definition, in the
+  folder additive imports keep) and replayed onto every fresh decode by
+  `@3xl/mugen/frame-edits.js`, which both the decoder and the backend's delete route live off.
+  Indices in it are positions in the *freshly decoded* animation, and each entry carries the
+  frame's own content, so a re-imported archive that shifted the animation still loses the
+  right frame — and an entry whose frame is gone is retired rather than mis-applied. To put a
+  frame back, delete its entry and re-run `pnpm generate:sprites <id>`. A **wipe** run deletes
+  the whole per-character folder, frame edits and hand-tuned definition together, which is
+  what a wipe is for.
+
 `@3xl/frontend` and `@3xl/admin` *install* `@3xl/assets` + `@3xl/data` as `workspace:*`
 deps: they import the registry as a module (`import { characters } from '@3xl/data'`) and
 serve each package's `public/` dir at the `/assets` and `/data` URL prefixes via the
@@ -131,7 +153,8 @@ unaffected.
 
 **Do not hand-edit generated files** (`registry.generated.ts`, `manifest.json`,
 `mugen-moves.json`, `public/geo/*.json`, `public/icons/shows/*`) or decoded assets —
-re-run the relevant script.
+re-run the relevant script. (`frame-edits.json` is the exception that proves it: it is
+authored, and exists precisely so an edit to a `manifest.json` need never be.)
 
 **Root scripts** (from repo root):
 
@@ -296,6 +319,11 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   `definition.json` in `@3xl/data`'s `public/characters/<id>/` (writes straight into the
   git tree; `:id` is constrained to `^[a-z0-9-]+$` to prevent path traversal). Validated
   against constants exported from `@3xl/shared/types/character-definition.type`.
+  `PUT /api/characters/:id/label` renames, which is three writes (definition, generated
+  registry, `character_templates`) because a display name is mirrored in all three.
+  `DELETE /api/characters/:id/frames/:animation/:index` drops one frame, which is two writes:
+  the decoded manifest in `@3xl/assets` (what the game reads) *and* the `frame-edits.json`
+  record that survives the next import — see "What an import must not undo" above.
 - `GET /api/character-templates` + `POST /api/character-templates/sync` — read/sync the
   Supabase `character_templates` table (id + frontend name only) against the local `@3xl/data`
   registry, which is the source of truth. Connects directly to Postgres with the DB password

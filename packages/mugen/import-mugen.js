@@ -17,11 +17,14 @@
  * to import a subset. On start the script asks how to run:
  *
  *   additive — keep everything already imported and import/refresh the archives
- *     on top. Existing definitions are never clobbered — hand-tuned bindings in
- *     public/characters/<id>/definition.json survive — so this mode is safe to
- *     run repeatedly.
+ *     on top. Nothing the author edited is clobbered: the hand-tuned bindings,
+ *     the chosen portrait and its crop in public/characters/<id>/definition.json
+ *     are kept as-is, and the frames deleted on the admin's frames page are
+ *     replayed onto the re-decoded manifest from public/characters/<id>/
+ *     frame-edits.json (see ./frame-edits.js — the manifest itself is generated
+ *     and is rebuilt whole here). So this mode is safe to run repeatedly.
  *   wipe — delete ALL imported character data first (the public/characters/<id>/
- *     folders, hand-tuned definition edits included), then
+ *     folders, hand-tuned definitions and frame edits included), then
  *     reimport from scratch. The game ends up mirroring mugen-characters/
  *     exactly: archives you deleted disappear from the registry.
  *
@@ -526,6 +529,31 @@ function autoBindDefinition(id, manifest, basePath) {
 	};
 }
 
+/**
+ * Say so when the portrait chosen on the admin's /characters/faces page is not
+ * among the ones this decode produced.
+ *
+ * The choice itself is safe — `face`/`faceCrop` are fields of the definition, and
+ * an additive import keeps the definition as-is — but it names a manifest file
+ * (`spr_9000_2.png`), so an archive re-imported with a different set of group-9000
+ * sprites can leave the pick pointing at nothing, and the board would then quietly
+ * fall back to the default portrait. Nothing is rewritten here: which face a
+ * character wears is the author's call, and guessing a replacement would be a
+ * silent recrop. A parse failure is ignored — the definition is not this function's
+ * to validate, and the import must not fail over a warning.
+ */
+function warnDanglingFace(id, defJsonPath, manifest) {
+	try {
+		const { face } = JSON.parse(readFileSync(defJsonPath, 'utf-8'));
+		if (!face || (manifest.faces ?? []).some((f) => f.file === face)) return;
+		console.warn(
+			`    ⚠ chosen face ${face} is not among this decode's portraits — repick on /characters/faces`
+		);
+	} catch {
+		// Not a readable definition; the editor and the write API report on that.
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Import one archive
 // ---------------------------------------------------------------------------
@@ -614,6 +642,7 @@ function importArchive(archivePath, taken) {
 		const defJsonPath = join(charDir, 'definition.json');
 		if (existsSync(defJsonPath)) {
 			console.log(`    ↳ definition data/characters/${id}/definition.json exists — kept as-is`);
+			warnDanglingFace(id, defJsonPath, manifest);
 		} else {
 			const definition = autoBindDefinition(id, manifest, `/assets/${id}/frames`);
 			writeFileSync(defJsonPath, JSON.stringify(definition, null, '\t') + '\n', 'utf-8');
@@ -636,7 +665,8 @@ function importArchive(archivePath, taken) {
  * Delete every imported character artifact this script produces, across all
  * three packages: raw inputs (characters-src/<id>/), decoded frames
  * (@3xl/assets public/<id>/, but never the shared `auras`) and each character's
- * full data folder (@3xl/data public/characters/<id>/ — definition + moveset).
+ * full data folder (@3xl/data public/characters/<id>/ — definition + moveset +
+ * frame edits).
  * The @3xl/data `geo` layer is unrelated map data and is left untouched.
  */
 function wipeImportedData() {

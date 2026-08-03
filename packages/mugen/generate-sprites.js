@@ -10,6 +10,10 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join } from 'path';
 import extract from 'sff-extractor';
 import { PNG } from 'pngjs';
+// The manifest below is generated and rewritten whole on every run, so the frames
+// the author removed in the admin are kept outside it and replayed onto each fresh
+// decode — see ./frame-edits.js.
+import { applyFrameEdits, readFrameEdits, writeFrameEdits } from './frame-edits.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -349,6 +353,16 @@ export function buildCharacter(character) {
 		manifest.animations[nameForAction(action.action, used)] = { loop: true, frames };
 	}
 
+	// Replay the frames the author dropped on the admin's frames page. They are
+	// recorded in @3xl/data beside the definition, not in this manifest, precisely
+	// because this manifest has just been rebuilt from scratch. `kept` is written
+	// back so the record stays true to what actually landed — an edit whose frame a
+	// re-imported archive no longer holds is retired rather than left to mis-apply.
+	const edits = readFrameEdits(character.dir);
+	const { dropped, kept, warnings } = applyFrameEdits(manifest, edits);
+	for (const warning of warnings) console.warn(`  ⚠ ${character.dir}: ${warning}`);
+	if (dropped > 0 || Object.keys(edits.removed).length > 0) writeFrameEdits(character.dir, kept);
+
 	writeFileSync(join(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
 
 	const animCount = Object.keys(manifest.animations).length;
@@ -356,7 +370,8 @@ export function buildCharacter(character) {
 	const spriteCount = spriteFiles.size;
 	console.log(
 		`${info.name} (${character.dir}): ${animCount} animations, ${frameCount} frames, ` +
-			`${spriteCount} sprites${missing ? `, ${missing} frames skipped (missing sprite)` : ''} → ${outDir}`
+			`${spriteCount} sprites${dropped ? `, ${dropped} removed by hand` : ''}` +
+			`${missing ? `, ${missing} frames skipped (missing sprite)` : ''} → ${outDir}`
 	);
 
 	return manifest;

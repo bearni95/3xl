@@ -20,6 +20,14 @@ import {
 } from '@3xl/shared/types/character-definition.type';
 // The registry is derived from these definitions, so a rename has to rewrite it.
 import { regenerateRegistry } from '@3xl/mugen/registry';
+// A deleted frame is recorded outside the generated manifest so the next decode
+// cannot put it back — see the DELETE route and @3xl/mugen/frame-edits.
+import {
+	readFrameEdits,
+	recordFrameRemoval,
+	writeFrameEdits,
+	type FrameEditFrame
+} from '@3xl/mugen/frame-edits';
 import { asyncHandler, httpError } from '../http-error';
 import { upsertTemplateName } from './character-templates';
 
@@ -71,7 +79,7 @@ function definitionPath(id: string): string {
  * do (see `utils/card/texture-cache`).
  */
 interface FrameManifest {
-	animations?: Record<string, { frames: unknown[] } | undefined>;
+	animations?: Record<string, { frames: FrameEditFrame[] } | undefined>;
 }
 
 function manifestPath(id: string): string {
@@ -309,8 +317,13 @@ charactersRouter.put(
 //     entry would leave a bound slot with nothing to draw — the last frame of an
 //     animation is refused rather than removed.
 //
-// The manifest is generated: `pnpm generate:sprites <id>` re-decodes it from the raw
-// archive and so puts back everything removed here.
+// The manifest being generated is why this is two writes and not one: `pnpm
+// import:mugen` (additive mode included) and `pnpm generate:sprites` both rebuild it
+// whole from the raw archive, so an edit made only here came back on the next import.
+// The deletion is therefore also recorded in @3xl/data's public/characters/<id>/
+// frame-edits.json — authored data, in the folder an additive import keeps as-is —
+// and replayed onto every fresh decode. See @3xl/mugen/frame-edits, which is also
+// where a frame is put back: delete its entry and re-run `pnpm generate:sprites <id>`.
 charactersRouter.delete(
 	'/:id/frames/:animation/:index',
 	asyncHandler(async (req, res) => {
@@ -341,7 +354,16 @@ charactersRouter.delete(
 			httpError(400, `"${animationName}" has one frame left; an animation cannot be emptied`);
 		}
 
-		const [removed] = frames.splice(index, 1);
+		const removed = frames[index];
+
+		// The record goes down first, at the manifest's current numbering (which is
+		// what recordFrameRemoval translates back to the fresh decode's). Of the two
+		// half-failures this ordering picks the harmless one: a record without the
+		// manifest edit costs one stale frame until the next decode, while a manifest
+		// edit without the record is the frame quietly coming back.
+		writeFrameEdits(id, recordFrameRemoval(readFrameEdits(id), animationName, index, removed));
+
+		frames.splice(index, 1);
 		// 2-space JSON, no trailing newline: the shape generate-sprites writes, so an
 		// edit here and a re-decode produce the same diff-able file.
 		await writeFile(path, JSON.stringify(manifest, null, 2), 'utf-8');
