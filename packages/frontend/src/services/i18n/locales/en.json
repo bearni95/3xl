@@ -112,6 +112,9 @@
 		"open": "Open menu",
 		"close": "Close menu"
 	},
+	"social": {
+		"label": "Social links"
+	},
 	"settings": {
 		"title": "Settings"
 	},

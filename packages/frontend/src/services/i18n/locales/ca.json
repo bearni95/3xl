@@ -112,6 +112,9 @@
 		"open": "Obre el menú",
 		"close": "Tanca el menú"
 	},
+	"social": {
+		"label": "Xarxes socials"
+	},
 	"settings": {
 		"title": "Configuració"
 	},

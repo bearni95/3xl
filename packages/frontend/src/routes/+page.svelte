@@ -11,6 +11,7 @@
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
+	import SocialLinks from '$components/core/SocialLinks.svelte';
 	import TownPin from '$components/core/TownPin.svelte';
 	import TownChallenge from '$components/core/TownChallenge.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
@@ -3165,70 +3166,80 @@
 		to. The column is unmounted rather than merely blurred because a strip of nothing at
 		the side of a full view is the sheet standing on the map, which is what it is. -->
 	{#if !$fullScreenModalOpen}
-		<aside transition:blur={CHROME_BLUR} class="w-[400px] flex-none overflow-y-auto bg-base-100">
-			<RegionSubdivisions
-				rows={subdivisions}
-				current={subdivisionCurrent}
-				shares={subdivisionShares}
-				{searchRows}
-				bind:searchQuery
-				bind:searchOpen
-				on:select={(event) => openFromColumn(event.detail.key)}
-			>
-				<!-- The town's own pin, stood in the column under the row that names it: the side
-					holding it, whose it is, how far it has been taken, the way to fight for it and the
-					pack it has waiting — the same mark the map is drawing on that town at this very
-					moment, from the same data (see townPin). Only a town has one.
-					Unnamed, because the row this hangs under is the town's name: the column's head
-					says the place, its tile and the show it flies, and the plate saying all three
-					again a row later stood between the side on the town and how far it has been
-					taken, reading as a stray row in the middle of the one thing. What the plate is
-					here for is the rest of it (see TownPlate's `named`). -->
-				<!-- The row under the one that names the town: how far it has been taken and the way
-					to fight for it, the two of them stacked as TownChallenge already stacks them. No
-					width said here any more — the row is the column's own width, which is what makes
-					the bar a band across the head rather than a block hung off the end of a name. -->
-				<svelte:fragment slot="standing">
-					{#if townStanding}
-						<TownChallenge
-							siege={townStanding.siege}
-							button={townStanding.button}
-							unlocksAt={townStanding.unlocksAt}
-							onUnlock={townStanding.onUnlock}
-						/>
-					{/if}
-				</svelte:fragment>
+		<!-- The column scrolls, the row of social marks under it does not: it is the one thing in
+			here that is not about the open place, and a row that has to be reached past forty towns
+			is a row nobody finds. So the aside is the column plus its foot, and the overflow moved
+			off the aside onto the column alone. -->
+		<aside transition:blur={CHROME_BLUR} class="flex w-[400px] flex-none flex-col bg-base-100">
+			<div class="min-h-0 flex-1 overflow-y-auto">
+				<RegionSubdivisions
+					rows={subdivisions}
+					current={subdivisionCurrent}
+					shares={subdivisionShares}
+					{searchRows}
+					bind:searchQuery
+					bind:searchOpen
+					on:select={(event) => openFromColumn(event.detail.key)}
+				>
+					<!-- The town's own pin, stood in the column under the row that names it: the side
+						holding it, whose it is, how far it has been taken, the way to fight for it and the
+						pack it has waiting — the same mark the map is drawing on that town at this very
+						moment, from the same data (see townPin). Only a town has one.
+						Unnamed, because the row this hangs under is the town's name: the column's head
+						says the place, its tile and the show it flies, and the plate saying all three
+						again a row later stood between the side on the town and how far it has been
+						taken, reading as a stray row in the middle of the one thing. What the plate is
+						here for is the rest of it (see TownPlate's `named`). -->
+					<!-- The row under the one that names the town: how far it has been taken and the way
+						to fight for it, the two of them stacked as TownChallenge already stacks them. No
+						width said here any more — the row is the column's own width, which is what makes
+						the bar a band across the head rather than a block hung off the end of a name. -->
+					<svelte:fragment slot="standing">
+						{#if townStanding}
+							<TownChallenge
+								siege={townStanding.siege}
+								button={townStanding.button}
+								unlocksAt={townStanding.unlocksAt}
+								onUnlock={townStanding.onUnlock}
+							/>
+						{/if}
+					</svelte:fragment>
 
-				<!-- Still no box on the pin here: the town's box is drawn on the head row itself now,
-					beside the name, exactly as it is on every row below (see subdivisionCurrent). It
-					was left off the head altogether for a while, on the ground that the box was
-					already up on the terrain beside this column — but the column is read as a
-					column, and a row that alone among them says nothing about its festa reads as a
-					town that has none. -->
-				<svelte:fragment slot="detail">
-					{#if townDetailPin}
-						<TownPin marker={townDetailPin} named={false} classes="py-1" />
-					{/if}
-				</svelte:fragment>
+					<!-- Still no box on the pin here: the town's box is drawn on the head row itself now,
+						beside the name, exactly as it is on every row below (see subdivisionCurrent). It
+						was left off the head altogether for a while, on the ground that the box was
+						already up on the terrain beside this column — but the column is read as a
+						column, and a row that alone among them says nothing about its festa reads as a
+						town that has none. -->
+					<svelte:fragment slot="detail">
+						{#if townDetailPin}
+							<TownPin marker={townDetailPin} named={false} classes="py-1" />
+						{/if}
+					</svelte:fragment>
 
-				<!-- Where the place at the head of this column is, said as the path down to what it
-					sits inside: the same bar that stands over the map, given the cut above the open
-					region rather than the path down to it (see abovePath). The head has already named
-					the place, so the badge on this bar is its parent — the Països Catalans over
-					Catalunya, and never Catalunya over itself. Nothing at all at the top view, which
-					is the one place with nothing above it.
-					Folded outright and not merely when the room runs out: this bar is a heading over a
-					list of places, and a row of five crumbs standing over a column of places is a
-					second column of places — so it is the dots and the one badge, at every width. The
-					rest of the path is where the dots always put it, in the column they drop. Pressed
-					for what the bar over the map is pressed for: a step opens its region, an empty
-					rung takes the map to that tier's zoom. -->
-				<svelte:fragment slot="path">
-					{#if aboveCrumbs}
-						<MapBreadcrumbs crumbs={aboveCrumbs} onSelect={open} onZoom={zoomToTier} folded />
-					{/if}
-				</svelte:fragment>
-			</RegionSubdivisions>
+					<!-- Where the place at the head of this column is, said as the path down to what it
+						sits inside: the same bar that stands over the map, given the cut above the open
+						region rather than the path down to it (see abovePath). The head has already named
+						the place, so the badge on this bar is its parent — the Països Catalans over
+						Catalunya, and never Catalunya over itself. Nothing at all at the top view, which
+						is the one place with nothing above it.
+						Folded outright and not merely when the room runs out: this bar is a heading over a
+						list of places, and a row of five crumbs standing over a column of places is a
+						second column of places — so it is the dots and the one badge, at every width. The
+						rest of the path is where the dots always put it, in the column they drop. Pressed
+						for what the bar over the map is pressed for: a step opens its region, an empty
+						rung takes the map to that tier's zoom. -->
+					<svelte:fragment slot="path">
+						{#if aboveCrumbs}
+							<MapBreadcrumbs crumbs={aboveCrumbs} onSelect={open} onZoom={zoomToTier} folded />
+						{/if}
+					</svelte:fragment>
+				</RegionSubdivisions>
+			</div>
+
+			<!-- Where the author is, at the foot of the column: the one row here that names
+				something outside the game. -->
+			<SocialLinks />
 		</aside>
 	{/if}
 </div>
