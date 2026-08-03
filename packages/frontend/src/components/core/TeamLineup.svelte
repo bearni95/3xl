@@ -61,7 +61,19 @@
 	// opaque. Such a surface waits instead on `ready`, which each statue says when its
 	// picture is up and this row forwards with the member it was said of.
 	export let veiled: boolean = true;
+	// Whether this side is nobody's: a town's seeded house team, rolled from its own seed and
+	// never claimed by a player. Such a side flies the map's own grey on its banner whatever
+	// colour the seed happened to bend its lead — the same rule the terrain, the pins and the
+	// crumbs already follow (ArtificialColor.Gray; see buildTownColors on the map). A colour on
+	// this map is a claim, so a band in one of the six over an unheld town would say somebody's
+	// red holds it. The statues under it keep their rolled colours: those are what the three of
+	// them fight in, which is a fact about the cards and not about who the place belongs to.
+	export let seeded: boolean = false;
 	export let classes: string = '';
+
+	// The map's grey, at the same 500 weight the pins spell it (see pinColorClasses), with the
+	// ink that reads on it.
+	const UNHELD_BAND = 'bg-gray-500 text-white';
 
 	const dispatch = createEventDispatcher<{
 		select: { index: number };
@@ -136,13 +148,17 @@
 	// out what show it is (the statues under it carry the mark, and the roster names it), so a
 	// name lettered in its place would be a second kind of banner.
 	$: bannerLogo = lead?.showId != null ? ($showLogos.get(lead.showId) ?? null) : null;
+	// What the band is painted: the lead's colour where a player is behind this side, the map's
+	// grey where nobody is.
+	$: bandFill = seeded || !lead ? UNHELD_BAND : SPAWN_PANEL_CLASSES[lead.color];
 </script>
 
 <div class={classNames('relative flex w-full', classes)}>
 	<!-- The side's banner: the whole width of the row and hung off its top edge, so it lies
 		across the head room every statue carries above its square rather than taking a strip of
-		the row's height away from the cards. It is painted in the lead's colour, with the ink
-		that reads on it (SPAWN_PANEL_CLASSES — yellow is the one swatch that wants black).
+		the row's height away from the cards. It is painted in the lead's colour with the ink that
+		reads on it (SPAWN_PANEL_CLASSES — yellow is the one swatch that wants black), or in the
+		map's grey where the side is nobody's (see `seeded`).
 		The mark is capped in height rather than the band being given one, and the band is the
 		padding around it: so it is the same band under every show — a wordmark is fitted into
 		2rem at its own aspect however wide or narrow it was drawn — while the colour keeps a
@@ -159,7 +175,7 @@
 		<div
 			class={classNames(
 				'absolute inset-x-0 top-0 z-0 flex min-h-12 items-center justify-center rounded-md px-2 py-2',
-				SPAWN_PANEL_CLASSES[lead.color]
+				bandFill
 			)}
 		>
 			{#if bannerLogo}

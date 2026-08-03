@@ -36,9 +36,13 @@
 			here it takes the width of the column it is laid in, which is the same rule the
 			statues follow everywhere they are placed rather than dropped.
 			`flipped={false}`: a town's team is somebody else's side, so it faces the viewer
-			unmirrored, as a rival side does on the board. -->
+			unmirrored, as a rival side does on the board.
+			`seeded` is read off the holder and not off the team: a town with nobody on it is a
+			town still fielding the three its own seed rolled, so its banner flies the map's grey
+			rather than the colour that roll happened to give the lead — the same rule the terrain
+			under it is painted by. -->
 		<div class="w-full drop-shadow-lg">
-			<TeamLineup members={marker.team} flipped={false} classes="gap-1" />
+			<TeamLineup members={marker.team} flipped={false} seeded={!marker.holder} classes="gap-1" />
 		</div>
 	{/if}
 
