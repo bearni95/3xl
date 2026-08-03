@@ -11,6 +11,7 @@
 // palette, and the comment there is what keeps the two in step.
 
 import { SpawnColor } from '$types/character-spawn.type';
+import { ArtificialColor, type RegionColor } from '$types/region-color.type';
 
 /** The colour as a fill. */
 export const SPAWN_FILL_CLASSES: Record<SpawnColor, string> = {
@@ -31,6 +32,21 @@ export const SPAWN_PANEL_CLASSES: Record<SpawnColor, string> = {
 	[SpawnColor.Orange]: 'bg-orange-500 text-white',
 	[SpawnColor.Green]: 'bg-green-500 text-white',
 	[SpawnColor.Purple]: 'bg-purple-500 text-white'
+};
+
+/**
+ * The same panel again for a *place*, which can be one colour more than a card: the six
+ * a team's lead may have rolled, plus the grey the map paints somewhere nobody holds
+ * (see `region-color.type`).
+ *
+ * Every surface that tiles a region reads this — the map's pins and the rows of the
+ * column beside it, and the towns on a player's public profile page, which lists the
+ * same places with the same component. It is also where `--color-gray-500` gets emitted
+ * at all, which the polygon wash reads through `REGION_COLOR_CSS`.
+ */
+export const REGION_PANEL_CLASSES: Record<RegionColor, string> = {
+	...SPAWN_PANEL_CLASSES,
+	[ArtificialColor.Gray]: 'bg-gray-500 text-white'
 };
 
 /** The colour as a border. */

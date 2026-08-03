@@ -68,6 +68,7 @@
 	import { showGlyphs } from '$services/shows.service';
 	import { SpawnColor, type CharacterSpawn } from '$types/character-spawn.type';
 	import { ArtificialColor, type RegionColor } from '$types/region-color.type';
+	import { REGION_PANEL_CLASSES } from '$components/core/spawn-colors';
 	import {
 		buildRegionTree,
 		buildFillIndex,
@@ -2004,18 +2005,11 @@
 	// on it — yellow is the one light enough to want black — plus the grey a place
 	// nobody holds is painted in, which is no card's colour and is spelled at the
 	// same 500 weight as the rest so an unheld tile sits at the same depth as a held
-	// one. Written out in full because Tailwind only emits classes it can see spelled
-	// in the source — and this is also where `--color-gray-500` gets emitted at all,
-	// which the polygon wash reads through REGION_COLOR_CSS.
-	const pinColorClasses: Record<RegionColor, string> = {
-		[SpawnColor.Red]: 'bg-red-500 text-white',
-		[SpawnColor.Yellow]: 'bg-yellow-400 text-black',
-		[SpawnColor.Blue]: 'bg-blue-500 text-white',
-		[SpawnColor.Orange]: 'bg-orange-500 text-white',
-		[SpawnColor.Green]: 'bg-green-500 text-white',
-		[SpawnColor.Purple]: 'bg-purple-500 text-white',
-		[ArtificialColor.Gray]: 'bg-gray-500 text-white'
-	};
+	// one. The literals live with the rest of the palette (see spawn-colors), because
+	// this map is no longer the only surface tiling a region: a player's public profile
+	// page lists the towns they hold with the very rows of the column beside this map,
+	// and a second copy of the six is how two of them come to disagree.
+	const pinColorClasses = REGION_PANEL_CLASSES;
 
 	// The side sitting on each town, by municipality id: whoever holds it, else the
 	// team its seed rolls — the very fallback the panel draws for the open town, asked

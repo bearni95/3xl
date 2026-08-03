@@ -1,8 +1,10 @@
 import { getSupabaseClient, isSupabaseConfigured } from '$services/supabase.client';
 import { profileAdapter } from '$adapters/classes/profile.adapter';
 import { spawnAdapter } from '$adapters/classes/spawn.adapter';
+import { territoryAdapter } from '$adapters/classes/territory.adapter';
 import type { PublicProfile, PublicProfileRow } from '$types/profile.type';
 import type { CharacterSpawn, CharacterSpawnRow } from '$types/character-spawn.type';
+import type { MunicipalityHolder, MunicipalityHolderRow } from '$types/territory.type';
 
 /**
  * One player as everybody else may see them: their plate, the side they field, and
@@ -24,26 +26,29 @@ export interface PublicPlayer {
 	 */
 	team: CharacterSpawn[];
 	/**
-	 * How many towns on the map they hold right now — the count of their rows in
+	 * The towns on the map they hold right now, newest taken first — their rows in
 	 * `municipality_holders`, which is the map's own record of who occupies what and
 	 * is world-readable because the map has to name every occupant to every visitor.
 	 *
-	 * A count and not the towns themselves: what is being said here is how much of
-	 * the map answers to this player, and the places are on the map, which is one
-	 * press away. It is read live rather than stored on the profile — a town changes
-	 * hands the moment somebody wins it, and a number kept beside the account would
-	 * be wrong from that moment until something thought to correct it.
+	 * The rows and not just a count of them: the profile lists the places, and each
+	 * one is named, tiled and badged off the team frozen in its own row — the side as
+	 * it won that town, which is not the side its holder fields today. Read live
+	 * rather than stored on the profile: a town changes hands the moment somebody
+	 * wins it, and a tally kept beside the account would be wrong from that moment
+	 * until something thought to correct it.
 	 */
-	towns: number;
+	towns: MunicipalityHolder[];
 }
 
 /**
  * Somebody else's profile, read straight out of the two definer-owned views that
- * exist for it: `player_profiles_public` (the plate) and `player_spawns_public`
- * (every card they hold, the fielded ones carrying their slot). Neither the table
- * behind them nor anything else about the account is reachable from here — see
- * `packages/backend/supabase/player_profiles.sql` and `character_spawns.sql` for
- * what is public and why.
+ * exist for it — `player_profiles_public` (the plate) and `player_spawns_public`
+ * (every card they hold, the fielded ones carrying their slot) — plus
+ * `municipality_holders_public`, which is not one of them: the map has always had
+ * to name every town's occupant to every visitor, so the towns were public before
+ * this page was. Neither the tables behind those views nor anything else about the
+ * account is reachable from here — see `packages/backend/supabase/player_profiles.sql`
+ * and `character_spawns.sql` for what is public and why.
  *
  * There is no store: a public profile is a page's worth of somebody else, fetched
  * when that page is opened and gone when it is closed. Nothing else in the app
@@ -76,13 +81,16 @@ class PublicProfileService {
 				.select('user_id, team_slot, character_id, show_id, location_id, color, box, created_at')
 				.eq('user_id', userId)
 				.order('created_at', { ascending: false }),
-			// `head` so no rows travel at all: the answer wanted is the count in the
-			// response header, and a player holding a thousand towns should not have to
-			// send a thousand ids to say so.
+			// The same view the map reads every town's occupant out of, asked for one
+			// player's rows. Newest taken first, so the list opens on what they have just
+			// won rather than on whatever they took first and never lost.
 			supabase
 				.from('municipality_holders_public')
-				.select('location_id', { count: 'exact', head: true })
+				.select(
+					'location_id, user_id, holder_name, team, turnover, taken_at, avatar_character_id, avatar_color'
+				)
 				.eq('user_id', userId)
+				.order('taken_at', { ascending: false })
 		]);
 		if (profileRes.error) throw profileRes.error;
 		if (spawnsRes.error) throw spawnsRes.error;
@@ -106,10 +114,9 @@ class PublicProfileService {
 			team: collection
 				.filter((spawn) => spawn.teamSlot !== null)
 				.sort((a, b) => (a.teamSlot ?? 0) - (b.teamSlot ?? 0)),
-			// A count Supabase could not give reads as none held rather than as an
-			// unknown: the panel says a number, and there is no number for "we did not
-			// ask properly" that would not be a lie about somebody's map.
-			towns: townsRes.count ?? 0
+			towns: (townsRes.data ?? []).map((row) =>
+				territoryAdapter.fromHolderRow(row as MunicipalityHolderRow)
+			)
 		};
 	}
 }

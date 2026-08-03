@@ -1,17 +1,21 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { _ } from 'svelte-i18n';
 	import { characters } from '@3xl/data';
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
+	import RegionListRow from '$components/core/RegionListRow.svelte';
+	import { REGION_PANEL_CLASSES } from '$components/core/spawn-colors';
 	import { publicProfileService, type PublicPlayer } from '$services/publicProfile.service';
 	import { isSupabaseConfigured } from '$services/supabase.client';
 	import { spawnService } from '$services/spawn.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
-	import { showIdsByCharacter } from '$utils/spawn/team-show';
-	import { SpawnBox } from '$types/character-spawn.type';
+	import { showIdsByCharacter, teamShowId } from '$utils/spawn/team-show';
+	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
+	import { SpawnBox, type ClaimableShow } from '$types/character-spawn.type';
 	import { teamLineupMembers } from '$utils/spawn/team-lineup';
 
 	// Any player's profile, for anybody at all — the one page in this game that is
@@ -37,6 +41,10 @@
 	$: userId = $page.params.id ?? '';
 
 	let player: PublicPlayer | null = null;
+	// Every show with a renderable character cast in it, as the claim roll reads them —
+	// kept whole because the towns need the shows' *names* and the statues need the
+	// assignment, and both come out of this one load.
+	let showList: ClaimableShow[] = [];
 	// Character id → the shows it belongs to; the first is the one a statue flies, as
 	// on the map. Empty until the assignment lands, which leaves a floor bare rather
 	// than holding the side back.
@@ -57,9 +65,12 @@
 	// The cards are all here either way — this is what is *drawn*, not what was fetched,
 	// so pressing More costs nothing but the mounting.
 	const PAGE_SIZE = 12;
-	// Reset for each player loaded, so a second profile opens at its own first page
-	// rather than however far down the previous one had been read.
+	// One count per list, because they are two lists: a reader who has walked a
+	// collection to its end has said nothing about how many towns they want to see.
+	// Both reset for each player loaded, so a second profile opens at its own first
+	// page rather than however far down the previous one had been read.
 	let shown = PAGE_SIZE;
+	let shownTowns = PAGE_SIZE;
 
 	const charactersById = new Map(characters.map((character) => [character.id, character]));
 
@@ -84,6 +95,7 @@
 		failed = false;
 		player = null;
 		shown = PAGE_SIZE;
+		shownTowns = PAGE_SIZE;
 		try {
 			const [loaded, shows] = await Promise.all([
 				publicProfileService.load(id),
@@ -96,6 +108,7 @@
 			// any more must not land on the page.
 			if (id !== loadedFor) return;
 			player = loaded;
+			showList = shows;
 			showsByCharacter = showIdsByCharacter(
 				new Map(shows.map((show) => [show.id, show.characterIds]))
 			);
@@ -150,6 +163,73 @@
 
 	function showMore(): void {
 		shown += PAGE_SIZE;
+	}
+
+	// Show id → its name, off the same assignment the statues take their glyph from, so
+	// a town's row names the show its pin is badged with rather than a second reading of
+	// it. Empty until that lands, which leaves a row's show unnamed for a moment.
+	$: showNameById = new Map(showList.map((show) => [show.id, show.name]));
+
+	// The towns they hold, as the column beside the map lists a place: the tile in the
+	// colour of the side sitting there, the name, and the show that side flies.
+	//
+	// Every one of those three is read off the team frozen in the town's own holder row
+	// — the side as it won that town, which is the side the map itself draws there, and
+	// not the side its holder happens to field today. So a player who has since changed
+	// their team sees these rows keep the colours they conquered in, which is what the
+	// map says about those towns too.
+	//
+	// All three of the maps it reads are threaded in as arguments rather than closed
+	// over, exactly as the map's own corner threads them (see +page.svelte's
+	// playerTeamLineup): a `$:` re-runs on what the statement names, so a row re-letters
+	// itself as the layer, the assignment and the show names land behind it.
+	$: townRows = ((
+		names: Map<string, string> | null,
+		shows: Map<string, number[]>,
+		showNames: Map<number, string>
+	) =>
+		(player?.towns ?? []).map((held) => {
+			const lead = held.team[0] ?? null;
+			const showId = teamShowId(
+				held.team.map((member) => member.characterId),
+				shows
+			);
+			return {
+				// A municipality's node key in the region tree is its bare feature id, which
+				// is what the map's `region` param takes — so this key is both what names
+				// the row and what opens it (see openTown).
+				key: held.locationId,
+				// The layer parks the article after a comma to sort by; it goes back to the
+				// front wherever a town is named. A town whose name has not arrived stands
+				// on its feature id rather than on Ultramar: this is a real place on the
+				// map, and the sentinel would be a different claim about it.
+				label: names?.get(held.locationId)
+					? restoreCatalanArticle(names.get(held.locationId) as string)
+					: held.locationId,
+				showName: showId === null ? null : (showNames.get(showId) ?? null),
+				showId,
+				tileClasses: lead ? REGION_PANEL_CLASSES[lead.color] : null
+			};
+		}))(municipalityNames, showsByCharacter, showNameById);
+
+	$: visibleTowns = townRows.slice(0, shownTowns);
+	$: remainingTowns = Math.max(0, townRows.length - shownTowns);
+
+	function showMoreTowns(): void {
+		shownTowns += PAGE_SIZE;
+	}
+
+	/**
+	 * Open a town on the map. The map is driven entirely by its `region` query param
+	 * and a municipality's key is its bare feature id, so naming one here is the whole
+	 * of it — the map opens framed on that town with its panel on it.
+	 *
+	 * This is the one press on the page that goes anywhere. A row of this list is a
+	 * place, and a place in this game is a thing you look at on the map; the alternative
+	 * was a list of rows that are buttons and do nothing.
+	 */
+	function openTown(key: string): void {
+		void goto(`/?region=${encodeURIComponent(key)}`);
 	}
 
 	// What to call the page. A nameless account is worded here rather than stored, as
@@ -213,9 +293,36 @@
 			<div class="stats w-full max-w-[400px] bg-base-100/80 shadow">
 				<div class="stat">
 					<div class="stat-title">{$_('profile.public.townsHeld')}</div>
-					<div class="stat-value">{player.towns}</div>
+					<div class="stat-value">{player.towns.length}</div>
 				</div>
 			</div>
+
+			<!-- And which towns they are, each drawn by the very row the column beside the map
+				lists a place with: the tile in the colour of the side sitting there, the name,
+				and the show that side flies. The same component and not a second one that looks
+				like it — a town is a town wherever it is listed, and two spellings of one row is
+				how a map and a profile come to disagree about a place.
+				Pressing one opens the map framed on it (see openTown), which is the only thing
+				a place on this page can usefully be pressed for. `current` and `marked` are
+				both off: this is not the column beside a map, so there is no open place among
+				these to be found or to be pointed at.
+				A grid rather than the column's stack, because there is width here that the
+				column does not have. The counts divide the twelve a press adds — two, three,
+				four — so a press always lands on whole rows, and it stops at four: a row is a
+				name and a show, and it stops being one at a narrower width than that. -->
+			{#if visibleTowns.length > 0}
+				<div class="grid w-full grid-cols-2 gap-1 md:grid-cols-3 lg:grid-cols-4">
+					{#each visibleTowns as town (town.key)}
+						<RegionListRow row={town} onSelect={openTown} />
+					{/each}
+				</div>
+
+				{#if remainingTowns > 0}
+					<button type="button" class="btn btn-outline btn-sm" on:click={showMoreTowns}>
+						{$_('profile.public.more', { values: { count: remainingTowns } })}
+					</button>
+				{/if}
+			{/if}
 
 			<!-- Everything they hold, one statue per card, newest first. A flat grid and
 				nothing else: not the album's cells (which are characters, one apiece, owned or
