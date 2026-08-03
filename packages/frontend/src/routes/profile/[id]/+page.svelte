@@ -5,11 +5,13 @@
 	import { characters } from '@3xl/data';
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
+	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import { publicProfileService, type PublicPlayer } from '$services/publicProfile.service';
 	import { isSupabaseConfigured } from '$services/supabase.client';
 	import { spawnService } from '$services/spawn.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { showIdsByCharacter } from '$utils/spawn/team-show';
+	import { SpawnBox } from '$types/character-spawn.type';
 	import { teamLineupMembers } from '$utils/spawn/team-lineup';
 
 	// Any player's profile, for anybody at all — the one page in this game that is
@@ -113,6 +115,17 @@
 		municipalityNames
 	});
 
+	// And the whole collection, read exactly the same way: a card is a card, and the
+	// three on the team are three of these. One entry per card held — two copies of a
+	// character are two statues, since they are two cards with their own colours, their
+	// own boxes and their own towns, and merging them would print a collection smaller
+	// than it is.
+	$: owned = teamLineupMembers(player?.collection ?? [], {
+		characters: charactersById,
+		showsByCharacter,
+		municipalityNames
+	});
+
 	// What to call the page. A nameless account is worded here rather than stored, as
 	// it is everywhere else a name is missing.
 	$: title = player ? (player.profile.username ?? $_('profile.username.none')) : $_('profile.title');
@@ -122,11 +135,14 @@
 	<title>{title}</title>
 </svelte:head>
 
-<!-- The whole page is one column the width the map's corner reads a side at (400px),
-	centred and stood in the middle of the screen rather than at the foot of a map,
-	since there is no map behind it here. -->
-<div class="flex min-h-screen w-full items-center justify-center bg-base-300 p-4">
-	<div class="flex w-full max-w-[400px] flex-col gap-3">
+<!-- The page is two things down one centred stack: the account, in the 400px column the
+	map's corner reads a side at, and under it the collection, which wants every pixel the
+	window has. So the outer column is the wide one and the account holds itself to its own
+	width inside it — the reverse would have made the cards as narrow as the plate.
+	Top-aligned, not centred: a collection is as tall as it is, and a flex box that centres
+	content taller than itself puts the top of it out of reach above the scroll. -->
+<div class="flex min-h-screen w-full justify-center bg-base-300 p-4">
+	<div class="flex w-full max-w-5xl flex-col items-center gap-6 py-4">
 		{#if loading}
 			<div class="flex items-center justify-center gap-3 py-12 text-base-content/70">
 				<span class="loading loading-spinner loading-md"></span>
@@ -141,17 +157,47 @@
 		{:else if !player}
 			<p class="py-12 text-center text-base-content/70">{$_('profile.public.notFound')}</p>
 		{:else}
-			<!-- The side above the plate, as at the map's corner: three statues on nothing at
-				all, each bringing its own ground, standing the way the corner stands them.
-				Nothing is passed to it that the corner does not pass — it is unselectable and
-				unheaded there too, being a picture of a side rather than a roster. -->
-			{#if lineup.length > 0}
-				<TeamLineup members={lineup} />
-			{:else}
-				<p class="py-6 text-center text-base-content/70">{$_('profile.public.noTeam')}</p>
-			{/if}
+			<!-- The account, held to the width the corner reads it at. Everything in here is
+				the map's own corner, in the map's own order. -->
+			<div class="flex w-full max-w-[400px] flex-col gap-3">
+				<!-- The side above the plate, as at the map's corner: three statues on nothing at
+					all, each bringing its own ground, standing the way the corner stands them.
+					Nothing is passed to it that the corner does not pass — it is unselectable and
+					unheaded there too, being a picture of a side rather than a roster. -->
+				{#if lineup.length > 0}
+					<TeamLineup members={lineup} />
+				{:else}
+					<p class="py-6 text-center text-base-content/70">{$_('profile.public.noTeam')}</p>
+				{/if}
 
-			<PlayerPanel profile={player.profile} interactive={false} classes="w-full" />
+				<PlayerPanel profile={player.profile} interactive={false} classes="w-full" />
+			</div>
+
+			<!-- Everything they hold, one statue per card, newest first. A flat grid and
+				nothing else: not the album's cells (which are characters, one apiece, owned or
+				not) and not the roster's (which are filters and buttons over cards the player
+				may still move). Nobody can act on any of this, so there is nothing to group
+				it by and nothing to press — the collection is the whole statement, and its
+				size is part of what it says.
+				A statue takes its size from the cell it is in and brings the rest itself, so
+				the grid is a column count and a gap and no more of a layout than that. Two
+				across on a phone, five at the top width, which is where the panel under a
+				card is still wide enough to read the town off. -->
+			{#if owned.length > 0}
+				<div class="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+					{#each owned as card}
+						<CharacterStatue
+							label={card.label}
+							basePath={card.basePath}
+							color={card.color}
+							box={card.box ?? SpawnBox.Black}
+							locationName={card.locationName}
+							spawnedAt={card.spawnedAt ?? null}
+							showId={card.showId}
+						/>
+					{/each}
+				</div>
+			{/if}
 		{/if}
 
 		<!-- The way back into the game, at the foot of the column whatever the page found:

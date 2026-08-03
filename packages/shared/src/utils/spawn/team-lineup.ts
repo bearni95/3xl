@@ -24,7 +24,7 @@ export interface TeamLineupMember {
 
 /**
  * The least of a card this needs to draw one. A `CharacterSpawn` is one, and so is
- * a row of the `player_teams_public` view — which carries no spawn id at all,
+ * a row of the `player_spawns_public` view — which carries no spawn id at all,
  * because another player's card is a thing to look at rather than a thing to act
  * on.
  */

@@ -195,19 +195,23 @@ export function ensureTables(): Promise<void> {
 				drop policy if exists character_spawns_delete_own on character_spawns;
 				create policy character_spawns_delete_own on character_spawns
 						for delete using (auth.uid() = user_id);
-				-- The side a player fields, for every visitor. A collection is private —
-				-- what somebody holds is theirs — but the three cards they field are the
-				-- side they meet the map with: already drawn on every town they hold, and
-				-- on their public profile page, which is what this is for. Definer-owned
-				-- (security_invoker off) so it reads past the select-own policy above, and
-				-- carrying no id: a spawn id is the handle a client acts on a card with,
-				-- and there is nothing anybody may do to somebody else's card.
-				create or replace view player_teams_public
+				-- Every card a player holds, for every visitor — what their public profile
+				-- page is drawn from: the side they field (the ones carrying a team_slot,
+				-- already drawn on every town they hold) and the collection those came
+				-- out of. The collection is public, which it was not: this shipped as
+				-- player_teams_public, the fielded three alone, and a collection is what
+				-- a player has to show for playing. That narrower view is dropped below.
+				-- Definer-owned (security_invoker off) so it reads past the select-own
+				-- policy above, and carrying no id: a spawn id is the handle a client
+				-- acts on a card with, and there is nothing anybody may do to somebody
+				-- else's card.
+				create or replace view player_spawns_public
 					with (security_invoker = false) as
 					select user_id, team_slot, character_id, show_id, location_id, color, box, created_at
-					from character_spawns where team_slot is not null;
-				revoke all on player_teams_public from anon, authenticated;
-				grant select on player_teams_public to anon, authenticated;
+					from character_spawns;
+				revoke all on player_spawns_public from anon, authenticated;
+				grant select on player_spawns_public to anon, authenticated;
+				drop view if exists player_teams_public;
 				-- The colours that may stand beside a lead of p_color: its own, plus — for a
 				-- primary — the compounds that mix it, or — for a compound — the two
 				-- primaries that make it. The same relation as teammateColors in

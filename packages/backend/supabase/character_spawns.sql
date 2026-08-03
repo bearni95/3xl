@@ -119,31 +119,39 @@ create policy character_spawns_delete_own on public.character_spawns
 -- There is no update policy either, which is what makes `team_slot` the server's
 -- column: the team is set only through the RPC below.
 
--- The side a player fields, for every visitor. A collection is private — what
--- somebody holds, and how much of it, is theirs — but the three cards they field
--- are the side they meet the map with: they are already drawn on every town they
--- hold (frozen into `municipality_holders.team` as it won there) and on their
--- public profile page, which is what this view is for. So exactly the cards
--- holding a team slot come through, and nothing else in the collection does.
+-- Every card a player holds, for every visitor — what their public profile page is
+-- drawn from: the side they field (the cards carrying a `team_slot`, which are
+-- already on every town they hold, frozen into `municipality_holders.team` as they
+-- won it) and, under it, the whole collection those three came out of.
+--
+-- The collection is therefore **public**, which it was not: this view first shipped
+-- as `player_teams_public`, the fielded three and nothing else, on the reasoning
+-- that what somebody holds and how much of it is theirs. That is no longer the
+-- game's answer — a collection is what a player has to show for playing, and a
+-- profile page nobody can read the collection off is a profile page about nothing.
+-- The narrower view is dropped below rather than left standing: two ways to read
+-- the same rows is two things to keep honest.
 --
 -- Definer-owned (security_invoker off), so it reads past the select-own policy
 -- above, and it carries no `id`: a spawn id is the handle a client acts on a card
 -- with, and there is nothing anybody may do to somebody else's card. The rest is
 -- what a statue is drawn from — who, in what colour, out of which box, claimed
--- where and when.
-create or replace view public.player_teams_public
+-- where and when — plus the slot, which is what tells the side from the rest.
+create or replace view public.player_spawns_public
 	with (security_invoker = false) as
 	select user_id, team_slot, character_id, show_id, location_id, color, box, created_at
-	from public.character_spawns
-	where team_slot is not null;
+	from public.character_spawns;
 
 -- Read only. A view over one table with no aggregate is auto-updatable and this one
 -- is definer-owned, so a bare `grant select` — with Supabase's default privileges
 -- already handing anon every verb on anything new here — would have left a write
 -- path into `character_spawns` that the table's own policies refuse outright: cards
 -- dealt to nobody, teams set without `set_team`. See player_profiles.sql.
-revoke all on public.player_teams_public from anon, authenticated;
-grant select on public.player_teams_public to anon, authenticated;
+revoke all on public.player_spawns_public from anon, authenticated;
+grant select on public.player_spawns_public to anon, authenticated;
+
+-- Superseded by the view above, which is the same columns without the team filter.
+drop view if exists public.player_teams_public;
 
 -- The colours that may stand beside a lead of `p_color`: its own, plus — for a
 -- primary — the compounds that mix it, or — for a compound — the two primaries
