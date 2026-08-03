@@ -11,10 +11,10 @@
 	//
 	// Split out of MapBreadcrumb, back when the tile was not always inside the crumb: the head of
 	// the column stood it outside the crumb's button so the radio's play/pause could come up on
-	// it, a button inside a button not being markup. The radio has a row of its own now (see
-	// MusicRow) and every crumb carries its own tile again — but the split stays, because the
-	// pins and the crumbs have to keep drawing the one square, and that is a component rather
-	// than four lines copied into a second place.
+	// it, a button inside a button not being markup. The radio is that row's second line now
+	// (see MusicLine) and every crumb carries its own tile again — but the split stays, because
+	// the pins and the crumbs have to keep drawing the one square, and that is a component
+	// rather than four lines copied into a second place.
 	//
 	// Decorative throughout: everywhere this stands, the show it names is written beside it.
 

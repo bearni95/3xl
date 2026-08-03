@@ -20,9 +20,10 @@
 	// the station it plays on is the same object as a place over the show it flies. The
 	// second line is still the slot that made that possible — the station was a dial rather
 	// than a word — and it is kept because a crumb's own line is still the one thing about it
-	// that can be something other than a name to be read. The radio is a row of its own in the
-	// column beside the map now, and names no station at all: the row above it is the place,
-	// and a station is the show that place flies (see MusicRow, MusicTitle).
+	// that can be something other than a name to be read — and the radio is what stands in it
+	// again, in the column beside the map: the crumb at the head of that column letters the
+	// song under the place's name, and names no station, a station being the show that place
+	// already flies on its tile (see MusicLine).
 
 	// The place, with its article already restored by the caller.
 	export let label: string = '';

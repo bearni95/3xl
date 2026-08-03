@@ -259,29 +259,26 @@ leaving one plays its own song out. Only the *station* fades; the songs within o
 the way a station's do. The dial as a *select* survives in one place only — the menu's plate —
 which is where a listener goes to hear something other than where they are.
 
-So the radio stands in the plate at the foot of the menu, and on the map in the column beside
-it — **twice over, on two rows that follow each other**, both of them the same components over
-the same store:
+So the radio stands twice, and only one of them is the whole of it: the plate at the foot of
+the menu, and on the map **the row naming the open place**, at the head of the column beside
+it. There the radio *is* that row's second line — the play/pause mark (`MusicGlyph.svelte`)
+and the song behind it (`MusicLine.svelte`) — in place of the show that line used to letter. A
+station *is* a show and the map tunes the radio to the open place's own, so where the two
+would stand one under the other the line says the more particular of them, and the show goes
+on being said by the tile at the head of the same row. The **whole row is the press**: it was
+the press with the least to do, being the place the map is already open on, and a row lettered
+with a play mark and a song reads as the thing to press. That is `RegionListRow`'s `line` slot
+and `pressLabel` plus `RegionSubdivisions`' `pressHead`; with no song loaded the line is the
+show and the press opens the place, exactly as before there was a radio. Nothing on the map
+draws a second play button — a plain one stood on a row under this for a while, saying the
+same two things twice running, which is one radio too many in a column of places.
 
-- **The row naming the open place**, whose second line is the radio: the play/pause mark
-  (`MusicGlyph.svelte`) and the song behind it (`MusicLine.svelte`), in place of the show that
-  line used to letter. A station *is* a show and the map tunes the radio to the open place's
-  own, so where the two would stand one under the other the line says the more particular of
-  them; the show is still said by that row's tile. The whole row is the press — it was the
-  press with the least to do, being the place the map is already open on — which is
-  `RegionListRow`'s `pressLabel` and `line` slot, and `RegionSubdivisions`' `pressHead`. With
-  no song loaded the line is the show and the press opens the place, exactly as before.
-- **The row under it** (`MusicRow.svelte`), which is the plain statement of the same thing: a
-  real button where every other row of the column wears a tile (`MusicToggle.svelte`), and the
-  song across the rest of it (`MusicTitle.svelte`).
-
-Neither draws a glyph of the show or names the station: the tile above says the one and the
-map tunes the other. Before this the play/pause stood *on* the open place's show tile, coming
-up under the pointer, with the song in the far corner of that row — which is what
-`MapBreadcrumb`'s `tile` prop and `RegionListRow`'s `lead`/`end` slots existed for (a button
-does not stand inside a button); a control nobody sees until they point at it is why it came
-off. Before that the radio was a card at the foot of the map, and before that a
-`MapBreadcrumb` at the far end of the bar, where it took room a path needs. A song's title is a **banner** rather than a
+Before that the play/pause stood *on* the open place's show tile, coming up under the pointer,
+with the song in the far corner of that row — which is what `MapBreadcrumb`'s `tile` prop and
+`RegionListRow`'s `lead`/`end` slots existed for (a button does not stand inside a button); a
+control nobody sees until they point at it is why it came off. Before that the radio was a card
+at the foot of the map, and before that a `MapBreadcrumb` at the far end of the bar, where it
+took room a path needs. A song's title is a **banner** rather than a
 truncation (`MarqueeText.svelte`, whose keyframes are the one piece of CSS in `css/app.css` a
 component could not spell as a class): it scrolls end to end, and only when the line is wider
 than the box measures. Both

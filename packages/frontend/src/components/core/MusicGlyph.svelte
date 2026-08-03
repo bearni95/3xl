@@ -1,18 +1,18 @@
 <script context="module" lang="ts">
-	// What pressing the mark is called, wherever the mark is drawn — the button on the plate and
-	// on the radio's own row, and the row of the column that is itself the press (see
-	// MusicToggle, MusicLine, RegionSubdivisions). One radio, so one name for the press: a row
-	// labelled differently from the button under it would be two controls to a screen reader.
+	// What pressing the mark is called, wherever the mark is drawn — the button on the menu's
+	// plate, and the row of the column beside the map that is itself the press (see MusicToggle,
+	// MusicLine, RegionSubdivisions). One radio, so one name for the press: two names would be
+	// two controls to anyone who reaches them by their names.
 	export const musicPressLabel = (playing: boolean) => (playing ? 'Pause music' : 'Play music');
 </script>
 
 <script lang="ts">
 	// The radio's one mark: a triangle when it is stopped, two bars when it is running.
 	//
-	// Its own component because it is now drawn in two kinds of place — inside the button that
+	// Its own component because it is drawn in two kinds of place — inside the button that
 	// presses it (MusicToggle) and inside a line of text that is itself the press (MusicLine) —
-	// and the second cannot hold a button. Two copies of the paths would be how the map comes to
-	// show a triangle in one corner and two bars in the other for one radio.
+	// and the second cannot hold a button. Two copies of the paths would be how the game comes
+	// to show a triangle in one corner and two bars in the other for one radio.
 	//
 	// It says what the audio element is really doing rather than what it was last told to do:
 	// both callers read it off the one service store.

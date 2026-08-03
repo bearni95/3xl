@@ -5,7 +5,6 @@
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
 	import { musicPressLabel } from '$components/core/MusicGlyph.svelte';
 	import MusicLine from '$components/core/MusicLine.svelte';
-	import MusicRow from '$components/core/MusicRow.svelte';
 	import RegionListRow from '$components/core/RegionListRow.svelte';
 	import ShowShareGrid from '$components/core/ShowShareGrid.svelte';
 	import { REGION_TYPE_KEYS } from '$components/core/region-types';
@@ -159,7 +158,12 @@
 			whole row is that mark's press: it was the one press on this column with the least to
 			do, being the place the map is already open on, and a row lettered with a play mark and
 			a song is a row that reads as the thing to press. Without a song it is the show and the
-			press it always was (see pressHead). -->
+			press it always was (see pressHead).
+
+			So this row is the whole of the radio on the map. The play/pause stood under it on a
+			row of its own for a while, as a plain button beside the song — the same two things
+			said twice running, which is one radio too many in a column of places. -->
+
 		<RegionListRow
 			row={current}
 			current
@@ -171,13 +175,6 @@
 				<MusicLine showName={current.showName} />
 			</svelte:fragment>
 		</RegionListRow>
-
-		<!-- The radio's own row, directly under the place it is playing for: the play/pause where
-			every other row of this column wears a tile, and the song across the rest of it (see
-			MusicRow). The row above is now lettered with the same two things and is the same
-			press, so this is the second saying of them — it is kept because it is the plain one:
-			a button that looks like a button, in a row that is about nothing but the radio. -->
-		<MusicRow />
 
 		<!-- Whatever else the place at the head has to say for itself, between its name and the
 			level below it: the caller's, because what a place carries depends on what kind of
