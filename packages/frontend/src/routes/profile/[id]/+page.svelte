@@ -385,17 +385,27 @@
 	The cap is 7xl rather than 5xl because the grid's widest tier is six across: six cards
 	in 1024px is a narrower card than four in the same width, and a tier that made the
 	cards smaller as the window got bigger would be a strange kind of growth.
-	Top-aligned, not centred: a collection is as tall as it is, and a flex box that centres
-	content taller than itself puts the top of it out of reach above the scroll.
 	No background of its own any more: the map is behind it, and a fill here would be a lid
 	on it. So this layer is `relative z-10` — over the map — and everything on it stands on
 	a plate, exactly as the furniture over the map at the root does: three of them, one per
 	column of the row, and a fourth under the collection. The statues were the exception for
 	a while, bringing their own ground as they do — but the exception is what made the page
-	read as two, plates at the top and bare cards below. -->
+	read as two, plates at the top and bare cards below.
 
-<div class="relative z-10 flex min-h-screen w-full justify-center p-4">
-	<div class="flex w-full max-w-7xl flex-col items-center gap-6 py-4">
+	It is exactly one screen tall (`h-screen`, not `min-h-screen`), and that is what settles
+	the collection's height: the account row is what it is, and the collection is given what
+	is left over (`flex-1` on the plate, `min-h-0` so it may be given less than its cards come
+	to). A figure in `vh` could not do this — the plate does not start at the top of the
+	viewport, so a cap of one screenful still put half of it below the fold, at page load as
+	well as on More. Nothing here can be measured or reacted to either: what is left over is
+	the one thing flexbox works out for itself, and it re-works it on every resize without
+	being asked.
+	The column may still scroll (`overflow-y-auto`) even though in the ordinary case nothing
+	overflows it — the collection absorbs the slack. It is for the window too short to hold
+	the account row on its own, where the choice is a page that scrolls or a page with its
+	foot cut off. -->
+<div class="relative z-10 flex h-screen w-full justify-center p-4">
+	<div class="flex h-full w-full max-w-7xl flex-col items-center gap-6 overflow-y-auto py-4">
 		{#if loading}
 			<div
 				class="flex items-center gap-3 rounded-box bg-base-100/80 px-4 py-3 shadow-xl"
@@ -439,7 +449,7 @@
 				— a collection of towns is however many there are — so instead of setting the
 				height of the row it takes it, and scrolls. So the row is as tall as the account
 				beside it at every size, whether somebody holds three towns or three hundred. -->
-			<div class="grid w-full grid-cols-3 items-start gap-3">
+			<div class="grid w-full shrink-0 grid-cols-3 items-start gap-3">
 				<!-- Who they are and the one thing a reader of this page can do, in that order
 					and in the one column: the card is what the page is about, and the button is
 					what to do about it. Stacked rather than given a cell each because a button
@@ -602,17 +612,16 @@
 					top half is printed on sheets and whose bottom half is not reads as two pages.
 					The plate holds the More button as well, so what is under it belongs to the
 					grid it adds to rather than floating off the foot of the page.
-					And it is never taller than a screen: the cap is the viewport less the padding
-					the page stands in (the underscores are how Tailwind spells the spaces a
-					`calc` needs — `calc(100vh-2rem)` is not arithmetic, it is a length followed
-					by a negative one, and the whole declaration is dropped), so however many
-					cards are up,
-					the whole plate is one screenful and the cards scroll inside it (see the grid
-					below). A collection of three hundred is otherwise a page a reader falls
-					down — and the More button, which is the thing they came to the foot of it
-					for, would be a screen further away with every press of itself. -->
+					And it never runs off the screen: it takes what the account row above it leaves
+					of the page's one screenful (`flex-1`, with `min-h-0` so it may be handed less
+					than its cards come to — a flex item will not shrink below its content
+					otherwise, which is the whole of why a cap works at all), and the cards scroll
+					inside it (see the grid below). A collection of three hundred is otherwise a
+					page a reader falls down — and the More button, which is the thing they came
+					to the foot of it for, would be a screen further away with every press of
+					itself. -->
 				<div
-					class="flex max-h-[calc(100vh_-_2rem)] w-full flex-col gap-3 rounded-box bg-base-100/80 p-2 shadow-xl"
+					class="flex min-h-0 w-full flex-1 flex-col gap-3 rounded-box bg-base-100/80 p-2 shadow-xl"
 				>
 					<!-- The cards are what scrolls, not the plate: the rule and the More button
 						under them keep their place at its foot, so the way to see more of a
