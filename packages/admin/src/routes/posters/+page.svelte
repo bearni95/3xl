@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { characters } from '@3xl/data';
-	import BackdropMap from '$components/core/BackdropMap.svelte';
 	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import MugenPosterGrid from '$components/core/MugenPosterGrid.svelte';
 	import type { PosterGridStatus } from '$utils/mugen/mugen-poster-grid';
+	import type { PixiBasemapOptions } from '$utils/map/pixi-basemap';
 	import { leastCommonMultiple } from '$utils/math/least-common-multiple';
 	import { saveBlob } from '$utils/capture/save-blob';
 	import { errorMessage } from '$utils/error/error-message';
@@ -26,17 +26,23 @@
 	// the game's card changes what the wall wears, and nothing here has to be told.
 	const CENTER_IMAGE = '/frontend/social-card.png';
 
-	// What the wall stands on: the game's own map, drawn behind the canvas the way the player
-	// app's `/profile/[id]` draws it behind a profile — the four dissolved layers in white,
-	// bottom-up, the coarser a division the thicker its line, over Esri's satellite imagery.
-	// Not painted, only drawn: the colour wash on the map at the root is a reading of who
-	// holds what, and this is a background. A constant, since nothing here recolours it.
-	const mapOverlays = [
-		{ url: '/data/geo/municipis.json', style: { color: '#fff', weight: 1, fill: false } },
-		{ url: '/data/geo/comarques.json', style: { color: '#fff', weight: 1.5, fill: false } },
-		{ url: '/data/geo/provincies.json', style: { color: '#fff', weight: 2, fill: false } },
-		{ url: '/data/geo/territoris.json', style: { color: '#fff', weight: 3, fill: false } }
-	];
+	// What the wall stands on: the ground the game is played on, as the player app's
+	// `/profile/[id]` stands a profile on it — Esri's satellite imagery, framed on the Països
+	// Catalans, under a veil. No borders drawn over it: every tier of them is on the map at the
+	// root, where each shape is filled with the colour its pin flies, and that is a reading of
+	// who holds what rather than a backdrop for a roster.
+	//
+	// Handed to the *wall* rather than laid behind it, so it is inside the canvas: what is
+	// behind a canvas is not in the file that canvas exports, and both buttons above export
+	// one. The framing is the country's own, off the coarsest layer there is — the dissolved
+	// territories give the same box as the municipalities they were dissolved from, at a
+	// twentieth of the bytes — so the square box is all the backdrop is told.
+	const BACKDROP: PixiBasemapOptions = {
+		tileUrl:
+			'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+		attribution: 'Tiles © Esri — Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+		frameLayers: ['/data/geo/territoris.json']
+	};
 
 	let status: PosterGridStatus = {
 		drawn: 0,
@@ -117,12 +123,12 @@
 				<code class="font-mono">renderScale</code>, and the crown alignment that stands it by its
 				head. They stand on the board's own hex field, filled outward from the middle in
 				registry order and laid at whichever width comes out nearest a square, each on its
-				cell's foot line, so heights compare across the wall. Nothing behind them is
-				painted — not the field, not the line that halves it, not the canvas — so both
-				downloads come out transparent everywhere a character is not standing. The map
-				behind is under the canvas and not in it, framed on every polygon it draws, so
-				it is what the wall is read against here and no part of what leaves the page.
-				The three cells kept clear at the middle wear the game's social card.
+				cell's foot line, so heights compare across the wall. The field itself is never
+				painted — not the cells, not the line that halves it — but the country is: they
+				stand on the game's own ground, satellite imagery framed on the Països Catalans
+				and read through a veil, drawn inside the canvas rather than behind it so that
+				both downloads carry it. The three cells kept clear at the middle wear the game's
+				social card.
 			</p>
 			<div class="flex flex-wrap gap-4 text-sm">
 				<a class="link link-primary" href="/characters">Characters →</a>
@@ -160,28 +166,20 @@
 			</div>
 		{/if}
 
-		<!-- One square box holding both, which is what the wall is standing on and what the map
-		     is framed to. Square because the field grows into the squarest shape it can (see
-		     the wall's own note): a box of that shape is the one that wastes least of itself
-		     on either, and it is one shape at every width rather than a frame that changes its
-		     mind as the window moves.
-		     Three layers in one stacking order and no other: the map at the bottom, the veil
-		     over it, the canvas over that. The canvas is transparent everywhere a character is
-		     not standing, which is what lets the country show through it — and is also why the
-		     two downloads carry none of this: they are read off the canvas, and the map is not
-		     in it. `isolate` on the map is what keeps Leaflet's own panes (which climb to 700)
-		     inside their own stack instead of over the wall. -->
+		<!-- One square box holding the map and the canvas — which is to say holding the canvas,
+		     since the map is drawn inside it. Square because the field grows into the squarest
+		     shape it can (see the wall's own note): a box of that shape is the one that wastes
+		     least of itself, and it is one shape at every width rather than a frame that
+		     changes its mind as the window moves. It is also what the map is framed to, so a
+		     square page of the country is what both downloads come out as. -->
 		<div class="relative aspect-square w-full overflow-hidden rounded-box">
-			<BackdropMap overlays={mapOverlays} classes="absolute inset-0 h-full w-full" />
-			<!-- The veil the wall is read through: white, half of it at the top and a fifth at
-			     the foot, exactly as the player app's profile page knocks the imagery back. -->
-			<div class="absolute inset-0 z-10 bg-gradient-to-b from-white/50 to-white/20"></div>
 			<MugenPosterGrid
 				bind:this={wall}
 				characters={roster}
 				centerImage={CENTER_IMAGE}
+				backdrop={BACKDROP}
 				on:status={(event) => (status = event.detail)}
-				classes="absolute inset-0 z-20"
+				classes="absolute inset-0"
 			/>
 		</div>
 

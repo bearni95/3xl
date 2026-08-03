@@ -40,18 +40,23 @@
  * at load: a character a third of the way down the roster is drawn against the same cell
  * as everyone else, and when that cell changes they all change together.
  *
- * **Nothing behind the roster is painted.** The lattice, the three kept cells and the line
- * down the field's middle all still decide where everything goes, but none of them is drawn
- * and neither is the canvas's own background: what comes off this screen is characters on
- * transparency and nothing else. The hexagons were faintly filled and outlined once, and the
- * trio and the halving line brightly, which made the cell — the box every character is fitted
- * into — visible to read a size against; but the wall's whole output is a picture of the
- * roster to put on something else, and a ground that had to be cut back out of it afterwards
- * is worse than no ground. So the ground went the way the board's own has always been: real,
- * and unmarked. The cell is still what every size is worked out from, which is a fact about
- * the arithmetic below rather than about anything on screen. This is why the canvas is
- * transparent all the way through — the app's background alpha, the PNG's clear colour, and
- * the container the video is recorded into (see {@link snapshot} and {@link record}).
+ * **The field itself is never painted.** The lattice, the three kept cells and the line down
+ * the field's middle all still decide where everything goes, but none of them is drawn. The
+ * hexagons were faintly filled and outlined once, and the trio and the halving line brightly,
+ * which made the cell — the box every character is fitted into — visible to read a size
+ * against; but the wall's whole output is a picture of the roster to put on something else,
+ * and a ground that had to be cut back out of it afterwards is worse than no ground. So the
+ * ground went the way the board's own has always been: real, and unmarked. The cell is still
+ * what every size is worked out from, which is a fact about the arithmetic below rather than
+ * about anything on screen.
+ *
+ * What *may* stand behind the roster is the country it is played in
+ * ({@link MugenPosterGridOptions.backdrop}): the game's own map, drawn into this canvas by
+ * {@link PixiBasemap}. Into it, and not behind it — a map laid under the canvas is a thing
+ * the reader can see and the file cannot, and the two things this screen makes are files.
+ * Asked for no backdrop, the canvas is transparent all the way through: the app's background
+ * alpha, what the PNG is read off, and the container the video is recorded into all say so
+ * (see {@link snapshot} and {@link record}).
  *
  * Over the kept trio hangs a **picture** ({@link MugenPosterGridOptions.centerImage} — on the
  * admin's screen, the game's own social card), fitted whole inside the ground those three
@@ -90,6 +95,7 @@ import type { CharacterDefinition } from '../../types/character-definition.type'
 import type { Manifest } from './mugen-player';
 import { destroyPixiApp } from '../pixi/release-context';
 import { type CanvasRecording, recordCanvas } from '../capture/record-canvas';
+import { PixiBasemap, type PixiBasemapOptions } from '../map/pixi-basemap';
 
 /** A character to stand on the wall: its id (which is what its definition is under)
  * and the folder its decoded frames are served from. */
@@ -240,6 +246,15 @@ export interface MugenPosterGridOptions {
 	 * way too — the wall is about the characters.
 	 */
 	centerImage?: string;
+	/**
+	 * The country to stand the wall on: the game's own map, drawn **into** the canvas under
+	 * the roster (see {@link PixiBasemap}). Left out, the roster stands on nothing at all and
+	 * the canvas is transparent behind it.
+	 *
+	 * In the canvas and not behind it, because what is behind a canvas is not in the file it
+	 * exports — and the wall's whole output is a file.
+	 */
+	backdrop?: PixiBasemapOptions;
 	/** Called as the wall fills in. */
 	onStatus?: (status: PosterGridStatus) => void;
 }
@@ -479,6 +494,7 @@ export class MugenPosterGrid {
 	private readonly characters: PosterCharacter[];
 	private readonly maxCellWidth: number;
 	private readonly centerImage?: string;
+	private readonly backdropOptions?: PixiBasemapOptions;
 	private readonly onStatus?: (status: PosterGridStatus) => void;
 
 	private app: Application | null = null;
@@ -498,6 +514,9 @@ export class MugenPosterGrid {
 	private emblemHome: { x: number; y: number; cellWidth: number } | null = null;
 	private emblemCursor: CycleCursor = { frameIndex: 0, frameElapsed: 0 };
 	private stage: Container | null = null;
+	// The country under the roster, when one was asked for — drawn into this canvas rather
+	// than laid behind it, so the wall's two downloads carry it.
+	private basemap: PixiBasemap | null = null;
 	private observer: ResizeObserver | null = null;
 
 	// The posters, kept in roster order rather than in the order they finished loading
@@ -516,6 +535,7 @@ export class MugenPosterGrid {
 		this.characters = options.characters;
 		this.maxCellWidth = options.maxCellWidth ?? DEFAULTS.maxCellWidth;
 		this.centerImage = options.centerImage;
+		this.backdropOptions = options.backdrop;
 		this.onStatus = options.onStatus;
 	}
 
@@ -569,6 +589,12 @@ export class MugenPosterGrid {
 		// posters do not arrive in that order (they arrive as they load), so the stage
 		// sorts rather than relying on the order they were added in.
 		this.stage.sortableChildren = true;
+		// The country first and the roster over it, which is the only stacking either of them
+		// needs: the backdrop is one picture and the wall sorts inside itself.
+		if (this.backdropOptions) {
+			this.basemap = new PixiBasemap(this.backdropOptions);
+			app.stage.addChild(this.basemap.view);
+		}
 		app.stage.addChild(this.stage);
 		// The picture goes in with the characters rather than under them, because it is sorted
 		// against them by the same rule they are sorted by each other — see {@link placeEmblem}.
@@ -585,8 +611,13 @@ export class MugenPosterGrid {
 
 		// The picture is one file and the roster is dozens, so it is asked for alongside
 		// them rather than ahead of them — it lands when it lands, and the layout it lands
-		// in is the one already on screen.
-		await Promise.all([this.loadCenterImage(), this.loadAll()]);
+		// in is the one already on screen. The country is asked for on the same terms, and
+		// draws itself into the box the layout has already settled.
+		await Promise.all([
+			this.loadCenterImage(),
+			this.basemap?.load() ?? Promise.resolve(),
+			this.loadAll()
+		]);
 	}
 
 	/**
@@ -599,16 +630,22 @@ export class MugenPosterGrid {
 	 * drawing it, which is what makes the file a picture of this screen rather than a second
 	 * playback of the same manifests.
 	 *
-	 * The wall is transparent everywhere a character is not standing, and that is the whole
-	 * of what this screen produces — so the recording is asked for `alpha`, which puts the
-	 * containers that can carry an alpha channel ahead of the ones that cannot. A browser
-	 * with none of them still gets its MP4, with the transparency flattened to black; which
-	 * of the two happened is in the {@link CanvasRecording} the caller names the file from.
+	 * Whether the transparency has to survive the encoding is decided by whether there is
+	 * anything behind the roster. A wall standing on the country is opaque from edge to edge,
+	 * so MP4 is asked for first and there is nothing to lose by getting it; a wall standing on
+	 * nothing is transparent everywhere a character is not, and that is the whole of what such
+	 * a screen produces — so the containers that can carry an alpha channel go first instead.
+	 * Which of the two happened is in the {@link CanvasRecording} the caller names the file
+	 * from either way.
 	 */
 	async record(durationMs: number, fps?: number): Promise<CanvasRecording> {
 		const canvas = this.app?.canvas;
 		if (!canvas) throw new Error('The wall is not on screen.');
-		return await recordCanvas(canvas as HTMLCanvasElement, { durationMs, fps, alpha: true });
+		return await recordCanvas(canvas as HTMLCanvasElement, {
+			durationMs,
+			fps,
+			alpha: !this.basemap
+		});
 	}
 
 	/**
@@ -650,6 +687,10 @@ export class MugenPosterGrid {
 		this.destroyed = true;
 		this.observer?.disconnect();
 		this.observer = null;
+		// Told before the app goes, so a mosaic still in flight drops its tiles rather than
+		// adding them to a container that is about to be torn down under it.
+		this.basemap?.destroy();
+		this.basemap = null;
 		if (this.app) {
 			this.app.canvas?.removeEventListener('webglcontextlost', this.onContextLost);
 			this.app.canvas?.removeEventListener('webglcontextrestored', this.onContextRestored);
@@ -863,6 +904,12 @@ export class MugenPosterGrid {
 		if (app.renderer.width !== width || app.renderer.height !== height) {
 			app.renderer.resize(width, height);
 		}
+
+		// The country fills the canvas rather than the field: it is what the wall stands on,
+		// and it frames itself on its own polygons. It ignores a call that names the size it
+		// has already drawn, which is most of them — a layout runs again for every character
+		// that lands.
+		this.basemap?.layout(width, height);
 
 		// The field is centred in whatever the cell size leaves over, both ways. Everything
 		// below is in cell widths off the field's own top-left corner until this puts it on

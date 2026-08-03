@@ -7,6 +7,7 @@
 		PosterGridStatus
 	} from '$utils/mugen/mugen-poster-grid';
 	import type { CanvasRecording } from '$utils/capture/record-canvas';
+	import type { PixiBasemapOptions } from '$utils/map/pixi-basemap';
 
 	// The roster to stand up, filled outward from the middle in the order it is given.
 	export let characters: PosterCharacter[] = [];
@@ -16,6 +17,9 @@
 	// A picture to hang over the three kept cells at the middle of the field. Left out, they
 	// are bare blue ground.
 	export let centerImage: string = '';
+	// The country to draw under the roster, inside the canvas. Left out, the wall stands on
+	// nothing and the canvas is transparent behind it.
+	export let backdrop: PixiBasemapOptions | null = null;
 	export let classes: string = '';
 
 	const dispatch = createEventDispatcher<{ status: PosterGridStatus; error: unknown }>();
@@ -42,6 +46,7 @@
 			characters,
 			maxCellWidth,
 			centerImage: centerImage || undefined,
+			backdrop: backdrop ?? undefined,
 			onStatus: (status) => dispatch('status', status)
 		});
 		try {
