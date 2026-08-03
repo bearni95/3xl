@@ -184,7 +184,8 @@ const AXIAL_STEPS: { q: number; r: number }[] = [
  * A ring of radius k is 6k cells: step out to one corner of it and walk the six sides,
  * k cells each. The centres come back in the lattice's own units, which is a conversion
  * and not a second geometry — an axial cell's row is the lattice's row, and its column
- * is that row's stagger already undone.
+ * is that row's stagger already undone. The two end rows are then squared up (see
+ * {@link centerEndRows}).
  */
 function spiralCells(count: number): GridPoint[] {
 	// Axial [q, r] as the lattice draws it: even rows sit on the indented half-step,
@@ -209,7 +210,61 @@ function spiralCells(count: number): GridPoint[] {
 			if (cells.length >= count) break;
 		}
 	}
+	return centerEndRows(cells);
+}
+
+/**
+ * Slide the field's first and last rows back under the middle of it.
+ *
+ * A ring is walked from one corner, so a roster that does not finish the ring it is on
+ * leaves the outermost row it reached hanging off one side — the wall's own top and
+ * bottom edges, which are exactly the two rows an eye squares the shape up by. The rows
+ * between them are held on both sides by the rings that closed around them and are
+ * already true; these two are not, and nothing but the count decides where they stop.
+ *
+ * So the two are re-hung under the middle of what *is* closed: the field measured across
+ * the rows in between, which is why a wall of one or two rows is left alone — there is
+ * nothing under them to be centred on.
+ *
+ * The move is by **whole cells**. Half of one would put the row on the other parity's
+ * positions, where it stacks squarely on the row below instead of nesting into its
+ * slants, and a hex field that has stopped interlocking is no longer one. So a row lands
+ * within half a cell of the middle rather than on it, which is as centred as this ground
+ * can be.
+ */
+function centerEndRows(cells: GridPoint[]): GridPoint[] {
+	const rows = new Map<number, GridPoint[]>();
+	for (const cell of cells) {
+		// Rows are a fixed step apart, so the step is the key; the arithmetic is exact
+		// enough that rounding it recovers the row index a cell was built from.
+		const row = Math.round(cell.y / HEX_ROW_STEP);
+		const found = rows.get(row);
+		if (found) found.push(cell);
+		else rows.set(row, [cell]);
+	}
+
+	const indices = [...rows.keys()].sort((a, b) => a - b);
+	if (indices.length < 3) return cells;
+	const ends = [indices[0], indices[indices.length - 1]];
+	const middle = span(indices.slice(1, -1).flatMap((row) => rows.get(row) ?? []));
+
+	for (const row of ends) {
+		const cellsInRow = rows.get(row) ?? [];
+		const off = middle - span(cellsInRow);
+		// The whole number of cells that leaves the row nearest the middle — and, on a tie,
+		// none of them. A row already half a cell out is as close as it can get, and moving
+		// it would only swap the side it hangs off.
+		const shift = Math.sign(off) * Math.ceil(Math.abs(off) - 0.5);
+		if (!shift) continue;
+		for (const cell of cellsInRow) cell.x += shift;
+	}
 	return cells;
+}
+
+/** The middle of what a set of cells spans across, in cell widths. */
+function span(cells: GridPoint[]): number {
+	const xs = cells.map((cell) => cell.x);
+	return (Math.min(...xs) + Math.max(...xs)) / 2;
 }
 
 /**
