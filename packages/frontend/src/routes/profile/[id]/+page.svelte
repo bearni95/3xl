@@ -400,18 +400,28 @@
 	load as well as on More. Nothing here is measured or reacted to either: what is left over
 	is the one thing flexbox works out for itself, and it re-works it on every resize without
 	being asked.
-	Below `md` none of that holds, and it must not: the row is stacked there (see below), so
-	the account alone is taller than the screen and there is nothing left over to give — the
-	collection would be handed zero and a reader would scroll past the towns to find nothing
-	under them. So on a phone this is an ordinary page: `min-h-screen`, everything at its own
-	length, one scroll down the document, and no box inside it scrolling separately.
-	The column keeps `overflow-y-auto` at both sizes. On a phone nothing overflows it (its
-	height is its content); on a desktop the collection absorbs the slack, so it only ever
-	catches the window too short to hold the account row on its own — where the choice is a
-	page that scrolls or a page with its foot cut off. -->
-<div class="relative z-10 flex min-h-screen w-full justify-center p-4 md:h-screen">
+	Below `md` the same screenful is spent differently. There is no room to put three things
+	beside each other, so the row is stacked (see below) and the account alone fills a screen
+	— which means the page is two screens and a reader has to travel between them. Rather
+	than let them drift through that on a free scroll, it is **two panels a swipe apart**:
+	the column is a scroll-snap container (`snap-y snap-mandatory`) and each of the two
+	children is exactly one scrollport tall and snaps to its top. So a swipe does not leave
+	the reader looking at the foot of the account and the head of the collection at once; it
+	lands on one thing or the other, which is what a phone screen holds anyway.
+	`h-full` on the panels and not `h-screen`: the container is inside this box's padding, so
+	a viewport-tall panel would be taller than the port it snaps in and no panel would ever be
+	wholly on screen. A percentage of the container is right by construction, whatever padding
+	stands around it.
+	The panels are turned off at `md` (`md:snap-none`, and each panel back to its own height),
+	where the three columns fit beside each other and the whole page is one screen already.
+	Which is why this box is `h-screen` at every size now: on a phone it is the frame the two
+	panels are cut to, above it the single screen the row and the collection share.
+	The lists *inside* the panels scroll on their own and are told not to hand their
+	overscroll back to this container (see `overscroll-contain` on each): a reader who has
+	swiped down to the end of the towns is reading the towns, not asking for the next panel. -->
+<div class="relative z-10 flex h-screen w-full justify-center p-4">
 	<div
-		class="flex w-full max-w-7xl flex-col items-center gap-6 overflow-y-auto py-4 md:h-full"
+		class="flex h-full w-full max-w-7xl snap-y snap-mandatory flex-col items-center gap-0 overflow-y-auto py-0 md:snap-none md:gap-6 md:py-4"
 	>
 		{#if loading}
 			<div
@@ -461,8 +471,16 @@
 				name at 2xl, a side of three cards and a list of place names, all at a third of
 				360px, is three things none of which can be read. So below `md` they are simply
 				put one under another, in the order they are already in — which is the order the
-				page is read in anyway, and why nothing has to be reordered to stack. -->
-			<div class="grid w-full shrink-0 grid-cols-1 items-start gap-3 md:grid-cols-3">
+				page is read in anyway, and why nothing has to be reordered to stack.
+				Stacked, it is also the first of the two panels: one scrollport tall and snapping
+				to its top. Its three rows are `auto auto 1fr`, so the card and the side take what
+				they need and the towns take the whole of the rest — which is what gives that
+				list a height to scroll inside, and what keeps the panel from running past the
+				screen it is cut to. At `md` the rows go back to being the grid's own business
+				and the panel back to its own height. -->
+			<div
+				class="grid h-full w-full shrink-0 snap-start grid-cols-1 grid-rows-[auto_auto_1fr] items-start gap-3 md:h-auto md:grid-cols-3 md:grid-rows-none"
+			>
 				<!-- Who they are and the one thing a reader of this page can do, in that order
 					and in the one column: the card is what the page is about, and the button is
 					what to do about it. Stacked rather than given a cell each because a button
@@ -542,9 +560,10 @@
 						own minimum would be.
 						Stacked, it has no sisters to take a height from — a row of one whose only
 						content is out of flow is a row of nothing, and the list would simply not be
-						drawn. So below `md` it is given a height of its own to scroll inside: 18rem,
-						which is a screenful of a phone less the card and the side above it. -->
-					<div class="relative min-h-72 self-stretch md:min-h-0">
+						drawn. What gives it one there is the panel's `1fr` last row: the towns take
+						whatever the card and the side leave of the screen, which is a height that
+						answers to the phone it is on rather than a figure picked here. -->
+					<div class="relative min-h-0 self-stretch">
 						<!-- Pinned to the whole of the cell, so it is exactly as tall as the row
 							however tall that turns out to be. A column of two: the field, which keeps
 							its place, and under it the list, which is the only thing that scrolls
@@ -576,8 +595,12 @@
 
 							<!-- The list itself, scrolling in the one axis. `pe-1` keeps the rows clear
 								of the scrollbar rather than letting it run over their ends. No gap: what
-								spaces one row from the next is the rule between them. -->
-							<div class="flex min-h-0 flex-1 flex-col overflow-y-auto pe-1">
+								spaces one row from the next is the rule between them.
+								`overscroll-contain` is what keeps this list its own: on a phone the column
+								outside it snaps between two panels, and without it a swipe that ran the
+								towns to their end would carry straight on into the next panel. A reader at
+								the foot of a list is reading the list. -->
+							<div class="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain pe-1">
 								<!-- Each town is the row and nothing around it now — the plate it used to
 									carry is the column's. `flex-none` because these are flex items in a
 									scroller: a column of them taller than the box would otherwise be squeezed
@@ -640,14 +663,13 @@
 					otherwise a page a reader falls down — and the More button, which is the thing
 					they came to the foot of it for, would be a screen further away with every
 					press of itself.
-					On a phone it is its own length and the page scrolls, so neither class applies
-					there: the grid below is `flex-auto`, which in a plate of no stated height is
-					its content, and a scroller that never overflows draws no scrollbar. Which is
-					what a collection should be on a phone anyway — the whole thing is a column of
-					two cards wide, and a box scrolling inside a page that scrolls is two ways to
-					move one list. -->
+					On a phone it does not have to take what is left of anything: it is the second
+					panel, a scrollport tall on its own account (`h-full`), snapped to. Which comes
+					to the same thing for the grid inside it — a plate of a stated height, cards
+					scrolling within it — by a different route, so the same two classes do the work
+					at both sizes. -->
 				<div
-					class="flex w-full flex-col gap-3 rounded-box bg-base-100/80 p-2 shadow-xl md:min-h-0 md:flex-1"
+					class="flex h-full w-full shrink-0 snap-start flex-col gap-3 rounded-box bg-base-100/80 p-2 shadow-xl md:h-auto md:min-h-0 md:flex-1"
 				>
 					<!-- The cards are what scrolls, not the plate: the rule and the More button
 						under them keep their place at its foot, so the way to see more of a
@@ -657,9 +679,12 @@
 						nothing before the cap ever came into it. `min-h-0` is the other half: a flex
 						item will not shrink below its content without it, and a grid that cannot
 						shrink is a plate that cannot be capped. `pe-1` keeps the scrollbar off the
-						last column of cards. -->
+						last column of cards.
+						`overscroll-contain` for the same reason the towns list carries it: on a phone
+						this grid is inside a panel that snaps, and running out of cards is not a
+						request to be taken back to the account. -->
 					<div
-						class="grid min-h-0 w-full flex-auto grid-cols-2 gap-3 overflow-y-auto pe-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+						class="grid min-h-0 w-full flex-auto grid-cols-2 gap-3 overflow-y-auto overscroll-contain pe-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
 					>
 						<!-- `alwaysReveal`, as on the roster and for the same reason twice over. A
 							reveal is normally spent once per character across the whole page, so on a
