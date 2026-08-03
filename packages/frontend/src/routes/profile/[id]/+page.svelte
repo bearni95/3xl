@@ -388,9 +388,12 @@
 	Top-aligned, not centred: a collection is as tall as it is, and a flex box that centres
 	content taller than itself puts the top of it out of reach above the scroll.
 	No background of its own any more: the map is behind it, and a fill here would be a lid
-	on it. So this layer is `relative z-10` — over the map — and everything on it that is a
-	reading rather than a picture stands on a plate of its own, exactly as the furniture
-	over the map at the root does. A statue needs none: it brings its own ground. -->
+	on it. So this layer is `relative z-10` — over the map — and everything on it stands on
+	a plate, exactly as the furniture over the map at the root does: three of them, one per
+	column of the row, and a fourth under the collection. The statues were the exception for
+	a while, bringing their own ground as they do — but the exception is what made the page
+	read as two, plates at the top and bare cards below. -->
+
 <div class="relative z-10 flex min-h-screen w-full justify-center p-4">
 	<div class="flex w-full max-w-7xl flex-col items-center gap-6 py-4">
 		{#if loading}
@@ -585,31 +588,49 @@
 				with a gap beside it, at any width. That is why the tiers stop at six rather
 				than passing through five. -->
 			{#if visible.length > 0}
-				<div class="grid w-full grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-					{#each visible as card}
-						<CharacterStatue
-							label={card.label}
-							basePath={card.basePath}
-							color={card.color}
-							box={card.box ?? SpawnBox.Black}
-							locationName={card.locationName}
-							spawnedAt={card.spawnedAt ?? null}
-							showId={card.showId}
-						/>
-					{/each}
-				</div>
+				<!-- On a plate, like the two columns above it: the same base-100 at four fifths,
+					the same rounding, the same shadow. A statue does bring its own ground — it is
+					a card standing in a lit box, which is why this grid stood on nothing for as
+					long as it did — but the row above it is two plates wide now, and a page whose
+					top half is printed on sheets and whose bottom half is not reads as two pages.
+					The plate holds the More button as well, so what is under it belongs to the
+					grid it adds to rather than floating off the foot of the page. -->
+				<div class="flex w-full flex-col gap-3 rounded-box bg-base-100/80 p-2 shadow-xl">
+					<div class="grid w-full grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+						{#each visible as card}
+							<CharacterStatue
+								label={card.label}
+								basePath={card.basePath}
+								color={card.color}
+								box={card.box ?? SpawnBox.Black}
+								locationName={card.locationName}
+								spawnedAt={card.spawnedAt ?? null}
+								showId={card.showId}
+							/>
+						{/each}
+					</div>
 
-				<!-- Another twelve, under the ones already standing, carrying how many are
-					still to come — a collection is as long as it is, and a bare "more" leaves a
-					reader pressing without knowing whether they are near the end of it. It goes
-					away when there are none left rather than turning into a disabled button
-					that says the collection is over: the end of a collection is the last card,
-					and a row of nothing under it says so. -->
-				{#if remaining > 0}
-					<button type="button" class="btn btn-outline btn-sm" on:click={showMore}>
-						{$_('profile.public.more', { values: { count: remaining } })}
-					</button>
-				{/if}
+					<!-- Another twelve, under the ones already standing, carrying how many are
+						still to come — a collection is as long as it is, and a bare "more" leaves a
+						reader pressing without knowing whether they are near the end of it. It goes
+						away when there are none left rather than turning into a disabled button
+						that says the collection is over: the end of a collection is the last card,
+						and a row of nothing under it says so.
+						A rule over it, as between the towns beside it: it is not one of the cards,
+						and a list wants a line where it stops. `self-center` keeps the button the
+						width of its own lettering — the plate is a flex column, which would
+						otherwise stretch it across the whole page. -->
+					{#if remaining > 0}
+						<div class="divider my-0"></div>
+						<button
+							type="button"
+							class="btn btn-outline btn-sm self-center"
+							on:click={showMore}
+						>
+							{$_('profile.public.more', { values: { count: remaining } })}
+						</button>
+					{/if}
+				</div>
 			{/if}
 		{/if}
 	</div>
