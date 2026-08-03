@@ -22,9 +22,10 @@
  * rules of a duel and there is no duel here, which is why the lattice is asked for apart
  * from the board that is usually drawn on it.
  *
- * **The field grows from the middle out.** The roster is laid on a hex *spiral*: the
- * first character takes the centre cell, and the rest ring it, each ring walked round
- * before the next begins ({@link spiralCells}). So the wall is a hexagon of hexagons
+ * **The field grows from the middle out.** The roster is laid on a hex *spiral*, wound
+ * from the three cells at the middle that are kept clear ({@link KEPT_CELLS}): the first
+ * character takes the first cell outside them and the rest ring it, each ring walked
+ * round before the next begins ({@link spiralCells}). So the wall is a hexagon of hexagons
  * rather than a paragraph of them — the shape a hex field makes when nothing crops it —
  * and the roster reads outward from its middle. A rectangle of cells was the arrangement
  * before, and its one virtue was that it reflowed: this one has a size of its own, so it
@@ -36,11 +37,11 @@
  * The hexagons are painted, faintly. On the board they are drawn at alpha 0 — the field
  * is real ground that is deliberately unmarked — but here the cell *is* the subject: it
  * is the box every character was fitted into, and a size is easier to read against a
- * drawn one. Two of them are not faint: the blue cell at the middle, which is the one the
- * spiral was wound out from, and the red line down the field's own middle, halving it the
- * way the board's white column stands between its two halves. The two are not the same
- * place once the outer ring is unfinished — the field grows lopsided before it closes,
- * and saying so is the point of drawing both.
+ * drawn one. Two marks are not faint: the blue trio at the middle, which is the ground the
+ * spiral was wound out from and the only cells nobody stands on, and the red line down the
+ * field's own middle, halving it the way the board's white column stands between its two
+ * halves. The two are not the same place once the outer ring is unfinished — the field
+ * grows lopsided before it closes, and saying so is the point of drawing both.
  *
  * One canvas rather than one per character: a browser allows a handful of WebGL
  * contexts at a time (see `release-context`), and the roster is dozens of characters —
@@ -101,6 +102,14 @@ interface Poster {
 	crownOffset: number;
 }
 
+/** One hexagon of the wall: its centre in cell widths, off the field's top-left corner —
+ * the lattice's own units, put on the canvas when the field is drawn — and whether it is
+ * one of the kept middle ones nobody stands on ({@link KEPT_CELLS}). */
+interface WallCell {
+	centre: GridPoint;
+	kept: boolean;
+}
+
 /** How the wall is getting on, reported as it loads. */
 export interface PosterGridStatus {
 	/** Characters drawn so far, and how many were asked for. */
@@ -127,8 +136,8 @@ export interface MugenPosterGridOptions {
 	 * ground the board leaves invisible. */
 	cellColor?: number;
 	cellLineColor?: number;
-	/** Fill of the one cell the spiral is wound from, which is the only cell on the wall
-	 * that can be named without counting. */
+	/** Fill of the three cells at the middle — the ground the spiral is wound from, which
+	 * is drawn and kept clear (see {@link KEPT_CELLS}). */
 	centerCellColor?: number;
 	/** The line down the middle of the field. */
 	halvingLineColor?: number;
@@ -142,11 +151,31 @@ const DEFAULTS = {
 	cellColor: 0x272e37,
 	cellLineColor: 0x3b4451,
 	// The board's own two, which is what makes the pair read as a board's marks rather
-	// than as decoration: blue for the cell everything is wound from, red for the line
+	// than as decoration: blue for the ground everything is wound from, red for the line
 	// that halves what it grew into.
 	centerCellColor: 0x3b82f6,
 	halvingLineColor: 0xef4444
 };
+
+/**
+ * The cells at the middle of the field that are kept clear: the one the spiral is wound
+ * from, the one immediately to its right, and the one below the pair of them — which on
+ * a hex field is a single cell, since a row nests into the slants of the row above and
+ * every two neighbours have exactly one cell under both.
+ *
+ * They are drawn like any other cell and painted blue, and **nobody stands on them**: the
+ * spiral steps over them as it winds, so the roster begins on the first cell outside the
+ * three and the count of characters is unaffected by their being there. They are the one
+ * part of the wall that is ground rather than roster.
+ */
+const KEPT_CELLS: { q: number; r: number }[] = [
+	{ q: 0, r: 0 },
+	{ q: 1, r: 0 },
+	{ q: 0, r: 1 }
+];
+
+const isKept = (cell: { q: number; r: number }): boolean =>
+	KEPT_CELLS.some((kept) => kept.q === cell.q && kept.r === cell.r);
 
 /**
  * Room kept above the field's top row, in cell widths.
@@ -177,37 +206,45 @@ const AXIAL_STEPS: { q: number; r: number }[] = [
 ];
 
 /**
- * `count` cells wound outward from the middle, as centres in cell widths — the centre
- * cell, then each ring around it walked in turn, so the roster fills the field from its
- * middle rather than from a corner.
+ * The field for `count` characters: the kept middle ({@link KEPT_CELLS}) and then as many
+ * cells as there are characters, wound outward from that middle — each ring around it
+ * walked in turn, so the roster fills the field from the middle rather than from a corner.
  *
  * A ring of radius k is 6k cells: step out to one corner of it and walk the six sides,
- * k cells each. The centres come back in the lattice's own units, which is a conversion
- * and not a second geometry — an axial cell's row is the lattice's row, and its column
- * is that row's stagger already undone. The two end rows are then squared up (see
- * {@link centerEndRows}).
+ * k cells each. Cells of the kept middle are walked over rather than counted, so `count`
+ * characters always get `count` cells to stand on and the middle costs the wall its own
+ * three cells of ground. The centres come back in the lattice's own units, which is a
+ * conversion and not a second geometry — an axial cell's row is the lattice's row, and
+ * its column is that row's stagger already undone. The two end rows are then squared up
+ * (see {@link centerEndRows}).
  */
-function spiralCells(count: number): GridPoint[] {
+function spiralCells(count: number): WallCell[] {
 	// Axial [q, r] as the lattice draws it: even rows sit on the indented half-step,
 	// odd rows on the other, which is exactly the nesting the lattice already knows.
 	const centre = ({ q, r }: { q: number; r: number }): GridPoint =>
 		latticeCenter(q + Math.floor(r / 2), r, r % 2 === 0);
 
-	const cells: GridPoint[] = [];
-	if (count <= 0) return cells;
-	cells.push(centre({ q: 0, r: 0 }));
+	if (count <= 0) return [];
+	// The kept three are laid first and whole. Reached in the winding they would be at
+	// the mercy of how far it got — a short roster would leave the middle half drawn,
+	// and it is a mark on the field rather than part of the roster's shape.
+	const cells: WallCell[] = KEPT_CELLS.map((kept) => ({ centre: centre(kept), kept: true }));
 
-	for (let ring = 1; cells.length < count; ring++) {
+	let stood = 0;
+	for (let ring = 1; stood < count; ring++) {
 		// Start at the ring's corner in one direction, then walk the six sides. Which
 		// corner is arbitrary — it only decides where a half-finished outer ring has its
 		// gap — so it is the one that starts the walk along the top.
 		let cell = { q: -ring, r: ring };
 		for (const step of AXIAL_STEPS) {
-			for (let i = 0; i < ring && cells.length < count; i++) {
-				cells.push(centre(cell));
+			for (let i = 0; i < ring && stood < count; i++) {
+				if (!isKept(cell)) {
+					cells.push({ centre: centre(cell), kept: false });
+					stood++;
+				}
 				cell = { q: cell.q + step.q, r: cell.r + step.r };
 			}
-			if (cells.length >= count) break;
+			if (stood >= count) break;
 		}
 	}
 	return centerEndRows(cells);
@@ -232,12 +269,12 @@ function spiralCells(count: number): GridPoint[] {
  * within half a cell of the middle rather than on it, which is as centred as this ground
  * can be.
  */
-function centerEndRows(cells: GridPoint[]): GridPoint[] {
-	const rows = new Map<number, GridPoint[]>();
+function centerEndRows(cells: WallCell[]): WallCell[] {
+	const rows = new Map<number, WallCell[]>();
 	for (const cell of cells) {
 		// Rows are a fixed step apart, so the step is the key; the arithmetic is exact
 		// enough that rounding it recovers the row index a cell was built from.
-		const row = Math.round(cell.y / HEX_ROW_STEP);
+		const row = Math.round(cell.centre.y / HEX_ROW_STEP);
 		const found = rows.get(row);
 		if (found) found.push(cell);
 		else rows.set(row, [cell]);
@@ -256,14 +293,14 @@ function centerEndRows(cells: GridPoint[]): GridPoint[] {
 		// it would only swap the side it hangs off.
 		const shift = Math.sign(off) * Math.ceil(Math.abs(off) - 0.5);
 		if (!shift) continue;
-		for (const cell of cellsInRow) cell.x += shift;
+		for (const cell of cellsInRow) cell.centre.x += shift;
 	}
 	return cells;
 }
 
 /** The middle of what a set of cells spans across, in cell widths. */
-function span(cells: GridPoint[]): number {
-	const xs = cells.map((cell) => cell.x);
+function span(cells: WallCell[]): number {
+	const xs = cells.map((cell) => cell.centre.x);
 	return (Math.min(...xs) + Math.max(...xs)) / 2;
 }
 
@@ -539,20 +576,23 @@ export class MugenPosterGrid {
 			y: (point.y - field.top + HEADROOM) * cellWidth
 		});
 
+		// The whole field is drawn — the kept middle in blue, everything else faint.
 		backdrop.clear();
-		this.posters.forEach((poster, index) => {
-			const centre = cells[index];
-			const outline = latticeCorners(centre).flatMap((corner) => {
+		for (const cell of cells) {
+			const outline = latticeCorners(cell.centre).flatMap((corner) => {
 				const point = onCanvas(corner);
 				return [point.x, point.y];
 			});
-			// The first cell of the spiral is the middle of the field — the one the whole
-			// wall was wound out from — so it is painted rather than counted to.
 			backdrop
 				.poly(outline)
-				.fill(index === 0 ? this.centerCellColor : this.cellColor)
+				.fill(cell.kept ? this.centerCellColor : this.cellColor)
 				.stroke({ width: 1, color: this.cellLineColor });
+		}
 
+		// The roster stands on the rest of it, in the order the spiral reached them.
+		const stands = cells.filter((cell) => !cell.kept);
+		this.posters.forEach((poster, index) => {
+			const centre = stands[index].centre;
 			// The fit is asked again per layout because the box it answers has just been
 			// decided; it is the same question the board asks, of the same function.
 			const fitScale = characterFitScale(poster.frames, box, poster.renderScale);
@@ -614,16 +654,15 @@ export class MugenPosterGrid {
  * its size. A hexagon reaches half a cell either side of its centre and half its own
  * height above and below it, so the extent is the centres' spread plus that. An empty
  * field is one cell's worth, so a wall with nothing on it yet is still a canvas. */
-function fieldExtent(centres: GridPoint[]): {
+function fieldExtent(cells: WallCell[]): {
 	left: number;
 	top: number;
 	width: number;
 	height: number;
 } {
-	if (centres.length === 0)
-		return { left: -0.5, top: -HEX_HEIGHT / 2, width: 1, height: HEX_HEIGHT };
-	const xs = centres.map((centre) => centre.x);
-	const ys = centres.map((centre) => centre.y);
+	if (cells.length === 0) return { left: -0.5, top: -HEX_HEIGHT / 2, width: 1, height: HEX_HEIGHT };
+	const xs = cells.map((cell) => cell.centre.x);
+	const ys = cells.map((cell) => cell.centre.y);
 	const left = Math.min(...xs) - 0.5;
 	const top = Math.min(...ys) - HEX_HEIGHT / 2;
 	return {

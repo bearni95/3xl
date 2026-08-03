@@ -32,8 +32,8 @@
 				combat board sizes it — the shared fit, the character's own
 				<code class="font-mono">renderScale</code>, and the crown alignment that stands it by its
 				head. They stand on the board's own hex field, wound out from the middle in registry
-				order, each on its cell's foot line, so heights compare across the wall. The red line
-				halves the field.
+				order, each on its cell's foot line, so heights compare across the wall. The three
+				blue cells at the middle are kept clear; the red line halves the field.
 			</p>
 			<div class="flex flex-wrap gap-4 text-sm">
 				<a class="link link-primary" href="/characters">Characters →</a>
