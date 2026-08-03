@@ -333,6 +333,17 @@
 {#if mapFocus}
 	<div class="pointer-events-none fixed inset-0 z-0">
 		<WorldMap overlays={mapOverlays} focusBounds={mapFocus} classes="h-full w-full" />
+		<!-- The veil the page is read through: white, half of it at the top and a fifth at the
+			foot, so the imagery is knocked back hardest where the account and its plates stand
+			and comes through strongest under the collection, which is all pictures anyway.
+			Over the map and under the page, which is a place in the stack rather than a
+			decision each of them makes: `z-10` clears every Leaflet pane, since app.css caps
+			the whole map — panes, controls and all — under 10 (see the flattening block there),
+			and the wrapper this is inside is itself a stacking context at `z-0` under the
+			content's `z-10`. So it is only ever over this map, whatever Leaflet puts in it. -->
+		<div
+			class="absolute inset-0 z-10 bg-gradient-to-b from-white/50 to-white/20"
+		></div>
 	</div>
 {/if}
 
