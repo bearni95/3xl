@@ -105,9 +105,43 @@ interface LoadedFrame {
 	duration: number;
 }
 
+/**
+ * Where something is in a cycle: the frame showing, and how long it has been showing for.
+ *
+ * Every animated thing on this wall is one of these and a list of frames, and there is one
+ * loop that moves them on ({@link advanceCycle}) — the characters' idles, decoded out of
+ * MUGEN, and the picture's own rise and fall, which is written down here as frames for
+ * exactly that reason. A second way of animating something would be a second thing to keep
+ * in time with the ticker.
+ */
+interface CycleCursor {
+	frameIndex: number;
+	frameElapsed: number;
+}
+
+/**
+ * Step a cursor on by `deltaMs`, holding each frame for its own duration and wrapping at
+ * the end of the cycle.
+ *
+ * The clock is the ticker's elapsed milliseconds rather than a count of ticks, so a cycle
+ * runs at the speed its durations say on a slow frame as well as a fast one. The while
+ * loop is because one tick can be longer than one frame — a tab coming back to the front
+ * hands over a large delta — and the guard is what stops it there: a cycle of zero-length
+ * frames would otherwise be an endless loop, and a cycle cannot be more than one lap behind
+ * in a way that shows.
+ */
+function advanceCycle(cursor: CycleCursor, frames: { duration: number }[], deltaMs: number): void {
+	cursor.frameElapsed += deltaMs;
+	let guard = frames.length;
+	while (cursor.frameElapsed >= frames[cursor.frameIndex].duration && guard-- > 0) {
+		cursor.frameElapsed -= frames[cursor.frameIndex].duration;
+		cursor.frameIndex = (cursor.frameIndex + 1) % frames.length;
+	}
+}
+
 /** One character on the wall: its sprite, its cycle, the playback cursor, and the two
  * things its own definition says about how it is drawn. */
-interface Poster {
+interface Poster extends CycleCursor {
 	/** The character it stands for, which is what anything outside the canvas names it by. */
 	id: string;
 	/** Its place in the roster it was given, which is the place it takes on the wall
@@ -115,8 +149,6 @@ interface Poster {
 	order: number;
 	sprite: Sprite;
 	frames: LoadedFrame[];
-	frameIndex: number;
-	frameElapsed: number;
 	/** The character's authored render scale, read once from its definition. */
 	renderScale: number;
 	/**
@@ -203,10 +235,11 @@ export interface MugenPosterGridOptions {
 	centerCellColor?: number;
 	/**
 	 * A picture to hang over the kept trio: the one thing the wall draws that is neither
-	 * ground nor roster. Fitted whole inside the three cells' own extent and centred on it,
-	 * so it is as wide as the pair at the top of the trio and its own shape decides the
-	 * rest. Left out, the trio is bare blue as before, and a URL that will not load leaves
-	 * it that way too — the wall is about the characters.
+	 * ground nor roster. Fitted whole inside the three cells' own extent and hung from the
+	 * top of it, so it is as wide as the pair at the head of the trio and its own shape
+	 * decides the rest; its corners are rounded ({@link EMBLEM_CORNER}) and it rises and
+	 * falls where it hangs ({@link EMBLEM_BOB}). Left out, the trio is bare blue as before,
+	 * and a URL that will not load leaves it that way too — the wall is about the characters.
 	 */
 	centerImage?: string;
 	/** The line down the middle of the field. */
@@ -226,6 +259,45 @@ const DEFAULTS = {
 	centerCellColor: 0x3b82f6,
 	halvingLineColor: 0xef4444
 };
+
+/**
+ * How far the picture's corners are rounded, in **cell widths**.
+ *
+ * In cell widths and not in pixels because everything else drawn here is: the cell is what
+ * gives when the page narrows, and a radius fixed in pixels would be a soft corner on a
+ * wide page and a blunt one on a narrow, on the same picture. This way the rounding is a
+ * fixed fraction of the picture — a twentieth of its width, at the two cells across the
+ * trio's own extent gives it — however big the page draws it.
+ */
+const EMBLEM_CORNER = 0.1;
+
+/**
+ * The picture's idle: how far it rises above where it hangs, in cell widths, and over how
+ * many frames.
+ *
+ * It is a **cycle of frames** and not a curve read off the clock, because the wall already
+ * has a way of animating something and this is it: a list of frames with a duration apiece
+ * and a cursor stepped by {@link advanceCycle}, exactly as every character's idle is played
+ * off the decoded MUGEN cycles. So the picture rises the way the roster breathes — in held
+ * steps rather than continuously — and it is the same loop and the same clock keeping both.
+ *
+ * The frames themselves are a cosine sampled round one turn, which is the shape a thing
+ * bobbing has: slowest at the top and bottom of the rise, quickest through the middle.
+ * Written out as the eight numbers it comes to, the list would say nothing about why those
+ * eight; computed, the cycle can be made finer or slower by the two constants over it.
+ */
+const EMBLEM_RISE = 0.06;
+const EMBLEM_BOB_FRAMES = 8;
+const EMBLEM_BOB_HOLD = 150;
+const EMBLEM_BOB: { offset: number; duration: number }[] = Array.from(
+	{ length: EMBLEM_BOB_FRAMES },
+	(_, index) => ({
+		// Up the canvas is a smaller y, so a rise is negative. Zero on the first frame, the
+		// whole rise on the middle one, and back down — the cycle joins itself.
+		offset: (-EMBLEM_RISE * (1 - Math.cos((2 * Math.PI * index) / EMBLEM_BOB_FRAMES))) / 2,
+		duration: EMBLEM_BOB_HOLD
+	})
+);
 
 /**
  * The cells at the middle of the field that are kept clear: two side by side, and the one
@@ -324,7 +396,10 @@ function rowPlaces(row: number, width: number): WallPlace[] {
  * own three cells of ground.
  */
 function fieldOfWidth(width: number, count: number): WallCell[] {
-	const cells: WallCell[] = KEPT_CELLS.map((kept) => ({ centre: cellCentre(kept), kept: true }));
+	const cells: WallCell[] = KEPT_CELLS.map((kept) => ({
+		centre: cellCentre(kept),
+		kept: true
+	}));
 	let stood = 0;
 	for (let step = 0; stood < count; step++) {
 		for (const place of rowPlaces(rowAt(step), width)) {
@@ -429,10 +504,20 @@ export class MugenPosterGrid {
 	// Graphics rather than one because a Graphics is drawn in a single pass, so nothing can
 	// be got in between what one of them draws.
 	private backdrop: Graphics | null = null;
-	private emblem: Sprite | null = null;
-	// Whether the picture arrived. Not the sprite's own visibility, which the layout sets
+	// The picture is a container of two: the picture itself, and the rounded rectangle that
+	// is both added to it and set as its mask, which is how a corner is rounded on something
+	// drawn from a texture. The container is what moves, so the crop rises with what it is
+	// cropping and the bob cannot slide the picture out from under its own corners.
+	private emblem: Container | null = null;
+	private emblemPicture: Sprite | null = null;
+	private emblemCrop: Graphics | null = null;
+	// Whether the picture arrived. Not the container's own visibility, which the layout sets
 	// from this *and* from whether there is a trio drawn to hang it over yet.
 	private emblemLoaded = false;
+	// Where the layout hung it and what a cell is worth in pixels, kept so the bob can be
+	// applied off the ticker without re-running a layout, and its cursor into that cycle.
+	private emblemHome: { x: number; y: number; cellWidth: number } | null = null;
+	private emblemCursor: CycleCursor = { frameIndex: 0, frameElapsed: 0 };
 	private marks: Graphics | null = null;
 	private stage: Container | null = null;
 	private observer: ResizeObserver | null = null;
@@ -490,9 +575,15 @@ export class MugenPosterGrid {
 		this.backdrop = new Graphics();
 		// Hung by the middle of its own top edge, which is the point the layout puts on the
 		// trio; blank and hidden until (and unless) a picture is asked for and lands.
-		this.emblem = new Sprite();
-		this.emblem.anchor.set(0.5, 0);
+		this.emblem = new Container();
 		this.emblem.visible = false;
+		this.emblemPicture = new Sprite();
+		this.emblemPicture.anchor.set(0.5, 0);
+		this.emblemCrop = new Graphics();
+		this.emblem.addChild(this.emblemPicture, this.emblemCrop);
+		// A mask has to be in the display list for its own transform to be worked out, which
+		// is why the crop is a child of what it crops as well as its mask.
+		this.emblem.mask = this.emblemCrop;
 		this.marks = new Graphics();
 		this.stage = new Container();
 		// The rows overlap — a character rises into the row above it — so who is in front
@@ -532,6 +623,9 @@ export class MugenPosterGrid {
 		this.host = null;
 		this.backdrop = null;
 		this.emblem = null;
+		this.emblemPicture = null;
+		this.emblemCrop = null;
+		this.emblemHome = null;
 		this.marks = null;
 		this.stage = null;
 	}
@@ -547,8 +641,8 @@ export class MugenPosterGrid {
 		if (!this.centerImage) return;
 		try {
 			const texture = await Assets.load<Texture>(this.centerImage);
-			if (this.destroyed || !this.emblem) return;
-			this.emblem.texture = texture;
+			if (this.destroyed || !this.emblemPicture) return;
+			this.emblemPicture.texture = texture;
 			this.emblemLoaded = true;
 			// It has a size now, which is what the fit is worked out from.
 			this.layout();
@@ -802,7 +896,9 @@ export class MugenPosterGrid {
 		onCanvas: (point: GridPoint) => GridPoint
 	): void {
 		const emblem = this.emblem;
-		if (!emblem) return;
+		const picture = this.emblemPicture;
+		const crop = this.emblemCrop;
+		if (!emblem || !picture || !crop) return;
 		const kept = cells.filter((cell) => cell.kept);
 		// Both conditions asked afresh every layout, since either can turn up second: the
 		// picture lands whenever the network gives it, and the trio is drawn from the first
@@ -811,14 +907,38 @@ export class MugenPosterGrid {
 		if (!emblem.visible) return;
 
 		const trio = fieldExtent(kept);
-		const at = onCanvas({ x: trio.left + trio.width / 2, y: trio.top });
-		const picture = emblem.texture;
+		const art = picture.texture;
 		const fit = Math.min(
-			(trio.width * cellWidth) / picture.width,
-			(trio.height * cellWidth) / picture.height
+			(trio.width * cellWidth) / art.width,
+			(trio.height * cellWidth) / art.height
 		);
-		emblem.position.set(at.x, at.y);
-		emblem.scale.set(fit);
+		picture.scale.set(fit);
+
+		// The corners, cut out of the container the picture hangs in. Drawn in the same
+		// canvas pixels the picture is laid out in — the container is unscaled, the picture
+		// carries the fit — so the radius is the cell's own, not the artwork's, and does not
+		// have to be divided back out of anything.
+		const across = art.width * fit;
+		const down = art.height * fit;
+		crop.clear();
+		crop.roundRect(-across / 2, 0, across, down, EMBLEM_CORNER * cellWidth).fill(0xffffff);
+
+		// Where it hangs, which is the middle of the trio's top edge. The bob is applied off
+		// this rather than baked into it, so the two can be worked out at their own paces:
+		// this once per layout, the bob on every tick.
+		const at = onCanvas({ x: trio.left + trio.width / 2, y: trio.top });
+		this.emblemHome = { x: at.x, y: at.y, cellWidth };
+		this.applyBob();
+	}
+
+	/** Put the picture where it hangs, plus however far its cycle has it risen — the same
+	 * push {@link applyFrame} is for a character, and called from the same two places: the
+	 * layout that decided where it hangs, and the ticker that moves the cycle on. */
+	private applyBob(): void {
+		const home = this.emblemHome;
+		if (!this.emblem || !home) return;
+		const frame = EMBLEM_BOB[this.emblemCursor.frameIndex % EMBLEM_BOB.length];
+		this.emblem.position.set(home.x, home.y + frame.offset * home.cellWidth);
 	}
 
 	/** Push a poster's current frame to its sprite: horizontally by the frame's own
@@ -847,14 +967,14 @@ export class MugenPosterGrid {
 		const deltaMs = this.app.ticker.deltaMS;
 		for (const poster of this.posters) {
 			if (poster.frames.length < 2) continue;
-			poster.frameElapsed += deltaMs;
-			let guard = poster.frames.length;
-			while (poster.frameElapsed >= poster.frames[poster.frameIndex].duration && guard-- > 0) {
-				poster.frameElapsed -= poster.frames[poster.frameIndex].duration;
-				poster.frameIndex = (poster.frameIndex + 1) % poster.frames.length;
-			}
+			advanceCycle(poster, poster.frames, deltaMs);
 			this.applyFrame(poster);
 		}
+		// The picture's rise is a cycle like any of theirs, moved on by the same call. It is
+		// stepped whether or not it is being drawn, so a picture that lands mid-cycle joins a
+		// wall that has been breathing all along rather than starting it over.
+		advanceCycle(this.emblemCursor, EMBLEM_BOB, deltaMs);
+		this.applyBob();
 	};
 }
 
