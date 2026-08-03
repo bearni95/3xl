@@ -13,13 +13,18 @@
 
 <script lang="ts">
 	import classNames from 'classnames';
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
+	import { showLogos, loadShowLogos } from '$services/shows.service';
+	import { SPAWN_PANEL_CLASSES } from '$components/core/spawn-colors';
 	import { SpawnBox, type SpawnColor } from '$types/character-spawn.type';
 
 	// The team as a row of cards — who is fielded, what colour they bend, where they
 	// were claimed and what show they come from. The card itself is CharacterStatue's;
-	// this is only the row, sharing its width between them.
+	// this is only the row, sharing its width between them, and the banner over it that
+	// says whose side it is — the lead's colour and the lead's show, in the show's own
+	// lettering. That is the row's, not a statue's: a card says the show it is from with
+	// the mark on its floor, and a side says the show it flies once, over all three.
 
 	// One entry per team member, in the order they are fielded (the leader first).
 	// `spawnedAt` is what a real card was minted at, and it is optional for the same
@@ -110,9 +115,54 @@
 				...standing.slice(1).map((entry) => ({ middle: false as const, ...entry }))
 			]
 		: lineup.map((entry) => ({ middle: false as const, ...entry }));
+
+	// The logos are not fetched by being subscribed to (the glyphs are; these are not), so the
+	// row asks for them itself — every row, since every row is bannered. The load is memoised in
+	// the service, so a screen full of these shares the one read of the collection.
+	onMount(() => void loadShowLogos());
+
+	// The side's lead, whose colour and show the banner is: the first member as it arrived,
+	// never the cell the row stood it in — the same lead the map takes a held town's show from,
+	// so a side flies the one show wherever it is drawn. Null for a row with nobody in it, which
+	// draws no band — a colour with no side under it is a stripe of paint.
+	$: lead = members[0] ?? null;
+	// The lead's show as the author enabled it, or null where the side flies none, where the
+	// show has no logo enabled, and until the collection lands — the band is then the colour
+	// alone. Nothing stands in for a missing wordmark: this band is not where a reader finds
+	// out what show it is (the statues under it carry the mark, and the roster names it), so a
+	// name lettered in its place would be a second kind of banner.
+	$: bannerLogo = lead?.showId != null ? ($showLogos.get(lead.showId) ?? null) : null;
 </script>
 
-<div class={classNames('flex w-full', classes)}>
+<div class={classNames('relative flex w-full', classes)}>
+	<!-- The side's banner: the whole width of the row and hung off its top edge, so it lies
+		across the head room every statue carries above its square rather than taking a strip of
+		the row's height away from the cards. It is painted in the lead's colour, with the ink
+		that reads on it (SPAWN_PANEL_CLASSES — yellow is the one swatch that wants black).
+		One height whatever is on it, so the band is the same band under every show and does not
+		shift with the proportions of a wordmark: the mark is fitted inside it, at its own aspect,
+		and keeps a tenth of the width clear either side the way the box's foot does. The mark is
+		not recoloured — the enabled logos are coloured lettering with a light outline, which
+		reads on any of the six.
+		Raised over the middle cell, which lifts itself to lap the two beside it: the band is the
+		one thing on this row that is about all three, so nothing may come over it. -->
+	{#if lead}
+		<div
+			class={classNames(
+				'absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-center rounded-md px-2',
+				SPAWN_PANEL_CLASSES[lead.color]
+			)}
+		>
+			{#if bannerLogo}
+				<img
+					src={bannerLogo.url}
+					alt={bannerLogo.name}
+					class="max-h-full max-w-[80%] object-contain"
+				/>
+			{/if}
+		</div>
+	{/if}
+
 	<!-- The statue is the same picture on either surface, so it is written once and the
 		cell's share of the row goes to whichever element is standing it up: the statue
 		itself where the row is a picture of a side, and the button around it where a press
