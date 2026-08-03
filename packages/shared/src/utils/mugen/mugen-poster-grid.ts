@@ -457,10 +457,10 @@ export class MugenPosterGrid {
 
 		// The field goes in first and stays behind every character.
 		this.backdrop = new Graphics();
-		// Hung on its own middle, so the layout has only to say where that middle is; blank
-		// and hidden until (and unless) a picture is asked for and lands.
+		// Hung by the middle of its own top edge, which is the point the layout puts on the
+		// trio; blank and hidden until (and unless) a picture is asked for and lands.
 		this.emblem = new Sprite();
-		this.emblem.anchor.set(0.5);
+		this.emblem.anchor.set(0.5, 0);
 		this.emblem.visible = false;
 		this.marks = new Graphics();
 		this.stage = new Container();
@@ -749,10 +749,18 @@ export class MugenPosterGrid {
 	}
 
 	/**
-	 * Hang the picture over the kept trio: centred on the middle of the ground the three
-	 * cells cover, and scaled to sit whole inside it — the smaller of the two fits, so it
-	 * is the picture's own shape that decides which of the trio's dimensions it fills and
-	 * which it leaves blue. Nothing to hang it on before a cell has been drawn.
+	 * Hang the picture over the kept trio: across the middle of the ground the three cells
+	 * cover, and scaled to sit whole inside it — the smaller of the two fits, so it is the
+	 * picture's own shape that decides which of the trio's dimensions it fills and which it
+	 * leaves blue. Nothing to hang it on before a cell has been drawn.
+	 *
+	 * It hangs from its **top edge**, on the highest blue there is: the top points of the
+	 * two hexagons at the head of the trio, which is where the trio's own extent begins.
+	 * Centred in that extent instead, the picture floated — a trio is a pair of cells with a
+	 * third nested under them, so its lower half is one cell wide and the blue it left above
+	 * the picture was blue the picture could have been standing on. Hung at the top the
+	 * picture starts where the blue starts, and what is left over is left where the trio
+	 * narrows, which is the part of it a picture cannot fill anyway.
 	 */
 	private placeEmblem(
 		cells: WallCell[],
@@ -769,7 +777,7 @@ export class MugenPosterGrid {
 		if (!emblem.visible) return;
 
 		const trio = fieldExtent(kept);
-		const at = onCanvas({ x: trio.left + trio.width / 2, y: trio.top + trio.height / 2 });
+		const at = onCanvas({ x: trio.left + trio.width / 2, y: trio.top });
 		const picture = emblem.texture;
 		const fit = Math.min(
 			(trio.width * cellWidth) / picture.width,
