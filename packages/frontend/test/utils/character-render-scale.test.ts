@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { characters } from '@3xl/data';
-import {
-	characterIdFromFramesPath,
-	readRenderScale
-} from '$utils/mugen/character-render-scale';
+import { characterIdFromFramesPath, readRenderScale } from '$utils/mugen/character-render-scale';
 import { characterFitScale, type FitFrame } from '$utils/card/character-fit';
 import {
 	DEFAULT_RENDER_SCALE,
@@ -20,9 +17,7 @@ const DEFINITIONS = join(__dirname, '../../../data/public/characters');
 const ASSETS = join(__dirname, '../../../assets/public');
 
 const definitionOf = (id: string) =>
-	JSON.parse(
-		readFileSync(join(DEFINITIONS, id, 'definition.json'), 'utf8')
-	) as CharacterDefinition;
+	JSON.parse(readFileSync(join(DEFINITIONS, id, 'definition.json'), 'utf8')) as CharacterDefinition;
 
 /** A character's real idle cycle, as the fit reads one. */
 function idleFrames(id: string): FitFrame[] {
@@ -94,12 +89,20 @@ const BOBOBO_CAST = [
 	'torpedo-girl'
 ];
 
-// Everyone who carries a correction at all. The InuYasha and Bo-bobo casts have one
-// because their whole sheet is drawn small; Frieza has one for himself — his sprite is
+// The Keroro cast, and the only one here that is not a MUGEN cast at all: they were cut
+// out of ripped sprite sheets from a handheld game (see @3xl/mugen's sprite-sheets.js),
+// whose art is drawn at nothing like a MUGEN fighter's pixels-per-person — around 50 px
+// against the 150 the fit measures everybody by. Their correction is authored on the
+// sheet rather than on the character, one number for the rip, which is why all five carry
+// the same one and keep their own proportions within it.
+const KERORO_CAST = ['keroro', 'giroro', 'dororo', 'kululu', 'tamama'];
+
+// Everyone who carries a correction at all. The InuYasha, Bo-bobo and Keroro casts have
+// one because their whole sheet is drawn small; Frieza has one for himself — his sprite is
 // 118 px against Trunks' 136, so his pixels alone put him a head under a character he is
 // meant to stand level with. Anything outside this list is drawn exactly as its pixels
 // are, which the last check in this file holds.
-const CORRECTED = [...INUYASHA_CAST, ...BOBOBO_CAST, 'frieza'];
+const CORRECTED = [...INUYASHA_CAST, ...BOBOBO_CAST, ...KERORO_CAST, 'frieza'];
 
 describe('characterIdFromFramesPath', () => {
 	it('reads the character id out of a served frames folder', () => {
@@ -167,14 +170,21 @@ describe('authored render scales', () => {
 		}
 	});
 
-	it('corrects each small cast by one figure, and Bo-bobo by the larger', () => {
+	it('draws up every Keroro character', () => {
+		for (const id of KERORO_CAST) {
+			expect(definitionOf(id).renderScale, id).toBeGreaterThan(1);
+		}
+	});
+
+	it('corrects each small cast by one figure, and the smaller sheets by more', () => {
 		// A cast drawn small is drawn small by one amount, so a cast is corrected by one
-		// number rather than by eleven measurements — and the two casts are not the same
-		// number, Bo-bobo's sheets being the smaller of the two.
+		// number rather than by eleven measurements — and no two of these casts are the same
+		// number, each sheet being drawn at its own scale.
 		const scalesOf = (cast: string[]) =>
 			new Set(cast.map((id) => readRenderScale(definitionOf(id))));
 		expect([...scalesOf(INUYASHA_CAST)]).toEqual([1.4]);
 		expect([...scalesOf(BOBOBO_CAST)]).toEqual([2.1]);
+		expect([...scalesOf(KERORO_CAST)]).toEqual([2.2]);
 	});
 
 	it('stands the InuYasha cast well clear of the smallest characters', () => {
@@ -214,12 +224,10 @@ describe('authored render scales', () => {
 		const room = { width: STATUE_SQUARE, height: (STATUE_SQUARE * 5) / 6 };
 		const height = Math.max(...frames.map((frame) => frame.height));
 		const axisWidth =
-			2 * Math.max(...frames.map((frame) => Math.max(frame.anchorX, 1 - frame.anchorX) * frame.width));
+			2 *
+			Math.max(...frames.map((frame) => Math.max(frame.anchorX, 1 - frame.anchorX) * frame.width));
 		const axisBound =
-			Math.min(
-				characterFitScale(frames, room, RENDER_SCALE_MAX),
-				room.width / axisWidth
-			) * height;
+			Math.min(characterFitScale(frames, room, RENDER_SCALE_MAX), room.width / axisWidth) * height;
 		expect(axisBound).toBeLessThan(statueHeight('eb-trunks'));
 	});
 });

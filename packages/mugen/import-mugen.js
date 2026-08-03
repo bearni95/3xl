@@ -1,20 +1,31 @@
 /**
  * One-shot MUGEN character importer.
  *
- * Takes the raw archives an author drops into `mugen-characters/` (.rar/.zip
- * straight off a MUGEN site) and turns each into a fully wired, playable
- * character with no manual steps:
+ * Takes the raw material an author drops into this package and turns each character
+ * into a fully wired, playable one with no manual steps. There are two kinds of raw
+ * material and one kind of character: past the decode nothing downstream knows which
+ * a character came from.
  *
- *   mugen-characters/<Something>.rar
+ *   mugen-characters/<Something>.rar     — a MUGEN archive off a MUGEN site
  *     → extract to a temp dir
  *     → locate the character's .sff / .air / .def (via the .def [Files] section)
  *     → copy those into characters-src/<id>/
  *     → decode frames + manifest.json into @3xl/assets  (reuses ./generate-sprites.js)
+ *     → extract the moveset from the .cmd/.cns into @3xl/data
  *     → auto-bind a @3xl/data public/characters/<id>/definition.json from the manifest
- *     → regenerate the @3xl/data registry.generated.ts from disk
  *
- * Run with `pnpm import:mugen` (all archives) or `pnpm import:mugen Foo.rar Bar`
- * to import a subset. On start the script asks how to run:
+ *   character-sheets/<Something>.png     — a sprite sheet off a ripping site,
+ *   character-sheets/<Something>.json      with the sidecar naming its rows
+ *     → copy both into characters-src/<id>/
+ *     → cut the sheet's labelled rows of framed cells into frames + manifest.json
+ *       in @3xl/assets  (./sprite-sheets.js, via ./generate-sprites.js)
+ *     → auto-bind a definition from the row names the sidecar gave
+ *
+ *   → regenerate the @3xl/data registry.generated.ts from disk
+ *
+ * Run with `pnpm import:mugen` (everything) or `pnpm import:mugen Foo.rar Bar`
+ * to import a subset — the filters match archive and sheet names alike. On start
+ * the script asks how to run:
  *
  *   additive — keep everything already imported and import/refresh the archives
  *     on top. Nothing the author edited is clobbered: the hand-tuned bindings,
@@ -52,13 +63,26 @@ import {
 import { fileURLToPath } from 'url';
 import { dirname, join, extname, basename } from 'path';
 import { tmpdir } from 'os';
-import { buildCharacter, resolveRelPath, SRC_DIR, ASSETS_DIR, STANDARD_NAMES } from './generate-sprites.js';
+import {
+	buildCharacter,
+	buildSheet,
+	resolveRelPath,
+	SRC_DIR,
+	ASSETS_DIR,
+	STANDARD_NAMES
+} from './generate-sprites.js';
+// Characters that were ripped to a sprite sheet instead of packed into a MUGEN
+// archive come in the same run, from character-sheets/. See ./sprite-sheets.js.
+import { bindSheetDefinition, listSheets } from './sprite-sheets.js';
 // The registry rewrite lives in ./registry.js — @3xl/backend rewrites it too,
 // after the admin renames a character.
 import { regenerateRegistry } from './registry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ARCHIVES_DIR = join(__dirname, 'mugen-characters');
+// Ripped sprite sheets (a PNG plus the sidecar naming its rows), the other way a
+// character reaches this script.
+const SHEETS_DIR = join(__dirname, 'character-sheets');
 // @3xl/data package public root: definitions + movesets served at /data.
 const DATA_DIR = join(__dirname, '../data/public');
 const DEFINITIONS_DIR = join(DATA_DIR, 'characters');
@@ -664,6 +688,58 @@ function importArchive(archivePath, taken) {
 }
 
 // ---------------------------------------------------------------------------
+// Import one sprite sheet
+// ---------------------------------------------------------------------------
+
+/**
+ * Import a character that was ripped to a sprite sheet: one PNG of labelled rows,
+ * and a `.json` sidecar beside it naming those rows in order (its `id` is the
+ * character's, so a sheet re-imported after a rename stays the same character).
+ *
+ * The same three steps an archive goes through, minus the ones a sheet has no
+ * material for. The raw inputs are copied into characters-src/<id>/ so
+ * `pnpm generate:sprites <id>` can re-decode without the drop folder; the frames and
+ * manifest are written into @3xl/assets; a definition is auto-bound into @3xl/data
+ * unless one is already there. There is no moveset: a moveset is read out of a
+ * character's .cmd and .cns, and a sheet is pixels — what its rows are called is all
+ * the sidecar knows, and the admin editor binds the moves from there.
+ */
+function importSheet(sheet, taken) {
+	try {
+		const sidecar = JSON.parse(readFileSync(sheet.sidecar, 'utf-8'));
+		const id = sidecar.id || slugify(basename(sheet.name, extname(sheet.name)));
+		if (!/^[a-z0-9-]+$/.test(id)) {
+			console.warn(`  ⚠ ${sheet.name}: "${id}" is not a usable character id — skipped`);
+			return null;
+		}
+		taken.add(id);
+
+		const destDir = join(SRC_DIR, id);
+		mkdirSync(destDir, { recursive: true });
+		copyFileSync(sheet.png, join(destDir, 'sheet.png'));
+		copyFileSync(sheet.sidecar, join(destDir, 'sheet.json'));
+
+		const manifest = buildSheet(id);
+
+		const charDir = join(DEFINITIONS_DIR, id);
+		mkdirSync(charDir, { recursive: true });
+		const defJsonPath = join(charDir, 'definition.json');
+		if (existsSync(defJsonPath)) {
+			console.log(`    ↳ definition data/characters/${id}/definition.json exists — kept as-is`);
+			warnDanglingFace(id, defJsonPath, manifest);
+		} else {
+			const definition = bindSheetDefinition(id, manifest, `/assets/${id}/frames`, sidecar);
+			writeFileSync(defJsonPath, JSON.stringify(definition, null, '\t') + '\n', 'utf-8');
+		}
+
+		return id;
+	} catch (error) {
+		console.error(`  ✗ ${sheet.name}: ${error instanceof Error ? error.message : error}`);
+		return null;
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Wipe mode
 // ---------------------------------------------------------------------------
 
@@ -730,27 +806,29 @@ async function chooseMode(flags) {
 // ---------------------------------------------------------------------------
 
 async function main() {
-	if (!existsSync(ARCHIVES_DIR)) {
-		console.error(`No mugen-characters/ directory at ${ARCHIVES_DIR}`);
+	if (!existsSync(ARCHIVES_DIR) && !existsSync(SHEETS_DIR)) {
+		console.error(`Nothing to import: no mugen-characters/ or character-sheets/ in ${__dirname}`);
 		process.exit(1);
 	}
 	mkdirSync(DEFINITIONS_DIR, { recursive: true });
 
 	// CLI args: --wipe/--additive pick the run mode; anything else selects a
-	// subset of archives (by name substring).
+	// subset of the raw material (by name substring), archives and sheets alike.
 	const args = process.argv.slice(2);
 	const flags = new Set(args.filter((a) => a.startsWith('--')));
 	const filters = args.filter((a) => !a.startsWith('--')).map((a) => a.toLowerCase());
-	const archives = readdirSync(ARCHIVES_DIR)
+	const matches = (name) =>
+		filters.length === 0 || filters.some((needle) => name.toLowerCase().includes(needle));
+
+	const archives = (existsSync(ARCHIVES_DIR) ? readdirSync(ARCHIVES_DIR) : [])
 		.filter((f) => ARCHIVE_EXTS.has(extname(f).toLowerCase()))
-		.filter(
-			(f) => filters.length === 0 || filters.some((needle) => f.toLowerCase().includes(needle))
-		)
+		.filter(matches)
 		.sort()
 		.map((f) => join(ARCHIVES_DIR, f));
+	const sheets = listSheets(SHEETS_DIR).filter((sheet) => matches(sheet.name));
 
-	if (archives.length === 0) {
-		console.error('No matching archives found in mugen-characters/.');
+	if (archives.length + sheets.length === 0) {
+		console.error('Nothing in mugen-characters/ or character-sheets/ matches.');
 		process.exit(1);
 	}
 
@@ -774,16 +852,25 @@ async function main() {
 			: []
 	);
 
-	console.log(`Importing ${archives.length} archive(s) from mugen-characters/\n`);
+	const source = [
+		archives.length > 0 ? `${archives.length} archive(s) from mugen-characters/` : '',
+		sheets.length > 0 ? `${sheets.length} sheet(s) from character-sheets/` : ''
+	].filter(Boolean);
+	console.log(`Importing ${source.join(' and ')}\n`);
 	const imported = [];
 	for (const archive of archives) {
 		console.log(`• ${basename(archive)}`);
 		const id = importArchive(archive, taken);
 		if (id) imported.push(id);
 	}
+	for (const sheet of sheets) {
+		console.log(`• ${sheet.name}`);
+		const id = importSheet(sheet, taken);
+		if (id) imported.push(id);
+	}
 
 	const total = regenerateRegistry();
-	console.log(`\nImported ${imported.length}/${archives.length} archive(s).`);
+	console.log(`\nImported ${imported.length}/${archives.length + sheets.length} character(s).`);
 	console.log(`Registry packages/data/registry.generated.ts now lists ${total} character(s).`);
 }
 

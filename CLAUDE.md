@@ -18,7 +18,7 @@ packages/
 ├── admin/     (@3xl/admin)      SvelteKit authoring SPA (port 2001)
 ├── backend/   (@3xl/backend)    Express authoring API (port 2002)
 ├── shared/    (@3xl/shared)     framework-agnostic types + utils + adapters (TS source)
-├── mugen/     (@3xl/mugen)      MUGEN import/assembly scripts (write assets + data)
+├── mugen/     (@3xl/mugen)      character import/assembly scripts (write assets + data)
 ├── assets/    (@3xl/assets)     generated sprite frames + manifests + auras + icons/music (public/)
 └── data/      (@3xl/data)       character registry module + JSON definitions + movesets + geo
 ```
@@ -38,8 +38,31 @@ Both SvelteKit apps build to a **static SPA** (`@sveltejs/adapter-static`,
 inputs (`characters-src/<id>/`) and *writes into* `@3xl/assets` (`public/<id>/frames/`,
 `public/auras/`) and `@3xl/data` (`registry.generated.ts`, plus each character's
 `public/characters/<id>/definition.json` and `public/characters/<id>/mugen-moves.json`).
+
+**A character need not come from MUGEN.** Some exist only as a **ripped sprite sheet** —
+one PNG off a site like The Spriters Resource, every animation the original game holds laid
+out in captioned rows of framed cells. Those are dropped in `character-sheets/` (a PNG and a
+`.json` sidecar per character) and imported by the *same* `pnpm import:mugen` run, through
+`sprite-sheets.js`. Past the decode there is one kind of character: the same frames folder,
+the same `manifest.json`, the same `spr_<a>_<b>.png` / `spr_9000_<n>.png` names, the same
+auto-bound definition, the same registry — nothing downstream knows or asks which it was.
+The five *Keroro RPG* (DS) characters are the sheet-imported ones today.
+
+Reading a sheet is reading its own conventions, and only one thing about it is authored: a
+sheet's **captions are pixels**, so what each row is called is written in the sidecar
+(`strips`, one name per captioned row, in reading order) rather than OCR'd. Everything else
+is measured — the page background is the corner's colour, a cell is a solid rectangle of the
+sheet's cell colour, a row is cut where its captions say (above the first cell or beside the
+last, whichever that sheet does), an over-long row wraps to the next line uncaptioned, and
+what is left uncaptioned and is *not* a wrap is the promo art the sheet closes on, read as
+the character's portraits. So a sidecar naming a different number of rows than the sheet
+captions is the one thing that can silently drift, and the decode says so loudly when it
+does. A sheet also has no **axis** and no **timings**: the axis is recovered by sliding each
+frame over the one it follows until they overlap best (a walk cycle has to hold the body
+still while the legs move), and one `frameMs` covers every frame.
+
 **What an import must not undo.** A re-import — additive mode included — rebuilds every
-decoded manifest whole from the raw `.sff`/`.air`, so anything the author edited has to live
+decoded manifest whole from the raw `.sff`/`.air` (or sheet), so anything the author edited has to live
 outside it. Three things the admin authors per character, and where each survives:
 
 - **The portrait** picked (and cropped) on `/characters/faces` is `face`/`faceCrop` on that
@@ -177,7 +200,7 @@ pnpm build          # build frontend + admin static bundles
 pnpm preview        # preview the frontend build
 pnpm check          # svelte-check (frontend + admin) + tsc (backend)
 pnpm test           # frontend vitest suite
-pnpm import:mugen   # (re)build the character registry from MUGEN archives
+pnpm import:mugen   # (re)build the registry from MUGEN archives + sprite sheets
 pnpm generate:sprites
 pnpm generate:auras
 pnpm generate:geo   # rebuild the Països Catalans map layers

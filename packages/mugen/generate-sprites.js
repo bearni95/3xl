@@ -1,9 +1,15 @@
 /**
  * MUGEN sprite-decoding helpers, consumed by import-mugen.js (`pnpm import:mugen`,
- * which imports raw archives from mugen-characters/). Also runnable directly as
- * `pnpm generate:sprites [id…]` to re-decode frames + manifest from the raw files
- * already copied into characters-src/ — without re-importing archives or touching
- * the registry. Use it after changing what the manifest emits (e.g. portraits).
+ * which imports raw archives from mugen-characters/ and raw sprite sheets from
+ * character-sheets/). Also runnable directly as `pnpm generate:sprites [id…]` to
+ * re-decode frames + manifest from the raw files already copied into
+ * characters-src/ — without re-importing anything or touching the registry. Use it
+ * after changing what the manifest emits (e.g. portraits).
+ *
+ * A character folder holds one of two kinds of raw input, and this file decodes
+ * both to the same place in the same shape: a .sff/.air/.def straight out of a MUGEN
+ * archive ({@link buildCharacter}), or a ripped sprite sheet and the sidecar naming
+ * its rows ({@link buildSheet}, whose reading lives in ./sprite-sheets.js).
  */
 import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -18,6 +24,9 @@ import { applyFrameEdits, readFrameEdits, writeFrameEdits } from './frame-edits.
 // is deleted and rewritten below — and copied back onto each decode. See
 // ./custom-faces.js.
 import { installCustomFaces } from './custom-faces.js';
+// Characters that arrive as one ripped PNG rather than a .sff/.air pair are read
+// there and land here — same frames folder, same manifest. See ./sprite-sheets.js.
+import { decodeSheet, isSheetSource } from './sprite-sheets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -394,6 +403,53 @@ export function buildCharacter(character) {
 }
 
 /**
+ * Decode one sprite-sheet character into @3xl/assets public/<dir>/frames/ +
+ * manifest.json, reading the sheet and its sidecar from characters-src/<dir>/.
+ *
+ * The sheet itself is read in ./sprite-sheets.js; what happens here is everything a
+ * decoded character gets regardless of where its pixels came from, and in the same
+ * order {@link buildCharacter} does it: the portraits the author uploaded are copied
+ * back into the frames folder this decode just rebuilt, the frames the author
+ * dropped on the admin's frames page are replayed onto the fresh manifest, and the
+ * manifest is written last. Returns it, like buildCharacter, so the importer can
+ * bind a definition from the animations it produced.
+ */
+export function buildSheet(dir) {
+	const srcDir = join(SRC_DIR, dir);
+	const outDir = join(ASSETS_DIR, dir, 'frames');
+	const { manifest, warnings, strips, cells } = decodeSheet(srcDir, outDir);
+	for (const warning of warnings) console.warn(`  ⚠ ${dir}: ${warning}`);
+
+	const { faces: uploaded, warnings: faceWarnings } = installCustomFaces(dir, outDir);
+	for (const warning of faceWarnings) console.warn(`  ⚠ ${dir}: ${warning}`);
+	manifest.faces.push(...uploaded);
+	// A sheet with no promo art on it ships no portrait of its own, and then an
+	// uploaded one is the only portrait there is.
+	if (!manifest.face && uploaded.length > 0)
+		manifest.face = {
+			file: uploaded[0].file,
+			width: uploaded[0].width,
+			height: uploaded[0].height
+		};
+
+	const edits = readFrameEdits(dir);
+	const { dropped, kept, warnings: editWarnings } = applyFrameEdits(manifest, edits);
+	for (const warning of editWarnings) console.warn(`  ⚠ ${dir}: ${warning}`);
+	if (dropped > 0 || Object.keys(edits.removed).length > 0) writeFrameEdits(dir, kept);
+
+	writeFileSync(join(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+
+	const animCount = Object.keys(manifest.animations).length;
+	const frameCount = Object.values(manifest.animations).reduce((n, a) => n + a.frames.length, 0);
+	console.log(
+		`${manifest.name} (${dir}): ${animCount} animations, ${frameCount} frames from ` +
+			`${cells} cells in ${strips} strip(s)${dropped ? `, ${dropped} removed by hand` : ''}` +
+			`${manifest.faces.length ? `, ${manifest.faces.length} portrait(s)` : ''} → ${outDir}`
+	);
+	return manifest;
+}
+
+/**
  * Resolve a character-src folder's sprite (.sff), animation (.air) and .def
  * inputs — the shape buildCharacter expects. Prefers the sprite/anim declared in
  * the .def's [Files] section (resolving case + subfolders), falling back to the
@@ -428,13 +484,19 @@ function main() {
 	const ids = readdirSync(SRC_DIR, { withFileTypes: true })
 		.filter((e) => e.isDirectory())
 		.map((e) => e.name)
-		.filter((id) => filters.length === 0 || filters.some((needle) => id.toLowerCase().includes(needle)))
+		.filter(
+			(id) => filters.length === 0 || filters.some((needle) => id.toLowerCase().includes(needle))
+		)
 		.sort();
 	if (ids.length === 0) {
 		console.error('No matching character folders in characters-src/.');
 		process.exit(1);
 	}
 	for (const id of ids) {
+		if (isSheetSource(join(SRC_DIR, id))) {
+			buildSheet(id);
+			continue;
+		}
 		const inputs = discoverInputs(join(SRC_DIR, id));
 		if (!inputs) {
 			console.warn(`Skipping ${id}: could not resolve .def/.sff/.air inputs.`);
@@ -449,4 +511,3 @@ function main() {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main();
 }
-

@@ -1,0 +1,52 @@
+{
+	"id": "kululu",
+	"label": "Kululu",
+	"basePath": "/assets/kululu/frames",
+	"renderScale": 2.2,
+	"animations": {
+		"idle": {
+			"source": "idle",
+			"loop": true
+		},
+		"hurt": {
+			"source": "hurt",
+			"loop": false
+		}
+	},
+	"directions": {
+		"move-left": {
+			"source": "walk-back",
+			"loop": true
+		},
+		"move-right": {
+			"source": "walk",
+			"loop": true
+		}
+	},
+	"moves": [
+		{
+			"name": "Melee",
+			"type": "melee",
+			"source": "attack"
+		},
+		{
+			"name": "Ranged",
+			"type": "ranged",
+			"source": "magic",
+			"projectile": {
+				"source": "",
+				"loop": true
+			}
+		},
+		{
+			"name": "Defend",
+			"type": "defend",
+			"source": "guard-stand"
+		}
+	],
+	"stats": {
+		"atk": 5,
+		"def": 5,
+		"hp": 5
+	}
+}
