@@ -43,8 +43,9 @@
 	"face": "spr_9000_1.png",
 	"faceCrop": {
 		"x": 0,
-		"y": 0,
-		"size": 142
+		"y": 18,
+		"size": 120
 	},
-	"renderScale": 2.1
+	"renderScale": 2.1,
+	"crownAlign": false
 }
