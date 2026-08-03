@@ -130,8 +130,10 @@
 			frame held still and then moving, rather than a colour and then a cut.
 
 			`SplashScreen.svelte` is what takes it away, 500ms after the app mounts; the
-			id is the handle it removes it by. Nothing else here knows about the app, and
-			nothing in the app draws this.
+			id is the handle it takes hold of it by. It does not remove it — it moves this
+			element under a wrapper of its own and blurs that out, so the film goes rather
+			than blinking off. Nothing else here knows about the app, and nothing in the
+			app draws this.
 		-->
 		<div
 			id="splash"
