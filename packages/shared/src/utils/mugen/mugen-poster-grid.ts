@@ -22,26 +22,33 @@
  * rules of a duel and there is no duel here, which is why the lattice is asked for apart
  * from the board that is usually drawn on it.
  *
- * **The field grows from the middle out.** The roster is laid on a hex *spiral*, wound
- * from the three cells at the middle that are kept clear ({@link KEPT_CELLS}): the first
- * character takes the first cell outside them and the rest ring it, each ring walked
- * round before the next begins ({@link spiralCells}). So the wall is a hexagon of hexagons
- * rather than a paragraph of them — the shape a hex field makes when nothing crops it —
- * and the roster reads outward from its middle. A rectangle of cells was the arrangement
- * before, and its one virtue was that it reflowed: this one has a size of its own, so it
- * is the *cell* that gives instead, scaled down until the whole field fits the page.
- * Which is why the sizes are worked out per layout rather than once at load: a character
- * a third of the way down the roster is drawn against the same cell as everyone else, and
- * when that cell changes they all change together.
+ * **The field grows into the squarest shape it can.** The roster is laid in rows around
+ * the three cells at the middle that are kept clear ({@link KEPT_CELLS}): the rows are
+ * filled outward from the trio's own pair, and each row outward from its own middle, so
+ * the wall is a rectangle of hexagons with the trio at its centre and the roster reading
+ * outward from there. How *wide* that rectangle is, is the one thing the fill does not
+ * settle, and it is not guessed: every width the roster could be laid at is built and
+ * measured, and the one whose field comes out nearest a square is the one drawn
+ * ({@link wallCells}). That is a real question rather than a square root, because a
+ * hexagon is taller than it is wide and its rows interlock — the widths that lay a given
+ * roster out in whole rows are few, and the squarest of them is rarely the one a column
+ * count would have named. A hex *spiral* was the arrangement before, wound ring by ring
+ * from the same middle; its shape was a hexagon of hexagons, which is honest to the
+ * lattice and a poor use of a page that is a rectangle. What both share is that the field
+ * has a size of its own, so it is the *cell* that gives — scaled down until the whole
+ * field fits the page. Which is why the sizes are worked out per layout rather than once
+ * at load: a character a third of the way down the roster is drawn against the same cell
+ * as everyone else, and when that cell changes they all change together.
  *
  * The hexagons are painted, faintly. On the board they are drawn at alpha 0 — the field
  * is real ground that is deliberately unmarked — but here the cell *is* the subject: it
  * is the box every character was fitted into, and a size is easier to read against a
  * drawn one. Two marks are not faint: the blue trio at the middle, which is the ground the
- * spiral was wound out from and the only cells nobody stands on, and the red line down the
+ * rows are laid around and the only cells nobody stands on, and the red line down the
  * field's own middle, halving it the way the board's white column stands between its two
- * halves. The two are not the same place once the outer ring is unfinished — the field
- * grows lopsided before it closes, and saying so is the point of drawing both.
+ * halves. Every full row is hung on the trio's own middle, so the two marks usually agree;
+ * they part when the row that ran out of roster is what reaches furthest to one side, and
+ * saying so is the point of drawing both.
  *
  * One canvas rather than one per character: a browser allows a handful of WebGL
  * contexts at a time (see `release-context`), and the roster is dozens of characters —
@@ -110,6 +117,21 @@ interface WallCell {
 	kept: boolean;
 }
 
+/**
+ * A place on the wall's lattice: the row it is on, counted from the kept trio's own top
+ * row, and **twice** its centre's x in cell widths.
+ *
+ * Doubled because a row nests half a cell into the row above it, so the two parities of row
+ * have their centres on different halves of the cell width: an integer addresses both only
+ * if it counts half cells. Which parity a row is, is then the coordinate's own parity and
+ * nothing else — an even row's places are even, an odd row's odd — so the nesting is
+ * carried by the number rather than by a rule stated beside it.
+ */
+interface WallPlace {
+	row: number;
+	x2: number;
+}
+
 /** How the wall is getting on, reported as it loads. */
 export interface PosterGridStatus {
 	/** Characters drawn so far, and how many were asked for. */
@@ -136,7 +158,7 @@ export interface MugenPosterGridOptions {
 	 * ground the board leaves invisible. */
 	cellColor?: number;
 	cellLineColor?: number;
-	/** Fill of the three cells at the middle — the ground the spiral is wound from, which
+	/** Fill of the three cells at the middle — the ground the field is laid around, which
 	 * is drawn and kept clear (see {@link KEPT_CELLS}). */
 	centerCellColor?: number;
 	/** The line down the middle of the field. */
@@ -158,24 +180,27 @@ const DEFAULTS = {
 };
 
 /**
- * The cells at the middle of the field that are kept clear: the one the spiral is wound
- * from, the one immediately to its right, and the one below the pair of them — which on
- * a hex field is a single cell, since a row nests into the slants of the row above and
- * every two neighbours have exactly one cell under both.
+ * The cells at the middle of the field that are kept clear: two side by side, and the one
+ * below the pair of them — which on a hex field is a single cell, since a row nests into
+ * the slants of the row above and every two neighbours have exactly one cell under both.
  *
- * They are drawn like any other cell and painted blue, and **nobody stands on them**: the
- * spiral steps over them as it winds, so the roster begins on the first cell outside the
- * three and the count of characters is unaffected by their being there. They are the one
- * part of the wall that is ground rather than roster.
+ * They are what the field is laid around; they are drawn like any other cell and painted
+ * blue, and **nobody stands on them**: the fill steps over them, so the roster begins on
+ * the first cell outside the three and the count of characters is unaffected by their being
+ * there. They are the one part of the wall that is ground rather than roster.
+ *
+ * The pair sits on row 0 at x = 0 and x = 1, the single cell on row 1 at x = 0.5 — squarely
+ * between them, since row 1 is the nested one. So the middle of the trio is x = 0.5, and
+ * that is the line every row of the field is hung on ({@link rowPlaces}).
  */
-const KEPT_CELLS: { q: number; r: number }[] = [
-	{ q: 0, r: 0 },
-	{ q: 1, r: 0 },
-	{ q: 0, r: 1 }
+const KEPT_CELLS: WallPlace[] = [
+	{ row: 0, x2: 0 },
+	{ row: 0, x2: 2 },
+	{ row: 1, x2: 1 }
 ];
 
-const isKept = (cell: { q: number; r: number }): boolean =>
-	KEPT_CELLS.some((kept) => kept.q === cell.q && kept.r === cell.r);
+const isKept = (place: WallPlace): boolean =>
+	KEPT_CELLS.some((kept) => kept.row === place.row && kept.x2 === place.x2);
 
 /**
  * Room kept above the field's top row, in cell widths.
@@ -189,119 +214,107 @@ const isKept = (cell: { q: number; r: number }): boolean =>
  */
 const HEADROOM = Math.max(0, CHAR_HEIGHT_RATIO - HEX_ROW_STEP);
 
-/**
- * The six steps around a hexagon, in axial coordinates — the pair of axes a hex grid is
- * walked in, where a step is a step and does not depend on which row it is taken from
- * (the board's offset coordinates, which are the right way to *write* its rules, pay for
- * that convenience with a stagger; see `grid.ts`). Used only to wind the spiral, so
- * nothing outside this module ever sees them.
- */
-const AXIAL_STEPS: { q: number; r: number }[] = [
-	{ q: 1, r: 0 },
-	{ q: 1, r: -1 },
-	{ q: 0, r: -1 },
-	{ q: -1, r: 0 },
-	{ q: -1, r: 1 },
-	{ q: 0, r: 1 }
-];
+/** Which of the two nestings a row (or a place on one) belongs to, for rows above the kept
+ * trio as well as below it — which JS's own `%` does not answer, since it keeps the sign. */
+const parity = (n: number): number => ((n % 2) + 2) % 2;
 
-/**
- * The field for `count` characters: the kept middle ({@link KEPT_CELLS}) and then as many
- * cells as there are characters, wound outward from that middle — each ring around it
- * walked in turn, so the roster fills the field from the middle rather than from a corner.
- *
- * A ring of radius k is 6k cells: step out to one corner of it and walk the six sides,
- * k cells each. Cells of the kept middle are walked over rather than counted, so `count`
- * characters always get `count` cells to stand on and the middle costs the wall its own
- * three cells of ground. The centres come back in the lattice's own units, which is a
- * conversion and not a second geometry — an axial cell's row is the lattice's row, and
- * its column is that row's stagger already undone. The two end rows are then squared up
- * (see {@link centerEndRows}).
- */
-function spiralCells(count: number): WallCell[] {
-	// Axial [q, r] as the lattice draws it: even rows sit on the indented half-step,
-	// odd rows on the other, which is exactly the nesting the lattice already knows.
-	const centre = ({ q, r }: { q: number; r: number }): GridPoint =>
-		latticeCenter(q + Math.floor(r / 2), r, r % 2 === 0);
-
-	if (count <= 0) return [];
-	// The kept three are laid first and whole. Reached in the winding they would be at
-	// the mercy of how far it got — a short roster would leave the middle half drawn,
-	// and it is a mark on the field rather than part of the roster's shape.
-	const cells: WallCell[] = KEPT_CELLS.map((kept) => ({ centre: centre(kept), kept: true }));
-
-	let stood = 0;
-	for (let ring = 1; stood < count; ring++) {
-		// Start at the ring's corner in one direction, then walk the six sides. Which
-		// corner is arbitrary — it only decides where a half-finished outer ring has its
-		// gap — so it is the one that starts the walk along the top.
-		let cell = { q: -ring, r: ring };
-		for (const step of AXIAL_STEPS) {
-			for (let i = 0; i < ring && stood < count; i++) {
-				if (!isKept(cell)) {
-					cells.push({ centre: centre(cell), kept: false });
-					stood++;
-				}
-				cell = { q: cell.q + step.q, r: cell.r + step.r };
-			}
-			if (stood >= count) break;
-		}
-	}
-	return centerEndRows(cells);
+/** Where a place sits, in the lattice's own units. A conversion and not a second geometry:
+ * the lattice counts columns from a corner and is told which rows are indented, and a
+ * place's doubled x is that column with the indent already folded into it. */
+function cellCentre({ row, x2 }: WallPlace): GridPoint {
+	const indented = parity(row) === 0;
+	return latticeCenter(indented ? x2 / 2 : (x2 - 1) / 2, row, indented);
 }
 
 /**
- * Slide the field's first and last rows back under the middle of it.
- *
- * A ring is walked from one corner, so a roster that does not finish the ring it is on
- * leaves the outermost row it reached hanging off one side — the wall's own top and
- * bottom edges, which are exactly the two rows an eye squares the shape up by. The rows
- * between them are held on both sides by the rings that closed around them and are
- * already true; these two are not, and nothing but the count decides where they stop.
- *
- * So the two are re-hung under the middle of what *is* closed: the field measured across
- * the rows in between, which is why a wall of one or two rows is left alone — there is
- * nothing under them to be centred on.
- *
- * The move is by **whole cells**. Half of one would put the row on the other parity's
- * positions, where it stacks squarely on the row below instead of nesting into its
- * slants, and a hex field that has stopped interlocking is no longer one. So a row lands
- * within half a cell of the middle rather than on it, which is as centred as this ground
- * can be.
+ * The rows of the field, in the order they are filled: the kept trio's own two rows, then
+ * the row above them, the row below, and outward alternately. So the field grows around the
+ * trio rather than down from a top edge, and the trio stays at the field's middle to within
+ * half a row — which is as centred as an odd number of rows can leave it.
  */
-function centerEndRows(cells: WallCell[]): WallCell[] {
-	const rows = new Map<number, WallCell[]>();
-	for (const cell of cells) {
-		// Rows are a fixed step apart, so the step is the key; the arithmetic is exact
-		// enough that rounding it recovers the row index a cell was built from.
-		const row = Math.round(cell.centre.y / HEX_ROW_STEP);
-		const found = rows.get(row);
-		if (found) found.push(cell);
-		else rows.set(row, [cell]);
+const rowAt = (step: number): number => (parity(step) === 0 ? -step / 2 : (step + 1) / 2);
+
+/**
+ * The places on one row of a field `width` cells across, ordered outward from the field's
+ * own middle.
+ *
+ * Every row is hung on x = 0.5 — the middle of the kept trio — so it spans half a `width`
+ * either side of that and holds every place of its own parity whose whole hexagon fits
+ * inside. Which comes out as `width` places on the rows whose parity matches the width's,
+ * and one fewer on the others, inset half a cell at both ends: the same alternation the
+ * board's own sixth cell exists to produce, arrived at by asking the same question of the
+ * same lattice.
+ *
+ * The order is what decides where a row that runs out of roster stops, which is why it is
+ * from the middle out: a short row is then centred on the field with nothing afterwards
+ * having to re-hang it. It is centred by **whole cells** — half of one would put the row on
+ * the other parity's places, where it stacks squarely on the row below instead of nesting
+ * into its slants, and a hex field that has stopped interlocking is no longer one. So a
+ * short row lands within half a cell of the middle rather than on it, which is as centred
+ * as this ground can be.
+ */
+function rowPlaces(row: number, width: number): WallPlace[] {
+	// Half a width either side of x = 0.5, doubled, and half a cell in at each end — it is
+	// the hexagon that has to be inside the field, not its centre.
+	const first = 2 - width;
+	const places: WallPlace[] = [];
+	for (let x2 = first + (parity(first) === parity(row) ? 0 : 1); x2 <= width; x2 += 2) {
+		places.push({ row, x2 });
 	}
+	// Outward from the middle place — x = 0.5, which is 1 doubled — the left of a tie first.
+	return places.sort((a, b) => Math.abs(a.x2 - 1) - Math.abs(b.x2 - 1) || a.x2 - b.x2);
+}
 
-	const indices = [...rows.keys()].sort((a, b) => a - b);
-	if (indices.length < 3) return cells;
-	const ends = [indices[0], indices[indices.length - 1]];
-	const middle = span(indices.slice(1, -1).flatMap((row) => rows.get(row) ?? []));
-
-	for (const row of ends) {
-		const cellsInRow = rows.get(row) ?? [];
-		const off = middle - span(cellsInRow);
-		// The whole number of cells that leaves the row nearest the middle — and, on a tie,
-		// none of them. A row already half a cell out is as close as it can get, and moving
-		// it would only swap the side it hangs off.
-		const shift = Math.sign(off) * Math.ceil(Math.abs(off) - 0.5);
-		if (!shift) continue;
-		for (const cell of cellsInRow) cell.centre.x += shift;
+/**
+ * The field for `count` characters at a given width: the kept middle ({@link KEPT_CELLS})
+ * and then a cell for every character, row by row from the trio outward.
+ *
+ * The kept three are laid first and whole. Reached in the fill they would be at the mercy
+ * of how far it got — a short roster would leave the middle half drawn — and they are a
+ * mark on the field rather than part of the roster's shape. The fill steps over them, so
+ * `count` characters always get `count` cells to stand on and the middle costs the wall its
+ * own three cells of ground.
+ */
+function fieldOfWidth(width: number, count: number): WallCell[] {
+	const cells: WallCell[] = KEPT_CELLS.map((kept) => ({ centre: cellCentre(kept), kept: true }));
+	let stood = 0;
+	for (let step = 0; stood < count; step++) {
+		for (const place of rowPlaces(rowAt(step), width)) {
+			if (stood >= count) break;
+			if (isKept(place)) continue;
+			cells.push({ centre: cellCentre(place), kept: false });
+			stood++;
+		}
 	}
 	return cells;
 }
 
-/** The middle of what a set of cells spans across, in cell widths. */
-function span(cells: WallCell[]): number {
-	const xs = cells.map((cell) => cell.centre.x);
-	return (Math.min(...xs) + Math.max(...xs)) / 2;
+/**
+ * The field for `count` characters, laid at whichever width comes out nearest a square.
+ *
+ * Every width the roster could be laid at is built and then *measured* — by the field's own
+ * extent ({@link fieldExtent}), so what is judged is the shape actually drawn, the row that
+ * ran out of roster included, rather than the rectangle it was cut from. Measuring rather
+ * than solving because the shape is not a rectangle of unit squares: a hexagon is
+ * {@link HEX_HEIGHT} tall for its one of width, the rows interlock at {@link HEX_ROW_STEP}
+ * rather than stacking, and the rows of one parity hold a cell fewer than the other's. A
+ * formula for that would have to know all three; the extent already does, and dozens of
+ * widths for dozens of characters is work nobody can measure.
+ */
+function wallCells(count: number): WallCell[] {
+	if (count <= 0) return [];
+	let best: { cells: WallCell[]; squareness: number } | null = null;
+	// Two across is the narrowest field the kept trio fits in — one across would have the
+	// nested rows empty. The whole roster on a single row is as wide as anything could want.
+	for (let width = 2; width <= count + KEPT_CELLS.length; width++) {
+		const cells = fieldOfWidth(width, count);
+		const { width: across, height: down } = fieldExtent(cells);
+		// 1 for a square, and worse the further either way — a field twice as tall as it is
+		// wide and one twice as wide as it is tall are equally far from what is wanted.
+		const squareness = Math.max(across, down) / Math.min(across, down);
+		if (!best || squareness < best.squareness) best = { cells, squareness };
+	}
+	return best?.cells ?? [];
 }
 
 /**
@@ -366,7 +379,7 @@ export class MugenPosterGrid {
 
 	// The posters, kept in roster order rather than in the order they finished loading
 	// (several load at once, and the small ones win) — so the wall reads the same way
-	// twice running. A character that could not be loaded never joins, and the spiral
+	// twice running. A character that could not be loaded never joins, and the field
 	// closes up over it.
 	private posters: Poster[] = [];
 	private missing: string[] = [];
@@ -576,7 +589,7 @@ export class MugenPosterGrid {
 	/**
 	 * Draw the field and stand everyone on it, at whatever size the page allows.
 	 *
-	 * The spiral decides the shape, so the width is what the field asks for and the cell
+	 * The fill decides the shape, so the width is what the field asks for and the cell
 	 * is what gives: as big as the cap allows, and smaller whenever that many cells across
 	 * would not fit. Everything then follows from that one number — the hexagons, the box
 	 * each character is fitted into, and so every character's size.
@@ -592,7 +605,7 @@ export class MugenPosterGrid {
 		const backdrop = this.backdrop;
 		if (!app || !host || !backdrop || this.destroyed) return;
 
-		const cells = spiralCells(this.posters.length);
+		const cells = wallCells(this.posters.length);
 		const field = fieldExtent(cells);
 		// Where the field halves, in the lattice's own units — the line is drawn here, and
 		// it is also what decides which way a character faces.
@@ -629,7 +642,7 @@ export class MugenPosterGrid {
 				.stroke({ width: 1, color: this.cellLineColor });
 		}
 
-		// The roster stands on the rest of it, in the order the spiral reached them, each
+		// The roster stands on the rest of it, in the order the fill reached the cells, each
 		// facing whichever way its side of the halving line faces.
 		const stands = cells.filter((cell) => !cell.kept);
 		const flips = facings(stands, middle);
