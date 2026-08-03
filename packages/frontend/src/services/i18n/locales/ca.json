@@ -25,6 +25,7 @@
 	},
 	"profile": {
 		"title": "Perfil",
+		"access": "Accés",
 		"continueWith": "Continua amb {provider}",
 		"emailLabel": "Email",
 		"memberSince": "Membre des de",

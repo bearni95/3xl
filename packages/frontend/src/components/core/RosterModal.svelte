@@ -4,7 +4,7 @@
 	import { _ } from 'svelte-i18n';
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
-	import { signInPanelOpen } from '$services/signInPanel';
+	import { openSignIn } from '$services/signInModal';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { spawnService, RECYCLE_GROUP_SIZE } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE } from '$services/team.service';
@@ -685,13 +685,13 @@
 			<div class="card max-w-md bg-base-200">
 				<div class="card-body gap-4">
 					<p class="text-sm opacity-70">{$_('roster.signInBody')}</p>
-					<!-- The sign-in card is in the map's own panel, behind this modal, so the
-					     prompt hands the screen back to it rather than stacking another one. -->
+					<!-- The way in is a box over the map, under this sheet, so the prompt puts
+					     the sheet away and raises it rather than stacking one behind the other. -->
 					<button
 						class="btn btn-primary btn-sm w-fit"
 						on:click={() => {
 							close();
-							signInPanelOpen.set(true);
+							openSignIn();
 						}}
 					>
 						{$_('roster.signIn')}

@@ -47,7 +47,7 @@
 	} from '$types/character-definition.type';
 	import { characters as availableCharacters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
-	import { signInPanelOpen } from '$services/signInPanel';
+	import { openSignIn } from '$services/signInModal';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { spawnService } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE } from '$services/team.service';
@@ -953,7 +953,15 @@
 			<div class="card-body gap-4">
 				<h2 class="card-title">{$_('combat.signInTitle')}</h2>
 				<p class="text-sm opacity-70">{$_('combat.signInBody')}</p>
-				<button class="btn btn-primary btn-sm w-fit" on:click={() => signInPanelOpen.set(true)}>
+				<!-- The way in is a box over the map, and this arena is a sheet over the map,
+				     so the prompt puts the sheet away rather than raising a door behind it. -->
+				<button
+					class="btn btn-primary btn-sm w-fit"
+					on:click={() => {
+						close();
+						openSignIn();
+					}}
+				>
 					{$_('combat.signIn')}
 				</button>
 			</div>

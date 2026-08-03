@@ -25,6 +25,7 @@
 	},
 	"profile": {
 		"title": "Profile",
+		"access": "Access",
 		"continueWith": "Continue with {provider}",
 		"emailLabel": "Email address",
 		"memberSince": "Member since",

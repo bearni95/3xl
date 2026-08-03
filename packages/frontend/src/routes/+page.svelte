@@ -6,7 +6,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { characters } from '@3xl/data';
-	import SignInPanel from '$components/core/SignInPanel.svelte';
+	import SignInButton from '$components/core/SignInButton.svelte';
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
@@ -287,7 +287,7 @@
 	const profile = authService.profile;
 
 	// Whether the corner at the foot of the map is showing the way in or the account itself
-	// (see SignInPanel, and the column below). Asked of the session's own state rather than
+	// (see SignInButton, and the column below). Asked of the session's own state rather than
 	// of `profile` being empty, because those are not the same question while the session is
 	// still being restored: a visit with an account on disk has no profile for a moment, and
 	// a door drawn in that moment is a door taken away again.
@@ -1420,7 +1420,7 @@
 	// Every row of it raises a view over the map, which is what makes them one kind of thing
 	// and a menu the right place for them. Three things that used to be in here are not that,
 	// and none of them is in here now: the sign-in, which is the door and is at the foot of the
-	// map in the account's own corner (see SignInPanel); the leaderboard and the booster
+	// map in the account's own corner (see SignInButton); the leaderboard and the booster
 	// window, which are about the map rather than about the player and are read where the map
 	// is; and the radio, which runs whether or not any of this is up.
 	//
@@ -3047,7 +3047,7 @@
 			<!-- The foot of the map — its bottom-left corner where there is room for a corner, the
 				whole width of it on a phone (see the widths below) — a column of two: the side this
 				player fields, and under it who is playing and the radio they are playing to. Signed
-				out, the middle of that column is the way in instead (see SignInPanel): the sign-in
+				out, the middle of that column is the way in instead (see SignInButton): the sign-in
 				was in the burger menu, which put the only thing a visitor can do behind the mark they
 				would have had to think to press, while the corner that would have said who they are
 				stood empty. It is one slot with two states now — the account, or how to have one.
@@ -3106,11 +3106,13 @@
 					{/if}
 
 					<!-- The way in, standing where the account's plate stands once there is an account.
-						The whole width of the column, which is what every row of this corner is now the
-						radio has left it: a form — a gate of two boxes, the documents under it and the
-						provider button — could not have been read at half of 400px in any case. -->
+						One button and the whole width of the column, which is what every row of this
+						corner is now the radio has left it. The form it opens — a gate of two boxes,
+						the documents under them and the provider button — stood here for a while,
+						and could not have been read at half of 400px in any case; it is a sheet of
+						its own now, and this corner asks for it in a word (see SignInModal). -->
 					{#if signedOut}
-						<SignInPanel />
+						<SignInButton />
 					{/if}
 
 					<!-- Who is playing, under the side they field: the last row of this corner, and the

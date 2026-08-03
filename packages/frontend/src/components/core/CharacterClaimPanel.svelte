@@ -3,7 +3,7 @@
 	import { characters } from '@3xl/data';
 	import { authService } from '$services/auth.service';
 	import { avatarService } from '$services/avatar.service';
-	import { signInPanelOpen } from '$services/signInPanel';
+	import { openSignIn } from '$services/signInModal';
 	import { spawnService, type BoostersStatus } from '$services/spawn.service';
 	import { territoryService } from '$services/territory.service';
 	import { errorMessage } from '$utils/error/error-message';
@@ -408,7 +408,7 @@
 			<p class="text-sm opacity-70">
 				Sign in to spawn a random character from your shows.
 			</p>
-			<button class="btn btn-primary btn-sm" on:click={() => signInPanelOpen.set(true)}>Sign in</button>
+			<button class="btn btn-primary btn-sm" on:click={openSignIn}>Sign in</button>
 		{:else}
 			<p class="text-sm opacity-70">
 				Pick a town celebrating its festa major this week, below — from three days back
