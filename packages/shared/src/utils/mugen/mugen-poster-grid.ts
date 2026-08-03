@@ -8,11 +8,39 @@
  * roster. So this draws each character exactly as the combat board draws it and puts
  * them side by side.
  *
- * "Exactly as the board" is not a resemblance, it is the same three calls:
+ * "Exactly as the board" is not a resemblance, it is the same calls. The size is
  * {@link characterFitScale} over a box of {@link CHAR_HEIGHT_RATIO} cell widths, with
  * the character's own {@link readRenderScale}, shifted by {@link crownCorrection} where
- * its definition asks for it. Nothing here decides a size; if a poster and a fighter
- * ever disagree it is because one of them stopped calling these.
+ * its definition asks for it. The **ground** is the board's too: a field of pointy-topped
+ * hexagons off `grid.ts`'s lattice, rows nested half a cell into each other's slants, each
+ * character stood on its cell's foot line rather than on the hexagon's bottom point.
+ * Nothing here decides a size or a place; if a poster and a fighter ever disagree it is
+ * because one of them stopped calling these.
+ *
+ * What the wall does not take from the board is the board's own *field* — five signed
+ * columns, four rows, lanes and halves and a white column between them. Those are the
+ * rules of a duel and there is no duel here, which is why the lattice is asked for apart
+ * from the board that is usually drawn on it.
+ *
+ * **The field grows from the middle out.** The roster is laid on a hex *spiral*: the
+ * first character takes the centre cell, and the rest ring it, each ring walked round
+ * before the next begins ({@link spiralCells}). So the wall is a hexagon of hexagons
+ * rather than a paragraph of them — the shape a hex field makes when nothing crops it —
+ * and the roster reads outward from its middle. A rectangle of cells was the arrangement
+ * before, and its one virtue was that it reflowed: this one has a size of its own, so it
+ * is the *cell* that gives instead, scaled down until the whole field fits the page.
+ * Which is why the sizes are worked out per layout rather than once at load: a character
+ * a third of the way down the roster is drawn against the same cell as everyone else, and
+ * when that cell changes they all change together.
+ *
+ * The hexagons are painted, faintly. On the board they are drawn at alpha 0 — the field
+ * is real ground that is deliberately unmarked — but here the cell *is* the subject: it
+ * is the box every character was fitted into, and a size is easier to read against a
+ * drawn one. Two of them are not faint: the blue cell at the middle, which is the one the
+ * spiral was wound out from, and the red line down the field's own middle, halving it the
+ * way the board's white column stands between its two halves. The two are not the same
+ * place once the outer ring is unfinished — the field grows lopsided before it closes,
+ * and saying so is the point of drawing both.
  *
  * One canvas rather than one per character: a browser allows a handful of WebGL
  * contexts at a time (see `release-context`), and the roster is dozens of characters —
@@ -23,6 +51,14 @@ import { Application, Assets, Container, Graphics, Sprite, Texture } from 'pixi.
 import { CHAR_HEIGHT_RATIO, characterFitScale } from '../card/character-fit';
 import { crownCorrection, readCrownAlign } from './character-crown';
 import { readRenderScale } from './character-render-scale';
+import {
+	type GridPoint,
+	HEX_HEIGHT,
+	HEX_ROW_STEP,
+	latticeCenter,
+	latticeCorners,
+	latticeFoot
+} from './grid';
 import type { CharacterDefinition } from '../../types/character-definition.type';
 import type { Manifest } from './mugen-player';
 import { destroyPixiApp } from '../pixi/release-context';
@@ -43,7 +79,8 @@ interface LoadedFrame {
 	duration: number;
 }
 
-/** One character on the wall: its sprite, its cycle, and the playback cursor. */
+/** One character on the wall: its sprite, its cycle, the playback cursor, and the two
+ * things its own definition says about how it is drawn. */
 interface Poster {
 	/** Its place in the roster it was given, which is the place it takes on the wall
 	 * however late it finished loading. */
@@ -52,10 +89,16 @@ interface Poster {
 	frames: LoadedFrame[];
 	frameIndex: number;
 	frameElapsed: number;
-	/** The crown shift in screen px, kept so a re-layout can place the sprite again
-	 * without re-reading the artwork's pixels (the scale does not change with the
-	 * column count, so neither does this). */
-	crownShift: number;
+	/** The character's authored render scale, read once from its definition. */
+	renderScale: number;
+	/**
+	 * How far its crown sits from the axis it is drawn around, in its **own source
+	 * pixels** — the correction at scale 1. Kept unscaled because the correction is
+	 * linear in the fit and the fit moves with the page, whereas re-reading it would mean
+	 * reading every frame's pixels back off a canvas again on every resize. Zero for a
+	 * character that opts out of the rule, and for artwork nothing could be read from.
+	 */
+	crownOffset: number;
 }
 
 /** How the wall is getting on, reported as it loads. */
@@ -71,40 +114,119 @@ export interface PosterGridStatus {
 
 export interface MugenPosterGridOptions {
 	characters: PosterCharacter[];
-	/** Width of one character's cell, in canvas px. Its height follows from
-	 * {@link CHAR_HEIGHT_RATIO}, as a board cell's does. */
-	cellWidth?: number;
-	/** Space between cells, both ways. */
-	gap?: number;
+	/**
+	 * The widest a hexagon is drawn, in canvas px — its short way across, which is also
+	 * how far apart two neighbours on a row stand, and what the box a character is fitted
+	 * into is measured from ({@link CHAR_HEIGHT_RATIO}). A cap rather than a size: the
+	 * field is as many cells across as the roster makes it, so the cell shrinks below this
+	 * whenever that many will not fit the page.
+	 */
+	maxCellWidth?: number;
 	backgroundColor?: number;
-	/** Backdrop painted behind each cell, so the box a character is fitted into is
-	 * visible — which is the thing being judged. */
+	/** Fill and outline of a hexagon — see the module note on why the wall paints the
+	 * ground the board leaves invisible. */
 	cellColor?: number;
+	cellLineColor?: number;
+	/** Fill of the one cell the spiral is wound from, which is the only cell on the wall
+	 * that can be named without counting. */
+	centerCellColor?: number;
+	/** The line down the middle of the field. */
+	halvingLineColor?: number;
 	/** Called as the wall fills in. */
 	onStatus?: (status: PosterGridStatus) => void;
 }
 
 const DEFAULTS = {
-	cellWidth: 150,
-	gap: 8,
+	maxCellWidth: 150,
 	backgroundColor: 0x1d232a,
-	cellColor: 0x272e37
+	cellColor: 0x272e37,
+	cellLineColor: 0x3b4451,
+	// The board's own two, which is what makes the pair read as a board's marks rather
+	// than as decoration: blue for the cell everything is wound from, red for the line
+	// that halves what it grew into.
+	centerCellColor: 0x3b82f6,
+	halvingLineColor: 0xef4444
 };
+
+/**
+ * Room kept above the field's top row, in cell widths.
+ *
+ * A character stands {@link CHAR_HEIGHT_RATIO} cell widths tall from its foot line, and
+ * the rows are only {@link HEX_ROW_STEP} apart — which is the whole look of the board,
+ * every fighter standing up over the row behind it. Every row but the first has the row
+ * above to rise into; the first has the canvas edge, and would be cropped at the neck.
+ * The board keeps a spare row of hexagons over the lanes for this; the wall, whose top
+ * row is a character like any other, keeps the difference as blank canvas.
+ */
+const HEADROOM = Math.max(0, CHAR_HEIGHT_RATIO - HEX_ROW_STEP);
+
+/**
+ * The six steps around a hexagon, in axial coordinates — the pair of axes a hex grid is
+ * walked in, where a step is a step and does not depend on which row it is taken from
+ * (the board's offset coordinates, which are the right way to *write* its rules, pay for
+ * that convenience with a stagger; see `grid.ts`). Used only to wind the spiral, so
+ * nothing outside this module ever sees them.
+ */
+const AXIAL_STEPS: { q: number; r: number }[] = [
+	{ q: 1, r: 0 },
+	{ q: 1, r: -1 },
+	{ q: 0, r: -1 },
+	{ q: -1, r: 0 },
+	{ q: -1, r: 1 },
+	{ q: 0, r: 1 }
+];
+
+/**
+ * `count` cells wound outward from the middle, as centres in cell widths — the centre
+ * cell, then each ring around it walked in turn, so the roster fills the field from its
+ * middle rather than from a corner.
+ *
+ * A ring of radius k is 6k cells: step out to one corner of it and walk the six sides,
+ * k cells each. The centres come back in the lattice's own units, which is a conversion
+ * and not a second geometry — an axial cell's row is the lattice's row, and its column
+ * is that row's stagger already undone.
+ */
+function spiralCells(count: number): GridPoint[] {
+	// Axial [q, r] as the lattice draws it: even rows sit on the indented half-step,
+	// odd rows on the other, which is exactly the nesting the lattice already knows.
+	const centre = ({ q, r }: { q: number; r: number }): GridPoint =>
+		latticeCenter(q + Math.floor(r / 2), r, r % 2 === 0);
+
+	const cells: GridPoint[] = [];
+	if (count <= 0) return cells;
+	cells.push(centre({ q: 0, r: 0 }));
+
+	for (let ring = 1; cells.length < count; ring++) {
+		// Start at the ring's corner in one direction, then walk the six sides. Which
+		// corner is arbitrary — it only decides where a half-finished outer ring has its
+		// gap — so it is the one that starts the walk along the top.
+		let cell = { q: -ring, r: ring };
+		for (const step of AXIAL_STEPS) {
+			for (let i = 0; i < ring && cells.length < count; i++) {
+				cells.push(centre(cell));
+				cell = { q: cell.q + step.q, r: cell.r + step.r };
+			}
+			if (cells.length >= count) break;
+		}
+	}
+	return cells;
+}
 
 /**
  * How many characters are loaded at once. A manifest is a few hundred KB and a cycle is
  * a dozen textures, so the whole roster at once is a stampede that finishes no sooner
- * and shows nothing until it does; a handful at a time fills the wall from the top.
+ * and shows nothing until it does; a handful at a time fills the wall from the middle.
  */
 const LOAD_CONCURRENCY = 4;
 
 export class MugenPosterGrid {
 	private readonly characters: PosterCharacter[];
-	private readonly cellWidth: number;
-	private readonly cellHeight: number;
-	private readonly gap: number;
+	private readonly maxCellWidth: number;
 	private readonly backgroundColor: number;
 	private readonly cellColor: number;
+	private readonly cellLineColor: number;
+	private readonly centerCellColor: number;
+	private readonly halvingLineColor: number;
 	private readonly onStatus?: (status: PosterGridStatus) => void;
 
 	private app: Application | null = null;
@@ -115,12 +237,11 @@ export class MugenPosterGrid {
 
 	// The posters, kept in roster order rather than in the order they finished loading
 	// (several load at once, and the small ones win) — so the wall reads the same way
-	// twice running. A character that could not be loaded never joins, and the wall
+	// twice running. A character that could not be loaded never joins, and the spiral
 	// closes up over it.
 	private posters: Poster[] = [];
 	private missing: string[] = [];
 	private loading = true;
-	private columns = 1;
 
 	// Set the moment teardown starts, so a load already in flight drops what it has
 	// instead of building onto a destroyed app.
@@ -128,11 +249,12 @@ export class MugenPosterGrid {
 
 	constructor(options: MugenPosterGridOptions) {
 		this.characters = options.characters;
-		this.cellWidth = options.cellWidth ?? DEFAULTS.cellWidth;
-		this.cellHeight = this.cellWidth * CHAR_HEIGHT_RATIO;
-		this.gap = options.gap ?? DEFAULTS.gap;
+		this.maxCellWidth = options.maxCellWidth ?? DEFAULTS.maxCellWidth;
 		this.backgroundColor = options.backgroundColor ?? DEFAULTS.backgroundColor;
 		this.cellColor = options.cellColor ?? DEFAULTS.cellColor;
+		this.cellLineColor = options.cellLineColor ?? DEFAULTS.cellLineColor;
+		this.centerCellColor = options.centerCellColor ?? DEFAULTS.centerCellColor;
+		this.halvingLineColor = options.halvingLineColor ?? DEFAULTS.halvingLineColor;
 		this.onStatus = options.onStatus;
 	}
 
@@ -141,7 +263,8 @@ export class MugenPosterGrid {
 		const app = new Application();
 		await app.init({
 			width: Math.max(1, container.clientWidth),
-			height: this.cellHeight,
+			// One cell's worth, until `layout` sizes it to the field it actually needs.
+			height: Math.ceil((HEADROOM + HEX_HEIGHT) * this.maxCellWidth),
 			backgroundColor: this.backgroundColor,
 			antialias: false,
 			roundPixels: true
@@ -160,14 +283,18 @@ export class MugenPosterGrid {
 		app.canvas.addEventListener('webglcontextlost', this.onContextLost);
 		app.canvas.addEventListener('webglcontextrestored', this.onContextRestored);
 
-		// The cell backdrops go in first and stay behind every sprite.
+		// The field goes in first and stays behind every character.
 		this.backdrop = new Graphics();
 		this.stage = new Container();
+		// The rows overlap — a character rises into the row above it — so who is in front
+		// is decided by whose feet are lower on the screen, as it is on the board. The
+		// posters do not arrive in that order (they arrive as they load), so the stage
+		// sorts rather than relying on the order they were added in.
+		this.stage.sortableChildren = true;
 		app.stage.addChild(this.backdrop, this.stage);
 
-		// The wall reflows with the window: only the column count changes, and a
-		// character's size does not depend on it, so this is a re-placement and never
-		// a reload.
+		// The wall reflows with the window: the field keeps its shape and the cell takes
+		// the difference, so this re-draws and re-sizes but never re-loads.
 		this.observer = new ResizeObserver(() => this.layout());
 		this.observer.observe(container);
 
@@ -214,7 +341,10 @@ export class MugenPosterGrid {
 
 	/** Load every character, a few at a time, placing each as it lands. */
 	private async loadAll(): Promise<void> {
-		const queue = this.characters.map((character, order) => ({ character, order }));
+		const queue = this.characters.map((character, order) => ({
+			character,
+			order
+		}));
 		const workers = Array.from({ length: Math.min(LOAD_CONCURRENCY, queue.length) }, async () => {
 			for (let next = queue.shift(); next; next = queue.shift()) {
 				if (this.destroyed) return;
@@ -230,11 +360,11 @@ export class MugenPosterGrid {
 	/**
 	 * Stand one character on the wall.
 	 *
-	 * The sizing is the board's, called rather than copied: one shared source→screen
-	 * ratio capped by the cell's box, the character's own `renderScale` riding along on
-	 * it, and the crown shift that puts its head — not its MUGEN axis — over the middle
-	 * of the cell. A character whose definition cannot be read is drawn with the
-	 * defaults those two readers give, which is the same thing the board would do.
+	 * What is read here is what the *character* says about itself — its render scale, and
+	 * where its crown sits relative to its axis. Both are facts about its artwork, so both
+	 * are read once; what is done with them belongs to the layout, because that is where
+	 * the cell they are measured against is decided. A character whose definition cannot
+	 * be read gets the defaults those two readers give, which is what the board does too.
 	 */
 	private async place(character: PosterCharacter, order: number): Promise<void> {
 		const [frames, definition] = await Promise.all([
@@ -248,12 +378,7 @@ export class MugenPosterGrid {
 			return;
 		}
 
-		const fitScale = characterFitScale(
-			frames,
-			{ width: this.cellWidth, height: this.cellHeight },
-			readRenderScale(definition)
-		);
-		const crownShift = readCrownAlign(definition)
+		const crownOffset = readCrownAlign(definition)
 			? crownCorrection(
 					frames.map((frame) => ({
 						source: frame.texture.source.resource,
@@ -261,18 +386,25 @@ export class MugenPosterGrid {
 						height: frame.height,
 						anchorX: frame.anchorX
 					})),
-					fitScale,
+					// At scale 1: the correction is in the artwork's own pixels until the
+					// layout says how big those are being drawn.
+					1,
 					// Mirrored, the way a character faces on a card and in a team line-up.
 					true
 				)
 			: 0;
 
 		const sprite = new Sprite();
-		// A negative x-scale mirrors the sprite about its anchor, in place.
-		sprite.scale.set(-fitScale, fitScale);
 		this.stage.addChild(sprite);
-
-		const poster: Poster = { order, sprite, frames, frameIndex: 0, frameElapsed: 0, crownShift };
+		const poster: Poster = {
+			order,
+			sprite,
+			frames,
+			frameIndex: 0,
+			frameElapsed: 0,
+			renderScale: readRenderScale(definition),
+			crownOffset
+		};
 		this.applyFrame(poster);
 		// Into its own place in the roster, not onto the end: the loads finish in no
 		// particular order, and the wall is a roster rather than a race result.
@@ -313,12 +445,17 @@ export class MugenPosterGrid {
 	}
 
 	/**
-	 * Place every poster in the grid the host's current width allows, repaint the cell
-	 * backdrops and resize the canvas to the rows that result.
+	 * Draw the field and stand everyone on it, at whatever size the page allows.
 	 *
-	 * Each character stands on the bottom of its own cell — that shared foot line is
-	 * what makes two characters' heights comparable at all — with its axis on the cell's
-	 * middle, moved by its crown shift.
+	 * The spiral decides the shape, so the width is what the field asks for and the cell
+	 * is what gives: as big as the cap allows, and smaller whenever that many cells across
+	 * would not fit. Everything then follows from that one number — the hexagons, the box
+	 * each character is fitted into, and so every character's size.
+	 *
+	 * Each character stands on its cell's foot line — that shared line is what makes two
+	 * characters' heights comparable at all — with its body axis on the cell's middle,
+	 * moved by its crown shift. Whose feet are lower decides who is in front, since the
+	 * rows overlap.
 	 */
 	private layout(): void {
 		const app = this.app;
@@ -326,29 +463,63 @@ export class MugenPosterGrid {
 		const backdrop = this.backdrop;
 		if (!app || !host || !backdrop || this.destroyed) return;
 
-		const width = Math.max(this.cellWidth, host.clientWidth);
-		this.columns = Math.max(1, Math.floor((width + this.gap) / (this.cellWidth + this.gap)));
-		const rows = Math.max(1, Math.ceil(this.posters.length / this.columns));
-		const height = rows * this.cellHeight + (rows - 1) * this.gap;
+		const cells = spiralCells(this.posters.length);
+		const field = fieldExtent(cells);
+		// As big as allowed, and no bigger than the page has room for.
+		const width = Math.max(1, host.clientWidth);
+		const cellWidth = Math.min(this.maxCellWidth, width / field.width);
+		const box = { width: cellWidth, height: cellWidth * CHAR_HEIGHT_RATIO };
+
+		const height = Math.ceil((HEADROOM + field.height) * cellWidth);
 		if (app.renderer.width !== width || app.renderer.height !== height) {
 			app.renderer.resize(width, height);
 		}
 
-		// The grid is centred in whatever the columns leave over, so a wall that cannot
-		// divide the width evenly is not pushed against one edge.
-		const gridWidth = this.columns * this.cellWidth + (this.columns - 1) * this.gap;
-		const originX = Math.max(0, (width - gridWidth) / 2);
+		// The field is centred in whatever the cell size leaves over. Everything below is
+		// in cell widths off the field's own top-left corner until this puts it on the
+		// canvas.
+		const originX = Math.max(0, (width - field.width * cellWidth) / 2);
+		const onCanvas = (point: GridPoint): GridPoint => ({
+			x: originX + (point.x - field.left) * cellWidth,
+			y: (point.y - field.top + HEADROOM) * cellWidth
+		});
 
 		backdrop.clear();
 		this.posters.forEach((poster, index) => {
-			const column = index % this.columns;
-			const row = Math.floor(index / this.columns);
-			const left = originX + column * (this.cellWidth + this.gap);
-			const top = row * (this.cellHeight + this.gap);
-			backdrop.rect(left, top, this.cellWidth, this.cellHeight).fill(this.cellColor);
-			poster.sprite.x = left + this.cellWidth / 2 + poster.crownShift;
-			poster.sprite.y = top + this.cellHeight;
+			const centre = cells[index];
+			const outline = latticeCorners(centre).flatMap((corner) => {
+				const point = onCanvas(corner);
+				return [point.x, point.y];
+			});
+			// The first cell of the spiral is the middle of the field — the one the whole
+			// wall was wound out from — so it is painted rather than counted to.
+			backdrop
+				.poly(outline)
+				.fill(index === 0 ? this.centerCellColor : this.cellColor)
+				.stroke({ width: 1, color: this.cellLineColor });
+
+			// The fit is asked again per layout because the box it answers has just been
+			// decided; it is the same question the board asks, of the same function.
+			const fitScale = characterFitScale(poster.frames, box, poster.renderScale);
+			const foot = onCanvas(latticeFoot(centre));
+			// A negative x-scale mirrors the sprite about its anchor, in place.
+			poster.sprite.scale.set(-fitScale, fitScale);
+			poster.sprite.x = foot.x + poster.crownOffset * fitScale;
+			poster.sprite.y = foot.y;
+			// Lower feet paint later, so a character stands in front of the row behind it.
+			poster.sprite.zIndex = foot.y;
 		});
+
+		// The line that halves the field, drawn over the ground and under the characters:
+		// it is a mark on the board, not a thing standing on it. Nothing to halve until
+		// somebody has landed on the wall.
+		if (this.posters.length > 0) {
+			const middleX = originX + (field.width / 2) * cellWidth;
+			backdrop
+				.moveTo(middleX, 0)
+				.lineTo(middleX, height)
+				.stroke({ width: 2, color: this.halvingLineColor });
+		}
 	}
 
 	/** Push a poster's current frame to its sprite: horizontally by the frame's own
@@ -381,6 +552,30 @@ export class MugenPosterGrid {
 			}
 			this.applyFrame(poster);
 		}
+	};
+}
+
+/** The rectangle a field of hexagons occupies, in cell widths: its top-left corner and
+ * its size. A hexagon reaches half a cell either side of its centre and half its own
+ * height above and below it, so the extent is the centres' spread plus that. An empty
+ * field is one cell's worth, so a wall with nothing on it yet is still a canvas. */
+function fieldExtent(centres: GridPoint[]): {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+} {
+	if (centres.length === 0)
+		return { left: -0.5, top: -HEX_HEIGHT / 2, width: 1, height: HEX_HEIGHT };
+	const xs = centres.map((centre) => centre.x);
+	const ys = centres.map((centre) => centre.y);
+	const left = Math.min(...xs) - 0.5;
+	const top = Math.min(...ys) - HEX_HEIGHT / 2;
+	return {
+		left,
+		top,
+		width: Math.max(...xs) + 0.5 - left,
+		height: Math.max(...ys) + HEX_HEIGHT / 2 - top
 	};
 }
 

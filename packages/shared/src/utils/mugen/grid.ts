@@ -249,6 +249,68 @@ export const HEX_ROW_STEP = HEX_HEIGHT * 0.75;
  * cell, which is what makes the two nest instead of stacking. */
 const ROW_STAGGER = 0.5;
 
+// --- The lattice, apart from the board -------------------------------------
+// The three below are the *shape* of a field of pointy-topped hexagons and nothing
+// else: where the hexagon at a given column and row of it sits, where a figure standing
+// in one plants its feet, and what outline to draw it with. They know nothing of the
+// board's coordinates — no signed columns, no lanes, no sixth cell — so a surface that
+// wants this lattice without the board's rules on it (the admin's poster wall, which
+// winds the whole roster outward from a middle cell) can have it without pretending to
+// be a board. The board's own `cellCenter`/`cellFoot`/`hexCorners` are these three,
+// given the board's coordinates.
+
+/**
+ * Centre of the hexagon at [column, row] of the lattice, in cell widths off the
+ * lattice's top-left corner, columns counted from 0 across and rows from 0 down.
+ *
+ * `indent` is what makes a hex field a hex field: alternate rows step half a cell
+ * across so each nests into the slants of the rows either side of it instead of
+ * stacking squarely on them. Which rows are the indented ones is the caller's to decide,
+ * because it is a fact about the field being laid out and not about the lattice — and an
+ * indented row is inset half a cell at both ends, so a field with square edges gives it
+ * one cell fewer.
+ */
+export function latticeCenter(column: number, row: number, indent: boolean): GridPoint {
+	return {
+		x: column + 0.5 - (indent ? ROW_STAGGER : 0),
+		y: row * HEX_ROW_STEP + HEX_HEIGHT / 2
+	};
+}
+
+/**
+ * The line a figure standing in the hexagon centred at `centre` plants its feet on: the
+ * centre across, and down at the foot of the two vertical sides.
+ *
+ * Not the bottom point. A hexagon standing on end tapers to a single vertex shared with
+ * the two cells below it, and a figure stood on that reads as balancing on the crack
+ * between them; the foot of the vertical sides is the lowest line at which the cell is
+ * still its full width, so a figure stood there has the whole width of its own cell
+ * under it and is plainly inside it.
+ */
+export function latticeFoot(centre: GridPoint): GridPoint {
+	return { x: centre.x, y: centre.y + HEX_HEIGHT / 4 };
+}
+
+/**
+ * The six corners of the hexagon centred at `centre`, from the top point clockwise.
+ * Stated as exact fractions of the hexagon rather than swept out with trigonometry: a
+ * pointy-topped hexagon's corners are its two points, top and bottom, and the four ends
+ * of its vertical sides, which stand a quarter of its height either side of centre.
+ */
+export function latticeCorners(centre: GridPoint): GridPoint[] {
+	const { x, y } = centre;
+	const half = HEX_HEIGHT / 2;
+	const quarter = HEX_HEIGHT / 4;
+	return [
+		{ x, y: y - half },
+		{ x: x + 0.5, y: y - quarter },
+		{ x: x + 0.5, y: y + quarter },
+		{ x, y: y + half },
+		{ x: x - 0.5, y: y + quarter },
+		{ x: x - 0.5, y: y - quarter }
+	];
+}
+
 /**
  * The board's own extent in cell widths. The width is exactly the columns, with nothing
  * hanging off either end: the offset rows have a cell in every column and so span the
@@ -270,46 +332,18 @@ export const BOARD_HEIGHT = (BOARD_ROWS - 1) * HEX_ROW_STEP + HEX_HEIGHT;
  * is what leaves a level row inset by that same half cell at either end.
  */
 export function cellCenter(q: number, r: number): GridPoint {
-	const column = q - FIRST_COLUMN;
-	return {
-		x: column + 0.5 - (isOffsetRow(r) ? 0 : ROW_STAGGER),
-		y: (r - FIRST_ROW) * HEX_ROW_STEP + HEX_HEIGHT / 2
-	};
+	return latticeCenter(q - FIRST_COLUMN, r - FIRST_ROW, !isOffsetRow(r));
 }
 
-/**
- * The line a fighter standing in the cell at [q, r] plants its feet on: the cell's
- * centre across, and down at the foot of its two vertical sides.
- *
- * Not the bottom point. A hexagon standing on end tapers to a single vertex shared with
- * the two cells below it, and a fighter stood on that reads as balancing on the crack
- * between them; the foot of the vertical sides is the lowest line at which the cell is
- * still its full width, so a fighter stood there has the whole width of its own cell
- * under it and is plainly inside it.
- */
+/** The line a fighter standing in the cell at [q, r] plants its feet on — see
+ * {@link latticeFoot} for why it is not the hexagon's bottom point. */
 export function cellFoot(q: number, r: number): GridPoint {
-	const centre = cellCenter(q, r);
-	return { x: centre.x, y: centre.y + HEX_HEIGHT / 4 };
+	return latticeFoot(cellCenter(q, r));
 }
 
-/**
- * The six corners of the cell at [q, r], from the top point clockwise. Stated as exact
- * fractions of the hexagon rather than swept out with trigonometry: a pointy-topped
- * hexagon's corners are its two points, top and bottom, and the four ends of its
- * vertical sides, which stand a quarter of its height either side of centre.
- */
+/** The six corners of the cell at [q, r], from the top point clockwise. */
 export function hexCorners(q: number, r: number): GridPoint[] {
-	const { x, y } = cellCenter(q, r);
-	const half = HEX_HEIGHT / 2;
-	const quarter = HEX_HEIGHT / 4;
-	return [
-		{ x, y: y - half },
-		{ x: x + 0.5, y: y - quarter },
-		{ x: x + 0.5, y: y + quarter },
-		{ x, y: y + half },
-		{ x: x - 0.5, y: y + quarter },
-		{ x: x - 0.5, y: y - quarter }
-	];
+	return latticeCorners(cellCenter(q, r));
 }
 
 /**

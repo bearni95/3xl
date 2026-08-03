@@ -7,11 +7,11 @@
 		PosterGridStatus
 	} from '$utils/mugen/mugen-poster-grid';
 
-	// The roster to stand up, in the order it is to be read.
+	// The roster to stand up, wound out from the middle in the order it is given.
 	export let characters: PosterCharacter[] = [];
-	// Width of one character's cell in canvas px; its height follows from the board's
-	// own ratio, so this is the only size knob there is.
-	export let cellWidth: number = 150;
+	// The widest a hexagon is drawn, in canvas px. A cap and not a size — the field is as
+	// many cells across as the roster makes it, and the cell shrinks to fit the page.
+	export let maxCellWidth: number = 150;
 	export let classes: string = '';
 
 	const dispatch = createEventDispatcher<{ status: PosterGridStatus; error: unknown }>();
@@ -26,7 +26,7 @@
 		const { MugenPosterGrid } = await import('$utils/mugen/mugen-poster-grid');
 		grid = new MugenPosterGrid({
 			characters,
-			cellWidth,
+			maxCellWidth,
 			onStatus: (status) => dispatch('status', status)
 		});
 		try {
