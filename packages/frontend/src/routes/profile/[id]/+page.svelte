@@ -389,8 +389,12 @@
 			<!-- The account, across the page rather than stacked in the column the map's corner
 				reads it at. The corner had the side above the plate because a corner is a
 				column and has nowhere else to put it; here there is a whole page's width, so
-				they stand side by side — the side they field, the card they are read by, and
-				the way out into the game. None of the three is held to a width of its own:
+				they stand side by side — the card they are read by, the side they field, and
+				the way out into the game. The card leads because that is the order the page is
+				read in: this is a page about a player, and the side is what that player fields.
+				At the map's corner it is the other way up, the side above the plate, because
+				there the side is the thing being played and the plate under it only says whose
+				it is. None of the three is held to a width of its own:
 				each takes the third of the row it is given, and the row takes the page. That
 				is why the card is PublicPlayerCard and not the map's plate — a portrait as
 				wide as a third of this page is a picture of somebody, which is what a page
@@ -400,6 +404,8 @@
 				and this card is as tall as its picture plus two lines, and stretching either to
 				match the other would print a plate with a foot of nothing under the reading. -->
 			<div class="grid w-full grid-cols-3 items-start gap-3">
+				<PublicPlayerCard profile={player.profile} />
+
 				<!-- The side, as at the map's corner: three statues on nothing at all, each
 					bringing its own ground, standing the way the corner stands them. Nothing is
 					passed to it that the corner does not pass — it is unselectable and unheaded
@@ -411,8 +417,6 @@
 						{$_('profile.public.noTeam')}
 					</p>
 				{/if}
-
-				<PublicPlayerCard profile={player.profile} />
 
 				<!-- The way into the game, which this page otherwise has none of: it is somebody
 					else's account read from outside, and the only thing a reader of it can do is
