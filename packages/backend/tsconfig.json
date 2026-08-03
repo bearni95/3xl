@@ -4,7 +4,10 @@
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"lib": ["ES2022"],
-		"types": ["node"],
+		// `geojson` declares a global `GeoJSON` namespace rather than a module, and
+		// @3xl/shared's geo utils spell their types with it — an explicit `types` list
+		// is a list of the globals in play, so it has to be named or they don't exist.
+		"types": ["node", "geojson"],
 		"strict": true,
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
