@@ -45709,7 +45709,20 @@
 						"language": "en"
 					}
 				]
-			}
+			},
+			"enabledImages": {
+				"poster": [
+					"/tGWIqBDgSIcZoWoC6znJcaNgcyh.jpg",
+					"/hjp1IqVvp5HDLO656ScKCsMGQCg.jpg"
+				],
+				"backdrop": [
+					"/hiYSi32T8y67KicU6JpMAx4IHu9.jpg"
+				],
+				"logo": [
+					"/rN1PJnAzhvXC2rhJ5xCmddCVGYQ.png"
+				]
+			},
+			"icon": "lorc/frog"
 		},
 		{
 			"show": {
