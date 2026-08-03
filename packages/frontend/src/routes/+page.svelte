@@ -96,6 +96,7 @@
 	} from '$utils/geo/center';
 	import { buildShowStandings } from '$utils/geo/show-standings';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
+	import foldText from '$utils/string/fold-text';
 	import { boosterWindow } from '$utils/festes/booster-window';
 	import type {
 		MapBoosterBox,
@@ -882,11 +883,6 @@
 	// Whether the field is out. Held here rather than inside the column because what is typed in
 	// it is matched here, and the two are the one control.
 	let searchOpen = false;
-	const foldText = (value: string) =>
-		value
-			.toLowerCase()
-			.normalize('NFD')
-			.replace(/\p{Diacritic}/gu, '');
 	$: normalizedQuery = foldText(searchQuery.trim());
 	$: allRegions = flattenRegionNodes(regionNodes);
 	$: searchResults = normalizedQuery

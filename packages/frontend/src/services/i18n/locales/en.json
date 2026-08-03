@@ -59,6 +59,7 @@
 		"notConfigured": "Sign-in is unavailable: Supabase is not configured. Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY.",
 		"public": {
 			"play": "Play",
+			"filterTowns": "Filter municipalities…",
 			"more": "Show more ({count})",
 			"openMine": "Open my public profile",
 			"notFound": "There is no such profile.",

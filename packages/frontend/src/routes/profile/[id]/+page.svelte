@@ -18,6 +18,7 @@
 	import { locationAdapter } from '$adapters/classes/location.adapter';
 	import { showIdsByCharacter, teamShowId } from '$utils/spawn/team-show';
 	import restoreCatalanArticle from '$utils/string/restore-catalan-article';
+	import foldText from '$utils/string/fold-text';
 	import { SpawnBox, type ClaimableShow } from '$types/character-spawn.type';
 	import { teamLineupMembers } from '$utils/spawn/team-lineup';
 
@@ -107,6 +108,9 @@
 		failed = false;
 		player = null;
 		shown = PAGE_SIZE;
+		// A filter is about the list it was typed over, so it does not follow the reader to
+		// the next player's towns.
+		townFilter = '';
 		try {
 			const [loaded, shows] = await Promise.all([
 				publicProfileService.load(id),
@@ -220,6 +224,10 @@
 				held.team.map((member) => member.characterId),
 				shows
 			);
+			// The name as the layer holds it, article parked after a comma. Both the
+			// lettering and the ordering come off it, and they take it differently — see
+			// `label` and `sortKey` below.
+			const name = names?.get(held.locationId) ?? null;
 			return {
 				// A municipality's node key in the region tree is its bare feature id, which
 				// is what the map's `region` param takes — so this key is both what names
@@ -229,14 +237,42 @@
 				// front wherever a town is named. A town whose name has not arrived stands
 				// on its feature id rather than on Ultramar: this is a real place on the
 				// map, and the sentinel would be a different claim about it.
-				label: names?.get(held.locationId)
-					? restoreCatalanArticle(names.get(held.locationId) as string)
-					: held.locationId,
+				label: name ? restoreCatalanArticle(name) : held.locationId,
+				// What the list is *ordered* by, which is the parked form and not the read
+				// one: the layer writes "Alguer, l'" precisely so that an alphabetical list
+				// files it under A, where a Catalan reader looks for it, rather than under L
+				// with every other town whose name happens to begin with an article.
+				sortKey: foldText(name ?? held.locationId),
+				// And what it is *searched* by, which is the read one — a reader types what
+				// they see, and what they see is "l'Alguer". The map's own search matches the
+				// restored name too, so a place is found here by whatever finds it there.
+				// Both folded, since both sides of a comparison have to be (see foldText).
+				matchKey: foldText(name ? restoreCatalanArticle(name) : held.locationId),
 				showName: showId === null ? null : (showNames.get(showId) ?? null),
 				showId,
 				tileClasses: lead ? REGION_PANEL_CLASSES[lead.color] : null
 			};
 		}))(municipalityNames, showsByCharacter, showNameById);
+
+	// Ordered by name, and by the parked name at that (see sortKey). `localeCompare` under
+	// the game's own locale rather than a bare `<`, which compares code points and would
+	// file every town in an order nobody reads in.
+	//
+	// Sorted here rather than in the map above so the comparison is stated once over the
+	// finished rows, and re-runs as the place names land behind the page: until they do,
+	// every sortKey is a feature id and the list is in whatever order it was held in.
+	$: sortedTowns = [...townRows].sort((a, b) => a.sortKey.localeCompare(b.sortKey, 'ca'));
+
+	// What is typed in the field over the list. It filters what is *drawn*, never what was
+	// loaded — every town is here either way — and it is not remembered anywhere: a filter
+	// is a way of looking at a list, not a fact about the player being looked at.
+	let townFilter = '';
+	// Folded exactly as the rows were, since both sides of a comparison have to be. An
+	// empty field is not a filter: it stands for the whole list rather than for nothing.
+	$: townQuery = foldText(townFilter.trim());
+	$: filteredTowns = townQuery
+		? sortedTowns.filter((town) => town.matchKey.includes(townQuery))
+		: sortedTowns;
 
 	// --- The map behind the page --------------------------------------------------
 	// The same four layers the map at the root draws, bottom-up — municipalities,
@@ -449,7 +485,10 @@
 					clip, so the whole of a collection of towns costs what a list of that many
 					lines costs. What was paged is scrolled instead, which is the honest shape
 					for it — a scrollbar says how much there is to come, which is the one thing
-					the button had to be lettered with a count to say. -->
+					the button had to be lettered with a count to say.
+					In name order, and searchable, which is what a list of every one of them has
+					to be to be read at all: three hundred towns in the order they were won is a
+					pile rather than a list (see sortedTowns and filteredTowns). -->
 				{#if townRows.length > 0}
 					<!-- The scroller is two boxes, and it has to be two. This one is the grid cell:
 						it is stretched to the row (`self-stretch`, since the row is otherwise
@@ -461,31 +500,63 @@
 						`min-h-0` for the case where the other columns are shorter than this cell's
 						own minimum would be. -->
 					<div class="relative min-h-0 self-stretch">
-						<!-- And this one is the list: pinned to the whole of the cell, so it is exactly
-							as tall as the row however tall that turns out to be, and scrolling in the
-							one axis. `pe-1` keeps the plates clear of the scrollbar rather than letting
-							it sit over their corners. -->
-						<div class="absolute inset-0 flex flex-col gap-2 overflow-y-auto pe-1">
-							<!-- Each town on a plate of its own rather than the lot of them on one. A row
-								draws no ground itself — it is a name and a tile, read off whatever it is
-								listed on — so over satellite imagery it needs a surface either way; the
-								question is only whether that surface is the list or the place. Here it is
-								the place: these are towns held one at a time, each won on its own day by
-								its own side, and one sheet under them prints them as a single block the
-								way the column beside the map prints the level under an open region.
-								The plate is the wrapper and not the row, because RegionListRow is the
-								column's own component and a town is the same row wherever it is listed;
-								giving it a ground here would be giving it one there. Its own rounding
-								stays inside this one, `overflow-hidden` so the row's hover fill is cut to
-								the plate's corners rather than squaring them off.
-								`flex-none` because these are flex items in a scroller now: a column of
-								them taller than the box would otherwise be squeezed to fit it, which is
-								a list that gets thinner the more there is of it instead of scrolling. -->
-							{#each townRows as town (town.key)}
-								<div class="flex-none overflow-hidden rounded-box bg-base-100/80 p-1 shadow-xl">
-									<RegionListRow row={town} onSelect={openTown} />
-								</div>
-							{/each}
+						<!-- Pinned to the whole of the cell, so it is exactly as tall as the row
+							however tall that turns out to be. A column of two: the field, which keeps
+							its place, and under it the list, which is the only thing that scrolls
+							(`min-h-0` on it, or a flex item refuses to shrink below its content and the
+							overflow never happens). The field is fixed by being outside the scroller
+							rather than by being `sticky` inside it — a sticky head over rows that pass
+							behind it needs a ground of its own to hide them with, and the ground here
+							is satellite imagery. -->
+						<div class="absolute inset-0 flex flex-col gap-2">
+							<!-- The field, in the plate the rows under it stand on so it reads as the
+								head of this column rather than as a stray input over the map. Not
+								LocationSearchBox, which is the map's own field: that one is mounted by a
+								press, focuses itself, and folds away when it is left empty — none of
+								which is wanted by a field that is simply always there. -->
+							<input
+								type="search"
+								class="input input-bordered input-sm w-full flex-none bg-base-100/80"
+								placeholder={$_('profile.public.filterTowns')}
+								aria-label={$_('profile.public.filterTowns')}
+								bind:value={townFilter}
+							/>
+
+							<!-- The list itself, scrolling in the one axis. `pe-1` keeps the plates clear
+								of the scrollbar rather than letting it sit over their corners. -->
+							<div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pe-1">
+								<!-- Each town on a plate of its own rather than the lot of them on one. A
+									row draws no ground itself — it is a name and a tile, read off whatever it
+									is listed on — so over satellite imagery it needs a surface either way; the
+									question is only whether that surface is the list or the place. Here it is
+									the place: these are towns held one at a time, each won on its own day by
+									its own side, and one sheet under them prints them as a single block the
+									way the column beside the map prints the level under an open region.
+									The plate is the wrapper and not the row, because RegionListRow is the
+									column's own component and a town is the same row wherever it is listed;
+									giving it a ground here would be giving it one there. Its own rounding
+									stays inside this one, `overflow-hidden` so the row's hover fill is cut to
+									the plate's corners rather than squaring them off.
+									`flex-none` because these are flex items in a scroller: a column of them
+									taller than the box would otherwise be squeezed to fit it, which is a list
+									that gets thinner the more there is of it instead of scrolling. -->
+								{#each filteredTowns as town (town.key)}
+									<div class="flex-none overflow-hidden rounded-box bg-base-100/80 p-1 shadow-xl">
+										<RegionListRow row={town} onSelect={openTown} />
+									</div>
+								{/each}
+
+								<!-- A query that catches nothing says so, in the same words the map's own
+									search says it in: an empty column under a field with text in it is a
+									list that looks broken rather than one that looks empty. -->
+								{#if filteredTowns.length === 0}
+									<p
+										class="flex-none rounded-box bg-base-100/80 px-2 py-3 text-center text-xs opacity-60 shadow-xl"
+									>
+										{$_('map.search.empty')}
+									</p>
+								{/if}
+							</div>
 						</div>
 					</div>
 				{/if}

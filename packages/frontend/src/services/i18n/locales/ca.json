@@ -59,6 +59,7 @@
 		"notConfigured": "L'inici de sessió no està disponible: Supabase no està configurat. Defineix PUBLIC_SUPABASE_URL i PUBLIC_SUPABASE_ANON_KEY.",
 		"public": {
 			"play": "Juga",
+			"filterTowns": "Filtra els municipis…",
 			"more": "Mostra'n més ({count})",
 			"openMine": "Obre el meu perfil públic",
 			"notFound": "Aquest perfil no existeix.",
