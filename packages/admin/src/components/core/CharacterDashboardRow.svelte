@@ -301,9 +301,12 @@
 		</div>
 	</td>
 	<td>
-		<div class="join">
+		<!-- Stacked rather than abreast: five names in a line read as one run-on word,
+		     and the row is tall enough for them to stand as a list of the pages this
+		     character has. -->
+		<div class="join join-vertical w-36">
 			{#each views as view (view.segment)}
-				<a class="btn btn-outline btn-xs join-item" href={`/characters/dashboard/${character.id}/${view.segment}`}>
+				<a class="btn btn-outline btn-sm join-item" href={`/characters/dashboard/${character.id}/${view.segment}`}>
 					{view.label}
 				</a>
 			{/each}
