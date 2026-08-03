@@ -24,14 +24,14 @@
 			also why there is a plain <title> and <meta name="description"> here at all;
 			before this the tab had neither.
 
-			The picture is static/social-card.png — the same badge as the favicon, the
-			vector rasterised to 1024 square over #09002f (the navy the glyph's shadow is
-			drawn in) rather than left transparent, since a scraper that flattens alpha
-			does it to black and the rounded corners would tear. Re-render it from the
-			same file if the drawing changes:
-
-			    rsvg-convert -w 1024 -h 1024 -b '#09002f' -f png \
-			        -o static/social-card.png static/favicon.svg
+			The picture is static/social-card.png, rasterised from static/social-card.svg
+			by `pnpm --filter @3xl/frontend generate:social-card`. That vector is its own
+			drawing rather than the favicon: 3:2 and landscape, because a card is drawn in
+			a wide box, and carrying the subtitle underneath, which the favicon has no
+			room for. The subtitle is live <text> set in Genos, the family the app's body
+			is set in — see the script's header for why rendering it takes a font download
+			and a pango backend switch, and why a wrong setup fails silently in Helvetica.
+			Edit the SVG, then re-run the script; do not hand-edit the PNG.
 
 			These URLs are absolute and hardcoded, unlike the icon's `%sveltekit.assets%`:
 			a card is fetched by another host, so a root-relative path resolves against
@@ -45,8 +45,9 @@
 			rename); the domain Pages actually serves is the one set in the repo's Pages
 			settings. Check the live host, not the file, if this ever moves again.
 
-			`twitter:card` is `summary`, not `summary_large_image`: the mark is square, and
-			the large card would letterbox it into a wide band of navy.
+			`twitter:card` is `summary_large_image` now that the picture is a 3:2 banner
+			rather than a square mark: `summary` would crop it back to a thumbnail and
+			throw the subtitle away, which is the whole reason the banner exists.
 		-->
 		<title>6XL</title>
 		<meta name="description" content="El joc d'anime en català" />
@@ -57,11 +58,11 @@
 		<meta property="og:url" content="https://6xl.bearni.io/" />
 		<meta property="og:image" content="https://6xl.bearni.io/social-card.png" />
 		<meta property="og:image:type" content="image/png" />
-		<meta property="og:image:width" content="1024" />
-		<meta property="og:image:height" content="1024" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="800" />
 		<meta property="og:image:alt" content="6XL" />
 		<meta property="og:locale" content="ca_ES" />
-		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:title" content="6XL" />
 		<meta name="twitter:description" content="El joc d'anime en català" />
 		<meta name="twitter:image" content="https://6xl.bearni.io/social-card.png" />
