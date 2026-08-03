@@ -607,29 +607,9 @@ export class MugenPosterGrid {
 	}
 
 	/**
-	 * Put every cycle back on its first frame — the characters' idles and the picture's rise
-	 * alike, since they are all one kind of cursor here — and draw that.
-	 *
-	 * It stops nothing: the ticker moves them all on again from the frame they were just put
-	 * back to, which is what makes this a rewind rather than a pause. What it is for is
-	 * {@link snapshot}: a still of the wall means something when every character is on the
-	 * frame its author drew first, and means nothing when each is wherever its own cycle had
-	 * got to.
-	 */
-	rewind(): void {
-		for (const poster of this.posters) {
-			poster.frameIndex = 0;
-			poster.frameElapsed = 0;
-			this.applyFrame(poster);
-		}
-		this.emblemCursor.frameIndex = 0;
-		this.emblemCursor.frameElapsed = 0;
-		this.applyBob();
-		this.app?.render();
-	}
-
-	/**
-	 * A PNG of the wall exactly as it stands, at the size it is drawn.
+	 * A PNG of the wall exactly as it stands, at the size it is drawn — every character on
+	 * whichever frame of its idle it is showing at the moment this is called, which is the
+	 * still of the wall the reader was looking at when they asked for one.
 	 *
 	 * Read back through Pixi's `extract` rather than off the canvas element itself: a WebGL
 	 * drawing buffer is cleared once it has been composited, so `toBlob` on the canvas is a

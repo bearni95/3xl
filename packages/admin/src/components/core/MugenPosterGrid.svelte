@@ -30,11 +30,6 @@
 		return grid ? await grid.record(durationMs) : null;
 	}
 
-	/** Put every character back on the first frame of its idle. */
-	export function rewind(): void {
-		grid?.rewind();
-	}
-
 	/** A PNG of the wall as it stands. Null before it is up. */
 	export async function snapshot(): Promise<Blob | null> {
 		return grid ? await grid.snapshot() : null;

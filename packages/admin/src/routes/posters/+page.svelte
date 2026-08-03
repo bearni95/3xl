@@ -71,14 +71,13 @@
 		}
 	}
 
-	async function downloadFirstFrame(): Promise<void> {
+	async function downloadFrame(): Promise<void> {
 		if (recording || capturing) return;
 		failure = null;
 		capturing = true;
 		try {
-			// Rewound and read in the same breath: the snapshot is taken before the ticker can
-			// have moved anyone off the frame it was just put back to.
-			wall.rewind();
+			// The wall as it is at this instant, every character on whatever frame of its idle
+			// it happens to be showing — the still the reader was looking at when they asked.
 			const shot = await wall.snapshot();
 			if (shot) saveBlob(shot, filename('png'));
 		} catch (error) {
@@ -125,9 +124,9 @@
 				<button
 					class="btn btn-outline btn-sm"
 					disabled={recording || capturing || status.drawn === 0}
-					on:click={downloadFirstFrame}
+					on:click={downloadFrame}
 				>
-					{capturing ? 'Exporting…' : 'Export first frame'}
+					{capturing ? 'Exporting…' : 'Export current frame'}
 				</button>
 			</div>
 		</header>
