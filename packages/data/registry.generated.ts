@@ -47,6 +47,7 @@ export const registry: CharacterOption[] = [
 	{ id: 'luffy', label: 'Monkey D. Luffy', basePath: '/assets/luffy/frames' },
 	{ id: 'nami', label: 'Nami', basePath: '/assets/nami/frames' },
 	{ id: 'robin', label: 'Nico Robin', basePath: '/assets/robin/frames' },
+	{ id: 'torpedo-girl', label: 'Noia Torpede', basePath: '/assets/torpedo-girl/frames' },
 	{ id: 'eb-perfectcell-kofm', label: 'Perfect Cell', basePath: '/assets/eb-perfectcell-kofm/frames' },
 	{ id: 'piccolo', label: 'Piccolo', basePath: '/assets/piccolo/frames' },
 	{ id: 'zoro', label: 'Roronoa Zoro', basePath: '/assets/zoro/frames' },
@@ -58,7 +59,6 @@ export const registry: CharacterOption[] = [
 	{ id: 'softon', label: 'Softon', basePath: '/assets/softon/frames' },
 	{ id: 'supervegeta', label: 'Super Vegeta', basePath: '/assets/supervegeta/frames' },
 	{ id: 'tamama', label: 'Tamama', basePath: '/assets/tamama/frames' },
-	{ id: 'torpedo-girl', label: 'Torpedo Girl', basePath: '/assets/torpedo-girl/frames' },
 	{ id: 'eb-trunks', label: 'Trunks', basePath: '/assets/eb-trunks/frames' },
 	{ id: 'usopp', label: 'Usopp', basePath: '/assets/usopp/frames' },
 	{ id: 'youkai-inuyasha', label: 'Youkai Inuyasha', basePath: '/assets/youkai-inuyasha/frames' }

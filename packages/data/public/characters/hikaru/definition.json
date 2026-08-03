@@ -39,5 +39,11 @@
 		"def": 5,
 		"hp": 5
 	},
-	"face": "spr_9000_90.png"
+	"color": "purple",
+	"face": "custom_hshwawep02w26j26sbywjrb6rkjoicqpzeqqfhojgu14uwo6rrqbr71wcji-umwq8bi-zj02gkypfsrjoquudw.webp",
+	"faceCrop": {
+		"x": 162,
+		"y": 0,
+		"size": 752
+	}
 }
