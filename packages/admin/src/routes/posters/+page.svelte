@@ -21,9 +21,14 @@
 	// What hangs over the three kept cells at the middle of the wall: the player app's own
 	// social card — the picture Discord and the rest draw beside a link to the game — read
 	// straight out of `@3xl/frontend`'s static dir, which this app's Vite config mounts at
-	// /frontend precisely so nothing has to be copied. It is generated from
-	// `social-card.svg` by `pnpm --filter @3xl/frontend generate:social-card`, so editing
-	// the game's card changes what the wall wears, and nothing here has to be told.
+	// /frontend precisely so nothing has to be copied.
+	//
+	// That card used to be a drawing of its own (`social-card.svg`, a yellow plate with the
+	// wordmark) and is now cut from the splash — which is itself a capture of *this wall*
+	// wearing that plate. So the badge in the middle is still the badge, one generation
+	// back, and the loop only closes if somebody re-captures the splash from this screen
+	// after re-running `generate:social-card`: the card would then hang inside itself.
+	// Hang a drawing of its own here again before doing that.
 	const CENTER_IMAGE = '/frontend/social-card.png';
 
 	// What the wall stands on: the ground the game is played on, as the player app's
