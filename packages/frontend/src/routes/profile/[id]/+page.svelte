@@ -431,15 +431,25 @@
 				four — so a press always lands on whole rows, and it stops at four: a row is a
 				name and a show, and it stops being one at a narrower width than that. -->
 			{#if visibleTowns.length > 0}
-				<!-- On a plate, like the column beside the map these rows come from: a row draws
-					no ground of its own — it is a name and a tile, and it is read off whatever it
-					is listed on — so over satellite imagery it needs the same surface that column
-					gives it. -->
-				<div
-					class="grid w-full grid-cols-2 gap-1 rounded-box bg-base-100/80 p-2 shadow-xl md:grid-cols-3 lg:grid-cols-4"
-				>
+				<!-- Each town on a plate of its own rather than the lot of them on one. A row
+					draws no ground itself — it is a name and a tile, read off whatever it is
+					listed on — so over satellite imagery it needs a surface either way; the
+					question is only whether that surface is the list or the place. Here it is the
+					place: these are towns held one at a time, each won on its own day by its own
+					side, and one sheet under them prints them as a single block the way the
+					column beside the map prints the level under an open region. So the grid keeps
+					nothing but the columns and the gap, and the plate — base-100 at four fifths,
+					what every plate in this game is printed on — moves inside the cell.
+					The plate is the wrapper and not the row, because RegionListRow is the column's
+					own component and a town is the same row wherever it is listed; giving it a
+					ground here would be giving it one there. Its own rounding stays inside this
+					one, `overflow-hidden` so the row's hover fill is cut to the plate's corners
+					rather than squaring them off. -->
+				<div class="grid w-full grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
 					{#each visibleTowns as town (town.key)}
-						<RegionListRow row={town} onSelect={openTown} />
+						<div class="overflow-hidden rounded-box bg-base-100/80 p-1 shadow-xl">
+							<RegionListRow row={town} onSelect={openTown} />
+						</div>
 					{/each}
 				</div>
 
