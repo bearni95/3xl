@@ -40,7 +40,6 @@
 	const BACKDROP: PixiBasemapOptions = {
 		tileUrl:
 			'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-		attribution: 'Tiles © Esri — Esri, Maxar, Earthstar Geographics, and the GIS User Community',
 		frameLayers: ['/data/geo/territoris.json']
 	};
 

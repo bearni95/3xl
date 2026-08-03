@@ -18,12 +18,12 @@
  * nothing outside has to know where the Països Catalans are, and the imagery lands on the
  * same view however the box is shaped.
  *
- * The imagery is Esri's and is used on the same terms as in the game itself, which is why the
- * credit is drawn **into** the canvas rather than beside it: the licence asks for attribution
- * wherever the imagery appears, and what appears here travels off the page as a file.
+ * Nothing is written on it. The imagery's credit stands where the game shows it, on the map
+ * at the root; this canvas is a picture of a roster, and the wall's whole output is that
+ * picture to put on something else.
  */
 
-import { Container, ImageSource, Sprite, Text, Texture } from 'pixi.js';
+import { Container, ImageSource, Sprite, Texture } from 'pixi.js';
 import {
 	boundsOfCollection,
 	fitBounds,
@@ -45,8 +45,6 @@ export interface PixiBasemapOptions {
 	frameLayers: string[];
 	/** A `{z}/{y}/{x}` tile template. Left out, the box is empty. */
 	tileUrl?: string;
-	/** The credit the imagery is used under, drawn in the corner. */
-	attribution?: string;
 	/** The deepest tile zoom the server offers. */
 	maxTileZoom?: number;
 	/** Edge-to-edge tile size of the source. */
@@ -114,12 +112,11 @@ export class PixiBasemap {
 	/** Everything this draws, in one container to be put behind whatever it is a backdrop to. */
 	readonly view = new Container();
 
-	private readonly options: Required<Omit<PixiBasemapOptions, 'tileUrl' | 'attribution'>> &
-		Pick<PixiBasemapOptions, 'tileUrl' | 'attribution'>;
+	private readonly options: Required<Omit<PixiBasemapOptions, 'tileUrl'>> &
+		Pick<PixiBasemapOptions, 'tileUrl'>;
 
 	private readonly tiles = new Container();
 	private readonly veil = new Sprite();
-	private credit: Text | null = null;
 
 	/** The box the framing layers stand in, once they have landed. */
 	private bounds: LatLngBounds | null = null;
@@ -140,20 +137,6 @@ export class PixiBasemap {
 			this.options.veilTo
 		);
 		this.view.addChild(this.tiles, this.veil);
-		if (this.options.attribution) {
-			this.credit = new Text({
-				text: this.options.attribution,
-				style: {
-					// Canvas text is the one place CSS cannot reach, so a family is named here.
-					fontFamily: 'sans-serif',
-					fontSize: 11,
-					fill: 0xffffff,
-					dropShadow: { color: 0x000000, alpha: 0.8, blur: 2, distance: 0 }
-				}
-			});
-			this.credit.alpha = 0.85;
-			this.view.addChild(this.credit);
-		}
 	}
 
 	/**
@@ -201,9 +184,6 @@ export class PixiBasemap {
 
 		this.veil.width = width;
 		this.veil.height = height;
-		if (this.credit) {
-			this.credit.position.set(width - this.credit.width - 6, height - this.credit.height - 4);
-		}
 		void this.drawTiles(fitBounds(this.bounds, width, height), width, height, ++this.generation);
 	}
 
