@@ -58,9 +58,12 @@
 		"signOut": "QQQQQ",
 		"notConfigured": "QQQQQ",
 		"public": {
+			"play": "QQQQQ",
+			"filterTowns": "QQQQQ",
+			"more": "QQQQQ",
+			"openMine": "QQQQQ",
 			"notFound": "QQQQQ",
-			"noTeam": "QQQQQ",
-			"toMap": "QQQQQ"
+			"noTeam": "QQQQQ"
 		},
 		"username": {
 			"none": "QQQQQ",
@@ -80,6 +83,10 @@
 		}
 	},
 	"map": {
+		"column": {
+			"open": "QQQQQ",
+			"close": "QQQQQ"
+		},
 		"search": {
 			"label": "QQQQQ",
 			"placeholder": "QQQQQ",
@@ -134,6 +141,7 @@
 	},
 	"roster": {
 		"title": "QQQQQ",
+		"open": "QQQQQ",
 		"close": "QQQQQ",
 		"notConfigured": "QQQQQ",
 		"signInBody": "QQQQQ",

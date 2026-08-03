@@ -83,6 +83,10 @@
 		}
 	},
 	"map": {
+		"column": {
+			"open": "Obre la llista de llocs",
+			"close": "Tanca la llista de llocs"
+		},
 		"search": {
 			"label": "Cerca llocs",
 			"placeholder": "Cerca llocs…",

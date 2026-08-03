@@ -1,4 +1,5 @@
 <script lang="ts">
+	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import type { Readable } from 'svelte/store';
 	import { _ } from 'svelte-i18n';
@@ -2677,7 +2678,49 @@
 	// is the column's own inset from the top (`top-3`), which
 	// makes this the band from the canvas's edge to the foot of the bar.
 	$: mapChromeInsets = { top: topChromeHeight + 12 };
+
+	// --- The column, on a phone ----------------------------------------------------------
+	// The column beside the map is a flat 400px, which is a share of a desktop row and very
+	// nearly the whole of a phone's: at that width the map would be the strip beside the list
+	// rather than the other way round. So below `md` the column does not stand beside the map
+	// at all — it is the whole screen, held just above the top edge until it is asked for,
+	// slid down over the map, and slid back up by the ✕ at its corner. The map keeps every
+	// pixel of a small screen until somebody actually wants the list of places.
+	//
+	// What asks for it is the game's own badge at the top left. That plate is the one piece of
+	// the map's chrome with nothing to press — it says the game's name and does nothing — and
+	// it stands at the corner the panel comes down from, so the word is the handle for the
+	// screen it pulls down. It is a press on a phone only: where the column is already beside
+	// the map there is nothing for it to open, so the badge is a plain plate again (see the
+	// `svelte:element` below) rather than a button that does nothing when pressed.
+	//
+	// The panel itself is drawn by the `md:` classes on the aside — one arrangement of one
+	// element, not a second column mounted for small screens, since two of them would be two
+	// RegionSubdivisions with two searches and two scroll positions. What this needs from
+	// script is only what CSS cannot say: which element the badge is, and that a panel parked
+	// off-screen is not somewhere a keyboard should be able to walk into (`inert`).
+	//
+	// 768 is Tailwind's `md`, and the number the `md:` classes on the aside turn on at — keep
+	// the two in step, or the badge becomes pressable at a width where the column is already
+	// standing beside the map.
+	const COLUMN_PANEL_MAX = 768;
+	let viewportWidth = 0;
+	$: phone = viewportWidth > 0 && viewportWidth < COLUMN_PANEL_MAX;
+
+	// Whether the panel is down. Meaningless above the breakpoint — the column is simply the
+	// column there — so it is cleared when the viewport grows past it: a window narrowed again
+	// afterwards should come back to a map, not to a panel left down from the last time it was
+	// a phone.
+	let columnOpen = false;
+	$: if (!phone) columnOpen = false;
+
+	// The badge's press, which only a phone has (see above).
+	function openColumn(): void {
+		if (phone) columnOpen = true;
+	}
 </script>
+
+<svelte:window bind:innerWidth={viewportWidth} />
 
 <!-- The map is the whole page now. It used to share the viewport with the column beside it —
 	a flat 450px of the row, or 30vh of the column on a narrow viewport — and everything that
@@ -2804,8 +2847,24 @@
 							only the plate again — nothing hangs off it, nothing is asked about the pointer, and
 							the wrapper that used to be both is gone with them. It stretches to the row's height
 							on its own, being a `flex-none` child of an `items-stretch` row. -->
-						<div
-							class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
+						<!-- And on a phone the plate is the handle of the column: pressed, it pulls the
+								list of places down over the map (see COLUMN_PANEL_MAX). It is the same plate
+								either way — same fill, same lettering, same place on the row — because it is
+								the same thing being said; what changes is whether it is a button, which it is
+								only where there is a panel for it to open. Hence the dynamic element: a
+								`<div>` beside the column on a desktop, a `<button>` in front of it on a
+								phone, and never a control that does nothing when it is pressed. -->
+						<svelte:element
+							this={phone ? 'button' : 'div'}
+							type={phone ? 'button' : undefined}
+							role={phone ? 'button' : 'presentation'}
+							aria-label={phone ? $_('map.column.open') : undefined}
+							aria-expanded={phone ? columnOpen : undefined}
+							class={classNames(
+								'pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl',
+								{ 'cursor-pointer': phone }
+							)}
+							on:click={openColumn}
 						>
 							<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
 								down and right, and the word itself over it. A shadow drawn as a copy rather
@@ -2826,7 +2885,7 @@
 								>
 								<span class="relative">6xl</span>
 							</span>
-						</div>
+						</svelte:element>
 
 						<!-- The far end of this row is empty. It carried the day's allowance — how many of
 							the window's boxes were left to open — and past it the burger, which dropped the
@@ -3011,7 +3070,46 @@
 			part). So what this hands the column is a height rather than a scrollbar: everything
 			between the top of the aside and the marks at its foot, for the column to give to its
 			list. -->
-		<aside transition:blur={CHROME_BLUR} class="flex w-[400px] flex-none flex-col bg-base-100">
+		<!-- Beside the map from `md` up, and in front of it below that (see COLUMN_PANEL_MAX in
+			the script): the same element and the same list either way, arranged twice. As a panel
+			it is fixed over the whole viewport and parked one screen-height above the top edge,
+			and being asked for is the transform going to nothing — so it comes down over the map
+			and goes back up, which is the gesture the badge that pulls it is standing at the top
+			of. The slide is a CSS transition and not a Svelte one because the panel is mounted
+			the whole time it is shut: an `{#if}` around it would have nothing to slide from on
+			the way in, and the map's chrome is what decides whether this is mounted at all.
+			250ms is the sheets' own length (see FullScreenModal's SHEET_MS) — a panel over the
+			map is the same kind of thing arriving and should take the same time to do it.
+			Turned off at `md`, where the transform is nothing at every moment and a column that
+			animated its position would be a column sliding about as the row re-flows.
+			`inert` while it is parked: it is off-screen rather than unmounted, so without it a
+			keyboard walks off the map into a list of towns nobody can see. -->
+		<aside
+			transition:blur={CHROME_BLUR}
+			inert={phone && !columnOpen}
+			class={classNames(
+				'fixed inset-0 z-[1200] flex flex-col bg-base-100 transition-transform duration-[250ms] ease-out',
+				'md:static md:z-auto md:w-[400px] md:flex-none md:translate-y-0 md:transition-none',
+				columnOpen ? 'translate-y-0' : '-translate-y-full'
+			)}
+		>
+			<!-- The way back up, and a phone's only piece of this column: the ✕ at the corner the
+				panel came down from. It is a row of its own rather than a mark laid over the head
+				below it — that head is a place's name, its tile and the box it may have waiting, and
+				a button dropped on top of it would be covering one of them at some width. Gone from
+				`md` up, where the column is not something that was opened and so is not something to
+				close. -->
+			<div class="flex flex-none justify-end px-2 pt-2 md:hidden">
+				<button
+					type="button"
+					class="btn btn-circle btn-ghost btn-sm text-white"
+					aria-label={$_('map.column.close')}
+					on:click={() => (columnOpen = false)}
+				>
+					✕
+				</button>
+			</div>
+
 			<RegionSubdivisions
 				classes="min-h-0 flex-1"
 				rows={subdivisions}
