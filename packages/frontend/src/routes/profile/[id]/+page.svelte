@@ -161,10 +161,13 @@
 	map's corner reads a side at, and under it the collection, which wants every pixel the
 	window has. So the outer column is the wide one and the account holds itself to its own
 	width inside it — the reverse would have made the cards as narrow as the plate.
+	The cap is 7xl rather than 5xl because the grid's widest tier is six across: six cards
+	in 1024px is a narrower card than four in the same width, and a tier that made the
+	cards smaller as the window got bigger would be a strange kind of growth.
 	Top-aligned, not centred: a collection is as tall as it is, and a flex box that centres
 	content taller than itself puts the top of it out of reach above the scroll. -->
 <div class="flex min-h-screen w-full justify-center bg-base-300 p-4">
-	<div class="flex w-full max-w-5xl flex-col items-center gap-6 py-4">
+	<div class="flex w-full max-w-7xl flex-col items-center gap-6 py-4">
 		{#if loading}
 			<div class="flex items-center justify-center gap-3 py-12 text-base-content/70">
 				<span class="loading loading-spinner loading-md"></span>
@@ -202,11 +205,13 @@
 				it by and nothing to press — the collection is the whole statement, and its
 				size is part of what it says.
 				A statue takes its size from the cell it is in and brings the rest itself, so
-				the grid is a column count and a gap and no more of a layout than that. Two
-				across on a phone, five at the top width, which is where the panel under a
-				card is still wide enough to read the town off. -->
+				the grid is a column count and a gap and no more of a layout than that.
+				Every count divides the twelve a press of More adds — two, three, four, six — so it
+				always lands on a whole number of rows and the grid never ends on a part-row
+				with a gap beside it, at any width. That is why the tiers stop at six rather
+				than passing through five. -->
 			{#if visible.length > 0}
-				<div class="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+				<div class="grid w-full grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
 					{#each visible as card}
 						<CharacterStatue
 							label={card.label}
