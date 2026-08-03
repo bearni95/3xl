@@ -531,7 +531,12 @@ export class MugenPosterGrid {
 			// both exports read the transparency back out of.
 			backgroundAlpha: 0,
 			antialias: false,
-			roundPixels: true
+			roundPixels: true,
+			// So the canvas can be read back at all. WebGL throws its drawing buffer away the
+			// moment the page has been composited, which leaves `toBlob` reading an empty
+			// canvas at any moment that is not the same tick as a render; kept, it holds the
+			// last frame drawn, which is exactly what {@link snapshot} is asked for.
+			preserveDrawingBuffer: true
 		});
 		// The screen can be left while `init` is in flight; without this the app would
 		// be created after destroy() had run, holding a context and a render loop that
@@ -611,25 +616,29 @@ export class MugenPosterGrid {
 	 * whichever frame of its idle it is showing at the moment this is called, which is the
 	 * still of the wall the reader was looking at when they asked for one.
 	 *
-	 * Read back through Pixi's `extract` rather than off the canvas element itself: a WebGL
-	 * drawing buffer is cleared once it has been composited, so `toBlob` on the canvas is a
-	 * race against the next frame that a still has no reason to run. `extract` re-renders
-	 * into a texture of its own, apart from the renderer's own clear — which is exactly what
-	 * is wanted here: named no clear colour, it clears the texture to nothing, and the PNG
-	 * comes back with the roster standing on transparency. (It is a real PNG alpha channel
-	 * and not a flattened one: `extract` un-premultiplies the pixels it reads back.)
+	 * Read straight off the canvas element — the very pixels on screen, which is also what
+	 * {@link record} films, so the still and the video can never disagree about what the wall
+	 * looked like. That is what `preserveDrawingBuffer` is for (see {@link start}); a render is
+	 * asked for first anyway, so what is read is this instant rather than the last frame the
+	 * ticker happened to draw.
+	 *
+	 * Pixi's own `extract` was what did this before, and it is the wrong tool here. It re-renders
+	 * the scene into a texture of its own, and a scene rendered somewhere other than the screen
+	 * is not the scene on the screen: the picture over the middle is **masked**, and a mask
+	 * needs a stencil buffer the fresh texture has to grow before it can be used — after which
+	 * the trio's picture was missing from the PNG and so was every character drawn after it,
+	 * which is everyone standing lower than the middle of the wall. A canvas that has already
+	 * drawn the frame correctly has none of that to get wrong.
+	 *
+	 * The transparency survives the readback: the context was asked for an alpha channel
+	 * (`backgroundAlpha: 0`), and a canvas encoded to PNG is un-premultiplied by the browser.
 	 */
 	async snapshot(): Promise<Blob> {
 		if (!this.app) throw new Error('The wall is not on screen.');
-		const { renderer } = this.app;
-		const shot = renderer.extract.canvas({
-			target: this.app.stage,
-			// The visible canvas, in the stage's own units — not the stage's bounds, which a
-			// character standing proud of the field would push past the edges of the screen.
-			frame: renderer.screen
-		}) as HTMLCanvasElement;
+		this.app.render();
+		const canvas = this.app.canvas as HTMLCanvasElement;
 		return await new Promise<Blob>((resolve, reject) => {
-			shot.toBlob(
+			canvas.toBlob(
 				(blob) => (blob ? resolve(blob) : reject(new Error('The wall could not be encoded.'))),
 				'image/png'
 			);
