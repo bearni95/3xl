@@ -4,7 +4,7 @@
 	"author": "Ploaj",
 	"source": "Keroro RPG: Kishi to Musha to Densetsu no Kaizoku (Nintendo DS), ripped to The Spriters Resource",
 	"frameMs": 100,
-	"renderScale": 2.2,
+	"renderScale": 1.29,
 	"strips": [
 		"idle",
 		"walk",

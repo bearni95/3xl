@@ -2,7 +2,7 @@
 	"id": "dororo",
 	"label": "Dororo",
 	"basePath": "/assets/dororo/frames",
-	"renderScale": 2.2,
+	"renderScale": 1.58,
 	"animations": {
 		"idle": {
 			"source": "idle",

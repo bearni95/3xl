@@ -2,7 +2,7 @@
 	"id": "kululu",
 	"label": "Kululu",
 	"basePath": "/assets/kululu/frames",
-	"renderScale": 2.2,
+	"renderScale": 1.34,
 	"animations": {
 		"idle": {
 			"source": "idle",

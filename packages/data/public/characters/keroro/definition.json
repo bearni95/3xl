@@ -2,7 +2,7 @@
 	"id": "keroro",
 	"label": "Keroro",
 	"basePath": "/assets/keroro/frames",
-	"renderScale": 2.2,
+	"renderScale": 1.29,
 	"animations": {
 		"idle": {
 			"source": "idle",

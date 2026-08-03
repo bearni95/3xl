@@ -2,7 +2,7 @@
 	"id": "tamama",
 	"label": "Tamama",
 	"basePath": "/assets/tamama/frames",
-	"renderScale": 2.2,
+	"renderScale": 1.42,
 	"animations": {
 		"idle": {
 			"source": "idle",

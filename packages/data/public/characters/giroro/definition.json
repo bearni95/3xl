@@ -2,7 +2,7 @@
 	"id": "giroro",
 	"label": "Giroro",
 	"basePath": "/assets/giroro/frames",
-	"renderScale": 2.2,
+	"renderScale": 1.37,
 	"animations": {
 		"idle": {
 			"source": "idle",

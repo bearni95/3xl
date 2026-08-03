@@ -723,13 +723,12 @@ export function decodeSheet(srcDir, outDir) {
  * are filled by name, and a slot with nothing to fill it is left empty for the admin
  * editor, exactly as the .air binder leaves one.
  *
- * `renderScale` is the sidecar's, and it is a fact about the *rip* rather than about
- * the character: every surface that stands characters side by side sizes them off
- * their own sprite height against one reference, which assumes the whole roster is
- * drawn at the same pixels-per-person — and a handheld game's sprites are not drawn
- * at a MUGEN fighter's. One scale for the sheet leaves the cast's own proportions
- * alone while putting it beside the rest of the roster. It is a starting point like
- * every other auto-bound field: the admin's poster wall is where it is judged.
+ * `renderScale` comes from the sidecar, because a sheet needs one and cannot be read
+ * for it: every surface that stands characters side by side sizes them off their own
+ * sprite height against one reference, which assumes the whole roster is drawn at the
+ * same pixels-per-person — and a handheld game's sprites are not drawn at a MUGEN
+ * fighter's. So the sheet says what its own art is worth, per character, and the
+ * admin's poster wall is where that is judged.
  */
 export function bindSheetDefinition(id, manifest, basePath, sidecar = {}) {
 	const keys = new Set(Object.keys(manifest.animations ?? {}));

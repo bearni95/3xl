@@ -92,9 +92,11 @@ const BOBOBO_CAST = [
 // The Keroro cast, and the only one here that is not a MUGEN cast at all: they were cut
 // out of ripped sprite sheets from a handheld game (see @3xl/mugen's sprite-sheets.js),
 // whose art is drawn at nothing like a MUGEN fighter's pixels-per-person — around 50 px
-// against the 150 the fit measures everybody by. Their correction is authored on the
-// sheet rather than on the character, one number for the rip, which is why all five carry
-// the same one and keep their own proportions within it.
+// against the 150 the fit measures everybody by. Where the other two casts are corrected
+// by one figure each and keep their own proportions within it, these five are corrected
+// to a height: each carries the scale that stands it level with Chopper, which is why no
+// two of them are the same number. They are the smallest characters the game has, and
+// Chopper was the smallest before them.
 const KERORO_CAST = ['keroro', 'giroro', 'dororo', 'kululu', 'tamama'];
 
 // Everyone who carries a correction at all. The InuYasha, Bo-bobo and Keroro casts have
@@ -176,15 +178,23 @@ describe('authored render scales', () => {
 		}
 	});
 
-	it('corrects each small cast by one figure, and the smaller sheets by more', () => {
+	it('corrects each small cast by one figure, and Bo-bobo by the larger', () => {
 		// A cast drawn small is drawn small by one amount, so a cast is corrected by one
-		// number rather than by eleven measurements — and no two of these casts are the same
-		// number, each sheet being drawn at its own scale.
+		// number rather than by eleven measurements — and the two casts are not the same
+		// number, Bo-bobo's sheets being the smaller of the two.
 		const scalesOf = (cast: string[]) =>
 			new Set(cast.map((id) => readRenderScale(definitionOf(id))));
 		expect([...scalesOf(INUYASHA_CAST)]).toEqual([1.4]);
 		expect([...scalesOf(BOBOBO_CAST)]).toEqual([2.1]);
-		expect([...scalesOf(KERORO_CAST)]).toEqual([2.2]);
+	});
+
+	it('stands every Keroro character at Chopper height', () => {
+		// This cast is corrected to a height rather than by a figure, so what holds it is
+		// the height and not the figures: each of the five is drawn the size Chopper is,
+		// measured off the real manifests on the surface that draws them.
+		for (const id of KERORO_CAST) {
+			expect(statueHeight(id) / statueHeight('chopper'), id).toBeCloseTo(1, 2);
+		}
 	});
 
 	it('stands the InuYasha cast well clear of the smallest characters', () => {
