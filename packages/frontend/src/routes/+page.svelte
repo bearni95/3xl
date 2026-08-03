@@ -25,6 +25,7 @@
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { collectionModalOpen } from '$services/collectionModal';
 	import { settingsModalOpen } from '$services/settingsModal';
+	import { openSignIn } from '$services/signInModal';
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
 	import { boosterModalOpen } from '$services/boosterModal';
@@ -1874,7 +1875,17 @@
 	// the place the pack belongs to, waiting behind the pack and there again when it closes.
 	function openPack(id: string): void {
 		clearPackFeedback();
+		// The click is a click on the town either way, so the map goes there either way.
 		open(id);
+		// What a visitor gets instead of the pack. A pack is claimed against an account —
+		// the roll, the allowance and the cards are all the server's, keyed to whoever is
+		// asking — so opening the box for somebody with no account would stand a pack up
+		// only to have it say sign in. The box is the offer; the door is what has to be
+		// answered first. (`signedOut` and not an empty profile: see buildTownChallenge.)
+		if (signedOut) {
+			openSignIn();
+			return;
+		}
 		packTownId = id;
 		packRaisedOnTown = true;
 		boosterModalOpen.set(true);
@@ -2122,6 +2133,7 @@
 		battle: OpenBattle | null,
 		starting: boolean,
 		canField: boolean,
+		visitor: boolean,
 		t: Translate
 	): MapChallenge | null {
 		if (!town) return null;
@@ -2130,6 +2142,28 @@
 
 		const progress = territoryService.progressFor(town, occupied, banked);
 		const siege = { wins: progress.wins, required: progress.required };
+
+		// Nobody signed in: the control is the way in rather than the way to a fight. It
+		// said "your team needs three cards you have claimed" and was dead, which is a
+		// true sentence answering a question a visitor has not been let near yet — the
+		// thing standing between them and this town is not their team, it is not having
+		// an account. So the button is live and it opens the door (see SignInModal).
+		//
+		// Asked of the session's own state and not of an empty profile: a visit with an
+		// account on disk has no profile for a moment, and a control that offered to sign
+		// them in in that moment would be offering it to somebody already signed in.
+		if (visitor) {
+			return {
+				siege,
+				button: {
+					label: t('map.challenge.start'),
+					title: t('combat.signInTitle'),
+					disabled: false,
+					onClick: openSignIn
+				},
+				unlocksAt: null
+			};
+		}
 
 		// A fight already in progress takes the control over, whichever town is picked:
 		// there is only ever one battle, and this is the way back into it rather than
@@ -2184,6 +2218,7 @@
 		$openBattle,
 		challengeStarting,
 		canFieldTeam,
+		signedOut,
 		$_
 	);
 
