@@ -40,7 +40,7 @@ inputs (`characters-src/<id>/`) and *writes into* `@3xl/assets` (`public/<id>/fr
 `public/characters/<id>/definition.json` and `public/characters/<id>/mugen-moves.json`).
 **What an import must not undo.** A re-import — additive mode included — rebuilds every
 decoded manifest whole from the raw `.sff`/`.air`, so anything the author edited has to live
-outside it. Two things the admin authors per character, and where each survives:
+outside it. Three things the admin authors per character, and where each survives:
 
 - **The portrait** picked (and cropped) on `/characters/faces` is `face`/`faceCrop` on that
   character's `definition.json`, and an additive import writes a definition only when there
@@ -48,6 +48,16 @@ outside it. Two things the admin authors per character, and where each survives:
   archive re-imported with a different set of group-9000 sprites can leave it pointing at
   nothing; the importer says so and changes nothing, since which face a character wears is
   the author's call.
+- **The portrait uploaded** on that same screen is not in the archive at all, so it is stored
+  in `public/characters/<id>/faces/` and copied into the decoded frames folder — which is
+  deleted and rebuilt whole by every decode — on each run, with an entry appended to the
+  manifest's `faces` list, by `@3xl/mugen/custom-faces.js` (which the backend's upload route
+  also writes through, so an upload and a decode leave the same folder either way round). Once
+  copied it *is* a face like any other: same folder, same list, named by bare filename in the
+  definition, which is what the `custom_` prefix keeps clear of the decoded `spr_<group>_<image>`
+  ones. Its pixel size is read off the file's own header (PNG/JPEG/WebP/GIF), so the folder is
+  the whole record and nothing beside it can drift. An upload is selected on the spot; it is
+  framed by the default square until someone drags it and saves.
 - **The frames deleted** on `/characters/dashboard/<id>/frames` are *not* kept in the manifest
   they were deleted from — that file is generated. Each deletion is recorded in
   `public/characters/<id>/frame-edits.json` (authored data, beside the definition, in the

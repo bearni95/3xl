@@ -7,7 +7,8 @@
 	import { clampFaceCrop, defaultFaceCrop, sameFaceCrop } from '$utils/mugen/face-crop';
 	import type { ManifestFace } from '$utils/mugen/mugen-player';
 
-	// The character whose group-9000 portraits this card lists.
+	// The character whose portraits this card lists — the group-9000 sprites its
+	// archive shipped, plus any uploaded here.
 	export let character: CharacterOption;
 	export let classes: string = '';
 
@@ -18,8 +19,8 @@
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
 
 	let definition: CharacterDefinition | null = null;
-	// Every portrait the character ships (manifest.faces) plus the manifest
-	// default — what the board falls back to when the definition picks none.
+	// Every portrait the character has (manifest.faces — decoded and uploaded alike)
+	// plus the manifest default, what the board falls back to when nothing is picked.
 	let faces: ManifestFace[] = [];
 	let defaultFace: string | null = null;
 	// The picked file, editable until saved. Empty string means "not loaded yet".
@@ -32,6 +33,7 @@
 	let loadError = '';
 	let saving = false;
 	let saveError = '';
+	let uploading = false;
 
 	onMount(load);
 
@@ -89,12 +91,14 @@
 		return clampFaceCrop(stored ?? defaultFaceCrop(face.width, face.height), face.width, face.height);
 	}
 
-	// A group-9000 image number to a human label: 0 the small select avatar, 1 the
-	// large versus portrait, higher numbers character-specific alternates.
-	function faceLabel(image: number | undefined): string {
-		if (image === 0) return 'Avatar';
-		if (image === 1) return 'Face';
-		return `Alt ${image ?? '?'}`;
+	// A portrait's human label. Decoded sprites go by their group-9000 image number:
+	// 0 the small select avatar, 1 the large versus portrait, higher numbers
+	// character-specific alternates. An uploaded one has no number to go by.
+	function faceLabel(face: ManifestFace): string {
+		if (face.custom) return 'Uploaded';
+		if (face.image === 0) return 'Avatar';
+		if (face.image === 1) return 'Face';
+		return `Alt ${face.image ?? '?'}`;
 	}
 
 	function pick(file: string) {
@@ -105,6 +109,57 @@
 
 	function recrop(crop: FaceCrop) {
 		cropped = crop;
+	}
+
+	/** The picked file as the data URL the upload API takes. */
+	function readDataUrl(file: File): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => resolve(String(reader.result));
+			reader.onerror = () => reject(reader.error ?? new Error('Could not read the file'));
+			reader.readAsDataURL(file);
+		});
+	}
+
+	/**
+	 * Upload an image as a portrait for this character. The backend stores it beside
+	 * the definition (where the next MUGEN import cannot delete it), copies it into
+	 * the frames folder and picks it — so what comes back is a face like any other,
+	 * already selected, framed on the default square until someone drags it.
+	 */
+	async function upload(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		// Clear the input either way, so the same file can be picked again after a
+		// failure (a re-pick of an unchanged value fires no change event).
+		input.value = '';
+		if (!file || uploading || !definition) return;
+		uploading = true;
+		saveError = '';
+		try {
+			const res = await fetch(`${API_BASE}/api/characters/${character.id}/faces`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ filename: file.name, data: await readDataUrl(file) })
+			});
+			if (!res.ok) {
+				const failure = await res.json().catch(() => ({ message: res.statusText }));
+				throw new Error(failure.message ?? 'Upload failed');
+			}
+			const result = (await res.json()) as {
+				definition: CharacterDefinition;
+				face: ManifestFace;
+				faces: ManifestFace[];
+			};
+			definition = result.definition;
+			faces = result.faces;
+			picked = definition.face ?? null;
+			cropped = storedCrop(result.face, picked, definition);
+		} catch (error) {
+			saveError = error instanceof Error ? error.message : String(error);
+		} finally {
+			uploading = false;
+		}
 	}
 
 	async function save() {
@@ -156,10 +211,11 @@
 		</div>
 	{:else if loadError}
 		<span class="flex-1 text-xs text-error">{loadError}</span>
-	{:else if faces.length === 0}
-		<span class="flex-1 text-xs opacity-60">No group-9000 portraits</span>
 	{:else}
 		<div class="flex flex-1 flex-wrap items-end gap-2">
+			{#if faces.length === 0}
+				<span class="self-center text-xs opacity-60">No group-9000 portraits</span>
+			{/if}
 			{#each faces as face (face.file)}
 				{@const selected = activeFile === face.file}
 				<button
@@ -168,19 +224,47 @@
 						'border-primary ring-2 ring-primary': selected,
 						'border-transparent hover:border-base-300': !selected
 					})}
-					title={`${faceLabel(face.image)} — ${face.width}×${face.height}`}
+					title={`${faceLabel(face)} — ${face.width}×${face.height}`}
 					on:click={() => pick(face.file)}
 				>
 					<img
 						src={`${character.basePath}/${face.file}`}
-						alt={`${faceLabel(face.image)} portrait`}
+						alt={`${faceLabel(face)} portrait`}
 						class="h-40 w-40 bg-base-300 object-contain"
 					/>
 					<span class="text-[10px] leading-none opacity-60">
-						{faceLabel(face.image)}{face.file === defaultFace ? ' · default' : ''}
+						{faceLabel(face)}{face.file === defaultFace ? ' · default' : ''}
 					</span>
 				</button>
 			{/each}
+
+			<!-- One more portrait, from a file instead of the archive: it is stored,
+			     copied in beside the decoded sprites and picked, all by the upload. -->
+			<label
+				class={classNames(
+					'flex flex-col items-center gap-1 rounded-box border-2 border-transparent p-1 transition',
+					uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer hover:border-base-300'
+				)}
+				title="Upload a portrait for this character"
+			>
+				<span
+					class="flex h-40 w-40 items-center justify-center rounded-box border-2 border-dashed border-base-300 bg-base-200"
+				>
+					{#if uploading}
+						<span class="loading loading-spinner loading-sm"></span>
+					{:else}
+						<span class="text-3xl leading-none opacity-50">+</span>
+					{/if}
+				</span>
+				<span class="text-[10px] leading-none opacity-60">Upload</span>
+				<input
+					type="file"
+					class="hidden"
+					accept="image/png,image/jpeg,image/webp,image/gif"
+					disabled={uploading}
+					on:change={upload}
+				/>
+			</label>
 		</div>
 
 		{#if activeFace && cropped}

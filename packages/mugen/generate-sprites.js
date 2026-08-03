@@ -14,6 +14,10 @@ import { PNG } from 'pngjs';
 // the author removed in the admin are kept outside it and replayed onto each fresh
 // decode — see ./frame-edits.js.
 import { applyFrameEdits, readFrameEdits, writeFrameEdits } from './frame-edits.js';
+// Portraits the author uploaded are kept outside the frames folder too — that folder
+// is deleted and rewritten below — and copied back onto each decode. See
+// ./custom-faces.js.
+import { installCustomFaces } from './custom-faces.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -299,17 +303,28 @@ export function buildCharacter(character) {
 	// Portraits: MUGEN group 9000 holds every portrait a character ships — 9000,0
 	// the small select-screen avatar, 9000,1 the large versus face, plus any extra
 	// alternates. Decode and write them all (in image-number order) so the admin
-	// Faces tab can offer every one; `faces` lists them, `face` keeps the historical
-	// single default (large versus portrait, else the small avatar) for consumers
-	// that read one portrait.
-	const faces = [];
+	// Faces tab can offer every one, then add the ones the author uploaded there;
+	// `faces` lists the lot, `face` keeps the historical single default (large versus
+	// portrait, else the small avatar, else whatever there is) for consumers that read
+	// one portrait.
+	const decoded = [];
 	for (const sprite of data.sprites) {
 		if (sprite.group !== 9000) continue;
 		const file = writeSprite(9000, sprite.number);
 		if (!file) continue;
-		faces.push({ file, image: sprite.number, width: sprite.width, height: sprite.height });
+		decoded.push({ file, image: sprite.number, width: sprite.width, height: sprite.height });
 	}
-	faces.sort((a, b) => a.image - b.image);
+	decoded.sort((a, b) => a.image - b.image);
+
+	// The portraits the author uploaded on the admin's Faces screen are authored data
+	// kept in @3xl/data (the frames folder was just deleted above), copied back in here
+	// and listed after the decoded ones — they have no group-9000 image number to sort
+	// among them. Once copied they are faces like any other: same folder, same manifest
+	// list, named by bare filename in the definition.
+	const { faces: uploaded, warnings: faceWarnings } = installCustomFaces(character.dir, outDir);
+	for (const warning of faceWarnings) console.warn(`  ⚠ ${character.dir}: ${warning}`);
+
+	const faces = [...decoded, ...uploaded];
 	const preferred =
 		faces.find((f) => f.image === 1) ?? faces.find((f) => f.image === 0) ?? faces[0] ?? null;
 	// Keep `face` byte-identical to the pre-`faces` shape (no `image` key).
@@ -371,6 +386,7 @@ export function buildCharacter(character) {
 	console.log(
 		`${info.name} (${character.dir}): ${animCount} animations, ${frameCount} frames, ` +
 			`${spriteCount} sprites${dropped ? `, ${dropped} removed by hand` : ''}` +
+			`${uploaded.length ? `, ${uploaded.length} uploaded portrait(s)` : ''}` +
 			`${missing ? `, ${missing} frames skipped (missing sprite)` : ''} → ${outDir}`
 	);
 

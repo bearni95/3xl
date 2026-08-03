@@ -24,9 +24,18 @@ export interface ManifestFace {
 	/**
 	 * The sprite's group-9000 image number: 0 is the small select-screen avatar,
 	 * 1 the large versus portrait, higher numbers character-specific alternates.
-	 * Only set on the `faces` list entries; omitted on the single `face` default.
+	 * Only set on the `faces` list entries; omitted on the single `face` default,
+	 * and on a portrait the author uploaded (which came from no sprite group).
 	 */
 	image?: number;
+	/**
+	 * Set on a portrait the author uploaded on the admin's Faces screen rather than
+	 * one decoded from the archive. It is stored in @3xl/data and copied into this
+	 * folder on every decode (see @3xl/mugen/custom-faces), so everything that reads
+	 * a face treats it like any other; the flag is only how the Faces screen labels
+	 * it and how a re-copy tells the uploaded set from the decoded one.
+	 */
+	custom?: boolean;
 }
 
 export interface Manifest {

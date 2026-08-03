@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
 	MOVEMENT_ANIMATIONS,
@@ -28,6 +28,18 @@ import {
 	writeFrameEdits,
 	type FrameEditFrame
 } from '@3xl/mugen/frame-edits';
+// An uploaded portrait is stored outside the generated frames folder for the same
+// reason, and copied into it — see the POST /:id/faces route and
+// @3xl/mugen/custom-faces.
+import {
+	customFaceFile,
+	customFaceFiles,
+	installCustomFaces,
+	readImageHeader,
+	writeCustomFace,
+	CUSTOM_FACE_PATTERN,
+	type CustomFace
+} from '@3xl/mugen/custom-faces';
 import { asyncHandler, httpError } from '../http-error';
 import { upsertTemplateName } from './character-templates';
 
@@ -45,6 +57,10 @@ import { upsertTemplateName } from './character-templates';
  * `DELETE /:id/frames/:animation/:index` writes another file entirely — the decoded
  * manifest in @3xl/assets, which is where a character's frames are described (a
  * definition only names animations). See the route.
+ *
+ * `POST /:id/faces` uploads a portrait, which is three writes: the image itself into
+ * @3xl/data (where a re-decode cannot delete it), a copy into the decoded frames
+ * folder, and the definition picking it. See the route.
  *
  * Was `src/routes/api/characters/[id]/+server.ts` in the frontend; extracted
  * here so the admin app can stay a pure static SPA.
@@ -71,21 +87,36 @@ function definitionPath(id: string): string {
 }
 
 /**
- * Just enough of the decoded manifest to take a frame out of it — everything else
- * it holds (name, author, portraits) is carried from the parse to the write
- * untouched. The full shape is declared in @3xl/shared beside the renderers that
- * read it, but that module is browser code (PixiJS, DOM lib), so this server keeps
- * its own view of the fields it touches, as @3xl/shared's own non-renderer readers
- * do (see `utils/card/texture-cache`).
+ * Just enough of the decoded manifest to take a frame out of it and to add a
+ * portrait to it — everything else it holds (name, author, the default `face`) is
+ * carried from the parse to the write untouched. The full shape is declared in
+ * @3xl/shared beside the renderers that read it, but that module is browser code
+ * (PixiJS, DOM lib), so this server keeps its own view of the fields it touches, as
+ * @3xl/shared's own non-renderer readers do (see `utils/card/texture-cache`).
  */
 interface FrameManifest {
 	animations?: Record<string, { frames: FrameEditFrame[] } | undefined>;
+	faces?: ManifestFaceEntry[];
+}
+
+/** One portrait as the manifest lists it: a decoded sprite or an uploaded image. */
+interface ManifestFaceEntry {
+	file: string;
+	width: number;
+	height: number;
+	image?: number;
+	custom?: boolean;
 }
 
 function manifestPath(id: string): string {
 	if (!ID_PATTERN.test(id)) httpError(400, `Invalid character id: ${id}`);
 	return resolve(ASSETS_DIR, id, 'frames', 'manifest.json');
 }
+
+// How large an uploaded portrait may be. A portrait is a small image and this is a
+// local authoring server, so the cap is only there to keep a mis-picked file (a video,
+// a whole sprite sheet) from being written into the git tree.
+const MAX_FACE_BYTES = 8 * 1024 * 1024;
 
 /** Narrow unknown parsed JSON to a CharacterDefinition, throwing 400 on gaps. */
 function validate(id: string, body: unknown): CharacterDefinition {
@@ -166,12 +197,16 @@ function validate(id: string, body: unknown): CharacterDefinition {
 	// missing values fall back to DEFAULT_COLOR rather than failing validation.
 	const color = COMPOUND_COLORS.includes(def.color!) ? def.color! : DEFAULT_COLOR;
 
-	// Optional chosen portrait: a bare group-9000 sprite filename from the
-	// manifest (`spr_9000_1.png`). Constrained to that shape so a crafted body
-	// can't smuggle a path; anything else (or absent) drops the field, leaving the
-	// board on the manifest's default face.
+	// Optional chosen portrait: a bare filename from the manifest — a decoded
+	// group-9000 sprite (`spr_9000_1.png`) or an image uploaded through the route
+	// below (`custom_*`). Constrained to those two shapes so a crafted body can't
+	// smuggle a path; anything else (or absent) drops the field, leaving the board on
+	// the manifest's default face.
 	const face =
-		typeof def.face === 'string' && /^spr_9000_\d+\.png$/.test(def.face) ? def.face : undefined;
+		typeof def.face === 'string' &&
+		(/^spr_9000_\d+\.png$/.test(def.face) || CUSTOM_FACE_PATTERN.test(def.face))
+			? def.face
+			: undefined;
 
 	// The square framed on that portrait, in its own pixels. The sprite's size
 	// isn't known here (it lives in the assets manifest), so this only enforces
@@ -369,5 +404,96 @@ charactersRouter.delete(
 		await writeFile(path, JSON.stringify(manifest, null, 2), 'utf-8');
 
 		res.json({ animation: animationName, removed, frames: frames.length });
+	})
+);
+
+// Upload one portrait for a character, and pick it. Body: { filename, data }, where
+// `data` is the image as a base64 data URL (a JSON body rather than a multipart one
+// so the admin's single allowed request header still covers it).
+//
+// A portrait is a face like any other once it lands — same frames folder, same
+// manifest list, named by bare filename in the definition — so this route's whole job
+// is to put the same file in the two places a face has to be, and then make the pick:
+//
+//   1. @3xl/data's public/characters/<id>/faces/, which is where it *lives*. The
+//      frames folder is generated: `pnpm import:mugen` (additive mode included) and
+//      `pnpm generate:sprites` delete it and rewrite the manifest whole, so a portrait
+//      that existed only there would be gone on the next import. See
+//      @3xl/mugen/custom-faces, which is also what copies it back on every decode.
+//   2. @3xl/assets' <id>/frames/ + its manifest, so the game and the admin see it now
+//      rather than after the next decode. Both are done through the same install the
+//      decode uses, so the folder holds what the store says either way round.
+//
+// Then the definition picks it, which is what "uploaded" means from the screen: the
+// new portrait is the one the board wears. No crop is written — a fresh face is framed
+// by `defaultFaceCrop` everywhere until someone drags the square and saves, and
+// authoring one here would be inventing the author's framing for them.
+//
+// The store is written first: of the two half-failures that ordering picks the
+// harmless one, an image on disk that no manifest lists (the next decode lists it)
+// over a manifest entry with no image behind it.
+charactersRouter.post(
+	'/:id/faces',
+	asyncHandler(async (req, res) => {
+		const id = String(req.params.id);
+		const path = definitionPath(id);
+		const manifestFile = manifestPath(id);
+
+		const { filename, data } = req.body as { filename?: unknown; data?: unknown };
+		if (typeof data !== 'string' || !data) httpError(400, 'Body must be { filename, data }');
+		// Accept a data URL (what a FileReader hands the admin) or bare base64.
+		const base64 = (data as string).replace(/^data:[^,]*,/, '');
+		const buffer = Buffer.from(base64, 'base64');
+		if (buffer.length === 0) httpError(400, 'Uploaded image is empty');
+		if (buffer.length > MAX_FACE_BYTES) {
+			httpError(413, `Portraits are limited to ${Math.round(MAX_FACE_BYTES / 1024 / 1024)}MB`);
+		}
+		const header = readImageHeader(buffer);
+		if (!header) httpError(400, 'Not a PNG, JPEG, WebP or GIF image');
+
+		// A definition has to exist for the pick to land in, and a manifest for the
+		// entry to join — both mean the character has been imported at least once.
+		let current: unknown;
+		try {
+			current = JSON.parse(await readFile(path, 'utf-8'));
+		} catch {
+			httpError(404, `No definition for "${id}"`);
+		}
+		let rawManifest: unknown;
+		try {
+			rawManifest = JSON.parse(await readFile(manifestFile, 'utf-8'));
+		} catch {
+			httpError(404, `No manifest for "${id}"`);
+		}
+		const manifest = rawManifest as FrameManifest;
+
+		const file = customFaceFile(
+			typeof filename === 'string' ? filename : '',
+			header.format,
+			customFaceFiles(id)
+		);
+		writeCustomFace(id, file, buffer);
+
+		// Re-install the whole uploaded set rather than this one file: the decoded
+		// sprites are untouched, and the uploaded entries are then exactly what the
+		// store holds — the same list the next decode would produce.
+		const { faces: uploaded } = installCustomFaces(id, dirname(manifestFile));
+		const decoded = (manifest.faces ?? []).filter((face) => !face.custom);
+		manifest.faces = [...decoded, ...uploaded];
+		// 2-space JSON, no trailing newline: the shape generate-sprites writes.
+		await writeFile(manifestFile, JSON.stringify(manifest, null, 2), 'utf-8');
+
+		// Run the whole definition back through validate() so an upload writes the same
+		// canonical shape a full save does. The crop goes with the old face: it was
+		// authored in that sprite's pixels and means nothing in this one's.
+		const definition = validate(id, {
+			...(current as CharacterDefinition),
+			face: file,
+			faceCrop: undefined
+		});
+		await writeFile(path, JSON.stringify(definition, null, '\t') + '\n', 'utf-8');
+
+		const face = uploaded.find((entry) => entry.file === file) as CustomFace;
+		res.json({ definition, face, faces: manifest.faces });
 	})
 );

@@ -19,12 +19,16 @@
  *   additive — keep everything already imported and import/refresh the archives
  *     on top. Nothing the author edited is clobbered: the hand-tuned bindings,
  *     the chosen portrait and its crop in public/characters/<id>/definition.json
- *     are kept as-is, and the frames deleted on the admin's frames page are
+ *     are kept as-is, the frames deleted on the admin's frames page are
  *     replayed onto the re-decoded manifest from public/characters/<id>/
- *     frame-edits.json (see ./frame-edits.js — the manifest itself is generated
- *     and is rebuilt whole here). So this mode is safe to run repeatedly.
+ *     frame-edits.json, and the portraits uploaded on its faces page are copied
+ *     back into the re-decoded frames folder from public/characters/<id>/faces/
+ *     (see ./frame-edits.js and ./custom-faces.js — both the manifest and that
+ *     folder are generated and are rebuilt whole here, which is exactly why
+ *     neither record lives in them). So this mode is safe to run repeatedly.
  *   wipe — delete ALL imported character data first (the public/characters/<id>/
- *     folders, hand-tuned definitions and frame edits included), then
+ *     folders, hand-tuned definitions, frame edits and uploaded portraits
+ *     included), then
  *     reimport from scratch. The game ends up mirroring mugen-characters/
  *     exactly: archives you deleted disappear from the registry.
  *
@@ -537,7 +541,9 @@ function autoBindDefinition(id, manifest, basePath) {
  * an additive import keeps the definition as-is — but it names a manifest file
  * (`spr_9000_2.png`), so an archive re-imported with a different set of group-9000
  * sprites can leave the pick pointing at nothing, and the board would then quietly
- * fall back to the default portrait. Nothing is rewritten here: which face a
+ * fall back to the default portrait. An uploaded portrait (`custom_*`) is copied back
+ * onto every decode, so a pick on one only dangles if its file left the character's
+ * faces/ folder. Nothing is rewritten here: which face a
  * character wears is the author's call, and guessing a replacement would be a
  * silent recrop. A parse failure is ignored — the definition is not this function's
  * to validate, and the import must not fail over a warning.
@@ -666,7 +672,7 @@ function importArchive(archivePath, taken) {
  * three packages: raw inputs (characters-src/<id>/), decoded frames
  * (@3xl/assets public/<id>/, but never the shared `auras`) and each character's
  * full data folder (@3xl/data public/characters/<id>/ — definition + moveset +
- * frame edits).
+ * frame edits + uploaded portraits).
  * The @3xl/data `geo` layer is unrelated map data and is left untouched.
  */
 function wipeImportedData() {
