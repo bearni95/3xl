@@ -108,14 +108,14 @@
 			This build is a static SPA: until the bundle boots there is no app, no
 			stylesheet and no route — a component-drawn splash would first have to wait
 			for the very load it is there to cover, and the player would watch a white
-			page in the meantime. So the red field and the video are in the document
+			page in the meantime. So the black field and the video are in the document
 			adapter-static writes, which is on screen at the first paint and starts
 			fetching the video while the bundle is still coming down.
 
 			That is also why every rule here is an inline style and not a Tailwind class:
 			app.css is imported by the bundle, so no class in this file would mean
-			anything for the whole time this element is the only thing on screen. The red
-			is Tailwind's red-600 spelled as hex for the same reason.
+			anything for the whole time this element is the only thing on screen — the
+			field is spelled `#000` here for the same reason.
 
 			The video is muted (a browser autoplays nothing else), `playsinline` so iOS
 			Safari does not take it fullscreen, and `object-fit: cover` — it is scaled to
@@ -125,7 +125,7 @@
 
 			`poster` is the video's own first frame, static/../assets/video/splash.png: a
 			video paints nothing until it has decoded enough to start, so without it the
-			red field stands alone for as long as the fetch takes. The poster is one image
+			black field stands alone for as long as the fetch takes. The poster is one image
 			and arrives long before the mp4, so what the player sees is the film's opening
 			frame held still and then moving, rather than a colour and then a cut.
 
@@ -135,7 +135,7 @@
 		-->
 		<div
 			id="splash"
-			style="position: fixed; inset: 0; z-index: 9999; overflow: hidden; background: #e7000b"
+			style="position: fixed; inset: 0; z-index: 9999; overflow: hidden; background: #000000"
 		>
 			<video
 				src="%sveltekit.assets%/assets/video/splash.mp4"
