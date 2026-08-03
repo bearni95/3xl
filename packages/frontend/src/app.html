@@ -35,8 +35,15 @@
 
 			These URLs are absolute and hardcoded, unlike the icon's `%sveltekit.assets%`:
 			a card is fetched by another host, so a root-relative path resolves against
-			nothing there. The origin is the custom domain in static/CNAME — keep the
-			three together if the site moves.
+			nothing there. That also means a stale origin here fails *silently and only
+			here* — the title and description are text in this file and scrape fine, so
+			the card still comes up, just with no picture. Which is exactly what the old
+			3xl.bearni.io spelling did.
+
+			The origin is the site's live custom domain, 6xl.bearni.io. Note it is NOT
+			what static/CNAME says (that file still reads 3xl.bearni.io, from before the
+			rename); the domain Pages actually serves is the one set in the repo's Pages
+			settings. Check the live host, not the file, if this ever moves again.
 
 			`twitter:card` is `summary`, not `summary_large_image`: the mark is square, and
 			the large card would letterbox it into a wide band of navy.
@@ -47,8 +54,8 @@
 		<meta property="og:site_name" content="6XL" />
 		<meta property="og:title" content="6XL" />
 		<meta property="og:description" content="El joc d'anime en català" />
-		<meta property="og:url" content="https://3xl.bearni.io/" />
-		<meta property="og:image" content="https://3xl.bearni.io/social-card.png" />
+		<meta property="og:url" content="https://6xl.bearni.io/" />
+		<meta property="og:image" content="https://6xl.bearni.io/social-card.png" />
 		<meta property="og:image:type" content="image/png" />
 		<meta property="og:image:width" content="1024" />
 		<meta property="og:image:height" content="1024" />
@@ -57,7 +64,7 @@
 		<meta name="twitter:card" content="summary" />
 		<meta name="twitter:title" content="6XL" />
 		<meta name="twitter:description" content="El joc d'anime en català" />
-		<meta name="twitter:image" content="https://3xl.bearni.io/social-card.png" />
+		<meta name="twitter:image" content="https://6xl.bearni.io/social-card.png" />
 		<meta name="twitter:image:alt" content="6XL" />
 		<meta name="theme-color" content="#f0b100" />
 		<!--
