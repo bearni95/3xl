@@ -55,9 +55,11 @@
  * cells cover. It is the one thing here that is neither ground nor roster, which is exactly
  * why it is put on the three cells the roster never reaches: it takes nothing from the wall,
  * and the middle of a field grown outward from those cells is the one place on it that means
- * something without a character standing there. It is drawn over the ground, because it
- * stands on it, and under the halving line, because a line that broke at the middle of the
- * field would not be halving it.
+ * something without a character standing there. It is drawn over the ground and the halving
+ * line, because it stands on them, and it takes its place among the characters by the rule
+ * they take theirs by each other: lower on the screen is in front. So the row above the trio
+ * passes behind the picture and the rows below it walk in front, which is what any of them
+ * standing on that ground would do.
  *
  * One canvas rather than one per character: a browser allows a handful of WebGL
  * contexts at a time (see `release-context`), and the roster is dozens of characters —
@@ -286,7 +288,7 @@ const EMBLEM_CORNER = 0.1;
  * Written out as the eight numbers it comes to, the list would say nothing about why those
  * eight; computed, the cycle can be made finer or slower by the two constants over it.
  */
-const EMBLEM_RISE = 0.06;
+const EMBLEM_RISE = 0.03;
 const EMBLEM_BOB_FRAMES = 8;
 const EMBLEM_BOB_HOLD = 150;
 const EMBLEM_BOB: { offset: number; duration: number }[] = Array.from(
@@ -497,12 +499,10 @@ export class MugenPosterGrid {
 
 	private app: Application | null = null;
 	private host: HTMLElement | null = null;
-	// The three layers under the roster, drawn in this order: the ground, the picture over
-	// the kept trio, and the line that halves the field. The picture is over the ground
-	// because it stands on it, and under the line because a line that stopped at the middle
-	// of the field would not be halving it — which is the one thing the line is for. Two
-	// Graphics rather than one because a Graphics is drawn in a single pass, so nothing can
-	// be got in between what one of them draws.
+	// The two layers under the roster, drawn in this order: the ground, then the line that
+	// halves the field. Two Graphics rather than one because a Graphics is drawn in a single
+	// pass — the line is a mark laid over the ground and not part of it, and once they are
+	// apart the line can be re-drawn without the field being re-drawn under it.
 	private backdrop: Graphics | null = null;
 	// The picture is a container of two: the picture itself, and the rounded rectangle that
 	// is both added to it and set as its mask, which is how a corner is rounded on something
@@ -591,7 +591,10 @@ export class MugenPosterGrid {
 		// posters do not arrive in that order (they arrive as they load), so the stage
 		// sorts rather than relying on the order they were added in.
 		this.stage.sortableChildren = true;
-		app.stage.addChild(this.backdrop, this.emblem, this.marks, this.stage);
+		app.stage.addChild(this.backdrop, this.marks, this.stage);
+		// The picture goes in with the characters rather than under them, because it is sorted
+		// against them by the same rule they are sorted by each other — see {@link placeEmblem}.
+		this.stage.addChild(this.emblem);
 
 		// The wall reflows with the window: the field keeps its shape and the cell takes
 		// the difference, so this re-draws and re-sizes but never re-loads.
@@ -863,9 +866,9 @@ export class MugenPosterGrid {
 			poster.sprite.zIndex = foot.y;
 		});
 
-		// The line that halves the field, drawn over the ground and the picture on it and
-		// under the characters: it is a mark on the board, not a thing standing on it.
-		// Nothing to halve until somebody has landed on the wall.
+		// The line that halves the field, drawn over the ground and under everything standing
+		// on it — the characters and the picture alike: it is a mark on the board, not a thing
+		// standing on it. Nothing to halve until somebody has landed on the wall.
 		marks.clear();
 		if (this.posters.length > 0) {
 			const middleX = onCanvas({ x: middle, y: 0 }).x;
@@ -928,6 +931,15 @@ export class MugenPosterGrid {
 		// this once per layout, the bob on every tick.
 		const at = onCanvas({ x: trio.left + trio.width / 2, y: trio.top });
 		this.emblemHome = { x: at.x, y: at.y, cellWidth };
+
+		// Its depth, by the rule the characters are sorted against each other by: whatever is
+		// lower on the screen is in front. The line the picture "stands" on is its own bottom
+		// edge, so the row above the trio — whose feet are exactly the picture's top edge,
+		// a row's foot line being the top point of the row under it — passes behind it, and
+		// the rows below it, whose feet are lower, still come out in front. Taken at rest and
+		// not re-taken as it bobs: a rise of a hundredth of a cell is not a change of place,
+		// and nothing on this wall should reorder while it breathes.
+		emblem.zIndex = at.y + down;
 		this.applyBob();
 	}
 
