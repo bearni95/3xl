@@ -3,7 +3,7 @@
 This document guides Claude (and developers) on implementing features in this
 project: a browser game built on SvelteKit whose characters are imported from
 **MUGEN** sprite archives, with a **Països Catalans** (Catalan Countries) Leaflet
-map and Supabase auth (magic link, Google, Discord). It's a pnpm monorepo with two SvelteKit apps
+map and Supabase auth (email + password, Google). It's a pnpm monorepo with two SvelteKit apps
 (player + admin) and a small authoring backend. Follow these conventions strictly
 to keep the codebase consistent.
 
@@ -395,28 +395,50 @@ frontend reads the `PUBLIC_`-prefixed ones via SvelteKit's `$env/dynamic/public`
 | Var                        | Used by  | Purpose                                   |
 | -------------------------- | -------- | ----------------------------------------- |
 | `TMDB_API_KEY`             | backend  | Server-only TMDB key (never sent to browser). |
-| `PUBLIC_SUPABASE_URL`      | frontend | Supabase project URL for auth (magic link + OAuth). |
+| `PUBLIC_SUPABASE_URL`      | frontend | Supabase project URL for auth (password + OAuth). |
 | `PUBLIC_SUPABASE_ANON_KEY` | frontend | Supabase anon key.                        |
 | `SUPABASE_DB_KEY`          | backend  | Supabase **database password** — backend connects to Postgres to sync `character_templates` (never sent to browser). |
 
 The Supabase client degrades gracefully when the `PUBLIC_SUPABASE_*` vars are unset,
 so auth-less local dev still works.
 
-### Sign-in providers
+### The way in
 
-The sign-in panel offers a passwordless email link plus the OAuth providers listed in
-`OAUTH_PROVIDERS` (`@3xl/shared/types/profile.type`) — **Google** and **Discord**. Their
-client ids/secrets are *not* env vars: they are configured per project in the Supabase
-dashboard (Authentication → Providers), where each provider must be enabled and given
-Supabase's callback URL (`<PUBLIC_SUPABASE_URL>/auth/v1/callback`) as its redirect URI.
-The app returns to the site root after consent, so `http://localhost:2000` (and the
-deployed origin) must also be listed under Authentication → URL Configuration.
+At the foot of the map, signed out, stands **one button** (`SignInButton.svelte`) — the
+slot the player's own plate takes once there is an account. Everything it takes to open
+one is on the sheet it raises (`SignInModal.svelte`, mounted at the layout root like every
+other modal, and reached from anywhere by `openSignIn()` in `$services/signInModal`): the
+legal gate, then **two doors under one gate**.
 
-Adding a provider is: enable it in the dashboard, add its id to the `OAuthProvider` enum
-and `OAUTH_PROVIDERS`, and add its brand mark to `ProviderIcon.svelte`. Supabase links
-identities that share a *verified* email onto one user, so a player who signs in by a
-different route keeps the same account. Google and Discord supply a name in
-`user_metadata`, so those accounts skip the username prompt that email sign-ups get.
+- **An address and a password** (`EmailSignIn.svelte` → `authService.signInWithPassword` /
+  `signUpWithPassword`). One form with two modes, since the fields are the same pair and a
+  first-time visitor should not have to know which of the two they are. `MIN_PASSWORD_LENGTH`
+  (`@3xl/shared/types/profile.type`) is stated *before* it can be broken, and is only ever
+  applied to a password being created — an account made under an older rule is not a reason
+  to lock its owner out. This project confirms addresses (`mailer_autoconfirm` is off), so a
+  sign-up normally ends **not** signed in: `signUpWithPassword` returns whether a
+  confirmation is outstanding and the sheet says a mail is on its way. That message is worded
+  to be true of an address that already has an account too, because Supabase deliberately
+  answers both cases identically — the difference is exactly what a form must not reveal
+  about somebody else's address. Refusals arrive as `CredentialsRejected` carrying one of
+  `CREDENTIAL_REJECTIONS`, never the server's English prose, and each is worded from
+  `profile.password.rejected.<reason>`; a test holds the catalogue to that list. There is no
+  password recovery flow yet — a forgotten password currently has no way back.
+- **Google** (`SocialSignIn.svelte`), the only OAuth provider offered. `OAUTH_PROVIDERS`
+  (`@3xl/shared/types/profile.type`) still understands **Discord**, so an account linked to
+  one keeps working; it is simply not on the sheet. Provider client ids/secrets are *not* env
+  vars: they are configured per project in the Supabase dashboard (Authentication →
+  Providers), where each must be enabled and given Supabase's callback URL
+  (`<PUBLIC_SUPABASE_URL>/auth/v1/callback`) as its redirect URI. The app returns to the site
+  root after consent, so `http://localhost:2000` (and the deployed origin) must also be
+  listed under Authentication → URL Configuration.
+
+Adding a provider is: enable it in the dashboard, add its id to the `OAuthProvider` enum and
+`OAUTH_PROVIDERS`, add its brand mark to `ProviderIcon.svelte`, and offer it in
+`SocialSignIn`. Supabase links identities that share a *verified* email onto one user, so a
+player who signs in by a different route keeps the same account — which is what makes the two
+doors one account and not two. Google supplies a name in `user_metadata`, so those accounts
+skip the username prompt that address sign-ups get.
 
 ### The legal documents, the gate, and the data rights
 
@@ -435,7 +457,7 @@ a document changes in substance** — a new purpose for data, a new restriction,
 recipient; not a typo. Bumping it puts every existing player back through the gate on
 their next visit, which is the whole point of versioning an acceptance.
 
-- **The gate** (`LegalConsent.svelte`, above the Google button in `AuthMenu`) is two
+- **The gate** (`LegalConsent.svelte`, above both doors on `SignInModal`) is two
   unticked boxes: an age attestation and acceptance of the terms with the privacy notice
   named alongside. Sixteen, because it is the strictest floor GDPR art. 8 lets a member
   state set and it clears COPPA's thirteen — one gate rather than one per country. The

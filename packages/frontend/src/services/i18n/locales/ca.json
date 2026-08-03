@@ -27,6 +27,26 @@
 		"title": "Perfil",
 		"access": "Accés",
 		"continueWith": "Continua amb {provider}",
+		"password": {
+			"haveAccount": "Ja tinc compte",
+			"newAccount": "Vull un compte",
+			"email": "Adreça electrònica",
+			"emailPlaceholder": "nom@exemple.cat",
+			"password": "Contrasenya",
+			"minimum": "Com a mínim {length} caràcters.",
+			"signIn": "Entra",
+			"createAccount": "Crea el compte",
+			"or": "o",
+			"confirmationSent": "T'hem enviat un correu per confirmar l'adreça. Obre l'enllaç que hi trobaràs i ja hi seràs. Si ja tenies un compte amb aquesta adreça, entra-hi amb la contrasenya de sempre.",
+			"rejected": {
+				"invalid": "L'adreça o la contrasenya no són correctes.",
+				"unconfirmed": "Encara no has confirmat l'adreça. Mira el correu que et vam enviar.",
+				"weak": "Aquesta contrasenya és massa fàcil o massa curta. Prova'n una altra.",
+				"email": "Aquesta adreça no sembla una adreça electrònica.",
+				"rate": "Ho has provat massa vegades seguides. Espera uns minuts i torna-ho a provar.",
+				"closed": "Ara mateix no es poden obrir comptes nous amb adreça i contrasenya."
+			}
+		},
 		"emailLabel": "Email",
 		"memberSince": "Membre des de",
 		"signedInWith": "Sessió iniciada amb",

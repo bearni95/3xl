@@ -1,7 +1,12 @@
 import { writable, type Readable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { profileAdapter } from '$adapters/classes/profile.adapter';
-import { AuthStatus, type OAuthProvider, type Profile } from '$types/profile.type';
+import {
+	AuthStatus,
+	type CredentialRejection,
+	type OAuthProvider,
+	type Profile
+} from '$types/profile.type';
 import type { SpawnColor } from '$types/character-spawn.type';
 import type { CombatReport, CombatReward } from '$types/combat.type';
 import { MIN_LEVEL } from '$utils/progression/level';
@@ -38,9 +43,61 @@ function usernameError(error: { code?: string; message?: string }): Error {
 }
 
 /**
- * Client-side authentication state for the SPA, backed by Supabase magic-link
- * (passwordless) auth. Supabase owns session persistence in localStorage; this
- * service mirrors it into Svelte stores and exposes intent methods.
+ * Credentials Supabase refused. Carries the reason rather than the server's own
+ * sentence, which arrives in English and says more about the account than the
+ * person typing is owed — see {@link credentialError}.
+ */
+export class CredentialsRejected extends Error {
+	constructor(
+		readonly reason: CredentialRejection,
+		message: string
+	) {
+		super(message);
+		this.name = 'CredentialsRejected';
+	}
+}
+
+/**
+ * Read a Supabase auth error as a rejection reason.
+ *
+ * Keyed on `code`, which is the stable part of an `AuthError` — the message is
+ * English prose that changes between releases. Anything unrecognised passes through
+ * as a plain Error, so a failure this does not know about is still reported rather
+ * than dressed up as a wrong password.
+ *
+ * "No such account" and "wrong password" are deliberately one reason: Supabase
+ * answers both with `invalid_credentials` precisely so that a form cannot be used to
+ * find out who has an account here, and taking them apart on screen would undo that.
+ */
+function credentialError(error: { code?: string; status?: number; message?: string }): Error {
+	const message = error.message ?? 'Authentication failed';
+	switch (error.code) {
+		case 'invalid_credentials':
+			return new CredentialsRejected('invalid', message);
+		case 'email_not_confirmed':
+			return new CredentialsRejected('unconfirmed', message);
+		case 'weak_password':
+		case 'validation_failed':
+			return new CredentialsRejected('weak', message);
+		case 'email_address_invalid':
+			return new CredentialsRejected('email', message);
+		case 'over_email_send_rate_limit':
+		case 'over_request_rate_limit':
+			return new CredentialsRejected('rate', message);
+		case 'signup_disabled':
+		case 'email_provider_disabled':
+			return new CredentialsRejected('closed', message);
+		default:
+			// Older gateways answer a throttle with the status alone.
+			if (error.status === 429) return new CredentialsRejected('rate', message);
+			return new Error(message);
+	}
+}
+
+/**
+ * Client-side authentication state for the SPA, backed by Supabase auth — an email
+ * address with a password, or Google. Supabase owns session persistence in
+ * localStorage; this service mirrors it into Svelte stores and exposes intent methods.
  */
 class AuthService {
 	private statusStore = writable<AuthStatus>(AuthStatus.Loading);
@@ -292,6 +349,59 @@ class AuthService {
 			}
 		});
 		if (error) throw error;
+	}
+
+	/**
+	 * Sign in with an address and a password.
+	 *
+	 * The session lands in this tab — there is no round trip and no consent screen —
+	 * so the `onAuthStateChange` subscription in {@link init} picks it up before this
+	 * resolves, and everything hanging off a session (the profile row, the acceptance
+	 * ledger) settles on its own. Throws {@link CredentialsRejected} so the form can
+	 * say which of the handful of answers it got.
+	 */
+	async signInWithPassword(email: string, password: string): Promise<void> {
+		const supabase = getSupabaseClient();
+		const { error } = await supabase.auth.signInWithPassword({
+			email: email.trim(),
+			password
+		});
+		if (error) throw credentialError(error);
+	}
+
+	/**
+	 * Open an account on an address and a password.
+	 *
+	 * Returns whether the address still has to be confirmed — `true` when Supabase
+	 * took the sign-up but handed back no session, which is what a project with email
+	 * confirmation on does (this one; see `mailer_autoconfirm`). The caller has a
+	 * player who is *not* signed in and must be told to go and read their mail.
+	 *
+	 * An address that already has an account comes back the same way, with no error
+	 * and no session, and this cannot tell the two apart — deliberately, on Supabase's
+	 * part: the difference is exactly what a form must not be able to reveal about
+	 * somebody else's address. So the caller's message has to be true of both, and the
+	 * existing account's owner gets a mail they can ignore rather than a stranger
+	 * learning they are here.
+	 *
+	 * The password is *not* pre-checked here — {@link MIN_PASSWORD_LENGTH} is the
+	 * form's business, since the form is where a rule can be said before it is broken.
+	 * Anything Supabase itself refuses arrives as {@link CredentialsRejected}.
+	 */
+	async signUpWithPassword(email: string, password: string): Promise<boolean> {
+		const supabase = getSupabaseClient();
+		const { data, error } = await supabase.auth.signUp({
+			email: email.trim(),
+			password,
+			options: {
+				// Where the link in the mail comes back to. Same origin the player is
+				// standing on, so a confirmation opened from a phone lands on the game
+				// rather than on whatever the project's Site URL was set to years ago.
+				emailRedirectTo: browser ? `${window.location.origin}/` : undefined
+			}
+		});
+		if (error) throw credentialError(error);
+		return !data.session;
 	}
 
 	/**

@@ -12,8 +12,51 @@ export enum AuthStatus {
 }
 
 /**
- * Third-party identity providers the game can sign in with, alongside the
- * passwordless email link. The values are Supabase's own provider ids — they go
+ * The shortest password the game will send to Supabase on a sign-up.
+ *
+ * It is asked for here rather than left to the server: Supabase's own floor is a
+ * project setting (six characters out of the box), and a rule the player only meets
+ * by being turned down is a rule they were never told. Eight is longer than that
+ * floor, so a password this accepts is one Supabase accepts — and the check is only
+ * ever applied to a password being *created*. Signing in sends whatever was typed:
+ * an account made under an older rule is not a reason to lock its owner out.
+ */
+export const MIN_PASSWORD_LENGTH = 8;
+
+/**
+ * Why a set of credentials was turned down, in the terms a screen can word — the whole
+ * of what the sign-in form is ever told, and the whole of what it has to be able to say.
+ *
+ * A list rather than a bare union so it can be walked: the form looks its message up by
+ * reason (`profile.password.rejected.<reason>`), and a reason with no message would print
+ * its own key at somebody who has just failed to get in. A test holds the catalogue to
+ * this.
+ *
+ * "No such account" and "wrong password" are deliberately one reason: Supabase answers
+ * both with the same error precisely so a form cannot be used to find out who has an
+ * account here, and taking them apart on screen would undo that.
+ */
+export const CREDENTIAL_REJECTIONS = [
+	/** The address and password do not name an account. */
+	'invalid',
+	/** The account exists but its address has never been confirmed. */
+	'unconfirmed',
+	/** Supabase would not take that password: too short, or too easily guessed. */
+	'weak',
+	/** Not an address Supabase will accept. */
+	'email',
+	/** Too many attempts, or too many mails, in too short a time. */
+	'rate',
+	/** The project is not taking new accounts at all. */
+	'closed'
+] as const;
+
+/** One of {@link CREDENTIAL_REJECTIONS}. */
+export type CredentialRejection = (typeof CREDENTIAL_REJECTIONS)[number];
+
+/**
+ * Third-party identity providers the game can sign in with, alongside the email
+ * address and password. The values are Supabase's own provider ids — they go
  * straight into `signInWithOAuth({ provider })` — and each one must also be
  * enabled, with its client id/secret, in the Supabase dashboard.
  */

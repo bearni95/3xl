@@ -1,14 +1,23 @@
 <script lang="ts">
 	import { _, locale } from 'svelte-i18n';
-	import { authService } from '$services/auth.service';
+	import { authService, CredentialsRejected } from '$services/auth.service';
 	import { legalService } from '$services/legal.service';
 	import { closeSignIn, signInModalOpen } from '$services/signInModal';
 	import type { OAuthProvider } from '$types/profile.type';
 	import { CONSENT_DOCUMENTS, LEGAL_VERSIONS } from '$types/legal.type';
 	import LegalConsent from '$components/core/LegalConsent.svelte';
+	import EmailSignIn from '$components/core/EmailSignIn.svelte';
 	import SocialSignIn from '$components/core/SocialSignIn.svelte';
 
-	// The way in: the gate's two boxes, the documents under them and the provider button.
+	// The way in: the gate's two boxes, the documents under them, and the two ways through
+	// — an address with a password, or Google.
+	//
+	// Two doors and one gate. Which of them a player uses is theirs to choose and nothing
+	// downstream cares: an account is an account, and Supabase links a Google identity and
+	// an address onto one user when the address is the same and verified, so somebody who
+	// signed up one way and comes back the other keeps their cards. The gate stands in
+	// front of both, because what it asks is about opening an account rather than about
+	// how one is opened.
 	//
 	// All of it stood open at the foot of the map, on a plate of its own — a form of two
 	// checkboxes, four links and a paragraph of fine print, every word at 12px, taking the
@@ -31,48 +40,125 @@
 	// modal is only up while it is being answered.
 
 	let redirectingTo: OAuthProvider | null = null;
+	// Which of the password form's two actions is in flight, if either.
+	let credentialsPending: 'signin' | 'signup' | null = null;
 	let errorMessage: string | null = null;
+	// Said after a sign-up Supabase took but did not hand a session back for: the address
+	// has a mail waiting and there is nothing else for the player to do here.
+	let confirmationSent = false;
 
-	// The gate in front of the provider button. Both have to be ticked before there is
-	// anything to press, and `consentAsked` is what makes the reason visible: a button
-	// that is simply dead says nothing about why.
+	// The gate in front of both doors. Both boxes have to be ticked before either works,
+	// and `consentAsked` is what makes the reason visible: a button that is simply dead
+	// says nothing about why.
 	let ageConfirmed = false;
 	let documentsAccepted = false;
 	let consentAsked = false;
 	$: consented = ageConfirmed && documentsAccepted;
+	$: busy = redirectingTo !== null || credentialsPending !== null;
 
-	// Signing in leaves the page, so the only thing that closes this is the reader.
 	function close(): void {
-		if (redirectingTo) return;
+		if (busy) return;
 		errorMessage = null;
+		confirmationSent = false;
 		consentAsked = false;
 		closeSignIn();
 	}
 
-	async function handleProviderSignIn(
-		event: CustomEvent<{ provider: OAuthProvider }>
-	): Promise<void> {
-		if (redirectingTo) return;
-		consentAsked = true;
-		if (!consented) return;
-		errorMessage = null;
-		redirectingTo = event.detail.provider;
-		// Held in the browser because this tab is about to be gone: the boxes are ticked
-		// by somebody the game has no id for yet, and the ledger cannot record an
-		// acceptance for an account that does not exist. It is picked back up and
-		// written the instant a session lands.
+	/**
+	 * Write down what was ticked, for the moment there is an account to hang it on.
+	 *
+	 * Held in the browser rather than recorded here because at this instant there is no
+	 * id to record it against: the boxes are ticked by somebody the game has never met.
+	 * It is picked back up and written the moment a session lands (see legal.service) —
+	 * which is a redirect away for Google, this same tick for a password sign-in, and a
+	 * mail's round trip for a fresh sign-up. That last one may be opened on a different
+	 * device, where nothing was held; then the gate simply asks again on arrival, which
+	 * is the recovery and not a failure.
+	 */
+	function holdConsent(): void {
 		legalService.hold({
 			versions: Object.fromEntries(CONSENT_DOCUMENTS.map((id) => [id, LEGAL_VERSIONS[id]])),
 			ageConfirmed,
 			at: new Date().toISOString()
 		});
+	}
+
+	/** Whether the gate lets this through, saying so out loud when it does not. */
+	function gate(): boolean {
+		consentAsked = true;
+		if (!consented) return false;
+		errorMessage = null;
+		confirmationSent = false;
+		return true;
+	}
+
+	/** Word a failure: the handful Supabase names, and anything else as it came. */
+	function report(error: unknown): void {
+		if (error instanceof CredentialsRejected) {
+			errorMessage = $_(`profile.password.rejected.${error.reason}`);
+		} else {
+			errorMessage = error instanceof Error ? error.message : $_('errors.generic');
+		}
+	}
+
+	async function handleProviderSignIn(
+		event: CustomEvent<{ provider: OAuthProvider }>
+	): Promise<void> {
+		if (busy || !gate()) return;
+		redirectingTo = event.detail.provider;
+		holdConsent();
 		try {
 			// On success the browser leaves for the provider's consent screen, so the
 			// spinner stays up until the page is gone. Only a failure lands here.
 			await authService.signInWithProvider(event.detail.provider);
 		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : $_('errors.generic');
+			report(error);
 			redirectingTo = null;
+		}
+	}
+
+	async function handlePasswordSignIn(
+		event: CustomEvent<{ email: string; password: string }>
+	): Promise<void> {
+		if (busy || !gate()) return;
+		credentialsPending = 'signin';
+		holdConsent();
+		try {
+			await authService.signInWithPassword(event.detail.email, event.detail.password);
+			// The session is already in the stores by now — the modal's own `{#if}` does
+			// not close it, since it is the store that says whether the door is up, so it
+			// is put away here. Nothing was ticked in vain: the acceptance held above is
+			// already being flushed against the account that just arrived.
+			closeSignIn();
+		} catch (error) {
+			report(error);
+		} finally {
+			credentialsPending = null;
+		}
+	}
+
+	async function handlePasswordSignUp(
+		event: CustomEvent<{ email: string; password: string }>
+	): Promise<void> {
+		if (busy || !gate()) return;
+		credentialsPending = 'signup';
+		holdConsent();
+		try {
+			const mustConfirm = await authService.signUpWithPassword(
+				event.detail.email,
+				event.detail.password
+			);
+			// This project confirms addresses (`mailer_autoconfirm` is off), so a sign-up
+			// normally ends here rather than signed in: what is left to say is that a mail
+			// is on its way. It is worded to be true of an address that already had an
+			// account too — Supabase answers both the same way on purpose, and telling
+			// them apart on screen is telling a stranger who is registered here.
+			if (mustConfirm) confirmationSent = true;
+			else closeSignIn();
+		} catch (error) {
+			report(error);
+		} finally {
+			credentialsPending = null;
 		}
 	}
 </script>
@@ -87,17 +173,42 @@
 					<span>{$_('profile.notConfigured')}</span>
 				</div>
 			{:else}
-				<!-- The gate above the button, not beside it: the two boxes are read before the
-					way in is offered, and the button below is held shut until they are ticked.
-					The button is still pressable while they are not — it is what makes the reason
-					appear — it simply does not leave the page. -->
+				<!-- The gate above the doors, not beside them: the two boxes are read before
+					either way in is offered, and both are held shut until they are ticked. They
+					are still pressable while they are not — that is what makes the reason appear
+					— they simply do not sign anybody in. -->
 				<LegalConsent
 					bind:ageConfirmed
 					bind:accepted={documentsAccepted}
 					showRequired={consentAsked}
-					disabled={redirectingTo !== null}
+					disabled={busy}
 				/>
-				<SocialSignIn pending={redirectingTo} on:signin={handleProviderSignIn} />
+
+				<!-- The address and password first, Google under it: the game's own door before
+					the one that goes through somebody else's building. Neither is the main one —
+					the divider between them says "or" and means it. -->
+				<EmailSignIn
+					pending={credentialsPending}
+					disabled={redirectingTo !== null}
+					on:signin={handlePasswordSignIn}
+					on:signup={handlePasswordSignUp}
+				/>
+
+				<div class="divider my-0 text-xs text-base-content/50">
+					{$_('profile.password.or')}
+				</div>
+
+				<SocialSignIn
+					pending={redirectingTo}
+					disabled={credentialsPending !== null}
+					on:signin={handleProviderSignIn}
+				/>
+			{/if}
+
+			{#if confirmationSent}
+				<div class="alert alert-success">
+					<span>{$_('profile.password.confirmationSent')}</span>
+				</div>
 			{/if}
 
 			{#if errorMessage}

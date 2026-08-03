@@ -27,6 +27,26 @@
 		"title": "Profile",
 		"access": "Access",
 		"continueWith": "Continue with {provider}",
+		"password": {
+			"haveAccount": "I have an account",
+			"newAccount": "I want an account",
+			"email": "Email address",
+			"emailPlaceholder": "name@example.com",
+			"password": "Password",
+			"minimum": "At least {length} characters.",
+			"signIn": "Sign in",
+			"createAccount": "Create the account",
+			"or": "or",
+			"confirmationSent": "We have sent you a mail to confirm the address. Open the link in it and you are in. If you already had an account on this address, sign in with the password you already have.",
+			"rejected": {
+				"invalid": "That address and password do not match.",
+				"unconfirmed": "You have not confirmed the address yet. Check the mail we sent you.",
+				"weak": "That password is too short or too easily guessed. Try another.",
+				"email": "That does not look like an email address.",
+				"rate": "Too many attempts in a row. Wait a few minutes and try again.",
+				"closed": "New accounts with an address and password are closed right now."
+			}
+		},
 		"emailLabel": "Email address",
 		"memberSince": "Member since",
 		"signedInWith": "Signed in with",
