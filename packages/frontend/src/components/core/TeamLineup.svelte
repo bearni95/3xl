@@ -166,28 +166,24 @@
 		map's grey where the side is nobody's (see `seeded`). The fill is the swatch at nine
 		tenths and the ink is not: a band lying over the row lets a little of what it lies on
 		through, while the lettering and the marks on it stay solid.
-		The mark is capped in height rather than the band being given one, and the band is the
-		padding around it: so it is the same band under every show — a wordmark is fitted into
-		2rem at its own aspect however wide or narrow it was drawn — while the colour keeps a
-		clear margin above and below the lettering instead of running up against it. It keeps a
-		fifth of the width clear either side for the same reason the box's foot keeps a
-		twentieth, and now two fifths, since that clearance is where the glyphs stand. The mark is not recoloured — the enabled logos are coloured lettering with a
-		light outline, which reads on any of the six. The floor it will not go below is the height
-		it comes to with one on it, so a side whose show has no wordmark — or whose wordmark is
-		still on its way — flies the same band and not a thin stripe that grows when the mark
-		lands. With no wordmark there is nothing for the glyphs to be measured against either,
-		so the inner row takes the cap as its own floor (min-h-8) and they come up the size the
-		lettering would have been.
-		The show's glyph stands at either end of the same row, one mark each side of the
-		lettering, the three of them pushed apart to the band's own ends. Unlike the wordmark the
-		glyphs are not capped: they are stretched to the height of the row they stand in, which is
-		the height the wordmark itself came out at — so the marks are exactly as tall as the
-		picture between them whatever aspect either was drawn at, rather than as tall as the cap
-		the picture may not have reached. That is what the inner row is for: the band has a floor
-		(min-h-12) and a row measured off the picture cannot also be the thing holding that floor
-		up. The wordmark is centred in it rather than stretched, since stretching a picture is
-		what would make the two disagree again. They take the band's ink colour rather than any
-		of their own, being inline svg (see ShowIcon).
+		Three marks stand on it, pushed apart to its two ends: the show's glyph, the show's
+		wordmark, the show's glyph again. All three are **2rem tall and told so**, which is the
+		one arrangement in which they agree. Height is what the band is built out of rather than
+		what it is given — the band is the padding around a row of that height, so it is the same
+		band under every show and the colour keeps a clear margin above and below the lettering
+		instead of running up against it. The wordmark is `h-8` at its own aspect, however wide
+		or narrow it was drawn, and the glyphs are `h-8 w-auto` at theirs. Neither is asked for a
+		share of anything: a mark sized `h-full` is a percentage of a row that is only as tall as
+		its own contents, which resolves to auto and leaves a glyph at the 1em its markup was
+		rewritten to (see inlineIconMarkup) — a mark a third the height of the lettering beside
+		it, which is what this arrangement is the fix for. The row keeps two fifths of the width
+		clear of the wordmark, twice what it kept before, since that clearance is now where the
+		glyphs stand. The wordmark is not recoloured — the enabled logos are coloured lettering
+		with a light outline, which reads on any of the six — and the glyphs take the band's own
+		ink, being inline svg (see ShowIcon). None of the three is required: a side whose show
+		has no wordmark, no glyph or neither — or whose marks are still on their way — flies the
+		same band at the same height and never a thinner stripe that grows when one lands, and
+		with nothing at its ends to be pushed away from the row centres what it does have.
 		Behind the statues, all three of which are raised over it (see cellShares): the band is
 		the ground the side stands on, not a lid over it. -->
 	{#if lead}
@@ -198,21 +194,20 @@
 			)}
 		>
 			<div
-				class={classNames('flex w-full items-stretch gap-2', {
+				class={classNames('flex h-8 w-full items-center gap-2', {
 					'justify-between': bannerGlyph,
-					'justify-center': !bannerGlyph,
-					'min-h-8': !bannerLogo
+					'justify-center': !bannerGlyph
 				})}
 			>
-				<ShowIcon markup={bannerGlyph} classes="[&>svg]:h-full [&>svg]:w-auto" />
+				<ShowIcon markup={bannerGlyph} classes="[&>svg]:h-8 [&>svg]:w-auto" />
 				{#if bannerLogo}
 					<img
 						src={bannerLogo.url}
 						alt={bannerLogo.name}
-						class="max-h-8 max-w-[60%] self-center object-contain"
+						class="h-8 max-w-[60%] object-contain"
 					/>
 				{/if}
-				<ShowIcon markup={bannerGlyph} classes="[&>svg]:h-full [&>svg]:w-auto" />
+				<ShowIcon markup={bannerGlyph} classes="[&>svg]:h-8 [&>svg]:w-auto" />
 			</div>
 		</div>
 	{/if}
