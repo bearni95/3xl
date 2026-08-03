@@ -23,6 +23,18 @@ export interface PublicPlayer {
 	 * missing player.
 	 */
 	team: CharacterSpawn[];
+	/**
+	 * How many towns on the map they hold right now — the count of their rows in
+	 * `municipality_holders`, which is the map's own record of who occupies what and
+	 * is world-readable because the map has to name every occupant to every visitor.
+	 *
+	 * A count and not the towns themselves: what is being said here is how much of
+	 * the map answers to this player, and the places are on the map, which is one
+	 * press away. It is read live rather than stored on the profile — a town changes
+	 * hands the moment somebody wins it, and a number kept beside the account would
+	 * be wrong from that moment until something thought to correct it.
+	 */
+	towns: number;
 }
 
 /**
@@ -51,9 +63,9 @@ class PublicProfileService {
 		if (!isSupabaseConfigured()) return null;
 		const supabase = getSupabaseClient();
 
-		// Both at once: the plate and the cards are one reading of one player, and
-		// there is nothing to do with either of them alone.
-		const [profileRes, spawnsRes] = await Promise.all([
+		// All three at once: the plate, the cards and the towns are one reading of one
+		// player, and there is nothing to do with any of them alone.
+		const [profileRes, spawnsRes, townsRes] = await Promise.all([
 			supabase
 				.from('player_profiles_public')
 				.select('user_id, username, exp, avatar_character_id, avatar_color, created_at')
@@ -63,10 +75,18 @@ class PublicProfileService {
 				.from('player_spawns_public')
 				.select('user_id, team_slot, character_id, show_id, location_id, color, box, created_at')
 				.eq('user_id', userId)
-				.order('created_at', { ascending: false })
+				.order('created_at', { ascending: false }),
+			// `head` so no rows travel at all: the answer wanted is the count in the
+			// response header, and a player holding a thousand towns should not have to
+			// send a thousand ids to say so.
+			supabase
+				.from('municipality_holders_public')
+				.select('location_id', { count: 'exact', head: true })
+				.eq('user_id', userId)
 		]);
 		if (profileRes.error) throw profileRes.error;
 		if (spawnsRes.error) throw spawnsRes.error;
+		if (townsRes.error) throw townsRes.error;
 		if (!profileRes.data) return null;
 
 		// The view carries no spawn id — there is nothing anybody may do to somebody
@@ -85,7 +105,11 @@ class PublicProfileService {
 			// first whatever order its cards were claimed in.
 			team: collection
 				.filter((spawn) => spawn.teamSlot !== null)
-				.sort((a, b) => (a.teamSlot ?? 0) - (b.teamSlot ?? 0))
+				.sort((a, b) => (a.teamSlot ?? 0) - (b.teamSlot ?? 0)),
+			// A count Supabase could not give reads as none held rather than as an
+			// unknown: the panel says a number, and there is no number for "we did not
+			// ask properly" that would not be a lie about somebody's map.
+			towns: townsRes.count ?? 0
 		};
 	}
 }

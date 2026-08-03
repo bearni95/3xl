@@ -198,6 +198,21 @@
 				<PlayerPanel profile={player.profile} interactive={false} classes="w-full" />
 			</div>
 
+			<!-- How much of the map answers to them. It stands between the account and the
+				collection because it is a fact about the account rather than about the cards
+				— what the side above it has actually won — and it takes the account column's
+				own width, so the two read as one block with the grid beginning under them.
+				The plate's own surface (base-100 at four fifths), which is what every plate
+				in this game is printed on.
+				A number and what it counts, and nothing else: the towns themselves are on
+				the map, which is one press away at the foot of the page. -->
+			<div class="stats w-full max-w-[400px] bg-base-100/80 shadow">
+				<div class="stat">
+					<div class="stat-title">{$_('profile.public.townsHeld')}</div>
+					<div class="stat-value">{player.towns}</div>
+				</div>
+			</div>
+
 			<!-- Everything they hold, one statue per card, newest first. A flat grid and
 				nothing else: not the album's cells (which are characters, one apiece, owned or
 				not) and not the roster's (which are filters and buttons over cards the player
