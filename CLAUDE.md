@@ -209,6 +209,7 @@ pnpm generate:sprites
 pnpm generate:auras
 pnpm generate:geo   # rebuild the Països Catalans map layers
 pnpm generate:show-icons  # move any root *.svg into the show-icon set
+pnpm reset:battles  # wipe all fighting from Supabase (see below) — destructive
 pnpm clean          # remove build output across all packages
 ```
 
@@ -439,6 +440,22 @@ to `http://localhost:2002`; CORS allows only the admin origin (`http://localhost
   as a plain `<img>`. The proxy stays in front of the author's browsing only. A test holds the
   checked-in `shows.json` to that, because a proxied URL in there is a dead image everywhere
   but the author's machine and nothing at run time would notice.
+
+Two of its scripts are run by hand rather than served, on the same DB connection:
+`scripts/apply-sql.mts` applies one `supabase/*.sql` file inside a transaction, and
+`scripts/reset-battles.mts` (**`pnpm reset:battles`**) puts the map back to the day it was
+opened. Fighting writes five tables and one column, and they only mean anything together, so
+the reset empties all of them in one transaction: `municipality_holders` (a town with no row
+here is drawn on its seed again, which is the point), `municipality_sieges` (wins banked
+against a generation that no longer sits anywhere), `municipality_challenges` (an hour
+shutting a town for a fight that no longer exists), `battles` (an open fight that can never
+be reported now and blocks its player from starting any other), `combat_results` (the ledger
+behind every award) and `player_profiles.exp` back to 0, combat being the only thing that
+ever raised it. `--keep-exp` leaves the levels standing when what is wanted is a fresh map
+rather than fresh accounts; `--dry-run` does the whole thing and rolls it back, so the counts
+it prints are the real ones. Nothing else is touched — claimed cards, team slots, boosters,
+avatars, usernames and legal acceptances all survive, and a player walks back onto an untaken
+map with the roster they had. It runs against the live project and is not reversible.
 
 ## Environment variables
 

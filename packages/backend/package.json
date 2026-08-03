@@ -8,6 +8,7 @@
 		"dev": "tsx watch src/index.ts",
 		"start": "tsx src/index.ts",
 		"check": "tsc --noEmit",
+		"reset:battles": "tsx scripts/reset-battles.mts",
 		"clean": "rm -rf dist"
 	},
 	"dependencies": {
