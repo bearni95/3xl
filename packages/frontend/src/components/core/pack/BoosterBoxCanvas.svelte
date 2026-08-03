@@ -275,9 +275,16 @@
 								)}
 								style:--row-width={rowWidth ? `${rowWidth}px` : null}
 							>
+								<!-- Unbannered, both rows of it: what a box gives is five cards, not a side, so
+									the row is borrowed here for the shape it lays a handful of cards out in and
+									nothing else. The band would be painted in whatever colour the first card
+									happened to come out and lettered with its show, over four others that owe it
+									nothing — and the show is already said twice here, by the box that has just
+									come apart over them and by the mark on each card's own floor. -->
 								<TeamLineup
 									members={revealTop.map(toMember)}
 									veiled={false}
+									bannered={false}
 									classes="justify-center"
 									on:ready={(event) => rowStatueUp(revealTop, event.detail.index)}
 								/>
@@ -290,6 +297,7 @@
 										<TeamLineup
 											members={revealRest.map(toMember)}
 											veiled={false}
+											bannered={false}
 											classes="justify-center"
 											on:ready={(event) => rowStatueUp(revealRest, event.detail.index)}
 										>
@@ -310,6 +318,7 @@
 										<TeamLineup
 											members={revealRest.map(toMember)}
 											veiled={false}
+											bannered={false}
 											classes="justify-center"
 											on:ready={(event) => rowStatueUp(revealRest, event.detail.index)}
 										/>

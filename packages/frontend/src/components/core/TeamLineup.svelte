@@ -71,6 +71,13 @@
 	// red holds it. The statues under it keep their rolled colours: those are what the three of
 	// them fight in, which is a fact about the cards and not about who the place belongs to.
 	export let seeded: boolean = false;
+	// Whether the row flies its lead's show over it at all. False where the three cards are not
+	// a side: what a booster box opens onto is five cards dealt out of one box, stood in this
+	// row because the row is the shape a handful of cards is read in — the first of them leads
+	// nothing, and a band in its colour lettered with its show would say the pull belonged to
+	// somebody's team. The box the cards came out of has already said which show they are from,
+	// on its own poster, and each card goes on saying it with the mark on its floor.
+	export let bannered: boolean = true;
 	export let classes: string = '';
 
 	const dispatch = createEventDispatcher<{
@@ -185,8 +192,10 @@
 		same band at the same height and never a thinner stripe that grows when one lands, and
 		with nothing at its ends to be pushed away from the row centres what it does have.
 		Behind the statues, all three of which are raised over it (see cellShares): the band is
-		the ground the side stands on, not a lid over it. -->
-	{#if lead}
+		the ground the side stands on, not a lid over it. Drawn only where the row is a side at
+		all (see `bannered`); it is hung off the top edge rather than taking a strip of the row,
+		so a row without it stands its cards in exactly the same places. -->
+	{#if lead && bannered}
 		<div
 			class={classNames(
 				'absolute inset-x-0 top-0 z-0 flex min-h-12 items-center rounded-md px-2 py-2',
