@@ -1,6 +1,6 @@
 {
 	"id": "eva-00",
-	"label": "EVA-00",
+	"label": "EVA 00",
 	"basePath": "/assets/eva-00/frames",
 	"animations": {
 		"idle": {
@@ -47,5 +47,6 @@
 		"atk": 5,
 		"def": 5,
 		"hp": 5
-	}
+	},
+	"color": "purple"
 }

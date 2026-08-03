@@ -1,6 +1,6 @@
 {
 	"id": "evaunit01",
-	"label": "EVA-01",
+	"label": "EVA 01",
 	"basePath": "/assets/evaunit01/frames",
 	"animations": {
 		"idle": {
@@ -47,5 +47,6 @@
 		"atk": 5,
 		"def": 5,
 		"hp": 5
-	}
+	},
+	"color": "purple"
 }

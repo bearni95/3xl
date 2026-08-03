@@ -48,5 +48,6 @@
 		"def": 5,
 		"hp": 5
 	},
-	"face": "spr_9000_70.png"
+	"color": "purple",
+	"face": "custom_artworks-000025451613-7sc57i-t500x500.jpg"
 }

@@ -48,5 +48,11 @@
 		"def": 5,
 		"hp": 5
 	},
-	"color": "purple"
+	"color": "purple",
+	"face": "spr_9000_1.png",
+	"faceCrop": {
+		"x": 34,
+		"y": 45,
+		"size": 71
+	}
 }
