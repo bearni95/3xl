@@ -8,6 +8,9 @@
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import RegionListRow from '$components/core/RegionListRow.svelte';
+	import WorldMap from '$components/core/WorldMap.svelte';
+	import { boundsForFeatures, type LatLngBounds } from '$utils/geo/bounds';
+	import type { MapOverlay } from '$types/map.type';
 	import { REGION_PANEL_CLASSES } from '$components/core/spawn-colors';
 	import { publicProfileService, type PublicPlayer } from '$services/publicProfile.service';
 	import { isSupabaseConfigured } from '$services/supabase.client';
@@ -53,6 +56,10 @@
 	// Null until the layer arrives, and null for good if it does not: a place that
 	// cannot be named reads as Ultramar, which is where an unplaced card comes from.
 	let municipalityNames: Map<string, string> | null = null;
+	// The box every polygon on the map stands inside, taken off the same layer the names
+	// come out of. Null until it lands, which is a page with no map behind it rather than
+	// a map framed on nothing.
+	let mapBounds: LatLngBounds | null = null;
 	let loading = true;
 	// Set when the read itself failed — the network, a refusal. A profile that simply
 	// is not there is `player === null` with no error, which is a different sentence.
@@ -84,6 +91,9 @@
 	onMount(() => {
 		mounted = true;
 		configured = isSupabaseConfigured();
+		return () => {
+			if (refitFrame) cancelAnimationFrame(refitFrame);
+		};
 	});
 	$: if (mounted && userId && userId !== loadedFor) {
 		loadedFor = userId;
@@ -123,12 +133,27 @@
 		// are fetched after the page can already be drawn and folded in when they land.
 		// A statue says Ultramar until then, exactly as one does on a map whose layer is
 		// still on its way.
+		//
+		// The same fetch gives the map behind the page its framing: the box every polygon
+		// stands inside, which is what the background is fitted to. One walk of the layer
+		// for both — the file is already here, and the map that draws it fetches it again
+		// through Leaflet either way.
 		try {
 			const response = await fetch('/data/geo/municipis.json');
 			const collection = (await response.json()) as GeoJSON.FeatureCollection;
-			if (id === loadedFor) municipalityNames = locationAdapter.municipalityNames(collection);
+			if (id !== loadedFor) return;
+			municipalityNames = locationAdapter.municipalityNames(collection);
+			// Every feature's own id, not the ids that came back with a name: a polygon
+			// the layer has no name for is still a polygon the map draws, and the box has
+			// to hold it. (`boundsForFeatures` is what there is; the union of the lot is
+			// the union of every id it knows.)
+			mapBounds = boundsForFeatures(
+				collection,
+				new Set(collection.features.map((feature) => String(feature.properties?.id ?? '')))
+			);
 		} catch {
 			municipalityNames = null;
+			mapBounds = null;
 		}
 	}
 
@@ -219,6 +244,51 @@
 		shownTowns += PAGE_SIZE;
 	}
 
+	// --- The map behind the page --------------------------------------------------
+	// The same four layers the map at the root draws, bottom-up — municipalities,
+	// comarques, províncies, territoris — so the coarser a division, the higher and
+	// thicker its line sits over the finer ones inside it. Every tier in white, exactly
+	// as there.
+	//
+	// What is *not* here is the colour wash: on the map at the root each shape is filled
+	// with the colour its pin flies, which is a reading of the whole game's state (who
+	// holds what, which show a town seeds to) and a thing that page is *about*. This is a
+	// background. So the shapes are drawn and not painted, which is the same map with
+	// nothing said over it — and none of the four is interactive, since a background that
+	// answered a click would be a second page under this one.
+	//
+	// A constant, not a derivation: nothing on this page recolours the map, and handing
+	// the component a fresh array would repaint every layer for no change.
+	const mapOverlays: MapOverlay[] = [
+		{ url: '/data/geo/municipis.json', style: { color: '#fff', weight: 1, fill: false }, interactive: false },
+		{ url: '/data/geo/comarques.json', style: { color: '#fff', weight: 1.5, fill: false }, interactive: false },
+		{ url: '/data/geo/provincies.json', style: { color: '#fff', weight: 2, fill: false }, interactive: false },
+		{ url: '/data/geo/territoris.json', style: { color: '#fff', weight: 3, fill: false }, interactive: false }
+	];
+
+	// What the map is framed on. Handed over as a *fresh array* each time it is set, which
+	// is what makes a refit happen at all: the component frames on the identity of this
+	// prop, so the same box in the same array would be the same request it has already
+	// answered.
+	let mapFocus: LatLngBounds | null = null;
+
+	// Frame it whenever the box arrives and again whenever the window changes shape. A
+	// fit is a zoom against the canvas, so the zoom that held every polygon in a wide
+	// window holds rather less of them in a narrow one — the map has to be asked again,
+	// and asking again is the whole of keeping the polygons inside the viewport.
+	//
+	// Coalesced to one frame: a drag of the window edge fires resize continuously, and the
+	// fit is a projection over the whole layer.
+	let refitFrame = 0;
+	function refit(): void {
+		if (refitFrame) cancelAnimationFrame(refitFrame);
+		refitFrame = requestAnimationFrame(() => {
+			refitFrame = 0;
+			mapFocus = mapBounds ? [[...mapBounds[0]], [...mapBounds[1]]] : null;
+		});
+	}
+	$: if (mapBounds) refit();
+
 	/**
 	 * Open a town on the map. The map is driven entirely by its `region` query param
 	 * and a municipality's key is its bare feature id, so naming one here is the whole
@@ -241,6 +311,31 @@
 	<title>{title}</title>
 </svelte:head>
 
+<!-- The window changing shape is the whole reason the map is asked to frame itself again
+	(see refit): a fit is a zoom against a canvas, and the canvas is this. -->
+<svelte:window on:resize={refit} />
+
+<!-- The map this profile is a profile of somebody playing, behind everything on the page:
+	the same component, the same satellite basemap and the same four layers of polygons the
+	map at the root draws, framed on the box every one of those polygons stands inside so
+	the whole country is on screen at any window size.
+	`fixed`, so it is the viewport's background and not the document's — a collection is
+	taller than the screen, and a map that scrolled away with it would be a picture at the
+	top of a page rather than the ground the page stands on. Behind everything (`-z-10`
+	against the content's own stacking) and deaf to the pointer: it is not a way into the
+	game here, and a background that panned under the reading would be one. Leaflet's own
+	panes are inside this box, so nothing on the page has to reckon with their z-indexes.
+	Only once there is a box to frame on: a map handed no bounds would sit at its own
+	default view, which is the middle of the Atlantic.
+	`z-0` under a content layer at `z-10`, rather than a negative z under nothing: daisyUI
+	paints the page's own base colour on the document, and anything behind that is behind
+	a wall. -->
+{#if mapFocus}
+	<div class="pointer-events-none fixed inset-0 z-0">
+		<WorldMap overlays={mapOverlays} focusBounds={mapFocus} classes="h-full w-full" />
+	</div>
+{/if}
+
 <!-- The page is two things down one centred stack: the account, in the 400px column the
 	map's corner reads a side at, and under it the collection, which wants every pixel the
 	window has. So the outer column is the wide one and the account holds itself to its own
@@ -249,22 +344,34 @@
 	in 1024px is a narrower card than four in the same width, and a tier that made the
 	cards smaller as the window got bigger would be a strange kind of growth.
 	Top-aligned, not centred: a collection is as tall as it is, and a flex box that centres
-	content taller than itself puts the top of it out of reach above the scroll. -->
-<div class="flex min-h-screen w-full justify-center bg-base-300 p-4">
+	content taller than itself puts the top of it out of reach above the scroll.
+	No background of its own any more: the map is behind it, and a fill here would be a lid
+	on it. So this layer is `relative z-10` — over the map — and everything on it that is a
+	reading rather than a picture stands on a plate of its own, exactly as the furniture
+	over the map at the root does. A statue needs none: it brings its own ground. -->
+<div class="relative z-10 flex min-h-screen w-full justify-center p-4">
 	<div class="flex w-full max-w-7xl flex-col items-center gap-6 py-4">
 		{#if loading}
-			<div class="flex items-center justify-center gap-3 py-12 text-base-content/70">
+			<div
+				class="flex items-center gap-3 rounded-box bg-base-100/80 px-4 py-3 shadow-xl"
+			>
 				<span class="loading loading-spinner loading-md"></span>
 				{$_('common.loading')}
 			</div>
 		{:else if failed}
-			<p class="py-12 text-center text-base-content/70">{$_('errors.generic')}</p>
+			<p class="rounded-box bg-base-100/80 px-4 py-3 text-center shadow-xl">
+				{$_('errors.generic')}
+			</p>
 		{:else if !configured}
 			<!-- A local run with no Supabase behind it: there is nobody to look up, which is
 				not the same sentence as "no such player" and must not be told as one. -->
-			<p class="py-12 text-center text-base-content/70">{$_('profile.notConfigured')}</p>
+			<p class="rounded-box bg-base-100/80 px-4 py-3 text-center shadow-xl">
+				{$_('profile.notConfigured')}
+			</p>
 		{:else if !player}
-			<p class="py-12 text-center text-base-content/70">{$_('profile.public.notFound')}</p>
+			<p class="rounded-box bg-base-100/80 px-4 py-3 text-center shadow-xl">
+				{$_('profile.public.notFound')}
+			</p>
 		{:else}
 			<!-- The account, held to the width the corner reads it at. Everything in here is
 				the map's own corner, in the map's own order. -->
@@ -276,7 +383,9 @@
 				{#if lineup.length > 0}
 					<TeamLineup members={lineup} />
 				{:else}
-					<p class="py-6 text-center text-base-content/70">{$_('profile.public.noTeam')}</p>
+					<p class="rounded-box bg-base-100/80 px-4 py-3 text-center shadow-xl">
+						{$_('profile.public.noTeam')}
+					</p>
 				{/if}
 
 				<PlayerPanel profile={player.profile} interactive={false} classes="w-full" />
@@ -311,7 +420,13 @@
 				four — so a press always lands on whole rows, and it stops at four: a row is a
 				name and a show, and it stops being one at a narrower width than that. -->
 			{#if visibleTowns.length > 0}
-				<div class="grid w-full grid-cols-2 gap-1 md:grid-cols-3 lg:grid-cols-4">
+				<!-- On a plate, like the column beside the map these rows come from: a row draws
+					no ground of its own — it is a name and a tile, and it is read off whatever it
+					is listed on — so over satellite imagery it needs the same surface that column
+					gives it. -->
+				<div
+					class="grid w-full grid-cols-2 gap-1 rounded-box bg-base-100/80 p-2 shadow-xl md:grid-cols-3 lg:grid-cols-4"
+				>
 					{#each visibleTowns as town (town.key)}
 						<RegionListRow row={town} onSelect={openTown} />
 					{/each}
