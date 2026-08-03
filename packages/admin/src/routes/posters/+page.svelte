@@ -4,6 +4,8 @@
 	import MugenPosterGrid from '$components/core/MugenPosterGrid.svelte';
 	import type { PosterGridStatus } from '$utils/mugen/mugen-poster-grid';
 	import { leastCommonMultiple } from '$utils/math/least-common-multiple';
+	import { saveBlob } from '$utils/capture/save-blob';
+	import { errorMessage } from '$utils/error/error-message';
 
 	// The whole roster, idling side by side, drawn the way the combat board draws it:
 	// one shared source→screen ratio per cell box, each character's own `renderScale`
@@ -37,6 +39,54 @@
 	// rather than a time, since the durations vary within a cycle as well as between them.
 	// It moves as the wall fills, because it is a fact about the roster that is up so far.
 	$: sharedCycle = leastCommonMultiple(status.stood.map((stand) => stand.frames.length));
+
+	// How long a take is: one second of the wall as it stands. Not a whole turn of it — the
+	// count above says how many frames that would take, and it is thousands — so a clip played
+	// on repeat has a seam where it wraps. A second is what a wall of dozens of idles reads as.
+	const TAKE_MS = 1000;
+
+	let wall: MugenPosterGrid;
+	let recording = false;
+	let capturing = false;
+	let failure: string | null = null;
+
+	// Both files are taken off the canvas itself rather than off a second reading of the
+	// manifests, so what is saved is what was on screen — the same reason the table below is
+	// built out of the wall's own status.
+	function filename(extension: string): string {
+		return `posters-${new Date().toISOString().slice(0, 10)}.${extension}`;
+	}
+
+	async function downloadLoop(): Promise<void> {
+		if (recording || capturing) return;
+		failure = null;
+		recording = true;
+		try {
+			const recorded = await wall.record(TAKE_MS);
+			if (recorded) saveBlob(recorded.blob, filename(recorded.extension));
+		} catch (error) {
+			failure = errorMessage(error);
+		} finally {
+			recording = false;
+		}
+	}
+
+	async function downloadFirstFrame(): Promise<void> {
+		if (recording || capturing) return;
+		failure = null;
+		capturing = true;
+		try {
+			// Rewound and read in the same breath: the snapshot is taken before the ticker can
+			// have moved anyone off the frame it was just put back to.
+			wall.rewind();
+			const shot = await wall.snapshot();
+			if (shot) saveBlob(shot, filename('png'));
+		} catch (error) {
+			failure = errorMessage(error);
+		} finally {
+			capturing = false;
+		}
+	}
 </script>
 
 <div class="flex-1 bg-base-200 p-6 md:p-10">
@@ -63,7 +113,29 @@
 				<a class="link link-primary" href="/characters">Characters →</a>
 				<a class="link link-primary" href="/">← Back to stage</a>
 			</div>
+			<div class="flex flex-wrap gap-2">
+				<button
+					class="btn btn-primary btn-sm"
+					disabled={recording || capturing || status.drawn === 0}
+					on:click={downloadLoop}
+				>
+					{recording ? 'Recording…' : 'Download 1s loop'}
+				</button>
+				<button
+					class="btn btn-outline btn-sm"
+					disabled={recording || capturing || status.drawn === 0}
+					on:click={downloadFirstFrame}
+				>
+					{capturing ? 'Exporting…' : 'Export first frame'}
+				</button>
+			</div>
 		</header>
+
+		{#if failure}
+			<div class="alert alert-error">
+				<span>{failure}</span>
+			</div>
+		{/if}
 
 		{#if status.missing.length > 0}
 			<div class="alert alert-warning">
@@ -74,6 +146,7 @@
 		{/if}
 
 		<MugenPosterGrid
+			bind:this={wall}
 			characters={roster}
 			centerImage={CENTER_IMAGE}
 			on:status={(event) => (status = event.detail)}

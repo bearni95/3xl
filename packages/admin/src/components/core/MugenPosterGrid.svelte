@@ -6,6 +6,7 @@
 		PosterCharacter,
 		PosterGridStatus
 	} from '$utils/mugen/mugen-poster-grid';
+	import type { CanvasRecording } from '$utils/capture/record-canvas';
 
 	// The roster to stand up, filled outward from the middle in the order it is given.
 	export let characters: PosterCharacter[] = [];
@@ -23,6 +24,21 @@
 	let grid: MugenPosterGrid | null = null;
 
 	$: hostClasses = classNames('w-full overflow-hidden rounded-box', classes);
+
+	/** Record the wall as it stands and hand back the video file. Null before it is up. */
+	export async function record(durationMs: number): Promise<CanvasRecording | null> {
+		return grid ? await grid.record(durationMs) : null;
+	}
+
+	/** Put every character back on the first frame of its idle. */
+	export function rewind(): void {
+		grid?.rewind();
+	}
+
+	/** A PNG of the wall as it stands. Null before it is up. */
+	export async function snapshot(): Promise<Blob | null> {
+		return grid ? await grid.snapshot() : null;
+	}
 
 	onMount(async () => {
 		// Import Pixi lazily so nothing runs during SSR/prerender.

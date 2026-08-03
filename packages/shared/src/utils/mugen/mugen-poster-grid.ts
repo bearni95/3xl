@@ -87,6 +87,7 @@ import {
 import type { CharacterDefinition } from '../../types/character-definition.type';
 import type { Manifest } from './mugen-player';
 import { destroyPixiApp } from '../pixi/release-context';
+import { type CanvasRecording, recordCanvas } from '../capture/record-canvas';
 
 /** A character to stand on the wall: its id (which is what its definition is under)
  * and the folder its decoded frames are served from. */
@@ -609,6 +610,75 @@ export class MugenPosterGrid {
 		// them rather than ahead of them — it lands when it lands, and the layout it lands
 		// in is the one already on screen.
 		await Promise.all([this.loadCenterImage(), this.loadAll()]);
+	}
+
+	/**
+	 * Record the wall as it stands, for `durationMs`, and hand back the video file.
+	 *
+	 * The canvas never leaves this object — what is handed out is the finished bytes — which
+	 * is the same rule the status follows: what is *inside* a canvas is unreachable from the
+	 * document, so the wall is what answers for it. Nothing is stepped or re-rendered for the
+	 * recording: it is the animation already on screen, at the rate the page is already
+	 * drawing it, which is what makes the file a picture of this screen rather than a second
+	 * playback of the same manifests.
+	 */
+	async record(durationMs: number, fps?: number): Promise<CanvasRecording> {
+		const canvas = this.app?.canvas;
+		if (!canvas) throw new Error('The wall is not on screen.');
+		return await recordCanvas(canvas as HTMLCanvasElement, { durationMs, fps });
+	}
+
+	/**
+	 * Put every cycle back on its first frame — the characters' idles and the picture's rise
+	 * alike, since they are all one kind of cursor here — and draw that.
+	 *
+	 * It stops nothing: the ticker moves them all on again from the frame they were just put
+	 * back to, which is what makes this a rewind rather than a pause. What it is for is
+	 * {@link snapshot}: a still of the wall means something when every character is on the
+	 * frame its author drew first, and means nothing when each is wherever its own cycle had
+	 * got to.
+	 */
+	rewind(): void {
+		for (const poster of this.posters) {
+			poster.frameIndex = 0;
+			poster.frameElapsed = 0;
+			this.applyFrame(poster);
+		}
+		this.emblemCursor.frameIndex = 0;
+		this.emblemCursor.frameElapsed = 0;
+		this.applyBob();
+		this.app?.render();
+	}
+
+	/**
+	 * A PNG of the wall exactly as it stands, at the size it is drawn.
+	 *
+	 * Read back through Pixi's `extract` rather than off the canvas element itself: a WebGL
+	 * drawing buffer is cleared once it has been composited, so `toBlob` on the canvas is a
+	 * race against the next frame that a still has no reason to run. `extract` re-renders
+	 * into a texture of its own and reads *that*, which is why the background colour has to
+	 * be named here — it belongs to the renderer's clear, and a texture drawn apart from it
+	 * would come back transparent behind the field.
+	 */
+	async snapshot(): Promise<Blob> {
+		if (!this.app) throw new Error('The wall is not on screen.');
+		const { renderer } = this.app;
+		const shot = renderer.extract.canvas({
+			target: this.app.stage,
+			// The visible canvas, in the stage's own units — not the stage's bounds, which a
+			// character standing proud of the field would push past the edges of the screen.
+			frame: renderer.screen,
+			// As a string rather than the number it is kept as: extract reads a falsy clear
+			// colour as "no colour", so a wall on a black background would come back with
+			// nothing behind it.
+			clearColor: `#${this.backgroundColor.toString(16).padStart(6, '0')}`
+		}) as HTMLCanvasElement;
+		return await new Promise<Blob>((resolve, reject) => {
+			shot.toBlob(
+				(blob) => (blob ? resolve(blob) : reject(new Error('The wall could not be encoded.'))),
+				'image/png'
+			);
+		});
 	}
 
 	/** Tear everything down. Safe to call more than once. */
