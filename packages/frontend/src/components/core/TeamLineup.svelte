@@ -84,12 +84,16 @@
 	// The middle is raised because overlapping is a question of paint order otherwise,
 	// and paint order runs one way: it would cover the flank before it and be covered by
 	// the flank after it, which is an overlap on one side only.
+	// All three are raised over the banner behind them, and the middle over the two flanks:
+	// the band is the ground this side stands on, so a head that reaches into it stands in
+	// front of it rather than being cut off at its edge. Two levels and not one, since flanks
+	// level with the middle would leave the last-painted of them lapping the middle back.
 	// Written out as whole classes because Tailwind only emits what it can see spelled.
 	// Any cell past the third (there is no such team) falls back to a flank's width.
 	const cellShares = [
-		'shrink-0 grow-0 basis-[35%]',
-		'relative z-10 -mx-[7.5%] shrink-0 grow-0 basis-[40%]',
-		'shrink-0 grow-0 basis-[35%]'
+		'relative z-10 shrink-0 grow-0 basis-[35%]',
+		'relative z-20 -mx-[7.5%] shrink-0 grow-0 basis-[40%]',
+		'relative z-10 shrink-0 grow-0 basis-[35%]'
 	];
 
 	// Where each member stands. The team arrives in slot order — the leader first — and the
@@ -139,26 +143,27 @@
 		across the head room every statue carries above its square rather than taking a strip of
 		the row's height away from the cards. It is painted in the lead's colour, with the ink
 		that reads on it (SPAWN_PANEL_CLASSES — yellow is the one swatch that wants black).
-		One height whatever is on it, so the band is the same band under every show and does not
-		shift with the proportions of a wordmark: the mark is fitted inside it, at its own aspect,
-		and keeps a tenth of the width clear either side the way the box's foot does. The mark is
-		not recoloured — the enabled logos are coloured lettering with a light outline, which
-		reads on any of the six.
-		Raised over the middle cell, which lifts itself to lap the two beside it: the band is the
-		one thing on this row that is about all three, so nothing may come over it. -->
+		The mark is capped in height rather than the band being given one, and the band is the
+		padding around it: so it is the same band under every show — a wordmark is fitted into
+		2rem at its own aspect however wide or narrow it was drawn — while the colour keeps a
+		clear margin above and below the lettering instead of running up against it. It keeps a
+		fifth of the width clear either side for the same reason the box's foot keeps a
+		twentieth. The mark is not recoloured — the enabled logos are coloured lettering with a
+		light outline, which reads on any of the six. The floor it will not go below is the height
+		it comes to with one on it, so a side whose show has no wordmark — or whose wordmark is
+		still on its way — flies the same band and not a thin stripe that grows when the mark
+		lands.
+		Behind the statues, all three of which are raised over it (see cellShares): the band is
+		the ground the side stands on, not a lid over it. -->
 	{#if lead}
 		<div
 			class={classNames(
-				'absolute inset-x-0 top-0 z-20 flex h-12 items-center justify-center rounded-md px-2',
+				'absolute inset-x-0 top-0 z-0 flex min-h-12 items-center justify-center rounded-md px-2 py-2',
 				SPAWN_PANEL_CLASSES[lead.color]
 			)}
 		>
 			{#if bannerLogo}
-				<img
-					src={bannerLogo.url}
-					alt={bannerLogo.name}
-					class="max-h-full max-w-[80%] object-contain"
-				/>
+				<img src={bannerLogo.url} alt={bannerLogo.name} class="max-h-8 max-w-[80%] object-contain" />
 			{/if}
 		</div>
 	{/if}
