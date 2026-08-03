@@ -441,8 +441,13 @@
 					and in the one column: the card is what the page is about, and the button is
 					what to do about it. Stacked rather than given a cell each because a button
 					sitting alone in a third of the page is a button looking for something to be
-					next to. -->
-				<div class="flex flex-col gap-3">
+					next to.
+					One plate for the pair of them, the same sheet the towns beside them stand on
+					— base-100 at four fifths, which is what every plate in this game is printed
+					on and what makes any of it readable over satellite imagery. It is the cell's
+					and not the card's: two plates, one inside the other, is the fill printed
+					twice, and this is one column saying one thing. -->
+				<div class="flex flex-col gap-2 rounded-box bg-base-100/80 p-2 shadow-xl">
 					<PublicPlayerCard profile={player.profile} />
 
 					<!-- The way into the game, which this page otherwise has none of: it is

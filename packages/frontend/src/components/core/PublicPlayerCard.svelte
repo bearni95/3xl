@@ -30,8 +30,11 @@
 	// it is not built out of buttons that would refuse. That is why there is no
 	// `interactive` prop to pass false to.
 	//
-	// The plate's own surface, base-100 at four fifths, which is what every plate in this
-	// game is printed on and what this one needs to be read over satellite imagery.
+	// It draws no ground of its own. The plate under it is the whole column's — the card
+	// and the way into the game stand on one sheet, as the towns beside them do — and a
+	// surface here would be a second plate inside that one, printing base-100 at four
+	// fifths over base-100 at four fifths. So this is the reading alone, and where it is
+	// read over satellite imagery is the caller's business.
 
 	// The plate and not the account: the four things a player is read by (see PlayerPlate).
 	// The public profile views hand over exactly this and nothing else about the account,
@@ -52,13 +55,9 @@
 	grid rather than as a flex row so the picture is a *third of the card* at any width — a
 	flex row would have sized it from its own content, and a portrait sized by its own artwork
 	is a different square on every account. `items-center` so the reading sits on the middle of
-	the picture's height rather than at the top of a square several lines tall. -->
-<div
-	class={classNames(
-		'grid grid-cols-3 items-center gap-2 rounded-lg bg-base-100/80 p-2 shadow-xl',
-		classes
-	)}
->
+	the picture's height rather than at the top of a square several lines tall.
+	No fill, no rounding and no shadow: see above — the ground is the column's. -->
+<div class={classNames('grid grid-cols-3 items-center gap-2', classes)}>
 	<!-- `w-full` is a width and not a shape: the avatar keeps itself square off the width of
 		the cell it is in (see PlayerAvatar's aspect-square). The letter is sized to that square
 		rather than to the plate's 20px — a portrait this size with a caption-sized initial in
