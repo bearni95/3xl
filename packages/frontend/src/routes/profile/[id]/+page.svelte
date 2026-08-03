@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { _ } from 'svelte-i18n';
 	import { characters } from '@3xl/data';
-	import PlayerPanel from '$components/core/PlayerPanel.svelte';
+	import PublicPlayerCard from '$components/core/PublicPlayerCard.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import RegionListRow from '$components/core/RegionListRow.svelte';
@@ -22,16 +22,17 @@
 	import { teamLineupMembers } from '$utils/spawn/team-lineup';
 
 	// Any player's profile, for anybody at all — the one page in this game that is
-	// about somebody else and the one that needs no account to read. It is the map's
-	// bottom-left corner lifted out and given an address: the side they field, and
-	// under it the plate they are read by, the same two components in the same order,
-	// so a player linked here sees exactly what the map would have shown of them.
+	// about somebody else and the one that needs no account to read. It says what the
+	// map's bottom-left corner says of a player: the side they field and the reading
+	// they are known by. Not stacked as the corner stacks them, though — a corner is a
+	// column and a page is not, so the two stand side by side and the reading is a card
+	// built for this width (PublicPlayerCard) rather than the corner's plate.
 	//
-	// It is not a route into the game: there is nothing to press on it. The plate is
-	// handed `interactive={false}` — the picture and the reading are the way into an
-	// account only where the account is your own — and the statues are unselectable,
-	// which is what they already are wherever a side is a picture of a side rather
-	// than a roster.
+	// It is not a route into the game: there is nothing to press on it but a town. The
+	// card is a reading and not a pair of buttons — the picture and the reading are the
+	// way into an account only where the account is your own — and the statues are
+	// unselectable, which is what they already are wherever a side is a picture of a
+	// side rather than a roster.
 	//
 	// Everything on it comes from the two definer views made for it
 	// (`player_profiles_public`, `player_teams_public`) and nothing else about the
@@ -347,10 +348,11 @@
 	</div>
 {/if}
 
-<!-- The page is two things down one centred stack: the account, in the 400px column the
-	map's corner reads a side at, and under it the collection, which wants every pixel the
-	window has. So the outer column is the wide one and the account holds itself to its own
-	width inside it — the reverse would have made the cards as narrow as the plate.
+<!-- The page is two things down one centred stack: the account, which is now a row of two
+	across the whole of it, and under that the collection, which wants every pixel the window
+	has. So there is one width on this page and everything on it takes the whole of it — the
+	account used to hold itself to the 400px column the map's corner reads a side at, which
+	is a corner's measurement and not a page's.
 	The cap is 7xl rather than 5xl because the grid's widest tier is six across: six cards
 	in 1024px is a narrower card than four in the same width, and a tier that made the
 	cards smaller as the window got bigger would be a strange kind of growth.
@@ -384,13 +386,24 @@
 				{$_('profile.public.notFound')}
 			</p>
 		{:else}
-			<!-- The account, held to the width the corner reads it at. Everything in here is
-				the map's own corner, in the map's own order. -->
-			<div class="flex w-full max-w-[400px] flex-col gap-3">
-				<!-- The side above the plate, as at the map's corner: three statues on nothing at
-					all, each bringing its own ground, standing the way the corner stands them.
-					Nothing is passed to it that the corner does not pass — it is unselectable and
-					unheaded there too, being a picture of a side rather than a roster. -->
+			<!-- The account, across the page rather than stacked in the column the map's corner
+				reads it at. The corner had the side above the plate because a corner is a
+				column and has nowhere else to put it; here there is a whole page's width, so
+				they stand side by side — the side they field, the card they are read by, and
+				the way out into the game. None of the three is held to a width of its own:
+				each takes the third of the row it is given, and the row takes the page. That
+				is why the card is PublicPlayerCard and not the map's plate — a portrait as
+				wide as a third of this page is a picture of somebody, which is what a page
+				about them should open with, and the plate is built the other way round on
+				purpose.
+				`items-start` so each cell is its own height: a lineup is as tall as a card is
+				and this card is as tall as its picture plus two lines, and stretching either to
+				match the other would print a plate with a foot of nothing under the reading. -->
+			<div class="grid w-full grid-cols-3 items-start gap-3">
+				<!-- The side, as at the map's corner: three statues on nothing at all, each
+					bringing its own ground, standing the way the corner stands them. Nothing is
+					passed to it that the corner does not pass — it is unselectable and unheaded
+					there too, being a picture of a side rather than a roster. -->
 				{#if lineup.length > 0}
 					<TeamLineup members={lineup} />
 				{:else}
@@ -399,25 +412,19 @@
 					</p>
 				{/if}
 
-				<PlayerPanel profile={player.profile} interactive={false} classes="w-full" />
+				<PublicPlayerCard profile={player.profile} />
+
+				<!-- The way into the game, which this page otherwise has none of: it is somebody
+					else's account read from outside, and the only thing a reader of it can do is
+					go and play their own. It goes to the root, the map, with nothing named after
+					it — a town on the list below opens the map *on that town*, and this opens it
+					where a player's own map opens. -->
+				<a href="/" class="btn btn-primary btn-block">
+					{$_('profile.public.play')}
+				</a>
 			</div>
 
-			<!-- How much of the map answers to them. It stands between the account and the
-				collection because it is a fact about the account rather than about the cards
-				— what the side above it has actually won — and it takes the account column's
-				own width, so the two read as one block with the grid beginning under them.
-				The plate's own surface (base-100 at four fifths), which is what every plate
-				in this game is printed on.
-				A number and what it counts, and nothing else: the towns themselves are on
-				the map, which is one press away at the foot of the page. -->
-			<div class="stats w-full max-w-[400px] bg-base-100/80 shadow">
-				<div class="stat">
-					<div class="stat-title">{$_('profile.public.townsHeld')}</div>
-					<div class="stat-value">{player.towns.length}</div>
-				</div>
-			</div>
-
-			<!-- And which towns they are, each drawn by the very row the column beside the map
+			<!-- The towns they hold, each drawn by the very row the column beside the map
 				lists a place with: the tile in the colour of the side sitting there, the name,
 				and the show that side flies. The same component and not a second one that looks
 				like it — a town is a town wherever it is listed, and two spellings of one row is
