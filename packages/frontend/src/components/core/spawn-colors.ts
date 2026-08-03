@@ -49,6 +49,28 @@ export const REGION_PANEL_CLASSES: Record<RegionColor, string> = {
 	[ArtificialColor.Gray]: 'bg-gray-500 text-white'
 };
 
+/**
+ * The place's panel again at nine tenths, for a band that lies *over* something: the team
+ * row's banner, which is hung across the head room of the statues standing on it, so a
+ * little of what is behind it comes through and it reads as a band over the side rather
+ * than a lid across the top of it. The ink is not faded with it — a translucent fill under
+ * solid lettering, not a faded panel — which is why the alpha is on the swatch and not an
+ * `opacity` over the whole element.
+ *
+ * Here rather than in the component for the reason the rest of this module exists: it is
+ * the same six (and the same grey), and a copy elsewhere is how two of them come to
+ * disagree.
+ */
+export const REGION_BAND_CLASSES: Record<RegionColor, string> = {
+	[SpawnColor.Red]: 'bg-red-500/90 text-white',
+	[SpawnColor.Yellow]: 'bg-yellow-400/90 text-black',
+	[SpawnColor.Blue]: 'bg-blue-500/90 text-white',
+	[SpawnColor.Orange]: 'bg-orange-500/90 text-white',
+	[SpawnColor.Green]: 'bg-green-500/90 text-white',
+	[SpawnColor.Purple]: 'bg-purple-500/90 text-white',
+	[ArtificialColor.Gray]: 'bg-gray-500/90 text-white'
+};
+
 /** The colour as a border. */
 export const SPAWN_BORDER_CLASSES: Record<SpawnColor, string> = {
 	[SpawnColor.Red]: 'border-red-500',

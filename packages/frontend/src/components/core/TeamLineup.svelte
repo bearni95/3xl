@@ -17,8 +17,9 @@
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
 	import { showLogos, loadShowLogos, showGlyphs } from '$services/shows.service';
-	import { SPAWN_PANEL_CLASSES } from '$components/core/spawn-colors';
+	import { REGION_BAND_CLASSES } from '$components/core/spawn-colors';
 	import { SpawnBox, type SpawnColor } from '$types/character-spawn.type';
+	import { ArtificialColor } from '$types/region-color.type';
 
 	// The team as a row of cards — who is fielded, what colour they bend, where they
 	// were claimed and what show they come from. The card itself is CharacterStatue's;
@@ -71,10 +72,6 @@
 	// them fight in, which is a fact about the cards and not about who the place belongs to.
 	export let seeded: boolean = false;
 	export let classes: string = '';
-
-	// The map's grey, at the same 500 weight the pins spell it (see pinColorClasses), with the
-	// ink that reads on it.
-	const UNHELD_BAND = 'bg-gray-500 text-white';
 
 	const dispatch = createEventDispatcher<{
 		select: { index: number };
@@ -156,45 +153,67 @@
 	// exactly as a show with neither flies the colour alone.
 	$: bannerGlyph = lead?.showId != null ? ($showGlyphs.get(lead.showId) ?? null) : null;
 	// What the band is painted: the lead's colour where a player is behind this side, the map's
-	// grey where nobody is.
-	$: bandFill = seeded || !lead ? UNHELD_BAND : SPAWN_PANEL_CLASSES[lead.color];
+	// grey (the same 500 weight the pins spell it) where nobody is — both at nine tenths, since
+	// a band lies over the row rather than closing it off.
+	$: bandFill = REGION_BAND_CLASSES[seeded || !lead ? ArtificialColor.Gray : lead.color];
 </script>
 
 <div class={classNames('relative flex w-full', classes)}>
 	<!-- The side's banner: the whole width of the row and hung off its top edge, so it lies
 		across the head room every statue carries above its square rather than taking a strip of
 		the row's height away from the cards. It is painted in the lead's colour with the ink that
-		reads on it (SPAWN_PANEL_CLASSES — yellow is the one swatch that wants black), or in the
-		map's grey where the side is nobody's (see `seeded`).
+		reads on it (REGION_BAND_CLASSES — yellow is the one swatch that wants black), or in the
+		map's grey where the side is nobody's (see `seeded`). The fill is the swatch at nine
+		tenths and the ink is not: a band lying over the row lets a little of what it lies on
+		through, while the lettering and the marks on it stay solid.
 		The mark is capped in height rather than the band being given one, and the band is the
 		padding around it: so it is the same band under every show — a wordmark is fitted into
 		2rem at its own aspect however wide or narrow it was drawn — while the colour keeps a
 		clear margin above and below the lettering instead of running up against it. It keeps a
 		fifth of the width clear either side for the same reason the box's foot keeps a
-		twentieth. The mark is not recoloured — the enabled logos are coloured lettering with a
+		twentieth, and now two fifths, since that clearance is where the glyphs stand. The mark is not recoloured — the enabled logos are coloured lettering with a
 		light outline, which reads on any of the six. The floor it will not go below is the height
 		it comes to with one on it, so a side whose show has no wordmark — or whose wordmark is
 		still on its way — flies the same band and not a thin stripe that grows when the mark
-		lands.
+		lands. With no wordmark there is nothing for the glyphs to be measured against either,
+		so the inner row takes the cap as its own floor (min-h-8) and they come up the size the
+		lettering would have been.
 		The show's glyph stands at either end of the same row, one mark each side of the
-		lettering. Unlike the wordmark it is not capped: it is stretched to the band's own
-		content height — the height the wordmark sets — so the two marks are exactly as tall as
-		the lettering between them whatever aspect the show's artwork was drawn at. They take
-		the band's ink colour rather than any of their own, being inline svg (see ShowIcon).
+		lettering, the three of them pushed apart to the band's own ends. Unlike the wordmark the
+		glyphs are not capped: they are stretched to the height of the row they stand in, which is
+		the height the wordmark itself came out at — so the marks are exactly as tall as the
+		picture between them whatever aspect either was drawn at, rather than as tall as the cap
+		the picture may not have reached. That is what the inner row is for: the band has a floor
+		(min-h-12) and a row measured off the picture cannot also be the thing holding that floor
+		up. The wordmark is centred in it rather than stretched, since stretching a picture is
+		what would make the two disagree again. They take the band's ink colour rather than any
+		of their own, being inline svg (see ShowIcon).
 		Behind the statues, all three of which are raised over it (see cellShares): the band is
 		the ground the side stands on, not a lid over it. -->
 	{#if lead}
 		<div
 			class={classNames(
-				'absolute inset-x-0 top-0 z-0 flex min-h-12 items-center justify-center gap-2 rounded-md px-2 py-2',
+				'absolute inset-x-0 top-0 z-0 flex min-h-12 items-center rounded-md px-2 py-2',
 				bandFill
 			)}
 		>
-			<ShowIcon markup={bannerGlyph} classes="self-stretch [&>svg]:h-full [&>svg]:w-auto" />
-			{#if bannerLogo}
-				<img src={bannerLogo.url} alt={bannerLogo.name} class="max-h-8 max-w-[80%] object-contain" />
-			{/if}
-			<ShowIcon markup={bannerGlyph} classes="self-stretch [&>svg]:h-full [&>svg]:w-auto" />
+			<div
+				class={classNames('flex w-full items-stretch gap-2', {
+					'justify-between': bannerGlyph,
+					'justify-center': !bannerGlyph,
+					'min-h-8': !bannerLogo
+				})}
+			>
+				<ShowIcon markup={bannerGlyph} classes="[&>svg]:h-full [&>svg]:w-auto" />
+				{#if bannerLogo}
+					<img
+						src={bannerLogo.url}
+						alt={bannerLogo.name}
+						class="max-h-8 max-w-[60%] self-center object-contain"
+					/>
+				{/if}
+				<ShowIcon markup={bannerGlyph} classes="[&>svg]:h-full [&>svg]:w-auto" />
+			</div>
 		</div>
 	{/if}
 
