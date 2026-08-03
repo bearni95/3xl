@@ -70,21 +70,22 @@
 		textClasses="text-5xl"
 	/>
 
-	<!-- The reading, across the two columns the picture leaves. Name and level share a row with
-		the level at its far end: they are the two things an account is said by, and the level had
-		a row to itself for three characters of type. The name gives way first — it is the one
-		that can be any length — so it truncates while the level keeps its place at the right, on
-		the same baseline rather than merely in the same box. `min-w-0` twice over is what lets it
-		truncate instead of widening the card: a grid item's floor is its content, and so is a
-		flex item's. -->
-	<div class="col-span-2 flex min-w-0 items-baseline gap-2">
+	<!-- The reading, across the two columns the picture leaves, on two rows of its own. The name
+		takes the first and takes the whole of it — this is a page about one player, and their
+		name is the thing on it that is the largest — with the level under it rather than beside
+		it. They shared a row at the plate's size, where a name and three characters of type fit
+		on one line; at 2xl a name of any length would push the level off the end of the card, and
+		one that did not would leave it hanging in the middle of the row.
+		`min-w-0` twice over is what lets the name truncate instead of widening the card: a grid
+		item's floor is its content, and so is a block's. -->
+	<div class="col-span-2 flex min-w-0 flex-col">
 		<span
-			class={classNames('min-w-0 flex-1 truncate text-lg font-semibold text-white', {
+			class={classNames('min-w-0 truncate text-2xl font-semibold text-white', {
 				'text-white/50 italic': !profile.username
 			})}
 			title={shownName}>{shownName}</span
 		>
-		<span class="flex-none text-lg font-semibold text-white">
+		<span class="text-lg font-semibold text-white">
 			{$_('profile.levelBadge', { values: { level: progress.level } })}
 		</span>
 	</div>

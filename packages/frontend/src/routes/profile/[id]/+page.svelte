@@ -449,8 +449,15 @@
 					— base-100 at four fifths, which is what every plate in this game is printed
 					on and what makes any of it readable over satellite imagery. It is the cell's
 					and not the card's: two plates, one inside the other, is the fill printed
-					twice, and this is one column saying one thing. -->
-				<div class="flex flex-col gap-2 rounded-box bg-base-100/80 p-2 shadow-xl">
+					twice, and this is one column saying one thing.
+					`self-stretch` out of the row's `items-start`, so the plate is as tall as the
+					row is however tall the side beside it turns out to be: three plates of three
+					different heights across one row reads as three things that happen to be near
+					each other, and this row is one statement about one player. The card and the
+					button stay at the top of it — a plate is a sheet things are printed on, and
+					what is on this one is a picture and a press, not a column to be spread down
+					the page. -->
+				<div class="flex flex-col gap-2 self-stretch rounded-box bg-base-100/80 p-2 shadow-xl">
 					<PublicPlayerCard profile={player.profile} />
 
 					<!-- The way into the game, which this page otherwise has none of: it is
@@ -594,9 +601,42 @@
 					long as it did — but the row above it is two plates wide now, and a page whose
 					top half is printed on sheets and whose bottom half is not reads as two pages.
 					The plate holds the More button as well, so what is under it belongs to the
-					grid it adds to rather than floating off the foot of the page. -->
-				<div class="flex w-full flex-col gap-3 rounded-box bg-base-100/80 p-2 shadow-xl">
-					<div class="grid w-full grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+					grid it adds to rather than floating off the foot of the page.
+					And it is never taller than a screen: the cap is the viewport less the padding
+					the page stands in (the underscores are how Tailwind spells the spaces a
+					`calc` needs — `calc(100vh-2rem)` is not arithmetic, it is a length followed
+					by a negative one, and the whole declaration is dropped), so however many
+					cards are up,
+					the whole plate is one screenful and the cards scroll inside it (see the grid
+					below). A collection of three hundred is otherwise a page a reader falls
+					down — and the More button, which is the thing they came to the foot of it
+					for, would be a screen further away with every press of itself. -->
+				<div
+					class="flex max-h-[calc(100vh_-_2rem)] w-full flex-col gap-3 rounded-box bg-base-100/80 p-2 shadow-xl"
+				>
+					<!-- The cards are what scrolls, not the plate: the rule and the More button
+						under them keep their place at its foot, so the way to see more of a
+						collection never scrolls out of the collection.
+						`flex-auto` and not `flex-1` — `flex-1` bases an item at zero, which for the
+						one item the plate's own height is measured from would collapse the grid to
+						nothing before the cap ever came into it. `min-h-0` is the other half: a flex
+						item will not shrink below its content without it, and a grid that cannot
+						shrink is a plate that cannot be capped. `pe-1` keeps the scrollbar off the
+						last column of cards. -->
+					<div
+						class="grid min-h-0 w-full flex-auto grid-cols-2 gap-3 overflow-y-auto pe-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+					>
+						<!-- `alwaysReveal`, as on the roster and for the same reason twice over. A
+							reveal is normally spent once per character across the whole page, so on a
+							surface that is nothing but characters the ones a reader had already met —
+							on the map, in a pack, or on the side standing two columns above — would
+							simply be there while the rest swept in: one grid drawing itself two
+							different ways. And a collection holds cards, not characters: two copies
+							of a character are two cards here, and the second would arrive bare
+							because the first spent the reveal a moment earlier.
+							It matters most on More. A press mounts twelve statues that were never on
+							the page before, and every one of them has to arrive — which is what this
+							gives, since the ones already standing are mounted and never ask again. -->
 						{#each visible as card}
 							<CharacterStatue
 								label={card.label}
@@ -606,6 +646,7 @@
 								locationName={card.locationName}
 								spawnedAt={card.spawnedAt ?? null}
 								showId={card.showId}
+								alwaysReveal
 							/>
 						{/each}
 					</div>
