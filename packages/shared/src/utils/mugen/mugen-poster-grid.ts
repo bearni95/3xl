@@ -305,6 +305,43 @@ function span(cells: WallCell[]): number {
 }
 
 /**
+ * A hair off half a cell, for deciding whether the halving line is *inside* a hexagon.
+ * A cell whose edge the line runs down is not a cell the line crosses, and the lattice's
+ * arithmetic is halves and thirds of irrational heights — so the comparison is made with
+ * a tolerance rather than exactly, or which side a cell fell on would come down to the
+ * last bit of a double.
+ */
+const EDGE_TOLERANCE = 1e-9;
+
+/**
+ * Which way each character on the wall faces — true for the mirrored look the cards and
+ * the team line-ups use, which is how every one of them was drawn before this.
+ *
+ * The wall is halved by a line, so the two halves face **opposite ways**: everyone to the
+ * right of it is turned about, and the field reads as two sides of a board rather than as
+ * one crowd all looking the same way.
+ *
+ * The line itself is a line and the cells are wide, so a column of them is neither left
+ * nor right — it has the line *through* it. Those are counted down the column instead and
+ * every second one turned, so the seam is a mix rather than a wall of one facing, and
+ * which way any particular one of them faces is the same on every draw (the count is over
+ * the column top to bottom, not over the order the roster loaded in).
+ */
+function facings(stands: WallCell[], middle: number): boolean[] {
+	const flipped = stands.map((cell) => cell.centre.x < middle);
+
+	const crossed = stands
+		.map((cell, index) => ({ cell, index }))
+		.filter(({ cell }) => Math.abs(cell.centre.x - middle) < 0.5 - EDGE_TOLERANCE)
+		.sort((a, b) => a.cell.centre.y - b.cell.centre.y);
+	crossed.forEach(({ index }, nth) => {
+		flipped[index] = nth % 2 === 0;
+	});
+
+	return flipped;
+}
+
+/**
  * How many characters are loaded at once. A manifest is a few hundred KB and a cycle is
  * a dozen textures, so the whole roster at once is a stampede that finishes no sooner
  * and shows nothing until it does; a handful at a time fills the wall from the middle.
@@ -557,6 +594,9 @@ export class MugenPosterGrid {
 
 		const cells = spiralCells(this.posters.length);
 		const field = fieldExtent(cells);
+		// Where the field halves, in the lattice's own units — the line is drawn here, and
+		// it is also what decides which way a character faces.
+		const middle = field.left + field.width / 2;
 		// As big as allowed, and no bigger than the page has room for.
 		const width = Math.max(1, host.clientWidth);
 		const cellWidth = Math.min(this.maxCellWidth, width / field.width);
@@ -589,17 +629,24 @@ export class MugenPosterGrid {
 				.stroke({ width: 1, color: this.cellLineColor });
 		}
 
-		// The roster stands on the rest of it, in the order the spiral reached them.
+		// The roster stands on the rest of it, in the order the spiral reached them, each
+		// facing whichever way its side of the halving line faces.
 		const stands = cells.filter((cell) => !cell.kept);
+		const flips = facings(stands, middle);
 		this.posters.forEach((poster, index) => {
 			const centre = stands[index].centre;
+			const flipped = flips[index];
 			// The fit is asked again per layout because the box it answers has just been
 			// decided; it is the same question the board asks, of the same function.
 			const fitScale = characterFitScale(poster.frames, box, poster.renderScale);
 			const foot = onCanvas(latticeFoot(centre));
 			// A negative x-scale mirrors the sprite about its anchor, in place.
-			poster.sprite.scale.set(-fitScale, fitScale);
-			poster.sprite.x = foot.x + poster.crownOffset * fitScale;
+			poster.sprite.scale.set(flipped ? -fitScale : fitScale, fitScale);
+			// The crown shift turns round with the sprite: what the artwork puts to one
+			// side of the axis appears on the other once mirrored, and the correction that
+			// brings it back over the cell has to follow. The stored offset is the one for
+			// the mirrored look, so the other is its negative.
+			poster.sprite.x = foot.x + (flipped ? 1 : -1) * poster.crownOffset * fitScale;
 			poster.sprite.y = foot.y;
 			// Lower feet paint later, so a character stands in front of the row behind it.
 			poster.sprite.zIndex = foot.y;
@@ -609,7 +656,7 @@ export class MugenPosterGrid {
 		// it is a mark on the board, not a thing standing on it. Nothing to halve until
 		// somebody has landed on the wall.
 		if (this.posters.length > 0) {
-			const middleX = originX + (field.width / 2) * cellWidth;
+			const middleX = onCanvas({ x: middle, y: 0 }).x;
 			backdrop
 				.moveTo(middleX, 0)
 				.lineTo(middleX, height)
