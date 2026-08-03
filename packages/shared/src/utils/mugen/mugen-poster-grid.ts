@@ -817,10 +817,18 @@ export class MugenPosterGrid {
 	 * The field itself is never drawn (see the module note) — it is a set of places and a
 	 * cell size, and what is seen of it is where the characters ended up.
 	 *
-	 * The fill decides the shape, so the width is what the field asks for and the cell
-	 * is what gives: as big as the cap allows, and smaller whenever that many cells across
-	 * would not fit. Everything then follows from that one number — the hexagons, the box
-	 * each character is fitted into, and so every character's size.
+	 * The fill decides the shape, so the box the wall is given is what the field asks for and
+	 * the cell is what gives: as big as the cap allows, and smaller whenever that many cells
+	 * across — or that many down — would not fit. Everything then follows from that one
+	 * number: the box each character is fitted into, and so every character's size.
+	 *
+	 * **The canvas is the box it was put in.** Where the host has a height of its own the wall
+	 * takes it whole and stands the field in the middle of it, which is what a square box asks
+	 * for: the field is very nearly square itself but never exactly, so one of the two
+	 * dimensions has room left over and it is shared out either side rather than left at the
+	 * bottom. A host with no height of its own (nothing has told it one) keeps the older
+	 * behaviour of a canvas as tall as its field needs, so the wall still stands somewhere it
+	 * was only given a width.
 	 *
 	 * Each character stands on its cell's foot line — that shared line is what makes two
 	 * characters' heights comparable at all — with its body axis on the cell's middle,
@@ -837,23 +845,33 @@ export class MugenPosterGrid {
 		// Where the field halves, in the lattice's own units — nothing draws it, but it is
 		// what decides which way a character faces.
 		const middle = field.left + field.width / 2;
-		// As big as allowed, and no bigger than the page has room for.
+		// The field's height in cell widths, headroom included — a character rises above the
+		// row it stands on, and the top row's rise has to be inside the canvas.
+		const tall = HEADROOM + field.height;
+		// As big as allowed, and no bigger than the box has room for either way. A box with no
+		// height of its own asks nothing of the second one.
 		const width = Math.max(1, host.clientWidth);
-		const cellWidth = Math.min(this.maxCellWidth, width / field.width);
+		const given = host.clientHeight;
+		const cellWidth = Math.min(
+			this.maxCellWidth,
+			width / field.width,
+			given > 0 ? given / tall : Infinity
+		);
 		const box = { width: cellWidth, height: cellWidth * CHAR_HEIGHT_RATIO };
 
-		const height = Math.ceil((HEADROOM + field.height) * cellWidth);
+		const height = given > 0 ? given : Math.ceil(tall * cellWidth);
 		if (app.renderer.width !== width || app.renderer.height !== height) {
 			app.renderer.resize(width, height);
 		}
 
-		// The field is centred in whatever the cell size leaves over. Everything below is
-		// in cell widths off the field's own top-left corner until this puts it on the
-		// canvas.
+		// The field is centred in whatever the cell size leaves over, both ways. Everything
+		// below is in cell widths off the field's own top-left corner until this puts it on
+		// the canvas.
 		const originX = Math.max(0, (width - field.width * cellWidth) / 2);
+		const originY = Math.max(0, (height - tall * cellWidth) / 2);
 		const onCanvas = (point: GridPoint): GridPoint => ({
 			x: originX + (point.x - field.left) * cellWidth,
-			y: (point.y - field.top + HEADROOM) * cellWidth
+			y: originY + (point.y - field.top + HEADROOM) * cellWidth
 		});
 
 		// The picture over the kept trio, fitted whole inside the ground those three cells

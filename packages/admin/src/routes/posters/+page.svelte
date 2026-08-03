@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { characters } from '@3xl/data';
+	import BackdropMap from '$components/core/BackdropMap.svelte';
 	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import MugenPosterGrid from '$components/core/MugenPosterGrid.svelte';
 	import type { PosterGridStatus } from '$utils/mugen/mugen-poster-grid';
@@ -24,6 +25,18 @@
 	// `social-card.svg` by `pnpm --filter @3xl/frontend generate:social-card`, so editing
 	// the game's card changes what the wall wears, and nothing here has to be told.
 	const CENTER_IMAGE = '/frontend/social-card.png';
+
+	// What the wall stands on: the game's own map, drawn behind the canvas the way the player
+	// app's `/profile/[id]` draws it behind a profile — the four dissolved layers in white,
+	// bottom-up, the coarser a division the thicker its line, over Esri's satellite imagery.
+	// Not painted, only drawn: the colour wash on the map at the root is a reading of who
+	// holds what, and this is a background. A constant, since nothing here recolours it.
+	const mapOverlays = [
+		{ url: '/data/geo/municipis.json', style: { color: '#fff', weight: 1, fill: false } },
+		{ url: '/data/geo/comarques.json', style: { color: '#fff', weight: 1.5, fill: false } },
+		{ url: '/data/geo/provincies.json', style: { color: '#fff', weight: 2, fill: false } },
+		{ url: '/data/geo/territoris.json', style: { color: '#fff', weight: 3, fill: false } }
+	];
 
 	let status: PosterGridStatus = {
 		drawn: 0,
@@ -106,8 +119,10 @@
 				registry order and laid at whichever width comes out nearest a square, each on its
 				cell's foot line, so heights compare across the wall. Nothing behind them is
 				painted — not the field, not the line that halves it, not the canvas — so both
-				downloads come out transparent everywhere a character is not standing. The three
-				cells kept clear at the middle wear the game's social card.
+				downloads come out transparent everywhere a character is not standing. The map
+				behind is under the canvas and not in it, framed on every polygon it draws, so
+				it is what the wall is read against here and no part of what leaves the page.
+				The three cells kept clear at the middle wear the game's social card.
 			</p>
 			<div class="flex flex-wrap gap-4 text-sm">
 				<a class="link link-primary" href="/characters">Characters →</a>
@@ -145,12 +160,30 @@
 			</div>
 		{/if}
 
-		<MugenPosterGrid
-			bind:this={wall}
-			characters={roster}
-			centerImage={CENTER_IMAGE}
-			on:status={(event) => (status = event.detail)}
-		/>
+		<!-- One square box holding both, which is what the wall is standing on and what the map
+		     is framed to. Square because the field grows into the squarest shape it can (see
+		     the wall's own note): a box of that shape is the one that wastes least of itself
+		     on either, and it is one shape at every width rather than a frame that changes its
+		     mind as the window moves.
+		     Three layers in one stacking order and no other: the map at the bottom, the veil
+		     over it, the canvas over that. The canvas is transparent everywhere a character is
+		     not standing, which is what lets the country show through it — and is also why the
+		     two downloads carry none of this: they are read off the canvas, and the map is not
+		     in it. `isolate` on the map is what keeps Leaflet's own panes (which climb to 700)
+		     inside their own stack instead of over the wall. -->
+		<div class="relative aspect-square w-full overflow-hidden rounded-box">
+			<BackdropMap overlays={mapOverlays} classes="absolute inset-0 h-full w-full" />
+			<!-- The veil the wall is read through: white, half of it at the top and a fifth at
+			     the foot, exactly as the player app's profile page knocks the imagery back. -->
+			<div class="absolute inset-0 z-10 bg-gradient-to-b from-white/50 to-white/20"></div>
+			<MugenPosterGrid
+				bind:this={wall}
+				characters={roster}
+				centerImage={CENTER_IMAGE}
+				on:status={(event) => (status = event.detail)}
+				classes="absolute inset-0 z-20"
+			/>
+		</div>
 
 		<!-- Where the whole wall meets itself again: the least common multiple of the cycle
 		     lengths under it, which is how many frames every character has to be stepped on
