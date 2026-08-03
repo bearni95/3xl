@@ -22,10 +22,20 @@
 	// the bar is: four fifths lets the terrain through enough to say the plate is over the map
 	// without the lettering ever having to be read off it.
 
+	// The plate is also the way into the account itself: the picture opens the picker, and
+	// the reading beside it opens the settings sheet — which is the sheet this plate is the
+	// summary of, so the summary is what you press to see the whole of it. It was reachable
+	// only from the burger menu, two presses from a plate that was already showing you the
+	// account you wanted to open.
+	//
+	// Two buttons side by side rather than one around everything: a button inside a button
+	// is not a thing, and the avatar's own job predates this one. So the plate is a row of
+	// two targets that between them cover it, and neither has to guess what a press meant.
+
 	export let profile: Profile;
 	export let classes: string = '';
 
-	const dispatch = createEventDispatcher<{ editavatar: void }>();
+	const dispatch = createEventDispatcher<{ editavatar: void; open: void }>();
 
 	// Same as the full card: the letter avatar stands on the chosen name alone, so an
 	// account nobody has named shows a question mark rather than a letter of its address.
@@ -36,6 +46,10 @@
 
 	function handleEditAvatar(): void {
 		dispatch('editavatar');
+	}
+
+	function handleOpen(): void {
+		dispatch('open');
 	}
 </script>
 
@@ -67,8 +81,17 @@
 
 	<!-- The reading, on two rows: who they are with the level they are at, then the bar
 		carrying the experience figure inside it. `min-w-0` is what lets a name longer than the
-		plate truncate instead of widening it — a flex item's floor is its content otherwise. -->
-	<div class="flex min-w-0 flex-1 flex-col gap-1">
+		plate truncate instead of widening it — a flex item's floor is its content otherwise.
+		It is the button that opens the account, and it takes the whole of the plate the
+		picture does not, so there is no dead strip between the two targets. `text-left`
+		because a button centres its contents and this is a reading, not a label. -->
+	<button
+		type="button"
+		class="flex min-w-0 flex-1 cursor-pointer flex-col gap-1 text-left"
+		title={$_('settings.title')}
+		aria-label={$_('settings.title')}
+		on:click={handleOpen}
+	>
 		<!-- Name and level share a row, the level at its far end: they are the two things an
 			account is said by, and the level had a row to itself for three characters of type.
 			The name gives way first — it is the one that can be any length — so it truncates
@@ -128,5 +151,5 @@
 				{/if}
 			</span>
 		</div>
-	</div>
+	</button>
 </div>

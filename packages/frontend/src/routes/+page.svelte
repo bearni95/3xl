@@ -3126,11 +3126,16 @@
 						is the plate, and a plate is not half of anything.
 						No `pointer-events-auto` on it: that was needed while it stood in the column under
 						the bar, which turns its own events off so the map stays pannable through the gaps
-						between its plates. This corner is not that column. -->
+						between its plates. This corner is not that column.
+						The plate is the way into the account as well as the reading of it: the picture
+						opens the picker and the rest of it opens the settings sheet, which is the sheet
+						this plate summarises. That sheet is still a row of the menu, for a player who
+						went looking for it there, but nobody has to go looking any more. -->
 					{#if $profile}
 						<PlayerPanel
 							profile={$profile}
 							on:editavatar={() => avatarPickerOpen.set(true)}
+							on:open={() => settingsModalOpen.set(true)}
 							classes="w-full"
 						/>
 					{/if}
