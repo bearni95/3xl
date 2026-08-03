@@ -34,7 +34,7 @@
 	import { fullScreenModalOpen } from '$services/fullScreenModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { preloadPackArt } from '$components/core/pack/scene/preload-pack-art';
-	import { spawnService, type BoostersStatus } from '$services/spawn.service';
+	import { spawnService } from '$services/spawn.service';
 	import { musicService } from '$services/music.service';
 	import { authService } from '$services/auth.service';
 	import { territoryService } from '$services/territory.service';
@@ -104,7 +104,8 @@
 	} from '$types/map.type';
 	import type { ShowEntry, ShowsCollection } from '$types/show.type';
 	import { festesService, catalanTodayIso } from '$services/festes.service';
-	import type { FestaLocationRow } from '$types/festivity.type';
+	import type { FestaWindowRow } from '$types/festivity.type';
+	import { boxForFesta, claimedBoxKey, festaYear } from '$utils/spawn/claimed-box';
 
 	/** svelte-i18n's message formatter, read off the store whose value it is. */
 	type Translate = typeof _ extends Readable<infer T> ? T : never;
@@ -122,8 +123,12 @@
 	// a day that is past or still coming and gets the black one, exactly as the Booster
 	// tab prints that town's box. Each town's `id` matches a municipality feature id, so
 	// it resolves to a polygon on the map.
-	let windowFestes: FestaLocationRow[] = [];
+	let windowFestes: FestaWindowRow[] = [];
 	let todayFesteIds = new Set<string>();
+	// Every box this reader has already taken, as (town, year, stock) keys. The claim
+	// panel below loads them; this page reads the same store, so the boxes on the map and
+	// the boxes on the sheet are spent together.
+	const claimedBoxes = spawnService.claimedBoxes;
 	// Every booster pack in the window (three days back through four ahead), computed by
 	// a hidden CharacterClaimPanel, which turns those festes + the player's shows into
 	// openable packs. Kept here so clicking a box opens that town's pack at once,
@@ -376,14 +381,14 @@
 	// playing is a plate at its top-right. What is left in this column is the way in (signing
 	// in) and the ways out of it.
 
-	// What the Booster button is called: the day's allowance in parentheses — what is left to
-	// open over the daily cap, "Booster (2/3)" — which is where that counter lives, the account
-	// card having no row for it. Plain "Booster" until there is an allowance to name: signed
-	// out, or the status not yet in.
-	$: boosterLabel = boosters
-		? $_('booster.withAllowance', {
-				values: { remaining: boosters.remaining, total: boosters.allowance }
-			})
+	// What the Booster button is called: what the window still holds, in parentheses — the
+	// boxes of these eight days this player has not opened over how many the window offers at
+	// all, "Sobres (12/40)". A town deals two boxes a year and neither twice, so this is the
+	// offer on the calendar rather than a balance anybody has: it falls as they are taken and
+	// rises as the window rolls onto new festes. Plain "Sobres" until there are boxes to
+	// count — signed out, or before the window lands.
+	$: boosterLabel = boxesTotal
+		? $_('booster.withBoxes', { values: { remaining: boxesLeft, total: boxesTotal } })
 		: $_('booster.title');
 
 	// How many municipalities each show flies, and its share of them all. Tallied
@@ -1808,6 +1813,10 @@
 		const today = todayFesteIds;
 		const townShows = showsById;
 		const entries = showEntryById;
+		// Which of these boxes this reader has already opened, so a box that is spent is
+		// drawn spent. The set is the claim panel's own read (the service's store), empty
+		// while signed out, which leaves every box on the map looking as it always did.
+		const spent = $claimedBoxes;
 		// Which town is being looked at, read off the clicked selection for the same reason
 		// the statues are (see statuedTown): a zoom focus is not a choice of town. Only a
 		// municipality's key is a festa's id, so a key naming a coarser region marks nothing.
@@ -1836,6 +1845,12 @@
 				iconSvg: forShow($showGlyphs, show?.id),
 				locationName: festa.name,
 				light: today.has(festa.id),
+				// The same key the sheet's boxes are marked with, off the same festa: this
+				// town's box, for the year of the festa it is printed for, on the stock that
+				// festa gives it.
+				claimed: spent.has(
+					claimedBoxKey(festa.id, festaYear(festa.date), boxForFesta(festa.date, todayIso))
+				),
 				// The whole box on the picked town alone; every other town of the window is
 				// its disc, at every zoom that marks towns. The map carries days of festes at
 				// once, and a cover on each of them is a wall of covers with no country left
@@ -1913,7 +1928,9 @@
 	// lands late, or changes, is warmed too.
 	$: void preloadPackArt(claimPacks);
 
-	// Today in Catalan time, the same day boundary the server measures the window from.
+	// Today in Catalan time, the same day boundary the server measures the window from —
+	// and what each town's festa is read against to say which of its two boxes the map is
+	// standing on it (see `festaBoxes`).
 	const todayIso = catalanTodayIso();
 	const packWindow = boosterWindow(todayIso);
 
@@ -1934,21 +1951,21 @@
 		values: { from: formatPackDate(packWindow.from), to: formatPackDate(packWindow.to) }
 	});
 
-	// What the hidden claim panel reports back about opening a pack: the player's
-	// remaining daily allowance, and why the last roll was refused (empty when it
-	// wasn't). The server is what enforces both — every refusal in `claim_booster`
-	// (signed out, town de festa outside the window, allowance spent, show with no claimable
-	// characters) surfaces here, and the pack reveals no cards. Shown in the Booster
-	// tab, because a pack that opens onto nothing has to say why. The allowance is also
-	// what the Booster tab's own label counts down, so this one read serves both.
+	// Why the last roll was refused (empty when it wasn't), as the hidden claim panel
+	// reports it back. The server is what enforces every rule — each refusal in
+	// `claim_booster` (signed out, town de festa outside the window, its box already
+	// taken, a show with no claimable characters) surfaces here, and the pack reveals no
+	// cards. Shown on the booster sheet, because a pack that opens onto nothing has to
+	// say why.
 	let claimError = '';
-	let boosters: BoostersStatus | null = null;
 
-	// Nothing left to open today: the packs stay on screen but stop being openable, so
-	// the tab says so up front instead of letting a pack slice open onto nothing. Null
-	// (signed out, or the status hasn't loaded) leaves them openable — the server has
-	// the last word either way.
-	$: allowanceSpent = !!boosters && boosters.remaining <= 0;
+	// What the window holds and what is left of it: one box per town on offer, minus the
+	// ones this player has already taken. Counted off the packs themselves — the claim
+	// panel marks each with whether its box is spent (see `claimed-box`) — so the number
+	// on the bar and the boxes on the sheet cannot disagree. Both are 0 signed out, which
+	// is what leaves the bar saying nothing rather than a nought.
+	$: boxesTotal = claimPacks.length;
+	$: boxesLeft = claimPacks.filter((pack) => !pack.claimed).length;
 
 	// How many cards the last pack opened in this panel revealed, or null before any
 	// has been opened. Zero means the pack sliced open onto an empty canvas: the roll
@@ -1964,20 +1981,9 @@
 
 	function onPackOpened(revealed: number): void {
 		lastRevealed = revealed;
-		// A successful open spends one of the day's packs; re-read the allowance so the
-		// counter in the header follows along.
-		refreshBoosters();
-	}
-
-	/**
-	 * Re-read today's booster allowance. Called whenever something has moved it on a row
-	 * this browser cannot write — a pack opened, which spends one.
-	 */
-	function refreshBoosters(): void {
-		void spawnService
-			.boostersStatus()
-			.then((status) => (boosters = status))
-			.catch(() => {});
+		// Nothing to re-read here: the claim panel re-reads the boxes this player has
+		// taken the moment one is opened, and the count on the bar is derived from the
+		// packs it hands out.
 	}
 
 	// The pack a map box click stands up, picked out of the window's full set. Null when
@@ -2912,27 +2918,27 @@
 						<div
 							class="pointer-events-auto ml-auto flex flex-none items-center gap-2 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
 						>
-							<!-- The day's booster allowance, at the head of this end: how many boxes are
-								still there to open over how many the day gives at all. It was only ever
-								inside the Booster button's own label, which is behind the menu — so the one
-								number a player plans a day's play around was a fold and a press away, while
-								the bar it belongs on is up whatever they are doing. The same two numbers in
-								the same order as that label, off the same one read of `boosters_status`.
-								Read and not pressed, so it is deliberately not the outlined square the burger
-								beside it wears: a plain glyph and a line of type, which is what this row gives
-								everything that is only to be looked at. Drawn only once there is an allowance
-								to name — signed out, or the status not yet in, the plate says nothing rather
-								than a nought. `tabular-nums` because the count changes under a fixed row and
-								digits of different widths would shift the burger beside it.
+							<!-- What the booster window still holds, at the head of this end: how many of
+								these eight days' boxes are still there to open over how many the window
+								offers at all. It was only ever inside the Booster button's own label, which
+								is behind the menu — so the one number a player plans their play around was a
+								fold and a press away, while the bar it belongs on is up whatever they are
+								doing. The same two numbers in the same order as that label, off the same
+								packs. Read and not pressed, so it is deliberately not the outlined square
+								the burger beside it wears: a plain glyph and a line of type, which is what
+								this row gives everything that is only to be looked at. Drawn only once there
+								are boxes to count — signed out, or before the window lands, the plate says
+								nothing rather than a nought. `tabular-nums` because the count changes under a
+								fixed row and digits of different widths would shift the burger beside it.
 								The glyph is the vendored game-icons one as an `<img>` by URL, white artwork
 								over terrain, as the burger draws its own. -->
-							{#if boosters}
+							{#if boxesTotal}
 								<div
 									class="flex flex-none items-center gap-1.5 text-sm text-white"
 									title={boosterLabel}
 								>
 									<img src="/assets/icons/quoting/card-pickup.svg" class="size-4" alt="" />
-									<span class="tabular-nums">{boosters.remaining}/{boosters.allowance}</span>
+									<span class="tabular-nums">{boxesLeft}/{boxesTotal}</span>
 								</div>
 							{/if}
 							<!-- The looking glass stood here too, between the allowance and the burger. It
@@ -3238,9 +3244,17 @@
 						already up on the terrain beside this column — but the column is read as a
 						column, and a row that alone among them says nothing about its festa reads as a
 						town that has none. -->
+					<!-- `alwaysReveal`: the three standing here arrive every time the column comes to
+						hold a different side, whatever the session has already watched. It is the one
+						place on the map that spends a reveal on a repeat — the corner does not, since a
+						side that re-framed itself as the map moved would flicker — and it spends one
+						because this row *is* the answer to picking a town: the reader has just asked who
+						holds this place, and the three of them walking in is that answer being given.
+						The remount that makes all three do it together is the pin's (see TownPin's
+						`sideKey`); this only says the reveal is worth having. -->
 					<svelte:fragment slot="detail">
 						{#if townDetailPin}
-							<TownPin marker={townDetailPin} named={false} classes="py-1" />
+							<TownPin marker={townDetailPin} named={false} alwaysReveal classes="py-1" />
 						{/if}
 					</svelte:fragment>
 
@@ -3278,17 +3292,11 @@
 
 <!-- Hidden, but mounted: the claim panel, kept alive only
 	to compute the window's booster packs (bind:packs) so a map box click can open the town's
-	pack instantly. Its own UI is never shown here — but the two things it says that the
-	panel cannot do without are bound out of it: the daily allowance, and the reason a
-	roll was refused. Without those a spent allowance (or any other `claim_booster`
-	refusal) reads as a pack that opens onto nothing at all. -->
+	pack instantly. Its own UI is never shown here — but the reason a roll was refused is
+	bound out of it, since without that a `claim_booster` refusal reads as a pack that opens
+	onto nothing at all. What the window still holds is counted off the packs themselves. -->
 <div class="hidden" aria-hidden="true">
-	<CharacterClaimPanel
-		{seededShowById}
-		bind:packs={claimPacks}
-		bind:claimError
-		bind:boosters
-	/>
+	<CharacterClaimPanel {seededShowById} bind:packs={claimPacks} bind:claimError />
 </div>
 
 <!-- Challenge → the board's combat arena, on the same full-view sheet the roster, the
@@ -3393,7 +3401,6 @@
 		windowLabel={packWindowLabel}
 		{claimError}
 		{lastRevealed}
-		{allowanceSpent}
 		{townHasNoPack}
 		single={packRaisedOnTown}
 		on:select={clearPackFeedback}

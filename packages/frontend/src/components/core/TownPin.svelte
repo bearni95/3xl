@@ -26,7 +26,21 @@
 	// whether the name has already been said is a fact about wherever this column is stood
 	// up, not about the column.
 	export let named: boolean = true;
+	// Passed straight through to the side (see TeamLineup): veil these three even where the
+	// session has already watched them arrive. Decided by whoever stands this column up, since
+	// whether a reveal is worth spending is a fact about the surface and not about the pin.
+	export let alwaysReveal: boolean = false;
 	export let classes: string = '';
+
+	// Who is standing on the town, said as a string — the members in the order they are
+	// fielded, each by the three things that make one of them this card and not another.
+	// It is what the side is keyed on below, so it must change when the side does and
+	// stay put when nothing but the marker's identity has been rebuilt: the pin is
+	// recomputed whenever anything the map knows about the town moves (a holder, a glyph
+	// landing), and a key taken off the marker object would remount the row every time.
+	$: sideKey = (marker.team ?? [])
+		.map((member) => `${member.basePath ?? ''}|${member.label}|${member.color}`)
+		.join(',');
 </script>
 
 <div class={classNames('flex flex-col items-center gap-1', classes)}>
@@ -41,9 +55,26 @@
 			town still fielding the three its own seed rolled, so its banner flies the map's grey
 			rather than the colour that roll happened to give the lead — the same rule the terrain
 			under it is painted by. -->
-		<div class="w-full drop-shadow-lg">
-			<TeamLineup members={marker.team} flipped={false} seeded={!marker.holder} classes="gap-1" />
-		</div>
+		<!-- Keyed on the side itself, so a column that comes to hold three different characters
+			stands three new statues up rather than swapping the pictures inside the ones already
+			there. That is what lets the row arrive: a statue keeps its veil down once its own
+			character is up, and a member who happens to sit in the same slot as the last side's
+			would otherwise never be covered again — so a change of side would half-animate, only
+			the slots whose character actually changed playing anything. Remounting all three puts
+			every one of them back behind a veil at once, and the row appears as the one thing it
+			is. It costs nothing when the side has not changed: the key is the members themselves
+			and not the marker, which is rebuilt whenever anything at all about the town moves. -->
+		{#key sideKey}
+			<div class="w-full drop-shadow-lg">
+				<TeamLineup
+					members={marker.team}
+					flipped={false}
+					seeded={!marker.holder}
+					{alwaysReveal}
+					classes="gap-1"
+				/>
+			</div>
+		{/key}
 	{/if}
 
 	<!-- Flush, because this is a column and not a point: the plate takes the width it is laid
