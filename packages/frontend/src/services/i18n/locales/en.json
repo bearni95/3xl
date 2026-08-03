@@ -57,6 +57,11 @@
 		"expMax": "{exp} XP (max)",
 		"signOut": "Sign out",
 		"notConfigured": "Sign-in is unavailable: Supabase is not configured. Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY.",
+		"public": {
+			"notFound": "There is no such profile.",
+			"noTeam": "This player is not fielding a team yet.",
+			"toMap": "Go to the map"
+		},
 		"username": {
 			"none": "Unnamed player",
 			"taken": "That username is already taken.",

@@ -1,0 +1,161 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { _ } from 'svelte-i18n';
+	import { characters } from '@3xl/data';
+	import PlayerPanel from '$components/core/PlayerPanel.svelte';
+	import TeamLineup from '$components/core/TeamLineup.svelte';
+	import { publicProfileService, type PublicPlayer } from '$services/publicProfile.service';
+	import { isSupabaseConfigured } from '$services/supabase.client';
+	import { spawnService } from '$services/spawn.service';
+	import { locationAdapter } from '$adapters/classes/location.adapter';
+	import { showIdsByCharacter } from '$utils/spawn/team-show';
+	import { teamLineupMembers } from '$utils/spawn/team-lineup';
+
+	// Any player's profile, for anybody at all — the one page in this game that is
+	// about somebody else and the one that needs no account to read. It is the map's
+	// bottom-left corner lifted out and given an address: the side they field, and
+	// under it the plate they are read by, the same two components in the same order,
+	// so a player linked here sees exactly what the map would have shown of them.
+	//
+	// It is not a route into the game: there is nothing to press on it. The plate is
+	// handed `interactive={false}` — the picture and the reading are the way into an
+	// account only where the account is your own — and the statues are unselectable,
+	// which is what they already are wherever a side is a picture of a side rather
+	// than a roster.
+	//
+	// Everything on it comes from the two definer views made for it
+	// (`player_profiles_public`, `player_teams_public`) and nothing else about the
+	// account is reachable: not the address it signs in with, not the rest of the
+	// collection the three fielded cards came out of. See publicProfile.service.
+
+	// The account this page is about, out of the URL. A change of id is a different
+	// player, so the load below is keyed on it and a visit to two profiles in a row
+	// cannot leave one wearing the other's team.
+	$: userId = $page.params.id ?? '';
+
+	let player: PublicPlayer | null = null;
+	// Character id → the shows it belongs to; the first is the one a statue flies, as
+	// on the map. Empty until the assignment lands, which leaves a floor bare rather
+	// than holding the side back.
+	let showsByCharacter = new Map<string, number[]>();
+	// geojson feature id → municipality name, so a card can name where it was claimed.
+	// Null until the layer arrives, and null for good if it does not: a place that
+	// cannot be named reads as Ultramar, which is where an unplaced card comes from.
+	let municipalityNames: Map<string, string> | null = null;
+	let loading = true;
+	// Set when the read itself failed — the network, a refusal. A profile that simply
+	// is not there is `player === null` with no error, which is a different sentence.
+	let failed = false;
+
+	const charactersById = new Map(characters.map((character) => [character.id, character]));
+
+	// One load per player named in the URL. Mounted first so nothing is fetched while
+	// the page is being rendered for the static fallback.
+	let loadedFor: string | null = null;
+	let mounted = false;
+	// Asked on the client alone: the env this reads is resolved in the browser, and a
+	// page rendered for the static fallback has no answer to give.
+	let configured = true;
+	onMount(() => {
+		mounted = true;
+		configured = isSupabaseConfigured();
+	});
+	$: if (mounted && userId && userId !== loadedFor) {
+		loadedFor = userId;
+		void load(userId);
+	}
+
+	async function load(id: string): Promise<void> {
+		loading = true;
+		failed = false;
+		player = null;
+		try {
+			const [loaded, shows] = await Promise.all([
+				publicProfileService.load(id),
+				// The same assignment the map reads a character's show out of, so a
+				// statue carries the same badge here as it does at the map's corner.
+				spawnService.loadShows()
+			]);
+			// The id may have changed while this was in flight — a link followed from
+			// one profile to another — and the answer to a question nobody is asking
+			// any more must not land on the page.
+			if (id !== loadedFor) return;
+			player = loaded;
+			showsByCharacter = showIdsByCharacter(
+				new Map(shows.map((show) => [show.id, show.characterIds]))
+			);
+		} catch {
+			if (id !== loadedFor) return;
+			failed = true;
+		} finally {
+			if (id === loadedFor) loading = false;
+		}
+
+		// The place names are the map's own layer and the heaviest thing here, so they
+		// are fetched after the page can already be drawn and folded in when they land.
+		// A statue says Ultramar until then, exactly as one does on a map whose layer is
+		// still on its way.
+		try {
+			const response = await fetch('/data/geo/municipis.json');
+			const collection = (await response.json()) as GeoJSON.FeatureCollection;
+			if (id === loadedFor) municipalityNames = locationAdapter.municipalityNames(collection);
+		} catch {
+			municipalityNames = null;
+		}
+	}
+
+	// The side as the statues draw it — the same reading the map's corner makes of the
+	// signed-in player's own team, off the same function.
+	$: lineup = teamLineupMembers(player?.team ?? [], {
+		characters: charactersById,
+		showsByCharacter,
+		municipalityNames
+	});
+
+	// What to call the page. A nameless account is worded here rather than stored, as
+	// it is everywhere else a name is missing.
+	$: title = player ? (player.profile.username ?? $_('profile.username.none')) : $_('profile.title');
+</script>
+
+<svelte:head>
+	<title>{title}</title>
+</svelte:head>
+
+<!-- The whole page is one column the width the map's corner reads a side at (400px),
+	centred and stood in the middle of the screen rather than at the foot of a map,
+	since there is no map behind it here. -->
+<div class="flex min-h-screen w-full items-center justify-center bg-base-300 p-4">
+	<div class="flex w-full max-w-[400px] flex-col gap-3">
+		{#if loading}
+			<div class="flex items-center justify-center gap-3 py-12 text-base-content/70">
+				<span class="loading loading-spinner loading-md"></span>
+				{$_('common.loading')}
+			</div>
+		{:else if failed}
+			<p class="py-12 text-center text-base-content/70">{$_('errors.generic')}</p>
+		{:else if !configured}
+			<!-- A local run with no Supabase behind it: there is nobody to look up, which is
+				not the same sentence as "no such player" and must not be told as one. -->
+			<p class="py-12 text-center text-base-content/70">{$_('profile.notConfigured')}</p>
+		{:else if !player}
+			<p class="py-12 text-center text-base-content/70">{$_('profile.public.notFound')}</p>
+		{:else}
+			<!-- The side above the plate, as at the map's corner: three statues on nothing at
+				all, each bringing its own ground, standing the way the corner stands them.
+				Nothing is passed to it that the corner does not pass — it is unselectable and
+				unheaded there too, being a picture of a side rather than a roster. -->
+			{#if lineup.length > 0}
+				<TeamLineup members={lineup} />
+			{:else}
+				<p class="py-6 text-center text-base-content/70">{$_('profile.public.noTeam')}</p>
+			{/if}
+
+			<PlayerPanel profile={player.profile} interactive={false} classes="w-full" />
+		{/if}
+
+		<!-- The way back into the game, at the foot of the column whatever the page found:
+			this is the one screen a visitor can arrive at without ever having seen the map. -->
+		<a href="/" class="btn btn-ghost btn-sm">{$_('profile.public.toMap')}</a>
+	</div>
+</div>

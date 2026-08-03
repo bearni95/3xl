@@ -2,7 +2,7 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher } from 'svelte';
 	import { _ } from 'svelte-i18n';
-	import type { Profile } from '$types/profile.type';
+	import type { PlayerPlate } from '$types/profile.type';
 	import { levelProgress } from '$utils/progression/level';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 
@@ -32,10 +32,32 @@
 	// is not a thing, and the avatar's own job predates this one. So the plate is a row of
 	// two targets that between them cover it, and neither has to guess what a press meant.
 
-	export let profile: Profile;
+	// The plate and not the account: the four things a player is read by, which is
+	// everything this draws (see PlayerPlate). It takes that rather than a whole Profile
+	// because the same plate stands for somebody else on their public profile page,
+	// where the address behind the account is nobody's business and never fetched — a
+	// component handed less cannot print it by accident.
+	export let profile: PlayerPlate;
+	// Whether the plate is the way into the account it reads. True where it is the
+	// player's own (the map's corner): the picture opens the picker and the reading
+	// opens the settings sheet. False where it is somebody else's — there is nothing to
+	// press, so it is not a pair of buttons at all rather than two that refuse. The
+	// events are simply not dispatched either way round.
+	export let interactive: boolean = true;
 	export let classes: string = '';
 
 	const dispatch = createEventDispatcher<{ editavatar: void; open: void }>();
+
+	// What each half of the plate is, and what it says it is. A button carries the two
+	// labels naming what pressing it does; a plate that only reads out carries neither,
+	// since a title on a div is a tooltip about nothing.
+	$: element = interactive ? 'button' : 'div';
+	$: avatarAttributes = interactive
+		? { type: 'button', title: $_('profile.avatar.edit'), 'aria-label': $_('profile.avatar.edit') }
+		: {};
+	$: readingAttributes = interactive
+		? { type: 'button', title: $_('settings.title'), 'aria-label': $_('settings.title') }
+		: {};
 
 	// Same as the full card: the letter avatar stands on the chosen name alone, so an
 	// account nobody has named shows a question mark rather than a letter of its address.
@@ -45,11 +67,11 @@
 	$: expPercent = Math.round(progress.fraction * 100);
 
 	function handleEditAvatar(): void {
-		dispatch('editavatar');
+		if (interactive) dispatch('editavatar');
 	}
 
 	function handleOpen(): void {
-		dispatch('open');
+		if (interactive) dispatch('open');
 	}
 </script>
 
@@ -60,24 +82,27 @@
 		share of the plate: the tile in the panel gave it a third of its width because the
 		reading had a third of its own, and a portrait that size on a plate this size would be
 		most of what the plate says. -->
-	<button
-		type="button"
+	<svelte:element
+		this={element}
+		{...avatarAttributes}
 		class="group flex flex-none items-center justify-center"
-		title={$_('profile.avatar.edit')}
-		aria-label={$_('profile.avatar.edit')}
 		on:click={handleEditAvatar}
 	>
 		<!-- The hover ring goes on the square itself rather than the box around it: a ring
-			drawn on the box would stand well clear of the picture it is about. -->
+			drawn on the box would stand well clear of the picture it is about. It is only
+			drawn where there is something to press: a ring under the pointer on a plate that
+			does nothing is an offer the plate cannot keep. -->
 		<PlayerAvatar
 			characterId={profile.avatarCharacterId}
 			color={profile.avatarColor}
 			{initial}
 			size="w-12"
 			textClasses="text-xl"
-			classes="[&>div]:transition group-hover:[&>div]:ring-2 group-hover:[&>div]:ring-primary"
+			classes={interactive
+				? '[&>div]:transition group-hover:[&>div]:ring-2 group-hover:[&>div]:ring-primary'
+				: ''}
 		/>
-	</button>
+	</svelte:element>
 
 	<!-- The reading, on two rows: who they are with the level they are at, then the bar
 		carrying the experience figure inside it. `min-w-0` is what lets a name longer than the
@@ -85,11 +110,12 @@
 		It is the button that opens the account, and it takes the whole of the plate the
 		picture does not, so there is no dead strip between the two targets. `text-left`
 		because a button centres its contents and this is a reading, not a label. -->
-	<button
-		type="button"
-		class="flex min-w-0 flex-1 cursor-pointer flex-col gap-1 text-left"
-		title={$_('settings.title')}
-		aria-label={$_('settings.title')}
+	<svelte:element
+		this={element}
+		{...readingAttributes}
+		class={classNames('flex min-w-0 flex-1 flex-col gap-1 text-left', {
+			'cursor-pointer': interactive
+		})}
 		on:click={handleOpen}
 	>
 		<!-- Name and level share a row, the level at its far end: they are the two things an
@@ -151,5 +177,5 @@
 				{/if}
 			</span>
 		</div>
-	</button>
+	</svelte:element>
 </div>

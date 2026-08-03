@@ -91,7 +91,39 @@ create or replace view public.player_names
 	from public.player_profiles
 	where username is not null;
 
+-- Read, and only read. This is not the belt to `grant select`'s braces: a view over
+-- one table with no aggregate is **auto-updatable**, Supabase's default privileges
+-- hand anon and authenticated every verb on anything new in this schema, and a
+-- definer-owned view is not subject to the table's RLS. Granting select without
+-- taking the rest away would therefore have opened a write path through the view
+-- that the table itself refuses — any browser holding the anon key renaming any
+-- player. Every definer view below does this, and any new one must too.
+revoke all on public.player_names from anon, authenticated;
 grant select on public.player_names to anon, authenticated;
+
+-- The plate a player is read by, for every visitor: the name, the picture, and the
+-- experience the level on it is worked out from. This is what `/profile/[id]`
+-- draws, and it is the one thing here the view above deliberately would not open —
+-- so the reasoning is worth stating rather than quietly reversing. A level is what
+-- a player is ranked by; a profile page that would not say it is not a profile, and
+-- the same number is already on the plate at the map's corner and read out of every
+-- town its owner holds. What stays shut is everything about how the account signs
+-- in: the address, the providers, the last time it was seen. None of those columns
+-- is on this table at all, and the ones that are and are private — nothing today,
+-- but that is what this list is for — are simply not selected.
+--
+-- Nameless accounts are kept, unlike `player_names`: an account with no name still
+-- has a level and still fields a team, and the page words the missing name itself.
+create or replace view public.player_profiles_public
+	with (security_invoker = false) as
+	select user_id, username, exp, avatar_character_id, avatar_color, created_at
+	from public.player_profiles;
+
+-- Read only, and here it matters most: this view is over one table with no
+-- aggregate, so without the revoke it would be a way for any browser to *write*
+-- its own experience total (see the note on player_names above).
+revoke all on public.player_profiles_public from anon, authenticated;
+grant select on public.player_profiles_public to anon, authenticated;
 
 -- Wear one of the caller's own avatars, named by the pair that IS one: a character
 -- and a colour. Passing nulls clears back to the initial-letter avatar; the two

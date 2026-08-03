@@ -80,10 +80,19 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
 	[OAuthProvider.Discord]: 'Discord'
 };
 
-/** Normalised view model of the signed-in account, decoupled from Supabase. */
-export interface Profile {
-	id: ID;
-	email: string;
+/**
+ * The whole of what a player is read by on screen: the picture they wear, the
+ * name they chose, and the experience their level is worked out from — the four
+ * columns of a `player_profiles` row that say who is playing rather than how they
+ * got in.
+ *
+ * It is a type of its own because it is the part of an account that is **not**
+ * private. The plate at the map's corner draws exactly this of the signed-in
+ * player, and the public profile page draws exactly this of somebody else (see
+ * {@link PublicProfile}) — so the component that draws it takes this and not a
+ * whole {@link Profile}, and cannot print an address it was never handed.
+ */
+export interface PlayerPlate {
 	/**
 	 * The username the player typed, or `null` when they never have — which is a
 	 * resting state, not a gap for the app to fill in. It is stored in exactly one
@@ -97,16 +106,6 @@ export interface Profile {
 	 * is never stored.
 	 */
 	username: string | null;
-	/** ISO timestamp the account was created, if known. */
-	createdAt: string | null;
-	/** ISO timestamp of the most recent sign-in, if known. */
-	lastSignInAt: string | null;
-	/**
-	 * The third-party identities linked to the account, in the order Supabase
-	 * reports them. Empty for an account that only ever used the email link —
-	 * Supabase's own `email` identity is not a social provider and is dropped.
-	 */
-	providers: OAuthProvider[];
 	/**
 	 * Total accumulated experience, from the Supabase `player_profiles` table.
 	 * Starts at 0 for a fresh account and is only ever increased by winning fights
@@ -114,11 +113,6 @@ export interface Profile {
 	 * decides the amount itself). Defaults to 0 until the value has loaded.
 	 */
 	exp: number;
-	/**
-	 * The player's level, derived from {@link exp} via the D&D 5e experience table
-	 * (`levelForExp`). Not stored — always computed from {@link exp}.
-	 */
-	level: number;
 	/**
 	 * The character half of the avatar the player wears, from the Supabase
 	 * `player_profiles` table, or `null` for the initial-letter avatar every
@@ -137,4 +131,58 @@ export interface Profile {
 	 * {@link avatarCharacterId}; the two are only ever set and cleared together.
 	 */
 	avatarColor: SpawnColor | null;
+}
+
+/** Normalised view model of the signed-in account, decoupled from Supabase. */
+export interface Profile extends PlayerPlate {
+	id: ID;
+	email: string;
+	/** ISO timestamp the account was created, if known. */
+	createdAt: string | null;
+	/** ISO timestamp of the most recent sign-in, if known. */
+	lastSignInAt: string | null;
+	/**
+	 * The third-party identities linked to the account, in the order Supabase
+	 * reports them. Empty for an account that only ever used the email link —
+	 * Supabase's own `email` identity is not a social provider and is dropped.
+	 */
+	providers: OAuthProvider[];
+	/**
+	 * The player's level, derived from {@link exp} via the D&D 5e experience table
+	 * (`levelForExp`). Not stored — always computed from {@link exp}.
+	 */
+	level: number;
+}
+
+/**
+ * Somebody else's account, as the whole world may see it — what the public
+ * profile page is built from.
+ *
+ * It is deliberately the plate and nothing more. The address an account signs in
+ * with, the providers behind it, when it was last seen: none of that is anybody
+ * else's business, and none of it is reachable — the page reads the
+ * `player_profiles_public` view, which selects these columns alone (see
+ * `packages/backend/supabase/player_profiles.sql`). The experience *is* here,
+ * which is the one thing this page publishes that nothing else did: a level is
+ * what a player is ranked by, and a profile that would not say it is not a
+ * profile.
+ */
+export interface PublicProfile extends PlayerPlate {
+	/** The account's Supabase user id — what `/profile/[id]` names it by. */
+	id: ID;
+	/** Derived from {@link exp}, exactly as {@link Profile.level} is. */
+	level: number;
+	/** ISO timestamp the `player_profiles` row was created, if known. */
+	createdAt: string | null;
+}
+
+/** One raw `player_profiles_public` row, as Supabase returns it. */
+export interface PublicProfileRow {
+	user_id: string;
+	username: string | null;
+	/** `bigint`, so Postgres serialises it as a string over the wire. */
+	exp: number | string | null;
+	avatar_character_id: string | null;
+	avatar_color: string | null;
+	created_at: string | null;
 }

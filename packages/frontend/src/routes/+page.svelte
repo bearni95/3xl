@@ -61,6 +61,7 @@
 	import { REGION_COLOR_CSS } from '$utils/color/region-color';
 	import { coordinateSeed, seededShowId, seededShowPool } from '$utils/geo/municipality-show';
 	import { teamShowId, showIdsByCharacter, holderShowIds } from '$utils/spawn/team-show';
+	import { teamLineupMembers } from '$utils/spawn/team-lineup';
 	import { showPosterUrl, showPosterUrlForSeed } from '$utils/geo/municipality-show';
 	import { showLogoUrl } from '$utils/show/show-logo';
 	import { forShow } from '$utils/show/show-icon';
@@ -1290,33 +1291,24 @@
 	// claimed. Null until the layer the map is drawn from has loaded.
 	$: municipalityNames = municipalities ? locationAdapter.municipalityNames(municipalities) : null;
 
-	/** A spawn's claim place; the Ultramar sentinel and any unresolved id read as Ultramar. */
-	function claimPlaceFor(id: string | null | undefined, names: Map<string, string> | null): string {
-		if (id && id !== ULTRAMAR_ID) {
-			const name = names?.get(id);
-			if (name) return restoreCatalanArticle(name);
-		}
-		return ULTRAMAR.municipality;
-	}
-
 	// The player's team as the plate draws it — not a card: who they are, the art that
 	// stands them up, the colour they bend, where they were claimed and the show they
 	// come from, whose glyph goes on the floor they stand on. The show is the
 	// character's own first show, as `teamShowId` reads it for a town's pin, so a
 	// character carries the same badge here as the map gives the show. Both maps are
 	// threaded in so the statement re-derives as the assignment and the place names land.
+	//
+	// The reading itself is `teamLineupMembers`, in @3xl/shared, because this is not the
+	// only place a side is stood up any more: a player's public profile page draws the
+	// same three statues off the same three facts, having loaded them by another route
+	// entirely (see publicProfile.service). One function, so the two can never disagree
+	// about what a card looks like.
 	$: playerTeamLineup = ((shows: Map<string, number[]>, names: Map<string, string> | null) =>
-		$teamSpawns.map((spawn) => ({
-			label: charactersById.get(spawn.characterId)?.label ?? spawn.characterId,
-			basePath: charactersById.get(spawn.characterId)?.basePath ?? null,
-			color: spawn.color,
-			// The box it was pulled from, which is the ink its statue is drawn in.
-			box: spawn.box,
-			locationName: claimPlaceFor(spawn.locationId, names),
-			// When the card was minted, said as an apostrophe year beside the place.
-			spawnedAt: spawn.createdAt,
-			showId: shows.get(spawn.characterId)?.[0] ?? null
-		})))(showsByCharacter, municipalityNames);
+		teamLineupMembers($teamSpawns, {
+			characters: charactersById,
+			showsByCharacter: shows,
+			municipalityNames: names
+		}))(showsByCharacter, municipalityNames);
 
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
 	// plus everything the fight has to be reported against — the town's id and the

@@ -1,6 +1,12 @@
 import { AdapterClass } from './adapter.class';
 import type { SpawnColor } from '../../types/character-spawn.type';
-import { OAUTH_PROVIDERS, OAuthProvider, type Profile } from '../../types/profile.type';
+import {
+	OAUTH_PROVIDERS,
+	OAuthProvider,
+	type Profile,
+	type PublicProfile,
+	type PublicProfileRow
+} from '../../types/profile.type';
 import { levelForExp } from '../../utils/progression/level';
 import { isSpawnColor } from '../../utils/spawn/color';
 
@@ -57,6 +63,31 @@ export class ProfileAdapter extends AdapterClass {
 			level: levelForExp(0),
 			avatarCharacterId: null,
 			avatarColor: null
+		};
+	}
+
+	/**
+	 * Transform a `player_profiles_public` row into the {@link PublicProfile} the
+	 * profile page draws — somebody else's account as everyone may see it.
+	 *
+	 * The same three readings the signed-in profile gets are applied here, and for
+	 * the same reasons: a blank name is nameless rather than a name made of spaces,
+	 * the level is computed from the experience rather than stored, and half an
+	 * avatar is no avatar. `exp` arrives as a string because it is a `bigint`.
+	 */
+	fromPublicRow(row: PublicProfileRow): PublicProfile {
+		const name = typeof row.username === 'string' ? row.username.trim() : '';
+		const raw = Number(row.exp ?? 0);
+		const exp = Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 0;
+		const worn = row.avatar_character_id && isSpawnColor(row.avatar_color);
+		return {
+			id: row.user_id,
+			username: name || null,
+			exp,
+			level: levelForExp(exp),
+			avatarCharacterId: worn ? row.avatar_character_id : null,
+			avatarColor: worn ? (row.avatar_color as SpawnColor) : null,
+			createdAt: row.created_at ?? null
 		};
 	}
 

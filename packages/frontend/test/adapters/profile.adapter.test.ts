@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { profileAdapter, type SupabaseUserLike } from '$adapters/classes/profile.adapter';
-import { OAuthProvider } from '$types/profile.type';
+import { OAuthProvider, type PublicProfileRow } from '$types/profile.type';
+import { SpawnColor } from '$types/character-spawn.type';
+import { levelForExp } from '$utils/progression/level';
 
 const user = (overrides: Partial<SupabaseUserLike> = {}): SupabaseUserLike => ({
 	id: 'user-1',
@@ -74,5 +76,58 @@ describe('profileAdapter.withUsername', () => {
 		expect(after.exp).toBe(before.exp);
 		expect(after.level).toBe(before.level);
 		expect(after.email).toBe(before.email);
+	});
+});
+
+describe('profileAdapter.fromPublicRow', () => {
+	const row = (overrides: Partial<PublicProfileRow> = {}): PublicProfileRow => ({
+		user_id: 'user-2',
+		username: 'nakama',
+		exp: '900',
+		avatar_character_id: 'luffy',
+		avatar_color: SpawnColor.Red,
+		created_at: '2026-01-01T00:00:00Z',
+		...overrides
+	});
+
+	it('reads the plate a public profile is drawn from', () => {
+		expect(profileAdapter.fromPublicRow(row())).toEqual({
+			id: 'user-2',
+			username: 'nakama',
+			// `exp` is a bigint, so it comes over the wire as a string.
+			exp: 900,
+			level: levelForExp(900),
+			avatarCharacterId: 'luffy',
+			avatarColor: SpawnColor.Red,
+			createdAt: '2026-01-01T00:00:00Z'
+		});
+	});
+
+	it('carries nothing about how the account signs in', () => {
+		const profile = profileAdapter.fromPublicRow(row()) as unknown as Record<string, unknown>;
+		expect(profile.email).toBeUndefined();
+		expect(profile.providers).toBeUndefined();
+		expect(profile.lastSignInAt).toBeUndefined();
+	});
+
+	it('reads a blank or missing name as nameless, and a nameless account is still a profile', () => {
+		expect(profileAdapter.fromPublicRow(row({ username: '   ' })).username).toBeNull();
+		expect(profileAdapter.fromPublicRow(row({ username: null })).id).toBe('user-2');
+	});
+
+	it('starts an account with no row of its own at level one', () => {
+		const fresh = profileAdapter.fromPublicRow(row({ exp: null }));
+		expect(fresh.exp).toBe(0);
+		expect(fresh.level).toBe(levelForExp(0));
+	});
+
+	it('reads half an avatar as none — the two halves only ever stand together', () => {
+		const noColor = profileAdapter.fromPublicRow(row({ avatar_color: null }));
+		expect(noColor.avatarCharacterId).toBeNull();
+		expect(noColor.avatarColor).toBeNull();
+
+		const noCharacter = profileAdapter.fromPublicRow(row({ avatar_character_id: null }));
+		expect(noCharacter.avatarCharacterId).toBeNull();
+		expect(noCharacter.avatarColor).toBeNull();
 	});
 });

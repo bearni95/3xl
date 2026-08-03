@@ -1,0 +1,95 @@
+import { describe, it, expect } from 'vitest';
+import { SpawnBox, SpawnColor } from '$types/character-spawn.type';
+import { ULTRAMAR, ULTRAMAR_ID } from '$types/location.type';
+import {
+	claimPlaceName,
+	teamLineupMembers,
+	type TeamLineupContext
+} from '$utils/spawn/team-lineup';
+
+const characters = new Map([
+	['luffy', { label: 'Monkey D. Luffy', basePath: '/assets/luffy' }],
+	['zoro', { label: 'Roronoa Zoro', basePath: '/assets/zoro' }]
+]);
+
+const context = (overrides: Partial<TeamLineupContext> = {}): TeamLineupContext => ({
+	characters,
+	showsByCharacter: new Map([
+		['luffy', [37854, 12]],
+		['zoro', [37854]]
+	]),
+	municipalityNames: new Map([['ES_08028', 'Barcelona']]),
+	...overrides
+});
+
+describe('claimPlaceName', () => {
+	it('names a town the layer knows, article restored to the front', () => {
+		const names = new Map([['ES_25120', 'Pobla de Segur, la']]);
+		expect(claimPlaceName('ES_25120', names)).toBe('La Pobla de Segur');
+	});
+
+	it('reads the Ultramar sentinel, an unknown id and no layer at all as Ultramar', () => {
+		const names = new Map([['ES_08028', 'Barcelona']]);
+		expect(claimPlaceName(ULTRAMAR_ID, names)).toBe(ULTRAMAR.municipality);
+		expect(claimPlaceName('ES_99999', names)).toBe(ULTRAMAR.municipality);
+		expect(claimPlaceName('ES_08028', null)).toBe(ULTRAMAR.municipality);
+		expect(claimPlaceName(null, names)).toBe(ULTRAMAR.municipality);
+	});
+});
+
+describe('teamLineupMembers', () => {
+	it('stands a card up from the registry, the assignment and the layer', () => {
+		const [member] = teamLineupMembers(
+			[
+				{
+					characterId: 'luffy',
+					color: SpawnColor.Red,
+					box: SpawnBox.White,
+					locationId: 'ES_08028',
+					createdAt: '2026-01-02T03:04:05.000Z'
+				}
+			],
+			context()
+		);
+
+		expect(member).toEqual({
+			label: 'Monkey D. Luffy',
+			basePath: '/assets/luffy',
+			color: SpawnColor.Red,
+			box: SpawnBox.White,
+			locationName: 'Barcelona',
+			spawnedAt: '2026-01-02T03:04:05.000Z',
+			// The first show it belongs to, which is the one it flies.
+			showId: 37854
+		});
+	});
+
+	it('keeps the order it was handed — the lead first, as on the board', () => {
+		const members = teamLineupMembers(
+			[
+				{ characterId: 'zoro', color: SpawnColor.Blue },
+				{ characterId: 'luffy', color: SpawnColor.Red }
+			],
+			context()
+		);
+		expect(members.map((member) => member.label)).toEqual(['Roronoa Zoro', 'Monkey D. Luffy']);
+	});
+
+	it('keeps a character the registry no longer holds, on its id and no sprite', () => {
+		const [member] = teamLineupMembers(
+			[{ characterId: 'ghost', color: SpawnColor.Green }],
+			context()
+		);
+		expect(member.label).toBe('ghost');
+		expect(member.basePath).toBeNull();
+		expect(member.showId).toBeNull();
+	});
+
+	it('leaves the show out for a character in none', () => {
+		const [member] = teamLineupMembers(
+			[{ characterId: 'luffy', color: SpawnColor.Red }],
+			context({ showsByCharacter: new Map() })
+		);
+		expect(member.showId).toBeNull();
+	});
+});

@@ -195,6 +195,19 @@ export function ensureTables(): Promise<void> {
 				drop policy if exists character_spawns_delete_own on character_spawns;
 				create policy character_spawns_delete_own on character_spawns
 						for delete using (auth.uid() = user_id);
+				-- The side a player fields, for every visitor. A collection is private —
+				-- what somebody holds is theirs — but the three cards they field are the
+				-- side they meet the map with: already drawn on every town they hold, and
+				-- on their public profile page, which is what this is for. Definer-owned
+				-- (security_invoker off) so it reads past the select-own policy above, and
+				-- carrying no id: a spawn id is the handle a client acts on a card with,
+				-- and there is nothing anybody may do to somebody else's card.
+				create or replace view player_teams_public
+					with (security_invoker = false) as
+					select user_id, team_slot, character_id, show_id, location_id, color, box, created_at
+					from character_spawns where team_slot is not null;
+				revoke all on player_teams_public from anon, authenticated;
+				grant select on player_teams_public to anon, authenticated;
 				-- The colours that may stand beside a lead of p_color: its own, plus — for a
 				-- primary — the compounds that mix it, or — for a compound — the two
 				-- primaries that make it. The same relation as teammateColors in
@@ -369,7 +382,29 @@ export function ensureTables(): Promise<void> {
 				create or replace view player_names
 					with (security_invoker = false) as
 					select user_id, username from player_profiles where username is not null;
+				-- Read, and only read. A view over one table with no aggregate is
+				-- auto-updatable, Supabase's default privileges hand anon and
+				-- authenticated every verb on anything new in this schema, and a
+				-- definer view is not subject to the table's RLS — so a bare grant
+				-- would open a write path the table itself refuses. Every definer
+				-- view here revokes first; any new one must too.
+				revoke all on player_names from anon, authenticated;
 				grant select on player_names to anon, authenticated;
+				-- The plate a player is read by, for every visitor: the name, the picture,
+				-- and the experience the level on it comes from — what /profile/[id]
+				-- draws. It is the one thing the view above deliberately would not open,
+				-- so: a level is what a player is ranked by, it is already on the plate at
+				-- the map's corner and on every town its owner holds, and a profile page
+				-- that would not say it is not a profile. What stays shut is how the
+				-- account signs in, none of which is on this table. Nameless accounts are
+				-- kept, unlike player_names — they still have a level and still field a
+				-- team, and the page words the missing name itself.
+				create or replace view player_profiles_public
+					with (security_invoker = false) as
+					select user_id, username, exp, avatar_character_id, avatar_color, created_at
+					from player_profiles;
+				revoke all on player_profiles_public from anon, authenticated;
+				grant select on player_profiles_public to anon, authenticated;
 				alter table player_profiles enable row level security;
 				drop policy if exists player_profiles_select_own on player_profiles;
 				create policy player_profiles_select_own on player_profiles

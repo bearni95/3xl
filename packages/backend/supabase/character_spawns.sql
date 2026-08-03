@@ -119,6 +119,32 @@ create policy character_spawns_delete_own on public.character_spawns
 -- There is no update policy either, which is what makes `team_slot` the server's
 -- column: the team is set only through the RPC below.
 
+-- The side a player fields, for every visitor. A collection is private — what
+-- somebody holds, and how much of it, is theirs — but the three cards they field
+-- are the side they meet the map with: they are already drawn on every town they
+-- hold (frozen into `municipality_holders.team` as it won there) and on their
+-- public profile page, which is what this view is for. So exactly the cards
+-- holding a team slot come through, and nothing else in the collection does.
+--
+-- Definer-owned (security_invoker off), so it reads past the select-own policy
+-- above, and it carries no `id`: a spawn id is the handle a client acts on a card
+-- with, and there is nothing anybody may do to somebody else's card. The rest is
+-- what a statue is drawn from — who, in what colour, out of which box, claimed
+-- where and when.
+create or replace view public.player_teams_public
+	with (security_invoker = false) as
+	select user_id, team_slot, character_id, show_id, location_id, color, box, created_at
+	from public.character_spawns
+	where team_slot is not null;
+
+-- Read only. A view over one table with no aggregate is auto-updatable and this one
+-- is definer-owned, so a bare `grant select` — with Supabase's default privileges
+-- already handing anon every verb on anything new here — would have left a write
+-- path into `character_spawns` that the table's own policies refuse outright: cards
+-- dealt to nobody, teams set without `set_team`. See player_profiles.sql.
+revoke all on public.player_teams_public from anon, authenticated;
+grant select on public.player_teams_public to anon, authenticated;
+
 -- The colours that may stand beside a lead of `p_color`: its own, plus — for a
 -- primary — the compounds that mix it, or — for a compound — the two primaries
 -- that make it. The same relation as `teammateColors` in
@@ -186,7 +212,7 @@ begin
 		raise exception 'A fighter cannot be fielded twice.';
 	end if;
 
-	-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
+	-- Serialise this player's mutations, matching claim_booster.
 	perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
 
 	select count(*) into v_owned from public.character_spawns
