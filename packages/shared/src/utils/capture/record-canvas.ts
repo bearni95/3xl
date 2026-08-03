@@ -16,6 +16,15 @@
  * not left with nothing, though: WebM follows, and the {@link CanvasRecording} says which of
  * the two it handed back, so a caller names the file after what is in it rather than after
  * what it hoped for.
+ *
+ * **A transparent canvas turns that order round** ({@link RecordCanvasOptions.alpha}). H.264
+ * has no alpha channel at all, so an MP4 of a canvas with holes in it is an MP4 with those
+ * holes filled in black — the recording is not wrong, the container simply cannot say what was
+ * meant. The VPx codecs can: a canvas with alpha hands `captureStream` frames that carry it,
+ * and a browser that encodes those to WebM keeps the channel. So when the caller says the
+ * transparency matters, WebM is asked for first and MP4 becomes the fallback rather than the
+ * other way about. The list still ends at MP4, because a recording that lost its alpha is
+ * better than no recording, and the type handed back says which of the two happened.
  */
 
 /** A finished recording: the bytes, and what they turned out to be. */
@@ -35,31 +44,40 @@ export interface RecordCanvasOptions {
 	fps?: number;
 	/** Bits a second asked of the encoder. */
 	videoBitsPerSecond?: number;
+	/**
+	 * Whether what is being recorded is transparent, and the transparency is part of the
+	 * point. It buys nothing but the order the containers are asked for in — see the module
+	 * note on why an MP4 cannot keep an alpha channel and a WebM can.
+	 */
+	alpha?: boolean;
 }
 
 /**
- * The containers and codecs tried, in the order they are wanted. MP4 first (see the module
- * note), each candidate from the most specific codec string to the bare container, since a
+ * Each container's codecs, from the most specific codec string to the bare container, since a
  * browser may support the type while rejecting the profile named beside it.
  */
-const MIME_CANDIDATES = [
+const MP4_CANDIDATES = [
 	'video/mp4;codecs=avc1.42E01E',
 	'video/mp4;codecs=avc1.640028',
 	'video/mp4;codecs=h264',
-	'video/mp4',
-	'video/webm;codecs=vp9',
-	'video/webm;codecs=vp8',
-	'video/webm'
+	'video/mp4'
 ];
+const WEBM_CANDIDATES = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+
+/** The two orders the containers are tried in: MP4 first for anything opaque, WebM first when
+ * the alpha channel has to survive (see the module note). */
+const MIME_CANDIDATES = [...MP4_CANDIDATES, ...WEBM_CANDIDATES];
+const ALPHA_MIME_CANDIDATES = [...WEBM_CANDIDATES, ...MP4_CANDIDATES];
 
 const DEFAULT_FPS = 60;
 const DEFAULT_BITRATE = 12_000_000;
 
-/** The first type on {@link MIME_CANDIDATES} this browser will record, or null if it will
- * record none of them (or has no `MediaRecorder` at all). */
-export function supportedRecordingMimeType(): string | null {
+/** The first type this browser will record, in whichever of the two orders was asked for, or
+ * null if it will record none of them (or has no `MediaRecorder` at all). */
+export function supportedRecordingMimeType(alpha = false): string | null {
 	if (typeof MediaRecorder === 'undefined') return null;
-	return MIME_CANDIDATES.find((type) => MediaRecorder.isTypeSupported(type)) ?? null;
+	const candidates = alpha ? ALPHA_MIME_CANDIDATES : MIME_CANDIDATES;
+	return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? null;
 }
 
 /** `mp4` or `webm`, read off the type the recorder settled on. */
@@ -70,9 +88,14 @@ function extensionFor(mimeType: string): string {
 /** Record `canvas` for `durationMs` and return the file that comes out. */
 export async function recordCanvas(
 	canvas: HTMLCanvasElement,
-	{ durationMs, fps = DEFAULT_FPS, videoBitsPerSecond = DEFAULT_BITRATE }: RecordCanvasOptions
+	{
+		durationMs,
+		fps = DEFAULT_FPS,
+		videoBitsPerSecond = DEFAULT_BITRATE,
+		alpha = false
+	}: RecordCanvasOptions
 ): Promise<CanvasRecording> {
-	const mimeType = supportedRecordingMimeType();
+	const mimeType = supportedRecordingMimeType(alpha);
 	if (!mimeType) throw new Error('This browser cannot record a canvas to video.');
 
 	const stream = canvas.captureStream(fps);

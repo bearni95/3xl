@@ -105,9 +105,10 @@
 				<code class="font-mono">renderScale</code>, and the crown alignment that stands it by its
 				head. They stand on the board's own hex field, filled outward from the middle in
 				registry order and laid at whichever width comes out nearest a square, each on its
-				cell's foot line, so heights compare across the wall. The three blue cells at the
-				middle are kept clear and wear the game's social card; the red line halves the
-				field.
+				cell's foot line, so heights compare across the wall. Nothing behind them is
+				painted — not the field, not the line that halves it, not the canvas — so both
+				downloads come out transparent everywhere a character is not standing. The three
+				cells kept clear at the middle wear the game's social card.
 			</p>
 			<div class="flex flex-wrap gap-4 text-sm">
 				<a class="link link-primary" href="/characters">Characters →</a>
@@ -150,7 +151,6 @@
 			characters={roster}
 			centerImage={CENTER_IMAGE}
 			on:status={(event) => (status = event.detail)}
-			classes="bg-base-300"
 		/>
 
 		<!-- Where the whole wall meets itself again: the least common multiple of the cycle
