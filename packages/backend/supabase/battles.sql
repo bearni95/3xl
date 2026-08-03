@@ -105,7 +105,7 @@ create policy battles_select_own on public.battles
 -- The line-up is **not** the caller's to name. It is read here off the team slots
 -- on the caller's own cards (see character_spawns.sql), so a fight is opened with
 -- the team the ACCOUNT holds rather than with whatever list a browser arrived
--- carrying — one that could name cards claimed by another account or recycled
+-- carrying — one that could name cards claimed by another account or deleted
 -- since. Three slots have to be filled or no battle is opened and no town is
 -- claimed, which is the same rule `award_combat_exp` applies to a winning report, kept in
 -- the only place it does the player any good: a fight that could never have been

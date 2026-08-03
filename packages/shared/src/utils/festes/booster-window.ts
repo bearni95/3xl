@@ -35,6 +35,21 @@ export function shiftIsoDate(iso: string, days: number): string {
 }
 
 /**
+ * Whole calendar days from `today` to `iso`, negative for a date behind it. Both are
+ * rebuilt from their own parts in UTC, as {@link shiftIsoDate} does, so no summer-time
+ * switch can put the answer half a day out.
+ *
+ * It is what picks a town's festa when it holds more than one inside the window: the
+ * nearest to today, which is the one `claim_booster` prints the box from.
+ */
+export function isoDayDistance(iso: string, today: string): number {
+	const [year, month, day] = iso.split('-').map(Number);
+	const [nowYear, nowMonth, nowDay] = today.split('-').map(Number);
+	const ms = Date.UTC(year, month - 1, day) - Date.UTC(nowYear, nowMonth - 1, nowDay);
+	return Math.round(ms / 86_400_000);
+}
+
+/**
  * The booster window around `today` (the current Catalan day by default, the same
  * day boundary the server claims against) — inclusive on both ends.
  */

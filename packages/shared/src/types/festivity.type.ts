@@ -31,6 +31,18 @@ export interface FestaLocationRow {
 }
 
 /**
+ * A celebrating municipality with the festa its box is printed for: its nearest
+ * local-holiday date to today inside the booster window, which is the very festivity
+ * `claim_booster` picks (see packages/backend/supabase/booster_claims.sql). Both the
+ * stock and the year come off that one date, so a town's box is the same box on both
+ * sides of the wire — see `@3xl/shared/utils/spawn/claimed-box`.
+ */
+export interface FestaWindowRow extends FestaLocationRow {
+	/** The festa this box belongs to, as `YYYY-MM-DD`. */
+	date: string;
+}
+
+/**
  * One celebrating municipality, paired with the series it flies — the show the
  * town's own geometry seeds it with, or its occupier's team's show wherever a
  * player has taken it, so a conquest re-stocks the town's boxes. `show` is
@@ -39,7 +51,7 @@ export interface FestaLocationRow {
  * shared so the festes list and the pack grid agree on the shape.
  */
 export interface FestaShowPair {
-	festa: FestaLocationRow;
+	festa: FestaWindowRow;
 	show: import('../utils/geo/region-tree').RegionShow | undefined;
 }
 

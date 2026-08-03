@@ -25,7 +25,28 @@
 	},
 	"profile": {
 		"title": "QQQQQ",
+		"access": "QQQQQ",
 		"continueWith": "QQQQQ",
+		"password": {
+			"haveAccount": "QQQQQ",
+			"newAccount": "QQQQQ",
+			"email": "QQQQQ",
+			"emailPlaceholder": "QQQQQ",
+			"password": "QQQQQ",
+			"minimum": "QQQQQ",
+			"signIn": "QQQQQ",
+			"createAccount": "QQQQQ",
+			"or": "QQQQQ",
+			"confirmationSent": "QQQQQ",
+			"rejected": {
+				"invalid": "QQQQQ",
+				"unconfirmed": "QQQQQ",
+				"weak": "QQQQQ",
+				"email": "QQQQQ",
+				"rate": "QQQQQ",
+				"closed": "QQQQQ"
+			}
+		},
 		"emailLabel": "QQQQQ",
 		"memberSince": "QQQQQ",
 		"signedInWith": "QQQQQ",
@@ -36,6 +57,11 @@
 		"expMax": "QQQQQ",
 		"signOut": "QQQQQ",
 		"notConfigured": "QQQQQ",
+		"public": {
+			"notFound": "QQQQQ",
+			"noTeam": "QQQQQ",
+			"toMap": "QQQQQ"
+		},
 		"username": {
 			"none": "QQQQQ",
 			"taken": "QQQQQ",
@@ -58,6 +84,9 @@
 			"label": "QQQQQ",
 			"placeholder": "QQQQQ",
 			"empty": "QQQQQ"
+		},
+		"holder": {
+			"title": "QQQQQ"
 		},
 		"challenge": {
 			"siege": "QQQQQ",
@@ -85,16 +114,57 @@
 		}
 	},
 	"menu": {
-		"label": "QQQQQ",
 		"open": "QQQQQ",
 		"close": "QQQQQ"
+	},
+	"social": {
+		"label": "QQQQQ"
 	},
 	"settings": {
 		"title": "QQQQQ"
 	},
+	"collection": {
+		"title": "QQQQQ",
+		"close": "QQQQQ",
+		"loading": "QQQQQ",
+		"empty": "QQQQQ",
+		"filterByShow": "QQQQQ",
+		"filterByThisShow": "QQQQQ",
+		"overall": "QQQQQ"
+	},
 	"roster": {
 		"title": "QQQQQ",
-		"close": "QQQQQ"
+		"close": "QQQQQ",
+		"notConfigured": "QQQQQ",
+		"signInBody": "QQQQQ",
+		"signIn": "QQQQQ",
+		"loading": "QQQQQ",
+		"emptyBody": "QQQQQ",
+		"openMap": "QQQQQ",
+		"previousPage": "QQQQQ",
+		"nextPage": "QQQQQ",
+		"page": "QQQQQ",
+		"savingTeam": "QQQQQ",
+		"searchByName": "QQQQQ",
+		"filterByName": "QQQQQ",
+		"filterByColor": "QQQQQ",
+		"filterByThisColor": "QQQQQ",
+		"filterByShow": "QQQQQ",
+		"filterByThisShow": "QQQQQ",
+		"clear": "QQQQQ",
+		"noMatches": "QQQQQ",
+		"clearFilters": "QQQQQ",
+		"claimedIn": "QQQQQ",
+		"addToTeam": "QQQQQ",
+		"removeFromTeam": "QQQQQ",
+		"colors": {
+			"red": "QQQQQ",
+			"yellow": "QQQQQ",
+			"blue": "QQQQQ",
+			"orange": "QQQQQ",
+			"green": "QQQQQ",
+			"purple": "QQQQQ"
+		}
 	},
 	"leaderboard": {
 		"title": "QQQQQ",
@@ -102,8 +172,10 @@
 	},
 	"booster": {
 		"title": "QQQQQ",
-		"withAllowance": "QQQQQ",
+		"withBoxes": "QQQQQ",
 		"close": "QQQQQ",
+		"open": "QQQQQ",
+		"openPack": "QQQQQ",
 		"window": "QQQQQ"
 	},
 	"combat": {
@@ -129,7 +201,12 @@
 		"reportRefused": "QQQQQ",
 		"saving": "QQQQQ",
 		"saveAgain": "QQQQQ",
-		"saveRefused": "QQQQQ"
+		"saveRefused": "QQQQQ",
+		"orders": {
+			"charge": "QQQQQ",
+			"defend": "QQQQQ",
+			"shoot": "QQQQQ"
+		}
 	},
 	"legal": {
 		"title": "QQQQQ",

@@ -48,9 +48,17 @@ export interface OpenerPack {
 	/**
 	 * True when this town is celebrating today. The booster window runs three days back
 	 * through four ahead, so most packs on offer belong to a festa that is not on — this
-	 * marks the ones that are, and the grid stands them apart from the rest.
+	 * marks the ones that are, and the grid stands them apart from the rest. It is also
+	 * which of the town's two boxes this is: white on the day, black around it.
 	 */
 	today: boolean;
+	/**
+	 * True when this player has already opened this town's box for this festa's year
+	 * and stock — a town deals two a year and no more, and `claim_booster` refuses the
+	 * second. The box is still drawn (a player should see the one they took) but stands
+	 * spent: dimmed, and it will not slice open.
+	 */
+	claimed: boolean;
 	/** Full name of the place the pack belongs to, drawn across its top. */
 	locationName: string | null;
 	/** Pack label — the show name shown under the grid pack / in the header. */

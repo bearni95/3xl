@@ -71,9 +71,9 @@ let ensured: Promise<void> | null = null;
 /**
  * Provision the whole authoring/gameplay schema (tables, RLS, RPCs) idempotently,
  * once per process. Exported so sibling routes that depend on parts of it — e.g.
- * ./users, whose grants are only honoured once the updated claim_booster /
- * boosters_status RPCs are deployed — can guarantee it has run before they read
- * or write, rather than relying on a show-templates request having happened first.
+ * ./users, which reads the booster claims this deploys the shape of — can guarantee
+ * it has run before they read or write, rather than relying on a show-templates
+ * request having happened first.
  */
 export function ensureTables(): Promise<void> {
 	if (!ensured) {
@@ -272,7 +272,7 @@ export function ensureTables(): Promise<void> {
 						if v_distinct <> v_given then
 								raise exception 'A fighter cannot be fielded twice.';
 						end if;
-						-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
+						-- Serialise this player's mutations, matching claim_booster.
 						perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
 						select count(*) into v_owned from character_spawns
 							where user_id = v_uid and id = any(v_ids);
@@ -514,65 +514,87 @@ export function ensureTables(): Promise<void> {
 				-- grant themselves any total. Experience now comes from combat only, via
 				-- award_combat_exp below.
 				drop function if exists add_player_exp(bigint);
-					-- Booster rate-limit ledger: one row per pack a player opens, written
-					-- only by the claim_booster RPC below. Lets the daily-limit check count
-					-- opened packs directly instead of regrouping character_spawns. RLS lets
-					-- a player read only their own claims.
+					-- One row per booster box a player has opened, written only by the
+					-- claim_booster RPC below -- and the record the whole rule is enforced
+					-- against: one box per player, per town, per year, per stock (see the
+					-- unique index below). RLS lets a player read only their own claims,
+					-- which is what the game greys the taken boxes out of.
 					create table if not exists booster_claims (
 							id uuid primary key default gen_random_uuid(),
 							user_id uuid not null references auth.users (id) on delete cascade,
 							show_id bigint references show_templates (id) on delete set null,
 							location_id text not null,
+							box text,
+							year integer,
 							claimed_at timestamptz not null default now()
 						);
-					create index if not exists booster_claims_user_day_idx
-						on booster_claims (user_id, claimed_at);
-						-- Extra daily claims: an additive, day-scoped bump to a player's
-						-- booster cap for one Europe/Madrid date, and the ledger of everything
-						-- a day earns -- a batch recycled, a level reached, a town taken, a
-						-- town held against a challenger, the admin /api/users route (see
-						-- ./users.ts). claim_booster / boosters_status add today's grants on
-						-- top of the base allowance; rows lapse at Catalan
-						-- midnight (they are only ever summed for today's date). RLS on and no
-						-- policy at all, which is how a table is made unreachable from the anon
-						-- key: leaving RLS *off* would not have hidden it but published it,
-						-- with every verb, and this is the one ledger that adds straight to a
-						-- player's daily cap -- a row a browser could write itself is an
-						-- unbounded supply of packs. The security-definer RPCs read and write
-						-- it past RLS; the admin route does so as the owning role.
-						create table if not exists booster_grants (
-								id uuid primary key default gen_random_uuid(),
-								user_id uuid not null references auth.users (id) on delete cascade,
-								grant_date date not null,
-								amount integer not null,
-								created_at timestamptz not null default now()
-							);
-						-- Where the row came from, and what it was for: 'admin', 'recycle',
-						-- 'level_up' (ref = the level), 'capture' / 'defense' (ref = the
-						-- location id). The sum ignores both columns -- a grant is a grant --
-						-- so this is an audit trail and an idempotency key, not a rule.
-						-- 'admin' is the default, which is what rows written before this
-						-- column existed were.
-						alter table booster_grants add column if not exists reason text not null default 'admin';
-						alter table booster_grants add column if not exists ref text;
-						create index if not exists booster_grants_user_day_idx
-							on booster_grants (user_id, grant_date);
-						-- A level is reached once, ever, so the pack it pays is paid once,
-						-- ever -- across every day and every caller. The index enforces it
-						-- rather than a check somebody has to remember: grant_boosters
-						-- inserts with 'on conflict do nothing'. Only 'level_up' is
-						-- once-only; a town can be taken and held again and again.
-						create unique index if not exists booster_grants_level_up_idx
-							on booster_grants (user_id, ref)
-							where reason = 'level_up';
-						alter table booster_grants enable row level security;
+					alter table booster_claims add column if not exists box text;
+					alter table booster_claims add column if not exists year integer;
+					-- Rows written under the old daily allowance carry neither column, and
+					-- have to be given both or the index below would file every one of them
+					-- under the same (null, null) pair. The stock comes off the box's own
+					-- cards -- a claim and its five spawns are one transaction, so they share
+					-- now() exactly -- and the year off when it was opened, which is the
+					-- festa's own except across New Year.
+					update booster_claims bc set box = s.box
+					from (
+						select distinct on (user_id, location_id, created_at)
+							user_id, location_id, created_at, box
+						from character_spawns where box is not null
+					) s
+					where bc.box is null
+						and s.user_id = bc.user_id
+						and s.location_id = bc.location_id
+						and s.created_at = bc.claimed_at;
+					update booster_claims set box = 'black' where box is null;
+					update booster_claims
+						set year = extract(year from (claimed_at at time zone 'Europe/Madrid'))::int
+						where year is null;
+					-- A day's allowance let one player open a town's box many times over.
+					-- Keep the first of each (player, town, year, stock) so the unique index
+					-- can be created at all; only the claim rows go, never the cards they
+					-- dealt.
+					delete from booster_claims bc
+					using booster_claims keep
+					where bc.user_id = keep.user_id
+						and bc.location_id = keep.location_id
+						and bc.year = keep.year
+						and bc.box = keep.box
+						and (keep.claimed_at, keep.id) < (bc.claimed_at, bc.id);
+					alter table booster_claims alter column box set not null;
+					alter table booster_claims alter column year set not null;
+					alter table booster_claims drop constraint if exists booster_claims_box_stock;
+					alter table booster_claims add constraint booster_claims_box_stock
+						check (box in ('white', 'black'));
+					-- The rule itself. claim_booster asks before it rolls, so a refusal is a
+					-- sentence; this is what makes the check and the insert atomic.
+					create unique index if not exists booster_claims_once_idx
+						on booster_claims (user_id, location_id, year, box);
+					drop index if exists booster_claims_user_day_idx;
+					create index if not exists booster_claims_user_year_idx
+						on booster_claims (user_id, year);
+					-- The daily allowance and everything that paid into it, dropped in
+					-- dependency order (recycle_spawns and the granting functions call
+					-- grant_boosters, which reads booster_grants alongside
+					-- booster_allowance). boosters_status goes with them: what is left to
+					-- open is no longer a number the server adds up but the window's festes
+					-- minus the rows above, and the browser holds both halves. level_for_exp
+					-- stays -- a player still has a level, it simply no longer buys boxes.
+					drop function if exists recycle_spawns(uuid[]);
+					drop function if exists grant_level_up_boosters(uuid, bigint, bigint);
+					drop function if exists grant_boosters(uuid, int, text, text);
+					drop function if exists booster_allowance(uuid);
+					drop function if exists daily_booster_allowance(int);
+					drop function if exists boosters_status();
+					drop table if exists booster_grants;
 					alter table booster_claims enable row level security;
 					drop policy if exists booster_claims_select_own on booster_claims;
 					create policy booster_claims_select_own on booster_claims
 							for select using (auth.uid() = user_id);
 					-- Enforcement: players may no longer insert spawns directly. Opening a
-					-- pack now goes exclusively through claim_booster (security definer),
-					-- which applies the festa-major-today and daily-limit rules server-side.
+					-- box now goes exclusively through claim_booster (security definer),
+					-- which applies the festa-window and one-box-per-town-year-stock rules
+					-- server-side.
 					-- Reading/deleting one's own spawns stays client-side (policies kept).
 					drop policy if exists character_spawns_insert_own on character_spawns;
 					-- Player level from an accumulated experience total, using the same
@@ -603,15 +625,18 @@ export function ensureTables(): Promise<void> {
 							else 1
 						end;
 					$level_for_exp$;
-					-- Open a booster pack for the caller, enforced entirely server-side:
+					-- Open a booster box for the caller, enforced entirely server-side:
 					--   * the town (p_location_id) must be celebrating a festa major inside
 					--     the booster window — a festivities row for a Catalan date from 3
 					--     days back through 4 days ahead of today (a festa major runs over
 					--     its weekend, not one evening); keep in step with
 					--     @3xl/shared utils/festes/booster-window.ts and with the festivity
 					--     sync's lower bound in ./festivities.ts;
-					--   * the player may open at most (their level, capped at 20) packs per
-					--     day, the day resetting at midnight Europe/Madrid.
+					--   * one box per player, per town, per year, per stock. A town deals two
+					--     boxes a year -- the white one printed on the day of its festa and
+					--     the black one around it -- and neither twice. The year is the
+					--     festa's own, not the opener's day, so a celebration reached across
+					--     New Year is still the one box.
 					-- It then rolls 5 cards from the town's show — the caller's p_show_id
 					-- only while nobody holds the town, its occupier's team's show once
 					-- somebody does (read off municipality_holders below) — from that
@@ -625,140 +650,22 @@ export function ensureTables(): Promise<void> {
 					-- place. An avatar the player already holds is not dealt twice — the
 					-- insert hands the held row back, so the pack still shows what it gave.
 					--
-					-- Which box that is, it decides itself from the same festivities rows the
-					-- window check reads: a town celebrating TODAY deals white boxes, holding
-					-- the secondaries (purple/green/orange); a town whose festa is past or
-					-- still to come inside the window deals black ones, holding the primaries
-					-- (red/blue/yellow). The same white/black the Booster tab prints its tiles
-					-- on and the map draws its circles in — but read here, not taken from the
-					-- browser, and stamped on every card as character_spawns.box. Inside a box
-					-- the three are equally likely: the rare thing is the white box, there
-					-- being far fewer towns de festa on a given day than across the window.
-					-- Keep the triples in step with BOX_SPAWN_COLORS in
-					-- @3xl/shared utils/spawn/color.ts.
-					-- A per-user advisory lock serialises
-					-- concurrent opens so the limit can't be raced. security definer: it
-					-- inserts despite character_spawns now having no client insert policy.
-					-- The boxes a day is worth at a level, before anything the day itself
-					-- grants: floor(level / 4) + 1. One at levels 1-3, two from 4, six at
-					-- the cap. It was the level itself, which made a maxed player's day
-					-- twenty boxes and put the whole of the game's supply on the one
-					-- number that only ever goes up. Keep in sync with
-					-- dailyBoosterAllowance in @3xl/shared utils/progression/level.ts,
-					-- which the admin's user list derives the same cap from.
-					create or replace function daily_booster_allowance(p_level int)
-					returns int language sql immutable set search_path = public as $daily_booster_allowance$
-						select least(greatest(coalesce(p_level, 1), 1), 20) / 4 + 1;
-					$daily_booster_allowance$;
-					-- One player's allowance for today, broken into the three things it is
-					-- made of: the level's base, two extra on the day the account was
-					-- created (derived from auth.users.created_at, so there is nothing to
-					-- grant twice and nothing to expire), and everything today's
-					-- booster_grants have added. The ONE place the cap is added up --
-					-- claim_booster refuses against this and boosters_status reports it, so
-					-- what a player is shown is what they are held to.
-					-- security definer because it reads auth.users, which no client role
-					-- may select; execute revoked from PUBLIC *and from anon and
-					-- authenticated by name*, which is the part that matters: Postgres
-					-- grants execute to PUBLIC by default, but Supabase's own default
-					-- privileges grant it to those two roles explicitly, and an explicit
-					-- grant survives a revoke from PUBLIC. Anything not revoked from them
-					-- by name is callable from a browser holding the anon key -- and this
-					-- takes a user id that is not the caller's. Its callers are all
-					-- security-definer functions themselves, which run as this one's owner
-					-- and are unaffected.
-					create or replace function booster_allowance(p_uid uuid)
-					returns table (base int, signup int, granted int, cap int)
-					language plpgsql security definer set search_path = public as $booster_allowance$
-					declare
-							-- What an account's first day is worth. The game's number, and it
-							-- lives here: the browser is told a total and never an amount.
-							v_signup_bonus constant int := 2;
-							v_today date := (now() at time zone 'Europe/Madrid')::date;
-							v_exp bigint;
-							v_created date;
-					begin
-							if p_uid is null then
-									return;
-							end if;
-							select coalesce(p.exp, 0) into v_exp from player_profiles p where p.user_id = p_uid;
-							base := daily_booster_allowance(level_for_exp(coalesce(v_exp, 0)));
-							select (u.created_at at time zone 'Europe/Madrid')::date into v_created
-									from auth.users u where u.id = p_uid;
-							signup := case when v_created = v_today then v_signup_bonus else 0 end;
-							select coalesce(sum(g.amount), 0)::int into granted from booster_grants g
-									where g.user_id = p_uid and g.grant_date = v_today;
-							cap := greatest(0, base + signup + granted);
-							return next;
-					end;
-					$booster_allowance$;
-					revoke execute on function booster_allowance(uuid) from public, anon, authenticated;
-					-- Add packs to a player's day: the one writer of booster_grants inside
-					-- the database, so the ledger has one shape and one place a reason is
-					-- spelled. Returns what it actually granted, which is 0 when a
-					-- once-only grant ('level_up') was already paid -- the insert takes the
-					-- conflict silently rather than raising, a level reached twice not
-					-- being worth rolling a fight back over. security definer
-					-- (booster_grants has no client policy) and execute revoked from
-					-- PUBLIC, anon and authenticated -- all three by name, see
-					-- booster_allowance above for why PUBLIC alone is not enough. This is
-					-- the function that has to be shut: a row here is an extra pack, and a
-					-- browser that could call it with any user id and any amount would be
-					-- an unbounded supply of them.
-					create or replace function grant_boosters(
-							p_uid uuid,
-							p_amount int,
-							p_reason text,
-							p_ref text default null
-					)
-					returns int language plpgsql security definer set search_path = public as $grant_boosters$
-					declare
-							v_today date := (now() at time zone 'Europe/Madrid')::date;
-							v_written int;
-					begin
-							if p_uid is null or coalesce(p_amount, 0) = 0 then
-									return 0;
-							end if;
-							insert into booster_grants (user_id, grant_date, amount, reason, ref)
-									values (p_uid, v_today, p_amount, coalesce(p_reason, 'admin'), p_ref)
-									on conflict do nothing;
-							get diagnostics v_written = row_count;
-							return case when v_written > 0 then p_amount else 0 end;
-					end;
-					$grant_boosters$;
-					revoke execute on function grant_boosters(uuid, int, text, text) from public, anon, authenticated;
-					-- One extra pack per level crossed between two experience totals, banked
-					-- against the level itself so it is paid once ever. Its own function
-					-- rather than a few lines inside award_combat_exp -- the only thing that
-					-- awards experience today -- because a level-up is a level-up whatever
-					-- caused it: anything that pays experience later pays this by calling
-					-- one function, and cannot pay it twice for a level already reached.
-					create or replace function grant_level_up_boosters(
-							p_uid uuid,
-							p_before bigint,
-							p_after bigint
-					)
-					returns int language plpgsql security definer set search_path = public as $grant_level_up_boosters$
-					declare
-							-- What one level reached is worth. Here and nowhere else.
-							v_per_level constant int := 1;
-							v_from int := level_for_exp(coalesce(p_before, 0));
-							v_to int := level_for_exp(coalesce(p_after, 0));
-							v_total int := 0;
-							v_level int;
-					begin
-							if p_uid is null or v_to <= v_from then
-									return 0;
-							end if;
-							-- Every level actually reached, not just the last: an award big
-							-- enough to cross two of them pays for both.
-							for v_level in (v_from + 1)..v_to loop
-									v_total := v_total + grant_boosters(p_uid, v_per_level, 'level_up', v_level::text);
-							end loop;
-							return v_total;
-					end;
-					$grant_level_up_boosters$;
-					revoke execute on function grant_level_up_boosters(uuid, bigint, bigint) from public, anon, authenticated;
+					-- Which box that is, it decides itself from the same festivities row the
+					-- window check reads -- the town's nearest festa to today, which is the
+					-- whole of what the box is, its stock and its year both. Celebrating
+					-- TODAY the town deals the white box, holding the secondaries
+					-- (purple/green/orange); past or still to come inside the window, the
+					-- black one, holding the primaries (red/blue/yellow). The same
+					-- white/black the boxes are printed on and the map draws its discs in —
+					-- but read here, not taken from the browser, and stamped on every card
+					-- as character_spawns.box and on the claim itself. Inside a box the three
+					-- colours are equally likely: the rare thing is the white box, there
+					-- being one day of it against the window's other seven. Keep the triples
+					-- in step with BOX_SPAWN_COLORS in @3xl/shared utils/spawn/color.ts.
+					-- A per-user advisory lock serialises concurrent opens so a town's one
+					-- box cannot be taken twice by racing the check; the unique index is the
+					-- backstop under it. security definer: it inserts despite
+					-- character_spawns now having no client insert policy.
 					-- Weighted pick out of a pool: the ids, their weights, the weights'
 					-- sum, one id back. Its own function because claim_booster draws from
 					-- the same pool twice — once per card and once for the avatar — and
@@ -790,13 +697,12 @@ export function ensureTables(): Promise<void> {
 					declare
 							v_uid uuid := auth.uid();
 							v_today date := (now() at time zone 'Europe/Madrid')::date;
-							v_day_start timestamptz := date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
 							-- The booster window around today (see the comment above).
 							v_days_behind constant int := 3;
 							v_days_ahead constant int := 4;
 							v_size constant int := 5;
-							v_cap int;
-							v_used int;
+							v_festa date;
+							v_year int;
 							v_ids text[];
 							v_rarities int[];
 							v_weights numeric[];
@@ -819,38 +725,42 @@ export function ensureTables(): Promise<void> {
 							if p_location_id is null or p_location_id = '' then
 									raise exception 'A location is required to open a booster.';
 							end if;
-							-- Serialise this player's opens so the daily limit can't be raced.
+							-- Serialise this player's opens so the check below can't be raced.
 							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
-							-- The town must be celebrating a festa major inside the booster window.
-							if not exists (
-									select 1 from festivities f
+							-- The festa this box is printed for: the town's nearest one inside
+							-- the window, which is today's whenever it has one. Its stock and
+							-- its year both come off this one date, so a town with no festa in
+							-- range has no box at all.
+							select f.date into v_festa
+									from festivities f
 									where f.location_id = p_location_id
 											and f.date between v_today - v_days_behind and v_today + v_days_ahead
-							) then
+									order by abs(f.date - v_today), f.date
+									limit 1;
+							if v_festa is null then
 									raise exception 'This town is not celebrating a festa major these days.';
 							end if;
-							-- Which stock this town's box is printed on, and so which three
-							-- colours it can deal: white if its festa is today, black if it is
-							-- past or still coming.
-							if exists (
-									select 1 from festivities f
-									where f.location_id = p_location_id and f.date = v_today
-							) then
+							-- White while the festa is on, black around it; and the year is the
+							-- festa's, so a celebration reached across New Year is one box.
+							v_year := extract(year from v_festa)::int;
+							if v_festa = v_today then
 									v_box := 'white';
 									v_colors := array['purple', 'green', 'orange'];
 							else
 									v_box := 'black';
 									v_colors := array['red', 'blue', 'yellow'];
 							end if;
-							-- The day's allowance: the level's base, the signup bonus if this is
-							-- the account's first day, and everything today's grants added.
-							-- Worked out by booster_allowance rather than here, so the cap this
-							-- refuses against is the very number boosters_status showed.
-							select a.cap into v_cap from booster_allowance(v_uid) a;
-							select count(*) into v_used from booster_claims
-									where user_id = v_uid and claimed_at >= v_day_start;
-							if v_used >= coalesce(v_cap, 0) then
-									raise exception 'Daily booster limit reached: % of % packs opened today. More unlock at midnight.', v_used, coalesce(v_cap, 0);
+							-- One box per player, per town, per year, per stock. Asked before
+							-- anything is rolled so the refusal is a sentence a player can read;
+							-- the unique index on the table is what makes it impossible.
+							if exists (
+									select 1 from booster_claims c
+									where c.user_id = v_uid
+											and c.location_id = p_location_id
+											and c.year = v_year
+											and c.box = v_box
+							) then
+									raise exception 'You have already opened this town''s % box for %.', v_box, v_year;
 							end if;
 							-- Which show this town's boxes deal. A town nobody has taken deals
 							-- the show its own geometry seeds it with — an answer the browser
@@ -901,9 +811,10 @@ export function ensureTables(): Promise<void> {
 									select ord, 1.0 / (2 ^ r) as w
 									from unnest(v_rarities) with ordinality as t(r, ord)
 							) s;
-							-- Record the pack in the rate-limit ledger, then roll its cards.
-							insert into booster_claims (user_id, show_id, location_id)
-									values (v_uid, v_show_id, p_location_id);
+							-- Record the box as taken, then roll its cards. This is the row that
+							-- spends the town's year, so it is written before anything is dealt.
+							insert into booster_claims (user_id, show_id, location_id, box, year)
+									values (v_uid, v_show_id, p_location_id, v_box, v_year);
 							for i in 1..v_size loop
 									-- Weighted-by-rarity pick (matches weightedRarityIndex), then a
 									-- colour: one of the box's three, each equally likely.
@@ -931,88 +842,8 @@ export function ensureTables(): Promise<void> {
 					end;
 					$claim_booster$;
 					grant execute on function claim_booster(bigint, text) to authenticated;
-					-- The caller's daily allowance: what the day is worth, what it is made
-					-- of, what has been spent of it and what is left. Powers the claim
-					-- UI's limit display and the count on the map's top bar.
-					-- The level column is the player's actual level again and allowance is the
-					-- day's cap: the two used to be one column, back when a day WAS a
-					-- level. They are different numbers now (six boxes at level 20, not
-					-- twenty), so they are different columns. Dropped first because it
-					-- gained some -- Postgres will not replace a return type in place.
-					drop function if exists boosters_status();
-					create or replace function boosters_status()
-					returns table (
-							level int,
-							allowance int,
-							base int,
-							signup int,
-							granted int,
-							used int,
-							remaining int
-					)
-					language plpgsql security definer set search_path = public as $boosters_status$
-					declare
-							v_uid uuid := auth.uid();
-							v_exp bigint;
-							v_day_start timestamptz := date_trunc('day', now() at time zone 'Europe/Madrid') at time zone 'Europe/Madrid';
-					begin
-							if v_uid is null then
-									return;
-							end if;
-							select coalesce(p.exp, 0) into v_exp from player_profiles p where p.user_id = v_uid;
-							level := level_for_exp(coalesce(v_exp, 0));
-							-- The same one place claim_booster asks, so what is shown and what
-							-- is enforced cannot come apart.
-							select a.base, a.signup, a.granted, a.cap
-									into base, signup, granted, allowance
-									from booster_allowance(v_uid) a;
-							select count(*) into used from booster_claims
-									where user_id = v_uid and claimed_at >= v_day_start;
-							remaining := greatest(0, coalesce(allowance, 0) - used);
-							return next;
-					end;
-					$boosters_status$;
-					grant execute on function boosters_status() to authenticated;
-					-- Recycle cards: destroy a batch of the caller's own spawns and grant
-					-- one extra daily claim per full group of 10 destroyed. Cards are worth
-					-- nothing individually — the player trades them back for booster claims
-					-- (an additive booster_grants row for today, honoured by claim_booster /
-					-- boosters_status). security definer: it writes booster_grants, which has
-					-- no client policy. Same per-user advisory lock as claim_booster so a
-					-- concurrent claim/recycle can't race the grant.
-					create or replace function recycle_spawns(p_spawn_ids uuid[])
-					returns table (recycled int, granted int)
-					language plpgsql security definer set search_path = public as $recycle_spawns$
-					declare
-							v_uid uuid := auth.uid();
-							v_count int;
-							v_grant int;
-					begin
-							if v_uid is null then
-									raise exception 'You must be signed in to recycle cards.';
-							end if;
-							if p_spawn_ids is null or array_length(p_spawn_ids, 1) is null then
-									raise exception 'Select at least 10 cards to recycle.';
-							end if;
-							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
-							-- Only the caller's own spawns among those requested are eligible;
-							-- count them before deleting so the grant matches what is destroyed.
-							select count(*) into v_count from character_spawns
-									where user_id = v_uid and id = any(p_spawn_ids);
-							v_grant := v_count / 10; -- integer division: one claim per full 10
-							if v_grant < 1 then
-									raise exception 'Recycle 10 cards to earn an extra claim; only % selected.', v_count;
-							end if;
-							delete from character_spawns where user_id = v_uid and id = any(p_spawn_ids);
-							perform grant_boosters(v_uid, v_grant, 'recycle');
-							recycled := v_count;
-							granted := v_grant;
-							return next;
-					end;
-					$recycle_spawns$;
-					grant execute on function recycle_spawns(uuid[]) to authenticated;
-					-- Combat rewards: the ONLY way a player earns experience. Claiming cards,
-					-- opening packs and recycling award nothing at all — fighting does, a win
+					-- Combat rewards: the ONLY way a player earns experience. Claiming cards
+					-- and opening boxes award nothing at all — fighting does, a win
 						-- for what it was worth and a loss for the rivals it took down with it.
 					-- One row per finished fight, written solely by award_combat_exp below: the
 					-- audit trail behind every experience gain. RLS lets a player read only their
@@ -1558,7 +1389,7 @@ export function ensureTables(): Promise<void> {
 							if p_fighters is null or jsonb_typeof(p_fighters) <> 'array' then
 								raise exception 'A combat report must list the fighters that took part.';
 							end if;
-							-- Serialise this player's mutations, matching claim_booster / recycle_spawns.
+							-- Serialise this player's mutations, matching claim_booster.
 							perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
 							-- The fight has to be one the server opened. Everything about WHAT was
 							-- fought comes from here, not from the report; a report with no battle
@@ -1661,10 +1492,6 @@ export function ensureTables(): Promise<void> {
 									on conflict (user_id) do update
 										set exp = player_profiles.exp + v_award, updated_at = now()
 									returning exp into v_total;
-								-- Levelling up pays a booster box into today's allowance, one for
-								-- each level this fight crossed. Banked against the level rather
-								-- than the fight, so it is paid once ever however it was reached.
-								perform grant_level_up_boosters(v_uid, v_exp, v_total);
 							else
 								v_total := v_exp;
 							end if;
@@ -1719,22 +1546,6 @@ export function ensureTables(): Promise<void> {
 								-- there now: if the town flipped since, what was beaten was not the
 								-- sitting team and the win buys nothing. Both numbers are the server's.
 								v_stale := coalesce(v_fought, 0) <> v_turnover;
-								-- A town that held. The garrison a holder leaves behind fights on
-								-- without them -- they may not even be online -- so a challenger
-								-- beaten here is a defence its holder never played, and it pays
-								-- them a booster box into whatever Catalan day it lands on. The
-								-- one grant in the game paid to somebody other than the caller,
-								-- which is exactly why it is computed here: the defender has no
-								-- browser in this transaction to be trusted. Only a loss -- a draw
-								-- is not a defeat, and a stale fight was against a team that no
-								-- longer sits here, which the player holding it now did not win.
-								if p_outcome = 'lose'
-									and not v_stale
-									and v_holder is not null
-									and v_holder <> v_uid
-								then
-									perform grant_boosters(v_holder, 1, 'defense', v_location);
-								end if;
 								if p_outcome = 'win' and not v_stale then
 									-- Bank the win. A stored siege from an older generation is not added
 									-- to — it restarts at this win, since it was earned against a team
@@ -1798,11 +1609,12 @@ export function ensureTables(): Promise<void> {
 												and settled_at is null
 												and voided_at is null
 												and user_id <> v_uid;
-										-- Taking a town pays a booster box into the taker's day.
-										-- Repeatable by design: holding ground is the loop the whole
-										-- game is made of, so a town taken again next week is paid
-										-- again -- unlike a level, which is reached once ever.
-										perform grant_boosters(v_uid, 1, 'capture', v_location);
+										-- Taking a town is worth the town and nothing beside it. It
+										-- paid a booster box too while a player had a day's
+										-- allowance of them to top up; boxes are the calendar's now,
+										-- one per town, year and stock, so there is no balance left
+										-- for a capture to pay into. What a conquest does to the
+										-- boxes is change whose show the town deals.
 										v_captured := true;
 										v_turnover := v_turnover + 1;
 										v_wins := v_required;
@@ -1949,9 +1761,6 @@ export function ensureTables(): Promise<void> {
 							'booster_claims', coalesce((
 								select jsonb_agg(to_jsonb(bc) order by bc.claimed_at)
 								from booster_claims bc where bc.user_id = v_uid), '[]'::jsonb),
-							'booster_grants', coalesce((
-								select jsonb_agg(to_jsonb(bg) order by bg.grant_date)
-								from booster_grants bg where bg.user_id = v_uid), '[]'::jsonb),
 							'combat_results', coalesce((
 								select jsonb_agg(to_jsonb(cr) order by cr.fought_at)
 								from combat_results cr where cr.user_id = v_uid), '[]'::jsonb),

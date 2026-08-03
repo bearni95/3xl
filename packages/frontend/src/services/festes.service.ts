@@ -1,7 +1,7 @@
 import { getSupabaseClient, isSupabaseConfigured } from '$services/supabase.client';
-import type { FestaLocationRow } from '$types/festivity.type';
+import type { FestaLocationRow, FestaWindowRow } from '$types/festivity.type';
 import { catalanDayIso } from '$utils/festes/catalan-day';
-import { boosterWindow } from '$utils/festes/booster-window';
+import { boosterWindow, isoDayDistance } from '$utils/festes/booster-window';
 
 /**
  * Reads the festivity calendar back out of Supabase — the same `festa_locations`
@@ -33,6 +33,18 @@ interface WindowFestivityRow extends TodayFestivityRow {
  */
 export function catalanTodayIso(): string {
 	return catalanDayIso();
+}
+
+/**
+ * Whether `candidate` is the festa a town's box should be printed from rather than
+ * `held`: the nearer of the two to today, the earlier one winning a tie between a day
+ * behind and a day ahead — which is what `claim_booster`'s `order by abs(...), date`
+ * comes to.
+ */
+function nearerFesta(candidate: string, held: string, today: string): boolean {
+	const near = Math.abs(isoDayDistance(candidate, today));
+	const seen = Math.abs(isoDayDistance(held, today));
+	return near < seen || (near === seen && candidate < held);
 }
 
 class FestesService {
@@ -81,9 +93,16 @@ class FestesService {
 	/**
 	 * The municipalities celebrating a local holiday anywhere in the booster window —
 	 * three days back through four days ahead of today (see {@link boosterWindow}),
-	 * which is exactly the set of towns `claim_booster` will mint a pack for. A town
-	 * whose celebration spans several of those days appears once, on the first of
-	 * them, so each town offers one pack however long its festa runs.
+	 * which is exactly the set of towns `claim_booster` will mint a box for. A town
+	 * whose celebration spans several of those days appears once, on its **nearest**
+	 * day to today, so each town offers one box however long its festa runs.
+	 *
+	 * That day comes back with it, because it is the whole of what the box is: its
+	 * stock (white on the day, black around it) and its year both, which is how the
+	 * browser knows which of a town's two boxes this is and whether the player has
+	 * already taken it. Nearest and not earliest for the same reason — the RPC picks
+	 * the nearest festa, and a town holding two in one window would otherwise be drawn
+	 * as one box and opened as another.
 	 *
 	 * Ordered by date and then by name: the window reads as the calendar does, oldest
 	 * day first.
@@ -93,10 +112,11 @@ class FestesService {
 	 * towns off the end of the window. Paged under a *total* order ((location, date)
 	 * is unique), so no row can straddle two pages and arrive twice or not at all.
 	 */
-	async loadFestesForWindow(): Promise<FestaLocationRow[]> {
+	async loadFestesForWindow(): Promise<FestaWindowRow[]> {
 		if (!isSupabaseConfigured()) return [];
 
-		const { from, to } = boosterWindow();
+		const today = catalanTodayIso();
+		const { from, to } = boosterWindow(today);
 		const supabase = getSupabaseClient();
 		const pageSize = 1000;
 		const rows: WindowFestivityRow[] = [];
@@ -116,20 +136,26 @@ class FestesService {
 			if (page.length < pageSize) break;
 		}
 
-		// Keep each town's earliest day in the window, then sort by that day and name.
-		const byId = new Map<string, { date: string; location: FestaLocationRow }>();
+		// Keep each town's nearest day to today — the festivity claim_booster picks, so
+		// the box drawn is the box opened — then sort by that day and name. Distances
+		// are counted in whole days off the date strings, which is what the two ends of
+		// the window are measured in too; a tie between a day behind and a day ahead
+		// goes to the earlier one, as the RPC's `order by abs(...), date` does.
+		const byId = new Map<string, FestaWindowRow>();
 		for (const row of rows) {
 			const location = Array.isArray(row.festa_locations)
 				? row.festa_locations[0]
 				: row.festa_locations;
 			if (!location) continue;
 			const seen = byId.get(location.id);
-			if (!seen || row.date < seen.date) byId.set(location.id, { date: row.date, location });
+			if (!seen || nearerFesta(row.date, seen.date, today)) {
+				byId.set(location.id, { ...location, date: row.date });
+			}
 		}
 
-		return [...byId.values()]
-			.sort((a, b) => a.date.localeCompare(b.date) || a.location.name.localeCompare(b.location.name, 'ca'))
-			.map((entry) => entry.location);
+		return [...byId.values()].sort(
+			(a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, 'ca')
+		);
 	}
 }
 

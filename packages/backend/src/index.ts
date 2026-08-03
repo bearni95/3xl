@@ -66,9 +66,9 @@ app.use((err: HttpError, _req: Request, res: Response, _next: NextFunction) => {
 
 const server = app.listen(PORT, () => {
 	console.log(`@3xl/backend listening on http://localhost:${PORT}`);
-	// Provision the Supabase schema (tables + booster RPCs, including recycle_spawns)
-	// on boot, so a fresh database is ready immediately without first poking an admin
-	// screen. Best-effort: if the DB isn't configured or is unreachable it just logs a
+	// Provision the Supabase schema (tables + the booster RPC) on boot, so a fresh
+	// database is ready immediately without first poking an admin screen.
+	// Best-effort: if the DB isn't configured or is unreachable it just logs a
 	// warning — the identical ensureTables still runs on the first API request.
 	void provisionSchema();
 });

@@ -153,48 +153,12 @@ export function combatExpAward({
 	return Math.round((span * left) / fielded);
 }
 
-/**
- * How many levels are worth one more booster box a day. The day's base allowance is
- * a *step* function of the level rather than the level itself: a level was once a
- * pack, which made a maxed player's day twenty boxes and a beginner's one, and put
- * the whole of the game's supply on the one number that only ever goes up.
- */
-export const BOOSTER_LEVEL_STEP = 4;
-
-/**
- * Boxes a day before any level is earned at all — what level 1 opens with, and the
- * `+ 1` in the allowance below. Nobody's day is ever nought.
- */
-export const BASE_DAILY_BOOSTERS = 1;
-
-/**
- * The extra boxes an account is given on the day it is created, on top of its
- * allowance. Paid for that Catalan day only — it is not a starting balance, it is a
- * first day worth playing — and derived from the account's own creation date rather
- * than recorded anywhere, so there is nothing to grant twice and nothing to lapse.
- */
-export const SIGNUP_BOOSTER_BONUS = 2;
-
-/**
- * The boxes a player's day is worth at `level`, before anything the day itself
- * grants: `floor(level / {@link BOOSTER_LEVEL_STEP}) + {@link BASE_DAILY_BOOSTERS}`.
- * One at levels 1–3, two from 4, and six at the cap — a day that grows with the
- * player without the level being the whole of what a day is.
- *
- * Everything else a day gives is an *event*, banked in `booster_grants` as it
- * happens and summed on top of this: a recycled batch, a level
- * reached, a town taken, a town held against a challenger, an admin's grant. Those
- * amounts are the database's alone and are deliberately not mirrored here — the
- * browser is told what it was granted and never names an amount. This one is
- * mirrored because it is not a grant but a shape: `daily_booster_allowance` in
- * Postgres (booster_claims.sql) is the authority, and the admin's user list derives
- * the same cap in JS so a row does not depend on that function being deployed yet.
- */
-export function dailyBoosterAllowance(level: number): number {
-	const known = Number.isFinite(level) ? Math.trunc(level) : MIN_LEVEL;
-	const clamped = Math.min(Math.max(known, MIN_LEVEL), MAX_LEVEL);
-	return Math.floor(clamped / BOOSTER_LEVEL_STEP) + BASE_DAILY_BOOSTERS;
-}
+// A level used to buy booster boxes: a day's allowance was `floor(level / 4) + 1` of
+// them, plus two on the day an account was created, plus a ledger of grants — and
+// this file mirrored the shape of that cap for the admin's user list. Boxes are the
+// calendar's now: one per player, per town, per year, per stock (see
+// packages/backend/supabase/booster_claims.sql). A level is worth what a level is
+// worth in a fight, and nothing at the boxes.
 
 /** A player's level and their progress through it, derived from an experience total. */
 export interface LevelProgress {

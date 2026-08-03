@@ -20,8 +20,7 @@ vi.mock('$services/spawn.service', () => ({
 			return spawnsStore;
 		},
 		setTeam: (slots: (string | null)[]) => setTeam(slots)
-	},
-	RECYCLE_GROUP_SIZE: 10
+	}
 }));
 
 const { teamService } = await import('$services/team.service');

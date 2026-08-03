@@ -184,10 +184,6 @@ begin
 			select jsonb_agg(to_jsonb(bc) order by bc.claimed_at)
 			from public.booster_claims bc where bc.user_id = v_uid
 		), '[]'::jsonb),
-		'booster_grants', coalesce((
-			select jsonb_agg(to_jsonb(bg) order by bg.grant_date)
-			from public.booster_grants bg where bg.user_id = v_uid
-		), '[]'::jsonb),
 		'combat_results', coalesce((
 			select jsonb_agg(to_jsonb(cr) order by cr.fought_at)
 			from public.combat_results cr where cr.user_id = v_uid

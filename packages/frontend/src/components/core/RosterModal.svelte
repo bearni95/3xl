@@ -6,7 +6,7 @@
 	import { authService } from '$services/auth.service';
 	import { openSignIn } from '$services/signInModal';
 	import { rosterModalOpen } from '$services/rosterModal';
-	import { spawnService, RECYCLE_GROUP_SIZE } from '$services/spawn.service';
+	import { spawnService } from '$services/spawn.service';
 	import { teamService, TEAM_SIZE } from '$services/team.service';
 	import { showLogos, loadShowLogos } from '$services/shows.service';
 	import { locationAdapter } from '$adapters/classes/location.adapter';
@@ -122,70 +122,11 @@
 	// Whether any filter is narrowing the roster (drives the Clear button).
 	$: filtersActive = filterName.trim() !== '' || filterColor !== ANY || filterShow !== ANY;
 
-	// --- Recycle mode (trade cards back for extra daily claims) ---
-	// While active, tapping a card selects it for recycling instead of toggling its
-	// team membership. Every RECYCLE_GROUP_SIZE cards recycled grants one extra claim
-	// for today. Selection is tracked by spawn id, so it survives filter changes.
-	//
-	// Nothing enters this mode: the button that did has been taken off the filter card, so
-	// `recycleMode` is false for the life of the component and the bar, the branches in the
-	// cells and `enterRecycleMode` are all unreachable. The mode is left standing rather
-	// than torn out because only its way in was asked for — whatever offers recycling next
-	// has this to switch on.
-	let recycleMode = false;
-	let selectedForRecycle = new Set<string>();
-	let recycling = false;
-	let recycleNotice = '';
-
-	function enterRecycleMode(): void {
-		recycleMode = true;
-		selectedForRecycle = new Set();
-		recycleNotice = '';
-	}
-	function cancelRecycle(): void {
-		recycleMode = false;
-		selectedForRecycle = new Set();
-	}
-	function toggleRecycleSelection(spawnId: string): void {
-		const next = new Set(selectedForRecycle);
-		if (next.has(spawnId)) next.delete(spawnId);
-		else next.add(spawnId);
-		selectedForRecycle = next;
-	}
-
-	// How many cards are selected and how many extra claims that earns (one per full
-	// group of RECYCLE_GROUP_SIZE) — drives the recycle bar's tally and confirm gate.
-	$: recycleSelectedCount = selectedForRecycle.size;
-	$: recycleGrant = Math.floor(recycleSelectedCount / RECYCLE_GROUP_SIZE);
-
-	// Supabase/PostgREST errors are plain objects with a `message`, not Error
-	// instances, so a bare String(err) reads as "[object Object]". Pull the real
-	// message out (and fall back to the generic fields a DB error carries).
-	function recycleErrorMessage(err: unknown): string {
-		if (err instanceof Error) return err.message;
-		if (err && typeof err === 'object') {
-			const record = err as Record<string, unknown>;
-			const detail = record.message ?? record.hint ?? record.details;
-			if (typeof detail === 'string' && detail) return detail;
-		}
-		return $_('roster.recycle.failed');
-	}
-
-	async function confirmRecycle(): Promise<void> {
-		if (recycleGrant < 1 || recycling) return;
-		recycling = true;
-		recycleNotice = '';
-		try {
-			const { recycled, granted } = await spawnService.recycleSpawns([...selectedForRecycle]);
-			recycleNotice = $_('roster.recycle.done', { values: { recycled, granted } });
-			recycleMode = false;
-			selectedForRecycle = new Set();
-		} catch (err) {
-			recycleNotice = recycleErrorMessage(err);
-		} finally {
-			recycling = false;
-		}
-	}
+	// Cards were once traded back here — ten of them bought one extra booster claim for
+	// the day, and while that mode was on a tap picked a card for the pile instead of
+	// fielding it. There is nothing left to buy: a box is the calendar's now, one per town,
+	// year and stock (see packages/backend/supabase/booster_claims.sql), so the whole of
+	// recycling has gone with the allowance it paid into — the RPC included.
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -473,8 +414,8 @@
 	// the page as well as the cards.
 	$: pageSize = CARD_COLUMNS * ROWS_PER_PAGE;
 	$: pageCount = Math.max(1, Math.ceil(characterGroups.length / pageSize));
-	// Clamp whenever the page count shrinks (a wider column count, or cards recycled
-	// away) so the view never sits past the last page.
+	// Clamp whenever the page count shrinks (a wider column count, or a filter narrowing
+	// the roster) so the view never sits past the last page.
 	$: if (page > pageCount - 1) page = pageCount - 1;
 	$: pageStart = page * pageSize;
 	// The one page of characters the grid actually stands up — not the full list.
@@ -515,7 +456,7 @@
 	// Absent a town the player picked, a character standing at the head of the grid
 	// stands as the copy that put it there, so the bordered cell is the fielded card and
 	// not some other one of the same fighter; everything else falls back to its first copy,
-	// which is also where a shown copy filtered out or recycled away lands, so the cell is
+	// which is also where a shown copy filtered out of the grid lands, so the cell is
 	// never left pointing at a card that isn't there. The place names, the show assignment
 	// and the slots are threaded in so the grid re-derives as they load or the team changes
 	// (a bare helper call would hide those deps).
@@ -595,17 +536,12 @@
 	// than queued: the team is the server's, and two saves racing would be two answers
 	// to the same question.
 	function handleCardTap(spawn: CharacterSpawn): void {
-		if (recycleMode) {
-			toggleRecycleSelection(spawn.id);
-			return;
-		}
 		if ($teamSaving) return;
 		void teamService.toggle(spawn.id);
 	}
 
 	// The same move the cell's own button makes, and the only one it makes: field the
-	// shown copy or take it out again. It is the statue's toggle without the recycle
-	// branch, since the button is not drawn while recycling.
+	// shown copy or take it out again — the very thing tapping the statue does.
 	function handleTeamButton(spawn: CharacterSpawn): void {
 		if ($teamSaving) return;
 		void teamService.toggle(spawn.id);
@@ -618,53 +554,15 @@
 	// colour with it — folded into the header filters, so the grid shows the cards the
 	// team could actually take. It is the lead that sets the rule, so nothing is
 	// narrowed while the lead slot is empty, where any card is a legal first pick.
-	// Nothing is narrowed in recycle mode either: there a tap recycles rather than
-	// recruits, and hiding most of the roster would make recycling impossible.
-	$: pickableColors = recycleMode ? null : $teamColorFilter;
+	$: pickableColors = $teamColorFilter;
 
 </script>
 
 <!-- The sheet, the slide, the title bar and Escape are the modal's; everything below is
-	the roster. The toolbar and the recycle bar take what they need of that column and the
-	grid gets the rest, which is what its scroll box is sized from. -->
+	the roster. The toolbar takes what it needs of that column and the grid gets the rest,
+	which is what its scroll box is sized from. -->
 <FullScreenModal title={$_('roster.title')} closeLabel={$_('roster.close')} on:close={close}>
 	{#if $status === AuthStatus.SignedIn && $spawns.length > 0}
-		{#if recycleMode}
-			<!-- Recycle bar: tap cards to select them, then trade each full group of
-			     RECYCLE_GROUP_SIZE back for one extra daily claim. -->
-			<div
-				class="flex flex-none flex-wrap items-center gap-3 rounded-box bg-warning/10 p-4 text-sm"
-			>
-				<span class="font-medium">
-					{$_('roster.recycle.hint', { values: { size: RECYCLE_GROUP_SIZE } })}
-				</span>
-				<span class="badge badge-warning" title={$_('roster.recycle.tallyTitle')}>
-					{$_('roster.recycle.tally', {
-						values: { selected: recycleSelectedCount, grants: recycleGrant }
-					})}
-				</span>
-				<div class="ml-auto flex items-center gap-3">
-					<button class="btn btn-ghost btn-sm" on:click={cancelRecycle} disabled={recycling}>
-						{$_('roster.recycle.cancel')}
-					</button>
-					<button
-						class="btn btn-warning btn-sm"
-						disabled={recycleGrant < 1 || recycling}
-						on:click={confirmRecycle}
-					>
-						{#if recycling}
-							<span class="loading loading-spinner loading-xs"></span>
-						{/if}
-						{$_('roster.recycle.confirm', { values: { selected: recycleSelectedCount } })}
-					</button>
-				</div>
-			</div>
-		{/if}
-
-		{#if recycleNotice}
-			<div class="alert alert-info flex-none py-2 text-sm"><span>{recycleNotice}</span></div>
-		{/if}
-
 		{#if $teamError}
 			<!-- The team is the server's, so a refused line-up is said in the server's own
 			     words — the card sprang back to where it was, and this is why. -->
@@ -759,8 +657,8 @@
 			     left out of the right, or the same three statues would stand twice over and
 			     be read as six cards. Each roster cell carries the button that fields or
 			     unfields the copy it is showing, pinned to its top corner; tapping the statue
-			     itself does the same thing, or selects the copy while recycling, and picking a
-			     town only changes which copy is shown. Only the current page is mounted —
+			     itself does the same thing, and picking a town only changes which copy is
+			     shown. Only the current page is mounted —
 			     the filters narrow the roster, the pager walks what's left ROWS_PER_PAGE rows
 			     at a time — and that page scrolls in its own grid, the filters and the line-up
 			     keeping their place beside it rather than travelling with it.
@@ -820,12 +718,11 @@
 					     It is laid across all three columns because it shares its own width out.
 					     Taking a card back off the team is still the one thing it does, and now it
 					     is the statue that does it: pressing a member unfields it, which is the
-					     gesture the roster's own cards already answer to. Not while recycling,
-					     where a card is about what to trade in. -->
+					     gesture the roster's own cards already answer to. -->
 					<TeamLineup
 						members={partyMembers}
 						alwaysReveal
-						selectable={!recycleMode && !$teamSaving}
+						selectable={!$teamSaving}
 						on:select={(event) => handleTeamButton(partyLineup[event.detail.index].spawn)}
 						classes="col-span-3"
 					/>
@@ -975,9 +872,7 @@
 							     copies were owned would move the team button under it.
 							     The button is a minus on a fielded card, a plus on one that could still
 							     be fielded, and disabled once the team is full — a plus that cannot add is
-							     a dead button, and the server would refuse the card anyway. Not drawn at
-							     all while recycling, where a cell is about what to trade in rather than
-							     who to field. -->
+							     a dead button, and the server would refuse the card anyway. -->
 							<div class="absolute inset-x-1 top-1 z-10 flex items-center gap-1">
 								<select
 									class="select select-xs min-w-0 max-w-[8rem] flex-initial shadow"
@@ -998,35 +893,27 @@
 										</option>
 									{/each}
 								</select>
-								{#if !recycleMode}
-									<button
-										type="button"
-										class={classNames(
-											'btn btn-circle btn-xs ml-auto text-base leading-none shadow',
-											fielded ? 'btn-primary' : 'btn-neutral'
-										)}
-										disabled={$teamSaving || (!fielded && teamFilledCount >= TEAM_SIZE)}
-										title={$_(fielded ? 'roster.removeFromTeam' : 'roster.addToTeam', {
-											values: { name: statue.label }
-										})}
-										aria-label={$_(fielded ? 'roster.removeFromTeam' : 'roster.addToTeam', {
-											values: { name: statue.label }
-										})}
-										on:click={() => handleTeamButton(copy)}
-									>
-										{fielded ? '−' : '+'}
-									</button>
-								{/if}
+								<button
+									type="button"
+									class={classNames(
+										'btn btn-circle btn-xs ml-auto text-base leading-none shadow',
+										fielded ? 'btn-primary' : 'btn-neutral'
+									)}
+									disabled={$teamSaving || (!fielded && teamFilledCount >= TEAM_SIZE)}
+									title={$_(fielded ? 'roster.removeFromTeam' : 'roster.addToTeam', {
+										values: { name: statue.label }
+									})}
+									aria-label={$_(fielded ? 'roster.removeFromTeam' : 'roster.addToTeam', {
+										values: { name: statue.label }
+									})}
+									on:click={() => handleTeamButton(copy)}
+								>
+									{fielded ? '−' : '+'}
+								</button>
 							</div>
 							<button
 								type="button"
-								class={classNames(
-									'rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-									{
-										'opacity-30': recycleMode && !selectedForRecycle.has(copy.id),
-										'ring-2 ring-warning': recycleMode && selectedForRecycle.has(copy.id)
-									}
-								)}
+								class="rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 								on:click={() => handleCardTap(copy)}
 							>
 								<CharacterStatue

@@ -8,9 +8,7 @@ import {
 	levelProgress,
 	levelSpanExp,
 	combatExpAward,
-	LOSS_EXP_PER_RIVAL,
-	dailyBoosterAllowance,
-	SIGNUP_BOOSTER_BONUS
+	LOSS_EXP_PER_RIVAL
 } from '$utils/progression/level';
 
 describe('D&D experience-to-level', () => {
@@ -177,44 +175,3 @@ describe('combat experience award', () => {
 	});
 });
 
-describe('daily booster allowance', () => {
-	it('gives one box a day until the fourth level', () => {
-		expect(dailyBoosterAllowance(1)).toBe(1);
-		expect(dailyBoosterAllowance(2)).toBe(1);
-		expect(dailyBoosterAllowance(3)).toBe(1);
-	});
-
-	it('adds one more box every four levels', () => {
-		expect(dailyBoosterAllowance(4)).toBe(2);
-		expect(dailyBoosterAllowance(7)).toBe(2);
-		expect(dailyBoosterAllowance(8)).toBe(3);
-		expect(dailyBoosterAllowance(12)).toBe(4);
-		expect(dailyBoosterAllowance(16)).toBe(5);
-	});
-
-	it('comes to six at the cap, where progression stops', () => {
-		// The whole point of the step: a maxed player's day is six boxes, not twenty.
-		expect(dailyBoosterAllowance(MAX_LEVEL)).toBe(6);
-		expect(dailyBoosterAllowance(999)).toBe(6);
-	});
-
-	it('never reads as nought, whatever it is handed', () => {
-		expect(dailyBoosterAllowance(0)).toBe(1);
-		expect(dailyBoosterAllowance(-4)).toBe(1);
-		expect(dailyBoosterAllowance(Number.NaN)).toBe(1);
-	});
-
-	it('is the same step the SQL is written as', () => {
-		// daily_booster_allowance(p_level) in booster_claims.sql is
-		// `least(greatest(level, 1), 20) / 4 + 1` over Postgres integer division.
-		for (let level = MIN_LEVEL; level <= MAX_LEVEL; level++) {
-			expect(dailyBoosterAllowance(level)).toBe(Math.floor(level / 4) + 1);
-		}
-	});
-
-	it('names the signup bonus without naming any other grant', () => {
-		// The one event amount mirrored here, and only because it is derived from the
-		// account's creation date rather than banked in the grants ledger.
-		expect(SIGNUP_BOOSTER_BONUS).toBe(2);
-	});
-});

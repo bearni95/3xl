@@ -165,15 +165,6 @@
 			"orange": "Orange",
 			"green": "Green",
 			"purple": "Purple"
-		},
-		"recycle": {
-			"hint": "Tap cards to select them. Every {size} recycled grants one extra claim today.",
-			"tallyTitle": "Cards selected → extra claims earned",
-			"tally": "{selected} selected → {grants, plural, one {# claim} other {# claims}}",
-			"cancel": "Cancel",
-			"confirm": "Recycle {selected, plural, one {# card} other {# cards}}",
-			"done": "Recycled {recycled, plural, one {# card} other {# cards}} for {granted, plural, one {# extra claim} other {# extra claims}} today.",
-			"failed": "Could not recycle those cards. Please try again."
 		}
 	},
 	"leaderboard": {
@@ -182,7 +173,7 @@
 	},
 	"booster": {
 		"title": "Booster",
-		"withAllowance": "Booster ({remaining}/{total})",
+		"withBoxes": "Booster ({remaining}/{total})",
 		"close": "Close boosters",
 		"open": "Open the pack",
 		"openPack": "Open {town}'s pack",

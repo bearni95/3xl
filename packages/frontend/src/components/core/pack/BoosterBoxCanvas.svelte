@@ -33,8 +33,6 @@
 	// drawings of the window stand that one up rather than one of them showing the window it is
 	// in. It is set from here too, so picking a box on this canvas is the same pick.
 	export let selected: string | null = null;
-	// False shows the window but opens nothing — the allowance is spent.
-	export let interactive: boolean = true;
 	export let classes: string = '';
 
 	const dispatch = createEventDispatcher<{
@@ -119,7 +117,7 @@
 
 	// The window is assembled after mount (the claim panel loads the day's festes), so push
 	// changes into the live scene rather than waiting for a remount.
-	$: scene?.setPacks(packs, columns, interactive);
+	$: scene?.setPacks(packs, columns);
 
 	// And the pick along with it, whoever made it. A pick this canvas made itself comes back
 	// through here as the id it just set, which the scene answers by doing nothing.
@@ -133,7 +131,6 @@
 		scene = new BoosterBoxGridScene(host, {
 			packs,
 			columns,
-			interactive,
 			selected,
 			onSelect: (pack) => {
 				selected = pack.id;

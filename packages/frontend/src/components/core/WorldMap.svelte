@@ -1060,8 +1060,16 @@
 				mount(TeamLineup, {
 					target: frame,
 					// A town's team is somebody else's side, so it faces the viewer
-					// unmirrored, as a rival side does on the board.
-					props: { members: marker.team, flipped: false, classes: 'gap-1' }
+					// unmirrored, as a rival side does on the board. And a town nobody holds is
+					// still on the team its seed rolled, so the row's banner takes the map's grey
+					// exactly as this pin's own tile and the polygon under it do — the mark on
+					// the terrain and the one in the column beside it say the one thing.
+					props: {
+						members: marker.team,
+						flipped: false,
+						seeded: !marker.holder,
+						classes: 'gap-1'
+					}
 				})
 			);
 			wrap.appendChild(frame);
@@ -1887,6 +1895,11 @@
 					: // On a point: placed by the pass that deals every mark its room (see
 						// pointMark and placeMarks), so it says nothing here about where it stands.
 						'');
+		// A box this reader has already opened is left on its town, faded: a town deals two
+		// boxes a year and neither twice, so what is drawn here is an offer that was taken
+		// rather than one that is waiting. It still answers a click — the sheet it raises is
+		// where a spent box says so in words.
+		if (box.claimed) wrap.className += ' opacity-40';
 		if (box.onClick) wrap.className += ' cursor-pointer';
 		const mounted = mount(BoosterBox, {
 			target: wrap,
@@ -1997,6 +2010,10 @@
 			// In a pin it is one more block of the column; on a point it is placed by the pass
 			// that deals every mark its room (see pointMark and placeMarks).
 			(into === 'pin' ? 'mt-1 flex-none ' : '') +
+			// Faded when the reader has already opened this town's box, exactly as the box
+			// itself is: the disc is that box with one mark on it instead of four, and a spent
+			// box is spent at both sizes.
+			(box.claimed ? 'opacity-40 ' : '') +
 			(box.light ? 'bg-white text-black' : 'bg-black text-white');
 		if (boxAction(box, 'disc')) wrap.className += ' cursor-pointer';
 		wrap.setAttribute('aria-hidden', 'true');

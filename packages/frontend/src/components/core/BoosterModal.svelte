@@ -14,10 +14,10 @@
 	// three to a row in whatever height the panel had left under its own header. A pack opening
 	// is the one thing this game does that is worth a whole view, so it has one.
 	//
-	// Nothing here is loaded or decided by this modal. The packs, the window they cover, the
-	// day's allowance and whatever the last roll said are all the host's — the hidden claim
-	// panel on the map page assembles them, and `claim_booster` is what refuses or pays out —
-	// so this is the view of that state and the events that move it. Which keeps the map's
+	// Nothing here is loaded or decided by this modal. The packs, the window they cover, which
+	// of them are already taken and whatever the last roll said are all the host's — the hidden
+	// claim panel on the map page assembles them, and `claim_booster` is what refuses or pays
+	// out — so this is the view of that state and the events that move it. Which keeps the map's
 	// festa boxes and this grid on one set of packs rather than two.
 
 	// Every openable pack in the window (three days back through four ahead), as the host's
@@ -33,13 +33,11 @@
 	// How many cards the last pack revealed, or null before any has been opened. Zero is a
 	// pack that sliced open onto an empty canvas.
 	export let lastRevealed: number | null = null;
-	// Nothing left to open today: the packs stay on screen but stop being openable. Which makes
-	// the whole sheet a way out, the same as a pack that has finished coming apart does — the
-	// boxes are a picture of a window that is shut, there is nothing on the sheet left to touch,
-	// and the one thing a player can do about it is come back tomorrow. It still slides back
-	// down rather than fading: nothing was pulled on a town here, so this is a view being
-	// dismissed and not one that finished.
-	export let allowanceSpent: boolean = false;
+	// A box already opened says so by being drawn faded and refusing to come apart, and by
+	// nothing else. There was a line of type here to that effect, and it was wrong the moment
+	// it was right: a box is spent the instant it is opened, so the sentence came up over the
+	// cards the player had just pulled out of it and told them they could not do the thing they
+	// had visibly just done. What a spent box is, it is on the box.
 	// True when a box was clicked on a town the window holds no pack for — the one thing the
 	// grid cannot say for itself, since it only ever knows the packs it was handed.
 	export let townHasNoPack: boolean = false;
@@ -89,7 +87,7 @@
 	closeLabel={$_('booster.close')}
 	transparent
 	bare={alone}
-	closeOnClick={revealed || allowanceSpent}
+	closeOnClick={revealed}
 	fadeOut={revealed}
 	on:close={close}
 >
@@ -126,7 +124,7 @@
 		{/if}
 
 		<!-- Why the last roll revealed nothing. `claim_booster` refuses for reasons the player can
-			act on (the allowance is spent, the town's festa is out of the window), and the panel
+			act on (the town's box is already taken, its festa is out of the window), and the panel
 			that reports them is mounted hidden on the map page — so a pack sliced open onto an
 			empty canvas would say nothing at all without this. -->
 		{#if claimError}
@@ -138,10 +136,6 @@
 				Rare, but it must not read as a blank canvas. -->
 			<div class="alert alert-warning flex-none py-2 text-xs" role="alert">
 				<span>El sobre s'ha obert però no n'ha sortit cap carta.</span>
-			</div>
-		{:else if allowanceSpent}
-			<div class="alert alert-warning flex-none py-2 text-xs">
-				<span>Ja has obert tots els sobres d'avui. Se'n desbloquegen més a mitjanit.</span>
 			</div>
 		{/if}
 
@@ -173,9 +167,7 @@
 				<BoosterBoxCanvas
 					{packs}
 					columns={4}
-					interactive={!allowanceSpent}
 					bind:selected
-					classes={classNames({ 'opacity-50': allowanceSpent })}
 					on:select={() => dispatch('select')}
 					on:back={() => dispatch('back')}
 					on:opened={() => (revealed = true)}

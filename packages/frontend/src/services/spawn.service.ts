@@ -3,6 +3,7 @@ import { characters } from '@3xl/data';
 import { getSupabaseClient } from '$services/supabase.client';
 import { spawnAdapter } from '$adapters/classes/spawn.adapter';
 import { playerAvatarAdapter } from '$adapters/classes/player-avatar.adapter';
+import { claimedBoxKey } from '$utils/spawn/claimed-box';
 import { DEFAULT_RARITY } from '$types/character-template.type';
 import type {
 	CharacterSpawn,
@@ -13,20 +14,6 @@ import type { PlayerAvatar, PlayerAvatarRow } from '$types/player-avatar.type';
 
 /** How many cards a single booster pack contains. Mirrors `claim_booster`'s roll count. */
 export const BOOSTER_SIZE = 5;
-
-/**
- * How many recycled cards earn one extra daily claim. Mirrors `recycle_spawns`'s
- * grant rule (integer division by this size). Drives the roster's recycle tally.
- */
-export const RECYCLE_GROUP_SIZE = 10;
-
-/** The outcome of a recycle: how many spawns were destroyed and claims granted. */
-export interface RecycleResult {
-	/** Spawns actually destroyed (the caller's own among those submitted). */
-	recycled: number;
-	/** Extra daily claims granted (`floor(recycled / RECYCLE_GROUP_SIZE)`). */
-	granted: number;
-}
 
 /**
  * Everything one opened booster box gave: its {@link BOOSTER_SIZE} cards, and the
@@ -44,36 +31,6 @@ export interface BoosterOpening {
 }
 
 /**
- * The signed-in player's daily booster allowance, as reported by the
- * `boosters_status` RPC — the day resetting at midnight Europe/Madrid.
- *
- * {@link level} and {@link allowance} are two different numbers: a day was once
- * worth a pack per level, and is now `floor(level / 4) + 1` plus whatever the day
- * itself has granted, so six boxes is what the cap comes to at level 20. Anything
- * showing "how many today" wants {@link allowance}.
- *
- * The three parts it breaks into are the server's own arithmetic, reported rather
- * than reassembled here — the browser is told what it has and never names an amount.
- */
-export interface BoostersStatus {
-	/** The player's level, from their accumulated experience (1..20). */
-	level: number;
-	/** The day's cap: {@link base} + {@link signup} + {@link granted}. */
-	allowance: number;
-	/** What the level alone is worth today: `floor(level / 4) + 1`. */
-	base: number;
-	/** Extra boxes for the day the account was created, 0 on every other day. */
-	signup: number;
-	/** Everything today's `booster_grants` have added: levels reached, towns taken,
-	 * towns held, cards recycled, an admin's grant. */
-	granted: number;
-	/** Packs already opened since Catalan midnight. */
-	used: number;
-	/** Packs still openable today (`allowance - used`, never negative). */
-	remaining: number;
-}
-
-/**
  * Player-facing spawn state, backed by Supabase. Talks to Postgres directly from
  * the browser with the anon key (RLS-gated), the same pure-SPA pattern as
  * {@link authService}: it reads the show → character assignments synced by the
@@ -85,6 +42,7 @@ export interface BoostersStatus {
  */
 class SpawnService {
 	private spawnsStore = writable<CharacterSpawn[]>([]);
+	private claimedBoxesStore = writable<ReadonlySet<string>>(new Set());
 
 	/** Ids of characters that exist in the local registry, so spawns can render. */
 	private renderableIds = new Set(characters.map((character) => character.id));
@@ -92,6 +50,20 @@ class SpawnService {
 	/** The signed-in player's spawns, newest first. */
 	get spawns(): Readable<CharacterSpawn[]> {
 		return this.spawnsStore;
+	}
+
+	/**
+	 * Every booster box this player has already taken, as {@link claimedBoxKey}
+	 * triples — a town, a year and a stock. A town deals two boxes a year and no
+	 * more (see {@link claimBooster}), so this set is the whole of what is spent:
+	 * anything drawing a box asks it whether that box is still there to open.
+	 *
+	 * Empty while signed out, and until {@link loadClaimedBoxes} lands — a box that
+	 * looks openable and is refused is a better wrong answer than one greyed out
+	 * because a read had not returned.
+	 */
+	get claimedBoxes(): Readable<ReadonlySet<string>> {
+		return this.claimedBoxesStore;
 	}
 
 	/**
@@ -218,14 +190,16 @@ class SpawnService {
 	}
 
 	/**
-	 * Open a booster pack for `locationId` (a geojson municipality feature id),
-	 * rolling from `showId`'s roster (or every show when `null`). The roll and all
-	 * limits are enforced server-side by the `claim_booster` security-definer RPC —
+	 * Open a booster box for `locationId` (a geojson municipality feature id),
+	 * rolling from `showId`'s roster (or every show when `null`). The roll and both
+	 * rules are enforced server-side by the `claim_booster` security-definer RPC —
 	 * the frontend can no longer insert spawns directly:
 	 *
-	 *   - the town must be celebrating a festa major *today* (Europe/Madrid);
-	 *   - the player may open at most their day's allowance of packs — see
-	 *     {@link BoostersStatus} — the day resetting at midnight Europe/Madrid.
+	 *   - the town must be celebrating a festa major inside the booster window
+	 *     (three days back through four ahead, Europe/Madrid);
+	 *   - and the player must not already hold that town's box for that festa's year
+	 *     and stock. A town deals two a year — the white one on the day, the black
+	 *     one around it — and neither twice.
 	 *
 	 * The RPC rolls {@link BOOSTER_SIZE} cards — each weighted by rarity (every
 	 * higher tier 2× rarer), plus a colour out of the three its box holds — and one
@@ -233,12 +207,16 @@ class SpawnService {
 	 * show, in one of the box's three colours. Which box that is, the server decides
 	 * for itself from the town's festivity dates: white (purple/green/orange) for a
 	 * festa on the day, black (red/blue/yellow) for one past or still coming, stamped
-	 * on every card it inserts. On a rejected claim it throws with a message
-	 * describing why (limit reached, wrong day, …).
+	 * on every card it inserts and on the claim it spends. On a rejected claim it
+	 * throws with a message describing why (already opened, wrong day, …).
 	 *
 	 * The new spawns are prepended to the store and returned in pull order; the
 	 * avatar is handed back rather than stored here — {@link avatarService} owns
 	 * that collection, and the caller that shows the open is the one that tells it.
+	 *
+	 * What it does not hand back is the claim it wrote: which year the box belonged
+	 * to is the server's reading of the festivity calendar, so the set of spent boxes
+	 * is re-read rather than guessed at (see {@link loadClaimedBoxes}).
 	 */
 	async claimBooster(showId: number | null, locationId: string): Promise<BoosterOpening> {
 		if (!locationId) {
@@ -265,28 +243,36 @@ class SpawnService {
 	}
 
 	/**
-	 * Recycle a batch of the player's spawns: destroy them from Supabase and earn
-	 * one extra daily claim per full group of {@link RECYCLE_GROUP_SIZE}. The
-	 * destroy + grant is applied atomically by the `recycle_spawns` security-definer
-	 * RPC (the only path that can write `booster_grants` from the browser); it
-	 * ignores any ids the caller doesn't own and rejects a batch too small to earn a
-	 * single claim. The destroyed spawns are removed from the store and the recycled
-	 * / granted tally is returned.
+	 * Load every booster box this player has already taken into {@link claimedBoxes}
+	 * — their own `booster_claims` rows, which is all the RLS policy on that table
+	 * lets anybody read. Called when a player is known and again after each open,
+	 * since the year a box was filed under is the server's reading of the calendar.
+	 *
+	 * Read whole rather than narrowed to the window: a player's claims are two a town
+	 * a year at the very most, and the alternative is a query rebuilt every time the
+	 * window moves. Failures leave the set as it was — the server refuses a second
+	 * open either way.
 	 */
-	async recycleSpawns(spawnIds: string[]): Promise<RecycleResult> {
-		if (spawnIds.length < RECYCLE_GROUP_SIZE) {
-			throw new Error(`Select at least ${RECYCLE_GROUP_SIZE} cards to recycle.`);
-		}
+	async loadClaimedBoxes(userId: string): Promise<ReadonlySet<string>> {
 		const supabase = getSupabaseClient();
-		const { data, error } = await supabase.rpc('recycle_spawns', { p_spawn_ids: spawnIds });
+		const { data, error } = await supabase
+			.from('booster_claims')
+			.select('location_id, year, box')
+			.eq('user_id', userId);
 		if (error) throw error;
 
-		const row = Array.isArray(data) ? data[0] : data;
-		const recycled = Number(row?.recycled ?? 0);
-		const granted = Number(row?.granted ?? 0);
-		const removed = new Set(spawnIds);
-		this.spawnsStore.update((current) => current.filter((spawn) => !removed.has(spawn.id)));
-		return { recycled, granted };
+		const claimed = new Set(
+			(data ?? []).map((row) =>
+				claimedBoxKey(row.location_id as string, Number(row.year), row.box as string)
+			)
+		);
+		this.claimedBoxesStore.set(claimed);
+		return claimed;
+	}
+
+	/** Drop the remembered claims — a player signing out takes their boxes with them. */
+	forgetClaimedBoxes(): void {
+		this.claimedBoxesStore.set(new Set());
 	}
 
 	/**
@@ -334,34 +320,6 @@ class SpawnService {
 		);
 	}
 
-	/**
-	 * The signed-in player's daily booster allowance from the `boosters_status`
-	 * RPC: their level, the day's cap and the three parts it is made of, packs
-	 * opened since Catalan midnight, and how many remain. Returns `null` when
-	 * signed out (the RPC yields no row).
-	 *
-	 * `allowance` falls back to `level` for a deployment still running the RPC from
-	 * when a day was worth a pack per level and the two were one column — an old
-	 * server then reads as a cap, which is what that column meant, rather than as a
-	 * player whose day is nought.
-	 */
-	async boostersStatus(): Promise<BoostersStatus | null> {
-		const supabase = getSupabaseClient();
-		const { data, error } = await supabase.rpc('boosters_status');
-		if (error) throw error;
-		const row = Array.isArray(data) ? data[0] : data;
-		if (!row) return null;
-		const level = Number(row.level ?? 0);
-		return {
-			level,
-			allowance: Number(row.allowance ?? level),
-			base: Number(row.base ?? 0),
-			signup: Number(row.signup ?? 0),
-			granted: Number(row.granted ?? 0),
-			used: Number(row.used ?? 0),
-			remaining: Number(row.remaining ?? 0)
-		};
-	}
 }
 
 export const spawnService = new SpawnService();

@@ -54,15 +54,20 @@ const STAND_FIT = 0.94;
  * behind the canvas is a reveal and not a page, but far enough that the box is plainly the one
  * thing being looked at. */
 const RESTING_ALPHA = 0;
+/**
+ * How a box a player has already opened is drawn: the same box, faded. A town deals two boxes a
+ * year and neither twice, so the one they took is not withdrawn from the window — it is left
+ * standing on its town, plainly spent, which is what says the offer was taken rather than that
+ * it was never there. It still stands up when it is tapped (a box is worth looking at), and it
+ * does not come apart: {@link openStood} refuses it, as `claim_booster` would.
+ */
+const SPENT_ALPHA = 0.35;
 
 export interface BoosterBoxGridSceneOptions {
 	/** Every box the window offers, in the order the host assembled them. */
 	packs: OpenerPack[];
 	/** How many boxes a row holds. */
 	columns: number;
-	/** False lays the window out as a display: it still scrolls, but no tap stands a box up —
-	 * the allowance is spent, so a box would only open onto nothing. */
-	interactive?: boolean;
 	/** Which box is standing up, by pack id, or null for the window. The host's as much as this
 	 * canvas's: clicking a town's box out on the map picks a pack without this canvas being
 	 * touched at all, and the canvas has to be showing that pack and not the window it is in. */
@@ -129,7 +134,6 @@ export class BoosterBoxGridScene {
 	private app: Application;
 	private packs: OpenerPack[];
 	private columns: number;
-	private interactive: boolean;
 	private callbacks: BoosterBoxGridSceneOptions;
 
 	private layer = new Container();
@@ -171,7 +175,6 @@ export class BoosterBoxGridScene {
 		this.host = host;
 		this.packs = options.packs;
 		this.columns = Math.max(1, Math.round(options.columns));
-		this.interactive = options.interactive ?? true;
 		this.wanted = options.selected ?? null;
 		this.callbacks = options;
 		this.app = new Application();
@@ -193,11 +196,10 @@ export class BoosterBoxGridScene {
 	}
 
 	/** Show another window, or the same one at another column count. A box standing open is left
-	 * alone: the window it came from can change under it (the day's allowance is spent, a claim
-	 * lands) and none of that is a reason to take a reveal off the screen. */
-	setPacks(packs: OpenerPack[], columns: number, interactive = true): void {
+	 * alone: the window it came from can change under it (a claim lands and its box is spent)
+	 * and none of that is a reason to take a reveal off the screen. */
+	setPacks(packs: OpenerPack[], columns: number): void {
 		const cols = Math.max(1, Math.round(columns));
-		this.interactive = interactive;
 		if (packs === this.packs && cols === this.columns) return;
 		this.packs = packs;
 		this.columns = cols;
@@ -580,7 +582,7 @@ export class BoosterBoxGridScene {
 	 * host is left to roll the pack and stand up what it gives (see `onOpen`). */
 	private openStood(): void {
 		const entry = this.stood;
-		if (this.state !== 'stood' || !entry || !this.interactive || entry.sprite.opening) return;
+		if (this.state !== 'stood' || !entry || entry.pack.claimed || entry.sprite.opening) return;
 		this.state = 'opening';
 		entry.sprite.open({
 			onUncovering: () => this.callbacks.onUncovering?.(),
@@ -603,7 +605,6 @@ export class BoosterBoxGridScene {
 	 * is the pick the host holds, and not a tap on the terrain around it: a tap beside the one
 	 * thing being looked at is not quietly the way out of looking at it. */
 	private onTap(x: number, y: number): void {
-		if (!this.interactive) return;
 		// A box that has finished standing up is opened by a tap on itself, and by one that lands
 		// on it: the box is the one object on the canvas and a tap in the space around it is a
 		// tap on nothing, which is what the one irreversible act in this view should cost a miss.
@@ -621,7 +622,7 @@ export class BoosterBoxGridScene {
 	 * in, so no unpicking of the scroll or the grid's scale is needed. */
 	private overStood(x: number, y: number): boolean {
 		const sprite = this.stood?.sprite;
-		if (!sprite || sprite.opening) return false;
+		if (!sprite || sprite.opening || this.stood?.pack.claimed) return false;
 		const bounds = sprite.getBounds();
 		return x >= bounds.x && x <= bounds.x + bounds.width && y >= bounds.y && y <= bounds.y + bounds.height;
 	}
@@ -749,10 +750,9 @@ export class BoosterBoxGridScene {
 	private trackCursor(event: PointerEvent): void {
 		const { x, y } = this.localPoint(event);
 		const over =
-			this.interactive &&
-			(this.state === 'grid'
+			this.state === 'grid'
 				? this.entryAt(x, y) !== null
-				: this.state === 'stood' && this.overStood(x, y));
+				: this.state === 'stood' && this.overStood(x, y);
 		this.app.canvas.style.cursor = over ? 'pointer' : 'default';
 	}
 

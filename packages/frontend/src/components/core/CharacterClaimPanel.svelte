@@ -4,7 +4,7 @@
 	import { authService } from '$services/auth.service';
 	import { avatarService } from '$services/avatar.service';
 	import { openSignIn } from '$services/signInModal';
-	import { spawnService, type BoostersStatus } from '$services/spawn.service';
+	import { spawnService } from '$services/spawn.service';
 	import { territoryService } from '$services/territory.service';
 	import { errorMessage } from '$utils/error/error-message';
 	import { resolveCharacterFaceUrl } from '$utils/mugen/character-face';
@@ -17,11 +17,12 @@
 	import { showPosterUrl, showPosterUrlForSeed } from '$utils/geo/municipality-show';
 	import { holderShowIds, showIdsByCharacter } from '$utils/spawn/team-show';
 	import { showLogoUrl } from '$utils/show/show-logo';
-	import { festesService } from '$services/festes.service';
+	import { catalanTodayIso, festesService } from '$services/festes.service';
 	import type { RegionShow } from '$utils/geo/region-tree';
 	import type { ClaimPull } from '$components/core/pack/scene/pull.type';
 	import type { ClaimResult, OpenerPack } from '$components/core/pack/scene/opener-view.type';
-	import type { FestaLocationRow, FestaShowPair } from '$types/festivity.type';
+	import type { FestaShowPair, FestaWindowRow } from '$types/festivity.type';
+	import { boxForFesta, claimedBoxKey, festaYear } from '$utils/spawn/claimed-box';
 
 	// The window's booster packs, assembled from the festes in range and surfaced to the
 	// parent (`bind:packs`) so it can render the pack-grid canvas below this content.
@@ -31,8 +32,10 @@
 	// The window's celebrating towns — every one holding its festa major from three days
 	// back through four days ahead (the same range `claim_booster` accepts). Loaded on
 	// mount; each is paired with a show below, and the pack grid renders one booster per
-	// pair whose show this player can claim.
-	let windowFestes: FestaLocationRow[] = [];
+	// pair whose show this player can claim. Each carries the festa its box is printed
+	// for — the nearest to today, as the RPC picks it — which is what says the box's
+	// stock and its year, and so whether this player has already taken it.
+	let windowFestes: FestaWindowRow[] = [];
 
 	// Municipality id → the show its own geometry seeds it with, handed down by the map
 	// (see `+page.svelte`'s `buildSeededShows`) rather than worked out again here: the
@@ -43,12 +46,12 @@
 	// leaves the grid without packs rather than with wrong ones.
 	export let seededShowById: ReadonlyMap<string, RegionShow> = new Map();
 
-	// Which of those towns are celebrating *today*, by feature id. Read as its own day
-	// rather than taken off the window: the window keeps a town's earliest claimable day, so
-	// a festa that began yesterday and is still on would be filed under yesterday and a
-	// town celebrating right now would be missed. This is the same day-of read the map's
-	// boxes on the map are printed from, so a town's box is on the same card in both.
-	let todayIds = new Set<string>();
+	// Today in Catalan time, which is what tells a white box from a black one: the window
+	// hands each town the festa its box is printed for (the nearest to today, as
+	// `claim_booster` picks it), and a box is white exactly when that festa is on. Read
+	// once when the window lands rather than kept ticking — a player crossing midnight
+	// with the sheet open reloads the window anyway.
+	let todayIso = catalanTodayIso();
 
 	const status = authService.status;
 	const profile = authService.profile;
@@ -95,11 +98,10 @@
 	// revealed card's location strip.
 	let lastLocationName = '';
 
-	// The signed-in player's daily booster allowance, loaded from the server (which
-	// also enforces it). Drives the "N packs left today" hint and blocks opening
-	// once spent. Null until loaded / when signed out. Bindable for the same reason as
-	// `claimError`: a host rendering only the packs still needs to show what's left.
-	export let boosters: BoostersStatus | null = null;
+	// Every box this player has already taken, as (town, year, stock) keys — the
+	// service's own store, so anything else drawing a box reads the same set. A town
+	// deals two boxes a year and no more, and this is which of them are spent.
+	const claimedBoxes = spawnService.claimedBoxes;
 
 	onMount(() => {
 		authService.init();
@@ -108,20 +110,17 @@
 	});
 
 	// Load the window's celebrating municipalities (from Supabase, via the festes
-	// service) and today's alone. Both are fetched once; failures leave the grid empty,
-	// and a failed today-read leaves every box on the dark stock rather than blanking
-	// the grid — the packs are all still claimable. Pairing each town with the show it
-	// actually flies is left to the reactive derivation below, since that answer moves
-	// as towns change hands.
+	// service). Fetched once; a failure leaves the grid empty. Each town arrives with
+	// the festa its box is printed for, which is the whole of what the box is — its
+	// stock and its year — so nothing else has to be read to know which box a town is
+	// offering. Pairing each with the show it actually flies is left to the reactive
+	// derivation below, since that answer moves as towns change hands.
 	async function loadWindowFestes() {
-		const [festesResult, todayResult] = await Promise.allSettled([
-			festesService.loadFestesForWindow(),
-			festesService.loadTodayFestes()
-		]);
-
-		if (festesResult.status === 'fulfilled') windowFestes = festesResult.value;
-		if (todayResult.status === 'fulfilled') {
-			todayIds = new Set(todayResult.value.map((festa) => festa.id));
+		try {
+			todayIso = catalanTodayIso();
+			windowFestes = await festesService.loadFestesForWindow();
+		} catch {
+			// The window stays empty: a grid with no packs, rather than wrong ones.
 		}
 	}
 
@@ -142,11 +141,16 @@
 		}
 	}
 
-	// Once a signed-in user is known, load the claimable shows once.
+	// Once a signed-in user is known, load the claimable shows once. A player signing out
+	// takes their claims with them: the boxes they had taken are theirs and not this
+	// browser's, and left standing they would grey out somebody else's window.
 	$: currentUserId = $status === AuthStatus.SignedIn && $profile ? String($profile.id) : null;
 	$: if (currentUserId && currentUserId !== loadedForUser) {
 		loadedForUser = currentUserId;
 		load();
+	} else if (!currentUserId && loadedForUser) {
+		loadedForUser = null;
+		spawnService.forgetClaimedBoxes();
 	}
 
 	async function load() {
@@ -165,7 +169,7 @@
 		} finally {
 			loadingShows = false;
 		}
-		void refreshBoostersStatus();
+		void refreshClaimedBoxes();
 		void loadCollection();
 	}
 
@@ -183,15 +187,18 @@
 		]);
 	}
 
-	// The player's daily booster allowance (level = cap, and how many remain today),
-	// enforced server-side and mirrored here so the UI can show it and block opening
-	// once it's spent. Null until loaded / when signed out.
-	async function refreshBoostersStatus() {
+	// The boxes this player has already taken, re-read from the server (which is what
+	// enforces the rule) so the grid can stand the spent ones down. Called when the
+	// player is known and again after every open — the year a box is filed under is
+	// the server's reading of the festivity calendar, not something the browser is
+	// told back.
+	async function refreshClaimedBoxes() {
+		if (!currentUserId) return;
 		try {
-			boosters = await spawnService.boostersStatus();
+			await spawnService.loadClaimedBoxes(currentUserId);
 		} catch {
-			// Non-fatal — the server still enforces the limit on the actual claim.
-			boosters = null;
+			// Non-fatal: an unread claim leaves a box looking openable, and the server
+			// refuses it with a sentence the panel already shows.
 		}
 	}
 
@@ -216,19 +223,14 @@
 	// Build the roll one grid pack fires when the player slices it open — a closure
 	// bound to its show + place. The Supabase roll persists what it gives at open time
 	// (not when the pack is picked) and returns it to reveal — the cards, and the one
-	// avatar the box dealt (nothing at all on failure, which reveals nothing). Every
-	// limit (daily allowance, festa major inside the booster window) is enforced
-	// server-side by the claim_booster RPC. Opening a pack earns no experience — that
-	// comes from winning fights only (see award_combat_exp).
+	// avatar the box dealt (nothing at all on failure, which reveals nothing). Both
+	// rules (a festa major inside the booster window, and one box per town, year and
+	// stock) are enforced server-side by the claim_booster RPC. Opening a box earns no
+	// experience — that comes from winning fights only (see award_combat_exp).
 	function makeClaim(show: ClaimableShow, claimRegion: GeoRegion): () => Promise<ClaimResult> {
 		return async () => {
 			const nothing: ClaimResult = { pulls: [], avatar: null, avatarIsNew: false };
 			if (!currentUserId || !claimRegion.id) return nothing;
-			// Client-side echo of the server rule: no allowance left, reveal nothing.
-			if (boosters && boosters.remaining <= 0) {
-				claimError = `You've opened all ${boosters.allowance} of today's booster packs. More unlock at midnight.`;
-				return nothing;
-			}
 			claimingId = show.id;
 			claimError = '';
 
@@ -243,8 +245,9 @@
 
 			try {
 				const opening = await spawnService.claimBooster(show.id, claimRegion.id);
-				// Refresh the daily allowance: this pack counts against it.
-				void refreshBoostersStatus();
+				// This box is spent now: re-read the claims so it stands down, here and
+				// wherever else it is drawn.
+				void refreshClaimedBoxes();
 
 				// The avatar joins the player's collection here rather than in the spawn
 				// service: the avatars are that service's, and this is the one place a new
@@ -298,7 +301,7 @@
 	// collection cannot be drawn as a box, so that town keeps its seeded show rather
 	// than dropping out of the grid — the same fallback the map's pins make.
 	function buildFestaPairs(
-		festes: FestaLocationRow[],
+		festes: FestaWindowRow[],
 		seeded: ReadonlyMap<string, RegionShow>,
 		ruling: ReadonlyMap<string, number>,
 		saved: ReadonlyMap<number, ShowEntry>
@@ -317,14 +320,16 @@
 
 	// Assemble the window's grid packs from the festes in range: one booster per
 	// celebrating town whose show this player can claim. Each pack carries its
-	// poster cover and a roll bound to that show + place. Empty when signed out or
-	// before the show pool loads. Kept as a pure function of its inputs so the reactive
-	// block below re-runs when any of them change.
+	// poster cover, whether its box is still there to open, and a roll bound to that
+	// show + place. Empty when signed out or before the show pool loads. Kept as a pure
+	// function of its inputs so the reactive block below re-runs when any of them
+	// change.
 	function computePacks(
 		festaPairs: FestaShowPair[],
 		showPool: ClaimableShow[],
 		_posters: Map<number, ShowEntry>,
-		celebratingToday: ReadonlySet<string>,
+		today: string,
+		spent: ReadonlySet<string>,
 		userId: string | null
 	): OpenerPack[] {
 		if (!userId) return [];
@@ -340,6 +345,10 @@
 				province: festa.prov ?? '',
 				country: festa.territory ?? ''
 			};
+			// Which of the town's two boxes this is, and whether it is still there: the
+			// same three things the server works out for itself (see `claimed-box`), read
+			// off the festa this town's box is printed for.
+			const box = boxForFesta(festa.date, today);
 			out.push({
 				id: festa.id,
 				coverUrl: resolvePosterUrl(claimable, claimRegion),
@@ -347,7 +356,8 @@
 				locationName: festa.name,
 				label: claimable.name,
 				showId: claimable.id,
-				today: celebratingToday.has(festa.id),
+				today: festa.date === today,
+				claimed: spent.has(claimedBoxKey(festa.id, festaYear(festa.date), box)),
 				claim: makeClaim(claimable, claimRegion)
 			});
 		}
@@ -382,10 +392,10 @@
 	}
 
 	// The window's grid packs, recomputed whenever the window's festes, the claimable
-	// show pool, the enabled posters, which towns are celebrating today, or the signed-in
-	// user change. (All five are named here so the reactive statement actually re-runs when
+	// show pool, the enabled posters, the day, the boxes already taken or the signed-in
+	// user change. (All six are named here so the reactive statement actually re-runs when
 	// any of them updates.)
-	$: packs = computePacks(festaPairs, shows, showEntryById, todayIds, currentUserId);
+	$: packs = computePacks(festaPairs, shows, showEntryById, todayIso, $claimedBoxes, currentUserId);
 
 	function labelFor(id: string): string {
 		return charactersById.get(id)?.label ?? id;
@@ -412,21 +422,10 @@
 		{:else}
 			<p class="text-sm opacity-70">
 				Pick a town celebrating its festa major this week, below — from three days back
-				through four days ahead — to open its booster. The spawn is saved to your account,
-				tagged with that place.
+				through four days ahead — to open its booster. Each town deals you two boxes a year
+				and no more: the white one on the day of its festa, the black one around it. The
+				spawn is saved to your account, tagged with that place.
 			</p>
-
-			{#if boosters}
-				<div
-					class="flex items-center justify-between gap-2 rounded-box bg-base-200 px-3 py-2 text-sm"
-					title="Your daily booster allowance equals your level (up to 20). It resets at midnight."
-				>
-					<span class="opacity-70">Booster packs today</span>
-					<span class="font-semibold tabular-nums" class:text-warning={boosters.remaining === 0}>
-						{boosters.remaining} / {boosters.level} left
-					</span>
-				</div>
-			{/if}
 
 			{#if showsError}
 				<div class="alert alert-error text-sm"><span>{showsError}</span></div>

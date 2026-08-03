@@ -256,6 +256,14 @@ export interface MapBoosterBox {
 	 */
 	light?: boolean;
 	/**
+	 * Whether the reader has already opened this box — a town deals two a year, the white
+	 * one on the day of its festa and the black one around it, and neither twice. The
+	 * mark stays on the town, faded: a box taken is not a box that was never there, and
+	 * a reader should be able to see which of the window's towns they have been to.
+	 * Always false signed out, there being no claims to read.
+	 */
+	claimed?: boolean;
+	/**
 	 * Whether this is the town the reader has picked. The picked town's box is drawn
 	 * whole — the cover, its wordmark and the place across its foot, inside that town's
 	 * own pin where the tier gives it one; every other town is the disc. Nothing is

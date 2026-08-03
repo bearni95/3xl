@@ -1,21 +1,15 @@
 <script lang="ts">
-	import classNames from 'classnames';
 	import { onMount } from 'svelte';
-	import type { AdminUser, GrantClaimsResult } from '$types/player-user.type';
+	import type { AdminUser } from '$types/player-user.type';
 
-	// The users read/grant API is served by @3xl/backend (default :2002), which
-	// owns the Supabase DB password — the anon key can't read `auth.users`. Same
-	// "admin SPA calls the backend" pattern as CharacterTemplateSync / Festivity.
+	// The users API is served by @3xl/backend (default :2002), which owns the
+	// Supabase DB password — the anon key can't read `auth.users`. Same "admin SPA
+	// calls the backend" pattern as CharacterTemplateSync / Festivity.
 	const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:2002';
 
 	let users: AdminUser[] = [];
 	let loading = false;
 	let loadError = '';
-
-	// Per-user "amount to grant" input, keyed by user id, and which row is mid-grant.
-	let amounts: Record<string, number> = {};
-	let granting: string | null = null;
-	let grantError = '';
 
 	onMount(load);
 
@@ -36,37 +30,6 @@
 		}
 	}
 
-	// Grant `amount` extra daily claims to `user` for today, then fold the refreshed
-	// row back into the table. `amount` defaults to the row's input (min 1).
-	async function grant(user: AdminUser, amount: number) {
-		if (!Number.isInteger(amount) || amount === 0) return;
-		granting = user.id;
-		grantError = '';
-		try {
-			const res = await fetch(`${API_BASE}/api/users/${user.id}/grant`, {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ amount })
-			});
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({ message: res.statusText }));
-				throw new Error(body.message ?? `Grant failed (${res.status})`);
-			}
-			const { user: updated } = (await res.json()) as GrantClaimsResult;
-			users = users.map((u) => (u.id === updated.id ? updated : u));
-			amounts = { ...amounts, [user.id]: 1 };
-		} catch (err) {
-			grantError = err instanceof Error ? err.message : String(err);
-		} finally {
-			granting = null;
-		}
-	}
-
-	function amountFor(id: string): number {
-		const value = amounts[id];
-		return Number.isFinite(value) && value > 0 ? Math.trunc(value) : 1;
-	}
-
 	function shortId(id: string): string {
 		return id.slice(0, 8);
 	}
@@ -81,7 +44,7 @@
 		<div class="flex flex-wrap items-center gap-3">
 			<h2 class="card-title">Players</h2>
 			<span class="badge badge-ghost font-mono text-xs">auth.users</span>
-			<span class="badge badge-ghost font-mono text-xs">booster_grants</span>
+			<span class="badge badge-ghost font-mono text-xs">booster_claims</span>
 			{#if loading}
 				<span class="loading loading-spinner loading-xs"></span>
 			{:else}
@@ -92,19 +55,18 @@
 			</button>
 		</div>
 
+		<!-- Read-only. There was a per-player grant of extra daily claims here, back
+			when a day had an allowance of boxes to top up; a box is the calendar's now —
+			one per player, per town, per year, per stock — so there is no balance an
+			amount could be added to. -->
 		<p class="text-sm opacity-70">
-			Each player's daily booster cap is <code>floor(level / 4) + 1</code> boxes, plus two on the day
-			they signed up, plus everything the day has granted them — a level reached, a town taken, a
-			town held against a challenger, cards recycled. Granting adds extra claims
-			<strong>for today only</strong>: they stack on top of the cap and reset at Catalan midnight
-			(Europe/Madrid), exactly as the frontend's booster panel enforces.
+			A town deals each player two booster boxes a year and no more: the white one on the day
+			of its festa major, the black one in the days around it. What is listed here is how many
+			of those each player has taken.
 		</p>
 
 		{#if loadError}
 			<div class="alert alert-error"><span>{loadError}</span></div>
-		{/if}
-		{#if grantError}
-			<div class="alert alert-error"><span>{grantError}</span></div>
 		{/if}
 
 		{#if !loading && users.length > 0}
@@ -114,10 +76,8 @@
 						<tr>
 							<th>Player</th>
 							<th class="text-right">Level</th>
-							<th class="text-right">Granted today</th>
-							<th class="text-right">Opened today</th>
-							<th class="text-right">Remaining</th>
-							<th>Grant extra claims</th>
+							<th class="text-right">Boxes this year</th>
+							<th class="text-right">Boxes all time</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -130,56 +90,8 @@
 									</div>
 								</td>
 								<td class="text-right tabular-nums">{user.level}</td>
-								<td class="text-right tabular-nums">
-									<span class={classNames({ 'text-success font-semibold': user.grantedToday > 0 })}>
-										{user.grantedToday > 0 ? `+${user.grantedToday}` : '0'}
-									</span>
-								</td>
-								<td class="text-right tabular-nums">{user.usedToday} / {user.capToday}</td>
-								<td class="text-right tabular-nums">
-									<span class={classNames('font-semibold', { 'text-warning': user.remainingToday === 0 })}>
-										{user.remainingToday}
-									</span>
-								</td>
-								<td>
-									<div class="flex items-center gap-2">
-										<input
-											type="number"
-											min="1"
-											class="input input-bordered input-sm w-20"
-											bind:value={amounts[user.id]}
-											placeholder="1"
-											disabled={granting === user.id}
-										/>
-										<button
-											class="btn btn-primary btn-sm"
-											type="button"
-											on:click={() => grant(user, amountFor(user.id))}
-											disabled={granting === user.id}
-										>
-											{#if granting === user.id}
-												<span class="loading loading-spinner loading-xs"></span>
-											{/if}
-											Grant
-										</button>
-										<button
-											class="btn btn-ghost btn-sm"
-											type="button"
-											on:click={() => grant(user, 1)}
-											disabled={granting === user.id}
-										>
-											+1
-										</button>
-										<button
-											class="btn btn-ghost btn-sm"
-											type="button"
-											on:click={() => grant(user, 5)}
-											disabled={granting === user.id}
-										>
-											+5
-										</button>
-									</div>
-								</td>
+								<td class="text-right tabular-nums">{user.boxesThisYear}</td>
+								<td class="text-right tabular-nums opacity-70">{user.boxesOpened}</td>
 							</tr>
 						{/each}
 					</tbody>

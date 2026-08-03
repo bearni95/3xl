@@ -165,15 +165,6 @@
 			"orange": "Taronja",
 			"green": "Verd",
 			"purple": "Lila"
-		},
-		"recycle": {
-			"hint": "Toca les cartes per seleccionar-les. Cada {size} reciclades et donen una obertura extra avui.",
-			"tallyTitle": "Cartes seleccionades → obertures extres guanyades",
-			"tally": "{selected} seleccionades → {grants, plural, one {# obertura} other {# obertures}}",
-			"cancel": "Cancel·la",
-			"confirm": "Recicla {selected, plural, one {# carta} other {# cartes}}",
-			"done": "Has reciclat {recycled, plural, one {# carta} other {# cartes}} i has guanyat {granted, plural, one {# obertura extra} other {# obertures extres}} per avui.",
-			"failed": "No s'han pogut reciclar aquestes cartes. Torna-ho a provar."
 		}
 	},
 	"leaderboard": {
@@ -182,7 +173,7 @@
 	},
 	"booster": {
 		"title": "Sobres",
-		"withAllowance": "Sobres ({remaining}/{total})",
+		"withBoxes": "Sobres ({remaining}/{total})",
 		"close": "Tanca els sobres",
 		"open": "Obre el sobre",
 		"openPack": "Obre el sobre de {town}",
