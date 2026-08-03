@@ -20,6 +20,13 @@
 	// states the minimum up front, signing in says nothing about length, because an
 	// account made under an older rule is not a reason to lock its owner out.
 	//
+	// The same goes for the legal gate, which is the `consent` slot: it is drawn in the
+	// register tab and only there, directly above the button that opens the account,
+	// because that press is the one occasion anybody is agreeing to anything. Somebody
+	// signing back in accepted all of it once already. The slot is handed in rather than
+	// built here — what is ticked and what it is worth is the modal's business — and this
+	// form's only part in it is knowing which tab is forward.
+	//
 	// No business logic here: this dispatches what was typed, the modal is what signs
 	// anybody in.
 
@@ -112,6 +119,14 @@
 			</span>
 		{/if}
 	</label>
+
+	<!-- The gate, in the tab it belongs to and under the fields it is about. What is ticked
+		is bound to the modal, so it survives a look at the other tab and is only forgotten
+		when the sheet itself is put away — which is the right place to forget it, since a
+		door closed is a door nobody went through. -->
+	{#if mode === 'signup'}
+		<slot name="consent" />
+	{/if}
 
 	<button
 		type="submit"

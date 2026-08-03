@@ -9,15 +9,24 @@
 	import EmailSignIn from '$components/core/EmailSignIn.svelte';
 	import SocialSignIn from '$components/core/SocialSignIn.svelte';
 
-	// The way in: the gate's two boxes, the documents under them, and the two ways through
-	// — an address with a password, or Google.
+	// The way in: an address with a password, or Google.
 	//
-	// Two doors and one gate. Which of them a player uses is theirs to choose and nothing
-	// downstream cares: an account is an account, and Supabase links a Google identity and
-	// an address onto one user when the address is the same and verified, so somebody who
-	// signed up one way and comes back the other keeps their cards. The gate stands in
-	// front of both, because what it asks is about opening an account rather than about
-	// how one is opened.
+	// Which of them a player uses is theirs to choose and nothing downstream cares: an
+	// account is an account, and Supabase links a Google identity and an address onto one
+	// user when the address is the same and verified, so somebody who signed up one way and
+	// comes back the other keeps their cards.
+	//
+	// **The gate belongs to the sign-up and nowhere else.** The two boxes and the four
+	// documents are what somebody says when they open an account, and they are asked exactly
+	// where an account is opened — inside the password form's register tab, above the button
+	// that creates it. Signing in is not an occasion to agree to anything: the acceptance is
+	// already on file for that account, and asking again at every visit made the ticks
+	// worthless. Google is not asked here either, because the press that follows it is not
+	// yet a sign-up — Supabase decides on the far side whether the identity it comes back
+	// with is a new account or an old one. What answers for a new one is LegalGate, at the
+	// layout root, which stops any session whose ledger is short and asks then. Nobody plays
+	// without having accepted; the asking simply happens at the moment there is an account
+	// for it to be about.
 	//
 	// All of it stood open at the foot of the map, on a plate of its own — a form of two
 	// checkboxes, four links and a paragraph of fine print, every word at 12px, taking the
@@ -47,9 +56,9 @@
 	// has a mail waiting and there is nothing else for the player to do here.
 	let confirmationSent = false;
 
-	// The gate in front of both doors. Both boxes have to be ticked before either works,
-	// and `consentAsked` is what makes the reason visible: a button that is simply dead
-	// says nothing about why.
+	// The gate in front of the sign-up. Both boxes have to be ticked before an account can
+	// be opened, and `consentAsked` is what makes the reason visible: a button that is
+	// simply dead says nothing about why.
 	let ageConfirmed = false;
 	let documentsAccepted = false;
 	let consentAsked = false;
@@ -67,13 +76,15 @@
 	/**
 	 * Write down what was ticked, for the moment there is an account to hang it on.
 	 *
-	 * Held in the browser rather than recorded here because at this instant there is no
-	 * id to record it against: the boxes are ticked by somebody the game has never met.
-	 * It is picked back up and written the moment a session lands (see legal.service) —
-	 * which is a redirect away for Google, this same tick for a password sign-in, and a
-	 * mail's round trip for a fresh sign-up. That last one may be opened on a different
-	 * device, where nothing was held; then the gate simply asks again on arrival, which
-	 * is the recovery and not a failure.
+	 * Held in the browser rather than recorded here because at this instant there is no id
+	 * to record it against: the boxes are ticked by somebody the game has never met. It is
+	 * picked back up and written the moment a session lands (see legal.service) — this same
+	 * tick where the project hands a sign-up its session, and a mail's round trip where it
+	 * confirms addresses first, as this one does. That round trip may be finished on another
+	 * device, where nothing was held; then LegalGate asks again on arrival, which is the
+	 * recovery and not a failure.
+	 *
+	 * Only the sign-up calls it, because only the sign-up asks anything.
 	 */
 	function holdConsent(): void {
 		legalService.hold({
@@ -83,13 +94,10 @@
 		});
 	}
 
-	/** Whether the gate lets this through, saying so out loud when it does not. */
-	function gate(): boolean {
-		consentAsked = true;
-		if (!consented) return false;
+	/** Clear what the last attempt said, before making another. */
+	function begin(): void {
 		errorMessage = null;
 		confirmationSent = false;
-		return true;
 	}
 
 	/** Word a failure: the handful Supabase names, and anything else as it came. */
@@ -104,9 +112,9 @@
 	async function handleProviderSignIn(
 		event: CustomEvent<{ provider: OAuthProvider }>
 	): Promise<void> {
-		if (busy || !gate()) return;
+		if (busy) return;
+		begin();
 		redirectingTo = event.detail.provider;
-		holdConsent();
 		try {
 			// On success the browser leaves for the provider's consent screen, so the
 			// spinner stays up until the page is gone. Only a failure lands here.
@@ -120,15 +128,14 @@
 	async function handlePasswordSignIn(
 		event: CustomEvent<{ email: string; password: string }>
 	): Promise<void> {
-		if (busy || !gate()) return;
+		if (busy) return;
+		begin();
 		credentialsPending = 'signin';
-		holdConsent();
 		try {
 			await authService.signInWithPassword(event.detail.email, event.detail.password);
 			// The session is already in the stores by now — the modal's own `{#if}` does
 			// not close it, since it is the store that says whether the door is up, so it
-			// is put away here. Nothing was ticked in vain: the acceptance held above is
-			// already being flushed against the account that just arrived.
+			// is put away here.
 			closeSignIn();
 		} catch (error) {
 			report(error);
@@ -140,7 +147,13 @@
 	async function handlePasswordSignUp(
 		event: CustomEvent<{ email: string; password: string }>
 	): Promise<void> {
-		if (busy || !gate()) return;
+		if (busy) return;
+		// The one press on this sheet that is somebody opening an account, and so the one
+		// the gate stands in front of. It is pressable while the boxes are unticked — that
+		// is what makes the reason appear — it simply does not open anything.
+		consentAsked = true;
+		if (!consented) return;
+		begin();
 		credentialsPending = 'signup';
 		holdConsent();
 		try {
@@ -173,26 +186,26 @@
 					<span>{$_('profile.notConfigured')}</span>
 				</div>
 			{:else}
-				<!-- The gate above the doors, not beside them: the two boxes are read before
-					either way in is offered, and both are held shut until they are ticked. They
-					are still pressable while they are not — that is what makes the reason appear
-					— they simply do not sign anybody in. -->
-				<LegalConsent
-					bind:ageConfirmed
-					bind:accepted={documentsAccepted}
-					showRequired={consentAsked}
-					disabled={busy}
-				/>
-
 				<!-- The address and password first, Google under it: the game's own door before
 					the one that goes through somebody else's building. Neither is the main one —
-					the divider between them says "or" and means it. -->
+					the divider between them says "or" and means it.
+					The gate goes in with it, as the register tab's own last word before the button
+					that opens the account. The form is what knows which tab is forward, so it is
+					handed the gate to place rather than asked which one it is on. -->
 				<EmailSignIn
 					pending={credentialsPending}
 					disabled={redirectingTo !== null}
 					on:signin={handlePasswordSignIn}
 					on:signup={handlePasswordSignUp}
-				/>
+				>
+					<LegalConsent
+						slot="consent"
+						bind:ageConfirmed
+						bind:accepted={documentsAccepted}
+						showRequired={consentAsked}
+						disabled={busy}
+					/>
+				</EmailSignIn>
 
 				<div class="divider my-0 text-xs text-base-content/50">
 					{$_('profile.password.or')}

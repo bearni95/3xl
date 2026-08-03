@@ -407,8 +407,8 @@ so auth-less local dev still works.
 At the foot of the map, signed out, stands **one button** (`SignInButton.svelte`) — the
 slot the player's own plate takes once there is an account. Everything it takes to open
 one is on the sheet it raises (`SignInModal.svelte`, mounted at the layout root like every
-other modal, and reached from anywhere by `openSignIn()` in `$services/signInModal`): the
-legal gate, then **two doors under one gate**.
+other modal, and reached from anywhere by `openSignIn()` in `$services/signInModal`): **two
+doors**, and a gate that belongs to one press on the sheet — see below.
 
 - **An address and a password** (`EmailSignIn.svelte` → `authService.signInWithPassword` /
   `signUpWithPassword`). One form with two modes, since the fields are the same pair and a
@@ -457,16 +457,28 @@ a document changes in substance** — a new purpose for data, a new restriction,
 recipient; not a typo. Bumping it puts every existing player back through the gate on
 their next visit, which is the whole point of versioning an acceptance.
 
-- **The gate** (`LegalConsent.svelte`, above both doors on `SignInModal`) is two
-  unticked boxes: an age attestation and acceptance of the terms with the privacy notice
-  named alongside. Sixteen, because it is the strictest floor GDPR art. 8 lets a member
-  state set and it clears COPPA's thirteen — one gate rather than one per country. The
-  privacy notice is *notice*, not the lawful basis: the basis for running the game on
-  someone's data is the contract (art. 6(1)(b)), which is why nothing here is a consent
-  that could later be withdrawn.
-- **An acceptance is made before there is an account to hang it on** — sign-in leaves for
-  Google's consent screen — so it is held in localStorage (`legal-consent-pending`) across
-  the round trip and flushed by `legal.service.ts` the instant a session lands.
+- **The gate** (`LegalConsent.svelte`) is two unticked boxes: an age attestation and
+  acceptance of the terms with the privacy notice named alongside. Sixteen, because it is
+  the strictest floor GDPR art. 8 lets a member state set and it clears COPPA's thirteen —
+  one gate rather than one per country. The privacy notice is *notice*, not the lawful
+  basis: the basis for running the game on someone's data is the contract (art. 6(1)(b)),
+  which is why nothing here is a consent that could later be withdrawn.
+- **It stands in front of the sign-up and nothing else.** On `SignInModal` it is the
+  `consent` slot of `EmailSignIn`, drawn in the register tab directly above the button that
+  opens the account, and it holds that button alone. Signing back in is not an occasion to
+  agree to anything — the acceptance is already on file — and the Google button is not one
+  either, since nobody yet knows whether the identity it comes back with is a new account
+  or an old one. **`LegalGate` is what answers for the ones the sheet did not ask**: it
+  stops any session whose ledger is short, which is every Google newcomer as well as every
+  player a document has moved under. Nobody plays without having accepted; where the asking
+  happens just depends on where the account came from. (What LegalGate cannot do is take an
+  *age* attestation — it records one — so a Google sign-up is currently never asked its age
+  on screen.)
+- **An acceptance made at the gate has no account to hang it on yet**, so it is held in
+  localStorage (`legal-consent-pending`) and flushed by `legal.service.ts` the instant a
+  session lands. For a sign-up on a project that confirms addresses, that is a mail's round
+  trip away — finished on another device, nothing was held there and LegalGate asks again,
+  which is the recovery and not a failure.
 - **The record is in Postgres**, never in the browser: `legal_acceptances` keyed
   `(user_id, document, version)`, written only by the security-definer
   `record_legal_acceptance` RPC. Every version ever accepted is kept, because the question
