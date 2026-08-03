@@ -50,6 +50,17 @@
 	// is not there is `player === null` with no error, which is a different sentence.
 	let failed = false;
 
+	// How many more cards the More button stands up, and how many are standing when the
+	// page opens. A collection is the whole of what somebody holds and can run to
+	// hundreds; a statue is a clip of its own and a stack of images per frame, so
+	// mounting the lot at once is a page that arrives all at the same time as itself.
+	// The cards are all here either way — this is what is *drawn*, not what was fetched,
+	// so pressing More costs nothing but the mounting.
+	const PAGE_SIZE = 12;
+	// Reset for each player loaded, so a second profile opens at its own first page
+	// rather than however far down the previous one had been read.
+	let shown = PAGE_SIZE;
+
 	const charactersById = new Map(characters.map((character) => [character.id, character]));
 
 	// One load per player named in the URL. Mounted first so nothing is fetched while
@@ -72,6 +83,7 @@
 		loading = true;
 		failed = false;
 		player = null;
+		shown = PAGE_SIZE;
 		try {
 			const [loaded, shows] = await Promise.all([
 				publicProfileService.load(id),
@@ -125,6 +137,16 @@
 		showsByCharacter,
 		municipalityNames
 	});
+
+	// The part of it standing right now, and whether there is any of it left to stand.
+	// Both named off `shown` and `owned` directly, so the grid grows the moment either
+	// moves — a card whose town name has just landed re-reads without being re-pressed.
+	$: visible = owned.slice(0, shown);
+	$: hasMore = shown < owned.length;
+
+	function showMore(): void {
+		shown += PAGE_SIZE;
+	}
 
 	// What to call the page. A nameless account is worded here rather than stored, as
 	// it is everywhere else a name is missing.
@@ -183,9 +205,9 @@
 				the grid is a column count and a gap and no more of a layout than that. Two
 				across on a phone, five at the top width, which is where the panel under a
 				card is still wide enough to read the town off. -->
-			{#if owned.length > 0}
+			{#if visible.length > 0}
 				<div class="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-					{#each owned as card}
+					{#each visible as card}
 						<CharacterStatue
 							label={card.label}
 							basePath={card.basePath}
@@ -197,6 +219,16 @@
 						/>
 					{/each}
 				</div>
+
+				<!-- Another twelve, under the ones already standing. It goes away when there
+					are none left rather than turning into a disabled button that says the
+					collection is over: the end of a collection is the last card, and a row of
+					nothing under it says so. -->
+				{#if hasMore}
+					<button type="button" class="btn btn-outline btn-sm" on:click={showMore}>
+						{$_('profile.public.more')}
+					</button>
+				{/if}
 			{/if}
 		{/if}
 
