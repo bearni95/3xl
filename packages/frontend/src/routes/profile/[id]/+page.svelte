@@ -392,20 +392,27 @@
 	a while, bringing their own ground as they do — but the exception is what made the page
 	read as two, plates at the top and bare cards below.
 
-	It is exactly one screen tall (`h-screen`, not `min-h-screen`), and that is what settles
-	the collection's height: the account row is what it is, and the collection is given what
-	is left over (`flex-1` on the plate, `min-h-0` so it may be given less than its cards come
-	to). A figure in `vh` could not do this — the plate does not start at the top of the
-	viewport, so a cap of one screenful still put half of it below the fold, at page load as
-	well as on More. Nothing here can be measured or reacted to either: what is left over is
-	the one thing flexbox works out for itself, and it re-works it on every resize without
+	From `md` up it is exactly one screen tall (`h-screen`, not `min-h-screen`), and that is
+	what settles the collection's height: the account row is what it is, and the collection is
+	given what is left over (`flex-1` on the plate, `min-h-0` so it may be given less than its
+	cards come to). A figure in `vh` could not do this — the plate does not start at the top
+	of the viewport, so a cap of one screenful still put half of it below the fold, at page
+	load as well as on More. Nothing here is measured or reacted to either: what is left over
+	is the one thing flexbox works out for itself, and it re-works it on every resize without
 	being asked.
-	The column may still scroll (`overflow-y-auto`) even though in the ordinary case nothing
-	overflows it — the collection absorbs the slack. It is for the window too short to hold
-	the account row on its own, where the choice is a page that scrolls or a page with its
-	foot cut off. -->
-<div class="relative z-10 flex h-screen w-full justify-center p-4">
-	<div class="flex h-full w-full max-w-7xl flex-col items-center gap-6 overflow-y-auto py-4">
+	Below `md` none of that holds, and it must not: the row is stacked there (see below), so
+	the account alone is taller than the screen and there is nothing left over to give — the
+	collection would be handed zero and a reader would scroll past the towns to find nothing
+	under them. So on a phone this is an ordinary page: `min-h-screen`, everything at its own
+	length, one scroll down the document, and no box inside it scrolling separately.
+	The column keeps `overflow-y-auto` at both sizes. On a phone nothing overflows it (its
+	height is its content); on a desktop the collection absorbs the slack, so it only ever
+	catches the window too short to hold the account row on its own — where the choice is a
+	page that scrolls or a page with its foot cut off. -->
+<div class="relative z-10 flex min-h-screen w-full justify-center p-4 md:h-screen">
+	<div
+		class="flex w-full max-w-7xl flex-col items-center gap-6 overflow-y-auto py-4 md:h-full"
+	>
 		{#if loading}
 			<div
 				class="flex items-center gap-3 rounded-box bg-base-100/80 px-4 py-3 shadow-xl"
@@ -449,7 +456,13 @@
 				— a collection of towns is however many there are — so instead of setting the
 				height of the row it takes it, and scrolls. So the row is as tall as the account
 				beside it at every size, whether somebody holds three towns or three hundred. -->
-			<div class="grid w-full shrink-0 grid-cols-3 items-start gap-3">
+			<!-- Three columns where there is width for three, and one stacked column where there
+				is not. A phone is about as wide as one of these cells wants to be on its own: a
+				name at 2xl, a side of three cards and a list of place names, all at a third of
+				360px, is three things none of which can be read. So below `md` they are simply
+				put one under another, in the order they are already in — which is the order the
+				page is read in anyway, and why nothing has to be reordered to stack. -->
+			<div class="grid w-full shrink-0 grid-cols-1 items-start gap-3 md:grid-cols-3">
 				<!-- Who they are and the one thing a reader of this page can do, in that order
 					and in the one column: the card is what the page is about, and the button is
 					what to do about it. Stacked rather than given a cell each because a button
@@ -526,8 +539,12 @@
 						counted would grow the row and push the collection below it down the page,
 						which is the very thing a scroller is here to prevent.
 						`min-h-0` for the case where the other columns are shorter than this cell's
-						own minimum would be. -->
-					<div class="relative min-h-0 self-stretch">
+						own minimum would be.
+						Stacked, it has no sisters to take a height from — a row of one whose only
+						content is out of flow is a row of nothing, and the list would simply not be
+						drawn. So below `md` it is given a height of its own to scroll inside: 18rem,
+						which is a screenful of a phone less the card and the side above it. -->
+					<div class="relative min-h-72 self-stretch md:min-h-0">
 						<!-- Pinned to the whole of the cell, so it is exactly as tall as the row
 							however tall that turns out to be. A column of two: the field, which keeps
 							its place, and under it the list, which is the only thing that scrolls
@@ -615,16 +632,22 @@
 					top half is printed on sheets and whose bottom half is not reads as two pages.
 					The plate holds the More button as well, so what is under it belongs to the
 					grid it adds to rather than floating off the foot of the page.
-					And it never runs off the screen: it takes what the account row above it leaves
-					of the page's one screenful (`flex-1`, with `min-h-0` so it may be handed less
-					than its cards come to — a flex item will not shrink below its content
-					otherwise, which is the whole of why a cap works at all), and the cards scroll
-					inside it (see the grid below). A collection of three hundred is otherwise a
-					page a reader falls down — and the More button, which is the thing they came
-					to the foot of it for, would be a screen further away with every press of
-					itself. -->
+					And from `md` up it never runs off the screen: it takes what the account row
+					above it leaves of the page's one screenful (`flex-1`, with `min-h-0` so it may
+					be handed less than its cards come to — a flex item will not shrink below its
+					content otherwise, which is the whole of why a cap works at all), and the cards
+					scroll inside it (see the grid below). A collection of three hundred is
+					otherwise a page a reader falls down — and the More button, which is the thing
+					they came to the foot of it for, would be a screen further away with every
+					press of itself.
+					On a phone it is its own length and the page scrolls, so neither class applies
+					there: the grid below is `flex-auto`, which in a plate of no stated height is
+					its content, and a scroller that never overflows draws no scrollbar. Which is
+					what a collection should be on a phone anyway — the whole thing is a column of
+					two cards wide, and a box scrolling inside a page that scrolls is two ways to
+					move one list. -->
 				<div
-					class="flex min-h-0 w-full flex-1 flex-col gap-3 rounded-box bg-base-100/80 p-2 shadow-xl"
+					class="flex w-full flex-col gap-3 rounded-box bg-base-100/80 p-2 shadow-xl md:min-h-0 md:flex-1"
 				>
 					<!-- The cards are what scrolls, not the plate: the rule and the More button
 						under them keep their place at its foot, so the way to see more of a
