@@ -3,6 +3,7 @@
 	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import MugenPosterGrid from '$components/core/MugenPosterGrid.svelte';
 	import type { PosterGridStatus } from '$utils/mugen/mugen-poster-grid';
+	import { leastCommonMultiple } from '$utils/math/least-common-multiple';
 
 	// The whole roster, idling side by side, drawn the way the combat board draws it:
 	// one shared source→screen ratio per cell box, each character's own `renderScale`
@@ -29,6 +30,13 @@
 		missing: [],
 		loading: true
 	};
+
+	// How long the whole wall takes to come back round: step every idle cycle together and
+	// the first count that every one of them divides is where they are all on their first
+	// frame again — the least common multiple of the cycle lengths. It is a count of frames
+	// rather than a time, since the durations vary within a cycle as well as between them.
+	// It moves as the wall fills, because it is a fact about the roster that is up so far.
+	$: sharedCycle = leastCommonMultiple(status.stood.map((stand) => stand.frames.length));
 </script>
 
 <div class="flex-1 bg-base-200 p-6 md:p-10">
@@ -71,6 +79,19 @@
 			on:status={(event) => (status = event.detail)}
 			classes="bg-base-300"
 		/>
+
+		<!-- Where the whole wall meets itself again: the least common multiple of the cycle
+		     lengths under it, which is how many frames every character has to be stepped on
+		     before all of them are back on their first at once. -->
+		<div class="card bg-base-100">
+			<div class="card-body flex-row flex-wrap items-baseline gap-x-4 gap-y-1">
+				<span class="font-mono text-4xl font-bold">{sharedCycle.toLocaleString()}</span>
+				<p class="text-sm opacity-70">
+					frames before every character starts its idle again on the same one — the least
+					common multiple of the {status.stood.length} cycle lengths on the canvas.
+				</p>
+			</div>
+		</div>
 
 		<!-- The same roster the canvas is drawing, listed: each character's idle cycle played
 		     as plain <img> frames, its name, and how many frames the cycle is. The cycles come
