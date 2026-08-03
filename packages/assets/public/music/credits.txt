@@ -14,12 +14,17 @@ the same reason the MUGEN sprite archives are.
 - bobobo-*.mp3 — Bo-bobo's opening and the two Denbo-chan songs, 3 of them. Named as the
   files came, which is the series' name written solid — without the circumflex the files
   carry or the hyphen the show's own name has.
+- keroro-*.mp3 — Keroro's opening, its ending and the song inserted in episode 12,
+  7 files in 3 songs: the opening and the ending are each here in all three of the Catalan
+  dubs they were broadcast in, and the insert song only in TV3's.
 
 Most are the versions broadcast on Televisió de Catalunya. The rest say in the file name
 what else they are, because a dub or a cover is not the take that went out on TV3:
 
 - `-tvv` — Televisió Valenciana's own Catalan dub, a different recording of the same song
-  (15 of the One Piece set, 5 of Bola de drac's). Titled "(TVV)".
+  (15 of the One Piece set, 5 of Bola de drac's, 2 of Keroro's). Titled "(TVV)".
+- `-ib3` — Televisió de les Illes Balears' own Catalan dub, a third recording again, which
+  only the Keroro set is here in (2 of them). Titled "(IB3)".
 - `-charm` — Charm, a fan group: three of the InuYasha endings and six of the Kimagure
   Orange Road set. Titled "(Charm)", with the singer named after it where the same song
   is here sung by two of theirs (`-charm-lydia-cuestas` / `-charm-marta-mateo` for
@@ -44,8 +49,8 @@ Charm's "Choose me" was AAC in an .m4a and had to be re-encoded (LAME, 160 kbps,
 rate the rest of the Charm cuts carry); it is the one song here that is not the audio as
 it came.
 
-The InuYasha and One Piece sets came off the Wayback Machine's captures of amiboshi.cat,
-which is gone —
+The InuYasha, One Piece and Keroro sets came off the Wayback Machine's captures of
+amiboshi.cat, which is gone —
 `download-amiboshi-songs.js` at the repo root is what pulled and verified them, and it
 writes a manifest recording, per song, the capture it was served and its sha256. Re-run
 it to fetch them again; the mp3s it stages are git-ignored, and these are the ones that

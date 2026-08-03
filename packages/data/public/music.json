@@ -539,6 +539,41 @@
 			"file": "kimagure-orange-road-daydream-soba-ni-iru-yo-charm.mp3",
 			"title": "Daydream ~Soba ni iru yo~ (Charm)",
 			"showId": 9103
+		},
+		{
+			"file": "keroro-keroh-to-maachi-tvc.mp3",
+			"title": "Keroh to maachi",
+			"showId": 63164
+		},
+		{
+			"file": "keroro-keroh-to-maachi-tvv.mp3",
+			"title": "Keroh to maachi (TVV)",
+			"showId": 63164
+		},
+		{
+			"file": "keroro-keroh-to-maachi-ib3.mp3",
+			"title": "Keroh to maachi (IB3)",
+			"showId": 63164
+		},
+		{
+			"file": "keroro-afuro-gunso-tvc.mp3",
+			"title": "Afuro gunsô",
+			"showId": 63164
+		},
+		{
+			"file": "keroro-afuro-gunso-tvv.mp3",
+			"title": "Afuro gunsô (TVV)",
+			"showId": 63164
+		},
+		{
+			"file": "keroro-afuro-gunso-ib3.mp3",
+			"title": "Afuro gunsô (IB3)",
+			"showId": 63164
+		},
+		{
+			"file": "keroro-sumomo-no-uta-tvc.mp3",
+			"title": "Sumomo no uta",
+			"showId": 63164
 		}
 	]
 }

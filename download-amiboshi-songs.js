@@ -66,7 +66,8 @@ const MIN_BYTES = 64 * 1024;
  */
 const SOURCES = [
 	{ name: 'inuyasha', html: 'inuyasha-songs.html', out: 'inuyasha-mp3' },
-	{ name: 'one-piece', html: 'onepiece-music.html', out: 'onepiece-mp3' }
+	{ name: 'one-piece', html: 'onepiece-music.html', out: 'onepiece-mp3' },
+	{ name: 'keroro', html: 'keroro-music.html', out: 'keroro-mp3' }
 ];
 
 const DEFAULTS = {
