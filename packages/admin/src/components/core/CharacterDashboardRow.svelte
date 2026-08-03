@@ -226,69 +226,79 @@
 			{/each}
 		</div>
 	</td>
+	<!-- What the character *is*, in one cell: its name, the show it belongs to and
+	     its rarity tier, stacked. Three columns said the same thing, but a column
+	     is a comparison between rows, and these are three fields of one character —
+	     nobody reads down a table of selects. Each still saves itself. -->
 	<td>
-		<div class="flex items-center gap-2">
-			<input
-				type="text"
-				class={classNames('input input-bordered input-sm w-full max-w-[15rem]', {
-					'input-error': nameError
-				})}
-				maxlength={LABEL_MAX_LENGTH}
-				bind:value={nameDraft}
-				disabled={savingName}
-				on:change={saveName}
-			/>
-			{#if savingName}
-				<span class="loading loading-spinner loading-xs"></span>
-			{/if}
+		<div class="flex flex-col gap-2">
+			<div class="flex flex-col gap-0.5">
+				<div class="flex items-center gap-2">
+					<input
+						type="text"
+						class={classNames('input input-bordered input-sm w-full max-w-[15rem]', {
+							'input-error': nameError
+						})}
+						maxlength={LABEL_MAX_LENGTH}
+						bind:value={nameDraft}
+						disabled={savingName}
+						on:change={saveName}
+					/>
+					{#if savingName}
+						<span class="loading loading-spinner loading-xs"></span>
+					{/if}
+				</div>
+				<div class="font-mono text-xs opacity-60">{character.id}</div>
+				{#if nameError}
+					<div class="text-xs text-error">{nameError}</div>
+				{/if}
+			</div>
+
+			<div class="flex flex-col gap-0.5">
+				<div class="flex items-center gap-2">
+					<select
+						class={classNames('select select-bordered select-sm w-full max-w-[15rem]', {
+							'select-error': showError
+						})}
+						value={showDraft === null ? '' : String(showDraft)}
+						disabled={savingShow}
+						on:change={saveShow}
+					>
+						<option value="">Unassigned</option>
+						{#each options as show (show.id)}
+							<option value={String(show.id)}>{show.name}</option>
+						{/each}
+					</select>
+					{#if savingShow}
+						<span class="loading loading-spinner loading-xs"></span>
+					{/if}
+				</div>
+				{#if showError}
+					<div class="text-xs text-error">{showError}</div>
+				{/if}
+			</div>
+
+			<div class="flex flex-col gap-0.5">
+				<div class="flex items-center gap-2">
+					<input
+						type="number"
+						class={classNames('input input-bordered input-sm w-20', { 'input-error': rarityError })}
+						min={RARITY_MIN}
+						step="1"
+						bind:value={rarityDraft}
+						disabled={savingRarity}
+						on:change={saveRarity}
+					/>
+					<RarityBadge rarity={rarityDraft} />
+					{#if savingRarity}
+						<span class="loading loading-spinner loading-xs"></span>
+					{/if}
+				</div>
+				{#if rarityError}
+					<div class="text-xs text-error">{rarityError}</div>
+				{/if}
+			</div>
 		</div>
-		<div class="font-mono text-xs opacity-60">{character.id}</div>
-		{#if nameError}
-			<div class="text-xs text-error">{nameError}</div>
-		{/if}
-	</td>
-	<td>
-		<div class="flex items-center gap-2">
-			<select
-				class={classNames('select select-bordered select-sm w-full max-w-[15rem]', {
-					'select-error': showError
-				})}
-				value={showDraft === null ? '' : String(showDraft)}
-				disabled={savingShow}
-				on:change={saveShow}
-			>
-				<option value="">Unassigned</option>
-				{#each options as show (show.id)}
-					<option value={String(show.id)}>{show.name}</option>
-				{/each}
-			</select>
-			{#if savingShow}
-				<span class="loading loading-spinner loading-xs"></span>
-			{/if}
-		</div>
-		{#if showError}
-			<div class="text-xs text-error">{showError}</div>
-		{/if}
-	</td>
-	<td>
-		<div class="flex items-center gap-2">
-			<input
-				type="number"
-				class={classNames('input input-bordered input-sm w-20', { 'input-error': rarityError })}
-				min={RARITY_MIN}
-				step="1"
-				bind:value={rarityDraft}
-				disabled={savingRarity}
-				on:change={saveRarity}
-			/>
-			<RarityBadge rarity={rarityDraft} />
-			{#if savingRarity}
-				<span class="loading loading-spinner loading-xs"></span>
-			{/if}
-		</div>
-		{#if rarityError}
-			<div class="text-xs text-error">{rarityError}</div>
-		{/if}
 	</td>
 	<td>
 		<div class="join">

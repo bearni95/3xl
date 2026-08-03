@@ -128,9 +128,9 @@
 				<!-- Wide enough for the row's portrait and the two animation previews it
 				     spans, and no wider: the editable fields are what the table is for. -->
 				<th class="w-44"></th>
+				<!-- The name, the show and the rarity are three fields of one character,
+				     so they are one cell rather than three columns. -->
 				<th>Character</th>
-				<th>Show</th>
-				<th>Rarity</th>
 				<th>Detail</th>
 			</tr>
 		</thead>
