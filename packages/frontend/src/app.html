@@ -102,6 +102,44 @@
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<!--
+			The splash, and the reason it is markup in the shell rather than a component.
+
+			This build is a static SPA: until the bundle boots there is no app, no
+			stylesheet and no route — a component-drawn splash would first have to wait
+			for the very load it is there to cover, and the player would watch a white
+			page in the meantime. So the red field and the video are in the document
+			adapter-static writes, which is on screen at the first paint and starts
+			fetching the video while the bundle is still coming down.
+
+			That is also why every rule here is an inline style and not a Tailwind class:
+			app.css is imported by the bundle, so no class in this file would mean
+			anything for the whole time this element is the only thing on screen. The red
+			is Tailwind's red-600 spelled as hex for the same reason.
+
+			The video is muted (a browser autoplays nothing else), `playsinline` so iOS
+			Safari does not take it fullscreen, and `object-fit: cover` — it is scaled to
+			whichever of the viewport's two sides needs it more and cropped on the other,
+			so it always fills the screen whatever the window's shape. It carries no
+			controls: it is not something to operate.
+
+			`SplashScreen.svelte` is what takes it away, 500ms after the app mounts; the
+			id is the handle it removes it by. Nothing else here knows about the app, and
+			nothing in the app draws this.
+		-->
+		<div
+			id="splash"
+			style="position: fixed; inset: 0; z-index: 9999; overflow: hidden; background: #e7000b"
+		>
+			<video
+				src="%sveltekit.assets%/assets/video/splash.mp4"
+				style="width: 100%; height: 100%; object-fit: cover"
+				autoplay
+				loop
+				muted
+				playsinline
+			></video>
+		</div>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

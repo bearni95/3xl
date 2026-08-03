@@ -5,6 +5,7 @@
 	import SignInModal from '$components/core/SignInModal.svelte';
 	import LegalModal from '$components/core/LegalModal.svelte';
 	import LegalGate from '$components/core/LegalGate.svelte';
+	import SplashScreen from '$components/core/SplashScreen.svelte';
 
 	let { children } = $props();
 </script>
@@ -25,3 +26,6 @@
 	asking about must not mean dismissing the gate. -->
 <LegalGate />
 <LegalModal />
+<!-- Draws nothing: it clears the splash the shell put up, 500ms after this layout mounts.
+	Out here because the splash covers the whole app rather than any one route. -->
+<SplashScreen />

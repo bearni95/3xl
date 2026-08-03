@@ -22,7 +22,8 @@ const MIME: Record<string, string> = {
 	'.webp': 'image/webp',
 	'.svg': 'image/svg+xml',
 	'.json': 'application/json',
-	'.mp3': 'audio/mpeg'
+	'.mp3': 'audio/mpeg',
+	'.mp4': 'video/mp4'
 };
 
 /**
