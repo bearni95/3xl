@@ -50,6 +50,15 @@
  * they part when the row that ran out of roster is what reaches furthest to one side, and
  * saying so is the point of drawing both.
  *
+ * Over the trio hangs a **picture** ({@link MugenPosterGridOptions.centerImage} — on the
+ * admin's screen, the game's own social card), fitted whole inside the ground those three
+ * cells cover. It is the one thing here that is neither ground nor roster, which is exactly
+ * why it is put on the three cells the roster never reaches: it takes nothing from the wall,
+ * and the middle of a field grown outward from those cells is the one place on it that means
+ * something without a character standing there. It is drawn over the ground, because it
+ * stands on it, and under the halving line, because a line that broke at the middle of the
+ * field would not be halving it.
+ *
  * One canvas rather than one per character: a browser allows a handful of WebGL
  * contexts at a time (see `release-context`), and the roster is dozens of characters —
  * a canvas each would evict itself before the wall had finished loading.
@@ -161,6 +170,14 @@ export interface MugenPosterGridOptions {
 	/** Fill of the three cells at the middle — the ground the field is laid around, which
 	 * is drawn and kept clear (see {@link KEPT_CELLS}). */
 	centerCellColor?: number;
+	/**
+	 * A picture to hang over the kept trio: the one thing the wall draws that is neither
+	 * ground nor roster. Fitted whole inside the three cells' own extent and centred on it,
+	 * so it is as wide as the pair at the top of the trio and its own shape decides the
+	 * rest. Left out, the trio is bare blue as before, and a URL that will not load leaves
+	 * it that way too — the wall is about the characters.
+	 */
+	centerImage?: string;
 	/** The line down the middle of the field. */
 	halvingLineColor?: number;
 	/** Called as the wall fills in. */
@@ -368,12 +385,24 @@ export class MugenPosterGrid {
 	private readonly cellColor: number;
 	private readonly cellLineColor: number;
 	private readonly centerCellColor: number;
+	private readonly centerImage?: string;
 	private readonly halvingLineColor: number;
 	private readonly onStatus?: (status: PosterGridStatus) => void;
 
 	private app: Application | null = null;
 	private host: HTMLElement | null = null;
+	// The three layers under the roster, drawn in this order: the ground, the picture over
+	// the kept trio, and the line that halves the field. The picture is over the ground
+	// because it stands on it, and under the line because a line that stopped at the middle
+	// of the field would not be halving it — which is the one thing the line is for. Two
+	// Graphics rather than one because a Graphics is drawn in a single pass, so nothing can
+	// be got in between what one of them draws.
 	private backdrop: Graphics | null = null;
+	private emblem: Sprite | null = null;
+	// Whether the picture arrived. Not the sprite's own visibility, which the layout sets
+	// from this *and* from whether there is a trio drawn to hang it over yet.
+	private emblemLoaded = false;
+	private marks: Graphics | null = null;
 	private stage: Container | null = null;
 	private observer: ResizeObserver | null = null;
 
@@ -396,6 +425,7 @@ export class MugenPosterGrid {
 		this.cellColor = options.cellColor ?? DEFAULTS.cellColor;
 		this.cellLineColor = options.cellLineColor ?? DEFAULTS.cellLineColor;
 		this.centerCellColor = options.centerCellColor ?? DEFAULTS.centerCellColor;
+		this.centerImage = options.centerImage;
 		this.halvingLineColor = options.halvingLineColor ?? DEFAULTS.halvingLineColor;
 		this.onStatus = options.onStatus;
 	}
@@ -427,13 +457,19 @@ export class MugenPosterGrid {
 
 		// The field goes in first and stays behind every character.
 		this.backdrop = new Graphics();
+		// Hung on its own middle, so the layout has only to say where that middle is; blank
+		// and hidden until (and unless) a picture is asked for and lands.
+		this.emblem = new Sprite();
+		this.emblem.anchor.set(0.5);
+		this.emblem.visible = false;
+		this.marks = new Graphics();
 		this.stage = new Container();
 		// The rows overlap — a character rises into the row above it — so who is in front
 		// is decided by whose feet are lower on the screen, as it is on the board. The
 		// posters do not arrive in that order (they arrive as they load), so the stage
 		// sorts rather than relying on the order they were added in.
 		this.stage.sortableChildren = true;
-		app.stage.addChild(this.backdrop, this.stage);
+		app.stage.addChild(this.backdrop, this.emblem, this.marks, this.stage);
 
 		// The wall reflows with the window: the field keeps its shape and the cell takes
 		// the difference, so this re-draws and re-sizes but never re-loads.
@@ -444,7 +480,10 @@ export class MugenPosterGrid {
 		this.layout();
 		this.report();
 
-		await this.loadAll();
+		// The picture is one file and the roster is dozens, so it is asked for alongside
+		// them rather than ahead of them — it lands when it lands, and the layout it lands
+		// in is the one already on screen.
+		await Promise.all([this.loadCenterImage(), this.loadAll()]);
 	}
 
 	/** Tear everything down. Safe to call more than once. */
@@ -461,7 +500,30 @@ export class MugenPosterGrid {
 		this.posters = [];
 		this.host = null;
 		this.backdrop = null;
+		this.emblem = null;
+		this.marks = null;
 		this.stage = null;
+	}
+
+	/**
+	 * Fetch the picture that hangs over the kept trio, if one was asked for.
+	 *
+	 * Nothing here fails the wall: no URL, a URL that 404s, bytes that will not decode —
+	 * each leaves the trio the bare blue ground it was before, which is a mark the wall
+	 * still reads by. The roster is what the screen is for.
+	 */
+	private async loadCenterImage(): Promise<void> {
+		if (!this.centerImage) return;
+		try {
+			const texture = await Assets.load<Texture>(this.centerImage);
+			if (this.destroyed || !this.emblem) return;
+			this.emblem.texture = texture;
+			this.emblemLoaded = true;
+			// It has a size now, which is what the fit is worked out from.
+			this.layout();
+		} catch {
+			// Left hidden.
+		}
 	}
 
 	/**
@@ -603,7 +665,8 @@ export class MugenPosterGrid {
 		const app = this.app;
 		const host = this.host;
 		const backdrop = this.backdrop;
-		if (!app || !host || !backdrop || this.destroyed) return;
+		const marks = this.marks;
+		if (!app || !host || !backdrop || !marks || this.destroyed) return;
 
 		const cells = wallCells(this.posters.length);
 		const field = fieldExtent(cells);
@@ -642,6 +705,13 @@ export class MugenPosterGrid {
 				.stroke({ width: 1, color: this.cellLineColor });
 		}
 
+		// The picture over the kept trio, fitted whole inside the ground those three cells
+		// cover and hung on the middle of it. The trio's *extent* rather than its three
+		// centres averaged: what an eye centres a picture on is the shape, and a mean of the
+		// three points is pulled up toward the pair that are two of them. So it is as wide as
+		// the pair, and its own proportions decide how much of the trio's height it takes.
+		this.placeEmblem(cells, cellWidth, onCanvas);
+
 		// The roster stands on the rest of it, in the order the fill reached the cells, each
 		// facing whichever way its side of the halving line faces.
 		const stands = cells.filter((cell) => !cell.kept);
@@ -665,16 +735,48 @@ export class MugenPosterGrid {
 			poster.sprite.zIndex = foot.y;
 		});
 
-		// The line that halves the field, drawn over the ground and under the characters:
-		// it is a mark on the board, not a thing standing on it. Nothing to halve until
-		// somebody has landed on the wall.
+		// The line that halves the field, drawn over the ground and the picture on it and
+		// under the characters: it is a mark on the board, not a thing standing on it.
+		// Nothing to halve until somebody has landed on the wall.
+		marks.clear();
 		if (this.posters.length > 0) {
 			const middleX = onCanvas({ x: middle, y: 0 }).x;
-			backdrop
+			marks
 				.moveTo(middleX, 0)
 				.lineTo(middleX, height)
 				.stroke({ width: 2, color: this.halvingLineColor });
 		}
+	}
+
+	/**
+	 * Hang the picture over the kept trio: centred on the middle of the ground the three
+	 * cells cover, and scaled to sit whole inside it — the smaller of the two fits, so it
+	 * is the picture's own shape that decides which of the trio's dimensions it fills and
+	 * which it leaves blue. Nothing to hang it on before a cell has been drawn.
+	 */
+	private placeEmblem(
+		cells: WallCell[],
+		cellWidth: number,
+		onCanvas: (point: GridPoint) => GridPoint
+	): void {
+		const emblem = this.emblem;
+		if (!emblem) return;
+		const kept = cells.filter((cell) => cell.kept);
+		// Both conditions asked afresh every layout, since either can turn up second: the
+		// picture lands whenever the network gives it, and the trio is drawn from the first
+		// character onward.
+		emblem.visible = this.emblemLoaded && kept.length > 0;
+		if (!emblem.visible) return;
+
+		const trio = fieldExtent(kept);
+		const at = onCanvas({ x: trio.left + trio.width / 2, y: trio.top + trio.height / 2 });
+		const picture = emblem.texture;
+		const fit = Math.min(
+			(trio.width * cellWidth) / picture.width,
+			(trio.height * cellWidth) / picture.height
+		);
+		emblem.position.set(at.x, at.y);
+		emblem.scale.set(fit);
 	}
 
 	/** Push a poster's current frame to its sprite: horizontally by the frame's own

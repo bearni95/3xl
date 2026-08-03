@@ -9,6 +9,14 @@
 	// the screen worth having — a correction can only be judged against the others.
 	const roster = characters.map(({ id, basePath }) => ({ id, basePath }));
 
+	// What hangs over the three kept cells at the middle of the wall: the player app's own
+	// social card — the picture Discord and the rest draw beside a link to the game — read
+	// straight out of `@3xl/frontend`'s static dir, which this app's Vite config mounts at
+	// /frontend precisely so nothing has to be copied. It is generated from
+	// `social-card.svg` by `pnpm --filter @3xl/frontend generate:social-card`, so editing
+	// the game's card changes what the wall wears, and nothing here has to be told.
+	const CENTER_IMAGE = '/frontend/social-card.png';
+
 	let status: PosterGridStatus = {
 		drawn: 0,
 		total: roster.length,
@@ -34,7 +42,8 @@
 				head. They stand on the board's own hex field, filled outward from the middle in
 				registry order and laid at whichever width comes out nearest a square, each on its
 				cell's foot line, so heights compare across the wall. The three blue cells at the
-				middle are kept clear; the red line halves the field.
+				middle are kept clear and wear the game's social card; the red line halves the
+				field.
 			</p>
 			<div class="flex flex-wrap gap-4 text-sm">
 				<a class="link link-primary" href="/characters">Characters →</a>
@@ -52,6 +61,7 @@
 
 		<MugenPosterGrid
 			characters={roster}
+			centerImage={CENTER_IMAGE}
 			on:status={(event) => (status = event.detail)}
 			classes="bg-base-300"
 		/>

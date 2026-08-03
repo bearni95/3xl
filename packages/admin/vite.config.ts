@@ -8,9 +8,17 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 // The @3xl/assets and @3xl/data workspace packages sit next to the frontend.
 // Their `public/` dirs are served at /assets and /data respectively.
+//
+// The third is the player app's own `static/` dir, at /frontend. The admin does not
+// depend on @3xl/frontend and this does not make it: it is a read-only mount of a
+// sibling folder, so the one file the authoring screens borrow from the shipped game
+// — the social card the poster wall hangs at its middle — is read where the frontend
+// generates it rather than copied here, where a copy would go stale the next time
+// `generate:social-card` ran.
 const WORKSPACE_PUBLIC = [
 	{ prefix: '/assets', dir: fileURLToPath(new URL('../assets/public', import.meta.url)) },
-	{ prefix: '/data', dir: fileURLToPath(new URL('../data/public', import.meta.url)) }
+	{ prefix: '/data', dir: fileURLToPath(new URL('../data/public', import.meta.url)) },
+	{ prefix: '/frontend', dir: fileURLToPath(new URL('../frontend/static', import.meta.url)) }
 ];
 const DIST_DIR = fileURLToPath(new URL('./dist', import.meta.url));
 
@@ -113,8 +121,9 @@ function serveDir(prefix: string, root: string) {
 }
 
 /**
- * Serves the @3xl/assets and @3xl/data packages the frontend installs:
- *  - dev/preview: connect middleware mounts each package's public/ dir;
+ * Serves the folders next door — the @3xl/assets and @3xl/data packages, and the player
+ * app's static dir (see {@link WORKSPACE_PUBLIC}):
+ *  - dev/preview: connect middleware mounts each one;
  *  - build: after adapter-static writes dist/, copy the dirs into dist so the
  *    static bundle is self-contained. Placed AFTER sveltekit() so this
  *    closeBundle runs once the adapter has finished emitting dist/.
