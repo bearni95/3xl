@@ -3127,7 +3127,24 @@
 						leaves the column to its plate alone — and only inside `ready`, so a statue never
 						says Ultramar at a town whose name is still on its way (see claimPlaceName). -->
 					{#if playerTeamLineup.length > 0}
-						<TeamLineup members={playerTeamLineup} />
+						<!-- And it is the way into the team, pressed as a whole: the three cards standing
+							here *are* the side the roster is for editing, so the reader who wants to
+							change them presses the thing they want to change rather than going looking
+							for it in the menu. The press is on the row and not on a card, because a
+							statue in this corner is a picture of who is fielded and not a control — the
+							roster is where a member is taken off (see TeamLineup's `selectable`, which
+							stays false here). One target over the lot, so there is no dead strip between
+							the cards either.
+							Named for a screen reader, since what is inside the button is three cards'
+							worth of names and colours and none of them says what pressing it does. -->
+						<button
+							type="button"
+							class="w-full cursor-pointer rounded-box focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+							aria-label={$_('roster.open')}
+							on:click={() => rosterModalOpen.set(true)}
+						>
+							<TeamLineup members={playerTeamLineup} />
+						</button>
 					{/if}
 
 					<!-- The way in, standing where the account's plate stands once there is an account.

@@ -137,6 +137,7 @@
 	},
 	"roster": {
 		"title": "Equip",
+		"open": "Obre l'equip",
 		"close": "Tanca l'equip",
 		"notConfigured": "L'inici de sessió no està disponible — Supabase no està configurat.",
 		"signInBody": "Inicia la sessió per veure els personatges que has reclamat.",
