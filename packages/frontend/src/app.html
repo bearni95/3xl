@@ -24,11 +24,20 @@
 			mounts and cannot be unmounted by anything the player opens over the map.
 			`defer` keeps it out of the critical path — nothing on screen waits on it,
 			and a host that is down costs the game nothing.
+
+			`data-domains` is what keeps development out of the counts: the tracker only
+			sends when `location.hostname` is in that list, so `pnpm dev` (localhost:2000),
+			`pnpm preview` and any local build of the bundle load the script and report
+			nothing. It is an attribute rather than a build-time condition because this
+			shell is SvelteKit's `app.html`, which Vite's html transforms never see — the
+			one copy of this file is what ships, so the check has to live in the page. The
+			domain is the one in static/CNAME; keep the two together if the site moves.
 		-->
 		<script
 			defer
 			src="https://umami.bearni.io/script.js"
 			data-website-id="3ffa72aa-6e9e-49e5-8940-0f53270b3236"
+			data-domains="3xl.bearni.io"
 		></script>
 		%sveltekit.head%
 	</head>
