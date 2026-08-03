@@ -386,25 +386,43 @@
 				{$_('profile.public.notFound')}
 			</p>
 		{:else}
-			<!-- The account, across the page rather than stacked in the column the map's corner
-				reads it at. The corner had the side above the plate because a corner is a
-				column and has nowhere else to put it; here there is a whole page's width, so
-				they stand side by side — the card they are read by, the side they field, and
-				the way out into the game. The card leads because that is the order the page is
-				read in: this is a page about a player, and the side is what that player fields.
-				At the map's corner it is the other way up, the side above the plate, because
-				there the side is the thing being played and the plate under it only says whose
-				it is. None of the three is held to a width of its own:
-				each takes the third of the row it is given, and the row takes the page. That
-				is why the card is PublicPlayerCard and not the map's plate — a portrait as
-				wide as a third of this page is a picture of somebody, which is what a page
-				about them should open with, and the plate is built the other way round on
-				purpose.
-				`items-start` so each cell is its own height: a lineup is as tall as a card is
-				and this card is as tall as its picture plus two lines, and stretching either to
-				match the other would print a plate with a foot of nothing under the reading. -->
+			<!-- The whole account across one row, rather than stacked in the column the map's
+				corner reads it at. The corner had the side above the plate because a corner is
+				a column and has nowhere else to put it; here there is a whole page's width, so
+				the three things this page knows about a player stand side by side — who they
+				are (with the way out into the game under it), the side they field, and the
+				towns they hold. The card leads because that is the order the page is read in:
+				this is a page about a player, and the side and the towns are what that player
+				has. At the map's corner it is the other way up, the side above the plate,
+				because there the side is the thing being played and the plate under it only
+				says whose it is. None of the three is held to a width of its own: each takes
+				the third of the row it is given, and the row takes the page. That is why the
+				card is PublicPlayerCard and not the map's plate — a portrait as wide as a third
+				of this page is a picture of somebody, which is what a page about them should
+				open with, and the plate is built the other way round on purpose.
+				`items-start` so each cell is its own height: these are three lists of different
+				lengths — a side is three cards, a collection of towns is however many there are
+				— and stretching each to the tallest would print a plate with a foot of nothing
+				under it. It is why the towns can be a column at all: a cell that stretched
+				would make the row as tall as the longest of them. -->
 			<div class="grid w-full grid-cols-3 items-start gap-3">
-				<PublicPlayerCard profile={player.profile} />
+				<!-- Who they are and the one thing a reader of this page can do, in that order
+					and in the one column: the card is what the page is about, and the button is
+					what to do about it. Stacked rather than given a cell each because a button
+					sitting alone in a third of the page is a button looking for something to be
+					next to. -->
+				<div class="flex flex-col gap-3">
+					<PublicPlayerCard profile={player.profile} />
+
+					<!-- The way into the game, which this page otherwise has none of: it is
+						somebody else's account read from outside, and the only thing a reader of it
+						can do is go and play their own. It goes to the root, the map, with nothing
+						named after it — a town in the column beside this one opens the map *on that
+						town*, and this opens it where a player's own map opens. -->
+					<a href="/" class="btn btn-primary btn-block">
+						{$_('profile.public.play')}
+					</a>
+				</div>
 
 				<!-- The side, as at the map's corner: three statues on nothing at all, each
 					bringing its own ground, standing the way the corner stands them. Nothing is
@@ -418,58 +436,53 @@
 					</p>
 				{/if}
 
-				<!-- The way into the game, which this page otherwise has none of: it is somebody
-					else's account read from outside, and the only thing a reader of it can do is
-					go and play their own. It goes to the root, the map, with nothing named after
-					it — a town on the list below opens the map *on that town*, and this opens it
-					where a player's own map opens. -->
-				<a href="/" class="btn btn-primary btn-block">
-					{$_('profile.public.play')}
-				</a>
-			</div>
+				<!-- The towns they hold, each drawn by the very row the column beside the map
+					lists a place with: the tile in the colour of the side sitting there, the name,
+					and the show that side flies. The same component and not a second one that
+					looks like it — a town is a town wherever it is listed, and two spellings of
+					one row is how a map and a profile come to disagree about a place.
+					Pressing one opens the map framed on it (see openTown), which is the only
+					thing a place on this page can usefully be pressed for. `current` and `marked`
+					are both off: this is not the column beside a map, so there is no open place
+					among these to be found or to be pointed at.
+					One town per line, in the third of the row this cell is: a row is a name and a
+					show, which is a line of text, and lines of text are read down a column. It
+					was a grid two to four across while it had the whole page to spread over and
+					stood under the account; standing beside it, it is what it always was on the
+					map — a list of places, which is the very thing the column beside the map is.
+					So the twelve a press adds is twelve whole rows here at any width, and the
+					tiers that had to divide it are gone with the columns they were about. -->
+				{#if visibleTowns.length > 0}
+					<div class="flex flex-col gap-2">
+						<!-- Each town on a plate of its own rather than the lot of them on one. A row
+							draws no ground itself — it is a name and a tile, read off whatever it is
+							listed on — so over satellite imagery it needs a surface either way; the
+							question is only whether that surface is the list or the place. Here it is
+							the place: these are towns held one at a time, each won on its own day by
+							its own side, and one sheet under them prints them as a single block the
+							way the column beside the map prints the level under an open region.
+							The plate is the wrapper and not the row, because RegionListRow is the
+							column's own component and a town is the same row wherever it is listed;
+							giving it a ground here would be giving it one there. Its own rounding stays
+							inside this one, `overflow-hidden` so the row's hover fill is cut to the
+							plate's corners rather than squaring them off. -->
+						{#each visibleTowns as town (town.key)}
+							<div class="overflow-hidden rounded-box bg-base-100/80 p-1 shadow-xl">
+								<RegionListRow row={town} onSelect={openTown} />
+							</div>
+						{/each}
 
-			<!-- The towns they hold, each drawn by the very row the column beside the map
-				lists a place with: the tile in the colour of the side sitting there, the name,
-				and the show that side flies. The same component and not a second one that looks
-				like it — a town is a town wherever it is listed, and two spellings of one row is
-				how a map and a profile come to disagree about a place.
-				Pressing one opens the map framed on it (see openTown), which is the only thing
-				a place on this page can usefully be pressed for. `current` and `marked` are
-				both off: this is not the column beside a map, so there is no open place among
-				these to be found or to be pointed at.
-				A grid rather than the column's stack, because there is width here that the
-				column does not have. The counts divide the twelve a press adds — two, three,
-				four — so a press always lands on whole rows, and it stops at four: a row is a
-				name and a show, and it stops being one at a narrower width than that. -->
-			{#if visibleTowns.length > 0}
-				<!-- Each town on a plate of its own rather than the lot of them on one. A row
-					draws no ground itself — it is a name and a tile, read off whatever it is
-					listed on — so over satellite imagery it needs a surface either way; the
-					question is only whether that surface is the list or the place. Here it is the
-					place: these are towns held one at a time, each won on its own day by its own
-					side, and one sheet under them prints them as a single block the way the
-					column beside the map prints the level under an open region. So the grid keeps
-					nothing but the columns and the gap, and the plate — base-100 at four fifths,
-					what every plate in this game is printed on — moves inside the cell.
-					The plate is the wrapper and not the row, because RegionListRow is the column's
-					own component and a town is the same row wherever it is listed; giving it a
-					ground here would be giving it one there. Its own rounding stays inside this
-					one, `overflow-hidden` so the row's hover fill is cut to the plate's corners
-					rather than squaring them off. -->
-				<div class="grid w-full grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
-					{#each visibleTowns as town (town.key)}
-						<div class="overflow-hidden rounded-box bg-base-100/80 p-1 shadow-xl">
-							<RegionListRow row={town} onSelect={openTown} />
-						</div>
-					{/each}
-				</div>
-
-				{#if remainingTowns > 0}
-					<button type="button" class="btn btn-outline btn-sm" on:click={showMoreTowns}>
-						{$_('profile.public.more', { values: { count: remainingTowns } })}
-					</button>
+						<!-- Another twelve, at the foot of the column they are added to rather than
+							at the foot of the page: the list is a cell now, and a button under the
+							whole row would be a press whose list a reader has to guess at. -->
+						{#if remainingTowns > 0}
+							<button type="button" class="btn btn-outline btn-sm" on:click={showMoreTowns}>
+								{$_('profile.public.more', { values: { count: remainingTowns } })}
+							</button>
+						{/if}
+					</div>
 				{/if}
-			{/if}
+			</div>
 
 			<!-- Everything they hold, one statue per card, newest first. A flat grid and
 				nothing else: not the album's cells (which are characters, one apiece, owned or
