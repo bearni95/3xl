@@ -297,7 +297,7 @@
           "file": "spr_7_0.png",
           "width": 39,
           "height": 54,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 54,
           "duration": 100
         },
@@ -305,13 +305,29 @@
           "file": "spr_7_1.png",
           "width": 38,
           "height": 55,
-          "anchorX": 18,
+          "anchorX": 17,
           "anchorY": 55,
           "duration": 100
         },
         {
           "file": "spr_7_2.png",
           "width": 37,
+          "height": 54,
+          "anchorX": 15,
+          "anchorY": 54,
+          "duration": 100
+        },
+        {
+          "file": "spr_7_3.png",
+          "width": 39,
+          "height": 54,
+          "anchorX": 16,
+          "anchorY": 54,
+          "duration": 100
+        },
+        {
+          "file": "spr_7_4.png",
+          "width": 39,
           "height": 54,
           "anchorX": 16,
           "anchorY": 54,
@@ -321,7 +337,7 @@
           "file": "spr_7_3.png",
           "width": 39,
           "height": 54,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 54,
           "duration": 100
         },
@@ -329,23 +345,7 @@
           "file": "spr_7_4.png",
           "width": 39,
           "height": 54,
-          "anchorX": 17,
-          "anchorY": 54,
-          "duration": 100
-        },
-        {
-          "file": "spr_7_3.png",
-          "width": 39,
-          "height": 54,
-          "anchorX": 17,
-          "anchorY": 54,
-          "duration": 100
-        },
-        {
-          "file": "spr_7_4.png",
-          "width": 39,
-          "height": 54,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 54,
           "duration": 100
         },
@@ -353,7 +353,7 @@
           "file": "spr_7_7.png",
           "width": 39,
           "height": 54,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 54,
           "duration": 100
         }
@@ -411,7 +411,7 @@
           "file": "spr_9_0.png",
           "width": 48,
           "height": 44,
-          "anchorX": 27,
+          "anchorX": 26,
           "anchorY": 44,
           "duration": 100
         }
@@ -539,7 +539,7 @@
           "file": "spr_17_1.png",
           "width": 34,
           "height": 55,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 55,
           "duration": 100
         },
@@ -547,7 +547,7 @@
           "file": "spr_17_2.png",
           "width": 37,
           "height": 55,
-          "anchorX": 20,
+          "anchorX": 18,
           "anchorY": 55,
           "duration": 100
         },
@@ -555,7 +555,7 @@
           "file": "spr_17_1.png",
           "width": 34,
           "height": 55,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 55,
           "duration": 100
         },
@@ -563,7 +563,7 @@
           "file": "spr_17_2.png",
           "width": 37,
           "height": 55,
-          "anchorX": 20,
+          "anchorX": 18,
           "anchorY": 55,
           "duration": 100
         },
@@ -571,7 +571,7 @@
           "file": "spr_17_1.png",
           "width": 34,
           "height": 55,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 55,
           "duration": 100
         },
@@ -579,7 +579,7 @@
           "file": "spr_17_2.png",
           "width": 37,
           "height": 55,
-          "anchorX": 20,
+          "anchorX": 18,
           "anchorY": 55,
           "duration": 100
         },
@@ -587,7 +587,7 @@
           "file": "spr_17_1.png",
           "width": 34,
           "height": 55,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 55,
           "duration": 100
         },
@@ -595,7 +595,7 @@
           "file": "spr_17_2.png",
           "width": 37,
           "height": 55,
-          "anchorX": 20,
+          "anchorX": 18,
           "anchorY": 55,
           "duration": 100
         },
@@ -603,7 +603,7 @@
           "file": "spr_17_9.png",
           "width": 40,
           "height": 55,
-          "anchorX": 23,
+          "anchorX": 24,
           "anchorY": 55,
           "duration": 100
         },
@@ -640,7 +640,7 @@
           "file": "spr_18_0.png",
           "width": 58,
           "height": 50,
-          "anchorX": 18,
+          "anchorX": 19,
           "anchorY": 50,
           "duration": 100
         },
@@ -648,7 +648,7 @@
           "file": "spr_18_1.png",
           "width": 62,
           "height": 50,
-          "anchorX": 17,
+          "anchorX": 18,
           "anchorY": 50,
           "duration": 100
         },
@@ -656,7 +656,7 @@
           "file": "spr_18_2.png",
           "width": 44,
           "height": 50,
-          "anchorX": 16,
+          "anchorX": 17,
           "anchorY": 50,
           "duration": 100
         },
@@ -664,7 +664,7 @@
           "file": "spr_18_3.png",
           "width": 34,
           "height": 50,
-          "anchorX": 17,
+          "anchorX": 18,
           "anchorY": 50,
           "duration": 100
         },
@@ -672,7 +672,7 @@
           "file": "spr_18_4.png",
           "width": 55,
           "height": 49,
-          "anchorX": 17,
+          "anchorX": 18,
           "anchorY": 49,
           "duration": 100
         },
@@ -680,7 +680,7 @@
           "file": "spr_18_5.png",
           "width": 57,
           "height": 49,
-          "anchorX": 17,
+          "anchorX": 18,
           "anchorY": 49,
           "duration": 100
         },
@@ -688,7 +688,7 @@
           "file": "spr_18_6.png",
           "width": 34,
           "height": 50,
-          "anchorX": 17,
+          "anchorX": 18,
           "anchorY": 50,
           "duration": 100
         }
@@ -738,7 +738,7 @@
           "file": "spr_20_0.png",
           "width": 37,
           "height": 50,
-          "anchorX": 22,
+          "anchorX": 23,
           "anchorY": 50,
           "duration": 100
         },
@@ -746,7 +746,7 @@
           "file": "spr_20_1.png",
           "width": 55,
           "height": 62,
-          "anchorX": 37,
+          "anchorX": 38,
           "anchorY": 62,
           "duration": 100
         },
@@ -754,7 +754,7 @@
           "file": "spr_20_2.png",
           "width": 51,
           "height": 44,
-          "anchorX": 23,
+          "anchorX": 24,
           "anchorY": 44,
           "duration": 100
         },
@@ -762,7 +762,7 @@
           "file": "spr_20_3.png",
           "width": 37,
           "height": 46,
-          "anchorX": 19,
+          "anchorX": 20,
           "anchorY": 46,
           "duration": 100
         },
@@ -770,7 +770,7 @@
           "file": "spr_20_4.png",
           "width": 45,
           "height": 46,
-          "anchorX": 26,
+          "anchorX": 27,
           "anchorY": 46,
           "duration": 100
         },
@@ -786,7 +786,7 @@
           "file": "spr_20_6.png",
           "width": 51,
           "height": 45,
-          "anchorX": 34,
+          "anchorX": 35,
           "anchorY": 45,
           "duration": 100
         },
@@ -794,7 +794,7 @@
           "file": "spr_20_7.png",
           "width": 34,
           "height": 50,
-          "anchorX": 19,
+          "anchorX": 20,
           "anchorY": 50,
           "duration": 100
         }
@@ -839,7 +839,7 @@
           "file": "spr_21_4.png",
           "width": 56,
           "height": 65,
-          "anchorX": 37,
+          "anchorX": 38,
           "anchorY": 65,
           "duration": 100
         },
@@ -1384,7 +1384,7 @@
           "file": "spr_26_4.png",
           "width": 44,
           "height": 49,
-          "anchorX": 16,
+          "anchorX": 17,
           "anchorY": 49,
           "duration": 100
         },
@@ -1408,7 +1408,7 @@
           "file": "spr_26_7.png",
           "width": 50,
           "height": 58,
-          "anchorX": 22,
+          "anchorX": 19,
           "anchorY": 58,
           "duration": 100
         },
@@ -1892,7 +1892,7 @@
           "file": "spr_30_2.png",
           "width": 57,
           "height": 42,
-          "anchorX": 29,
+          "anchorX": 30,
           "anchorY": 42,
           "duration": 100
         },
@@ -1908,7 +1908,7 @@
           "file": "spr_30_4.png",
           "width": 57,
           "height": 48,
-          "anchorX": 17,
+          "anchorX": 19,
           "anchorY": 48,
           "duration": 100
         },
@@ -1916,7 +1916,7 @@
           "file": "spr_30_5.png",
           "width": 57,
           "height": 48,
-          "anchorX": 17,
+          "anchorX": 19,
           "anchorY": 48,
           "duration": 100
         },
@@ -1977,7 +1977,7 @@
           "file": "spr_31_4.png",
           "width": 57,
           "height": 50,
-          "anchorX": 31,
+          "anchorX": 30,
           "anchorY": 50,
           "duration": 100
         },
@@ -2262,7 +2262,7 @@
           "file": "spr_32_24.png",
           "width": 69,
           "height": 63,
-          "anchorX": 45,
+          "anchorX": 46,
           "anchorY": 63,
           "duration": 100
         },
@@ -2437,7 +2437,7 @@
           "file": "spr_35_5.png",
           "width": 68,
           "height": 64,
-          "anchorX": 45,
+          "anchorX": 31,
           "anchorY": 64,
           "duration": 100
         },
@@ -2703,7 +2703,7 @@
           "file": "spr_17_1.png",
           "width": 34,
           "height": 55,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 55,
           "duration": 100
         },
@@ -2828,7 +2828,7 @@
           "file": "spr_38_3.png",
           "width": 86,
           "height": 68,
-          "anchorX": 44,
+          "anchorX": 41,
           "anchorY": 68,
           "duration": 100
         },
@@ -2836,7 +2836,7 @@
           "file": "spr_38_4.png",
           "width": 68,
           "height": 86,
-          "anchorX": 34,
+          "anchorX": 33,
           "anchorY": 86,
           "duration": 100
         },
@@ -2844,7 +2844,7 @@
           "file": "spr_38_5.png",
           "width": 86,
           "height": 68,
-          "anchorX": 38,
+          "anchorX": 42,
           "anchorY": 68,
           "duration": 100
         },
@@ -2860,7 +2860,7 @@
           "file": "spr_38_3.png",
           "width": 86,
           "height": 68,
-          "anchorX": 44,
+          "anchorX": 41,
           "anchorY": 68,
           "duration": 100
         },
@@ -2905,7 +2905,7 @@
           "file": "spr_38_4.png",
           "width": 68,
           "height": 86,
-          "anchorX": 35,
+          "anchorX": 31,
           "anchorY": 86,
           "duration": 100
         },
@@ -2913,7 +2913,7 @@
           "file": "spr_38_5.png",
           "width": 86,
           "height": 68,
-          "anchorX": 39,
+          "anchorX": 41,
           "anchorY": 68,
           "duration": 100
         },
@@ -2937,7 +2937,7 @@
           "file": "spr_38_8.png",
           "width": 64,
           "height": 59,
-          "anchorX": 27,
+          "anchorX": 26,
           "anchorY": 59,
           "duration": 100
         },
@@ -3038,7 +3038,7 @@
           "file": "spr_40_5.png",
           "width": 99,
           "height": 86,
-          "anchorX": 55,
+          "anchorX": 53,
           "anchorY": 86,
           "duration": 100
         },
@@ -3046,7 +3046,7 @@
           "file": "spr_40_6.png",
           "width": 99,
           "height": 105,
-          "anchorX": 82,
+          "anchorX": 83,
           "anchorY": 105,
           "duration": 100
         },
@@ -3054,7 +3054,7 @@
           "file": "spr_40_7.png",
           "width": 72,
           "height": 56,
-          "anchorX": 55,
+          "anchorX": 54,
           "anchorY": 56,
           "duration": 100
         },
@@ -3099,7 +3099,7 @@
           "file": "spr_41_3.png",
           "width": 63,
           "height": 42,
-          "anchorX": 36,
+          "anchorX": 37,
           "anchorY": 42,
           "duration": 100
         },
@@ -3139,7 +3139,7 @@
           "file": "spr_41_8.png",
           "width": 87,
           "height": 52,
-          "anchorX": 31,
+          "anchorX": 30,
           "anchorY": 52,
           "duration": 100
         },
@@ -3155,7 +3155,7 @@
           "file": "spr_41_10.png",
           "width": 68,
           "height": 51,
-          "anchorX": 46,
+          "anchorX": 48,
           "anchorY": 51,
           "duration": 100
         },
@@ -3163,7 +3163,7 @@
           "file": "spr_41_8.png",
           "width": 87,
           "height": 52,
-          "anchorX": 31,
+          "anchorX": 30,
           "anchorY": 52,
           "duration": 100
         },
@@ -3179,7 +3179,7 @@
           "file": "spr_41_10.png",
           "width": 68,
           "height": 51,
-          "anchorX": 46,
+          "anchorX": 48,
           "anchorY": 51,
           "duration": 100
         },
@@ -3187,7 +3187,7 @@
           "file": "spr_41_8.png",
           "width": 87,
           "height": 52,
-          "anchorX": 31,
+          "anchorX": 30,
           "anchorY": 52,
           "duration": 100
         },
@@ -3203,7 +3203,7 @@
           "file": "spr_41_10.png",
           "width": 68,
           "height": 51,
-          "anchorX": 46,
+          "anchorX": 48,
           "anchorY": 51,
           "duration": 100
         },
@@ -3299,7 +3299,7 @@
           "file": "spr_41_10.png",
           "width": 68,
           "height": 51,
-          "anchorX": 46,
+          "anchorX": 48,
           "anchorY": 51,
           "duration": 100
         },
@@ -3307,7 +3307,7 @@
           "file": "spr_41_29.png",
           "width": 87,
           "height": 71,
-          "anchorX": 45,
+          "anchorX": 67,
           "anchorY": 71,
           "duration": 100
         },
@@ -3368,7 +3368,7 @@
           "file": "spr_42_2.png",
           "width": 61,
           "height": 53,
-          "anchorX": 26,
+          "anchorX": 28,
           "anchorY": 53,
           "duration": 100
         },
@@ -3448,7 +3448,7 @@
           "file": "spr_42_12.png",
           "width": 47,
           "height": 58,
-          "anchorX": 24,
+          "anchorX": 21,
           "anchorY": 58,
           "duration": 100
         },
@@ -3653,7 +3653,7 @@
           "file": "spr_23_13.png",
           "width": 73,
           "height": 59,
-          "anchorX": 26,
+          "anchorX": 25,
           "anchorY": 59,
           "duration": 100
         },
@@ -3661,7 +3661,7 @@
           "file": "spr_23_14.png",
           "width": 73,
           "height": 59,
-          "anchorX": 26,
+          "anchorX": 25,
           "anchorY": 59,
           "duration": 100
         },
@@ -3677,7 +3677,7 @@
           "file": "spr_23_14.png",
           "width": 73,
           "height": 59,
-          "anchorX": 26,
+          "anchorX": 25,
           "anchorY": 59,
           "duration": 100
         },
@@ -3762,7 +3762,7 @@
           "file": "spr_44_2.png",
           "width": 62,
           "height": 52,
-          "anchorX": 37,
+          "anchorX": 38,
           "anchorY": 52,
           "duration": 100
         },
@@ -3802,7 +3802,7 @@
           "file": "spr_44_7.png",
           "width": 53,
           "height": 52,
-          "anchorX": 31,
+          "anchorX": 32,
           "anchorY": 52,
           "duration": 100
         },
@@ -3818,7 +3818,7 @@
           "file": "spr_44_9.png",
           "width": 68,
           "height": 63,
-          "anchorX": 29,
+          "anchorX": 20,
           "anchorY": 63,
           "duration": 100
         },
@@ -3842,7 +3842,7 @@
           "file": "spr_44_9.png",
           "width": 68,
           "height": 63,
-          "anchorX": 29,
+          "anchorX": 20,
           "anchorY": 63,
           "duration": 100
         },
@@ -3866,7 +3866,7 @@
           "file": "spr_44_9.png",
           "width": 68,
           "height": 63,
-          "anchorX": 29,
+          "anchorX": 20,
           "anchorY": 63,
           "duration": 100
         },
@@ -3882,7 +3882,7 @@
           "file": "spr_44_9.png",
           "width": 68,
           "height": 63,
-          "anchorX": 29,
+          "anchorX": 20,
           "anchorY": 63,
           "duration": 100
         },
@@ -4340,7 +4340,7 @@
           "file": "spr_29_1.png",
           "width": 58,
           "height": 45,
-          "anchorX": 21,
+          "anchorX": 23,
           "anchorY": 45,
           "duration": 100
         },
@@ -5173,7 +5173,7 @@
           "file": "spr_7_0.png",
           "width": 39,
           "height": 54,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 54,
           "duration": 100
         },
@@ -5181,13 +5181,29 @@
           "file": "spr_7_1.png",
           "width": 38,
           "height": 55,
-          "anchorX": 18,
+          "anchorX": 17,
           "anchorY": 55,
           "duration": 100
         },
         {
           "file": "spr_7_2.png",
           "width": 37,
+          "height": 54,
+          "anchorX": 15,
+          "anchorY": 54,
+          "duration": 100
+        },
+        {
+          "file": "spr_7_3.png",
+          "width": 39,
+          "height": 54,
+          "anchorX": 16,
+          "anchorY": 54,
+          "duration": 100
+        },
+        {
+          "file": "spr_7_4.png",
+          "width": 39,
           "height": 54,
           "anchorX": 16,
           "anchorY": 54,
@@ -5197,7 +5213,7 @@
           "file": "spr_7_3.png",
           "width": 39,
           "height": 54,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 54,
           "duration": 100
         },
@@ -5205,23 +5221,7 @@
           "file": "spr_7_4.png",
           "width": 39,
           "height": 54,
-          "anchorX": 17,
-          "anchorY": 54,
-          "duration": 100
-        },
-        {
-          "file": "spr_7_3.png",
-          "width": 39,
-          "height": 54,
-          "anchorX": 17,
-          "anchorY": 54,
-          "duration": 100
-        },
-        {
-          "file": "spr_7_4.png",
-          "width": 39,
-          "height": 54,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 54,
           "duration": 100
         },
@@ -5229,7 +5229,7 @@
           "file": "spr_7_7.png",
           "width": 39,
           "height": 54,
-          "anchorX": 17,
+          "anchorX": 16,
           "anchorY": 54,
           "duration": 100
         }

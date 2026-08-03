@@ -142,7 +142,7 @@ function cellRects(png, page, background) {
 		for (const [a, b] of runs) {
 			const hits = open.filter((r) => a <= r.maxX && b >= r.minX);
 			if (hits.length === 0) {
-				const rect = { minX: a, maxX: b, minY: y, maxY: y };
+				const rect = { minX: a, maxX: b, minY: y, maxY: y, background };
 				rects.push(rect);
 				next.push(rect);
 				continue;
@@ -206,9 +206,16 @@ function cellRects(png, page, background) {
  * otherwise swallow the lines it stands beside.
  *
  * What a second background has to prove is that it *is* one: a rectangle solidly
- * filled, standing on the page on every side. A flash of white inside a frame is
- * neither — it stands on the cell it is drawn on — and that is the test that keeps it
- * from being read as background and punched out of the frame it belongs to.
+ * filled, standing on the page on every side, and standing nowhere inside a cell
+ * already found. A flash of white is none of those — it stands on the cell it is
+ * drawn on — and these are the tests that keep it from being read as a background
+ * and taken out of the frame it belongs to. Which matters twice over, because a
+ * background colour is matched everywhere it appears within the cells it backs, so
+ * one accepted in error does not leave a mark, it leaves a hole.
+ *
+ * Each cell records the colour it was found on, and is cut against that one alone:
+ * the greens the animations are laid on and the green a portrait is pasted over are
+ * different greens, and neither is background to the other's art.
  */
 export function findCells(png) {
 	const { width, height } = png;
@@ -250,10 +257,15 @@ export function findCells(png) {
 		return border > 0 && onPage >= border * 0.9;
 	};
 
+	const inside = (r) =>
+		rects.some((o) => r.minX >= o.minX && r.maxX <= o.maxX && r.minY >= o.minY && r.maxY <= o.maxY);
 	for (const [colour, n] of ranked.slice(1)) {
 		if (n < width * height * MIN_EXTRA_BACKGROUND) break;
 		const found = cellRects(png, page, colour).filter(
-			(r) => (r.maxX - r.minX + 1) * (r.maxY - r.minY + 1) >= MIN_EXTRA_AREA && standsAlone(r)
+			(r) =>
+				(r.maxX - r.minX + 1) * (r.maxY - r.minY + 1) >= MIN_EXTRA_AREA &&
+				!inside(r) &&
+				standsAlone(r)
 		);
 		if (found.length === 0) continue;
 		backgrounds.push(colour);
@@ -461,45 +473,28 @@ export function findStrips(rects, captions) {
 /**
  * One cell as a frame: its own pixels, cropped to them.
  *
- * The background is flooded away from the cell's border rather than matched
- * everywhere, so a patch of the background colour the artwork encloses — the green
- * of a cell showing through a loop of rope — stays part of the frame instead of
- * becoming a hole in it. Returns null for a cell holding nothing.
+ * Every pixel of this cell's own background colour goes, wherever in the cell it is
+ * standing. It was flooded in from the border at first, on the theory that a patch of
+ * the background colour the artwork encloses is a patch the artwork meant — but what
+ * the artwork encloses is the gap under an arm, the loop of a tail, the space between
+ * two legs, and each of those came out carrying a lump of the sheet's green through
+ * onto the board. A chroma key is a colour the art does not use, which is the whole
+ * reason a ripper picks one, so matching it takes the background and only the
+ * background. *This cell's* key, though, and not every key on the sheet: a sheet that
+ * pastes its promo art over a second green does not thereby make that green
+ * transparent in the frames laid on the first. Returns null for a cell holding
+ * nothing.
  */
-function cutFrame(png, rect, page, backgrounds) {
+function cutFrame(png, rect, page) {
 	const { rgb } = reader(png);
 	const w = rect.maxX - rect.minX + 1;
 	const h = rect.maxY - rect.minY + 1;
-	const isBackground = (x, y) => {
-		const c = rgb(rect.minX + x, rect.minY + y);
-		return c === page || backgrounds.includes(c);
-	};
 	const cleared = new Uint8Array(w * h);
-	const stack = [];
-	const push = (x, y) => {
-		if (x < 0 || y < 0 || x >= w || y >= h) return;
-		const i = y * w + x;
-		if (cleared[i] || !isBackground(x, y)) return;
-		cleared[i] = 1;
-		stack.push(i);
-	};
-	for (let x = 0; x < w; x++) {
-		push(x, 0);
-		push(x, h - 1);
-	}
-	for (let y = 0; y < h; y++) {
-		push(0, y);
-		push(w - 1, y);
-	}
-	while (stack.length > 0) {
-		const i = stack.pop();
-		const x = i % w;
-		const y = (i - x) / w;
-		push(x - 1, y);
-		push(x + 1, y);
-		push(x, y - 1);
-		push(x, y + 1);
-	}
+	for (let y = 0; y < h; y++)
+		for (let x = 0; x < w; x++) {
+			const c = rgb(rect.minX + x, rect.minY + y);
+			if (c === page || c === rect.background) cleared[y * w + x] = 1;
+		}
 
 	let minX = w;
 	let maxX = -1;
@@ -599,7 +594,7 @@ function uniqueName(base, used) {
  */
 export function decodeSheet(srcDir, outDir) {
 	const { png, sidecar } = readSheetSource(srcDir);
-	const { page, backgrounds, rects, extra } = findCells(png);
+	const { page, rects, extra } = findCells(png);
 	const captions = findCaptions(png, page, [...rects, ...extra]);
 	const strips = findStrips(rects, captions);
 	// Every animation on a sheet is captioned. What is left uncaptioned and is not a
@@ -621,7 +616,7 @@ export function decodeSheet(srcDir, outDir) {
 	const frameMs = sidecar.frameMs ?? DEFAULT_FRAME_MS;
 	const slice = (cells) =>
 		cells
-			.map((cell) => cutFrame(png, cell, page, backgrounds))
+			.map((cell) => cutFrame(png, cell, page))
 			.filter(Boolean)
 			.map((frame) => ({ ...frame, ink: inkOf(frame) }));
 	const cut = animations.map((strip) => slice(strip.cells));
