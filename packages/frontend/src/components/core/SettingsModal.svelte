@@ -158,6 +158,24 @@
 				</form>
 			</ProfileCard>
 
+			<!-- The account as everybody else reads it. This sheet is where a player changes
+				who they are; the page behind this link is what that comes out as — the plate
+				and the side they field, at an address anyone can open (see
+				routes/profile/[id]). A link and not a button, because it goes somewhere: it
+				carries an href a player can copy, which is half of what the page is for.
+				In a new tab, so the map, the fight and the radio it is all standing over are
+				left running. `noopener` because a new tab given `window.opener` can reach
+				back into the one that spawned it — the target is our own page today, and a
+				rel that only holds while that stays true is not a rel worth writing. -->
+			<a
+				href="/profile/{$profile.id}"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="btn btn-outline mt-4 w-full"
+			>
+				{$_('profile.public.openMine')}
+			</a>
+
 			<!-- The data rights, under the account they are about: the copy of everything
 				held, the record of what has been accepted, and the way out for good.
 				Only when the player opened this sheet themselves. It comes up by itself
