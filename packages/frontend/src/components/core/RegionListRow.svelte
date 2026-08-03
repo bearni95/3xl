@@ -30,6 +30,13 @@
 	// is where a reader looks first, not somewhere they have to find anything.
 	export let marked: boolean = false;
 	export let onSelect: (key: string) => void;
+	// What the press does, when it is not opening the place. One row asks for this — the head of
+	// the column, which is the place the map is already open on and so had the least to gain
+	// from a press that opens it: it is the radio's play/pause now (see RegionSubdivisions).
+	// Given as a name for it rather than as a flag, because the only thing this row has to know
+	// about a press it does not define is what to call it: the row's own text names a place and
+	// a song, and neither of those says what pressing it does.
+	export let pressLabel: string | null = null;
 	// The width the box is drawn at, which is how its height is said — the caller's, since it
 	// is a fact about the column and not about the row (see RegionSubdivisions' BOX_WIDTH).
 	export let boxWidth: string = '';
@@ -45,12 +52,16 @@
 	// block of planes. A row with nothing beside the name is a plain flex box of one item,
 	// which is every row of every tier above the municipality.
 	//
-	// Two more things may stand beside the name, and for the same reason: they are pressed, and
-	// a button does not hold a button. `lead` takes the place of the crumb's own tile — the
-	// caller draws the tile itself, outside the name's press, so something may stand on it —
-	// and `end` is the far end of the row before the box. One row asks for either, the head of
-	// the column, where the radio stands: the play/pause on the tile and the song at the end
-	// (see MusicTile, MusicTitle, and RegionSubdivisions, which puts them there).
+	// The head of the column used to hand a couple more things in beside the name — the radio's
+	// play/pause, stood on the crumb's own tile, and the song at the far end — for the same
+	// reason the box is out here: a button does not hold a button. Those are gone: the mark and
+	// the song are *inside* the name's button on that row now, as its second line, and the
+	// button itself is what presses them (see `line`, `pressLabel` and MusicLine). So the row is
+	// one press again, and the crumb has its tile back.
+	//
+	// `line` is that second line, handed straight through to the crumb's own slot for it: what
+	// stands under a place's name is the show it flies unless the caller has something more
+	// particular to say there.
 </script>
 
 <div
@@ -59,40 +70,39 @@
 		marked ? 'bg-primary text-primary-content hover:bg-primary/90' : 'hover:bg-white/10'
 	)}
 >
-	{#if $$slots.lead}
-		<!-- Where the crumb's tile would have been, at the same 8px in from the edge and centred
-			on the row's own height — the button's `px-2` after it is the gap the crumb spaced its
-			tile from its name by, so the row reads exactly as it did with the tile inside. -->
-		<span class="flex flex-none items-center ps-2">
-			<slot name="lead" />
-		</span>
-	{/if}
-
 	<button
 		type="button"
 		aria-current={current ? 'page' : undefined}
+		aria-label={pressLabel ?? undefined}
 		class="block min-w-0 flex-1 px-2 py-1 text-left"
 		on:click={() => onSelect(row.key)}
 	>
-		<MapBreadcrumb
-			label={row.label}
-			showName={row.showName}
-			showId={row.showId}
-			tileClasses={row.tileClasses}
-			truncated
-			tile={!$$slots.lead}
-		/>
+		<!-- The crumb is written out twice for the one reason that `$$slots` is settled when this
+			file is compiled and not when a row is drawn: content handed into a crumb inside an
+			`{#if}` is still content handed in, so a single call with the line in it would leave
+			every row in the column with an empty second line instead of the show it flies. The
+			branch is the honest way to say that one row has a line of its own and the rest do
+			not. -->
+		{#if $$slots.line}
+			<MapBreadcrumb
+				label={row.label}
+				showName={row.showName}
+				showId={row.showId}
+				tileClasses={row.tileClasses}
+				truncated
+			>
+				<slot name="line" />
+			</MapBreadcrumb>
+		{:else}
+			<MapBreadcrumb
+				label={row.label}
+				showName={row.showName}
+				showId={row.showId}
+				tileClasses={row.tileClasses}
+				truncated
+			/>
+		{/if}
 	</button>
-
-	{#if $$slots.end}
-		<!-- No padding of its own: what stands here says how wide it is and what it is spaced
-			from the edge by, since only the thing standing there knows whether it is drawn at all
-			(see MusicTitle) — and a gutter held open for something that is not there would be a
-			row that ends short of its own edge. -->
-		<span class="flex flex-none items-center">
-			<slot name="end" />
-		</span>
-	{/if}
 
 	{#if row.box}
 		<!-- At the far end of the entry and as tall as the entry is. The height is the one that is

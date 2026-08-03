@@ -20,9 +20,9 @@
 	// the station it plays on is the same object as a place over the show it flies. The
 	// second line is still the slot that made that possible — the station was a dial rather
 	// than a word — and it is kept because a crumb's own line is still the one thing about it
-	// that can be something other than a name to be read. The radio itself is on the head of
-	// the column beside the map now, where it has no line of its own at all: the place there
-	// already names the show, and a station is a show (see MusicTitle, MusicTile).
+	// that can be something other than a name to be read. The radio is a row of its own in the
+	// column beside the map now, and names no station at all: the row above it is the place,
+	// and a station is the show that place flies (see MusicRow, MusicTitle).
 
 	// The place, with its article already restored by the caller.
 	export let label: string = '';
@@ -45,11 +45,6 @@
 	// still does not fit there is nothing left to widen and the ellipsis is the honest mark.
 	// A crumb in a path never truncates — see below.
 	export let truncated: boolean = false;
-	// Whether the crumb draws its own tile. The one caller that says no is the head row of the
-	// column beside the map, which stands the tile outside the crumb's button so that the
-	// radio's play/pause can appear on it — and a button inside a button is not markup (see
-	// RegionListRow's `lead`). Everywhere else a crumb is its tile and its two lines.
-	export let tile: boolean = true;
 </script>
 
 <!-- Spans throughout, not divs: a crumb above the current one is wrapped in a `<button>`,
@@ -58,12 +53,10 @@
 	the bar is collapsed to this one step (see MapBreadcrumbs) rather than being made to fit
 	by cutting its names short. -->
 <span class="flex items-center gap-2">
-	{#if tile}
-		<!-- The tile the town panel and the pins draw, at 32px with a 20px glyph: the same plate,
-			sized for a line of them (see ShowTile). Decorative — the show is named in the line
-			right beside it. -->
-		<ShowTile {showId} {tileClasses} />
-	{/if}
+	<!-- The tile the town panel and the pins draw, at 32px with a 20px glyph: the same plate,
+		sized for a line of them (see ShowTile). Decorative — the show is named in the line
+		right beside it. -->
+	<ShowTile {showId} {tileClasses} />
 
 	<span class={classNames('flex flex-col text-left leading-tight', { 'min-w-0': truncated })}>
 		<span

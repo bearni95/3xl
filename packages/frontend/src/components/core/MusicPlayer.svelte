@@ -13,8 +13,8 @@
 	//
 	// It stood in the map's top-left corner, which is a corner of the map: a plate that
 	// is always up is a plate that is always in the way, and the one thing on it a
-	// player reaches for often is the pause — which is on the head of the column beside
-	// the map now, on the tile of the place the map is open on (see MusicTile). What is
+	// player reaches for often is the pause — which is in the column beside the map now,
+	// on the radio's own row under the place it is playing for (see MusicRow). What is
 	// left here is what is only wanted when it is wanted: which station, and what is on
 	// it. The menu is where everything that is not the map already lives.
 	//

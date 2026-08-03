@@ -259,16 +259,29 @@ leaving one plays its own song out. Only the *station* fades; the songs within o
 the way a station's do. The dial as a *select* survives in one place only — the menu's plate —
 which is where a listener goes to hear something other than where they are.
 
-So the radio stands twice, and only one of them is the whole of it: the plate at the foot of
-the menu, and on the map the head row of the column beside it — the row naming the open place,
-which is the place it is playing for. There it is two marks and no more: the play/pause comes
-up over that row's own show tile under the pointer (`MusicTile.svelte`, over the tile every
-crumb and pin wears, `ShowTile.svelte`), and the song is lettered at the far end of the same
-row (`MusicTitle.svelte`). No glyph and no station name of its own — the row says both
-already. That is why the tile is handed out of the crumb there (`MapBreadcrumb`'s `tile`,
-`RegionListRow`'s `lead`/`end` slots): a button does not stand inside a button. Before that
-the radio was a card at the foot of the map, and before that a `MapBreadcrumb` at the far end
-of the bar, where it took room a path needs. A song's title is a **banner** rather than a
+So the radio stands in the plate at the foot of the menu, and on the map in the column beside
+it — **twice over, on two rows that follow each other**, both of them the same components over
+the same store:
+
+- **The row naming the open place**, whose second line is the radio: the play/pause mark
+  (`MusicGlyph.svelte`) and the song behind it (`MusicLine.svelte`), in place of the show that
+  line used to letter. A station *is* a show and the map tunes the radio to the open place's
+  own, so where the two would stand one under the other the line says the more particular of
+  them; the show is still said by that row's tile. The whole row is the press — it was the
+  press with the least to do, being the place the map is already open on — which is
+  `RegionListRow`'s `pressLabel` and `line` slot, and `RegionSubdivisions`' `pressHead`. With
+  no song loaded the line is the show and the press opens the place, exactly as before.
+- **The row under it** (`MusicRow.svelte`), which is the plain statement of the same thing: a
+  real button where every other row of the column wears a tile (`MusicToggle.svelte`), and the
+  song across the rest of it (`MusicTitle.svelte`).
+
+Neither draws a glyph of the show or names the station: the tile above says the one and the
+map tunes the other. Before this the play/pause stood *on* the open place's show tile, coming
+up under the pointer, with the song in the far corner of that row — which is what
+`MapBreadcrumb`'s `tile` prop and `RegionListRow`'s `lead`/`end` slots existed for (a button
+does not stand inside a button); a control nobody sees until they point at it is why it came
+off. Before that the radio was a card at the foot of the map, and before that a
+`MapBreadcrumb` at the far end of the bar, where it took room a path needs. A song's title is a **banner** rather than a
 truncation (`MarqueeText.svelte`, whose keyframes are the one piece of CSS in `css/app.css` a
 component could not spell as a class): it scrolls end to end, and only when the line is wider
 than the box measures. Both

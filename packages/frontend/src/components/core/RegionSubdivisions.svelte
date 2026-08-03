@@ -3,11 +3,13 @@
 	import { createEventDispatcher } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
-	import MusicTile from '$components/core/MusicTile.svelte';
-	import MusicTitle from '$components/core/MusicTitle.svelte';
+	import { musicPressLabel } from '$components/core/MusicGlyph.svelte';
+	import MusicLine from '$components/core/MusicLine.svelte';
+	import MusicRow from '$components/core/MusicRow.svelte';
 	import RegionListRow from '$components/core/RegionListRow.svelte';
 	import ShowShareGrid from '$components/core/ShowShareGrid.svelte';
 	import { REGION_TYPE_KEYS } from '$components/core/region-types';
+	import { musicService } from '$services/music.service';
 	import type { MapBoosterBox } from '$types/map.type';
 	import type { RegionType } from '$utils/geo/region-tree';
 
@@ -115,6 +117,23 @@
 	// from a constant because Tailwind reads these class names out of the source text, and a
 	// name assembled at run time is a name it never sees.
 	const BOX_WIDTH = 'w-[calc(2.5rem*30/37)]';
+
+	// The radio, read here for the one thing the head row has to decide: what its press does.
+	// The line itself reads the same store on its own (see MusicLine) — this is not the column
+	// holding a copy of the radio, it is the column asking whether there is one to press.
+	const music = musicService.state;
+
+	// A press on the head row: the radio's play/pause while there is a song, and otherwise the
+	// press that row has always had. That row is the place the map is already open on, so the
+	// press it gives up is the one with the least to give — opening what is open — and a row
+	// whose own second line is the song and the mark saying whether it is running is a row that
+	// reads as the thing to press. Without a song the line is the show again and so is the
+	// press, which is a map with no radio on it reading exactly as it did before there was one.
+	$: radioPlaying = $music.track ? $music.playing : null;
+	$: pressHead = (key: string) => {
+		if ($music.track) musicService.toggle();
+		else dispatch('select', { key });
+	};
 </script>
 
 <!-- White ink, as on the bar: a crumb letters what it flies in white at 70% and is drawn to
@@ -126,34 +145,39 @@
 	{#if current}
 		<!-- Where the map is, at the head of its own level and lettered as the bar letters the
 			step it is on — the same `current`, the same `aria-current`, since it is the same
-			statement about the same place. Pressed like any other row: the view can be taken off
-			the place while the column goes on listing it, so there is somewhere for it to go.
+			statement about the same place.
 			Drawn by the very component the list below is drawn with, box and all: the head is a
 			row like the rest, and a town at the head of the column is de festa or is not on the
 			same terms as a town listed under it. `current` here is the row being the place the
 			map is on, which is what takes the fill.
 
-			And it is where the radio stands, because the radio is about this row. A station is a
-			show and the map tunes it to the show the open place flies (see musicService.follow),
-			so the tile at the head of this row is already the station: the play/pause comes up on
-			that very tile under the pointer (MusicTile), and the song is lettered at the far end
-			of the same row (MusicTitle). Nothing else of the radio is here — no second glyph, no
-			station named twice — and the tile is handed out of the crumb to make it, since the
-			button that appears on it cannot stand inside the button that opens the place. -->
+			Its second line is the radio: the song, behind the mark that says whether it is
+			running (MusicLine). That line was the show this place flies, and a station is a show —
+			the map tunes the radio to the open place's own (see musicService.follow) — so where
+			the two would have been written one under the other, the line says the more particular
+			of them and the show goes on being said by the tile at the head of the row. And the
+			whole row is that mark's press: it was the one press on this column with the least to
+			do, being the place the map is already open on, and a row lettered with a play mark and
+			a song is a row that reads as the thing to press. Without a song it is the show and the
+			press it always was (see pressHead). -->
 		<RegionListRow
 			row={current}
 			current
 			boxWidth={BOX_WIDTH}
-			onSelect={(key) => dispatch('select', { key })}
+			onSelect={pressHead}
+			pressLabel={radioPlaying === null ? null : musicPressLabel(radioPlaying)}
 		>
-			<svelte:fragment slot="lead">
-				<MusicTile showId={current.showId} tileClasses={current.tileClasses} />
-			</svelte:fragment>
-
-			<svelte:fragment slot="end">
-				<MusicTitle />
+			<svelte:fragment slot="line">
+				<MusicLine showName={current.showName} />
 			</svelte:fragment>
 		</RegionListRow>
+
+		<!-- The radio's own row, directly under the place it is playing for: the play/pause where
+			every other row of this column wears a tile, and the song across the rest of it (see
+			MusicRow). The row above is now lettered with the same two things and is the same
+			press, so this is the second saying of them — it is kept because it is the plain one:
+			a button that looks like a button, in a row that is about nothing but the radio. -->
+		<MusicRow />
 
 		<!-- Whatever else the place at the head has to say for itself, between its name and the
 			level below it: the caller's, because what a place carries depends on what kind of

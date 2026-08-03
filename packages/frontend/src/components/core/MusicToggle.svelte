@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import MusicGlyph, { musicPressLabel } from '$components/core/MusicGlyph.svelte';
 	import { musicService } from '$services/music.service';
 
 	// The radio's play/pause, on its own, because there are two places that need one and
@@ -14,10 +15,9 @@
 	// It draws nothing until there is a song, like the plate: a map whose music never
 	// arrived is a map with no music control on it, not one with a dead button.
 	//
-	// Shape is the caller's: a ghost circle on the menu's plate, and on the map a square
-	// covering the tile of the place the map is open on, in that place's own colours, coming
-	// up under the pointer where the show's glyph is (see MusicTile). None of that is a fact
-	// about a play button.
+	// Shape is the caller's: a ghost circle on the menu's plate, and on the map a square at the
+	// head of the radio's own row in the column, where every other row of that column wears a
+	// place's tile (see MusicRow). None of that is a fact about a play button.
 
 	/** The button's own classes — its shape and colour belong to where it stands. */
 	export let classes: string = '';
@@ -40,17 +40,11 @@
 	<button
 		type="button"
 		class={classes}
-		aria-label={state.playing ? 'Pause music' : 'Play music'}
+		aria-label={musicPressLabel(state.playing)}
 		on:click={() => musicService.toggle()}
 	>
-		{#if state.playing}
-			<svg viewBox="0 0 24 24" fill="currentColor" class={iconClasses} aria-hidden="true">
-				<path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-			</svg>
-		{:else}
-			<svg viewBox="0 0 24 24" fill="currentColor" class={iconClasses} aria-hidden="true">
-				<path d="M8 5v14l11-7z" />
-			</svg>
-		{/if}
+		<!-- The one mark, drawn where it is also drawn inside a line of text that is its own
+			press (see MusicGlyph, MusicLine): a triangle stopped, two bars running. -->
+		<MusicGlyph playing={state.playing} classes={iconClasses} />
 	</button>
 {/if}
