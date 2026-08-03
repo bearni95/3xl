@@ -508,51 +508,56 @@
 							rather than by being `sticky` inside it — a sticky head over rows that pass
 							behind it needs a ground of its own to hide them with, and the ground here
 							is satellite imagery. -->
-						<div class="absolute inset-0 flex flex-col gap-2">
-							<!-- The field, in the plate the rows under it stand on so it reads as the
-								head of this column rather than as a stray input over the map. Not
-								LocationSearchBox, which is the map's own field: that one is mounted by a
-								press, focuses itself, and folds away when it is left empty — none of
-								which is wanted by a field that is simply always there. -->
+						<!-- One plate for the whole column, field and list together, rather than one
+							under each town: the same base-100 at four fifths every plate in this game
+							is printed on, which is what lets any of this be read over satellite
+							imagery. A town had a plate of its own while the towns were a grid spread
+							across the page — separate places, separately won, in separate cells — but
+							a single column of them is a list, and a list stands on one sheet the way
+							the column beside the map does. Which also makes the field part of the
+							thing it filters instead of a stray input floating above it. -->
+						<div class="absolute inset-0 flex flex-col gap-2 rounded-box bg-base-100/80 p-2 shadow-xl">
+							<!-- The field at the head of the column. Not LocationSearchBox, which is the
+								map's own: that one is mounted by a press, focuses itself, and folds away
+								when it is left empty — none of which is wanted by a field that is simply
+								always there. -->
 							<input
 								type="search"
-								class="input input-bordered input-sm w-full flex-none bg-base-100/80"
+								class="input input-bordered input-sm w-full flex-none"
 								placeholder={$_('profile.public.filterTowns')}
 								aria-label={$_('profile.public.filterTowns')}
 								bind:value={townFilter}
 							/>
 
-							<!-- The list itself, scrolling in the one axis. `pe-1` keeps the plates clear
-								of the scrollbar rather than letting it sit over their corners. -->
-							<div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pe-1">
-								<!-- Each town on a plate of its own rather than the lot of them on one. A
-									row draws no ground itself — it is a name and a tile, read off whatever it
-									is listed on — so over satellite imagery it needs a surface either way; the
-									question is only whether that surface is the list or the place. Here it is
-									the place: these are towns held one at a time, each won on its own day by
-									its own side, and one sheet under them prints them as a single block the
-									way the column beside the map prints the level under an open region.
-									The plate is the wrapper and not the row, because RegionListRow is the
-									column's own component and a town is the same row wherever it is listed;
-									giving it a ground here would be giving it one there. Its own rounding
-									stays inside this one, `overflow-hidden` so the row's hover fill is cut to
-									the plate's corners rather than squaring them off.
-									`flex-none` because these are flex items in a scroller: a column of them
-									taller than the box would otherwise be squeezed to fit it, which is a list
-									that gets thinner the more there is of it instead of scrolling. -->
-								{#each filteredTowns as town (town.key)}
-									<div class="flex-none overflow-hidden rounded-box bg-base-100/80 p-1 shadow-xl">
+							<!-- The list itself, scrolling in the one axis. `pe-1` keeps the rows clear
+								of the scrollbar rather than letting it run over their ends. No gap: what
+								spaces one row from the next is the rule between them. -->
+							<div class="flex min-h-0 flex-1 flex-col overflow-y-auto pe-1">
+								<!-- Each town is the row and nothing around it now — the plate it used to
+									carry is the column's. `flex-none` because these are flex items in a
+									scroller: a column of them taller than the box would otherwise be squeezed
+									to fit it, which is a list that gets thinner the more there is of it
+									instead of scrolling.
+									A rule after every row but the last, which is what separating a list means:
+									a line under the final town would be a list that looks like it was cut off
+									rather than one that ended. daisyUI's own divider, with its margins taken
+									off — it brings a height of its own, and that height is the spacing these
+									rows are read with. -->
+								{#each filteredTowns as town, index (town.key)}
+									<div class="flex-none">
 										<RegionListRow row={town} onSelect={openTown} />
 									</div>
+									{#if index < filteredTowns.length - 1}
+										<div class="divider my-0 flex-none"></div>
+									{/if}
 								{/each}
 
 								<!-- A query that catches nothing says so, in the same words the map's own
 									search says it in: an empty column under a field with text in it is a
-									list that looks broken rather than one that looks empty. -->
+									list that looks broken rather than one that looks empty. On no plate of
+									its own — it is standing on the column's. -->
 								{#if filteredTowns.length === 0}
-									<p
-										class="flex-none rounded-box bg-base-100/80 px-2 py-3 text-center text-xs opacity-60 shadow-xl"
-									>
+									<p class="flex-none px-2 py-3 text-center text-xs opacity-60">
 										{$_('map.search.empty')}
 									</p>
 								{/if}
