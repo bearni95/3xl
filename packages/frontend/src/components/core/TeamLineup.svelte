@@ -15,7 +15,8 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
-	import { showLogos, loadShowLogos } from '$services/shows.service';
+	import ShowIcon from '$components/core/ShowIcon.svelte';
+	import { showLogos, loadShowLogos, showGlyphs } from '$services/shows.service';
 	import { SPAWN_PANEL_CLASSES } from '$components/core/spawn-colors';
 	import { SpawnBox, type SpawnColor } from '$types/character-spawn.type';
 
@@ -148,6 +149,12 @@
 	// out what show it is (the statues under it carry the mark, and the roster names it), so a
 	// name lettered in its place would be a second kind of banner.
 	$: bannerLogo = lead?.showId != null ? ($showLogos.get(lead.showId) ?? null) : null;
+	// The same show's glyph, which stands at both ends of the band. Unlike the logos these are
+	// fetched by being subscribed to, so naming the store here is what asks for the collection.
+	// It is read off the lead's show and not off the wordmark: the glyph is the show's own mark,
+	// so a show with a picked glyph and no enabled logo flies the two marks and no lettering,
+	// exactly as a show with neither flies the colour alone.
+	$: bannerGlyph = lead?.showId != null ? ($showGlyphs.get(lead.showId) ?? null) : null;
 	// What the band is painted: the lead's colour where a player is behind this side, the map's
 	// grey where nobody is.
 	$: bandFill = seeded || !lead ? UNHELD_BAND : SPAWN_PANEL_CLASSES[lead.color];
@@ -169,18 +176,25 @@
 		it comes to with one on it, so a side whose show has no wordmark — or whose wordmark is
 		still on its way — flies the same band and not a thin stripe that grows when the mark
 		lands.
+		The show's glyph stands at either end of the same row, one mark each side of the
+		lettering. Unlike the wordmark it is not capped: it is stretched to the band's own
+		content height — the height the wordmark sets — so the two marks are exactly as tall as
+		the lettering between them whatever aspect the show's artwork was drawn at. They take
+		the band's ink colour rather than any of their own, being inline svg (see ShowIcon).
 		Behind the statues, all three of which are raised over it (see cellShares): the band is
 		the ground the side stands on, not a lid over it. -->
 	{#if lead}
 		<div
 			class={classNames(
-				'absolute inset-x-0 top-0 z-0 flex min-h-12 items-center justify-center rounded-md px-2 py-2',
+				'absolute inset-x-0 top-0 z-0 flex min-h-12 items-center justify-center gap-2 rounded-md px-2 py-2',
 				bandFill
 			)}
 		>
+			<ShowIcon markup={bannerGlyph} classes="self-stretch [&>svg]:h-full [&>svg]:w-auto" />
 			{#if bannerLogo}
 				<img src={bannerLogo.url} alt={bannerLogo.name} class="max-h-8 max-w-[80%] object-contain" />
 			{/if}
+			<ShowIcon markup={bannerGlyph} classes="self-stretch [&>svg]:h-full [&>svg]:w-auto" />
 		</div>
 	{/if}
 
