@@ -54,10 +54,12 @@
 <!-- Three columns: the picture in the first and the reading across the other two. Said as a
 	grid rather than as a flex row so the picture is a *third of the card* at any width — a
 	flex row would have sized it from its own content, and a portrait sized by its own artwork
-	is a different square on every account. `items-center` so the reading sits on the middle of
-	the picture's height rather than at the top of a square several lines tall.
+	is a different square on every account. `items-start`, so the name and the level begin at
+	the top of the card, level with the top of the picture beside them — a reading is read
+	downwards from where it starts, and two lines centred against a square several lines tall
+	float in the middle of it with nothing to be level with.
 	No fill, no rounding and no shadow: see above — the ground is the column's. -->
-<div class={classNames('grid grid-cols-3 items-center gap-2', classes)}>
+<div class={classNames('grid grid-cols-3 items-start gap-2', classes)}>
 	<!-- `w-full` is a width and not a shape: the avatar keeps itself square off the width of
 		the cell it is in (see PlayerAvatar's aspect-square). The letter is sized to that square
 		rather than to the plate's 20px — a portrait this size with a caption-sized initial in

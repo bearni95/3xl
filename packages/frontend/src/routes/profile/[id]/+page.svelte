@@ -463,11 +463,14 @@
 					`self-stretch` out of the row's `items-start`, so the plate is as tall as the
 					row is however tall the side beside it turns out to be: three plates of three
 					different heights across one row reads as three things that happen to be near
-					each other, and this row is one statement about one player. The card and the
-					button stay at the top of it — a plate is a sheet things are printed on, and
-					what is on this one is a picture and a press, not a column to be spread down
-					the page. -->
-				<div class="flex flex-col gap-2 self-stretch rounded-box bg-base-100/80 p-2 shadow-xl">
+					each other, and this row is one statement about one player.
+					`justify-between` puts the height that stretch hands over between the two of
+					them rather than under them both: the card at the head of the plate and the
+					button at its foot, which is where a reader looks for the thing to press. The
+					`gap-2` is what they are held apart by when there is no slack to divide. -->
+				<div
+					class="flex flex-col justify-between gap-2 self-stretch rounded-box bg-base-100/80 p-2 shadow-xl"
+				>
 					<PublicPlayerCard profile={player.profile} />
 
 					<!-- The way into the game, which this page otherwise has none of: it is
