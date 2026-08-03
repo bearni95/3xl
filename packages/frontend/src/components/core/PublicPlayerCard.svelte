@@ -80,12 +80,12 @@
 		flex item's. -->
 	<div class="col-span-2 flex min-w-0 items-baseline gap-2">
 		<span
-			class={classNames('min-w-0 flex-1 truncate text-sm font-semibold text-white', {
+			class={classNames('min-w-0 flex-1 truncate text-lg font-semibold text-white', {
 				'text-white/50 italic': !profile.username
 			})}
 			title={shownName}>{shownName}</span
 		>
-		<span class="flex-none text-xs font-semibold text-white">
+		<span class="flex-none text-lg font-semibold text-white">
 			{$_('profile.levelBadge', { values: { level: progress.level } })}
 		</span>
 	</div>
