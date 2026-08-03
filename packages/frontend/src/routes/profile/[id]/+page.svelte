@@ -72,13 +72,14 @@
 	// mounting the lot at once is a page that arrives all at the same time as itself.
 	// The cards are all here either way — this is what is *drawn*, not what was fetched,
 	// so pressing More costs nothing but the mounting.
+	// It paginates the cards alone. The towns are all drawn at once: a row is a name, a
+	// tile and a glyph — markup, not a clip — so a thousand of them cost what a thousand
+	// lines of a list cost, and the column they stand in is a scroller with its own end
+	// rather than a page that grows. Reset for each player loaded, so a second profile
+	// opens at its own first page rather than however far down the previous one had been
+	// read.
 	const PAGE_SIZE = 12;
-	// One count per list, because they are two lists: a reader who has walked a
-	// collection to its end has said nothing about how many towns they want to see.
-	// Both reset for each player loaded, so a second profile opens at its own first
-	// page rather than however far down the previous one had been read.
 	let shown = PAGE_SIZE;
-	let shownTowns = PAGE_SIZE;
 
 	const charactersById = new Map(characters.map((character) => [character.id, character]));
 
@@ -106,7 +107,6 @@
 		failed = false;
 		player = null;
 		shown = PAGE_SIZE;
-		shownTowns = PAGE_SIZE;
 		try {
 			const [loaded, shows] = await Promise.all([
 				publicProfileService.load(id),
@@ -237,13 +237,6 @@
 				tileClasses: lead ? REGION_PANEL_CLASSES[lead.color] : null
 			};
 		}))(municipalityNames, showsByCharacter, showNameById);
-
-	$: visibleTowns = townRows.slice(0, shownTowns);
-	$: remainingTowns = Math.max(0, townRows.length - shownTowns);
-
-	function showMoreTowns(): void {
-		shownTowns += PAGE_SIZE;
-	}
 
 	// --- The map behind the page --------------------------------------------------
 	// The same four layers the map at the root draws, bottom-up — municipalities,
@@ -400,11 +393,13 @@
 				card is PublicPlayerCard and not the map's plate — a portrait as wide as a third
 				of this page is a picture of somebody, which is what a page about them should
 				open with, and the plate is built the other way round on purpose.
-				`items-start` so each cell is its own height: these are three lists of different
-				lengths — a side is three cards, a collection of towns is however many there are
-				— and stretching each to the tallest would print a plate with a foot of nothing
-				under it. It is why the towns can be a column at all: a cell that stretched
-				would make the row as tall as the longest of them. -->
+				`items-start` so a cell is its own height: the first two are a card and a side,
+				which are as tall as they are, and stretching either to match the other would
+				print a plate with a foot of nothing under it. The third takes itself out of
+				that rule (`self-stretch`) because it is the one cell with no length of its own
+				— a collection of towns is however many there are — so instead of setting the
+				height of the row it takes it, and scrolls. So the row is as tall as the account
+				beside it at every size, whether somebody holds three towns or three hundred. -->
 			<div class="grid w-full grid-cols-3 items-start gap-3">
 				<!-- Who they are and the one thing a reader of this page can do, in that order
 					and in the one column: the card is what the page is about, and the button is
@@ -450,36 +445,48 @@
 					was a grid two to four across while it had the whole page to spread over and
 					stood under the account; standing beside it, it is what it always was on the
 					map — a list of places, which is the very thing the column beside the map is.
-					So the twelve a press adds is twelve whole rows here at any width, and the
-					tiers that had to divide it are gone with the columns they were about. -->
-				{#if visibleTowns.length > 0}
-					<div class="flex flex-col gap-2">
-						<!-- Each town on a plate of its own rather than the lot of them on one. A row
-							draws no ground itself — it is a name and a tile, read off whatever it is
-							listed on — so over satellite imagery it needs a surface either way; the
-							question is only whether that surface is the list or the place. Here it is
-							the place: these are towns held one at a time, each won on its own day by
-							its own side, and one sheet under them prints them as a single block the
-							way the column beside the map prints the level under an open region.
-							The plate is the wrapper and not the row, because RegionListRow is the
-							column's own component and a town is the same row wherever it is listed;
-							giving it a ground here would be giving it one there. Its own rounding stays
-							inside this one, `overflow-hidden` so the row's hover fill is cut to the
-							plate's corners rather than squaring them off. -->
-						{#each visibleTowns as town (town.key)}
-							<div class="overflow-hidden rounded-box bg-base-100/80 p-1 shadow-xl">
-								<RegionListRow row={town} onSelect={openTown} />
-							</div>
-						{/each}
-
-						<!-- Another twelve, at the foot of the column they are added to rather than
-							at the foot of the page: the list is a cell now, and a button under the
-							whole row would be a press whose list a reader has to guess at. -->
-						{#if remainingTowns > 0}
-							<button type="button" class="btn btn-outline btn-sm" on:click={showMoreTowns}>
-								{$_('profile.public.more', { values: { count: remainingTowns } })}
-							</button>
-						{/if}
+					And all of them at once, with no More under it: a row is markup rather than a
+					clip, so the whole of a collection of towns costs what a list of that many
+					lines costs. What was paged is scrolled instead, which is the honest shape
+					for it — a scrollbar says how much there is to come, which is the one thing
+					the button had to be lettered with a count to say. -->
+				{#if townRows.length > 0}
+					<!-- The scroller is two boxes, and it has to be two. This one is the grid cell:
+						it is stretched to the row (`self-stretch`, since the row is otherwise
+						`items-start`) so it stands as tall as the tallest of the other two columns,
+						and it holds the list *out of flow* — which is what stops a player with three
+						hundred towns from setting the height of the row. A cell whose content
+						counted would grow the row and push the collection below it down the page,
+						which is the very thing a scroller is here to prevent.
+						`min-h-0` for the case where the other columns are shorter than this cell's
+						own minimum would be. -->
+					<div class="relative min-h-0 self-stretch">
+						<!-- And this one is the list: pinned to the whole of the cell, so it is exactly
+							as tall as the row however tall that turns out to be, and scrolling in the
+							one axis. `pe-1` keeps the plates clear of the scrollbar rather than letting
+							it sit over their corners. -->
+						<div class="absolute inset-0 flex flex-col gap-2 overflow-y-auto pe-1">
+							<!-- Each town on a plate of its own rather than the lot of them on one. A row
+								draws no ground itself — it is a name and a tile, read off whatever it is
+								listed on — so over satellite imagery it needs a surface either way; the
+								question is only whether that surface is the list or the place. Here it is
+								the place: these are towns held one at a time, each won on its own day by
+								its own side, and one sheet under them prints them as a single block the
+								way the column beside the map prints the level under an open region.
+								The plate is the wrapper and not the row, because RegionListRow is the
+								column's own component and a town is the same row wherever it is listed;
+								giving it a ground here would be giving it one there. Its own rounding
+								stays inside this one, `overflow-hidden` so the row's hover fill is cut to
+								the plate's corners rather than squaring them off.
+								`flex-none` because these are flex items in a scroller now: a column of
+								them taller than the box would otherwise be squeezed to fit it, which is
+								a list that gets thinner the more there is of it instead of scrolling. -->
+							{#each townRows as town (town.key)}
+								<div class="flex-none overflow-hidden rounded-box bg-base-100/80 p-1 shadow-xl">
+									<RegionListRow row={town} onSelect={openTown} />
+								</div>
+							{/each}
+						</div>
 					</div>
 				{/if}
 			</div>
