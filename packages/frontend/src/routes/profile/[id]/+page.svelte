@@ -138,11 +138,15 @@
 		municipalityNames
 	});
 
-	// The part of it standing right now, and whether there is any of it left to stand.
-	// Both named off `shown` and `owned` directly, so the grid grows the moment either
-	// moves — a card whose town name has just landed re-reads without being re-pressed.
+	// The part of it standing right now, and how much of it is still sitting down —
+	// which is what the More button says, so a reader knows whether they are three cards
+	// from the end of this collection or three hundred. Both named off `shown` and
+	// `owned` directly, so the grid grows the moment either moves — a card whose town
+	// name has just landed re-reads without being re-pressed. Floored at zero: `shown`
+	// runs past the end on the last press, and a button is only drawn while this is
+	// positive anyway.
 	$: visible = owned.slice(0, shown);
-	$: hasMore = shown < owned.length;
+	$: remaining = Math.max(0, owned.length - shown);
 
 	function showMore(): void {
 		shown += PAGE_SIZE;
@@ -240,20 +244,18 @@
 					{/each}
 				</div>
 
-				<!-- Another twelve, under the ones already standing. It goes away when there
-					are none left rather than turning into a disabled button that says the
-					collection is over: the end of a collection is the last card, and a row of
-					nothing under it says so. -->
-				{#if hasMore}
+				<!-- Another twelve, under the ones already standing, carrying how many are
+					still to come — a collection is as long as it is, and a bare "more" leaves a
+					reader pressing without knowing whether they are near the end of it. It goes
+					away when there are none left rather than turning into a disabled button
+					that says the collection is over: the end of a collection is the last card,
+					and a row of nothing under it says so. -->
+				{#if remaining > 0}
 					<button type="button" class="btn btn-outline btn-sm" on:click={showMore}>
-						{$_('profile.public.more')}
+						{$_('profile.public.more', { values: { count: remaining } })}
 					</button>
 				{/if}
 			{/if}
 		{/if}
-
-		<!-- The way back into the game, at the foot of the column whatever the page found:
-			this is the one screen a visitor can arrive at without ever having seen the map. -->
-		<a href="/" class="btn btn-ghost btn-sm">{$_('profile.public.toMap')}</a>
 	</div>
 </div>

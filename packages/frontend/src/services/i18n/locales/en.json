@@ -59,11 +59,10 @@
 		"notConfigured": "Sign-in is unavailable: Supabase is not configured. Set PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY.",
 		"public": {
 			"townsHeld": "Municipalities held",
-			"more": "Show more",
+			"more": "Show more ({count})",
 			"openMine": "Open my public profile",
 			"notFound": "There is no such profile.",
-			"noTeam": "This player is not fielding a team yet.",
-			"toMap": "Go to the map"
+			"noTeam": "This player is not fielding a team yet."
 		},
 		"username": {
 			"none": "Unnamed player",
