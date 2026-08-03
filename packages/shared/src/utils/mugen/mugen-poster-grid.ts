@@ -62,6 +62,12 @@
  * One canvas rather than one per character: a browser allows a handful of WebGL
  * contexts at a time (see `release-context`), and the roster is dozens of characters —
  * a canvas each would evict itself before the wall had finished loading.
+ *
+ * What is *inside* a canvas is unreachable from the document, so the wall says who is
+ * standing on it: its status carries each character's id and the idle cycle it was stood
+ * up with ({@link PosterStand}), which is what lets the screen list beside the wall the
+ * very roster the wall drew — the same cycles, played as images, rather than a second
+ * reading of the same manifests that could disagree with it.
  */
 
 import { Application, Assets, Container, Graphics, Sprite, Texture } from 'pixi.js';
@@ -89,6 +95,9 @@ export interface PosterCharacter {
 
 /** One loaded idle frame, with its anchor already as a fraction of the frame. */
 interface LoadedFrame {
+	/** Where the frame was fetched from, kept so the same cycle can be drawn outside the
+	 * canvas — a texture is a GPU upload and there is no reading a URL back off it. */
+	src: string;
 	texture: Texture;
 	width: number;
 	height: number;
@@ -99,6 +108,8 @@ interface LoadedFrame {
 /** One character on the wall: its sprite, its cycle, the playback cursor, and the two
  * things its own definition says about how it is drawn. */
 interface Poster {
+	/** The character it stands for, which is what anything outside the canvas names it by. */
+	id: string;
 	/** Its place in the roster it was given, which is the place it takes on the wall
 	 * however late it finished loading. */
 	order: number;
@@ -141,11 +152,31 @@ interface WallPlace {
 	x2: number;
 }
 
+/** One frame of an idle cycle as anything outside the canvas needs it: where to fetch it
+ * from and how long it is held. The whole cycle rather than a first frame, so a listing
+ * beside the wall can idle the same way the wall does. */
+export interface PosterFrame {
+	src: string;
+	/** Milliseconds, the same clock {@link MugenPosterGrid} plays the cycle on. */
+	duration: number;
+}
+
+/** A character standing on the wall, told to whoever is listening: its id and the idle
+ * cycle it was stood up with. What the canvas holds beyond this — textures, its cell, its
+ * facing — is the canvas's own business. */
+export interface PosterStand {
+	id: string;
+	frames: PosterFrame[];
+}
+
 /** How the wall is getting on, reported as it loads. */
 export interface PosterGridStatus {
 	/** Characters drawn so far, and how many were asked for. */
 	drawn: number;
 	total: number;
+	/** The ones drawn, in roster order — the wall's own contents, for a listing that has to
+	 * agree with it rather than go and read the manifests a second time. */
+	stood: PosterStand[];
 	/** Ids that could not be drawn — no manifest, or no `idle` in it. */
 	missing: string[];
 	/** False once every character has been tried. */
@@ -601,6 +632,7 @@ export class MugenPosterGrid {
 		const sprite = new Sprite();
 		this.stage.addChild(sprite);
 		const poster: Poster = {
+			id: character.id,
 			order,
 			sprite,
 			frames,
@@ -631,10 +663,12 @@ export class MugenPosterGrid {
 
 			const frames: LoadedFrame[] = [];
 			for (const frame of animation.frames) {
-				const texture = await Assets.load<Texture>(`${basePath}/${frame.file}`);
+				const src = `${basePath}/${frame.file}`;
+				const texture = await Assets.load<Texture>(src);
 				// Keep the pixel art crisp when scaled.
 				texture.source.scaleMode = 'nearest';
 				frames.push({
+					src,
 					texture,
 					width: frame.width,
 					height: frame.height,
@@ -799,6 +833,10 @@ export class MugenPosterGrid {
 		this.onStatus?.({
 			drawn: this.posters.length,
 			total: this.characters.length,
+			stood: this.posters.map((poster) => ({
+				id: poster.id,
+				frames: poster.frames.map(({ src, duration }) => ({ src, duration }))
+			})),
 			missing: [...this.missing],
 			loading: this.loading
 		});

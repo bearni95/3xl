@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { characters } from '@3xl/data';
+	import IdleSprite from '$components/core/IdleSprite.svelte';
 	import MugenPosterGrid from '$components/core/MugenPosterGrid.svelte';
 	import type { PosterGridStatus } from '$utils/mugen/mugen-poster-grid';
 
@@ -8,6 +9,10 @@
 	// on top of it, and the crown shift that stands it by its head. Which is what makes
 	// the screen worth having — a correction can only be judged against the others.
 	const roster = characters.map(({ id, basePath }) => ({ id, basePath }));
+
+	// The wall names its characters by id, since that is all it is given; the name belongs
+	// to the registry.
+	const labels = new Map(characters.map(({ id, label }) => [id, label]));
 
 	// What hangs over the three kept cells at the middle of the wall: the player app's own
 	// social card — the picture Discord and the rest draw beside a link to the game — read
@@ -20,6 +25,7 @@
 	let status: PosterGridStatus = {
 		drawn: 0,
 		total: roster.length,
+		stood: [],
 		missing: [],
 		loading: true
 	};
@@ -65,5 +71,34 @@
 			on:status={(event) => (status = event.detail)}
 			classes="bg-base-300"
 		/>
+
+		<!-- The same roster the canvas is drawing, listed: each character's idle cycle played
+		     as plain <img> frames, its name, and how many frames the cycle is. The cycles come
+		     off the wall's own status rather than from a second read of the manifests, so the
+		     table can only ever say what is standing up there. -->
+		<div class="overflow-x-auto rounded-box bg-base-100">
+			<table class="table">
+				<thead>
+					<tr>
+						<th class="w-24">Idle</th>
+						<th>Name</th>
+						<th class="text-right">Frames</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each status.stood as stand (stand.id)}
+						<tr>
+							<td>
+								<div class="h-20 w-20">
+									<IdleSprite frames={stand.frames} />
+								</div>
+							</td>
+							<td>{labels.get(stand.id) ?? stand.id}</td>
+							<td class="text-right font-mono">{stand.frames.length}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 	</div>
 </div>
