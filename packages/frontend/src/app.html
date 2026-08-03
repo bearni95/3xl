@@ -18,6 +18,49 @@
 		-->
 		<link rel="icon" href="%sveltekit.assets%/favicon.ico" sizes="any" />
 		<!--
+			What Discord, WhatsApp and the rest draw when somebody pastes the link. A
+			scraper is not a browser: it reads this shell and nothing else — it never runs
+			the app, so no route and no `svelte:head` can put a card on the page. That is
+			also why there is a plain <title> and <meta name="description"> here at all;
+			before this the tab had neither.
+
+			The picture is static/social-card.png — the same badge as the favicon, the
+			vector rasterised to 1024 square over #09002f (the navy the glyph's shadow is
+			drawn in) rather than left transparent, since a scraper that flattens alpha
+			does it to black and the rounded corners would tear. Re-render it from the
+			same file if the drawing changes:
+
+			    rsvg-convert -w 1024 -h 1024 -b '#09002f' -f png \
+			        -o static/social-card.png static/favicon.svg
+
+			These URLs are absolute and hardcoded, unlike the icon's `%sveltekit.assets%`:
+			a card is fetched by another host, so a root-relative path resolves against
+			nothing there. The origin is the custom domain in static/CNAME — keep the
+			three together if the site moves.
+
+			`twitter:card` is `summary`, not `summary_large_image`: the mark is square, and
+			the large card would letterbox it into a wide band of navy.
+		-->
+		<title>6XL</title>
+		<meta name="description" content="El joc d'anime en català" />
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="6XL" />
+		<meta property="og:title" content="6XL" />
+		<meta property="og:description" content="El joc d'anime en català" />
+		<meta property="og:url" content="https://3xl.bearni.io/" />
+		<meta property="og:image" content="https://3xl.bearni.io/social-card.png" />
+		<meta property="og:image:type" content="image/png" />
+		<meta property="og:image:width" content="1024" />
+		<meta property="og:image:height" content="1024" />
+		<meta property="og:image:alt" content="6XL" />
+		<meta property="og:locale" content="ca_ES" />
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:title" content="6XL" />
+		<meta name="twitter:description" content="El joc d'anime en català" />
+		<meta name="twitter:image" content="https://3xl.bearni.io/social-card.png" />
+		<meta name="twitter:image:alt" content="6XL" />
+		<meta name="theme-color" content="#f0b100" />
+		<!--
 			Umami, self-hosted at umami.bearni.io. It is here rather than in a component
 			because it counts visits to the site, not renders of a route: the tag is in
 			the shell adapter-static writes once, so it is on the page before the app
