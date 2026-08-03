@@ -123,6 +123,12 @@
 			so it always fills the screen whatever the window's shape. It carries no
 			controls: it is not something to operate.
 
+			`poster` is the video's own first frame, static/../assets/video/splash.png: a
+			video paints nothing until it has decoded enough to start, so without it the
+			red field stands alone for as long as the fetch takes. The poster is one image
+			and arrives long before the mp4, so what the player sees is the film's opening
+			frame held still and then moving, rather than a colour and then a cut.
+
 			`SplashScreen.svelte` is what takes it away, 500ms after the app mounts; the
 			id is the handle it removes it by. Nothing else here knows about the app, and
 			nothing in the app draws this.
@@ -133,6 +139,7 @@
 		>
 			<video
 				src="%sveltekit.assets%/assets/video/splash.mp4"
+				poster="%sveltekit.assets%/assets/video/splash.png"
 				style="width: 100%; height: 100%; object-fit: cover"
 				autoplay
 				loop
@@ -140,6 +147,28 @@
 				playsinline
 			></video>
 		</div>
+		<!--
+			The splash belongs to the front door and to nothing else. This shell is the
+			whole site's document — a static SPA answers every path with it — so the
+			markup above would otherwise stand over `/profile` and every other route a
+			player lands on or reloads into, which is a title card in front of a page
+			nobody arrived at for the first time.
+
+			The check is here, in a synchronous script, rather than in the app: it runs
+			while the parser is still in <body>, before the first paint, so off the root
+			nothing is ever on screen to flash. Anything the app could do would have to
+			wait for the bundle — the very load the splash is covering — and by then the
+			player has watched it.
+
+			`paths.base` is empty in this build, so the root is just `/` (or the
+			`/index.html` a file-served build lands on). Give this the base too if the
+			site ever moves to a subpath.
+		-->
+		<script>
+			if (location.pathname.replace(/index\.html$/, '') !== '/') {
+				document.getElementById('splash')?.remove();
+			}
+		</script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

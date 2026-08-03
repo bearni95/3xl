@@ -12,6 +12,7 @@
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
 	import SocialLinks from '$components/core/SocialLinks.svelte';
+	import SplashScreen from '$components/core/SplashScreen.svelte';
 	import TownPin from '$components/core/TownPin.svelte';
 	import TownChallenge from '$components/core/TownChallenge.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
@@ -3402,3 +3403,9 @@
 		on:openComplete={(event) => onPackOpened(event.detail)}
 	/>
 {/if}
+
+<!-- Draws nothing: it clears the splash the shell put up, 500ms after this page mounts.
+	Here rather than in the layout because the splash is the front door's and no other
+	route's — the shell has already taken it down anywhere else — so both halves of it
+	stand in the same place. -->
+<SplashScreen />
