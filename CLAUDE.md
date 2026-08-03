@@ -259,8 +259,15 @@ load metadata and nothing else, one per song, which is why a station that has no
 measured yet (or holds a file that will not decode) falls back to playing its day order from
 the top. The admin `/music` screen's Radio tab is the same three things drawn as a table.
 Admin routes: `/characters` (definition editor),
-`/shows` (TMDB browser) and `/music`
-(what each vendored song is called and which show it opens).
+`/shows` (TMDB browser), `/music`
+(what each vendored song is called and which show it opens) and `/posters` — the whole
+roster idling at once on one PixiJS canvas (`@3xl/shared`'s `mugen-poster-grid`), each
+character drawn at the size the **combat board** draws it. Not a resemblance: the wall
+calls the board's own `characterFitScale` over a box of `CHAR_HEIGHT_RATIO` cell widths,
+with that character's `renderScale`, shifted by the same `crownCorrection` its definition
+asks for — so a correction authored on `/characters` is judged here against the rest of
+the roster, which is the only place a size means anything. One canvas for the lot, because
+a browser only allows a handful of WebGL contexts and the roster is dozens of characters.
 
 **Types, utils, and adapters no longer live in the apps** — they moved to `@3xl/shared`
 (see below). Only `components/`, `routes/`, `services/`, `css/`, and `i18n/` are per-app.

@@ -10,9 +10,9 @@ import {
 } from 'pixi.js';
 import { destroyPixiApp } from '../pixi/release-context';
 import type { Manifest } from './mugen-player';
-import { characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/character-fit';
+import { CHAR_HEIGHT_RATIO, characterFitScale, REFERENCE_SOURCE_HEIGHT } from '../card/character-fit';
 import { characterIdFromFramesPath, readRenderScale } from './character-render-scale';
-import { type Crown, paintedCrown, readCrownAlign } from './character-crown';
+import { crownCorrection, type CrownFrame, readCrownAlign } from './character-crown';
 import type { CharacterDefinition, CharacterMove } from '../../types/character-definition.type';
 import {
 	BOARD_HEIGHT,
@@ -171,13 +171,6 @@ const BLEED_PROPERTY = '--board-bleed';
  * column has gone off the view, which is what makes the visible board fill the width. */
 const BLEED_SCALE = BOARD_WIDTH / (BOARD_WIDTH - 1);
 
-/** On-screen height of a reference-height ({@link REFERENCE_SOURCE_HEIGHT}) character
- * as a multiple of a cell's width — the height of the box every character is fitted
- * into. Every other character scales by the same source→screen ratio, so shorter/taller
- * sprites read shorter/taller; anything taller than the reference is brought back to
- * this height rather than standing out of its cell. */
-const CHAR_HEIGHT_RATIO = 1.3;
-
 // --- The room over the fighters' heads ---------------------------------------
 // A character plants its feet on its cell's foot line and stands taller than the cell
 // ({@link CHAR_HEIGHT_RATIO}), so a fighter on the topmost lane reaches up out of the row
@@ -251,41 +244,15 @@ const LEAD_CELLS: [Cell, Cell] = [
 const leadCell = (grid: BoardGrid, fallback: Cell): Cell =>
 	'q' in grid.character ? { q: grid.character.q, r: grid.character.r } : fallback;
 
-/**
- * How far to move a character sideways so its **crown** — the middle of the highest
- * painted pixels of the pose it stands in — sits over the middle of its cell, instead of
- * the MUGEN axis it is drawn around doing so. See {@link paintedCrown} for why the axis
- * is the wrong point to stand a fighter on.
- *
- * Read off the standing cycle, taking the frame whose paint reaches **highest**: that is
- * the character's tallest point, and it is the one the phrase names. Every frame is
- * bottom-aligned on the board's foot line ({@link MugenBoard.applyFrame} anchors at 1),
- * so how high a frame reaches is its own height less the empty rows above its artwork —
- * which is why the frames' differing heights are no obstacle to comparing them.
- *
- * The answer is in screen px at `scale`, and already mirrored for a `flip`ped half: a
- * sprite drawn with a negative x-scale is reflected about its anchor, so the crown a
- * fighter's own artwork puts to its left appears to its right, and the correction that
- * brings it back has to turn round with it.
- *
- * Zero when nothing can be read — an empty cycle, artwork a canvas will not give up its
- * pixels for. A fighter stood on its axis is the placement this board had all along, so
- * failing to improve on it costs nothing.
- */
-function crownCorrection(frames: LoadedFrame[], scale: number, flip: boolean): number {
-	let best: { frame: LoadedFrame; crown: Crown; reach: number } | null = null;
-	for (const frame of frames) {
-		const crown = paintedCrown(frame.texture.source.resource, frame.width, frame.height);
-		if (!crown) continue;
-		const reach = frame.height - crown.top;
-		if (!best || reach > best.reach) best = { frame, crown, reach };
-	}
-	if (!best) return 0;
-	// Both in the frame's own pixels, off its left edge: where the crown is, and where the
-	// axis the sprite is anchored at is. The gap between them is what has to be undone.
-	const axis = best.frame.anchorX * best.frame.width;
-	return (flip ? 1 : -1) * (best.crown.x - axis) * scale;
-}
+/** A cycle's loaded frames as {@link crownCorrection} reads them — the correction is
+ * canvas work over pixels, so it knows nothing of Pixi's textures. */
+const crownFrames = (frames: LoadedFrame[]): CrownFrame[] =>
+	frames.map((frame) => ({
+		source: frame.texture.source.resource,
+		width: frame.width,
+		height: frame.height,
+		anchorX: frame.anchorX
+	}));
 
 /** Canvas hex for each combat colour, for tinting callouts, guards and sparks. */
 const COMBAT_COLOR_HEX: Record<string, number> = {
@@ -1185,7 +1152,7 @@ export class MugenBoard {
 		// Every character gets it but the ones whose own definition opts out, which are
 		// the sheets whose highest painted pixel is not a head at all.
 		const crownShift = readCrownAlign(definition)
-			? crownCorrection(baseFrames, fitScale, flip)
+			? crownCorrection(crownFrames(baseFrames), fitScale, flip)
 			: 0;
 		const stand = { x: mark.x + crownShift, y: mark.y };
 

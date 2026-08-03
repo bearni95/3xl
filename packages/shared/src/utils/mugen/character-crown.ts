@@ -118,3 +118,48 @@ export function paintedCrown(
 		return null;
 	}
 }
+
+/** One frame as the correction needs to read it: something a canvas can draw, the
+ * frame's own size, and its body axis (0..1 across the frame). */
+export interface CrownFrame {
+	source: CanvasImageSource;
+	width: number;
+	height: number;
+	anchorX: number;
+}
+
+/**
+ * How far to move a character sideways so its **crown** — the middle of the highest
+ * painted pixels of the pose it stands in — sits over the middle of its cell, instead of
+ * the MUGEN axis it is drawn around doing so. See {@link paintedCrown} for why the axis
+ * is the wrong point to stand a fighter on.
+ *
+ * Read off the standing cycle, taking the frame whose paint reaches **highest**: that is
+ * the character's tallest point, and it is the one the phrase names. Every frame is
+ * bottom-aligned on its surface's foot line (a sprite anchored at 1), so how high a frame
+ * reaches is its own height less the empty rows above its artwork — which is why the
+ * frames' differing heights are no obstacle to comparing them.
+ *
+ * The answer is in screen px at `scale`, and already mirrored for a `flip`ped sprite: a
+ * sprite drawn with a negative x-scale is reflected about its anchor, so the crown a
+ * fighter's own artwork puts to its left appears to its right, and the correction that
+ * brings it back has to turn round with it.
+ *
+ * Zero when nothing can be read — an empty cycle, artwork a canvas will not give up its
+ * pixels for. A fighter stood on its axis is the placement the board had all along, so
+ * failing to improve on it costs nothing.
+ */
+export function crownCorrection(frames: CrownFrame[], scale: number, flip: boolean): number {
+	let best: { frame: CrownFrame; crown: Crown; reach: number } | null = null;
+	for (const frame of frames) {
+		const crown = paintedCrown(frame.source, frame.width, frame.height);
+		if (!crown) continue;
+		const reach = frame.height - crown.top;
+		if (!best || reach > best.reach) best = { frame, crown, reach };
+	}
+	if (!best) return 0;
+	// Both in the frame's own pixels, off its left edge: where the crown is, and where the
+	// axis the sprite is anchored at is. The gap between them is what has to be undone.
+	const axis = best.frame.anchorX * best.frame.width;
+	return (flip ? 1 : -1) * (best.crown.x - axis) * scale;
+}

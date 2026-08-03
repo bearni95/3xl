@@ -28,6 +28,21 @@ export const REFERENCE_SOURCE_HEIGHT = 150;
  * reads a little bigger than the strict fit — a deliberate 30% zoom. */
 export const IDLE_SCALE_BOOST = 1.3;
 
+/**
+ * On-screen height of a reference-height ({@link REFERENCE_SOURCE_HEIGHT}) character
+ * as a multiple of a cell's width — the height of the box every character on a *cell*
+ * is fitted into. Every other character scales by the same source→screen ratio, so
+ * shorter/taller sprites read shorter/taller; anything taller than the reference is
+ * brought back to this height rather than standing out of its cell.
+ *
+ * It lives with the fit rather than with the board because it is half of what "the
+ * size a fighter is drawn at" means: the fit answers a *box*, and this is the box a
+ * cell of a given width gives. A surface that lays characters out in cells of its own
+ * (the admin's poster wall) has to ask for the same box or it is not showing the same
+ * sizing.
+ */
+export const CHAR_HEIGHT_RATIO = 1.3;
+
 /** One frame as the fit needs to read it: its native size and its body axis (0..1
  * across the frame), which is the pivot every frame of a cycle is placed by. */
 export interface FitFrame {
