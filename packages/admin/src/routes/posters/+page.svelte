@@ -58,10 +58,11 @@
 	// It moves as the wall fills, because it is a fact about the roster that is up so far.
 	$: sharedCycle = leastCommonMultiple(status.stood.map((stand) => stand.frames.length));
 
-	// How long a take is: one second of the wall as it stands. Not a whole turn of it — the
+	// How long a take is: five seconds of the wall as it stands. Not a whole turn of it — the
 	// count above says how many frames that would take, and it is thousands — so a clip played
-	// on repeat has a seam where it wraps. A second is what a wall of dozens of idles reads as.
-	const TAKE_MS = 1000;
+	// on repeat has a seam where it wraps. Five is long enough that a wall of dozens of idles
+	// is seen doing something rather than caught in the middle of it.
+	const TAKE_MS = 5000;
 
 	let wall: MugenPosterGrid;
 	let recording = false;
@@ -139,7 +140,7 @@
 					disabled={recording || capturing || status.drawn === 0}
 					on:click={downloadLoop}
 				>
-					{recording ? 'Recording…' : 'Download 1s loop'}
+					{recording ? 'Recording…' : 'Download 5s loop'}
 				</button>
 				<button
 					class="btn btn-outline btn-sm"
