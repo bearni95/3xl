@@ -16,10 +16,10 @@
 	// after them would be the list below said twice. The name is on the cell's `title`, which
 	// is what an unlettered mark needs to be readable at all.
 	//
-	// Seven to the row, and the artwork drawn to the whole width of its cell: a glyph sized to
+	// Eight to the row, and the artwork drawn to the whole width of its cell: a glyph sized to
 	// the type beside it is a mark read as punctuation in a line, and this is not a line — it
 	// is the one place in the column where the shows themselves are what is being looked at,
-	// so they are given the size the column has room for. Seven is what settles that size,
+	// so they are given the size the column has room for. The count is what settles that size,
 	// since the cells divide the column's own width: the marks grow and shrink with it rather
 	// than being pinned to a number of pixels chosen in here.
 	export let shares: { id: number; name: string; share: number }[] = [];
@@ -35,7 +35,7 @@
 	const dispatch = createEventDispatcher<{ select: { id: number } }>();
 </script>
 
-<div class={classNames('grid grid-cols-7 gap-2 px-2 py-1 text-xs', classes)}>
+<div class={classNames('grid grid-cols-8 gap-2 px-2 py-1 text-xs', classes)}>
 	{#each shares as entry (entry.id)}
 		{@const glyph = forShow($showGlyphs, entry.id)}
 		<!-- A press, not a reading: a mark standing for a show over a list of places that fly
