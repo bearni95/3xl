@@ -1267,9 +1267,19 @@
 	// One load per signed-in player, exactly as the roster and the arena do it. A
 	// failure leaves the plate unmounted rather than breaking the map.
 	let spawnsLoadedFor: string | null = null;
+	// Whether that load has come back — settled either way, since a read that failed
+	// has told us as much about this player's cards as it ever will. The statues do not
+	// need it (a team with none draws nothing), but the button standing in their place
+	// does: a corner saying there is no side yet for the length of a round trip, and
+	// then filling with three cards, is saying something that was never true.
+	let spawnsSettled = false;
 	$: if (currentUserId && currentUserId !== spawnsLoadedFor) {
 		spawnsLoadedFor = currentUserId;
-		void spawnService.loadSpawns(currentUserId).catch(() => {});
+		spawnsSettled = false;
+		void spawnService
+			.loadSpawns(currentUserId)
+			.catch(() => {})
+			.finally(() => (spawnsSettled = true));
 	}
 
 	// The cards the player fields come in slot order — the leader first, as on the
@@ -2980,6 +2990,23 @@
 							on:click={() => rosterModalOpen.set(true)}
 						>
 							<TeamLineup members={playerTeamLineup} />
+						</button>
+					{:else if $profile && spawnsSettled}
+						<!-- A player with no side fielded yet, in the slot the three statues take:
+							the same press, said in a word instead of drawn as three cards. The row
+							above is the way into the roster because it *is* the side being edited,
+							and a corner that simply had nothing there left that way in to the
+							statues alone — so an account with an empty team had no door to the one
+							screen that fills it. Shaped like the sign-in below it rather than like
+							the lineup above it, since what stands here is a button and not a
+							picture of anything, and the corner already reads as a column of
+							full-width rows. -->
+						<button
+							type="button"
+							class="btn btn-primary w-full shadow-xl"
+							on:click={() => rosterModalOpen.set(true)}
+						>
+							{$_('roster.open')}
 						</button>
 					{/if}
 
