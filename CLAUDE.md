@@ -79,8 +79,12 @@ outside it. Three things the admin authors per character, and where each survive
   copied it *is* a face like any other: same folder, same list, named by bare filename in the
   definition, which is what the `custom_` prefix keeps clear of the decoded `spr_<group>_<image>`
   ones. Its pixel size is read off the file's own header (PNG/JPEG/WebP/GIF), so the folder is
-  the whole record and nothing beside it can drift. An upload is selected on the spot; it is
-  framed by the default square until someone drags it and saves.
+  the whole record and nothing beside it can drift. A **video** may be picked too, and never
+  reaches that folder as one: the browser is the only thing in this project that can decode a
+  clip, so `@3xl/shared/utils/image/video-frame` draws its first frame onto a canvas and the
+  PNG of *that* is what is uploaded — the store keeps its rule that a face is an image it can
+  measure, and no decoder has to be installed to hold it. An upload is selected on the spot; it
+  is framed by the default square until someone drags it and saves.
 - **The frames deleted** on `/characters/dashboard/<id>/frames` are *not* kept in the manifest
   they were deleted from — that file is generated. Each deletion is recorded in
   `public/characters/<id>/frame-edits.json` (authored data, beside the definition, in the

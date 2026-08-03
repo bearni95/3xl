@@ -5,6 +5,7 @@
 	import FaceCropEditor from '$components/core/FaceCropEditor.svelte';
 	import type { CharacterDefinition, FaceCrop } from '$types/character-definition.type';
 	import { clampFaceCrop, defaultFaceCrop, sameFaceCrop } from '$utils/mugen/face-crop';
+	import { isVideoFile, videoFrameDataUrl, videoStillName } from '$utils/image/video-frame';
 	import type { ManifestFace } from '$utils/mugen/mugen-player';
 
 	// The character whose portraits this card lists — the group-9000 sprites its
@@ -125,6 +126,11 @@
 	 * the definition (where the next MUGEN import cannot delete it), copies it into
 	 * the frames folder and picks it — so what comes back is a face like any other,
 	 * already selected, framed on the default square until someone drags it.
+	 *
+	 * A video is taken a still out of first: the portrait store holds images it can
+	 * measure by their own header, and the browser is the only thing here that can
+	 * decode a clip — so a `.webm` becomes the PNG of its first frame *before* it is
+	 * sent, and the API is handed the same thing a picked PNG would hand it.
 	 */
 	async function upload(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
@@ -136,10 +142,13 @@
 		uploading = true;
 		saveError = '';
 		try {
+			const video = isVideoFile(file);
+			const filename = video ? videoStillName(file.name) : file.name;
+			const data = video ? await videoFrameDataUrl(file) : await readDataUrl(file);
 			const res = await fetch(`${API_BASE}/api/characters/${character.id}/faces`, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ filename: file.name, data: await readDataUrl(file) })
+				body: JSON.stringify({ filename, data })
 			});
 			if (!res.ok) {
 				const failure = await res.json().catch(() => ({ message: res.statusText }));
@@ -239,7 +248,8 @@
 			{/each}
 
 			<!-- One more portrait, from a file instead of the archive: it is stored,
-			     copied in beside the decoded sprites and picked, all by the upload. -->
+			     copied in beside the decoded sprites and picked, all by the upload. A
+			     video is offered too, and arrives as the PNG of its first frame. -->
 			<label
 				class={classNames(
 					'flex flex-col items-center gap-1 rounded-box border-2 border-transparent p-1 transition',
@@ -260,7 +270,7 @@
 				<input
 					type="file"
 					class="hidden"
-					accept="image/png,image/jpeg,image/webp,image/gif"
+					accept="image/png,image/jpeg,image/webp,image/gif,video/webm"
 					disabled={uploading}
 					on:change={upload}
 				/>

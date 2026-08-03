@@ -16,9 +16,10 @@
 				<span class="badge badge-ghost font-mono text-xs">{character.basePath}</span>
 			</div>
 			<p class="text-sm opacity-70">
-				Every portrait this character ships in sprite group 9000, plus any image uploaded here. Pick
-				which one the board shows, drag the square to frame the avatar the game wears, then save
-				straight into the git tree.
+				Every portrait this character ships in sprite group 9000, plus any image uploaded here — a
+				WebM may be uploaded too, and lands as the PNG of its first frame. Pick which one the board
+				shows, drag the square to frame the avatar the game wears, then save straight into the git
+				tree.
 			</p>
 			<!-- Remount on character change: the card loads once, and moving between two
 			     characters' faces pages keeps this route's components alive. -->
