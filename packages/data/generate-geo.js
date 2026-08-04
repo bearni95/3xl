@@ -112,6 +112,24 @@ const AD_PARISHES = {
 };
 
 /**
+ * Municipalities the LAU vintage names by a denomination that is no longer the
+ * official one. Eurostat's LAU set is a snapshot, so an official rename decreed
+ * after it was cut only reaches the map here — keyed by GISCO_ID, which never
+ * changes with the name (the INE code stays), and with the decree that made it
+ * official cited so the entry can be retired once a later LAU carries it.
+ *
+ * Names are written in the source's own convention: article last, comma-separated
+ * ("Bisbal de Montsant, La"), which is what the LAU_NAME values look like.
+ *
+ *   · ES_43027 — la Bisbal de Falset → la Bisbal de Montsant, Resolució
+ *     PRE/4130/2024 (DOGC 9285, 25.11.2024). The town dropped "de Falset", which
+ *     read as a dependency on the comarca's capital, for the Montsant it stands on.
+ */
+const LAU_NAME_OVERRIDES = {
+	ES_43027: 'Bisbal de Montsant, La'
+};
+
+/**
  * Classify a LAU feature's GISCO_ID. Returns the normalized admin metadata, or
  * null if the municipality is outside the Països Catalans scope.
  * @param {string} gisco e.g. "ES_08019", "FR_66136", "IT_090003"
@@ -379,14 +397,17 @@ async function main() {
 	const lau = JSON.parse(await readFile(lauPath, 'utf8'));
 
 	const municipis = [];
+	const renamed = new Set();
 	for (const f of lau.features) {
 		const info = classifyLau(f.properties.GISCO_ID);
 		if (!info) continue;
+		const override = LAU_NAME_OVERRIDES[f.properties.GISCO_ID];
+		if (override) renamed.add(f.properties.GISCO_ID);
 		municipis.push({
 			type: 'Feature',
 			properties: {
 				id: f.properties.GISCO_ID,
-				name: f.properties.LAU_NAME,
+				name: override ?? f.properties.LAU_NAME,
 				prov: info.prov,
 				provKey: info.provKey,
 				territory: info.territory
@@ -395,6 +416,16 @@ async function main() {
 		});
 	}
 	console.log(`  matched ${municipis.length} municipalities in Spain/France/Italy`);
+	// An override whose municipality is not in the source is either a typo or an
+	// entry a newer LAU vintage has adopted and dropped the old id of — either way
+	// it silently renames nothing, so it is a build error rather than a warning.
+	const unusedOverrides = Object.keys(LAU_NAME_OVERRIDES).filter((id) => !renamed.has(id));
+	if (unusedOverrides.length) {
+		throw new Error(
+			`LAU_NAME_OVERRIDES names municipalities absent from the source: ${unusedOverrides.join(', ')}`
+		);
+	}
+	console.log(`  applied ${renamed.size} official rename(s) the LAU vintage predates`);
 
 	console.log('Fetching comarca assignment from Wikidata…');
 	const comarcaByGisco = await fetchComarques();
