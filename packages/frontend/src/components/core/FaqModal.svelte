@@ -26,12 +26,25 @@
 		bar stays put however far down the list an answer sits. Capped in width because a
 		line of prose the width of a monitor is a line nobody finishes. -->
 	<div class="min-h-0 flex-1 overflow-y-auto rounded-box bg-base-200/40 p-6">
-		<div class="mx-auto flex max-w-3xl flex-col gap-6">
+		<div class="mx-auto flex max-w-3xl flex-col gap-2">
+			<!-- One fold per question, all of them shut on arrival: what a reader came for is a
+				question of theirs, and a page that opened every answer at once would be a wall
+				of prose they have to find it in. Each opens on its own, since somebody comparing
+				two answers should not have to lose the first to read the second.
+				`<details>` because that is what a fold is in a document, and the same one the
+				map's search groups are made of: it remembers its own state, it is
+				keyboard-operable and it needs nothing held in this script. The mark is the same
+				`›` turned by the fold's own open state. -->
 			{#each entries as entry, index (index)}
-				<div class="flex flex-col gap-1">
-					<h3 class="text-base font-bold">{entry.question}</h3>
-					<p class="whitespace-pre-line opacity-80">{entry.answer}</p>
-				</div>
+				<details class="group rounded-box bg-base-100/40">
+					<summary
+						class="flex cursor-pointer list-none items-center gap-2 rounded-box px-4 py-3 font-bold hover:bg-white/5 [&::-webkit-details-marker]:hidden"
+					>
+						<span class="text-lg leading-none transition-transform group-open:rotate-90">›</span>
+						<span>{entry.question}</span>
+					</summary>
+					<p class="whitespace-pre-line px-4 pb-4 pl-10 opacity-80">{entry.answer}</p>
+				</details>
 			{/each}
 		</div>
 	</div>
