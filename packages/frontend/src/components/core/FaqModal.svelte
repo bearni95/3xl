@@ -24,8 +24,10 @@
 <FullScreenModal title={$_('faq.title')} closeLabel={$_('faq.close')} on:close={closeFaq}>
 	<!-- The questions scroll inside the sheet rather than the sheet scrolling, so the title
 		bar stays put however far down the list an answer sits. Capped in width because a
-		line of prose the width of a monitor is a line nobody finishes. -->
-	<div class="min-h-0 flex-1 overflow-y-auto rounded-box bg-base-200/40 p-6">
+		line of prose the width of a monitor is a line nobody finishes.
+		The scroll box carries no fill of its own: the folds are the plates here, and a plate
+		under them only drew a second box round the same list. -->
+	<div class="min-h-0 flex-1 overflow-y-auto">
 		<div class="mx-auto flex max-w-3xl flex-col gap-2">
 			<!-- One fold per question, all of them shut on arrival: what a reader came for is a
 				question of theirs, and a page that opened every answer at once would be a wall
@@ -36,7 +38,7 @@
 				keyboard-operable and it needs nothing held in this script. The mark is the same
 				`›` turned by the fold's own open state. -->
 			{#each entries as entry, index (index)}
-				<details class="group rounded-box bg-base-100/40">
+				<details class="group rounded-box bg-base-200/40">
 					<summary
 						class="flex cursor-pointer list-none items-center gap-2 rounded-box px-4 py-3 font-bold hover:bg-white/5 [&::-webkit-details-marker]:hidden"
 					>
