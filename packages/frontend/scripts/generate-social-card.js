@@ -10,10 +10,12 @@
  *
  * It is not that frame whole. The splash is square, because `object-fit: cover`
  * frames the film by the window rather than by a ratio, so there is no landscape
- * original to take; a card *is* drawn in a wide box, so one is cut here — the full
- * width and the middle 800 rows, which is the framing that keeps the badge and the
- * body of the roster and loses the two thinnest rows of characters. The crop is
- * centred, and centred is the whole rule: nothing here is nudged by eye, so a
+ * original to take; a card *is* drawn in a wide box, so one is cut here — 1200x630,
+ * the box a large card is laid out in everywhere rather than some ratio of the
+ * splash's own, which is what keeps the picture from being resampled by whoever
+ * draws it. The splash is larger in both directions, so the cut takes both: it keeps
+ * the badge and the body of the roster and loses the outermost characters. The crop
+ * is centred, and centred is the whole rule: nothing here is nudged by eye, so a
  * re-captured splash is re-cut the same way without anybody re-judging it.
  *
  * Alpha is flattened onto black — the splash's own field — rather than carried:
@@ -51,10 +53,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const src = join(here, '..', '..', 'assets', 'public', 'video', 'splash.png');
 const out = join(here, '..', 'static', 'social-card.png');
 
-// The card's box. The width is the splash's own — the cut is vertical only — and the
-// height is what makes it landscape.
-const WIDTH = 1274;
-const HEIGHT = 800;
+// The card's box: 1.91:1 at the size a large card is drawn at.
+const WIDTH = 1200;
+const HEIGHT = 630;
 
 if (!existsSync(src)) {
 	throw new Error(`splash frame not found at ${src} — the card is cut from it`);
