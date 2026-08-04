@@ -2922,28 +2922,40 @@
 							</span>
 						</div>
 
-						<!-- The radar, at the far end of the row and beside the burger on a phone. The map
+						<!-- The radar, at the near end of the row and right beside the badge. The map
 							carries days of festes at once and no marks to find them by, so the boxes waiting
 							out there are found by panning across the country looking for one — which is a
 							search, and this is the button that does it: press it and the map opens the
 							nearest town whose box is still unopened (see findNearestBox). It stands at every
-							width, unlike the burger it sits beside, because a box is as hard to come across
-							on a desktop as on a phone.
-							`ml-auto` is not on this one: the marks at the far end are pushed over as a
-							block by the first of them, which is the question mark above, and the `gap-2`
-							sets them apart. Above `md` the burger is not there and the far end is those
-							two, which is the same statement with one mark fewer in it.
-							The same square in the plate's own fill as the burger, drawn to the row's height
-							(`self-stretch aspect-square`), with a white game-icons glyph that needs no colour
-							of its own on the primary.
+							width, because a box is as hard to come across on a desktop as on a phone.
+							It stood at the far end for a while, last of the block the question mark pushes
+							over. It is here now because it is the one mark on this row that moves the map:
+							the badge says what this is and the radar says where to go next, which is one
+							statement about the country read left to right — where the far end's marks are
+							all about the game rather than about the terrain under them.
+							No `ml-auto` on this one: it is a `flex-none` child at the head of the row, and
+							the far end is still pushed over as a block by the first mark of that end.
+							The same square in the plate's own fill as the marks at the other end, drawn to
+							the row's height (`self-stretch aspect-square`), with a white game-icons glyph
+							that needs no colour of its own on the primary.
 							Disabled when there is nothing left to point at — every box in the window opened,
 							or none loaded yet — because a radar that answers "here" or answers nothing is a
 							press with no destination. -->
-						<!-- What the game gets asked, beside the radar and left of it, at every width —
+						<button
+							type="button"
+							class="pointer-events-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
+							aria-label={$_('map.radar.nearest')}
+							disabled={!radarTarget}
+							on:click={findNearestBox}
+						>
+							<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
+						</button>
+
+						<!-- What the game gets asked, at the head of the row's far end, at every width —
 							a question is as worth answering on a desktop as on a phone. The `ml-auto`
-							that pushes the row's far end over is on this one now, being the first mark
-							of that end: the block is this, the credits, the radar and (on a phone) the
-							burger, set apart by the row's own `gap-2` and moved as one.
+							that pushes that end over is on this one, being the first mark of it: the
+							block is this, the credits and (on a phone) the burger, set apart by the
+							row's own `gap-2` and moved as one.
 							The same square in the plate's own fill as the two beside it, drawn to the
 							row's height (`self-stretch aspect-square`), with a white game-icons glyph
 							that needs no colour of its own on the primary. -->
@@ -2970,26 +2982,16 @@
 							<img src="/assets/icons/delapouite/palette.svg" class="size-6" alt="" />
 						</button>
 
-						<button
-							type="button"
-							class="pointer-events-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
-							aria-label={$_('map.radar.nearest')}
-							disabled={!radarTarget}
-							on:click={findNearestBox}
-						>
-							<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
-						</button>
-
 						<!-- The far end of this row, on a phone: the burger that pulls the column of places
 							down over the map (see COLUMN_PANEL_MAX). Nothing above `md`, where that column
 							is already standing beside the map and the press would have nothing to open —
 							`md:hidden` rather than `{#if phone}` so the mark is not mounted and unmounted as
 							a window is dragged across the breakpoint, and so the row is right on the first
 							paint, before the width has been measured at all.
-							The far end is pushed over by the radar's `ml-auto` and not by a spacer: the row
-							is the badge at one end and those two at the other, with the terrain between
-							them, and a stretched box in the middle would be a plate-shaped hole in the
-							map's chrome that took the pointer with it.
+							The far end is pushed over by the question mark's `ml-auto` and not by a spacer:
+							the row is the badge and the radar at one end and those marks at the other, with
+							the terrain between them, and a stretched box in the middle would be a
+							plate-shaped hole in the map's chrome that took the pointer with it.
 							A square in the plate's own fill, drawn to the row's height the way the settings
 							cog at the other corner is (`self-stretch aspect-square`), so the two ends of the
 							bar are the same piece of furniture said twice. The glyph is white artwork on
@@ -3426,7 +3428,7 @@
 {/if}
 
 <!-- What the game gets asked, on the same sheet as the rest of them. Raised by the question
-	mark at the far end of the top row, beside the radar. Mounted only while it is open, like
+	mark at the far end of the top row, first of the marks there. Mounted only while it is open, like
 	its neighbours here, so a list nobody has asked for is not standing behind the map. Its
 	content is the catalogue's — see FaqModal. -->
 {#if $faqModalOpen}
