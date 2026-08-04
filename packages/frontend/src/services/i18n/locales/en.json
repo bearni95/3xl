@@ -180,6 +180,17 @@
 		"title": "Leaderboard",
 		"close": "Close leaderboard"
 	},
+	"faq": {
+		"title": "Frequently asked questions",
+		"open": "Open the frequently asked questions",
+		"close": "Close the frequently asked questions",
+		"entries": [
+			{
+				"question": "foo",
+				"answer": "bar"
+			}
+		]
+	},
 	"booster": {
 		"title": "Booster",
 		"withBoxes": "Booster ({remaining}/{total})",

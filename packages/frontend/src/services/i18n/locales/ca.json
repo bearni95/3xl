@@ -181,6 +181,17 @@
 		"title": "Classificació",
 		"close": "Tanca la classificació"
 	},
+	"faq": {
+		"title": "Preguntes freqüents",
+		"open": "Obre les preguntes freqüents",
+		"close": "Tanca les preguntes freqüents",
+		"entries": [
+			{
+				"question": "foo",
+				"answer": "bar"
+			}
+		]
+	},
 	"booster": {
 		"title": "Sobres",
 		"withBoxes": "Sobres ({remaining}/{total})",

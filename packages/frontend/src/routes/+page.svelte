@@ -23,6 +23,7 @@
 	import RosterModal from '$components/core/RosterModal.svelte';
 	import CollectionModal from '$components/core/CollectionModal.svelte';
 	import LeaderboardModal from '$components/core/LeaderboardModal.svelte';
+	import FaqModal from '$components/core/FaqModal.svelte';
 	import BoosterModal from '$components/core/BoosterModal.svelte';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { collectionModalOpen } from '$services/collectionModal';
@@ -30,6 +31,7 @@
 	import { openSignIn } from '$services/signInModal';
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
+	import { faqModalOpen, openFaq } from '$services/faqModal';
 	import { boosterModalOpen } from '$services/boosterModal';
 	import { fullScreenModalOpen } from '$services/fullScreenModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
@@ -2925,19 +2927,36 @@
 							nearest town whose box is still unopened (see findNearestBox). It stands at every
 							width, unlike the burger it sits beside, because a box is as hard to come across
 							on a desktop as on a phone.
-							`ml-auto` is on this one and not on the burger now: the two are the row's far end
-							together, so the pair is pushed over as a block and the `gap-2` sets them apart.
-							Above `md` the burger is not there and this is the far end on its own, which is
-							the same statement with one mark in it.
+							`ml-auto` is not on this one: the marks at the far end are pushed over as a
+							block by the first of them, which is the question mark above, and the `gap-2`
+							sets them apart. Above `md` the burger is not there and the far end is those
+							two, which is the same statement with one mark fewer in it.
 							The same square in the plate's own fill as the burger, drawn to the row's height
 							(`self-stretch aspect-square`), with a white game-icons glyph that needs no colour
 							of its own on the primary.
 							Disabled when there is nothing left to point at — every box in the window opened,
 							or none loaded yet — because a radar that answers "here" or answers nothing is a
 							press with no destination. -->
+						<!-- What the game gets asked, beside the radar and left of it, at every width —
+							a question is as worth answering on a desktop as on a phone. The `ml-auto`
+							that pushes the row's far end over is on this one now, being the first mark
+							of that end: the block is this, the radar and (on a phone) the burger, set
+							apart by the row's own `gap-2` and moved as one.
+							The same square in the plate's own fill as the two beside it, drawn to the
+							row's height (`self-stretch aspect-square`), with a white game-icons glyph
+							that needs no colour of its own on the primary. -->
 						<button
 							type="button"
-							class="pointer-events-auto ml-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
+							class="pointer-events-auto ml-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
+							aria-label={$_('faq.open')}
+							on:click={openFaq}
+						>
+							<img src="/assets/icons/sbed/help.svg" class="size-6" alt="" />
+						</button>
+
+						<button
+							type="button"
+							class="pointer-events-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
 							aria-label={$_('map.radar.nearest')}
 							disabled={!radarTarget}
 							on:click={findNearestBox}
@@ -3388,6 +3407,14 @@
 	left standing so that whatever raises it next has something to set. -->
 {#if $leaderboardModalOpen}
 	<LeaderboardModal rows={showStandings} />
+{/if}
+
+<!-- What the game gets asked, on the same sheet as the rest of them. Raised by the question
+	mark at the far end of the top row, beside the radar. Mounted only while it is open, like
+	its neighbours here, so a list nobody has asked for is not standing behind the map. Its
+	content is the catalogue's — see FaqModal. -->
+{#if $faqModalOpen}
+	<FaqModal />
 {/if}
 
 <!-- The window's booster packs, on the same sheet, and the one view here that is not just a
