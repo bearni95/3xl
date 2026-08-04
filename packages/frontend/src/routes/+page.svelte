@@ -85,6 +85,7 @@
 	} from '$utils/geo/region-tree';
 	import { buildRegionSieges, type RegionSiege } from '$utils/geo/region-siege';
 	import { boundsForFeatures, boundsByFeatureId, type LatLngBounds } from '$utils/geo/bounds';
+	import { nearestUnclaimedBox } from '$utils/geo/nearest-box';
 	import {
 		centroidsByFeatureId,
 		combineCentroids,
@@ -1828,6 +1829,29 @@
 	// every town at once.
 	$: festaBoxById = new Map(festaBoxes.map((box) => [box.id, box]));
 
+	// --- The radar ------------------------------------------------------------------------
+	// Where the search starts from: the open place's own centre, or the middle of the view
+	// when nothing is open. Both are "here" — a reader with a town open is standing on that
+	// town, and one who has only panned there is standing wherever they panned to — and the
+	// distinction matters, since the centre of a view framed on a town is not quite the town.
+	// A coarser region works as a starting point too, being the middle of what is on screen.
+	$: radarFrom = (selected ? regionGeometry.centers.get(selected) : null) ?? currentCenter;
+
+	// The box the radar would take the reader to right now: the nearest one they have not
+	// opened, on a town other than the one they are already on. Null when the window holds
+	// nothing left for them, which is what disables the press rather than a press that
+	// silently does nothing. Recomputed as the view moves, so the answer is always about
+	// where the map is now.
+	$: radarTarget = nearestUnclaimedBox(radarFrom, festaBoxes, selected);
+
+	// The radar's press: open that town exactly as its pin, its crumb or its table row would,
+	// which frames the map onto its polygons and stands its box up in the column beside it.
+	// Nothing is claimed and nothing is raised — the reader asked where to go, not for the
+	// pack.
+	function findNearestBox(): void {
+		if (radarTarget) open(radarTarget.id);
+	}
+
 	// Show a town's pack: open the town on the map, remember which town, and raise the booster
 	// modal, which mounts the opener with that pack already stood up.
 	//
@@ -2894,15 +2918,43 @@
 							</span>
 						</div>
 
+						<!-- The radar, at the far end of the row and beside the burger on a phone. The map
+							carries days of festes at once and no marks to find them by, so the boxes waiting
+							out there are found by panning across the country looking for one — which is a
+							search, and this is the button that does it: press it and the map opens the
+							nearest town whose box is still unopened (see findNearestBox). It stands at every
+							width, unlike the burger it sits beside, because a box is as hard to come across
+							on a desktop as on a phone.
+							`ml-auto` is on this one and not on the burger now: the two are the row's far end
+							together, so the pair is pushed over as a block and the `gap-2` sets them apart.
+							Above `md` the burger is not there and this is the far end on its own, which is
+							the same statement with one mark in it.
+							The same square in the plate's own fill as the burger, drawn to the row's height
+							(`self-stretch aspect-square`), with a white game-icons glyph that needs no colour
+							of its own on the primary.
+							Disabled when there is nothing left to point at — every box in the window opened,
+							or none loaded yet — because a radar that answers "here" or answers nothing is a
+							press with no destination. -->
+						<button
+							type="button"
+							class="pointer-events-auto ml-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
+							aria-label={$_('map.radar.nearest')}
+							disabled={!radarTarget}
+							on:click={findNearestBox}
+						>
+							<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
+						</button>
+
 						<!-- The far end of this row, on a phone: the burger that pulls the column of places
 							down over the map (see COLUMN_PANEL_MAX). Nothing above `md`, where that column
 							is already standing beside the map and the press would have nothing to open —
 							`md:hidden` rather than `{#if phone}` so the mark is not mounted and unmounted as
 							a window is dragged across the breakpoint, and so the row is right on the first
 							paint, before the width has been measured at all.
-							`ml-auto` and not a spacer: the row is the badge and this, with the terrain
-							between them, and a stretched box in the middle would be a plate-shaped hole in
-							the map's chrome that took the pointer with it.
+							The far end is pushed over by the radar's `ml-auto` and not by a spacer: the row
+							is the badge at one end and those two at the other, with the terrain between
+							them, and a stretched box in the middle would be a plate-shaped hole in the
+							map's chrome that took the pointer with it.
 							A square in the plate's own fill, drawn to the row's height the way the settings
 							cog at the other corner is (`self-stretch aspect-square`), so the two ends of the
 							bar are the same piece of furniture said twice. The glyph is white artwork on
@@ -2915,7 +2967,7 @@
 							the mark is back but what it opens is the list of places and nothing else. -->
 						<button
 							type="button"
-							class="pointer-events-auto ml-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl md:hidden"
+							class="pointer-events-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl md:hidden"
 							aria-label={$_('map.column.open')}
 							aria-expanded={columnOpen}
 							on:click={toggleColumn}

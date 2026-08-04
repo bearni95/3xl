@@ -87,6 +87,9 @@
 			"open": "Obre la llista de llocs",
 			"close": "Tanca la llista de llocs"
 		},
+		"radar": {
+			"nearest": "Ves al sobre sense obrir més proper"
+		},
 		"search": {
 			"label": "Cerca llocs",
 			"placeholder": "Cerca llocs…",
