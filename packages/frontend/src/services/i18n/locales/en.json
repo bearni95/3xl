@@ -203,10 +203,71 @@
 		"title": "Credits",
 		"open": "Open the credits",
 		"close": "Close the credits",
-		"intro": "The characters in the game are sprites made by the MUGEN community and by whoever ripped the sheets off the original games. This is the credit each archive carries.",
-		"character": "Character",
-		"artist": "Artist",
-		"unknown": "Uncredited"
+		"tabs": {
+			"characters": "Characters",
+			"map": "Map"
+		},
+		"characters": {
+			"intro": "The characters in the game are sprites made by the MUGEN community and by whoever ripped the sheets off the original games.",
+			"name": "Character",
+			"artist": "Artist",
+			"unknown": "Uncredited"
+		},
+		"map": {
+			"intro": "The map of the Països Catalans is built out of other people's open data: these are its sources.",
+			"data": "Data",
+			"source": "Source",
+			"entries": [
+				{
+					"data": "Municipal boundaries",
+					"source": "Eurostat GISCO's LAU 2024 layer. © EuroGeographics for the administrative boundaries."
+				},
+				{
+					"data": "Andorran parishes",
+					"source": "geoBoundaries (gbOpen, ADM1)."
+				},
+				{
+					"data": "Comarques of Catalunya and Catalunya Nord",
+					"source": "Wikidata, licensed CC0."
+				},
+				{
+					"data": "Comarques of the País Valencià",
+					"source": "A GADM-derived municipality layer."
+				},
+				{
+					"data": "Comarques of the Illes Balears",
+					"source": "The islands' own comarca division."
+				},
+				{
+					"data": "Vegueries of Catalunya",
+					"source": "Idescat's correspondence table of municipalities, comarques and àmbits del pla territorial."
+				},
+				{
+					"data": "Local festivals of Catalunya",
+					"source": "The Generalitat de Catalunya's open dataset \"Calendari de festes locals a Catalunya\"."
+				},
+				{
+					"data": "Local festivals of the Illes Balears",
+					"source": "The Govern de les Illes Balears' open dataset \"Calendari Laboral General i Local\"."
+				},
+				{
+					"data": "Local festivals of the País Valencià",
+					"source": "The Generalitat Valenciana's local-festival resolution, published in the DOGV."
+				},
+				{
+					"data": "Festes majors of Catalunya Nord",
+					"source": "Wikidata, licensed CC0: each commune's patronal feast, which France does not declare a holiday."
+				},
+				{
+					"data": "Satellite imagery",
+					"source": "Esri, Maxar, Earthstar Geographics, and the GIS user community."
+				},
+				{
+					"data": "The map itself",
+					"source": "Leaflet, licensed under the two-clause BSD."
+				}
+			]
+		}
 	},
 	"booster": {
 		"title": "Booster",

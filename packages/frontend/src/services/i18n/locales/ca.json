@@ -204,10 +204,71 @@
 		"title": "Crèdits",
 		"open": "Obre els crèdits",
 		"close": "Tanca els crèdits",
-		"intro": "Els personatges del joc són sprites fets per la comunitat de MUGEN i per qui n'ha extret els fulls dels jocs originals. Aquesta és l'autoria que consta a cada arxiu.",
-		"character": "Personatge",
-		"artist": "Autoria",
-		"unknown": "Sense acreditar"
+		"tabs": {
+			"characters": "Personatges",
+			"map": "Mapa"
+		},
+		"characters": {
+			"intro": "Els personatges del joc són sprites fets per la comunitat de MUGEN i per qui n'ha extret els fulls dels jocs originals.",
+			"name": "Personatge",
+			"artist": "Autoria",
+			"unknown": "Sense acreditar"
+		},
+		"map": {
+			"intro": "El mapa dels Països Catalans es construeix amb dades obertes d'altri: aquestes en són les fonts.",
+			"data": "Dada",
+			"source": "Font",
+			"entries": [
+				{
+					"data": "Límits municipals",
+					"source": "Capa LAU 2024 d'Eurostat GISCO. © EuroGeographics per als límits administratius."
+				},
+				{
+					"data": "Parròquies d'Andorra",
+					"source": "geoBoundaries (gbOpen, ADM1)."
+				},
+				{
+					"data": "Comarques de Catalunya i de Catalunya Nord",
+					"source": "Wikidata, amb llicència CC0."
+				},
+				{
+					"data": "Comarques del País Valencià",
+					"source": "Capa municipal derivada de GADM."
+				},
+				{
+					"data": "Comarques de les Illes Balears",
+					"source": "La divisió comarcal de les illes."
+				},
+				{
+					"data": "Vegueries de Catalunya",
+					"source": "Taula de correspondència de municipis, comarques i àmbits del pla territorial de l'Idescat."
+				},
+				{
+					"data": "Festes locals de Catalunya",
+					"source": "Conjunt de dades obertes «Calendari de festes locals a Catalunya» de la Generalitat de Catalunya."
+				},
+				{
+					"data": "Festes locals de les Illes Balears",
+					"source": "Conjunt de dades obertes «Calendari Laboral General i Local» del Govern de les Illes Balears."
+				},
+				{
+					"data": "Festes locals del País Valencià",
+					"source": "Resolució de festes locals de la Generalitat Valenciana, publicada al DOGV."
+				},
+				{
+					"data": "Festes majors de Catalunya Nord",
+					"source": "Wikidata, amb llicència CC0: la festa patronal de cada comuna, que França no declara com a festiu."
+				},
+				{
+					"data": "Imatges de satèl·lit",
+					"source": "Esri, Maxar, Earthstar Geographics i la comunitat d'usuaris de SIG."
+				},
+				{
+					"data": "El mapa",
+					"source": "Leaflet, amb llicència BSD de dues clàusules."
+				}
+			]
+		}
 	},
 	"booster": {
 		"title": "Sobres",
