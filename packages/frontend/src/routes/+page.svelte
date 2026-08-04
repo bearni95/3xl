@@ -2693,9 +2693,14 @@
 	// The column beside the map is a flat 400px, which is a share of a desktop row and very
 	// nearly the whole of a phone's: at that width the map would be the strip beside the list
 	// rather than the other way round. So below `md` the column does not stand beside the map
-	// at all — it is the whole screen, held just above the top edge until it is asked for,
-	// slid down over the map, and slid back up by the ✕ at its corner. The map keeps every
-	// pixel of a small screen until somebody actually wants the list of places.
+	// at all — it is the whole screen, held one width off the right edge until it is asked for,
+	// slid in over the map right to left, and slid back out by the ✕ at its corner. The map
+	// keeps every pixel of a small screen until somebody actually wants the list of places.
+	//
+	// It arrives from the right because that is where it lives: from `md` up this column is the
+	// right-hand side of the row, and the burger that pulls it is at the right-hand end of the
+	// top bar. The panel is the same column coming in off the same edge, rather than a second
+	// thing that happens to hold the same list.
 	//
 	// What asks for it is the burger at the far end of the top row (see the button below). The
 	// game's own badge at the other end of that row was the handle for a while — it is the one
@@ -3111,12 +3116,15 @@
 			list. -->
 		<!-- Beside the map from `md` up, and in front of it below that (see COLUMN_PANEL_MAX in
 			the script): the same element and the same list either way, arranged twice. As a panel
-			it is fixed over the whole viewport and parked one screen-height above the top edge,
-			and being asked for is the transform going to nothing — so it comes down over the map
-			and goes back up, which is the gesture the badge that pulls it is standing at the top
-			of. The slide is a CSS transition and not a Svelte one because the panel is mounted
-			the whole time it is shut: an `{#if}` around it would have nothing to slide from on
-			the way in, and the map's chrome is what decides whether this is mounted at all.
+			it is fixed over the whole viewport and parked one screen-width off the right edge,
+			and being asked for is the transform going to nothing — so it comes in right to left
+			over the map and goes back out left to right, which is the side of the row the burger
+			that pulls it stands at and the side the column itself is on from `md` up. It came
+			down from the top edge before this, which was the badge's gesture when the badge was
+			the handle. The slide is a CSS transition and not a Svelte one because the panel is
+			mounted the whole time it is shut: an `{#if}` around it would have nothing to slide
+			from on the way in, and the map's chrome is what decides whether this is mounted at
+			all.
 			250ms is the sheets' own length (see FullScreenModal's SHEET_MS) — a panel over the
 			map is the same kind of thing arriving and should take the same time to do it.
 			Turned off at `md`, where the transform is nothing at every moment and a column that
@@ -3128,12 +3136,14 @@
 			inert={phone && !columnOpen}
 			class={classNames(
 				'fixed inset-0 z-[1200] flex flex-col bg-base-100 transition-transform duration-[250ms] ease-out',
-				'md:static md:z-auto md:w-[400px] md:flex-none md:translate-y-0 md:transition-none',
-				columnOpen ? 'translate-y-0' : '-translate-y-full'
+				'md:static md:z-auto md:w-[400px] md:flex-none md:translate-x-0 md:transition-none',
+				columnOpen ? 'translate-x-0' : 'translate-x-full'
 			)}
 		>
-			<!-- The way back up, and a phone's only piece of this column: the ✕ at the corner the
-				panel came down from. It is a row of its own rather than a mark laid over the head
+			<!-- The way back out, and a phone's only piece of this column: the ✕ at the corner the
+				panel came in from — the same end of the same row as the burger that opened it, so
+				what was pressed to bring the list over the map is where the list is pushed back off
+				it. It is a row of its own rather than a mark laid over the head
 				below it — that head is a place's name, its tile and the box it may have waiting, and
 				a button dropped on top of it would be covering one of them at some width. Gone from
 				`md` up, where the column is not something that was opened and so is not something to
