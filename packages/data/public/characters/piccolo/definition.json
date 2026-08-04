@@ -1,6 +1,6 @@
 {
 	"id": "piccolo",
-	"label": "Piccolo",
+	"label": "Cor Petit",
 	"basePath": "/assets/piccolo/frames",
 	"animations": {
 		"idle": {
@@ -38,5 +38,6 @@
 		"atk": 5,
 		"def": 5,
 		"hp": 5
-	}
+	},
+	"color": "purple"
 }

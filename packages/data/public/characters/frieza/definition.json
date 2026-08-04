@@ -1,6 +1,6 @@
 {
 	"id": "frieza",
-	"label": "Frieza",
+	"label": "Frizer",
 	"basePath": "/assets/frieza/frames",
 	"animations": {
 		"idle": {
@@ -39,5 +39,6 @@
 		"def": 5,
 		"hp": 5
 	},
+	"color": "purple",
 	"renderScale": 1.15
 }

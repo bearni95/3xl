@@ -1,6 +1,6 @@
 {
 	"id": "captain-battleship",
-	"label": "Captain Battleship",
+	"label": "Gunkan",
 	"basePath": "/assets/captain-battleship/frames",
 	"animations": {
 		"idle": {
