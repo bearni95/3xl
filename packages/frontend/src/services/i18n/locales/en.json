@@ -186,8 +186,16 @@
 		"close": "Close the frequently asked questions",
 		"entries": [
 			{
-				"question": "foo",
-				"answer": "bar"
+				"question": "What is this game?",
+				"answer": "6xl is a card game played on the map of the Països Catalans. Every municipality flies a show, and you collect its characters and fight to occupy the town with them. Cards come out of the booster packs of the towns celebrating their festa major, and fights are played with a team of three."
+			},
+			{
+				"question": "How do I get characters?",
+				"answer": "By opening booster packs. Towns celebrating their festa major, from three days before it to four days after, carry a pack on the map, and opening one gives you five cards and an avatar. Each town deals two packs a year: the white one on the day of the festa itself, which deals purple, green and orange cards, and the black one on the days around it, which deals red, blue and yellow ones. The radar button at the top takes you to the nearest unopened pack."
+			},
+			{
+				"question": "How do I challenge a municipality?",
+				"answer": "First fill your team with three cards you have claimed. Then open the municipality on the map and press Challenge: you fight the team of whoever holds it, or the house team if nobody has taken it yet. The fight is turn based and you give each fighter an order, charge, defend or shoot. To keep the town you have to win as many fights as the times it has changed hands, plus one, so an untaken municipality falls to a single win and one that has been taken once asks for two. Those wins add up for as long as the town does not change hands. Finishing a fight there closes the town to you for an hour, and you can only have one battle open at a time."
 			}
 		]
 	},

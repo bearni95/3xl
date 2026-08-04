@@ -187,8 +187,16 @@
 		"close": "Tanca les preguntes freqüents",
 		"entries": [
 			{
-				"question": "foo",
-				"answer": "bar"
+				"question": "Què és aquest joc?",
+				"answer": "El 6xl és un joc de cartes damunt el mapa dels Països Catalans. Cada municipi porta una sèrie, i tu en reculls els personatges i els fas lluitar per ocupar el poble. Les cartes surten dels sobres dels pobles que fan la festa major, i els combats es juguen amb un equip de tres."
+			},
+			{
+				"question": "Com aconsegueixo personatges?",
+				"answer": "Obrint sobres. Els municipis que fan la festa major, des de tres dies abans fins a quatre dies després, tenen un sobre al mapa, i obrir-lo et dona cinc cartes i un avatar. De cada poble en pots obrir dos l'any: el blanc el dia mateix de la festa, que reparteix cartes liles, verdes i taronges, i el negre els dies del voltant, que les reparteix vermelles, blaves i grogues. El botó del radar de dalt de tot et porta al sobre sense obrir més proper."
+			},
+			{
+				"question": "Com desafio un municipi?",
+				"answer": "Abans de res omple l'equip amb tres cartes que hagis reclamat. Després obre el municipi al mapa i prem Desafiar: lluitaràs contra l'equip del jugador que l'ocupa, o contra el de la casa si encara no l'ha pres ningú. El combat va per torns i a cada lluitador li dones una ordre, carregar, defensar o atacar. Per quedar-te el poble has de guanyar tants combats com vegades hagi canviat de mans, més un, o sigui que un municipi verge cau amb una victòria i un que ja s'ha pres un cop en demana dues. Les victòries s'hi acumulen mentre no canviï d'ocupant. Quan hi acabes un combat el poble et queda tancat una hora, i només pots tenir una batalla oberta alhora."
 			}
 		]
 	},
