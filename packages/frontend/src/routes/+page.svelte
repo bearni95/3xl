@@ -2697,22 +2697,22 @@
 	// slid down over the map, and slid back up by the ✕ at its corner. The map keeps every
 	// pixel of a small screen until somebody actually wants the list of places.
 	//
-	// What asks for it is the game's own badge at the top left. That plate is the one piece of
-	// the map's chrome with nothing to press — it says the game's name and does nothing — and
-	// it stands at the corner the panel comes down from, so the word is the handle for the
-	// screen it pulls down. It is a press on a phone only: where the column is already beside
-	// the map there is nothing for it to open, so the badge is a plain plate again (see the
-	// `svelte:element` below) rather than a button that does nothing when pressed.
+	// What asks for it is the burger at the far end of the top row (see the button below). The
+	// game's own badge at the other end of that row was the handle for a while — it is the one
+	// plate on the map with nothing to press, and it stands at the corner the panel comes down
+	// from — but a word is not a control however conveniently it is placed, and the mark that
+	// says a list of things can be pulled down is the burger. So the badge is a plain plate
+	// again at every width, and the press is on the one thing in the row that is only a press.
 	//
 	// The panel itself is drawn by the `md:` classes on the aside — one arrangement of one
 	// element, not a second column mounted for small screens, since two of them would be two
 	// RegionSubdivisions with two searches and two scroll positions. What this needs from
-	// script is only what CSS cannot say: which element the badge is, and that a panel parked
-	// off-screen is not somewhere a keyboard should be able to walk into (`inert`).
+	// script is only what CSS cannot say: that a panel parked off-screen is not somewhere a
+	// keyboard should be able to walk into (`inert`).
 	//
 	// 768 is Tailwind's `md`, and the number the `md:` classes on the aside turn on at — keep
-	// the two in step, or the badge becomes pressable at a width where the column is already
-	// standing beside the map.
+	// the two in step, or the burger stands at a width where the column is already beside the
+	// map and its press has nothing to open.
 	const COLUMN_PANEL_MAX = 768;
 	let viewportWidth = 0;
 	$: phone = viewportWidth > 0 && viewportWidth < COLUMN_PANEL_MAX;
@@ -2724,9 +2724,12 @@
 	let columnOpen = false;
 	$: if (!phone) columnOpen = false;
 
-	// The badge's press, which only a phone has (see above).
-	function openColumn(): void {
-		if (phone) columnOpen = true;
+	// The burger's press, which only a phone has (see above). A toggle rather than an opener,
+	// since that is what a burger is — though shut is the only state it is ever pressed in:
+	// the panel comes down over the whole viewport, this row included, so the way back up is
+	// the ✕ the panel brings with it.
+	function toggleColumn(): void {
+		if (phone) columnOpen = !columnOpen;
 	}
 </script>
 
@@ -2857,24 +2860,13 @@
 							only the plate again — nothing hangs off it, nothing is asked about the pointer, and
 							the wrapper that used to be both is gone with them. It stretches to the row's height
 							on its own, being a `flex-none` child of an `items-stretch` row. -->
-						<!-- And on a phone the plate is the handle of the column: pressed, it pulls the
-								list of places down over the map (see COLUMN_PANEL_MAX). It is the same plate
-								either way — same fill, same lettering, same place on the row — because it is
-								the same thing being said; what changes is whether it is a button, which it is
-								only where there is a panel for it to open. Hence the dynamic element: a
-								`<div>` beside the column on a desktop, a `<button>` in front of it on a
-								phone, and never a control that does nothing when it is pressed. -->
-						<svelte:element
-							this={phone ? 'button' : 'div'}
-							type={phone ? 'button' : undefined}
-							role={phone ? 'button' : 'presentation'}
-							aria-label={phone ? $_('map.column.open') : undefined}
-							aria-expanded={phone ? columnOpen : undefined}
-							class={classNames(
-								'pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl',
-								{ 'cursor-pointer': phone }
-							)}
-							on:click={openColumn}
+						<!-- On a phone it was the handle of the column for a while, pulling the list of
+								places down over the map — the same plate either way, a `<div>` beside the
+								column on a desktop and a `<button>` in front of it on a phone. The handle is
+								the burger at the far end of this row now (see below), so the plate is a plate
+								at every width again and this is a `<div>` at every width with it. -->
+						<div
+							class="pointer-events-auto flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
 						>
 							<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
 								down and right, and the word itself over it. A shadow drawn as a copy rather
@@ -2895,16 +2887,36 @@
 								>
 								<span class="relative">6xl</span>
 							</span>
-						</svelte:element>
+						</div>
 
-						<!-- The far end of this row is empty. It carried the day's allowance — how many of
-							the window's boxes were left to open — and past it the burger, which dropped the
-							column of everything that is not the map: the roster, the album and the documents.
-							The roster is the side standing in the map's own corner, pressed (see TeamLineup
-							below), and the account is the cog at the end of the plate under it, so what the
-							burger was still holding a player has where the thing itself is. The plate and the
-							menu under it are gone from over the terrain with it — see the modals at the foot of
-							this file, which are all still mounted and all still raised by their own stores. -->
+						<!-- The far end of this row, on a phone: the burger that pulls the column of places
+							down over the map (see COLUMN_PANEL_MAX). Nothing above `md`, where that column
+							is already standing beside the map and the press would have nothing to open —
+							`md:hidden` rather than `{#if phone}` so the mark is not mounted and unmounted as
+							a window is dragged across the breakpoint, and so the row is right on the first
+							paint, before the width has been measured at all.
+							`ml-auto` and not a spacer: the row is the badge and this, with the terrain
+							between them, and a stretched box in the middle would be a plate-shaped hole in
+							the map's chrome that took the pointer with it.
+							A square in the plate's own fill, drawn to the row's height the way the settings
+							cog at the other corner is (`self-stretch aspect-square`), so the two ends of the
+							bar are the same piece of furniture said twice. The glyph is white artwork on
+							nothing — the game-icons variant this project vendors — which is why it is an
+							`<img>` here and needs no colour of its own on the primary.
+							This row carried the day's allowance too once, and past it a burger that dropped
+							a column of everything that is not the map: the roster, the album and the
+							documents. Those are elsewhere now — the roster is the side standing in the map's
+							corner, pressed, and the account is the cog at the end of the plate under it — so
+							the mark is back but what it opens is the list of places and nothing else. -->
+						<button
+							type="button"
+							class="pointer-events-auto ml-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl md:hidden"
+							aria-label={$_('map.column.open')}
+							aria-expanded={columnOpen}
+							on:click={toggleColumn}
+						>
+							<img src="/assets/icons/delapouite/hamburger-menu.svg" class="size-6" alt="" />
+						</button>
 					</div>
 				{/if}
 
