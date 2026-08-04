@@ -199,6 +199,15 @@
 			}
 		]
 	},
+	"credits": {
+		"title": "Credits",
+		"open": "Open the credits",
+		"close": "Close the credits",
+		"intro": "The characters in the game are sprites made by the MUGEN community and by whoever ripped the sheets off the original games. This is the credit each archive carries.",
+		"character": "Character",
+		"artist": "Artist",
+		"unknown": "Uncredited"
+	},
 	"booster": {
 		"title": "Booster",
 		"withBoxes": "Booster ({remaining}/{total})",

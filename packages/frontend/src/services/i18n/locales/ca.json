@@ -200,6 +200,15 @@
 			}
 		]
 	},
+	"credits": {
+		"title": "Crèdits",
+		"open": "Obre els crèdits",
+		"close": "Tanca els crèdits",
+		"intro": "Els personatges del joc són sprites fets per la comunitat de MUGEN i per qui n'ha extret els fulls dels jocs originals. Aquesta és l'autoria que consta a cada arxiu.",
+		"character": "Personatge",
+		"artist": "Autoria",
+		"unknown": "Sense acreditar"
+	},
 	"booster": {
 		"title": "Sobres",
 		"withBoxes": "Sobres ({remaining}/{total})",

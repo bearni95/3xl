@@ -24,6 +24,7 @@
 	import CollectionModal from '$components/core/CollectionModal.svelte';
 	import LeaderboardModal from '$components/core/LeaderboardModal.svelte';
 	import FaqModal from '$components/core/FaqModal.svelte';
+	import CreditsModal from '$components/core/CreditsModal.svelte';
 	import BoosterModal from '$components/core/BoosterModal.svelte';
 	import { rosterModalOpen } from '$services/rosterModal';
 	import { collectionModalOpen } from '$services/collectionModal';
@@ -32,6 +33,7 @@
 	import { avatarPickerOpen } from '$services/avatarPicker';
 	import { leaderboardModalOpen } from '$services/leaderboardModal';
 	import { faqModalOpen, openFaq } from '$services/faqModal';
+	import { creditsModalOpen, openCredits } from '$services/creditsModal';
 	import { boosterModalOpen } from '$services/boosterModal';
 	import { fullScreenModalOpen } from '$services/fullScreenModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
@@ -2940,8 +2942,8 @@
 						<!-- What the game gets asked, beside the radar and left of it, at every width —
 							a question is as worth answering on a desktop as on a phone. The `ml-auto`
 							that pushes the row's far end over is on this one now, being the first mark
-							of that end: the block is this, the radar and (on a phone) the burger, set
-							apart by the row's own `gap-2` and moved as one.
+							of that end: the block is this, the credits, the radar and (on a phone) the
+							burger, set apart by the row's own `gap-2` and moved as one.
 							The same square in the plate's own fill as the two beside it, drawn to the
 							row's height (`self-stretch aspect-square`), with a white game-icons glyph
 							that needs no colour of its own on the primary. -->
@@ -2952,6 +2954,20 @@
 							on:click={openFaq}
 						>
 							<img src="/assets/icons/sbed/help.svg" class="size-6" alt="" />
+						</button>
+
+						<!-- Who drew the fighters, next along. It stands beside the questions because it
+							answers one of the same kind — where all this came from — and because the
+							people who made these sprites are named on the map's own chrome rather than
+							three screens in. A palette for a glyph: what the sheet holds is a table of
+							artists. Same square, same fill, same white artwork as the marks either side. -->
+						<button
+							type="button"
+							class="pointer-events-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
+							aria-label={$_('credits.open')}
+							on:click={openCredits}
+						>
+							<img src="/assets/icons/delapouite/palette.svg" class="size-6" alt="" />
 						</button>
 
 						<button
@@ -3415,6 +3431,13 @@
 	content is the catalogue's — see FaqModal. -->
 {#if $faqModalOpen}
 	<FaqModal />
+{/if}
+
+<!-- Who made what the game is drawn out of, on the same sheet as the rest of them. Raised by
+	the palette at the far end of the top row, beside the question mark. Mounted only while it
+	is open, like its neighbours here. Its list is the character registry — see CreditsModal. -->
+{#if $creditsModalOpen}
+	<CreditsModal />
 {/if}
 
 <!-- The window's booster packs, on the same sheet, and the one view here that is not just a

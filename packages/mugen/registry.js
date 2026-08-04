@@ -23,6 +23,29 @@ const ASSETS_DIR = join(__dirname, '../assets/public');
 const REGISTRY_FILE = join(__dirname, '../data/registry.generated.ts');
 
 /**
+ * Who made a character's sprites, off the decoded manifest.
+ *
+ * The credit is the one thing about a character that is not in its definition: it comes
+ * out of the archive's own `[Info] author` (or a sheet's sidecar) and is written into the
+ * manifest by generate-sprites, so it is re-read here rather than authored anywhere. The
+ * game's credits screen is a list of every character with its artist beside it, and a
+ * screen cannot ask for fifty manifests — each is hundreds of kilobytes of frame
+ * geometry — so the one line of it that is *about* the character rather than about its
+ * pixels is carried in the registry, which the game already has as a module.
+ *
+ * A manifest with no author reads `Unknown`, which is what the decoders write when the
+ * archive itself does not say.
+ */
+function readAuthor(id) {
+	const manifestPath = join(ASSETS_DIR, id, 'frames', 'manifest.json');
+	try {
+		return JSON.parse(readFileSync(manifestPath, 'utf-8')).author || 'Unknown';
+	} catch {
+		return 'Unknown';
+	}
+}
+
+/**
  * Rewrite @3xl/data's registry.generated.ts from every definition JSON on disk.
  * Returns how many characters the registry now lists.
  */
@@ -36,6 +59,7 @@ export function regenerateRegistry() {
 		.map((defPath) => JSON.parse(readFileSync(defPath, 'utf-8')))
 		// Only list characters whose decoded frames actually exist.
 		.filter((d) => existsSync(join(ASSETS_DIR, d.id, 'frames', 'manifest.json')))
+		.map((d) => ({ ...d, author: readAuthor(d.id) }))
 		.sort((a, b) => a.label.localeCompare(b.label));
 
 	// Single-quote strings to match the repo's Prettier style; escape any quote
@@ -43,7 +67,8 @@ export function regenerateRegistry() {
 	const quote = (s) => `'${String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 	const entries = defs
 		.map(
-			(d) => `\t{ id: ${quote(d.id)}, label: ${quote(d.label)}, basePath: ${quote(d.basePath)} }`
+			(d) =>
+				`\t{ id: ${quote(d.id)}, label: ${quote(d.label)}, basePath: ${quote(d.basePath)}, author: ${quote(d.author)} }`
 		)
 		.join(',\n');
 

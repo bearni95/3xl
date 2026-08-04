@@ -17,6 +17,12 @@ export interface CharacterOption {
 	label: string;
 	/** Folder (served) with manifest.json + frames, e.g. `/assets/<id>/frames`. */
 	basePath: string;
+	/**
+	 * Who made the sprites, as the archive (or the sheet's sidecar) credits them —
+	 * `Unknown` where it says nothing. Copied out of the decoded manifest at generation
+	 * time so the credits screen can name every artist without fetching fifty manifests.
+	 */
+	author: string;
 }
 
 export const characters: CharacterOption[] = registry;
