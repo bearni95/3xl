@@ -85,13 +85,13 @@
 	"map": {
 		"tabs": {
 			"map": "Mapa",
-			"places": "Llocs",
 			"shows": "Sèries"
 		},
 		"town": {
 			"tabs": {
 				"town": "Municipi",
-				"box": "Sobre"
+				"box": "Sobre",
+				"places": "Llocs"
 			}
 		},
 		"radar": {

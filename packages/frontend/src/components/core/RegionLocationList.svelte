@@ -12,9 +12,12 @@
 
 	// The list of places, and nothing else: what the open region divides into, or what a search
 	// has turned up in its place. It was the scrolling half of the column that stood beside the
-	// map, and it is its own component because it is drawn over the map now, as the second of
-	// that column's three tabs (see +page.svelte). The shares row it was headed by and the field
-	// that fills it are the third tab, one press away.
+	// map; then it was painted over the terrain, as the second of that column's three tabs; and
+	// it is now a tab of the block UNDER the map, beside the open town and that town's box (see
+	// +page.svelte's `townTab`) — a list of names being an answer to what is at the open place
+	// rather than a picture of the level, which is what the two tabs left over the terrain are.
+	// The shares row it was headed by and the field that fills it stayed up there, in the box
+	// above this one rather than on a sibling tab.
 
 	// What the open region divides into (see regionLevelNodes), already lettered by the caller —
 	// and already without the head among them, since the caller is what tallies the shares over

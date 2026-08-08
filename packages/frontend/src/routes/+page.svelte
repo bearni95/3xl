@@ -872,21 +872,24 @@
 	// letters is the cut ABOVE the open region, in the column beside the map (see `abovePath`),
 	// and that one is walked off the node rather than off the view.
 
-	// Which of the map column's three tabs is up: the terrain, the list of the places the open
-	// region divides into (see RegionLocationList), or the shows that level divides between (see
-	// ShowShareGrid). The map is the default and stays the default — this game is a map, and a
-	// reader who has not asked for a list is looking at the country.
-	// Held here rather than in any panel because none of them is the tabs' parent: the tab row
-	// and the three panels are children of the same column.
-	// Nothing moves it but a press. Typing in the field on the shows tab fills the list on the
-	// tab beside it, so a search is answered on a tab the reader is not looking at —
-	// deliberately, since a page that switched tabs under someone mid-keystroke is a page that
-	// moves while it is being used.
-	let mapTab: 'map' | 'places' | 'shows' = 'map';
+	// Which of the map column's two tabs is up: the terrain, or the shows that level divides
+	// between (see ShowShareGrid). The map is the default and stays the default — this game is a
+	// map, and a reader who has not asked for a tally is looking at the country.
+	// Held here rather than in either panel because neither of them is the tabs' parent: the tab
+	// row and the two panels are children of the same column.
+	// It was three, the middle of them being the list of the places the open region divides into.
+	// That list is not a way of reading the terrain — it is what is AT the open place, which is
+	// the question the block under the map answers — so it went to that block's own tabs and
+	// stands beside the town and the town's box (see `townTab`). What is left over the terrain is
+	// the two things that really are pictures of the level: the country, and the shows it flies.
+	// Nothing moves it but a press. Typing in the field on the shows tab fills the list in the
+	// block below, which stands whichever of these two is up, so a search is answered where the
+	// reader can see it answered without this ever moving under them.
+	let mapTab: 'map' | 'shows' = 'map';
 
-	// The show the level is being read through: picked on the shares row (the map column's third
-	// tab) and applied to the list of places on the second, which is why it is held on the page
-	// rather than in either panel. Null is the whole level.
+	// The show the level is being read through: picked on the shares row (the map column's second
+	// tab) and applied to the list of places in the block below it, which is why it is held on the
+	// page rather than in either panel. Null is the whole level.
 	let activeShow: number | null = null;
 
 	// Pressing the picked show again clears it, pressing another turns the list over to that one.
@@ -900,7 +903,9 @@
 	// another list — of another level, in another place — so the show goes with the old one
 	// rather than silently hiding most of what has just been opened. It lived with the shares row
 	// while that row was a component of its own; the row is markup on this page now, so the rule
-	// is here, named on the open region so it re-runs when the map moves.
+	// is here, named on the open region so it re-runs when the map moves. The two are in different
+	// boxes now — the row over the terrain, the list in the block under it — which changes nothing
+	// about the rule: what it is about is the level, and the level is the page's.
 	let filteredFor: string | null = null;
 	$: if ((openRegion ?? null) !== filteredFor) {
 		filteredFor = openRegion ?? null;
@@ -909,7 +914,7 @@
 
 	// Free-text search across every location in the whole tree (all tiers), matched
 	// against each region's displayed name (case- and accent-insensitive). While the
-	// box holds text its matches stand in the list of places over the map, in place of the level
+	// box holds text its matches stand in the list of places under the map, in place of the level
 	// and drawn as the level is (see RegionLocationList); an empty box has nothing to say.
 	let searchQuery = '';
 	// Whether the field is out. Held here rather than inside the column because what is typed in
@@ -922,6 +927,17 @@
 				.filter((entry) => foldText(restoreCatalanArticle(entry.name)).includes(normalizedQuery))
 				.slice(0, 100)
 		: [];
+
+	// Asking for the field: it comes out, and the block under the map turns to its list, because
+	// that is where what is typed here is answered. Pressing the glass is a reader saying they
+	// want to find a place, which is exactly the tab that lists them — so the answer is already on
+	// screen when the first letter lands. It is the press that moves it and never the typing: a
+	// page that changed what was up under somebody mid-keystroke is a page that moves while it is
+	// being used, and this moves once, at a gesture, before there is anything to read.
+	function openSearch() {
+		searchOpen = true;
+		townTab = 'places';
+	}
 
 	// Ending the search: the query goes, and with it the matches it was filling the column with,
 	// and the field folds back to the glyph it came out of. The head of that column is
@@ -1221,28 +1237,51 @@
 	// a visitor is shown what a town has rather than a tab they are not told the reason for.
 	$: townBoxOffered = Boolean(townBox && !townBox.claimed);
 
-	// Which of the two the block under the map is showing: the town — the side standing on it,
-	// the plate naming it and the fight to be had for it — or the box that town has waiting.
+	// Whether there is a town to draw at all, which is the whole of what the first tab under the
+	// map is enabled by. Only the bottom tier has a pin of its own: a province is not a place a
+	// side stands on, and above the municipality that tab has nothing to be about.
+	$: townOffered = Boolean(townPin);
+
+	// Which of the three the block under the map is showing: the town — the side standing on it,
+	// the plate naming it and the fight to be had for it — the box that town has waiting, or the
+	// places the open region divides into. The first two are answers about the one town; the third
+	// is the level around it, and it came here off the row of tabs over the terrain, where it was
+	// a third way of reading the map. It is not that: the terrain, drawn, and the shows, tallied,
+	// are pictures of the level, and a list of names is what is at the place — which is the
+	// question this block is the answer to, at whatever tier the map is standing.
 	// The town is the default, and it is the default again at every new town: walking into a
 	// place to be shown its wrapper rather than who holds it is the page answering a question
 	// that was asked about the last town.
-	let townTab: 'town' | 'box' = 'town';
+	let townTab: 'town' | 'box' | 'places' = 'town';
 	$: selected, (townTab = 'town');
 
 	// And it is never left standing on a tab that is not there to be pressed: a box opened while
 	// it is the tab that is up (which is exactly what the press on it does) would otherwise leave
-	// the block empty behind the sheet.
-	$: if (townTab === 'box' && !townBoxOffered) townTab = 'town';
+	// the block empty behind the sheet, and the reset above puts every drill onto the town's tab
+	// whether or not the place drilled into has a town in it. The list is what both fall back to
+	// where there is no town, which is what keeps a walk DOWN the tiers on the one tab: press a
+	// territory in the list and the list is what answers with its provinces. It is only the last
+	// step of a drill — the municipality, which has a pin — that turns the block over to the town,
+	// and that step is the one the reader asked for by name.
+	$: if (townTab === 'box' && !townBoxOffered) townTab = townOffered ? 'town' : 'places';
+	$: if (townTab === 'town' && !townOffered) townTab = 'places';
 
-	// Whether that block is standing at all: there is a town open, the map is the tab that is up,
-	// and no sheet is over the page. It was written out at the `{#if}` alone while the block was a
-	// band laid over the terrain, where nothing else on the page could tell the difference. It is a
-	// box in the third column from `md` up now, the top half of it, so the panel under it has to
-	// know: with the block there the panel is the second of two rows, and without it the column is
-	// the panel's whole (see the grid, and the wrapper down there).
-	// The `{#if}` names `townPin` again beside this one, which is not a second condition but the
-	// narrowing: a boolean cannot tell the compiler the pin is there, and TownPin is handed it.
-	$: townBlock = ready && Boolean(townPin) && mapTab === 'map' && !$fullScreenModalOpen;
+	// Whether that block is standing at all: the map is ready and no sheet is over the page. It was
+	// written out at the `{#if}` alone while the block was a band laid over the terrain, where
+	// nothing else on the page could tell the difference. It is a box in the third column from `md`
+	// up now, the top half of it, so the panel under it has to know: with the block there the panel
+	// is the second of two rows, and without it the column is the panel's whole (see the grid, and
+	// the wrapper down there).
+	// It used to want a town open and the map's own tab up, both for the same reason: what it held
+	// was one town, and the list of places was painted over the terrain, so a block about a town
+	// with no town in it was a block about nothing. Neither holds now. The list is one of the three
+	// tabs in here and the list is about the level, so there is something to say at every tier and
+	// at the top view; and the list is no longer painted over the map, so the shares tab being up
+	// is not a reason to take this away. What that buys is the thing this page values most: the
+	// map's box stops moving. It was re-framed by every walk into a town and out of one — WorldMap
+	// answers a change of box with `invalidateSize` + `syncView` + a full rebuild of every pin and
+	// every booster box — and now nothing but a sheet or the window itself ever changes it.
+	$: townBlock = ready && !$fullScreenModalOpen;
 
 	// (Which of the two below the tabs was the square used to be a press: a bead on the rule
 	// between them handed it from the terrain to this block and back. It is the block's for good
@@ -3189,10 +3228,12 @@
 			What does not fit is what is INSIDE that block, and it scrolls inside itself, the way
 			every box on this page does.
 
-			Three things stand in this column, and only one of them at a time: the terrain, the list
-			of the places the open region divides into (see RegionLocationList), and the shows that
-			level divides between (see mapTab). All three are about the map — the level it is looking
-			at, drawn, named, and tallied. -->
+			Two things stand in this column, and only one of them at a time: the terrain, and the
+			shows the open level divides between (see mapTab). Both are pictures of the map — the
+			level it is looking at, drawn and tallied. The list of the places that level divides into
+			was the third of them (see RegionLocationList); it is in the block under this column now,
+			on that block's own tabs, because a list of names is not a picture of the level but an
+			answer to what is at the open place. -->
 		<div
 			class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-span-2 md:col-start-1 md:row-span-2 md:row-start-1"
 		>
@@ -3225,21 +3266,15 @@
 					>
 						{$_('map.tabs.map')}
 					</button>
-					<button
-						type="button"
-						role="tab"
-						aria-selected={mapTab === 'places'}
-						class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'places' })}
-						on:click={() => (mapTab = 'places')}
-					>
-						{$_('map.tabs.places')}
-					</button>
-					<!-- The third of them: what the open level divides between, and the way to look past
+					<!-- The second of them: what the open level divides between, and the way to look past
 						it. It was the last row of the column beside this map, under everything that column
 						says about the open place — which put the one control that acts on the list of
 						places in a different column from the list. It is a tab because what it does is
-						what these tabs are: three ways of reading the level the map is open on, the
-						terrain, the places by name, and the shows they fly. -->
+						what this row is: two ways of reading the level the map is open on, the terrain
+						and the shares of it. The places by name were the third of them and are the
+						block's below (see `townTab`), which is where the field on this tab now answers —
+						a box that is standing while this one is up, rather than a sibling tab the reader
+						had to press to see what they had typed. -->
 					<button
 						type="button"
 						role="tab"
@@ -3251,13 +3286,13 @@
 					</button>
 				</div>
 
-				<!-- The panel the two tabs share, and the map is never taken out of it: the list is laid
-					over the terrain rather than swapped with it, so the map's box is the same box at every
-					moment and Leaflet is never told the column resized. An `{:else}` here would be a fresh
-					map on every trip back to the first tab — a new WebGL-less canvas, a new set of tiles,
-					and the reader's pan and zoom lost to a tab press. So both are absolutely placed inside
-					this box, the map always and the list only while it is picked, and the list carries the
-					page's own surface so the terrain does not read through it.
+				<!-- The panel the two tabs share, and the map is never taken out of it: the shares are
+					laid over the terrain rather than swapped with it, so the map's box is the same box at
+					every moment and Leaflet is never told the column resized. An `{:else}` here would be a
+					fresh map on every trip back to the first tab — a new WebGL-less canvas, a new set of
+					tiles, and the reader's pan and zoom lost to a tab press. So both are absolutely placed
+					inside this box, the map always and the shares only while picked, and the shares carry
+					the page's own surface so the terrain does not read through them.
 
 					It takes what the column has left at every width (`flex-1`), which on a phone is the
 					column less the block under it — and that block is a square of the page's own width
@@ -3366,28 +3401,13 @@
 
 					</div>
 
-					<!-- The level the map is open on, listed. Handed the same rows the shares tab is
-						tallied over, the same matches the field on that tab turns up, and the show that row
-						has picked — the press is on the tab beside this one, the hiding is here with the
-						rows it hides. Picking one is the map's own gesture: `openFromColumn`,
-						exactly as a pin or a crumb. -->
-					{#if mapTab === 'places'}
-						<div class="absolute inset-0 flex flex-col bg-base-100">
-							<RegionLocationList
-								classes="min-h-0 flex-1"
-								rows={subdivisions}
-								current={subdivisionCurrent}
-								{searchRows}
-								{searchQuery}
-								{activeShow}
-								on:select={(event) => openFromColumn(event.detail.key)}
-							/>
-						</div>
-					{/if}
+					<!-- (The level the map is open on, listed, was painted over this same box, as the
+						second of three tabs. It is in the block under the map now, beside the town and
+						the town's box — see `townTab`, and the block itself further down.) -->
 
 					<!-- What the level the map is open on is made of: the shows those places fly and how
-						much of each. Laid over the same box as the terrain and the list, on the page's own
-						surface, exactly as the list is — three tabs, one panel, and the map never taken out
+						much of each. Laid over the same box as the terrain, on the page's own
+						surface — two tabs, one panel, and the map never taken out
 						of it (see above).
 						It closed the column beside this map for a long time, under everything that column
 						had to say about the open place. What it acts on was never in that column though:
@@ -3422,7 +3442,7 @@
 									class="flex items-center justify-center rounded-md p-1 hover:bg-white/10"
 									aria-label={$_('map.search.label')}
 									aria-expanded={searchOpen}
-									on:click={() => (searchOpen = true)}
+									on:click={openSearch}
 								>
 									<img src="/assets/icons/lorc/magnifying-glass.svg" class="w-full" alt="" />
 								</button>
@@ -3432,9 +3452,10 @@
 								<!-- The field itself, on its own row under the glyph that asked for it. It puts
 									itself away when it is left empty and takes the matches with it on Escape (see
 									LocationSearchBox); what it holds is matched by this page against the whole
-									tree, and the matches stand on the tab beside this one — deliberately not
-									switching to it, since a page that changed tabs under somebody mid-keystroke
-									is a page that moves while it is being used. -->
+									tree, and the matches stand in the block under the map, which the press on the
+									glass has already turned to its list (see openSearch). So the answer is on
+									screen beside the question rather than on a tab the reader has to know to
+									press, and nothing moves on a keystroke. -->
 								<LocationSearchBox
 								bind:value={searchQuery}
 								bind:open={searchOpen}
@@ -3500,46 +3521,57 @@
 			`named={false}`: the town's name is the band at the top of the page, so the plate
 			is drawn for the rest of what it holds and is left off entirely where there is
 			neither a holder nor a standing to print (see TownPin).
-			Only a town has one at all, and only while the map is the tab that is up: the list
-			of places is painted over the terrain and a side standing on a list is a side
-			standing on nothing. It leaves under a full view with the rest of the chrome, on
-			the same 8px over the same 250ms. Which of the two boxes beside it answers for its
-			absence is the fold: below `md` its row collapses and the map takes the height back,
-			from `md` up the panel takes the whole column (see `townBlock`, which is this
-			condition written once so the panel can be told).
+			Only a town has one at all, which is what the first tab is enabled by rather than
+			what this block is: the block stands at every tier and at the top view, because the
+			third of its tabs is the list of places and there is a level to list wherever the map
+			is standing. It leaves under a full view with the rest of the chrome, on the same 8px
+			over the same 250ms, and that is now the only thing that takes it away — which is what
+			finally stops the map being re-framed by a walk into a town (see `townBlock`, where
+			the condition is written once so the panel below can be told which rows it has).
 			It takes the width the grid gives it — the third column, or the whole of a phone —
 			up to the 500px the pin on the terrain is drawn at, so the statues here are the size
 			they are on a mark.
 
-			Two things stand here and one of them at a time, which is what the row of tabs
-			above them picks between: the town, and the box that town has waiting. They are
-			two answers to one question — what is there, at this place — and a column with
-			both in it would be a picture of who holds the town with an unopened wrapper
-			hanging off the bottom of it, at a width where what is under the map is what a
-			phone has left. Tabs and not a fold, because neither of the two is the other's
-			detail. -->
-		{#if townBlock && townPin}
+			Three things stand here and one of them at a time, which is what the row of tabs
+			above them picks between: the town, the box that town has waiting, and the places the
+			open region divides into. They are three answers to one question — what is there, at
+			this place — and a column with all of them in it would be a picture of who holds the
+			town with an unopened wrapper and a list of forty names hanging off the bottom of it,
+			at a width where what is under the map is what a phone has left. Tabs and not a fold,
+			because none of the three is another's detail.
+			The list is the newcomer, and it came off the row of tabs over the terrain, where it
+			was drawn as a third way of reading the map. It never was one: the terrain and the
+			shares are pictures of the level and the list is its names, which is the same kind of
+			thing as the town's own side and the town's own box — what is at the place the map is
+			open on. So it is read where those are read, in the block, at the block's own size. -->
+		{#if townBlock}
 			<div
 				transition:blur={CHROME_BLUR}
 				class="row-start-2 flex aspect-square w-full min-h-0 min-w-0 flex-col items-center gap-2 border-t-2 border-primary p-3 md:col-start-3 md:row-start-1 md:aspect-auto md:border-b-2 md:border-t-0"
 			>
-				<!-- The two, said the way the map's own three are said over the terrain: DaisyUI's
+				<!-- The three, said the way the map's own two are said over the terrain: DaisyUI's
 					boxed tabs, `role="tablist"`, and which is up held on the page rather than
 					pointed at with `aria-controls` (see the tab row over the map, which this is a
 					second of).
-					The box's tab is disabled by the offer and by nothing else (see
-					`townBoxOffered`): most towns on most days are outside the booster window and
-					have no box at all, and a town whose box this reader has already opened has
-					none left to draw. A tab that is dark is the honest shape of that — the
-					alternative was a tab that opens onto an empty panel, which says the same thing
-					one press later. -->
+					Two of them are disabled by what the open place has and by nothing else (see
+					`townOffered` and `townBoxOffered`): only the bottom tier is a place a side
+					stands on, so above the municipality there is no town to draw; and most towns on
+					most days are outside the booster window and have no box at all, a town whose box
+					this reader has already opened having none left to draw either. A tab that is
+					dark is the honest shape of that — the alternative was a tab that opens onto an
+					empty panel, which says the same thing one press later.
+					The third is never dark: there is a level under every place on this map, the top
+					view included, so the list always has something to say. Which is what makes it
+					the one both of the others fall back to (see `townTab`). -->
 				<div role="tablist" class="tabs-boxed tabs flex-none">
 					<button
 						type="button"
 						role="tab"
 						aria-selected={townTab === 'town'}
+						disabled={!townOffered}
 						class={classNames('tab whitespace-nowrap', {
-							'tab-active': townTab === 'town'
+							'tab-active': townTab === 'town',
+							'tab-disabled cursor-default opacity-40': !townOffered
 						})}
 						on:click={() => (townTab = 'town')}
 					>
@@ -3558,23 +3590,61 @@
 					>
 						{$_('map.town.tabs.box')}
 					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={townTab === 'places'}
+						class={classNames('tab whitespace-nowrap', {
+							'tab-active': townTab === 'places'
+						})}
+						on:click={() => (townTab = 'places')}
+					>
+						{$_('map.town.tabs.places')}
+					</button>
 				</div>
 
-				<!-- The panel those two tabs share, and the one box in here that scrolls: what the
-					block is given is a share of a track — a 1:1 of a phone's width, half a column
-					from `md` up — and what stands in it is as tall as three statues and a plate, so
-					there is regularly a little more of this than there is room for. It scrolls at
-					both widths for that reason: the half-column is the same kind of box as the
-					square, a height decided by the grid rather than by what is in it. (It was
+				<!-- The panel those three tabs share, and the box in here that scrolls for two of
+					them: what the block is given is a share of a track — a 1:1 of a phone's width,
+					half a column from `md` up — and what stands in it is as tall as three statues and
+					a plate, so there is regularly a little more of this than there is room for. It
+					scrolls at both widths for that reason: the half-column is the same kind of box as
+					the square, a height decided by the grid rather than by what is in it. (It was
 					`md:overflow-visible` while the block hung over the terrain, where it was as
 					tall as its own content and there was nothing to scroll.)
-					The tabs are not in it — a strip that scrolls away is a strip that has to be
-					scrolled back to before it can be pressed, and these two are the way out of
-					whichever of them is too tall. -->
-				<div class="flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto">
-					{#if townTab === 'town'}
+					For the third it does NOT scroll, and that is the one line of difference the list
+					costs: RegionLocationList is a scroller itself — it is given a height and divides
+					it, which is how a comarca of forty towns is read — and a scroller inside a
+					scroller is two bars for one list and a box that can be pushed out of its own
+					parent. So the overflow is switched off for that tab and the list is handed the
+					panel's height (`min-h-0 flex-1`) to do what it already does with it.
+					The tabs are not in it either way — a strip that scrolls away is a strip that has
+					to be scrolled back to before it can be pressed, and these three are the way out
+					of whichever of them is too tall. -->
+				<div
+					class={classNames('flex min-h-0 w-full flex-1 flex-col items-center', {
+						'overflow-y-auto': townTab !== 'places'
+					})}
+				>
+					{#if townTab === 'places'}
+						<!-- The level the map is open on, listed. Handed the same rows the shares tab
+							over the terrain is tallied over, the same matches the field on that tab turns
+							up, and the show that row has picked — the press is up there, the hiding is
+							here with the rows it hides, and the two boxes are one glance apart rather
+							than one press. Picking one is the map's own gesture: `openFromColumn`,
+							exactly as a pin or a crumb, so a walk down the tiers reads the same whichever
+							of the three the reader is using to do it. -->
+						<RegionLocationList
+							classes="w-full min-h-0 flex-1"
+							rows={subdivisions}
+							current={subdivisionCurrent}
+							{searchRows}
+							{searchQuery}
+							{activeShow}
+							on:select={(event) => openFromColumn(event.detail.key)}
+						/>
+					{:else if townTab === 'town' && townPin}
 						<TownPin marker={townPin} named={false} alwaysReveal classes="w-full max-w-[500px]" />
-					{:else if townBox}
+					{:else if townTab === 'box' && townBox}
 						<!-- The box itself, drawn in the document rather than on a canvas: the very
 							component the map stands on the town and the Booster tab lays its grid out
 							with, off the very `MapBoosterBox` the pin was handed (see `townBox`), so
@@ -3639,16 +3709,19 @@
 			there: the two stand side by side, and a column that hid a third of the map would be
 			solving a problem the width does not have.
 			What it is NOT at that width, any more, is the whole of that column: the block naming the
-			open town takes the top half of it and this is the bottom (`md:row-start-2`). Only while
-			that block is standing, though — with no town open, or the map on another tab, or a sheet
-			over the page, there is nothing above and the panel has the column entire
-			(`md:row-span-2` from the first row). That is the one thing on the page `townBlock` is
+			open place takes the top half of it and this is the bottom (`md:row-start-2`). Only while
+			that block is standing, though — under a sheet, or before the map is ready, there is
+			nothing above and the panel has the column entire (`md:row-span-2` from the first row).
+			That used to be the common case and is now the rare one: the block came and went with the
+			town and with the map's own tab, and it goes with neither since the list of places came
+			to stand in it. That is the one thing on the page `townBlock` is
 			written down for: two boxes cannot both be told a condition and be relied on to agree
 			about it. The map does not take part either way, spanning both rows whatever happens here.
 			Veiled rather than emptied while a full view is up, which is what it always was, and
 			`inert` with it — everything in here goes quiet together, the bead included (see
-			CHROME_VEIL). The block above leaves rather than being veiled — under a sheet, on a tab
-			press, at any place that is not a town — and this grows into its half the moment it does,
+			CHROME_VEIL). The block above leaves rather than being veiled — which,
+			now that it stands at every place and on either of the map's tabs, is under a sheet and
+			nowhere else — and this grows into its half the moment it does,
 			which is also what covers the block's own 250ms going: the panel is later in the document
 			and carries the page's fill, so it simply paints over whatever is still fading in the row
 			above. An instant swap, and the map does not take part in it either way. -->
