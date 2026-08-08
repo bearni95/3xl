@@ -2989,26 +2989,29 @@
 	flex column with `min-h-0 flex-1` on the grid rather than the grid being the page. -->
 <div class="flex h-screen flex-col overflow-hidden">
 	<!-- The page's first row, and it is the whole of what stands over the three columns: the
-		game's name at the near end, where the map is and the radio playing for it filling the
-		middle, and what the game gets asked at the far end.
+		game's name at the near end and what the game gets asked at the far end.
 
-		The middle of it was the head of the middle column, over everything else that column had to
-		say about the open place — which is a row about all three columns filed under one of them.
+		Where the map is and the radio playing for it filled the middle of it, and does not any
+		more: that row names the open place, the block under the map answers what is AT the open
+		place, and the two were saying one thing from two ends of the page. It is the first cell of
+		the block's own head now, with the three tabs beside it (see the town block below), so the
+		place and the three answers about it are read in one box.
 		The two ends were the head of the *third* column, which is where they had landed after
 		coming off a band laid over the map's top edge; a name and two questions are about the game
 		and not about the furniture, so a column of furniture was only ever the nearest shelf. Both
-		ends are here now because this row is the one thing on the page that belongs to none of the
+		ends are here because this row is the one thing on the page that belongs to none of the
 		three columns and to all of them.
 
 		The whole width, and its own rule under it: what separates a row from what is under it
 		belongs to neither, and the rule stands at both widths because the fold below it changes
 		the columns' axis and not this band's.
 
-		`items-stretch` is what makes the four the same height: the marks at the far end are
-		squares and the middle is a two-line row, and stretching means the name's plate and the
-		squares take whatever height that row comes to rather than a number written here that would
-		have to be kept in step with it. The padding is the band's rather than each child's, so the
-		four are spaced by one `gap-2` and inset by one `px-2`.
+		`items-stretch` is what makes the three the same height: the marks at the far end are
+		squares, and stretching means they and the name's plate take whatever height the row comes
+		to rather than a number written here that would have to be kept in step with it. The
+		padding is the band's rather than each child's, so the three are spaced by one `gap-2` and
+		inset by one `px-2`. The far end is held against the far edge by `ml-auto` on the first of
+		the two marks, there being nothing that gives between them any more.
 
 		It stands exactly as it is whatever else is on screen. A full view used to veil it — blur
 		it out and make it inert for as long as a sheet was up — which was a row of furniture going
@@ -3064,28 +3067,20 @@
 			</span>
 		</div>
 
-		<!-- Where the map is, and the radio playing for it. It takes the middle because it is the
-			one thing on this row that changes: the name at the near end and the questions at the
-			far end are the same words all game, and the row reads as a frame round the place you
-			are standing in. `min-w-0` so a long town name truncates inside it rather than pushing
-			the far end off the edge. -->
-		<RegionCurrentBadge
-			classes="min-w-0 flex-1"
-			row={subdivisionCurrent}
-			on:select={(event) => openFromColumn(event.detail.key)}
-		/>
+		<!-- (Where the map is, and the radio playing for it, stood here — between the name and the
+			questions, as the one thing on this row that changes. It heads the block under the map
+			now, beside the three tabs that answer about the place it names.) -->
 
 		<!-- What the game gets asked, first of the far end, at every width — a question is as
-			worth answering on a desktop as on a phone. No `ml-auto` pushing the end over any more:
-			the middle of this row is `flex-1` and takes every pixel the four of them do not, so
-			these two are held against the far edge by the thing between them rather than by a
-			margin.
+			worth answering on a desktop as on a phone. `ml-auto` is what holds the pair against
+			the far edge: the row named the open place between the two ends and that middle was
+			what pushed them over, so with it gone the margin does the pushing again.
 			A square in the name plate's own fill, drawn to the row's height (`self-stretch
 			aspect-square`), with a white game-icons glyph that needs no colour of its own on the
 			primary. -->
 		<button
 			type="button"
-			class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
+			class="ml-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
 			aria-label={$_('faq.open')}
 			on:click={openFaq}
 		>
@@ -3514,58 +3509,83 @@
 				transition:blur={CHROME_BLUR}
 				class="row-start-2 flex aspect-square w-full min-h-0 min-w-0 flex-col items-center gap-2 border-t-2 border-primary p-3 md:col-start-3 md:row-start-1 md:aspect-auto md:border-b-2 md:border-t-0"
 			>
-				<!-- The three, said the way the map's own two are said over the terrain: DaisyUI's
-					boxed tabs, `role="tablist"`, and which is up held on the page rather than
-					pointed at with `aria-controls` (see the tab row over the map, which this is a
-					second of).
-					Two of them are disabled by what the open place has and by nothing else (see
-					`townOffered` and `townBoxOffered`): only the bottom tier is a place a side
-					stands on, so above the municipality there is no town to draw; and most towns on
-					most days are outside the booster window and have no box at all, a town whose box
-					this reader has already opened having none left to draw either. A tab that is
-					dark is the honest shape of that — the alternative was a tab that opens onto an
-					empty panel, which says the same thing one press later.
-					The third is never dark: there is a level under every place on this map, the top
-					view included, so the list always has something to say. Which is what makes it
-					the one both of the others fall back to (see `townTab`). -->
-				<div role="tablist" class="tabs-boxed tabs flex-none">
-					<button
-						type="button"
-						role="tab"
-						aria-selected={townTab === 'town'}
-						disabled={!townOffered}
-						class={classNames('tab whitespace-nowrap', {
-							'tab-active': townTab === 'town',
-							'tab-disabled cursor-default opacity-40': !townOffered
-						})}
-						on:click={() => (townTab = 'town')}
-					>
-						{$_('map.town.tabs.town')}
-					</button>
-					<button
-						type="button"
-						role="tab"
-						aria-selected={townTab === 'box'}
-						disabled={!townBoxOffered}
-						class={classNames('tab whitespace-nowrap', {
-							'tab-active': townTab === 'box',
-							'tab-disabled cursor-default opacity-40': !townBoxOffered
-						})}
-						on:click={() => (townTab = 'box')}
-					>
-						{$_('map.town.tabs.box')}
-					</button>
-					<button
-						type="button"
-						role="tab"
-						aria-selected={townTab === 'places'}
-						class={classNames('tab whitespace-nowrap', {
-							'tab-active': townTab === 'places'
-						})}
-						on:click={() => (townTab = 'places')}
-					>
-						{$_('map.town.tabs.places')}
-					</button>
+				<!-- The head of the block: two cells of one grid, the place at the near one and the
+					three tabs at the far one. What they are is one statement in two halves — this is
+					where the map is standing, and these are the three things there are to say about
+					it — so they are a grid of two rather than a row that happens to hold both: each
+					gets half the block's width whatever is in the other, and a long town name cannot
+					walk the tabs off the edge nor a short one leave them adrift in the middle.
+					The place stood on the band across the top of the page, a whole column away from
+					the answers about it (see the band, where the middle of the row used to be). -->
+				<div class="grid w-full flex-none grid-cols-2 items-center gap-2">
+					<!-- Where the map is, and the radio playing for it. Lettered exactly as a crumb
+						and as a row of the list under it are, and pressed for the radio's play/pause
+						while there is a song (see RegionCurrentBadge). `min-w-0` so a long name
+						truncates inside its half rather than widening the cell. -->
+					<RegionCurrentBadge
+						classes="min-w-0"
+						row={subdivisionCurrent}
+						on:select={(event) => openFromColumn(event.detail.key)}
+					/>
+
+					<!-- The three, said the way the map's own two are said over the terrain: DaisyUI's
+						boxed tabs, `role="tablist"`, and which is up held on the page rather than
+						pointed at with `aria-controls` (see the tab row over the map, which this is a
+						second of).
+						Two of them are disabled by what the open place has and by nothing else (see
+						`townOffered` and `townBoxOffered`): only the bottom tier is a place a side
+						stands on, so above the municipality there is no town to draw; and most towns on
+						most days are outside the booster window and have no box at all, a town whose box
+						this reader has already opened having none left to draw either. A tab that is
+						dark is the honest shape of that — the alternative was a tab that opens onto an
+						empty panel, which says the same thing one press later.
+						The third is never dark: there is a level under every place on this map, the top
+						view included, so the list always has something to say. Which is what makes it
+						the one both of the others fall back to (see `townTab`).
+						The far cell of the head, and held to the far edge of it (`justify-end`), so the
+						three stand against the block's own edge rather than adrift in the middle of
+						their half. None of them gives — each tab is `whitespace-nowrap` — so what a
+						half too narrow for three words does is scroll (`overflow-x-auto`): a word
+						broken across two lines in a tab is worse than a row that slides. -->
+					<div role="tablist" class="tabs-boxed tabs min-w-0 justify-end overflow-x-auto">
+						<button
+							type="button"
+							role="tab"
+							aria-selected={townTab === 'town'}
+							disabled={!townOffered}
+							class={classNames('tab whitespace-nowrap', {
+								'tab-active': townTab === 'town',
+								'tab-disabled cursor-default opacity-40': !townOffered
+							})}
+							on:click={() => (townTab = 'town')}
+						>
+							{$_('map.town.tabs.town')}
+						</button>
+						<button
+							type="button"
+							role="tab"
+							aria-selected={townTab === 'box'}
+							disabled={!townBoxOffered}
+							class={classNames('tab whitespace-nowrap', {
+								'tab-active': townTab === 'box',
+								'tab-disabled cursor-default opacity-40': !townBoxOffered
+							})}
+							on:click={() => (townTab = 'box')}
+						>
+							{$_('map.town.tabs.box')}
+						</button>
+						<button
+							type="button"
+							role="tab"
+							aria-selected={townTab === 'places'}
+							class={classNames('tab whitespace-nowrap', {
+								'tab-active': townTab === 'places'
+							})}
+							on:click={() => (townTab = 'places')}
+						>
+							{$_('map.town.tabs.places')}
+						</button>
+					</div>
 				</div>
 
 				<!-- The panel those three tabs share, and the box in here that scrolls for two of
