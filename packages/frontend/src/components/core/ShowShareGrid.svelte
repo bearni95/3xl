@@ -26,7 +26,7 @@
 	// The show the list below is being read through, where one has been picked: that cell takes
 	// the primary fill, so what is filling the list is said on the thing that was pressed. The
 	// grid holds none of this itself — which show is picked is a fact about the list, and the
-	// list is not here (see RegionSubdivisions).
+	// list is the tab next door (see +page.svelte).
 	export let active: number | null = null;
 	export let classes: string = '';
 

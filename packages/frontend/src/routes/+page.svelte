@@ -13,7 +13,6 @@
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
 	import RegionCurrentBadge from '$components/core/RegionCurrentBadge.svelte';
 	import RegionLocationList from '$components/core/RegionLocationList.svelte';
-	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
 	import ShowShareGrid from '$components/core/ShowShareGrid.svelte';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
 	import SocialLinks from '$components/core/SocialLinks.svelte';
@@ -2958,24 +2957,29 @@
 	<div
 		class="grid min-h-0 flex-1 grid-cols-1 grid-rows-3 divide-y-2 divide-primary md:grid-cols-3 md:grid-rows-1 md:divide-y-0"
 	>
-		<!-- The map: the first row of the phone's column, the first column of the desktop's row.
+		<!-- The map, and it is two thirds of the page at both widths: the first two rows of the
+			phone's column, the first two columns of the desktop's row. It was one third of three
+			until everything the column beside it held turned out to be about the map — the level
+			listed, the shows that level divides between, the way to search, the side standing on the
+			open town and the fight to be had for it, and now the path down to where that town sits.
+			That column had nothing left in it, so it is not there, and what it was standing in is
+			the map's: `md:col-span-2` across, `row-span-2` of three down, which is the two thirds of
+			the viewport's height a phone gives it. `md:row-span-1` puts the span back for the
+			desktop's single row, where a span of two would reach past the grid's own rows.
 			Nothing else sizes it — raising a view over it leaves its box alone, so the map is never
-			re-framed by anything but a pan, a zoom or a region being opened. `relative` is kept for
-			the spotlight and anything else Leaflet positions inside it; no chrome of this page's is
-			positioned against it any more.
+			re-framed by anything but a pan, a zoom or a region being opened. `relative` is what the
+			chrome laid over the terrain is placed against: the row across its top, the side at its
+			foot, and anything Leaflet positions inside it.
 			Placed by name at both widths (`row-start-1` / `md:col-start-1`) rather than left to the
-			order things are mounted in: the list of places beside it comes and goes with the full-view
+			order things are mounted in: the corner beside it comes and goes with the full-view
 			sheets, and a grid that filled the gap would walk the map into the hole.
 
-			Two things stand in this column now, and only one of them at a time: the terrain, and the
-			list of the places the open region divides into (see RegionLocationList, and mapTab). The
-			list was the scrolling half of the column beside this one and is a tab over the terrain
-			because it is *about* the terrain — the level the map is looking at, named — where the
-			column beside it says the one place it is open on. Everything else that column holds stays
-			where it is: the head row, the side on the town, the standing, the path, the shares and the
-			field, and the author's marks at its foot. -->
+			Three things stand in this column, and only one of them at a time: the terrain, the list
+			of the places the open region divides into (see RegionLocationList), and the shows that
+			level divides between (see mapTab). All three are about the map — the level it is looking
+			at, drawn, named, and tallied. -->
 		<div
-			class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-start-1 md:row-start-1"
+			class="relative row-span-2 row-start-1 flex min-h-0 min-w-0 flex-col md:col-span-2 md:col-start-1 md:row-span-1 md:row-start-1"
 		>
 			{#if ready}
 				<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
@@ -3061,45 +3065,77 @@
 							classes="min-h-0 flex-1"
 						/>
 
-						<!-- The radar, and it is the one thing on this page drawn ON the terrain. The map
-							carries days of festes at once and no marks to find them by, so the boxes waiting
-							out there are found by panning across the country looking for one — which is a
-							search, and this is the button that does it: press it and the map opens the
-							nearest town whose box is still unopened (see findNearestBox). It stands at every
-							width, because a box is as hard to come across on a desktop as on a phone.
-							It has been at the far end of a bar over the map, then a mark in the furniture
-							column beside it, and it is back on the terrain because it is the only mark this
-							game has that acts on the terrain: the name, the questions and the credits are
-							about the game, and they are the row above. A control that moves the map belongs
-							in the map's own corner, and the top-right is the corner nothing else is using.
-							So the `z-[900]` is back with it — and only with it. It clears Leaflet's own panes
-							(overlays 400-600, controls 800) without reaching the arena's 1200. Nothing else
-							about the old band comes back: no measured inset handed to the map, no
-							`pointer-events-none` over the gaps, because this is one square in one corner and
-							not a strip across an edge.
-							Only while the map is the tab that is up: the list of places is painted over this
-							same box (see below) and would otherwise be painted under a radar with nothing on
-							it to point at. And it leaves under a full view like the rest of the chrome, on
-							the same 8px over the same 250ms — this one CAN be unmounted, unlike the two rows
-							above it, because it is absolutely placed inside the map's pane and taking it out
-							changes nobody's box (see CHROME_VEIL).
-							A size of its own, where the three marks it used to stand among are drawn to a
-							row's height (`self-stretch aspect-square`): there is no row here to be as tall
-							as. `size-10` is what that row came to, so the square is the same square.
-							Disabled when there is nothing left to point at — every box in the window opened,
-							or none loaded yet — because a radar that answers "here" or answers nothing is a
-							press with no destination. -->
+						<!-- The row across the top of the terrain: where the open place sits, at the left
+							end, and the way to find a festa at the right. The two marks this game has that
+							act on the map and nothing else — one says where the map is standing and walks it
+							back up, the other takes it somewhere it has not looked — so they are the map's
+							own row and not the page's. The name of the game, the questions put to it and
+							who drew it are about the game rather than about the terrain, and they are the
+							band above (see the page's first row).
+							It is a strip across the edge rather than two marks in two corners, so it is
+							`pointer-events-none` with each end turning them back on: the gap between them is
+							terrain, and terrain has to stay draggable. `z-[900]` clears Leaflet's own panes
+							(overlays 400-600, controls 800) without reaching the arena's 1200. No inset is
+							measured off it and handed to the map: the pins are dealt where the polygons put
+							them, and a reader who wants what is under this strip pans.
+							Only while the map is the tab that is up — the list of places and the shares are
+							painted over this same box (see below), and neither is a thing this row acts on —
+							and gone under a full view with the rest of the chrome, on the same 8px over the
+							same 250ms. It CAN be unmounted, unlike the rows above it, because it is
+							absolutely placed inside the map's pane and taking it out changes nobody's box. -->
 						{#if mapTab === 'map' && !$fullScreenModalOpen}
-							<button
+							<div
 								transition:blur={CHROME_BLUR}
-								type="button"
-								class="absolute right-3 top-3 z-[900] flex size-10 cursor-pointer items-center justify-center rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
-								aria-label={$_('map.radar.nearest')}
-								disabled={!radarTarget}
-								on:click={findNearestBox}
+								class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex items-start justify-between gap-2"
 							>
-								<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
-							</button>
+								<!-- Where the place the map is open on sits, said as the cut above it: the dots
+									and the one badge, which is the path folded (see MapBreadcrumbs' `folded`). It
+									stood at the head of the column beside this map, over a list of places, where a
+									row of five crumbs read as a second list; it is over the terrain now because
+									walking back up is the one thing it does and the terrain is what moves when it
+									is pressed. Nothing at all at the top view, which is the one place with nothing
+									above it — and the row is then the radar alone at its far end, which is what
+									`justify-between` leaves.
+									Pressed for what it was always pressed for: a step opens its region, an empty
+									rung takes the map to that tier's zoom. -->
+								{#if aboveCrumbs}
+									<div class="pointer-events-auto min-w-0">
+										<MapBreadcrumbs
+											crumbs={aboveCrumbs}
+											onSelect={open}
+											onZoom={zoomToTier}
+											folded
+										/>
+									</div>
+								{/if}
+
+								<!-- The radar. The map carries days of festes at once and no marks to find them
+									by, so the boxes waiting out there are found by panning across the country
+									looking for one — which is a search, and this is the button that does it: press
+									it and the map opens the nearest town whose box is still unopened (see
+									findNearestBox). It stands at every width, because a box is as hard to come
+									across on a desktop as on a phone.
+									It has been at the far end of a bar over the map, then a mark in the furniture
+									column beside it, then a square alone in this corner, and it is the end of a
+									row again now that the path has come to stand at the other one.
+									A size of its own, where the marks it used to stand among were drawn to a
+									row's height (`self-stretch aspect-square`): there is no row here to be as
+									tall as. `size-10` is what that row came to, so the square is the same square.
+									`ml-auto` so it holds the right end at the top view too, when the path it is
+									`justify-between` from is not there to push it over.
+									Disabled when there is nothing left to point at — every box in the window
+									opened, or none loaded yet — because a radar that answers "here" or answers
+									nothing is a press with no destination. -->
+								<button
+									type="button"
+									class="pointer-events-auto ml-auto flex size-10 flex-none cursor-pointer items-center justify-center rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
+									aria-label={$_('map.radar.nearest')}
+									disabled={!radarTarget}
+									on:click={findNearestBox}
+								>
+									<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
+								</button>
+							</div>
 						{/if}
 
 						<!-- The side standing on the open town, at the foot of the terrain — and under it,
@@ -3228,86 +3264,15 @@
 			{/if}
 		</div>
 
-		<!-- The open region, the second column: a third of the row, and everything the place the map
-			is looking at has to say for itself — its name and the show it flies, the side standing on
-			it, how far it has been taken and the fight to be had for it, the cut it sits inside, what
-			the level under it is made of and the way to look for a place that is not on it.
-			What the level under it *is* — the list of those places — stood at the foot of this column
-			for a long time and is a tab over the terrain now (see the map column above): a list of
-			places is about the map, and this column is about one place. What is left still scrolls on
-			its own, since a town brings a side, a standing and a path with it.
-			Gone while a full view is up, and back when that view goes: this column is the map's
-			furniture like the marks beside it and the pins on it, and a list of towns read sharply
-			beside a sheet is chrome competing with the thing it was covered by. It blurs away
-			exactly as they do, on the same 8px over the same 250ms (see CHROME_BLUR), and then leaves
-			the grid — the column it stood in stays where it is, because every column here is placed
-			by name (`md:col-start-*`) rather than by the order things happen to be mounted in, so a
-			sheet going up cannot slide the furniture over into the gap. Leaflet is told nothing about
-			it: the map watches its own container and re-projects when it changes size (see WorldMap's
-			ResizeObserver). The column is unmounted rather than merely blurred because a strip of
-			nothing at the side of a full view is the sheet standing on the map, which is what it is. -->
-		{#if !$fullScreenModalOpen}
-			<!-- What is said about the open place scrolls, and the row of social marks at the foot does
-				not: it is the one thing here that is not about that place, and a row that has to be
-				reached past everything said about a town is a row nobody finds. So what this hands the
-				column is a height rather than a scrollbar: everything between the top of the aside and
-				the marks at its foot. -->
-			<!-- A box of the grid at every width, and the same box: the middle third of the phone's
-				column, the middle column of the desktop's row. It was two arrangements of this one
-				element for a while — a 400px side of the row on a desktop, and on a phone a fixed panel
-				over the whole viewport, parked a screen-width off the right edge and slid in by a
-				burger at the far end of the map's top bar. The page is a grid now and the grid folds,
-				so the phone gets this where the fold puts it rather than as a second way of asking for
-				it; the burger, the ✕ that pushed the panel back off, the `inert` that kept a keyboard
-				out of it while it was parked and the transform it slid on all went with the arrangement
-				they belonged to.
-				`min-h-0` at both widths, and it is what makes the third a third: what is inside scrolls
-				(see RegionSubdivisions), and a flex column that may not shrink below its content is a
-				box that simply grows past the track it was given. -->
-			<aside
-				transition:blur={CHROME_BLUR}
-				class="row-start-2 flex min-h-0 min-w-0 flex-col bg-base-100 md:col-start-2 md:row-start-1"
-			>
-				<!-- `rows` is still handed over though nothing here lists them: the count alone decides
-					whether there is a rule in the column. `current` likewise names no place here any
-					more — the band at the top of the page does that (see RegionCurrentBadge) — and is
-					read for whether there is one at all. -->
-				<RegionSubdivisions
-					classes="min-h-0 flex-1"
-					rows={subdivisions}
-					current={subdivisionCurrent}
-				>
-					<!-- The town's own pin opened this column — the side holding it, whose it is, how far
-						it has been taken and the way to fight for it — and it is the mark at the foot of the
-						terrain now, whole (see the map column above). The standing was pulled off it and
-						stood on its own above it here for a while; it has gone back onto the plate it came
-						from, under the three who would have to be beaten. So what is left in this column is
-						where the open place sits. -->
-
-					<!-- Where the place at the head of this column is, said as the path down to what it
-						sits inside: the same bar that stands over the map, given the cut above the open
-						region rather than the path down to it (see abovePath). The head has already named
-						the place, so the badge on this bar is its parent — the Països Catalans over
-						Catalunya, and never Catalunya over itself. Nothing at all at the top view, which
-						is the one place with nothing above it.
-						Folded outright and not merely when the room runs out: this bar is a heading over a
-						list of places, and a row of five crumbs standing over a column of places is a
-						second column of places — so it is the dots and the one badge, at every width. The
-						rest of the path is where the dots always put it, in the column they drop. Pressed
-						for what the bar over the map is pressed for: a step opens its region, an empty
-						rung takes the map to that tier's zoom. -->
-					<svelte:fragment slot="path">
-						{#if aboveCrumbs}
-							<MapBreadcrumbs crumbs={aboveCrumbs} onSelect={open} onZoom={zoomToTier} folded />
-						{/if}
-					</svelte:fragment>
-				</RegionSubdivisions>
-
-				<!-- (Where the author is used to close this column, and closes the furniture column
-					now — under the player, which is the other row on this page that names somebody
-					rather than somewhere. See the third column below.) -->
-			</aside>
-		{/if}
+		<!-- The open region stood here, the second column of three: its name and the show it flew,
+			the side standing on it, how far it had been taken and the fight to be had for it, the cut
+			it sat inside, what the level under it was made of and the way to look for a place that was
+			not on it. Every one of those turned out to be about the map rather than about this column,
+			and went to the map: the name and the show to the page's own top band, the list and the
+			shares and the field to the tabs over the terrain, the side and the standing to the town's
+			own mark at the foot of it, the path to the row across its top. The author's marks, which
+			were never about the open place at all, close the corner beside it. Nothing was left, so
+			there is no column: the map has the two thirds it stood in (see above). -->
 
 		<!-- The furniture: the last third of the phone's column, the third column of the desktop's
 			row. It held two blocks for a while — the game's badge and its marks at the head, the side

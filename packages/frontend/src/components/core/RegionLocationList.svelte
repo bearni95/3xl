@@ -11,12 +11,10 @@
 	import type { RegionType } from '$utils/geo/region-tree';
 
 	// The list of places, and nothing else: what the open region divides into, or what a search
-	// has turned up in its place. It was the scrolling half of RegionSubdivisions — the head of
-	// that column, its shares row and its field are still there — and it is its own component
-	// because it is drawn in another column of the page now: the map's, as the second tab over
-	// the terrain (see +page.svelte). Two boxes in two columns is exactly the thing that cannot
-	// be one component, and a second copy of these rows is how one list of places comes to look
-	// like two.
+	// has turned up in its place. It was the scrolling half of the column that stood beside the
+	// map, and it is its own component because it is drawn over the map now, as the second of
+	// that column's three tabs (see +page.svelte). The shares row it was headed by and the field
+	// that fills it are the third tab, one press away.
 
 	// What the open region divides into (see regionLevelNodes), already lettered by the caller —
 	// and already without the head among them, since the caller is what tallies the shares over

@@ -16,8 +16,9 @@
 	//
 	// Its own component because the row it draws is the map's answer to "where am I", and the two
 	// things that answer it — the place and the song — were held in two different places while
-	// this was a slot of RegionSubdivisions: the row there, the radio in the store, and the press
-	// that decides between them written into a column that has nothing else to do with either.
+	// this was a row at the head of the column that stood beside the map: the row there, the radio
+	// in the store, and the press that decides between them written into a column that had nothing
+	// else to do with either.
 
 	// The place the map is open on, lettered exactly as a crumb and as a row of the list of places
 	// is (see crumbRow in +page.svelte), box and all: a town at the head of the page is de festa or
