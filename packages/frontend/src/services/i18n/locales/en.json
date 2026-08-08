@@ -83,6 +83,10 @@
 		}
 	},
 	"map": {
+		"tabs": {
+			"map": "Map",
+			"places": "Places"
+		},
 		"radar": {
 			"nearest": "Go to the nearest unopened pack"
 		},

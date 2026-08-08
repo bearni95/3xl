@@ -1,4 +1,5 @@
 <script lang="ts">
+	import classNames from 'classnames';
 	import { onMount } from 'svelte';
 	import type { Readable } from 'svelte/store';
 	import { _ } from 'svelte-i18n';
@@ -10,6 +11,7 @@
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
+	import RegionLocationList from '$components/core/RegionLocationList.svelte';
 	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
 	import SocialLinks from '$components/core/SocialLinks.svelte';
 	import SplashScreen from '$components/core/SplashScreen.svelte';
@@ -868,10 +870,28 @@
 	// letters is the cut ABOVE the open region, at the head of the column beside the map (see
 	// `abovePath`), and that one is walked off the node rather than off the view.
 
+	// Which of the map column's two tabs is up: the terrain, or the list of the places the open
+	// region divides into (see RegionLocationList). The map is the default and stays the default
+	// — this game is a map, and a reader who has not asked for a list is looking at the country.
+	// Held here rather than in either panel because neither of them is the tabs' parent: the
+	// tab row, the terrain and the list are three children of the same column.
+	// Nothing moves it but a press. Typing in the field beside the map fills this list rather
+	// than the column the field is in, so a search made on the map tab is answered on a tab the
+	// reader is not looking at — deliberately, since a page that switched tabs under someone
+	// mid-keystroke is a page that moves while it is being used.
+	let mapTab: 'map' | 'places' = 'map';
+
+	// The show the level is being read through: picked on the shares row in the column beside the
+	// map (RegionSubdivisions) and applied to the list over it (RegionLocationList), which is why
+	// it is held on the page rather than in either. Null is the whole level, and it is put back to
+	// null by the column itself whenever the map opens somewhere else — a filter belongs to the
+	// list it was picked over.
+	let activeShow: number | null = null;
+
 	// Free-text search across every location in the whole tree (all tiers), matched
 	// against each region's displayed name (case- and accent-insensitive). While the
-	// box holds text its matches stand in the column beside the map, in place of the level and
-	// drawn as the level is (see RegionSubdivisions); an empty box has nothing to say.
+	// box holds text its matches stand in the list of places over the map, in place of the level
+	// and drawn as the level is (see RegionLocationList); an empty box has nothing to say.
 	let searchQuery = '';
 	// Whether the field is out. Held here rather than inside the column because what is typed in
 	// it is matched here, and the two are the one control.
@@ -1064,7 +1084,7 @@
 	// level was handed over with the open town taken out of it, on the ground that the head had
 	// already named it — but a town is read here against its sisters, and a list of every town
 	// in the comarca but the one you are standing in is a list with a hole where the reader is.
-	// It is listed where it falls and marked where it falls (see RegionSubdivisions).
+	// It is listed where it falls and marked where it falls (see RegionLocationList).
 	//
 	// Taken out here rather than in the component because this is the list the shares below
 	// are counted over: what the row says is a share of is exactly what is listed under it,
@@ -1111,8 +1131,8 @@
 	// And the matches lettered exactly the same way, because they are drawn by exactly the same
 	// row: a place turned up by a search is the same place it would have been if the drill had
 	// reached it, and a search that answered in a different hand would be a second way of
-	// saying a town. The tier rides along, since that is what the column groups them under
-	// (see RegionSubdivisions' searchGroups) — and it comes off the flattened entry rather than
+	// saying a town. The tier rides along, since that is what the list groups them under
+	// (see RegionLocationList's searchGroups) — and it comes off the flattened entry rather than
 	// being looked back up, as the colour does.
 	$: searchRows = searchResults.map((entry) => ({
 		key: entry.key,
@@ -2761,31 +2781,102 @@
 		positioned against it any more.
 		Placed by name at both widths (`row-start-1` / `md:col-start-1`) rather than left to the
 		order things are mounted in: the list of places beside it comes and goes with the full-view
-		sheets, and a grid that filled the gap would walk the map into the hole. -->
+		sheets, and a grid that filled the gap would walk the map into the hole.
+
+		Two things stand in this column now, and only one of them at a time: the terrain, and the
+		list of the places the open region divides into (see RegionLocationList, and mapTab). The
+		list was the scrolling half of the column beside this one and is a tab over the terrain
+		because it is *about* the terrain — the level the map is looking at, named — where the
+		column beside it says the one place it is open on. Everything else that column holds stays
+		where it is: the head row, the side on the town, the standing, the path, the shares and the
+		field, and the author's marks at its foot. -->
 	<div
 		class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-start-1 md:row-start-1"
 	>
 		{#if ready}
-			<WorldMap
-				center={[41.8, 1.7]}
-				zoom={8}
-				minZoom={7}
-				{overlays}
-				{markerLevels}
-				{pickedMarker}
-				{hiddenLineUrls}
-				{pulse}
-				{focusBounds}
-				{zoomBounds}
-				{zoomStops}
-				{spotlight}
-				markersBlurred={$fullScreenModalOpen}
-				bind:currentZoom
-				bind:activeLevel
-				bind:currentCenter
-				classes="min-h-0 flex-1"
-			/>
+			<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
+				the credits sheet does it (see CreditsModal): which of the two is up is local state
+				rather than an `aria-controls` target.
+				Blurred away with the rest of the map's furniture while a full view is up — a strip of
+				tabs read sharply beside a sheet is chrome competing with the thing it was covered by
+				— but the tabs go and the panels do not: unmounting the terrain to raise the roster
+				would be a fresh Leaflet on the way back. Only the row that switches them leaves. -->
+			{#if !$fullScreenModalOpen}
+				<div
+					transition:blur={CHROME_BLUR}
+					role="tablist"
+					class="tabs-boxed tabs flex-none justify-start"
+				>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={mapTab === 'map'}
+						class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'map' })}
+						on:click={() => (mapTab = 'map')}
+					>
+						{$_('map.tabs.map')}
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={mapTab === 'places'}
+						class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'places' })}
+						on:click={() => (mapTab = 'places')}
+					>
+						{$_('map.tabs.places')}
+					</button>
+				</div>
+			{/if}
 
+			<!-- The panel the two tabs share, and the map is never taken out of it: the list is laid
+				over the terrain rather than swapped with it, so the map's box is the same box at every
+				moment and Leaflet is never told the column resized. An `{:else}` here would be a fresh
+				map on every trip back to the first tab — a new WebGL-less canvas, a new set of tiles,
+				and the reader's pan and zoom lost to a tab press. So both are absolutely placed inside
+				this box, the map always and the list only while it is picked, and the list carries the
+				page's own surface so the terrain does not read through it. -->
+			<div class="relative min-h-0 flex-1">
+				<div class="absolute inset-0 flex flex-col">
+					<WorldMap
+						center={[41.8, 1.7]}
+						zoom={8}
+						minZoom={7}
+						{overlays}
+						{markerLevels}
+						{pickedMarker}
+						{hiddenLineUrls}
+						{pulse}
+						{focusBounds}
+						{zoomBounds}
+						{zoomStops}
+						{spotlight}
+						markersBlurred={$fullScreenModalOpen}
+						bind:currentZoom
+						bind:activeLevel
+						bind:currentCenter
+						classes="min-h-0 flex-1"
+					/>
+				</div>
+
+				<!-- The level the map is open on, listed. Handed the same rows the shares beside it are
+					tallied over, the same matches the field beside it turns up, and the show that row
+					has picked — the press is over there with the division it is read off, the hiding is
+					here with the rows it hides. Picking one is the map's own gesture: `openFromColumn`,
+					exactly as a pin or a crumb. -->
+				{#if mapTab === 'places'}
+					<div class="absolute inset-0 flex flex-col bg-base-100">
+						<RegionLocationList
+							classes="min-h-0 flex-1"
+							rows={subdivisions}
+							current={subdivisionCurrent}
+							{searchRows}
+							{searchQuery}
+							{activeShow}
+							on:select={(event) => openFromColumn(event.detail.key)}
+						/>
+					</div>
+				{/if}
+			</div>
 		{:else}
 			<div class="flex min-h-0 flex-1 items-center justify-center">
 				<span class="loading loading-spinner loading-lg"></span>
@@ -2793,11 +2884,14 @@
 		{/if}
 	</div>
 
-	<!-- The list of places, the second column: a third of the row, and what the open region
-		divides into. It is the one place the map says a level as a list — the crumbs above it say
-		the path down and the pins say the places themselves, and neither can be read for what a
-		region is made of. It scrolls on its own, since a comarca of forty towns is a longer column
-		than the window.
+	<!-- The open region, the second column: a third of the row, and everything the place the map
+		is looking at has to say for itself — its name and the show it flies, the side standing on
+		it, how far it has been taken and the fight to be had for it, the cut it sits inside, what
+		the level under it is made of and the way to look for a place that is not on it.
+		What the level under it *is* — the list of those places — stood at the foot of this column
+		for a long time and is a tab over the terrain now (see the map column above): a list of
+		places is about the map, and this column is about one place. What is left still scrolls on
+		its own, since a town brings a side, a standing and a path with it.
 		Gone while a full view is up, and back when that view goes: this column is the map's
 		furniture like the marks beside it and the pins on it, and a list of towns read sharply
 		beside a sheet is chrome competing with the thing it was covered by. It blurs away
@@ -2809,14 +2903,11 @@
 		ResizeObserver). The column is unmounted rather than merely blurred because a strip of
 		nothing at the side of a full view is the sheet standing on the map, which is what it is. -->
 	{#if !$fullScreenModalOpen}
-		<!-- The list of places scrolls, and nothing else in here does: not the row of social marks
-			at the foot — it is the one thing here that is not about the open place, and a row that
-			has to be reached past forty towns is a row nobody finds — and not the head of the
-			column either, which is where the reader is standing and what acts on the list (see
-			RegionSubdivisions, which divides itself in two and puts the overflow on the second
-			part). So what this hands the column is a height rather than a scrollbar: everything
-			between the top of the aside and the marks at its foot, for the column to give to its
-			list. -->
+		<!-- What is said about the open place scrolls, and the row of social marks at the foot does
+			not: it is the one thing here that is not about that place, and a row that has to be
+			reached past everything said about a town is a row nobody finds. So what this hands the
+			column is a height rather than a scrollbar: everything between the top of the aside and
+			the marks at its foot. -->
 		<!-- A box of the grid at every width, and the same box: the middle third of the phone's
 			column, the middle column of the desktop's row. It was two arrangements of this one
 			element for a while — a 400px side of the row on a desktop, and on a phone a fixed panel
@@ -2826,19 +2917,24 @@
 			it; the burger, the ✕ that pushed the panel back off, the `inert` that kept a keyboard
 			out of it while it was parked and the transform it slid on all went with the arrangement
 			they belonged to.
-			`min-h-0` at both widths, and it is what makes the third a third: the list inside scrolls
+			`min-h-0` at both widths, and it is what makes the third a third: what is inside scrolls
 			(see RegionSubdivisions), and a flex column that may not shrink below its content is a
 			box that simply grows past the track it was given. -->
 		<aside
 			transition:blur={CHROME_BLUR}
 			class="row-start-2 flex min-h-0 min-w-0 flex-col bg-base-100 md:col-start-2 md:row-start-1"
 		>
+			<!-- `rows` is still handed over though nothing here lists them: the count alone decides
+				whether there is a rule under the head, and the shares row is tallied over exactly
+				those rows by this page. `activeShow` is bound because the press that picks a show is
+				on that shares row and the rows it hides are in the tab over the map — this page is
+				the one thing the two have in common. -->
 			<RegionSubdivisions
 				classes="min-h-0 flex-1"
 				rows={subdivisions}
 				current={subdivisionCurrent}
 				shares={subdivisionShares}
-				{searchRows}
+				bind:activeShow
 				bind:searchQuery
 				bind:searchOpen
 				on:select={(event) => openFromColumn(event.detail.key)}
@@ -3099,9 +3195,9 @@
 
 				<!-- The map's right corner held the matches for a while, on a plate directly under the
 					field at the end of the bar: what was asked for at the top right, answered at the top
-					right. Both are gone — the field is a cell of the shares row in the list of places and
-					the matches are that column's own rows (see RegionSubdivisions), so a search is read
-					where every other list of places in this game is read. -->
+					right. Both are gone — the field is a cell of the shares row in the column beside the
+					map and the matches are the rows of the list of places over it (see RegionLocationList),
+					so a search is read where every other list of places in this game is read. -->
 			</div>
 			<!-- The foot of the furniture column: the side this player fields, and under it who is
 				playing and the way into their account. Signed out, the middle of that block is the way
