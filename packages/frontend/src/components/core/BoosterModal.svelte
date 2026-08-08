@@ -88,7 +88,6 @@
 	transparent
 	bare={alone}
 	closeOnClick={revealed}
-	fadeOut={revealed}
 	on:close={close}
 >
 	<!-- The sheet is the window on a canvas, and nothing beside it. It was drawn twice — the

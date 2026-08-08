@@ -35,7 +35,6 @@
 		zoomBounds = null,
 		zoomStops = [],
 		spotlight = null,
-		markersBlurred = false,
 		chromeInsets = {},
 		currentZoom = $bindable(zoom),
 		activeLevel = $bindable(0),
@@ -182,30 +181,15 @@
 		 * one place, painted in whatever the caller paints it, on nothing.
 		 *
 		 * The cover is the map's own and not a caller's paint: it is not a region's colour but
-		 * the map's way of showing one region alone, the same standing the blur has over the
-		 * furniture (see `markersBlurred`) — and it fades in and out over the same 250ms, so a
-		 * spotlight raised with a full view arrives with the rest of that gesture.
+		 * the map's way of showing one region alone — and it fades in and out over the 250ms every
+		 * polygon on this map repaints over (see MASK_FADE_MS and the paths' own transition), so
+		 * raising one is a change the map is seen making rather than a different map.
 		 *
 		 * What it does NOT do is hide the lines still drawn inside the shape: the black covers
 		 * every border outside it, and the shape's own outline is the caller's to drop
 		 * (`hiddenLineUrls`) if it wants the place read off its fill alone.
 		 */
 		spotlight?: GeoJSON.Geometry | null;
-		/**
-		 * Blur every pin and every box off the map, and bring them back when it goes false.
-		 *
-		 * For a full view raised over the map (see FullScreenModal): the terrain is still the
-		 * ground the sheet is laid on, but the things standing *on* the terrain are furniture,
-		 * and furniture read through a sheet is furniture nobody is reading. The polygons and
-		 * the tiles are deliberately untouched — what blurs is what the map draws over them.
-		 *
-		 * The pins are Leaflet's DOM and not this component's, so this is the one thing here
-		 * that cannot be a Svelte transition the way the plates over the map are: unmounting
-		 * them is a rebuild of every pin and every statue in it. It is the two panes that blur
-		 * instead, in the same amount and over the same time as those transitions, so the whole
-		 * of what stands over the map goes at once (see BLUR_CLASSES).
-		 */
-		markersBlurred?: boolean;
 		/**
 		 * What the caller has drawn over the map, per edge, in pixels — the breadcrumb bar
 		 * across the top, a plate in a corner, anything else standing on the canvas that is
@@ -269,13 +253,10 @@
 	// The pane every leader line is drawn in, below both the marks' panes, so no mark is ever
 	// crossed by another mark's line (see the pane's own note at createPane).
 	const LEADER_PANE = 'pinLeaderPane';
-	// The pane the spotlight's mask is drawn in (see `spotlight`). Over every polygon —
-	// Leaflet draws those in its own overlay pane at 400, and the mask's whole business is
-	// covering them — and under everything that stands ON the map: the leader lines at 580,
-	// the boxes at 590, the pins at 600. Those are furniture and go out with the sheet the
-	// spotlight is raised for (see `markersBlurred`), so the order between them is never
-	// looked at; the mask sits under them because it is part of the terrain's paint and not
-	// something to draw over a mark.
+	// The pane the spotlight's mask is drawn in (see `spotlight`), over everything: the polygons
+	// in Leaflet's own overlay pane at 400, and the marks standing on them — the leader lines at
+	// 580, the boxes at 590, the pins at 600. Covering the lot is what "one place, on nothing"
+	// means; the pin of the place itself survives because it is inside the hole (see createPane).
 	const MASK_PANE = 'spotlightMaskPane';
 	// The BoosterBox components standing in that layer, tracked for the same reason the
 	// pins' mounts are: clearing the layer only detaches their DOM, and a box left
@@ -493,33 +474,13 @@
 		}
 	});
 
-	$effect(() => {
-		// Take the pins and the boxes out of focus while a full view is up over the map, and
-		// bring them back when it goes (see `markersBlurred`). The two panes and nothing else:
-		// the terrain and the region polygons are the ground the sheet is laid on and stay as
-		// they are.
-		//
-		// Classes on Leaflet's own elements rather than a style written on them, because the
-		// blur is a look and looks are Tailwind's here. The transition is added in the same
-		// breath and never taken off: it names `filter` and `opacity` alone, so Leaflet is left
-		// to move its panes by `transform` at its own speed, as a pane the browser is easing
-		// would drag behind every pan.
-		const blurred = markersBlurred;
-		if (!ready || !mapInstance) return;
-		for (const pane of [
-			mapInstance.getPane('markerPane'),
-			mapInstance.getPane(BOX_PANE),
-			// The lines go with the marks they are about (see LEADER_PANE) — they are drawn in
-			// a pane of their own for the stacking alone, and a line left sharp under a blurred
-			// map would be the one thing still in focus.
-			mapInstance.getPane(LEADER_PANE)
-		]) {
-			if (!pane) continue;
-			pane.classList.add('transition-[filter,opacity]', 'duration-[250ms]', 'ease-in-out');
-			if (blurred) pane.classList.add('blur-sm', 'opacity-0');
-			else pane.classList.remove('blur-sm', 'opacity-0');
-		}
-	});
+	// (Nothing here answers a full view being raised over the map any more. The marker, box and
+	// leader panes used to be blurred to nothing and brought back as sheets came and went — a
+	// `markersBlurred` prop the root page held to its modal store. A sheet covers the viewport, so
+	// what it was clearing was furniture nobody could see, at the cost of every pin on the map
+	// filtering twice per modal; and the sheets themselves now simply blur in and out over
+	// whatever is behind them, untouched. What still moves the panes' contents is the map's own
+	// business: the tier walking in as the zoom changes, and a rebuild when the day's boxes do.)
 
 	$effect(() => {
 		// Frame the requested region. Gated on `ready` (a $state flag) so a focus set
@@ -573,13 +534,13 @@
 		});
 	});
 
-	// How long the mask takes to arrive and to go, matched to the blur the furniture leaves
-	// on (see `markersBlurred`) — one gesture, and a black that cut in at once would be the
-	// one part of it that did not play.
+	// How long the mask takes to arrive and to go, matched to the 250ms every polygon repaints
+	// over (see the paths' transition below) — one gesture, and a black that cut in at once
+	// would be the one part of it that did not play.
 	const MASK_FADE_MS = 250;
 
 	// Carried by every polygon on the map: its fill and its stroke are eased over the same
-	// 250ms the furniture blurs over, so a repaint is a change the map is seen making rather
+	// 250ms the mask fades over, so a repaint is a change the map is seen making rather
 	// than a different map. That is what a spotlight is drawn out of on both sides — the town
 	// taking its 80% wash and every border going, and both coming back when the fight leaves —
 	// and, being the polygons' own paint and not the spotlight's, it is as true of a tier
@@ -2585,12 +2546,21 @@
 		// cover that lands with the map already spotlit still arrives rather than appearing.
 		// It catches nothing — the map behind it is dragged and zoomed exactly as if the black
 		// were not there, which it will not be for long.
+		//
+		// Over EVERYTHING, marks included: 610 clears the pins at 600, the boxes at 590 and the
+		// lines at 580. It sat at 450 while it only had to cover the polygons, because the sheet
+		// the spotlight was raised for used to blur every mark off the map for the length of a
+		// fight. No sheet touches the map any more (see the note above the effects), so a mask
+		// under the marks would be a black country with the pins of every town in it standing on
+		// top — which is the opposite of showing one place alone. The town being fought over keeps
+		// its own pin either way: the cover is the world with that shape punched out of it, and
+		// nothing inside the hole is covered.
 		const maskPane = mapInstance.createPane(MASK_PANE);
-		maskPane.style.zIndex = '450';
+		maskPane.style.zIndex = '610';
 		maskPane.style.pointerEvents = 'none';
-		// The duration is written out rather than read off MASK_FADE_MS, as the pins' blur
-		// writes out its own: Tailwind generates the classes it can SEE, and a class built
-		// out of a constant is one it cannot. Keep the two in step.
+		// The duration is written out rather than read off MASK_FADE_MS: Tailwind generates the
+		// classes it can SEE, and a class built out of a constant is one it cannot. Keep the two
+		// in step.
 		maskPane.classList.add('transition-opacity', 'duration-[250ms]', 'ease-in-out', 'opacity-0');
 
 		// Not passive: the handler's first act is to refuse the page the scroll.
@@ -2762,8 +2732,9 @@
 	background (not a grey block) is what shows while the satellite tiles stream in.
 	Nothing transforms this box. A CSS transform on the Leaflet container leaves the map
 	drawn as its polygons on the page's background — the imagery goes and does not come
-	back — so the board is never tipped, leaned or scaled: what a full view over the map
-	moves is the map's furniture (see `markersBlurred`), never the map. -->
+	back — so the board is never tipped, leaned or scaled. Nor does anything else on the page
+	reach in here: a full view raised over the map leaves the map entirely alone (it used to
+	blur every mark on it away, and lean the whole board back before that). -->
 <div
 	bind:this={mapContainer}
 	class={`bg-transparent! ${classes}`}

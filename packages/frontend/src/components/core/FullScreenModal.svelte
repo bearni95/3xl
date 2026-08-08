@@ -1,20 +1,27 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import { createEventDispatcher, onMount } from 'svelte';
-	import { fade, fly } from 'svelte/transition';
-	import { dropSheet, raiseSheet } from '$services/fullScreenModal';
+	import { createEventDispatcher } from 'svelte';
+	import { blur } from 'svelte/transition';
 
 	// The chrome every full-view modal over the map wears: the sheet, the way it
 	// arrives and leaves, its title bar and the two ways out of it. What each one
 	// puts inside is the only thing that differs, so the surround is here and the
 	// content is the slot.
 	//
-	// A modal like this is the whole view rather than a box over the map: it takes
-	// the viewport and slides up from the bottom edge to do it, and slides back down
-	// on the way out — or fades, where what it is holding is worth leaving where it is
-	// (see `fadeOut`). Nothing behind it is dimmed and there is no backdrop to click,
+	// A modal like this is the whole view rather than a box over the map: it takes the
+	// viewport, and it **blurs in and blurs out** — one way in, the same way out, for every
+	// sheet in the app. Nothing behind it is dimmed and there is no backdrop to click,
 	// because there is nothing of the map left showing to click at — Escape and the ✕
 	// are how it closes.
+	//
+	// And the sheet is the whole of what moves. Raising one changes nothing outside itself:
+	// nothing on the page behind it is hidden, unmounted, veiled, blurred or made inert, and
+	// nothing appears that was not already there. A sheet that reached out and rearranged the
+	// page under it was reliably a sheet that re-framed the map, cost Leaflet a rebuild of
+	// every pin, and left the two halves of one gesture playing a quarter of a second apart.
+	// So this component tells nobody it exists — no store, no count, no `raiseSheet` — and the
+	// page has nothing to answer. If something behind a sheet needs to change, it is about the
+	// thing that raised it (a fight, say) and belongs to that, never to the sheet being up.
 	//
 	// The page is not quite opaque all the way down: base-100 at full strength at the
 	// top, graded to nine tenths at the foot, so the map is faintly there under the
@@ -24,13 +31,13 @@
 	// again, which is the whole of what the grade says. `transparent` takes even that
 	// away — see the prop.
 	//
-	// The slide is a Svelte transition rather than a stylesheet's, since the component
+	// The blur is a Svelte transition rather than a stylesheet's, since the component
 	// is only ever mounted while it is open (a CSS transition has nothing to animate
 	// from on a fresh mount) and the host's `{#if}` is what lets the way out play at
 	// all. So this component has no `open` prop: it exists while the modal is up, it
 	// dispatches `close`, and the host's store is what decides.
 	//
-	// z-[1300] puts it above the map's pinned panel (z-[900]). The combat arena wears
+	// z-[1300] puts it above the map's furniture (z-[900]–z-[1000]). The combat arena wears
 	// this same sheet, so two of these can be up at once — the arena is one of the
 	// places that sends the player to the roster — and which of them is in front is
 	// decided by the order the page mounts them in, the roster being the later. The
@@ -84,7 +91,7 @@
 	export let transparent: boolean = false;
 	/**
 	 * Make the whole sheet a way out: a click anywhere on it closes, and leaves by the same
-	 * slide the ✕ and Escape leave by.
+	 * blur the ✕ and Escape leave by.
 	 *
 	 * For a view that has finished saying what it was raised to say and has nothing left to do —
 	 * the booster window once a pack has come apart and its cards are standing there. The player
@@ -96,50 +103,18 @@
 	 * `closeDisabled` still wins, as it does over both other ways out.
 	 */
 	export let closeOnClick: boolean = false;
-	/**
-	 * Leave by fading rather than by sliding back down.
-	 *
-	 * A sheet slides up from the bottom edge and slides back down because the movement says
-	 * where the view came from and where it has gone — it is the map's own furniture being
-	 * pulled up over it and let down again. That reading holds for a view being dismissed. It
-	 * does not hold for one that has finished: the booster window once a pack has come apart
-	 * and its cards are standing there, where sliding takes the cards somebody is still looking
-	 * at and posts them off the bottom of the screen. Fading leaves them where they are and
-	 * simply stops showing them, and what comes up underneath is the town they were pulled on.
-	 *
-	 * Same length either way, so nothing that was timed against the slide has to be told (see
-	 * the page's SHEET_EXIT, and the blur the map's chrome comes back on).
-	 */
-	export let fadeOut: boolean = false;
 
-	// How long the sheet takes to arrive and to go, whichever way it goes.
-	const SHEET_MS = 250;
-
-	// The way out is chosen when it plays rather than when the sheet is built, which is the whole
-	// point: a sheet is raised long before anybody knows whether it will be dismissed or finished
-	// with. A `transition:` directive is one way for both directions, so the two are written
-	// apart — the way in is always the slide.
-	function leave(node: Element, params: { faded: boolean }) {
-		return params.faded
-			? fade(node, { duration: SHEET_MS })
-			: fly(node, { y: '100%', duration: SHEET_MS, opacity: 1 });
-	}
+	// How the sheet arrives and how it goes: 8px of blur over a quarter of a second, and the
+	// same the other way. One gesture, and one `transition:` directive rather than a pair, so
+	// there is no way in that is not also the way out — a sheet that left differently from the
+	// way it came was a sheet each host had to have an opinion about (see the `fadeOut` that
+	// used to be here, and the slide before that).
+	//
+	// Svelte's blur fades opacity with it, which is what makes a sheet that is on its way out
+	// stop covering the map before it has finished going.
+	const SHEET_BLUR = { amount: 8, duration: 250 };
 
 	const dispatch = createEventDispatcher<{ close: void }>();
-
-	// Say that a sheet is up for exactly as long as this one is mounted, so the map behind it
-	// can blur its own chrome away (see `$services/fullScreenModal`, and the root page). It is
-	// said from here rather than by each host, because "a full view is over the map" is a fact
-	// about this sheet and not about the five stores that raise one. The unmount runs after the
-	// slide-out has played, which is when the map is worth reading again.
-	//
-	// The pair is onMount's own teardown rather than a separate onDestroy, so a drop can never
-	// happen without its raise (onDestroy alone runs on the server, where nothing was ever
-	// mounted).
-	onMount(() => {
-		raiseSheet();
-		return () => dropSheet();
-	});
 
 	function close(): void {
 		if (closeDisabled) return;
@@ -168,8 +143,7 @@
 	aria-modal="true"
 	aria-label={title}
 	tabindex="-1"
-	in:fly={{ y: '100%', duration: SHEET_MS, opacity: 1 }}
-	out:leave={{ faded: fadeOut }}
+	transition:blur={SHEET_BLUR}
 	on:click={onSheetClick}
 >
 	<div

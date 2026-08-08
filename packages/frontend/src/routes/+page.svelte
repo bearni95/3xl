@@ -38,7 +38,6 @@
 	import { faqModalOpen, openFaq } from '$services/faqModal';
 	import { creditsModalOpen, openCredits } from '$services/creditsModal';
 	import { boosterModalOpen } from '$services/boosterModal';
-	import { fullScreenModalOpen } from '$services/fullScreenModal';
 	import type { OpenerPack } from '$components/core/pack/scene/opener-view.type';
 	import { preloadPackArt } from '$components/core/pack/scene/preload-pack-art';
 	import { spawnService } from '$services/spawn.service';
@@ -1282,12 +1281,16 @@
 	$: if (townTab === 'box' && !townBoxOffered) townTab = townOffered ? 'town' : 'places';
 	$: if (townTab === 'town' && !townOffered) townTab = 'places';
 
-	// Whether that block is standing at all: the map is ready and no sheet is over the page. It was
+	// Whether that block is standing at all, which is now only whether the map is ready. It was
 	// written out at the `{#if}` alone while the block was a band laid over the terrain, where
 	// nothing else on the page could tell the difference. It is a box in the third column from `md`
 	// up now, the top half of it, so the panel under it has to know: with the block there the panel
 	// is the second of two rows, and without it the column is the panel's whole (see the grid, and
 	// the wrapper down there).
+	// A sheet being up used to take it away as well. Nothing on this page answers a sheet any more
+	// (see FullScreenModal): a full view covers the viewport, so what is behind it is not being read
+	// either way, and a page that rearranged itself under one was a page that re-framed the map for
+	// nobody — twice per modal.
 	// It used to want a town open and the map's own tab up, both for the same reason: what it held
 	// was one town, and the list of places was painted over the terrain, so a block about a town
 	// with no town in it was a block about nothing. Neither holds now. The list is one of the three
@@ -1297,7 +1300,7 @@
 	// map's box stops moving. It was re-framed by every walk into a town and out of one — WorldMap
 	// answers a change of box with `invalidateSize` + `syncView` + a full rebuild of every pin and
 	// every booster box — and now nothing but a sheet or the window itself ever changes it.
-	$: townBlock = ready && !$fullScreenModalOpen;
+	$: townBlock = ready;
 
 	// (Which of the two below the tabs was the square used to be a press: a bead on the rule
 	// between them handed it from the terrain to this block and back. It is the block's for good
@@ -1561,12 +1564,12 @@
 		}, FOLD_MS);
 	}
 
-	// A full view being up is deliberately not part of this any more. The block used to unmount
-	// under a sheet and blur back in when it went — which cost the map nothing while the column
-	// it stands in was a fixed third of the page. It is not: on a phone that column is exactly as
-	// tall as what is in it (see the grid), so emptying it hands the map a taller box and a
-	// re-frame, twice per modal. The whole column is veiled instead, which is the same gesture
-	// with the height left standing (see CHROME_VEIL).
+	// A full view being up is deliberately not part of this. The block used to unmount under a
+	// sheet and blur back in when it went — which cost the map nothing while the column it stands
+	// in was a fixed third of the page. It is not: on a phone that column is exactly as tall as
+	// what is in it (see the grid), so emptying it hands the map a taller box and a re-frame,
+	// twice per modal. Nothing on this page answers a sheet now (see CHROME_BLUR), so what is left
+	// here is the only thing this line was ever really about: whether there is a side to draw.
 	$: playerBlockShown = ready && (playerTeamLineup.length > 0 || !!$profile || signedOut);
 
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
@@ -1592,9 +1595,12 @@
 	// satellite through, and everything else covered in black with no border left anywhere
 	// (see `spotlight` in WorldMap, tierStyle and hiddenLineUrls).
 	//
-	// It is keyed off the fight and not off `$fullScreenModalOpen`: every other sheet leaves
-	// the map exactly as the reader left it, and blacking out the map under the roster would
-	// be covering the terrain that sheet is laid on for no reason.
+	// It is keyed off the fight and off nothing else — never off "a sheet is up", which is not
+	// something this page knows any more (see CHROME_BLUR and FullScreenModal). A modal changes
+	// nothing behind it; a *fight* changes the map, because a fight is about a town. That is the
+	// whole distinction, and it is why this is the one thing left on the page that a full view
+	// coincides with: the arena is raised by the same click that stages the battle, and it is
+	// the battle the map is answering.
 	//
 	// The town is the fight's own and never the open region: a battle resumed on the next
 	// visit puts the reader back in front of a fight without the map having opened anything
@@ -1602,22 +1608,18 @@
 	let spotlitId: string | null = null;
 	let spotlightExit: ReturnType<typeof setTimeout> | null = null;
 
-	// How long the arena takes to leave — FullScreenModal's own slide-out (`fly`, 250ms).
-	// Written here as well because a page cannot ask a sheet how long it takes to go; keep
-	// the two in step, and both in step with the blur above.
+	// How long the arena takes to leave — FullScreenModal's own blur-out, 250ms. Written here as
+	// well because a page cannot ask a sheet how long it takes to go; keep the two in step.
 	const SHEET_EXIT = 250;
 
 	/**
 	 * Raise the spotlight with the fight, and lower it once the arena has finished leaving.
 	 *
-	 * The delay on the way out is the coordination, not a pause: the map's furniture comes
-	 * back into focus on the sheet's UNMOUNT, which is after its slide-out has played (see
-	 * `$fullScreenModalOpen` and CHROME_BLUR), so a spotlight lowered the moment Close was
-	 * pressed would have the black clearing and the town letting go of its wash while the
-	 * arena was still on its way down — the two halves of one gesture playing a quarter of a
-	 * second apart. Held for that quarter second, everything the map does happens at once:
-	 * the sheet goes, and behind it the black fades out, the wash comes back to where it was
-	 * and the pins sharpen, over the same 250ms.
+	 * The delay on the way out is the coordination, not a pause: a spotlight lowered the moment
+	 * Close was pressed would have the black clearing and the town letting go of its wash while
+	 * the arena was still blurring out over the top of it — the map putting itself back together
+	 * in full view of somebody still looking at the sheet. Held for that quarter second, the
+	 * arena goes, and what is behind it is the map exactly as the fight found it.
 	 *
 	 * On the way in there is nothing to hold: raising the sheet and raising the spotlight are
 	 * the same tick.
@@ -2945,60 +2947,21 @@
 	// forward (see tierStyle), on top of the framing (focusBounds) and the pins, which
 	// still fade outside it.
 
-	// --- The map's furniture, while a full view is up ------------------------------
-	// A sheet raised over the map covers the viewport, and everything the map draws over its
-	// terrain — the breadcrumb bar, the corner the side and the account stand in, and every pin
-	// and box out there — is furniture nobody is reading for as long as one is. So it goes out
-	// of focus while a sheet is up and comes back when it leaves: the map is still the ground
-	// the sheet is laid on (the sheets are graded rather than opaque, see FullScreenModal), and
-	// a bar of crumbs read sharply through one is chrome competing with the thing it was covered
-	// by. The terrain and the polygons are untouched — what blurs is what stands on them.
+	// --- How the map's furniture comes and goes ------------------------------------
+	// The blur a plate over the map plays when it arrives and when it leaves: the row across the
+	// top of the terrain as the tab changes, the block under the map as the polygons land, the
+	// player's side as an account signs in or out. One amount and one length for all of them, so
+	// the furniture reads as one kind of thing coming and going rather than three.
 	//
-	// Which sheet is up is nobody's business here: FullScreenModal says so from its own mount
-	// (see `$services/fullScreenModal`), so the map answers a sixth sheet as it answers these
-	// five. The count drops after the sheet's slide-out has played, so the furniture sharpens
-	// behind a view that has already gone rather than under one still on its way down.
-	//
-	// The plates are Svelte's DOM, so they blur as Svelte transitions, out and back in; the pins
-	// are Leaflet's and cannot be (unmounting them is a rebuild of every statue on the map), so
-	// WorldMap blurs their panes to the same 8px over the same 250ms instead. Keep the three in
-	// step — this is one gesture, not three.
-	//
-	// And the blur is the whole of it: no sheet moves the map itself. The arena leaned it back
-	// for the length of a fight, which left the terrain undrawn behind it — a CSS transform on
-	// the Leaflet container costs the map its imagery (see WorldMap's container comment) — so
-	// what a full view moves is what stands on the map, never the map.
+	// It has nothing to do with the sheets any more. Every piece of this chrome used to blur away
+	// while a full view was up and blur back when it left — the band at the top of the page, the
+	// tabs over the terrain, the side and the account, and every pin and box on the map with them.
+	// That is gone entire, and so is the store that drove it: a sheet covers the viewport, so
+	// there was nothing behind it to be read sharply in the first place, and the price was steep —
+	// three rows of the page moving, WorldMap's own panes moving, and the arena's spotlight held
+	// on a timer to keep in step with all of it. A modal now blurs in and blurs out and touches
+	// nothing outside itself (see FullScreenModal).
 	const CHROME_BLUR = { amount: 8, duration: 250 };
-
-	// The same gesture said in classes instead of a transition, for the chrome that may not leave
-	// the document while it plays.
-	//
-	// A Svelte transition ends in an unmount, and two pieces of this page's chrome stand IN FLOW
-	// ABOVE THE MAP — the band across the top of the page and the row of tabs over the terrain.
-	// Unmounting either shortens the column the map is measured into, which is a resize, and a
-	// resize is the one thing the map cannot be handed for free: WorldMap watches its own box and
-	// answers a change with `invalidateSize` + `syncView` + a full rebuild of the pins and the
-	// boxes (see its ResizeObserver). So a sheet going up would have re-framed the terrain, and
-	// coming down would have re-framed it back — twice per modal, for two rows of furniture that
-	// were only ever meant to go quiet.
-	//
-	// The side at the foot of a phone is veiled too, for a different reason: it is a sheet over the
-	// terrain now and has a surface of its own — a fill and the rule along its top — so emptying it
-	// would not take it off the screen, only leave a bare bar lying across the map. The veil is on
-	// the wrapper, so the panel and the bead on its edge go quiet together. It costs the map
-	// nothing either way: that sheet is out of the flow and the row it hangs off is a fixed length.
-	//
-	// Everything else keeps `transition:blur`, because unmounting it costs the map nothing: the
-	// list of places is a grid item in a named track (`md:col-start-*`, `row-start-*`) whose size
-	// no child of it decides, and the radar is absolutely positioned inside the map's own pane.
-	//
-	// Same 8px and same 250ms as CHROME_BLUR, and the opacity goes with it because Svelte's blur
-	// fades as well — this has to be the same gesture to the eye or the furniture would leave in
-	// two different ways. `pointer-events-none` and `inert` are what an unmount was giving for
-	// free: a veiled row is still a row, and neither the pointer nor the tab key should reach one
-	// standing behind a sheet.
-	const CHROME_VEIL = 'transition-[filter,opacity] duration-[250ms]';
-	const CHROME_VEILED = 'pointer-events-none opacity-0 blur-[8px]';
 
 	// Nothing about the map has to be measured any more. The furniture that used to be positioned
 	// over the terrain — the badge and its marks along the top, the side and the account at the
@@ -3047,19 +3010,12 @@
 		have to be kept in step with it. The padding is the band's rather than each child's, so the
 		four are spaced by one `gap-2` and inset by one `px-2`.
 
-		Veiled with the rest of the map's furniture while a full view is up — a sheet is a place of
-		its own and the band names the one it was raised from — but veiled and NOT unmounted, which
-		is the one thing about this row that is not a matter of taste: it stands in flow above the
-		map, so taking it out of the document would lengthen the column the map is measured into
-		and re-frame the terrain on every sheet, both ways. See CHROME_VEIL, which is the same 8px
-		over the same 250ms said in classes. -->
+		It stands exactly as it is whatever else is on screen. A full view used to veil it — blur
+		it out and make it inert for as long as a sheet was up — which was a row of furniture going
+		quiet behind something already covering it, and it is gone with the rest of that machinery
+		(see CHROME_BLUR). -->
 	<div
-		inert={$fullScreenModalOpen || undefined}
-		class={classNames(
-			'flex flex-none items-stretch gap-2 border-b-2 border-primary bg-base-100 px-2 py-2',
-			CHROME_VEIL,
-			$fullScreenModalOpen && CHROME_VEILED
-		)}
+		class="flex flex-none items-stretch gap-2 border-b-2 border-primary bg-base-100 px-2 py-2"
 	>
 		<!-- What it says and what size it is set at are two different things: the word is "6xl"
 			and the type is `2xl`, one flat size at every viewport rather than a ramp.
@@ -3261,22 +3217,11 @@
 				<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
 					the credits sheet does it (see CreditsModal): which of the two is up is local state
 					rather than an `aria-controls` target.
-					Veiled with the rest of the map's furniture while a full view is up — a strip of tabs
-					read sharply beside a sheet is chrome competing with the thing it was covered by — and
-					veiled rather than unmounted for the same reason the band at the top of the page is:
-					this row is `flex-none` above a `flex-1` map, so removing it hands the map a taller box
-					and a re-frame it never asked for (see CHROME_VEIL). The panels below it do not move
-					either way: unmounting the terrain to raise the roster would be a fresh Leaflet on the
-					way back. -->
-				<div
-					inert={$fullScreenModalOpen || undefined}
-					role="tablist"
-					class={classNames(
-						'tabs-boxed tabs flex-none justify-start',
-						CHROME_VEIL,
-						$fullScreenModalOpen && CHROME_VEILED
-					)}
-				>
+					A full view used to veil this row too, and no longer does — a sheet changes nothing
+					on the page behind it (see CHROME_BLUR). Which also settles what this row is: it is
+					`flex-none` above a `flex-1` map, so anything that took it out of the document would
+					hand the map a taller box and a re-frame it never asked for. Nothing does. -->
+				<div role="tablist" class="tabs-boxed tabs flex-none justify-start">
 					<button
 						type="button"
 						role="tab"
@@ -3339,7 +3284,6 @@
 							{zoomBounds}
 							{zoomStops}
 							{spotlight}
-							markersBlurred={$fullScreenModalOpen}
 							bind:currentZoom
 							bind:activeLevel
 							bind:currentCenter
@@ -3360,11 +3304,12 @@
 							measured off it and handed to the map: the pins are dealt where the polygons put
 							them, and a reader who wants what is under this strip pans.
 							Only while the map is the tab that is up — the list of places and the shares are
-							painted over this same box (see below), and neither is a thing this row acts on —
-							and gone under a full view with the rest of the chrome, on the same 8px over the
-							same 250ms. It CAN be unmounted, unlike the rows above it, because it is
-							absolutely placed inside the map's pane and taking it out changes nobody's box. -->
-						{#if mapTab === 'map' && !$fullScreenModalOpen}
+							painted over this same box (see below), and neither is a thing this row acts on.
+							It CAN be unmounted, unlike the rows above it, because it is absolutely placed
+							inside the map's pane and taking it out changes nobody's box, which is why the
+							change of tab is a blur rather than a swap (see CHROME_BLUR). A full view used to
+							take it away too; nothing on this page answers a sheet any more. -->
+						{#if mapTab === 'map'}
 							<div
 								transition:blur={CHROME_BLUR}
 								class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex items-start justify-between gap-2"
@@ -3730,28 +3675,20 @@
 			solving a problem the width does not have.
 			What it is NOT at that width, any more, is the whole of that column: the block naming the
 			open place takes the top half of it and this is the bottom (`md:row-start-2`). Only while
-			that block is standing, though — under a sheet, or before the map is ready, there is
-			nothing above and the panel has the column entire (`md:row-span-2` from the first row).
-			That used to be the common case and is now the rare one: the block came and went with the
-			town and with the map's own tab, and it goes with neither since the list of places came
-			to stand in it. That is the one thing on the page `townBlock` is
-			written down for: two boxes cannot both be told a condition and be relied on to agree
+			that block is standing, though — before the map is ready there is nothing above and the
+			panel has the column entire (`md:row-span-2` from the first row). That used to be the
+			common case and is now the rare one: the block came and went with the town, with the map's
+			own tab and with every full view raised over the page, and it goes with none of the three
+			since the list of places came to stand in it. That is the one thing on the page `townBlock`
+			is written down for: two boxes cannot both be told a condition and be relied on to agree
 			about it. The map does not take part either way, spanning both rows whatever happens here.
-			Veiled rather than emptied while a full view is up, which is what it always was, and
-			`inert` with it — everything in here goes quiet together, the bead included (see
-			CHROME_VEIL). The block above leaves rather than being veiled — which,
-			now that it stands at every place and on either of the map's tabs, is under a sheet and
-			nowhere else — and this grows into its half the moment it does,
-			which is also what covers the block's own 250ms going: the panel is later in the document
-			and carries the page's fill, so it simply paints over whatever is still fading in the row
-			above. An instant swap, and the map does not take part in it either way. -->
+			A full view used to veil this whole column and make it inert, which is gone with the rest
+			of that machinery (see CHROME_BLUR): a sheet covers the viewport, and this column standing
+			exactly as it was under one is a column nobody is looking at rather than a distraction. -->
 		<div
-			inert={$fullScreenModalOpen || undefined}
 			class={classNames(
 				'pointer-events-none absolute inset-x-0 bottom-0 z-[1000] flex min-h-0 min-w-0 flex-col md:static md:z-auto md:col-start-3 md:pointer-events-auto',
-				townBlock ? 'md:row-start-2' : 'md:row-span-2 md:row-start-1',
-				CHROME_VEIL,
-				$fullScreenModalOpen && CHROME_VEILED
+				townBlock ? 'md:row-start-2' : 'md:row-span-2 md:row-start-1'
 			)}
 		>
 			<!-- The fold, and it is a bead threaded on the rule the panel carries: `-mb-5` is half of
@@ -4019,12 +3956,11 @@
 						`flex-none` because the room this column has is not much: without it this row is the
 						first thing the column takes back when the side above it wants room, and the marks
 						squash instead of the column scrolling.
-						Outside `{#if ready}`, since nothing about it waits on the polygons. It goes quiet under
-						a full view with the rest of the chrome, but it does not leave: it is the last thing in
-						a panel that is folded to a strip by default, so a row coming and going at the foot of
-						it is a row moving the whole of what unfolds (see the panel, and CHROME_VEIL). The veil
-						is the wrapper's, one gesture over everything in it, rather than each row playing it
-						separately. -->
+						Outside `{#if ready}`, since nothing about it waits on the polygons, and it never comes
+						and goes for anything else either: it is the last thing in a panel that is folded to a
+						strip by default, so a row arriving or leaving at the foot of it is a row moving the
+						whole of what unfolds. A full view used to veil it with the rest of the chrome and no
+						longer does (see CHROME_BLUR). -->
 					<SocialLinks classes={classNames('flex-none', { 'mt-auto': !playerBlockShown })} />
 				</div>
 			</div>
@@ -4051,8 +3987,8 @@
 	without ever navigating away. This is the only place combat is mounted — there is no
 	standalone combat route any more. It used to be a fixed panel of its own over a 30%-white
 	wash, which was a second kind of full-view surface for no reason other than that combat
-	came later: FullScreenModal is the one this game has, and it brings the slide up from the
-	bottom edge, the title bar, the ✕ and Escape with it.
+	came later: FullScreenModal is the one this game has, and it brings the blur in and out, the
+	title bar, the ✕ and Escape with it.
 	CombatArena fields the team the battle is being fought with against the line-up it
 	was opened against, and handles all its own gating. Only the town rides along, to
 	key and label the fight: which town a battle is over and which generation of its
@@ -4060,8 +3996,10 @@
 	that is reported is the fight that was opened.
 	This sheet paints no page (`transparent`, as the booster window does): a fight is not a page
 	laid over the map like the roster or the leaderboard — it is an event on a town the map is
-	still showing — so it is staged on the map, the terrain live under it with its pins blurred
-	off it and the board standing on top. Nothing here needs the page: the canvas is opaque and
+	still showing — so it is staged on the map, the terrain live under it and the board standing
+	on top. What clears the country behind it is the spotlight, which belongs to the fight and not
+	to this sheet (see holdSpotlight): the sheet itself does nothing to the map at all, as none of
+	them do. Nothing here needs the page: the canvas is opaque and
 	carries its own border, and every word the arena says is on a card with its own base-100
 	(the result panel, the sign-in and no-team cards).
 	The sheet's own way out is held shut while a finished fight is on its way to the server:
