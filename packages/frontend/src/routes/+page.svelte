@@ -1337,6 +1337,14 @@
 			municipalityNames: names
 		}))(showsByCharacter, municipalityNames);
 
+	// Whether the furniture column is standing the player's block at all — the side, the way
+	// in, and the account plate under them. It is the very condition that block is drawn on,
+	// named here because a second row in that column has to know it: the author's marks close
+	// the column, and which of the two is the one pushed to the foot depends on whether the
+	// block above it is there to push (see the third column's `mt-auto`).
+	$: playerBlockShown =
+		ready && (playerTeamLineup.length > 0 || !!$profile || signedOut) && !$fullScreenModalOpen;
+
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
 	// plus everything the fight has to be reported against — the town's id and the
 	// turnover generation it was on — all frozen at click time. Null when the modal is
@@ -3235,11 +3243,9 @@
 					</svelte:fragment>
 				</RegionSubdivisions>
 
-				<!-- Where the author is, at the foot of the column: the one row here that names
-					something outside the game. `flex-none` because a third of a phone's height is not
-					much: without it this row is the first thing the column takes back when the list
-					above it wants room, and the marks squash instead of the list scrolling. -->
-				<SocialLinks classes="flex-none" />
+				<!-- (Where the author is used to close this column, and closes the furniture column
+					now — under the player, which is the other row on this page that names somebody
+					rather than somewhere. See the third column below.) -->
 			</aside>
 		{/if}
 
@@ -3304,7 +3310,7 @@
 					The statues are rebuilt on the way back, which is what they already are every time the
 					map re-frames itself — a character that has been through its veil once never plays it
 					again (see IdleSprite), so what comes back is the picture and not the reveal. -->
-				{#if (playerTeamLineup.length > 0 || $profile || signedOut) && !$fullScreenModalOpen}
+				{#if playerBlockShown}
 					<div transition:blur={CHROME_BLUR} class="mt-auto flex flex-col gap-2">
 						<!-- The three statues and nothing else: no plate under them, no heading over them,
 							so what stands here is the side itself rather than a panel about it. It can stand
@@ -3411,6 +3417,28 @@
 						{/if}
 					</div>
 				{/if}
+			{/if}
+
+			<!-- Where the author is, and it closes this column: the one row on the page that names
+				something outside the game. It was the foot of the column beside this one, under
+				everything the open place had to say for itself — which put a row about whoever made
+				this under a list of towns, where it read as one more thing about the place. It sits
+				under the player instead, because these two rows are the only ones here that name a
+				person: who is playing, and who drew what they are playing with.
+				The column's free space is pushed above exactly one row, and which row that is
+				depends on what is standing: the block above already takes it with `mt-auto` where
+				there is a block, so this row simply follows it to the foot — two `mt-auto`s in one
+				flex column split the space between them and would leave the account floating in the
+				middle. Where there is no block (the session is still being read), the marks take
+				the push themselves and close the column alone rather than sitting at its top.
+				`flex-none` because a third of a phone's height is not much: without it this row is
+				the first thing the column takes back when the side above it wants room, and the
+				marks squash instead of the column scrolling.
+				Outside `{#if ready}`, since nothing about it waits on the polygons, and gone under a
+				full view with the rest of the chrome — it left with the whole column it used to
+				stand in, so leaving with this one is it keeping the manners it already had. -->
+			{#if !$fullScreenModalOpen}
+				<SocialLinks classes={classNames('flex-none', { 'mt-auto': !playerBlockShown })} />
 			{/if}
 		</div>
 	</div>
