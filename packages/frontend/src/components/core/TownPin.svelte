@@ -75,6 +75,7 @@
 				<div class="col-span-2 min-w-0 drop-shadow-lg">
 					<TeamLineup
 						members={marker.team ?? []}
+						owner={marker.holder ?? null}
 						flipped={false}
 						seeded={!marker.holder}
 						{alwaysReveal}
@@ -102,7 +103,12 @@
 			`seeded` is read off the holder and not off the team: a town with nobody on it is a
 			town still fielding the three its own seed rolled, so its banner flies the map's grey
 			rather than the colour that roll happened to give the lead — the same rule the terrain
-			under it is painted by. -->
+			under it is painted by.
+			`owner` is the same fact said the other way round, and it is the very holder the plate
+			under this row names: the face on the banner is whoever is standing here, so a pin
+			says whose these three are twice over — on the band above and in the row below — off
+			one source. A town nobody holds hands over nothing and the band draws the robot, which
+			is what its grey already meant. -->
 		<!-- Keyed on the side itself, so a column that comes to hold three different characters
 			stands three new statues up rather than swapping the pictures inside the ones already
 			there. That is what lets the row arrive: a statue keeps its veil down once its own
@@ -116,6 +122,7 @@
 			<div class="w-full drop-shadow-lg">
 				<TeamLineup
 					members={marker.team}
+					owner={marker.holder ?? null}
 					flipped={false}
 					seeded={!marker.holder}
 					{alwaysReveal}

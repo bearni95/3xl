@@ -1346,6 +1346,20 @@
 			municipalityNames: names
 		}))(showsByCharacter, municipalityNames);
 
+	// Whose side that is, for the face at the head of its banner (see TeamLineup's `owner`):
+	// this reader, since the corner stands the side THEY field. It is the same three things
+	// their own plate two rows under it is drawn from, read off the one profile, so the face
+	// on the band and the face on the plate cannot come out different. Null while the session
+	// is still being read — a band with no owner draws the robot, which is what a side nobody
+	// is behind looks like, and a face is not guessed at in the meantime.
+	$: sideOwner = $profile
+		? {
+				name: $profile.username ?? '',
+				characterId: $profile.avatarCharacterId,
+				color: $profile.avatarColor
+			}
+		: null;
+
 	// Whether the furniture column is standing the player's block at all — the side, the way
 	// in, and the account plate under them. It is the very condition that block is drawn on,
 	// named here because a second row in that column has to know it: the author's marks close
@@ -3504,7 +3518,7 @@
 										aria-label={$_('roster.open')}
 										on:click={() => rosterModalOpen.set(true)}
 									>
-										<TeamLineup members={playerTeamLineup} />
+										<TeamLineup members={playerTeamLineup} owner={sideOwner} />
 									</button>
 								{:else if $profile && spawnsSettled}
 									<!-- A player with no side fielded yet, in the slot the three statues take:

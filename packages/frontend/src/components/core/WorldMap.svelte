@@ -1064,8 +1064,13 @@
 					// still on the team its seed rolled, so the row's banner takes the map's grey
 					// exactly as this pin's own tile and the polygon under it do — the mark on
 					// the terrain and the one in the column beside it say the one thing.
+					// `owner` is that same holder, which is what puts their own face at the head
+					// of the band — the very face the plate under these statues names them by.
+					// A town nobody holds hands over nothing, and the band draws the robot that
+					// stands for a side no account is behind (see TeamLineup).
 					props: {
 						members: marker.team,
+						owner: marker.holder ?? null,
 						flipped: false,
 						seeded: !marker.holder,
 						classes: 'gap-1'

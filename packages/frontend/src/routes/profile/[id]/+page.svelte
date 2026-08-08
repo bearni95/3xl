@@ -170,6 +170,18 @@
 		municipalityNames
 	});
 
+	// Whose side it is, for the face at the head of its banner (see TeamLineup's `owner`):
+	// the player this page is about, off the very plate the card above the statues is drawn
+	// from. So the picture on the band is the picture at the top of the page, and a reader
+	// who meets these three on a town they hold meets the same face there.
+	$: sideOwner = player
+		? {
+				name: player.profile.username ?? '',
+				characterId: player.profile.avatarCharacterId,
+				color: player.profile.avatarColor
+			}
+		: null;
+
 	// And the whole collection, read exactly the same way: a card is a card, and the
 	// three on the team are three of these. One entry per card held — two copies of a
 	// character are two statues, since they are two cards with their own colours, their
@@ -519,7 +531,7 @@
 					passed to it that the corner does not pass — it is unselectable and unheaded
 					there too, being a picture of a side rather than a roster. -->
 				{#if lineup.length > 0}
-					<TeamLineup members={lineup} />
+					<TeamLineup members={lineup} owner={sideOwner} />
 				{:else}
 					<p class="rounded-box bg-base-100/80 px-4 py-3 text-center shadow-xl">
 						{$_('profile.public.noTeam')}

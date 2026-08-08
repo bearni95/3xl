@@ -163,6 +163,19 @@
 	onMount(() => void loadShowLogos());
 
 	$: currentUserId = $status === AuthStatus.SignedIn && $profile ? String($profile.id) : null;
+
+	// Whose side the line-up at the head of this sheet is, for the face on its banner (see
+	// TeamLineup's `owner`): the reader, this being the screen they arrange their own three
+	// on. Read off the same profile the map's corner reads, so the band is the same band in
+	// both places — the side is arranged here and stood up there, and a face that differed
+	// between them would be two answers to whose team it is.
+	$: sideOwner = $profile
+		? {
+				name: $profile.username ?? '',
+				characterId: $profile.avatarCharacterId,
+				color: $profile.avatarColor
+			}
+		: null;
 	$: if (currentUserId && currentUserId !== loadedForUser) {
 		loadedForUser = currentUserId;
 		load(currentUserId);
@@ -721,6 +734,7 @@
 					     gesture the roster's own cards already answer to. -->
 					<TeamLineup
 						members={partyMembers}
+						owner={sideOwner}
 						alwaysReveal
 						selectable={!$teamSaving}
 						on:select={(event) => handleTeamButton(partyLineup[event.detail.index].spawn)}

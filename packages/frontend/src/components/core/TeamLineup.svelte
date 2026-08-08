@@ -15,6 +15,7 @@
 	import classNames from 'classnames';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
+	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
 	import { showLogos, loadShowLogos, showGlyphs } from '$services/shows.service';
 	import { REGION_BAND_CLASSES } from '$components/core/spawn-colors';
@@ -78,6 +79,23 @@
 	// somebody's team. The box the cards came out of has already said which show they are from,
 	// on its own poster, and each card goes on saying it with the mark on its floor.
 	export let bannered: boolean = true;
+	// Whose side this is, for the face at the head of the banner: the name they are called
+	// by — already worded for a player who never chose one, exactly as a town's plate words
+	// its holder — and the two halves of the avatar they wear, which are only ever read
+	// together (see PlayerAvatar; both null is the initial-letter avatar, drawn off the name).
+	//
+	// It is the OWNER of the side and never a member of it: the map's corner and the roster
+	// hand over the reader's own account, a town's pin hands over whoever holds the town, and
+	// a public profile hands over the player whose page it is. So the band says the same two
+	// things a card does — whose these three are, and what show they fly.
+	//
+	// Null where nobody is behind the side, which is what `seeded` already means and is drawn
+	// the same way: the robot stands in for the face (see below).
+	export let owner: {
+		name: string;
+		characterId: string | null;
+		color: SpawnColor | null;
+	} | null = null;
 	export let classes: string = '';
 
 	const dispatch = createEventDispatcher<{
@@ -163,6 +181,18 @@
 	// grey (the same 500 weight the pins spell it) where nobody is — both at nine tenths, since
 	// a band lies over the row rather than closing it off.
 	$: bandFill = REGION_BAND_CLASSES[seeded || !lead ? ArtificialColor.Gray : lead.color];
+
+	// Whether the face at the head of the band is a player's or the robot's. A side rolled
+	// from a town's own seed belongs to nobody — there is no account behind it to have a
+	// picture — so it wears the one mark that says so, on exactly the bands that already fly
+	// the map's grey rather than somebody's colour. A side with no owner named is drawn the
+	// same way for the same reason.
+	$: nobodys = seeded || !owner;
+
+	// The letter under a face nobody has picked yet, off the name shown beside it wherever
+	// that name is shown — the same spelling the account's own plate and a town's holder row
+	// use, so one player is one letter everywhere they appear.
+	$: ownerInitial = (owner?.name || '?').charAt(0).toUpperCase();
 </script>
 
 <div class={classNames('relative flex w-full', classes)}>
@@ -173,21 +203,27 @@
 		map's grey where the side is nobody's (see `seeded`). The fill is the swatch at nine
 		tenths and the ink is not: a band lying over the row lets a little of what it lies on
 		through, while the lettering and the marks on it stay solid.
-		Three marks stand on it, pushed apart to its two ends: the show's glyph, the show's
-		wordmark, the show's glyph again. All three are **2rem tall and told so**, which is the
-		one arrangement in which they agree. Height is what the band is built out of rather than
+		Four marks stand on it, pushed apart to its two ends: the show's glyph, then the face of
+		whoever the side belongs to with the show's wordmark beside it, then the show's glyph
+		again. The middle two are one group — a side is whose it is and what it flies, and those
+		two things are said together or the band is a show with a stranger's picture loose on it.
+		All four are **2rem tall and told so**, which is the one arrangement in which they agree.
+		Height is what the band is built out of rather than
 		what it is given — the band is the padding around a row of that height, so it is the same
 		band under every show and the colour keeps a clear margin above and below the lettering
 		instead of running up against it. The wordmark is `h-8` at its own aspect, however wide
-		or narrow it was drawn, and the glyphs are `h-8 w-auto` at theirs. Neither is asked for a
+		or narrow it was drawn, the glyphs are `h-8 w-auto` at theirs, and the face is a `w-8`
+		square (PlayerAvatar reads the square off the width). None is asked for a
 		share of anything: a mark sized `h-full` is a percentage of a row that is only as tall as
 		its own contents, which resolves to auto and leaves a glyph at the 1em its markup was
 		rewritten to (see inlineIconMarkup) — a mark a third the height of the lettering beside
 		it, which is what this arrangement is the fix for. The row keeps two fifths of the width
-		clear of the wordmark, twice what it kept before, since that clearance is now where the
-		glyphs stand. The wordmark is not recoloured — the enabled logos are coloured lettering
+		clear of the middle, twice what it kept before, since that clearance is where the
+		glyphs stand — and it is the group that is held to three fifths now rather than the
+		wordmark alone, so a face cannot buy itself room out of the glyphs' clearance. The
+		wordmark is not recoloured — the enabled logos are coloured lettering
 		with a light outline, which reads on any of the six — and the glyphs take the band's own
-		ink, being inline svg (see ShowIcon). None of the three is required: a side whose show
+		ink, being inline svg (see ShowIcon). Only the face is always there: a side whose show
 		has no wordmark, no glyph or neither — or whose marks are still on their way — flies the
 		same band at the same height and never a thinner stripe that grows when one lands, and
 		with nothing at its ends to be pushed away from the row centres what it does have.
@@ -209,13 +245,58 @@
 				})}
 			>
 				<ShowIcon markup={bannerGlyph} classes="[&>svg]:h-8 [&>svg]:w-auto" />
-				{#if bannerLogo}
-					<img
-						src={bannerLogo.url}
-						alt={bannerLogo.name}
-						class="h-8 max-w-[60%] object-contain"
-					/>
-				{/if}
+				<!-- The middle of the band, and it is two marks and not one: whose side this is,
+					then what show it flies. The face stands to the LEFT of the wordmark and inside
+					the same group, so the two are read as the one statement and travel together —
+					centred where there is no glyph to be pushed away from, held off the ends by the
+					glyphs where there is.
+					The `max-w-[60%]` that was the wordmark's is the GROUP's now, which is what keeps
+					the clearance the two glyphs stand in from being eaten by a face: the band still
+					keeps two fifths of its width clear of the middle, and the wordmark takes what is
+					left of that once the face has had its 2rem. `min-w-0` on both, so a wide wordmark
+					shrinks inside the cap rather than pushing it. -->
+				<div class="flex min-w-0 max-w-[60%] items-center gap-2">
+					{#if nobodys}
+						<!-- Nobody's side: the town's own seed rolled these three and no account is
+							behind them, so the face is a robot. It is the vendored game-icons mark
+							(delapouite/robot-antennas) drawn as an `<img>` by URL, which is how the
+							canvas-side icons are held in this project — white artwork, and the grey
+							band's ink is white, so it wants no colour of its own. It is not framed as
+							a portrait is: there is no picture here to put in a frame, and a square of
+							backdrop under a robot would read as an account that has one. -->
+						<img
+							src="/assets/icons/delapouite/robot-antennas.svg"
+							class="size-8 flex-none"
+							alt=""
+						/>
+					{:else}
+						<!-- The player behind the side, wearing the very avatar their own plate wears
+							— the same component, so a face changed in the picker is changed on every
+							band that player's side stands on, and a stranger's face on a town's pin is
+							the face their profile page shows.
+							`ownColors={false}` at every one of those: a band is somebody's side and
+							not always the reader's, and a letter avatar printed on the READER's team
+							colour would be saying a thing about whoever's side this is that is not
+							true. `w-8` matches the glyphs' `h-8` beside it, the square being read off
+							the width (see PlayerAvatar). -->
+						<PlayerAvatar
+							characterId={owner!.characterId}
+							color={owner!.color}
+							initial={ownerInitial}
+							ownColors={false}
+							size="w-8"
+							textClasses="text-sm font-bold"
+							classes="flex-none"
+						/>
+					{/if}
+					{#if bannerLogo}
+						<img
+							src={bannerLogo.url}
+							alt={bannerLogo.name}
+							class="h-8 min-w-0 object-contain"
+						/>
+					{/if}
+				</div>
 				<ShowIcon markup={bannerGlyph} classes="[&>svg]:h-8 [&>svg]:w-auto" />
 			</div>
 		</div>
