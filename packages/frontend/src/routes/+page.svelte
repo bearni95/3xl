@@ -14,6 +14,8 @@
 	import RegionCurrentBadge from '$components/core/RegionCurrentBadge.svelte';
 	import RegionLocationList from '$components/core/RegionLocationList.svelte';
 	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
+	import ShowShareGrid from '$components/core/ShowShareGrid.svelte';
+	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
 	import SocialLinks from '$components/core/SocialLinks.svelte';
 	import SplashScreen from '$components/core/SplashScreen.svelte';
 	import TownPin from '$components/core/TownPin.svelte';
@@ -871,23 +873,40 @@
 	// letters is the cut ABOVE the open region, in the column beside the map (see `abovePath`),
 	// and that one is walked off the node rather than off the view.
 
-	// Which of the map column's two tabs is up: the terrain, or the list of the places the open
-	// region divides into (see RegionLocationList). The map is the default and stays the default
-	// — this game is a map, and a reader who has not asked for a list is looking at the country.
-	// Held here rather than in either panel because neither of them is the tabs' parent: the
-	// tab row, the terrain and the list are three children of the same column.
-	// Nothing moves it but a press. Typing in the field beside the map fills this list rather
-	// than the column the field is in, so a search made on the map tab is answered on a tab the
-	// reader is not looking at — deliberately, since a page that switched tabs under someone
-	// mid-keystroke is a page that moves while it is being used.
-	let mapTab: 'map' | 'places' = 'map';
+	// Which of the map column's three tabs is up: the terrain, the list of the places the open
+	// region divides into (see RegionLocationList), or the shows that level divides between (see
+	// ShowShareGrid). The map is the default and stays the default — this game is a map, and a
+	// reader who has not asked for a list is looking at the country.
+	// Held here rather than in any panel because none of them is the tabs' parent: the tab row
+	// and the three panels are children of the same column.
+	// Nothing moves it but a press. Typing in the field on the shows tab fills the list on the
+	// tab beside it, so a search is answered on a tab the reader is not looking at —
+	// deliberately, since a page that switched tabs under someone mid-keystroke is a page that
+	// moves while it is being used.
+	let mapTab: 'map' | 'places' | 'shows' = 'map';
 
-	// The show the level is being read through: picked on the shares row in the column beside the
-	// map (RegionSubdivisions) and applied to the list over it (RegionLocationList), which is why
-	// it is held on the page rather than in either. Null is the whole level, and it is put back to
-	// null by the column itself whenever the map opens somewhere else — a filter belongs to the
-	// list it was picked over.
+	// The show the level is being read through: picked on the shares row (the map column's third
+	// tab) and applied to the list of places on the second, which is why it is held on the page
+	// rather than in either panel. Null is the whole level.
 	let activeShow: number | null = null;
+
+	// Pressing the picked show again clears it, pressing another turns the list over to that one.
+	// So there is one gesture and it is its own undo, and the reader can never be left with a
+	// filter they have to find the way out of.
+	function toggleShow(id: number) {
+		activeShow = activeShow === id ? null : id;
+	}
+
+	// A filter belongs to the list it was picked over. Walk into another region and the list is
+	// another list — of another level, in another place — so the show goes with the old one
+	// rather than silently hiding most of what has just been opened. It lived with the shares row
+	// while that row was a component of its own; the row is markup on this page now, so the rule
+	// is here, named on the open region so it re-runs when the map moves.
+	let filteredFor: string | null = null;
+	$: if ((openRegion ?? null) !== filteredFor) {
+		filteredFor = openRegion ?? null;
+		activeShow = null;
+	}
 
 	// Free-text search across every location in the whole tree (all tiers), matched
 	// against each region's displayed name (case- and accent-insensitive). While the
@@ -3005,6 +3024,21 @@
 					>
 						{$_('map.tabs.places')}
 					</button>
+					<!-- The third of them: what the open level divides between, and the way to look past
+						it. It was the last row of the column beside this map, under everything that column
+						says about the open place — which put the one control that acts on the list of
+						places in a different column from the list. It is a tab because what it does is
+						what these tabs are: three ways of reading the level the map is open on, the
+						terrain, the places by name, and the shows they fly. -->
+					<button
+						type="button"
+						role="tab"
+						aria-selected={mapTab === 'shows'}
+						class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'shows' })}
+						on:click={() => (mapTab = 'shows')}
+					>
+						{$_('map.tabs.shows')}
+					</button>
 				</div>
 
 				<!-- The panel the two tabs share, and the map is never taken out of it: the list is laid
@@ -3111,10 +3145,10 @@
 						{/if}
 					</div>
 
-					<!-- The level the map is open on, listed. Handed the same rows the shares beside it are
-						tallied over, the same matches the field beside it turns up, and the show that row
-						has picked — the press is over there with the division it is read off, the hiding is
-						here with the rows it hides. Picking one is the map's own gesture: `openFromColumn`,
+					<!-- The level the map is open on, listed. Handed the same rows the shares tab is
+						tallied over, the same matches the field on that tab turns up, and the show that row
+						has picked — the press is on the tab beside this one, the hiding is here with the
+						rows it hides. Picking one is the map's own gesture: `openFromColumn`,
 						exactly as a pin or a crumb. -->
 					{#if mapTab === 'places'}
 						<div class="absolute inset-0 flex flex-col bg-base-100">
@@ -3127,6 +3161,65 @@
 								{activeShow}
 								on:select={(event) => openFromColumn(event.detail.key)}
 							/>
+						</div>
+					{/if}
+
+					<!-- What the level the map is open on is made of: the shows those places fly and how
+						much of each. Laid over the same box as the terrain and the list, on the page's own
+						surface, exactly as the list is — three tabs, one panel, and the map never taken out
+						of it (see above).
+						It closed the column beside this map for a long time, under everything that column
+						had to say about the open place. What it acts on was never in that column though:
+						a share press narrows the list of places, and the field beside it fills that same
+						list with what it finds — so the row was a control in one column answering in
+						another. Here the two are one press apart.
+						The grid is handed the whole division whatever is picked, and the tally is this
+						page's over every row of the level: a share is what this level IS, not what is left
+						of it after a press. Pressing the picked show again clears it and pressing another
+						turns the list over, so there is one gesture and it is its own undo.
+						The rows sit at the top of the panel rather than filling it: a division of eight
+						marks is a row, and a row stretched down a third of the page would be claiming to
+						be a picture of something. What is under it is the field, when it is out. -->
+					{#if mapTab === 'shows'}
+						<div class="absolute inset-0 flex flex-col overflow-y-auto bg-base-100 py-2 text-white">
+							<ShowShareGrid
+								shares={subdivisionShares}
+								active={activeShow}
+								on:select={(event) => toggleShow(event.detail.id)}
+							>
+								<!-- The looking glass, as the last cell of that grid. It stood at the far end of
+									the breadcrumb bar over the map once, where it had to fold a field away into a
+									glyph to leave the path any room; here the glyph is a cell like the shares
+									beside it and the field comes down on the row under it, with the whole width of
+									the panel to be typed in.
+									On this row because this row is the one that acts on the level: the cells beside
+									it narrow it to a show, and this goes and finds places that are not on it at
+									all. -->
+								<button
+									slot="end"
+									type="button"
+									class="flex items-center justify-center rounded-md p-1 hover:bg-white/10"
+									aria-label={$_('map.search.label')}
+									aria-expanded={searchOpen}
+									on:click={() => (searchOpen = true)}
+								>
+									<img src="/assets/icons/lorc/magnifying-glass.svg" class="w-full" alt="" />
+								</button>
+							</ShowShareGrid>
+
+							{#if searchOpen}
+								<!-- The field itself, on its own row under the glyph that asked for it. It puts
+									itself away when it is left empty and takes the matches with it on Escape (see
+									LocationSearchBox); what it holds is matched by this page against the whole
+									tree, and the matches stand on the tab beside this one — deliberately not
+									switching to it, since a page that changed tabs under somebody mid-keystroke
+									is a page that moves while it is being used. -->
+								<LocationSearchBox
+								bind:value={searchQuery}
+								bind:open={searchOpen}
+								classes="mx-2 my-1"
+							/>
+							{/if}
 						</div>
 					{/if}
 				</div>
@@ -3178,21 +3271,13 @@
 				class="row-start-2 flex min-h-0 min-w-0 flex-col bg-base-100 md:col-start-2 md:row-start-1"
 			>
 				<!-- `rows` is still handed over though nothing here lists them: the count alone decides
-					whether there is a rule in the column, and the shares row is tallied over exactly
-					those rows by this page. `current` likewise names no place here any more — the band
-					at the top of the page does that (see RegionCurrentBadge) — and is read for whether
-					there is one at all and for putting a picked show back when the map moves.
-					`activeShow` is bound because the press that picks a show is on that shares row and
-					the rows it hides are in the tab over the map — this page is the one thing the two
-					have in common. -->
+					whether there is a rule in the column. `current` likewise names no place here any
+					more — the band at the top of the page does that (see RegionCurrentBadge) — and is
+					read for whether there is one at all. -->
 				<RegionSubdivisions
 					classes="min-h-0 flex-1"
 					rows={subdivisions}
 					current={subdivisionCurrent}
-					shares={subdivisionShares}
-					bind:activeShow
-					bind:searchQuery
-					bind:searchOpen
 				>
 					<!-- The town's own pin, first thing in the column: the side holding it, whose it is,
 						how far it has been taken, the way to fight for it and the pack it has waiting — the

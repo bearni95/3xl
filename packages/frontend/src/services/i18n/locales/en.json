@@ -85,7 +85,8 @@
 	"map": {
 		"tabs": {
 			"map": "Map",
-			"places": "Places"
+			"places": "Places",
+			"shows": "Shows"
 		},
 		"radar": {
 			"nearest": "Go to the nearest unopened pack"

@@ -85,7 +85,8 @@
 	"map": {
 		"tabs": {
 			"map": "Mapa",
-			"places": "Llocs"
+			"places": "Llocs",
+			"shows": "Sèries"
 		},
 		"radar": {
 			"nearest": "Ves al sobre sense obrir més proper"
