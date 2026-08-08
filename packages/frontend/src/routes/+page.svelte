@@ -18,6 +18,7 @@
 	import SocialLinks from '$components/core/SocialLinks.svelte';
 	import SplashScreen from '$components/core/SplashScreen.svelte';
 	import TownPin from '$components/core/TownPin.svelte';
+	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
@@ -1205,6 +1206,33 @@
 
 	// (What the town has waiting is on the pin itself now, like everything else it carries —
 	// see `box` in buildMarkers.)
+
+	// The box the open town has waiting, taken off that pin rather than looked up again: the
+	// block under the map draws the very box the map is standing on the town, so the two cannot
+	// come to print different copies of one offer (see festaBoxById, which is where both get it).
+	$: townBox = townPin?.box ?? null;
+
+	// Whether that box is there to be taken, which is the whole of what the second tab under the
+	// map is enabled by. Two ways for it not to be: the booster window does not reach this town
+	// at all (no box, which is most towns most days), or this reader has already opened the one
+	// it deals — a town deals two a year and neither twice (see `claimed` in festaBoxes).
+	// Being signed out is deliberately NOT one of them: the box is the offer and the door is
+	// answered when it is pressed (see openPack), which is the rule the map's own box goes by, so
+	// a visitor is shown what a town has rather than a tab they are not told the reason for.
+	$: townBoxOffered = Boolean(townBox && !townBox.claimed);
+
+	// Which of the two the block under the map is showing: the town — the side standing on it,
+	// the plate naming it and the fight to be had for it — or the box that town has waiting.
+	// The town is the default, and it is the default again at every new town: walking into a
+	// place to be shown its wrapper rather than who holds it is the page answering a question
+	// that was asked about the last town.
+	let townTab: 'town' | 'box' = 'town';
+	$: selected, (townTab = 'town');
+
+	// And it is never left standing on a tab that is not there to be pressed: a box opened while
+	// it is the tab that is up (which is exactly what the press on it does) would otherwise leave
+	// the block empty behind the sheet.
+	$: if (townTab === 'box' && !townBoxOffered) townTab = 'town';
 
 	// (The standing was lifted off this pin for a while and stood on its own in the column beside
 	// the map, and the pin was handed on without it. Both halves are back on the one mark at the
@@ -3404,23 +3432,95 @@
 					the same 8px over the same 250ms — and mounting it moves nothing the map minds at
 					either width: over the terrain it is out of the flow, under it the square is already
 					sized.
-					`pointer-events-none` on the strip and back on for the pin itself, so the map is
-					still pannable everywhere the three of them are not — an absolutely placed band
-					across an edge would otherwise be a strip of terrain nobody can drag.
+					`pointer-events-none` on the strip and back on for what is drawn in it, so the map
+					is still pannable everywhere the block is not — an absolutely placed band across
+					an edge would otherwise be a strip of terrain nobody can drag.
 					A width of the map's rather than the column's: it takes what the row gives it up
 					to the 500px the pin on the terrain is drawn at, so the statues here are the size
-					they are on a mark. -->
+					they are on a mark.
+
+					Two things stand here and one of them at a time, which is what the row of tabs
+					above them picks between: the town, and the box that town has waiting. They are
+					two answers to one question — what is there, at this place — and a column with
+					both in it would be a picture of who holds the town with an unopened wrapper
+					hanging off the bottom of it, at a width where what is under the map is what a
+					phone has left. Tabs and not a fold, because neither of the two is the other's
+					detail. -->
 				{#if townPin && mapTab === 'map' && !$fullScreenModalOpen}
 					<div
 						transition:blur={CHROME_BLUR}
-						class="pointer-events-none flex justify-center p-3 md:absolute md:inset-x-3 md:bottom-3 md:z-[900] md:p-0"
+						class="pointer-events-none flex flex-col items-center gap-2 p-3 md:absolute md:inset-x-3 md:bottom-3 md:z-[900] md:p-0"
 					>
-						<TownPin
-							marker={townPin}
-							named={false}
-							alwaysReveal
-							classes="pointer-events-auto w-full max-w-[500px]"
-						/>
+						<!-- The two, said the way the map's own three are said over the terrain: DaisyUI's
+							boxed tabs, `role="tablist"`, and which is up held on the page rather than
+							pointed at with `aria-controls` (see the tab row over the map, which this is a
+							second of).
+							The box's tab is disabled by the offer and by nothing else (see
+							`townBoxOffered`): most towns on most days are outside the booster window and
+							have no box at all, and a town whose box this reader has already opened has
+							none left to draw. A tab that is dark is the honest shape of that — the
+							alternative was a tab that opens onto an empty panel, which says the same thing
+							one press later. -->
+						<div role="tablist" class="tabs-boxed tabs pointer-events-auto flex-none">
+							<button
+								type="button"
+								role="tab"
+								aria-selected={townTab === 'town'}
+								class={classNames('tab whitespace-nowrap', {
+									'tab-active': townTab === 'town'
+								})}
+								on:click={() => (townTab = 'town')}
+							>
+								{$_('map.town.tabs.town')}
+							</button>
+							<button
+								type="button"
+								role="tab"
+								aria-selected={townTab === 'box'}
+								disabled={!townBoxOffered}
+								class={classNames('tab whitespace-nowrap', {
+									'tab-active': townTab === 'box',
+									'tab-disabled cursor-default opacity-40': !townBoxOffered
+								})}
+								on:click={() => (townTab = 'box')}
+							>
+								{$_('map.town.tabs.box')}
+							</button>
+						</div>
+
+						{#if townTab === 'town'}
+							<TownPin
+								marker={townPin}
+								named={false}
+								alwaysReveal
+								classes="pointer-events-auto w-full max-w-[500px]"
+							/>
+						{:else if townBox}
+							<!-- The box itself, drawn in the document rather than on a canvas: the very
+								component the map stands on the town and the Booster tab lays its grid out
+								with, off the very `MapBoosterBox` the pin was handed (see `townBox`), so
+								the three are one object and not three pictures of one.
+								At the 200px the pin draws it at, which is the size a box is read at
+								wherever it is stood in a column — the component takes its height off
+								whatever width it is given (30:37 of it), so the width is the whole of
+								what has to be said.
+								A button and not a div with a handler, for the reason it is one inside the
+								pin: the press is the box's own and it is the pack it opens (see openPack,
+								which answers the door first for a reader with no account). -->
+							<button
+								type="button"
+								class="pointer-events-auto w-[200px]"
+								on:click={() => townBox?.onClick?.()}
+							>
+								<BoosterBox
+									coverUrl={townBox.coverUrl ?? null}
+									logoUrl={townBox.logoUrl ?? null}
+									showId={townBox.showId ?? null}
+									locationName={townBox.locationName ?? null}
+									light={townBox.light ?? false}
+								/>
+							</button>
+						{/if}
 					</div>
 				{/if}
 			{:else}

@@ -88,6 +88,12 @@
 			"places": "Llocs",
 			"shows": "Sèries"
 		},
+		"town": {
+			"tabs": {
+				"town": "Municipi",
+				"box": "Sobre"
+			}
+		},
 		"radar": {
 			"nearest": "Ves al sobre sense obrir més proper"
 		},
