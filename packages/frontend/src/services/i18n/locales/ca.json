@@ -94,6 +94,10 @@
 				"box": "Sobre"
 			}
 		},
+		"square": {
+			"map": "Dóna el quadrat al mapa",
+			"town": "Dóna el quadrat al municipi"
+		},
 		"radar": {
 			"nearest": "Ves al sobre sense obrir més proper"
 		},

@@ -1234,6 +1234,35 @@
 	// the block empty behind the sheet.
 	$: if (townTab === 'box' && !townBoxOffered) townTab = 'town';
 
+	// Whether that block is standing at all, which is what the map's own shape is decided against
+	// (see below). A town and the map's own tab, and gone under a full view with the rest of the
+	// chrome — the same three the block was drawn on before any of this was named; it is a name
+	// now because the bead that divides the two, the rule under the map and the square all ask
+	// the same question.
+	$: townBlockUp = Boolean(townPin) && mapTab === 'map' && !$fullScreenModalOpen;
+
+	// Which of the two below the tabs is the square, on a phone: the terrain, or the block under
+	// it. One of them is 1:1 of the page's own width and the other takes what is left of the
+	// column — a division of a fixed height between two boxes, where the square is the one asked
+	// for by name and the other simply fills.
+	//
+	// The map has it to begin with, this being a map, and the press hands it over: a reader who
+	// has walked into a town is often there for the three standing on it or for the box it deals,
+	// and at a phone's width those are read at whatever is left under a square map — which is
+	// enough to see them in and not enough to look at them in. Neither box is ever hidden by the
+	// other; what moves is which of the two is the picture and which is the strip.
+	//
+	// It moves nothing at all from `md` up (`md:hidden` on the bead, `md:` on every class it
+	// touches): the terrain fills the column there and the block is laid over its bottom edge, so
+	// there are not two boxes dividing a height to divide differently.
+	//
+	// The swap is instant and deliberately not animated. The map's box changing IS the one thing
+	// WorldMap answers with `invalidateSize` + `syncView` + a full rebuild of its pins and boxes
+	// (see its ResizeObserver), and one press is one rebuild — a quarter of a second of animated
+	// height would be that rebuild once a frame for the whole of it, which is the very reason the
+	// side at the foot of the page folds over the map rather than into it.
+	let mapSquare = true;
+
 	// (The standing was lifted off this pin for a while and stood on its own in the column beside
 	// the map, and the pin was handed on without it. Both halves are back on the one mark at the
 	// foot of the terrain: how far a town has been taken and the fight to be had for it belong
@@ -3132,21 +3161,18 @@
 			order things are mounted in: the corner beside it comes and goes with the full-view
 			sheets, and a grid that filled the gap would walk the map into the hole.
 
-			What the column holds below `md` is a square and whatever stands under it, and the two
-			together can come to more than the row: the square is the page's width and the pin under it
-			is as tall as three statues and a plate, on a row that is the viewport less the top band and
-			the folded strip. So this box is what scrolls there (`overflow-y-auto`), and scrolling it
-			moves the terrain without resizing it, which is the only thing WorldMap minds. From `md` up
-			nothing here scrolls (`md:overflow-visible`): the terrain fills what the tabs leave and the
-			pin is out of the flow, so there is never anything to scroll to — and the class has to come
-			off, or the pin hanging at `md:bottom-3` would be clipped by its own column.
+			Nothing here scrolls at either width, and below `md` that is a statement about the two
+			boxes rather than about this one: they divide the column between them — one is the square
+			and the other takes what is left (see `mapSquare`) — so what is in the column is exactly
+			the column, whichever way the bead is left. What does not fit is what is INSIDE the block
+			under the map, and that block scrolls inside itself, the way every box on this page does.
 
 			Three things stand in this column, and only one of them at a time: the terrain, the list
 			of the places the open region divides into (see RegionLocationList), and the shows that
 			level divides between (see mapTab). All three are about the map — the level it is looking
 			at, drawn, named, and tallied. -->
 		<div
-			class="relative row-start-1 flex min-h-0 min-w-0 flex-col overflow-y-auto md:col-span-2 md:col-start-1 md:row-start-1 md:overflow-visible"
+			class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-span-2 md:col-start-1 md:row-start-1"
 		>
 			{#if ready}
 				<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
@@ -3216,10 +3242,24 @@
 					read off its width, which is the one length here nothing but the device decides. That
 					is what leaves the side standing on the open town somewhere to stand — it is the next
 					thing down the column instead of a band laid over the terrain's bottom edge (see
-					below). From `md` up the box goes back to taking whatever the column has left
-					(`md:aspect-auto md:flex-1`): the height there is the viewport's, the pin is over the
-					map again, and a square would be a map with a hole under it. -->
-				<div class="relative aspect-square min-h-0 w-full flex-none md:aspect-auto md:flex-1">
+					below).
+
+					It is the square only while it holds it. There are two boxes under the tabs on a
+					phone, this and the block below, and one square between them: the bead on the rule
+					hands it over (see `mapSquare`), and whichever does not have it takes what is left of
+					the column (`flex-1`). With no block standing there at all — a coarser region open, or
+					the list of places up — there is nothing to divide with and the terrain simply fills,
+					since a square is a share of a column and not an ornament.
+
+					From `md` up the box always takes whatever the column has left (`md:aspect-auto
+					md:flex-1`): the height there is the viewport's, the pin is over the map again, and a
+					square would be a map with a hole under it. -->
+				<div
+					class={classNames(
+						'relative min-h-0 md:aspect-auto md:w-auto md:flex-1',
+						townBlockUp && mapSquare ? 'aspect-square w-full flex-none' : 'flex-1'
+					)}
+				>
 					<div class="absolute inset-0 flex flex-col">
 						<WorldMap
 							center={[41.8, 1.7]}
@@ -3406,11 +3446,18 @@
 					it was — absolutely placed like the radar, centred on the bottom edge of the terrain,
 					the one edge nothing else is using, stood over the map without the map being re-framed
 					by it. Below `md` it is simply the next thing down this column, in the flow after the
-					square the terrain is drawn in (see the box above): three statues and a plate over a
-					map that is 100vw tall cover the better part of what a phone can see of the country,
-					so on that width the picture stands beside the place rather than on top of it. That is
-					the whole of what the square is for, and it is why the pin can be in flow at all —
-					nothing under the terrain can reach a height read off a width.
+					terrain (see the box above): three statues and a plate over a map that is 100vw tall
+					cover the better part of what a phone can see of the country, so on that width the
+					picture stands beside the place rather than on top of it.
+
+					Which of the two is the square is the bead's (see `mapSquare`, and the button below):
+					this block is `aspect-square w-full` while it holds it and `flex-1` while the map
+					does, so between them they are always the whole of the column and never more. Its own
+					top edge carries the rule, `border-t-2 border-primary`, exactly as the side at the
+					foot of the page carries the one that separates it from this: a rule belongs to the
+					box below the line, so it travels with the edge it separates. Dropped from `md` up
+					(`md:border-t-0`) along with the shape, where this is a band over the terrain and
+					nothing is divided.
 
 					It is out of the map's pane and a child of this column for the same reason: an in-flow
 					child of the square would be laid inside the square, which is the thing being got out
@@ -3446,10 +3493,48 @@
 					hanging off the bottom of it, at a width where what is under the map is what a
 					phone has left. Tabs and not a fold, because neither of the two is the other's
 					detail. -->
-				{#if townPin && mapTab === 'map' && !$fullScreenModalOpen}
+				<!-- `townPin` again beside the flag that is made of it: the flag answers for the map's
+					own shape and is a boolean by the time it gets here, and what stands in this block
+					is the pin itself. -->
+				{#if townBlockUp && townPin}
+					<!-- The bead that divides the terrain from this block, and it is the bead at the
+						foot of the page said again in the same words: the same `size-10` circle in the
+						theme's primary, threaded on a 2px rule by half its own height (`-mb-5`), the same
+						arrow turned over on the same 250ms, a phone's only (`md:hidden`). Two boundaries
+						on one column drawn two different ways would be two inventions where the page has
+						one.
+						What it does is not what the other one does, and the arrow is what says so. The
+						one at the foot of the page folds a sheet away and back; this one hands the square
+						from the map to the block or back again (see `mapSquare`) — nothing is hidden
+						either way, both boxes stand at both settings, and what moves is the line between
+						them. So the arrow points the way that line will go: up while the map holds the
+						square (press and the terrain gives way to what is under it), down while the block
+						does.
+						`aria-label` says the destination rather than the gesture, which is the one thing a
+						reader cannot see from the mark: an arrow says a direction, not what is at the end
+						of it. -->
+					<button
+						type="button"
+						transition:blur={CHROME_BLUR}
+						class="relative z-10 -mb-5 flex size-10 cursor-pointer items-center justify-center self-center rounded-full bg-primary shadow-xl md:hidden"
+						aria-label={mapSquare ? $_('map.square.town') : $_('map.square.map')}
+						on:click={() => (mapSquare = !mapSquare)}
+					>
+						<img
+							src="/assets/icons/delapouite/plain-arrow.svg"
+							class={classNames('size-4 transition-transform duration-[250ms] ease-out', {
+								'rotate-180': mapSquare
+							})}
+							alt=""
+						/>
+					</button>
+
 					<div
 						transition:blur={CHROME_BLUR}
-						class="pointer-events-none flex flex-col items-center gap-2 p-3 md:absolute md:inset-x-3 md:bottom-3 md:z-[900] md:p-0"
+						class={classNames(
+							'pointer-events-none flex min-h-0 min-w-0 flex-col items-center gap-2 border-t-2 border-primary p-3 md:absolute md:inset-x-3 md:bottom-3 md:z-[900] md:aspect-auto md:h-auto md:w-auto md:flex-none md:border-t-0 md:p-0',
+							mapSquare ? 'flex-1' : 'aspect-square w-full flex-none'
+						)}
 					>
 						<!-- The two, said the way the map's own three are said over the terrain: DaisyUI's
 							boxed tabs, `role="tablist"`, and which is up held on the page rather than
@@ -3488,39 +3573,51 @@
 							</button>
 						</div>
 
-						{#if townTab === 'town'}
-							<TownPin
-								marker={townPin}
-								named={false}
-								alwaysReveal
-								classes="pointer-events-auto w-full max-w-[500px]"
-							/>
-						{:else if townBox}
-							<!-- The box itself, drawn in the document rather than on a canvas: the very
-								component the map stands on the town and the Booster tab lays its grid out
-								with, off the very `MapBoosterBox` the pin was handed (see `townBox`), so
-								the three are one object and not three pictures of one.
-								At the 200px the pin draws it at, which is the size a box is read at
-								wherever it is stood in a column — the component takes its height off
-								whatever width it is given (30:37 of it), so the width is the whole of
-								what has to be said.
-								A button and not a div with a handler, for the reason it is one inside the
-								pin: the press is the box's own and it is the pack it opens (see openPack,
-								which answers the door first for a reader with no account). -->
-							<button
-								type="button"
-								class="pointer-events-auto w-[200px]"
-								on:click={() => townBox?.onClick?.()}
-							>
-								<BoosterBox
-									coverUrl={townBox.coverUrl ?? null}
-									logoUrl={townBox.logoUrl ?? null}
-									showId={townBox.showId ?? null}
-									locationName={townBox.locationName ?? null}
-									light={townBox.light ?? false}
+						<!-- The panel those two tabs share, and the one box in here that scrolls: what
+							the block is given is a share of a column and what stands in it is as tall as
+							three statues and a plate, so on the setting where the map holds the square
+							there is regularly a little more of this than there is room for. The tabs are
+							not in it — a strip that scrolls away is a strip that has to be scrolled back
+							to before it can be pressed, and these two are the way out of whichever of them
+							is too tall. From `md` up there is nothing to scroll: the block is laid over
+							the terrain and is as tall as what is in it (`md:overflow-visible`). -->
+						<div
+							class="flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto md:overflow-visible"
+						>
+							{#if townTab === 'town'}
+								<TownPin
+									marker={townPin}
+									named={false}
+									alwaysReveal
+									classes="pointer-events-auto w-full max-w-[500px]"
 								/>
-							</button>
-						{/if}
+							{:else if townBox}
+								<!-- The box itself, drawn in the document rather than on a canvas: the very
+									component the map stands on the town and the Booster tab lays its grid out
+									with, off the very `MapBoosterBox` the pin was handed (see `townBox`), so
+									the three are one object and not three pictures of one.
+									At the 200px the pin draws it at, which is the size a box is read at
+									wherever it is stood in a column — the component takes its height off
+									whatever width it is given (30:37 of it), so the width is the whole of
+									what has to be said.
+									A button and not a div with a handler, for the reason it is one inside the
+									pin: the press is the box's own and it is the pack it opens (see openPack,
+									which answers the door first for a reader with no account). -->
+								<button
+									type="button"
+									class="pointer-events-auto w-[200px] flex-none"
+									on:click={() => townBox?.onClick?.()}
+								>
+									<BoosterBox
+										coverUrl={townBox.coverUrl ?? null}
+										logoUrl={townBox.logoUrl ?? null}
+										showId={townBox.showId ?? null}
+										locationName={townBox.locationName ?? null}
+										light={townBox.light ?? false}
+									/>
+								</button>
+							{/if}
+						</div>
 					</div>
 				{/if}
 			{:else}
