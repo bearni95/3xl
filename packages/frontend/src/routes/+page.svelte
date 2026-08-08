@@ -3098,18 +3098,27 @@
 			Nothing else sizes it — raising a view over it leaves its box alone, and so does unfolding
 			the side, which goes up OVER this box and never into it — so the map is never re-framed by
 			anything but a pan, a zoom or a region being opened. `relative` is what the
-			chrome laid over the terrain is placed against: the row across its top, the side at its
-			foot, and anything Leaflet positions inside it.
+			chrome laid over the terrain is placed against: the row across its top, the side standing
+			on the open town from `md` up, and anything Leaflet positions inside it.
 			Placed by name at both widths (`row-start-1` / `md:col-start-1`) rather than left to the
 			order things are mounted in: the corner beside it comes and goes with the full-view
 			sheets, and a grid that filled the gap would walk the map into the hole.
+
+			What the column holds below `md` is a square and whatever stands under it, and the two
+			together can come to more than the row: the square is the page's width and the pin under it
+			is as tall as three statues and a plate, on a row that is the viewport less the top band and
+			the folded strip. So this box is what scrolls there (`overflow-y-auto`), and scrolling it
+			moves the terrain without resizing it, which is the only thing WorldMap minds. From `md` up
+			nothing here scrolls (`md:overflow-visible`): the terrain fills what the tabs leave and the
+			pin is out of the flow, so there is never anything to scroll to — and the class has to come
+			off, or the pin hanging at `md:bottom-3` would be clipped by its own column.
 
 			Three things stand in this column, and only one of them at a time: the terrain, the list
 			of the places the open region divides into (see RegionLocationList), and the shows that
 			level divides between (see mapTab). All three are about the map — the level it is looking
 			at, drawn, named, and tallied. -->
 		<div
-			class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-span-2 md:col-start-1 md:row-start-1"
+			class="relative row-start-1 flex min-h-0 min-w-0 flex-col overflow-y-auto md:col-span-2 md:col-start-1 md:row-start-1 md:overflow-visible"
 		>
 			{#if ready}
 				<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
@@ -3172,8 +3181,17 @@
 					map on every trip back to the first tab — a new WebGL-less canvas, a new set of tiles,
 					and the reader's pan and zoom lost to a tab press. So both are absolutely placed inside
 					this box, the map always and the list only while it is picked, and the list carries the
-					page's own surface so the terrain does not read through it. -->
-				<div class="relative min-h-0 flex-1">
+					page's own surface so the terrain does not read through it.
+
+					On a phone this box is a SQUARE of the page's own width (`aspect-square`, with
+					`flex-none` so the column neither stretches nor squeezes it): the terrain's height is
+					read off its width, which is the one length here nothing but the device decides. That
+					is what leaves the side standing on the open town somewhere to stand — it is the next
+					thing down the column instead of a band laid over the terrain's bottom edge (see
+					below). From `md` up the box goes back to taking whatever the column has left
+					(`md:aspect-auto md:flex-1`): the height there is the viewport's, the pin is over the
+					map again, and a square would be a map with a hole under it. -->
+				<div class="relative aspect-square min-h-0 w-full flex-none md:aspect-auto md:flex-1">
 					<div class="absolute inset-0 flex flex-col">
 						<WorldMap
 							center={[41.8, 1.7]}
@@ -3268,45 +3286,6 @@
 							</div>
 						{/if}
 
-						<!-- The side standing on the open town, at the foot of the terrain — and under it,
-							on the plate the pin carries, whose the place is, how far it has been taken and the
-							fight to be had for it. It was the first thing in the column beside this map, with
-							the standing stood off on its own above it; it is laid over the map itself now:
-							the three of them are a picture of who is holding the place, a picture belongs on
-							the place, and what may be done about that place belongs under the three who would
-							have to be beaten. Absolutely placed like the radar above
-							it — inside the map's own pane, so it is stood over the terrain without the terrain
-							being re-framed by it — and centred on the bottom edge, the one edge nothing else
-							is using.
-							The whole pin and not a copy of it less its standing: `townPin` comes out of
-							`buildMarkers`, the very function the map's own marks are built by, so this and the
-							pin on the terrain cannot come to say two things about one town.
-							`named={false}`: the town's name is the band at the top of the page, so the plate
-							is drawn for the rest of what it holds and is left off entirely where there is
-							neither a holder nor a standing to print (see TownPin).
-							Only a town has one at all, and only while the map is the tab that is up: the list
-							of places is painted over this same box and a side standing on a list is a side
-							standing on nothing. It leaves under a full view with the rest of the chrome, on
-							the same 8px over the same 250ms.
-							`pointer-events-none` on the strip and back on for the pin itself, so the map is
-							still pannable everywhere the three of them are not — an absolutely placed band
-							across an edge would otherwise be a strip of terrain nobody can drag.
-							A width of the map's rather than the column's: it takes what the pane gives it up
-							to the 500px the pin on the terrain is drawn at, so the statues here are the size
-							they are on a mark. -->
-						{#if townPin && mapTab === 'map' && !$fullScreenModalOpen}
-							<div
-								transition:blur={CHROME_BLUR}
-								class="pointer-events-none absolute inset-x-3 bottom-3 z-[900] flex justify-center"
-							>
-								<TownPin
-									marker={townPin}
-									named={false}
-									alwaysReveal
-									classes="pointer-events-auto w-full max-w-[500px]"
-								/>
-							</div>
-						{/if}
 					</div>
 
 					<!-- The level the map is open on, listed. Handed the same rows the shares tab is
@@ -3387,6 +3366,63 @@
 						</div>
 					{/if}
 				</div>
+
+				<!-- The side standing on the open town — and under it, on the plate the pin carries,
+					whose the place is, how far it has been taken and the fight to be had for it. It was
+					the first thing in the column beside this map, with the standing stood off on its own
+					above it; then it was laid over the map itself: the three of them are a picture of who
+					is holding the place, a picture belongs on the place, and what may be done about that
+					place belongs under the three who would have to be beaten.
+
+					It is drawn twice over now, and the difference is the phone. From `md` up it is what
+					it was — absolutely placed like the radar, centred on the bottom edge of the terrain,
+					the one edge nothing else is using, stood over the map without the map being re-framed
+					by it. Below `md` it is simply the next thing down this column, in the flow after the
+					square the terrain is drawn in (see the box above): three statues and a plate over a
+					map that is 100vw tall cover the better part of what a phone can see of the country,
+					so on that width the picture stands beside the place rather than on top of it. That is
+					the whole of what the square is for, and it is why the pin can be in flow at all —
+					nothing under the terrain can reach a height read off a width.
+
+					It is out of the map's pane and a child of this column for the same reason: an in-flow
+					child of the square would be laid inside the square, which is the thing being got out
+					of. `md:absolute` places it against this column instead, whose bottom edge IS the
+					terrain's bottom edge at that width (the tabs are above, the box below them takes the
+					rest), so the desktop draws the same band in the same place it always did.
+					`p-3` is the phone's version of the `inset-x-3 bottom-3` it hangs at from `md` up —
+					the same 12px of air, said as padding while it is in the flow.
+
+					The whole pin and not a copy of it less its standing: `townPin` comes out of
+					`buildMarkers`, the very function the map's own marks are built by, so this and the
+					pin on the terrain cannot come to say two things about one town.
+					`named={false}`: the town's name is the band at the top of the page, so the plate
+					is drawn for the rest of what it holds and is left off entirely where there is
+					neither a holder nor a standing to print (see TownPin).
+					Only a town has one at all, and only while the map is the tab that is up: the list
+					of places is painted over the box above and a side standing on a list is a side
+					standing on nothing. It leaves under a full view with the rest of the chrome, on
+					the same 8px over the same 250ms — and mounting it moves nothing the map minds at
+					either width: over the terrain it is out of the flow, under it the square is already
+					sized.
+					`pointer-events-none` on the strip and back on for the pin itself, so the map is
+					still pannable everywhere the three of them are not — an absolutely placed band
+					across an edge would otherwise be a strip of terrain nobody can drag.
+					A width of the map's rather than the column's: it takes what the row gives it up
+					to the 500px the pin on the terrain is drawn at, so the statues here are the size
+					they are on a mark. -->
+				{#if townPin && mapTab === 'map' && !$fullScreenModalOpen}
+					<div
+						transition:blur={CHROME_BLUR}
+						class="pointer-events-none flex justify-center p-3 md:absolute md:inset-x-3 md:bottom-3 md:z-[900] md:p-0"
+					>
+						<TownPin
+							marker={townPin}
+							named={false}
+							alwaysReveal
+							classes="pointer-events-auto w-full max-w-[500px]"
+						/>
+					</div>
+				{/if}
 			{:else}
 				<div class="flex min-h-0 flex-1 items-center justify-center">
 					<span class="loading loading-spinner loading-lg"></span>
