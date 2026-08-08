@@ -3068,6 +3068,39 @@
 								<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
 							</button>
 						{/if}
+
+						<!-- The side standing on the open town, at the foot of the terrain. It was the first
+							thing in the column beside this map (RegionSubdivisions' `detail` slot) and it is
+							laid over the map itself now: the three of them are a picture of who is holding the
+							place, and a picture belongs on the place. Absolutely placed like the radar above
+							it — inside the map's own pane, so it is stood over the terrain without the terrain
+							being re-framed by it — and centred on the bottom edge, the one edge nothing else
+							is using.
+							`named={false}` still: the town's name is the band at the top of the page, and the
+							plate under the statues is only drawn where somebody holds the place (see TownPin).
+							Only a town has one at all, and only while the map is the tab that is up: the list
+							of places is painted over this same box and a side standing on a list is a side
+							standing on nothing. It leaves under a full view with the rest of the chrome, on
+							the same 8px over the same 250ms.
+							`pointer-events-none` on the strip and back on for the pin itself, so the map is
+							still pannable everywhere the three of them are not — an absolutely placed band
+							across an edge would otherwise be a strip of terrain nobody can drag.
+							A width of the map's rather than the column's: it takes what the pane gives it up
+							to the 500px the pin on the terrain is drawn at, so the statues here are the size
+							they are on a mark. -->
+						{#if townDetailPin && mapTab === 'map' && !$fullScreenModalOpen}
+							<div
+								transition:blur={CHROME_BLUR}
+								class="pointer-events-none absolute inset-x-3 bottom-3 z-[900] flex justify-center"
+							>
+								<TownPin
+									marker={townDetailPin}
+									named={false}
+									alwaysReveal
+									classes="pointer-events-auto w-full max-w-[500px]"
+								/>
+							</div>
+						{/if}
 					</div>
 
 					<!-- The level the map is open on, listed. Handed the same rows the shares beside it are
@@ -3177,24 +3210,11 @@
 						{/if}
 					</svelte:fragment>
 
-					<!-- Still no box on the pin here: the town's box is drawn on the band at the top of
-						the page, beside the name, exactly as it is on every row of the list of places (see
-						subdivisionCurrent). It was left off that row altogether for a while, on the ground
-						that the box was already up on the terrain — but a row that alone among them says
-						nothing about its festa reads as a town that has none. -->
-					<!-- `alwaysReveal`: the three standing here arrive every time the column comes to
-						hold a different side, whatever the session has already watched. It is the one
-						place on the map that spends a reveal on a repeat — the corner does not, since a
-						side that re-framed itself as the map moved would flicker — and it spends one
-						because this row *is* the answer to picking a town: the reader has just asked who
-						holds this place, and the three of them walking in is that answer being given.
-						The remount that makes all three do it together is the pin's (see TownPin's
-						`sideKey`); this only says the reveal is worth having. -->
-					<svelte:fragment slot="detail">
-						{#if townDetailPin}
-							<TownPin marker={townDetailPin} named={false} alwaysReveal classes="py-1" />
-						{/if}
-					</svelte:fragment>
+					<!-- The side standing on the town opened this column for a long time, and is over the
+						map now — at the foot of the terrain, which is the place it is a picture of (see the
+						map column above). What is left here is what the column was always saying about the
+						town in words: how far it has been taken, the cut it sits inside, and what the level
+						under it is made of. -->
 
 					<!-- Where the place at the head of this column is, said as the path down to what it
 						sits inside: the same bar that stands over the map, given the cut above the open

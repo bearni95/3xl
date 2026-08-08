@@ -78,14 +78,9 @@
 	class={classNames('flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2 py-2 text-white', classes)}
 >
 	{#if current}
-		<!-- What the place the page is headed by has to say for itself: the caller's, because what
-			a place carries depends on what kind of place it is — a town has a side standing on it,
-			an occupant and a fight to be had, and nothing coarser has any of those. The row that
-			names that place is not here any more — it is the page's own top band (see
-			RegionCurrentBadge) — so this column opens on the side rather than on the name, which is
-			what it was always saying second. Above the rule, so it reads as more about that place
-			and never as the beginning of something else. -->
-		<slot name="detail" />
+		<!-- The side standing on the town opened this column — a `detail` slot above the standing,
+			holding the same three statues the town's pin carries. It is laid over the terrain now,
+			at the foot of the map, so this column opens on how far the place has been taken. -->
 
 		<!-- How far the place at the head has been taken and the one control that acts on it,
 			across the whole width of the column: the caller's, because only a town has either.
