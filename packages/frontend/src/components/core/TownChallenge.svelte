@@ -32,13 +32,6 @@
 	// Told the moment that deadline passes, so the page can re-read the cooldowns and
 	// the button can come back without a reload.
 	export let onUnlock: (() => void) | undefined = undefined;
-	// The two one over the other instead of side by side, each taking the whole width. For a
-	// block laid in a narrow cell rather than across a plate: beside the side standing on a town
-	// (see TownPin) the two thirds a control wants are half a pin's width, and a button lettered
-	// into a third of that is a word broken over two lines. The reading and the doing still
-	// answer each other — this is how far you have got, this is the way to get further — read
-	// down instead of across.
-	export let stacked: boolean = false;
 	export let classes: string = '';
 
 	// Whether there is anything to stand beside the bar. A town cooling down has the countdown
@@ -54,16 +47,10 @@
 	it is laid in: 400px of a column beside the map, or the 240px of a pin's plate.
 	Centred across the row, since the two are of different heights and neither is the line the
 	other is set on.
-	Stacked, it is one column of two full-width rows and the same two things in the same order
-	— the `col-span-*` on each of them is simply not a column count this grid has, so each takes
-	the single track (see `stacked`). -->
-<div
-	class={classNames(
-		'grid items-center gap-1.5',
-		stacked ? 'grid-cols-1' : 'grid-cols-3',
-		classes
-	)}
->
+	One row of three wherever it is laid: on a plate, or as its own row under the side standing
+	on a town (see TownPin). It carried a stacked variant for a while, for when it was squeezed
+	into a third of a pin's width beside those statues rather than laid under them. -->
+<div class={classNames('grid grid-cols-3 items-center gap-1.5', classes)}>
 	<!-- The same standing the sidebar's tables count out, drawn and said at once: wins
 		banked against wins needed, as how much of the town has been taken, with the count
 		itself standing in the bar. The picture is what carries at the distance a pin is
@@ -83,10 +70,7 @@
 		it: a bar squeezed into a third with two thirds of nothing after it is a row that has
 		lost something rather than a row of one thing. -->
 	<div
-		class={classNames('relative w-full', {
-			'col-span-3': !stacked && !control,
-			'col-span-1': !stacked && control
-		})}
+		class={classNames('relative w-full', control ? 'col-span-1' : 'col-span-3')}
 		title={$_('map.challenge.siege')}
 	>
 		<progress
@@ -101,12 +85,11 @@
 		</span>
 	</div>
 
-	<!-- The two thirds beside it, whichever of the two is standing there — or the row under it,
-		stacked, where the span is left off so neither reaches past the single track. -->
+	<!-- The two thirds beside it, whichever of the two is standing there. -->
 	{#if button}
 		<button
 			type="button"
-			class={classNames('btn btn-primary btn-sm w-full', { 'col-span-2': !stacked })}
+			class="btn btn-primary btn-sm col-span-2 w-full"
 			disabled={button.disabled}
 			title={button.title}
 			on:click={button.onClick}
@@ -117,9 +100,7 @@
 		<Countdown
 			until={unlocksAt}
 			title={$_('map.challenge.cooldown')}
-			classes={classNames('badge badge-ghost badge-sm font-semibold', {
-				'col-span-2': !stacked
-			})}
+			classes="badge badge-ghost badge-sm col-span-2 font-semibold"
 			on:elapsed={() => onUnlock?.()}
 		/>
 	{/if}
