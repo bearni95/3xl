@@ -3,12 +3,12 @@
 	import { onMount } from 'svelte';
 	import { _ } from 'svelte-i18n';
 
-	// The field a place is looked for in, on the map column's shares tab. It stood at the far end
-	// of the breadcrumb bar, folded into a looking glass because a field wide enough to type a
-	// town into was the widest thing on a row whose subject is where the map is looking. On a tab
-	// of its own it is not competing with a path: the looking glass is the last cell of the
+	// The field a place is looked for in, on the strip across the top of the terrain. It stood at
+	// the far end of the breadcrumb bar, folded into a looking glass because a field wide enough
+	// to type a town into was the widest thing on a row whose subject is where the map is looking.
+	// There is no path on this strip to compete with: the looking glass is the last cell of the
 	// shares grid (see +page.svelte), and pressing it brings this field down on the row under it,
-	// where the whole width of the panel is a field's to take.
+	// the width of the shares it came out of.
 	//
 	// So this is the field alone now, mounted only while the search is open — which is what
 	// makes the focus a mount and not a `tick` after a state change: the press that opened it

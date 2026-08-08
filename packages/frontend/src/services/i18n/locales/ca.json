@@ -83,10 +83,6 @@
 		}
 	},
 	"map": {
-		"tabs": {
-			"map": "Mapa",
-			"shows": "Sèries"
-		},
 		"town": {
 			"tabs": {
 				"town": "Municipi",

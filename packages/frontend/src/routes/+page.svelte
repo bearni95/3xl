@@ -871,24 +871,19 @@
 	// letters is the cut ABOVE the open region, in the column beside the map (see `abovePath`),
 	// and that one is walked off the node rather than off the view.
 
-	// Which of the map column's two tabs is up: the terrain, or the shows that level divides
-	// between (see ShowShareGrid). The map is the default and stays the default — this game is a
-	// map, and a reader who has not asked for a tally is looking at the country.
-	// Held here rather than in either panel because neither of them is the tabs' parent: the tab
-	// row and the two panels are children of the same column.
-	// It was three, the middle of them being the list of the places the open region divides into.
-	// That list is not a way of reading the terrain — it is what is AT the open place, which is
-	// the question the block under the map answers — so it went to that block's own tabs and
-	// stands beside the town and the town's box (see `townTab`). What is left over the terrain is
-	// the two things that really are pictures of the level: the country, and the shows it flies.
-	// Nothing moves it but a press. Typing in the field on the shows tab fills the list in the
-	// block below, which stands whichever of these two is up, so a search is answered where the
-	// reader can see it answered without this ever moving under them.
-	let mapTab: 'map' | 'shows' = 'map';
+	// The map column had two tabs and has none: the terrain, and the shows that level divides
+	// between. It was three before that, the middle of them being the list of the places the open
+	// region divides into — that list is not a way of reading the terrain but what is AT the open
+	// place, so it went to the block under the map, beside the town and the town's box (see
+	// `townTab`). The shares have followed it out of the tab row, in the other direction: they are
+	// the strip across the top of the terrain now, on the row the radar already stood at the far
+	// end of (see below). A tally of eight marks is a row and never wanted a panel, and the map
+	// was the tab that was up whenever anybody wanted the tally to be about somewhere — so the two
+	// are read at once and this game is a map with no way to be looking at anything else.
 
-	// The show the level is being read through: picked on the shares row (the map column's second
-	// tab) and applied to the list of places in the block below it, which is why it is held on the
-	// page rather than in either panel. Null is the whole level.
+	// The show the level is being read through: picked on the shares row across the top of the
+	// terrain and applied to the list of places in the block below it, which is why it is held on
+	// the page rather than in either box. Null is the whole level.
 	let activeShow: number | null = null;
 
 	// Pressing the picked show again clears it, pressing another turns the list over to that one.
@@ -903,8 +898,8 @@
 	// rather than silently hiding most of what has just been opened. It lived with the shares row
 	// while that row was a component of its own; the row is markup on this page now, so the rule
 	// is here, named on the open region so it re-runs when the map moves. The two are in different
-	// boxes now — the row over the terrain, the list in the block under it — which changes nothing
-	// about the rule: what it is about is the level, and the level is the page's.
+	// boxes — the row across the top of the terrain, the list in the block under it — which
+	// changes nothing about the rule: what it is about is the level, and the level is the page's.
 	let filteredFor: string | null = null;
 	$: if ((openRegion ?? null) !== filteredFor) {
 		filteredFor = openRegion ?? null;
@@ -1294,8 +1289,8 @@
 	// was one town, and the list of places was painted over the terrain, so a block about a town
 	// with no town in it was a block about nothing. Neither holds now. The list is one of the three
 	// tabs in here and the list is about the level, so there is something to say at every tier and
-	// at the top view; and the list is no longer painted over the map, so the shares tab being up
-	// is not a reason to take this away. What that buys is the thing this page values most: the
+	// at the top view; and the map has no tabs left at all, so there is no state of that column
+	// that could be a reason to take this away. What that buys is the thing this page values most: the
 	// map's box stops moving. It was re-framed by every walk into a town and out of one — WorldMap
 	// answers a change of box with `invalidateSize` + `syncView` + a full rebuild of every pin and
 	// every booster box — and now nothing but a sheet or the window itself ever changes it.
@@ -1668,7 +1663,7 @@
 	// and before that a sibling of the map taking a flat 450px of the row. What emptied it was
 	// each view finding the thing it is about: the roster is the side standing in the map's own
 	// corner, the account is the cog at the end of the plate under it, the standings are the
-	// shares row at the head of the column beside the map, a town's pack is the box drawn on
+	// shares row across the top of the map itself, a town's pack is the box drawn on
 	// that town, the search is a cell of that same shares row, and the radio runs wherever it
 	// is turned on. A menu of what is left over is a menu of nothing, so the bar over the
 	// terrain says the game's name and no more.
@@ -2947,10 +2942,11 @@
 	// still fade outside it.
 
 	// --- How the map's furniture comes and goes ------------------------------------
-	// The blur a plate over the map plays when it arrives and when it leaves: the row across the
-	// top of the terrain as the tab changes, the block under the map as the polygons land, the
-	// player's side as an account signs in or out. One amount and one length for all of them, so
-	// the furniture reads as one kind of thing coming and going rather than three.
+	// The blur a plate over the map plays when it arrives and when it leaves: the block under the
+	// map as the polygons land, the player's side as an account signs in or out. One amount and
+	// one length for both, so the furniture reads as one kind of thing coming and going rather
+	// than two. (The strip across the top of the terrain played it too, while it was a tab that
+	// could be down; it is the map's own row now and stands whenever the map does.)
 	//
 	// It has nothing to do with the sheets any more. Every piece of this chrome used to blur away
 	// while a full view was up and blur back when it left — the band at the top of the page, the
@@ -3200,64 +3196,24 @@
 			What does not fit is what is INSIDE that block, and it scrolls inside itself, the way
 			every box on this page does.
 
-			Two things stand in this column, and only one of them at a time: the terrain, and the
-			shows the open level divides between (see mapTab). Both are pictures of the map — the
-			level it is looking at, drawn and tallied. The list of the places that level divides into
-			was the third of them (see RegionLocationList); it is in the block under this column now,
-			on that block's own tabs, because a list of names is not a picture of the level but an
-			answer to what is at the open place. -->
+			One thing stands in this column: the terrain, with what the open level divides between
+			laid across the top of it (see the strip below). Both are pictures of the map — the level
+			it is looking at, drawn and tallied — and they were a tab each for a while, which meant a
+			reader could only have one of the two answers about a level at a time. The list of the
+			places that level divides into was the third of those tabs (see RegionLocationList); it is
+			in the block under this column now, on that block's own tabs, because a list of names is
+			not a picture of the level but an answer to what is at the open place. -->
 		<div
 			class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-span-2 md:col-start-1 md:row-span-2 md:row-start-1"
 		>
 			{#if ready}
-				<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
-					the credits sheet does it (see CreditsModal): which of the two is up is local state
-					rather than an `aria-controls` target.
-					A full view used to veil this row too, and no longer does — a sheet changes nothing
-					on the page behind it (see CHROME_BLUR). Which also settles what this row is: it is
-					`flex-none` above a `flex-1` map, so anything that took it out of the document would
-					hand the map a taller box and a re-frame it never asked for. Nothing does. -->
-				<div role="tablist" class="tabs-boxed tabs flex-none justify-start">
-					<button
-						type="button"
-						role="tab"
-						aria-selected={mapTab === 'map'}
-						class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'map' })}
-						on:click={() => (mapTab = 'map')}
-					>
-						{$_('map.tabs.map')}
-					</button>
-					<!-- The second of them: what the open level divides between, and the way to look past
-						it. It was the last row of the column beside this map, under everything that column
-						says about the open place — which put the one control that acts on the list of
-						places in a different column from the list. It is a tab because what it does is
-						what this row is: two ways of reading the level the map is open on, the terrain
-						and the shares of it. The places by name were the third of them and are the
-						block's below (see `townTab`), which is where the field on this tab now answers —
-						a box that is standing while this one is up, rather than a sibling tab the reader
-						had to press to see what they had typed. -->
-					<button
-						type="button"
-						role="tab"
-						aria-selected={mapTab === 'shows'}
-						class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'shows' })}
-						on:click={() => (mapTab = 'shows')}
-					>
-						{$_('map.tabs.shows')}
-					</button>
-				</div>
+				<!-- The map's box, and there is nothing beside it in this column any more: no tab row
+					over it, so nothing here is `flex-none` above it and nothing can hand it a taller box
+					and a re-frame it never asked for.
 
-				<!-- The panel the two tabs share, and the map is never taken out of it: the shares are
-					laid over the terrain rather than swapped with it, so the map's box is the same box at
-					every moment and Leaflet is never told the column resized. An `{:else}` here would be a
-					fresh map on every trip back to the first tab — a new WebGL-less canvas, a new set of
-					tiles, and the reader's pan and zoom lost to a tab press. So both are absolutely placed
-					inside this box, the map always and the shares only while picked, and the shares carry
-					the page's own surface so the terrain does not read through them.
-
-					It takes what the column has left at every width (`flex-1`), which on a phone is the
+					It takes what the column has (`flex-1`), which on a phone is the
 					column less the block under it — and that block is a square of the page's own width
-					(see below), so the terrain is whatever a phone has after a 1:1 and the tabs. It was
+					(see below), so the terrain is whatever a phone has after a 1:1. It was
 					the square itself for a while, and then either of them was, a bead on the rule handing
 					it from one to the other. The square is the block's now, and the map is back to the
 					one thing it has always been at every other width: the box that fills.
@@ -3286,127 +3242,127 @@
 							classes="min-h-0 flex-1"
 						/>
 
-						<!-- The corner at the top of the terrain: the way to find a festa, and nothing
-							else. The one mark this game has that acts on the map and nothing else — it
-							takes the view somewhere it has not looked — so it is the map's own and not the
-							page's. The name of the game, the questions put to it and who drew it are about
-							the game rather than about the terrain, and they are the band above (see the
-							page's first row).
-							It was a strip across the whole edge while the path stood at the other end of
-							it (the folded crumbs, which are in the head of the block under this map now —
-							see the block, where they stand beside the place they are the cut above). What
-							is left is one square, so the strip is kept for what the strip was doing all
-							along: `pointer-events-none` with the square turning them back on, since the
-							room around it is terrain and terrain has to stay draggable. `z-[900]` clears
-							Leaflet's own panes (overlays 400-600, controls 800) without reaching the
-							arena's 1200. No inset is measured off it and handed to the map: the pins are
-							dealt where the polygons put them, and a reader who wants what is under it pans.
-							Only while the map is the tab that is up — the list of places and the shares are
-							painted over this same box (see below), and neither is a thing this row acts on.
-							It CAN be unmounted, unlike the rows above it, because it is absolutely placed
-							inside the map's pane and taking it out changes nobody's box, which is why the
-							change of tab is a blur rather than a swap (see CHROME_BLUR). A full view used to
-							take it away too; nothing on this page answers a sheet any more. -->
-						{#if mapTab === 'map'}
-							<div
-								transition:blur={CHROME_BLUR}
-								class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex items-start justify-between gap-2"
-							>
-								<!-- The radar. The map carries days of festes at once and no marks to find them
-									by, so the boxes waiting out there are found by panning across the country
-									looking for one — which is a search, and this is the button that does it: press
-									it and the map opens the nearest town whose box is still unopened (see
-									findNearestBox). It stands at every width, because a box is as hard to come
-									across on a desktop as on a phone.
-									It has been at the far end of a bar over the map, then a mark in the furniture
-									column beside it, then a square alone in this corner, then the end of a row
-									with the path at the other one — and it is alone in the corner again now that
-									the path has gone down into the block.
-									A size of its own, where the marks it used to stand among were drawn to a
-									row's height (`self-stretch aspect-square`): there is no row here to be as
-									tall as. `size-10` is what that row came to, so the square is the same square.
-									`ml-auto` because it is the only thing in the strip and the corner it wants is
-									the far one.
-									Disabled when there is nothing left to point at — every box in the window
-									opened, or none loaded yet — because a radar that answers "here" or answers
-									nothing is a press with no destination. -->
-								<button
-									type="button"
-									class="pointer-events-auto ml-auto flex size-10 flex-none cursor-pointer items-center justify-center rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
-									aria-label={$_('map.radar.nearest')}
-									disabled={!radarTarget}
-									on:click={findNearestBox}
+						<!-- The strip across the top of the terrain: what the open level is made of at the
+							near end, and the way to find a festa at the far one. Both are about the map and
+							nothing else — one tallies the level it is looking at, the other takes it
+							somewhere it has not looked — so they are the map's own and not the page's. The
+							name of the game, the questions put to it and who drew it are about the game
+							rather than about the terrain, and they are the band above (see the page's first
+							row).
+							It was the whole edge, then one square alone in the corner while everything that
+							had stood on it went down into the block below (the folded crumbs, which are in
+							that block's head now, beside the place they are the cut above). The strip's own
+							arrangement never changed and does not need to: `pointer-events-none` with each
+							plate turning them back on, since the room between them is terrain and terrain
+							has to stay draggable. `z-[900]` clears Leaflet's own panes (overlays 400-600,
+							controls 800) without reaching the arena's 1200. No inset is measured off it and
+							handed to the map: the pins are dealt where the polygons put them, and a reader
+							who wants what is under it pans. It stands whatever the map is doing — there is
+							no tab left for it to be hidden behind — and a full view used to take it away
+							too; nothing on this page answers a sheet any more (see CHROME_BLUR). -->
+						<div
+							class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex items-start gap-2"
+						>
+							<!-- The near end: the shares, and under them the field, one column so the field
+								comes down the width of the row that asked for it.
+								`max-w-sm` is the whole of what keeps this a strip. The cells divide whatever
+								width the grid is given (see ShowShareGrid) and the artwork is drawn to the
+								cell, so a row let loose across a desktop-width map would be eight glyphs the
+								size of the radar's plate several times over — a tally reading as a picture,
+								over the picture. Held to `sm` the marks come out at about the radar's own
+								square at every width, which is what a mark over a map should be. -->
+							<div class="flex min-w-0 max-w-sm flex-1 flex-col gap-2">
+								<!-- What the level the map is open on is made of: the shows those places fly
+									and how much of each. It was a tab of its own over this same terrain, and a
+									row at the foot of the column beside it before that — under everything that
+									column had to say about the open place, which put the one control that acts
+									on the list of places in a different column from the list.
+									Here it is on the map it is a tally of, at the same moment as the map: the
+									level drawn and the level counted were two tabs, so a reader could have the
+									country or the division of it and never both, and the division is a reading
+									OF what is on screen. Pressing a share narrows the list of places in the
+									block below; the grid is handed the whole division whatever is picked, and
+									the tally is this page's over every row of the level, because a share is
+									what this level IS and not what is left of it after a press. Pressing the
+									picked show again clears it and pressing another turns the list over, so
+									there is one gesture and it is its own undo.
+									It carries the page's own surface and the radar's plate — rounded, shadowed
+									— so the terrain does not read through the marks, which is the one thing it
+									gained by leaving a panel that had a surface of its own. -->
+								<ShowShareGrid
+									shares={subdivisionShares}
+									active={activeShow}
+									classes="pointer-events-auto rounded-lg bg-base-100 text-white shadow-xl"
+									on:select={(event) => toggleShow(event.detail.id)}
 								>
-									<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
-								</button>
-							</div>
-						{/if}
+									<!-- The looking glass, as the last cell of that grid. It stood at the far end
+										of the breadcrumb bar over the map once, where it had to fold a field away
+										into a glyph to leave the path any room; here the glyph is a cell like the
+										shares beside it and the field comes down on the row under it.
+										On this row because this row is the one that acts on the level: the cells
+										beside it narrow it to a show, and this goes and finds places that are not
+										on it at all. -->
+									<button
+										slot="end"
+										type="button"
+										class="flex items-center justify-center rounded-md p-1 hover:bg-white/10"
+										aria-label={$_('map.search.label')}
+										aria-expanded={searchOpen}
+										on:click={openSearch}
+									>
+										<img src="/assets/icons/lorc/magnifying-glass.svg" class="w-full" alt="" />
+									</button>
+								</ShowShareGrid>
 
+								{#if searchOpen}
+									<!-- The field itself, on its own row under the glyph that asked for it. It
+										puts itself away when it is left empty and takes the matches with it on
+										Escape (see LocationSearchBox); what it holds is matched by this page
+										against the whole tree, and the matches stand in the block under the map,
+										which the press on the glass has already turned to its list (see
+										openSearch). So the answer is on screen beside the question rather than on
+										a tab the reader has to know to press, and nothing moves on a keystroke. -->
+									<LocationSearchBox
+										bind:value={searchQuery}
+										bind:open={searchOpen}
+										classes="pointer-events-auto shadow-xl"
+									/>
+								{/if}
+							</div>
+
+							<!-- The radar. The map carries days of festes at once and no marks to find them
+								by, so the boxes waiting out there are found by panning across the country
+								looking for one — which is a search, and this is the button that does it: press
+								it and the map opens the nearest town whose box is still unopened (see
+								findNearestBox). It stands at every width, because a box is as hard to come
+								across on a desktop as on a phone.
+								It has been at the far end of a bar over the map, then a mark in the furniture
+								column beside it, then a square alone in this corner, then the end of a row
+								with the path at the other one — and it is the end of a row again, with the
+								shares at the other one.
+								A size of its own, where the marks it used to stand among were drawn to a
+								row's height (`self-stretch aspect-square`): the shares beside it are as tall
+								as their own cells are wide and there is nothing here to be as tall as.
+								`size-10` is what that row came to, so the square is the same square. `ml-auto`
+								holds it at the far corner however little the shares take.
+								Disabled when there is nothing left to point at — every box in the window
+								opened, or none loaded yet — because a radar that answers "here" or answers
+								nothing is a press with no destination. -->
+							<button
+								type="button"
+								class="pointer-events-auto ml-auto flex size-10 flex-none cursor-pointer items-center justify-center rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
+								aria-label={$_('map.radar.nearest')}
+								disabled={!radarTarget}
+								on:click={findNearestBox}
+							>
+								<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
+							</button>
+						</div>
 					</div>
 
 					<!-- (The level the map is open on, listed, was painted over this same box, as the
 						second of three tabs. It is in the block under the map now, beside the town and
 						the town's box — see `townTab`, and the block itself further down.) -->
-
-					<!-- What the level the map is open on is made of: the shows those places fly and how
-						much of each. Laid over the same box as the terrain, on the page's own
-						surface — two tabs, one panel, and the map never taken out
-						of it (see above).
-						It closed the column beside this map for a long time, under everything that column
-						had to say about the open place. What it acts on was never in that column though:
-						a share press narrows the list of places, and the field beside it fills that same
-						list with what it finds — so the row was a control in one column answering in
-						another. Here the two are one press apart.
-						The grid is handed the whole division whatever is picked, and the tally is this
-						page's over every row of the level: a share is what this level IS, not what is left
-						of it after a press. Pressing the picked show again clears it and pressing another
-						turns the list over, so there is one gesture and it is its own undo.
-						The rows sit at the top of the panel rather than filling it: a division of eight
-						marks is a row, and a row stretched down a third of the page would be claiming to
-						be a picture of something. What is under it is the field, when it is out. -->
-					{#if mapTab === 'shows'}
-						<div class="absolute inset-0 flex flex-col overflow-y-auto bg-base-100 py-2 text-white">
-							<ShowShareGrid
-								shares={subdivisionShares}
-								active={activeShow}
-								on:select={(event) => toggleShow(event.detail.id)}
-							>
-								<!-- The looking glass, as the last cell of that grid. It stood at the far end of
-									the breadcrumb bar over the map once, where it had to fold a field away into a
-									glyph to leave the path any room; here the glyph is a cell like the shares
-									beside it and the field comes down on the row under it, with the whole width of
-									the panel to be typed in.
-									On this row because this row is the one that acts on the level: the cells beside
-									it narrow it to a show, and this goes and finds places that are not on it at
-									all. -->
-								<button
-									slot="end"
-									type="button"
-									class="flex items-center justify-center rounded-md p-1 hover:bg-white/10"
-									aria-label={$_('map.search.label')}
-									aria-expanded={searchOpen}
-									on:click={openSearch}
-								>
-									<img src="/assets/icons/lorc/magnifying-glass.svg" class="w-full" alt="" />
-								</button>
-							</ShowShareGrid>
-
-							{#if searchOpen}
-								<!-- The field itself, on its own row under the glyph that asked for it. It puts
-									itself away when it is left empty and takes the matches with it on Escape (see
-									LocationSearchBox); what it holds is matched by this page against the whole
-									tree, and the matches stand in the block under the map, which the press on the
-									glass has already turned to its list (see openSearch). So the answer is on
-									screen beside the question rather than on a tab the reader has to know to
-									press, and nothing moves on a keystroke. -->
-								<LocationSearchBox
-								bind:value={searchQuery}
-								bind:open={searchOpen}
-								classes="mx-2 my-1"
-							/>
-							{/if}
-						</div>
-					{/if}
 				</div>
 			{:else}
 				<div class="flex min-h-0 flex-1 items-center justify-center">
@@ -3624,8 +3580,8 @@
 					})}
 				>
 					{#if townTab === 'places'}
-						<!-- The level the map is open on, listed. Handed the same rows the shares tab
-							over the terrain is tallied over, the same matches the field on that tab turns
+						<!-- The level the map is open on, listed. Handed the same rows the shares strip
+							over the terrain is tallied over, the same matches the field on that strip turns
 							up, and the show that row has picked — the press is up there, the hiding is
 							here with the rows it hides, and the two boxes are one glance apart rather
 							than one press. Picking one is the map's own gesture: `openFromColumn`,
