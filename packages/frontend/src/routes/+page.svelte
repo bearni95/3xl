@@ -1353,7 +1353,7 @@
 	// block above it is there to push (see the third column's `mt-auto`).
 	// Whether the side at the foot of the page is unfolded, which is a question a phone asks and
 	// nothing else: below `md` it is a sheet lying on the map's bottom edge, and folded it shows the
-	// first 4rem of itself — its own top padding and rule, and the 3rem band the side flies over its
+	// first 4.625rem of itself — its own rule and padding, and the 3rem band the side flies over its
 	// statues, which is the show the team is from lettered in its own colour (see TeamLineup's
 	// banner). That is enough to say whose side is standing there and to be worth pressing; the
 	// statues, the account plate and the author's marks are what unfolding brings up, over the
@@ -2778,7 +2778,7 @@
 	// terrain now and has a surface of its own — a fill and the rule along its top — so emptying it
 	// would not take it off the screen, only leave a bare bar lying across the map. The veil is on
 	// the wrapper, so the panel and the bead on its edge go quiet together. It costs the map
-	// nothing either way: that sheet is out of the flow and the row it hangs off is a fixed 4rem.
+	// nothing either way: that sheet is out of the flow and the row it hangs off is a fixed length.
 	//
 	// Everything else keeps `transition:blur`, because unmounting it costs the map nothing: the
 	// list of places is a grid item in a named track (`md:col-start-*`, `row-start-*`) whose size
@@ -2959,11 +2959,12 @@
 		the map is the map's (see the map column above).
 
 		Below `md` the two stand one after the other, the map over the furniture, and the second row is
-		a flat `4rem`: the height of the folded strip the side shows of itself, and nothing else. The
-		side is a sheet on a phone — it hangs off the bottom of this grid and slides up OVER the
-		terrain as it is unfolded (see the wrapper below) — so this row is not what it stands in, only
-		the room the map is asked to leave clear at the foot of the page for the strip that is always
-		down there.
+		a flat `4.625rem`: the height of the folded strip the side shows of itself, and nothing else —
+		its 2px rule, `p-3`, the 3rem band the team flies, `p-3` again (see the panel, where those four
+		are spelled out). The side is a sheet on a phone — it hangs off the bottom of this grid and
+		slides up OVER the terrain as it is unfolded (see the wrapper below) — so this row is not what
+		it stands in, only the room the map is asked to leave clear at the foot of the page for the
+		strip that is always down there.
 
 		Which is why it is a fixed length and not a share, nor a track measured off what is in it. It
 		was `grid-rows-3` with the map spanning two, a written-down two thirds and one third that had
@@ -2977,20 +2978,20 @@
 
 		`relative`, because the side is positioned against this grid on a phone. And no `divide-y` any
 		more: the rule between the map and the side is drawn by the side's own top border, so that it
-		travels with the edge it separates instead of staying behind at 4rem while the sheet goes up.
+		travels with the edge it separates instead of staying behind at the strip while the sheet goes up.
 
 		The rule was `divide-y-2 divide-primary` here, on the grid rather than on either box, on the
 		ground that a separator belongs to the pair it separates. That holds while both boxes are in
 		the flow; it stops holding the moment one of them can slide over the other, since `divide-y`
-		draws on the box ABOVE and the line would then stay down at 4rem with the sheet somewhere over
+		draws on the box ABOVE and the line would then stay down at the strip with the sheet somewhere over
 		it. So it is the side's own `border-t-2` now — same colour, same weight, and it goes where the
 		side goes. Off from `md` up either way, where the two stand abreast and the grid separates
 		them. -->
 	<div
-		class="relative grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_4rem] md:grid-cols-3 md:grid-rows-1"
+		class="relative grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_4.625rem] md:grid-cols-3 md:grid-rows-1"
 	>
 		<!-- The map. Two thirds of the width from `md` up (`md:col-span-2`), and on a phone the whole
-			page but the 4rem strip the side keeps at the foot of it. It was one third of three until
+			page but the strip the side keeps at the foot of it. It was one third of three until
 			everything the column beside it held turned out to be about the map — the level listed, the
 			shows that level divides between, the way to search, the side standing on the open town and
 			the fight to be had for it, and now the path down to where that town sits. That column had
@@ -3321,7 +3322,7 @@
 			`syncView` + a full rebuild of every pin and every booster box (see its ResizeObserver), so
 			a side that pushed the terrain up and down over a quarter of a second would be that rebuild
 			fifteen times over, in the middle of the one gesture. What the grid gives the map instead
-			is a height that never changes: the second row is the folded strip's own 4rem and nothing
+			is a height that never changes: the second row is the folded strip's own height and nothing
 			else (see the grid), and the terrain stops above it whether the side is up or down. So the
 			fold moves paint and nothing else, and it moves it over a map that has not noticed.
 			`pointer-events-none` on the wrapper with the two things in it turning them back on: it is
@@ -3369,28 +3370,16 @@
 				/>
 			</button>
 
-			<!-- The panel itself: who is playing and the side they field. On a phone it has two
-				heights and the bead above moves between them —
-				- Folded (the default), `max-h-16`: 4rem, which is the `p-3` above the first thing in
-				  here plus the 3rem band TeamLineup flies over its statues plus the 2px rule on top,
-				  with a hair to spare. So what is left standing is the show the side is from, its
-				  wordmark and its two glyphs, in the lead's own colour — a strip that says whose side
-				  is down there and is worth pressing to see. It is the same 4rem the grid keeps clear
-				  for it, so folded the panel closes the page exactly where the map ends and nothing is
-				  covered at all.
-				- Unfolded, `max-h-[66vh]`. What that mostly means is "as tall as what is in it", the
-				  statues and the plate and the marks coming to well under two thirds of a phone; the
-				  figure is the ceiling for the case where they do not, and past it the panel scrolls
-				  inside itself exactly as it does from `md` up. It is stated as a length rather than
-				  left off because a transition needs two ends: `max-h-16` to nothing at all is not a
-				  distance, and the fold would jump.
-				The transition is on the max-height, which is the honest cost of animating a box whose
-				real height nothing has measured: what is drawn stops growing at the content's own
-				height while the max goes on to 66vh, so the last part of an unfold is over before the
-				timing says it is. `ease-out` is chosen for that — it spends most of its distance
-				early, which is where the whole of the visible movement is.
-				`overflow-hidden` while folded and `overflow-y-auto` unfolded: a 4rem box that scrolls
-				is a strip somebody can push half a band out of.
+			<!-- The panel itself: who is playing and the side they field. What it is, from its top
+				edge down, is the 2px rule, `p-3`, whatever the fold leaves standing, and `p-3` again —
+				and the two `p-3`s are the whole reason the fold is not on this box but on the one
+				inside it. Clipping the panel would clip its own bottom padding off with everything
+				else, so the strip would end on whatever the cut happened to land in — the tops of
+				three statues' heads, in practice, since the band is drawn OVER the row rather than
+				above it and the row goes on underneath. The padding stays outside the cut instead, so
+				a folded strip is inset from the foot of the page by exactly what it is inset from the
+				rule at its top: a band with the same air on both sides of it, closing the page rather
+				than running off the end of it.
 				`bg-base-100` because it is over the terrain now and not beside it — a sheet you can
 				see a map through is not a sheet. It is the page's own fill, which is what the band at
 				the top wears too, so from `md` up (where the panel is simply a column) it draws
@@ -3398,196 +3387,224 @@
 				The rule that used to be the grid's `divide-y` is this panel's own `border-t-2`: what
 				separates the side from the map travels with the side, so unfolding does not leave a
 				line ruled across the middle of nothing. That one IS dropped from `md` up
-				(`md:border-t-0`), where what separates the columns is the columns.
-				`mt-auto` on the block inside is still there, and still for the reason `bottom-3` was
-				before there was a column: the account sits at the foot of one. It does nothing on a
-				phone, where the panel is exactly as tall as the block in it; from `md` up the column
-				is full height and the push is what keeps the account at its foot.
-				Inside `{#if ready}` like the map it came off: the side standing here is rolled against
-				the town names the polygons carry, and a statue drawn before those land says Ultramar
-				at a town whose name is still on its way (see claimPlaceName). -->
+				(`md:border-t-0`), where what separates the columns is the columns. -->
 			<div
-				class={classNames(
-					'pointer-events-auto flex min-h-0 min-w-0 flex-col gap-2 border-t-2 border-primary bg-base-100 p-3 transition-[max-height] duration-[250ms] ease-out md:max-h-none md:flex-1 md:overflow-y-auto md:border-t-0',
-					sideOpen ? 'max-h-[66vh] overflow-y-auto' : 'max-h-16 overflow-hidden'
-				)}
+				class="pointer-events-auto flex min-h-0 min-w-0 flex-col border-t-2 border-primary bg-base-100 p-3 md:flex-1 md:border-t-0"
 			>
-				{#if ready}
-					<!-- The head of this column is gone entire, and with it the block that held it. It was
-						the game's badge, the radar, and the two marks that answer for the game — a band laid
-						over the map's top edge before that, absolutely positioned, its height measured off the
-						DOM and handed to the map so the pins would be dealt clear of it, its pointer events off
-						everywhere the plates did not cover, and a z-index picked to clear Leaflet's panes.
-						Standing it in a column took all of that away, and then the column turned out to be the
-						wrong shelf too: the name and the two questions are about the game rather than about
-						this player, so they are the page's own top row now, and the radar is the one of the
-						four that acts on the terrain, so it is back on the terrain (see both above). The music
-						player passed through here as well, in the left corner and then as a card of the bar,
-						before the radio became the row that names the open place.
-						What is left in this column is what it was always for: who is playing, and the side
-						they field. -->
-					<!-- The foot of the furniture column: the side this player fields, and under it who is
-						playing and the way into their account. Signed out, the middle of that block is the way
-						in instead (see SignInButton): the sign-in was in a burger menu once, which put the only
-						thing a visitor can do behind the mark they would have had to think to press, while the
-						slot that would have said who they are stood empty. It is one slot with two states now
-						— the account, or how to have one.
-						The two belong together — a side and the account fielding it are one statement, and it
-						is the statement every town on the map is read against: the three being challenged are
-						drawn on the town's own pin in the column of places, the three doing the challenging
-						stand here with their player under them, so a fight the Challenge button opens is both
-						sides of it read on the one screen. The account's plate was at the map's top-right,
-						opposite the town panel, which put the player at one corner and the side they field at
-						another with nothing but the reader to say which of them was whose.
-						`mt-auto` is what keeps it at the foot: this used to be positioned against the map's
-						bottom edge, and a column has to be told to push its last block down. It grows upwards
-						from there, so what arrives in it — the plate, as an account signs in — lifts the
-						statues rather than walking the account off the end of the column.
-						The block takes the column's whole width, statues and account row alike: they are one
-						statement in one place, and a row narrower than the side above it would read as a second
-						thing that happens to be nearby. It was a flat 400px while it stood on the map, which is
-						a width a corner has to choose for itself; a column of the grid is given one.
-						Nothing is drawn at all when there is none of it to draw — which now only happens while
-						the session is still being read, since a visitor it comes back empty for is a visitor
-						who gets the door.
-						A full view no longer takes it away, though it still goes quiet under one: the veil is
-						the whole column's now, because the column's height is the phone map's box (see the
-						column above). So this blur is left playing what it was always really for — a side
-						arriving as an account signs in, and going as one signs out. The statues are rebuilt
-						on the way in, which is what they already are every time the map re-frames itself — a
-						character that has been through its veil once never plays it again (see IdleSprite),
-						so what comes back is the picture and not the reveal. -->
-					{#if playerBlockShown}
-						<div transition:blur={CHROME_BLUR} class="mt-auto flex flex-col gap-2">
-							<!-- The three statues and nothing else: no plate under them, no heading over them,
-								so what stands here is the side itself rather than a panel about it. It can stand
-								bare where the map's other furniture cannot because a statue brings its own ground
-								and its own panel — every word on it is already read off the card's own colour,
-								never off the terrain behind it.
-								The row is given its box by the column rather than positioning itself: it is
-								`w-full` of whatever holds it, and a width handed to it in the same breath would be
-								two width utilities on one element with nothing but stylesheet order to settle
-								which of them wins.
-								Only drawn once there is a side to draw — an account with no card in a team slot
-								leaves the column to its plate alone — and only inside `ready`, so a statue never
-								says Ultramar at a town whose name is still on its way (see claimPlaceName). -->
-							{#if playerTeamLineup.length > 0}
-								<!-- And it is the way into the team, pressed as a whole: the three cards standing
-									here *are* the side the roster is for editing, so the reader who wants to
-									change them presses the thing they want to change rather than going looking
-									for it in the menu. The press is on the row and not on a card, because a
-									statue in this corner is a picture of who is fielded and not a control — the
-									roster is where a member is taken off (see TeamLineup's `selectable`, which
-									stays false here). One target over the lot, so there is no dead strip between
-									the cards either.
-									Named for a screen reader, since what is inside the button is three cards'
-									worth of names and colours and none of them says what pressing it does. -->
-								<button
-									type="button"
-									class="w-full cursor-pointer rounded-box focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-									aria-label={$_('roster.open')}
-									on:click={() => rosterModalOpen.set(true)}
-								>
-									<TeamLineup members={playerTeamLineup} />
-								</button>
-							{:else if $profile && spawnsSettled}
-								<!-- A player with no side fielded yet, in the slot the three statues take:
-									the same press, said in a word instead of drawn as three cards. The row
-									above is the way into the roster because it *is* the side being edited,
-									and a corner that simply had nothing there left that way in to the
-									statues alone — so an account with an empty team had no door to the one
-									screen that fills it. Shaped like the sign-in below it rather than like
-									the lineup above it, since what stands here is a button and not a
-									picture of anything, and the corner already reads as a column of
-									full-width rows. -->
-								<button
-									type="button"
-									class="btn btn-primary w-full shadow-xl"
-									on:click={() => rosterModalOpen.set(true)}
-								>
-									{$_('roster.open')}
-								</button>
-							{/if}
-
-							<!-- The way in, standing where the account's plate stands once there is an account.
-								One button and the whole width of the column, which is what every row of this
-								corner is now the radio has left it. The form it opens — a gate of two boxes,
-								the documents under them and the provider button — stood here for a while,
-								and could not have been read at half of 400px in any case; it is a sheet of
-								its own now, and this corner asks for it in a word (see SignInModal). -->
-							{#if signedOut}
-								<SignInButton />
-							{/if}
-
-							<!-- Who is playing, under the side they field: the last row of this corner, and the
-								whole of it again.
-								It shared this row with the radio for a while, as two halves of the column's one
-								width — both of them being things this player had switched on, as against the map
-								at the other corner. The radio has gone to the band across the top of the page,
-								where the place it is playing for is already named and already carries the show's
-								tile (see RegionCurrentBadge): the radio follows the map now, so a card of its own
-								was saying, in a second corner, what that row says by standing there. What shares
-								the row instead is the one press that belongs to this plate: the cog.
-								No `pointer-events-auto` on it: that was needed while it stood in the column under
-								the bar, which turns its own events off so the map stays pannable through the gaps
-								between its plates. This corner is not that column.
-								The plate is the way into the account as well as the reading of it: the picture
-								opens the picker and the rest of it opens the settings sheet, which is the sheet
-								this plate summarises. -->
-							{#if $profile}
-								<div class="flex items-stretch gap-2">
-									<PlayerPanel
-										profile={$profile}
-										on:editavatar={() => avatarPickerOpen.set(true)}
-										on:open={() => settingsModalOpen.set(true)}
-										classes="min-w-0 flex-1"
-									/>
-
-									<!-- The settings, as a mark at the end of the row that summarises them. It was a
-										row of the menu at the other corner of the map, which is where a player had to
-										go looking for the sheet about the account they were already looking at; the
-										menu keeps what is not the account's — the album, and the documents.
-										A square, since it is a glyph and nothing else, and one drawn to the plate's
-										own height: `self-stretch` takes the height the plate sets for the row and
-										`aspect-square` reads the width off it, so the two stay one row however the
-										plate is measured. Same surface as the plate, because it is the same corner's
-										furniture and not a control laid over it. -->
+				<!-- The box the fold actually moves. On a phone it has two heights and the bead above
+					moves between them —
+					- Folded (the default), `max-h-12`: the 3rem band TeamLineup flies over its statues,
+					  and nothing else. So what is left standing is the show the side is from, its
+					  wordmark and its two glyphs, in the lead's own colour — a strip that says whose
+					  side is down there and is worth pressing to see. With the panel's own padding
+					  round it that comes to the 4.625rem the grid keeps clear at the foot of the page
+					  (2px + 0.75 + 3 + 0.75), so folded the side closes the page exactly where the map
+					  stops and covers nothing at all.
+					- Unfolded, `max-h-[66vh]`. What that mostly means is "as tall as what is in it",
+					  the statues and the plate and the marks coming to well under two thirds of a
+					  phone; the figure is the ceiling for the case where they do not, and past it this
+					  box scrolls inside itself exactly as it does from `md` up. It is stated as a
+					  length rather than left off because a transition needs two ends: `max-h-12` to
+					  nothing at all is not a distance, and the fold would jump.
+					The transition is on the max-height, which is the honest cost of animating a box
+					whose real height nothing has measured: what is drawn stops growing at the content's
+					own height while the max goes on to 66vh, so the last part of an unfold is over
+					before the timing says it is. `ease-out` is chosen for that — it spends most of its
+					distance early, which is where the whole of the visible movement is.
+					`overflow-hidden` while folded and `overflow-y-auto` unfolded: a box cut to one band
+					that scrolls is a strip somebody can push half a band out of.
+					`gap-2` is here rather than on the panel because it belongs to the rows it separates,
+					and they are in here.
+					`mt-auto` on the block inside is still there, and still for the reason `bottom-3` was
+					before there was a column: the account sits at the foot of one. It does nothing on a
+					phone, where this box is exactly as tall as the block in it; from `md` up it fills
+					the column and the push is what keeps the account at its foot.
+					Inside `{#if ready}` like the map it came off: the side standing here is rolled
+					against the town names the polygons carry, and a statue drawn before those land says
+					Ultramar at a town whose name is still on its way (see claimPlaceName). -->
+				<div
+					class={classNames(
+						'flex min-h-0 min-w-0 flex-col gap-2 transition-[max-height] duration-[250ms] ease-out md:max-h-none md:flex-1 md:overflow-y-auto',
+						sideOpen ? 'max-h-[66vh] overflow-y-auto' : 'max-h-12 overflow-hidden'
+					)}
+				>
+					{#if ready}
+						<!-- The head of this column is gone entire, and with it the block that held it. It was
+							the game's badge, the radar, and the two marks that answer for the game — a band laid
+							over the map's top edge before that, absolutely positioned, its height measured off the
+							DOM and handed to the map so the pins would be dealt clear of it, its pointer events off
+							everywhere the plates did not cover, and a z-index picked to clear Leaflet's panes.
+							Standing it in a column took all of that away, and then the column turned out to be the
+							wrong shelf too: the name and the two questions are about the game rather than about
+							this player, so they are the page's own top row now, and the radar is the one of the
+							four that acts on the terrain, so it is back on the terrain (see both above). The music
+							player passed through here as well, in the left corner and then as a card of the bar,
+							before the radio became the row that names the open place.
+							What is left in this column is what it was always for: who is playing, and the side
+							they field. -->
+						<!-- The foot of the furniture column: the side this player fields, and under it who is
+							playing and the way into their account. Signed out, the middle of that block is the way
+							in instead (see SignInButton): the sign-in was in a burger menu once, which put the only
+							thing a visitor can do behind the mark they would have had to think to press, while the
+							slot that would have said who they are stood empty. It is one slot with two states now
+							— the account, or how to have one.
+							The two belong together — a side and the account fielding it are one statement, and it
+							is the statement every town on the map is read against: the three being challenged are
+							drawn on the town's own pin in the column of places, the three doing the challenging
+							stand here with their player under them, so a fight the Challenge button opens is both
+							sides of it read on the one screen. The account's plate was at the map's top-right,
+							opposite the town panel, which put the player at one corner and the side they field at
+							another with nothing but the reader to say which of them was whose.
+							`mt-auto` is what keeps it at the foot: this used to be positioned against the map's
+							bottom edge, and a column has to be told to push its last block down. It grows upwards
+							from there, so what arrives in it — the plate, as an account signs in — lifts the
+							statues rather than walking the account off the end of the column.
+							The block takes the column's whole width, statues and account row alike: they are one
+							statement in one place, and a row narrower than the side above it would read as a second
+							thing that happens to be nearby. It was a flat 400px while it stood on the map, which is
+							a width a corner has to choose for itself; a column of the grid is given one.
+							Nothing is drawn at all when there is none of it to draw — which now only happens while
+							the session is still being read, since a visitor it comes back empty for is a visitor
+							who gets the door.
+							A full view no longer takes it away, though it still goes quiet under one: the veil is
+							the whole column's now, because the column's height is the phone map's box (see the
+							column above). So this blur is left playing what it was always really for — a side
+							arriving as an account signs in, and going as one signs out. The statues are rebuilt
+							on the way in, which is what they already are every time the map re-frames itself — a
+							character that has been through its veil once never plays it again (see IdleSprite),
+							so what comes back is the picture and not the reveal. -->
+						{#if playerBlockShown}
+							<div transition:blur={CHROME_BLUR} class="mt-auto flex flex-col gap-2">
+								<!-- The three statues and nothing else: no plate under them, no heading over them,
+									so what stands here is the side itself rather than a panel about it. It can stand
+									bare where the map's other furniture cannot because a statue brings its own ground
+									and its own panel — every word on it is already read off the card's own colour,
+									never off the terrain behind it.
+									The row is given its box by the column rather than positioning itself: it is
+									`w-full` of whatever holds it, and a width handed to it in the same breath would be
+									two width utilities on one element with nothing but stylesheet order to settle
+									which of them wins.
+									Only drawn once there is a side to draw — an account with no card in a team slot
+									leaves the column to its plate alone — and only inside `ready`, so a statue never
+									says Ultramar at a town whose name is still on its way (see claimPlaceName). -->
+								{#if playerTeamLineup.length > 0}
+									<!-- And it is the way into the team, pressed as a whole: the three cards standing
+										here *are* the side the roster is for editing, so the reader who wants to
+										change them presses the thing they want to change rather than going looking
+										for it in the menu. The press is on the row and not on a card, because a
+										statue in this corner is a picture of who is fielded and not a control — the
+										roster is where a member is taken off (see TeamLineup's `selectable`, which
+										stays false here). One target over the lot, so there is no dead strip between
+										the cards either.
+										Named for a screen reader, since what is inside the button is three cards'
+										worth of names and colours and none of them says what pressing it does. -->
 									<button
 										type="button"
-										class="flex aspect-square flex-none cursor-pointer items-center justify-center rounded-lg bg-base-100/80 shadow-xl hover:bg-base-100"
-										aria-label={$_('settings.title')}
-										on:click={() => settingsModalOpen.set(true)}
+										class="w-full cursor-pointer rounded-box focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+										aria-label={$_('roster.open')}
+										on:click={() => rosterModalOpen.set(true)}
 									>
-										<img src="/assets/icons/lorc/cog.svg" class="size-6" alt="" />
+										<TeamLineup members={playerTeamLineup} />
 									</button>
-								</div>
-							{/if}
-						</div>
-					{/if}
-				{/if}
+								{:else if $profile && spawnsSettled}
+									<!-- A player with no side fielded yet, in the slot the three statues take:
+										the same press, said in a word instead of drawn as three cards. The row
+										above is the way into the roster because it *is* the side being edited,
+										and a corner that simply had nothing there left that way in to the
+										statues alone — so an account with an empty team had no door to the one
+										screen that fills it. Shaped like the sign-in below it rather than like
+										the lineup above it, since what stands here is a button and not a
+										picture of anything, and the corner already reads as a column of
+										full-width rows. -->
+									<button
+										type="button"
+										class="btn btn-primary w-full shadow-xl"
+										on:click={() => rosterModalOpen.set(true)}
+									>
+										{$_('roster.open')}
+									</button>
+								{/if}
 
-				<!-- Where the author is, and it closes this column: the one row on the page that names
-					something outside the game. It was the foot of the column beside this one, under
-					everything the open place had to say for itself — which put a row about whoever made
-					this under a list of towns, where it read as one more thing about the place. It sits
-					under the player instead, because these two rows are the only ones here that name a
-					person: who is playing, and who drew what they are playing with.
-					The column's free space is pushed above exactly one row, and which row that is
-					depends on what is standing: the block above already takes it with `mt-auto` where
-					there is a block, so this row simply follows it to the foot — two `mt-auto`s in one
-					flex column split the space between them and would leave the account floating in the
-					middle. Where there is no block (the session is still being read), the marks take
-					the push themselves and close the column alone rather than sitting at its top.
-					`flex-none` because the room this column has is not much: without it this row is the
-					first thing the column takes back when the side above it wants room, and the marks
-					squash instead of the column scrolling.
-					Outside `{#if ready}`, since nothing about it waits on the polygons. It goes quiet under
-					a full view with the rest of the chrome, but it does not leave: it is the last thing in
-					a panel that is folded to a strip by default, so a row coming and going at the foot of
-					it is a row moving the whole of what unfolds (see the panel, and CHROME_VEIL). The veil
-					is the wrapper's, one gesture over everything in it, rather than each row playing it
-					separately. -->
-				<SocialLinks classes={classNames('flex-none', { 'mt-auto': !playerBlockShown })} />
+								<!-- The way in, standing where the account's plate stands once there is an account.
+									One button and the whole width of the column, which is what every row of this
+									corner is now the radio has left it. The form it opens — a gate of two boxes,
+									the documents under them and the provider button — stood here for a while,
+									and could not have been read at half of 400px in any case; it is a sheet of
+									its own now, and this corner asks for it in a word (see SignInModal). -->
+								{#if signedOut}
+									<SignInButton />
+								{/if}
+
+								<!-- Who is playing, under the side they field: the last row of this corner, and the
+									whole of it again.
+									It shared this row with the radio for a while, as two halves of the column's one
+									width — both of them being things this player had switched on, as against the map
+									at the other corner. The radio has gone to the band across the top of the page,
+									where the place it is playing for is already named and already carries the show's
+									tile (see RegionCurrentBadge): the radio follows the map now, so a card of its own
+									was saying, in a second corner, what that row says by standing there. What shares
+									the row instead is the one press that belongs to this plate: the cog.
+									No `pointer-events-auto` on it: that was needed while it stood in the column under
+									the bar, which turns its own events off so the map stays pannable through the gaps
+									between its plates. This corner is not that column.
+									The plate is the way into the account as well as the reading of it: the picture
+									opens the picker and the rest of it opens the settings sheet, which is the sheet
+									this plate summarises. -->
+								{#if $profile}
+									<div class="flex items-stretch gap-2">
+										<PlayerPanel
+											profile={$profile}
+											on:editavatar={() => avatarPickerOpen.set(true)}
+											on:open={() => settingsModalOpen.set(true)}
+											classes="min-w-0 flex-1"
+										/>
+
+										<!-- The settings, as a mark at the end of the row that summarises them. It was a
+											row of the menu at the other corner of the map, which is where a player had to
+											go looking for the sheet about the account they were already looking at; the
+											menu keeps what is not the account's — the album, and the documents.
+											A square, since it is a glyph and nothing else, and one drawn to the plate's
+											own height: `self-stretch` takes the height the plate sets for the row and
+											`aspect-square` reads the width off it, so the two stay one row however the
+											plate is measured. Same surface as the plate, because it is the same corner's
+											furniture and not a control laid over it. -->
+										<button
+											type="button"
+											class="flex aspect-square flex-none cursor-pointer items-center justify-center rounded-lg bg-base-100/80 shadow-xl hover:bg-base-100"
+											aria-label={$_('settings.title')}
+											on:click={() => settingsModalOpen.set(true)}
+										>
+											<img src="/assets/icons/lorc/cog.svg" class="size-6" alt="" />
+										</button>
+									</div>
+								{/if}
+							</div>
+						{/if}
+					{/if}
+
+					<!-- Where the author is, and it closes this column: the one row on the page that names
+						something outside the game. It was the foot of the column beside this one, under
+						everything the open place had to say for itself — which put a row about whoever made
+						this under a list of towns, where it read as one more thing about the place. It sits
+						under the player instead, because these two rows are the only ones here that name a
+						person: who is playing, and who drew what they are playing with.
+						The column's free space is pushed above exactly one row, and which row that is
+						depends on what is standing: the block above already takes it with `mt-auto` where
+						there is a block, so this row simply follows it to the foot — two `mt-auto`s in one
+						flex column split the space between them and would leave the account floating in the
+						middle. Where there is no block (the session is still being read), the marks take
+						the push themselves and close the column alone rather than sitting at its top.
+						`flex-none` because the room this column has is not much: without it this row is the
+						first thing the column takes back when the side above it wants room, and the marks
+						squash instead of the column scrolling.
+						Outside `{#if ready}`, since nothing about it waits on the polygons. It goes quiet under
+						a full view with the rest of the chrome, but it does not leave: it is the last thing in
+						a panel that is folded to a strip by default, so a row coming and going at the foot of
+						it is a row moving the whole of what unfolds (see the panel, and CHROME_VEIL). The veil
+						is the wrapper's, one gesture over everything in it, rather than each row playing it
+						separately. -->
+					<SocialLinks classes={classNames('flex-none', { 'mt-auto': !playerBlockShown })} />
+				</div>
 			</div>
 		</div>
 	</div>
