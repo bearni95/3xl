@@ -3493,51 +3493,47 @@
 				class="row-start-2 flex aspect-square w-full min-h-0 min-w-0 flex-col items-center gap-2 border-t-2 border-primary p-3 md:col-start-3 md:row-start-1 md:aspect-auto md:border-b-2 md:border-t-0"
 			>
 				<!-- The head of the block: two cells of one grid, where the map is standing at the near
-					one and the three tabs at the far one. What they are is one statement in two halves — this is
-					where the map is standing, and these are the three things there are to say about
+					one and the three tabs at the far one. What they are is one statement in two
+					halves — this is where the map is standing, and these are the three things to say about
 					it — so they are a grid of two rather than a row that happens to hold both: each
 					gets half the block's width whatever is in the other, and a long town name cannot
 					walk the tabs off the edge nor a short one leave them adrift in the middle.
 					The place stood on the band across the top of the page, a whole column away from
 					the answers about it (see the band, where the middle of the row used to be). -->
 				<div class="grid w-full flex-none grid-cols-2 items-center gap-2">
-					<!-- The near cell says where the map is, twice over and at two scales: the cut the
-						open place sits INSIDE, folded to a mark, and then the place itself. Two things
-						in one cell rather than two cells, because they are one answer — a town is
-						named, and the dots beside it are how you got to it and the way back up. -->
+					<!-- The near cell is where the map is standing, said once: the badge that names the
+						place, and before it the one mark that is not another way of naming it — the dots,
+						which are the way back up out of it. -->
 					<div class="flex min-w-0 items-center gap-2">
-						<!-- The path down to where the open place sits, said as the dots and the one
-							badge that is that path folded (see MapBreadcrumbs' `folded`). It stood over
-							the terrain, in a strip across the top of the map, on the ground that walking
+						<!-- The way up, and nothing else: the dots and the column they drop, which is the
+							path down to where the open place sits (see MapBreadcrumbs' `dotsOnly`). The
+							path was a bar in a strip across the top of the map, on the ground that walking
 							back up is the one thing it does and the terrain is what moves when it is
-							pressed. It is here because the badge it walks back up FROM is here: the cut
-							above a place belongs beside the place, not a column away over the imagery,
-							and the strip it left is the radar alone in its corner (see the map).
-							Never the open region itself — `aboveCrumbs` is the parent path — so this and
-							the badge beside it cannot come to name the same place twice.
-							Nothing at all at the top view, which is the one place with nothing above it,
-							and the badge then has the cell to itself.
-							Pressed for what it was always pressed for: a step opens its region, an empty
-							rung takes the map to that tier's zoom. Through `openFromColumn` like every
-							other press in this block, so picking a place puts the search field away with
-							it. `min-w-0` and no growth: it takes the width its one crumb wants and gives
-							it back when the cell is too narrow for both, the badge inside it truncating
-							the way it does on any bar too short for the path. -->
+							pressed. It is here because what it walks up FROM is here — a cut belongs beside
+							its place — and the strip it left is the radar alone in its corner (see the map).
+							The badge it stood as, though, does not come with it: a folded bar keeps its last
+							crumb, and that crumb is the same tile and name the badge beside this is already
+							printing. Two of those in one cell is the show's mark drawn twice. So what stands
+							here is the square, and the names are in the column it drops.
+							Nothing at all at the top view, which is the one place with nothing above it.
+							Pressed for what the path was always pressed for: a step opens its region, an
+							empty rung takes the map to that tier's zoom. Through `openFromColumn` like
+							every other press in this block, so picking a place puts the search field away
+							with it. -->
 						{#if aboveCrumbs}
-							<div class="min-w-0">
-								<MapBreadcrumbs
-									crumbs={aboveCrumbs}
-									onSelect={(key) => (key ? openFromColumn(key) : open(null))}
-									onZoom={zoomToTier}
-									folded
-								/>
-							</div>
+							<MapBreadcrumbs
+								classes="flex-none"
+								crumbs={aboveCrumbs}
+								onSelect={(key) => (key ? openFromColumn(key) : open(null))}
+								onZoom={zoomToTier}
+								dotsOnly
+							/>
 						{/if}
 
 						<!-- Where the map is, and the radio playing for it. Lettered exactly as a crumb
 							and as a row of the list under it are, and pressed for the radio's play/pause
 							while there is a song (see RegionCurrentBadge). `min-w-0 flex-1` so a long
-							name truncates inside what the path leaves rather than widening the cell. -->
+							name truncates inside what the dots leave rather than widening the cell. -->
 						<RegionCurrentBadge
 							classes="min-w-0 flex-1"
 							row={subdivisionCurrent}

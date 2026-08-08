@@ -8,9 +8,10 @@
 	// Where the map is looking. What the crumbs name is the view — the region the map is
 	// framed on, walked into from a pin, a crumb or the zoom — so they belong beside the
 	// thing they are about. It was a bar across the top of the map itself for that reason,
-	// and it is a mark in the head of the block under the map now, standing next to the
-	// badge naming the open place, since what the only path left letters is the cut ABOVE
-	// that place (see +page.svelte's `aboveCrumbs`) and a cut belongs beside its place.
+	// and it is one square in the head of the block under the map now, standing next to the
+	// badge naming the open place: what the only path left letters is the cut ABOVE that
+	// place (see +page.svelte's `aboveCrumbs`), a cut belongs beside its place, and the
+	// place itself is the badge's to name (see `dotsOnly`).
 	//
 	// The bar wears the panel's own surface rather than the plates' black: the crumbs head
 	// the map the way the panel heads its column, so the two read as one chrome. It is
@@ -81,7 +82,18 @@
 	// and a row of five crumbs there would be a list of places at the head of a block whose own
 	// third tab is a list of places. The whole path is still a press away, in the dropped column.
 	export let folded: boolean = false;
+	// Folded all the way down to the dots: no crumb kept beside them, no plate under them, just
+	// the square and the column it drops. For the one caller there is, where the crumb a folded
+	// bar would keep is standing on its own two inches away — the badge naming the open place
+	// (see RegionCurrentBadge), which is drawn out of the same fields by the same component and
+	// carries the same tile. Keeping a crumb here as well is that tile printed twice in one cell,
+	// which is a duplicate and not a shorter path. So what stands beside the badge is the way UP
+	// and nothing else, which is the only thing the badge cannot say.
+	export let dotsOnly: boolean = false;
 	export let classes: string = '';
+
+	// Never anything but folded once the crumb is off: there is nothing left to lay out.
+	$: foldedRow = folded || dotsOnly;
 
 	// The square an empty position is drawn in, and the two buttons at the ends of this bar
 	// with it: a line of 32px tiles, so everything on the row that is pressed rather than read
@@ -97,7 +109,7 @@
 	// deep it goes and on the lengths of names nobody here chooses.
 	let overflows = false;
 	// And whether it is drawn folded, which is that or the caller having asked for it outright.
-	$: collapsed = folded || overflows;
+	$: collapsed = foldedRow || overflows;
 	// Whether the collapsed path has been dropped open. Only ever true while collapsed —
 	// a bar wide enough for the path has nothing to drop.
 	let expanded = false;
@@ -197,18 +209,26 @@
 	`relative` because two things hang off this row: the invisible copy of the path that is
 	measured, and the column the dots button drops. -->
 <div bind:this={wrapperEl} class={classNames('relative', classes)}>
+	<!-- The plate is the bar's, not the button's: a row of crumbs is read against whatever is
+		behind it and so carries a surface, and `dotsOnly` is not a row — it is one outlined
+		square standing in a head beside a badge, and a plate drawn round a single button is a
+		second frame on something already framed. -->
 	<div
-		class="flex items-center gap-3 rounded-lg bg-base-100/80 px-3 py-1.5 text-white shadow-xl"
+		class={classNames(
+			'flex items-center text-white',
+			dotsOnly ? 'gap-0' : 'gap-3 rounded-lg bg-base-100/80 px-3 py-1.5 shadow-xl'
+		)}
 	>
 		<!-- `min-w-0` is what lets this share shrink to whatever the `end` slot leaves it,
-			which is the width the path is measured against. -->
-		<div bind:this={trackEl} class="relative min-w-0 flex-1">
+			which is the width the path is measured against. Nothing to shrink or stretch when the
+			bar is the button alone. -->
+		<div bind:this={trackEl} class={classNames('relative', { 'min-w-0 flex-1': !dotsOnly })}>
 			<!-- The path at its natural width, in a scroller stretched to the track: laid out, so
 				it can be measured, and hidden, so it is never read. `invisible` and not `hidden`
 				— a box with no layout has no width to report. Not laid out at all for a bar that
 				is folded whichever way the measurement comes out: laying out a path nobody can be
 				shown, on every update, to answer a question already answered. -->
-			{#if !folded}
+			{#if !foldedRow}
 				<div
 					bind:this={probeEl}
 					class="breadcrumbs pointer-events-none invisible absolute inset-0 py-0 text-sm"
@@ -263,8 +283,12 @@
 					<!-- The one step kept, in whatever the button leaves of the row, and cut short with
 						an ellipsis if even that is not enough: there is no longer path to fold away, so
 						the alternative is a name running out under the search box beside it. The whole
-						of it is a press away, in the column. -->
-					{#if lastCrumb?.pressable}
+						of it is a press away, in the column.
+						Not kept at all under `dotsOnly`: the crumb it would print is the same tile and
+						the same name the badge two inches away is already printing (see the prop). -->
+					{#if dotsOnly}
+						<!-- nothing beside the dots -->
+					{:else if lastCrumb?.pressable}
 						<button
 							type="button"
 							aria-current="page"
