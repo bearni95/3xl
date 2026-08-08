@@ -2734,19 +2734,37 @@
 	furniture says, only about it standing somewhere it did not belong.
 
 	Below `md` the three fold into one column and stand one after the other, top to bottom in the
-	same order: the map, the places, the furniture. The map takes a flat 60vh there rather than
-	the row's height — a grid row with a canvas in it has no height of its own to hand the
-	canvas — and the page scrolls through the other two under it. So the phone's arrangement is
-	the desktop's turned on its side, and not a second layout with a panel and a burger in it. -->
+	same order: the map, the places, the furniture — a third of the viewport's HEIGHT each, where
+	from `md` up they take a third of its width each. So the phone's arrangement is the desktop's
+	turned on its side, in the strict sense: the same three boxes, the same three shares, the axis
+	swapped. The page itself never scrolls at either width (`h-screen`, `overflow-hidden`); each of
+	the three scrolls inside its own third, which is why every one of them carries `min-h-0`.
+
+	`grid-rows-3` and not three `33vh`s: `minmax(0, 1fr)` of a viewport-tall container IS a third
+	of the viewport, and it is a third that stays exact — three hand-written 33vh rows come to 99
+	and leave a strip of nothing under the last of them.
+
+	`divide-y-2 divide-primary` is the line between one third and the next. Written on the grid
+	rather than as a border on each box because a separator belongs to the pair it separates and
+	not to either side of it: the rule is `> :not(:last-child)`, so it draws between whatever
+	children are actually mounted and never under the last of them — and the list of places
+	unmounts whenever a full view is up (see below), so a border hung on the map's own bottom edge
+	would be a line with nothing under it. Off from `md` up, where the three stand side by side
+	and what separates them is the grid. -->
 <div
-	class="grid min-h-screen grid-cols-1 md:h-screen md:grid-cols-3 md:grid-rows-1 md:overflow-hidden"
+	class="grid h-screen grid-cols-1 grid-rows-3 divide-y-2 divide-primary overflow-hidden md:grid-cols-3 md:grid-rows-1 md:divide-y-0"
 >
-	<!-- The map, the first column. Nothing else sizes it — raising a view over it leaves its box
-		alone, so the map is never re-framed by anything but a pan, a zoom or a region being
-		opened. `relative` is kept for the spotlight and anything else Leaflet positions inside
-		it; no chrome of this page's is positioned against it any more.
-		`h-[60vh]` below `md` and the grid row's own height from `md` up: see the grid above. -->
-	<div class="relative flex h-[60vh] min-h-0 min-w-0 flex-col md:col-start-1 md:h-auto">
+	<!-- The map: the first row of the phone's column, the first column of the desktop's row.
+		Nothing else sizes it — raising a view over it leaves its box alone, so the map is never
+		re-framed by anything but a pan, a zoom or a region being opened. `relative` is kept for
+		the spotlight and anything else Leaflet positions inside it; no chrome of this page's is
+		positioned against it any more.
+		Placed by name at both widths (`row-start-1` / `md:col-start-1`) rather than left to the
+		order things are mounted in: the list of places beside it comes and goes with the full-view
+		sheets, and a grid that filled the gap would walk the map into the hole. -->
+	<div
+		class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-start-1 md:row-start-1"
+	>
 		{#if ready}
 			<WorldMap
 				center={[41.8, 1.7]}
@@ -2799,24 +2817,21 @@
 			part). So what this hands the column is a height rather than a scrollbar: everything
 			between the top of the aside and the marks at its foot, for the column to give to its
 			list. -->
-		<!-- A column of the grid at every width, and the same column: beside the map from `md` up,
-			and the next thing down the page below that. It was two arrangements of this one element
-			for a while — a 400px side of the row on a desktop, and on a phone a fixed panel over
-			the whole viewport, parked a screen-width off the right edge and slid in by a burger at
-			the far end of the map's top bar. The page is a grid now and the grid folds, so the
-			phone gets this column where the fold puts it rather than a second way of asking for it;
-			the burger, the ✕ that pushed the panel back off, the `inert` that kept a keyboard out
-			of it while it was parked and the transform it slid on all went with the arrangement
+		<!-- A box of the grid at every width, and the same box: the middle third of the phone's
+			column, the middle column of the desktop's row. It was two arrangements of this one
+			element for a while — a 400px side of the row on a desktop, and on a phone a fixed panel
+			over the whole viewport, parked a screen-width off the right edge and slid in by a
+			burger at the far end of the map's top bar. The page is a grid now and the grid folds,
+			so the phone gets this where the fold puts it rather than as a second way of asking for
+			it; the burger, the ✕ that pushed the panel back off, the `inert` that kept a keyboard
+			out of it while it was parked and the transform it slid on all went with the arrangement
 			they belonged to.
-			`max-h-[70vh]` below `md` is the one thing the fold has to say for itself: the list
-			scrolls inside this column (see RegionSubdivisions), and a column with no height to
-			scroll within is a column that simply grows — forty towns of it, with the furniture
-			under them pushed a screen and a half down the page. Capped, the list scrolls where it
-			always did and the third column stays in reach. From `md` up the grid row is the height
-			and there is nothing to cap. -->
+			`min-h-0` at both widths, and it is what makes the third a third: the list inside scrolls
+			(see RegionSubdivisions), and a flex column that may not shrink below its content is a
+			box that simply grows past the track it was given. -->
 		<aside
 			transition:blur={CHROME_BLUR}
-			class="flex max-h-[70vh] min-w-0 flex-col bg-base-100 md:col-start-2 md:max-h-none md:min-h-0"
+			class="row-start-2 flex min-h-0 min-w-0 flex-col bg-base-100 md:col-start-2 md:row-start-1"
 		>
 			<RegionSubdivisions
 				classes="min-h-0 flex-1"
@@ -2892,25 +2907,29 @@
 			</RegionSubdivisions>
 
 			<!-- Where the author is, at the foot of the column: the one row here that names
-				something outside the game. -->
-			<SocialLinks />
+				something outside the game. `flex-none` because a third of a phone's height is not
+				much: without it this row is the first thing the column takes back when the list
+				above it wants room, and the marks squash instead of the list scrolling. -->
+			<SocialLinks classes="flex-none" />
 		</aside>
 	{/if}
 
-	<!-- The furniture, the third column: everything that used to be drawn over the map, now
-		standing beside it. It keeps the shape it had on the terrain — the badge and its marks at
-		the head of the column, the side and the account at the foot — because that shape was
-		never about the map being underneath: what the game is called and what it can be asked
-		belong at the top of a column, and who is playing belongs at the bottom of one. `mt-auto`
-		on the second block is what holds them apart, which is the one thing `top-3` and `bottom-3`
-		were doing that a column still has to do for itself.
-		It scrolls on its own from `md` up, the way the list of places beside it does, since three
-		statues and a plate under a row of marks is taller than some viewports; below `md` it is
-		the last thing down the page and scrolls with it.
+	<!-- The furniture: the last third of the phone's column, the third column of the desktop's
+		row. Everything that used to be drawn over the map, now standing beside it. It keeps the
+		shape it had on the terrain — the badge and its marks at the head, the side and the account
+		at the foot — because that shape was never about the map being underneath: what the game is
+		called and what it can be asked belong at the top of a column, and who is playing belongs
+		at the bottom of one. `mt-auto` on the second block is what holds them apart, which is the
+		one thing `top-3` and `bottom-3` were doing that a column still has to do for itself.
+		It scrolls inside its own third at both widths, the way the list of places does: three
+		statues and a plate under a row of marks is taller than a third of a phone, and taller than
+		some viewports outright.
 		Inside `{#if ready}` like the map it came off: the side standing here is rolled against
 		the town names the polygons carry, and a statue drawn before those land says Ultramar at
 		a town whose name is still on its way (see claimPlaceName). -->
-	<div class="flex min-w-0 flex-col gap-2 p-3 md:col-start-3 md:min-h-0 md:overflow-y-auto">
+	<div
+		class="row-start-3 flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto p-3 md:col-start-3 md:row-start-1"
+	>
 		{#if ready}
 			<!-- The head of the furniture column: the game's own badge and the marks beside it. It
 				was a band across the map's top edge for a long time — absolutely positioned over the
