@@ -1,20 +1,19 @@
 <script lang="ts">
 	import classNames from 'classnames';
-	import { createEventDispatcher } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import LocationSearchBox from '$components/core/LocationSearchBox.svelte';
-	import { musicPressLabel } from '$components/core/MusicGlyph.svelte';
-	import MusicLine from '$components/core/MusicLine.svelte';
-	import RegionListRow from '$components/core/RegionListRow.svelte';
 	import ShowShareGrid from '$components/core/ShowShareGrid.svelte';
-	import { REGION_ROW_BOX_WIDTH, type RegionRow } from '$components/core/region-types';
-	import { musicService } from '$services/music.service';
+	import type { RegionRow } from '$components/core/region-types';
 
-	// The head of the open region and the two controls that act on what it divides into. The
-	// list of those places was under here for a long time and is a tab over the map now (see
-	// RegionLocationList, and the grid in +page.svelte) — so this column is the place the map is
-	// open on and everything it has to say for itself, and the level is read on the terrain it
-	// is a level of.
+	// Everything the open region has to say for itself bar its own name: the side standing on it,
+	// how far it has been taken and the fight to be had, the cut it sits inside, what the level
+	// under it is made of, and the way to look for a place that is not on it.
+	//
+	// Two things have left. The list of those places is a tab over the terrain (see
+	// RegionLocationList), because a list of places is about the map. The row that names the open
+	// place — and the radio playing for it — is the page's own top band (see RegionCurrentBadge),
+	// because it is about all three columns and not this one. So this column is the middle of what
+	// was one column: below the name, above the level.
 	//
 	// The shares row and the field stay here even though what they narrow and what they fill is
 	// over there: they are read with the place they are a division of, and the reader picking a
@@ -25,12 +24,10 @@
 	// exactly these rows. Not drawn here any more: the count alone is read, for the rule that
 	// says there is a level at all.
 	export let rows: RegionRow[] = [];
-	// The place the column is about, at the head of it with a rule under it: where the map is
-	// looking, which is a different kind of thing from the rows below and is what a reader
-	// looks for first. It stands whatever tier that place is — a town, which is one of the
-	// sisters listed under it, and every coarser region, which is not one of its own
-	// subdivisions — so the column always reads the same way round: this place, then the
-	// level under it.
+	// The place the column is about, though it is not the column that names it any more (see
+	// RegionCurrentBadge). Read for two things: whether there is a place at all, which decides
+	// whether the side and the standing are drawn, and which place it is, which is what puts a
+	// picked show back when the map opens somewhere else.
 	export let current: RegionRow | null = null;
 	// How the rows below divide between the shows they fly, tallied over exactly those rows
 	// by the caller (see ShowShareGrid). Empty draws the row anyway, since the way to search
@@ -43,10 +40,6 @@
 	export let searchQuery: string = '';
 	export let searchOpen: boolean = false;
 	export let classes: string = '';
-
-	// Picking one is picking a region, which is the map's own gesture and not this
-	// column's: the page answers it exactly as it answers a pin or a crumb.
-	const dispatch = createEventDispatcher<{ select: { key: string } }>();
 
 	// The show the level is being read through, picked off the shares row here. Bound out to the
 	// caller rather than held here alone, because the list it narrows is not in this column any
@@ -73,77 +66,25 @@
 		activeShow = null;
 	}
 
-	// The radio, read here for the one thing the head row has to decide: what its press does.
-	// The line itself reads the same store on its own (see MusicLine) — this is not the column
-	// holding a copy of the radio, it is the column asking whether there is one to press.
-	const music = musicService.state;
-
-	// A press on the head row: the radio's play/pause while there is a song, and otherwise the
-	// press that row has always had. That row is the place the map is already open on, so the
-	// press it gives up is the one with the least to give — opening what is open — and a row
-	// whose own second line is the song and the mark saying whether it is running is a row that
-	// reads as the thing to press. Without a song the line is the show again and so is the
-	// press, which is a map with no radio on it reading exactly as it did before there was one.
-	$: radioPlaying = $music.track ? $music.playing : null;
-	$: pressHead = (key: string) => {
-		if ($music.track) musicService.toggle();
-		else dispatch('select', { key });
-	};
 </script>
 
-<!-- White ink, as on the bar: a crumb letters what it flies in white at 70% and is drawn to
-	be read over the map's own surface, which is what this column is.
-	Each row is a block and not a flex box, so the crumb's own span fills the width and the
-	name truncates against it — the column is a fixed width, where the bar is as wide as the
-	map and collapses rather than cutting a name short.
+<!-- White ink, as on the band above and in the list beside: a crumb letters what it flies in
+	white at 70% and is drawn to be read over the map's own surface, which is what this column is.
 
-	This was two parts with a rule between them, the second of them a scrolling list of the
-	places under the open one; the list is a tab over the terrain now (see RegionLocationList),
-	so what is left is one block that says the place and hands over the two controls that act on
-	that list. It scrolls as a whole rather than pinning anything: there is no longer a run of
-	forty rows under it to push a head off the screen, and a town at the head of a phone's third
-	still has a side, a standing, a path and a shares row to get through. -->
+	It scrolls as a whole rather than pinning anything: there is no head left to pin — the name is
+	the page's top band now — and no run of forty rows to push one off the screen, but a town still
+	brings a side, a standing, a path and a shares row that together outrun a phone's third. -->
 <div
 	class={classNames('flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2 py-2 text-white', classes)}
 >
 	{#if current}
-		<!-- Where the map is, at the head of its own level and lettered as the bar letters the
-			step it is on — the same `current`, the same `aria-current`, since it is the same
-			statement about the same place.
-			Drawn by the very component the list of places is drawn with, box and all: the head is a
-			row like the rest, and a town at the head of this column is de festa or is not on the
-			same terms as a town listed over the map. `current` here is the row being the place the
-			map is on, which is what takes the fill.
-
-			Its second line is the radio: the song, behind the mark that says whether it is
-			running (MusicLine). That line was the show this place flies, and a station is a show —
-			the map tunes the radio to the open place's own (see musicService.follow) — so where
-			the two would have been written one under the other, the line says the more particular
-			of them and the show goes on being said by the tile at the head of the row. And the
-			whole row is that mark's press: it was the one press on this column with the least to
-			do, being the place the map is already open on, and a row lettered with a play mark and
-			a song is a row that reads as the thing to press. Without a song it is the show and the
-			press it always was (see pressHead).
-
-			So this row is the whole of the radio on the map. The play/pause stood under it on a
-			row of its own for a while, as a plain button beside the song — the same two things
-			said twice running, which is one radio too many in a column of places. -->
-		<RegionListRow
-			row={current}
-			current
-			boxWidth={REGION_ROW_BOX_WIDTH}
-			onSelect={pressHead}
-			pressLabel={radioPlaying === null ? null : musicPressLabel(radioPlaying)}
-		>
-			<svelte:fragment slot="line">
-				<MusicLine showName={current.showName} />
-			</svelte:fragment>
-		</RegionListRow>
-
-		<!-- Whatever else the place at the head has to say for itself: the caller's, because what
+		<!-- What the place the page is headed by has to say for itself: the caller's, because what
 			a place carries depends on what kind of place it is — a town has a side standing on it,
-			an occupant and a fight to be had, and nothing coarser has any of those. Above the rule,
-			so it reads as more about that place and never as the beginning of something else. -->
+			an occupant and a fight to be had, and nothing coarser has any of those. The row that
+			names that place is not here any more — it is the page's own top band (see
+			RegionCurrentBadge) — so this column opens on the side rather than on the name, which is
+			what it was always saying second. Above the rule, so it reads as more about that place
+			and never as the beginning of something else. -->
 		<slot name="detail" />
 
 		<!-- How far the place at the head has been taken and the one control that acts on it,
@@ -155,10 +96,10 @@
 			such thing to say, which costs the column a row of nothing. -->
 		<slot name="standing" />
 
-		<!-- The rule that says the rest of this column is a different thing from the row above it:
-			not more about the place, but about what is around and under it. Drawn only when there
-			is a level to divide off — a rule over nothing would be the column claiming to have more
-			to say than it has. -->
+		<!-- The rule that says the rest of this column is a different thing from what stands above
+			it: not the place itself, but what is around and under it. Drawn only when there is a
+			level to divide off — a rule over nothing would be the column claiming to have more to
+			say than it has. -->
 		{#if rows.length}
 			<div class="divider my-0"></div>
 		{/if}

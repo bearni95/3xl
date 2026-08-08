@@ -29,9 +29,10 @@ export const REGION_TYPE_KEYS: Record<RegionType, string> = {
  * standing on that town. Only a town ever has one: nothing coarser than a municipality is de
  * festa.
  *
- * Here rather than in either component because the head of the open region (RegionSubdivisions)
- * and the list of places (RegionLocationList) now stand in two different columns of the page,
- * and a place has to be the same thing in both: they letter the same rows off the same `crumbRow`.
+ * Here rather than in one component because three surfaces draw a place this way and they stand
+ * in three different boxes of the page: the band across the top (RegionCurrentBadge), the list of
+ * places over the map (RegionLocationList), and the crumbs in the column between them. A place has
+ * to be the same thing in all of them — they letter the same rows off the same `crumbRow`.
  */
 export type RegionRow = {
 	key: string;

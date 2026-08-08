@@ -1,7 +1,7 @@
 <script context="module" lang="ts">
 	// What pressing the mark is called, wherever the mark is drawn — the button on the menu's
-	// plate, and the row of the column beside the map that is itself the press (see MusicToggle,
-	// MusicLine, RegionSubdivisions). One radio, so one name for the press: two names would be
+	// plate, and the band across the top of the page that is itself the press (see MusicToggle,
+	// MusicLine, RegionCurrentBadge). One radio, so one name for the press: two names would be
 	// two controls to anyone who reaches them by their names.
 	export const musicPressLabel = (playing: boolean) => (playing ? 'Pause music' : 'Play music');
 </script>

@@ -30,15 +30,16 @@
 	// is where a reader looks first, not somewhere they have to find anything.
 	export let marked: boolean = false;
 	export let onSelect: (key: string) => void;
-	// What the press does, when it is not opening the place. One row asks for this — the head of
-	// the column, which is the place the map is already open on and so had the least to gain
-	// from a press that opens it: it is the radio's play/pause now (see RegionSubdivisions).
+	// What the press does, when it is not opening the place. One row asks for this — the band
+	// across the top of the page, which is the place the map is already open on and so had the
+	// least to gain from a press that opens it: it is the radio's play/pause now (see
+	// RegionCurrentBadge).
 	// Given as a name for it rather than as a flag, because the only thing this row has to know
 	// about a press it does not define is what to call it: the row's own text names a place and
 	// a song, and neither of those says what pressing it does.
 	export let pressLabel: string | null = null;
 	// The width the box is drawn at, which is how its height is said — the caller's, since it
-	// is a fact about the column and not about the row (see RegionSubdivisions' BOX_WIDTH).
+	// is a fact about the run of rows and not about one of them (see REGION_ROW_BOX_WIDTH).
 	export let boxWidth: string = '';
 
 	// Two presses on one row: the name, which opens the place, and the box, which opens what

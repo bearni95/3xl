@@ -15,7 +15,7 @@
 	// row's own tile, which is where this map says a show first.
 	//
 	// The row it stands on is the press (see RegionListRow's `pressLabel` and
-	// RegionSubdivisions), so this draws no button of its own — a button does not hold a button.
+	// RegionCurrentBadge), so this draws no button of its own — a button does not hold a button.
 	// The glyph is the same one the standalone control wears and turns over on the same store,
 	// so the triangle and the two bars are never two different answers about one radio.
 	//

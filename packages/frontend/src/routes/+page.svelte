@@ -11,6 +11,7 @@
 	import PlayerPanel from '$components/core/PlayerPanel.svelte';
 	import WorldMap from '$components/core/WorldMap.svelte';
 	import MapBreadcrumbs from '$components/core/MapBreadcrumbs.svelte';
+	import RegionCurrentBadge from '$components/core/RegionCurrentBadge.svelte';
 	import RegionLocationList from '$components/core/RegionLocationList.svelte';
 	import RegionSubdivisions from '$components/core/RegionSubdivisions.svelte';
 	import SocialLinks from '$components/core/SocialLinks.svelte';
@@ -164,8 +165,8 @@
 	const TOP_VIEW_KEY = 'paisos-catalans';
 	// What that view is called. Not in the catalogue: it is the name of the place this whole
 	// map is of, which is the same word in the one language the game is written in. It is
-	// said in two places — the head of the crumb bar and the head of the column beside the
-	// map — and they are the same step, so it is written once.
+	// said in two places — the head of the crumb bar and the band across the top of the page —
+	// and they are the same step, so it is written once.
 	const TOP_VIEW_LABEL = 'Països Catalans';
 
 	// What the URL says is open.
@@ -867,8 +868,8 @@
 	// The drill path down to (and including) the open region was worked out here — the URL
 	// path when a region is clicked, else the zoom focus path minus its frontier pin — for the
 	// bar of crumbs that stood over the map. There is no such bar: the one path this page
-	// letters is the cut ABOVE the open region, at the head of the column beside the map (see
-	// `abovePath`), and that one is walked off the node rather than off the view.
+	// letters is the cut ABOVE the open region, in the column beside the map (see `abovePath`),
+	// and that one is walked off the node rather than off the view.
 
 	// Which of the map column's two tabs is up: the terrain, or the list of the places the open
 	// region divides into (see RegionLocationList). The map is the default and stays the default
@@ -1024,7 +1025,7 @@
 	$: openShow = openNode?.show ?? null;
 
 	// The radio follows the map. Which show the place on screen flies is a statement this
-	// page already makes everywhere — on the pin, in the crumb, at the head of the column —
+	// page already makes everywhere — on the pin, in the crumb, on the band at the top —
 	// and a station is a show, so the one thing left to do with it is play it: while the
 	// radio is on, the dial goes to whatever the map is open on, and the reader who drills
 	// from a territory into a comarca into a town hears each of them in turn. Crossfaded,
@@ -1037,7 +1038,7 @@
 	// different places flying the same show are not a reason to touch the dial.
 	$: musicService.follow(openShow?.id ?? mapPlurality.show?.id ?? null);
 
-	/** One region as the bar letters it — the spelling the column's head and its rows share. */
+	/** One region as the bar letters it — the spelling the page's band and the list share. */
 	function crumbRow(node: RegionNode) {
 		return {
 			key: node.key,
@@ -1048,22 +1049,22 @@
 		};
 	}
 
-	// The place the column beside the map is about: the region the map is open on, at any
-	// tier. It stands at the head of the column above the level under it, so where you are is
-	// the first thing on the plate rather than something to be found among the places inside
-	// it — and a town, which is one of its own sisters, is both stood up here and left where it
-	// falls in the list, marked there (see subdivisionNodes).
+	// The place the whole page is about: the region the map is open on, at any tier. It stands
+	// on the band across the top of the page, above the three columns and before all else, so
+	// where you are is the first thing read rather than something to be found among the places
+	// inside it — and a town, which is one of its own sisters, is both stood up there and left
+	// where it falls in the list, marked there (see subdivisionNodes).
 	//
 	// With the box that place has waiting where the window has one for it, off the same
-	// `festaBoxById` a row below and a pin on the terrain are handed: the head is a row of this
-	// column like the rest of them, and a box is part of what a row of it says. Only a
+	// `festaBoxById` a row of the list and a pin on the terrain are handed: the band is a row
+	// like the rest of them, and a box is part of what a row says. Only a
 	// municipality is ever found in there — a festa's id is a municipality feature id — so the
 	// tiers above take nothing, and neither does the top view, whose key is no node's.
 	//
 	// The top view is a place like any other here: it is where the map is when nothing is
 	// open, it is a selection with a key of its own (see TOP_VIEW_KEY), and the bar already
-	// letters it with the plurality of every town on the map. So the column's head is never
-	// empty, whatever the map is looking at.
+	// letters it with the plurality of every town on the map. So the band is never empty,
+	// whatever the map is looking at.
 	$: subdivisionCurrent = openNode
 		? { ...crumbRow(openNode), box: festaBoxById.get(openNode.key) ?? null }
 		: {
@@ -1166,7 +1167,7 @@
 	//
 	// Towns only, because a pin's team, holder and standing are a town's alone (see
 	// buildMarkers) and a coarser region's mark is its plate by itself, which is the crumb row
-	// already standing at the head of the column. And a town with no show has no pin at all —
+	// already standing on the band at the top of the page. And a town with no show has no pin —
 	// buildMarkers skips it — so the column says nothing extra about it either.
 	$: townPin =
 		openNode?.type === 'Municipality'
@@ -1188,10 +1189,10 @@
 	// (What the town has waiting is on the pin itself now, like everything else it carries —
 	// see `box` in buildMarkers.)
 
-	// The standing on the picked town, lifted off that very pin and stood at the end of the
-	// row that names it (see RegionSubdivisions' `standing` slot): how far it has been taken
-	// and the control that acts on it, which is what a reader wants beside the name of the
-	// place rather than a block further down the column. Off the pin and not off
+	// The standing on the picked town, lifted off that very pin and stood under the side holding
+	// it (see RegionSubdivisions' `standing` slot): how far it has been taken and the control
+	// that acts on it, which is what a reader wants near the top of the column rather than a
+	// block further down it. Off the pin and not off
 	// `townChallenge`, so the column and the map cannot come to say two things about one town
 	// — the pin is where that decision is already made (see buildMarkers).
 	$: townStanding = townPin?.challenge ?? null;
@@ -2740,602 +2741,634 @@
 	//   open is a press with nothing to do.
 </script>
 
-<!-- The page is a three-column grid, and the three are the three things this game is made of:
-	the terrain, the list of places, and the furniture. In that order, left to right, each an
-	equal third of the viewport.
+<!-- The page is a band and a grid under it: the place the map is open on across the top, and the
+	three columns this game is made of below.
 
-	The third of them used to be drawn ON the first — the badge, the radar and the marks along
-	the map's top edge, the side and the account at its foot, all absolutely positioned over the
-	canvas with the pointer switched off between them and the map told (in pixels) which band of
-	itself was spoken for. It is a column now: in flow, positioned relatively, sized by the grid
-	like its neighbours, and nothing at all is layered over the terrain. That is what takes the
-	`pointer-events-none`/`-auto` pairs, the `z-[900]`s that had to clear Leaflet's own panes, and
-	the measured `chromeInsets` out of this page in one go — none of them were about what the
-	furniture says, only about it standing somewhere it did not belong.
-
-	Below `md` the three fold into one column and stand one after the other, top to bottom in the
-	same order: the map, the places, the furniture — a third of the viewport's HEIGHT each, where
-	from `md` up they take a third of its width each. So the phone's arrangement is the desktop's
-	turned on its side, in the strict sense: the same three boxes, the same three shares, the axis
-	swapped. The page itself never scrolls at either width (`h-screen`, `overflow-hidden`); each of
-	the three scrolls inside its own third, which is why every one of them carries `min-h-0`.
-
-	`grid-rows-3` and not three `33vh`s: `minmax(0, 1fr)` of a viewport-tall container IS a third
-	of the viewport, and it is a third that stays exact — three hand-written 33vh rows come to 99
-	and leave a strip of nothing under the last of them.
-
-	`divide-y-2 divide-primary` is the line between one third and the next. Written on the grid
-	rather than as a border on each box because a separator belongs to the pair it separates and
-	not to either side of it: the rule is `> :not(:last-child)`, so it draws between whatever
-	children are actually mounted and never under the last of them — and the list of places
-	unmounts whenever a full view is up (see below), so a border hung on the map's own bottom edge
-	would be a line with nothing under it. Off from `md` up, where the three stand side by side
-	and what separates them is the grid. -->
-<div
-	class="grid h-screen grid-cols-1 grid-rows-3 divide-y-2 divide-primary overflow-hidden md:grid-cols-3 md:grid-rows-1 md:divide-y-0"
->
-	<!-- The map: the first row of the phone's column, the first column of the desktop's row.
-		Nothing else sizes it — raising a view over it leaves its box alone, so the map is never
-		re-framed by anything but a pan, a zoom or a region being opened. `relative` is kept for
-		the spotlight and anything else Leaflet positions inside it; no chrome of this page's is
-		positioned against it any more.
-		Placed by name at both widths (`row-start-1` / `md:col-start-1`) rather than left to the
-		order things are mounted in: the list of places beside it comes and goes with the full-view
-		sheets, and a grid that filled the gap would walk the map into the hole.
-
-		Two things stand in this column now, and only one of them at a time: the terrain, and the
-		list of the places the open region divides into (see RegionLocationList, and mapTab). The
-		list was the scrolling half of the column beside this one and is a tab over the terrain
-		because it is *about* the terrain — the level the map is looking at, named — where the
-		column beside it says the one place it is open on. Everything else that column holds stays
-		where it is: the head row, the side on the town, the standing, the path, the shares and the
-		field, and the author's marks at its foot. -->
-	<div
-		class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-start-1 md:row-start-1"
-	>
-		{#if ready}
-			<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
-				the credits sheet does it (see CreditsModal): which of the two is up is local state
-				rather than an `aria-controls` target.
-				Blurred away with the rest of the map's furniture while a full view is up — a strip of
-				tabs read sharply beside a sheet is chrome competing with the thing it was covered by
-				— but the tabs go and the panels do not: unmounting the terrain to raise the roster
-				would be a fresh Leaflet on the way back. Only the row that switches them leaves. -->
-			{#if !$fullScreenModalOpen}
-				<div
-					transition:blur={CHROME_BLUR}
-					role="tablist"
-					class="tabs-boxed tabs flex-none justify-start"
-				>
-					<button
-						type="button"
-						role="tab"
-						aria-selected={mapTab === 'map'}
-						class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'map' })}
-						on:click={() => (mapTab = 'map')}
-					>
-						{$_('map.tabs.map')}
-					</button>
-					<button
-						type="button"
-						role="tab"
-						aria-selected={mapTab === 'places'}
-						class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'places' })}
-						on:click={() => (mapTab = 'places')}
-					>
-						{$_('map.tabs.places')}
-					</button>
-				</div>
-			{/if}
-
-			<!-- The panel the two tabs share, and the map is never taken out of it: the list is laid
-				over the terrain rather than swapped with it, so the map's box is the same box at every
-				moment and Leaflet is never told the column resized. An `{:else}` here would be a fresh
-				map on every trip back to the first tab — a new WebGL-less canvas, a new set of tiles,
-				and the reader's pan and zoom lost to a tab press. So both are absolutely placed inside
-				this box, the map always and the list only while it is picked, and the list carries the
-				page's own surface so the terrain does not read through it. -->
-			<div class="relative min-h-0 flex-1">
-				<div class="absolute inset-0 flex flex-col">
-					<WorldMap
-						center={[41.8, 1.7]}
-						zoom={8}
-						minZoom={7}
-						{overlays}
-						{markerLevels}
-						{pickedMarker}
-						{hiddenLineUrls}
-						{pulse}
-						{focusBounds}
-						{zoomBounds}
-						{zoomStops}
-						{spotlight}
-						markersBlurred={$fullScreenModalOpen}
-						bind:currentZoom
-						bind:activeLevel
-						bind:currentCenter
-						classes="min-h-0 flex-1"
-					/>
-				</div>
-
-				<!-- The level the map is open on, listed. Handed the same rows the shares beside it are
-					tallied over, the same matches the field beside it turns up, and the show that row
-					has picked — the press is over there with the division it is read off, the hiding is
-					here with the rows it hides. Picking one is the map's own gesture: `openFromColumn`,
-					exactly as a pin or a crumb. -->
-				{#if mapTab === 'places'}
-					<div class="absolute inset-0 flex flex-col bg-base-100">
-						<RegionLocationList
-							classes="min-h-0 flex-1"
-							rows={subdivisions}
-							current={subdivisionCurrent}
-							{searchRows}
-							{searchQuery}
-							{activeShow}
-							on:select={(event) => openFromColumn(event.detail.key)}
-						/>
-					</div>
-				{/if}
-			</div>
-		{:else}
-			<div class="flex min-h-0 flex-1 items-center justify-center">
-				<span class="loading loading-spinner loading-lg"></span>
-			</div>
-		{/if}
-	</div>
-
-	<!-- The open region, the second column: a third of the row, and everything the place the map
-		is looking at has to say for itself — its name and the show it flies, the side standing on
-		it, how far it has been taken and the fight to be had for it, the cut it sits inside, what
-		the level under it is made of and the way to look for a place that is not on it.
-		What the level under it *is* — the list of those places — stood at the foot of this column
-		for a long time and is a tab over the terrain now (see the map column above): a list of
-		places is about the map, and this column is about one place. What is left still scrolls on
-		its own, since a town brings a side, a standing and a path with it.
-		Gone while a full view is up, and back when that view goes: this column is the map's
-		furniture like the marks beside it and the pins on it, and a list of towns read sharply
-		beside a sheet is chrome competing with the thing it was covered by. It blurs away
-		exactly as they do, on the same 8px over the same 250ms (see CHROME_BLUR), and then leaves
-		the grid — the column it stood in stays where it is, because every column here is placed
-		by name (`md:col-start-*`) rather than by the order things happen to be mounted in, so a
-		sheet going up cannot slide the furniture over into the gap. Leaflet is told nothing about
-		it: the map watches its own container and re-projects when it changes size (see WorldMap's
-		ResizeObserver). The column is unmounted rather than merely blurred because a strip of
-		nothing at the side of a full view is the sheet standing on the map, which is what it is. -->
+	The page never scrolls (`h-screen`, `overflow-hidden`) and the band takes only the height of
+	its one row (`flex-none`), so what the grid divides is whatever is left — which is why it is a
+	flex column with `min-h-0 flex-1` on the grid rather than the grid being the page. -->
+<div class="flex h-screen flex-col overflow-hidden">
+	<!-- Where the map is, and the radio playing for it: one row, and the page's first thing. It
+		was the head of the middle column, over everything else that column had to say about the
+		open place — which is a row about all three columns filed under one of them. It names the
+		place the terrain is framed on, the place the list beside it divides, and the place the
+		furniture's own side would be fought for, so it stands above the lot and reads once.
+		The whole width, and its own rule under it: what separates a row from what is under it
+		belongs to neither, and the rule stands at both widths because the fold below it changes
+		the columns' axis and not this band's.
+		Blurred away with the rest of the map's furniture while a full view is up, on the same 8px
+		over the same 250ms (see CHROME_BLUR) — a sheet is a place of its own and the band names
+		the one it was raised from. -->
 	{#if !$fullScreenModalOpen}
-		<!-- What is said about the open place scrolls, and the row of social marks at the foot does
-			not: it is the one thing here that is not about that place, and a row that has to be
-			reached past everything said about a town is a row nobody finds. So what this hands the
-			column is a height rather than a scrollbar: everything between the top of the aside and
-			the marks at its foot. -->
-		<!-- A box of the grid at every width, and the same box: the middle third of the phone's
-			column, the middle column of the desktop's row. It was two arrangements of this one
-			element for a while — a 400px side of the row on a desktop, and on a phone a fixed panel
-			over the whole viewport, parked a screen-width off the right edge and slid in by a
-			burger at the far end of the map's top bar. The page is a grid now and the grid folds,
-			so the phone gets this where the fold puts it rather than as a second way of asking for
-			it; the burger, the ✕ that pushed the panel back off, the `inert` that kept a keyboard
-			out of it while it was parked and the transform it slid on all went with the arrangement
-			they belonged to.
-			`min-h-0` at both widths, and it is what makes the third a third: what is inside scrolls
-			(see RegionSubdivisions), and a flex column that may not shrink below its content is a
-			box that simply grows past the track it was given. -->
-		<aside
-			transition:blur={CHROME_BLUR}
-			class="row-start-2 flex min-h-0 min-w-0 flex-col bg-base-100 md:col-start-2 md:row-start-1"
-		>
-			<!-- `rows` is still handed over though nothing here lists them: the count alone decides
-				whether there is a rule under the head, and the shares row is tallied over exactly
-				those rows by this page. `activeShow` is bound because the press that picks a show is
-				on that shares row and the rows it hides are in the tab over the map — this page is
-				the one thing the two have in common. -->
-			<RegionSubdivisions
-				classes="min-h-0 flex-1"
-				rows={subdivisions}
-				current={subdivisionCurrent}
-				shares={subdivisionShares}
-				bind:activeShow
-				bind:searchQuery
-				bind:searchOpen
+		<div transition:blur={CHROME_BLUR} class="flex-none border-b-2 border-primary bg-base-100">
+			<RegionCurrentBadge
+				row={subdivisionCurrent}
 				on:select={(event) => openFromColumn(event.detail.key)}
-			>
-				<!-- The town's own pin, stood in the column under the row that names it: the side
-					holding it, whose it is, how far it has been taken, the way to fight for it and the
-					pack it has waiting — the same mark the map is drawing on that town at this very
-					moment, from the same data (see townPin). Only a town has one.
-					Unnamed, because the row this hangs under is the town's name: the column's head
-					says the place, its tile and the show it flies, and the plate saying all three
-					again a row later stood between the side on the town and how far it has been
-					taken, reading as a stray row in the middle of the one thing. What the plate is
-					here for is the rest of it (see TownPlate's `named`). -->
-				<!-- The row under the one that names the town: how far it has been taken and the way
-					to fight for it, the two of them stacked as TownChallenge already stacks them. No
-					width said here any more — the row is the column's own width, which is what makes
-					the bar a band across the head rather than a block hung off the end of a name. -->
-				<svelte:fragment slot="standing">
-					{#if townStanding}
-						<TownChallenge
-							siege={townStanding.siege}
-							button={townStanding.button}
-							unlocksAt={townStanding.unlocksAt}
-							onUnlock={townStanding.onUnlock}
-						/>
-					{/if}
-				</svelte:fragment>
-
-				<!-- Still no box on the pin here: the town's box is drawn on the head row itself now,
-					beside the name, exactly as it is on every row below (see subdivisionCurrent). It
-					was left off the head altogether for a while, on the ground that the box was
-					already up on the terrain beside this column — but the column is read as a
-					column, and a row that alone among them says nothing about its festa reads as a
-					town that has none. -->
-				<!-- `alwaysReveal`: the three standing here arrive every time the column comes to
-					hold a different side, whatever the session has already watched. It is the one
-					place on the map that spends a reveal on a repeat — the corner does not, since a
-					side that re-framed itself as the map moved would flicker — and it spends one
-					because this row *is* the answer to picking a town: the reader has just asked who
-					holds this place, and the three of them walking in is that answer being given.
-					The remount that makes all three do it together is the pin's (see TownPin's
-					`sideKey`); this only says the reveal is worth having. -->
-				<svelte:fragment slot="detail">
-					{#if townDetailPin}
-						<TownPin marker={townDetailPin} named={false} alwaysReveal classes="py-1" />
-					{/if}
-				</svelte:fragment>
-
-				<!-- Where the place at the head of this column is, said as the path down to what it
-					sits inside: the same bar that stands over the map, given the cut above the open
-					region rather than the path down to it (see abovePath). The head has already named
-					the place, so the badge on this bar is its parent — the Països Catalans over
-					Catalunya, and never Catalunya over itself. Nothing at all at the top view, which
-					is the one place with nothing above it.
-					Folded outright and not merely when the room runs out: this bar is a heading over a
-					list of places, and a row of five crumbs standing over a column of places is a
-					second column of places — so it is the dots and the one badge, at every width. The
-					rest of the path is where the dots always put it, in the column they drop. Pressed
-					for what the bar over the map is pressed for: a step opens its region, an empty
-					rung takes the map to that tier's zoom. -->
-				<svelte:fragment slot="path">
-					{#if aboveCrumbs}
-						<MapBreadcrumbs crumbs={aboveCrumbs} onSelect={open} onZoom={zoomToTier} folded />
-					{/if}
-				</svelte:fragment>
-			</RegionSubdivisions>
-
-			<!-- Where the author is, at the foot of the column: the one row here that names
-				something outside the game. `flex-none` because a third of a phone's height is not
-				much: without it this row is the first thing the column takes back when the list
-				above it wants room, and the marks squash instead of the list scrolling. -->
-			<SocialLinks classes="flex-none" />
-		</aside>
+			/>
+		</div>
 	{/if}
 
-	<!-- The furniture: the last third of the phone's column, the third column of the desktop's
-		row. Everything that used to be drawn over the map, now standing beside it. It keeps the
-		shape it had on the terrain — the badge and its marks at the head, the side and the account
-		at the foot — because that shape was never about the map being underneath: what the game is
-		called and what it can be asked belong at the top of a column, and who is playing belongs
-		at the bottom of one. `mt-auto` on the second block is what holds them apart, which is the
-		one thing `top-3` and `bottom-3` were doing that a column still has to do for itself.
-		It scrolls inside its own third at both widths, the way the list of places does: three
-		statues and a plate under a row of marks is taller than a third of a phone, and taller than
-		some viewports outright.
-		Inside `{#if ready}` like the map it came off: the side standing here is rolled against
-		the town names the polygons carry, and a statue drawn before those land says Ultramar at
-		a town whose name is still on its way (see claimPlaceName). -->
+	<!-- The three columns, and the three are the three things this game is made of:
+		the terrain, the list of places, and the furniture. In that order, left to right, each an
+		equal third of what the band above has left.
+
+		The third of them used to be drawn ON the first — the badge, the radar and the marks along
+		the map's top edge, the side and the account at its foot, all absolutely positioned over the
+		canvas with the pointer switched off between them and the map told (in pixels) which band of
+		itself was spoken for. It is a column now: in flow, positioned relatively, sized by the grid
+		like its neighbours, and nothing at all is layered over the terrain. That is what takes the
+		`pointer-events-none`/`-auto` pairs, the `z-[900]`s that had to clear Leaflet's own panes, and
+		the measured `chromeInsets` out of this page in one go — none of them were about what the
+		furniture says, only about it standing somewhere it did not belong.
+
+		Below `md` the three fold into one column and stand one after the other, top to bottom in the
+		same order: the map, the places, the furniture — a third of the HEIGHT each, where from `md` up
+		they take a third of the width each. So the phone's arrangement is the desktop's turned on its
+		side, in the strict sense: the same three boxes, the same three shares, the axis swapped. The
+		page itself never scrolls at either width (see the wrapper above); each of the three scrolls
+		inside its own third, which is why every one of them carries `min-h-0`.
+
+		`grid-rows-3` and not three `33vh`s: `minmax(0, 1fr)` of a box given a height IS a third of it,
+		and it is a third that stays exact — three hand-written 33vh rows come to 99 and leave a strip
+		of nothing under the last of them. And they are a third of what the band above has left rather
+		than of the viewport, which is the whole reason the height is handed down by a flex parent and
+		not written here.
+
+		`divide-y-2 divide-primary` is the line between one third and the next. Written on the grid
+		rather than as a border on each box because a separator belongs to the pair it separates and
+		not to either side of it: the rule is `> :not(:last-child)`, so it draws between whatever
+		children are actually mounted and never under the last of them — and the list of places
+		unmounts whenever a full view is up (see below), so a border hung on the map's own bottom edge
+		would be a line with nothing under it. Off from `md` up, where the three stand side by side
+		and what separates them is the grid. -->
 	<div
-		class="row-start-3 flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto p-3 md:col-start-3 md:row-start-1"
+		class="grid min-h-0 flex-1 grid-cols-1 grid-rows-3 divide-y-2 divide-primary md:grid-cols-3 md:grid-rows-1 md:divide-y-0"
 	>
-		{#if ready}
-			<!-- The head of the furniture column: the game's own badge and the marks beside it. It
-				was a band across the map's top edge for a long time — absolutely positioned over the
-				canvas, inset on the three sides it touched, its own height measured off the DOM and
-				handed to the map so the pins would be dealt clear of it, its pointer events off
-				everywhere the plates did not themselves cover, and a z-index picked to clear
-				Leaflet's panes (overlays 400-600, controls 800) without reaching the arena's 1200.
-				None of that was ever about the marks: it was the cost of standing them on something.
-				In a column of its own the block is a block, and every one of those goes.
-				The music player stood in here too, in the left corner, then on the bar itself as one
-				of its cards, then at the foot of the map beside the account it plays for: a bar is a
-				path and a path is read across, so a card at the end of it took room the path needs,
-				and a card in the corner was a second place naming a show. The radio is on the head
-				of the list of places now — the row that says which place the map is open on, which
-				is the place it is playing for (see RegionSubdivisions) — and the plate in the
-				menu is the same radio said again where a menu can say it. -->
-			<div class="flex flex-col gap-2">
-				<!-- The row itself, and it is no longer about where the map is looking: it said that
-					for a long time, as a bar of crumbs across the top, and the list of places beside it
-					says it now — the open place at the head of that column and the path to what that
-					place sits inside on the bar under (see the `path` slot below). Two other things
-					left this row the same way and for the same reason: the location search, which was
-					a looking glass at its far end that unfolded into a field with its matches on a
-					plate at the corner underneath, and is a cell of that column's shares row answering
-					in that column's own rows; and the path itself. Looking for a place and naming a
-					place are both asking about a list of places, and the column is where this map lists
-					places.
+		<!-- The map: the first row of the phone's column, the first column of the desktop's row.
+			Nothing else sizes it — raising a view over it leaves its box alone, so the map is never
+			re-framed by anything but a pan, a zoom or a region being opened. `relative` is kept for
+			the spotlight and anything else Leaflet positions inside it; no chrome of this page's is
+			positioned against it any more.
+			Placed by name at both widths (`row-start-1` / `md:col-start-1`) rather than left to the
+			order things are mounted in: the list of places beside it comes and goes with the full-view
+			sheets, and a grid that filled the gap would walk the map into the hole.
 
-					Out of focus while a full view is up, and back into it when that view goes (see
-					CHROME_BLUR). The wrapper is what the transition needs — a transition cannot be put
-					on a component — and also the row the plates stand in, so they go and come back as
-					one thing rather than blurring apart. Unmounting them is what lets the way out play
-					at all, and costs nothing: what they draw is read off the stores every time. -->
+			Two things stand in this column now, and only one of them at a time: the terrain, and the
+			list of the places the open region divides into (see RegionLocationList, and mapTab). The
+			list was the scrolling half of the column beside this one and is a tab over the terrain
+			because it is *about* the terrain — the level the map is looking at, named — where the
+			column beside it says the one place it is open on. Everything else that column holds stays
+			where it is: the head row, the side on the town, the standing, the path, the shares and the
+			field, and the author's marks at its foot. -->
+		<div
+			class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-start-1 md:row-start-1"
+		>
+			{#if ready}
+				<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
+					the credits sheet does it (see CreditsModal): which of the two is up is local state
+					rather than an `aria-controls` target.
+					Blurred away with the rest of the map's furniture while a full view is up — a strip of
+					tabs read sharply beside a sheet is chrome competing with the thing it was covered by
+					— but the tabs go and the panels do not: unmounting the terrain to raise the roster
+					would be a fresh Leaflet on the way back. Only the row that switches them leaves. -->
 				{#if !$fullScreenModalOpen}
-					<!-- The top row: the badge and the radar at the near end, the marks that answer for
-						the game at the far end, and space between them. It was one bar with the word
-						standing inside a path, which made the game's name a step of that path; then two
-						plates with the path filling the middle; then a band across the map with the terrain
-						read through the gap. The path is in the list of places now, so what is left is the
-						things that are about the game rather than about where in it you are — and the gap
-						between the two ends is just a gap, this row being a row of a column rather than a
-						strip laid over anything.
-
-						`items-stretch` is what makes them the same height: the marks at the far end are
-						32px buttons where the badge holds one word, and stretching means the word's plate
-						takes whatever height that comes to rather than a number written here that would
-						have to be kept in step with it. -->
-					<div transition:blur={CHROME_BLUR} class="flex items-stretch gap-2">
-						<!-- What it says and what size it is set at are two different things: the word is
-							"6xl" and the type is `2xl`, one flat size at every viewport rather than a ramp.
-							`items-center` centres it in whatever height the row hands this plate (see above);
-							`leading-none` so what is centred is the type's own height and not a line box built
-							for a paragraph. `font-display` is Bungee, the app's one departure from Genos, and
-							it is the token and not the family that is named here (see the `@theme` block in
-							css/app.css). -->
-						<!-- The plate itself is where the two bars stop being the same chrome: the crumbs'
-							is the panel's surface at 80%, so terrain reads through the path, and this one is
-							the theme's primary at full strength. A path is a thing being looked through to
-							the map under it; a name is not, and there is nothing behind this plate worth
-							seeing.
-
-							The same badge is the tab's mark (see static/favicon.ico and the link in
-							app.html), and it is drawn differently there on purpose: an icon is a square with
-							room round the word, because that is the box a browser gives it. This is a bar in
-							a row of bars — as tall as the path beside it, as wide as the word makes it, and
-							inset by the row's own `px-3`. Neither shape should be made to answer for the
-							other. -->
-						<!-- The badge was the tab a column of views dropped from — the player's cards and
-							the album, a row each, up while the pointer was on it — and, on a phone, the handle
-							that pulled the list of places down over the map. It is neither now: the views are
-							sheets raised from the marks at the far end of this row, and the list of places is a
-							column of the page at every width (see the grid). So the plate is only the plate —
-							nothing hangs off it and nothing is asked about the pointer — and it is a `<div>` at
-							every width. It stretches to the row's height on its own, being a `flex-none` child
-							of an `items-stretch` row. -->
-						<div
-							class="flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
-						>
-							<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
-								down and right, and the word itself over it. A shadow drawn as a copy rather
-								than as a `text-shadow`, because a shadow the thickness of this face wants to be
-								the face — one solid displaced impression of it, with no blur and no spread,
-								which is what a second copy of the glyphs is and what a shadow utility, spelling
-								a colour and a radius, is not.
-								Both copies are positioned, so the one later in the document paints over the
-								other without a z-index: an absolute box would otherwise sit above in-flow type
-								whatever order it is written in, and sending it under with a negative z-index
-								would send it under the plate's own fill as well, there being no stacking
-								context between them. The copy in flow is the one that gives the box its size;
-								`aria-hidden` on the other, since a reader hearing "6xl 6xl" is being told about
-								a shadow. -->
-							<span class="relative font-display text-2xl leading-none">
-								<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true"
-									>6xl</span
-								>
-								<span class="relative">6xl</span>
-							</span>
-						</div>
-
-						<!-- The radar, at the near end of the row and right beside the badge. The map
-							carries days of festes at once and no marks to find them by, so the boxes waiting
-							out there are found by panning across the country looking for one — which is a
-							search, and this is the button that does it: press it and the map opens the
-							nearest town whose box is still unopened (see findNearestBox). It stands at every
-							width, because a box is as hard to come across on a desktop as on a phone.
-							It stood at the far end for a while, last of the block the question mark pushes
-							over. It is here now because it is the one mark on this row that moves the map:
-							the badge says what this is and the radar says where to go next, which is one
-							statement about the country read left to right — where the far end's marks are
-							all about the game rather than about the terrain under them.
-							No `ml-auto` on this one: it is a `flex-none` child at the head of the row, and
-							the far end is still pushed over as a block by the first mark of that end.
-							The same square in the plate's own fill as the marks at the other end, drawn to
-							the row's height (`self-stretch aspect-square`), with a white game-icons glyph
-							that needs no colour of its own on the primary.
-							Disabled when there is nothing left to point at — every box in the window opened,
-							or none loaded yet — because a radar that answers "here" or answers nothing is a
-							press with no destination. -->
+					<div
+						transition:blur={CHROME_BLUR}
+						role="tablist"
+						class="tabs-boxed tabs flex-none justify-start"
+					>
 						<button
 							type="button"
-							class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
-							aria-label={$_('map.radar.nearest')}
-							disabled={!radarTarget}
-							on:click={findNearestBox}
+							role="tab"
+							aria-selected={mapTab === 'map'}
+							class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'map' })}
+							on:click={() => (mapTab = 'map')}
 						>
-							<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
+							{$_('map.tabs.map')}
 						</button>
-
-						<!-- What the game gets asked, at the head of the row's far end, at every width —
-							a question is as worth answering on a desktop as on a phone. The `ml-auto`
-							that pushes that end over is on this one, being the first mark of it: the
-							block is this and the credits, set apart by the row's own `gap-2` and moved
-							as one.
-							The same square in the plate's own fill as the two beside it, drawn to the
-							row's height (`self-stretch aspect-square`), with a white game-icons glyph
-							that needs no colour of its own on the primary. -->
 						<button
 							type="button"
-							class="ml-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
-							aria-label={$_('faq.open')}
-							on:click={openFaq}
+							role="tab"
+							aria-selected={mapTab === 'places'}
+							class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'places' })}
+							on:click={() => (mapTab = 'places')}
 						>
-							<img src="/assets/icons/sbed/help.svg" class="size-6" alt="" />
+							{$_('map.tabs.places')}
 						</button>
-
-						<!-- Who drew the fighters, next along. It stands beside the questions because it
-							answers one of the same kind — where all this came from — and because the
-							people who made these sprites are named on the map's own chrome rather than
-							three screens in. A palette for a glyph: what the sheet holds is a table of
-							artists. Same square, same fill, same white artwork as the marks either side. -->
-						<button
-							type="button"
-							class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
-							aria-label={$_('credits.open')}
-							on:click={openCredits}
-						>
-							<img src="/assets/icons/delapouite/palette.svg" class="size-6" alt="" />
-						</button>
-
-						<!-- A burger stood last on this row on a phone, pulling the list of places in over
-							the map. There is nothing for it to pull: below `md` the page folds to one column
-							and that list is simply the next thing down it (see the grid). The mark went with
-							the panel it opened, and with it the width measuring, the `columnOpen` it toggled
-							and the ✕ that pushed the panel back off. -->
 					</div>
 				{/if}
 
-				<!-- The map's right corner held the matches for a while, on a plate directly under the
-					field at the end of the bar: what was asked for at the top right, answered at the top
-					right. Both are gone — the field is a cell of the shares row in the column beside the
-					map and the matches are the rows of the list of places over it (see RegionLocationList),
-					so a search is read where every other list of places in this game is read. -->
-			</div>
-			<!-- The foot of the furniture column: the side this player fields, and under it who is
-				playing and the way into their account. Signed out, the middle of that block is the way
-				in instead (see SignInButton): the sign-in was in a burger menu once, which put the only
-				thing a visitor can do behind the mark they would have had to think to press, while the
-				slot that would have said who they are stood empty. It is one slot with two states now
-				— the account, or how to have one.
-				The two belong together — a side and the account fielding it are one statement, and it
-				is the statement every town on the map is read against: the three being challenged are
-				drawn on the town's own pin in the column of places, the three doing the challenging
-				stand here with their player under them, so a fight the Challenge button opens is both
-				sides of it read on the one screen. The account's plate was at the map's top-right,
-				opposite the town panel, which put the player at one corner and the side they field at
-				another with nothing but the reader to say which of them was whose.
-				`mt-auto` is what keeps it at the foot: this used to be positioned against the map's
-				bottom edge, and a column has to be told to push its last block down. It grows upwards
-				from there, so what arrives in it — the plate, as an account signs in — lifts the
-				statues rather than walking the account off the end of the column.
-				The block takes the column's whole width, statues and account row alike: they are one
-				statement in one place, and a row narrower than the side above it would read as a second
-				thing that happens to be nearby. It was a flat 400px while it stood on the map, which is
-				a width a corner has to choose for itself; a column of the grid is given one.
-				Nothing is drawn at all when there is none of it to draw — which now only happens while
-				the session is still being read, since a visitor it comes back empty for is a visitor
-				who gets the door.
-				And nothing while a full view is up either: it blurs out from under the sheet and back
-				in when it goes, the same gesture the row above it and the pins make (see CHROME_BLUR).
-				The statues are rebuilt on the way back, which is what they already are every time the
-				map re-frames itself — a character that has been through its veil once never plays it
-				again (see IdleSprite), so what comes back is the picture and not the reveal. -->
-			{#if (playerTeamLineup.length > 0 || $profile || signedOut) && !$fullScreenModalOpen}
-				<div transition:blur={CHROME_BLUR} class="mt-auto flex flex-col gap-2">
-					<!-- The three statues and nothing else: no plate under them, no heading over them,
-						so what stands here is the side itself rather than a panel about it. It can stand
-						bare where the map's other furniture cannot because a statue brings its own ground
-						and its own panel — every word on it is already read off the card's own colour,
-						never off the terrain behind it.
-						The row is given its box by the column rather than positioning itself: it is
-						`w-full` of whatever holds it, and a width handed to it in the same breath would be
-						two width utilities on one element with nothing but stylesheet order to settle
-						which of them wins.
-						Only drawn once there is a side to draw — an account with no card in a team slot
-						leaves the column to its plate alone — and only inside `ready`, so a statue never
-						says Ultramar at a town whose name is still on its way (see claimPlaceName). -->
-					{#if playerTeamLineup.length > 0}
-						<!-- And it is the way into the team, pressed as a whole: the three cards standing
-							here *are* the side the roster is for editing, so the reader who wants to
-							change them presses the thing they want to change rather than going looking
-							for it in the menu. The press is on the row and not on a card, because a
-							statue in this corner is a picture of who is fielded and not a control — the
-							roster is where a member is taken off (see TeamLineup's `selectable`, which
-							stays false here). One target over the lot, so there is no dead strip between
-							the cards either.
-							Named for a screen reader, since what is inside the button is three cards'
-							worth of names and colours and none of them says what pressing it does. -->
-						<button
-							type="button"
-							class="w-full cursor-pointer rounded-box focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-							aria-label={$_('roster.open')}
-							on:click={() => rosterModalOpen.set(true)}
-						>
-							<TeamLineup members={playerTeamLineup} />
-						</button>
-					{:else if $profile && spawnsSettled}
-						<!-- A player with no side fielded yet, in the slot the three statues take:
-							the same press, said in a word instead of drawn as three cards. The row
-							above is the way into the roster because it *is* the side being edited,
-							and a corner that simply had nothing there left that way in to the
-							statues alone — so an account with an empty team had no door to the one
-							screen that fills it. Shaped like the sign-in below it rather than like
-							the lineup above it, since what stands here is a button and not a
-							picture of anything, and the corner already reads as a column of
-							full-width rows. -->
-						<button
-							type="button"
-							class="btn btn-primary w-full shadow-xl"
-							on:click={() => rosterModalOpen.set(true)}
-						>
-							{$_('roster.open')}
-						</button>
-					{/if}
+				<!-- The panel the two tabs share, and the map is never taken out of it: the list is laid
+					over the terrain rather than swapped with it, so the map's box is the same box at every
+					moment and Leaflet is never told the column resized. An `{:else}` here would be a fresh
+					map on every trip back to the first tab — a new WebGL-less canvas, a new set of tiles,
+					and the reader's pan and zoom lost to a tab press. So both are absolutely placed inside
+					this box, the map always and the list only while it is picked, and the list carries the
+					page's own surface so the terrain does not read through it. -->
+				<div class="relative min-h-0 flex-1">
+					<div class="absolute inset-0 flex flex-col">
+						<WorldMap
+							center={[41.8, 1.7]}
+							zoom={8}
+							minZoom={7}
+							{overlays}
+							{markerLevels}
+							{pickedMarker}
+							{hiddenLineUrls}
+							{pulse}
+							{focusBounds}
+							{zoomBounds}
+							{zoomStops}
+							{spotlight}
+							markersBlurred={$fullScreenModalOpen}
+							bind:currentZoom
+							bind:activeLevel
+							bind:currentCenter
+							classes="min-h-0 flex-1"
+						/>
+					</div>
 
-					<!-- The way in, standing where the account's plate stands once there is an account.
-						One button and the whole width of the column, which is what every row of this
-						corner is now the radio has left it. The form it opens — a gate of two boxes,
-						the documents under them and the provider button — stood here for a while,
-						and could not have been read at half of 400px in any case; it is a sheet of
-						its own now, and this corner asks for it in a word (see SignInModal). -->
-					{#if signedOut}
-						<SignInButton />
-					{/if}
-
-					<!-- Who is playing, under the side they field: the last row of this corner, and the
-						whole of it again.
-						It shared this row with the radio for a while, as two halves of the column's one
-						width — both of them being things this player had switched on, as against the map
-						at the other corner. The radio has gone to the head of the column beside the map,
-						where the place it is playing for is already named and already carries the show's
-						tile (see RegionSubdivisions): the radio follows the map now, so a card of its own
-						was saying, in a second corner, what that row says by standing there. What shares
-						the row instead is the one press that belongs to this plate: the cog.
-						No `pointer-events-auto` on it: that was needed while it stood in the column under
-						the bar, which turns its own events off so the map stays pannable through the gaps
-						between its plates. This corner is not that column.
-						The plate is the way into the account as well as the reading of it: the picture
-						opens the picker and the rest of it opens the settings sheet, which is the sheet
-						this plate summarises. -->
-					{#if $profile}
-						<div class="flex items-stretch gap-2">
-							<PlayerPanel
-								profile={$profile}
-								on:editavatar={() => avatarPickerOpen.set(true)}
-								on:open={() => settingsModalOpen.set(true)}
-								classes="min-w-0 flex-1"
+					<!-- The level the map is open on, listed. Handed the same rows the shares beside it are
+						tallied over, the same matches the field beside it turns up, and the show that row
+						has picked — the press is over there with the division it is read off, the hiding is
+						here with the rows it hides. Picking one is the map's own gesture: `openFromColumn`,
+						exactly as a pin or a crumb. -->
+					{#if mapTab === 'places'}
+						<div class="absolute inset-0 flex flex-col bg-base-100">
+							<RegionLocationList
+								classes="min-h-0 flex-1"
+								rows={subdivisions}
+								current={subdivisionCurrent}
+								{searchRows}
+								{searchQuery}
+								{activeShow}
+								on:select={(event) => openFromColumn(event.detail.key)}
 							/>
-
-							<!-- The settings, as a mark at the end of the row that summarises them. It was a
-								row of the menu at the other corner of the map, which is where a player had to
-								go looking for the sheet about the account they were already looking at; the
-								menu keeps what is not the account's — the album, and the documents.
-								A square, since it is a glyph and nothing else, and one drawn to the plate's
-								own height: `self-stretch` takes the height the plate sets for the row and
-								`aspect-square` reads the width off it, so the two stay one row however the
-								plate is measured. Same surface as the plate, because it is the same corner's
-								furniture and not a control laid over it. -->
-							<button
-								type="button"
-								class="flex aspect-square flex-none cursor-pointer items-center justify-center rounded-lg bg-base-100/80 shadow-xl hover:bg-base-100"
-								aria-label={$_('settings.title')}
-								on:click={() => settingsModalOpen.set(true)}
-							>
-								<img src="/assets/icons/lorc/cog.svg" class="size-6" alt="" />
-							</button>
 						</div>
 					{/if}
 				</div>
+			{:else}
+				<div class="flex min-h-0 flex-1 items-center justify-center">
+					<span class="loading loading-spinner loading-lg"></span>
+				</div>
 			{/if}
+		</div>
+
+		<!-- The open region, the second column: a third of the row, and everything the place the map
+			is looking at has to say for itself — its name and the show it flies, the side standing on
+			it, how far it has been taken and the fight to be had for it, the cut it sits inside, what
+			the level under it is made of and the way to look for a place that is not on it.
+			What the level under it *is* — the list of those places — stood at the foot of this column
+			for a long time and is a tab over the terrain now (see the map column above): a list of
+			places is about the map, and this column is about one place. What is left still scrolls on
+			its own, since a town brings a side, a standing and a path with it.
+			Gone while a full view is up, and back when that view goes: this column is the map's
+			furniture like the marks beside it and the pins on it, and a list of towns read sharply
+			beside a sheet is chrome competing with the thing it was covered by. It blurs away
+			exactly as they do, on the same 8px over the same 250ms (see CHROME_BLUR), and then leaves
+			the grid — the column it stood in stays where it is, because every column here is placed
+			by name (`md:col-start-*`) rather than by the order things happen to be mounted in, so a
+			sheet going up cannot slide the furniture over into the gap. Leaflet is told nothing about
+			it: the map watches its own container and re-projects when it changes size (see WorldMap's
+			ResizeObserver). The column is unmounted rather than merely blurred because a strip of
+			nothing at the side of a full view is the sheet standing on the map, which is what it is. -->
+		{#if !$fullScreenModalOpen}
+			<!-- What is said about the open place scrolls, and the row of social marks at the foot does
+				not: it is the one thing here that is not about that place, and a row that has to be
+				reached past everything said about a town is a row nobody finds. So what this hands the
+				column is a height rather than a scrollbar: everything between the top of the aside and
+				the marks at its foot. -->
+			<!-- A box of the grid at every width, and the same box: the middle third of the phone's
+				column, the middle column of the desktop's row. It was two arrangements of this one
+				element for a while — a 400px side of the row on a desktop, and on a phone a fixed panel
+				over the whole viewport, parked a screen-width off the right edge and slid in by a
+				burger at the far end of the map's top bar. The page is a grid now and the grid folds,
+				so the phone gets this where the fold puts it rather than as a second way of asking for
+				it; the burger, the ✕ that pushed the panel back off, the `inert` that kept a keyboard
+				out of it while it was parked and the transform it slid on all went with the arrangement
+				they belonged to.
+				`min-h-0` at both widths, and it is what makes the third a third: what is inside scrolls
+				(see RegionSubdivisions), and a flex column that may not shrink below its content is a
+				box that simply grows past the track it was given. -->
+			<aside
+				transition:blur={CHROME_BLUR}
+				class="row-start-2 flex min-h-0 min-w-0 flex-col bg-base-100 md:col-start-2 md:row-start-1"
+			>
+				<!-- `rows` is still handed over though nothing here lists them: the count alone decides
+					whether there is a rule in the column, and the shares row is tallied over exactly
+					those rows by this page. `current` likewise names no place here any more — the band
+					at the top of the page does that (see RegionCurrentBadge) — and is read for whether
+					there is one at all and for putting a picked show back when the map moves.
+					`activeShow` is bound because the press that picks a show is on that shares row and
+					the rows it hides are in the tab over the map — this page is the one thing the two
+					have in common. -->
+				<RegionSubdivisions
+					classes="min-h-0 flex-1"
+					rows={subdivisions}
+					current={subdivisionCurrent}
+					shares={subdivisionShares}
+					bind:activeShow
+					bind:searchQuery
+					bind:searchOpen
+				>
+					<!-- The town's own pin, first thing in the column: the side holding it, whose it is,
+						how far it has been taken, the way to fight for it and the pack it has waiting — the
+						same mark the map is drawing on that town at this very moment, from the same data
+						(see townPin). Only a town has one.
+						Unnamed, because the band across the top of the page is already the town's name: it
+						says the place, its tile and the show it flies, and the plate saying all three again
+						stood between the side on the town and how far it has been taken, reading as a stray
+						row in the middle of the one thing. What the plate is here for is the rest of it
+						(see TownPlate's `named`). -->
+					<!-- Under the side standing on the town: how far it has been taken and the way to
+						fight for it, the two of them stacked as TownChallenge already stacks them. No width
+						said here — the row is the column's own width, which is what makes the bar a band
+						across the column rather than a block hung off the end of something. -->
+					<svelte:fragment slot="standing">
+						{#if townStanding}
+							<TownChallenge
+								siege={townStanding.siege}
+								button={townStanding.button}
+								unlocksAt={townStanding.unlocksAt}
+								onUnlock={townStanding.onUnlock}
+							/>
+						{/if}
+					</svelte:fragment>
+
+					<!-- Still no box on the pin here: the town's box is drawn on the band at the top of
+						the page, beside the name, exactly as it is on every row of the list of places (see
+						subdivisionCurrent). It was left off that row altogether for a while, on the ground
+						that the box was already up on the terrain — but a row that alone among them says
+						nothing about its festa reads as a town that has none. -->
+					<!-- `alwaysReveal`: the three standing here arrive every time the column comes to
+						hold a different side, whatever the session has already watched. It is the one
+						place on the map that spends a reveal on a repeat — the corner does not, since a
+						side that re-framed itself as the map moved would flicker — and it spends one
+						because this row *is* the answer to picking a town: the reader has just asked who
+						holds this place, and the three of them walking in is that answer being given.
+						The remount that makes all three do it together is the pin's (see TownPin's
+						`sideKey`); this only says the reveal is worth having. -->
+					<svelte:fragment slot="detail">
+						{#if townDetailPin}
+							<TownPin marker={townDetailPin} named={false} alwaysReveal classes="py-1" />
+						{/if}
+					</svelte:fragment>
+
+					<!-- Where the place at the head of this column is, said as the path down to what it
+						sits inside: the same bar that stands over the map, given the cut above the open
+						region rather than the path down to it (see abovePath). The head has already named
+						the place, so the badge on this bar is its parent — the Països Catalans over
+						Catalunya, and never Catalunya over itself. Nothing at all at the top view, which
+						is the one place with nothing above it.
+						Folded outright and not merely when the room runs out: this bar is a heading over a
+						list of places, and a row of five crumbs standing over a column of places is a
+						second column of places — so it is the dots and the one badge, at every width. The
+						rest of the path is where the dots always put it, in the column they drop. Pressed
+						for what the bar over the map is pressed for: a step opens its region, an empty
+						rung takes the map to that tier's zoom. -->
+					<svelte:fragment slot="path">
+						{#if aboveCrumbs}
+							<MapBreadcrumbs crumbs={aboveCrumbs} onSelect={open} onZoom={zoomToTier} folded />
+						{/if}
+					</svelte:fragment>
+				</RegionSubdivisions>
+
+				<!-- Where the author is, at the foot of the column: the one row here that names
+					something outside the game. `flex-none` because a third of a phone's height is not
+					much: without it this row is the first thing the column takes back when the list
+					above it wants room, and the marks squash instead of the list scrolling. -->
+				<SocialLinks classes="flex-none" />
+			</aside>
 		{/if}
+
+		<!-- The furniture: the last third of the phone's column, the third column of the desktop's
+			row. Everything that used to be drawn over the map, now standing beside it. It keeps the
+			shape it had on the terrain — the badge and its marks at the head, the side and the account
+			at the foot — because that shape was never about the map being underneath: what the game is
+			called and what it can be asked belong at the top of a column, and who is playing belongs
+			at the bottom of one. `mt-auto` on the second block is what holds them apart, which is the
+			one thing `top-3` and `bottom-3` were doing that a column still has to do for itself.
+			It scrolls inside its own third at both widths, the way the list of places does: three
+			statues and a plate under a row of marks is taller than a third of a phone, and taller than
+			some viewports outright.
+			Inside `{#if ready}` like the map it came off: the side standing here is rolled against
+			the town names the polygons carry, and a statue drawn before those land says Ultramar at
+			a town whose name is still on its way (see claimPlaceName). -->
+		<div
+			class="row-start-3 flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto p-3 md:col-start-3 md:row-start-1"
+		>
+			{#if ready}
+				<!-- The head of the furniture column: the game's own badge and the marks beside it. It
+					was a band across the map's top edge for a long time — absolutely positioned over the
+					canvas, inset on the three sides it touched, its own height measured off the DOM and
+					handed to the map so the pins would be dealt clear of it, its pointer events off
+					everywhere the plates did not themselves cover, and a z-index picked to clear
+					Leaflet's panes (overlays 400-600, controls 800) without reaching the arena's 1200.
+					None of that was ever about the marks: it was the cost of standing them on something.
+					In a column of its own the block is a block, and every one of those goes.
+					The music player stood in here too, in the left corner, then on the bar itself as one
+					of its cards, then at the foot of the map beside the account it plays for: a bar is a
+					path and a path is read across, so a card at the end of it took room the path needs,
+					and a card in the corner was a second place naming a show. The radio is on the head
+					of the list of places now — the row that says which place the map is open on, which
+					is the place it is playing for (see RegionSubdivisions) — and the plate in the
+					menu is the same radio said again where a menu can say it. -->
+				<div class="flex flex-col gap-2">
+					<!-- The row itself, and it is no longer about where the map is looking: it said that
+						for a long time, as a bar of crumbs across the top, and two other things say it now —
+						the band across the top of the page, which names the open place, and the column
+						beside the map, which carries the path to what that place sits inside (see the
+						`path` slot below). Two other things
+						left this row the same way and for the same reason: the location search, which was
+						a looking glass at its far end that unfolded into a field with its matches on a
+						plate at the corner underneath, and is a cell of that column's shares row answering
+						in that column's own rows; and the path itself. Looking for a place and naming a
+						place are both asking about a list of places, and the column is where this map lists
+						places.
+
+						Out of focus while a full view is up, and back into it when that view goes (see
+						CHROME_BLUR). The wrapper is what the transition needs — a transition cannot be put
+						on a component — and also the row the plates stand in, so they go and come back as
+						one thing rather than blurring apart. Unmounting them is what lets the way out play
+						at all, and costs nothing: what they draw is read off the stores every time. -->
+					{#if !$fullScreenModalOpen}
+						<!-- The top row: the badge and the radar at the near end, the marks that answer for
+							the game at the far end, and space between them. It was one bar with the word
+							standing inside a path, which made the game's name a step of that path; then two
+							plates with the path filling the middle; then a band across the map with the terrain
+							read through the gap. The path is in the list of places now, so what is left is the
+							things that are about the game rather than about where in it you are — and the gap
+							between the two ends is just a gap, this row being a row of a column rather than a
+							strip laid over anything.
+
+							`items-stretch` is what makes them the same height: the marks at the far end are
+							32px buttons where the badge holds one word, and stretching means the word's plate
+							takes whatever height that comes to rather than a number written here that would
+							have to be kept in step with it. -->
+						<div transition:blur={CHROME_BLUR} class="flex items-stretch gap-2">
+							<!-- What it says and what size it is set at are two different things: the word is
+								"6xl" and the type is `2xl`, one flat size at every viewport rather than a ramp.
+								`items-center` centres it in whatever height the row hands this plate (see above);
+								`leading-none` so what is centred is the type's own height and not a line box built
+								for a paragraph. `font-display` is Bungee, the app's one departure from Genos, and
+								it is the token and not the family that is named here (see the `@theme` block in
+								css/app.css). -->
+							<!-- The plate itself is where the two bars stop being the same chrome: the crumbs'
+								is the panel's surface at 80%, so terrain reads through the path, and this one is
+								the theme's primary at full strength. A path is a thing being looked through to
+								the map under it; a name is not, and there is nothing behind this plate worth
+								seeing.
+
+								The same badge is the tab's mark (see static/favicon.ico and the link in
+								app.html), and it is drawn differently there on purpose: an icon is a square with
+								room round the word, because that is the box a browser gives it. This is a bar in
+								a row of bars — as tall as the path beside it, as wide as the word makes it, and
+								inset by the row's own `px-3`. Neither shape should be made to answer for the
+								other. -->
+							<!-- The badge was the tab a column of views dropped from — the player's cards and
+								the album, a row each, up while the pointer was on it — and, on a phone, the handle
+								that pulled the list of places down over the map. It is neither now: the views are
+								sheets raised from the marks at the far end of this row, and the list of places is a
+								column of the page at every width (see the grid). So the plate is only the plate —
+								nothing hangs off it and nothing is asked about the pointer — and it is a `<div>` at
+								every width. It stretches to the row's height on its own, being a `flex-none` child
+								of an `items-stretch` row. -->
+							<div
+								class="flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
+							>
+								<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
+									down and right, and the word itself over it. A shadow drawn as a copy rather
+									than as a `text-shadow`, because a shadow the thickness of this face wants to be
+									the face — one solid displaced impression of it, with no blur and no spread,
+									which is what a second copy of the glyphs is and what a shadow utility, spelling
+									a colour and a radius, is not.
+									Both copies are positioned, so the one later in the document paints over the
+									other without a z-index: an absolute box would otherwise sit above in-flow type
+									whatever order it is written in, and sending it under with a negative z-index
+									would send it under the plate's own fill as well, there being no stacking
+									context between them. The copy in flow is the one that gives the box its size;
+									`aria-hidden` on the other, since a reader hearing "6xl 6xl" is being told about
+									a shadow. -->
+								<span class="relative font-display text-2xl leading-none">
+									<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true"
+										>6xl</span
+									>
+									<span class="relative">6xl</span>
+								</span>
+							</div>
+
+							<!-- The radar, at the near end of the row and right beside the badge. The map
+								carries days of festes at once and no marks to find them by, so the boxes waiting
+								out there are found by panning across the country looking for one — which is a
+								search, and this is the button that does it: press it and the map opens the
+								nearest town whose box is still unopened (see findNearestBox). It stands at every
+								width, because a box is as hard to come across on a desktop as on a phone.
+								It stood at the far end for a while, last of the block the question mark pushes
+								over. It is here now because it is the one mark on this row that moves the map:
+								the badge says what this is and the radar says where to go next, which is one
+								statement about the country read left to right — where the far end's marks are
+								all about the game rather than about the terrain under them.
+								No `ml-auto` on this one: it is a `flex-none` child at the head of the row, and
+								the far end is still pushed over as a block by the first mark of that end.
+								The same square in the plate's own fill as the marks at the other end, drawn to
+								the row's height (`self-stretch aspect-square`), with a white game-icons glyph
+								that needs no colour of its own on the primary.
+								Disabled when there is nothing left to point at — every box in the window opened,
+								or none loaded yet — because a radar that answers "here" or answers nothing is a
+								press with no destination. -->
+							<button
+								type="button"
+								class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
+								aria-label={$_('map.radar.nearest')}
+								disabled={!radarTarget}
+								on:click={findNearestBox}
+							>
+								<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
+							</button>
+
+							<!-- What the game gets asked, at the head of the row's far end, at every width —
+								a question is as worth answering on a desktop as on a phone. The `ml-auto`
+								that pushes that end over is on this one, being the first mark of it: the
+								block is this and the credits, set apart by the row's own `gap-2` and moved
+								as one.
+								The same square in the plate's own fill as the two beside it, drawn to the
+								row's height (`self-stretch aspect-square`), with a white game-icons glyph
+								that needs no colour of its own on the primary. -->
+							<button
+								type="button"
+								class="ml-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
+								aria-label={$_('faq.open')}
+								on:click={openFaq}
+							>
+								<img src="/assets/icons/sbed/help.svg" class="size-6" alt="" />
+							</button>
+
+							<!-- Who drew the fighters, next along. It stands beside the questions because it
+								answers one of the same kind — where all this came from — and because the
+								people who made these sprites are named on the map's own chrome rather than
+								three screens in. A palette for a glyph: what the sheet holds is a table of
+								artists. Same square, same fill, same white artwork as the marks either side. -->
+							<button
+								type="button"
+								class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
+								aria-label={$_('credits.open')}
+								on:click={openCredits}
+							>
+								<img src="/assets/icons/delapouite/palette.svg" class="size-6" alt="" />
+							</button>
+
+							<!-- A burger stood last on this row on a phone, pulling the list of places in over
+								the map. There is nothing for it to pull: below `md` the page folds to one column
+								and that list is simply the next thing down it (see the grid). The mark went with
+								the panel it opened, and with it the width measuring, the `columnOpen` it toggled
+								and the ✕ that pushed the panel back off. -->
+						</div>
+					{/if}
+
+					<!-- The map's right corner held the matches for a while, on a plate directly under the
+						field at the end of the bar: what was asked for at the top right, answered at the top
+						right. Both are gone — the field is a cell of the shares row in the column beside the
+						map and the matches are the rows of the list of places over it (see RegionLocationList),
+						so a search is read where every other list of places in this game is read. -->
+				</div>
+				<!-- The foot of the furniture column: the side this player fields, and under it who is
+					playing and the way into their account. Signed out, the middle of that block is the way
+					in instead (see SignInButton): the sign-in was in a burger menu once, which put the only
+					thing a visitor can do behind the mark they would have had to think to press, while the
+					slot that would have said who they are stood empty. It is one slot with two states now
+					— the account, or how to have one.
+					The two belong together — a side and the account fielding it are one statement, and it
+					is the statement every town on the map is read against: the three being challenged are
+					drawn on the town's own pin in the column of places, the three doing the challenging
+					stand here with their player under them, so a fight the Challenge button opens is both
+					sides of it read on the one screen. The account's plate was at the map's top-right,
+					opposite the town panel, which put the player at one corner and the side they field at
+					another with nothing but the reader to say which of them was whose.
+					`mt-auto` is what keeps it at the foot: this used to be positioned against the map's
+					bottom edge, and a column has to be told to push its last block down. It grows upwards
+					from there, so what arrives in it — the plate, as an account signs in — lifts the
+					statues rather than walking the account off the end of the column.
+					The block takes the column's whole width, statues and account row alike: they are one
+					statement in one place, and a row narrower than the side above it would read as a second
+					thing that happens to be nearby. It was a flat 400px while it stood on the map, which is
+					a width a corner has to choose for itself; a column of the grid is given one.
+					Nothing is drawn at all when there is none of it to draw — which now only happens while
+					the session is still being read, since a visitor it comes back empty for is a visitor
+					who gets the door.
+					And nothing while a full view is up either: it blurs out from under the sheet and back
+					in when it goes, the same gesture the row above it and the pins make (see CHROME_BLUR).
+					The statues are rebuilt on the way back, which is what they already are every time the
+					map re-frames itself — a character that has been through its veil once never plays it
+					again (see IdleSprite), so what comes back is the picture and not the reveal. -->
+				{#if (playerTeamLineup.length > 0 || $profile || signedOut) && !$fullScreenModalOpen}
+					<div transition:blur={CHROME_BLUR} class="mt-auto flex flex-col gap-2">
+						<!-- The three statues and nothing else: no plate under them, no heading over them,
+							so what stands here is the side itself rather than a panel about it. It can stand
+							bare where the map's other furniture cannot because a statue brings its own ground
+							and its own panel — every word on it is already read off the card's own colour,
+							never off the terrain behind it.
+							The row is given its box by the column rather than positioning itself: it is
+							`w-full` of whatever holds it, and a width handed to it in the same breath would be
+							two width utilities on one element with nothing but stylesheet order to settle
+							which of them wins.
+							Only drawn once there is a side to draw — an account with no card in a team slot
+							leaves the column to its plate alone — and only inside `ready`, so a statue never
+							says Ultramar at a town whose name is still on its way (see claimPlaceName). -->
+						{#if playerTeamLineup.length > 0}
+							<!-- And it is the way into the team, pressed as a whole: the three cards standing
+								here *are* the side the roster is for editing, so the reader who wants to
+								change them presses the thing they want to change rather than going looking
+								for it in the menu. The press is on the row and not on a card, because a
+								statue in this corner is a picture of who is fielded and not a control — the
+								roster is where a member is taken off (see TeamLineup's `selectable`, which
+								stays false here). One target over the lot, so there is no dead strip between
+								the cards either.
+								Named for a screen reader, since what is inside the button is three cards'
+								worth of names and colours and none of them says what pressing it does. -->
+							<button
+								type="button"
+								class="w-full cursor-pointer rounded-box focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+								aria-label={$_('roster.open')}
+								on:click={() => rosterModalOpen.set(true)}
+							>
+								<TeamLineup members={playerTeamLineup} />
+							</button>
+						{:else if $profile && spawnsSettled}
+							<!-- A player with no side fielded yet, in the slot the three statues take:
+								the same press, said in a word instead of drawn as three cards. The row
+								above is the way into the roster because it *is* the side being edited,
+								and a corner that simply had nothing there left that way in to the
+								statues alone — so an account with an empty team had no door to the one
+								screen that fills it. Shaped like the sign-in below it rather than like
+								the lineup above it, since what stands here is a button and not a
+								picture of anything, and the corner already reads as a column of
+								full-width rows. -->
+							<button
+								type="button"
+								class="btn btn-primary w-full shadow-xl"
+								on:click={() => rosterModalOpen.set(true)}
+							>
+								{$_('roster.open')}
+							</button>
+						{/if}
+
+						<!-- The way in, standing where the account's plate stands once there is an account.
+							One button and the whole width of the column, which is what every row of this
+							corner is now the radio has left it. The form it opens — a gate of two boxes,
+							the documents under them and the provider button — stood here for a while,
+							and could not have been read at half of 400px in any case; it is a sheet of
+							its own now, and this corner asks for it in a word (see SignInModal). -->
+						{#if signedOut}
+							<SignInButton />
+						{/if}
+
+						<!-- Who is playing, under the side they field: the last row of this corner, and the
+							whole of it again.
+							It shared this row with the radio for a while, as two halves of the column's one
+							width — both of them being things this player had switched on, as against the map
+							at the other corner. The radio has gone to the band across the top of the page,
+							where the place it is playing for is already named and already carries the show's
+							tile (see RegionCurrentBadge): the radio follows the map now, so a card of its own
+							was saying, in a second corner, what that row says by standing there. What shares
+							the row instead is the one press that belongs to this plate: the cog.
+							No `pointer-events-auto` on it: that was needed while it stood in the column under
+							the bar, which turns its own events off so the map stays pannable through the gaps
+							between its plates. This corner is not that column.
+							The plate is the way into the account as well as the reading of it: the picture
+							opens the picker and the rest of it opens the settings sheet, which is the sheet
+							this plate summarises. -->
+						{#if $profile}
+							<div class="flex items-stretch gap-2">
+								<PlayerPanel
+									profile={$profile}
+									on:editavatar={() => avatarPickerOpen.set(true)}
+									on:open={() => settingsModalOpen.set(true)}
+									classes="min-w-0 flex-1"
+								/>
+
+								<!-- The settings, as a mark at the end of the row that summarises them. It was a
+									row of the menu at the other corner of the map, which is where a player had to
+									go looking for the sheet about the account they were already looking at; the
+									menu keeps what is not the account's — the album, and the documents.
+									A square, since it is a glyph and nothing else, and one drawn to the plate's
+									own height: `self-stretch` takes the height the plate sets for the row and
+									`aspect-square` reads the width off it, so the two stay one row however the
+									plate is measured. Same surface as the plate, because it is the same corner's
+									furniture and not a control laid over it. -->
+								<button
+									type="button"
+									class="flex aspect-square flex-none cursor-pointer items-center justify-center rounded-lg bg-base-100/80 shadow-xl hover:bg-base-100"
+									aria-label={$_('settings.title')}
+									on:click={() => settingsModalOpen.set(true)}
+								>
+									<img src="/assets/icons/lorc/cog.svg" class="size-6" alt="" />
+								</button>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			{/if}
+		</div>
 	</div>
 </div>
 
