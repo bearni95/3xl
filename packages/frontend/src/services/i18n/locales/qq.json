@@ -83,10 +83,6 @@
 		}
 	},
 	"map": {
-		"column": {
-			"open": "QQQQQ",
-			"close": "QQQQQ"
-		},
 		"search": {
 			"label": "QQQQQ",
 			"placeholder": "QQQQQ",

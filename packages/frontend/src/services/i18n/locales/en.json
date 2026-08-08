@@ -83,10 +83,6 @@
 		}
 	},
 	"map": {
-		"column": {
-			"open": "Open the list of places",
-			"close": "Close the list of places"
-		},
 		"radar": {
 			"nearest": "Go to the nearest unopened pack"
 		},
