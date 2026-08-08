@@ -77,18 +77,22 @@
 	// to. Never called for a crumb that names a region — that one is `onSelect`, as before.
 	export let onZoom: (tier: string) => void = () => {};
 	// Folded whatever the room: the bar is the dots button and the step it is on, and never the
-	// path laid out, however much width it is given. Which is what every caller left asks for —
-	// the path stands in half of the head of a block, beside the badge naming the open place,
-	// and a row of five crumbs there would be a list of places at the head of a block whose own
-	// third tab is a list of places. The whole path is still a press away, in the dropped column.
+	// path laid out, however much width it is given. Nothing asks for this on its own any more —
+	// the one caller left asks for `dotsOnly`, which is this and then some — but it is what that
+	// one is built on, and it is the honest answer wherever a path is stood somewhere too narrow
+	// to lay one out. The whole path is still a press away, in the dropped column.
 	export let folded: boolean = false;
 	// Folded all the way down to the dots: no crumb kept beside them, no plate under them, just
-	// the square and the column it drops. For the one caller there is, where the crumb a folded
-	// bar would keep is standing on its own two inches away — the badge naming the open place
-	// (see RegionCurrentBadge), which is drawn out of the same fields by the same component and
-	// carries the same tile. Keeping a crumb here as well is that tile printed twice in one cell,
-	// which is a duplicate and not a shorter path. So what stands beside the badge is the way UP
-	// and nothing else, which is the only thing the badge cannot say.
+	// the square and the column it drops. For the one caller there is, which stands it at the
+	// near corner of the strip over the terrain: the crumb a folded bar would keep is the same
+	// tile and name the badge in the block below already prints (see RegionCurrentBadge, drawn
+	// out of the same fields by the same component), so keeping one here is that tile printed
+	// twice on one screen — a duplicate and not a shorter path. What is left is the way UP and
+	// nothing else, which is the only thing the badge cannot say.
+	// No plate because whether one is wanted depends on what it is stood on, which the caller
+	// knows and this does not: in a head that carries its own surface a frame round a single
+	// button is a second frame, and over terrain a plate is the only thing keeping an outlined
+	// square legible. So `classes` is where the surface comes from, if it comes at all.
 	export let dotsOnly: boolean = false;
 	export let classes: string = '';
 

@@ -3242,93 +3242,56 @@
 							classes="min-h-0 flex-1"
 						/>
 
-						<!-- The strip across the top of the terrain: what the open level is made of at the
-							near end, and the way to find a festa at the far one. Both are about the map and
-							nothing else — one tallies the level it is looking at, the other takes it
-							somewhere it has not looked — so they are the map's own and not the page's. The
-							name of the game, the questions put to it and who drew it are about the game
-							rather than about the terrain, and they are the band above (see the page's first
-							row).
-							It was the whole edge, then one square alone in the corner while everything that
-							had stood on it went down into the block below (the folded crumbs, which are in
-							that block's head now, beside the place they are the cut above). The strip's own
-							arrangement never changed and does not need to: `pointer-events-none` with each
-							plate turning them back on, since the room between them is terrain and terrain
-							has to stay draggable. `z-[900]` clears Leaflet's own panes (overlays 400-600,
-							controls 800) without reaching the arena's 1200. No inset is measured off it and
-							handed to the map: the pins are dealt where the polygons put them, and a reader
-							who wants what is under it pans. It stands whatever the map is doing — there is
-							no tab left for it to be hidden behind — and a full view used to take it away
-							too; nothing on this page answers a sheet any more (see CHROME_BLUR). -->
+						<!-- The strip across the top of the terrain: the two ways of taking the map
+							somewhere else, one at each end. The way back UP out of where it is standing at
+							the near end, and the way OUT to a festa nobody has opened at the far one. Both
+							are about the map and nothing else — each of them moves the terrain and only the
+							terrain — so they are the map's own and not the page's. The name of the game,
+							the questions put to it and who drew it are about the game rather than about the
+							terrain, and they are the band above (see the page's first row).
+							Two squares of the same size at the two corners, and nothing between them: the
+							strip is `pointer-events-none` with each plate turning them back on, since the
+							room between them is terrain and terrain has to stay draggable. `z-[900]` clears
+							Leaflet's own panes (overlays 400-600, controls 800) without reaching the
+							arena's 1200. No inset is measured off it and handed to the map: the pins are
+							dealt where the polygons put them, and a reader who wants what is under it pans.
+							It stands whatever the map is doing — there is no tab left for it to be hidden
+							behind — and a full view used to take it away too; nothing on this page answers
+							a sheet any more (see CHROME_BLUR). -->
 						<div
 							class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex items-start gap-2"
 						>
-							<!-- The near end: the shares, and under them the field, one column so the field
-								comes down the width of the row that asked for it.
-								`max-w-sm` is the whole of what keeps this a strip. The cells divide whatever
-								width the grid is given (see ShowShareGrid) and the artwork is drawn to the
-								cell, so a row let loose across a desktop-width map would be eight glyphs the
-								size of the radar's plate several times over — a tally reading as a picture,
-								over the picture. Held to `sm` the marks come out at about the radar's own
-								square at every width, which is what a mark over a map should be. -->
-							<div class="flex min-w-0 max-w-sm flex-1 flex-col gap-2">
-								<!-- What the level the map is open on is made of: the shows those places fly
-									and how much of each. It was a tab of its own over this same terrain, and a
-									row at the foot of the column beside it before that — under everything that
-									column had to say about the open place, which put the one control that acts
-									on the list of places in a different column from the list.
-									Here it is on the map it is a tally of, at the same moment as the map: the
-									level drawn and the level counted were two tabs, so a reader could have the
-									country or the division of it and never both, and the division is a reading
-									OF what is on screen. Pressing a share narrows the list of places in the
-									block below; the grid is handed the whole division whatever is picked, and
-									the tally is this page's over every row of the level, because a share is
-									what this level IS and not what is left of it after a press. Pressing the
-									picked show again clears it and pressing another turns the list over, so
-									there is one gesture and it is its own undo.
-									It carries the page's own surface and the radar's plate — rounded, shadowed
-									— so the terrain does not read through the marks, which is the one thing it
-									gained by leaving a panel that had a surface of its own. -->
-								<ShowShareGrid
-									shares={subdivisionShares}
-									active={activeShow}
-									classes="pointer-events-auto rounded-lg bg-base-100 text-white shadow-xl"
-									on:select={(event) => toggleShow(event.detail.id)}
-								>
-									<!-- The looking glass, as the last cell of that grid. It stood at the far end
-										of the breadcrumb bar over the map once, where it had to fold a field away
-										into a glyph to leave the path any room; here the glyph is a cell like the
-										shares beside it and the field comes down on the row under it.
-										On this row because this row is the one that acts on the level: the cells
-										beside it narrow it to a show, and this goes and finds places that are not
-										on it at all. -->
-									<button
-										slot="end"
-										type="button"
-										class="flex items-center justify-center rounded-md p-1 hover:bg-white/10"
-										aria-label={$_('map.search.label')}
-										aria-expanded={searchOpen}
-										on:click={openSearch}
-									>
-										<img src="/assets/icons/lorc/magnifying-glass.svg" class="w-full" alt="" />
-									</button>
-								</ShowShareGrid>
-
-								{#if searchOpen}
-									<!-- The field itself, on its own row under the glyph that asked for it. It
-										puts itself away when it is left empty and takes the matches with it on
-										Escape (see LocationSearchBox); what it holds is matched by this page
-										against the whole tree, and the matches stand in the block under the map,
-										which the press on the glass has already turned to its list (see
-										openSearch). So the answer is on screen beside the question rather than on
-										a tab the reader has to know to press, and nothing moves on a keystroke. -->
-									<LocationSearchBox
-										bind:value={searchQuery}
-										bind:open={searchOpen}
-										classes="pointer-events-auto shadow-xl"
-									/>
-								{/if}
-							</div>
+							<!-- The way up, and nothing else: the dots and the column they drop, which is
+								the path down to where the open place sits (see MapBreadcrumbs' `dotsOnly`).
+								It was a bar across this same edge, then a mark in the head of the block under
+								the map beside the place it is the cut above — and it is back over the terrain
+								because the terrain is what moves when it is pressed, and because in that head
+								it stood next to a badge printing the very tile and name its own last crumb
+								would have: two of those in one cell is the show's mark drawn twice. Here
+								there is nothing beside it to say the place twice with, and the names are in
+								the column it drops, over the map, where the step being walked back to is.
+								Nothing at all at the top view, which is the one place with nothing above it,
+								and the radar keeps the far corner by `ml-auto` either way.
+								The plate is the caller's here and was the bar's before: `dotsOnly` draws one
+								outlined square and no surface, which is right in a head that has a surface
+								of its own and wrong over terrain, where an outline in white on whatever
+								tile happens to be under it is a mark that comes and goes with the view. So
+								it takes the radar's own plate at the radar's own `size-10`, and the strip
+								is two squares of one size at the two corners rather than two marks that
+								merely both happen to be there.
+								Pressed for what the path was always pressed for: a step opens its region, an
+								empty rung takes the map to that tier's zoom. Through `openFromColumn` like
+								every press in the block below, so picking a place puts the search field away
+								with it. -->
+							{#if aboveCrumbs}
+								<MapBreadcrumbs
+									classes="pointer-events-auto flex size-10 flex-none items-center justify-center rounded-lg bg-base-100 shadow-xl"
+									crumbs={aboveCrumbs}
+									onSelect={(key) => (key ? openFromColumn(key) : open(null))}
+									onZoom={zoomToTier}
+									dotsOnly
+								/>
+							{/if}
 
 							<!-- The radar. The map carries days of festes at once and no marks to find them
 								by, so the boxes waiting out there are found by panning across the country
@@ -3338,13 +3301,13 @@
 								across on a desktop as on a phone.
 								It has been at the far end of a bar over the map, then a mark in the furniture
 								column beside it, then a square alone in this corner, then the end of a row
-								with the path at the other one — and it is the end of a row again, with the
-								shares at the other one.
+								with the path at the other one — and it is that again, the path having come
+								back up to the strip it left.
 								A size of its own, where the marks it used to stand among were drawn to a
-								row's height (`self-stretch aspect-square`): the shares beside it are as tall
-								as their own cells are wide and there is nothing here to be as tall as.
-								`size-10` is what that row came to, so the square is the same square. `ml-auto`
-								holds it at the far corner however little the shares take.
+								row's height (`self-stretch aspect-square`): there is no row here to be as
+								tall as, and the dots at the other corner take this square rather than the
+								other way about. `ml-auto` holds it at the far corner whether or not there is
+								anything above the open place for the dots to be about.
 								Disabled when there is nothing left to point at — every box in the window
 								opened, or none loaded yet — because a radar that answers "here" or answers
 								nothing is a press with no destination. -->
@@ -3357,6 +3320,80 @@
 							>
 								<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
 							</button>
+						</div>
+
+						<!-- The other edge of the terrain: what the level the map is open on is made of —
+							the shows those places fly and how much of each — with the field, when it is
+							out, on the row above it.
+							It was a tab of its own over this same terrain, then the near end of the strip
+							at the top, and a row at the foot of the column beside the map before either of
+							those. What it is doing on the map at all is being read at the same moment as
+							the map: the level drawn and the level counted were two tabs, so a reader could
+							have the country or the division of it and never both, and the division is a
+							reading OF what is on screen. What it is doing at the BOTTOM is leaving the top
+							to the two presses that take the map somewhere else — a tally is not one of
+							those; it is what the view already says, counted — and the bottom edge is the
+							one a map has to spare, the pins and the polygons a reader is working over
+							sitting in the middle of the box.
+							Anchored to that edge rather than filling from it (`bottom-3`, no `top`), so the
+							column grows UPWARD as the field comes out and the marks stay where the reader
+							last pressed one.
+							Pressing a share narrows the list of places in the block below; the grid is
+							handed the whole division whatever is picked, and the tally is this page's over
+							every row of the level, because a share is what this level IS and not what is
+							left of it after a press. Pressing the picked show again clears it and pressing
+							another turns the list over, so there is one gesture and it is its own undo.
+							`max-w-sm` is the whole of what keeps this a strip. The cells divide whatever
+							width the grid is given (see ShowShareGrid) and the artwork is drawn to the
+							cell, so a row let loose across a desktop-width map would be eight glyphs the
+							size of the radar's plate several times over — a tally reading as a picture,
+							over the picture. Held to `sm` the marks come out at about that square at every
+							width, which is what a mark over a map should be. -->
+						<div
+							class="pointer-events-none absolute inset-x-3 bottom-3 z-[900] flex max-w-sm flex-col gap-2"
+						>
+							{#if searchOpen}
+								<!-- The field itself, on its own row over the glyph that asked for it. It puts
+									itself away when it is left empty and takes the matches with it on Escape
+									(see LocationSearchBox); what it holds is matched by this page against the
+									whole tree, and the matches stand in the block under the map, which the
+									press on the glass has already turned to its list (see openSearch). So the
+									answer is on screen beside the question rather than on a tab the reader has
+									to know to press, and nothing moves on a keystroke. -->
+								<LocationSearchBox
+									bind:value={searchQuery}
+									bind:open={searchOpen}
+									classes="pointer-events-auto shadow-xl"
+								/>
+							{/if}
+
+							<!-- It carries the page's own surface and the radar's plate — rounded, shadowed —
+								so the terrain does not read through the marks, which is the one thing it
+								gained by leaving a panel that had a surface of its own. -->
+							<ShowShareGrid
+								shares={subdivisionShares}
+								active={activeShow}
+								classes="pointer-events-auto rounded-lg bg-base-100 text-white shadow-xl"
+								on:select={(event) => toggleShow(event.detail.id)}
+							>
+								<!-- The looking glass, as the last cell of that grid. It stood at the far end
+									of the breadcrumb bar over the map once, where it had to fold a field away
+									into a glyph to leave the path any room; here the glyph is a cell like the
+									shares beside it and the field comes up on the row above it.
+									On this row because this row is the one that acts on the level: the cells
+									beside it narrow it to a show, and this goes and finds places that are not
+									on it at all. -->
+								<button
+									slot="end"
+									type="button"
+									class="flex items-center justify-center rounded-md p-1 hover:bg-white/10"
+									aria-label={$_('map.search.label')}
+									aria-expanded={searchOpen}
+									on:click={openSearch}
+								>
+									<img src="/assets/icons/lorc/magnifying-glass.svg" class="w-full" alt="" />
+								</button>
+							</ShowShareGrid>
 						</div>
 					</div>
 
@@ -3457,45 +3494,22 @@
 					The place stood on the band across the top of the page, a whole column away from
 					the answers about it (see the band, where the middle of the row used to be). -->
 				<div class="grid w-full flex-none grid-cols-2 items-center gap-2">
-					<!-- The near cell is where the map is standing, said once: the badge that names the
-						place, and before it the one mark that is not another way of naming it — the dots,
-						which are the way back up out of it. -->
-					<div class="flex min-w-0 items-center gap-2">
-						<!-- The way up, and nothing else: the dots and the column they drop, which is the
-							path down to where the open place sits (see MapBreadcrumbs' `dotsOnly`). The
-							path was a bar in a strip across the top of the map, on the ground that walking
-							back up is the one thing it does and the terrain is what moves when it is
-							pressed. It is here because what it walks up FROM is here — a cut belongs beside
-							its place — and the strip it left is the radar alone in its corner (see the map).
-							The badge it stood as, though, does not come with it: a folded bar keeps its last
-							crumb, and that crumb is the same tile and name the badge beside this is already
-							printing. Two of those in one cell is the show's mark drawn twice. So what stands
-							here is the square, and the names are in the column it drops.
-							Nothing at all at the top view, which is the one place with nothing above it.
-							Pressed for what the path was always pressed for: a step opens its region, an
-							empty rung takes the map to that tier's zoom. Through `openFromColumn` like
-							every other press in this block, so picking a place puts the search field away
-							with it. -->
-						{#if aboveCrumbs}
-							<MapBreadcrumbs
-								classes="flex-none"
-								crumbs={aboveCrumbs}
-								onSelect={(key) => (key ? openFromColumn(key) : open(null))}
-								onZoom={zoomToTier}
-								dotsOnly
-							/>
-						{/if}
-
-						<!-- Where the map is, and the radio playing for it. Lettered exactly as a crumb
-							and as a row of the list under it are, and pressed for the radio's play/pause
-							while there is a song (see RegionCurrentBadge). `min-w-0 flex-1` so a long
-							name truncates inside what the dots leave rather than widening the cell. -->
-						<RegionCurrentBadge
-							classes="min-w-0 flex-1"
-							row={subdivisionCurrent}
-							on:select={(event) => openFromColumn(event.detail.key)}
-						/>
-					</div>
+					<!-- The near cell is where the map is standing, said once and by one thing: the badge
+						that names the place, with the radio playing for it. Lettered exactly as a crumb
+						and as a row of the list under it are, and pressed for the radio's play/pause
+						while there is a song (see RegionCurrentBadge). `min-w-0` so a long name
+						truncates inside its half rather than widening the cell.
+						The dots stood before it for a while — the way back up out of the place, which
+						came down here from a strip over the map on the ground that a cut belongs beside
+						its place. It is back on that strip (see the map), at the near end of the row the
+						radar holds the far end of: what the path moves when it is pressed is the terrain,
+						and this cell is the one place on the page where a second way of naming the open
+						place could only ever be the same tile and name twice. -->
+					<RegionCurrentBadge
+						classes="min-w-0"
+						row={subdivisionCurrent}
+						on:select={(event) => openFromColumn(event.detail.key)}
+					/>
 
 					<!-- The three, said the way the map's own two are said over the terrain: DaisyUI's
 						boxed tabs, `role="tablist"`, and which is up held on the page rather than
