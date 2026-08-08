@@ -2,6 +2,7 @@
 	import classNames from 'classnames';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import TownPlate from '$components/core/TownPlate.svelte';
+	import TownChallenge from '$components/core/TownChallenge.svelte';
 	import BoosterBox from '$components/core/pack/BoosterBox.svelte';
 	import type { MapBoosterBox, MapMarker } from '$types/map.type';
 
@@ -13,10 +14,17 @@
 	// column up in a document.
 	//
 	// The order is the pin's, and it is the order the blocks are read in: the side holding the
-	// place, the plate saying what the place is and what may be done about it, and what the
-	// town has waiting. Which of them appear is decided nowhere here — a pin carries the side
-	// only where the caller gave it one, a holder only where somebody holds the town, a
-	// standing only where there is something to take.
+	// place, the plate saying what the place is and whose it is, and what the town has waiting.
+	// Which of them appear is decided nowhere here — a pin carries the side only where the
+	// caller gave it one, a holder only where somebody holds the town, a standing only where
+	// there is something to take.
+	//
+	// One thing is arranged differently from the mark on the terrain, and only where the town
+	// has both: the standing stands BESIDE the side rather than under it on the plate. A pin
+	// dropped on a point is a narrow column with a width of its own to choose, and stacking is
+	// the only thing it can do; this is laid across the foot of the map with a whole pane's
+	// width to spend and no height to spare (see besideTheSide). The blocks are the same
+	// blocks either way round.
 	export let marker: MapMarker;
 	// The town's booster mark, where the window has one for it. Always the whole box and never
 	// the disc: a disc is a dot on a town nobody has picked, and this column is only ever
@@ -41,10 +49,50 @@
 	$: sideKey = (marker.team ?? [])
 		.map((member) => `${member.basePath ?? ''}|${member.label}|${member.color}`)
 		.join(',');
+
+	// Whether the standing stands BESIDE the side rather than under it on the plate: only where
+	// there is both a side to stand and something to be done about it. The two are one
+	// statement — these are the three who hold the place, this is how far taking it has got and
+	// the way to get further — so they are read across rather than down, which is also what
+	// keeps a block this tall off the bottom of a map.
+	// Where either is missing there is no pair to set side by side: a town with nobody standing
+	// on it puts its standing back on the plate where a pin has always carried it, and a town
+	// with nothing to be done about it is the side alone at the width it has always had.
+	$: besideTheSide = Boolean(marker.team?.length && marker.challenge);
 </script>
 
 <div class={classNames('flex flex-col items-center gap-1', classes)}>
-	{#if marker.team?.length}
+	{#if besideTheSide}
+		<!-- Two cells of a row of three: the side takes two of them and the standing takes the
+			last, stacked one over the other and centred against the statues beside it (see
+			TownChallenge's `stacked`). Two thirds and a third rather than halves, because the
+			cells hold different things — three cards are a picture and want the room a picture
+			wants, where a bar and a button are read at whatever width they are given.
+			The `{#key}` and the drop shadow are the side's own wherever it is laid; see below,
+			where the same row is stood at the full width. -->
+		<div class="grid w-full grid-cols-3 items-center gap-2">
+			{#key sideKey}
+				<div class="col-span-2 min-w-0 drop-shadow-lg">
+					<TeamLineup
+						members={marker.team ?? []}
+						flipped={false}
+						seeded={!marker.holder}
+						{alwaysReveal}
+						classes="gap-1"
+					/>
+				</div>
+			{/key}
+
+			<TownChallenge
+				siege={marker.challenge!.siege}
+				button={marker.challenge!.button}
+				unlocksAt={marker.challenge!.unlocksAt}
+				onUnlock={marker.challenge!.onUnlock}
+				stacked
+				classes="min-w-0"
+			/>
+		</div>
+	{:else if marker.team?.length}
 		<!-- The side sitting on the town, as the roster and the pin both stand a team up. The
 			pin gives the row a fixed 500px because it hangs off a point with nothing to measure;
 			here it takes the width of the column it is laid in, which is the same rule the
@@ -81,15 +129,19 @@
 		in and squares its corners against what it is stacked with (see TownPlate).
 		Only where there is anything for it to hold: a plate that is not naming the place and
 		has neither an occupant nor a standing to print is a bare band of surface with nothing
-		written on it, which is a mark about a town that says nothing about the town. -->
-	{#if named || marker.holder || marker.challenge}
+		written on it, which is a mark about a town that says nothing about the town.
+		The standing is the plate's only where it is not already standing beside the side: a pin
+		carries it there by default (which is what the arena's plate and the map's own marks
+		draw), and handing it over twice would print the same bar and the same button in two
+		places on one mark. -->
+	{#if named || marker.holder || (marker.challenge && !besideTheSide)}
 		<TownPlate
 			iconSvg={marker.iconSvg ?? null}
 			frameClasses={marker.frameClasses ?? null}
 			title={marker.title}
 			subtitle={marker.subtitle}
 			holder={marker.holder}
-			challenge={marker.challenge}
+			challenge={besideTheSide ? null : marker.challenge}
 			{named}
 			flush
 		/>
