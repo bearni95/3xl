@@ -1234,34 +1234,13 @@
 	// the block empty behind the sheet.
 	$: if (townTab === 'box' && !townBoxOffered) townTab = 'town';
 
-	// Whether that block is standing at all, which is what the map's own shape is decided against
-	// (see below). A town and the map's own tab, and gone under a full view with the rest of the
-	// chrome — the same three the block was drawn on before any of this was named; it is a name
-	// now because the bead that divides the two, the rule under the map and the square all ask
-	// the same question.
-	$: townBlockUp = Boolean(townPin) && mapTab === 'map' && !$fullScreenModalOpen;
-
-	// Which of the two below the tabs is the square, on a phone: the terrain, or the block under
-	// it. One of them is 1:1 of the page's own width and the other takes what is left of the
-	// column — a division of a fixed height between two boxes, where the square is the one asked
-	// for by name and the other simply fills.
-	//
-	// The map has it to begin with, this being a map, and the press hands it over: a reader who
-	// has walked into a town is often there for the three standing on it or for the box it deals,
-	// and at a phone's width those are read at whatever is left under a square map — which is
-	// enough to see them in and not enough to look at them in. Neither box is ever hidden by the
-	// other; what moves is which of the two is the picture and which is the strip.
-	//
-	// It moves nothing at all from `md` up (`md:hidden` on the bead, `md:` on every class it
-	// touches): the terrain fills the column there and the block is laid over its bottom edge, so
-	// there are not two boxes dividing a height to divide differently.
-	//
-	// The swap is instant and deliberately not animated. The map's box changing IS the one thing
-	// WorldMap answers with `invalidateSize` + `syncView` + a full rebuild of its pins and boxes
-	// (see its ResizeObserver), and one press is one rebuild — a quarter of a second of animated
-	// height would be that rebuild once a frame for the whole of it, which is the very reason the
-	// side at the foot of the page folds over the map rather than into it.
-	let mapSquare = true;
+	// (Which of the two below the tabs was the square used to be a press: a bead on the rule
+	// between them handed it from the terrain to this block and back. It is the block's for good
+	// now — a 1:1 of the page's own width, with the map taking what is left of the column — so
+	// there is no state, no bead and nothing about the map's box that a press can move. Which is
+	// also the end of the one thing that swap cost: the map's box changing is what WorldMap
+	// answers with `invalidateSize` + `syncView` + a full rebuild of its pins and boxes, and
+	// nothing on this page asks it to do that any more.)
 
 	// (The standing was lifted off this pin for a while and stood on its own in the column beside
 	// the map, and the pin was handed on without it. Both halves are back on the one mark at the
@@ -3162,10 +3141,10 @@
 			sheets, and a grid that filled the gap would walk the map into the hole.
 
 			Nothing here scrolls at either width, and below `md` that is a statement about the two
-			boxes rather than about this one: they divide the column between them — one is the square
-			and the other takes what is left (see `mapSquare`) — so what is in the column is exactly
-			the column, whichever way the bead is left. What does not fit is what is INSIDE the block
-			under the map, and that block scrolls inside itself, the way every box on this page does.
+			boxes rather than about this one: the block under the map is a square of the page's width
+			and the terrain takes what is left, so what is in the column is exactly the column. What
+			does not fit is what is INSIDE that block, and it scrolls inside itself, the way every box
+			on this page does.
 
 			Three things stand in this column, and only one of them at a time: the terrain, the list
 			of the places the open region divides into (see RegionLocationList), and the shows that
@@ -3237,29 +3216,17 @@
 					this box, the map always and the list only while it is picked, and the list carries the
 					page's own surface so the terrain does not read through it.
 
-					On a phone this box is a SQUARE of the page's own width (`aspect-square`, with
-					`flex-none` so the column neither stretches nor squeezes it): the terrain's height is
-					read off its width, which is the one length here nothing but the device decides. That
-					is what leaves the side standing on the open town somewhere to stand — it is the next
-					thing down the column instead of a band laid over the terrain's bottom edge (see
-					below).
+					It takes what the column has left at every width (`flex-1`), which on a phone is the
+					column less the block under it — and that block is a square of the page's own width
+					(see below), so the terrain is whatever a phone has after a 1:1 and the tabs. It was
+					the square itself for a while, and then either of them was, a bead on the rule handing
+					it from one to the other. The square is the block's now, and the map is back to the
+					one thing it has always been at every other width: the box that fills.
 
-					It is the square only while it holds it. There are two boxes under the tabs on a
-					phone, this and the block below, and one square between them: the bead on the rule
-					hands it over (see `mapSquare`), and whichever does not have it takes what is left of
-					the column (`flex-1`). With no block standing there at all — a coarser region open, or
-					the list of places up — there is nothing to divide with and the terrain simply fills,
-					since a square is a share of a column and not an ornament.
-
-					From `md` up the box always takes whatever the column has left (`md:aspect-auto
-					md:flex-1`): the height there is the viewport's, the pin is over the map again, and a
-					square would be a map with a hole under it. -->
-				<div
-					class={classNames(
-						'relative min-h-0 md:aspect-auto md:w-auto md:flex-1',
-						townBlockUp && mapSquare ? 'aspect-square w-full flex-none' : 'flex-1'
-					)}
-				>
+					It is also, again, a box nothing on the page resizes — no fold reaches it, no press
+					moves it, and a full view leaves it alone — so Leaflet is never told the column
+					changed except by a rotation or a resize of the window itself. -->
+				<div class="relative min-h-0 flex-1">
 					<div class="absolute inset-0 flex flex-col">
 						<WorldMap
 							center={[41.8, 1.7]}
@@ -3446,25 +3413,26 @@
 					it was — absolutely placed like the radar, centred on the bottom edge of the terrain,
 					the one edge nothing else is using, stood over the map without the map being re-framed
 					by it. Below `md` it is simply the next thing down this column, in the flow after the
-					terrain (see the box above): three statues and a plate over a map that is 100vw tall
-					cover the better part of what a phone can see of the country, so on that width the
-					picture stands beside the place rather than on top of it.
+					terrain (see the box above): three statues and a plate over a map that fills a phone
+					cover the better part of what one can see of the country, so on that width the picture
+					stands beside the place rather than on top of it.
 
-					Which of the two is the square is the bead's (see `mapSquare`, and the button below):
-					this block is `aspect-square w-full` while it holds it and `flex-1` while the map
-					does, so between them they are always the whole of the column and never more. Its own
-					top edge carries the rule, `border-t-2 border-primary`, exactly as the side at the
-					foot of the page carries the one that separates it from this: a rule belongs to the
-					box below the line, so it travels with the edge it separates. Dropped from `md` up
+					And it is a SQUARE there, always: `aspect-square w-full`, 1:1 of the page's own width,
+					with `flex-none` so the column neither stretches nor squeezes it. Two things are read
+					in this box — three statues and a plate under them, or a booster box, which is 30:37
+					of whatever width it is given — and both are pictures, so what they want is a picture's
+					box rather than a strip the column happened to have left. It is the map that takes what
+					is left now (`flex-1` up there), and being a map that is what it wanted all along.
+					The square was the map's for a while, and then it was a press: a bead on the rule
+					between them handed it either way. Neither is here now — the shape is settled and the
+					map's box has nothing left that can move it.
+
+					Its own top edge carries the rule, `border-t-2 border-primary`, exactly as the side at
+					the foot of the page carries the one that separates it from this: a rule belongs to
+					the box below the line, so it travels with the edge it separates. Dropped from `md` up
 					(`md:border-t-0`) along with the shape, where this is a band over the terrain and
-					nothing is divided.
-
-					The padding is `p-3` on three sides and `pt-7` at the head, and the odd one out is
-					the bead: the rule sits at the map's own end and the circle is centred on it, so the
-					first 20px under that line are the bead's own half. Three sides of air and a head that
-					clears the mark standing in it — the tabs are what would otherwise have been sat on,
-					and a tab is pressed rather than looked at. Off from `md` up with the rest of it,
-					where there is neither a rule nor a bead.
+					nothing is divided. `p-3` all round again, there being no mark on the line to keep a
+					head clear of.
 
 					It is out of the map's pane and a child of this column for the same reason: an in-flow
 					child of the square would be laid inside the square, which is the thing being got out
@@ -3499,59 +3467,10 @@
 					hanging off the bottom of it, at a width where what is under the map is what a
 					phone has left. Tabs and not a fold, because neither of the two is the other's
 					detail. -->
-				<!-- `townPin` again beside the flag that is made of it: the flag answers for the map's
-					own shape and is a boolean by the time it gets here, and what stands in this block
-					is the pin itself. -->
-				{#if townBlockUp && townPin}
-					<!-- The bead that divides the terrain from this block, and it is the bead at the
-						foot of the page said again in the same words: the same `size-10` circle in the
-						theme's primary, threaded on a 2px rule, the same arrow turned over on the same
-						250ms, a phone's only (`md:hidden`). Two boundaries on one column drawn two
-						different ways would be two inventions where the page has one.
-
-						The line it is threaded on is the map's own end, and that is what `-my-5` is for:
-						half the circle's height off each side leaves it nothing of the flow, so the block
-						below starts exactly where the terrain stops and the bead is centred on that edge
-						with half of itself over each. The bead at the foot of the page takes `-mb-5`
-						alone, and rightly — the sheet it rides on is out of the flow, so it has only its
-						own box to pull up; here both boxes are in the column and a bead that gave the
-						flow anything at all would be a strip of nothing between the map and the rule.
-						Which is also why its z-index is the chrome's `z-[900]` and not the panel's
-						`z-10`: the half standing over the terrain is standing over Leaflet's own panes,
-						which run to 800, and a mark that a map's tiles paint over is no mark.
-
-						What it does is not what the other one does, and the arrow is what says so. The
-						one at the foot of the page folds a sheet away and back; this one hands the square
-						from the map to the block or back again (see `mapSquare`) — nothing is hidden
-						either way, both boxes stand at both settings, and what moves is the line between
-						them. So the arrow points the way that line will go: up while the map holds the
-						square (press and the terrain gives way to what is under it), down while the block
-						does.
-						`aria-label` says the destination rather than the gesture, which is the one thing a
-						reader cannot see from the mark: an arrow says a direction, not what is at the end
-						of it. -->
-					<button
-						type="button"
-						transition:blur={CHROME_BLUR}
-						class="relative z-[900] -my-5 flex size-10 cursor-pointer items-center justify-center self-center rounded-full bg-primary shadow-xl md:hidden"
-						aria-label={mapSquare ? $_('map.square.town') : $_('map.square.map')}
-						on:click={() => (mapSquare = !mapSquare)}
-					>
-						<img
-							src="/assets/icons/delapouite/plain-arrow.svg"
-							class={classNames('size-4 transition-transform duration-[250ms] ease-out', {
-								'rotate-180': mapSquare
-							})}
-							alt=""
-						/>
-					</button>
-
+				{#if townPin && mapTab === 'map' && !$fullScreenModalOpen}
 					<div
 						transition:blur={CHROME_BLUR}
-						class={classNames(
-							'pointer-events-none flex min-h-0 min-w-0 flex-col items-center gap-2 border-t-2 border-primary px-3 pt-7 pb-3 md:absolute md:inset-x-3 md:bottom-3 md:z-[900] md:aspect-auto md:h-auto md:w-auto md:flex-none md:border-t-0 md:p-0',
-							mapSquare ? 'flex-1' : 'aspect-square w-full flex-none'
-						)}
+						class="pointer-events-none flex aspect-square w-full min-h-0 min-w-0 flex-none flex-col items-center gap-2 border-t-2 border-primary p-3 md:absolute md:inset-x-3 md:bottom-3 md:z-[900] md:aspect-auto md:h-auto md:w-auto md:border-t-0 md:p-0"
 					>
 						<!-- The two, said the way the map's own three are said over the terrain: DaisyUI's
 							boxed tabs, `role="tablist"`, and which is up held on the page rather than
