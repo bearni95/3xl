@@ -1409,24 +1409,34 @@
 	});
 
 	// Whether the side is standing its three cards, as against the coloured mark alone. It is
-	// what the statues are actually mounted on (see TeamLineup's `statues`), and it is one step
-	// behind the fold on purpose:
+	// what the statues are actually mounted on (see TeamLineup's `statues`):
 	//
 	// - Folded, there are no statues. Three sprites looping behind a cut nobody can see through
 	//   is three clips loaded, decoded and animated for nothing, and the whole of what the strip
 	//   shows is the band and the tab, which are not theirs.
-	// - Unfolding, they stay out until the panel has finished opening — then they mount, and
-	//   mounting is what plays their arrival: a statue is veiled on the way in and the veil is
-	//   spent once per character per session (see IdleSprite), so a row that is built fresh is a
-	//   row that can be watched arriving. Which is why the corner asks for `alwaysReveal` while
-	//   it folds: the session has almost certainly seen these three, and here that is not a
-	//   reason to skip the one thing the gesture is for.
-	// - Folding, they stay in until the panel has finished closing. Taking them out at the press
-	//   would shorten the panel's own content under the animation, and a box whose height is
-	//   `min(content, max-height)` would snap shut instead of running the fold.
+	// - At the press to open, they go up AT ONCE — before the fold moves, not after it. This is
+	//   the whole of what makes the panel open in one motion: what the fold animates is a
+	//   max-height, and what is drawn is `min(content, max-height)`, so the box can only run to
+	//   a height its content already has. Put the cards up when the fold finished and the panel
+	//   opened onto the plate alone, stopped, and then jumped the height of three cards when
+	//   they landed — a fold, a pause and a resize where there was meant to be one gesture.
+	//   Mounting them first costs nothing to look at, either: a statue's height is settled the
+	//   moment it is in the document, its picture box being `aspect-[3/4]` of its own width and
+	//   its panel a fixed number of type rows (see CharacterStatue), so the box is full size
+	//   before a single frame of any clip has been asked for.
+	//   And mounting is still what plays their arrival: a statue is veiled on the way in and the
+	//   veil is spent once per character per session (see IdleSprite), so a row that is built
+	//   fresh is a row that can be watched arriving. Which is why the corner asks for
+	//   `alwaysReveal` while it folds — the session has almost certainly seen these three, and
+	//   here that is not a reason to skip the one thing the gesture is for. What the panel runs
+	//   into is therefore the cards' full box with the veil over it, and the sweep that uncovers
+	//   them starts a beat later (VEIL_HOLD), which is about where the fold ends.
+	// - At the press to close, they stay in until the panel has finished closing, for the same
+	//   reason read the other way: taking them out at the press would shorten the content under
+	//   the animation and the box would snap shut instead of running the fold.
 	//
-	// So both directions wait the fold out, and the timer is cleared on every change: a press
-	// answered before the last one has finished is one gesture, not two.
+	// So one direction is immediate and the other waits the fold out, and the timer is cleared
+	// on every change: a press answered before the last one has finished is one gesture, not two.
 	let sideStatues = false;
 	let foldTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -1438,13 +1448,14 @@
 			foldTimer = null;
 		}
 		// Nothing to wait for where nothing folds: from `md` up the side is a column and its
-		// cards are simply up, whatever the press was last left saying.
-		if (!folds) {
+		// cards are simply up, whatever the press was last left saying. Nothing to wait for on
+		// the way open either — the fold needs the height they bring before it starts moving.
+		if (!folds || open) {
 			sideStatues = true;
 			return;
 		}
 		foldTimer = setTimeout(() => {
-			sideStatues = open;
+			sideStatues = false;
 			foldTimer = null;
 		}, FOLD_MS);
 	}
