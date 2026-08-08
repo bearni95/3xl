@@ -7,12 +7,12 @@
 	import { REGION_ROW_BOX_WIDTH, type RegionRow } from '$components/core/region-types';
 	import { musicService } from '$services/music.service';
 
-	// Where the map is, and the radio playing for it — one row, and the page's first. It stood at
-	// the head of the column beside the map for a long time, over everything else that column had
-	// to say about the open place; it is a band across the top of the whole page now, above the
-	// three columns and before all else. That is what it had grown into anyway: the row names the
-	// place every column under it is about, and it carries the one control — play/pause — that
-	// belongs to none of them.
+	// Where the map is, and the radio playing for it — the middle of the band across the top of
+	// the page, between the game's name and the two marks that answer for it. It stood at the head
+	// of the column beside the map for a long time, over everything else that column had to say
+	// about the open place. That is what it had grown into anyway: the row names the place every
+	// column under it is about, and it carries the one control — play/pause — that belongs to none
+	// of them.
 	//
 	// Its own component because the row it draws is the map's answer to "where am I", and the two
 	// things that answer it — the place and the song — were held in two different places while
@@ -49,8 +49,10 @@
 </script>
 
 <!-- White ink, as on the bar and in the columns below: a crumb letters what it flies in white at
-	70%. The surface is the page's own, because this band is the one thing here with nothing behind
-	it — no terrain, no column.
+	70%. No surface and no padding of its own: it is a cell of the band above, which carries the
+	fill, the inset and the gap for all four of them (see +page.svelte). What it does carry is a
+	box, so `classes` can hand it the `min-w-0 flex-1` that makes it the part of the row that
+	gives.
 
 	Its second line is the radio: the song, behind the mark that says whether it is running
 	(MusicLine). That line was the show this place flies, and a station is a show — the map tunes
@@ -61,7 +63,7 @@
 	So this row is the whole of the radio on the map. The play/pause stood under it on a row of its
 	own for a while, as a plain button beside the song — the same two things said twice running,
 	which is one radio too many. -->
-<div class={classNames('px-2 py-2 text-white', classes)}>
+<div class={classNames('flex flex-col justify-center text-white', classes)}>
 	{#if row}
 		<RegionListRow
 			{row}

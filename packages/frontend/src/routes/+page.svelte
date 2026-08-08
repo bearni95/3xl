@@ -2726,10 +2726,13 @@
 	// what a full view moves is what stands on the map, never the map.
 	const CHROME_BLUR = { amount: 8, duration: 250 };
 
-	// Nothing stands ON the map any more, so nothing about the map has to be measured. The
-	// furniture that used to be positioned over the terrain — the badge and its marks along the
-	// top, the side and the account at the foot — is the third column of the page's grid now,
-	// beside the map and in flow. Three pieces of state went with it:
+	// Nothing about the map has to be measured any more. The furniture that used to be positioned
+	// over the terrain — the badge and its marks along the top, the side and the account at the
+	// foot — is in flow now: the game's name and the two questions on the page's top row, the side
+	// and the account in the third column, the list of places a tab over the terrain. One square
+	// went back onto the map afterwards (the radar, top-right), and it changes none of this: a
+	// button in a corner is not a band across an edge, so there is still nothing to measure.
+	// Three pieces of state went with the move:
 	//
 	// - `topChromeHeight` / `chromeInsets`. The map was told how tall the band across its top
 	//   edge was so it would deal its pins clear of the bar drawn over them. There is no bar over
@@ -2748,23 +2751,124 @@
 	its one row (`flex-none`), so what the grid divides is whatever is left — which is why it is a
 	flex column with `min-h-0 flex-1` on the grid rather than the grid being the page. -->
 <div class="flex h-screen flex-col overflow-hidden">
-	<!-- Where the map is, and the radio playing for it: one row, and the page's first thing. It
-		was the head of the middle column, over everything else that column had to say about the
-		open place — which is a row about all three columns filed under one of them. It names the
-		place the terrain is framed on, the place the list beside it divides, and the place the
-		furniture's own side would be fought for, so it stands above the lot and reads once.
+	<!-- The page's first row, and it is the whole of what stands over the three columns: the
+		game's name at the near end, where the map is and the radio playing for it filling the
+		middle, and what the game gets asked at the far end.
+
+		The middle of it was the head of the middle column, over everything else that column had to
+		say about the open place — which is a row about all three columns filed under one of them.
+		The two ends were the head of the *third* column, which is where they had landed after
+		coming off a band laid over the map's top edge; a name and two questions are about the game
+		and not about the furniture, so a column of furniture was only ever the nearest shelf. Both
+		ends are here now because this row is the one thing on the page that belongs to none of the
+		three columns and to all of them.
+
 		The whole width, and its own rule under it: what separates a row from what is under it
 		belongs to neither, and the rule stands at both widths because the fold below it changes
 		the columns' axis and not this band's.
+
+		`items-stretch` is what makes the four the same height: the marks at the far end are
+		squares and the middle is a two-line row, and stretching means the name's plate and the
+		squares take whatever height that row comes to rather than a number written here that would
+		have to be kept in step with it. The padding is the band's rather than each child's, so the
+		four are spaced by one `gap-2` and inset by one `px-2`.
+
 		Blurred away with the rest of the map's furniture while a full view is up, on the same 8px
 		over the same 250ms (see CHROME_BLUR) — a sheet is a place of its own and the band names
 		the one it was raised from. -->
 	{#if !$fullScreenModalOpen}
-		<div transition:blur={CHROME_BLUR} class="flex-none border-b-2 border-primary bg-base-100">
+		<div
+			transition:blur={CHROME_BLUR}
+			class="flex flex-none items-stretch gap-2 border-b-2 border-primary bg-base-100 px-2 py-2"
+		>
+			<!-- What it says and what size it is set at are two different things: the word is "6xl"
+				and the type is `2xl`, one flat size at every viewport rather than a ramp.
+				`items-center` centres it in whatever height the row hands this plate (see above);
+				`leading-none` so what is centred is the type's own height and not a line box built for
+				a paragraph. `font-display` is Bungee, the app's one departure from Genos, and it is the
+				token and not the family that is named here (see the `@theme` block in css/app.css).
+
+				The plate is the theme's primary at full strength. It was a bar in a row of bars with a
+				path of crumbs beside it, drawn at full strength precisely where that path was drawn at
+				80% — a path is a thing being looked through to the map under it; a name is not. What
+				stands beside it now is the place the map is open on, which is not a thing to see
+				through either, so the two plates read as one statement: this game, and where in it you
+				are.
+
+				The same badge is the tab's mark (see static/favicon.ico and the link in app.html), and
+				it is drawn differently there on purpose: an icon is a square with room round the word,
+				because that is the box a browser gives it. This is a plate in a row of plates — as
+				tall as the row makes it, as wide as the word makes it. Neither shape should be made to
+				answer for the other.
+
+				It was the tab a column of views dropped from — the player's cards and the album, a row
+				each, up while the pointer was on it — and, on a phone, the handle that pulled the list
+				of places down over the map. It is neither now: the views are sheets raised from the
+				marks at the far end of this row, and the list of places is a tab over the terrain (see
+				RegionLocationList). So the plate is only the plate — nothing hangs off it and nothing
+				is asked about the pointer — and it is a `<div>` at every width. -->
+			<div
+				class="flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
+			>
+				<!-- The word twice: the same lettering in the panel's surface colour, offset 3px down
+					and right, and the word itself over it. A shadow drawn as a copy rather than as a
+					`text-shadow`, because a shadow the thickness of this face wants to be the face — one
+					solid displaced impression of it, with no blur and no spread, which is what a second
+					copy of the glyphs is and what a shadow utility, spelling a colour and a radius, is
+					not.
+					Both copies are positioned, so the one later in the document paints over the other
+					without a z-index: an absolute box would otherwise sit above in-flow type whatever
+					order it is written in, and sending it under with a negative z-index would send it
+					under the plate's own fill as well, there being no stacking context between them. The
+					copy in flow is the one that gives the box its size; `aria-hidden` on the other, since
+					a reader hearing "6xl 6xl" is being told about a shadow. -->
+				<span class="relative font-display text-2xl leading-none">
+					<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true">6xl</span>
+					<span class="relative">6xl</span>
+				</span>
+			</div>
+
+			<!-- Where the map is, and the radio playing for it. It takes the middle because it is the
+				one thing on this row that changes: the name at the near end and the questions at the
+				far end are the same words all game, and the row reads as a frame round the place you
+				are standing in. `min-w-0` so a long town name truncates inside it rather than pushing
+				the far end off the edge. -->
 			<RegionCurrentBadge
+				classes="min-w-0 flex-1"
 				row={subdivisionCurrent}
 				on:select={(event) => openFromColumn(event.detail.key)}
 			/>
+
+			<!-- What the game gets asked, first of the far end, at every width — a question is as
+				worth answering on a desktop as on a phone. No `ml-auto` pushing the end over any more:
+				the middle of this row is `flex-1` and takes every pixel the four of them do not, so
+				these two are held against the far edge by the thing between them rather than by a
+				margin.
+				A square in the name plate's own fill, drawn to the row's height (`self-stretch
+				aspect-square`), with a white game-icons glyph that needs no colour of its own on the
+				primary. -->
+			<button
+				type="button"
+				class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
+				aria-label={$_('faq.open')}
+				on:click={openFaq}
+			>
+				<img src="/assets/icons/sbed/help.svg" class="size-6" alt="" />
+			</button>
+
+			<!-- Who drew the fighters, last on the row. It stands beside the questions because it
+				answers one of the same kind — where all this came from — and because the people who
+				made these sprites are named on the game's own top row rather than three screens in. A
+				palette for a glyph: what the sheet holds is a table of artists. Same square, same fill,
+				same white artwork as the mark beside it. -->
+			<button
+				type="button"
+				class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
+				aria-label={$_('credits.open')}
+				on:click={openCredits}
+			>
+				<img src="/assets/icons/delapouite/palette.svg" class="size-6" alt="" />
+			</button>
 		</div>
 	{/if}
 
@@ -2776,10 +2880,12 @@
 		the map's top edge, the side and the account at its foot, all absolutely positioned over the
 		canvas with the pointer switched off between them and the map told (in pixels) which band of
 		itself was spoken for. It is a column now: in flow, positioned relatively, sized by the grid
-		like its neighbours, and nothing at all is layered over the terrain. That is what takes the
-		`pointer-events-none`/`-auto` pairs, the `z-[900]`s that had to clear Leaflet's own panes, and
-		the measured `chromeInsets` out of this page in one go — none of them were about what the
-		furniture says, only about it standing somewhere it did not belong.
+		like its neighbours. That is what takes the `pointer-events-none`/`-auto` pairs and the
+		measured `chromeInsets` out of this page in one go — none of them were about what the
+		furniture says, only about it standing somewhere it did not belong. Its head has since left
+		the column too: the name and the two questions are the page's top row, and the radar is the
+		one square that went back onto the terrain, `z-[900]` and all, because a control that moves
+		the map is the map's (see the map column above).
 
 		Below `md` the three fold into one column and stand one after the other, top to bottom in the
 		same order: the map, the places, the furniture — a third of the HEIGHT each, where from `md` up
@@ -2886,6 +2992,43 @@
 							bind:currentCenter
 							classes="min-h-0 flex-1"
 						/>
+
+						<!-- The radar, and it is the one thing on this page drawn ON the terrain. The map
+							carries days of festes at once and no marks to find them by, so the boxes waiting
+							out there are found by panning across the country looking for one — which is a
+							search, and this is the button that does it: press it and the map opens the
+							nearest town whose box is still unopened (see findNearestBox). It stands at every
+							width, because a box is as hard to come across on a desktop as on a phone.
+							It has been at the far end of a bar over the map, then a mark in the furniture
+							column beside it, and it is back on the terrain because it is the only mark this
+							game has that acts on the terrain: the name, the questions and the credits are
+							about the game, and they are the row above. A control that moves the map belongs
+							in the map's own corner, and the top-right is the corner nothing else is using.
+							So the `z-[900]` is back with it — and only with it. It clears Leaflet's own panes
+							(overlays 400-600, controls 800) without reaching the arena's 1200. Nothing else
+							about the old band comes back: no measured inset handed to the map, no
+							`pointer-events-none` over the gaps, because this is one square in one corner and
+							not a strip across an edge.
+							Only while the map is the tab that is up: the list of places is painted over this
+							same box (see below) and would otherwise be painted under a radar with nothing on
+							it to point at.
+							A size of its own, where the three marks it used to stand among are drawn to a
+							row's height (`self-stretch aspect-square`): there is no row here to be as tall
+							as. `size-10` is what that row came to, so the square is the same square.
+							Disabled when there is nothing left to point at — every box in the window opened,
+							or none loaded yet — because a radar that answers "here" or answers nothing is a
+							press with no destination. -->
+						{#if mapTab === 'map'}
+							<button
+								type="button"
+								class="absolute right-3 top-3 z-[900] flex size-10 cursor-pointer items-center justify-center rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
+								aria-label={$_('map.radar.nearest')}
+								disabled={!radarTarget}
+								on:click={findNearestBox}
+							>
+								<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
+							</button>
+						{/if}
 					</div>
 
 					<!-- The level the map is open on, listed. Handed the same rows the shares beside it are
@@ -3042,15 +3185,17 @@
 		{/if}
 
 		<!-- The furniture: the last third of the phone's column, the third column of the desktop's
-			row. Everything that used to be drawn over the map, now standing beside it. It keeps the
-			shape it had on the terrain — the badge and its marks at the head, the side and the account
-			at the foot — because that shape was never about the map being underneath: what the game is
-			called and what it can be asked belong at the top of a column, and who is playing belongs
-			at the bottom of one. `mt-auto` on the second block is what holds them apart, which is the
-			one thing `top-3` and `bottom-3` were doing that a column still has to do for itself.
+			row. It held two blocks for a while — the game's badge and its marks at the head, the side
+			and the account at the foot — which was the shape it had had while it was drawn over the
+			map. Only the second of them is what this column is actually about: who is playing, and
+			the three they field. The first has gone to the page's top row, where a game's name and
+			the questions put to it belong (see the band above).
+			`mt-auto` is still on the block, and still for the reason `bottom-3` was there before a
+			column: the account sits at the foot of one, and a column has to be told to push its last
+			block down. Nothing stands above it now, so it starts there and grows upwards.
 			It scrolls inside its own third at both widths, the way the list of places does: three
-			statues and a plate under a row of marks is taller than a third of a phone, and taller than
-			some viewports outright.
+			statues and a plate are taller than a third of a phone, and taller than some viewports
+			outright.
 			Inside `{#if ready}` like the map it came off: the side standing here is rolled against
 			the town names the polygons carry, and a statue drawn before those land says Ultramar at
 			a town whose name is still on its way (see claimPlaceName). -->
@@ -3058,179 +3203,19 @@
 			class="row-start-3 flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto p-3 md:col-start-3 md:row-start-1"
 		>
 			{#if ready}
-				<!-- The head of the furniture column: the game's own badge and the marks beside it. It
-					was a band across the map's top edge for a long time — absolutely positioned over the
-					canvas, inset on the three sides it touched, its own height measured off the DOM and
-					handed to the map so the pins would be dealt clear of it, its pointer events off
-					everywhere the plates did not themselves cover, and a z-index picked to clear
-					Leaflet's panes (overlays 400-600, controls 800) without reaching the arena's 1200.
-					None of that was ever about the marks: it was the cost of standing them on something.
-					In a column of its own the block is a block, and every one of those goes.
-					The music player stood in here too, in the left corner, then on the bar itself as one
-					of its cards, then at the foot of the map beside the account it plays for: a bar is a
-					path and a path is read across, so a card at the end of it took room the path needs,
-					and a card in the corner was a second place naming a show. The radio is on the head
-					of the list of places now — the row that says which place the map is open on, which
-					is the place it is playing for (see RegionSubdivisions) — and the plate in the
-					menu is the same radio said again where a menu can say it. -->
-				<div class="flex flex-col gap-2">
-					<!-- The row itself, and it is no longer about where the map is looking: it said that
-						for a long time, as a bar of crumbs across the top, and two other things say it now —
-						the band across the top of the page, which names the open place, and the column
-						beside the map, which carries the path to what that place sits inside (see the
-						`path` slot below). Two other things
-						left this row the same way and for the same reason: the location search, which was
-						a looking glass at its far end that unfolded into a field with its matches on a
-						plate at the corner underneath, and is a cell of that column's shares row answering
-						in that column's own rows; and the path itself. Looking for a place and naming a
-						place are both asking about a list of places, and the column is where this map lists
-						places.
-
-						Out of focus while a full view is up, and back into it when that view goes (see
-						CHROME_BLUR). The wrapper is what the transition needs — a transition cannot be put
-						on a component — and also the row the plates stand in, so they go and come back as
-						one thing rather than blurring apart. Unmounting them is what lets the way out play
-						at all, and costs nothing: what they draw is read off the stores every time. -->
-					{#if !$fullScreenModalOpen}
-						<!-- The top row: the badge and the radar at the near end, the marks that answer for
-							the game at the far end, and space between them. It was one bar with the word
-							standing inside a path, which made the game's name a step of that path; then two
-							plates with the path filling the middle; then a band across the map with the terrain
-							read through the gap. The path is in the list of places now, so what is left is the
-							things that are about the game rather than about where in it you are — and the gap
-							between the two ends is just a gap, this row being a row of a column rather than a
-							strip laid over anything.
-
-							`items-stretch` is what makes them the same height: the marks at the far end are
-							32px buttons where the badge holds one word, and stretching means the word's plate
-							takes whatever height that comes to rather than a number written here that would
-							have to be kept in step with it. -->
-						<div transition:blur={CHROME_BLUR} class="flex items-stretch gap-2">
-							<!-- What it says and what size it is set at are two different things: the word is
-								"6xl" and the type is `2xl`, one flat size at every viewport rather than a ramp.
-								`items-center` centres it in whatever height the row hands this plate (see above);
-								`leading-none` so what is centred is the type's own height and not a line box built
-								for a paragraph. `font-display` is Bungee, the app's one departure from Genos, and
-								it is the token and not the family that is named here (see the `@theme` block in
-								css/app.css). -->
-							<!-- The plate itself is where the two bars stop being the same chrome: the crumbs'
-								is the panel's surface at 80%, so terrain reads through the path, and this one is
-								the theme's primary at full strength. A path is a thing being looked through to
-								the map under it; a name is not, and there is nothing behind this plate worth
-								seeing.
-
-								The same badge is the tab's mark (see static/favicon.ico and the link in
-								app.html), and it is drawn differently there on purpose: an icon is a square with
-								room round the word, because that is the box a browser gives it. This is a bar in
-								a row of bars — as tall as the path beside it, as wide as the word makes it, and
-								inset by the row's own `px-3`. Neither shape should be made to answer for the
-								other. -->
-							<!-- The badge was the tab a column of views dropped from — the player's cards and
-								the album, a row each, up while the pointer was on it — and, on a phone, the handle
-								that pulled the list of places down over the map. It is neither now: the views are
-								sheets raised from the marks at the far end of this row, and the list of places is a
-								column of the page at every width (see the grid). So the plate is only the plate —
-								nothing hangs off it and nothing is asked about the pointer — and it is a `<div>` at
-								every width. It stretches to the row's height on its own, being a `flex-none` child
-								of an `items-stretch` row. -->
-							<div
-								class="flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
-							>
-								<!-- The word twice: the same lettering in the panel's surface colour, offset 3px
-									down and right, and the word itself over it. A shadow drawn as a copy rather
-									than as a `text-shadow`, because a shadow the thickness of this face wants to be
-									the face — one solid displaced impression of it, with no blur and no spread,
-									which is what a second copy of the glyphs is and what a shadow utility, spelling
-									a colour and a radius, is not.
-									Both copies are positioned, so the one later in the document paints over the
-									other without a z-index: an absolute box would otherwise sit above in-flow type
-									whatever order it is written in, and sending it under with a negative z-index
-									would send it under the plate's own fill as well, there being no stacking
-									context between them. The copy in flow is the one that gives the box its size;
-									`aria-hidden` on the other, since a reader hearing "6xl 6xl" is being told about
-									a shadow. -->
-								<span class="relative font-display text-2xl leading-none">
-									<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true"
-										>6xl</span
-									>
-									<span class="relative">6xl</span>
-								</span>
-							</div>
-
-							<!-- The radar, at the near end of the row and right beside the badge. The map
-								carries days of festes at once and no marks to find them by, so the boxes waiting
-								out there are found by panning across the country looking for one — which is a
-								search, and this is the button that does it: press it and the map opens the
-								nearest town whose box is still unopened (see findNearestBox). It stands at every
-								width, because a box is as hard to come across on a desktop as on a phone.
-								It stood at the far end for a while, last of the block the question mark pushes
-								over. It is here now because it is the one mark on this row that moves the map:
-								the badge says what this is and the radar says where to go next, which is one
-								statement about the country read left to right — where the far end's marks are
-								all about the game rather than about the terrain under them.
-								No `ml-auto` on this one: it is a `flex-none` child at the head of the row, and
-								the far end is still pushed over as a block by the first mark of that end.
-								The same square in the plate's own fill as the marks at the other end, drawn to
-								the row's height (`self-stretch aspect-square`), with a white game-icons glyph
-								that needs no colour of its own on the primary.
-								Disabled when there is nothing left to point at — every box in the window opened,
-								or none loaded yet — because a radar that answers "here" or answers nothing is a
-								press with no destination. -->
-							<button
-								type="button"
-								class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
-								aria-label={$_('map.radar.nearest')}
-								disabled={!radarTarget}
-								on:click={findNearestBox}
-							>
-								<img src="/assets/icons/lorc/radar-sweep.svg" class="size-6" alt="" />
-							</button>
-
-							<!-- What the game gets asked, at the head of the row's far end, at every width —
-								a question is as worth answering on a desktop as on a phone. The `ml-auto`
-								that pushes that end over is on this one, being the first mark of it: the
-								block is this and the credits, set apart by the row's own `gap-2` and moved
-								as one.
-								The same square in the plate's own fill as the two beside it, drawn to the
-								row's height (`self-stretch aspect-square`), with a white game-icons glyph
-								that needs no colour of its own on the primary. -->
-							<button
-								type="button"
-								class="ml-auto flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
-								aria-label={$_('faq.open')}
-								on:click={openFaq}
-							>
-								<img src="/assets/icons/sbed/help.svg" class="size-6" alt="" />
-							</button>
-
-							<!-- Who drew the fighters, next along. It stands beside the questions because it
-								answers one of the same kind — where all this came from — and because the
-								people who made these sprites are named on the map's own chrome rather than
-								three screens in. A palette for a glyph: what the sheet holds is a table of
-								artists. Same square, same fill, same white artwork as the marks either side. -->
-							<button
-								type="button"
-								class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
-								aria-label={$_('credits.open')}
-								on:click={openCredits}
-							>
-								<img src="/assets/icons/delapouite/palette.svg" class="size-6" alt="" />
-							</button>
-
-							<!-- A burger stood last on this row on a phone, pulling the list of places in over
-								the map. There is nothing for it to pull: below `md` the page folds to one column
-								and that list is simply the next thing down it (see the grid). The mark went with
-								the panel it opened, and with it the width measuring, the `columnOpen` it toggled
-								and the ✕ that pushed the panel back off. -->
-						</div>
-					{/if}
-
-					<!-- The map's right corner held the matches for a while, on a plate directly under the
-						field at the end of the bar: what was asked for at the top right, answered at the top
-						right. Both are gone — the field is a cell of the shares row in the column beside the
-						map and the matches are the rows of the list of places over it (see RegionLocationList),
-						so a search is read where every other list of places in this game is read. -->
-				</div>
+				<!-- The head of this column is gone entire, and with it the block that held it. It was
+					the game's badge, the radar, and the two marks that answer for the game — a band laid
+					over the map's top edge before that, absolutely positioned, its height measured off the
+					DOM and handed to the map so the pins would be dealt clear of it, its pointer events off
+					everywhere the plates did not cover, and a z-index picked to clear Leaflet's panes.
+					Standing it in a column took all of that away, and then the column turned out to be the
+					wrong shelf too: the name and the two questions are about the game rather than about
+					this player, so they are the page's own top row now, and the radar is the one of the
+					four that acts on the terrain, so it is back on the terrain (see both above). The music
+					player passed through here as well, in the left corner and then as a card of the bar,
+					before the radio became the row that names the open place.
+					What is left in this column is what it was always for: who is playing, and the side
+					they field. -->
 				<!-- The foot of the furniture column: the side this player fields, and under it who is
 					playing and the way into their account. Signed out, the middle of that block is the way
 					in instead (see SignInButton): the sign-in was in a burger menu once, which put the only
@@ -3455,7 +3440,7 @@
 <!-- The album, on the same sheet and over the map like the roster. Mounted only while it is
 	open, which is what keeps a cast of forty-odd sprites off every other page: the show
 	mapping, the player's cards and the statues all arrive with the opening. Opened from the
-	book in the views the badge at the head of the top row drops, through
+	book in the views the game's badge dropped when it was a tab, through
 	`collectionModalOpen`. -->
 {#if $collectionModalOpen}
 	<CollectionModal />
@@ -3472,7 +3457,7 @@
 {/if}
 
 <!-- What the game gets asked, on the same sheet as the rest of them. Raised by the question
-	mark at the far end of the top row, first of the marks there. Mounted only while it is open, like
+	mark at the far end of the page's top row, first of the two there. Mounted only while it is open, like
 	its neighbours here, so a list nobody has asked for is not standing behind the map. Its
 	content is the catalogue's — see FaqModal. -->
 {#if $faqModalOpen}
@@ -3480,7 +3465,7 @@
 {/if}
 
 <!-- Who made what the game is drawn out of, on the same sheet as the rest of them. Raised by
-	the palette at the far end of the top row, beside the question mark. Mounted only while it
+	the palette at the far end of the page's top row, beside the question mark. Mounted only while it
 	is open, like its neighbours here. Its list is the character registry — see CreditsModal. -->
 {#if $creditsModalOpen}
 	<CreditsModal />
