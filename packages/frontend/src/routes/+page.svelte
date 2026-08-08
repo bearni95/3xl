@@ -1368,8 +1368,9 @@
 	// block above it is there to push (see the third column's `mt-auto`).
 	// Whether the side at the foot of the page is unfolded, which is a question a phone asks and
 	// nothing else: below `md` it is a sheet lying on the map's bottom edge, and folded it shows the
-	// first 4.625rem of itself — its own rule and padding, and the 3rem band the side flies over its
-	// statues, which is the show the team is from lettered in its own colour (see TeamLineup's
+	// first 5.875rem of itself — its own rule and padding, and the whole of the coloured mark the
+	// side flies: the 3rem band over its statues and the tab under it naming the player, which is
+	// the show the team is from and whose it is, in the lead's own colour (see TeamLineup's
 	// banner). That is enough to say whose side is standing there and to be worth pressing; the
 	// statues, the account plate and the author's marks are what unfolding brings up, over the
 	// terrain rather than instead of it — the map keeps its whole box either way (see the grid).
@@ -2975,9 +2976,9 @@
 		the map is the map's (see the map column above).
 
 		Below `md` the two stand one after the other, the map over the furniture, and the second row is
-		a flat `4.625rem`: the height of the folded strip the side shows of itself, and nothing else —
-		its 2px rule, `p-3`, the 3rem band the team flies, `p-3` again (see the panel, where those four
-		are spelled out). The side is a sheet on a phone — it hangs off the bottom of this grid and
+		a flat `5.875rem`: the height of the folded strip the side shows of itself, and nothing else —
+		its 2px rule, `p-3`, the 4.25rem coloured mark the team flies (the band and the tab naming the
+		player under it), `p-3` again (see the panel, where those four are spelled out). The side is a sheet on a phone — it hangs off the bottom of this grid and
 		slides up OVER the terrain as it is unfolded (see the wrapper below) — so this row is not what
 		it stands in, only the room the map is asked to leave clear at the foot of the page for the
 		strip that is always down there.
@@ -3004,7 +3005,7 @@
 		side goes. Off from `md` up either way, where the two stand abreast and the grid separates
 		them. -->
 	<div
-		class="relative grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_4.625rem] md:grid-cols-3 md:grid-rows-1"
+		class="relative grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_5.875rem] md:grid-cols-3 md:grid-rows-1"
 	>
 		<!-- The map. Two thirds of the width from `md` up (`md:col-span-2`), and on a phone the whole
 			page but the strip the side keeps at the foot of it. It was one third of three until
@@ -3409,25 +3410,27 @@
 			>
 				<!-- The box the fold actually moves. On a phone it has two heights and the bead above
 					moves between them —
-					- Folded (the default), `max-h-12`: the 3rem band TeamLineup flies over its statues,
-					  and nothing else. So what is left standing is the show the side is from, its
-					  wordmark and its two glyphs, in the lead's own colour — a strip that says whose
-					  side is down there and is worth pressing to see. With the panel's own padding
-					  round it that comes to the 4.625rem the grid keeps clear at the foot of the page
-					  (2px + 0.75 + 3 + 0.75), so folded the side closes the page exactly where the map
-					  stops and covers nothing at all.
+					- Folded (the default), `max-h-[4.25rem]`: the whole of the coloured mark a side
+					  flies and nothing else — the 3rem band TeamLineup lays over its statues, plus
+					  the 1.25rem tab hanging off its bottom edge with the player's name and level on
+					  it (see TeamLineup, where both of those lengths are built). So what is left
+					  standing is the show the side is from, its wordmark, its two glyphs and whose
+					  side it is, in the lead's own colour — a strip worth pressing to see the rest
+					  of. With the panel's own padding round it that comes to the 5.875rem the grid
+					  keeps clear at the foot of the page (2px + 0.75 + 4.25 + 0.75), so folded the
+					  side closes the page exactly where the map stops and covers nothing at all.
 					- Unfolded, `max-h-[66vh]`. What that mostly means is "as tall as what is in it",
 					  the statues and the plate and the marks coming to well under two thirds of a
 					  phone; the figure is the ceiling for the case where they do not, and past it this
 					  box scrolls inside itself exactly as it does from `md` up. It is stated as a
-					  length rather than left off because a transition needs two ends: `max-h-12` to
+					  length rather than left off because a transition needs two ends: `max-h-[4.25rem]` to
 					  nothing at all is not a distance, and the fold would jump.
 					The transition is on the max-height, which is the honest cost of animating a box
 					whose real height nothing has measured: what is drawn stops growing at the content's
 					own height while the max goes on to 66vh, so the last part of an unfold is over
 					before the timing says it is. `ease-out` is chosen for that — it spends most of its
 					distance early, which is where the whole of the visible movement is.
-					`overflow-hidden` while folded and `overflow-y-auto` unfolded: a box cut to one band
+					`overflow-hidden` while folded and `overflow-y-auto` unfolded: a box cut to one mark
 					that scrolls is a strip somebody can push half a band out of.
 					`gap-2` is here rather than on the panel because it belongs to the rows it separates,
 					and they are in here.
@@ -3441,7 +3444,7 @@
 				<div
 					class={classNames(
 						'flex min-h-0 min-w-0 flex-col gap-2 transition-[max-height] duration-[250ms] ease-out md:max-h-none md:flex-1 md:overflow-y-auto',
-						sideOpen ? 'max-h-[66vh] overflow-y-auto' : 'max-h-12 overflow-hidden'
+						sideOpen ? 'max-h-[66vh] overflow-y-auto' : 'max-h-[4.25rem] overflow-hidden'
 					)}
 				>
 					{#if ready}

@@ -320,21 +320,33 @@
 			is a SIBLING of the band rather than a child of it — the band carries `z-0`, which
 			makes it a stacking context of its own, and nothing inside a z-0 box can rise past a
 			z-10 box beside it however high it is numbered.
-			`text-white`, which is what every other place in the game that names a player letters
-			them in (see PlayerPanel and PublicPlayerCard). Deliberately NOT the band's own ink:
-			that ink is picked to read on the band's fill — black on the yellow swatch — and this
-			row is not on the band. What it is on is the statues and whatever surface they stand
-			over, which in this theme is dark wherever it is anything.
+			It carries the BAND'S OWN FILL, and its ink with it (`bandFill` is the pair), which
+			is what makes it part of the plate rather than lettering dropped on the statues: the
+			two shapes meet with nothing between them, so a side flies one coloured mark that
+			happens to be a bar with a tab under it. That also settles what colour the type is —
+			it is on the swatch now, so it takes the ink picked to read on the swatch, which is
+			black on yellow and white on the other six. Rounded at the foot alone
+			(`rounded-b-md`), the corners it shares with the bar being no corners at all.
 			`whitespace-nowrap` and `-translate-x-1/2` off the centre, so a long name grows into
 			the row on both sides and stays centred rather than truncating: nothing here is a
 			column with a width to keep — the whole row is only as wide as it is — and a name
 			cut in half names nobody.
+			Its height is a fixed 1.25rem — `text-xs` is a 1rem line box, `py-0.5` the quarter
+			round it — and that is a number something else has to know: on a phone the side folds
+			to exactly the band and this tab, so what the fold leaves standing is spelled 3rem +
+			1.25rem there (see the map page's fold box). A tab that changed height would leave
+			the strip cutting through it.
 			Only where there IS somebody, which is the same question the face asks (see
 			`nobodys`): a side rolled from a town's own seed has no account to name, so it wears
-			the robot and says nothing under it. -->
+			the robot and says nothing under it. The fold does not shrink for those — it is one
+			length, and a length that moved with what happened to be standing in the panel would
+			re-frame the map every time an account signed in. -->
 		{#if !nobodys}
 			<div
-				class="pointer-events-none absolute left-1/2 top-12 z-30 -translate-x-1/2 whitespace-nowrap px-2 text-xs font-semibold text-white"
+				class={classNames(
+					'pointer-events-none absolute left-1/2 top-12 z-30 -translate-x-1/2 whitespace-nowrap rounded-b-md px-2 py-0.5 text-xs font-semibold',
+					bandFill
+				)}
 			>
 				{owner!.name}
 				<span class="opacity-80">
