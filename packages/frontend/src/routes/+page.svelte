@@ -19,7 +19,6 @@
 	import SocialLinks from '$components/core/SocialLinks.svelte';
 	import SplashScreen from '$components/core/SplashScreen.svelte';
 	import TownPin from '$components/core/TownPin.svelte';
-	import TownChallenge from '$components/core/TownChallenge.svelte';
 	import CharacterClaimPanel from '$components/core/CharacterClaimPanel.svelte';
 	import TeamLineup from '$components/core/TeamLineup.svelte';
 	import CombatArena from '$components/core/CombatArena.svelte';
@@ -1208,19 +1207,11 @@
 	// (What the town has waiting is on the pin itself now, like everything else it carries —
 	// see `box` in buildMarkers.)
 
-	// The standing on the picked town, lifted off that very pin and stood under the side holding
-	// it (see RegionSubdivisions' `standing` slot): how far it has been taken and the control
-	// that acts on it, which is what a reader wants near the top of the column rather than a
-	// block further down it. Off the pin and not off
-	// `townChallenge`, so the column and the map cannot come to say two things about one town
-	// — the pin is where that decision is already made (see buildMarkers).
-	$: townStanding = townPin?.challenge ?? null;
-
-	// And so the pin below is drawn without it: the same mark, less the block that has gone to
-	// the head. Handed over as the marker it is rather than switched off with a flag, because
-	// what has changed is what this copy of the pin is being told about the town, not what a
-	// pin draws.
-	$: townDetailPin = townPin ? { ...townPin, challenge: null } : null;
+	// (The standing was lifted off this pin for a while and stood on its own in the column beside
+	// the map, and the pin was handed on without it. Both halves are back on the one mark at the
+	// foot of the terrain: how far a town has been taken and the fight to be had for it belong
+	// under the side that would have to be beaten, and a control read off one column while the
+	// side it acts on stands in another is one statement cut in two.)
 
 	// --- The open municipality's deterministic "house team" ---------------------
 	// A leaf region (a municipality) has no children to drill into; instead of an
@@ -3111,15 +3102,22 @@
 							</button>
 						{/if}
 
-						<!-- The side standing on the open town, at the foot of the terrain. It was the first
-							thing in the column beside this map (RegionSubdivisions' `detail` slot) and it is
-							laid over the map itself now: the three of them are a picture of who is holding the
-							place, and a picture belongs on the place. Absolutely placed like the radar above
+						<!-- The side standing on the open town, at the foot of the terrain — and under it,
+							on the plate the pin carries, whose the place is, how far it has been taken and the
+							fight to be had for it. It was the first thing in the column beside this map, with
+							the standing stood off on its own above it; it is laid over the map itself now:
+							the three of them are a picture of who is holding the place, a picture belongs on
+							the place, and what may be done about that place belongs under the three who would
+							have to be beaten. Absolutely placed like the radar above
 							it — inside the map's own pane, so it is stood over the terrain without the terrain
 							being re-framed by it — and centred on the bottom edge, the one edge nothing else
 							is using.
-							`named={false}` still: the town's name is the band at the top of the page, and the
-							plate under the statues is only drawn where somebody holds the place (see TownPin).
+							The whole pin and not a copy of it less its standing: `townPin` comes out of
+							`buildMarkers`, the very function the map's own marks are built by, so this and the
+							pin on the terrain cannot come to say two things about one town.
+							`named={false}`: the town's name is the band at the top of the page, so the plate
+							is drawn for the rest of what it holds and is left off entirely where there is
+							neither a holder nor a standing to print (see TownPin).
 							Only a town has one at all, and only while the map is the tab that is up: the list
 							of places is painted over this same box and a side standing on a list is a side
 							standing on nothing. It leaves under a full view with the rest of the chrome, on
@@ -3130,13 +3128,13 @@
 							A width of the map's rather than the column's: it takes what the pane gives it up
 							to the 500px the pin on the terrain is drawn at, so the statues here are the size
 							they are on a mark. -->
-						{#if townDetailPin && mapTab === 'map' && !$fullScreenModalOpen}
+						{#if townPin && mapTab === 'map' && !$fullScreenModalOpen}
 							<div
 								transition:blur={CHROME_BLUR}
 								class="pointer-events-none absolute inset-x-3 bottom-3 z-[900] flex justify-center"
 							>
 								<TownPin
-									marker={townDetailPin}
+									marker={townPin}
 									named={false}
 									alwaysReveal
 									classes="pointer-events-auto w-full max-w-[500px]"
@@ -3279,35 +3277,12 @@
 					rows={subdivisions}
 					current={subdivisionCurrent}
 				>
-					<!-- The town's own pin, first thing in the column: the side holding it, whose it is,
-						how far it has been taken, the way to fight for it and the pack it has waiting — the
-						same mark the map is drawing on that town at this very moment, from the same data
-						(see townPin). Only a town has one.
-						Unnamed, because the band across the top of the page is already the town's name: it
-						says the place, its tile and the show it flies, and the plate saying all three again
-						stood between the side on the town and how far it has been taken, reading as a stray
-						row in the middle of the one thing. What the plate is here for is the rest of it
-						(see TownPlate's `named`). -->
-					<!-- Under the side standing on the town: how far it has been taken and the way to
-						fight for it, the two of them stacked as TownChallenge already stacks them. No width
-						said here — the row is the column's own width, which is what makes the bar a band
-						across the column rather than a block hung off the end of something. -->
-					<svelte:fragment slot="standing">
-						{#if townStanding}
-							<TownChallenge
-								siege={townStanding.siege}
-								button={townStanding.button}
-								unlocksAt={townStanding.unlocksAt}
-								onUnlock={townStanding.onUnlock}
-							/>
-						{/if}
-					</svelte:fragment>
-
-					<!-- The side standing on the town opened this column for a long time, and is over the
-						map now — at the foot of the terrain, which is the place it is a picture of (see the
-						map column above). What is left here is what the column was always saying about the
-						town in words: how far it has been taken, the cut it sits inside, and what the level
-						under it is made of. -->
+					<!-- The town's own pin opened this column — the side holding it, whose it is, how far
+						it has been taken and the way to fight for it — and it is the mark at the foot of the
+						terrain now, whole (see the map column above). The standing was pulled off it and
+						stood on its own above it here for a while; it has gone back onto the plate it came
+						from, under the three who would have to be beaten. So what is left in this column is
+						where the open place sits. -->
 
 					<!-- Where the place at the head of this column is, said as the path down to what it
 						sits inside: the same bar that stands over the map, given the cut above the open
