@@ -3459,13 +3459,19 @@
 					(`md:border-t-0`) along with the shape, where this is a band over the terrain and
 					nothing is divided.
 
+					The padding is `p-3` on three sides and `pt-7` at the head, and the odd one out is
+					the bead: the rule sits at the map's own end and the circle is centred on it, so the
+					first 20px under that line are the bead's own half. Three sides of air and a head that
+					clears the mark standing in it — the tabs are what would otherwise have been sat on,
+					and a tab is pressed rather than looked at. Off from `md` up with the rest of it,
+					where there is neither a rule nor a bead.
+
 					It is out of the map's pane and a child of this column for the same reason: an in-flow
 					child of the square would be laid inside the square, which is the thing being got out
 					of. `md:absolute` places it against this column instead, whose bottom edge IS the
 					terrain's bottom edge at that width (the tabs are above, the box below them takes the
-					rest), so the desktop draws the same band in the same place it always did.
-					`p-3` is the phone's version of the `inset-x-3 bottom-3` it hangs at from `md` up —
-					the same 12px of air, said as padding while it is in the flow.
+					rest), so the desktop draws the same band in the same place it always did — hanging at
+					`inset-x-3 bottom-3`, which is the 12px of air the padding says while it is in the flow.
 
 					The whole pin and not a copy of it less its standing: `townPin` comes out of
 					`buildMarkers`, the very function the map's own marks are built by, so this and the
@@ -3499,10 +3505,21 @@
 				{#if townBlockUp && townPin}
 					<!-- The bead that divides the terrain from this block, and it is the bead at the
 						foot of the page said again in the same words: the same `size-10` circle in the
-						theme's primary, threaded on a 2px rule by half its own height (`-mb-5`), the same
-						arrow turned over on the same 250ms, a phone's only (`md:hidden`). Two boundaries
-						on one column drawn two different ways would be two inventions where the page has
-						one.
+						theme's primary, threaded on a 2px rule, the same arrow turned over on the same
+						250ms, a phone's only (`md:hidden`). Two boundaries on one column drawn two
+						different ways would be two inventions where the page has one.
+
+						The line it is threaded on is the map's own end, and that is what `-my-5` is for:
+						half the circle's height off each side leaves it nothing of the flow, so the block
+						below starts exactly where the terrain stops and the bead is centred on that edge
+						with half of itself over each. The bead at the foot of the page takes `-mb-5`
+						alone, and rightly — the sheet it rides on is out of the flow, so it has only its
+						own box to pull up; here both boxes are in the column and a bead that gave the
+						flow anything at all would be a strip of nothing between the map and the rule.
+						Which is also why its z-index is the chrome's `z-[900]` and not the panel's
+						`z-10`: the half standing over the terrain is standing over Leaflet's own panes,
+						which run to 800, and a mark that a map's tiles paint over is no mark. -->
+
 						What it does is not what the other one does, and the arrow is what says so. The
 						one at the foot of the page folds a sheet away and back; this one hands the square
 						from the map to the block or back again (see `mapSquare`) — nothing is hidden
@@ -3516,7 +3533,7 @@
 					<button
 						type="button"
 						transition:blur={CHROME_BLUR}
-						class="relative z-10 -mb-5 flex size-10 cursor-pointer items-center justify-center self-center rounded-full bg-primary shadow-xl md:hidden"
+						class="relative z-[900] -my-5 flex size-10 cursor-pointer items-center justify-center self-center rounded-full bg-primary shadow-xl md:hidden"
 						aria-label={mapSquare ? $_('map.square.town') : $_('map.square.map')}
 						on:click={() => (mapSquare = !mapSquare)}
 					>
@@ -3532,7 +3549,7 @@
 					<div
 						transition:blur={CHROME_BLUR}
 						class={classNames(
-							'pointer-events-none flex min-h-0 min-w-0 flex-col items-center gap-2 border-t-2 border-primary p-3 md:absolute md:inset-x-3 md:bottom-3 md:z-[900] md:aspect-auto md:h-auto md:w-auto md:flex-none md:border-t-0 md:p-0',
+							'pointer-events-none flex min-h-0 min-w-0 flex-col items-center gap-2 border-t-2 border-primary px-3 pt-7 pb-3 md:absolute md:inset-x-3 md:bottom-3 md:z-[900] md:aspect-auto md:h-auto md:w-auto md:flex-none md:border-t-0 md:p-0',
 							mapSquare ? 'flex-1' : 'aspect-square w-full flex-none'
 						)}
 					>
