@@ -1126,21 +1126,20 @@
 	// why the open town, now that it is listed, is counted in them too.
 	$: subdivisionNodes = regionLevelNodes(regionNodes, openRegion);
 
-	// The path the column beside the map is headed by: the way down to the place the open
-	// region sits *inside*, which is the cut above it and never the open region itself. The
-	// head row of that column has already named where the map is — a bar under it saying the
-	// same place again is the column saying Catalunya over a list Catalunya heads — so what
-	// the bar is for is the one thing the head cannot say, which is where that place is. Its
-	// last step is therefore the parent: the comarca over a town, the province over a comarca,
-	// and the Països Catalans over a territory, there being nothing above a territory but the
-	// whole of them.
+	// The path standing beside the badge in the head of the block: the way down to the place the
+	// open region sits *inside*, which is the cut above it and never the open region itself. The
+	// badge it stands next to has already named where the map is — a path repeating it is the
+	// head saying Catalunya twice in one cell — so what the path is for is the one thing the
+	// badge cannot say, which is where that place is. Its last step is therefore the parent: the
+	// comarca over a town, the province over a comarca, and the Països Catalans over a territory,
+	// there being nothing above a territory but the whole of them.
 	//
-	// Empty at the top view, which is the one place with nothing above it at all: the column is
-	// headed by the Països Catalans and there is no superior cut to name. The bar is left off
-	// rather than drawn saying the same thing twice (see the `path` slot).
+	// Empty at the top view, which is the one place with nothing above it at all: the badge is
+	// the Països Catalans and there is no superior cut to name. The path is left off rather than
+	// drawn saying the same thing twice, and the badge has the cell to itself.
 	$: abovePath = openNode ? nodePath(regionNodes, openNode.key).slice(0, -1) : null;
 
-	// And that path lettered as the bar over the map letters its own (see crumbLadder), so a
+	// And that path lettered the way every path on this map is lettered (see crumbLadder), so a
 	// place is the same tile, name and show wherever it is named. A path of no regions is the
 	// root crumb by itself, which is exactly what a territory's superior cut is.
 	$: aboveCrumbs = abovePath ? crumbLadder(abovePath, mapPlurality) : null;
@@ -3175,9 +3174,11 @@
 		<!-- The map. Two thirds of the width from `md` up (`md:col-span-2`), and on a phone the whole
 			page but the strip the side keeps at the foot of it. It was one third of three until
 			everything the column beside it held turned out to be about the map — the level listed, the
-			shows that level divides between, the way to search, the side standing on the open town and
-			the fight to be had for it, and now the path down to where that town sits. That column had
-			nothing left in it, so it is not there, and what it was standing in is the map's.
+			shows that level divides between, the way to search, the side standing on the open town, the
+			fight to be had for it, and the path down to where that town sits. That column had nothing
+			left in it, so it is not there, and what it was standing in is the map's. Only the search's
+			field and the path have moved on again since — both into the block under this map, which is
+			where what is at the open place is read.
 			It stands in the first of the phone's three rows and spans none of them; from `md` up it
 			spans BOTH rows of the two columns it holds (`md:row-span-2`), which is the whole of what
 			keeps the terrain out of the third column's arithmetic: the block above the furniture
@@ -3285,19 +3286,21 @@
 							classes="min-h-0 flex-1"
 						/>
 
-						<!-- The row across the top of the terrain: where the open place sits, at the left
-							end, and the way to find a festa at the right. The two marks this game has that
-							act on the map and nothing else — one says where the map is standing and walks it
-							back up, the other takes it somewhere it has not looked — so they are the map's
-							own row and not the page's. The name of the game, the questions put to it and
-							who drew it are about the game rather than about the terrain, and they are the
-							band above (see the page's first row).
-							It is a strip across the edge rather than two marks in two corners, so it is
-							`pointer-events-none` with each end turning them back on: the gap between them is
-							terrain, and terrain has to stay draggable. `z-[900]` clears Leaflet's own panes
-							(overlays 400-600, controls 800) without reaching the arena's 1200. No inset is
-							measured off it and handed to the map: the pins are dealt where the polygons put
-							them, and a reader who wants what is under this strip pans.
+						<!-- The corner at the top of the terrain: the way to find a festa, and nothing
+							else. The one mark this game has that acts on the map and nothing else — it
+							takes the view somewhere it has not looked — so it is the map's own and not the
+							page's. The name of the game, the questions put to it and who drew it are about
+							the game rather than about the terrain, and they are the band above (see the
+							page's first row).
+							It was a strip across the whole edge while the path stood at the other end of
+							it (the folded crumbs, which are in the head of the block under this map now —
+							see the block, where they stand beside the place they are the cut above). What
+							is left is one square, so the strip is kept for what the strip was doing all
+							along: `pointer-events-none` with the square turning them back on, since the
+							room around it is terrain and terrain has to stay draggable. `z-[900]` clears
+							Leaflet's own panes (overlays 400-600, controls 800) without reaching the
+							arena's 1200. No inset is measured off it and handed to the map: the pins are
+							dealt where the polygons put them, and a reader who wants what is under it pans.
 							Only while the map is the tab that is up — the list of places and the shares are
 							painted over this same box (see below), and neither is a thing this row acts on.
 							It CAN be unmounted, unlike the rows above it, because it is absolutely placed
@@ -3309,27 +3312,6 @@
 								transition:blur={CHROME_BLUR}
 								class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex items-start justify-between gap-2"
 							>
-								<!-- Where the place the map is open on sits, said as the cut above it: the dots
-									and the one badge, which is the path folded (see MapBreadcrumbs' `folded`). It
-									stood at the head of the column beside this map, over a list of places, where a
-									row of five crumbs read as a second list; it is over the terrain now because
-									walking back up is the one thing it does and the terrain is what moves when it
-									is pressed. Nothing at all at the top view, which is the one place with nothing
-									above it — and the row is then the radar alone at its far end, which is what
-									`justify-between` leaves.
-									Pressed for what it was always pressed for: a step opens its region, an empty
-									rung takes the map to that tier's zoom. -->
-								{#if aboveCrumbs}
-									<div class="pointer-events-auto min-w-0">
-										<MapBreadcrumbs
-											crumbs={aboveCrumbs}
-											onSelect={open}
-											onZoom={zoomToTier}
-											folded
-										/>
-									</div>
-								{/if}
-
 								<!-- The radar. The map carries days of festes at once and no marks to find them
 									by, so the boxes waiting out there are found by panning across the country
 									looking for one — which is a search, and this is the button that does it: press
@@ -3337,13 +3319,14 @@
 									findNearestBox). It stands at every width, because a box is as hard to come
 									across on a desktop as on a phone.
 									It has been at the far end of a bar over the map, then a mark in the furniture
-									column beside it, then a square alone in this corner, and it is the end of a
-									row again now that the path has come to stand at the other one.
+									column beside it, then a square alone in this corner, then the end of a row
+									with the path at the other one — and it is alone in the corner again now that
+									the path has gone down into the block.
 									A size of its own, where the marks it used to stand among were drawn to a
 									row's height (`self-stretch aspect-square`): there is no row here to be as
 									tall as. `size-10` is what that row came to, so the square is the same square.
-									`ml-auto` so it holds the right end at the top view too, when the path it is
-									`justify-between` from is not there to push it over.
+									`ml-auto` because it is the only thing in the strip and the corner it wants is
+									the far one.
 									Disabled when there is nothing left to point at — every box in the window
 									opened, or none loaded yet — because a radar that answers "here" or answers
 									nothing is a press with no destination. -->
@@ -3509,8 +3492,8 @@
 				transition:blur={CHROME_BLUR}
 				class="row-start-2 flex aspect-square w-full min-h-0 min-w-0 flex-col items-center gap-2 border-t-2 border-primary p-3 md:col-start-3 md:row-start-1 md:aspect-auto md:border-b-2 md:border-t-0"
 			>
-				<!-- The head of the block: two cells of one grid, the place at the near one and the
-					three tabs at the far one. What they are is one statement in two halves — this is
+				<!-- The head of the block: two cells of one grid, where the map is standing at the near
+					one and the three tabs at the far one. What they are is one statement in two halves — this is
 					where the map is standing, and these are the three things there are to say about
 					it — so they are a grid of two rather than a row that happens to hold both: each
 					gets half the block's width whatever is in the other, and a long town name cannot
@@ -3518,15 +3501,49 @@
 					The place stood on the band across the top of the page, a whole column away from
 					the answers about it (see the band, where the middle of the row used to be). -->
 				<div class="grid w-full flex-none grid-cols-2 items-center gap-2">
-					<!-- Where the map is, and the radio playing for it. Lettered exactly as a crumb
-						and as a row of the list under it are, and pressed for the radio's play/pause
-						while there is a song (see RegionCurrentBadge). `min-w-0` so a long name
-						truncates inside its half rather than widening the cell. -->
-					<RegionCurrentBadge
-						classes="min-w-0"
-						row={subdivisionCurrent}
-						on:select={(event) => openFromColumn(event.detail.key)}
-					/>
+					<!-- The near cell says where the map is, twice over and at two scales: the cut the
+						open place sits INSIDE, folded to a mark, and then the place itself. Two things
+						in one cell rather than two cells, because they are one answer — a town is
+						named, and the dots beside it are how you got to it and the way back up. -->
+					<div class="flex min-w-0 items-center gap-2">
+						<!-- The path down to where the open place sits, said as the dots and the one
+							badge that is that path folded (see MapBreadcrumbs' `folded`). It stood over
+							the terrain, in a strip across the top of the map, on the ground that walking
+							back up is the one thing it does and the terrain is what moves when it is
+							pressed. It is here because the badge it walks back up FROM is here: the cut
+							above a place belongs beside the place, not a column away over the imagery,
+							and the strip it left is the radar alone in its corner (see the map).
+							Never the open region itself — `aboveCrumbs` is the parent path — so this and
+							the badge beside it cannot come to name the same place twice.
+							Nothing at all at the top view, which is the one place with nothing above it,
+							and the badge then has the cell to itself.
+							Pressed for what it was always pressed for: a step opens its region, an empty
+							rung takes the map to that tier's zoom. Through `openFromColumn` like every
+							other press in this block, so picking a place puts the search field away with
+							it. `min-w-0` and no growth: it takes the width its one crumb wants and gives
+							it back when the cell is too narrow for both, the badge inside it truncating
+							the way it does on any bar too short for the path. -->
+						{#if aboveCrumbs}
+							<div class="min-w-0">
+								<MapBreadcrumbs
+									crumbs={aboveCrumbs}
+									onSelect={(key) => (key ? openFromColumn(key) : open(null))}
+									onZoom={zoomToTier}
+									folded
+								/>
+							</div>
+						{/if}
+
+						<!-- Where the map is, and the radio playing for it. Lettered exactly as a crumb
+							and as a row of the list under it are, and pressed for the radio's play/pause
+							while there is a song (see RegionCurrentBadge). `min-w-0 flex-1` so a long
+							name truncates inside what the path leaves rather than widening the cell. -->
+						<RegionCurrentBadge
+							classes="min-w-0 flex-1"
+							row={subdivisionCurrent}
+							on:select={(event) => openFromColumn(event.detail.key)}
+						/>
+					</div>
 
 					<!-- The three, said the way the map's own two are said over the terrain: DaisyUI's
 						boxed tabs, `role="tablist"`, and which is up held on the page rather than

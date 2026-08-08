@@ -5,11 +5,12 @@
 	import MapBreadcrumb from '$components/core/MapBreadcrumb.svelte';
 	import MapGlyph from '$components/core/MapGlyph.svelte';
 
-	// Where the map is looking, as a bar across the top of the map itself rather than a line
-	// in the panel beside it. What the crumbs name is the view — the region the map is
-	// framed on, walked into from a pin, a crumb or the zoom — so they belong over the thing
-	// they are about, and they head the corner's stack of plates rather than heading a
-	// column that is about other things.
+	// Where the map is looking. What the crumbs name is the view — the region the map is
+	// framed on, walked into from a pin, a crumb or the zoom — so they belong beside the
+	// thing they are about. It was a bar across the top of the map itself for that reason,
+	// and it is a mark in the head of the block under the map now, standing next to the
+	// badge naming the open place, since what the only path left letters is the cut ABOVE
+	// that place (see +page.svelte's `aboveCrumbs`) and a cut belongs beside its place.
 	//
 	// The bar wears the panel's own surface rather than the plates' black: the crumbs head
 	// the map the way the panel heads its column, so the two read as one chrome. It is
@@ -75,10 +76,10 @@
 	// to. Never called for a crumb that names a region — that one is `onSelect`, as before.
 	export let onZoom: (tier: string) => void = () => {};
 	// Folded whatever the room: the bar is the dots button and the step it is on, and never the
-	// path laid out, however much width it is given. For a bar that is not the map's own — the
-	// one in the column beside it, where the path is a heading over a list and not the thing
-	// being read, and where a row of five crumbs would be a second column of places above a
-	// column of places. The whole path is still a press away, in the same dropped column.
+	// path laid out, however much width it is given. Which is what every caller left asks for —
+	// the path stands in half of the head of a block, beside the badge naming the open place,
+	// and a row of five crumbs there would be a list of places at the head of a block whose own
+	// third tab is a list of places. The whole path is still a press away, in the dropped column.
 	export let folded: boolean = false;
 	export let classes: string = '';
 
