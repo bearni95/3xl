@@ -3518,7 +3518,7 @@
 						flow anything at all would be a strip of nothing between the map and the rule.
 						Which is also why its z-index is the chrome's `z-[900]` and not the panel's
 						`z-10`: the half standing over the terrain is standing over Leaflet's own panes,
-						which run to 800, and a mark that a map's tiles paint over is no mark. -->
+						which run to 800, and a mark that a map's tiles paint over is no mark.
 
 						What it does is not what the other one does, and the arrow is what says so. The
 						one at the foot of the page folds a sheet away and back; this one hands the square
