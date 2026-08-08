@@ -1351,8 +1351,13 @@
 	// named here because a second row in that column has to know it: the author's marks close
 	// the column, and which of the two is the one pushed to the foot depends on whether the
 	// block above it is there to push (see the third column's `mt-auto`).
-	$: playerBlockShown =
-		ready && (playerTeamLineup.length > 0 || !!$profile || signedOut) && !$fullScreenModalOpen;
+	// A full view being up is deliberately not part of this any more. The block used to unmount
+	// under a sheet and blur back in when it went — which cost the map nothing while the column
+	// it stands in was a fixed third of the page. It is not: on a phone that column is exactly as
+	// tall as what is in it (see the grid), so emptying it hands the map a taller box and a
+	// re-frame, twice per modal. The whole column is veiled instead, which is the same gesture
+	// with the height left standing (see CHROME_VEIL).
+	$: playerBlockShown = ready && (playerTeamLineup.length > 0 || !!$profile || signedOut);
 
 	// The open combat modal: the challenged town's sitting team (as synthetic spawns)
 	// plus everything the fight has to be reported against — the town's id and the
@@ -2746,19 +2751,23 @@
 	// The same gesture said in classes instead of a transition, for the chrome that may not leave
 	// the document while it plays.
 	//
-	// A Svelte transition ends in an unmount, and two pieces of this page's chrome stand IN FLOW
-	// ABOVE THE MAP — the band across the top of the page and the row of tabs over the terrain.
-	// Unmounting either shortens the column the map is measured into, which is a resize, and a
-	// resize is the one thing the map cannot be handed for free: WorldMap watches its own box and
-	// answers a change with `invalidateSize` + `syncView` + a full rebuild of the pins and the
-	// boxes (see its ResizeObserver). So a sheet going up would have re-framed the terrain, and
-	// coming down would have re-framed it back — twice per modal, for two rows of furniture that
-	// were only ever meant to go quiet.
+	// A Svelte transition ends in an unmount, and three pieces of this page's chrome stand IN FLOW
+	// AROUND THE MAP — the band across the top of the page, the row of tabs over the terrain, and,
+	// on a phone, the whole furniture column under it. Unmounting any of them changes the box the
+	// map is measured into, which is a resize, and a resize is the one thing the map cannot be
+	// handed for free: WorldMap watches its own box and answers a change with `invalidateSize` +
+	// `syncView` + a full rebuild of the pins and the boxes (see its ResizeObserver). So a sheet
+	// going up would have re-framed the terrain, and coming down would have re-framed it back —
+	// twice per modal, for furniture that was only ever meant to go quiet.
+	//
+	// The third of them is load-bearing only since the phone stopped dividing its height in thirds:
+	// that column is now sized to what stands in it and the map takes the rest (see the grid), so
+	// an empty column is a taller map. It was a grid item in a fixed track like the list of places,
+	// which is why it could be unmounted before and cannot be now.
 	//
 	// Everything else keeps `transition:blur`, because unmounting it costs the map nothing: the
-	// list of places and the account block are grid items in named tracks (`md:col-start-*`,
-	// `row-start-*`), which stay exactly where they are with no child in them, and the radar is
-	// absolutely positioned inside the map's own pane. Only these two are load-bearing.
+	// list of places is a grid item in a named track (`md:col-start-*`, `row-start-*`) whose size
+	// no child of it decides, and the radar is absolutely positioned inside the map's own pane.
 	//
 	// Same 8px and same 250ms as CHROME_BLUR, and the opacity goes with it because Svelte's blur
 	// fades as well — this has to be the same gesture to the eye or the furniture would leave in
@@ -2934,18 +2943,28 @@
 		one square that went back onto the terrain, `z-[900]` and all, because a control that moves
 		the map is the map's (see the map column above).
 
-		Below `md` the three fold into one column and stand one after the other, top to bottom in the
-		same order: the map, the places, the furniture — a third of the HEIGHT each, where from `md` up
-		they take a third of the width each. So the phone's arrangement is the desktop's turned on its
-		side, in the strict sense: the same three boxes, the same three shares, the axis swapped. The
-		page itself never scrolls at either width (see the wrapper above); each of the three scrolls
-		inside its own third, which is why every one of them carries `min-h-0`.
+		Below `md` the two fold into one column and stand one after the other, top to bottom in the same
+		order: the map, then the furniture. They are NOT two shares of the height. The lower box is
+		what it is — the side this player fields and the account under it — and it is given exactly the
+		height that comes to (`auto`), so the whole of it is on screen without being scrolled to. The
+		map takes whatever is left (`minmax(0, 1fr)`), which is the one of the two that can be any
+		height at all: a map is as tall as it is given, and a row of three statues is not.
 
-		`grid-rows-3` and not three `33vh`s: `minmax(0, 1fr)` of a box given a height IS a third of it,
-		and it is a third that stays exact — three hand-written 33vh rows come to 99 and leave a strip
-		of nothing under the last of them. And they are a third of what the band above has left rather
-		than of the viewport, which is the whole reason the height is handed down by a flex parent and
-		not written here.
+		It was `grid-rows-3` with the map spanning two of them, which is two thirds and one third — a
+		share written here rather than measured off what stands in the box, so the foot of the column
+		was cut off on a short phone and padded out with nothing on a tall one. A fraction is the right
+		answer for the width from `md` up, where the columns divide a page; it is the wrong one for the
+		height, where one of the two boxes has a size of its own.
+
+		`fit-content(66%)` and not a bare `auto`, because a track sized to its content does not shrink:
+		on a phone short enough that the statues and the plate come to more than the page, an `auto`
+		row would take the lot and push the map out through the bottom of a box that clips. The cap is
+		the share the map used to be given, so past it the column scrolls inside itself exactly as it
+		does from `md` up (it carries `overflow-y-auto` at both widths), and the map is never left with
+		less than a third of the page.
+
+		The page itself never scrolls at either width (see the wrapper above); each box scrolls inside
+		its own, which is why both carry `min-h-0`.
 
 		`divide-y-2 divide-primary` is the line between one third and the next. Written on the grid
 		rather than as a border on each box because a separator belongs to the pair it separates and
@@ -2955,17 +2974,18 @@
 		would be a line with nothing under it. Off from `md` up, where the three stand side by side
 		and what separates them is the grid. -->
 	<div
-		class="grid min-h-0 flex-1 grid-cols-1 grid-rows-3 divide-y-2 divide-primary md:grid-cols-3 md:grid-rows-1 md:divide-y-0"
+		class="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_fit-content(66%)] divide-y-2 divide-primary md:grid-cols-3 md:grid-rows-1 md:divide-y-0"
 	>
-		<!-- The map, and it is two thirds of the page at both widths: the first two rows of the
-			phone's column, the first two columns of the desktop's row. It was one third of three
-			until everything the column beside it held turned out to be about the map — the level
-			listed, the shows that level divides between, the way to search, the side standing on the
-			open town and the fight to be had for it, and now the path down to where that town sits.
-			That column had nothing left in it, so it is not there, and what it was standing in is
-			the map's: `md:col-span-2` across, `row-span-2` of three down, which is the two thirds of
-			the viewport's height a phone gives it. `md:row-span-1` puts the span back for the
-			desktop's single row, where a span of two would reach past the grid's own rows.
+		<!-- The map. Two thirds of the width from `md` up (`md:col-span-2`), and on a phone whatever
+			the box under it has not taken — which is most of the page, and is a height nothing here
+			writes down. It was one third of three until everything the column beside it held turned
+			out to be about the map — the level listed, the shows that level divides between, the way
+			to search, the side standing on the open town and the fight to be had for it, and now the
+			path down to where that town sits. That column had nothing left in it, so it is not there,
+			and what it was standing in is the map's.
+			It spanned two rows of three on a phone while the height was divided in thirds; the rows
+			are the map's own and the furniture's now (see the grid above), so it stands in the first
+			of the two and spans nothing at either width.
 			Nothing else sizes it — raising a view over it leaves its box alone, so the map is never
 			re-framed by anything but a pan, a zoom or a region being opened. `relative` is what the
 			chrome laid over the terrain is placed against: the row across its top, the side at its
@@ -2979,7 +2999,7 @@
 			level divides between (see mapTab). All three are about the map — the level it is looking
 			at, drawn, named, and tallied. -->
 		<div
-			class="relative row-span-2 row-start-1 flex min-h-0 min-w-0 flex-col md:col-span-2 md:col-start-1 md:row-span-1 md:row-start-1"
+			class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-span-2 md:col-start-1 md:row-start-1"
 		>
 			{#if ready}
 				<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
@@ -3274,23 +3294,44 @@
 			were never about the open place at all, close the corner beside it. Nothing was left, so
 			there is no column: the map has the two thirds it stood in (see above). -->
 
-		<!-- The furniture: the last third of the phone's column, the third column of the desktop's
-			row. It held two blocks for a while — the game's badge and its marks at the head, the side
-			and the account at the foot — which was the shape it had had while it was drawn over the
-			map. Only the second of them is what this column is actually about: who is playing, and
-			the three they field. The first has gone to the page's top row, where a game's name and
-			the questions put to it belong (see the band above).
+		<!-- The furniture: the foot of the phone's column, the third column of the desktop's row. It
+			held two blocks for a while — the game's badge and its marks at the head, the side and the
+			account at the foot — which was the shape it had had while it was drawn over the map. Only
+			the second of them is what this column is actually about: who is playing, and the three
+			they field. The first has gone to the page's top row, where a game's name and the questions
+			put to it belong (see the band above).
+			On a phone it is the box that names its own height: it takes what the statues and the plate
+			come to and no more, so the whole of it is on screen and the map has the rest (see the
+			grid). It was a flat third, which is a number that has nothing to do with what stands in
+			here — the plate arrives when an account signs in and the statues only once a side is
+			fielded, so the same third was short of the one and slack for the other.
 			`mt-auto` is still on the block, and still for the reason `bottom-3` was there before a
 			column: the account sits at the foot of one, and a column has to be told to push its last
-			block down. Nothing stands above it now, so it starts there and grows upwards.
-			It scrolls inside its own third at both widths, the way the list of places does: three
-			statues and a plate are taller than a third of a phone, and taller than some viewports
-			outright.
+			block down. It does nothing on a phone now, where the column is exactly as tall as the
+			block in it; from `md` up the third column is a full column and the push is what keeps the
+			account at its foot.
+			It keeps `overflow-y-auto` at both widths, the way the list of places does: three statues
+			and a plate are taller than the desktop column on some viewports, and on a phone this is
+			what the height cap the grid puts on the row hands its overflow to.
+			Veiled rather than emptied while a full view is up, and that is the one thing here that is
+			not a matter of taste. Everything in this column used to unmount under a sheet, which was
+			free while the column was a fixed third of the page — a grid item's track stays where it is
+			with no child in it. Now that the phone's row is measured off what stands in here, an empty
+			column is a shorter column, and a shorter column is a taller map: WorldMap answers a change
+			of its own box with `invalidateSize` + `syncView` + a full rebuild of the pins (see its
+			ResizeObserver), so a sheet going up would re-frame the terrain and coming down would
+			re-frame it back. Same 8px over the same 250ms as the blur it replaces, with `inert` and
+			`pointer-events-none` doing what an unmount was giving for free (see CHROME_VEIL).
 			Inside `{#if ready}` like the map it came off: the side standing here is rolled against
 			the town names the polygons carry, and a statue drawn before those land says Ultramar at
 			a town whose name is still on its way (see claimPlaceName). -->
 		<div
-			class="row-start-3 flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto p-3 md:col-start-3 md:row-start-1"
+			inert={$fullScreenModalOpen || undefined}
+			class={classNames(
+				'row-start-2 flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto p-3 md:col-start-3 md:row-start-1',
+				CHROME_VEIL,
+				$fullScreenModalOpen && CHROME_VEILED
+			)}
 		>
 			{#if ready}
 				<!-- The head of this column is gone entire, and with it the block that held it. It was
@@ -3330,11 +3371,13 @@
 					Nothing is drawn at all when there is none of it to draw — which now only happens while
 					the session is still being read, since a visitor it comes back empty for is a visitor
 					who gets the door.
-					And nothing while a full view is up either: it blurs out from under the sheet and back
-					in when it goes, the same gesture the row above it and the pins make (see CHROME_BLUR).
-					The statues are rebuilt on the way back, which is what they already are every time the
-					map re-frames itself — a character that has been through its veil once never plays it
-					again (see IdleSprite), so what comes back is the picture and not the reveal. -->
+					A full view no longer takes it away, though it still goes quiet under one: the veil is
+					the whole column's now, because the column's height is the phone map's box (see the
+					column above). So this blur is left playing what it was always really for — a side
+					arriving as an account signs in, and going as one signs out. The statues are rebuilt
+					on the way in, which is what they already are every time the map re-frames itself — a
+					character that has been through its veil once never plays it again (see IdleSprite),
+					so what comes back is the picture and not the reveal. -->
 				{#if playerBlockShown}
 					<div transition:blur={CHROME_BLUR} class="mt-auto flex flex-col gap-2">
 						<!-- The three statues and nothing else: no plate under them, no heading over them,
@@ -3456,15 +3499,15 @@
 				flex column split the space between them and would leave the account floating in the
 				middle. Where there is no block (the session is still being read), the marks take
 				the push themselves and close the column alone rather than sitting at its top.
-				`flex-none` because a third of a phone's height is not much: without it this row is
-				the first thing the column takes back when the side above it wants room, and the
-				marks squash instead of the column scrolling.
-				Outside `{#if ready}`, since nothing about it waits on the polygons, and gone under a
-				full view with the rest of the chrome — it left with the whole column it used to
-				stand in, so leaving with this one is it keeping the manners it already had. -->
-			{#if !$fullScreenModalOpen}
-				<SocialLinks classes={classNames('flex-none', { 'mt-auto': !playerBlockShown })} />
-			{/if}
+				`flex-none` because the room this column has is not much: without it this row is the
+				first thing the column takes back when the side above it wants room, and the marks
+				squash instead of the column scrolling.
+				Outside `{#if ready}`, since nothing about it waits on the polygons. It goes quiet under
+				a full view with the rest of the chrome, but it does not leave: the column it stands in
+				is what the phone's map is measured against now, so this row's height is the map's
+				business (see the column above, and CHROME_VEIL). The veil is the column's, one gesture
+				over the whole of it, rather than each row playing it separately. -->
+			<SocialLinks classes={classNames('flex-none', { 'mt-auto': !playerBlockShown })} />
 		</div>
 	</div>
 </div>
