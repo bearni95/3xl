@@ -3343,57 +3343,67 @@
 							every row of the level, because a share is what this level IS and not what is
 							left of it after a press. Pressing the picked show again clears it and pressing
 							another turns the list over, so there is one gesture and it is its own undo.
-							`max-w-sm` is the whole of what keeps this a strip. The cells divide whatever
-							width the grid is given (see ShowShareGrid) and the artwork is drawn to the
-							cell, so a row let loose across a desktop-width map would be eight glyphs the
-							size of the radar's plate several times over — a tally reading as a picture,
-							over the picture. Held to `sm` the marks come out at about that square at every
-							width, which is what a mark over a map should be. -->
+							It is as wide as what is in it and stood in the middle of the edge: the strip
+							spans the map (`inset-x-3`) and `justify-center` puts one shrink-to-fit column
+							in the middle of it, which is what makes the row's width a reading in itself —
+							a level flying three shows is a short plate and one flying eight is a long one,
+							and either is centred on the same axis rather than growing off one corner. It
+							was held to `max-w-sm` and stretched to it while the cells divided whatever box
+							they were given; the cells are as wide as the longest percentage in them now
+							(see ShowShareGrid), so there is no box left to cap. `max-w-full` is all that
+							remains of the cap, and it only ever bites where the marks would outrun the
+							map. The field takes the grid's own width, being the other child of that
+							column.
+							`bg-base-100/30`: the terrain reads through the plate, which is what a mark laid
+							over a map should let it do — the tally is about what is under it. -->
 						<div
-							class="pointer-events-none absolute inset-x-3 bottom-3 z-[900] flex max-w-sm flex-col gap-2"
+							class="pointer-events-none absolute inset-x-3 bottom-3 z-[900] flex justify-center"
 						>
-							{#if searchOpen}
-								<!-- The field itself, on its own row over the glyph that asked for it. It puts
-									itself away when it is left empty and takes the matches with it on Escape
-									(see LocationSearchBox); what it holds is matched by this page against the
-									whole tree, and the matches stand in the block under the map, which the
-									press on the glass has already turned to its list (see openSearch). So the
-									answer is on screen beside the question rather than on a tab the reader has
-									to know to press, and nothing moves on a keystroke. -->
-								<LocationSearchBox
-									bind:value={searchQuery}
-									bind:open={searchOpen}
-									classes="pointer-events-auto shadow-xl"
-								/>
-							{/if}
+							<div class="flex max-w-full flex-col gap-2">
+								{#if searchOpen}
+									<!-- The field itself, on its own row over the glyph that asked for it. It puts
+										itself away when it is left empty and takes the matches with it on Escape
+										(see LocationSearchBox); what it holds is matched by this page against the
+										whole tree, and the matches stand in the block under the map, which the
+										press on the glass has already turned to its list (see openSearch). So the
+										answer is on screen beside the question rather than on a tab the reader has
+										to know to press, and nothing moves on a keystroke. -->
+									<LocationSearchBox
+										bind:value={searchQuery}
+										bind:open={searchOpen}
+										classes="pointer-events-auto shadow-xl"
+									/>
+								{/if}
 
-							<!-- It carries the page's own surface and the radar's plate — rounded, shadowed —
-								so the terrain does not read through the marks, which is the one thing it
-								gained by leaving a panel that had a surface of its own. -->
-							<ShowShareGrid
-								shares={subdivisionShares}
-								active={activeShow}
-								classes="pointer-events-auto rounded-lg bg-base-100 text-white shadow-xl"
-								on:select={(event) => toggleShow(event.detail.id)}
-							>
-								<!-- The looking glass, as the last cell of that grid. It stood at the far end
-									of the breadcrumb bar over the map once, where it had to fold a field away
-									into a glyph to leave the path any room; here the glyph is a cell like the
-									shares beside it and the field comes up on the row above it.
-									On this row because this row is the one that acts on the level: the cells
-									beside it narrow it to a show, and this goes and finds places that are not
-									on it at all. -->
-								<button
-									slot="end"
-									type="button"
-									class="flex items-center justify-center rounded-md p-1 hover:bg-white/10"
-									aria-label={$_('map.search.label')}
-									aria-expanded={searchOpen}
-									on:click={openSearch}
+								<!-- It carries the radar's plate — rounded, shadowed — at three tenths of the
+									page's own surface, which is enough to hold the white marks off whatever tile
+									is under them and little enough that the country goes on being seen through
+									the thing that is counting it. -->
+								<ShowShareGrid
+									shares={subdivisionShares}
+									active={activeShow}
+									classes="pointer-events-auto rounded-lg bg-base-100/30 text-white shadow-xl"
+									on:select={(event) => toggleShow(event.detail.id)}
 								>
-									<img src="/assets/icons/lorc/magnifying-glass.svg" class="w-full" alt="" />
-								</button>
-							</ShowShareGrid>
+									<!-- The looking glass, as the last cell of that grid. It stood at the far end
+										of the breadcrumb bar over the map once, where it had to fold a field away
+										into a glyph to leave the path any room; here the glyph is a cell like the
+										shares beside it and the field comes up on the row above it.
+										On this row because this row is the one that acts on the level: the cells
+										beside it narrow it to a show, and this goes and finds places that are not
+										on it at all. -->
+									<button
+										slot="end"
+										type="button"
+										class="flex items-center justify-center rounded-md p-1 hover:bg-white/10"
+										aria-label={$_('map.search.label')}
+										aria-expanded={searchOpen}
+										on:click={openSearch}
+									>
+										<img src="/assets/icons/lorc/magnifying-glass.svg" class="w-full" alt="" />
+									</button>
+								</ShowShareGrid>
+							</div>
 						</div>
 					</div>
 

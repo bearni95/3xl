@@ -16,12 +16,25 @@
 	// after them would be the list below said twice. The name is on the cell's `title`, which
 	// is what an unlettered mark needs to be readable at all.
 	//
-	// Eight to the row, and the artwork drawn to the whole width of its cell: a glyph sized to
-	// the type beside it is a mark read as punctuation in a line, and this is not a line — it
-	// is the one place in the column where the shows themselves are what is being looked at,
-	// so they are given the size the column has room for. The count is what settles that size,
-	// since the cells divide the column's own width: the marks grow and shrink with it rather
-	// than being pinned to a number of pixels chosen in here.
+	// Eight to the row at most, and the artwork drawn to the whole width of its cell: a glyph
+	// sized to the type beside it is a mark read as punctuation in a line, and this is not a
+	// line — it is the one place on the page where the shows themselves are what is being looked
+	// at, so they are given a cell rather than a lettering's worth of room.
+	//
+	// At most, and not always: the row is laid out with exactly as many columns as there are
+	// cells to put in it, up to eight, and wraps past that. It used to be eight columns whatever
+	// was in them, which is right for a grid that divides a box it has been given — the cells
+	// took a share of the box each and the marks grew and shrank with it — and wrong for one
+	// that is as wide as what is in it, which is what this is now (see +page.svelte, where it
+	// stands centred over the bottom edge of the map). Eight columns holding three marks is five
+	// empty tracks, and empty tracks are 0 wide but the gaps between them are not: the plate
+	// would run a thumb's width past its last mark, on a row whose whole width is a statement
+	// about how many shows there are.
+	//
+	// `grid-cols-N` is `repeat(N, minmax(0, 1fr))`, and a fr track in a shrink-to-fit grid
+	// resolves to the widest content in ANY column — so the columns come out equal and as wide
+	// as the longest reading ("100%"), rather than each one sized to its own percentage and the
+	// marks all different sizes.
 	export let shares: { id: number; name: string; share: number }[] = [];
 	// The show the list below is being read through, where one has been picked: that cell takes
 	// the primary fill, so what is filling the list is said on the thing that was pressed. The
@@ -33,9 +46,29 @@
 	// Pressing a cell is asking for that show, and nothing more: whether that turns the filter
 	// on, off or over to another show is the caller's, since the caller is what is filtered.
 	const dispatch = createEventDispatcher<{ select: { id: number } }>();
+
+	// Written out one class per count rather than composed: Tailwind reads the source for the
+	// classes it is to emit, and a `grid-cols-${n}` it never sees written down is a rule it
+	// never writes.
+	const columnClasses = [
+		'grid-cols-1',
+		'grid-cols-2',
+		'grid-cols-3',
+		'grid-cols-4',
+		'grid-cols-5',
+		'grid-cols-6',
+		'grid-cols-7',
+		'grid-cols-8'
+	];
+
+	// The cells there are to lay out: a mark per show, and the caller's own last one where it
+	// has passed one (the looking glass, today). At least one column whatever happens, an empty
+	// grid being a thing with no tracks rather than a thing with none of something.
+	$: cells = shares.length + ($$slots.end ? 1 : 0);
+	$: columnClass = columnClasses[Math.min(Math.max(cells, 1), 8) - 1];
 </script>
 
-<div class={classNames('grid grid-cols-8 gap-2 px-2 py-1 text-xs', classes)}>
+<div class={classNames('grid gap-2 px-2 py-1 text-xs', columnClass, classes)}>
 	{#each shares as entry (entry.id)}
 		{@const glyph = forShow($showGlyphs, entry.id)}
 		<!-- A press, not a reading: a mark standing for a show over a list of places that fly
