@@ -1381,6 +1381,74 @@
 	// that read this are all `md:`-reset, so the side is a full column there whatever it holds.
 	let sideOpen = false;
 
+	// How long the fold takes, and the one place it is said as a number: the panel spells it as a
+	// Tailwind duration and this clock waits it out, so the statues below are put up exactly as
+	// the panel finishes opening rather than at some length that has to be kept in step by hand.
+	const FOLD_MS = 250;
+
+	// Whether the side folds at all, which is a question about the viewport and not about the
+	// page: below `md` it is a sheet over the map with a press on its edge, and from `md` up it
+	// is a column standing beside one. Everything else that answers this question answers it in
+	// CSS (`md:` on every class the fold touches), and this is the one thing that cannot — what
+	// is MOUNTED is not a thing a media query decides.
+	// Watched rather than read once: a window resized across the breakpoint, or a phone turned on
+	// its side, has to put the statues back up rather than leave them out of a column that is not
+	// folded any more.
+	// It starts saying yes, before the browser has been asked at all, and that is the safe way
+	// round rather than a guess about who is reading: assuming the fold leaves the statues out,
+	// and a desktop puts them up a tick later on the first measurement. Assuming the column would
+	// have mounted three sprites on a phone and taken them straight back down again.
+	let sideFolds = true;
+
+	onMount(() => {
+		const query = window.matchMedia('(min-width: 48rem)');
+		const sync = () => (sideFolds = !query.matches);
+		sync();
+		query.addEventListener('change', sync);
+		return () => query.removeEventListener('change', sync);
+	});
+
+	// Whether the side is standing its three cards, as against the coloured mark alone. It is
+	// what the statues are actually mounted on (see TeamLineup's `statues`), and it is one step
+	// behind the fold on purpose:
+	//
+	// - Folded, there are no statues. Three sprites looping behind a cut nobody can see through
+	//   is three clips loaded, decoded and animated for nothing, and the whole of what the strip
+	//   shows is the band and the tab, which are not theirs.
+	// - Unfolding, they stay out until the panel has finished opening — then they mount, and
+	//   mounting is what plays their arrival: a statue is veiled on the way in and the veil is
+	//   spent once per character per session (see IdleSprite), so a row that is built fresh is a
+	//   row that can be watched arriving. Which is why the corner asks for `alwaysReveal` while
+	//   it folds: the session has almost certainly seen these three, and here that is not a
+	//   reason to skip the one thing the gesture is for.
+	// - Folding, they stay in until the panel has finished closing. Taking them out at the press
+	//   would shorten the panel's own content under the animation, and a box whose height is
+	//   `min(content, max-height)` would snap shut instead of running the fold.
+	//
+	// So both directions wait the fold out, and the timer is cleared on every change: a press
+	// answered before the last one has finished is one gesture, not two.
+	let sideStatues = false;
+	let foldTimer: ReturnType<typeof setTimeout> | null = null;
+
+	$: scheduleSideStatues(sideOpen, sideFolds);
+
+	function scheduleSideStatues(open: boolean, folds: boolean): void {
+		if (foldTimer) {
+			clearTimeout(foldTimer);
+			foldTimer = null;
+		}
+		// Nothing to wait for where nothing folds: from `md` up the side is a column and its
+		// cards are simply up, whatever the press was last left saying.
+		if (!folds) {
+			sideStatues = true;
+			return;
+		}
+		foldTimer = setTimeout(() => {
+			sideStatues = open;
+			foldTimer = null;
+		}, FOLD_MS);
+	}
+
 	// A full view being up is deliberately not part of this any more. The block used to unmount
 	// under a sheet and blur back in when it went — which cost the map nothing while the column
 	// it stands in was a fixed third of the page. It is not: on a phone that column is exactly as
@@ -3432,6 +3500,10 @@
 					distance early, which is where the whole of the visible movement is.
 					`overflow-hidden` while folded and `overflow-y-auto` unfolded: a box cut to one mark
 					that scrolls is a strip somebody can push half a band out of.
+					The 250ms is written twice on purpose and only once as a number: here as the class
+					that actually moves the box, and in `FOLD_MS`, which is the clock that puts the
+					statues up as this finishes and takes them down as it closes (see `sideStatues`).
+					A duration is a thing CSS owns; what is mounted is not.
 					`gap-2` is here rather than on the panel because it belongs to the rows it separates,
 					and they are in here.
 					`mt-auto` on the block inside is still there, and still for the reason `bottom-3` was
@@ -3523,7 +3595,12 @@
 										aria-label={$_('roster.open')}
 										on:click={() => rosterModalOpen.set(true)}
 									>
-										<TeamLineup members={playerTeamLineup} owner={sideOwner} />
+										<TeamLineup
+										members={playerTeamLineup}
+										owner={sideOwner}
+										statues={sideStatues}
+										alwaysReveal={sideFolds}
+									/>
 									</button>
 								{:else if $profile && spawnsSettled}
 									<!-- A player with no side fielded yet, in the slot the three statues take:

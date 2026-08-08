@@ -80,6 +80,21 @@
 	// somebody's team. The box the cards came out of has already said which show they are from,
 	// on its own poster, and each card goes on saying it with the mark on its floor.
 	export let bannered: boolean = true;
+	// Whether the three cards are drawn at all. False leaves the coloured mark standing on its
+	// own — the band and the tab naming the player under it — and nothing else: no statue is
+	// mounted, so no clip is loaded, no frame is decoded and no loop is run.
+	//
+	// It exists for the fold at the foot of a phone (see the map page): folded, the side is cut
+	// to exactly that mark, and three sprites playing behind the cut are three sprites nobody
+	// can see. Taking them out is also what gives each unfolding its arrival back — a statue's
+	// veil is spent on the way in and never again (see IdleSprite's `revealedPaths`), so a row
+	// that is mounted fresh each time is a row that can be watched arriving each time.
+	//
+	// The mark is absolutely positioned over the row's head room, so with no cards under it the
+	// row would measure nothing and the mark would be painted over whatever came next. The row
+	// is given the mark's own height instead — its two lengths, said here because this is the
+	// one place that has to stand them up without the cards (see the banner below).
+	export let statues: boolean = true;
 	// Whose side this is, for the face at the head of the banner: the name they are called
 	// by — already worded for a player who never chose one, exactly as a town's plate words
 	// its holder — and the two halves of the avatar they wear, which are only ever read
@@ -195,9 +210,18 @@
 	// that name is shown — the same spelling the account's own plate and a town's holder row
 	// use, so one player is one letter everywhere they appear.
 	$: ownerInitial = (owner?.name || '?').charAt(0).toUpperCase();
+
+	// What the row stands on when there are no cards in it (see `statues`): the height of the
+	// mark alone, which is the 3rem band plus the 1.25rem tab wherever there is somebody to
+	// name on it. Both are absolutely positioned, so without this the row measures zero and
+	// the mark lies over whatever the surface put after it.
+	// Nothing when the cards are there — they are what the row is measured by — and nothing
+	// where there is no mark either, an empty row being an empty row.
+	$: markOnlyHeight =
+		statues || !(lead && bannered) ? '' : nobodys ? 'min-h-12' : 'min-h-[4.25rem]';
 </script>
 
-<div class={classNames('relative flex w-full', classes)}>
+<div class={classNames('relative flex w-full', markOnlyHeight, classes)}>
 	<!-- The side's banner: the whole width of the row and hung off its top edge, so it lies
 		across the head room every statue carries above its square rather than taking a strip of
 		the row's height away from the cards. It is painted in the lead's colour with the ink that
@@ -361,52 +385,57 @@
 		itself where the row is a picture of a side, and the button around it where a press
 		means something. A row that is only looked at gets no button at all rather than a
 		dead one — the map's corner and a town's pin are exactly the markup they always
-		were. -->
-	{#each cells as cell, place (place)}
-		{#if cell.middle}
-			<!-- Whatever was handed to the middle, in the cell the leader would have stood in and
-				at the same share of the row: raised over the two beside it, lapped over both. It is
-				centred down the cell because it is not a statue and has no ground to stand on — a
-				face is a square, and a square as wide as this cell is nothing like as tall as the
-				card either side of it. -->
-			<div class={classNames('flex min-w-0 items-center', cellShares[place] ?? cellShares[0])}>
-				<slot name="middle" />
-			</div>
-		{:else}
-			{@const statue = {
-				label: cell.member.label,
-				basePath: cell.member.basePath,
-				color: cell.member.color,
-				box: cell.member.box ?? SpawnBox.Black,
-				locationName: cell.member.locationName,
-				spawnedAt: cell.member.spawnedAt ?? null,
-				showId: cell.member.showId,
-				flipped,
-				alwaysReveal,
-				veiled
-			}}
-			{#if selectable}
-				<button
-					type="button"
-					class={classNames(
-						'min-w-0 rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-						cellShares[place] ?? cellShares[0]
-					)}
-					on:click={() => dispatch('select', { index: cell.index })}
-				>
+		were.
+		None of it where the surface has asked for the mark alone (see `statues`): not a hidden
+		card, not a card at no opacity — no statue in the document at all, which is the only
+		state in which nothing is being loaded, decoded or looped for it. -->
+	{#if statues}
+		{#each cells as cell, place (place)}
+			{#if cell.middle}
+				<!-- Whatever was handed to the middle, in the cell the leader would have stood in and
+					at the same share of the row: raised over the two beside it, lapped over both. It is
+					centred down the cell because it is not a statue and has no ground to stand on — a
+					face is a square, and a square as wide as this cell is nothing like as tall as the
+					card either side of it. -->
+				<div class={classNames('flex min-w-0 items-center', cellShares[place] ?? cellShares[0])}>
+					<slot name="middle" />
+				</div>
+			{:else}
+				{@const statue = {
+					label: cell.member.label,
+					basePath: cell.member.basePath,
+					color: cell.member.color,
+					box: cell.member.box ?? SpawnBox.Black,
+					locationName: cell.member.locationName,
+					spawnedAt: cell.member.spawnedAt ?? null,
+					showId: cell.member.showId,
+					flipped,
+					alwaysReveal,
+					veiled
+				}}
+				{#if selectable}
+					<button
+						type="button"
+						class={classNames(
+							'min-w-0 rounded-box transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+							cellShares[place] ?? cellShares[0]
+						)}
+						on:click={() => dispatch('select', { index: cell.index })}
+					>
+						<CharacterStatue
+							{...statue}
+							classes="w-full"
+							on:ready={() => dispatch('ready', { index: cell.index })}
+						/>
+					</button>
+				{:else}
 					<CharacterStatue
 						{...statue}
-						classes="w-full"
+						classes={cellShares[place] ?? cellShares[0]}
 						on:ready={() => dispatch('ready', { index: cell.index })}
 					/>
-				</button>
-			{:else}
-				<CharacterStatue
-					{...statue}
-					classes={cellShares[place] ?? cellShares[0]}
-					on:ready={() => dispatch('ready', { index: cell.index })}
-				/>
+				{/if}
 			{/if}
-		{/if}
-	{/each}
+		{/each}
+	{/if}
 </div>
