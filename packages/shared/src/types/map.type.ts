@@ -151,6 +151,12 @@ export interface MapMarker {
 	 * prop), which stands them on their points — the two are answers to different
 	 * questions, one about a mark a pin carries and one about towns with no pin at all.
 	 * A box given here wins for this pin, since the caller has named it.
+	 *
+	 * The game's own map gives neither: its pins are built with no box and it declares no
+	 * box layer, so nothing stands a wrapper on the terrain at any tier or any zoom. What
+	 * fills this in is the pin built for the column beside the map — the same `MapMarker`,
+	 * off the same builder, drawn as a document rather than on the canvas — which is where
+	 * a town's offer is read (see the frontend page's NO_BOXES and `townBox`).
 	 */
 	box?: MapBoosterBox | null;
 	/**

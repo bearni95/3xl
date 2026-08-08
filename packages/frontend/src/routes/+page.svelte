@@ -1930,19 +1930,19 @@
 
 	// The box every municipality the booster window's festes reach has waiting, by town.
 	//
-	// Nothing of this is stood on the map any more: the boxes were marks like the pins, and
-	// the map carries no marks. They are looked up by town now — the open town's own box, in
-	// the column beside the map, under the plate that names it (see townPinBox). The set is
+	// Nothing of this is stood on the map, and nothing can be: the boxes were marks like the
+	// pins, and the map carries no marks. The pins the terrain is drawn from are handed no
+	// boxes at all (see NO_BOXES) and WorldMap is given no box layer, so neither half of what
+	// used to put one on a point is fed any more. They are looked up by town now — the open
+	// town's own box, in the column beside the map, under the plate that names it. The set is
 	// still built whole rather than for the one town, because which show a town's box is
 	// printed from is a question about every town at once (see below).
 	//
-	// It is the box that town has
-	// waiting in the Booster tab, not a marker standing for one: the same component off
-	// the same four things — the assigned show's cover, picked out of the enabled posters
+	// It is the box that town has waiting, not a marker standing for one: the same component
+	// off the same four things — the assigned show's cover, picked out of the enabled posters
 	// by town and year exactly as the pack picks it, that show's wordmark, the town's own
 	// name, and the card, white for a town de festa today and black for the rest of the
-	// window. Clicking it loads that town's festa booster pack into the side panel and
-	// flips the panel to its Booster tab, so the pack replaces the tables.
+	// window. Clicking it raises that town's festa booster pack (see openPack).
 	//
 	// Printed from what the map already holds (the show each town flies — its seeded
 	// one as overridden by whoever holds the town — and the authored show
@@ -1952,7 +1952,7 @@
 	// anything to answer for, and the panel already says it. A festa town whose polygon
 	// isn't on the map has no point to stand on and is skipped. Named deps
 	// (`windowFestes`, `todayFesteIds`, `showsById`, `showEntryById`, `regionGeometry`,
-	// `selected`, `$showGlyphs`) so the boxes reprint when any of them lands — `showsById` among them,
+	// `$showGlyphs`) so the boxes reprint when any of them lands — `showsById` among them,
 	// so a town that changes hands re-covers its box with the conqueror's show without a
 	// reload.
 	$: festaBoxes = (() => {
@@ -1964,10 +1964,6 @@
 		// drawn spent. The set is the claim panel's own read (the service's store), empty
 		// while signed out, which leaves every box on the map looking as it always did.
 		const spent = $claimedBoxes;
-		// Which town is being looked at, read off the clicked selection for the same reason
-		// the statues are (see statuedTown): a zoom focus is not a choice of town. Only a
-		// municipality's key is a festa's id, so a key naming a coarser region marks nothing.
-		const picked = selected;
 		const year = new Date().getFullYear();
 		const result: MapBoosterBox[] = [];
 		for (const festa of windowFestes) {
@@ -1998,17 +1994,13 @@
 				claimed: spent.has(
 					claimedBoxKey(festa.id, festaYear(festa.date), boxForFesta(festa.date, todayIso))
 				),
-				// The whole box on the picked town alone; every other town of the window is
-				// its disc, at every zoom that marks towns. The map carries days of festes at
-				// once, and a cover on each of them is a wall of covers with no country left
-				// under it — the same reason only the picked town stands its side up.
-				selected: festa.id === picked,
-				onClick: () => openPack(festa.id),
-				// A disc is a dot on a town the reader has not picked, so a click on it opens
-				// that town on the map exactly as its pin would, rather than raising the pack
-				// of a town they were only pointing at — and opening it is what unfolds the
-				// disc into the box, whose click is the pack's.
-				onDiscClick: () => open(festa.id)
+				// Neither `selected` nor `onDiscClick` is set, and there is nothing left that
+				// would read them: both were about the two sizes a box was drawn at ON the
+				// terrain — the whole cover on the picked town, a disc on every other town of
+				// the window — and no box is drawn there any more (see NO_BOXES). Every place
+				// one of these is stood up now draws the box itself, at one size, so the only
+				// press it has is its own.
+				onClick: () => openPack(festa.id)
 			});
 		}
 		return result;
@@ -2665,6 +2657,18 @@
 	// pin says has always been what it was given.
 	const NO_SIEGES: ReadonlyMap<string, RegionSiege> = new Map();
 	const NO_HOLDERS: ReadonlyMap<string, MunicipalityHolder> = new Map();
+	// And nothing about a pack either, which is the same rule said about the third thing a
+	// town has: no pin on this terrain carries a box, whole or folded, at any tier and at any
+	// zoom, picked or not. A box is a picture of an offer and the map is a picture of a
+	// country — a cover standing on a point is a wrapper laid over the place it is about, and
+	// a disc on every town of the window is a rash of dots over the land they are supposed to
+	// be pointing at. What a town has waiting is read where everything else about the open
+	// town is read: the block under the map, on its own tab, at the box's own size (see
+	// `townBox`, which takes it off the town's pin rather than off the terrain). So the map's
+	// own pins are handed an empty map here exactly as they are handed no sieges and no
+	// holders, and `WorldMap` is never given the `boxes` prop that would stand a layer of them
+	// on the points either.
+	const NO_BOXES: ReadonlyMap<string, MapBoosterBox> = new Map();
 
 	$: markerLevels = buildMarkerLevels(
 		maxLevel,
@@ -2677,7 +2681,7 @@
 		NO_SIEGES,
 		NO_HOLDERS,
 		$showGlyphs,
-		festaBoxById,
+		NO_BOXES,
 		null
 	);
 
@@ -2692,9 +2696,12 @@
 	// whichever level is on screen. It is the same function building both: this one is asked
 	// with the place named as the pinned one, so it comes back the one pin the map draws.
 	//
-	// Nothing about a siege or an occupant here either, for the reason the levels have none:
-	// the plate on the terrain says the show's mark, the place's name and the show's name, and
-	// the column beside the map says the rest.
+	// Nothing about a siege, an occupant or a pack here either, for the reason the levels have
+	// none: the plate on the terrain says the show's mark, the place's name and the show's
+	// name, and the column beside the map says the rest. The pack is the one of the three that
+	// this mark could have carried and does not — being the picked town's, it is the only pin
+	// a box would have stood on — and that is exactly the box the block under the map draws
+	// (see NO_BOXES and `townBox`): once, in the column, and not a second time on the terrain.
 	function buildPickedMarker(
 		key: string | null,
 		nodes: RegionNode[],
@@ -2729,7 +2736,7 @@
 		regionGeometry,
 		relevantKeys,
 		$showGlyphs,
-		festaBoxById
+		NO_BOXES
 	);
 
 	// Every town's feature id → the pin standing over that town on the tier the map is
