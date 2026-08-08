@@ -91,6 +91,10 @@
 		"radar": {
 			"nearest": "Go to the nearest unopened pack"
 		},
+		"side": {
+			"expand": "Show your team",
+			"collapse": "Hide your team"
+		},
 		"search": {
 			"label": "Search locations",
 			"placeholder": "Search locations…",
