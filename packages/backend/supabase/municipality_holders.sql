@@ -69,10 +69,18 @@ create policy municipality_holders_select_all on public.municipality_holders
 -- that player's profile card wears, and half of it says nothing on its own. Both
 -- null is the initial-letter avatar every account starts on, which the pin draws off
 -- the name it already has.
+--
+-- `exp` comes with them, and only so the level can be worked out from it: the band a
+-- holder's side flies names them the way every other surface in the game does, which
+-- is the name and the level together (see TeamLineup). The level itself is never
+-- stored anywhere — it is `levelForExp(exp)` wherever it is read — so the experience
+-- is what has to travel. It publishes nothing new about anybody: the same column is
+-- already served to the whole world for every account by `player_profiles_public`,
+-- which is what a public profile page and the leaderboard are read from.
 create or replace view public.municipality_holders_public
 	with (security_invoker = false) as
 	select h.location_id, h.user_id, n.username as holder_name, h.team, h.turnover, h.taken_at,
-		n.avatar_character_id, n.avatar_color
+		n.avatar_character_id, n.avatar_color, n.exp
 	from public.municipality_holders h
 	left join public.player_profiles n on n.user_id = h.user_id;
 

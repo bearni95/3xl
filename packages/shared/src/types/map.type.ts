@@ -126,6 +126,8 @@ export interface MapMarker {
 		characterId: string | null;
 		/** The colour half of that same avatar, or null for the letter. */
 		color: SpawnColor | null;
+		/** The level they have reached, worked out from their experience, never stored. */
+		level: number;
 	} | null;
 	/**
 	 * The siege standing and the challenge control, drawn on the pin's own plate under

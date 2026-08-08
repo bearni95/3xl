@@ -37,6 +37,7 @@ function holder(locationId: string, turnover: number): MunicipalityHolder {
 		holderName: 'Someone',
 		avatarCharacterId: null,
 		avatarColor: null,
+		level: 1,
 		team: [],
 		turnover,
 		takenAt: '2026-01-01'

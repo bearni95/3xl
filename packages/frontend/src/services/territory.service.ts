@@ -73,7 +73,7 @@ class TerritoryService {
 		const { data, error } = await supabase
 			.from('municipality_holders_public')
 			.select(
-				'location_id, user_id, holder_name, team, turnover, taken_at, avatar_character_id, avatar_color'
+				'location_id, user_id, holder_name, team, turnover, taken_at, avatar_character_id, avatar_color, exp'
 			);
 		if (error) throw error;
 

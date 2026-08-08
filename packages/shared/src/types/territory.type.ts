@@ -83,6 +83,15 @@ export interface MunicipalityHolder {
 	avatarCharacterId: string | null;
 	/** The colour half of that same avatar; null for the letter avatar. */
 	avatarColor: SpawnColor | null;
+	/**
+	 * The level the occupier has reached, derived from the experience the same view
+	 * joins on — never stored, exactly as {@link Profile.level} is not (see
+	 * `levelForExp`). It is here because a side's banner names whoever is behind it
+	 * the way the rest of the game names a player: the name and the level together.
+	 * 1 for a holder whose profile row could not be read at all, which is the level an
+	 * account with no experience is at anyway.
+	 */
+	level: number;
 	/** The team that won the town, in the order it was fielded. */
 	team: HolderTeamMember[];
 	/**
@@ -238,6 +247,8 @@ export interface MunicipalityHolderRow {
 	taken_at: string;
 	avatar_character_id: string | null;
 	avatar_color: string | null;
+	/** `bigint`, so Postgres serialises it as a string over the wire. */
+	exp: number | string | null;
 }
 
 /** Raw `municipality_sieges` row as the Supabase client returns it. */

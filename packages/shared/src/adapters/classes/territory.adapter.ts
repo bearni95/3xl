@@ -9,6 +9,7 @@ import type {
 	MunicipalitySiege,
 	MunicipalitySiegeRow
 } from '../../types/territory.type';
+import { levelForExp } from '../../utils/progression/level';
 import { isSpawnColor } from '../../utils/spawn/color';
 import type { TeamMemberRoll } from '../../utils/spawn/municipality-team';
 
@@ -44,10 +45,22 @@ export class TerritoryAdapter extends AdapterClass {
 			holderName: row.holder_name?.trim() || 'Un jugador',
 			avatarCharacterId: avatarColor ? avatarCharacterId : null,
 			avatarColor,
+			// Read exactly as the profile adapter reads the same column: `exp` is a
+			// bigint, so it arrives as a string, and the level is worked out from it
+			// rather than stored. A holder whose profile row is missing entirely reads
+			// as an account with no experience, which is level 1 — the same answer, and
+			// not a hole in the band naming them.
+			level: levelForExp(this.expFromRow(row.exp)),
 			team: this.teamFromJson(row.team),
 			turnover: Math.max(0, Math.trunc(Number(row.turnover ?? 0)) || 0),
 			takenAt: row.taken_at
 		};
+	}
+
+	/** The experience as a number, however Postgres serialised it. */
+	private expFromRow(exp: unknown): number {
+		const raw = Number(exp ?? 0);
+		return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 0;
 	}
 
 	/** Transform a raw `municipality_sieges` row into the internal model. */

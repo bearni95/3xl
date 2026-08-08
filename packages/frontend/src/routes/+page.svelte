@@ -1354,9 +1354,10 @@
 	// is behind looks like, and a face is not guessed at in the meantime.
 	$: sideOwner = $profile
 		? {
-				name: $profile.username ?? '',
+				name: $profile.username || $_('profile.username.none'),
 				characterId: $profile.avatarCharacterId,
-				color: $profile.avatarColor
+				color: $profile.avatarColor,
+				level: $profile.level
 			}
 		: null;
 
@@ -2443,7 +2444,8 @@
 		return {
 			name: holder.holderName,
 			characterId: holder.avatarCharacterId,
-			color: holder.avatarColor
+			color: holder.avatarColor,
+			level: holder.level
 		};
 	}
 

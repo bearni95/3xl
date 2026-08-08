@@ -171,9 +171,10 @@
 	// between them would be two answers to whose team it is.
 	$: sideOwner = $profile
 		? {
-				name: $profile.username ?? '',
+				name: $profile.username || $_('profile.username.none'),
 				characterId: $profile.avatarCharacterId,
-				color: $profile.avatarColor
+				color: $profile.avatarColor,
+				level: $profile.level
 			}
 		: null;
 	$: if (currentUserId && currentUserId !== loadedForUser) {

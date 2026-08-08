@@ -176,9 +176,10 @@
 	// who meets these three on a town they hold meets the same face there.
 	$: sideOwner = player
 		? {
-				name: player.profile.username ?? '',
+				name: player.profile.username || $_('profile.username.none'),
 				characterId: player.profile.avatarCharacterId,
-				color: player.profile.avatarColor
+				color: player.profile.avatarColor,
+				level: player.profile.level
 			}
 		: null;
 

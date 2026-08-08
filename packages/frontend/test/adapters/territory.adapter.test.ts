@@ -11,6 +11,7 @@ import {
 	type MunicipalitySiege
 } from '$types/territory.type';
 import { SpawnColor } from '$types/character-spawn.type';
+import { levelForExp } from '$utils/progression/level';
 
 const row = (overrides: Partial<MunicipalityHolderRow> = {}): MunicipalityHolderRow => ({
 	location_id: 'ES_08028',
@@ -24,6 +25,7 @@ const row = (overrides: Partial<MunicipalityHolderRow> = {}): MunicipalityHolder
 	taken_at: '2026-07-27T10:00:00.000Z',
 	avatar_character_id: 'nami',
 	avatar_color: 'blue',
+	exp: 0,
 	...overrides
 });
 
@@ -40,9 +42,23 @@ describe('territoryAdapter.fromHolderRow', () => {
 				{ characterId: 'luffy', color: SpawnColor.Purple, locationId: 'ES_08019' },
 				{ characterId: 'zoro', color: SpawnColor.Red, locationId: 'ES_17079' }
 			],
+			level: 1,
 			turnover: 2,
 			takenAt: '2026-07-27T10:00:00.000Z'
 		});
+	});
+
+	it('works the level out of the experience rather than reading one', () => {
+		// The level is never stored — here or on a profile — so what the view joins on is
+		// the experience and this is where it becomes a level. `exp` is a bigint, so it
+		// arrives as a string, and a row with no profile behind it at all reads as an
+		// account at zero, which is level 1 and not a hole in the band naming them.
+		expect(territoryAdapter.fromHolderRow(row({ exp: '3000' })).level).toBe(
+			levelForExp(3000)
+		);
+		expect(territoryAdapter.fromHolderRow(row({ exp: 900 })).level).toBe(levelForExp(900));
+		expect(territoryAdapter.fromHolderRow(row({ exp: null })).level).toBe(1);
+		expect(territoryAdapter.fromHolderRow(row({ exp: -5 })).level).toBe(1);
 	});
 
 	it('reads the worn avatar as the pair it is, or not at all', () => {
@@ -180,6 +196,7 @@ describe('siegeProgress', () => {
 		holderName: 'Bernat',
 		avatarCharacterId: null,
 		avatarColor: null,
+		level: 1,
 		team: [],
 		turnover,
 		takenAt: '2026-07-27T10:00:00.000Z'

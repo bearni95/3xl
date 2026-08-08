@@ -14,6 +14,7 @@
 <script lang="ts">
 	import classNames from 'classnames';
 	import { createEventDispatcher, onMount } from 'svelte';
+	import { _ } from 'svelte-i18n';
 	import CharacterStatue from '$components/core/CharacterStatue.svelte';
 	import PlayerAvatar from '$components/core/PlayerAvatar.svelte';
 	import ShowIcon from '$components/core/ShowIcon.svelte';
@@ -95,6 +96,7 @@
 		name: string;
 		characterId: string | null;
 		color: SpawnColor | null;
+		level: number;
 	} | null = null;
 	export let classes: string = '';
 
@@ -300,6 +302,46 @@
 				<ShowIcon markup={bannerGlyph} classes="[&>svg]:h-8 [&>svg]:w-auto" />
 			</div>
 		</div>
+
+		<!-- Who the side belongs to, said in words: the name they are called by and the level
+			they are at, which is how every other surface in this game names a player (see
+			PlayerPanel and PublicPlayerCard, both of which put those two and no more on the
+			plate). The face on the band is the same account seen a different way; this is the
+			part of it that has to be read rather than recognised.
+			OUTSIDE the coloured bar and centred under it — `top-12` is the band's own height,
+			the row inside it being `h-8` in `py-2` — so the bar keeps its four marks and its
+			margins, and the name hangs from its bottom edge as a caption does. Absolutely
+			placed, so it takes no height of its own from a row whose height is the cards': the
+			banner already lies across the statues' head room rather than in the row, and a
+			caption in the flow would have pushed the three of them down by however long the
+			name ran.
+			`z-30` is over the statues (10) and the middle one that laps them (20). It has to
+			be: this is type over pictures, and the pictures are opaque. It is also why the row
+			is a SIBLING of the band rather than a child of it — the band carries `z-0`, which
+			makes it a stacking context of its own, and nothing inside a z-0 box can rise past a
+			z-10 box beside it however high it is numbered.
+			`text-white`, which is what every other place in the game that names a player letters
+			them in (see PlayerPanel and PublicPlayerCard). Deliberately NOT the band's own ink:
+			that ink is picked to read on the band's fill — black on the yellow swatch — and this
+			row is not on the band. What it is on is the statues and whatever surface they stand
+			over, which in this theme is dark wherever it is anything.
+			`whitespace-nowrap` and `-translate-x-1/2` off the centre, so a long name grows into
+			the row on both sides and stays centred rather than truncating: nothing here is a
+			column with a width to keep — the whole row is only as wide as it is — and a name
+			cut in half names nobody.
+			Only where there IS somebody, which is the same question the face asks (see
+			`nobodys`): a side rolled from a town's own seed has no account to name, so it wears
+			the robot and says nothing under it. -->
+		{#if !nobodys}
+			<div
+				class="pointer-events-none absolute left-1/2 top-12 z-30 -translate-x-1/2 whitespace-nowrap px-2 text-xs font-semibold text-white"
+			>
+				{owner!.name}
+				<span class="opacity-80">
+					{$_('profile.levelBadge', { values: { level: owner!.level } })}
+				</span>
+			</div>
+		{/if}
 	{/if}
 
 	<!-- The statue is the same picture on either surface, so it is written once and the
