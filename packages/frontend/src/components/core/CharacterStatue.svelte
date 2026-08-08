@@ -91,7 +91,21 @@
 	// d = 0.7454·S. The distance is in cqw so it tracks the square's own width (the
 	// square declares itself the container), CSS perspective taking no percentage.
 	const GROUND_DEPTH = 1 / 3;
-	const GROUND = 'origin-bottom [transform:perspective(74.536cqw)_rotateX(48.19deg)]';
+
+	// The block is four boxes — this floor, the panel, and a bevel face down each side of it —
+	// and every one of its joins is two boxes that merely *meet*. Two boxes that meet exactly
+	// leave a hairline: each edge is anti-aliased against the page rather than against its
+	// neighbour, and this one is anti-aliased twice over, being a transformed layer. So the
+	// page shows through every seam and the solid reads as pieces. Nothing here is off by a
+	// hair — the numbers below are exact — so the answer is not to move a piece but to have
+	// each join overlap by a pixel, always in the direction the later-painted piece covers.
+	// This one is the earliest painted, so it is dropped a pixel: its front edge runs a pixel
+	// under the panel and its two cut corners a pixel under the faces, all of it hidden behind
+	// fill of the same colour, and the silhouette does not move. The nudge is applied after the
+	// projection (leftmost is outermost), so it shifts the finished picture rather than the
+	// square the projection is taken of, which has to stay a square for any of it to hold.
+	const GROUND =
+		'origin-bottom [transform:translateY(1px)_perspective(74.536cqw)_rotateX(48.19deg)]';
 
 	// Its four corners are cut off — an octagon rather than a square, a tenth of each side
 	// nearest a corner taken away. A tenth because the panel below is four fifths of the
@@ -120,9 +134,18 @@
 	// leaving nothing vertical to measure: the strip is simply as tall as the panel it stands
 	// beside. The width is in cqw against the card (the root declares itself a container), the
 	// panel's own width being no use to a figure taken from the square.
-	const BEVEL_FACE = 'absolute inset-y-0 w-[5.4545cqw]';
-	const BEVEL_FACE_LEFT = 'right-full origin-right [transform:skewY(48.01deg)]';
-	const BEVEL_FACE_RIGHT = 'left-full origin-left [transform:skewY(-48.01deg)]';
+	//
+	// The pixel of overlap the floor gives the face along the cut, the face gives the panel along
+	// its side: it is a pixel wider than the figure and pulled a pixel over the panel by a
+	// negative margin, so its outer edge stays exactly where the cut leaves it and only its inner
+	// edge moves — onto fill of its own colour. Widening it inward carries the skew's origin in
+	// with it, which lifts the top edge by the same pixel's worth of slope; that lift is the
+	// overlap the floor's own drop was aimed at, and it is the face, not the cut, that draws the
+	// finished edge — the two lines being parallel, so what the reader sees is still one straight
+	// bevel.
+	const BEVEL_FACE = 'absolute inset-y-0 w-[calc(5.4545cqw_+_1px)]';
+	const BEVEL_FACE_LEFT = 'right-full -mr-px origin-right [transform:skewY(48.01deg)]';
+	const BEVEL_FACE_RIGHT = 'left-full -ml-px origin-left [transform:skewY(-48.01deg)]';
 
 	// The character stands halfway up that plane — on the middle of the floor, with as
 	// much of it behind them as in front.
