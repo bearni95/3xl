@@ -83,16 +83,17 @@
 	// to lay one out. The whole path is still a press away, in the dropped column.
 	export let folded: boolean = false;
 	// Folded all the way down to the dots: no crumb kept beside them, no plate under them, just
-	// the square and the column it drops. For the one caller there is, which stands it at the
-	// near corner of the strip over the terrain: the crumb a folded bar would keep is the same
-	// tile and name the badge in the block below already prints (see RegionCurrentBadge, drawn
-	// out of the same fields by the same component), so keeping one here is that tile printed
-	// twice on one screen — a duplicate and not a shorter path. What is left is the way UP and
-	// nothing else, which is the only thing the badge cannot say.
+	// the square and the column it drops. For the one caller there is, which stands it on the
+	// band across the top of the page beside the game's name: the crumb a folded bar would keep
+	// is the same tile and name the badge in the block under the map already prints (see
+	// RegionCurrentBadge, drawn out of the same fields by the same component), so keeping one
+	// here is that tile printed twice on one screen — a duplicate and not a shorter path. What
+	// is left is the way UP and nothing else, which is the only thing the badge cannot say.
 	// No plate because whether one is wanted depends on what it is stood on, which the caller
-	// knows and this does not: in a head that carries its own surface a frame round a single
-	// button is a second frame, and over terrain a plate is the only thing keeping an outlined
-	// square legible. So `classes` is where the surface comes from, if it comes at all.
+	// knows and this does not: on a row of plates it takes the plate its neighbours wear, over
+	// terrain it needs a surface of its own to keep an outlined square legible, and in a head
+	// that already carries one a frame round a single button is a second frame. So `classes` is
+	// where the surface comes from, if it comes at all.
 	export let dotsOnly: boolean = false;
 	export let classes: string = '';
 
@@ -215,8 +216,8 @@
 <div bind:this={wrapperEl} class={classNames('relative', classes)}>
 	<!-- The plate is the bar's, not the button's: a row of crumbs is read against whatever is
 		behind it and so carries a surface, and `dotsOnly` is not a row — it is one outlined
-		square standing in a head beside a badge, and a plate drawn round a single button is a
-		second frame on something already framed. -->
+		square, whose surface is the caller's to give it or withhold (see the prop), since what
+		it wants depends entirely on what it has been stood on. -->
 	<div
 		class={classNames(
 			'flex items-center text-white',
@@ -417,10 +418,16 @@
 			where you were before you asked. Its own width, not the bar's: a column of place
 			names is as wide as the longest of them. The one surface here not let through: the bar
 			can be 80% of itself because a crumb or two is read against terrain, but a column of
-			five is read against whatever plate it has come down on top of. -->
+			five is read against whatever plate it has come down on top of.
+			The cap is the viewport's and NOT this element's own box, which is what `max-w-full`
+			made it: that reads against the wrapper, and under `dotsOnly` the wrapper is one
+			square — so a column of town names was being held to the width of the button that
+			dropped it and coming down as a stack of two-letter shreds. Nothing about how wide the
+			press is says anything about how wide a place name is. What a column of names must not
+			do is run off the screen, so that is what is written down. -->
 		<div
 			transition:slide={{ duration: 200 }}
-			class="absolute left-0 top-full z-10 mt-2 flex w-max max-w-full flex-col gap-0.5 overflow-hidden rounded-lg bg-base-100 p-2 text-white shadow-xl"
+			class="absolute left-0 top-full z-10 mt-2 flex w-max max-w-[75vw] flex-col gap-0.5 overflow-hidden rounded-lg bg-base-100 p-2 text-white shadow-xl"
 		>
 			{#each dropped as crumb}
 				{#if crumb === lastCrumb && crumb.pressable}

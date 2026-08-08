@@ -3001,12 +3001,12 @@
 		belongs to neither, and the rule stands at both widths because the fold below it changes
 		the columns' axis and not this band's.
 
-		`items-stretch` is what makes the three the same height: the marks at the far end are
-		squares, and stretching means they and the name's plate take whatever height the row comes
-		to rather than a number written here that would have to be kept in step with it. The
-		padding is the band's rather than each child's, so the three are spaced by one `gap-2` and
-		inset by one `px-2`. The far end is held against the far edge by `ml-auto` on the first of
-		the two marks, there being nothing that gives between them any more.
+		`items-stretch` is what makes them all one height: three of the four are squares, and
+		stretching means they and the name's plate take whatever height the row comes to rather
+		than a number written here that would have to be kept in step with it. The padding is the
+		band's rather than each child's, so they are spaced by one `gap-2` and inset by one
+		`px-2`. The far end is held against the far edge by `ml-auto` on the first of the two
+		marks there, nothing between the ends giving.
 
 		It stands exactly as it is whatever else is on screen. A full view used to veil it — blur
 		it out and make it inert for as long as a sheet was up — which was a row of furniture going
@@ -3061,6 +3061,39 @@
 				<span class="relative">6xl</span>
 			</span>
 		</div>
+
+		<!-- The way up out of where the map is standing: the dots and the column of place names
+			they drop (see MapBreadcrumbs' `dotsOnly`). It stands against the name because the name
+			is the near end of this row and a path reads from its root — this game, and then the way
+			back up through it — and because everything else on the row is a fixed thing about the
+			game while this is the one mark that knows where you are.
+			It has been a bar across the map's top edge, a mark in the head of the block under the
+			map, and a square in the corner of the strip over the terrain. What sent it up here is
+			the same thing each time: it is a control and not a reading, and the readings kept
+			arriving beside it — a badge naming the open place in that block's head, the tally of
+			the level on that strip — each of them saying where you are while this says how to
+			leave. On the row of the game's own furniture there is nothing for it to be confused
+			with.
+			Nothing at all at the top view, which is the one place with nothing above it, and the
+			two marks at the far end are held there by `ml-auto` either way.
+			Drawn as the two marks at the far end are and for the same reason — `self-stretch
+			aspect-square` in the name plate's own fill, so the row is squares of one height at
+			both ends of it. `z-[1000]` is the column it drops rather than the square: the band has
+			no stacking context of its own, so without it the names would come down BEHIND
+			Leaflet's panes, which start at 400. It sits in the range the map's furniture already
+			uses (see FullScreenModal, where 1300 clears the lot).
+			Pressed for what the path was always pressed for: a step opens its region, an empty
+			rung takes the map to that tier's zoom. Through `openFromColumn` like every press in
+			the block below, so picking a place puts the search field away with it. -->
+		{#if aboveCrumbs}
+			<MapBreadcrumbs
+				classes="z-[1000] flex aspect-square flex-none items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
+				crumbs={aboveCrumbs}
+				onSelect={(key) => (key ? openFromColumn(key) : open(null))}
+				onZoom={zoomToTier}
+				dotsOnly
+			/>
+		{/if}
 
 		<!-- (Where the map is, and the radio playing for it, stood here — between the name and the
 			questions, as the one thing on this row that changes. It heads the block under the map
@@ -3242,57 +3275,26 @@
 							classes="min-h-0 flex-1"
 						/>
 
-						<!-- The strip across the top of the terrain: the two ways of taking the map
-							somewhere else, one at each end. The way back UP out of where it is standing at
-							the near end, and the way OUT to a festa nobody has opened at the far one. Both
-							are about the map and nothing else — each of them moves the terrain and only the
-							terrain — so they are the map's own and not the page's. The name of the game,
-							the questions put to it and who drew it are about the game rather than about the
-							terrain, and they are the band above (see the page's first row).
-							Two squares of the same size at the two corners, and nothing between them: the
-							strip is `pointer-events-none` with each plate turning them back on, since the
-							room between them is terrain and terrain has to stay draggable. `z-[900]` clears
-							Leaflet's own panes (overlays 400-600, controls 800) without reaching the
-							arena's 1200. No inset is measured off it and handed to the map: the pins are
-							dealt where the polygons put them, and a reader who wants what is under it pans.
-							It stands whatever the map is doing — there is no tab left for it to be hidden
-							behind — and a full view used to take it away too; nothing on this page answers
-							a sheet any more (see CHROME_BLUR). -->
+						<!-- The corner at the top of the terrain: the way OUT to a festa nobody has
+							opened, and nothing else. It is about the map and nothing else — it takes the
+							view somewhere it has not looked — so it is the map's own and not the page's.
+							The name of the game, the questions put to it, who drew it and the way back UP
+							out of the open place are all on the band above (see the page's first row): the
+							last of those stood in this corner for a while, and what sent it up was that a
+							path is a control over the whole page's idea of where you are, and the band is
+							where this game keeps its controls.
+							What is left is one square, so the strip is kept for what the strip was doing
+							all along: `pointer-events-none` with the square turning them back on, since
+							the room around it is terrain and terrain has to stay draggable. `z-[900]`
+							clears Leaflet's own panes (overlays 400-600, controls 800) without reaching
+							the arena's 1200. No inset is measured off it and handed to the map: the pins
+							are dealt where the polygons put them, and a reader who wants what is under it
+							pans. It stands whatever the map is doing — there is no tab left for it to be
+							hidden behind — and a full view used to take it away too; nothing on this page
+							answers a sheet any more (see CHROME_BLUR). -->
 						<div
 							class="pointer-events-none absolute inset-x-3 top-3 z-[900] flex items-start gap-2"
 						>
-							<!-- The way up, and nothing else: the dots and the column they drop, which is
-								the path down to where the open place sits (see MapBreadcrumbs' `dotsOnly`).
-								It was a bar across this same edge, then a mark in the head of the block under
-								the map beside the place it is the cut above — and it is back over the terrain
-								because the terrain is what moves when it is pressed, and because in that head
-								it stood next to a badge printing the very tile and name its own last crumb
-								would have: two of those in one cell is the show's mark drawn twice. Here
-								there is nothing beside it to say the place twice with, and the names are in
-								the column it drops, over the map, where the step being walked back to is.
-								Nothing at all at the top view, which is the one place with nothing above it,
-								and the radar keeps the far corner by `ml-auto` either way.
-								The plate is the caller's here and was the bar's before: `dotsOnly` draws one
-								outlined square and no surface, which is right in a head that has a surface
-								of its own and wrong over terrain, where an outline in white on whatever
-								tile happens to be under it is a mark that comes and goes with the view. So
-								it takes the radar's own plate at the radar's own `size-10`, and the strip
-								is two squares of one size at the two corners rather than two marks that
-								merely both happen to be there.
-								Pressed for what the path was always pressed for: a step opens its region, an
-								empty rung takes the map to that tier's zoom. Through `openFromColumn` like
-								every press in the block below, so picking a place puts the search field away
-								with it. -->
-							{#if aboveCrumbs}
-								<MapBreadcrumbs
-									classes="pointer-events-auto flex size-10 flex-none items-center justify-center rounded-lg bg-base-100 shadow-xl"
-									crumbs={aboveCrumbs}
-									onSelect={(key) => (key ? openFromColumn(key) : open(null))}
-									onZoom={zoomToTier}
-									dotsOnly
-								/>
-							{/if}
-
 							<!-- The radar. The map carries days of festes at once and no marks to find them
 								by, so the boxes waiting out there are found by panning across the country
 								looking for one — which is a search, and this is the button that does it: press
@@ -3301,13 +3303,13 @@
 								across on a desktop as on a phone.
 								It has been at the far end of a bar over the map, then a mark in the furniture
 								column beside it, then a square alone in this corner, then the end of a row
-								with the path at the other one — and it is that again, the path having come
-								back up to the strip it left.
+								with the path at the other one — and it is alone in the corner again, the
+								path having gone up to the band.
 								A size of its own, where the marks it used to stand among were drawn to a
 								row's height (`self-stretch aspect-square`): there is no row here to be as
-								tall as, and the dots at the other corner take this square rather than the
-								other way about. `ml-auto` holds it at the far corner whether or not there is
-								anything above the open place for the dots to be about.
+								tall as. `size-10` is what that row came to, so the square is the same square.
+								`ml-auto` because it is the only thing in the strip and the corner it wants is
+								the far one.
 								Disabled when there is nothing left to point at — every box in the window
 								opened, or none loaded yet — because a radar that answers "here" or answers
 								nothing is a press with no destination. -->
