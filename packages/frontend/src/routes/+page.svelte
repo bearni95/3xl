@@ -2726,6 +2726,31 @@
 	// what a full view moves is what stands on the map, never the map.
 	const CHROME_BLUR = { amount: 8, duration: 250 };
 
+	// The same gesture said in classes instead of a transition, for the chrome that may not leave
+	// the document while it plays.
+	//
+	// A Svelte transition ends in an unmount, and two pieces of this page's chrome stand IN FLOW
+	// ABOVE THE MAP — the band across the top of the page and the row of tabs over the terrain.
+	// Unmounting either shortens the column the map is measured into, which is a resize, and a
+	// resize is the one thing the map cannot be handed for free: WorldMap watches its own box and
+	// answers a change with `invalidateSize` + `syncView` + a full rebuild of the pins and the
+	// boxes (see its ResizeObserver). So a sheet going up would have re-framed the terrain, and
+	// coming down would have re-framed it back — twice per modal, for two rows of furniture that
+	// were only ever meant to go quiet.
+	//
+	// Everything else keeps `transition:blur`, because unmounting it costs the map nothing: the
+	// list of places and the account block are grid items in named tracks (`md:col-start-*`,
+	// `row-start-*`), which stay exactly where they are with no child in them, and the radar is
+	// absolutely positioned inside the map's own pane. Only these two are load-bearing.
+	//
+	// Same 8px and same 250ms as CHROME_BLUR, and the opacity goes with it because Svelte's blur
+	// fades as well — this has to be the same gesture to the eye or the furniture would leave in
+	// two different ways. `pointer-events-none` and `inert` are what an unmount was giving for
+	// free: a veiled row is still a row, and neither the pointer nor the tab key should reach one
+	// standing behind a sheet.
+	const CHROME_VEIL = 'transition-[filter,opacity] duration-[250ms]';
+	const CHROME_VEILED = 'pointer-events-none opacity-0 blur-[8px]';
+
 	// Nothing about the map has to be measured any more. The furniture that used to be positioned
 	// over the terrain — the badge and its marks along the top, the side and the account at the
 	// foot — is in flow now: the game's name and the two questions on the page's top row, the side
@@ -2773,104 +2798,109 @@
 		have to be kept in step with it. The padding is the band's rather than each child's, so the
 		four are spaced by one `gap-2` and inset by one `px-2`.
 
-		Blurred away with the rest of the map's furniture while a full view is up, on the same 8px
-		over the same 250ms (see CHROME_BLUR) — a sheet is a place of its own and the band names
-		the one it was raised from. -->
-	{#if !$fullScreenModalOpen}
+		Veiled with the rest of the map's furniture while a full view is up — a sheet is a place of
+		its own and the band names the one it was raised from — but veiled and NOT unmounted, which
+		is the one thing about this row that is not a matter of taste: it stands in flow above the
+		map, so taking it out of the document would lengthen the column the map is measured into
+		and re-frame the terrain on every sheet, both ways. See CHROME_VEIL, which is the same 8px
+		over the same 250ms said in classes. -->
+	<div
+		inert={$fullScreenModalOpen || undefined}
+		class={classNames(
+			'flex flex-none items-stretch gap-2 border-b-2 border-primary bg-base-100 px-2 py-2',
+			CHROME_VEIL,
+			$fullScreenModalOpen && CHROME_VEILED
+		)}
+	>
+		<!-- What it says and what size it is set at are two different things: the word is "6xl"
+			and the type is `2xl`, one flat size at every viewport rather than a ramp.
+			`items-center` centres it in whatever height the row hands this plate (see above);
+			`leading-none` so what is centred is the type's own height and not a line box built for
+			a paragraph. `font-display` is Bungee, the app's one departure from Genos, and it is the
+			token and not the family that is named here (see the `@theme` block in css/app.css).
+
+			The plate is the theme's primary at full strength. It was a bar in a row of bars with a
+			path of crumbs beside it, drawn at full strength precisely where that path was drawn at
+			80% — a path is a thing being looked through to the map under it; a name is not. What
+			stands beside it now is the place the map is open on, which is not a thing to see
+			through either, so the two plates read as one statement: this game, and where in it you
+			are.
+
+			The same badge is the tab's mark (see static/favicon.ico and the link in app.html), and
+			it is drawn differently there on purpose: an icon is a square with room round the word,
+			because that is the box a browser gives it. This is a plate in a row of plates — as
+			tall as the row makes it, as wide as the word makes it. Neither shape should be made to
+			answer for the other.
+
+			It was the tab a column of views dropped from — the player's cards and the album, a row
+			each, up while the pointer was on it — and, on a phone, the handle that pulled the list
+			of places down over the map. It is neither now: the views are sheets raised from the
+			marks at the far end of this row, and the list of places is a tab over the terrain (see
+			RegionLocationList). So the plate is only the plate — nothing hangs off it and nothing
+			is asked about the pointer — and it is a `<div>` at every width. -->
 		<div
-			transition:blur={CHROME_BLUR}
-			class="flex flex-none items-stretch gap-2 border-b-2 border-primary bg-base-100 px-2 py-2"
+			class="flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
 		>
-			<!-- What it says and what size it is set at are two different things: the word is "6xl"
-				and the type is `2xl`, one flat size at every viewport rather than a ramp.
-				`items-center` centres it in whatever height the row hands this plate (see above);
-				`leading-none` so what is centred is the type's own height and not a line box built for
-				a paragraph. `font-display` is Bungee, the app's one departure from Genos, and it is the
-				token and not the family that is named here (see the `@theme` block in css/app.css).
-
-				The plate is the theme's primary at full strength. It was a bar in a row of bars with a
-				path of crumbs beside it, drawn at full strength precisely where that path was drawn at
-				80% — a path is a thing being looked through to the map under it; a name is not. What
-				stands beside it now is the place the map is open on, which is not a thing to see
-				through either, so the two plates read as one statement: this game, and where in it you
-				are.
-
-				The same badge is the tab's mark (see static/favicon.ico and the link in app.html), and
-				it is drawn differently there on purpose: an icon is a square with room round the word,
-				because that is the box a browser gives it. This is a plate in a row of plates — as
-				tall as the row makes it, as wide as the word makes it. Neither shape should be made to
-				answer for the other.
-
-				It was the tab a column of views dropped from — the player's cards and the album, a row
-				each, up while the pointer was on it — and, on a phone, the handle that pulled the list
-				of places down over the map. It is neither now: the views are sheets raised from the
-				marks at the far end of this row, and the list of places is a tab over the terrain (see
-				RegionLocationList). So the plate is only the plate — nothing hangs off it and nothing
-				is asked about the pointer — and it is a `<div>` at every width. -->
-			<div
-				class="flex flex-none items-center gap-3 rounded-lg bg-primary px-3 py-1.5 text-white shadow-xl"
-			>
-				<!-- The word twice: the same lettering in the panel's surface colour, offset 3px down
-					and right, and the word itself over it. A shadow drawn as a copy rather than as a
-					`text-shadow`, because a shadow the thickness of this face wants to be the face — one
-					solid displaced impression of it, with no blur and no spread, which is what a second
-					copy of the glyphs is and what a shadow utility, spelling a colour and a radius, is
-					not.
-					Both copies are positioned, so the one later in the document paints over the other
-					without a z-index: an absolute box would otherwise sit above in-flow type whatever
-					order it is written in, and sending it under with a negative z-index would send it
-					under the plate's own fill as well, there being no stacking context between them. The
-					copy in flow is the one that gives the box its size; `aria-hidden` on the other, since
-					a reader hearing "6xl 6xl" is being told about a shadow. -->
-				<span class="relative font-display text-2xl leading-none">
-					<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true">6xl</span>
-					<span class="relative">6xl</span>
-				</span>
-			</div>
-
-			<!-- Where the map is, and the radio playing for it. It takes the middle because it is the
-				one thing on this row that changes: the name at the near end and the questions at the
-				far end are the same words all game, and the row reads as a frame round the place you
-				are standing in. `min-w-0` so a long town name truncates inside it rather than pushing
-				the far end off the edge. -->
-			<RegionCurrentBadge
-				classes="min-w-0 flex-1"
-				row={subdivisionCurrent}
-				on:select={(event) => openFromColumn(event.detail.key)}
-			/>
-
-			<!-- What the game gets asked, first of the far end, at every width — a question is as
-				worth answering on a desktop as on a phone. No `ml-auto` pushing the end over any more:
-				the middle of this row is `flex-1` and takes every pixel the four of them do not, so
-				these two are held against the far edge by the thing between them rather than by a
-				margin.
-				A square in the name plate's own fill, drawn to the row's height (`self-stretch
-				aspect-square`), with a white game-icons glyph that needs no colour of its own on the
-				primary. -->
-			<button
-				type="button"
-				class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
-				aria-label={$_('faq.open')}
-				on:click={openFaq}
-			>
-				<img src="/assets/icons/sbed/help.svg" class="size-6" alt="" />
-			</button>
-
-			<!-- Who drew the fighters, last on the row. It stands beside the questions because it
-				answers one of the same kind — where all this came from — and because the people who
-				made these sprites are named on the game's own top row rather than three screens in. A
-				palette for a glyph: what the sheet holds is a table of artists. Same square, same fill,
-				same white artwork as the mark beside it. -->
-			<button
-				type="button"
-				class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
-				aria-label={$_('credits.open')}
-				on:click={openCredits}
-			>
-				<img src="/assets/icons/delapouite/palette.svg" class="size-6" alt="" />
-			</button>
+			<!-- The word twice: the same lettering in the panel's surface colour, offset 3px down
+				and right, and the word itself over it. A shadow drawn as a copy rather than as a
+				`text-shadow`, because a shadow the thickness of this face wants to be the face — one
+				solid displaced impression of it, with no blur and no spread, which is what a second
+				copy of the glyphs is and what a shadow utility, spelling a colour and a radius, is
+				not.
+				Both copies are positioned, so the one later in the document paints over the other
+				without a z-index: an absolute box would otherwise sit above in-flow type whatever
+				order it is written in, and sending it under with a negative z-index would send it
+				under the plate's own fill as well, there being no stacking context between them. The
+				copy in flow is the one that gives the box its size; `aria-hidden` on the other, since
+				a reader hearing "6xl 6xl" is being told about a shadow. -->
+			<span class="relative font-display text-2xl leading-none">
+				<span class="absolute left-[3px] top-[3px] text-base-100" aria-hidden="true">6xl</span>
+				<span class="relative">6xl</span>
+			</span>
 		</div>
-	{/if}
+
+		<!-- Where the map is, and the radio playing for it. It takes the middle because it is the
+			one thing on this row that changes: the name at the near end and the questions at the
+			far end are the same words all game, and the row reads as a frame round the place you
+			are standing in. `min-w-0` so a long town name truncates inside it rather than pushing
+			the far end off the edge. -->
+		<RegionCurrentBadge
+			classes="min-w-0 flex-1"
+			row={subdivisionCurrent}
+			on:select={(event) => openFromColumn(event.detail.key)}
+		/>
+
+		<!-- What the game gets asked, first of the far end, at every width — a question is as
+			worth answering on a desktop as on a phone. No `ml-auto` pushing the end over any more:
+			the middle of this row is `flex-1` and takes every pixel the four of them do not, so
+			these two are held against the far edge by the thing between them rather than by a
+			margin.
+			A square in the name plate's own fill, drawn to the row's height (`self-stretch
+			aspect-square`), with a white game-icons glyph that needs no colour of its own on the
+			primary. -->
+		<button
+			type="button"
+			class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
+			aria-label={$_('faq.open')}
+			on:click={openFaq}
+		>
+			<img src="/assets/icons/sbed/help.svg" class="size-6" alt="" />
+		</button>
+
+		<!-- Who drew the fighters, last on the row. It stands beside the questions because it
+			answers one of the same kind — where all this came from — and because the people who
+			made these sprites are named on the game's own top row rather than three screens in. A
+			palette for a glyph: what the sheet holds is a table of artists. Same square, same fill,
+			same white artwork as the mark beside it. -->
+		<button
+			type="button"
+			class="flex aspect-square flex-none cursor-pointer items-center justify-center self-stretch rounded-lg bg-primary shadow-xl"
+			aria-label={$_('credits.open')}
+			on:click={openCredits}
+		>
+			<img src="/assets/icons/delapouite/palette.svg" class="size-6" alt="" />
+		</button>
+	</div>
 
 	<!-- The three columns, and the three are the three things this game is made of:
 		the terrain, the list of places, and the furniture. In that order, left to right, each an
@@ -2933,36 +2963,41 @@
 				<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
 					the credits sheet does it (see CreditsModal): which of the two is up is local state
 					rather than an `aria-controls` target.
-					Blurred away with the rest of the map's furniture while a full view is up — a strip of
-					tabs read sharply beside a sheet is chrome competing with the thing it was covered by
-					— but the tabs go and the panels do not: unmounting the terrain to raise the roster
-					would be a fresh Leaflet on the way back. Only the row that switches them leaves. -->
-				{#if !$fullScreenModalOpen}
-					<div
-						transition:blur={CHROME_BLUR}
-						role="tablist"
-						class="tabs-boxed tabs flex-none justify-start"
+					Veiled with the rest of the map's furniture while a full view is up — a strip of tabs
+					read sharply beside a sheet is chrome competing with the thing it was covered by — and
+					veiled rather than unmounted for the same reason the band at the top of the page is:
+					this row is `flex-none` above a `flex-1` map, so removing it hands the map a taller box
+					and a re-frame it never asked for (see CHROME_VEIL). The panels below it do not move
+					either way: unmounting the terrain to raise the roster would be a fresh Leaflet on the
+					way back. -->
+				<div
+					inert={$fullScreenModalOpen || undefined}
+					role="tablist"
+					class={classNames(
+						'tabs-boxed tabs flex-none justify-start',
+						CHROME_VEIL,
+						$fullScreenModalOpen && CHROME_VEILED
+					)}
+				>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={mapTab === 'map'}
+						class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'map' })}
+						on:click={() => (mapTab = 'map')}
 					>
-						<button
-							type="button"
-							role="tab"
-							aria-selected={mapTab === 'map'}
-							class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'map' })}
-							on:click={() => (mapTab = 'map')}
-						>
-							{$_('map.tabs.map')}
-						</button>
-						<button
-							type="button"
-							role="tab"
-							aria-selected={mapTab === 'places'}
-							class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'places' })}
-							on:click={() => (mapTab = 'places')}
-						>
-							{$_('map.tabs.places')}
-						</button>
-					</div>
-				{/if}
+						{$_('map.tabs.map')}
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={mapTab === 'places'}
+						class={classNames('tab whitespace-nowrap', { 'tab-active': mapTab === 'places' })}
+						on:click={() => (mapTab = 'places')}
+					>
+						{$_('map.tabs.places')}
+					</button>
+				</div>
 
 				<!-- The panel the two tabs share, and the map is never taken out of it: the list is laid
 					over the terrain rather than swapped with it, so the map's box is the same box at every
@@ -3011,15 +3046,19 @@
 							not a strip across an edge.
 							Only while the map is the tab that is up: the list of places is painted over this
 							same box (see below) and would otherwise be painted under a radar with nothing on
-							it to point at.
+							it to point at. And it leaves under a full view like the rest of the chrome, on
+							the same 8px over the same 250ms — this one CAN be unmounted, unlike the two rows
+							above it, because it is absolutely placed inside the map's pane and taking it out
+							changes nobody's box (see CHROME_VEIL).
 							A size of its own, where the three marks it used to stand among are drawn to a
 							row's height (`self-stretch aspect-square`): there is no row here to be as tall
 							as. `size-10` is what that row came to, so the square is the same square.
 							Disabled when there is nothing left to point at — every box in the window opened,
 							or none loaded yet — because a radar that answers "here" or answers nothing is a
 							press with no destination. -->
-						{#if mapTab === 'map'}
+						{#if mapTab === 'map' && !$fullScreenModalOpen}
 							<button
+								transition:blur={CHROME_BLUR}
 								type="button"
 								class="absolute right-3 top-3 z-[900] flex size-10 cursor-pointer items-center justify-center rounded-lg bg-primary shadow-xl disabled:cursor-default disabled:opacity-40"
 								aria-label={$_('map.radar.nearest')}
