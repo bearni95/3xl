@@ -1234,6 +1234,16 @@
 	// the block empty behind the sheet.
 	$: if (townTab === 'box' && !townBoxOffered) townTab = 'town';
 
+	// Whether that block is standing at all: there is a town open, the map is the tab that is up,
+	// and no sheet is over the page. It was written out at the `{#if}` alone while the block was a
+	// band laid over the terrain, where nothing else on the page could tell the difference. It is a
+	// box in the third column from `md` up now, the top half of it, so the panel under it has to
+	// know: with the block there the panel is the second of two rows, and without it the column is
+	// the panel's whole (see the grid, and the wrapper down there).
+	// The `{#if}` names `townPin` again beside this one, which is not a second condition but the
+	// narrowing: a boolean cannot tell the compiler the pin is there, and TownPin is handed it.
+	$: townBlock = ready && Boolean(townPin) && mapTab === 'map' && !$fullScreenModalOpen;
+
 	// (Which of the two below the tabs was the square used to be a press: a bead on the rule
 	// between them handed it from the terrain to this block and back. It is the block's for good
 	// now — a 1:1 of the page's own width, with the map taking what is left of the column — so
@@ -3097,8 +3107,29 @@
 		one square that went back onto the terrain, `z-[900]` and all, because a control that moves
 		the map is the map's (see the map column above).
 
-		Below `md` the two stand one after the other, the map over the furniture, and the second row is
-		a flat `5.875rem`: the height of the folded strip the side shows of itself, and nothing else —
+		Three boxes and three tracks, and which of them is a row and which a column is the fold.
+
+		From `md` up the grid is two rows of three columns and the third column is what the second
+		row is for: the map spans both rows of the two columns it always had, and beside it stand the
+		block naming the open town in the top row and the furniture in the bottom. Two rows of
+		`minmax(0,1fr)` and nothing else, so the two halves of that column are halves — the block is
+		given exactly what the panel is given, rather than a height written down here or taken off
+		what happens to be in it. Which is also why the map spans: the terrain is measured against
+		the whole column beside it and not against either half of it, and a block coming and going
+		in the third column must not be a resize of the first (see WorldMap's ResizeObserver, and
+		the wrapper below for what a resize costs).
+
+		The block was a band laid OVER the terrain at this width — `absolute inset-x-3 bottom-3`,
+		`z-[900]`, pointer events off between its plates — hanging in the map's own pane because
+		there was nowhere in the flow to put a picture of the open town. There is now: it is the
+		half of the third column above the furniture, in the flow, sized by this grid like
+		everything else. That is what takes the last `pointer-events-none`/`-auto` pair and the last
+		z-index off this page's chrome, and it hands the map back the strip of terrain the band was
+		lying across.
+
+		Below `md` the two columns are three rows one after the other — the map, the block under it,
+		the furniture — and the last of them is a flat `5.875rem`: the height of the folded strip the
+		side shows of itself, and nothing else —
 		its 2px rule, `p-3`, the 4.25rem coloured mark the team flies (the band and the tab naming the
 		player under it), `p-3` again (see the panel, where those four are spelled out). The side is a sheet on a phone — it hangs off the bottom of this grid and
 		slides up OVER the terrain as it is unfolded (see the wrapper below) — so this row is not what
@@ -3124,10 +3155,12 @@
 		the flow; it stops holding the moment one of them can slide over the other, since `divide-y`
 		draws on the box ABOVE and the line would then stay down at the strip with the sheet somewhere over
 		it. So it is the side's own `border-t-2` now — same colour, same weight, and it goes where the
-		side goes. Off from `md` up either way, where the two stand abreast and the grid separates
-		them. -->
+		side goes. Off from `md` up either way, where what separates the columns is the columns —
+		and the one line that IS ruled at that width, between the two halves of the third one, is
+		the block's own bottom border, so it comes and goes with the block rather than being left
+		drawn across the top of a panel that is alone in its column. -->
 	<div
-		class="relative grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_5.875rem] md:grid-cols-3 md:grid-rows-1"
+		class="relative grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_auto_5.875rem] md:grid-cols-3 md:grid-rows-2"
 	>
 		<!-- The map. Two thirds of the width from `md` up (`md:col-span-2`), and on a phone the whole
 			page but the strip the side keeps at the foot of it. It was one third of three until
@@ -3135,30 +3168,33 @@
 			shows that level divides between, the way to search, the side standing on the open town and
 			the fight to be had for it, and now the path down to where that town sits. That column had
 			nothing left in it, so it is not there, and what it was standing in is the map's.
-			It spanned two rows of three on a phone while the height was divided in thirds; the rows
-			are the map's own and the strip's now (see the grid above), so it stands in the first of
-			the two and spans nothing at either width.
-			Nothing else sizes it — raising a view over it leaves its box alone, and so does unfolding
-			the side, which goes up OVER this box and never into it — so the map is never re-framed by
-			anything but a pan, a zoom or a region being opened. `relative` is what the
-			chrome laid over the terrain is placed against: the row across its top, the side standing
-			on the open town from `md` up, and anything Leaflet positions inside it.
+			It stands in the first of the phone's three rows and spans none of them; from `md` up it
+			spans BOTH rows of the two columns it holds (`md:row-span-2`), which is the whole of what
+			keeps the terrain out of the third column's arithmetic: the block above the furniture
+			comes and goes with the open town, and a map measured against the top row would be
+			re-framed every time it did.
+			Nothing else sizes it either — raising a view over it leaves its box alone, and so does
+			unfolding the side, which goes up OVER this box and never into it — so the map is never
+			re-framed by anything but a pan, a zoom or a region being opened. `relative` is what the
+			chrome laid over the terrain is placed against: the row across its top, and anything
+			Leaflet positions inside it. (The side standing on the open town was placed against it
+			too, at `md`, until that block went to stand in the column beside this one.)
 			Placed by name at both widths (`row-start-1` / `md:col-start-1`) rather than left to the
 			order things are mounted in: the corner beside it comes and goes with the full-view
 			sheets, and a grid that filled the gap would walk the map into the hole.
 
-			Nothing here scrolls at either width, and below `md` that is a statement about the two
-			boxes rather than about this one: the block under the map is a square of the page's width
-			and the terrain takes what is left, so what is in the column is exactly the column. What
-			does not fit is what is INSIDE that block, and it scrolls inside itself, the way every box
-			on this page does.
+			Nothing here scrolls at either width, and below `md` that is a statement about the three
+			rows rather than about this one: the block under the map is a square of the page's width,
+			the strip at the foot is a fixed length, and the terrain takes what is left of the page.
+			What does not fit is what is INSIDE that block, and it scrolls inside itself, the way
+			every box on this page does.
 
 			Three things stand in this column, and only one of them at a time: the terrain, the list
 			of the places the open region divides into (see RegionLocationList), and the shows that
 			level divides between (see mapTab). All three are about the map — the level it is looking
 			at, drawn, named, and tallied. -->
 		<div
-			class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-span-2 md:col-start-1 md:row-start-1"
+			class="relative row-start-1 flex min-h-0 min-w-0 flex-col md:col-span-2 md:col-start-1 md:row-span-2 md:row-start-1"
 		>
 			{#if ready}
 				<!-- The two tabs, over both of them. `role="tablist"` and DaisyUI's `tab` classes, as
@@ -3408,167 +3444,165 @@
 						</div>
 					{/if}
 				</div>
-
-				<!-- The side standing on the open town — and under it, on the plate the pin carries,
-					whose the place is, how far it has been taken and the fight to be had for it. It was
-					the first thing in the column beside this map, with the standing stood off on its own
-					above it; then it was laid over the map itself: the three of them are a picture of who
-					is holding the place, a picture belongs on the place, and what may be done about that
-					place belongs under the three who would have to be beaten.
-
-					It is drawn twice over now, and the difference is the phone. From `md` up it is what
-					it was — absolutely placed like the radar, centred on the bottom edge of the terrain,
-					the one edge nothing else is using, stood over the map without the map being re-framed
-					by it. Below `md` it is simply the next thing down this column, in the flow after the
-					terrain (see the box above): three statues and a plate over a map that fills a phone
-					cover the better part of what one can see of the country, so on that width the picture
-					stands beside the place rather than on top of it.
-
-					And it is a SQUARE there, always: `aspect-square w-full`, 1:1 of the page's own width,
-					with `flex-none` so the column neither stretches nor squeezes it. Two things are read
-					in this box — three statues and a plate under them, or a booster box, which is 30:37
-					of whatever width it is given — and both are pictures, so what they want is a picture's
-					box rather than a strip the column happened to have left. It is the map that takes what
-					is left now (`flex-1` up there), and being a map that is what it wanted all along.
-					The square was the map's for a while, and then it was a press: a bead on the rule
-					between them handed it either way. Neither is here now — the shape is settled and the
-					map's box has nothing left that can move it.
-
-					Its own top edge carries the rule, `border-t-2 border-primary`, exactly as the side at
-					the foot of the page carries the one that separates it from this: a rule belongs to
-					the box below the line, so it travels with the edge it separates. Dropped from `md` up
-					(`md:border-t-0`) along with the shape, where this is a band over the terrain and
-					nothing is divided. `p-3` all round again, there being no mark on the line to keep a
-					head clear of.
-
-					It is out of the map's pane and a child of this column for the same reason: an in-flow
-					child of the square would be laid inside the square, which is the thing being got out
-					of. `md:absolute` places it against this column instead, whose bottom edge IS the
-					terrain's bottom edge at that width (the tabs are above, the box below them takes the
-					rest), so the desktop draws the same band in the same place it always did — hanging at
-					`inset-x-3 bottom-3`, which is the 12px of air the padding says while it is in the flow.
-
-					The whole pin and not a copy of it less its standing: `townPin` comes out of
-					`buildMarkers`, the very function the map's own marks are built by, so this and the
-					pin on the terrain cannot come to say two things about one town.
-					`named={false}`: the town's name is the band at the top of the page, so the plate
-					is drawn for the rest of what it holds and is left off entirely where there is
-					neither a holder nor a standing to print (see TownPin).
-					Only a town has one at all, and only while the map is the tab that is up: the list
-					of places is painted over the box above and a side standing on a list is a side
-					standing on nothing. It leaves under a full view with the rest of the chrome, on
-					the same 8px over the same 250ms — and mounting it moves nothing the map minds at
-					either width: over the terrain it is out of the flow, under it the square is already
-					sized.
-					`pointer-events-none` on the strip and back on for what is drawn in it, so the map
-					is still pannable everywhere the block is not — an absolutely placed band across
-					an edge would otherwise be a strip of terrain nobody can drag.
-					A width of the map's rather than the column's: it takes what the row gives it up
-					to the 500px the pin on the terrain is drawn at, so the statues here are the size
-					they are on a mark.
-
-					Two things stand here and one of them at a time, which is what the row of tabs
-					above them picks between: the town, and the box that town has waiting. They are
-					two answers to one question — what is there, at this place — and a column with
-					both in it would be a picture of who holds the town with an unopened wrapper
-					hanging off the bottom of it, at a width where what is under the map is what a
-					phone has left. Tabs and not a fold, because neither of the two is the other's
-					detail. -->
-				{#if townPin && mapTab === 'map' && !$fullScreenModalOpen}
-					<div
-						transition:blur={CHROME_BLUR}
-						class="pointer-events-none flex aspect-square w-full min-h-0 min-w-0 flex-none flex-col items-center gap-2 border-t-2 border-primary p-3 md:absolute md:inset-x-3 md:bottom-3 md:z-[900] md:aspect-auto md:h-auto md:w-auto md:border-t-0 md:p-0"
-					>
-						<!-- The two, said the way the map's own three are said over the terrain: DaisyUI's
-							boxed tabs, `role="tablist"`, and which is up held on the page rather than
-							pointed at with `aria-controls` (see the tab row over the map, which this is a
-							second of).
-							The box's tab is disabled by the offer and by nothing else (see
-							`townBoxOffered`): most towns on most days are outside the booster window and
-							have no box at all, and a town whose box this reader has already opened has
-							none left to draw. A tab that is dark is the honest shape of that — the
-							alternative was a tab that opens onto an empty panel, which says the same thing
-							one press later. -->
-						<div role="tablist" class="tabs-boxed tabs pointer-events-auto flex-none">
-							<button
-								type="button"
-								role="tab"
-								aria-selected={townTab === 'town'}
-								class={classNames('tab whitespace-nowrap', {
-									'tab-active': townTab === 'town'
-								})}
-								on:click={() => (townTab = 'town')}
-							>
-								{$_('map.town.tabs.town')}
-							</button>
-							<button
-								type="button"
-								role="tab"
-								aria-selected={townTab === 'box'}
-								disabled={!townBoxOffered}
-								class={classNames('tab whitespace-nowrap', {
-									'tab-active': townTab === 'box',
-									'tab-disabled cursor-default opacity-40': !townBoxOffered
-								})}
-								on:click={() => (townTab = 'box')}
-							>
-								{$_('map.town.tabs.box')}
-							</button>
-						</div>
-
-						<!-- The panel those two tabs share, and the one box in here that scrolls: what
-							the block is given is a share of a column and what stands in it is as tall as
-							three statues and a plate, so on the setting where the map holds the square
-							there is regularly a little more of this than there is room for. The tabs are
-							not in it — a strip that scrolls away is a strip that has to be scrolled back
-							to before it can be pressed, and these two are the way out of whichever of them
-							is too tall. From `md` up there is nothing to scroll: the block is laid over
-							the terrain and is as tall as what is in it (`md:overflow-visible`). -->
-						<div
-							class="flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto md:overflow-visible"
-						>
-							{#if townTab === 'town'}
-								<TownPin
-									marker={townPin}
-									named={false}
-									alwaysReveal
-									classes="pointer-events-auto w-full max-w-[500px]"
-								/>
-							{:else if townBox}
-								<!-- The box itself, drawn in the document rather than on a canvas: the very
-									component the map stands on the town and the Booster tab lays its grid out
-									with, off the very `MapBoosterBox` the pin was handed (see `townBox`), so
-									the three are one object and not three pictures of one.
-									At the 200px the pin draws it at, which is the size a box is read at
-									wherever it is stood in a column — the component takes its height off
-									whatever width it is given (30:37 of it), so the width is the whole of
-									what has to be said.
-									A button and not a div with a handler, for the reason it is one inside the
-									pin: the press is the box's own and it is the pack it opens (see openPack,
-									which answers the door first for a reader with no account). -->
-								<button
-									type="button"
-									class="pointer-events-auto w-[200px] flex-none"
-									on:click={() => townBox?.onClick?.()}
-								>
-									<BoosterBox
-										coverUrl={townBox.coverUrl ?? null}
-										logoUrl={townBox.logoUrl ?? null}
-										showId={townBox.showId ?? null}
-										locationName={townBox.locationName ?? null}
-										light={townBox.light ?? false}
-									/>
-								</button>
-							{/if}
-						</div>
-					</div>
-				{/if}
 			{:else}
 				<div class="flex min-h-0 flex-1 items-center justify-center">
 					<span class="loading loading-spinner loading-lg"></span>
 				</div>
 			{/if}
 		</div>
+
+		<!-- The side standing on the open town — and under it, on the plate the pin carries,
+			whose the place is, how far it has been taken and the fight to be had for it. It was
+			the first thing in the column beside this map, with the standing stood off on its own
+			above it; then it was laid over the map itself: the three of them are a picture of who
+			is holding the place, a picture belongs on the place, and what may be done about that
+			place belongs under the three who would have to be beaten.
+
+			It is a box of the page's own grid at both widths now, and the difference between them
+			is which track it stands in. Below `md` it is the second of the three rows: the next
+			thing down after the terrain, and a SQUARE — `aspect-square w-full`, 1:1 of the page's
+			own width. Two things are read in it — three statues and a plate under them, or a
+			booster box, which is 30:37 of whatever width it is given — and both are pictures, so
+			what they want is a picture's box rather than a strip the column happened to have left.
+			Three statues and a plate laid over a map that fills a phone would cover the better part
+			of what one can see of the country, which is why on that width the picture stands beside
+			the place rather than on top of it.
+
+			From `md` up it is the TOP HALF OF THE THIRD COLUMN: `md:col-start-3 md:row-start-1`, in
+			the first of two `minmax(0,1fr)` rows, with the furniture in the second. So the block and
+			the panel under it divide that column exactly in two, and the block is given a height it
+			does not choose — `md:aspect-auto` drops the square, and the grid stretches it into the
+			half. A picture of who holds the open town is the same kind of thing as the side this
+			player fields, and the two halves of one column is where those two belong.
+
+			It was a band laid over the terrain at that width: `md:absolute` against the map's own
+			column, hanging at `inset-x-3 bottom-3` on the one edge nothing else was using, at
+			`z-[900]` to clear Leaflet's panes, with `pointer-events-none` on the strip and back on
+			for each plate so the terrain under the gaps stayed draggable. All of that is gone with
+			the move — there is no strip over the map, so there is nothing to switch the pointer off
+			for and nothing to raise above a pane — and the map has the whole of its own box back.
+			What it cost is nothing the map minds either: the terrain spans BOTH rows of the two
+			columns it holds (see the map column), so this block coming and going re-frames it as
+			little as the band did.
+
+			Its own top edge carries the rule below `md`, `border-t-2 border-primary`, exactly as the
+			side at the foot of the page carries the one that separates it from this: a rule belongs
+			to the box below the line, so it travels with the edge it separates. From `md` up that
+			edge is the top of a column and there is nothing above it to be divided from, so the rule
+			moves to the other edge (`md:border-t-0 md:border-b-2`) — the line between the two halves
+			of the column, drawn on the half that comes and goes rather than on the panel, which
+			would otherwise be left with a line ruled across the top of a column it has to itself.
+			`p-3` all round at both widths, there being no mark on either line to keep a head clear of.
+
+			The whole pin and not a copy of it less its standing: `townPin` comes out of
+			`buildMarkers`, the very function the map's own marks are built by, so this and the
+			pin on the terrain cannot come to say two things about one town.
+			`named={false}`: the town's name is the band at the top of the page, so the plate
+			is drawn for the rest of what it holds and is left off entirely where there is
+			neither a holder nor a standing to print (see TownPin).
+			Only a town has one at all, and only while the map is the tab that is up: the list
+			of places is painted over the terrain and a side standing on a list is a side
+			standing on nothing. It leaves under a full view with the rest of the chrome, on
+			the same 8px over the same 250ms. Which of the two boxes beside it answers for its
+			absence is the fold: below `md` its row collapses and the map takes the height back,
+			from `md` up the panel takes the whole column (see `townBlock`, which is this
+			condition written once so the panel can be told).
+			It takes the width the grid gives it — the third column, or the whole of a phone —
+			up to the 500px the pin on the terrain is drawn at, so the statues here are the size
+			they are on a mark.
+
+			Two things stand here and one of them at a time, which is what the row of tabs
+			above them picks between: the town, and the box that town has waiting. They are
+			two answers to one question — what is there, at this place — and a column with
+			both in it would be a picture of who holds the town with an unopened wrapper
+			hanging off the bottom of it, at a width where what is under the map is what a
+			phone has left. Tabs and not a fold, because neither of the two is the other's
+			detail. -->
+		{#if townBlock && townPin}
+			<div
+				transition:blur={CHROME_BLUR}
+				class="row-start-2 flex aspect-square w-full min-h-0 min-w-0 flex-col items-center gap-2 border-t-2 border-primary p-3 md:col-start-3 md:row-start-1 md:aspect-auto md:border-b-2 md:border-t-0"
+			>
+				<!-- The two, said the way the map's own three are said over the terrain: DaisyUI's
+					boxed tabs, `role="tablist"`, and which is up held on the page rather than
+					pointed at with `aria-controls` (see the tab row over the map, which this is a
+					second of).
+					The box's tab is disabled by the offer and by nothing else (see
+					`townBoxOffered`): most towns on most days are outside the booster window and
+					have no box at all, and a town whose box this reader has already opened has
+					none left to draw. A tab that is dark is the honest shape of that — the
+					alternative was a tab that opens onto an empty panel, which says the same thing
+					one press later. -->
+				<div role="tablist" class="tabs-boxed tabs flex-none">
+					<button
+						type="button"
+						role="tab"
+						aria-selected={townTab === 'town'}
+						class={classNames('tab whitespace-nowrap', {
+							'tab-active': townTab === 'town'
+						})}
+						on:click={() => (townTab = 'town')}
+					>
+						{$_('map.town.tabs.town')}
+					</button>
+					<button
+						type="button"
+						role="tab"
+						aria-selected={townTab === 'box'}
+						disabled={!townBoxOffered}
+						class={classNames('tab whitespace-nowrap', {
+							'tab-active': townTab === 'box',
+							'tab-disabled cursor-default opacity-40': !townBoxOffered
+						})}
+						on:click={() => (townTab = 'box')}
+					>
+						{$_('map.town.tabs.box')}
+					</button>
+				</div>
+
+				<!-- The panel those two tabs share, and the one box in here that scrolls: what the
+					block is given is a share of a track — a 1:1 of a phone's width, half a column
+					from `md` up — and what stands in it is as tall as three statues and a plate, so
+					there is regularly a little more of this than there is room for. It scrolls at
+					both widths for that reason: the half-column is the same kind of box as the
+					square, a height decided by the grid rather than by what is in it. (It was
+					`md:overflow-visible` while the block hung over the terrain, where it was as
+					tall as its own content and there was nothing to scroll.)
+					The tabs are not in it — a strip that scrolls away is a strip that has to be
+					scrolled back to before it can be pressed, and these two are the way out of
+					whichever of them is too tall. -->
+				<div class="flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto">
+					{#if townTab === 'town'}
+						<TownPin marker={townPin} named={false} alwaysReveal classes="w-full max-w-[500px]" />
+					{:else if townBox}
+						<!-- The box itself, drawn in the document rather than on a canvas: the very
+							component the map stands on the town and the Booster tab lays its grid out
+							with, off the very `MapBoosterBox` the pin was handed (see `townBox`), so
+							the three are one object and not three pictures of one.
+							At the 200px the pin draws it at, which is the size a box is read at
+							wherever it is stood in a column — the component takes its height off
+							whatever width it is given (30:37 of it), so the width is the whole of
+							what has to be said.
+							A button and not a div with a handler, for the reason it is one inside the
+							pin: the press is the box's own and it is the pack it opens (see openPack,
+							which answers the door first for a reader with no account). -->
+						<button
+							type="button"
+							class="w-[200px] flex-none"
+							on:click={() => townBox?.onClick?.()}
+						>
+							<BoosterBox
+								coverUrl={townBox.coverUrl ?? null}
+								logoUrl={townBox.logoUrl ?? null}
+								showId={townBox.showId ?? null}
+								locationName={townBox.locationName ?? null}
+								light={townBox.light ?? false}
+							/>
+						</button>
+					{/if}
+				</div>
+			</div>
+		{/if}
 
 		<!-- The open region stood here, the second column of three: its name and the show it flew,
 			the side standing on it, how far it had been taken and the fight to be had for it, the cut
@@ -3594,7 +3628,7 @@
 			`syncView` + a full rebuild of every pin and every booster box (see its ResizeObserver), so
 			a side that pushed the terrain up and down over a quarter of a second would be that rebuild
 			fifteen times over, in the middle of the one gesture. What the grid gives the map instead
-			is a height that never changes: the second row is the folded strip's own height and nothing
+			is a height that never changes: the last row is the folded strip's own height and nothing
 			else (see the grid), and the terrain stops above it whether the side is up or down. So the
 			fold moves paint and nothing else, and it moves it over a map that has not noticed.
 			`pointer-events-none` on the wrapper with the two things in it turning them back on: it is
@@ -3604,13 +3638,25 @@
 			sized by the grid, with the panel filling it (`md:flex-1`). Nothing overlays anything
 			there: the two stand side by side, and a column that hid a third of the map would be
 			solving a problem the width does not have.
+			What it is NOT at that width, any more, is the whole of that column: the block naming the
+			open town takes the top half of it and this is the bottom (`md:row-start-2`). Only while
+			that block is standing, though — with no town open, or the map on another tab, or a sheet
+			over the page, there is nothing above and the panel has the column entire
+			(`md:row-span-2` from the first row). That is the one thing on the page `townBlock` is
+			written down for: two boxes cannot both be told a condition and be relied on to agree
+			about it. The map does not take part either way, spanning both rows whatever happens here.
 			Veiled rather than emptied while a full view is up, which is what it always was, and
 			`inert` with it — everything in here goes quiet together, the bead included (see
-			CHROME_VEIL). -->
+			CHROME_VEIL). The block above leaves rather than being veiled — under a sheet, on a tab
+			press, at any place that is not a town — and this grows into its half the moment it does,
+			which is also what covers the block's own 250ms going: the panel is later in the document
+			and carries the page's fill, so it simply paints over whatever is still fading in the row
+			above. An instant swap, and the map does not take part in it either way. -->
 		<div
 			inert={$fullScreenModalOpen || undefined}
 			class={classNames(
-				'pointer-events-none absolute inset-x-0 bottom-0 z-[1000] flex min-h-0 min-w-0 flex-col md:static md:z-auto md:col-start-3 md:row-start-1 md:pointer-events-auto',
+				'pointer-events-none absolute inset-x-0 bottom-0 z-[1000] flex min-h-0 min-w-0 flex-col md:static md:z-auto md:col-start-3 md:pointer-events-auto',
+				townBlock ? 'md:row-start-2' : 'md:row-span-2 md:row-start-1',
 				CHROME_VEIL,
 				$fullScreenModalOpen && CHROME_VEILED
 			)}
