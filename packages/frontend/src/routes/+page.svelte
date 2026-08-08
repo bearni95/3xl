@@ -1255,6 +1255,22 @@
 	let townTab: 'town' | 'box' | 'places' = 'town';
 	$: selected, (townTab = 'town');
 
+	// The one exception, and the radar's own: that press is not "take me to this town", it is
+	// "take me to the nearest box I have not opened", so the tab the reader lands on is the box
+	// and not the side standing on it — the question was asked about the wrapper. It cannot be
+	// set on the spot, because the press only points the URL at the municipality and `selected`
+	// is derived from it a navigation later, by which time the reset above would have put the
+	// block back on the town. So the radar names the town it is sending the reader to, and the
+	// landing is spent the moment that town is the open one: a later walk back into the same
+	// place is an ordinary pick again, and answers with who holds it. It stands after the reset
+	// for that reason and before the two guards below, which are what a target that somehow has
+	// no box left to draw falls through.
+	let radarLanding: string | null = null;
+	$: if (radarLanding && selected === radarLanding) {
+		townTab = 'box';
+		radarLanding = null;
+	}
+
 	// And it is never left standing on a tab that is not there to be pressed: a box opened while
 	// it is the tab that is up (which is exactly what the press on it does) would otherwise leave
 	// the block empty behind the sheet, and the reset above puts every drill onto the town's tab
@@ -2079,9 +2095,13 @@
 	// The radar's press: open that town exactly as its pin, its crumb or its table row would,
 	// which frames the map onto its polygons and stands its box up in the column beside it.
 	// Nothing is claimed and nothing is raised — the reader asked where to go, not for the
-	// pack.
+	// pack. What it does say beyond the town is which tab the block under the map should land
+	// on: the box, since a box is what was asked for by name (see `radarLanding`, which is
+	// where that is spent).
 	function findNearestBox(): void {
-		if (radarTarget) open(radarTarget.id);
+		if (!radarTarget) return;
+		radarLanding = radarTarget.id;
+		open(radarTarget.id);
 	}
 
 	// Show a town's pack: open the town on the map, remember which town, and raise the booster
